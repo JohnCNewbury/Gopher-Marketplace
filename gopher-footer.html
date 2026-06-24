@@ -1,0 +1,370 @@
+<!--
+  GOPHER FOOTER — solid navy variant
+  =================================================================
+  Simplified footer per design pivot (2026-05-29):
+    • No gradient — solid Midnight Blue background throughout
+    • Brand block (logo + tagline + socials) on the LEFT
+    • Three link columns: Marketplace · Company · Legal
+    • Bottom strip: copyright (left) + "Need it now? Gopher it!" (right)
+
+  Brand-rule alignment:
+    §3.1  Midnight Blue #002461 — official footer surface
+    §3.1  Shamrock Green — approved for callouts / CTAs
+    §11   White on navy passes AA at high contrast
+  =================================================================
+-->
+
+<style>
+  .gopher-footer {
+    /* Scoped tokens so we don't collide with page-level vars */
+    --gf-shamrock:    #33D975;
+    --gf-shamrock-d:  #27b85e;
+    --gf-midnight:    #002461;
+    --gf-navy-lift:   #0a2f73;   /* one shade above midnight for social tiles */
+    --gf-white:       #FFFFFF;
+    --gf-on-navy:       rgba(255,255,255,0.92);
+    --gf-on-navy-soft:  rgba(255,255,255,0.72);
+    --gf-on-navy-faint: rgba(255,255,255,0.50);
+    --gf-divider:       rgba(255,255,255,0.10);
+
+    background: var(--gf-midnight);
+    color: var(--gf-on-navy);
+    font-family: 'DM Sans', sans-serif;
+    padding: 64px 48px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* subtle shamrock glow accent in lower-right — adds brand warmth
+     without disturbing the solid-color treatment */
+  .gopher-footer::after {
+    content: '';
+    position: absolute;
+    right: -200px; bottom: -150px;
+    width: 540px; height: 540px;
+    background: radial-gradient(circle at center, rgba(51,217,117,0.10), transparent 65%);
+    pointer-events: none;
+    filter: blur(40px);
+    z-index: 0;
+  }
+
+  /* ── TOP ROW: brand-left + three link columns ── */
+  .gopher-footer .gf-inner {
+    position: relative; z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    /* brand column wider; link columns share remaining space */
+    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    gap: 56px;
+    align-items: start;
+    padding-bottom: 36px;
+  }
+
+  /* ── BRAND BLOCK (left) ── */
+  .gopher-footer .gf-brand { text-align: center; }
+  .gopher-footer .gf-brand .gf-logo-wrap {
+    /* white pill so the green/navy logo reads cleanly on navy footer */
+    display: inline-block;
+    background: var(--gf-white);
+    padding: 10px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .gopher-footer .gf-brand .gf-logo-wrap:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  }
+  .gopher-footer .gf-brand .gf-logo-wrap img {
+    height: 36px; display: block;
+  }
+  .gopher-footer .gf-brand .gf-tagline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--gf-on-navy-soft);
+    max-width: 360px;
+    margin: 0 auto 24px;
+  }
+
+  /* Social row, centered under tagline */
+  .gopher-footer .gf-social {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .gopher-footer .gf-social a {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--gf-navy-lift);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gf-white);
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .gopher-footer .gf-social a:hover {
+    background: var(--gf-shamrock);
+    transform: translateY(-2px);
+  }
+  .gopher-footer .gf-social a svg { width: 16px; height: 16px; }
+
+  /* ── LINK COLUMNS ── */
+  .gopher-footer .gf-col { text-align: center; }
+  .gopher-footer .gf-col h4 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 12.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gf-white);
+    margin: 0 0 22px 0;
+  }
+  .gopher-footer .gf-col ul {
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .gopher-footer .gf-col ul li { margin: 0; padding: 0; }
+  .gopher-footer .gf-col ul a {
+    color: var(--gf-on-navy-soft);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  .gopher-footer .gf-col ul a:hover { color: var(--gf-shamrock); }
+
+  /* ── Expandable Tutorials submenu ──
+     Uses native <details>/<summary> for JS-free, screen-reader-friendly
+     expand/collapse. We strip the default disclosure triangle and use
+     our own chevron that rotates when [open]. */
+  .gopher-footer .gf-expandable details { display: block; }
+  .gopher-footer .gf-expandable summary {
+    list-style: none;           /* Firefox: remove default triangle */
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gf-on-navy-soft);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  .gopher-footer .gf-expandable summary::-webkit-details-marker {
+    display: none;              /* Chrome/Safari: remove default triangle */
+  }
+  .gopher-footer .gf-expandable summary:hover { color: var(--gf-shamrock); }
+  /* The chevron icon — points down by default, rotates 180° on open */
+  .gopher-footer .gf-chevron {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+  .gopher-footer .gf-expandable details[open] .gf-chevron {
+    transform: rotate(180deg);
+  }
+  /* Submenu — visually nested as a subtle "card" so users read it as
+     children of Tutorials, not peers of Our Story/Blog/Contact Us.
+     The 101 suffix in the link text adds further distinction from the
+     same-named items in the Marketplace column. */
+  .gopher-footer .gf-submenu {
+    list-style: none;
+    /* Generous top margin separates the submenu from the "Tutorials"
+       summary; 0 bottom margin lets the parent ul's 14px gap handle
+       spacing to the next regular link (Contact Us). */
+    margin: 14px 0 0 0;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    /* Subtle lighter rectangle on the navy surface — just enough to
+       group the items without competing with the surrounding links. */
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    animation: gfFadeIn 0.2s ease;
+  }
+  .gopher-footer .gf-submenu li { margin: 0; padding: 0; }
+  .gopher-footer .gf-submenu a {
+    color: var(--gf-on-navy-soft);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    opacity: 0.9;
+    transition: color 0.2s, opacity 0.2s;
+  }
+  .gopher-footer .gf-submenu a:hover {
+    color: var(--gf-shamrock);
+    opacity: 1;
+  }
+  @keyframes gfFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BOTTOM STRIP — copyright (left) + tagline (right) ── */
+  .gopher-footer .gf-bottom {
+    position: relative; z-index: 1;
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 0 28px;
+    border-top: 1px solid var(--gf-divider);
+  }
+  .gopher-footer .gf-copyright {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: var(--gf-on-navy-faint);
+  }
+  /* "Need it now? Gopher it!" — shamrock green Nunito CTA per §3.1.
+     Brand-legal alternative for future: terracotta Caveat (§4.4). */
+  .gopher-footer .gf-signoff {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--gf-shamrock);
+    letter-spacing: 0.005em;
+    text-decoration: none;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 980px) {
+    .gopher-footer { padding: 48px 24px 0; }
+    .gopher-footer .gf-inner {
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 36px;
+    }
+    .gopher-footer .gf-brand {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding-bottom: 8px;
+    }
+  }
+  @media (max-width: 640px) {
+    .gopher-footer .gf-inner {
+      grid-template-columns: 1fr;
+      gap: 36px;
+      text-align: center;
+    }
+    .gopher-footer .gf-bottom {
+      grid-template-columns: 1fr;
+      gap: 14px;
+      text-align: center;
+    }
+  }
+</style>
+
+<footer class="gopher-footer">
+
+  <div class="gf-inner">
+
+    <!-- Brand block (left) -->
+    <div class="gf-brand">
+      <a href="index.html" class="gf-logo-wrap" aria-label="Gopher home">
+        <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3ODQuOSAxOTIiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6IG5vbmU7CiAgICAgIH0KCiAgICAgIC5jbHMtMSwgLmNscy0yLCAuY2xzLTMsIC5jbHMtNCwgLmNscy01IHsKICAgICAgICBzdHJva2Utd2lkdGg6IDBweDsKICAgICAgfQoKICAgICAgLmNscy0yIHsKICAgICAgICBmaWxsOiAjMzJkODc2OwogICAgICB9CgogICAgICAuY2xzLTMgewogICAgICAgIGZpbGw6ICMxYmFmNjE7CiAgICAgIH0KCiAgICAgIC5jbHMtNCB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLmNscy01IHsKICAgICAgICBmaWxsOiAjMDEyNDYyOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im04MS42NSw2MC44M3YtMTUuMTZoMzIuNTR2OTkuODRjMCwyNi40OC0yNC44Niw0Ni40OC01Ni45OSw0Ni40OC0yOC4zLDAtNDguOTEtMTIuMTMtNTYuMTktMzYuMzhoMzIuOTRjMy44NCw3LjI4LDExLjUyLDEwLjkxLDIyLjg0LDEwLjkxLDEzLjU0LDAsMjQuMjUtNy4wNywyNC4yNS0yMS4yMnYtMTYuMTdjLTQuNjUsOC4yOS0xNi43NywxNS45Ny0zMS4xMiwxNS45N0MyMC40MSwxNDUuMTEsMCwxMjMuMjgsMCw5NC4xOHMyMC40MS01MC45Myw0OS45Mi01MC45M2MxNS4zNiwwLDI3LjA4LDcuMjgsMzEuNzMsMTcuNThabS0uNjEsMzMuMzVjMC0xMy43NC05LjktMjMuODUtMjQuNDUtMjMuODVzLTIzLjg1LDEwLjEtMjMuODUsMjMuODUsOS41LDIzLjg1LDIzLjg1LDIzLjg1LDI0LjQ1LTEwLjExLDI0LjQ1LTIzLjg1WiIvPgogIDxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTM3MS4xNiwxMzIuMzh2NTcuNGgtMzMuMTVWNDUuNjhoMzEuOTN2MTUuMTZjNS42Ni05LjcsMTcuMzgtMTcuNTgsMzIuNzQtMTcuNTgsMjkuNTEsMCw1MC45MywyMy4wNCw1MC45Myw1My4zNnMtMjEuNDIsNTMuMzYtNTAuOTMsNTMuMzZjLTE1LjM2LDAtMjYuODgtNy4yOC0zMS41My0xNy41OFptMC0zNS43N2MwLDE0Ljk2LDEwLjMxLDI1Ljg3LDI0Ljg2LDI1Ljg3czI0LjQ2LTExLjEyLDI0LjQ2LTI1Ljg3LTEwLjExLTI1Ljg3LTI0LjQ2LTI1Ljg3LTI0Ljg2LDEwLjkxLTI0Ljg2LDI1Ljg3WiIvPgogIDxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTQ5Ny40NiwxNDcuNTRoLTMzLjE0VjBoMzMuMTR2NTkuODJjNC40NS05LjksMTYuMTctMTYuNTcsMjkuNzEtMTYuNTcsMjQuNDUsMCwzNi41OCwxNi43OCwzNi41OCw0MS4wM3Y2My4yNmgtMzMuMTR2LTU3LjhjMC0xMC41MS01LjA1LTE3Ljc5LTE2LjE3LTE3Ljc5LTkuOSwwLTE2Ljk4LDYuMDYtMTYuOTgsMTcuNTh2NThaIi8+CiAgPHBhdGggY2xhc3M9ImNscy01IiBkPSJtNjUwLjA1LDExNS44MWgzMC41MmMtNi4yNywxOS4yLTI2LjQ4LDM0LjE2LTUxLjk0LDM0LjE2LTM1LjU3LDAtNTUuNzgtMjIuMjMtNTUuNzgtNTMuNTZzMjIuNjQtNTMuMTUsNTQuMzctNTMuMTUsNTQuMTYsMjAuNjEsNTQuMTYsNTMuNTZ2OS45aC03NS45OWMyLjAyLDExLjEyLDguODksMTkuMiwyMy4yNCwxOS4yLDkuOSwwLDE3LjU4LTMuODQsMjEuNDItMTAuMVptLTQ0LjY3LTI5LjUxaDQ0LjI2Yy0xLjYyLTEyLjEzLTkuNS0yMC4wMS0yMi4wMy0yMC4wMXMtMjAuNDEsNy4yOC0yMi4yMywyMC4wMVoiLz4KICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im03NTcuOTYsNzcuODFoLTYuNjdjLTE4LjE5LDAtMjUuNjcsNy40OC0yNS42NywyNy4yOHY0Mi40NGgtMzMuMTRWNDUuNjhoMzIuMTN2MjAuMjFjNC4yNC0xNi4zNywxNi43Ny0yMS4wMiwzMC4xMS0yMS4wMmgzLjIzdjMyLjk0WiIvPgogIDxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTc3NC4yMiw0Mi4xMmM2LjYyLDAsMTAuNjgsNC44MywxMC42OCwxMC4zOXMtNC4wNiwxMC40NC0xMC42OCwxMC40NC0xMC42OC00Ljk4LTEwLjY4LTEwLjQ0LDQuMDYtMTAuMzksMTAuNjgtMTAuMzlabS04Ljk5LDEwLjM5YzAsNC45OCwzLjYzLDguOTksOC45OSw4Ljk5czguOTktNC4wMSw4Ljk5LTguOTktMy41OC04Ljk0LTguOTktOC45NC04Ljk5LDMuOTYtOC45OSw4Ljk0Wm0xMC45MiwxLjM1bDIuNTEsMi45aC0yLjQybC0yLjIyLTIuNjZoLTEuMjF2Mi42NmgtMS45M3YtOS4yM2gzLjg3YzIuMDMsMCwzLjQ4LDEuNSwzLjQ4LDMuMjksMCwxLjM1LS44MiwyLjU2LTIuMDgsMy4wNFptLTEuNzQtMS4zYzEuMjEsMCwxLjkzLS42OCwxLjkzLTEuNzRzLS43Mi0xLjY5LTEuOTMtMS42OWgtMS42djMuNDNoMS42WiIvPgogIDxnPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJtMzE2LjA0LDk2Ljg2Yy0uMDUuMDYtLjEuMTMtLjE1LjE5LjA1LS4wNi4xLS4xMy4xNS0uMTlaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0zMTcuMjIsOTUuMTljLS4xNy4yOC0uMzYuNTUtLjU1LjgyLjE5LS4yNy4zNy0uNTQuNTUtLjgyWiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJtMzA0Ljc2LDEwMy4xM2MtLjEzLjAyLS4yNi4wNC0uMzkuMDUuMTMtLjAxLjI2LS4wMy4zOS0uMDVaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0zMDYuMzMsMTAyLjg3Yy0uMS4wMi0uMjEuMDQtLjMxLjA2LjEtLjAyLjIxLS4wNC4zMS0uMDZaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0xNjIuNjQsMTAzLjI2YzAsLjc3LS4wNiwxLjUyLS4xNiwyLjI1bC0uMDUsMzcuOTVjMC03NS4xLjE2LTIuMTIuMjItMi4xMnYtMzguMDlaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0xNjIuNjIsMTAyLjkzYzAsLjExLjAyLjIyLjAyLjMzdi0uMzNoLS4wMloiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTIwMS45NCwxMDEuNzh2MTQuODRjMS40Ny0uNDcsMy4wMS0uNzgsNC42LS44NmgyLjQyYzIuMzgtNC4xMSw5LjA4LTcuMDcsMTYuOTktNy4wN3MxNC42MSwyLjk2LDE2Ljk5LDcuMDdoMi41OGMxLjU0LjA4LDMuMDIuMzcsNC40NC44MXYtMTQuNzljMC0xMy4zMi0xMC42OS0yNC4wMS0yNC4wMS0yNC4wMXMtMjQuMDEsMTAuNjktMjQuMDEsMjQuMDFabTMwLjQyLTcuMDdjMC0xLjQ4LDEuMzItMi44LDIuOC0yLjhzMi44LDEuMTUsMi44LDIuOHY2LjkxYzAsMS40OC0xLjMyLDIuOC0yLjgsMi44cy0yLjgtMS4zMi0yLjgtMi44di02LjkxWm0tMTguMjUsMGMwLTEuNDgsMS4zMi0yLjgsMi44LTIuOHMyLjgsMS4xNSwyLjgsMi44djYuOTFjMCwxLjQ4LTEuMzIsMi44LTIuOCwyLjhzLTIuOC0xLjMyLTIuOC0yLjh2LTYuOTFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Im0xODkuMjQsMTM3LjYyYy0uMTUtMS4zNC0uMjktMi41OC0uMjktMy45NC0uMDQsMS4zNS4wNiwyLjY3LjI5LDMuOTRaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Im0yNjMuNDUsMTMzLjY4Yy0uNTUtOC02LjA5LTE0LjgzLTEzLjQ5LTE3LjEyLTEuNDItLjQ0LTIuOS0uNzMtNC40NC0uODFoLTIuNThjLjYsMS4wMy45NCwyLjE0Ljk0LDMuMjksMCw1LjcyLTguMDMsMTAuMzYtMTcuOTMsMTAuMzYtNy44LDAtMTQuNDItMi44OS0xNi44OC02LjkxaC0yLjUyYy04LjY4LjQ5LTE1Ljg5LDYuODYtMTcuMjUsMTUuMzYsMS42Niw4LjU1LDkuMTUsMTUuMDYsMTguMjQsMTUuMDYsMS40MSwwLDIuNzktLjE3LDQuMTEtLjQ2LDMuMTUtLjcxLDYuMDEtMi4yMSw4LjM1LTQuM2w5LjQ2LDIuMjgsNC4xOS0xLjIzYzEuOTQsMS40Niw0LjE3LDIuNTQsNi42MiwzLjE1LDEuNDcuMzYsMy4wMS41Niw0LjYuNTYsMTAuNTMsMCwxOC45MS04LjcyLDE4LjU4LTE5LjI0WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0yIiBkPSJtMjA2LjU1LDEyMi41aDIuNTJjLS42Ni0xLjA4LTEuMDQtMi4yNC0xLjA0LTMuNDVzLjM0LTIuMjUuOTQtMy4yOWgtMi40MmMtMS42LjA4LTMuMTQuMzktNC42Ljg2LTcuMzEsMi4zNC0xMi43Miw5LjEyLTEyLjk5LDE3LjA3LDAsMS4zNi4xNCwyLjYuMjksMy45NC4wMS4xMS4wMi4yMi4wNC4zMywwLS4wMy4wMS0uMDYuMDItLjEsMS4zNi04LjUsOC41Ny0xNC44NywxNy4yNS0xNS4zNloiLz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTIwOS4wNywxMjIuNWMyLjQ2LDQuMDIsOS4wOCw2LjkxLDE2Ljg4LDYuOTEsOS45LDAsMTcuOTMtNC42NCwxNy45My0xMC4zNiwwLTEuMTUtLjM0LTIuMjUtLjk0LTMuMjktMi4zOC00LjExLTkuMDgtNy4wNy0xNi45OS03LjA3cy0xNC42MSwyLjk2LTE2Ljk5LDcuMDdjLS42LDEuMDMtLjk0LDIuMTQtLjk0LDMuMjksMCwxLjIxLjM4LDIuMzcsMS4wNCwzLjQ1WiIvPgogICAgPHBhdGggY2xhc3M9ImNscy0zIiBkPSJtMzA4LjUxLDg1LjE3Yy0uMiwwLS40LjAyLS42LjAzLDEuMjkuMDQsMi41OC4xNywzLjczLjQ2LTguMDYsMS44MS0xMy45OCw5LjA1LTEzLjk4LDE3LjZoNS4xYy41NSwwLDEuMDgtLjAzLDEuNjItLjA4LjEzLS4wMS4yNi0uMDMuMzktLjA1LjQzLS4wNS44NS0uMTEsMS4yNi0uMTkuMS0uMDIuMjEtLjA0LjMxLS4wNiwzLjgzLS44Miw3LjE4LTIuOTIsOS41Ni01LjgyLjA1LS4wNi4xLS4xMy4xNS0uMTkuMjItLjI4LjQzLS41Ni42My0uODUuMTktLjI3LjM4LS41NC41NS0uODIsMC0uMDEuMDItLjAzLjAzLS4wNC42Ny0xLjExLDEuMjItMi4zLDEuNjItMy41Ni0xLjk3LTMuNzgtNS45Mi02LjQxLTEwLjM2LTYuNDFaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im0yMzUuMTYsMTA0LjQxYzEuNDgsMCwyLjgtMS4zMiwyLjgtMi44di02LjkxYzAtMS42NC0xLjMyLTIuOC0yLjgtMi44cy0yLjgsMS4zMi0yLjgsMi44djYuOTFjMCwxLjQ4LDEuMzIsMi44LDIuOCwyLjhaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im0yMTYuOTEsMTA0LjQxYzEuNDgsMCwyLjgtMS4zMiwyLjgtMi44di02LjkxYzAtMS42NC0xLjMyLTIuOC0yLjgtMi44cy0yLjgsMS4zMi0yLjgsMi44djYuOTFjMCwxLjQ4LDEuMzIsMi44LDIuOCwyLjhaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im0xNjIuNDcsMTA1LjUxYy4xLS43My4xNi0xLjQ4LjE2LTIuMjUsMC0uMTEtLjAxLS4yMi0uMDItLjMzLS4xOC05Ljg4LTguMzItMTcuOTMtMTguMjQtMTcuOTMtMS40OCwwLTIuOC4xNi00LjI4LjQ5LDguMTIsMS45NSwxMy45OCw5LjAzLDE0LjEzLDE3LjQzLDAsLjA2LDAsLjExLDAsLjE2aC01LjI2Yy05LjM3LDAtMTcuMS03LjczLTE3LjEtMTcuMXM3LjczLTE3LjEsMTcuMS0xNy4xYzQuNzcsMCw5LjA1LDEuODEsMTIuMTcsNC45M2w3Ljg5LDcuODljMTAuNTItMjEuNTQsMzIuNTYtMzYuMzQsNTguMDUtMzYuMzQsOC4wNiwwLDE1Ljc5LDEuNDgsMjIuODYsNC4xMWwtMi40Nyw0LjI4YzE0LjgsNC45MywyNy4xNCwxNS4xMywzNS4wMywyOC4yOWwuMTYtLjE2LDcuODktNy44OWMzLjEyLTIuOTYsNy40LTQuOTMsMTIuMTctNC45Myw5LjU0LDAsMTcuMSw3LjczLDE3LjEsMTcuMSwwLDMuMjktLjk3LDYuMzctMi42MSw4Ljk5LDAsLjAxLS4wMi4wMy0uMDMuMDQtLjE4LjI4LS4zNi41NS0uNTUuODItLjIuMjktLjQyLjU3LS42My44NS0uMDUuMDYtLjEuMTMtLjE1LjE5LTIuMzgsMi45LTUuNzMsNS05LjU2LDUuODItLjEuMDItLjIxLjA0LS4zMS4wNi0uNDEuMDgtLjgzLjE0LTEuMjYuMTktLjEzLjAyLS4yNi4wNC0uMzkuMDUtLjUzLjA1LTEuMDcuMDgtMS42Mi4wOGgtNS4xYzAtOC41NSw1LjkyLTE1Ljc5LDEzLjk4LTE3LjYtMS4xNS0uMjktMi40My0uNDMtMy43My0uNDYtLjE4LDAtLjM2LS4wMy0uNTUtLjAzLTEwLjAzLDAtMTguMjUsOC4yMi0xOC4yNSwxOC4yNSwwLC44MS4wNiwxLjU5LjE2LDIuMzZ2NDcuMTFoOS41NHYtMzkuNzZoMi45NmMxNC40NywwLDI2LjgxLTExLjAyLDI3LjYzLTI1LjMzLDEuMTUtMTguNDItMTYuNzctMzMuMjItMzYuMDItMjYuODEtMy42MiwxLjE1LTYuNzQsMy4yOS05LjU0LDYuMDhsLS4xNi4xNmMtNi4wOC03LjI0LTEzLjY1LTEzLjMyLTIyLjItMTcuNzZsMS42NC0yLjk2Yy40OS0uODIuMTYtMS45Ny0uODItMi4zbC04Ljg4LTMuNDVjLTQuNDQtMS42NC04Ljg4LTIuOTYtMTMuNDktMy43OC0yOC45NC00Ljc3LTU2LjQxLDcuMDctNzIuNjksMjkuNDQtNC45My00LjYtMTEuMzUtNy4wNy0xOC4wOS03LjA3LTE2LjEyLDAtMjguOTQsMTQuMTQtMjYuNDgsMzAuNzUsMS44MSwxMy4xNiwxMy42NSwyMi44NiwyNy4xNCwyMi44NmgzLjEydjM5LjkzaDkuNTR2LTQ3LjM4WiIvPgogICAgPGc+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0ibTI1NC4xMywxNTAuNDVsLTEzLjg3LDEuOTJjMS40Ny4zNiwzLjAxLjU2LDQuNi41NiwzLjM4LDAsNi41NC0uOSw5LjI3LTIuNDhaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0ibTMxOS44Niw4Ni4xNmMwLTkuMzctNy41Ny0xNy4xLTE3LjEtMTcuMS00Ljc3LDAtOS4wNSwxLjk3LTEyLjE3LDQuOTNsLTcuODksNy44OS0uMTYuMTZjLTcuODktMTMuMTYtMjAuMjMtMjMuMzUtMzUuMDMtMjguMjlsMi40Ny00LjI4Yy03LjA3LTIuNjMtMTQuOC00LjExLTIyLjg2LTQuMTEtMjUuNDksMC00Ny41MywxNC44LTU4LjA1LDM2LjM0bC03Ljg5LTcuODljLTMuMTItMy4xMi03LjQtNC45My0xMi4xNy00LjkzLTkuMzcsMC0xNy4xLDcuNzMtMTcuMSwxNy4xczcuNzMsMTcuMSwxNy4xLDE3LjFoNS4yNmMwLS4wNiwwLS4xMSwwLS4xNmgtNS4wOGMtMS4xNSwwLTIuMTQtLjE2LTMuMTItLjMzLS4xNiwwLS40OS0uMTYtLjgyLS4xNi0uODItLjE2LTEuNDgtLjMzLTIuMTQtLjY2LS4zMy0uMTYtLjQ5LS4xNi0uODItLjMzLS45OS0uMzMtMS44MS0uODItMi42My0xLjMybC0uMTYtLjE2Yy0uNjYtLjQ5LTEuMzItLjk5LTEuOTctMS42NC0uMTYtLjE2LS40OS0uNDktLjY2LS42Ni0uNDktLjQ5LS45OS0xLjE1LTEuMzItMS42NC0uMzMtLjMzLS40OS0uNDktLjY2LS44Mi0uNDktLjgyLS45OS0xLjY0LTEuMzItMi40Ny4xNi04LjM5LDcuMDctMTUuMTMsMTUuNDYtMTUuMTMsNC40NCwwLDguNTUsMS45NywxMS4zNSw1LjFsNy40LDcuNGM5LjctMjIuMzcsMzIuMDctMzguMTUsNTguMDUtMzguMTVoLjE2djI1LjgyYzEzLjMyLDAsMjQuMDEsMTAuNjksMjQuMDEsMjQuMDF2MTQuNzljNy40LDIuMjksMTIuOTMsOS4xMSwxMy40OSwxNy4xMi4yMiw3LjE0LTMuNTcsMTMuNDUtOS4zMiwxNi43N2wzNS4xNC00Ljg1di0zOS44MWMtLjEtLjc3LS4xNi0xLjU1LS4xNi0yLjM2LDAtMTAuMDMsOC4yMi0xOC4yNSwxOC4yNS0xOC4yNS4xOCwwLC4zNi4wMy41NS4wMy4yLS4wMS40LS4wMy42LS4wMyw0LjQ0LDAsOC4zOSwyLjYzLDEwLjM2LDYuNDEtLjQsMS4yNi0uOTUsMi40NS0xLjYyLDMuNTYsMS42NC0yLjYyLDIuNjEtNS43LDIuNjEtOC45OVoiLz4KICAgIDwvZz4KICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0ibTE4OS4zLDEzNy44NnMtLjAxLjA2LS4wMi4xYy0uMDEtLjEyLS4wMi0uMjItLjA0LS4zMy0uMjMtMS4yNy0uMzQtMi41OS0uMjktMy45NC4yNy03Ljk0LDUuNjktMTQuNzMsMTIuOTktMTcuMDd2LTE0Ljg0YzAtMTMuMzIsMTAuNjktMjQuMDEsMjQuMDEtMjQuMDF2LTI1LjgyaC0uMTZjLTI1Ljk4LDAtNDguMzUsMTUuNzktNTguMDUsMzguMTVsLTcuNC03LjRjLTIuOC0zLjEyLTYuOTEtNS4xLTExLjM1LTUuMS04LjM5LDAtMTUuMjksNi43NC0xNS40NiwxNS4xMy4zMy44Mi44MiwxLjY0LDEuMzIsMi40Ny4xNi4zMy4zMy40OS42Ni44Mi4zMy40OS44MiwxLjE1LDEuMzIsMS42NC4xNi4xNi40OS40OS42Ni42Ni42Ni42NiwxLjMyLDEuMTUsMS45NywxLjY0bC4xNi4xNmMuODIuNDksMS42NC45OSwyLjYzLDEuMzIuMzMuMTYuNDkuMTYuODIuMzMuNjYuMzMsMS4zMi40OSwyLjE0LjY2LjMzLDAsLjY2LjE2LjgyLjE2Ljk5LjE2LDEuOTcuMzMsMy4xMi4zM2g1LjA4Yy0uMTUtOC40MS02LjAxLTE1LjQ4LTE0LjEzLTE3LjQzLDEuNDgtLjMzLDIuOC0uNDksNC4yOC0uNDksOS45MiwwLDE4LjA2LDguMDUsMTguMjQsMTcuOTNoLjAydjQzLjA0bDMzLjEyLDIuNzNjLTMuMjgtMi43LTUuNjItNi41LTYuNDYtMTAuODRaIi8+CiAgICA8cGF0aCBjbGFzcz0iY2xzLTUiIGQ9Im0zMjUuNjEsMTM3LjY4Yy4xNi0uNjYuMzMtMS4xNS4zMy0xLjgxLDAtMy43OC0zLjEyLTYuOTEtNi45MS02LjkxLTEuNDgsMC0yLjguNDktMy45NSwxLjMyLTEuMTUtNC4yOC00LjkzLTcuNC05LjU0LTcuNHYtLjQ5YzAtMy43My0zLjA0LTYuOC02Ljc0LTYuODl2LTEuMjRoLTkuNTR2MTcuMTRjLS43NC0uMTctMS41LS4yOS0yLjMtLjI5LTQuOTMsMC05LjA1LDMuNjItOS43LDguMzktMS4xNS0uOTktMi42My0xLjQ4LTQuMjgtMS40OC0yLjMsMC00LjExLDEuMTUtNS40MywyLjgtLjk5LTIuOC0zLjQ1LTQuNzctNi41OC00Ljc3LS45MiwwLTEuNzkuMTktMi41OS41Mi0xLjc2LjcxLTMuMTUsMi4xMS0zLjgzLDMuOTItMS42NC0zLjEyLTQuOTMtNS4yNi04LjcyLTUuMjYtNC40NCwwLTguMjIsMi45Ni05LjM3LDcuMDctMS44MS0xLjY0LTQuMTEtMi42My02Ljc0LTIuNjMtMS45NywwLTMuOTUuNjYtNS40MywxLjY0di0uMTZjMC0zLjc4LTMuMTItNi45MS02LjkxLTYuOTFzLTYuOTEsMy4xMi02LjkxLDYuOTF2LjgyYy0xLjMyLTEuMzItMi45Ni0yLjMtNS4xLTIuMy0xLjk3LDAtMy42Mi44Mi00LjkzLDIuMTQtLjUyLTMuNzUtMy4xOC02Ljg1LTYuNjgtOC4wMy0uOTYtLjMyLTEuOTYtLjUyLTMuMDItLjUyLTQuMTEsMC03LjczLDIuNjMtOS4yMSw2LjI1LS42Ni0yLjk2LTMuNDUtNS4yNi02Ljc0LTUuMjYtMS4xNSwwLTIuMy4zMy0zLjEyLjgyLjE2LS42Ni4xNi0xLjE1LjE2LTEuODEsMC01LjIxLTQuMDktOS40OS05LjIxLTkuODMtLjA1LDAtLjExLDAtLjE2LDB2LTkuMTRoLTkuNTR2NC40Yy0uMjctLjAyLS41NC0uMDUtLjgyLS4wNS00Ljc3LDAtOC44OCwzLjQ1LTkuNyw4LjA2LS45OS0uNDktMS45Ny0uNjYtMi45Ni0uNjYtMy43OCwwLTYuOTEsMy4xMi02LjkxLDYuOTF2LjE2Yy0uNDksMC0uODItLjE2LTEuMzItLjE2LTUuNDMsMC05Ljg3LDQuNDQtOS44Nyw5Ljg3czQuNDQsOS44Nyw5Ljg3LDkuODdjMS4xNSwwLDIuMy0uMTYsMy4yOS0uNjYuOTksMi42MywzLjQ1LDQuNiw2LjQxLDQuNiwxLjY0LDAsMy4xMi0uNjYsNC4yOC0xLjY0LDEuODEsMi44LDQuNzcsNC42LDguMjIsNC42LDEuOTcsMCwzLjc4LS42Niw1LjQzLTEuNjQuODIsMi44LDMuNDUsNC43Nyw2LjU4LDQuNzcsMS44MSwwLDMuNDUtLjY2LDQuNi0xLjgxLDEuNjQsMy4yOSw0LjkzLDUuNDMsOC43Miw1LjQzLDMuNDUsMCw2LjU4LTEuODEsOC4zOS00LjYsMS42NCwxLjQ4LDMuOTUsMi4zLDYuMjUsMi4zLDMuMTIsMCw1Ljc2LTEuNDgsNy41Ni0zLjYyLjQ5LDMuMjksMy4yOSw1LjkyLDYuNzQsNS45MiwzLjEyLDAsNS43Ni0yLjE0LDYuNTgtNS4xLDEuODEsMS42NCw0LjExLDIuOCw2Ljc0LDIuOCwyLjMsMCw0LjQ0LS44Miw2LjI1LTIuMywxLjMyLDMuOTUsNC45Myw2Ljc0LDkuMzcsNi43NCw0LjExLDAsNy41Ny0yLjQ3LDkuMDUtNS45MiwxLjMyLDEuODEsMy4yOSwyLjk2LDUuNTksMi45NiwyLjE0LDAsMy45NS0uOTksNS4yNi0yLjQ3LDEuNjQsMy4xMiw0LjkzLDUuNDMsOC43Miw1LjQzLDMuNDUsMCw2LjU4LTEuODEsOC4zOS00LjYsMS44MSwyLjgsNC43Nyw0LjYsOC4zOSw0LjYsMy45NSwwLDcuNC0yLjQ3LDkuMDUtNS45MiwxLjgxLDAsMy40NS0uNjYsNC42LTEuODEsMS44MSwxLjk3LDQuMjgsMy4xMiw3LjI0LDMuMTIsNC4xMSwwLDcuNTctMi40Nyw5LjA1LTUuOTIsMS45Ny0uMTYsMy43OC0xLjE1LDQuOTMtMi42My44Mi4xNiwxLjY0LjMzLDIuNDcuMzMsNS40MywwLDkuODctNC40NCw5Ljg3LTkuODcuNDktMy40NS0xLjE1LTYuMjUtMy42Mi04LjA2WiIvPgogIDwvZz4KPC9zdmc+" alt="Gopher">
+      </a>
+      <p class="gf-tagline">
+        Connecting customers, businesses, merchants, and local workers with fair-priced services.
+      </p>
+
+      <!-- Social row -->
+      <div class="gf-social" aria-label="Gopher on social media">
+        <a href="https://www.facebook.com/GopherMobileApp" aria-label="Facebook" title="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.52 1.49-3.91 3.78-3.91 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/gopherinc/" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor" stroke="none"/></svg>
+        </a>
+        <a href="https://www.tiktok.com/@gopherinc" aria-label="TikTok" title="TikTok">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.07-2.82h-3.1v12.6a2.59 2.59 0 1 1-2.59-2.59c.27 0 .53.04.78.12V9.96a5.7 5.7 0 0 0-.78-.05 5.69 5.69 0 1 0 5.69 5.69V9.01a7.35 7.35 0 0 0 4.29 1.37V7.28a4.28 4.28 0 0 1-3.22-1.46z"/></svg>
+        </a>
+        <a href="https://www.youtube.com/@gopherinc" aria-label="YouTube" title="YouTube">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.51a3.02 3.02 0 0 0-2.12-2.14C19.5 3.86 12 3.86 12 3.86s-7.5 0-9.38.51A3.02 3.02 0 0 0 .5 6.51 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.49 3.02 3.02 0 0 0 2.12 2.14C4.5 20.14 12 20.14 12 20.14s7.5 0 9.38-.51a3.02 3.02 0 0 0 2.12-2.14A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.49zM9.6 15.57V8.43L15.82 12 9.6 15.57z"/></svg>
+        </a>
+        <a href="https://nextdoor.com/page/gopher-llc-holly-springs-nc" aria-label="Nextdoor" title="Nextdoor">
+          <!-- House silhouette — universally readable as "neighborhood/home"
+               which is Nextdoor's identity. The hover tooltip reinforces it. -->
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 1.6 11.2l1.3 1.6 1.6-1.3v9h6v-6h3v6h6v-9l1.6 1.3 1.3-1.6L12 2.5z"/></svg>
+        </a>
+        <a href="https://www.reddit.com/r/GopherMobileApp/" aria-label="Reddit" title="Reddit">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 11.82a2.2 2.2 0 0 0-3.73-1.57 10.84 10.84 0 0 0-5.5-1.7l.94-4.4 3.07.66a1.56 1.56 0 1 0 .2-1.05l-3.43-.73a.52.52 0 0 0-.62.4l-1.05 4.94a10.9 10.9 0 0 0-5.6 1.7 2.2 2.2 0 1 0-2.42 3.62 4.3 4.3 0 0 0-.05.66c0 3.35 3.9 6.07 8.71 6.07s8.71-2.72 8.71-6.07a4.3 4.3 0 0 0-.05-.65A2.2 2.2 0 0 0 22 11.82zM7 13.4a1.56 1.56 0 1 1 3.12 0 1.56 1.56 0 0 1-3.12 0zm8.73 4.12a5.7 5.7 0 0 1-3.73 1.16 5.7 5.7 0 0 1-3.73-1.16.42.42 0 1 1 .56-.62A4.9 4.9 0 0 0 12 17.85a4.9 4.9 0 0 0 3.17-.95.42.42 0 0 1 .56.62zm-.29-2.56a1.56 1.56 0 1 1 0-3.12 1.56 1.56 0 0 1 0 3.12z"/></svg>
+        </a>
+        <a href="https://x.com/GopherMobileApp" aria-label="X" title="X">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.22-6.82-5.97 6.82H1.66l7.73-8.84L1.23 2.25h6.83l4.71 6.23 5.47-6.23zm-1.16 17.52h1.83L7.01 4.13H5.04l12.04 15.64z"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/company/gopher-mobile-app/" aria-label="LinkedIn" title="LinkedIn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Marketplace column -->
+    <div class="gf-col">
+      <h4>Marketplace</h4>
+      <ul>
+        <li><a href="gopher-request.html">Gopher Request</a></li>
+        <li><a href="gopher-connect.html">Gopher Connect</a></li>
+        <li><a href="gopher-go.html">Gopher Go</a></li>
+        <li><a href="gopher-deals.html">Deals</a></li>
+      </ul>
+    </div>
+
+    <!-- Company column — Tutorials is an expandable submenu (uses
+         <details>/<summary> so it works without JS and stays accessible) -->
+    <div class="gf-col">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="gopher-our-story.html">Our Story</a></li>
+        <li><a href="gopher-blog.html">Gopher Blog</a></li>
+        <li class="gf-expandable">
+          <details>
+            <summary>
+              <span>Tutorials</span>
+              <svg class="gf-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="4 6 8 10 12 6"/>
+              </svg>
+            </summary>
+            <ul class="gf-submenu">
+              <li><a href="gopher-request-101.html">Gopher Request 101</a></li>
+              <li><a href="gopher-connect-101.html">Gopher Connect 101</a></li>
+              <li><a href="gopher-go-101.html">Gopher Go 101</a></li>
+            </ul>
+          </details>
+        </li>
+        <li><a href="gopher-contact-us.html">Contact Us</a></li>
+        <li><a href="gopher-faqs.html">FAQs</a></li>
+      </ul>
+    </div>
+
+    <!-- Legal column -->
+    <div class="gf-col">
+      <h4>Legal</h4>
+      <ul>
+        <li><a href="gopher-privacy.html">Privacy Policy</a></li>
+        <li><a href="gopher-terms-of-service.html">Terms of Service</a></li>
+        <li><a href="gopher-prohibited-list.html">Prohibited List</a></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Bottom strip -->
+  <div class="gf-bottom">
+    <div class="gf-copyright">&copy; 2026 Gopher, Inc. All rights reserved.</div>
+    <div class="gf-signoff">Need it now? Gopher it!</div>
+  </div>
+
+</footer>
