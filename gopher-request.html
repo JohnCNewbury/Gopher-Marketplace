@@ -1742,6 +1742,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gopher Request – Neighbors Helping Neighbors</title>
+<!-- Shared in-app messaging guard (prototype layer). Client-side keyword
+     deterrent that wraps the inbox send; same pattern as the age-restricted
+     keyword backstop. Relative + case-exact path (GitHub Pages serves on Linux).
+     Spec: docs/handoff/messaging-precheck.md -->
+<script src="assets/js/gopher-message-guard.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -13877,20 +13882,49 @@
 
     const field = gate.selector ? $content.querySelector(gate.selector) : null;
     if(field){
-      field.classList.remove('field-required-flash');
-      void field.offsetWidth;             // restart the animation
-      field.classList.add('field-required-flash');
-      field.scrollIntoView({ behavior:'smooth', block:'center' });
-      const clear = () => {
+      // Standardized response: for required TEXT-INPUT gates, pulse the wrapping
+      // CARD with the canonical reddish glow — the same effect as the gopher-iQ
+      // "second set of eyes" card (.attn-pulse / @keyframes attnRedGlow) — instead
+      // of the old tight red ring + shake on the bare input (field-required-flash).
+      // The card is the bordered section/group the field lives in:
+      //   • Describe  → .step-section   • Cost / Worker-pay → .cost-input-box
+      const card = field.matches('#descriptionInput, #costOfItemsInput, #payAmountInput')
+        ? field.closest('.step-section, .cost-input-box')
+        : null;
+      if(card){
+        // Old inline indicator must be GONE, not layered under the new one.
         field.classList.remove('field-required-flash');
-        field.removeEventListener('input', clear);
-        field.removeEventListener('click', clear);
-      };
-      field.addEventListener('input', clear);
-      field.addEventListener('click', clear);   // works for the cat-grid too
-      setTimeout(clear, 2600);
-      const focusable = field.matches('input, textarea, select, [contenteditable="true"]');
-      if(focusable){ try { field.focus({ preventScroll:true }); } catch(e){ field.focus(); } }
+        card.classList.remove('attn-pulse');
+        void card.offsetWidth;            // restart the animation
+        card.classList.add('attn-pulse');
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+        const clear = () => {
+          card.classList.remove('attn-pulse');
+          field.removeEventListener('input', clear);
+          card.removeEventListener('click', clear);
+        };
+        field.addEventListener('input', clear);   // clears once the field is edited/satisfied
+        card.addEventListener('click', clear);     // or on next interaction with the card
+        setTimeout(clear, 6000);                   // backstop so it doesn't breathe forever
+        try { field.focus({ preventScroll:true }); } catch(e){ field.focus(); }
+      } else {
+        // Container-anchored gates (category grid, banners, schedule) keep the
+        // generic field-flash for now — standardized in the later rollout.
+        field.classList.remove('field-required-flash');
+        void field.offsetWidth;             // restart the animation
+        field.classList.add('field-required-flash');
+        field.scrollIntoView({ behavior:'smooth', block:'center' });
+        const clear = () => {
+          field.classList.remove('field-required-flash');
+          field.removeEventListener('input', clear);
+          field.removeEventListener('click', clear);
+        };
+        field.addEventListener('input', clear);
+        field.addEventListener('click', clear);   // works for the cat-grid too
+        setTimeout(clear, 2600);
+        const focusable = field.matches('input, textarea, select, [contenteditable="true"]');
+        if(focusable){ try { field.focus({ preventScroll:true }); } catch(e){ field.focus(); } }
+      }
     }
 
     // Toast anchored to the footer, just above the Continue button.
@@ -17406,7 +17440,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const doSend = () => {
         const text = (input.value || '').trim();
         if(!text) return;
-        sendInboxMessage(t.id, text);
+        // Route through the shared messaging guard (prototype deterrent). On the
+        // allow path the existing faked send runs UNCHANGED; on a level-3 block
+        // the text is left in the box for editing. Falls open if the module
+        // didn't load, mirroring the age-keyword backstop's fail-safe style.
+        if(window.GopherMessageGuard){
+          GopherMessageGuard.guard(text, t.id, {
+            onAllow:   function(){ sendInboxMessage(t.id, text); },
+            onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
+          });
+        } else {
+          sendInboxMessage(t.id, text);
+        }
       };
       sendBtn.addEventListener('click', doSend);
       input.addEventListener('keydown', (e) => {
@@ -20933,5 +20978,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   window.addEventListener('hashchange', openLoginFromHash);   // also fires if already on the page
 })();
 </script>
+
 </body>
 </html>
