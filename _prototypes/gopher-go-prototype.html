@@ -171,6 +171,12 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
 .top{min-height:34px;}
 .attn{animation:attn 1.4s ease;border-radius:14px;}
 @keyframes attn{0%{box-shadow:0 0 0 0 rgba(214,69,69,0);}12%{box-shadow:0 0 0 4px rgba(214,69,69,.5),0 0 22px rgba(214,69,69,.5);background:rgba(214,69,69,.08);}100%{box-shadow:0 0 0 0 rgba(214,69,69,0);background:transparent;}}
+/* Standardized required-field response: pulse the wrapping CARD with the canonical
+   reddish glow (redGlowPulse — the same gopher-iQ "second set of eyes" effect used
+   in Connect/Request), ported in here. Replaces the old one-shot .attn flash on bare inputs. */
+.req-card-pulse{animation:redGlowPulse 3s ease-in-out infinite;border-radius:14px;will-change:box-shadow;}
+@keyframes redGlowPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,66,87,0),0 3px 10px rgba(196,66,87,.30);}50%{box-shadow:0 0 0 4px rgba(196,66,87,.10),0 4px 22px rgba(196,66,87,.72);}}
+@media(prefers-reduced-motion:reduce){.req-card-pulse{animation:none;box-shadow:0 4px 16px rgba(196,66,87,.5);}}
 .locked{background:#efe9dd !important;color:#9a8f78 !important;cursor:not-allowed;}
 :host{--green:#33D975;--green-dark:#1CB061;--green-light:#e2f3e9;--navy:#002461;--navy-mid:#1a3a7a;--navy-light:#eef0f8;--muted:#6b7280;--text:#424242;--terracotta:#D97757;--cornflower:#BADBFC;--warning-text:#92580D;--border:#edf0f5;}
 .joblist{display:flex;flex-direction:column;gap:14px;margin-top:8px;}
@@ -836,6 +842,9 @@ function decorateNav(sr,id){
   if(SIGNUP_IDS.indexOf(id)>=0 && !top.querySelector('.js-steps')){ const sp=document.createElement('div'); sp.className='js-steps'; sp.innerHTML='&#9776; Steps'; top.appendChild(sp); sp.onclick=()=>stepsMenu(); }
 }
 function pulse(el){ if(!el)return; el.classList.remove('attn'); void el.offsetWidth; el.classList.add('attn'); setTimeout(()=>el.classList.remove('attn'),1500); }
+/* Standardized gate response: pulse a wrapping CARD with the canonical reddish glow,
+   scroll it into view, and clear once the user edits/taps it (or after a backstop). */
+function pulseCard(el){ if(!el)return; el.classList.remove('req-card-pulse'); void el.offsetWidth; el.classList.add('req-card-pulse'); try{ el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} const clear=()=>{ el.classList.remove('req-card-pulse'); el.removeEventListener('input',clear); el.removeEventListener('click',clear); }; /* defer a tick so the triggering tap (often a Save/Send button INSIDE this card) doesn't bubble straight into clear() */ setTimeout(()=>{ el.addEventListener('input',clear); el.addEventListener('click',clear); },0); setTimeout(clear,6000); }
 function lockField(inp,msg){ if(!inp)return; inp.readOnly=true; inp.classList.add('locked'); const f=inp.closest('.field')||inp; inp.addEventListener('mousedown',e=>{ e.preventDefault(); pulse(f); toast(msg); }); }
 function bindPersist(sr,id){ sr.querySelectorAll('input,select,textarea').forEach((inp,i)=>{ if(inp.type==='file'||inp.closest('.otpb')) return; const k=id+'::'+i; if(state.fields[k]!=null && !inp.readOnly) inp.value=state.fields[k]; const sv=()=>{ state.fields[k]=inp.value; }; inp.addEventListener('input',sv); inp.addEventListener('change',sv); }); }
 function reverify(queue,done){ if(!queue.length){ done(); return; } const it=queue.shift();
@@ -1103,7 +1112,7 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       persist();
     }; });
     r.querySelectorAll('.rg').forEach(rg=>{ const b=rg.closest('.radius').querySelector('b'); rg.oninput=()=>{ b.textContent=rg.value+' mi'; persist(); }; });
-    save.onclick=()=>{ if(save.classList.contains('disabled')){ r.querySelectorAll('[data-cat]').forEach(pulse); toast('Select at least one category'); return; } const rideSw=r.querySelector('[data-cat="Ride Sharing"] .crow .sw'); const rideOn=rideSw.classList.contains('on'); if(rideOn && !rideComplete()){ pulse(rideSw.closest('[data-cat]')); toast('Complete and save your Ride Sharing info, or turn Ride Sharing off'); return; } const ride=rideOn; state.ride=ride; persist(); GO('payout'); };
+    save.onclick=()=>{ if(save.classList.contains('disabled')){ pulseCard(r.querySelector('[data-cat]')); toast('Select at least one category'); return; } const rideSw=r.querySelector('[data-cat="Ride Sharing"] .crow .sw'); const rideOn=rideSw.classList.contains('on'); if(rideOn && !rideComplete()){ pulseCard(rideSw.closest('[data-cat]')); toast('Complete and save your Ride Sharing info, or turn Ride Sharing off'); return; } const ride=rideOn; state.ride=ride; persist(); GO('payout'); };
     restore(); updateSave(); validateRide();
   } },
 
@@ -1202,12 +1211,12 @@ payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     ['#po-cardname','#po-cardexp'].forEach(s=>{ const e=r.querySelector(s); if(e) e.addEventListener('input',validateCard); });
     if(cvvI) cvvI.addEventListener('input',validateCard);
     function revealPayout(){ idstep.style.display='none'; paystep.style.display=''; h1.textContent='Payout account'; sub.innerHTML='Your default payout card is on file with <b>Stripe</b>. Update it or add a different one anytime.'; renderHero(); syncCard(); validateCard(); try{ paystep.scrollIntoView({block:'start',behavior:'smooth'}); }catch(e){} }
-    function submitId(){ if(idsubmit.classList.contains('disabled')){ if(!terms.classList.contains('on')) pulse(terms); toast('Complete the required details and accept the Stripe terms'); return; } showModal('<h3>Verifying your identity</h3><p>Stripe is securely confirming the details you provided. This usually takes just a moment.</p><p style="color:#1CB061;font-weight:700;font-size:12.5px;margin-top:6px;">Please wait \u2014 once you are verified, you can set up your payout account.</p>'); setTimeout(function(){ const ov=r.querySelector('.modal-overlay'); if(ov) ov.remove(); revealPayout(); toast('Identity verified \u2713'); },1700); }
+    function submitId(){ if(idsubmit.classList.contains('disabled')){ const sels=['#po-ssn','#po-addr','#po-city','#po-state','#po-zip']; let fm=null; for(const s of sels){ const e=r.querySelector(s); if(!(e&&(e.value||'').trim())){ fm=e; break; } } if(fm){ pulseCard(fm.closest('.field')||fm); } else if(!terms.classList.contains('on')){ pulseCard(terms.closest('.field')||terms); } toast('Complete the required details and accept the Stripe terms'); return; } showModal('<h3>Verifying your identity</h3><p>Stripe is securely confirming the details you provided. This usually takes just a moment.</p><p style="color:#1CB061;font-weight:700;font-size:12.5px;margin-top:6px;">Please wait \u2014 once you are verified, you can set up your payout account.</p>'); setTimeout(function(){ const ov=r.querySelector('.modal-overlay'); if(ov) ov.remove(); revealPayout(); toast('Identity verified \u2713'); },1700); }
     idsubmit.onclick=submitId; validateId();
     function updateNames(){ const cn=r.querySelector('#po-cardname'), nk=r.querySelector('#po-nickname'); const chEl=wrap.querySelector('.pc-bot .pc-val'); if(chEl&&cn) chEl.textContent=((cn.value||'').trim()||'Cardholder'); const nkEl=wrap.querySelector('.pc-nick'); if(nkEl&&nk) nkEl.textContent=(nk.value||'').trim(); }
     { const _cn=r.querySelector('#po-cardname'); if(_cn) _cn.addEventListener('input',updateNames); const _nk=r.querySelector('#po-nickname'); if(_nk) _nk.addEventListener('input',updateNames); updateNames(); }
     save.onclick=()=>{
-      if(save.classList.contains('disabled')){ pulse(numI); toast('Enter your card details to finish'); return; }
+      if(save.classList.contains('disabled')){ const nameEl=r.querySelector('#po-cardname'), expEl=r.querySelector('#po-cardexp'); let fm=null; if(!(nameEl&&(nameEl.value||'').trim())) fm=nameEl; else if(!((numI.value||'').replace(/\s/g,'').length>=12)) fm=numI; else if(!(expEl&&(expEl.value||'').trim())) fm=expEl; else if(!(cvvI&&(cvvI.value||'').trim().length>=3)) fm=cvvI; pulseCard((fm&&fm.closest('.field'))||fm||numI); toast('Enter your card details to finish'); return; }
       const num=(numI.value||'').replace(/\s/g,'');
       if(num.length>=4){ const c={name:(nameI.value||'Cardholder').trim(), last4:num.slice(-4), brand:brandOf(num), exp:(expI.value||'').replace(/\s/g,''), nick:((r.querySelector('#po-nickname')||{}).value||'').trim()}; if(mode==='add'){ state.cards.unshift(c); } else { state.cards[0]=c; } toast((mode==='add'?'New payout card added':'Payout card updated')+' \u00b7 '+c.brand+' \u2022\u2022\u2022\u2022 '+c.last4); }
       GO('best-practices');
@@ -1444,7 +1453,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
     r.querySelector('.js-email').onclick=()=>toast('Opening email to <b>support@gophergo.app</b> \u2192');
-    r.querySelector('.js-send').onclick=()=>{ const m=r.querySelector('.js-msg'); if(!m.value.trim()){ pulse(m); toast('Add a short message first'); return; } toast('Message sent \u00b7 '+r.querySelector('.js-topic').value+' \u2014 we\u2019ll be in touch'); m.value=''; };
+    r.querySelector('.js-send').onclick=()=>{ const m=r.querySelector('.js-msg'); if(!m.value.trim()){ pulseCard(m.closest('.cu-form')||m); toast('Add a short message first'); return; } toast('Message sent \u00b7 '+r.querySelector('.js-topic').value+' \u2014 we\u2019ll be in touch'); m.value=''; };
   } },
 
 "gopher-faqs":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}<div class="fqbody">
