@@ -13887,10 +13887,13 @@
       // "second set of eyes" card (.attn-pulse / @keyframes attnRedGlow) — instead
       // of the old tight red ring + shake on the bare input (field-required-flash).
       // The card is the bordered section/group the field lives in:
-      //   • Describe  → .step-section   • Cost / Worker-pay → .cost-input-box
-      const card = field.matches('#descriptionInput, #costOfItemsInput, #payAmountInput')
-        ? field.closest('.step-section, .cost-input-box')
-        : null;
+      //   • Describe  → .field-textarea   • Cost / Worker-pay → .cost-input-box
+      // Describe has no separate wrapper — its .field-textarea IS the box.
+      const card = field.matches('#costOfItemsInput, #payAmountInput')
+        ? field.closest('.cost-input-box')
+        : field.matches('#descriptionInput')
+          ? field.closest('.field-textarea')
+          : null;
       if(card){
         // Old inline indicator must be GONE, not layered under the new one.
         field.classList.remove('field-required-flash');
