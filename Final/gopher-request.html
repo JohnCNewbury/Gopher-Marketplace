@@ -10839,10 +10839,12 @@
     const totalFees = feeSubtotal + instantTransfer;
     const promoDiscountRaw = promo ? (1 - m) * totalFees : 0;   // % promo on (fees + ITF)
 
-    // TrustShield: flat $1.00 off the TOTAL, Delivery & Ride only, verified person.
+    // TrustShield: flat $1.00 off the TOTAL, verified person. Applies ONLY to
+    // AGE-RESTRICTED delivery, or ALL ride-share (ride is not sub-categorized by age).
+    // NOT non-age-restricted delivery, and not any other category.
     const hasTS = (typeof window.__hasTrustShield === 'function')
       ? !!window.__hasTrustShield() : !!(state && state.trustShield);
-    const tsEligible = hasTS && (state.category === 'delivery' || state.category === 'ride');
+    const tsEligible = hasTS && ((state.category === 'delivery' && state.ageRestricted) || state.category === 'ride');
     const tsRaw = tsEligible ? 1.00 : 0;
 
     // Cap: promo + TrustShield <= total fees. Promo first; TrustShield absorbs truncation.
