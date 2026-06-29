@@ -7158,6 +7158,20 @@
   .ca-decline { background:#fff; color:var(--error,#c44257); border-color:var(--error,#c44257); }
   .ca-decline:hover { background:rgba(196,66,87,0.08); }
 
+  /* ─── Counter-offer card driver delta (reuses the worker card; mirrors Connect) ─── */
+  /* Driver change only (offer Δ and/or items Δ), sign-colored with the same convention
+     as the cost-adjustment modal (cd-pos green / cd-neg red). */
+  .counter-delta {
+    flex-shrink:0; white-space:nowrap; text-align:right;
+    font-family:'Nunito'; font-weight:900; font-size:15px;
+  }
+  .counter-delta.cd-pos { color:var(--green-dark); }
+  .counter-delta.cd-neg { color:var(--error,#c44257); }
+  .counter-delta .cd-tag { font-family:'DM Sans'; font-weight:600; font-size:11px; color:var(--muted); }
+  @media(max-width:620px){
+    .counter-delta { align-self:flex-end; padding-left:54px; }
+  }
+
   /* ─── Inbox ─── */
   .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
   .inbox-list { background:white; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; }
@@ -17245,6 +17259,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     workerSort: 'distance',  // 'distance' | 'rating' | 'jobs' | 'bid'
     workerSortDir: 'asc',    // 'asc' (low→high) | 'desc' (high→low)
     profileWorkerIdx: null,  // index of worker whose profile is open (null = list)
+    counterProfileIdx: null, // index of counter-offer worker whose profile is open (null = list)
     profileReqId: null,      // which request that open profile belongs to
   };
 
@@ -17767,7 +17782,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       //     The next commit (6a) hangs 3 counter-offers off this. Footing (canonical
       //     schedule; no promo; NON-AR → NO TrustShield, NO age fee): cogOffer 68.00;
       //     Gopher Fee 0.99; Age Fee 0; ITF 0.08×(68.00+0.99)=5.5192; requestFee 6.5092;
-      //     gmvTotal 68.00+6.5092=74.5092 → "$74.51 total". No counterOffers yet.
+      //     gmvTotal 68.00+6.5092=74.5092 → "$74.51 total". Carries 3 counter-offers
+      //     (A offer-up, B items-down, C both) — see counterOffers below.
       {
         id:'GR-00129', icon:'🛒', title:'Grocery + pharmacy run — purchase needed',
         status:'pending', statusLabel:'Pending', needsAttention:true, userCreated:false,
@@ -17794,7 +17810,44 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:5.5192, fullRequestFee:6.5092,
                 promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:68, gmvTotal:74.5092 },
           total:74.5092
-        }
+        },
+        // Faked counter-offers (mirror Connect's GC-00126). `counter` is the full footed
+        // canonical fee object (same Request fee shape as reviewSnapshot.fee). `changed`
+        // flags which DRIVER moved; the card delta is the driver change only (offer Δ
+        // and/or items Δ vs the ORIGINAL above), not the fee total. NON-AR → no age fee,
+        // no TrustShield on any. Footings (Request schedule, delivery 0.99 + 8% ITF):
+        //   A offer-up   offer 18→28 (cogOffer 78): ITF 0.08×78.99=6.3192; total 85.3092 → $85.31
+        //   B items-down COG  50→30 (cogOffer 48): ITF 0.08×48.99=3.9192; total 52.9092 → $52.91
+        //   C both       COG 50→55 & offer 18→26 (cogOffer 81): ITF 0.08×81.99=6.5592; total 88.5492 → $88.55
+        counterOffers:[
+          // A — OFFER only, UP (+$10): 18 → 28. comment present.
+          { changed:'offer', comment:'Bigger cart than the list looks — bumping my offer a little to cover the extra time.',
+            worker:{ name:'Tess B.', badge:'elite+', photo:'',
+              tagline:'10 years running errands across town — nothing gets missed.',
+              stats:['⭐ 4.98 (331 jobs)','2 mi away','Available now'] },
+            counter:{ costOfItems:50, workerPay:28, workersNeeded:1,
+              gopherFee:0.99, ageFee:0, instantTransfer:6.3192, requestFee:7.3092,
+              fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:6.3192, fullRequestFee:7.3092,
+              promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:78, gmvTotal:85.3092 } },
+          // B — ITEMS only, DOWN (−$20): COG 50 → 30 ("worker knows the items cost less"). comment null.
+          { changed:'items', comment:null,
+            worker:{ name:'Hector G.', badge:'pro+', photo:'',
+              tagline:'Shop here weekly — these run cheaper than listed.',
+              stats:['⭐ 4.91 (176 jobs)','4 mi away','Available now'] },
+            counter:{ costOfItems:30, workerPay:18, workersNeeded:1,
+              gopherFee:0.99, ageFee:0, instantTransfer:3.9192, requestFee:4.9092,
+              fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:3.9192, fullRequestFee:4.9092,
+              promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:48, gmvTotal:52.9092 } },
+          // C — OFFER and ITEMS (both): offer 18→26 (+$8), COG 50→55 (+$5). comment present.
+          { changed:'both', comment:'Store was out of the listed brand, substituting a slightly pricier one, and it is a longer trip than expected.',
+            worker:{ name:'Lena M.', badge:'elite+', photo:'',
+              tagline:'Licensed pro — I keep every receipt and text updates.',
+              stats:['⭐ 4.96 (289 jobs)','6 mi away','Available 5pm'] },
+            counter:{ costOfItems:55, workerPay:26, workersNeeded:1,
+              gopherFee:0.99, ageFee:0, instantTransfer:6.5592, requestFee:7.5492,
+              fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:6.5592, fullRequestFee:7.5492,
+              promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:81, gmvTotal:88.5492 } },
+        ]
       },
       // 2) ACTIVE / In Progress — NON-age-restricted DELIVERY, purchase-needed
       //     (Cost of Items $35 + Offer $15). The Request analog of Connect's
@@ -18540,8 +18593,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     // If the open profile belongs to a different request (user navigated away
     // and into another), drop it so we never show the wrong worker.
-    if(dashState.profileWorkerIdx != null && dashState.profileReqId !== r.id){
+    if(dashState.profileReqId !== r.id){
       dashState.profileWorkerIdx = null;
+      dashState.counterProfileIdx = null;
       dashState.profileReqId = null;
     }
     // Request-level context: drives the bid column, distance reference and the
@@ -18551,10 +18605,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const distRef = (r.hasPickup && Array.isArray(r.pickups) && r.pickups[0]) ? 'pickup' : 'destination';
 
     const _pIdx = dashState.profileWorkerIdx;
+    const _cpIdx = dashState.counterProfileIdx;
     if(_pIdx != null && !isLive && r.interestedWorkers && r.interestedWorkers[_pIdx]){
       // Profile view short-circuit — "Review profile" replaces the worker list.
       ensureWorkerMeta(r.interestedWorkers[_pIdx], r, _pIdx, bidsMode);
       workersHtml = renderWorkerProfile(r, r.interestedWorkers[_pIdx], _pIdx);
+    } else if(_cpIdx != null && r.status === 'pending' && r.counterOffers && r.counterOffers[_cpIdx]){
+      // Counter-offer worker profile — same short-circuit, reading the counter's worker.
+      ensureWorkerMeta(r.counterOffers[_cpIdx].worker, r, _cpIdx, false);
+      workersHtml = renderWorkerProfile(r, r.counterOffers[_cpIdx].worker, _cpIdx);
     } else if(r.interestedWorkers && r.interestedWorkers.length){
       // Derive sortable/displayable meta for every worker (distance, bid, …).
       r.interestedWorkers.forEach((w, idx) => ensureWorkerMeta(w, r, idx, bidsMode));
@@ -18661,6 +18720,63 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="wsection-head">Workers Interested <span class="wsection-count">${items.length}</span></div>
           ${sortBar}
           ${sortInterested(items).map(card).join('')}
+        </div>
+      ` : '';
+
+      // ── Counter-offers (mirrors Connect 31a3eb5) ──
+      // A counter is a worker proposing different terms (offer and/or cost-of-items)
+      // before being hired. Each reuses the worker-card markup with a sign-aware DRIVER
+      // delta (the offer Δ and/or items Δ vs the ORIGINAL posted price in reviewSnapshot
+      // — NOT the fee total). Accept hires that worker at the counter total; Deny removes
+      // the card; Details is stubbed this commit (the modal is commit 6b). All buttons
+      // carry data-coact/data-ci and resolve via the delegated body listener.
+      const counterCard = (co, ci) => {
+        ensureWorkerMeta(co.worker, r, ci, false);
+        const w = co.worker;
+        const rating = (w.stats && w.stats[0]) || '';
+        const distMi = (w.distanceMi != null) ? Number(w.distanceMi) : null;
+        const distLine = (distMi != null) ? `<span class="wcard-distance">📍 ${distMi.toFixed(1)} mi → ${distRef}</span>` : '';
+        const snap = r.reviewSnapshot || {};
+        const offerD = (co.counter.workerPay || 0) - (snap.workerPay || 0);
+        const itemsD = (co.counter.costOfItems || 0) - (snap.costOfItems || 0);
+        let delta, tag;
+        if(co.changed === 'offer'){ delta = offerD; tag = 'offer'; }
+        else if(co.changed === 'items'){ delta = itemsD; tag = 'items'; }
+        else { delta = offerD + itemsD; tag = 'offer and items'; }
+        const sign = delta >= 0 ? '+' : '−';
+        const amt = Number.isInteger(delta) ? Math.abs(delta) : Math.abs(delta).toFixed(2);
+        const deltaHtml = `<div class="counter-delta ${delta >= 0 ? 'cd-pos' : 'cd-neg'}" title="Driver change vs the original offer">${sign}$${amt} <span class="cd-tag">(${tag})</span></div>`;
+        return `
+          <div class="wcard">
+            <div class="wcard-photo">${w.photo ? `<img src="${w.photo}" alt="${w.name}">` : `<div class="wcard-photo-fallback">${(w.name||'?').charAt(0)}</div>`}</div>
+            <div class="wcard-main">
+              <div class="wcard-top">
+                <span class="wcard-name">${w.name}</span>
+                <span class="gopher-badge ${w.badge==='pro+'?'tier-pro':''}">${(w.badge||'pro+').replace('+','')}${w.badge==='elite+'?'<span class="gb-plus">+</span>':''}</span>
+              </div>
+              <div class="wcard-sub">
+                <span class="wcard-rating">${rating}</span>
+                ${distLine}
+                <button class="wcard-link" data-coact="profile" data-ci="${ci}">Review profile</button>
+                <button class="wcard-msg" data-coact="message" data-ci="${ci}" title="Text ${w.name}" aria-label="Text ${w.name}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3a8.38 8.38 0 0 1 8.5 8.5z"/></svg>
+                  <span>Text</span>
+                </button>
+              </div>
+            </div>
+            ${deltaHtml}
+            <div class="wcard-actions">
+              <button class="wbtn wbtn-green wbtn-lg" data-coact="accept" data-ci="${ci}">Accept</button>
+              <button class="wbtn wbtn-navy-soft" data-coact="details" data-ci="${ci}">Details</button>
+              <button class="wbtn wbtn-red-soft" data-coact="deny" data-ci="${ci}">Deny</button>
+            </div>
+          </div>
+        `;
+      };
+      const counterSection = (r.counterOffers && r.counterOffers.length) ? `
+        <div class="wsection">
+          <div class="wsection-head">Counter-offers <span class="wsection-count">${r.counterOffers.length}</span></div>
+          ${r.counterOffers.map(counterCard).join('')}
         </div>
       ` : '';
 
@@ -18786,6 +18902,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ${midBar}
           ${interestedBlock(interested)}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
+          ${counterSection}
         `;
       } else {
         // Single-worker (or non-multi-individual) requests: Considered must
@@ -18799,6 +18916,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ${midBar}
           ${interestedBlock(interested)}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
+          ${counterSection}
         `;
       }
     } else {
@@ -18850,6 +18968,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           // before the index guard since the Back button carries no data-i.
           if(act === 'profile-back'){
             dashState.profileWorkerIdx = null;
+            dashState.counterProfileIdx = null;
             dashState.profileReqId = null;
             renderRequestDetail();
             return;
@@ -18925,6 +19044,32 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         if(adjAct){
           const r = getR();
           if(r) resolveAdjustment(r, adjAct.dataset.adjAction);
+          return;
+        }
+
+        // 2c) Counter-offer actions (mirror Connect) — Accept (hire at the counter
+        //     price) / Details (STUB this commit — the modal is 6b) / Deny (remove this
+        //     counter) / Review profile / Message (visual). data-coact + data-ci; the
+        //     buttons carry NO stopPropagation wrapper, so clicks reach this delegated
+        //     handler (the trap that bit the cost-adjustment "?").
+        const coBtn = target.closest('[data-coact]');
+        if(coBtn){
+          const r = getR();
+          if(!r) return;
+          const act = coBtn.dataset.coact;
+          const ci = parseInt(coBtn.dataset.ci, 10);
+          const counters = r.counterOffers || [];
+          if(isNaN(ci) || !counters[ci]) return;
+          if(act === 'message'){ coBtn.classList.add('msg-open'); coBtn.title = 'Conversation opened'; return; }
+          if(act === 'profile'){
+            dashState.counterProfileIdx = ci;
+            dashState.profileReqId = r.id;
+            renderRequestDetail();
+            return;
+          }
+          if(act === 'details'){ /* STUB — the Details breakdown modal arrives in commit 6b. */ return; }
+          if(act === 'deny'){ counters.splice(ci, 1); renderRequestDetail(); return; }
+          if(act === 'accept'){ acceptCounterOffer(r, ci); return; }
           return;
         }
 
@@ -19176,6 +19321,41 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     delete r.pendingAdjustment;
     renderActiveRequests();   // refresh the dashboard summary card's total
     renderRequestDetail();    // card/modal gone; recap + summary reflect the result
+  }
+
+  // Accept a counter-offer (faked, mirrors Connect). Reuses the existing hire path: (1)
+  // write the counter's footed canonical fee object + gmvTotal onto r.reviewSnapshot (so
+  // the agreed total IS the counter price) and r.perWorkerCost / r.amount, then (2) add
+  // the counter's worker to r.interestedWorkers with status 'hired' — the same hired
+  // state the Hire button produces — then re-render and fire the start-encourage modal.
+  // No fee math here; the counter object is pre-footed mock data. In-memory only.
+  function acceptCounterOffer(r, ci){
+    const co = r && r.counterOffers && r.counterOffers[ci];
+    if(!co) return;
+    const C = co.counter, snap = r.reviewSnapshot;
+    if(C && snap){
+      snap.fee = {
+        gopherFee:C.gopherFee, ageFee:C.ageFee, instantTransfer:C.instantTransfer, requestFee:C.requestFee,
+        fullGopherFee:C.fullGopherFee, fullAgeFee:C.fullAgeFee, fullInstantTransfer:C.fullInstantTransfer, fullRequestFee:C.fullRequestFee,
+        promo:C.promo || null, promoDiscount:C.promoDiscount, trustShieldDiscount:C.trustShieldDiscount,
+        cogOffer:C.cogOffer, gmvTotal:C.gmvTotal,
+      };
+      snap.costOfItems = C.costOfItems; snap.workerPay = C.workerPay;
+      if(C.workersNeeded != null) snap.workersNeeded = C.workersNeeded;
+      snap.total = C.gmvTotal;
+      r.perWorkerCost = C.workerPay;
+      r.amount = `$${C.gmvTotal.toFixed(2)} total`;   // agreed total = counter gmvTotal
+    }
+    // Reuse the hire mechanism: this worker joins the request as HIRED.
+    if(!Array.isArray(r.interestedWorkers)) r.interestedWorkers = [];
+    r.interestedWorkers.push({ ...co.worker, status:'hired', justAccepted:false });
+    r.counterOffers.splice(ci, 1);   // counter resolved → leave the list
+    renderActiveRequests();          // dashboard summary card reflects the counter price
+    renderRequestDetail();
+    // Same post-hire behavior as the Hire button: encourage Start once the crew is full.
+    const needed = r.workersNeeded || 1;
+    const hiredNow = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
+    if(hiredNow >= needed && typeof showStartEncourageModal === 'function'){ showStartEncourageModal(r, needed); }
   }
 
   // ── Read-only Request Recap, rendered from a FROZEN reviewSnapshot (the deal the
