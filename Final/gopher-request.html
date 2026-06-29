@@ -6872,6 +6872,42 @@
   .req-status.status-pending,
   .req-status.status-matching    { background:rgba(251,191,36,0.18); color:#92580d; }
   .req-status.status-scheduled   { background:rgba(26,42,94,0.10); color:var(--navy); }
+  .req-status.status-dispute     { background:#fbeeef; color:#c44257; }
+
+  /* ─── Customer post-completion + rating + dispute (mirrors Connect) ─── */
+  .cmp-block { border:1px solid #cfeede; background:#f1faf4; border-radius:14px; padding:18px 16px; margin:18px 0 4px; text-align:center; }
+  .cmp-title { font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--green-dark,#1CB061); margin-bottom:6px; }
+  .cmp-sub { font-family:'DM Sans'; font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
+  .cmp-details-link { display:block; width:100%; background:none; border:none; color:var(--navy); font-family:'DM Sans'; font-weight:700; font-size:13.5px; text-decoration:underline; cursor:pointer; padding:6px 0 12px; }
+  .cmp-confirm-btn { width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
+  .cmp-confirm-btn:hover { filter:brightness(1.08); }
+  .cmp-confirmed { border:1px solid #cfeede; background:#f1faf4; border-radius:12px; padding:13px 16px; margin:18px 0 4px; text-align:center; font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--green-dark,#13784a); }
+  .cmp-detail-rows { margin-bottom:6px; }
+  .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
+  .cmp-drow span:first-child { color:var(--muted); font-weight:600; }
+  .cmp-drow span:last-child { color:var(--navy); font-weight:700; text-align:right; }
+  .cmp-pics { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+  .cmp-pic { width:calc(50% - 5px); height:120px; border-radius:10px; overflow:hidden; background:#eef2f9; }
+  .cmp-pic img { width:100%; height:100%; object-fit:cover; }
+  .rate-worker { text-align:center; margin-bottom:10px; }
+  .rate-photo { width:64px; height:64px; border-radius:50%; object-fit:cover; display:block; margin:0 auto 8px; }
+  .rate-name { font-family:'Nunito'; font-weight:800; font-size:15px; color:var(--navy); }
+  .rate-stars { display:flex; justify-content:center; gap:8px; margin:6px 0 14px; }
+  .rate-star { background:none; border:none; font-size:32px; line-height:1; cursor:pointer; color:#d4d8e3; padding:0; }
+  .rate-star.on { color:#33D975; }
+  .rate-comment { width:100%; min-height:72px; border:1px solid #dfe3ee; border-radius:10px; padding:10px 12px; font-family:'DM Sans'; font-size:13px; resize:vertical; box-sizing:border-box; margin-bottom:12px; }
+  .rate-opts { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .rate-opt { display:flex; align-items:center; gap:9px; font-family:'DM Sans'; font-size:13.5px; color:var(--navy); font-weight:600; cursor:pointer; }
+  .rate-opt-block { color:#c0392b; }
+  .rate-submit { width:100%; }
+  .cmp-dispute { border-color:#f0c9c9; background:#fbeeef; }
+  .cmp-dispute .cmp-title { color:var(--navy); }
+  .cmp-disclaimer { font-family:'DM Sans'; font-size:11.5px; line-height:1.5; color:var(--muted); margin:10px 0; }
+  .cmp-dispute-box { width:100%; min-height:90px; border:1px solid #dfe3ee; border-radius:10px; padding:10px 12px; font-family:'DM Sans'; font-size:13px; resize:vertical; box-sizing:border-box; margin-bottom:12px; }
+  .cmp-dispute-btn, .cmp-unable-btn { width:100%; background:#fff; color:var(--error,#c44257); border:1px solid var(--error,#c44257); border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
+  .cmp-dispute-btn:hover, .cmp-unable-btn:hover { background:rgba(196,66,87,0.08); }
+  .cmp-pill-dispute { display:inline-block; background:#c44257; color:#fff; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:4px 12px; margin-bottom:10px; }
+  .cmp-modal-copy { font-family:'DM Sans'; font-size:13px; line-height:1.6; color:var(--text,#13233f); margin:0 0 4px; }
   .req-action {
     background:var(--navy); color:white; border:none; border-radius:7px;
     padding:7px 13px;
@@ -17996,6 +18032,56 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         when:'Thursday, 1:00 PM',
         interestedWorkers:[ makeSeedWorker('DR','Diego R.','elite+','hired') ],
       },
+      // ── Worker-completed delivery AWAITING REQUESTOR CONFIRMATION (G40-65 / G40-39
+      //    requestor-facing / G40-300 + dispute GA-285). Mirrors Connect GC-00127.
+      //    The Gopher (Gopher Go) marked it Completed + uploaded photos (faked here as
+      //    completionPhotos). Customer flow: see "Request Completed by …" → Tap to view
+      //    details (pics) → Confirm (or Dispute) → star-conditional rating. INV-PAYOUT:
+      //    no worker-facing money here, only completion state. Footing (NON-AR delivery,
+      //    in hand → no purchase step): cogOffer 24.00; Gopher Fee 0.99; ITF
+      //    0.08×(24.00+0.99)=1.9992; requestFee 2.9892; gmvTotal 24.00+2.9892=26.9892
+      //    → "$26.99 total".
+      {
+        id:'GR-00130', icon:'📦', title:'Coffee + pastry run to 14 Maiden Lane',
+        status:'in-progress', statusLabel:'Completed — confirm', needsAttention:false, userCreated:false,
+        scheduledForLater:false, workersNeeded:1, perWorkerCost:24.00, multiIndividual:false,
+        worker:'Marcus B. (Pro)', amount:'$26.99 total',
+        when:'Completed Today, 1:42 PM',
+        interestedWorkers:[ makeSeedWorker('MB','Marcus B.','pro+','hired') ],
+        userStarted:true,
+        awaitingConfirmation:true,
+        completionPhotos:[
+          'https://images.pexels.com/photos/1833399/pexels-photo-1833399.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop',
+          'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&fit=crop'
+        ],
+        favoritedByRequestor:false,
+        live:{
+          crew:[
+            { name:'Marcus B.', tier:'pro+', phone:'+1 (919) 555-0142', photo:'',
+              tagline:'Fast, friendly courier — your order shows up right.',
+              verified:'Verified', reviews:180, rating:4.96 }
+          ],
+          statusSteps:[ {k:'Accepted',done:true}, {k:'In-Progress',done:true}, {k:'Items Picked-Up',done:true}, {k:'Completed',done:true} ],
+          urgency:null,
+          description:'Two large coffees and a box of pastries for the morning standup. Hand to front desk.',
+          pics:[],
+          pickupStairs:0, destStairs:0
+        },
+        reviewSnapshot:{
+          category:'Delivery', ageRestricted:false,
+          itemsPurchased:false,
+          urgency:null,
+          worker:'Marcus B. (Pro)',
+          pickup:'Joe Van Gogh, 1104 Broad St, Durham, NC 27705',
+          dropoff:'14 Maiden Lane, Durham, NC 27701',
+          description:'Two large coffees and a box of pastries for the morning standup. Hand to front desk.',
+          costOfItems:0, workerPay:24, workersNeeded:1,
+          fee:{ gopherFee:0.99, ageFee:0, instantTransfer:1.9992, requestFee:2.9892,
+                fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:1.9992, fullRequestFee:2.9892,
+                promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:24, gmvTotal:26.9892 },
+          total:26.9892
+        }
+      },
     ];
   }
   // Reset the store back to just the seed reference requests (fresh on each sign-in).
@@ -18408,7 +18494,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="req-title">${r.title}</div>
             <div class="req-meta">${metaBits.join(' · ')}</div>
           </div>
-          <span class="req-status ${pillCls}">${r.statusLabel}</span>
+          <span class="req-status ${r.disputeState === 'disputed' ? 'status-dispute' : pillCls}">${r.disputeState === 'disputed' ? 'PENDING DISPUTE' : r.statusLabel}</span>
           ${actionBtn}
           ${deleteX}
         </div>
@@ -18938,7 +19024,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const counterModals = (r.counterOffers && r.counterOffers.length)
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
-    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals;
+    const completionModals = buildCompletionModals(r);
+    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -18960,6 +19047,34 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           const id = dashState.requestDetailId;
           return (DASH_DATA.activeRequests || []).find(x => x.id === id);
         };
+
+        // Completion + dispute + star-conditional rating (G40-65/G40-39/G40-300 + GA-285).
+        // All routed through this single delegated handler (Request's pattern). The
+        // rating overlay is NON-DISMISSIBLE: no backdrop-close branch for it.
+        if(target.closest('[data-completion-details]')){ const o = document.getElementById('completionDetailsOverlay'); if(o) o.hidden = false; return; }
+        if(target.closest('[data-completion-close]') || target.id === 'completionDetailsOverlay'){ const o = document.getElementById('completionDetailsOverlay'); if(o) o.hidden = true; return; }
+        if(target.closest('[data-confirm-complete]')){
+          const r = getR(); if(!r) return;
+          if(r.ratingValue == null) r.ratingValue = 5;
+          const o = document.getElementById('ratingOverlay'); if(o) o.hidden = false;
+          paintRating(r); return;
+        }
+        if(target.closest('[data-star]')){
+          const r = getR(); if(!r) return;
+          r.ratingValue = parseInt(target.closest('[data-star]').dataset.star, 10);
+          paintRating(r); return;
+        }
+        if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) resolveCompletion(r); return; }
+        if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
+        if(target.closest('[data-dispute-submit]')){
+          const r = getR(); if(!r) return;
+          const box = document.getElementById('disputeReason'); r.disputeReason = box ? box.value : '';
+          r.disputeState = 'disputed';
+          if(typeof toast === 'function') toast('Dispute submitted — your Gopher has been notified.');
+          renderActiveRequests(); renderRequestDetail(); return;
+        }
+        if(target.closest('[data-dispute-unable]')){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = false; return; }
+        if(target.closest('[data-unable-close]') || target.id === 'unableOverlay'){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = true; return; }
 
         // 1) Worker action buttons (Hire / Consider / Deny / Approve / Remove / profile / message)
         const wact = target.closest('[data-wact]');
@@ -19250,6 +19365,85 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // negative → −$X red (pure sign, no semantic judgment). Discount lines (Promo,
   // TrustShield) display negative. The .ca-modal shell is built REUSABLY so Port
   // Commit 6 (counter-offers) can reuse it, exactly as Connect did.
+  // Completion-details + star-conditional rating + unable modals (mirrors Connect;
+  // G40-65/G40-39/G40-300 + GA-285). Reuse the .ca-modal shell. Details pics section
+  // OMITTED when completionPhotos empty. Rating is NON-DISMISSIBLE (no ✕, no backdrop
+  // close handler) until Done; options filled live by the delegated handler based on
+  // the star value stored on r.ratingValue.
+  function buildCompletionModals(r){
+    if(!r || !r.awaitingConfirmation) return '';
+    const w = (r.live && (Array.isArray(r.live.crew) ? r.live.crew[0] : r.live.worker)) || {};
+    const photos = r.completionPhotos || [];
+    const snap = r.reviewSnapshot || {};
+    const picSection = photos.length ? `
+            <div class="ca-eyebrow">View pic(s) of completed request</div>
+            <div class="cmp-pics">${photos.map(p => `<div class="cmp-pic"><img src="${p}" alt="Completion photo"></div>`).join('')}</div>` : '';
+    const detailsModal = `
+      <div class="ca-overlay" id="completionDetailsOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Completed request details">
+          <div class="ca-head"><h3>Completed Delivery</h3><button class="ca-x" data-completion-close aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <div class="cmp-detail-rows">
+              <div class="cmp-drow"><span>Order</span><span>#${r.id}</span></div>
+              <div class="cmp-drow"><span>Delivered to</span><span>${snap.dropoff || '—'}</span></div>
+              <div class="cmp-drow"><span>Picked up from</span><span>${snap.pickup || '—'}</span></div>
+            </div>${picSection}
+          </div>
+        </div>
+      </div>`;
+    const ratingModal = `
+      <div class="ca-overlay" id="ratingOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
+          <div class="ca-head"><h3>Rate your Gopher</h3></div>
+          <div class="ca-body">
+            <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
+            <div class="rate-stars" id="rateStars">${[1,2,3,4,5].map(n => `<button class="rate-star on" data-star="${n}" aria-label="${n} star">★</button>`).join('')}</div>
+            <textarea class="rate-comment" id="rateComment" placeholder="Please feel free to leave a comment"></textarea>
+            <div class="rate-opts" id="rateOpts"></div>
+            <div class="ca-actions"><button class="ca-approve rate-submit" data-rate-submit>Done</button></div>
+          </div>
+        </div>
+      </div>`;
+    const unableModal = `
+      <div class="ca-overlay" id="unableOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Dispute escalated">
+          <div class="ca-head"><h3>Unable To Resolve</h3><button class="ca-x" data-unable-close aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <p class="cmp-modal-copy">We're sorry things didn't go as originally planned. Gopher, Inc has been notified of the unresolved dispute and will be in touch timely. Please make sure you have saved any/all correspondence and/or pictures related to the disputed request. While your dispute is being investigated, you can continue to use the Gopher. If you need further assistance, please contact Gopher Support.</p>
+            <div class="ca-actions"><button class="ca-approve" data-unable-close>Done</button></div>
+          </div>
+        </div>
+      </div>`;
+    return detailsModal + ratingModal + unableModal;
+  }
+
+  // Paint the rating stars + star-conditional options from r.ratingValue (default 5).
+  // Request has no per-element closure (single delegated listener), so rating state
+  // lives on the request object and the DOM is updated in place.
+  function paintRating(r){
+    const val = (r.ratingValue == null) ? 5 : r.ratingValue;
+    document.querySelectorAll('#rateStars .rate-star').forEach(s => s.classList.toggle('on', parseInt(s.dataset.star, 10) <= val));
+    const opts = document.getElementById('rateOpts');
+    if(!opts) return;
+    const w = (r.live && (Array.isArray(r.live.crew) ? r.live.crew[0] : r.live.worker)) || {};
+    const wname = w.name || 'your Gopher';
+    opts.innerHTML = (val >= 4)
+      ? `<label class="rate-opt"><input type="checkbox" id="optFav" checked> Add as MY Gopher</label>
+         <label class="rate-opt"><input type="checkbox" id="optRec" checked> Recommend ${wname} for similar jobs</label>`
+      : `<label class="rate-opt rate-opt-block"><input type="checkbox" id="optBlock"> Do not send requests to ${wname} again</label>`;
+  }
+
+  // Requestor confirmed + rated → finalize (faked). Mirrors Connect resolveCompletion.
+  function resolveCompletion(r){
+    r.awaitingConfirmation = false;
+    r.confirmed = true;
+    r.statusLabel = 'Completed';
+    const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
+    if(typeof toast === 'function') toast('Completion confirmed — thanks for rating!');
+    renderActiveRequests();
+    renderRequestDetail();
+  }
+
   function buildAdjustmentModal(r){
     const snap = r && r.reviewSnapshot;
     const P = r && r.pendingAdjustment;
@@ -19567,7 +19761,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           </g>` : '';
 
     // ── Stylized live map (self-contained SVG; no external tiles) ──
-    const mapHtml = scheduled ? '' : `
+    const mapHtml = (scheduled || r.awaitingConfirmation) ? '' : `
       <div class="la-section-title">Live Location</div>
       <div class="live-map-wrap">
         <svg class="live-map-svg" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Live route map">
@@ -19615,7 +19809,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const itemsStepLabel = purchaseNeeded ? 'Items Purchased' : 'Items Picked-Up';
     const currentIdx = steps.findIndex(s => !s.done);   // first not-done step; -1 when all done
     // Simulated-ETA line sits above the stepper (in-progress only), mirroring Connect.
-    const etaLine = inProgress ? `
+    const etaLine = (inProgress && !r.awaitingConfirmation) ? `
       <div class="eta-line">
         <span class="eta-ico">⏱️</span>
         <div><div class="eta-big">Est. arrival ~${etaMin} min</div><div class="eta-sub">${etaSub}</div></div>
@@ -19651,7 +19845,49 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="review-row total"><span class="rl">Total</span><span class="rv">${r.amount || '—'}</span></div>
           </div>`}`;
 
-    return mapHtml + statusHtml + recapHtml;
+    // Worker-completed → AWAITING REQUESTOR CONFIRMATION + DISPUTE branch (mirrors
+    // Connect; G40-65/G40-39/G40-300 + GA-285). State machine on r.disputeState:
+    //   (none) initial → Confirm (+finalize disclaimer) / Dispute (+disclaimer)
+    //   'entry'    → reason box + Submit
+    //   'disputed' → Confirm Completion / Unable To Resolve (+both disclaimers)
+    // Confirm (either) → rating flow. Wiring is via the single delegated body handler.
+    let completionBlock = '';
+    if(r.confirmed){
+      completionBlock = `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${lead.name}.</div>`;
+    } else if(r.awaitingConfirmation){
+      if(r.disputeState === 'entry'){
+        completionBlock = `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">Dispute Request</div>
+        <div class="cmp-sub">Please enter the reason you're disputing the request below. Once done, your Gopher will be notified. Keep in mind a cost adjustment can still be made if it is an issue with the total price offered. You can also still message and/or call your Gopher.</div>
+        <textarea class="cmp-dispute-box" id="disputeReason" placeholder="Enter a comment">${r.disputeReason || ''}</textarea>
+        <button class="cmp-confirm-btn" data-dispute-submit>Submit</button>
+      </div>`;
+      } else if(r.disputeState === 'disputed'){
+        completionBlock = `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">Request Disputed</div>
+        <div class="cmp-pill-dispute">Dispute Pending</div>
+        <div class="cmp-disclaimer">If your request has been resolved between you and your Gopher, please confirm below.</div>
+        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
+        <div class="cmp-disclaimer">If after contacting your Gopher, you are still unable to resolve the dispute, please select Unable To Resolve below.</div>
+        <button class="cmp-unable-btn" data-dispute-unable>Unable To Resolve</button>
+      </div>`;
+      } else {
+        completionBlock = `
+      <div class="cmp-block">
+        <div class="cmp-title">Request Completed by ${lead.name}!</div>
+        <div class="cmp-sub">Review the completed delivery, then confirm to finalize your order and release payment to your Gopher.</div>
+        <button class="cmp-details-link" data-completion-details>Tap to view details</button>
+        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
+        <div class="cmp-disclaimer">Selecting Confirm Completion will finalize your order. Your receipt will be emailed immediately after. Once this request is confirmed, it cannot be cancelled or refunded.</div>
+        <button class="cmp-dispute-btn" data-dispute-open>Dispute</button>
+        <div class="cmp-disclaimer">If request is disputed, you and your Gopher will have the ability to work together to resolve any issues. All app features will still be available during a dispute.</div>
+      </div>`;
+      }
+    }
+
+    return completionBlock + mapHtml + statusHtml + recapHtml;
   }
 
   // ── Flow hosting: physically relocate the single .flow-mockup node into the
