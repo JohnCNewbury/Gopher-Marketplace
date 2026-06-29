@@ -7060,12 +7060,34 @@
   .live-map-svg { width:100%; height:auto; display:block; }
   .live-map-eta { position:absolute; left:12px; bottom:12px; background:rgba(26,42,94,0.92); color:white; font-family:'Nunito'; font-weight:800; font-size:12px; padding:7px 13px; border-radius:99px; backdrop-filter:blur(3px); }
 
-  .la-status { max-width:320px; margin:0 auto; }
-  .la-step { display:flex; align-items:center; gap:12px; padding:9px 0; }
-  .la-step-check { width:24px; height:24px; border-radius:50%; border:2px solid #d4d8e3; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:transparent; flex-shrink:0; }
-  .la-step.done .la-step-check { background:var(--green); border-color:var(--green); color:var(--ink-on-green); }
-  .la-step-label { font-family:'DM Sans'; font-size:14px; font-weight:600; color:var(--muted); }
-  .la-step.done .la-step-label { color:var(--navy); font-weight:700; }
+  /* In-progress status stepper — three-state vocabulary (mirrors Connect).
+       .completed  solid green dot + white ✓, green connector bar, navy label
+       .current    terracotta ring + terracotta centre dot (the FIRST not-done step),
+                   terracotta connector bar + label  (--terracotta used here only)
+       .remaining  green-outline hollow dot + green centre dot, gray bar, muted label */
+  .steps { display:flex; align-items:flex-start; max-width:440px; margin:4px auto 0; }
+  .step { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; }
+  /* connector bar leading into each node from the previous one (first has none) */
+  .step .bar { position:absolute; top:12px; right:50%; width:100%; height:3px; background:#d4d8e3; z-index:0; }
+  .step:first-child .bar { display:none; }
+  .step .dot { position:relative; z-index:1; width:26px; height:26px; border-radius:50%; background:#fff; border:2px solid #d4d8e3; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:transparent; }
+  .step .dot::after { content:''; width:10px; height:10px; border-radius:50%; }
+  .step .step-label { margin-top:9px; font-family:'DM Sans'; font-size:12.5px; font-weight:600; color:var(--muted); max-width:88px; line-height:1.25; }
+  /* 1 · completed */
+  .step.completed .bar { background:var(--green); }
+  .step.completed .dot { background:var(--green); border-color:var(--green); color:#fff; }
+  .step.completed .dot::after { display:none; }
+  .step.completed .step-label { color:var(--navy); font-weight:700; }
+  /* 2 · current (up next) — terracotta */
+  .step.current .bar { background:var(--terracotta); }
+  .step.current .dot { border-color:var(--terracotta); }
+  .step.current .dot::after { background:var(--terracotta); }
+  .step.current .step-label { color:var(--terracotta); font-weight:700; }
+  /* 3 · remaining */
+  .step.remaining .bar { background:#d4d8e3; }
+  .step.remaining .dot { border-color:var(--green); }
+  .step.remaining .dot::after { background:var(--green); width:9px; height:9px; }
+  .step.remaining .step-label { color:var(--muted); font-weight:600; }
 
   /* The in-progress Request Recap renders read-only from a frozen reviewSnapshot via
      buildReviewRecap(), reusing the Review screen's .review-card/.review-row/.rl/.rv
@@ -17712,6 +17734,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         // seed's amount and the dashboard list card).
         reviewSnapshot:{
           category:'Delivery', ageRestricted:false,
+          itemsPurchased:true,   // delivery type "Purchase needed" → third step "Items Purchased"
           urgency:'Customer needs ASAP',
           worker:'Marcus B. (Pro)',
           pickup:'Harris Teeter, 1817 Fordham Blvd, Chapel Hill, NC 27514',
@@ -18908,15 +18931,32 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="live-map-eta">${etaText}</div>
       </div>`;
 
-    // ── Status step tracker ──
+    // ── Status — terracotta 3-state stepper (done / current / upcoming), mirroring
+    //    Connect. The CURRENT step is the FIRST not-yet-completed step (terracotta
+    //    highlight); completed steps are checked-green; upcoming steps are muted.
+    //    The "items" step's label is DERIVED from the agreed delivery type so it is
+    //    correct for ANY request, not hardcoded: "Items Purchased" when the request
+    //    requires purchasing (the flow's state.itemsPurchased, frozen onto the
+    //    reviewSnapshot), else "Items Picked-Up" (items already in hand). Falls back
+    //    to costOfItems > 0 only when no explicit flag is present.
+    const snap = r.reviewSnapshot || {};
+    const purchaseNeeded = (snap.itemsPurchased != null) ? !!snap.itemsPurchased
+      : (r.itemsPurchased != null) ? !!r.itemsPurchased
+      : (Number(snap.costOfItems != null ? snap.costOfItems : (live.costOfItems || 0)) > 0);
+    const itemsStepLabel = purchaseNeeded ? 'Items Purchased' : 'Items Picked-Up';
+    const currentIdx = steps.findIndex(s => !s.done);   // first not-done step; -1 when all done
     const statusHtml = `
       <div class="la-section-title">Status</div>
-      <div class="la-status">
-        ${steps.map(s => `
-          <div class="la-step ${s.done ? 'done' : ''}">
-            <span class="la-step-check">✓</span>
-            <span class="la-step-label">${s.k}</span>
-          </div>`).join('')}
+      <div class="steps">
+        ${steps.map((s, i) => {
+          const stState = s.done ? 'completed' : (i === currentIdx ? 'current' : 'remaining');
+          const label = /picked.?up|purchas/i.test(s.k) ? itemsStepLabel : s.k;
+          return `<div class="step ${stState}">
+            <span class="bar"></span>
+            <span class="dot">${stState === 'completed' ? '✓' : ''}</span>
+            <span class="step-label">${label}</span>
+          </div>`;
+        }).join('')}
       </div>`;
 
     // ── Request recap — read-only, rendered from the FROZEN reviewSnapshot (the
