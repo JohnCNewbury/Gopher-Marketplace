@@ -7053,39 +7053,7 @@
   .contact-call { background:white; color:var(--navy); border-color:#d4d8e3; }
   .contact-call:hover { border-color:var(--navy); }
 
-  /* ─── "View Live Activity" CTA ─── */
-  .live-activity-cta {
-    width:100%; margin-top:12px; cursor:pointer;
-    display:flex; align-items:center; gap:14px;
-    background:linear-gradient(100deg, #1a2a5e, #253a7e); border:none;
-    border-radius:14px; padding:16px 18px; text-align:left;
-    transition:transform 0.15s, box-shadow 0.15s;
-  }
-  .live-activity-cta:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(26,42,94,0.28); }
-  .lac-pulse { width:12px; height:12px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 0 0 rgba(51,217,117,0.6); animation:lacPulse 1.8s infinite; }
-  @keyframes lacPulse { 0%{box-shadow:0 0 0 0 rgba(51,217,117,0.5);} 70%{box-shadow:0 0 0 10px rgba(51,217,117,0);} 100%{box-shadow:0 0 0 0 rgba(51,217,117,0);} }
-  .lac-text { flex:1; display:flex; flex-direction:column; }
-  .lac-text b { font-family:'Nunito'; font-weight:900; font-size:15px; color:white; }
-  .lac-text small { font-family:'DM Sans'; font-size:12px; color:rgba(255,255,255,0.7); margin-top:1px; }
-  .lac-arrow { color:var(--green); font-size:20px; font-weight:900; }
-
-  /* ─── Live Activity view ─── */
-  .la-worker-head { text-align:center; padding:8px 0 18px; }
-  .la-accepted { font-family:'Nunito'; font-weight:900; font-size:20px; color:var(--green-dark); line-height:1.2; }
-  .la-worker-name { font-family:'Nunito'; font-weight:900; font-size:22px; color:var(--green-dark); margin-bottom:12px; }
-  .la-worker-photo { width:108px; height:108px; border-radius:50%; overflow:hidden; margin:0 auto 12px; border:4px solid white; box-shadow:0 6px 20px rgba(26,42,94,0.18); background:#eef2f9; }
-  .la-worker-photo img { width:100%; height:100%; object-fit:cover; }
-  .la-tagline { font-family:'DM Sans'; font-style:italic; font-size:14px; color:var(--text); max-width:380px; margin:0 auto 16px; line-height:1.5; }
-  .la-badges { display:flex; justify-content:center; gap:30px; margin-bottom:18px; }
-  .la-badge { display:flex; flex-direction:column; align-items:center; gap:6px; }
-  .lab-val { width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:900; font-size:16px; }
-  .lab-verified { background:var(--green-light); color:var(--green-dark); font-size:13px; }
-  .lab-reviews { background:var(--green); color:var(--ink-on-green); }
-  .lab-rating { background:var(--navy); color:white; }
-  .lab-lbl { font-family:'DM Sans'; font-size:11px; color:var(--muted); font-weight:600; }
-  .la-contact { display:flex; justify-content:center; gap:12px; }
-  .la-contact .contact-btn { padding:11px 22px; font-size:13.5px; border-radius:99px; }
-
+  /* ─── Live Activity view (inlined into Request Details) ─── */
   .la-section-title { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); text-align:center; margin:24px 0 12px; padding-top:20px; border-top:1px solid #e7eaf2; }
 
   .live-map-wrap { border-radius:16px; overflow:hidden; border:1px solid #e1e6f0; position:relative; }
@@ -17008,16 +16976,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </section>
 
-      <!-- Live Activity (real-time tracker for an in-progress / scheduled request) -->
-      <section class="dash-section" data-rqsec="live-activity">
-        <div class="req-detail-topbar">
-          <button class="req-detail-back" id="liveActivityBack">← Back to Request Details</button>
-        </div>
-        <div id="liveActivityBody">
-          <!-- Filled by renderLiveActivity() based on dashState.liveActivityId -->
-        </div>
-      </section>
-
       <!-- MY Gophers -->
       <section class="dash-section" data-rqsec="gophers">
         <div class="dash-block-head">
@@ -17190,8 +17148,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     home:'Dashboard Overview', previous:'Previous Requests', inbox:'Inbox',
     gophers:'MY Gophers',
     personal:'Personal Info', payment:'Payment Info', refer:'Refer Gopher',
-    'new-request':'Submit New Request', 'request-detail':'Request Details',
-    'live-activity':'Live Activity'
+    'new-request':'Submit New Request', 'request-detail':'Request Details'
   };
 
   // ── Dynamic request store (ported from Connect's dashboard) ──
@@ -17206,7 +17163,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // return to when Back is tapped.
     inboxThreadId: null,     // currently-open thread (reqId or `${reqId}::${workerName}`)
     inboxBackTo: null,       // section name to return to when Back is tapped
-    liveActivityId: null,    // currently-open request in the Live Activity view
     // ── Request Details: worker sort + profile view (ported from Connect) ──
     workerSort: 'distance',  // 'distance' | 'rating' | 'jobs' | 'bid'
     workerSortDir: 'asc',    // 'asc' (low→high) | 'desc' (high→low)
@@ -17882,8 +17838,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   //   Title:  "All workers needed have been selected!"
   //   Body:   "Please select Start Job so we can move your request into your
   //            Dashboard. There you can communicate with your workers and
-  //            track the progress by tapping View Live Activity in the
-  //            Request Details section."
+  //            track the progress in the Request Details section."
   //   Button: "Start Job" (calls startJob(r) — NOT a plain close)
   let _startEncourageReq = null;
   function showStartEncourageModal(r, needed){
@@ -17894,7 +17849,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(!overlay) return;
     _startEncourageReq = r;
     if(title)  title.textContent  = 'All workers needed have been selected!';
-    if(body)   body.textContent   = 'Please select Start Job so we can move your request into your Dashboard. There you can communicate with your workers and track the progress by tapping View Live Activity in the Request Details section.';
+    if(body)   body.textContent   = 'Please select Start Job so we can move your request into your Dashboard. There you can communicate with your workers and track the progress in the Request Details section.';
     if(startB) startB.textContent = 'Start Job';
     overlay.hidden = false;
   }
@@ -18515,7 +18470,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         // - Each card has Message + Call buttons; Message uses the per-worker
         //   thread ID convention "<reqId>::<workerName>" (single-worker keeps
         //   legacy thread id = just r.id).
-        // - View Live Activity CTA at the bottom.
+        // - The live-activity content (map + status + recap) is rendered inline
+        //   directly below the assigned worker/crew block.
         const crew = (r.live && Array.isArray(r.live.crew) && r.live.crew.length)
           ? r.live.crew
           : (r.live && r.live.worker ? [r.live.worker] : []);
@@ -18561,11 +18517,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           workersHtml = `
             <div class="interested-head">${headLabel}</div>
             <div class="assigned-crew-stack">${crew.map(cardFor).join('')}</div>
-            <button class="live-activity-cta" data-open-live="${r.id}">
-              <span class="lac-pulse"></span>
-              <span class="lac-text"><b>View Live Activity</b><small>Track your Gopher, status &amp; request details</small></span>
-              <span class="lac-arrow">→</span>
-            </button>
+            ${buildLiveActivityContent(r)}
           `;
         } else {
           // Fallback path per spec §7: r.live is somehow missing. Synthesize
@@ -18635,7 +18587,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
-    // View Live Activity, Start Job bar) are handled by a single delegated
+    // Start Job bar) are handled by a single delegated
     // click listener on `body`. The container itself is never replaced —
     // only its innerHTML — so the delegated listener survives every render
     // and never goes stale. Each handler re-reads the current request from
@@ -18724,19 +18676,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           return;
         }
 
-        // 3) View Live Activity CTA (no-op if section not yet ported)
-        const openLive = target.closest('[data-open-live]');
-        if(openLive){
-          const id = openLive.dataset.openLive;
-          const section = document.querySelector('.dash-section[data-rqsec="live-activity"]');
-          if(!section) return;
-          dashState.liveActivityId = id;
-          if(typeof renderLiveActivity === 'function') renderLiveActivity();
-          showSection('live-activity');
-          return;
-        }
-
-        // 4) Start Job bar — gated by hired count
+        // 3) Start Job bar — gated by hired count
         const startBtn = target.closest('#startJobBtn');
         if(startBtn){
           const r = getR();
@@ -18838,22 +18778,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     showSection('home');
   }
 
-  // ── Live Activity tracker ────────────────────────────────────────────────
-  // Real-time view for an in-progress / scheduled request: worker header with
-  // contact, a stylized live map + ETA, the status step tracker, and a recap of
-  // the request. Reads dashState.liveActivityId → DASH_DATA.activeRequests, and
-  // reuses r.live (built by startJob). Falls back gracefully if r.live is absent.
-  function renderLiveActivity(){
-    const body = document.getElementById('liveActivityBody');
-    if(!body) return;
-    const id = dashState.liveActivityId;
-    const r = (DASH_DATA.activeRequests || []).find(x => x.id === id);
-    if(!r){
-      body.innerHTML = `<div class="req-empty"><div class="req-empty-icon">📍</div>
-        <div class="req-empty-title">Nothing to track right now</div>
-        <div class="req-empty-sub">This request is no longer active.</div></div>`;
-      return;
-    }
+  // ── Live-activity content (inlined into Request Details) ─────────────────────
+  // Builds the live map + status step tracker + request recap for an in-progress /
+  // scheduled request and RETURNS it as an HTML string. renderRequestDetail() drops
+  // it in directly below the Assigned Worker/Crew block — the worker header that used
+  // to live here is intentionally dropped so there is exactly one worker block on the
+  // detail screen. Reads r.live (built by startJob); returns '' when there's no request.
+  function buildLiveActivityContent(r){
+    if(!r) return '';
 
     // Lead worker + crew (prefer r.live; synthesize a minimal one if missing).
     const live = r.live || {};
@@ -18866,8 +18798,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         }]);
     const lead = crew[0];
     const isCrew = crew.length > 1;
-    const tierLabel = (t) => (t === 'pro+' || t === 'pro') ? 'Pro'
-      : (t === 'elite+' || t === 'elite') ? 'Elite+' : 'Verified';
 
     const scheduled = r.status === 'scheduled';
     const steps = (Array.isArray(live.statusSteps) && live.statusSteps.length)
@@ -18881,36 +18811,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       || (r.title || '').replace(/^[^·]*·\s*/, '')
       || 'Request in progress.';
     const pics = Array.isArray(live.pics) ? live.pics : [];
-
-    // ── Worker header (single lead shown; crew count noted) ──
-    const photoHtml = lead.photo
-      ? `<img src="${lead.photo}" alt="${lead.name}"${lead.photoIsLogo ? ' style="object-fit:contain;background:#fff;padding:10px;box-sizing:border-box;"' : ''}>`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:38px;color:var(--green-dark);">${(lead.name||'?').charAt(0)}</div>`;
-    const threadId = isCrew ? `${r.id}::${lead.name}` : r.id;
-    const telDigits = (lead.phone || '').replace(/[^0-9+]/g,'') || '+19195550123';
-
-    const head = `
-      <div class="la-worker-head">
-        <div class="la-accepted">${scheduled ? '📅 Booked & confirmed' : '✓ Accepted — on the job'}</div>
-        <div class="la-worker-photo">${photoHtml}</div>
-        <div class="la-worker-name">${lead.name}${isCrew ? ` <span style="font-size:14px;color:var(--muted);font-weight:700;">+${crew.length-1} crew</span>` : ''}</div>
-        <div class="la-tagline">${lead.tagline || 'On the job and ready to help.'}</div>
-        <div class="la-badges">
-          <div class="la-badge"><div class="lab-val lab-verified">✓</div><div class="lab-lbl">${tierLabel(lead.tier || lead.badge)}</div></div>
-          <div class="la-badge"><div class="lab-val lab-reviews">${lead.reviews || 120}</div><div class="lab-lbl">Reviews</div></div>
-          <div class="la-badge"><div class="lab-val lab-rating">${(lead.rating || 4.95)}</div><div class="lab-lbl">Rating</div></div>
-        </div>
-        <div class="la-contact">
-          <button class="contact-btn contact-msg" id="laMsgBtn" data-thread="${threadId}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3a8.38 8.38 0 0 1 8.5 8.5z"/></svg>
-            <span>Text</span>
-          </button>
-          <a class="contact-btn contact-call" href="tel:${telDigits}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.86 19.86 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.86 19.86 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
-            <span>Call</span>
-          </a>
-        </div>
-      </div>`;
 
     // ── Stylized live map (self-contained SVG; no external tiles) ──
     const mapHtml = scheduled ? '' : `
@@ -18983,21 +18883,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </div>`;
 
-    body.innerHTML = head + mapHtml + statusHtml + recapHtml;
-
-    // Wire Message (Call is a plain tel: link). Reuse the inbox thread opener,
-    // which records the correct "back to" section automatically.
-    const msgBtn = document.getElementById('laMsgBtn');
-    if(msgBtn) msgBtn.addEventListener('click', () => openInboxThread(msgBtn.dataset.thread));
+    return mapHtml + statusHtml + recapHtml;
   }
-
-  // Live Activity → Back returns to the Request Details page for this request.
-  const liveActivityBackBtn = document.getElementById('liveActivityBack');
-  if(liveActivityBackBtn) liveActivityBackBtn.addEventListener('click', () => {
-    if(dashState.liveActivityId) dashState.requestDetailId = dashState.liveActivityId;
-    renderRequestDetail();
-    showSection('request-detail');
-  });
 
   // ── Flow hosting: physically relocate the single .flow-mockup node into the
   //    dashboard's new-request host, then back to its origin when done. ──
@@ -19605,7 +19492,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(name === 'previous'){ closePrevDetail(); /* closePrevDetail already calls renderPrevRequests */ }
     if(name === 'inbox'){ renderInbox(); }
     if(name === 'gophers'){ renderGophers(); }
-    if(name === 'live-activity'){ renderLiveActivity(); }
     const main = dash.querySelector('.dash-main'); if(main) main.scrollTop = 0;
   }
 
