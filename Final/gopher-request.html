@@ -17760,6 +17760,42 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           makeSeedWorker('SK','Sam K.','pro+'),      makeSeedWorker('BL','Bianca L.','elite+'),
         ],
       },
+      // 1b) PENDING — counter-offers HOST (the Request analog of Connect's GC-00126,
+      //     seeded alongside the un-counter-able crew job GR-00123 above). A SINGLE-HIRE
+      //     (workersNeeded:1), purchase-needed, NON-AR delivery awaiting a worker, with
+      //     2 interested workers and a frozen reviewSnapshot (the ORIGINAL posted price).
+      //     The next commit (6a) hangs 3 counter-offers off this. Footing (canonical
+      //     schedule; no promo; NON-AR → NO TrustShield, NO age fee): cogOffer 68.00;
+      //     Gopher Fee 0.99; Age Fee 0; ITF 0.08×(68.00+0.99)=5.5192; requestFee 6.5092;
+      //     gmvTotal 68.00+6.5092=74.5092 → "$74.51 total". No counterOffers yet.
+      {
+        id:'GR-00129', icon:'🛒', title:'Grocery + pharmacy run — purchase needed',
+        status:'pending', statusLabel:'Pending', needsAttention:true, userCreated:false,
+        scheduledForLater:false, workersNeeded:1, perWorkerCost:18, multiIndividual:false,
+        worker:'2 workers interested', amount:'$74.51 total',
+        when:'Today, 4:30 PM · awaiting your selection',
+        interestedWorkers:[
+          makeSeedWorker('DK','Devon K.','elite+'), makeSeedWorker('HT','Hana T.','pro+'),
+        ],
+        // Frozen Review-screen snapshot (the ORIGINAL posted price) — same Request fee
+        // shape as GR-00127/GR-00128. NON-AR delivery, purchase-needed (Cost of Items 50
+        // + Offer 18 → cogOffer 68). Footed: Gopher Fee 0.99; Age Fee 0; ITF
+        // 0.08×(68+0.99)=5.5192; NO TrustShield (non-AR); total 68+0.99+5.5192=74.5092
+        // → "$74.51" (matches the seed's amount and the dashboard list card).
+        reviewSnapshot:{
+          category:'Delivery', ageRestricted:false,
+          itemsPurchased:true,   // delivery type "Purchase needed"
+          urgency:'Needed by 5 PM',
+          pickup:'Harris Teeter, 1800 MLK Jr Blvd, Durham, NC 27701',
+          dropoff:'820 Iredell St, Durham, NC 27705',
+          description:'Two bags: groceries from the list plus a pharmacy pickup. Buy from the list and keep the receipt.',
+          costOfItems:50, workerPay:18, workersNeeded:1,
+          fee:{ gopherFee:0.99, ageFee:0, instantTransfer:5.5192, requestFee:6.5092,
+                fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:5.5192, fullRequestFee:6.5092,
+                promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:68, gmvTotal:74.5092 },
+          total:74.5092
+        }
+      },
       // 2) ACTIVE / In Progress — NON-age-restricted DELIVERY, purchase-needed
       //     (Cost of Items $35 + Offer $15). The Request analog of Connect's
       //     GC-00124: one assigned worker + a full `live` object, so the consolidated
