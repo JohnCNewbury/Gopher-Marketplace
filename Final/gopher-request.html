@@ -17822,6 +17822,57 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           }
         }
       },
+      // 2b) ACTIVE / In Progress — second in-progress example (the Request analog of
+      //     Connect's GC-00125), distinct from GR-00127: a DIFFERENT worker (Priya N.)
+      //     and DIFFERENT amounts (Cost of Items 52 + Offer 18). NON-AR, purchase-
+      //     needed. Seeded one step EARLIER than GR-00127 — the CURRENT stepper step is
+      //     In-Progress (Accepted ✓; In-Progress active; Items Purchased + Completed
+      //     upcoming) — so the NEXT commit can show the pickup unresolved before it
+      //     resolves at the purchase milestone. This commit gives it a NORMAL fixed
+      //     pickup; the Gopher's-choice resolution + ETA arrive in the next commit.
+      //     Footing (canonical schedule; no promo; NON-AR → NO TrustShield, NO age
+      //     fee): cogOffer 70.00; Gopher Fee 0.99; Age Fee 0; ITF 0.08×(70.00+0.99)=
+      //     5.6792; requestFee 5.6792; gmvTotal 70.00+5.6792=76.6792... → "$76.67 total".
+      {
+        id:'GR-00128', icon:'📦', title:'Hardware-store run — drill bits + anchors',
+        status:'in-progress', statusLabel:'In Progress', needsAttention:false, userCreated:false,
+        scheduledForLater:false, workersNeeded:1, perWorkerCost:70.00, multiIndividual:false,
+        worker:'Priya N. (Elite+)', amount:'$76.67 total',
+        when:'ETA 19 min · Today, 3:05 PM',
+        interestedWorkers:[ makeSeedWorker('PN','Priya N.','elite+','hired') ],
+        userStarted:true,
+        live:{
+          crew:[
+            { name:'Priya N.', tier:'elite+', phone:'+1 (919) 555-0188', photo:'',
+              tagline:'Knows the aisles — gets the right parts the first time.',
+              verified:'Verified', reviews:240, rating:4.97 }
+          ],
+          statusSteps:[ {k:'Accepted',done:true}, {k:'In-Progress',done:false}, {k:'Items Purchased',done:false}, {k:'Completed',done:false} ],
+          urgency:'Needed this afternoon',
+          description:'Pick up a 5-pack of 3/8" drill bits and a box of #8 drywall anchors, then deliver to the job site. Text if the brand on the list is out of stock.',
+          pics:[],
+          pickupStairs:0, destStairs:0
+        },
+        // Frozen Review-screen snapshot (the agreed deal) — same shape as GR-00127.
+        // NON-AR delivery, purchase-needed (Cost of Items 52 + Offer 18 → cogOffer 70).
+        // Footed by the canonical schedule: Gopher Fee 0.99; Age Fee 0; ITF
+        // 0.08×(70+0.99)=5.6792; NO TrustShield (non-AR); total 70+0.99+5.6792=76.6692
+        // → "$76.67" (matches the seed's amount and the dashboard list card).
+        reviewSnapshot:{
+          category:'Delivery', ageRestricted:false,
+          itemsPurchased:true,   // delivery type "Purchase needed" → third step "Items Purchased"
+          urgency:'Needed this afternoon',
+          worker:'Priya N. (Elite+)',
+          pickup:'Ace Hardware, 2410 Hillsborough St, Raleigh, NC 27607',
+          dropoff:'88 Maple Court, Cary, NC 27513',
+          description:'Pick up a 5-pack of 3/8" drill bits and a box of #8 drywall anchors, then deliver to the job site. Text if the brand on the list is out of stock.',
+          costOfItems:52, workerPay:18, workersNeeded:1,
+          fee:{ gopherFee:0.99, ageFee:0, instantTransfer:5.6792, requestFee:6.6692,
+                fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:5.6792, fullRequestFee:6.6692,
+                promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:70, gmvTotal:76.6692 },
+          total:76.6692
+        }
+      },
       // 3) SCHEDULED — worker hired, booked for later
       {
         id:'GR-00122', icon:'🛠️', title:'Install 2 ceiling fans · conference room',
