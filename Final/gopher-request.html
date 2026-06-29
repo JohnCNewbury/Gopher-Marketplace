@@ -7093,6 +7093,64 @@
      buildReviewRecap(), reusing the Review screen's .review-card/.review-row/.rl/.rv
      vocabulary — so no recap-specific styles live here. */
 
+  /* ─── Cost-adjustment card (in-progress only, when r.pendingAdjustment) ─── */
+  /* Terracotta accent matches the status stepper's "current" node (commit de57100). */
+  .adj { border:1.5px solid var(--terracotta); background:linear-gradient(180deg, rgba(217,119,87,0.08), #fff); border-radius:16px; box-shadow:var(--card-shadow); overflow:hidden; margin-bottom:16px; }
+  .adj-top { display:flex; gap:12px; align-items:center; padding:14px 18px; border-bottom:1px dashed rgba(217,119,87,0.32); }
+  .adj-ico { width:34px; height:34px; border-radius:10px; background:var(--terracotta); display:grid; place-items:center; font-size:18px; flex:0 0 auto; }
+  .adj-h { font-family:'Nunito'; font-weight:900; font-size:16px; color:var(--navy); }
+  .adj-s { color:var(--muted); font-size:13px; margin-top:1px; }
+  .adj-body { padding:16px 18px; }
+  .adj-reason { font-family:'DM Sans'; font-size:14px; background:#fff; border:1px solid #e7eaf2; border-radius:12px; padding:11px 13px; line-height:1.45; }
+  .adj-who { font-weight:700; color:var(--navy); }
+  .adj-prices { display:flex; align-items:center; gap:14px; margin:14px 0 2px; flex-wrap:wrap; }
+  .adj-price { flex:1; min-width:130px; border:1px solid #e7eaf2; border-radius:12px; padding:11px 13px; background:#fff; }
+  .adj-lbl { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:6px; }
+  .adj-val { font-family:'Nunito'; font-weight:900; font-size:22px; margin-top:3px; }
+  .adj-price.old .adj-val { color:var(--muted); text-decoration:line-through; text-decoration-color:#d4d8e3; }
+  .adj-price.new { border-color:var(--green); background:var(--green-light); }
+  .adj-price.new .adj-val { color:var(--green-dark); }
+  .adj-arrow { font-size:20px; color:var(--muted); }
+  .adj-delta { font-size:13px; font-weight:700; margin-top:3px; color:var(--green-dark); }
+  .adj-actions { display:flex; gap:10px; margin-top:16px; }
+  .adj-actions button { font-family:'Nunito'; font-weight:800; font-size:15px; border-radius:12px; padding:12px 16px; cursor:pointer; border:1px solid transparent; transition:filter 0.12s, background 0.12s; }
+  .adj-approve { background:var(--navy); color:#fff; flex:1; }
+  .adj-approve:hover { filter:brightness(1.12); }
+  .adj-decline { background:#fff; color:var(--error,#c44257); border-color:var(--error,#c44257); }
+  .adj-decline:hover { background:rgba(196,66,87,0.08); }
+  .adj-fine { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.4; }
+
+  /* ─── Cost-adjustment breakdown modal (canonical fee vocabulary; reusable shell) ─── */
+  .ca-overlay { position:fixed; inset:0; z-index:9500; background:rgba(13,26,62,0.55); display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; }
+  .ca-overlay[hidden] { display:none; }
+  .ca-modal { background:#fff; border-radius:18px; width:430px; max-width:100%; box-shadow:0 30px 80px rgba(0,0,0,0.35); overflow:hidden; }
+  .ca-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e7eaf2; }
+  .ca-head h3 { margin:0; font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); }
+  .ca-x { border:none; background:var(--gray); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; color:var(--muted); }
+  .ca-x:hover { color:var(--navy); }
+  .ca-body { padding:18px 20px; }
+  .ca-eyebrow { font-family:'Nunito'; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:700; border-bottom:1px solid #e7eaf2; padding-bottom:8px; margin-bottom:6px; }
+  .ca-group { padding:10px 0; border-bottom:1px solid #e7eaf2; }
+  .ca-sub { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); padding:2px 0; }
+  .ca-sub span:last-child { font-variant-numeric:tabular-nums; color:var(--text); }
+  .ca-diff { display:flex; justify-content:space-between; align-items:center; margin-top:7px; }
+  .ca-diff .l { font-family:'Nunito'; font-weight:800; font-size:15px; color:var(--navy); }
+  .ca-diff .a { font-family:'Nunito'; font-weight:900; font-size:18px; font-variant-numeric:tabular-nums; color:var(--muted); }
+  .ca-diff .a.ca-pos { color:var(--green-dark); }
+  .ca-diff .a.ca-neg { color:var(--error,#c44257); }
+  .ca-group.ca-total { padding-top:12px; }
+  .ca-group.ca-total .ca-diff .l { font-size:16px; }
+  .ca-group.ca-total .ca-diff .a { font-size:20px; }
+  .ca-comments { margin-top:16px; }
+  .ca-cl { font-family:'Nunito'; font-weight:700; font-size:13px; color:var(--navy); margin-bottom:6px; }
+  .ca-cbox { font-family:'DM Sans'; border:1px solid #e7eaf2; border-radius:10px; padding:11px 13px; font-size:13px; line-height:1.5; color:var(--text); background:#f7f9fc; }
+  .ca-actions { display:flex; flex-direction:column; gap:10px; margin-top:18px; }
+  .ca-actions button { font-family:'Nunito'; font-weight:800; font-size:15px; border-radius:12px; padding:13px; cursor:pointer; border:1px solid transparent; transition:filter 0.12s, background 0.12s; }
+  .ca-approve { background:var(--navy); color:#fff; }
+  .ca-approve:hover { filter:brightness(1.12); }
+  .ca-decline { background:#fff; color:var(--error,#c44257); border-color:var(--error,#c44257); }
+  .ca-decline:hover { background:rgba(196,66,87,0.08); }
+
   /* ─── Inbox ─── */
   .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
   .inbox-list { background:white; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; }
@@ -17745,6 +17803,23 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:4.0792, fullRequestFee:5.0692,
                 promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:50, gmvTotal:55.0692 },
           total:55.0692
+        },
+        // Faked pending cost adjustment (in-memory demo). The ORIGINAL side is this
+        // request's reviewSnapshot above; `adjusted` is a full canonical fee object
+        // (same Request fee shape as reviewSnapshot.fee + costOfItems/workerPay/
+        // workersNeeded/gmvTotal). Scenario: items cost more than expected, so the
+        // Cost of Items rises 35 → 48 (offer unchanged at 15), which also lifts the
+        // 8% Instant Transfer. NON-AR → no age fee, no TrustShield, either side.
+        // ADJUSTED: cogOffer 63; Gopher Fee 0.99; ITF 0.08×(63+0.99)=5.1192;
+        // requestFee 6.1092; gmvTotal 63+6.1092=69.1092 → "$69.11".
+        pendingAdjustment:{
+          comment:'The grocery order rang up higher than the estimate — a few items were priced above what we expected. Adjusting the cost of items to match the actual receipt.',
+          adjusted:{
+            costOfItems:48, workerPay:15, workersNeeded:1,
+            gopherFee:0.99, ageFee:0, instantTransfer:5.1192, requestFee:6.1092,
+            fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:5.1192, fullRequestFee:6.1092,
+            promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:63, gmvTotal:69.1092
+          }
         }
       },
       // 3) SCHEDULED — worker hired, booked for later
@@ -18632,7 +18707,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       `;
     }
 
-    body.innerHTML = headerHtml + workersHtml;
+    // Cost-adjustment card sits directly below the request header and ABOVE the
+    // assigned-worker block — in-progress + r.pendingAdjustment only. The breakdown
+    // modal (fixed overlay, hidden) is appended once at the end of the detail body.
+    const _showAdj = (r.status === 'in-progress' && r.pendingAdjustment);
+    const adjustmentCard  = _showAdj ? buildAdjustmentCard(r)  : '';
+    const adjustmentModal = _showAdj ? buildAdjustmentModal(r) : '';
+    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -18722,6 +18803,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const openThread = target.closest('[data-open-thread]');
         if(openThread){
           openInboxThread(openThread.dataset.openThread);
+          return;
+        }
+
+        // 2b) Cost-adjustment — open/close the breakdown modal, or resolve approve/
+        //     decline. The "?" lives in an .info-tip so the global bare-info-btn
+        //     tooltip handler skips it; the click is handled here. The card's and the
+        //     modal's Approve/Decline both carry data-adj-action, so both resolve here.
+        if(target.closest('[data-adj-open]')){
+          const ov = document.getElementById('caOverlay'); if(ov) ov.hidden = false;
+          return;
+        }
+        if(target.closest('[data-adj-close]') || target.classList.contains('ca-overlay')){
+          const ov = document.getElementById('caOverlay'); if(ov) ov.hidden = true;
+          return;
+        }
+        const adjAct = target.closest('[data-adj-action]');
+        if(adjAct){
+          const r = getR();
+          if(r) resolveAdjustment(r, adjAct.dataset.adjAction);
           return;
         }
 
@@ -18825,6 +18925,154 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     recountKpis && recountKpis();
     renderActiveRequests();
     showSection('home');
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // COST ADJUSTMENT — card + canonical breakdown modal + approve/decline (faked)
+  // ═══════════════════════════════════════════════════════════
+  // The Request twin of Connect's cost-adjustment work. Shown only on an in-progress
+  // request that carries r.pendingAdjustment. The ORIGINAL side is the request's
+  // reviewSnapshot (read, not duplicated); the adjusted side is
+  // pendingAdjustment.adjusted (a full canonical fee object in Request's fee shape).
+  // Money uses the SAME formatter as buildReviewRecap (identical toLocaleString) so the
+  // card, the modal and the recap all round identically and speak the same fee language.
+  const _adjFmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+  // Compact card — terracotta-bordered, current total → new total tiles + the "?".
+  function buildAdjustmentCard(r){
+    const snap = r && r.reviewSnapshot;
+    const P = r && r.pendingAdjustment;
+    const A = P && P.adjusted;
+    if(!snap || !A) return '';
+    const fmt = _adjFmt;
+    const workerName = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
+      || (r.live && r.live.worker && r.live.worker.name) || 'Your Gopher';
+    const delta = (A.gmvTotal || 0) - (snap.total || 0);
+    const deltaStr = (delta >= 0 ? '+' : '−') + fmt(Math.abs(delta));
+    return `
+      <div class="adj">
+        <div class="adj-top">
+          <div class="adj-ico">💲</div>
+          <div><div class="adj-h">Cost adjustment requested</div><div class="adj-s">Your approval is needed before the job continues</div></div>
+        </div>
+        <div class="adj-body">
+          <div class="adj-reason"><span class="adj-who">${workerName}:</span> “${P.comment}”</div>
+          <div class="adj-prices">
+            <div class="adj-price old"><div class="adj-lbl">Current total</div><div class="adj-val">${fmt(snap.total)}</div></div>
+            <div class="adj-arrow">→</div>
+            <div class="adj-price new">
+              <div class="adj-lbl">New total
+                <span class="info-tip"><button class="info-btn" data-adj-open aria-label="See full itemized breakdown">?</button></span>
+              </div>
+              <div class="adj-val">${fmt(A.gmvTotal)}</div>
+              <div class="adj-delta">${deltaStr}</div>
+            </div>
+          </div>
+          <div class="adj-actions">
+            <button class="adj-approve" data-adj-action="approve">Approve new price</button>
+            <button class="adj-decline" data-adj-action="decline">Decline</button>
+          </div>
+          <div class="adj-fine">Tap <b>?</b> next to New total for the full itemized breakdown. Approving updates the request total and clears this card. (Demo only — no real charge.)</div>
+        </div>
+      </div>`;
+  }
+
+  // Full breakdown modal — one Original/Adjusted/Difference group PER canonical fee
+  // line the recap shows. Difference = adjusted − original; positive → +$X green,
+  // negative → −$X red (pure sign, no semantic judgment). Discount lines (Promo,
+  // TrustShield) display negative. The .ca-modal shell is built REUSABLY so Port
+  // Commit 6 (counter-offers) can reuse it, exactly as Connect did.
+  function buildAdjustmentModal(r){
+    const snap = r && r.reviewSnapshot;
+    const P = r && r.pendingAdjustment;
+    const A = P && P.adjusted;
+    if(!snap || !A) return '';
+    const fmt = _adjFmt;
+    const sf = snap.fee || {};
+    const diff = (oVal, aVal) => {
+      const d = aVal - oVal;
+      if(Math.abs(d) < 0.005) return { cls:'', txt: fmt(0) };
+      return d > 0 ? { cls:'ca-pos', txt:'+' + fmt(d) } : { cls:'ca-neg', txt:'−' + fmt(Math.abs(d)) };
+    };
+    // group: two Original/Adjusted sub-rows + a signed Difference row.
+    const group = (label, oDisp, aDisp, dObj, isTotal) => `
+      <div class="ca-group${isTotal ? ' ca-total' : ''}">
+        <div class="ca-sub"><span>Original ${label}</span><span>${oDisp}</span></div>
+        <div class="ca-sub"><span>Adjusted ${label}</span><span>${aDisp}</span></div>
+        <div class="ca-diff"><span class="l">${isTotal ? 'Total Difference' : label + ' Difference'}</span><span class="a ${dObj.cls}">${dObj.txt}</span></div>
+      </div>`;
+    const disc = (v) => (v ? '−' + fmt(v) : fmt(0));   // discount lines render negative
+    let lines = '';
+    // Cost of items (only when present on either side)
+    if((snap.costOfItems || 0) > 0 || (A.costOfItems || 0) > 0){
+      const o = snap.costOfItems || 0, a = A.costOfItems || 0;
+      lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
+    }
+    // Payment to worker
+    lines += group('Payment to worker', fmt(snap.workerPay), fmt(A.workerPay), diff(snap.workerPay, A.workerPay));
+    // Gopher Fee
+    lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(A.fullGopherFee), diff(sf.fullGopherFee, A.fullGopherFee));
+    // Age-Restricted Fee (only if non-zero on either side)
+    if((sf.fullAgeFee || 0) > 0 || (A.fullAgeFee || 0) > 0){
+      const o = sf.fullAgeFee || 0, a = A.fullAgeFee || 0;
+      lines += group('Age-Restricted Fee', fmt(o), fmt(a), diff(o, a));
+    }
+    // Instant Transfer (8%)
+    lines += group('Instant Transfer (8%)', fmt(sf.fullInstantTransfer), fmt(A.fullInstantTransfer), diff(sf.fullInstantTransfer, A.fullInstantTransfer));
+    // Promo (only if present on either side) — discount, shown negative
+    if((sf.promoDiscount || 0) > 0 || (A.promoDiscount || 0) > 0){
+      lines += group('Promo', disc(sf.promoDiscount || 0), disc(A.promoDiscount || 0), diff(-(sf.promoDiscount || 0), -(A.promoDiscount || 0)));
+    }
+    // TrustShield (only if present on either side) — discount, shown negative
+    if((sf.trustShieldDiscount || 0) > 0 || (A.trustShieldDiscount || 0) > 0){
+      lines += group('TrustShield', disc(sf.trustShieldDiscount || 0), disc(A.trustShieldDiscount || 0), diff(-(sf.trustShieldDiscount || 0), -(A.trustShieldDiscount || 0)));
+    }
+    // Total
+    lines += group('Total', fmt(snap.total), fmt(A.gmvTotal), diff(snap.total, A.gmvTotal), true);
+
+    return `
+      <div class="ca-overlay" id="caOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Cost adjustment breakdown">
+          <div class="ca-head"><h3>Cost Adjustment</h3><button class="ca-x" data-adj-close aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <div class="ca-eyebrow">Adjustment details</div>
+            ${lines}
+            <div class="ca-comments">
+              <div class="ca-cl">Comments</div>
+              <div class="ca-cbox">${P.comment}</div>
+            </div>
+            <div class="ca-actions">
+              <button class="ca-approve" data-adj-action="approve">Approve</button>
+              <button class="ca-decline" data-adj-action="decline">Decline</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Approve → the agreed total becomes the adjusted total: copy the adjusted canonical
+  // fee object onto the reviewSnapshot (so the recap + dashboard summary reflect it) and
+  // clear the pending flag. Decline → just clear the pending flag (price unchanged).
+  // No fee math here — the adjusted object is pre-footed mock data (mirrors Connect).
+  function resolveAdjustment(r, action){
+    if(!r || !r.pendingAdjustment) return;
+    if(action === 'approve'){
+      const A = r.pendingAdjustment.adjusted, snap = r.reviewSnapshot;
+      if(A && snap){
+        snap.fee = {
+          gopherFee:A.gopherFee, ageFee:A.ageFee, instantTransfer:A.instantTransfer, requestFee:A.requestFee,
+          fullGopherFee:A.fullGopherFee, fullAgeFee:A.fullAgeFee, fullInstantTransfer:A.fullInstantTransfer, fullRequestFee:A.fullRequestFee,
+          promo:A.promo || null, promoDiscount:A.promoDiscount, trustShieldDiscount:A.trustShieldDiscount,
+          cogOffer:A.cogOffer, gmvTotal:A.gmvTotal,
+        };
+        snap.costOfItems = A.costOfItems; snap.workerPay = A.workerPay; snap.workersNeeded = A.workersNeeded;
+        snap.total = A.gmvTotal;
+        r.amount = `$${A.gmvTotal.toFixed(2)} total`;   // canonical summary total
+      }
+    }
+    delete r.pendingAdjustment;
+    renderActiveRequests();   // refresh the dashboard summary card's total
+    renderRequestDetail();    // card/modal gone; recap + summary reflect the result
   }
 
   // ── Read-only Request Recap, rendered from a FROZEN reviewSnapshot (the deal the
