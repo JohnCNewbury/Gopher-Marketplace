@@ -7060,6 +7060,13 @@
   .live-map-svg { width:100%; height:auto; display:block; }
   .live-map-eta { position:absolute; left:12px; bottom:12px; background:rgba(26,42,94,0.92); color:white; font-family:'Nunito'; font-weight:800; font-size:12px; padding:7px 13px; border-radius:99px; backdrop-filter:blur(3px); }
 
+  /* Simulated ETA line + Google Maps human-dev seam note (faked stand-ins; mirrors Connect). */
+  .eta-line { display:flex; align-items:center; gap:10px; background:var(--navy-light); border-radius:12px; padding:11px 14px; margin:0 auto 14px; max-width:440px; }
+  .eta-ico { font-size:20px; line-height:1; flex:0 0 auto; }
+  .eta-big { font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); }
+  .eta-sub { font-family:'DM Sans'; font-size:12px; color:var(--muted); margin-top:1px; }
+  .map-seam { font-family:'DM Sans'; font-size:12px; color:var(--muted); background:#f7f9fc; border:1px dashed #d4d8e3; border-radius:10px; padding:9px 12px; margin-top:10px; line-height:1.45; }
+
   /* In-progress status stepper — three-state vocabulary (mirrors Connect).
        .completed  solid green dot + white ✓, green connector bar, navy label
        .current    terracotta ring + terracotta centre dot (the FIRST not-done step),
@@ -17841,6 +17848,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         when:'ETA 19 min · Today, 3:05 PM',
         interestedWorkers:[ makeSeedWorker('PN','Priya N.','elite+','hired') ],
         userStarted:true,
+        // ── Gopher's-choice pickup (the Request analog of Connect's GC-00125): the
+        //    customer let the worker choose the store, so there is NO fixed pickup —
+        //    the snapshot reads "Any location" and the recap/map show "Gopher's choice"
+        //    until the worker confirms the purchase. resolvedPickup is the human-dev
+        //    SEAM: on a live request this comes from the Gopher's GPS log at pickup
+        //    time, NOT a real geocode. The faked SVG map + simulated ETA likewise stand
+        //    in for the Google Maps tiles / live location feed.
+        resolvedPickup:'Ace Hardware, 2410 Hillsborough St, Raleigh, NC 27607',
         live:{
           crew:[
             { name:'Priya N.', tier:'elite+', phone:'+1 (919) 555-0188', photo:'',
@@ -17851,6 +17866,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           urgency:'Needed this afternoon',
           description:'Pick up a 5-pack of 3/8" drill bits and a box of #8 drywall anchors, then deliver to the job site. Text if the brand on the list is out of stock.',
           pics:[],
+          baseRouteMin:7,    // faked seeded base remaining-route minutes (NOT real routing)
           pickupStairs:0, destStairs:0
         },
         // Frozen Review-screen snapshot (the agreed deal) — same shape as GR-00127.
@@ -17863,7 +17879,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           itemsPurchased:true,   // delivery type "Purchase needed" → third step "Items Purchased"
           urgency:'Needed this afternoon',
           worker:'Priya N. (Elite+)',
-          pickup:'Ace Hardware, 2410 Hillsborough St, Raleigh, NC 27607',
+          pickup:'Any location',   // Gopher's-choice → frozen as "Any location"; resolves to r.resolvedPickup after purchase
           dropoff:'88 Maple Court, Cary, NC 27513',
           description:'Pick up a 5-pack of 3/8" drill bits and a box of #8 drywall anchors, then deliver to the job site. Text if the brand on the list is out of stock.',
           costOfItems:52, workerPay:18, workersNeeded:1,
@@ -19135,8 +19151,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   //    request shows neither an age fee nor a TrustShield line. Money uses the same
   //    2-dp formatting as the Review screen, so the recap, the dashboard list card and
   //    the agreed total all read identically (e.g. $55.07).
-  function buildReviewRecap(snap, reqId){
+  function buildReviewRecap(snap, reqId, opts){
     if(!snap) return '';
+    opts = opts || {};
     const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
     const fee = snap.fee || {};
     const row = (label, value, cls='') => `<div class="review-row ${cls}"><span class="rl">${label}</span><span class="rv">${value}</span></div>`;
@@ -19144,12 +19161,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const itf = (fee.fullInstantTransfer != null) ? fee.fullInstantTransfer : fee.instantTransfer;
     const wc = snap.workersNeeded || 1;
     const showCOI = (snap.costOfItems != null) && Number(snap.costOfItems) > 0;
+    // Gopher's-choice pickup: the frozen snapshot reads "Any location" until the worker
+    // confirms pickup, then the GPS-resolved address swaps in (opts.resolvedPickup) —
+    // display-only, the snapshot itself stays "Any location". Fixed-address requests
+    // pass no override and just show their pickup.
+    const pickupVal = (snap.pickup === 'Any location') ? (opts.resolvedPickup || 'Any location') : snap.pickup;
     return `
       <div class="review-card">
         ${reqId ? row('Request ID', '#' + reqId) : ''}
         ${row('Category', snap.category || '—')}
         ${snap.urgency ? row('Urgency', '⚡ ' + snap.urgency) : ''}
-        ${snap.pickup ? row('Pickup', snap.pickup) : ''}
+        ${snap.pickup ? row('Pickup', pickupVal) : ''}
         ${snap.dropoff ? row('Dropoff', snap.dropoff) : ''}
         ${snap.description ? row('Description', snap.description) : ''}
         ${snap.worker ? row('Worker', snap.worker) : ''}
@@ -19192,10 +19214,41 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ? [{k:'Accepted',done:true},{k:'Scheduled',done:true},{k:'In-Progress',done:false},{k:'Completed',done:false}]
           : [{k:'Accepted',done:true},{k:'In-Progress',done:true},{k:'Items Purchased',done:false},{k:'Completed',done:false}]);
 
-    const etaText = scheduled ? (r.when || 'Scheduled') : 'ETA 12 min · arriving soon';
     const description = live.description
       || (r.title || '').replace(/^[^·]*·\s*/, '')
       || 'Request in progress.';
+
+    // ── Gopher's-choice pickup + simulated ETA (faked; real Maps/GPS = human-dev
+    //    seam), mirroring Connect's GC-00125. A Gopher's-choice request has NO fixed
+    //    pickup — its frozen snapshot reads "Any location". Resolution is purely
+    //    data-driven (no live trigger): once the pickup-confirmation step ("Items
+    //    Purchased" / "Items Picked-Up") is done, the pickup flips from "Any location"
+    //    to the seeded r.resolvedPickup (the GPS log the live app would capture). The
+    //    map + ETA stay faked stand-ins; Google Maps / live GPS is a human-dev seam.
+    const inProgress = r.status === 'in-progress';
+    const snap = r.reviewSnapshot || {};
+    const isGophersChoice = (snap.pickup === 'Any location');
+    const pickedUp = (steps || []).some(s => /picked.?up|purchas/i.test(s.k) && s.done);
+    const resolvedPickup = (isGophersChoice && pickedUp) ? (r.resolvedPickup || null) : null;
+    const recapOpts = resolvedPickup ? { resolvedPickup } : {};
+    // Simulated ETA (faked formula, NOT a routing call). base = a seeded per-request
+    // mock minutes value; pre-pickup adds 15 min to gather/purchase the items, dropped
+    // once the pickup step is done.
+    const workerFirst = (lead.name || 'Your Gopher').split(' ')[0];
+    const baseRouteMin = (live.baseRouteMin != null) ? live.baseRouteMin : 8;
+    const etaMin = pickedUp ? baseRouteMin : (baseRouteMin + 15);
+    const etaSub = pickedUp
+      ? `remaining route ~${baseRouteMin} min (items already picked up)`
+      : `remaining route ~${baseRouteMin} min + 15 min to gather items`;
+    const etaBadge = pickedUp
+      ? `📍 ${workerFirst} is en route · items picked up`
+      : `📍 ${workerFirst} is en route · ${(r.when || '').replace(/·.*$/, '').trim() || 'on the way'}`;
+    // Gopher's-choice map label (shown only while unresolved, in place of a pickup pin).
+    const gcLabel = (isGophersChoice && !resolvedPickup) ? `
+          <g transform="translate(46,200)">
+            <rect x="0" y="-18" width="166" height="26" rx="13" fill="#fff" stroke="#d4d8e3"/>
+            <text x="14" y="-1" font-family="Nunito,sans-serif" font-weight="800" font-size="12" fill="#6b7280">📍 Gopher&apos;s choice</text>
+          </g>` : '';
 
     // ── Stylized live map (self-contained SVG; no external tiles) ──
     const mapHtml = scheduled ? '' : `
@@ -19226,9 +19279,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <path d="M0 -22 C12 -22 18 -13 18 -4 C18 8 0 22 0 22 C0 22 -18 8 -18 -4 C-18 -13 -12 -22 0 -22 Z" fill="#c44257"/>
             <circle cy="-6" r="6" fill="white"/>
           </g>
+          ${gcLabel}
         </svg>
-        <div class="live-map-eta">${etaText}</div>
-      </div>`;
+        <div class="live-map-eta">${etaBadge}</div>
+      </div>
+      <div class="map-seam">🔌 <b>Integration seam (human dev):</b> real map tiles, live worker GPS, and turn-by-turn ETA come from Google Maps + the live location feed. This faked SVG map and the simulated ETA are stand-ins so the UX can be validated now.</div>`;
 
     // ── Status — terracotta 3-state stepper (done / current / upcoming), mirroring
     //    Connect. The CURRENT step is the FIRST not-yet-completed step (terracotta
@@ -19238,14 +19293,20 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     //    requires purchasing (the flow's state.itemsPurchased, frozen onto the
     //    reviewSnapshot), else "Items Picked-Up" (items already in hand). Falls back
     //    to costOfItems > 0 only when no explicit flag is present.
-    const snap = r.reviewSnapshot || {};
     const purchaseNeeded = (snap.itemsPurchased != null) ? !!snap.itemsPurchased
       : (r.itemsPurchased != null) ? !!r.itemsPurchased
       : (Number(snap.costOfItems != null ? snap.costOfItems : (live.costOfItems || 0)) > 0);
     const itemsStepLabel = purchaseNeeded ? 'Items Purchased' : 'Items Picked-Up';
     const currentIdx = steps.findIndex(s => !s.done);   // first not-done step; -1 when all done
+    // Simulated-ETA line sits above the stepper (in-progress only), mirroring Connect.
+    const etaLine = inProgress ? `
+      <div class="eta-line">
+        <span class="eta-ico">⏱️</span>
+        <div><div class="eta-big">Est. arrival ~${etaMin} min</div><div class="eta-sub">${etaSub}</div></div>
+      </div>` : '';
     const statusHtml = `
       <div class="la-section-title">Status</div>
+      ${etaLine}
       <div class="steps">
         ${steps.map((s, i) => {
           const stState = s.done ? 'completed' : (i === currentIdx ? 'current' : 'remaining');
@@ -19266,7 +19327,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const recapHtml = `
       <div class="la-section-title">Request Recap</div>
       ${r.reviewSnapshot
-        ? buildReviewRecap(r.reviewSnapshot, r.id)
+        ? buildReviewRecap(r.reviewSnapshot, r.id, recapOpts)
         : `<div class="review-card">
             <div class="review-row"><span class="rl">Request ID</span><span class="rv">#${r.id}</span></div>
             ${description ? `<div class="review-row"><span class="rl">Description</span><span class="rv">${description}</span></div>` : ''}
