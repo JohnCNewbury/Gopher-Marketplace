@@ -18934,7 +18934,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const _showAdj = (r.status === 'in-progress' && r.pendingAdjustment);
     const adjustmentCard  = _showAdj ? buildAdjustmentCard(r)  : '';
     const adjustmentModal = _showAdj ? buildAdjustmentModal(r) : '';
-    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal;
+    // One hidden Details modal per counter-offer (opened by that card's Details button).
+    const counterModals = (r.counterOffers && r.counterOffers.length)
+      ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
+      : '';
+    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -19028,6 +19032,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           return;
         }
 
+        // 2a-counter) Counter-offer Details modal — close via ✕ (data-counter-close)
+        //     or backdrop. Each counter overlay is its OWN .ca-overlay.counter-overlay,
+        //     so close the one ACTUALLY clicked (not the cost-adjustment caOverlay).
+        //     This sits AHEAD of the cost-adjustment close branch below, whose generic
+        //     .ca-overlay backdrop test would otherwise swallow counter backdrop clicks
+        //     (counter overlays carry .ca-overlay too). Accept/Deny inside the modal
+        //     carry data-coact and resolve via the counter-offer branch above.
+        const ccClose = target.closest('[data-counter-close]');
+        if(ccClose){ const ov = ccClose.closest('.ca-overlay'); if(ov) ov.hidden = true; return; }
+        if(target.classList.contains('counter-overlay')){ target.hidden = true; return; }
+
         // 2b) Cost-adjustment — open/close the breakdown modal, or resolve approve/
         //     decline. The "?" lives in an .info-tip so the global bare-info-btn
         //     tooltip handler skips it; the click is handled here. The card's and the
@@ -19048,7 +19063,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         }
 
         // 2c) Counter-offer actions (mirror Connect) — Accept (hire at the counter
-        //     price) / Details (STUB this commit — the modal is 6b) / Deny (remove this
+        //     price) / Details (opens this counter's breakdown modal) / Deny (remove this
         //     counter) / Review profile / Message (visual). data-coact + data-ci; the
         //     buttons carry NO stopPropagation wrapper, so clicks reach this delegated
         //     handler (the trap that bit the cost-adjustment "?").
@@ -19067,7 +19082,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             renderRequestDetail();
             return;
           }
-          if(act === 'details'){ /* STUB — the Details breakdown modal arrives in commit 6b. */ return; }
+          if(act === 'details'){
+            // Open THIS counter's breakdown modal (Original vs Counter, canonical fee lines).
+            const ov = document.getElementById('counterOverlay-' + ci);
+            if(ov) ov.hidden = false;
+            return;
+          }
           if(act === 'deny'){ counters.splice(ci, 1); renderRequestDetail(); return; }
           if(act === 'accept'){ acceptCounterOffer(r, ci); return; }
           return;
@@ -19329,6 +19349,86 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // the counter's worker to r.interestedWorkers with status 'hired' — the same hired
   // state the Hire button produces — then re-render and fire the start-encourage modal.
   // No fee math here; the counter object is pre-footed mock data. In-memory only.
+  // Counter-offer Details modal — a VISUAL REPLICA of the cost-adjustment breakdown
+  // modal above (same .ca-modal shell/classes, same canonical fee-line layout + sign-
+  // based coloring). Differences: title "Counter-offer", columns Original/Counter, the
+  // data source (THIS counter's stored footed fee object vs the request's ORIGINAL
+  // reviewSnapshot.fee — no recompute), and the comments rule (rendered only when this
+  // counter actually has a comment). One overlay per counter (id counterOverlay-<ci>);
+  // Accept/Deny reuse the card's data-coact path, so the same functions resolve them.
+  // Mirrors Connect's buildCounterModal (6baa760); Request fee field names
+  // (fullRequestFee / trustShieldDiscount) differ from Connect's.
+  function buildCounterModal(r, co, ci){
+    const snap = r && r.reviewSnapshot;
+    const C = co && co.counter;
+    if(!snap || !C) return '';
+    const fmt = _adjFmt;
+    const sf = snap.fee || {};
+    const diff = (oVal, aVal) => {
+      const d = aVal - oVal;
+      if(Math.abs(d) < 0.005) return { cls:'', txt: fmt(0) };
+      return d > 0 ? { cls:'ca-pos', txt:'+' + fmt(d) } : { cls:'ca-neg', txt:'−' + fmt(Math.abs(d)) };
+    };
+    // group: Original / Counter sub-rows + a signed Difference row (same shape as the
+    // cost-adjustment modal, with "Adjusted" reskinned to "Counter").
+    const group = (label, oDisp, aDisp, dObj, isTotal) => `
+      <div class="ca-group${isTotal ? ' ca-total' : ''}">
+        <div class="ca-sub"><span>Original ${label}</span><span>${oDisp}</span></div>
+        <div class="ca-sub"><span>Counter ${label}</span><span>${aDisp}</span></div>
+        <div class="ca-diff"><span class="l">${isTotal ? 'Total Difference' : label + ' Difference'}</span><span class="a ${dObj.cls}">${dObj.txt}</span></div>
+      </div>`;
+    const disc = (v) => (v ? '−' + fmt(v) : fmt(0));   // discount lines render negative
+    let lines = '';
+    // Cost of items (only when present on either side)
+    if((snap.costOfItems || 0) > 0 || (C.costOfItems || 0) > 0){
+      const o = snap.costOfItems || 0, a = C.costOfItems || 0;
+      lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
+    }
+    // Payment to worker
+    lines += group('Payment to worker', fmt(snap.workerPay), fmt(C.workerPay), diff(snap.workerPay, C.workerPay));
+    // Gopher Fee
+    lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(C.fullGopherFee), diff(sf.fullGopherFee, C.fullGopherFee));
+    // Age-Restricted Fee (only if non-zero on either side)
+    if((sf.fullAgeFee || 0) > 0 || (C.fullAgeFee || 0) > 0){
+      const o = sf.fullAgeFee || 0, a = C.fullAgeFee || 0;
+      lines += group('Age-Restricted Fee', fmt(o), fmt(a), diff(o, a));
+    }
+    // Instant Transfer (8%)
+    lines += group('Instant Transfer (8%)', fmt(sf.fullInstantTransfer), fmt(C.fullInstantTransfer), diff(sf.fullInstantTransfer, C.fullInstantTransfer));
+    // Promo (only if present on either side) — discount, shown negative
+    if((sf.promoDiscount || 0) > 0 || (C.promoDiscount || 0) > 0){
+      lines += group('Promo', disc(sf.promoDiscount || 0), disc(C.promoDiscount || 0), diff(-(sf.promoDiscount || 0), -(C.promoDiscount || 0)));
+    }
+    // TrustShield (only if present on either side) — discount, shown negative
+    if((sf.trustShieldDiscount || 0) > 0 || (C.trustShieldDiscount || 0) > 0){
+      lines += group('TrustShield', disc(sf.trustShieldDiscount || 0), disc(C.trustShieldDiscount || 0), diff(-(sf.trustShieldDiscount || 0), -(C.trustShieldDiscount || 0)));
+    }
+    // Total
+    lines += group('Total', fmt(snap.total), fmt(C.gmvTotal), diff(snap.total, C.gmvTotal), true);
+
+    // Comments — ONLY when this counter actually has a note (null → section absent).
+    const comments = co.comment ? `
+            <div class="ca-comments">
+              <div class="ca-cl">Comments</div>
+              <div class="ca-cbox">${co.comment}</div>
+            </div>` : '';
+
+    return `
+      <div class="ca-overlay counter-overlay" id="counterOverlay-${ci}" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Counter-offer breakdown">
+          <div class="ca-head"><h3>Counter-offer</h3><button class="ca-x" data-counter-close aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <div class="ca-eyebrow">Counter-offer details</div>
+            ${lines}${comments}
+            <div class="ca-actions">
+              <button class="ca-approve" data-coact="accept" data-ci="${ci}">Accept</button>
+              <button class="ca-decline" data-coact="deny" data-ci="${ci}">Deny</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function acceptCounterOffer(r, ci){
     const co = r && r.counterOffers && r.counterOffers[ci];
     if(!co) return;
