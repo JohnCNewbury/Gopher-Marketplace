@@ -19025,7 +19025,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
     const completionModals = buildCompletionModals(r);
-    body.innerHTML = headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    body.innerHTML = buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -19702,6 +19702,51 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // it in directly below the Assigned Worker/Crew block — the worker header that used
   // to live here is intentionally dropped so there is exactly one worker block on the
   // detail screen. Reads r.live (built by startJob); returns '' when there's no request.
+  // Customer confirm/dispute block — extracted from buildLiveActivityContent so it can
+  // LEAD the request detail (rendered above the header). Confirming is time-sensitive
+  // (worker payout depends on it), so it is the first card on a completed request.
+  // Returns '' for any non-completed request, leaving all other states unchanged.
+  function buildCompletionBlock(r){
+    if(!r || !(r.confirmed || r.awaitingConfirmation)) return '';
+    const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
+    const wnm = (_crew[0] && _crew[0].name)
+      ? _crew[0].name
+      : (r.worker || 'your Gopher').replace(/\s*\(.*$/, '').replace(/\s*·.*$/, '');
+    if(r.confirmed){
+      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`;
+    }
+    if(r.disputeState === 'entry'){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">Dispute Request</div>
+        <div class="cmp-sub">Please enter the reason you're disputing the request below. Once done, your Gopher will be notified. Keep in mind a cost adjustment can still be made if it is an issue with the total price offered. You can also still message and/or call your Gopher.</div>
+        <textarea class="cmp-dispute-box" id="disputeReason" placeholder="Enter a comment"></textarea>
+        <button class="cmp-confirm-btn" data-dispute-submit>Submit</button>
+      </div>`;
+    }
+    if(r.disputeState === 'disputed'){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">Request Disputed</div>
+        <div class="cmp-pill-dispute">Dispute Pending</div>
+        <div class="cmp-disclaimer">If your request has been resolved between you and your Gopher, please confirm below.</div>
+        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
+        <div class="cmp-disclaimer">If after contacting your Gopher, you are still unable to resolve the dispute, please select Unable To Resolve below.</div>
+        <button class="cmp-unable-btn" data-dispute-unable>Unable To Resolve</button>
+      </div>`;
+    }
+    return `
+      <div class="cmp-block">
+        <div class="cmp-title">Request Completed by ${wnm}!</div>
+        <div class="cmp-sub">Review the completed delivery, then confirm to finalize your order and release payment to your Gopher.</div>
+        <button class="cmp-details-link" data-completion-details>Tap to view details</button>
+        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
+        <div class="cmp-disclaimer">Selecting Confirm Completion will finalize your order. Your receipt will be emailed immediately after. Once this request is confirmed, it cannot be cancelled or refunded.</div>
+        <button class="cmp-dispute-btn" data-dispute-open>Dispute</button>
+        <div class="cmp-disclaimer">If request is disputed, you and your Gopher will have the ability to work together to resolve any issues. All app features will still be available during a dispute.</div>
+      </div>`;
+  }
+
   function buildLiveActivityContent(r){
     if(!r) return '';
 
@@ -19851,43 +19896,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     //   'entry'    → reason box + Submit
     //   'disputed' → Confirm Completion / Unable To Resolve (+both disclaimers)
     // Confirm (either) → rating flow. Wiring is via the single delegated body handler.
-    let completionBlock = '';
-    if(r.confirmed){
-      completionBlock = `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${lead.name}.</div>`;
-    } else if(r.awaitingConfirmation){
-      if(r.disputeState === 'entry'){
-        completionBlock = `
-      <div class="cmp-block cmp-dispute">
-        <div class="cmp-title">Dispute Request</div>
-        <div class="cmp-sub">Please enter the reason you're disputing the request below. Once done, your Gopher will be notified. Keep in mind a cost adjustment can still be made if it is an issue with the total price offered. You can also still message and/or call your Gopher.</div>
-        <textarea class="cmp-dispute-box" id="disputeReason" placeholder="Enter a comment">${r.disputeReason || ''}</textarea>
-        <button class="cmp-confirm-btn" data-dispute-submit>Submit</button>
-      </div>`;
-      } else if(r.disputeState === 'disputed'){
-        completionBlock = `
-      <div class="cmp-block cmp-dispute">
-        <div class="cmp-title">Request Disputed</div>
-        <div class="cmp-pill-dispute">Dispute Pending</div>
-        <div class="cmp-disclaimer">If your request has been resolved between you and your Gopher, please confirm below.</div>
-        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
-        <div class="cmp-disclaimer">If after contacting your Gopher, you are still unable to resolve the dispute, please select Unable To Resolve below.</div>
-        <button class="cmp-unable-btn" data-dispute-unable>Unable To Resolve</button>
-      </div>`;
-      } else {
-        completionBlock = `
-      <div class="cmp-block">
-        <div class="cmp-title">Request Completed by ${lead.name}!</div>
-        <div class="cmp-sub">Review the completed delivery, then confirm to finalize your order and release payment to your Gopher.</div>
-        <button class="cmp-details-link" data-completion-details>Tap to view details</button>
-        <button class="cmp-confirm-btn" data-confirm-complete>Confirm Completion</button>
-        <div class="cmp-disclaimer">Selecting Confirm Completion will finalize your order. Your receipt will be emailed immediately after. Once this request is confirmed, it cannot be cancelled or refunded.</div>
-        <button class="cmp-dispute-btn" data-dispute-open>Dispute</button>
-        <div class="cmp-disclaimer">If request is disputed, you and your Gopher will have the ability to work together to resolve any issues. All app features will still be available during a dispute.</div>
-      </div>`;
-      }
-    }
-
-    return completionBlock + mapHtml + statusHtml + recapHtml;
+    return mapHtml + statusHtml + recapHtml;
   }
 
   // ── Flow hosting: physically relocate the single .flow-mockup node into the
