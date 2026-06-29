@@ -7067,18 +7067,9 @@
   .la-step-label { font-family:'DM Sans'; font-size:14px; font-weight:600; color:var(--muted); }
   .la-step.done .la-step-label { color:var(--navy); font-weight:700; }
 
-  .la-urgency { display:inline-flex; align-items:center; gap:6px; background:var(--cornflower,#BADBFC); color:var(--navy); font-family:'Nunito'; font-weight:800; font-size:12.5px; padding:6px 14px; border-radius:99px; margin:0 auto 14px; }
-  .la-recap { background:white; border:1px solid #e7eaf2; border-radius:14px; padding:16px 18px; }
-  .la-recap-block { margin-bottom:14px; }
-  .la-recap-label { font-family:'Nunito'; font-weight:900; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:5px; }
-  .la-recap-desc { font-family:'DM Sans'; font-size:13.5px; color:var(--text); line-height:1.5; padding:10px 12px; background:#f7f9fc; border-radius:9px; border:1px solid #eef0f5; }
-  .la-pics { display:flex; gap:8px; }
-  .la-pic { width:74px; height:74px; border-radius:10px; overflow:hidden; background:#eef2f9; }
-  .la-pic img { width:100%; height:100%; object-fit:cover; }
-  .la-recap-rows { border-top:1px solid #eef0f5; padding-top:10px; }
-  .la-rr { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:6px 0; }
-  .la-rr span:first-child { color:var(--muted); font-weight:600; }
-  .la-rr span:last-child { color:var(--navy); font-weight:700; text-align:right; }
+  /* The in-progress Request Recap renders read-only from a frozen reviewSnapshot via
+     buildReviewRecap(), reusing the Review screen's .review-card/.review-row/.rl/.rv
+     vocabulary — so no recap-specific styles live here. */
 
   /* ─── Inbox ─── */
   .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
@@ -17690,7 +17681,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       //     schedule; no promo; NON-AR → NO TrustShield, NO age fee): cogOffer 50.00;
       //     Gopher Fee 0.99; Age Fee 0; ITF 0.08×(50.00+0.99)=4.0792; totalFees
       //     5.0692; requestFee 5.0692; gmvTotal 50.00+5.0692=55.0692 → "$55.07 total".
-      //     Current request shape only (no reviewSnapshot/stepper/cost-adjustment yet).
+      //     Carries a frozen `reviewSnapshot` (agreed deal: items/locations/footed
+      //     fee) that the read-only Request Recap renders from — no stepper/cost-
+      //     adjustment yet.
       {
         id:'GR-00127', icon:'📦', title:'Grocery run — Harris Teeter to 412 Oakwood Ave',
         status:'in-progress', statusLabel:'In Progress', needsAttention:false, userCreated:false,
@@ -17710,6 +17703,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           description:'Weekly grocery pickup (paid online at Harris Teeter). Grab the order under “Newbury”, keep cold items together, and deliver to the front door at 412 Oakwood Ave.',
           pics:[],
           pickupStairs:0, destStairs:0
+        },
+        // Frozen Review-screen snapshot (the agreed deal) — the read-only Request
+        // Recap renders from THIS, not live fields. NON-AR delivery, purchase-needed
+        // (Cost of Items 35 + Offer 15 → cogOffer 50). Footed by the canonical
+        // schedule: Gopher Fee 0.99; Age Fee 0; ITF 0.08×(50+0.99)=4.0792; NO
+        // TrustShield (non-AR); total 50+0.99+4.0792=55.0692 → "$55.07" (matches the
+        // seed's amount and the dashboard list card).
+        reviewSnapshot:{
+          category:'Delivery', ageRestricted:false,
+          urgency:'Customer needs ASAP',
+          worker:'Marcus B. (Pro)',
+          pickup:'Harris Teeter, 1817 Fordham Blvd, Chapel Hill, NC 27514',
+          dropoff:'412 Oakwood Ave, Raleigh, NC 27601',
+          description:'Weekly grocery pickup (paid online at Harris Teeter). Grab the order under “Newbury”, keep cold items together, and deliver to the front door at 412 Oakwood Ave.',
+          costOfItems:35, workerPay:15, workersNeeded:1,
+          fee:{ gopherFee:0.99, ageFee:0, instantTransfer:4.0792, requestFee:5.0692,
+                fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:4.0792, fullRequestFee:5.0692,
+                promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:50, gmvTotal:55.0692 },
+          total:55.0692
         }
       },
       // 3) SCHEDULED — worker hired, booked for later
@@ -18792,6 +18804,44 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     showSection('home');
   }
 
+  // ── Read-only Request Recap, rendered from a FROZEN reviewSnapshot (the deal the
+  //    customer agreed at checkout) — the Request twin of Connect's buildReviewRecap.
+  //    Returns a non-interactive .review-card (no buttons, no inputs): a faithful
+  //    record of the agreed deal, NOT live fields. Fee rows are shown directly in the
+  //    canonical order; conditional rows (Age-Restricted Fee, Promo, TrustShield)
+  //    appear ONLY when the frozen fee object actually carries them, so a NON-AR
+  //    request shows neither an age fee nor a TrustShield line. Money uses the same
+  //    2-dp formatting as the Review screen, so the recap, the dashboard list card and
+  //    the agreed total all read identically (e.g. $55.07).
+  function buildReviewRecap(snap, reqId){
+    if(!snap) return '';
+    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    const fee = snap.fee || {};
+    const row = (label, value, cls='') => `<div class="review-row ${cls}"><span class="rl">${label}</span><span class="rv">${value}</span></div>`;
+    const gopherFee = (fee.fullGopherFee != null) ? fee.fullGopherFee : fee.gopherFee;
+    const itf = (fee.fullInstantTransfer != null) ? fee.fullInstantTransfer : fee.instantTransfer;
+    const wc = snap.workersNeeded || 1;
+    const showCOI = (snap.costOfItems != null) && Number(snap.costOfItems) > 0;
+    return `
+      <div class="review-card">
+        ${reqId ? row('Request ID', '#' + reqId) : ''}
+        ${row('Category', snap.category || '—')}
+        ${snap.urgency ? row('Urgency', '⚡ ' + snap.urgency) : ''}
+        ${snap.pickup ? row('Pickup', snap.pickup) : ''}
+        ${snap.dropoff ? row('Dropoff', snap.dropoff) : ''}
+        ${snap.description ? row('Description', snap.description) : ''}
+        ${snap.worker ? row('Worker', snap.worker) : ''}
+        ${showCOI ? row('Cost of items', fmt(snap.costOfItems)) : ''}
+        ${row('Payment to worker' + (wc > 1 ? 's' : ''), fmt(snap.workerPay))}
+        ${row('Gopher Fee', fmt(gopherFee))}
+        ${fee.fullAgeFee ? row('Age-Restricted Fee', fmt(fee.fullAgeFee)) : ''}
+        ${row('Instant Transfer (8%)', fmt(itf))}
+        ${fee.promo ? row('Promo' + (fee.promo.label ? ' · ' + fee.promo.label : ''), '−' + fmt(fee.promoDiscount), 'promo-row') : ''}
+        ${fee.trustShieldDiscount ? row('TrustShield ($1 off)', '−' + fmt(fee.trustShieldDiscount), 'promo-row') : ''}
+        ${row('Total', fmt((snap.total != null) ? snap.total : fee.gmvTotal), 'total')}
+      </div>`;
+  }
+
   // ── Live-activity content (inlined into Request Details) ─────────────────────
   // Builds the live map + status step tracker + request recap for an in-progress /
   // scheduled request and RETURNS it as an HTML string. renderRequestDetail() drops
@@ -18824,7 +18874,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const description = live.description
       || (r.title || '').replace(/^[^·]*·\s*/, '')
       || 'Request in progress.';
-    const pics = Array.isArray(live.pics) ? live.pics : [];
 
     // ── Stylized live map (self-contained SVG; no external tiles) ──
     const mapHtml = scheduled ? '' : `
@@ -18870,32 +18919,21 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           </div>`).join('')}
       </div>`;
 
-    // ── Request recap ──
-    const picsHtml = pics.length ? `
-      <div class="la-recap-block">
-        <div class="la-recap-label">Photos</div>
-        <div class="la-pics">${pics.map(p => `<div class="la-pic"><img src="${typeof p === 'string' ? p : (p.src||'')}" alt="request photo"></div>`).join('')}</div>
-      </div>` : '';
-
+    // ── Request recap — read-only, rendered from the FROZEN reviewSnapshot (the
+    //    agreed deal at checkout), mirroring Connect. The old live-data recap is
+    //    retired. A request without a snapshot falls back to a minimal description /
+    //    worker / total card in the SAME .review-card vocabulary (the canonical
+    //    in-progress seed GR-00127 always carries a snapshot, so this is just a guard).
     const recapHtml = `
       <div class="la-section-title">Request Recap</div>
-      ${live.urgency ? `<div style="text-align:center;"><span class="la-urgency">⚡ ${live.urgency}</span></div>` : ''}
-      <div class="la-recap">
-        <div class="la-recap-block">
-          <div class="la-recap-label">Description</div>
-          <div class="la-recap-desc">${description}</div>
-        </div>
-        ${picsHtml}
-        <div class="la-recap-rows">
-          <div class="la-rr"><span>Request ID</span><span>#${r.id}</span></div>
-          <div class="la-rr"><span>Total</span><span>${r.amount || '—'}</span></div>
-          <div class="la-rr"><span>${isCrew ? 'Crew' : 'Worker'}</span><span>${r.worker || lead.name}</span></div>
-          <div class="la-rr"><span>Status</span><span>${r.statusLabel || (scheduled ? 'Scheduled' : 'In Progress')}</span></div>
-          <div class="la-rr"><span>When</span><span>${r.when || '—'}</span></div>
-          ${(() => { const parts=[]; if(live.pickupStairs>0) parts.push(`${live.pickupStairs} flight${live.pickupStairs>1?'s':''} of stairs`); if(live.serviceElevatorPickup) parts.push('service elevator'); return parts.length?`<div class="la-rr"><span>Pickup access</span><span>${parts.join(' · ')}</span></div>`:''; })()}
-          ${(() => { const parts=[]; if(live.destStairs>0) parts.push(`${live.destStairs} flight${live.destStairs>1?'s':''} of stairs`); if(live.serviceElevatorDest) parts.push('service elevator'); return parts.length?`<div class="la-rr"><span>Destination access</span><span>${parts.join(' · ')}</span></div>`:''; })()}
-        </div>
-      </div>`;
+      ${r.reviewSnapshot
+        ? buildReviewRecap(r.reviewSnapshot, r.id)
+        : `<div class="review-card">
+            <div class="review-row"><span class="rl">Request ID</span><span class="rv">#${r.id}</span></div>
+            ${description ? `<div class="review-row"><span class="rl">Description</span><span class="rv">${description}</span></div>` : ''}
+            <div class="review-row"><span class="rl">${isCrew ? 'Crew' : 'Worker'}</span><span class="rv">${r.worker || lead.name}</span></div>
+            <div class="review-row total"><span class="rl">Total</span><span class="rv">${r.amount || '—'}</span></div>
+          </div>`}`;
 
     return mapHtml + statusHtml + recapHtml;
   }
