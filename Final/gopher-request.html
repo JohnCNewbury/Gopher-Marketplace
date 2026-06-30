@@ -4173,6 +4173,48 @@
   }
   .gr-modal-btn-danger:hover { background:#a83648; }
 
+  /* ─── Personal Info edit modal — canonical Gopher profile form (mirrors Connect) ─── */
+  .gr-modal.pe-modal { max-width:600px; text-align:left; padding:26px 26px 22px; max-height:90vh; overflow-y:auto; }
+  .pe-modal h4 { margin-bottom:4px; }
+  .pe-modal .gr-modal-sub { margin-bottom:14px; }
+  .pe-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px 14px; }
+  .pe-field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .pe-field.full { grid-column:1 / -1; }
+  .pe-field label { font-family:'Nunito',sans-serif; font-weight:700; font-size:12px; color:var(--navy);
+    display:flex; align-items:center; gap:7px; }
+  .pe-field input { width:100%; padding:9px 11px; border:1.5px solid #dfe3ec; border-radius:9px;
+    font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--navy); background:#fff; box-sizing:border-box; }
+  .pe-field input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(51,217,117,0.15); }
+  .pe-field input:disabled { background:#f3f5f9; color:#8a93a3; border-color:#e7ebf1; cursor:not-allowed; }
+  .pe-lock { font-family:'Nunito',sans-serif; font-weight:700; font-size:10px; color:#8a93a3;
+    background:#eef1f6; border-radius:6px; padding:1px 7px; letter-spacing:0.2px; }
+  .pe-hint { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); line-height:1.4; }
+  .pe-csz { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom:5px; }
+  .pe-csz-cell { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .pe-status { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--muted);
+    text-align:center; margin:16px 0 10px; }
+  .pe-status.dirty { color:var(--green-dark); font-weight:700; }
+  .pe-modal .gr-modal-btn, .pe-modal .gr-modal-btn-text { width:100%; }
+  /* OTP confirmation steps (fire on Save) */
+  #peOtpView { text-align:center; padding:6px 4px 2px; }
+  .pe-otp-icon { width:54px; height:54px; margin:4px auto 12px; display:flex; align-items:center; justify-content:center;
+    font-size:26px; background:#eafaf1; border-radius:50%; }
+  .pe-otp-h { font-family:'Nunito',sans-serif; font-weight:900; font-size:18px; color:var(--navy); margin-bottom:6px; }
+  .pe-otp-sub { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); line-height:1.5;
+    margin:0 auto 18px; max-width:380px; }
+  .pe-otp-choose-label { display:block; font-family:'Nunito',sans-serif; font-weight:700; font-size:12px; color:var(--navy); margin-bottom:8px; }
+  .pe-seg { display:inline-flex; border:1.5px solid #dfe3ec; border-radius:10px; overflow:hidden; margin-bottom:16px; }
+  .pe-seg-btn { padding:9px 26px; border:none; background:#fff; color:var(--muted); font-family:'Nunito',sans-serif;
+    font-weight:800; font-size:13px; cursor:pointer; transition:all .15s; }
+  .pe-seg-btn.selected { background:var(--green); color:var(--ink-on-green); }
+  .pe-otp-target { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--green-dark); font-weight:600; margin-bottom:12px; }
+  .pe-otp-code { width:200px; text-align:center; letter-spacing:10px; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:22px; padding:11px 0; border:1.5px solid #dfe3ec; border-radius:10px; color:var(--navy); margin:0 auto 14px; display:block; }
+  .pe-otp-code:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(51,217,117,0.15); }
+  .pe-otp-links { display:flex; justify-content:center; gap:18px; margin-top:6px; }
+  .pe-otp-links .gr-modal-btn-text { width:auto; }
+  @media (max-width:560px){ .pe-grid { grid-template-columns:1fr; } }
+
   /* ─── Request Again FAST ⚡ — MY Gophers checklist modal ───────────────── */
   .raf-modal { max-width:430px; text-align:left; }
   .raf-modal .gr-modal-sub { text-align:center; }
@@ -17163,10 +17205,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <!-- Personal Info -->
       <section class="dash-section" data-rqsec="personal">
         <div class="personal-hero">
-          <div class="ph-avatar" id="rqPhAvatar">JL</div>
+          <div class="ph-avatar" id="rqPhAvatar">JN</div>
           <div class="ph-main">
-            <div class="ph-name" id="rqPhName">Jamie</div>
-            <div class="ph-role">Member since May 2026</div>
+            <div class="ph-name" id="rqPhName">John</div>
+            <div class="ph-role">Member since 2022</div>
             <!-- v75 — requester stats -->
             <div class="ph-stats">
               <div class="ph-stat">
@@ -17185,17 +17227,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="ph-badges" id="rqPhBadges"></div>
         </div>
         <div class="info-card">
-          <div class="info-card-head"><h4>Personal Information</h4><button class="edit-btn">✎ Edit</button></div>
-          <div class="info-row"><div class="info-label">Full Name</div><div class="info-value" id="rqInfoName">Jamie Lopez</div></div>
-          <div class="info-row"><div class="info-label">Email</div><div class="info-value" id="rqInfoEmail">jamie@email.com</div></div>
-          <div class="info-row"><div class="info-label">Phone</div><div class="info-value" id="rqInfoPhone">1-111-1111</div></div>
-          <div class="info-row"><div class="info-label">Gopher Account ID</div><div class="info-value">GPH-58213-LPZ</div></div>
+          <div class="info-card-head"><h4>Personal Information</h4><button class="edit-btn" id="rqPersonalEditBtn">✎ Edit</button></div>
+          <div class="info-row"><div class="info-label">Full Name</div><div class="info-value" id="rqInfoName">John Newbury</div></div>
+          <div class="info-row"><div class="info-label">Email</div><div class="info-value" id="rqInfoEmail">johnnewbury@sbcglobal.net</div></div>
+          <div class="info-row"><div class="info-label">Phone</div><div class="info-value" id="rqInfoPhone">(805) 624-1724</div></div>
+          <div class="info-row"><div class="info-label">Gopher Account ID</div><div class="info-value" id="rqInfoAccountId">GPH-000001-NEWBURY</div></div>
           <div class="info-row"><div class="info-label">Status</div><div class="info-value">Active <span class="info-badge">Verified</span></div></div>
-          <div class="info-row"><div class="info-label">Address</div><div class="info-value" id="rqInfoAddress">—</div></div>
-          <div class="info-row"><div class="info-label">Date of Birth</div><div class="info-value" id="rqInfoDob">—</div></div>
-          <div class="info-row"><div class="info-label">Source</div><div class="info-value" id="rqInfoSource">—</div></div>
-          <div class="info-row" id="rqInfoReferredByRow" hidden><div class="info-label">Referred by</div><div class="info-value" id="rqInfoReferredBy">—</div></div>
-          <div class="info-row"><div class="info-label">Last Sign-In</div><div class="info-value" id="rqInfoLastSignin">Today · Fuquay-Varina, NC</div></div>
+          <div class="info-row"><div class="info-label">Address</div><div class="info-value" id="rqInfoAddress">405 Shorehouse Way, Holly Springs, NC 27540</div></div>
+          <div class="info-row"><div class="info-label">Date of Birth</div><div class="info-value" id="rqInfoDob">02-03-1976</div></div>
+          <div class="info-row"><div class="info-label">Source</div><div class="info-value" id="rqInfoSource">Referral</div></div>
+          <div class="info-row" id="rqInfoReferredByRow"><div class="info-label">Referred by</div><div class="info-value" id="rqInfoReferredBy">Ken Newbury</div></div>
+          <div class="info-row"><div class="info-label">Last Sign-In</div><div class="info-value" id="rqInfoLastSignin">Today · Holly Springs, NC</div></div>
         </div>
       </section>
 
@@ -17666,7 +17708,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // `requestsMade` is derived live from the request buckets unless overridden.
     // v77 — `workerTier` ('elite' | 'pro' | null): set for the ~10% of customers
     // who are also Gopher workers, so their tier badge shows in the badges rail.
-    profile: { rating: 4.96, trustShield: true, requestsMade: null, workerTier: null, dob: null, idOnFile: null },
+    profile: { rating: 4.96, trustShield: true, requestsMade: null, workerTier: 'elite', dob: '02-03-1976', idOnFile: null },
   };
   let _userReqSeq = 1;       // sequential id source (GR-00002, GR-00003, …)
 
@@ -20551,7 +20593,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   window.openRequestDashboard = function(opts){
     opts = opts || {};
     _sessionUserProfile = opts;   // captured for Gopher Deals eligibility / city / age gate
-    const name = (opts.name || 'Jamie Lopez').trim();
+    const name = (opts.name || 'John Newbury').trim();
     const first = name.split(/\s+/)[0] || 'there';
     // Populate identity fields
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
@@ -20583,13 +20625,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         ? ('Other — ' + opts.sourceOther) : opts.source;
       set('rqInfoSource', srcText);
     }
+    // Canonical account has a referrer (Ken Newbury); show it unless a sign-in overrides.
     const refRow = document.getElementById('rqInfoReferredByRow');
-    if(opts.referredBy){
-      set('rqInfoReferredBy', opts.referredBy);
-      if(refRow) refRow.hidden = false;
-    } else {
-      if(refRow) refRow.hidden = true;
-    }
+    set('rqInfoReferredBy', opts.referredBy || 'Ken Newbury');
+    if(refRow) refRow.hidden = false;
     if(opts.city){ set('rqInfoLastSignin', 'Today \u00b7 ' + opts.city); }
     initLogo();
     // Wipe any leftover demo-side request so the dashboard opens clean and the
@@ -20600,6 +20639,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     renderActiveRequests();  // paint the live request log + KPI counts
     renderPrevRequests();    // paint the Previous Requests table (default tab: completed)
     initPrevRequestsControls(); // bind tab + search listeners (one-time, guarded)
+    if(typeof initPersonalEdit === 'function') initPersonalEdit(); // wire Personal Info edit modal + dual-OTP (one-time, guarded)
     // v75 — Personal Info header: requester stats + TrustShield Kudo. Honour
     // any sign-in overrides, then paint. (requestsMade is otherwise derived
     // live from the request buckets inside rqUpdateProfileStats.)
@@ -21883,6 +21923,232 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   window.addEventListener('DOMContentLoaded', openLoginFromHash);
   window.addEventListener('hashchange', openLoginFromHash);   // also fires if already on the page
 })();
+</script>
+
+<!-- Personal Info edit modal — canonical Gopher profile, dual same-channel OTP (mirrors Connect; no Role at Company) -->
+<div class="gr-modal-overlay" id="personalEditOverlay" hidden>
+  <div class="gr-modal pe-modal" role="dialog" aria-modal="true" aria-labelledby="peTitle">
+    <button type="button" class="gr-modal-close" id="peClose" aria-label="Close">&times;</button>
+    <h4 id="peTitle">Personal Info</h4>
+
+    <div id="peFormView">
+      <div class="pe-grid">
+        <div class="pe-field"><label>Legal First Name</label><input type="text" id="peFirstName" value="John" disabled></div>
+        <div class="pe-field"><label>Legal Last Name</label><input type="text" id="peLastName" value="Newbury" disabled></div>
+
+        <div class="pe-field full"><label>Email</label>
+          <input type="email" id="peEmail" autocomplete="email">
+          <small class="pe-hint">Changing your email requires confirming a code at both your current and new email.</small>
+        </div>
+        <div class="pe-field full"><label>Mobile Number</label>
+          <input type="tel" id="peMobile" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="(555) 555-5555">
+          <small class="pe-hint">Changing your number requires confirming a code at both your current and new number.</small>
+        </div>
+
+        <div class="pe-field"><label>Date of Birth</label><input type="text" id="peDob" value="02-03-1976" disabled></div>
+
+        <div class="pe-field full"><label>Home Address</label><input type="text" id="peAddress" autocomplete="street-address" placeholder="Street address"></div>
+        <div class="pe-field full">
+          <div class="pe-csz">
+            <div class="pe-csz-cell"><label>City <span class="pe-lock">🔒 Auto</span></label><input type="text" id="peCity" value="Holly Springs" disabled></div>
+            <div class="pe-csz-cell"><label>State <span class="pe-lock">🔒 Auto</span></label><input type="text" id="peState" value="NC" disabled></div>
+            <div class="pe-csz-cell"><label>ZIP <span class="pe-lock">🔒 Auto</span></label><input type="text" id="peZip" value="27540" disabled></div>
+          </div>
+          <small class="pe-hint">City, State &amp; ZIP fill automatically from your address (Google Maps).</small>
+        </div>
+
+        <div class="pe-field full"><label>How did you hear about us? (Sourcing)</label><input type="text" id="peSource" value="Referral" disabled></div>
+        <div class="pe-field full"><label>Referred by</label><input type="text" id="peReferredBy" value="Ken Newbury" disabled></div>
+      </div>
+      <p class="pe-status" id="peStatus">No changes yet.</p>
+      <button type="button" class="gr-modal-btn" id="peSave" disabled>Save changes</button>
+      <button type="button" class="gr-modal-btn-text" id="peCancel">Cancel</button>
+    </div>
+
+    <div id="peOtpView" hidden>
+      <div class="pe-otp-icon">🔐</div>
+      <h4 class="pe-otp-h">Confirm it's you</h4>
+      <p class="pe-otp-sub" id="peOtpSub"></p>
+      <div class="pe-otp-choose" id="peOtpChoose" hidden>
+        <span class="pe-otp-choose-label">Send my code via</span>
+        <div class="pe-seg" id="peOtpSeg">
+          <button type="button" class="pe-seg-btn selected" data-ch="email">Email</button>
+          <button type="button" class="pe-seg-btn" data-ch="sms">SMS</button>
+        </div>
+        <button type="button" class="gr-modal-btn" id="peOtpSend">Send code</button>
+      </div>
+      <div class="pe-otp-entry" id="peOtpEntry" hidden>
+        <p class="pe-otp-target" id="peOtpTarget"></p>
+        <input type="text" id="peOtpCode" class="pe-otp-code" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code">
+        <button type="button" class="gr-modal-btn" id="peOtpConfirm" disabled>Confirm &amp; save</button>
+        <div class="pe-otp-links">
+          <button type="button" class="gr-modal-btn-text" id="peOtpResend">Resend code</button>
+          <button type="button" class="gr-modal-btn-text" id="peOtpBack">← Back to edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Personal Info edit — canonical Gopher profile, DUAL SAME-CHANNEL OTP on Save (mirrors Connect; no Role at
+   Company). Per Jira G40-203: email change -> two EMAIL codes (current then new); mobile change -> two SMS codes
+   (current then new); both -> email pair then mobile pair (up to 4 codes, never collapsed); only Home Address ->
+   a single identity OTP, choosable (default Email on Request-Web). Prototype: codes are faked-accepted; changes
+   write back only after the LAST step passes; cancel/abandon commits nothing. Locked fields (First/Last/DOB/
+   Source/Referred-by) and the auto-filled City/State/ZIP stay display-only. */
+function initPersonalEdit(){
+  const overlay = document.getElementById('personalEditOverlay');
+  if(!overlay) return;
+  if(overlay.dataset.wired) return; overlay.dataset.wired = '1';
+  const PE_OTP_DEFAULT_CHANNEL = 'email'; // Request (web) default; the apps would pass 'sms'
+
+  const editBtn  = document.getElementById('rqPersonalEditBtn');
+  const formView = document.getElementById('peFormView');
+  const otpView  = document.getElementById('peOtpView');
+  const saveBtn  = document.getElementById('peSave');
+  const statusEl = document.getElementById('peStatus');
+  const fEmail   = document.getElementById('peEmail');
+  const fMobile  = document.getElementById('peMobile');
+  const fAddress = document.getElementById('peAddress');
+  const editable = [fEmail, fMobile, fAddress];
+  const txt = (id) => ((document.getElementById(id)||{}).textContent || '').trim();
+  let baseline = {}, otpChannel = 'email';
+
+  const prefill = () => {
+    fEmail.value  = txt('rqInfoEmail');
+    fMobile.value = txt('rqInfoPhone');
+    const addr = txt('rqInfoAddress');
+    fAddress.value = (addr.split(',')[0] || addr).trim();
+    baseline = { email:fEmail.value, mobile:fMobile.value, address:fAddress.value };
+    refresh();
+  };
+  const isDirty = () =>
+    fEmail.value !== baseline.email || fMobile.value !== baseline.mobile || fAddress.value !== baseline.address;
+  const refresh = () => {
+    const dirty = isDirty();
+    saveBtn.disabled = !dirty;
+    statusEl.textContent = dirty ? 'You have unsaved changes.' : 'No changes yet.';
+    statusEl.classList.toggle('dirty', dirty);
+  };
+
+  const showForm = () => { otpView.hidden = true; formView.hidden = false; };
+  const open  = () => { prefill(); showForm(); overlay.hidden = false; };
+  const close = () => { overlay.hidden = true; showForm(); };
+
+  if(editBtn) editBtn.addEventListener('click', open);
+  document.getElementById('peClose').addEventListener('click', close);
+  document.getElementById('peCancel').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+  editable.forEach(el => { if(el !== fMobile) el.addEventListener('input', refresh); });
+  // Live-format the mobile number as typed (progressive mask), capped at 10 digits.
+  fMobile.addEventListener('input', () => {
+    const d = (fMobile.value.match(/\d/g) || []).join('').slice(0,10);
+    if(d.length > 6)      fMobile.value = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    else if(d.length > 3) fMobile.value = '(' + d.slice(0,3) + ') ' + d.slice(3);
+    else if(d.length > 0) fMobile.value = '(' + d;
+    else                  fMobile.value = '';
+    refresh();
+  });
+
+  // ── OTP confirmation steps (shown on Save) — DUAL SAME-CHANNEL model (G40-203) ──
+  const otpSub    = document.getElementById('peOtpSub');
+  const chooseBox = document.getElementById('peOtpChoose');
+  const entryBox  = document.getElementById('peOtpEntry');
+  const targetEl  = document.getElementById('peOtpTarget');
+  const codeInput = document.getElementById('peOtpCode');
+  const confirmBtn= document.getElementById('peOtpConfirm');
+  const seg       = document.getElementById('peOtpSeg');
+
+  const maskEmail = (e) => { const a=String(e).split('@'); return (a[0]?a[0][0]:'') + '•••@' + (a[1]||''); };
+  const maskPhone = (ph) => { const d=(String(ph).match(/\d/g)||[]).join(''); return '(•••) •••-' + d.slice(-4); };
+  const maskDest = (st) => st.channel === 'sms' ? maskPhone(st.dest) : maskEmail(st.dest);
+
+  // Sequential queue of confirmation steps, built from what changed (current -> new per channel).
+  let otpQueue = [], otpStep = 0;
+  const buildOtpQueue = () => {
+    const q = [];
+    const emailChanged  = fEmail.value  !== baseline.email;
+    const mobileChanged = fMobile.value !== baseline.mobile;
+    if(emailChanged){
+      q.push({ channel:'email', phase:'current', dest:baseline.email });       // initiate at current email
+      q.push({ channel:'email', phase:'new',     dest:fEmail.value.trim() });  // confirm at new email
+    }
+    if(mobileChanged){
+      q.push({ channel:'sms', phase:'current', dest:baseline.mobile });        // initiate at current number
+      q.push({ channel:'sms', phase:'new',     dest:fMobile.value.trim() });   // confirm at new number
+    }
+    if(!emailChanged && !mobileChanged) q.push({ identity:true });             // address-only -> single, choosable
+    return q;
+  };
+
+  const stepSub = (st) => {
+    const N = otpQueue.length, n = otpStep + 1;
+    const tag = N > 1 ? ('Step ' + n + ' of ' + N + ' · ') : '';
+    if(st.channel === 'email') return tag + (st.phase === 'current'
+      ? 'First, confirm the email currently on file.' : 'Now confirm your new email address.');
+    return tag + (st.phase === 'current'
+      ? 'First, confirm the mobile number currently on file.' : 'Now confirm your new mobile number.');
+  };
+  const renderEntry = (st) => {
+    chooseBox.hidden = true; entryBox.hidden = false;
+    targetEl.textContent = 'Code sent by ' + (st.channel === 'sms' ? 'SMS' : 'email') + ' to ' + maskDest(st) + '.';
+    codeInput.value = ''; confirmBtn.disabled = true;
+    confirmBtn.textContent = (otpStep === otpQueue.length - 1) ? 'Confirm & save' : 'Confirm & continue';
+    codeInput.focus();
+  };
+  const startStep = () => {
+    const st = otpQueue[otpStep];
+    formView.hidden = true; otpView.hidden = false;
+    if(st.identity){
+      otpSub.textContent = 'Choose where to receive your 6-digit confirmation code.';
+      chooseBox.hidden = false; entryBox.hidden = true;
+      otpChannel = PE_OTP_DEFAULT_CHANNEL;
+      seg.querySelectorAll('.pe-seg-btn').forEach(b => b.classList.toggle('selected', b.dataset.ch === otpChannel));
+    } else {
+      otpSub.textContent = stepSub(st);
+      renderEntry(st);
+    }
+  };
+
+  seg.querySelectorAll('.pe-seg-btn').forEach(b => b.addEventListener('click', () => {
+    otpChannel = b.dataset.ch;
+    seg.querySelectorAll('.pe-seg-btn').forEach(x => x.classList.toggle('selected', x === b));
+  }));
+  document.getElementById('peOtpSend').addEventListener('click', () => {
+    const st = otpQueue[otpStep];               // identity step: resolve channel + destination from the chooser
+    if(!st) return;
+    st.channel = otpChannel; st.dest = (otpChannel === 'sms') ? baseline.mobile : baseline.email;
+    renderEntry(st);
+  });
+  codeInput.addEventListener('input', () => {
+    codeInput.value = codeInput.value.replace(/\D/g,'').slice(0,6);
+    confirmBtn.disabled = codeInput.value.length !== 6;
+  });
+  document.getElementById('peOtpResend').addEventListener('click', () => { const st=otpQueue[otpStep]; if(st && !st.identity) renderEntry(st); });
+  document.getElementById('peOtpBack').addEventListener('click', showForm);   // abandon -> back to edit, commit nothing
+
+  const applyChanges = () => {
+    const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent = val; };
+    set('rqInfoEmail', fEmail.value.trim());
+    set('rqInfoPhone', fMobile.value.trim());
+    const city=document.getElementById('peCity').value, st=document.getElementById('peState').value, zip=document.getElementById('peZip').value;
+    set('rqInfoAddress', fAddress.value.trim() + ', ' + city + ', ' + st + ' ' + zip);
+  };
+  confirmBtn.addEventListener('click', () => {
+    if(confirmBtn.disabled) return;                              // prototype: code is faked-accepted (no backend)
+    if(otpStep < otpQueue.length - 1){ otpStep++; startStep(); }    // more steps -> advance sequentially
+    else { applyChanges(); close(); }                            // last step passed -> write back + close
+  });
+
+  // Save -> build the per-channel confirmation queue, then run it sequentially.
+  saveBtn.addEventListener('click', () => {
+    if(saveBtn.disabled) return;
+    otpQueue = buildOtpQueue(); otpStep = 0;
+    startStep();
+  });
+}
 </script>
 
 <script>
