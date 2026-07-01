@@ -614,7 +614,7 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   /* ===== Inbox / messaging (mi-) ===== */
   .mibody{display:flex;flex-direction:column;height:100%;background:var(--paper);}
   .mi-frame{display:flex;flex-direction:column;height:min(854px,calc(100vh - 122px));}
-  .mi-frame .mibody{flex:1;height:auto;min-height:0;}
+  .mi-frame .mibody{flex:1;height:auto;min-height:0;}display:flex;flex-direction:column;.mi-frame .mibody{display:flex;flex-direction:column;}.mi-listtop{display:flex;align-items:center;gap:11px;padding:11px 16px;background:#fff;border-bottom:1px solid #e7e2d3;flex:0 0 auto;}.mi-listhd{font-family:'Nunito';font-weight:900;font-size:19px;color:#002461;}.mi-list{flex:1;overflow-y:auto;background:#fff;}.mi-row{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0ece0;}.mi-row:active{background:#f7f4ec;}.mi-row .mi-ava,.mi-row .mi-photo{width:46px;height:46px;}.mi-rmain{flex:1;min-width:0;}.mi-rtop{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}.mi-rnm{font-family:'Nunito';font-weight:800;font-size:14.5px;color:#002461;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.mi-rtime{font-family:'Nunito';font-weight:700;font-size:11px;color:#8a93a3;flex:0 0 auto;}.mi-rprev{font-family:'DM Sans';font-size:12.5px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}.mi-row.unread .mi-rprev{color:#33414f;font-weight:600;}.mi-udot{width:9px;height:9px;border-radius:50%;background:#33D975;flex:0 0 auto;box-shadow:0 0 0 3px rgba(51,217,117,.18);}.mi-thread{flex:1;overflow-y:auto;}
   .mi-top{display:flex;align-items:center;gap:11px;padding:11px 16px;background:#fff;border-bottom:1px solid #e7e2d3;}
   .mi-bk{width:34px;height:34px;border-radius:10px;border:1px solid #e7e2d3;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;}
   .mi-bk svg{width:18px;height:18px;fill:none;stroke:#3A4D74;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -1858,47 +1858,79 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 
 "inbox":{ html:`<div class="frame mi-frame">${SBAR}<div class="mibody"></div></div>`,
   init(r){
-    const j=state.msgJob||state.job||{cat:'Request',who:'A requester',mode:'pay',amt:''};
-    const who=j.who||'A requester';
-    const rv=!!(j.priority||j.accepted);
-    const ctx=(j.cat||'Request')+(j.mode==='bid'?' &middot; Open to bids':(j.amt?(' &middot; '+j.amt):''));
-    const sv=p=>'<svg viewBox="0 0 24 24">'+p+'</svg>';
-    const SH='<path d="M12 3l7 2.5v5.4c0 4.2-2.9 7.4-7 8.9-4.1-1.5-7-4.7-7-8.9V5.5z"/><path d="M9 12l2 2 4-4.4"/>';
-    const LK='<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
-    function ava(){ return '<div class="mi-ava'+(rv?'':' lock')+'"><div class="mi-photo"><svg viewBox="0 0 80 80"><defs><linearGradient id="mig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7c9a8"/><stop offset="1" stop-color="#d3ab82"/></linearGradient></defs><rect width="80" height="80" fill="#b9c6df"/><circle cx="40" cy="32" r="15" fill="url(#mig)"/><path d="M40 31c-6 0-9-4-9-8 0 0 3 1 9 1s9-1 9-1c0 4-3 8-9 8z" fill="#5b4636"/><path d="M12 78c3-16 14-24 28-24s25 8 28 24z" fill="url(#mig)"/></svg></div>'+(rv?'':'<span class="mi-lk">'+sv(LK)+'</span>')+'</div>'; }
-    r.querySelector('.mibody').innerHTML=
-      '<div class="mi-top"><button class="mi-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button>'+ava()+'<div class="mi-hd"><div class="mi-nm">'+who+'</div><div class="mi-st">'+sv(SH)+'Verified &middot; usually replies in ~10 min</div></div></div>'
-      +'<div class="mi-ctx">Re: '+ctx+'</div>'
-      +'<div class="mi-thread" id="mi-thread"><div class="mi-sys">This is the start of your conversation with '+who+' &mdash; ask anything about the request before you accept &mdash; keep messages on-platform.</div></div>'
-      +'<div class="mi-chips" id="mi-chips"></div>'
-      +'<div class="mi-comp"><input class="mi-in js-in" placeholder="Message '+who+'\u2026"><button class="mi-send js-send">'+sv('<path d="M4 12l16-7-7 16-2-7z"/>')+'</button></div>';
-    r.querySelector('.js-back').onclick=()=>BACK();
-    const thread=r.querySelector('#mi-thread'), inp=r.querySelector('.js-in');
-    function add(side,txt){ const b=document.createElement('div'); b.className='mi-b '+side; b.innerHTML=txt; thread.appendChild(b); thread.scrollTop=thread.scrollHeight; }
-    function reply(q){ const x=(q||'').toLowerCase(); let a;
-      if(/pick|where/.test(x)) a='Pickup is the catering kitchen on Hillsborough St &mdash; I&#8217;ll share the exact suite once you accept.';
-      else if(/park/.test(x)) a='There&#8217;s a loading zone out front you can use for about 10 minutes.';
-      else if(/code|gate|access/.test(x)) a='No code at pickup. The drop-off has a callbox &mdash; I&#8217;ll send the code after you accept.';
-      else if(/time|flex|when|hour/.test(x)) a='Ideally within the next couple of hours, but a little flexibility is fine.';
-      else a='Thanks for reaching out! That works &mdash; let me know if you have any other questions.';
-      setTimeout(()=>{ add('them',a); }, 650);
+    // G40 inbox — standard multi-chat messaging (conversation LIST -> THREAD -> back).
+    // BACKEND SEAM: conversations + unread state are seeded in-memory here; production
+    // loads the Gopher's real threads from the messaging service.
+    var body=r.querySelector('.mibody');
+    var sv=function(p){return '<svg viewBox="0 0 24 24">'+p+'</svg>';};
+    var SH='<path d="M12 3l7 2.5v5.4c0 4.2-2.9 7.4-7 8.9-4.1-1.5-7-4.7-7-8.9V5.5z"/><path d="M9 12l2 2 4-4.4"/>';
+    var LK='<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>';
+    var BK='<path d="M15 5l-7 7 7 7"/>';
+    function ava(v){ return '<div class="mi-ava'+(v?'':' lock')+'"><div class="mi-photo"><svg viewBox="0 0 80 80"><defs><linearGradient id="mig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7c9a8"/><stop offset="1" stop-color="#d3ab82"/></linearGradient></defs><rect width="80" height="80" fill="#b9c6df"/><circle cx="40" cy="32" r="15" fill="url(#mig)"/><path d="M40 31c-6 0-9-4-9-8 0 0 3 1 9 1s9-1 9-1c0 4-3 8-9 8z" fill="#5b4636"/><path d="M12 78c3-16 14-24 28-24s25 8 28 24z" fill="url(#mig)"/></svg></div>'+(v?'':'<span class="mi-lk">'+sv(LK)+'</span>')+'</div>'; }
+
+    if(!state.inboxConvos){ state.inboxConvos=[
+      {id:'c1',name:'Maria G.',ctx:'Delivery · $43.73',verified:true,time:'2:14 PM',unread:2,
+        msgs:[{s:'them',t:'Hi! Are you able to grab the catering trays by 2?'},{s:'me',t:'Yep, heading over now.'},{s:'them',t:'Great, see you at 2 — I’ll have the trays ready.'}]},
+      {id:'c2',name:'Trevor B.',ctx:'Home Services · $120',verified:true,time:'11:40 AM',unread:0,
+        msgs:[{s:'them',t:'Any gate or access codes?'},{s:'me',t:'None at the door — I’ll text on arrival.'}]},
+      {id:'c3',name:'Acme Logistics',ctx:'Junk Removal · $210',verified:true,time:'Yesterday',unread:0,
+        msgs:[{s:'me',t:'On my way now, ETA 10 min.'},{s:'them',t:'Perfect, thanks!'}]},
+      {id:'c4',name:'Dana W.',ctx:'Ride · $18',verified:false,time:'Mon',unread:0,
+        msgs:[{s:'them',t:'Thanks for the quick pickup!'}]}
+    ]; }
+    var convos=state.inboxConvos;
+
+    // Entry from a job's "Message" button opens that peer's thread directly; the
+    // footer inbox tab (no msgJob) always lands on the LIST.
+    if(state.msgJob){ var j=state.msgJob; state.msgJob=null; var who=j.who||'A requester';
+      var c=convos.filter(function(x){return x.name===who;})[0];
+      if(!c){ c={id:'job-'+who,name:who,ctx:(j.cat||'Request')+(j.amt?(' · '+j.amt):''),verified:!!(j.priority||j.accepted),time:'now',unread:0,msgs:[]}; convos.unshift(c); }
+      c.__fromJob=true; state.inboxOpen=c.id;
+    } else { state.inboxOpen=null; }
+
+    function renderList(){
+      var rows=convos.map(function(c){ var last=c.msgs[c.msgs.length-1]||{};
+        return '<div class="mi-row'+(c.unread?' unread':'')+'" data-cid="'+c.id+'">'+ava(c.verified)
+          +'<div class="mi-rmain"><div class="mi-rtop"><span class="mi-rnm">'+c.name+'</span><span class="mi-rtime">'+c.time+'</span></div>'
+          +'<div class="mi-rprev">'+(last.s==='me'?'You: ':'')+(last.t||'')+'</div></div>'
+          +(c.unread?'<span class="mi-udot"></span>':'')+'</div>';
+      }).join('');
+      body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>';
+      body.querySelector('.js-back').onclick=function(){ BACK(); };
+      body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; state.inboxOpen=c.id; render(); } }; });
     }
-    function send(t){
-      t=(t||'').trim(); if(!t) return;
-      // Route through the shared messaging guard (prototype deterrent). Allow
-      // path keeps the existing faked send unchanged; level-3 block holds it and
-      // leaves the text to edit. No thread id on this page → stable per-page key.
-      var deliver=function(){ add('me',t); inp.value=''; reply(t); };
-      if(window.GopherMessageGuard){
-        window.GopherMessageGuard.guard(t,'go-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } });
-      } else { deliver(); }
+
+    function renderThread(c){ var who=c.name;
+      var bubbles=c.msgs.map(function(m){ return '<div class="mi-b '+(m.s==='me'?'me':'them')+'">'+m.t+'</div>'; }).join('');
+      body.innerHTML='<div class="mi-top"><button class="mi-bk js-back">'+sv(BK)+'</button>'+ava(c.verified)
+        +'<div class="mi-hd"><div class="mi-nm">'+who+'</div><div class="mi-st">'+sv(SH)+'Verified · usually replies in ~10 min</div></div></div>'
+        +'<div class="mi-ctx">Re: '+c.ctx+'</div>'
+        +'<div class="mi-thread" id="mi-thread"><div class="mi-sys">This is the start of your conversation with '+who+' — keep messages on-platform.</div>'+bubbles+'</div>'
+        +'<div class="mi-chips" id="mi-chips"></div>'
+        +'<div class="mi-comp"><input class="mi-in js-in" placeholder="Message '+who+'…"><button class="mi-send js-send">'+sv('<path d="M4 12l16-7-7 16-2-7z"/>')+'</button></div>';
+      body.querySelector('.js-back').onclick=function(){ if(c.__fromJob){ c.__fromJob=false; state.inboxOpen=null; BACK(); } else { state.inboxOpen=null; render(); } };
+      var thread=body.querySelector('#mi-thread'), inp=body.querySelector('.js-in');
+      function add(side,txt){ var b=document.createElement('div'); b.className='mi-b '+side; b.innerHTML=txt; thread.appendChild(b); thread.scrollTop=thread.scrollHeight; c.msgs.push({s:side,t:txt}); c.time='now'; }
+      function reply(q){ var x=(q||'').toLowerCase(); var a;
+        if(/pick|where/.test(x)) a='Pickup is the catering kitchen on Hillsborough St — I’ll share the exact suite once you accept.';
+        else if(/park/.test(x)) a='There’s a loading zone out front you can use for about 10 minutes.';
+        else if(/code|gate|access/.test(x)) a='No code at pickup. The drop-off has a callbox — I’ll send the code after you accept.';
+        else if(/time|flex|when|hour/.test(x)) a='Ideally within the next couple of hours, but a little flexibility is fine.';
+        else a='Thanks for reaching out! That works — let me know if you have any other questions.';
+        setTimeout(function(){ add('them',a); }, 650);
+      }
+      function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(){ add('me',t); inp.value=''; reply(t); };
+        if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
+      body.querySelector('.js-send').onclick=function(){ send(inp.value); };
+      inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });
+      var chips=['Where’s the pickup?','Is parking available?','Any gate or access codes?','Is the timing flexible?'];
+      var cw=body.querySelector('#mi-chips'); cw.innerHTML=chips.map(function(c){return '<button class="mi-chip">'+c+'</button>';}).join('');
+      cw.querySelectorAll('.mi-chip').forEach(function(b){ b.onclick=function(){ send(b.textContent); }; });
+      thread.scrollTop=thread.scrollHeight;
     }
-    r.querySelector('.js-send').onclick=()=>send(inp.value);
-    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });
-    const chips=['Where&#8217;s the pickup?','Is parking available?','Any gate or access codes?','Is the timing flexible?'];
-    const cw=r.querySelector('#mi-chips');
-    cw.innerHTML=chips.map(c=>'<button class="mi-chip">'+c+'</button>').join('');
-    cw.querySelectorAll('.mi-chip').forEach(b=>b.onclick=()=>send(b.textContent));
+
+    function render(){ var c=state.inboxOpen?convos.filter(function(x){return x.id===state.inboxOpen;})[0]:null; if(c) renderThread(c); else renderList(); }
+    render();
   } },
 
 "best-practices":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
