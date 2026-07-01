@@ -7296,6 +7296,11 @@
   .g40-recovery-opt .g40-opt-sub { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.4; }
   .g40-recovery-opt .g40-opt-arrow { color:#b3bcc9; font-size:19px; font-weight:800; }
   .g40-recovery-opt.g40-opt-cancel:hover { border-color:var(--error,#c44257); background:rgba(196,66,87,0.05); }
+  /* G40-9: shamrock glow marks Assign New Gopher ASAP as the recommended/default option. */
+  .g40-recovery-opt.g40-opt-recommended { border-color:var(--green, #3CB54A);
+    box-shadow:0 0 0 3px rgba(60,181,74,0.14), 0 6px 18px rgba(60,181,74,0.24); }
+  .g40-recovery-opt.g40-opt-recommended:hover { border-color:var(--green-dark, #2D9A3A); background:rgba(60,181,74,0.05);
+    box-shadow:0 0 0 3px rgba(60,181,74,0.20), 0 8px 22px rgba(60,181,74,0.30); }
 
   /* Edit-as-new form (AC3) — pre-filled + editable; submit mints a NEW order #. */
   .g40-edit-field { margin:0 0 13px; }
@@ -22048,9 +22053,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               </span>
             </div>
             <div class="g40-recovery-opts">
-              <button type="button" class="g40-recovery-opt" data-g40-recover="assign">
+              <button type="button" class="g40-recovery-opt g40-opt-recommended" data-g40-recover="assign" aria-label="Assign New Gopher ASAP (recommended)">
                 <span class="g40-opt-ico">🔄</span>
-                <span class="g40-opt-main"><span class="g40-opt-title">Assign New Gopher</span>
+                <span class="g40-opt-main"><span class="g40-opt-title">Assign New Gopher ASAP</span>
                   <span class="g40-opt-sub">Repost with the same details &amp; price under a new order # — straight back to the marketplace. No edits.</span></span>
                 <span class="g40-opt-arrow">›</span>
               </button>
@@ -22101,10 +22106,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <input type="text" id="g40EditDropoff" placeholder="Drop-off address">
               </div>
             </div>
-            <div class="g40-edit-field">
-              <label for="g40EditNotes">Notes for the Gopher</label>
-              <textarea id="g40EditNotes" placeholder="Anything else they should know?"></textarea>
-            </div>
+            <!-- G40-9: Notes field intentionally omitted from recovery edit — avoids a Go build. -->
             <p class="g40-edit-note">G40-9 backend seam: no new card authorization — the held funds from the original ride across to the new order. Fees/total shown are a demo estimate, not a real charge.</p>
             <div class="ca-actions">
               <button class="ca-approve" id="g40EditSubmit">Repost under a new order #</button>
@@ -22273,7 +22275,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       $('g40EditPay').value     = (snap.workerPay   != null) ? snap.workerPay   : '';
       $('g40EditPickup').value  = snap.pickup  || '';
       $('g40EditDropoff').value = snap.dropoff || '';
-      $('g40EditNotes').value   = snap.notes   || '';
+      // G40-9: Notes field intentionally omitted from recovery edit — avoids a Go build.
       overlay.hidden = true;
       editOv.hidden = false;
     }
@@ -22286,8 +22288,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         costOfItems: cost,
         workerPay: pay,
         pickup: $('g40EditPickup').value.trim(),
-        dropoff: $('g40EditDropoff').value.trim(),
-        notes: $('g40EditNotes').value.trim()
+        dropoff: $('g40EditDropoff').value.trim()
+        // G40-9: Notes intentionally NOT editable here — avoids a Go build. Any
+        // existing note carries forward unchanged via the reviewSnapshot spread above.
       });
       // Demo estimate only — NOT the canonical fee engine (a backend concern).
       const estTotal = (cost + pay);
