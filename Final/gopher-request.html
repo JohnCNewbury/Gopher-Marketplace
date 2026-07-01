@@ -7243,6 +7243,71 @@
   .ca-decline { background:#fff; color:var(--error,#c44257); border-color:var(--error,#c44257); }
   .ca-decline:hover { background:rgba(196,66,87,0.08); }
 
+  /* ══════════════════════════════════════════════════════════════════════════
+     G40-9 — Auto-Repost recovery UX (Gopher-cancels → Requestor recovery).
+     FRONT-END PROTOTYPE ONLY. Reuses the .ca-overlay/.ca-modal/.rate-* shells
+     above so the recovery modal + cancelling-Gopher rating look native. Semantic
+     g40-* classNames per the ticket (no Figma token binding yet). Nothing here is
+     wired to real payments/persistence/matching — see the deferred-backend seams
+     in the JS module (search "G40-9 BACKEND SEAM").
+     ══════════════════════════════════════════════════════════════════════════ */
+  /* Demo trigger bar — the only "fake" affordance; clearly labelled non-production. */
+  .g40-recovery-demobar { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    border:1px dashed #c3cbdb; border-radius:12px; background:#f7f9fc;
+    padding:10px 13px; margin:0 0 14px; }
+  .g40-recovery-demobar .g40-demo-tag { font-family:'Nunito'; font-weight:900; font-size:10px;
+    letter-spacing:.08em; text-transform:uppercase; color:#fff; background:#8a93a3;
+    border-radius:5px; padding:3px 7px; }
+  .g40-recovery-demobar .g40-demo-note { font-size:12px; color:var(--muted); line-height:1.4; flex:1 1 200px; }
+  .g40-recovery-simbtn { font-family:'Nunito'; font-weight:800; font-size:13px; cursor:pointer;
+    border:1px solid var(--navy); color:var(--navy); background:#fff; border-radius:10px; padding:8px 13px;
+    transition:background .12s, filter .12s; }
+  .g40-recovery-simbtn:hover { background:rgba(13,26,62,0.06); }
+
+  /* Requestor banner (AC1) — shown when a Gopher cancels; amber warning treatment. */
+  .g40-recovery-banner { display:flex; align-items:flex-start; gap:11px;
+    border:1px solid #f2c98a; border-left:4px solid #e0912f; background:#fdf5e8;
+    border-radius:12px; padding:12px 15px; margin:0 0 14px; }
+  .g40-recovery-banner[hidden] { display:none; }
+  .g40-recovery-banner.is-resolved { border-color:#9fe1cb; border-left-color:#1d9e75; background:#e9f8f1; }
+  .g40-recovery-banner .g40-banner-ico { font-size:19px; line-height:1.2; }
+  .g40-recovery-banner .g40-banner-body { flex:1; }
+  .g40-recovery-banner .g40-banner-title { font-family:'Nunito'; font-weight:900; font-size:14px; color:var(--navy); }
+  .g40-recovery-banner .g40-banner-sub { font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.45; }
+  .g40-recovery-banner .g40-banner-cta { font-family:'Nunito'; font-weight:800; font-size:12.5px; cursor:pointer;
+    border:none; background:none; color:#b0691a; padding:6px 0 0; text-decoration:underline; }
+  .g40-recovery-banner.is-resolved .g40-banner-cta { color:var(--green-dark); }
+
+  /* Recovery modal (AC1) — three stacked options + the 15-min timer. */
+  .g40-recovery-timer { display:flex; align-items:center; justify-content:center; gap:7px;
+    font-family:'Nunito'; font-weight:800; font-size:12.5px; color:#b0691a;
+    background:#fdf5e8; border:1px solid #f2c98a; border-radius:9px; padding:8px 10px; margin:0 0 14px; text-align:center; }
+  .g40-recovery-timer .g40-timer-clock { font-variant-numeric:tabular-nums; font-weight:900; }
+  .g40-recovery-timer .g40-timer-demo { display:block; font-weight:700; font-size:10.5px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+  .g40-recovery-opts { display:flex; flex-direction:column; gap:10px; }
+  .g40-recovery-opt { display:flex; align-items:center; gap:12px; text-align:left; width:100%; cursor:pointer;
+    border:1px solid #e0e4ea; border-radius:13px; background:#fff; padding:13px 15px;
+    transition:border-color .12s, background .12s; }
+  .g40-recovery-opt:hover { border-color:var(--navy); background:#f7f9fc; }
+  .g40-recovery-opt .g40-opt-ico { font-size:20px; width:26px; text-align:center; }
+  .g40-recovery-opt .g40-opt-main { flex:1; }
+  .g40-recovery-opt .g40-opt-title { font-family:'Nunito'; font-weight:900; font-size:14.5px; color:var(--navy); }
+  .g40-recovery-opt .g40-opt-sub { font-size:12px; color:var(--muted); margin-top:2px; line-height:1.4; }
+  .g40-recovery-opt .g40-opt-arrow { color:#b3bcc9; font-size:19px; font-weight:800; }
+  .g40-recovery-opt.g40-opt-cancel:hover { border-color:var(--error,#c44257); background:rgba(196,66,87,0.05); }
+
+  /* Edit-as-new form (AC3) — pre-filled + editable; submit mints a NEW order #. */
+  .g40-edit-field { margin:0 0 13px; }
+  .g40-edit-field label { display:block; font-family:'Nunito'; font-weight:800; font-size:12.5px;
+    color:var(--navy); margin:0 0 5px; }
+  .g40-edit-field input, .g40-edit-field textarea { width:100%; box-sizing:border-box; font-family:'DM Sans';
+    font-size:14px; color:var(--text); border:1px solid #d7deea; border-radius:10px; padding:10px 12px; background:#fff; }
+  .g40-edit-field textarea { min-height:64px; resize:vertical; line-height:1.45; }
+  .g40-edit-row { display:flex; gap:11px; }
+  .g40-edit-row .g40-edit-field { flex:1; }
+  .g40-edit-note { font-size:11.5px; color:var(--muted); line-height:1.45; margin:2px 0 15px; }
+
   /* ─── Counter-offer card driver delta (reuses the worker card; mirrors Connect) ─── */
   /* Driver change only (offer Δ and/or items Δ), sign-colored with the same convention
      as the cost-adjustment modal (cd-pos green / cd-neg red). */
@@ -17127,6 +17192,24 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <h3>All Requests</h3>
           <button class="view-all" data-rqjump="previous">View previous requests →</button>
         </div>
+        <!-- G40-9 — recovery UX (prototype). Demo trigger + Requestor banner. The
+             recovery/edit/rating modals are injected into <body> by the JS module
+             (initG40RecoveryUX). This is clickable demo UI only; the real trigger
+             comes from the Gopher (Go) app, and close→repost→payment is a backend
+             concern (see "G40-9 BACKEND SEAM" notes in the module). -->
+        <div class="g40-recovery-demobar" id="g40RecoveryDemoBar">
+          <span class="g40-demo-tag">Demo</span>
+          <span class="g40-demo-note">G40-9 preview: simulate a Gopher cancelling your active request to see the recovery flow. (In production this is triggered by the Gopher app, not a button.)</span>
+          <button type="button" class="g40-recovery-simbtn" id="g40SimGopherCancel">Simulate: Gopher cancelled ▸</button>
+        </div>
+        <div class="g40-recovery-banner" id="g40RecoveryBanner" hidden role="alert">
+          <span class="g40-banner-ico" id="g40BannerIco">⚠️</span>
+          <div class="g40-banner-body">
+            <div class="g40-banner-title" id="g40BannerTitle">Your Gopher cancelled this request</div>
+            <div class="g40-banner-sub" id="g40BannerSub"></div>
+            <button type="button" class="g40-banner-cta" id="g40BannerReopen">Review your options →</button>
+          </div>
+        </div>
         <div id="rqActiveRequests">
           <div class="req-empty" id="rqEmptyState">
             <div class="req-empty-icon">📋</div>
@@ -20635,6 +20718,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(typeof window.__resetRequestFlow === 'function') window.__resetRequestFlow();
     restoreFlow();           // ensure the flow is home before we (re)open
     seedDashboardRequests(); // start each session with the 4 reference requests
+    if(typeof window.__g40ResetRecovery === 'function') window.__g40ResetRecovery(); // G40-9: clear recovery banner/modal state per session
     renderActiveRequests();  // paint the live request log + KPI counts
     renderPrevRequests();    // paint the Previous Requests table (default tab: completed)
     initPrevRequestsControls(); // bind tab + search listeners (one-time, guarded)
@@ -20674,6 +20758,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Prototype: signing out clears this session's user submissions and resets
     // back to the 4 reference requests, ready for the next sign-in.
     seedDashboardRequests();
+    if(typeof window.__g40ResetRecovery === 'function') window.__g40ResetRecovery(); // G40-9: clear recovery state on sign-out
     renderActiveRequests();
     showSection('home');     // next sign-in starts on the overview
     sessionProfilePhoto = null;  // next account gets prompted for a photo fresh
@@ -21855,6 +21940,460 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const links = (window.GopherHeader && window.GopherHeader.links) || {};
       if(links.customerDeals) learn.setAttribute('href', links.customerDeals);
     }
+  })();
+
+  // ════════════════════════════════════════════════════════════════════════
+  // G40-9 — Auto-Repost recovery UX (FRONT-END PROTOTYPE ONLY)
+  // ------------------------------------------------------------------------
+  // When a Gopher cancels an active request, the Requestor gets a banner + a
+  // 3-option modal (Assign New Gopher / Edit Request / Cancel Request), plus a
+  // 15-minute no-action auto-cancel. This module owns ONLY the clickable UI. It
+  // reuses existing primitives: DASH_DATA / renderActiveRequests (dashboard),
+  // the .ca-overlay/.ca-modal shell, the rating overlay look (.rate-*), and the
+  // "clone terms → new request" idea behind Request-Again FAST.
+  //
+  // DELIBERATELY NOT BUILT HERE (deferred to the human-dev backend track; each
+  // point is tagged "G40-9 BACKEND SEAM" at its call site):
+  //   • real Stripe reassignment — reuse the existing manual-capture PaymentIntent,
+  //     hold funds across close→repost, NO new authorization.
+  //     ref: repostService.js + escrow.js + authRefresh.js
+  //   • real order lifecycle + persistence + cancellation logging (gopher id + ts)
+  //   • matching / re-broadcast into the marketplace
+  //   • the DURABLE 15-min timer (below is an in-page setInterval demo only)
+  //   • Admin › Orders "repost on the Requestor's behalf" (no admin UI exists)
+  //
+  // IMPORTANT: this Edit-Request path CLOSES the original and posts a NEW order #
+  // (recovery after a Gopher cancel). That is the OPPOSITE of the G40-266 in-place
+  // edit (data-action="edit-request"), which KEEPS the order #. They are kept
+  // strictly separate — this module never touches that action.
+  // ════════════════════════════════════════════════════════════════════════
+  (function initG40RecoveryUX(){
+    if(!dash) return;
+
+    // Small local toast fallback (the app's global toast is referenced defensively
+    // elsewhere too; guard it so this works regardless of scope).
+    function g40Toast(msg){
+      if(typeof toast === 'function'){ toast(msg); return; }
+      let el = document.getElementById('g40Toast');
+      if(!el){
+        el = document.createElement('div');
+        el.id = 'g40Toast';
+        el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:12000;'
+          + 'background:#0d1a3e;color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:13.5px;'
+          + 'padding:12px 18px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);max-width:88%;text-align:center;';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      el.style.opacity = '1';
+      clearTimeout(el.__t);
+      el.__t = setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; }, 3400);
+    }
+
+    // Demo-only order-number mint. Starts high (GR-00201+) so it never collides
+    // with the seeded/user-created numbers (which top out around GR-00128).
+    // G40-9 BACKEND SEAM: production mints via orders.generateOrderNumber().
+    let g40RepostSeq = 200;
+    function g40MintOrderNumber(){ g40RepostSeq++; return 'GR-00' + g40RepostSeq; }
+
+    function g40Today(){
+      const d = new Date();
+      return (d.getMonth()+1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2);
+    }
+    function g40CategoryOf(orig){
+      return (orig.reviewSnapshot && orig.reviewSnapshot.category)
+        || (orig.title || '').split(/[·—-]/)[0].trim()
+        || 'Request';
+    }
+    // The cancelling Gopher = the worker assigned to the active request.
+    // G40-9 BACKEND SEAM: production pulls the real cancelling gopher id from the
+    // cancellation event, not from the request's assigned-crew snapshot.
+    function g40CancellingGopher(orig){
+      const live = orig.live || {};
+      const w = (Array.isArray(live.crew) ? live.crew[0] : live.worker) || {};
+      return {
+        id: w.id || ('GPH-' + String(Math.abs(hashStr(w.name || orig.id)) % 900000 + 100000)),
+        name: w.name || (orig.worker || 'your Gopher').replace(/\s*\(.*\)$/, ''),
+        photo: w.photo || ''
+      };
+    }
+    function hashStr(s){ let h = 0; s = String(s); for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i))|0; } return h; }
+
+    // Pick the request the demo will act on: first in-progress, else first active.
+    function g40PickTarget(){
+      const reqs = DASH_DATA.activeRequests || [];
+      return reqs.find(r => r.status === 'in-progress') || reqs.find(r => statusBucket(r.status) === 'active') || reqs[0] || null;
+    }
+
+    // ── State ───────────────────────────────────────────────────────────────
+    let g40Current = null;      // the original request currently in recovery
+    let g40Timer = null;        // the demo countdown interval
+    let g40Deadline = 0;
+
+    // ── DOM: inject the recovery modal, edit-as-new modal, and rating overlay
+    //    into <body>. Kept out of the dashboard container so the app's delegated
+    //    click handlers (data-star / data-rate-submit) never fire on them.
+    const modalHTML = `
+      <div class="ca-overlay" id="g40RecoveryOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40RecoveryHead">
+          <div class="ca-head"><h3 id="g40RecoveryHead">Your Gopher cancelled</h3>
+            <button class="ca-x" id="g40RecoveryClose" aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <p class="cmp-modal-copy" id="g40RecoveryCopy" style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px;"></p>
+            <div class="g40-recovery-timer" id="g40RecoveryTimer">
+              <span>Auto-cancels in <span class="g40-timer-clock" id="g40TimerClock">15:00</span> if no action
+                <span class="g40-timer-demo">Demo timer — production needs a durable server-side job</span>
+              </span>
+            </div>
+            <div class="g40-recovery-opts">
+              <button type="button" class="g40-recovery-opt" data-g40-recover="assign">
+                <span class="g40-opt-ico">🔄</span>
+                <span class="g40-opt-main"><span class="g40-opt-title">Assign New Gopher</span>
+                  <span class="g40-opt-sub">Repost with the same details &amp; price under a new order # — straight back to the marketplace. No edits.</span></span>
+                <span class="g40-opt-arrow">›</span>
+              </button>
+              <button type="button" class="g40-recovery-opt" data-g40-recover="edit">
+                <span class="g40-opt-ico">📝</span>
+                <span class="g40-opt-main"><span class="g40-opt-title">Edit Request</span>
+                  <span class="g40-opt-sub">Adjust the details, cost of items, or payment, then repost under a new order #.</span></span>
+                <span class="g40-opt-arrow">›</span>
+              </button>
+              <button type="button" class="g40-recovery-opt g40-opt-cancel" data-g40-recover="cancel">
+                <span class="g40-opt-ico">⭐</span>
+                <span class="g40-opt-main"><span class="g40-opt-title">Cancel Request</span>
+                  <span class="g40-opt-sub">Don't repost. Rate the Gopher who cancelled and close this request.</span></span>
+                <span class="g40-opt-arrow">›</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ca-overlay" id="g40EditOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40EditHead">
+          <div class="ca-head"><h3 id="g40EditHead">Edit &amp; repost request</h3>
+            <button class="ca-x" id="g40EditClose" aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <p class="g40-edit-note">Pre-filled from your original request. Submitting <b>closes the original</b> and reposts everything under a <b>new order #</b>. (This is the recovery edit — not the in-place edit that keeps the same order #.)</p>
+            <div class="g40-edit-field">
+              <label for="g40EditDetails">Details</label>
+              <textarea id="g40EditDetails" placeholder="What do you need done?"></textarea>
+            </div>
+            <div class="g40-edit-row">
+              <div class="g40-edit-field">
+                <label for="g40EditCost">Cost of items ($)</label>
+                <input type="number" id="g40EditCost" min="0" step="0.01" inputmode="decimal">
+              </div>
+              <div class="g40-edit-field">
+                <label for="g40EditPay">Payment to Gopher ($)</label>
+                <input type="number" id="g40EditPay" min="0" step="0.01" inputmode="decimal">
+              </div>
+            </div>
+            <div class="g40-edit-row">
+              <div class="g40-edit-field">
+                <label for="g40EditPickup">Pickup</label>
+                <input type="text" id="g40EditPickup" placeholder="Pickup address">
+              </div>
+              <div class="g40-edit-field">
+                <label for="g40EditDropoff">Drop-off</label>
+                <input type="text" id="g40EditDropoff" placeholder="Drop-off address">
+              </div>
+            </div>
+            <div class="g40-edit-field">
+              <label for="g40EditNotes">Notes for the Gopher</label>
+              <textarea id="g40EditNotes" placeholder="Anything else they should know?"></textarea>
+            </div>
+            <p class="g40-edit-note">G40-9 backend seam: no new card authorization — the held funds from the original ride across to the new order. Fees/total shown are a demo estimate, not a real charge.</p>
+            <div class="ca-actions">
+              <button class="ca-approve" id="g40EditSubmit">Repost under a new order #</button>
+              <button class="ca-decline" id="g40EditBack">Back to options</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancelling-Gopher rating (AC4). Reuses the .ca-modal shell + .rate-*
+           classes so it matches the app's "Rate your Gopher" overlay, but is a
+           distinct instance (its own data-attrs) so it never collides with the
+           completion flow's rating overlay / resolveCompletion (which would mark
+           the order "Completed"; here we mark it CLOSED). -->
+      <div class="ca-overlay" id="g40RatingOverlay" hidden>
+        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate the Gopher who cancelled">
+          <div class="ca-head"><h3>Rate your Gopher</h3></div>
+          <div class="ca-body">
+            <div class="rate-worker"><span id="g40RatePhoto"></span><div class="rate-name" id="g40RateName">Please rate your Gopher</div></div>
+            <div class="rate-stars" id="g40RateStars"></div>
+            <textarea class="rate-comment" id="g40RateComment" placeholder="Please feel free to leave a comment"></textarea>
+            <div class="ca-actions"><button class="ca-approve" id="g40RateDone">Done</button></div>
+          </div>
+        </div>
+      </div>`;
+    const modalHost = document.createElement('div');
+    modalHost.id = 'g40RecoveryModals';
+    modalHost.innerHTML = modalHTML;
+    document.body.appendChild(modalHost);
+
+    const $ = (id) => document.getElementById(id);
+    const overlay   = $('g40RecoveryOverlay');
+    const editOv    = $('g40EditOverlay');
+    const ratingOv  = $('g40RatingOverlay');
+    const bannerEl  = $('g40RecoveryBanner');
+
+    // ── 15-minute demo countdown ────────────────────────────────────────────
+    // G40-9 BACKEND SEAM: production must run this as a durable server-side job
+    // keyed to the order (survives client close/refresh). This setInterval is a
+    // clickable-demo stand-in ONLY.
+    function g40StartTimer(){
+      g40StopTimer();
+      g40Deadline = Date.now() + 15 * 60 * 1000;
+      g40PaintTimer();
+      g40Timer = setInterval(g40PaintTimer, 1000);
+    }
+    function g40StopTimer(){ if(g40Timer){ clearInterval(g40Timer); g40Timer = null; } }
+    function g40PaintTimer(){
+      const clock = $('g40TimerClock');
+      const ms = Math.max(0, g40Deadline - Date.now());
+      const s = Math.round(ms / 1000);
+      if(clock) clock.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+      if(ms <= 0){ g40StopTimer(); g40AutoCancel(); }
+    }
+
+    // ── Close the original (shared by every path) ────────────────────────────
+    // G40-9 BACKEND SEAM: production closes the order in the DB and writes a
+    // cancellation log { originalOrderNumber, gopherId, reason, at }. Here we just
+    // move the card into the local "Cancelled" bucket and console-log the seam.
+    function g40CloseOriginal(orig, reason){
+      const gopher = g40CancellingGopher(orig);
+      console.log('[G40-9 BACKEND SEAM] logCancellation', {
+        originalOrderNumber: orig.id, gopherId: gopher.id, reason, at: new Date().toISOString()
+      });
+      const i = (DASH_DATA.activeRequests || []).findIndex(r => r.id === orig.id);
+      if(i !== -1) DASH_DATA.activeRequests.splice(i, 1);
+      if(dashState.requestDetailId === orig.id) dashState.requestDetailId = null;
+      if(!Array.isArray(DASH_DATA.cancelledRequests)) DASH_DATA.cancelledRequests = [];
+      DASH_DATA.cancelledRequests.unshift({
+        date: g40Today(), id: orig.id, category: g40CategoryOf(orig),
+        details: (orig.reviewSnapshot && orig.reviewSnapshot.description) || orig.title || '',
+        reason,
+        g40Recovery: true   // tag so a fresh session can prune demo-added rows (see __g40ResetRecovery)
+      });
+      renderActiveRequests();
+      if(typeof renderPrevRequests === 'function') renderPrevRequests();
+    }
+
+    // ── Create the reposted request (Assign New Gopher + Edit paths) ─────────
+    // Clones the original's terms into a fresh "broadcasting" card with a new #.
+    // G40-9 BACKEND SEAM: production re-broadcasts into the marketplace/matching
+    // engine and reassigns the existing PaymentIntent (no new auth).
+    function g40CreateRepost(orig, edits){
+      const snap = Object.assign({}, orig.reviewSnapshot || {}, edits && edits.snap || {});
+      const newId = g40MintOrderNumber();
+      const amount = (edits && edits.amountLabel) || orig.amount || '';
+      const req = {
+        id: newId,
+        icon: orig.icon || '📋',
+        title: (edits && edits.title) || orig.title || 'Reposted request',
+        status: 'pending',
+        statusLabel: 'Reposted · Live',
+        needsAttention: false,
+        userCreated: true,
+        scheduledForLater: !!orig.scheduledForLater,
+        workersNeeded: orig.workersNeeded || 1,
+        perWorkerCost: orig.perWorkerCost || 0,
+        worker: 'Broadcasting to nearby Gophers',
+        amount: amount,
+        when: 'Just now · reposted from #' + orig.id,
+        interestedWorkers: [],
+        repostedFrom: orig.id,
+        reviewSnapshot: snap
+      };
+      DASH_DATA.activeRequests.unshift(req);
+      renderActiveRequests();
+      return req;
+    }
+
+    // ── Banner ───────────────────────────────────────────────────────────────
+    function g40ShowBanner(orig){
+      if(!bannerEl) return;
+      bannerEl.classList.remove('is-resolved');
+      $('g40BannerIco').textContent = '⚠️';
+      $('g40BannerTitle').textContent = 'Your Gopher cancelled this request';
+      const gopher = g40CancellingGopher(orig);
+      $('g40BannerSub').textContent = gopher.name + ' cancelled request #' + orig.id
+        + '. Choose how you’d like to recover — or it auto-cancels in 15 minutes.';
+      $('g40BannerReopen').hidden = false;
+      $('g40BannerReopen').textContent = 'Review your options →';
+      bannerEl.hidden = false;
+    }
+    function g40ResolveBanner(title, sub){
+      if(!bannerEl) return;
+      bannerEl.classList.add('is-resolved');
+      $('g40BannerIco').textContent = '✅';
+      $('g40BannerTitle').textContent = title;
+      $('g40BannerSub').textContent = sub;
+      $('g40BannerReopen').hidden = true;
+      bannerEl.hidden = false;
+    }
+
+    // ── Entry point: a Gopher cancelled (AC1) ────────────────────────────────
+    function g40OnGopherCancelled(orig){
+      g40Current = orig;
+      const gopher = g40CancellingGopher(orig);
+      $('g40RecoveryCopy').textContent = gopher.name + ' cancelled request #' + orig.id
+        + '. Your funds are still held — pick an option below. Nothing is re-charged.';
+      g40ShowBanner(orig);
+      overlay.hidden = false;
+      g40StartTimer();
+    }
+
+    function g40CloseRecoveryModal(){ overlay.hidden = true; }
+
+    // ── Option A: Assign New Gopher (AC2 UI; no-reauth is a backend concern) ──
+    function g40AssignNewGopher(){
+      const orig = g40Current; if(!orig) return;
+      g40StopTimer(); overlay.hidden = true;
+      // G40-9 BACKEND SEAM: payments.reassignAuthorization(orig, newOrder) — reuse
+      // the existing manual-capture PaymentIntent; NO new card authorization.
+      const rep = g40CreateRepost(orig, null);
+      g40CloseOriginal(orig, 'Gopher cancelled · reposted as #' + rep.id);
+      g40ResolveBanner('Reposted — live in the marketplace',
+        'Request #' + orig.id + ' was closed and reposted as #' + rep.id + ' with the same details. No new card authorization (funds reused).');
+      g40Toast('Reposted as #' + rep.id + ' — live in the marketplace');
+      g40Current = null;
+    }
+
+    // ── Option B: Edit Request → repost as NEW order # (AC3) ──────────────────
+    function g40OpenEdit(){
+      const orig = g40Current; if(!orig) return;
+      const snap = orig.reviewSnapshot || {};
+      $('g40EditDetails').value = snap.description || '';
+      $('g40EditCost').value    = (snap.costOfItems != null) ? snap.costOfItems : '';
+      $('g40EditPay').value     = (snap.workerPay   != null) ? snap.workerPay   : '';
+      $('g40EditPickup').value  = snap.pickup  || '';
+      $('g40EditDropoff').value = snap.dropoff || '';
+      $('g40EditNotes').value   = snap.notes   || '';
+      overlay.hidden = true;
+      editOv.hidden = false;
+    }
+    function g40SubmitEdit(){
+      const orig = g40Current; if(!orig) return;
+      const cost = parseFloat($('g40EditCost').value) || 0;
+      const pay  = parseFloat($('g40EditPay').value) || 0;
+      const editedSnap = Object.assign({}, orig.reviewSnapshot || {}, {
+        description: $('g40EditDetails').value.trim(),
+        costOfItems: cost,
+        workerPay: pay,
+        pickup: $('g40EditPickup').value.trim(),
+        dropoff: $('g40EditDropoff').value.trim(),
+        notes: $('g40EditNotes').value.trim()
+      });
+      // Demo estimate only — NOT the canonical fee engine (a backend concern).
+      const estTotal = (cost + pay);
+      g40StopTimer(); editOv.hidden = true;
+      const rep = g40CreateRepost(orig, {
+        snap: editedSnap,
+        amountLabel: '$' + estTotal.toFixed(2) + ' (demo est.)'
+      });
+      g40CloseOriginal(orig, 'Gopher cancelled · edited & reposted as #' + rep.id);
+      g40ResolveBanner('Edited & reposted',
+        'Request #' + orig.id + ' was closed and your edits reposted as #' + rep.id + '. Held funds reused — no new authorization.');
+      g40Toast('Edited & reposted as #' + rep.id);
+      g40Current = null;
+    }
+
+    // ── Option C: Cancel Request → rate the cancelling Gopher (AC4) ───────────
+    let g40RateVal = 5;
+    function g40PaintStars(){
+      const host = $('g40RateStars'); if(!host) return;
+      host.innerHTML = [1,2,3,4,5].map(n =>
+        `<button type="button" class="rate-star ${n <= g40RateVal ? 'on' : ''}" data-g40star="${n}" aria-label="${n} star">★</button>`
+      ).join('');
+    }
+    function g40OpenRating(){
+      const orig = g40Current; if(!orig) return;
+      const gopher = g40CancellingGopher(orig);
+      g40RateVal = 5; g40PaintStars();
+      $('g40RateName').textContent = 'Please rate ' + gopher.name;
+      $('g40RatePhoto').innerHTML = gopher.photo
+        ? `<img class="rate-photo" src="${gopher.photo}" alt="${gopher.name}">` : '';
+      $('g40RateComment').value = '';
+      overlay.hidden = true;
+      ratingOv.hidden = false;
+      ratingOv.__orig = orig;   // remember which order this rating closes
+    }
+    function g40FinishRating(){
+      const orig = ratingOv.__orig || g40Current; if(!orig) return;
+      const gopher = g40CancellingGopher(orig);
+      console.log('[G40-9 BACKEND SEAM] gopher rating (cancelled)', {
+        orderNumber: orig.id, gopherId: gopher.id, stars: g40RateVal, comment: $('g40RateComment').value
+      });
+      g40StopTimer(); ratingOv.hidden = true;
+      g40CloseOriginal(orig, 'Gopher cancelled · rated & closed (no repost)');
+      g40ResolveBanner('Request closed', 'You rated ' + gopher.name + ' and closed request #' + orig.id + '. Nothing was reposted.');
+      g40Toast('Thanks — request #' + orig.id + ' closed');
+      g40Current = null;
+    }
+
+    // ── Auto-cancel (AC5, demo) ──────────────────────────────────────────────
+    function g40AutoCancel(){
+      const orig = g40Current; if(!orig) return;
+      overlay.hidden = true; editOv.hidden = true;
+      g40CloseOriginal(orig, 'Auto-cancelled · no action within 15 min');
+      g40ResolveBanner('Auto-cancelled', 'No action within 15 minutes, so request #' + orig.id + ' was closed. (Demo timer — production uses a durable server-side job.)');
+      g40Toast('Request #' + orig.id + ' auto-cancelled (15 min, demo)');
+      g40Current = null;
+    }
+
+    // ── Wiring ───────────────────────────────────────────────────────────────
+    const simBtn = $('g40SimGopherCancel');
+    if(simBtn) simBtn.addEventListener('click', () => {
+      if(g40Current){ overlay.hidden = false; return; }   // already in recovery → reopen
+      const target = g40PickTarget();
+      if(!target){ g40Toast('No active request to simulate. Sign in seeds two in-progress jobs (GR-00127 / GR-00128).'); return; }
+      g40OnGopherCancelled(target);
+    });
+
+    const reopenBtn = $('g40BannerReopen');
+    if(reopenBtn) reopenBtn.addEventListener('click', () => { if(g40Current) overlay.hidden = false; });
+
+    overlay.addEventListener('click', (e) => {
+      const opt = e.target.closest('[data-g40-recover]');
+      if(opt){
+        const which = opt.dataset.g40Recover;
+        if(which === 'assign') g40AssignNewGopher();
+        else if(which === 'edit') g40OpenEdit();
+        else if(which === 'cancel') g40OpenRating();
+        return;
+      }
+      if(e.target.id === 'g40RecoveryClose'){ g40CloseRecoveryModal(); return; }
+      // Backdrop click keeps the banner + timer alive (models "no action").
+      if(e.target === overlay) g40CloseRecoveryModal();
+    });
+
+    $('g40EditSubmit').addEventListener('click', g40SubmitEdit);
+    $('g40EditBack').addEventListener('click', () => { editOv.hidden = true; overlay.hidden = false; });
+    $('g40EditClose').addEventListener('click', () => { editOv.hidden = true; overlay.hidden = false; });
+
+    ratingOv.addEventListener('click', (e) => {
+      const star = e.target.closest('[data-g40star]');
+      if(star){ g40RateVal = parseInt(star.dataset.g40star, 10); g40PaintStars(); return; }
+      if(e.target.id === 'g40RateDone') g40FinishRating();
+    });
+
+    // A fresh sign-in reseeds the dashboard; clear any leftover recovery state so
+    // the two never bleed across sessions.
+    window.__g40ResetRecovery = function(){
+      g40StopTimer(); g40Current = null;
+      if(overlay)  overlay.hidden = true;
+      if(editOv)   editOv.hidden = true;
+      if(ratingOv) ratingOv.hidden = true;
+      if(bannerEl){ bannerEl.hidden = true; bannerEl.classList.remove('is-resolved'); }
+      // Drop any recovery-added "Cancelled" rows so a fresh session starts from the
+      // original seed buckets (the app's own seed doesn't touch these arrays).
+      if(Array.isArray(DASH_DATA.cancelledRequests)){
+        DASH_DATA.cancelledRequests = DASH_DATA.cancelledRequests.filter(x => !x.g40Recovery);
+      }
+      g40RepostSeq = 200;   // demo order-number counter back to its base
+    };
   })();
 })();
 </script>
