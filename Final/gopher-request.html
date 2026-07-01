@@ -20745,7 +20745,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     window.scrollTo({ top:0, behavior:'instant' });
     // Cross-app requirement: if the resolved profile has no photo (e.g. created
     // in Connect, which doesn't require one), block with a prompt to add one.
-    if(!photo && typeof window.__openCompletePhotoModal === 'function'){
+    // G40 DEMO: photo gate disabled for review — restore for production (flip
+    // DEMO_SKIP_PHOTO_GATE back to false). The prompt logic below is intact.
+    const DEMO_SKIP_PHOTO_GATE = true;
+    if(!DEMO_SKIP_PHOTO_GATE && !photo && typeof window.__openCompletePhotoModal === 'function'){
       window.__openCompletePhotoModal(name);
     }
   };
