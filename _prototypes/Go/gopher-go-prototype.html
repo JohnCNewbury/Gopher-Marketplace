@@ -1993,6 +1993,7 @@ function handle(e){ /* generic handler for IMPORTED frames only */
  else toast('“'+(t||kind)+'” on <b>'+(BYID[current]?BYID[current].label:current)+'</b> isn’t linked yet — tell me where it should go.');
 }
 
+const G40_FOOTER_CSS = `.nav .g40nv{color:#c3cee3;font-family:'Nunito';font-weight:800;font-size:12.5px;justify-content:flex-end;}.nav .g40nv.c{color:#33D975;gap:6px;}.nav .g40nv.c .cc svg{stroke:none;}.nav .g40nv.c .cc svg rect{fill:#002461;stroke:none;}.nav .g40nv .g40ic{width:21px;height:21px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;margin-bottom:1px;}.nav .g40nv[aria-current=page]{color:#33D975;}.tab.on{background:#002461;color:#fff;}`;
 function load(id,isBack){
  const s=BYID[id]; if(!s)return;
  if(!isBack && current && current!==id) hist.push(current);
@@ -2002,6 +2003,7 @@ function load(id,isBack){
  if(NATIVE[id]){ sr.innerHTML='<style>'+NATIVE_CSS+'</style>'+NATIVE[id].html; NATIVE[id].init(sr); renderAcct(sr); decorateNav(sr,id); if(id!=='onboarding') bindPersist(sr,id); }
  else { const f=FRAMES[id]||{css:'',html:'<div style="padding:40px;font-family:sans-serif">Screen not provided.</div>'};
         sr.innerHTML='<style>'+f.css+'</style>'+f.html; sr.addEventListener('click',handle); decorateImported(sr,id); if(id==='deals'&&window.initDeals){try{window.initDeals(sr);}catch(e){}} if(id==='home'){try{const _ws=sr.querySelector('.wsr .wt .s'); if(_ws&&state.work){const n=state.work.cats.length,t=state.work.tier,rr=state.work.radii||[];const rad=t==='elite'?((rr[0]||0)+' mi delivery \u00b7 '+((rr[1]||rr[0])||0)+' mi labor'):((rr[0]||0)+' mi radius');_ws.textContent=n+(n===1?' category':' categories')+' \u00b7 '+rad;}}catch(e){}} }
+ {var _g40fs=document.createElement('style');_g40fs.textContent=G40_FOOTER_CSS;sr.appendChild(_g40fs);}
  const flow=s.tag==='flow';
  ttl.innerHTML=s.label+(flow?' <small>flow — scroll to see all frames</small>':'')+(s.tag==='new'?' <small>new — pending approval</small>':'');
  document.querySelectorAll('aside a').forEach(a=>a.classList.toggle('on',a.dataset.id===id));
