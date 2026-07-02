@@ -683,6 +683,13 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .cf-card h2{font-family:'Nunito';font-weight:900;font-size:20px;color:#002461;margin:0 0 8px;}
   .cf-card p{font-family:'DM Sans';font-size:13.5px;color:#3A4D74;margin:0 0 18px;line-height:1.5;}
   .cf-done{padding:14px;border-radius:13px;background:var(--green);color:#fff;font:800 15px 'Nunito';cursor:pointer;}
+
+/* G40: base footer styling for NATIVE screens that render the app footer (inbox list). */
+.nav{flex:0 0 auto;background:var(--navy-bar);display:flex;align-items:flex-end;justify-content:space-around;padding:9px 8px 22px;}
+.nv{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;flex:1;}
+.nv.c{position:relative;}
+.cc{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,var(--green-bright),var(--green-dark));display:flex;align-items:center;justify-content:center;margin-top:-26px;box-shadow:0 8px 18px -4px rgba(28,176,97,.6);}
+.cc svg{width:26px;height:26px;stroke:var(--navy);stroke-width:2.4;}
 `;
 
 /* ===== helpers available to native screens ===== */
@@ -1895,7 +1902,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           +'<div class="mi-rprev">'+(last.s==='me'?'You: ':'')+(last.t||'')+'</div></div>'
           +(c.unread?'<span class="mi-udot"></span>':'')+'</div>';
       }).join('');
-      body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>';
+      body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>'+'<div class="nav">'+'<div class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</div>'+'<div class="nv g40nv" data-gnav="inbox" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</div>'+'<div class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</div>'+'<div class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</div>'+'<div class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</div>'+'</div>';
       body.querySelector('.js-back').onclick=function(){ BACK(); };
       body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; state.inboxOpen=c.id; render(); } }; });
     }
