@@ -161,20 +161,20 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .hint-btn:hover svg,.hint-btn.open svg{transform:scale(1.14);}
 .hint-q{position:absolute;inset:0;display:grid;place-items:center;font-family:'Nunito';font-weight:900;font-size:11px;color:var(--navy);padding-top:1px;pointer-events:none;}
 .hint-pop{
-  position:absolute;left:-10px;top:calc(100% + 13px);
-  width:min(370px,76vw);
+  position:fixed;left:0;top:0;               /* JS sets real left/top, clamped to the viewport */
+  width:min(360px,calc(100vw - 24px));
+  max-height:calc(100vh - 32px);overflow:auto;
   background:var(--midnight);color:rgba(255,255,255,.92);
   font-family:'DM Sans';font-weight:400;font-size:13px;line-height:1.6;
   padding:16px 18px;border-radius:14px;box-shadow:0 18px 50px rgba(0,36,97,.42);
   opacity:0;visibility:hidden;transform:translateY(6px);
-  transition:opacity .2s ease, transform .2s ease;z-index:40;text-align:left;
+  transition:opacity .18s ease, transform .18s ease;z-index:4000;text-align:left;
+  -webkit-overflow-scrolling:touch;
 }
-.hint-pop::before{content:"";position:absolute;left:16px;top:-7px;width:14px;height:14px;background:var(--midnight);border-radius:3px;transform:rotate(45deg);}
 .hint-pop b{color:var(--green);font-family:'Nunito';font-weight:900;}
 .hint-wrap:hover .hint-pop,
 .hint-btn:focus-visible + .hint-pop,
 .hint-btn.open + .hint-pop{opacity:1;visibility:visible;transform:translateY(0);}
-@media (max-width:520px){ .hint-pop{left:auto;right:-10px;} .hint-pop::before{left:auto;right:16px;} }
 
 /* mini mock UI elements (mirror the app) */
 .mock{margin-top:18px;background:linear-gradient(180deg,#fff,#fffdf8);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);}
@@ -1527,17 +1527,64 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
   btn.addEventListener('click', function(){ window.scrollTo({ top:0, behavior:'smooth' }); });
 })();
 
-/* ── Heart-? hint: tap to toggle (mobile), hover handled in CSS ── */
+/* ── Heart-? hint: viewport-clamped fixed popover (tap on mobile, hover on desktop) ── */
 (function(){
   var btns = Array.prototype.slice.call(document.querySelectorAll('.hint-btn'));
+
+  // Position the popover in viewport coordinates, clamped so it never runs off an edge.
+  function place(btn){
+    var wrap = btn.closest('.hint-wrap');
+    var pop = wrap && wrap.querySelector('.hint-pop');
+    if(!pop) return;
+    var r = btn.getBoundingClientRect();
+    var vw = document.documentElement.clientWidth;
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    var m = 16, gap = 10;
+    var pw = pop.offsetWidth;               // width is fixed by CSS
+    var natural = pop.scrollHeight;         // full content height (ignores the visible cap)
+
+    // horizontal: center on the heart, then clamp inside the viewport
+    var left = r.left + r.width / 2 - pw / 2;
+    left = Math.max(m, Math.min(left, vw - pw - m));
+
+    // vertical: prefer below the heart, then above, else center — never pin to the top chrome
+    var spaceBelow = vh - r.bottom - gap - m;
+    var spaceAbove = r.top - gap - m;
+    var top, maxH;
+    if(natural <= spaceBelow){                    // fits fully below
+      top = r.bottom + gap; maxH = spaceBelow;
+    } else if(natural <= spaceAbove){             // fits fully above
+      maxH = spaceAbove; top = r.top - gap - natural;
+    } else {                                      // too tall for either side → center + scroll
+      maxH = vh - 2 * m;
+      top = (natural < maxH) ? (vh - natural) / 2 : m;
+    }
+    pop.style.maxHeight = Math.round(Math.max(120, maxH)) + 'px';
+    pop.style.left = Math.round(left) + 'px';
+    pop.style.top  = Math.round(Math.max(m, top)) + 'px';
+  }
+
   btns.forEach(function(b){
+    var wrap = b.closest('.hint-wrap');
+    if(wrap) wrap.addEventListener('mouseenter', function(){ place(b); });
+    b.addEventListener('focus', function(){ place(b); });
     b.addEventListener('click', function(e){
       e.stopPropagation();
       var wasOpen = b.classList.contains('open');
       btns.forEach(function(x){ x.classList.remove('open'); });
-      if(!wasOpen) b.classList.add('open');
+      if(!wasOpen){ place(b); b.classList.add('open'); }
     });
   });
+
+  // Keep an open/hovered popover aligned as the page scrolls or resizes.
+  function realign(){
+    var el = document.querySelector('.hint-btn.open')
+          || document.querySelector('.hint-wrap:hover .hint-btn');
+    if(el) place(el);
+  }
+  window.addEventListener('scroll', realign, { passive:true });
+  window.addEventListener('resize', realign);
+
   document.addEventListener('click', function(){ btns.forEach(function(x){ x.classList.remove('open'); }); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') btns.forEach(function(x){ x.classList.remove('open'); }); });
 })();
