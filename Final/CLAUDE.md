@@ -126,6 +126,23 @@ repo-root `docs/handoff/` folder, one level above this file._
   Touched `page-inventory.md`, `README.md`, `component-structure.md`, `broken-references.md`,
   and `base64-image-plan.md`; the stale `e-waste-removal_1.html` orphan/duplicate entries
   in `page-inventory.md` were updated to reflect the deletion.
+- **Gopher iQ location intelligence + coverage "data brain" (done 2026-07-02).** The
+  search pill now answers location questions ("Do you have service in Raleigh?", "become a
+  Gopher in Cary", "when are you coming to Charlotte?") with **real local-Gopher counts** and
+  drives a request/signup. New shared data layer **`gopher-iq-data.js`** (`window.GopherIQData`),
+  loaded before the engine on every pill page, holds a **10-mile-radius** coverage table built
+  offline from `Users_02_07_2026.csv` + `Orders_02_07_2026.csv` (+ GeoNames ZIP centroids,
+  CC BY 4.0). Worker = role∋Gopher & Stripe-payout-verified & active **& engaged** (signed up
+  in the last 6 months OR has completed ≥1 request all-time — so the count isn't inflated by
+  registrations that never worked); recent-activity (tier 4) = distinct gophers who completed a
+  delivery in the last ~3 months. Availability answers are
+  **4-tiered** (< 20 "word getting out" + *Find MY Gopher* → `age-restricted.html#find-my-gopher`;
+  20–49 / 50+ standard; 50+ & 10+-active "ready to connect"), plus a **collision clarifier**
+  ("Denver → CO/NC/PA?"). Engine changes (`gopher-ai-engine.js`/`.css`) propagated to all
+  inlined copies (index, request, services, faqs, both `-block` fragments, sandbox). It is a
+  **prototype static data layer** — production swaps the tables for a live query behind the same
+  `GopherIQData.lookup()` seam. Full detail + regeneration recipe:
+  `docs/handoff/gopher-iq-location-intelligence.md`.
 
 ### Asset packs at repo root — spare/upgrade assets, NOT live-site dependencies
 

@@ -528,6 +528,292 @@ function buildServiceCard(intents, query, confidence){
     +'</div></div></div></div>';
 }
 
+/* ================================================================
+   LOCATION AVAILABILITY — "Do you have service in Raleigh?"
+   ----------------------------------------------------------------
+   Detects a coverage/availability question that names a place, then
+   answers with the standard "available anywhere in the US" card plus
+   an approximate count of local Gophers and the request / demo CTAs.
+
+   Per the AI Availability Intent training sheet, the strategy is:
+   detect location -> check worker coverage -> encourage a request or
+   signup, and NEVER give a hard "not available" answer.
+
+   Counts are REAL, resolved from the shared data brain (gopher-iq-data.js):
+   a "worker" = a Gopher with a verified Stripe payout on an ACTIVE account.
+   The availability answer is tiered by that count (see coverageTier /
+   buildCoverageCard). The recent-activity tier (tier 4) stays disabled until
+   the Orders report is joined in (GopherIQData.hasOrders === true).
+   ================================================================ */
+
+// Phrases that mean "somewhere around the user" rather than a named place.
+const AVAIL_GPS = new Set(['area','town','city','neighborhood','neighbourhood','hood',
+  'region','zip','zipcode','part of town','side of town','vicinity','locale']);
+// Words after a preposition that are NOT a place (a delivery destination, etc.) —
+// these fall through to the normal service classifier instead of firing availability.
+const AVAIL_IGNORE = new Set(['house','home','place','apartment','apt','office','work',
+  'job','room','building','me','you','us','here','there','it','that','this','mind','stock']);
+// Trailing filler stripped off an extracted place ("in the raleigh area" -> "raleigh").
+const AVAIL_TRAIL = new Set(['area','areas','metro','region','zone','zones','county',
+  'please','thanks','thx','now','today','asap','yet','already','anymore','still']);
+// Does the query read like a coverage / availability question at all?
+const AVAIL_CUE = /\b(available|availability|active|operate|operating|coverage|cover(?:ing)?|serv(?:e|es|ice|icing)|work(?:s|ing)?|deliver(?:y|s)?|order|use\s+gopher|come\s+to|coming\s+to|launch|expand|reach|have\s+(?:workers|gophers|drivers|anyone|people|someone)|are\s+you|is\s+gopher|do\s+you)\b/;
+
+function _cleanPlace(raw){
+  let name = raw.toLowerCase().replace(/[?!.,]+$/,'').trim();
+  name = name.replace(/^(the|my|our|your|a|an)\s+/,'');
+  let parts = name.split(/\s+/);
+  while(parts.length>1 && AVAIL_TRAIL.has(parts[parts.length-1])) parts.pop();
+  return parts.join(' ').trim();
+}
+// Pronouns / auxiliaries a real place never starts with. Guards against the
+// typo case "to you deliver" (a mistyped "do you deliver") reading "you deliver"
+// as a place once we run detection on the raw text.
+const BAD_LEAD = new Set(['you','we','i','they','them','he','she','it','us',
+  'do','does','did','can','could','will','would','should','are','is','am','was','were','be','been']);
+// Turn a captured fragment into a place object, or null if it isn't one.
+function _placeFrom(raw){
+  const name = _cleanPlace(raw);
+  if(!name || name.length<2) return null;
+  if(BAD_LEAD.has(name.split(' ')[0])) return null;   // "you deliver", "do you", ...
+  if(AVAIL_GPS.has(name)) return {name:null, type:'GPS'};
+  if(AVAIL_IGNORE.has(name)) return null;              // a destination, not a coverage area
+  return {name, type: /^\d{5}$/.test(name) ? 'ZIP' : 'Place'};
+}
+
+// Pull a location out of the query, or null if there isn't a usable one.
+function extractLocation(q){
+  q = q.toLowerCase().replace(/,/g,' ').replace(/\s+/g,' ').replace(/[\s?!.]+$/,'');   // commas->spaces ("Denver, NC"), drop trailing "?"
+  // "near me" / "nearby" / "my area|town|city" / "here" -> current location (GPS)
+  if(/\b(?:near|around|by|close\s+to)\s+me\b|\bnear\s*by\b|\bnearby\b|\b(?:my|this|the)\s+(?:area|town|city|neighborhood|neighbourhood|region)\b|\b(?:in|to|around|out)\s+here\b|\bhere$/.test(q))
+    return {name:null, type:'GPS'};
+  // 5-digit ZIP
+  const zip = q.match(/\b(\d{5})\b/);
+  if(zip) return {name:zip[1], type:'ZIP'};
+  // place after a location preposition ("... in/to/near/around/at Raleigh"),
+  // or directly after a coverage verb ("serve Raleigh", "cover the Triangle").
+  let m = q.match(/\b(?:in|to|near|around|at|throughout|across|within|serving)\s+([a-z][a-z0-9 .'\-&]*)$/);
+  if(!m) m = q.match(/\b(?:serve|servicing|service|cover|covering)\s+([a-z][a-z0-9 .'\-&]*)$/);
+  return m ? _placeFrom(m[1]) : null;
+}
+
+// A looser place grab used only for expansion phrasing ("any plans for Nashville?").
+function extractLocationLoose(query){
+  const q = query.toLowerCase().replace(/,/g,' ').replace(/\s+/g,' ').replace(/[\s?!.]+$/,'');
+  const m = q.match(/\b(?:for|to|in|near|around)\s+([a-z][a-z0-9 .'\-&]*)$/);
+  return m ? _placeFrom(m[1]) : null;
+}
+
+// Audience/family cues layered on top of a detected location.
+const WORKER_CUE = /\b(?:become|be)\s+a\s+(?:gopher|driver|worker|service\s+provider)\b|\b(?:drive|work|deliver|earn|hustle)\s+(?:for|with)\s+gopher\b|\bsign\s*up\s+(?:as|to)\b[^?]*\b(?:gopher|driver|worker|provider|drive|work|deliver)\b|\bgopher\s*go\b|\bwork\s+as\s+a\s+gopher\b|\bhow\s+(?:do|can)\s+i\s+become\b/;
+const BIZ_CUE = /\bmy\s+(?:business|restaurant|store|shop|company|cafe|café|bar|brand|team|office|customers)\b|\bgopher\s*connect\b|\bfor\s+(?:my\s+)?business(?:es)?\b|\bas\s+a\s+(?:business|merchant|vendor|store|restaurant)\b|\b(?:merchant|vendor)s?\b|\bcommercial\b|\bb2b\b/;
+const EXPANSION_CUE = /\bwhen\s+(?:are|will|do|does|is|can)\b|\bany\s+plans?\b|\bcoming\s+(?:to|soon)\b|\bcome\s+to\b|\bplan(?:ning|s|ned)?\s+(?:to|for|on)\b|\bexpand(?:ing)?\b|\broll(?:ing)?\s+out\b|\blaunch(?:ing)?\b|\bin\s+the\s+future\b/;
+
+// Classify a location-aware question into one of five families, or null.
+//   worker   -> "become a Gopher in <place>"        (sign-up CTA -> Gopher Go)
+//   business -> "can my business use Gopher in ..."  (Gopher Connect CTA)
+//   expansion-> "when are you coming to <place>"      (already-nationwide reassurance)
+//   service  -> "<service> in <place>"                (request CTA, category pre-selected)
+//   availability -> "do you serve <place>"            (general coverage answer)
+function classifyLocationIntent(query){
+  const q = ' '+query.toLowerCase().trim()+' ';
+  const isExpansion = EXPANSION_CUE.test(q);
+  let loc = extractLocation(query);
+  if(!loc && isExpansion) loc = extractLocationLoose(query);   // "any plans for Nashville?"
+  if(!loc) return null;
+  if(WORKER_CUE.test(q)) return {family:'worker', loc};
+  if(BIZ_CUE.test(q))    return {family:'business', loc};
+  if(isExpansion)        return {family:'expansion', loc};
+  const cats = classifyIntent(query);   // a recognized service + a place = service+location
+  if(cats.length) return {family:'service', loc, slug:cats[0].slug, label:cats[0].label};
+  if(AVAIL_CUE.test(q)) return {family:'availability', loc};
+  return null;   // named a place, but nothing actionable -> normal pipeline
+}
+
+// Resolve REAL coverage for a location from the shared data brain (gopher-iq-data.js).
+// Returns { hasPlace, inData, workers, active3mo, place }. A worker = a Gopher whose
+// Stripe payout is verified and whose account is active (see gopher-iq-data.js).
+// If the data brain isn't loaded we degrade gracefully (no fabricated number).
+function resolveCoverage(loc){
+  if(!loc || loc.type==='GPS' || !loc.name) return {hasPlace:false, inData:false, workers:0, active3mo:0, place:null};
+  const D = (typeof window!=='undefined') && window.GopherIQData;
+  if(D && typeof D.lookup==='function'){
+    const r = D.lookup(loc.name);
+    if(r && r.ambiguous) return {hasPlace:true, ambiguous:true, city:r.city, options:r.options};
+    if(r) return {hasPlace:true, inData:r.inData, workers:r.workers||0, active3mo:r.activeLast3mo||0, place:r.city||null};
+  }
+  return {hasPlace:true, inData:false, workers:0, active3mo:0, place:null};   // brain missing
+}
+
+// Coverage tier from the real worker count (+ recent activity for the top tier).
+//   1: < 20 workers      "word is just getting out"  (Submit a request / Find MY Gopher)
+//   2: 20–49 workers     standard availability copy
+//   3: 50+ workers       standard availability copy
+//   4: 50+ AND 10+ gophers with a completed request in the last ~3 months
+//                        "ready to connect you" — HELD until the Orders report is joined
+//                        (GopherIQData.hasOrders === true), because accurate recent-
+//                        completion counts require it. Until then 50+ falls to tier 3.
+function coverageTier(cov){
+  const w = cov.workers||0;
+  if(w < 20) return 1;
+  if(w < 50) return 2;
+  const ordersReady = !!((typeof window!=='undefined') && window.GopherIQData && window.GopherIQData.hasOrders);
+  if(ordersReady && (cov.active3mo||0) >= 10) return 4;
+  return 3;
+}
+
+// Title-cased place for display, or null (card then says "The area you referenced").
+function prettyPlace(loc){
+  if(!loc || loc.type==='GPS' || !loc.name) return null;
+  if(loc.type==='ZIP') return loc.name;
+  return loc.name.replace(/\b([a-z])/g, c=>c.toUpperCase());
+}
+
+const PIN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+// Two-button action row: navy primary (with arrow) + outline secondary.
+function ctaRow(pHref,pLabel,pClick, sHref,sLabel,sClick){
+  return '<div class="svc-actions">'
+    +'<a class="svc-btn" href="'+esc(pHref)+'" onclick="'+pClick+';return false;">'+svgArrow()+pLabel+'</a>'
+    +'<a class="svc-demo" href="'+esc(sHref)+'" onclick="'+sClick+';return false;">'+sLabel+'</a>'
+    +'</div>';
+}
+// Card shell shared by every location-answer variant.
+function coverageShell(extraClass, cat, blurb, actions){
+  return '<div class="svc-card avail '+extraClass+'">'
+    +'<div class="svc-top">'
+    +'<span class="svc-icon">'+PIN_SVG+'</span>'
+    +'<div class="svc-body">'
+    +'<div class="svc-cat">'+cat+'</div>'
+    +'<div class="svc-blurb">'+blurb+'</div>'
+    +actions
+    +'</div></div></div>';
+}
+
+const RISK = 'if we can’t connect you, you don’t pay a dime.';
+
+// Escape a string for use inside a single-quoted JS onclick argument.
+function escJs(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// Collision clarifier: a bare city name lives in several states with comparable
+// coverage — ask which one. Each chip re-runs the search scoped to that state.
+function buildClarifyCard(cov){
+  const chips = cov.options.map(o=>
+    '<a class="svc-chip" href="#" onclick="iqPickState(\''+escJs(cov.city)+'\',\''+escJs(o.state)+'\');return false;">'
+    +esc(cov.city)+', '+esc(o.state)+'</a>').join('');
+  return coverageShell('avail-availability clarify', 'Which one?',
+    'A few places go by <strong>'+esc(cov.city)+'</strong> — which one did you mean?',
+    '<div class="svc-actions clarify-chips">'+chips+'</div>');
+}
+
+// The tiered "SERVICE AVAILABILITY" answer — copy + buttons follow the real worker
+// count for the searched place (see coverageTier).
+function buildCoverageCard(loc, cov){
+  // No resolvable place (GPS / "near me") — answer honestly without a fabricated count.
+  if(!cov.hasPlace){
+    const g = 'The Gopher Marketplace is available <strong>anywhere in the US</strong>. '
+      +'Coverage shifts as workers move around, so the surest way to know is to ask — '
+      +'you can always submit a request <strong>risk-free</strong> — '+RISK;
+    return coverageShell('avail-availability', 'Service Availability', g,
+      ctaRow(GOPHER_LINKS.request,'Submit a request','submitRequest()',
+             GOPHER_LINKS.requestDemo,'See how it works','seeHowItWorks()'));
+  }
+  const n = cov.workers;
+  const place = cov.place || prettyPlace(loc);   // canonical city name from the data brain
+  const Where = place ? '<strong>'+esc(place)+'</strong>' : 'The area you referenced';
+  const tier = coverageTier(cov);
+
+  // Tier 1 (< 20): word is just getting out + Find MY Gopher path.
+  if(tier===1){
+    const has = (n>0)
+      ? Where+' has <strong>~'+n+'</strong> neighbors fully registered as a local worker, which means the word is just getting out. '
+      : Where+' doesn’t have neighbors registered as a local worker just yet — which means the word is just getting out. ';
+    const b = 'The Gopher Marketplace is available <strong>anywhere in the US</strong>. '+has
+      +'You can always submit a request <strong>risk-free</strong> — '+RISK+' '
+      +'If the service you’re looking for isn’t available in your area, tap <strong>Find MY Gopher</strong> — the Gopher Marketplace can pop up in your area, literally within a day, with your help.';
+    return coverageShell('avail-availability tier-low', 'Service Availability', b,
+      ctaRow(GOPHER_LINKS.request,'Submit a request','submitRequest()',
+             GOPHER_LINKS.findGopher,'Find MY Gopher','findMyGopher()'));
+  }
+
+  // Tier 4 (50+ AND 10+ recently active): held until the Orders report is joined.
+  if(tier===4){
+    const b = Where+' has <strong>~'+n+'</strong> neighbors fully registered as a local worker. '
+      +'We’re ready to connect you when you are!';
+    return coverageShell('avail-availability tier-ready', 'Service Availability', b,
+      ctaRow(GOPHER_LINKS.request,'Submit a request','submitRequest()',
+             GOPHER_LINKS.requestDemo,'See how it works','seeHowItWorks()'));
+  }
+
+  // Tiers 2 & 3 (20–49 / 50+): standard availability copy.
+  const b = 'The Gopher Marketplace is available <strong>anywhere in the US</strong> and '
+    +Where+' has <strong>~'+n+'</strong> neighbors fully registered as a local worker. '
+    +'Because workers move around, that number may be a little more or less. '
+    +'You can always submit a request <strong>risk-free</strong> — '+RISK;
+  return coverageShell('avail-availability tier-'+tier, 'Service Availability', b,
+    ctaRow(GOPHER_LINKS.request,'Submit a request','submitRequest()',
+           GOPHER_LINKS.requestDemo,'See how it works','seeHowItWorks()'));
+}
+
+// The location answer card. Copy + CTAs adapt to the detected family, but every
+// variant leads with "available anywhere in the US" and never says a hard "no".
+// All counts are REAL, resolved from the data brain (no more hash stub).
+function buildLocationCard(intent){
+  const loc = intent.loc;
+  let cov = resolveCoverage(loc);
+  // Bare city that spans multiple states with comparable coverage -> ask which one.
+  // (availability only; other families just use the dominant state's count.)
+  if(cov.ambiguous){
+    if(intent.family==='availability') return buildClarifyCard(cov);
+    const top = cov.options[0];
+    cov = {hasPlace:true, inData:true, workers:top.workers, active3mo:0, place:cov.city};
+  }
+  if(intent.family==='availability') return buildCoverageCard(loc, cov);
+
+  const place = cov.place || prettyPlace(loc);   // canonical city name from the data brain
+  const where = place ? '<strong>'+esc(place)+'</strong>' : 'the area you referenced';
+  const Where = place ? '<strong>'+esc(place)+'</strong>' : 'The area you referenced';
+  const n = cov.workers;
+  const cnt = (cov.hasPlace && n>0) ? '<strong>~'+n+'</strong>' : null;   // real count, or null when unknown/zero
+  let cat, blurb, actions;
+
+  if(intent.family==='service'){
+    cat = esc(intent.label)+' — available in '+(place?esc(place):'your area');
+    blurb = 'Yes — <strong>'+esc(intent.label)+'</strong> is available <strong>anywhere in the US</strong>, including '+where+'. '
+      +(cnt ? 'There are '+cnt+' neighbors fully registered as local workers nearby. Because workers move around, that number may be a little more or less. '
+            : 'Neighbors are registering as local workers in your area. ')
+      +'Submit a request <strong>risk-free</strong> — '+RISK;
+    actions = ctaRow(requestHref(intent.slug),'Submit a request','submitRequest(\''+intent.slug+'\')',
+                     GOPHER_LINKS.requestDemo,'See how it works','seeHowItWorks()');
+  } else if(intent.family==='business'){
+    cat = 'Gopher for Business';
+    blurb = 'Yes — <strong>Gopher Connect</strong> works with businesses <strong>anywhere in the US</strong>, including '+where+'. '
+      +(cnt ? 'About '+cnt+' local Gophers are ready to pick up and deliver for your customers. Because workers move around, that number may vary. '
+            : 'A growing network of local Gophers can pick up and deliver for your customers. ')
+      +'Getting started is risk-free — '+RISK;
+    actions = ctaRow(GOPHER_LINKS.business,'Explore Gopher Connect','openBusiness()',
+                     GOPHER_LINKS.businessDemo,'See how it works','openBusinessDemo()');
+  } else if(intent.family==='worker'){
+    cat = 'Become a Gopher';
+    blurb = 'You can <strong>become a Gopher anywhere in the US</strong>, including '+where+'. '
+      +(cnt ? 'Around '+cnt+' neighbors are already fully registered as local workers here — you’d be joining them. '
+            : 'Neighbors are signing up as local workers in your area — you’d be joining them. ')
+      +'Sign up as a service provider and start accepting requests near you.';
+    actions = ctaRow(GOPHER_LINKS.worker,'Become a Gopher','becomeGopher()',
+                     GOPHER_LINKS.workerDemo,'See how it works','becomeGopherDemo()');
+  } else {   // expansion
+    cat = 'Already Nationwide';
+    blurb = 'Great news — Gopher isn’t just “coming” to '+(place?where:'your area')+'; the Marketplace is <strong>already available anywhere in the US</strong>. '
+      +(cnt ? Where+' has '+cnt+' neighbors fully registered as a local worker, and that keeps growing as more people join. '
+            : Where+' is on the map, and coverage keeps growing as more people join. ')
+      +'You can submit a request <strong>risk-free</strong> — '+RISK;
+    actions = ctaRow(GOPHER_LINKS.request,'Submit a request','submitRequest()',
+                     GOPHER_LINKS.requestDemo,'See how it works','seeHowItWorks()');
+  }
+
+  return coverageShell('avail-'+intent.family, cat, blurb, actions);
+}
+
 // Emoji icon per category for the fallback grid
 const CAT_ICONS={
   junk_removal:'🗑️', delivery:'📦', moving:'📦', ride_sharing:'🚗',
@@ -571,10 +857,34 @@ function buildContactUs(query, hadAnything, workerContext){
     +'<a class="cu-btn" href="'+esc(GOPHER_LINKS.request)+'" onclick="submitRequest();return false;">Submit a request '+svgArrow()+'</a></div>';
 }
 
-function render(results, query, isComplete){
+function render(results, query, isComplete, rawQuery){
   current=results; activeIdx=-1;
   if(!query.trim()){ close(); return; }
   bar.classList.add('has-results');
+
+  // Location intelligence ("Do you have service in Raleigh?", "become a Gopher in
+  // Cary", "can my business use Gopher in Dallas?", etc.) takes priority over the
+  // service classifier — it answers coverage/audience questions with a place.
+  // Runs on the RAW text: typo-correction rewrites a standalone "to" -> "do"
+  // ("to you deliver" -> "do you deliver"), which would break "<verb> to <place>".
+  const locIntent = classifyLocationIntent(rawQuery || query);
+  if(locIntent){
+    let ahtml = buildLocationCard(locIntent);
+    const afaqs = results.slice(0,2);   // surface up to 2 related answers beneath
+    current = afaqs;
+    if(afaqs.length){
+      ahtml += '<div class="res-head"><span>'+afaqs.length+' related answer'+(afaqs.length>1?'s':'')
+        +'</span><span class="ai-badge">'+svgSpark()+'Smart search</span></div>'
+        + afaqs.map((r,i)=>(
+          '<a class="res" data-i="'+i+'" onclick="openAnswer('+i+');return false;">'
+          +'<div class="res-q"><span class="res-tag '+r.rec.group+'">'+r.rec.group+'</span>'+hl(r.rec.q,query)+'</div>'
+          +'<div class="res-a">'+hl(r.rec.a,query)+'</div></a>'
+        )).join('');
+    }
+    box.innerHTML = ahtml;
+    box.classList.add('open');
+    return;
+  }
 
   // Confidence-aware service match.
   const intentInfo = classifyWithConfidence(query);
@@ -686,7 +996,7 @@ function doSearch(){
   if(_uploadBanner) _uploadBanner='';
   if(raw.length<2){ close(); return; }   // a single character isn't worth matching
   const q=correctTypos(raw);
-  render(searchFaqs(q, scopeTag()), q, true);
+  render(searchFaqs(q, scopeTag()), q, true, raw);
 }
 
 window.openAnswer=function(i){
@@ -718,6 +1028,11 @@ window.openAnswer=function(i){
 const GOPHER_LINKS = {
   request:     'gopher-request.html#login',     // Submit a request -> gopher-request sign-in
   requestDemo: 'gopher-request.html#flow-demo',     // See how it works -> Demo section
+  business:     'gopher-connect.html#login',   // "Explore Gopher Connect" (business intent)
+  businessDemo: 'gopher-connect-101.html',      // business "See how it works" explainer
+  worker:       'gopher-go.html#login',         // "Become a Gopher" (worker sign-up intent)
+  workerDemo:   'gopher-go-101.html',           // worker "See how it works" explainer
+  findGopher:   'age-restricted.html#find-my-gopher',  // low-coverage "Find MY Gopher" CTA
   services:    'gopher-services.html',         // category chips land here
   // per-category anchors on the services page — match these to the real section ids
   serviceSections: {
@@ -742,6 +1057,18 @@ function _go(url){ try{ window.location.href = url; }catch(e){ console.log('[Gop
 window.submitRequest=function(slug){ _go(requestHref(slug)); };
 // See how it works -> request page, Demo section.
 window.seeHowItWorks=function(){ _go(GOPHER_LINKS.requestDemo); };
+// Location-intent CTAs: business (Gopher Connect) and worker (Gopher Go) flows.
+window.openBusiness=function(){ _go(GOPHER_LINKS.business); };
+window.openBusinessDemo=function(){ _go(GOPHER_LINKS.businessDemo); };
+window.becomeGopher=function(){ _go(GOPHER_LINKS.worker); };
+window.becomeGopherDemo=function(){ _go(GOPHER_LINKS.workerDemo); };
+// Low-coverage tier: "Find MY Gopher" -> age-restricted page, "Not many Gophers yet" section.
+window.findMyGopher=function(){ _go(GOPHER_LINKS.findGopher); };
+// Re-run the pill with new text (used by the collision clarifier chips). Deferred a
+// tick so the current click finishes before we re-render — otherwise re-rendering
+// mid-click detaches the clicked chip and the outside-click handler closes the box.
+window.iqSearch=function(text){ setTimeout(function(){ var el=document.getElementById('aiInput'); if(el){ el.value=text; el.dispatchEvent(new Event('input',{bubbles:true})); try{ el.focus(); }catch(e){} } }, 0); };
+window.iqPickState=function(city,state){ window.iqSearch('do you have service in '+city+' '+state); };
 // "You might also be looking for" -> services page, relevant section.
 window.openServices=function(slug){ _go(servicesHref(slug)); };
 // Back-compat: any older bookService call now starts a request.
