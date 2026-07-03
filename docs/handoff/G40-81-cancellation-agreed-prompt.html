@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G40-81 — Requestor "Agreed / Not Agreed" prompt (front-end reference)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#33D975;--navy:#002461;--white:#fff;--tan:#EBE8E5;--green-dark:#1CB061;
+    --aqua:#87F7BD;--cornflower:#BADBFC;--green-light:#e8f7ea;--navy-mid:#253a7e;
+    --navy-light:#eef0f8;--gray:#f5f6fa;--text:#424242;--muted:#6b7280;--error:#e0364f;
+    --radius:16px;--shadow:0 4px 24px rgba(0,36,97,.10);
+  }
+  *{box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;color:var(--text);background:linear-gradient(160deg,#eef0f8,#fff 60%);margin:0;padding:28px 18px 60px;-webkit-font-smoothing:antialiased}
+  h1{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:26px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13.5px;max-width:620px;margin:0 auto 6px}
+  .tref{text-align:center;font-size:12px;color:var(--green-dark);font-weight:700;margin-bottom:22px}
+  .stage{display:flex;gap:34px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .phone{width:344px;background:var(--white);border-radius:34px;box-shadow:var(--shadow);border:1px solid #e7e9f2;overflow:hidden;display:flex;flex-direction:column}
+  .pbar{background:var(--navy);color:#fff;padding:12px 18px 11px;display:flex;align-items:center;gap:9px}
+  .pbar .dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
+  .pbar b{font-family:'Nunito';font-weight:800;font-size:14px}
+  .pbar .role{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--aqua)}
+  .screen{padding:16px 16px 22px;min-height:520px;display:flex;flex-direction:column;gap:13px;position:relative}
+  .stitle{font-family:'Nunito';font-weight:800;color:var(--navy);font-size:12px;letter-spacing:1.4px;text-transform:uppercase}
+  .oc{border:1.5px solid #eceef5;border-radius:14px;padding:14px;background:#fbfcff}
+  .oc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .oc-cat{font-family:'Nunito';font-weight:900;font-size:14px;color:var(--navy)}
+  .pill{margin-left:auto;font-family:'Nunito';font-weight:900;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;padding:4px 9px;border-radius:99px}
+  .pill.canc{background:#fdecef;color:var(--error)}
+  .oc-row{font-size:12.5px;color:var(--text);display:flex;gap:6px;margin-top:3px}
+  .oc-row .k{color:var(--muted);min-width:70px}
+  .oc-row .v{font-weight:600}
+  .prompt{background:linear-gradient(135deg,#fff,#f3f7ff);border:1.5px solid #d7e0f5;border-radius:14px;padding:15px;box-shadow:0 3px 12px rgba(0,36,97,.06)}
+  .prompt .bt{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:15px;display:flex;align-items:center;gap:8px;line-height:1.25}
+  .prompt .bd{font-size:13px;color:var(--text);line-height:1.5;margin:9px 0 4px}
+  .prompt .q{font-family:'Nunito';font-weight:800;color:var(--navy);font-size:13.5px;margin:12px 0 2px}
+  .btn{font-family:'Nunito';font-weight:800;font-size:14px;border-radius:11px;padding:13px;border:none;cursor:pointer;width:100%;transition:transform .12s,filter .15s;text-align:center}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--green);color:var(--navy)}
+  .btn-navy{background:var(--navy);color:#fff}
+  .btn-ghost{background:#fff;color:var(--navy);border:1.6px solid #d8dcea}
+  .btn-danger{background:#fff;color:var(--error);border:1.6px solid #f3c9d1}
+  .brow{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .chip{display:flex;align-items:center;gap:9px;border-radius:12px;padding:12px;font-size:12.5px;font-weight:600;line-height:1.4}
+  .chip.warn{background:#fff8e8;border:1.4px solid #ffe4a3;color:#8a5a00}
+  .chip.ok{background:var(--green-light);border:1.4px solid #b8ebc8;color:var(--green-dark)}
+  .chip.review{background:var(--navy-light);border:1.4px solid #cdd6ef;color:var(--navy)}
+  .chip .ico{font-size:16px;line-height:1}
+  .count{margin-left:auto;font-family:'Nunito';font-weight:900;font-size:11px;color:#8a5a00;background:#fff;border-radius:8px;padding:3px 7px;white-space:nowrap}
+  .cap{font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px;line-height:1.5}
+  .scn{display:inline-block;background:var(--navy-light);color:var(--navy);font-weight:700;font-size:9.5px;border-radius:6px;padding:2px 6px;margin-left:3px}
+  .ctl{max-width:720px;margin:26px auto 0;background:#fff;border:1px solid #e7e9f2;border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .ctl h3{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:13px;margin:0 0 8px}
+  .ctl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ctl button.sim{background:#fff;border:1.5px solid #d8dcea;color:var(--navy);border-radius:9px;padding:8px 13px;font-family:'Nunito';font-weight:800;font-size:12px;cursor:pointer}
+  .ctl .reset{margin-left:auto;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:'Nunito';font-weight:800;font-size:12.5px;cursor:pointer}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:11px;line-height:1.55}
+  .legend b{color:var(--navy)}
+  .flow{max-width:720px;margin:16px auto 0;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .step{background:#fff;border:1px solid #e7e9f2;border-radius:10px;padding:8px 11px;font-size:11px;color:var(--text);font-weight:600}
+  .step b{color:var(--navy);font-family:'Nunito'}
+  .arrow{color:var(--muted);align-self:center;font-weight:800}
+  @media(max-width:740px){.phone{width:min(92vw,344px)}}
+</style>
+</head>
+<body>
+  <h1>Gopher cancelled — Requestor "Agreed / Not Agreed" prompt</h1>
+  <p class="sub">Front-end reference for the only prototype-buildable piece of the two-strike cancellation-fee system: the Requestor's vote after a Gopher cancels. The fee logic, Stripe ledger, admin review and rehabilitation are backend/admin — out of the prototype.</p>
+  <p class="tref">G40-81 · Gopher Request (customer app) · reference only</p>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="pbar"><span class="dot"></span><b>Gopher Request</b><span class="role">Requester · Dana</span></div>
+      <div class="screen">
+        <div class="stitle">Request update</div>
+        <div class="oc">
+          <div class="oc-top"><span class="oc-cat">Multi-stop errand</span><span class="pill canc">Cancelled</span></div>
+          <div class="oc-row"><span class="k">Request</span><span class="v">#GR-00142</span></div>
+          <div class="oc-row"><span class="k">Gopher</span><span class="v">Marcus T.</span></div>
+          <div class="oc-row"><span class="k">Cancelled</span><span class="v">Just now · by your Gopher</span></div>
+        </div>
+
+        <!-- the prompt -->
+        <div id="ask">
+          <div class="prompt">
+            <div class="bt">🤝 Did you agree to this cancellation?</div>
+            <div class="bd">Marcus cancelled <b>#GR-00142</b>. If the two of you agreed to call it off, let us know — there's nothing more to do. If not, our team will take a look.</div>
+            <div class="q">Was this cancellation agreed between you both?</div>
+            <div class="brow">
+              <button class="btn btn-primary" onclick="agreed()">Yes — we agreed</button>
+              <button class="btn btn-danger" onclick="notAgreed()">No — I didn't agree</button>
+            </div>
+            <div class="chip warn" style="margin-top:12px"><span class="ico">⏳</span><span>Please respond within 6 hours</span><span class="count" id="cnt">5:59</span></div>
+          </div>
+          <p class="cap">No response in 6 hrs = treated as "Not agreed" <span class="scn">S1 · S2 · S3</span></p>
+        </div>
+
+        <!-- outcomes -->
+        <div id="done" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- downstream flow (context only) -->
+  <div class="flow">
+    <span class="step"><b>1.</b> Gopher cancels</span><span class="arrow">→</span>
+    <span class="step"><b>2.</b> Requestor votes (this screen)</span><span class="arrow">→</span>
+    <span class="step"><b>3.</b> Not agreed → admin review (48 hr)</span><span class="arrow">→</span>
+    <span class="step"><b>4.</b> Disposition + Gopher email</span><span class="arrow">→</span>
+    <span class="step"><b>5.</b> Stripe balance / deactivate</span>
+  </div>
+
+  <div class="ctl">
+    <h3>Demo controls</h3>
+    <div class="ctl-row">
+      <button class="sim" onclick="timeout6()">Simulate 6-hour timeout</button>
+      <button class="sim" onclick="deleted()">Simulate requestor deleted account</button>
+      <button class="reset" onclick="resetAll()">Reset</button>
+    </div>
+    <p class="legend">
+      <b>Agreed</b> → no rating, no fee, flow ends <span class="scn">S1</span>. &nbsp;
+      <b>Not agreed</b> (or <b>6-hr timeout</b> <span class="scn">S3</span> / <b>requestor deleted account</b> <span class="scn">S4</span>) → the cancellation becomes <i>unexcused</i> and admin review begins (48-hr window, three dispositions: Approve Cancel Fee / No Cancel Fee / Excused). &nbsp;
+      Downstream (backend/admin, not shown): 2 grace strikes before any $5 fee, Stripe negative-balance withholding, auto-deactivation at <b>balance ≤ $-10</b>, and 50-consecutive-5-star rehabilitation.
+    </p>
+  </div>
+
+<script>
+  const $=id=>document.getElementById(id);
+  let timer=null;
+
+  function resolve(html){
+    clearInterval(timer);
+    $('ask').hidden=true;
+    $('done').hidden=false;
+    $('done').innerHTML=html;
+  }
+  function agreed(){
+    resolve('<div class="chip ok"><span class="ico">✓</span><span><b>Thanks, Dana.</b> Since you both agreed, there’s nothing more to do — no rating, no fee.</span></div>'+
+      '<p class="cap">Flow ends · no admin review, no rating screen <span class="scn">S1</span></p>');
+  }
+  function notAgreed(){
+    resolve('<div class="chip review"><span class="ico">🔎</span><span><b>Thanks for letting us know.</b> Our team will review this cancellation. You may be asked to rate your experience.</span></div>'+
+      '<p class="cap">Marked <b>Not Agreed</b> → 48-hr admin review begins <span class="scn">S2</span></p>');
+  }
+  function timeout6(){
+    resolve('<div class="chip review"><span class="ico">⌛</span><span>No response within 6 hours — the cancellation is treated as <b>Not Agreed</b> and sent for review.</span></div>'+
+      '<p class="cap">6-hr Requestor timeout = Not Agreed Upon <span class="scn">S3</span></p>');
+  }
+  function deleted(){
+    resolve('<div class="chip review"><span class="ico">🗑️</span><span>Requestor account deleted during the prompt window — treated as <b>Not Agreed</b> and sent for review.</span></div>'+
+      '<p class="cap">Account deleted before responding = Not Agreed Upon <span class="scn">S4</span></p>');
+  }
+  function resetAll(){
+    clearInterval(timer);
+    $('done').hidden=true; $('ask').hidden=false;
+    startCountdown();
+  }
+  function startCountdown(){
+    let s=359; // 5:59 demo
+    clearInterval(timer);
+    const tick=()=>{
+      const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0');
+      if($('cnt'))$('cnt').textContent=m+':'+ss;
+      if(s<=0){clearInterval(timer);timeout6();}
+      s--;
+    };
+    tick(); timer=setInterval(tick,1000);
+  }
+  startCountdown();
+</script>
+</body>
+</html>

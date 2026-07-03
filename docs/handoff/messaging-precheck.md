@@ -1,8 +1,17 @@
 # In-App Messaging Guard — Spec & Handoff
 
-_Dated 2026-06-26. Lives in `docs/handoff/` alongside the other handoff docs.
-This file is the durable source of truth for the messaging guard; it replaces
-scattered chat threads. Any session can pick the work up by reading this._
+_Dated 2026-06-26; product decisions locked 2026-07-02 (G40-35). Lives in
+`docs/handoff/` alongside the other handoff docs. This file is the durable
+source of truth for the messaging guard; it replaces scattered chat threads.
+Any session can pick the work up by reading this. Ticket-specific red-carpet
+handoff: `docs/handoff/G40-35-messaging-violations.md`._
+
+> **2026-07-02 update (G40-35):** scope expanded to **all in-app communication
+> violations** — the off-platform families **plus a `conduct` family** for
+> foul/abusive language. A bare **`$`/dollar amount now flags** (CashApp
+> precursor); **physical addresses do not** (the ticket's "Address" meant
+> **email**). Escalation is **per user**; admin email + account flag fire at
+> **level ≥ 2**. All previously-open developer questions are answered below.
 
 ## Purpose
 
@@ -71,7 +80,10 @@ Per thread, each flagged attempt escalates:
 
 Warns send the message once acknowledged; only level 3 holds it back. Tunable
 via `CONFIG.blockAtLevel` in the module. Production should drive escalation off
-the server's `severity`/history rather than a raw client counter.
+the server's `severity`/history rather than a raw client counter. **Escalation
+is per user across all threads** (not per thread), and **admin@ email + account
+flag fire at level ≥ 2** (`CONFIG.adminAlertAtLevel`; level 1 stays a silent
+educational nudge). Conduct hits use the same levels with respectful-tone copy.
 
 ---
 
@@ -82,10 +94,14 @@ tripped. Full list is in `gopher-message-guard.js` under `PATTERNS`; it's meant
 to be grown by the dev.
 
 - **payment** — Cash App, Venmo, Zelle, PayPal, Apple/Google Pay, wire, crypto,
-  "pay you cash", "pay directly", "pay outside".
-- **contact** — phone-number and email patterns, "call/text me", "my number".
+  "pay you cash", "pay directly", "pay outside", **and a bare `$`/dollar amount**
+  (`$50`, "50 bucks") — the CashApp precursor.
+- **contact** — phone-number and **email**-address patterns, "call/text me",
+  "my number". (A physical/job-site address is **not** flagged.)
 - **off_platform** — "outside Gopher", "off the app", "cancel and pay", "meet up
   and pay", "pay in person".
+- **conduct** — foul / abusive / threatening language (own copy family). Starter
+  list in the module; John curates.
 
 Known prototype limitations (fine for now, list for the dev): regex matching is
 naive (misses obfuscation like "v3nmo" or spelled-out digits), the bare word
@@ -178,19 +194,33 @@ review surface.
 
 ---
 
-## Open questions for the paid developer
+## Product decisions — LOCKED (John, 2026-07-02)
 
-- **Authority on disagreement.** When the client pre-filter and the server
-  precheck disagree, the assumed rule is **server wins; the client check is only
-  a latency optimization and may warn but should never be the thing that
-  enforces a block.** Confirm this is the intended model.
-- **Escalation scope & decay.** Per thread, or per user across threads? Does the
-  counter ever reset (e.g. after good behavior, or a time window)?
-- **Severity → level mapping.** The contract returns a numeric `severity`; define
-  the thresholds that map it to warn vs. block.
-- **Alert log consumption.** Who reads `flag_id` events, and does a block notify
-  the recipient, the sender, both, or neither?
-- **Appeals / false positives.** Is there a path for a wrongly-blocked message?
+These were the open developer questions; they are now answered. No product
+decisions remain for the dev — only engineering implementation.
+
+- **Authority on disagreement.** **Server wins.** The client check is a latency
+  optimization; it may warn but must never be the sole thing enforcing a block.
+- **Escalation scope & decay.** **Per user, across all threads** (not per thread).
+  A repeat offender cannot reset by opening a new conversation. No automatic
+  time-decay at launch; admin can clear a flag manually (see appeals).
+- **Foul/abusive language.** In scope — its own **`conduct`** policy family with
+  respectful-tone copy, same escalation model. Starter word list is in the
+  module; John curates/grows it.
+- **`$` / dollar amounts.** **Flagged** (payment family) — the precursor to
+  CashApp circumvention. Price is shown transparently in-app, so no legitimate
+  need to type an amount in chat. **Physical/job-site addresses are NOT flagged.**
+- **Admin alert timing.** Email **admin@gophergo.io** + **flag account** +
+  **ActiveAdmin log** at **level ≥ 2** (`CONFIG.adminAlertAtLevel`). Level 1 is a
+  silent educational nudge.
+- **Both parties notified.** A trigger shows the pop-up to **both** the sender and
+  the recipient (backend pushes it to the recipient; the prototype shows only the
+  sender).
+- **Severity → level mapping.** Engineering detail. Default: level 1/2 = `warn`,
+  level 3+ = `block`; map the server's numeric `severity` onto that (a simple
+  cumulative-per-user count reproduces the prototype).
+- **Appeals / false positives.** No user-facing appeal at launch. Admin can clear
+  an account flag / reverse a block from the ActiveAdmin review surface.
 
 ---
 

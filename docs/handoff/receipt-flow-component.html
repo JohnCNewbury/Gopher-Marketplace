@@ -1,0 +1,165 @@
+<!-- ============================================================================
+     COST-ADJUSTMENT RECEIPT — shared front-end component  (Jira G40-101)
+     ----------------------------------------------------------------------------
+     ONE component, dropped identically into every surface that shows a cost
+     adjustment to the customer (Gopher Request, Connect, Deals) and — for the
+     tall/narrow display + attach gate — the Gopher Go worker app.
+
+     WHAT IT PROVIDES (global, singleton — safe to include once per page):
+       window.__receiptThumb(src, label)  -> returns tall/narrow thumbnail HTML
+                                             (2:5, object-fit:contain, no crop).
+       window.__receiptViewer(src)        -> opens a fullscreen pinch-to-zoom
+                                             viewer (touch pinch + drag-pan +
+                                             double-tap; desktop wheel + drag).
+       window.__demoReceipt()             -> DEMO ONLY: a generated SVG receipt
+                                             so the flow renders with no asset
+                                             server. DELETE in production.
+
+     DEV SEAM (the only place the backend plugs in):
+       The customer's cost-adjustment object carries a `receipt.src` = the stored
+       receipt URL (S3/CDN) the backend returns on the cost_adjustment record.
+       Render it with:  window.__receiptThumb(adj.receipt && adj.receipt.src)
+       When src is null/undefined the demo receipt shows; pass the real URL and
+       the demo generator is never called. Server-side, a receipt is REQUIRED
+       whenever new Cost of Items > original — enforce that on the endpoint, not
+       only in the UI. See gopher-go-backend-wiring-checklist.md §5.
+     ============================================================================ -->
+<style id="rcpt-styles">
+  .rcpt-thumb{--w:92px;width:var(--w);aspect-ratio:2/5;border-radius:10px;overflow:hidden;
+    background:#f4f1ea;border:1px solid rgba(0,0,0,.14);cursor:zoom-in;position:relative;
+    display:block;padding:0;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.10)}
+  .rcpt-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+  .rcpt-thumb .rcpt-badge{position:absolute;left:0;right:0;bottom:0;padding:2px 0;
+    font:700 8.5px/1.4 system-ui,-apple-system,sans-serif;text-align:center;color:#fff;
+    background:rgba(20,20,24,.62);letter-spacing:.04em}
+  .rcpt-row{display:flex;gap:11px;align-items:center;margin:11px 0}
+  .rcpt-row .rcpt-cap{font:500 12.5px/1.5 system-ui,-apple-system,sans-serif;color:#5b6472}
+  .rcpt-row .rcpt-cap b{color:#111;font-weight:700}
+  .rcpt-viewer{position:fixed;inset:0;z-index:99999;background:rgba(12,12,14,.93);display:none;
+    align-items:center;justify-content:center;touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none}
+  .rcpt-viewer.on{display:flex}
+  .rcpt-stage{position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .rcpt-img{max-width:90vw;max-height:86vh;transform-origin:center center;will-change:transform;
+    -webkit-user-drag:none;user-select:none;touch-action:none;background:#fff;border-radius:4px;box-shadow:0 8px 44px rgba(0,0,0,.55)}
+  .rcpt-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;border:0;
+    background:rgba(255,255,255,.15);color:#fff;font-size:22px;line-height:1;cursor:pointer;z-index:2}
+  .rcpt-hint{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:rgba(255,255,255,.72);
+    font:500 12px/1.4 system-ui,-apple-system,sans-serif;pointer-events:none;z-index:2}
+</style>
+<script>
+(function(){
+  if(window.__receiptViewer) return;                         // singleton per page
+
+  // ---- DEMO ONLY: generated SVG receipt (delete in production) ---------------
+  window.__demoReceipt = function(){
+    var rows=[['Eggs, large dozen','4.99'],['Milk, 1 gal','3.79'],['Chicken breast 2lb','12.48'],
+      ['Olive oil 500ml','9.29'],['Pasta x3','5.07'],['Tomatoes 2lb','4.18'],
+      ['Bread, sourdough','4.49'],['Coffee 12oz','8.99']];
+    var y=150, items=rows.map(function(r){var line="<text x='24' y='"+y+"' font-size='15'>"+r[0]+"</text>"+
+      "<text x='296' y='"+y+"' font-size='15' text-anchor='end'>"+r[1]+"</text>";y+=32;return line;}).join('');
+    var bars=Array.from({length:26},function(_,i){return "<line x1='"+(40+i*9)+"' y1='680' x2='"+(40+i*9)+
+      "' y2='740' stroke-width='"+((i%3)+1)+"'/>";}).join('');
+    var svg="<svg xmlns='http://www.w3.org/2000/svg' width='320' height='800' viewBox='0 0 320 800'>"+
+      "<rect width='320' height='800' fill='#fffdf7'/><g font-family='monospace' fill='#222'>"+
+      "<text x='160' y='54' font-size='26' text-anchor='middle' font-weight='bold'>FRESH MART</text>"+
+      "<text x='160' y='82' font-size='14' text-anchor='middle'>123 Main St &#183; (555) 010-2233</text>"+
+      "<line x1='24' y1='108' x2='296' y2='108' stroke='#bbb' stroke-dasharray='4 4'/>"+items+
+      "<line x1='24' y1='418' x2='296' y2='418' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='24' y='452' font-size='15'>Subtotal</text><text x='296' y='452' font-size='15' text-anchor='end'>57.28</text>"+
+      "<text x='24' y='482' font-size='15'>Tax</text><text x='296' y='482' font-size='15' text-anchor='end'>5.72</text>"+
+      "<text x='24' y='518' font-size='19' font-weight='bold'>TOTAL</text><text x='296' y='518' font-size='19' text-anchor='end' font-weight='bold'>63.00</text>"+
+      "<line x1='24' y1='540' x2='296' y2='540' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='160' y='580' font-size='13' text-anchor='middle'>VISA ****4242   APPROVED</text>"+
+      "<text x='160' y='608' font-size='12' text-anchor='middle'>07/02/2026  3:41 PM</text>"+
+      "<text x='160' y='656' font-size='14' text-anchor='middle'>*** THANK YOU ***</text>"+
+      "<g stroke='#222'>"+bars+"</g>"+
+      "<text x='160' y='772' font-size='12' text-anchor='middle'>0 63000 42420 7</text></g></svg>";
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+  };
+
+  // ---- Thumbnail (tall/narrow, never cropped or distorted) -------------------
+  window.__receiptThumb = function(src, label){
+    var s = src || window.__demoReceipt();
+    return '<button type="button" class="rcpt-thumb" data-rcpt-src="'+s+'" '+
+           'aria-label="View receipt — tap to zoom"><img src="'+s+'" alt="Receipt">'+
+           '<span class="rcpt-badge">'+(label||'ZOOM')+'</span></button>';
+  };
+
+  // ---- Fullscreen pinch-to-zoom viewer ---------------------------------------
+  var v, stage, img, scale=1, tx=0, ty=0, MIN=1, MAX=6;
+  var drag=false, lastX=0, lastY=0, pinch=false, startDist=0, startScale=1, lastTap=0;
+  function apply(){ img.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
+  function resetView(){ scale=1; tx=0; ty=0; apply(); }
+  function clamp(s){ return Math.max(MIN, Math.min(MAX, s)); }
+  function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
+  function close(){ v.classList.remove('on'); document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  function build(){
+    v=document.createElement('div'); v.className='rcpt-viewer'; v.setAttribute('role','dialog'); v.setAttribute('aria-modal','true');
+    v.innerHTML='<button class="rcpt-close" aria-label="Close">✕</button>'+
+      '<div class="rcpt-stage"><img class="rcpt-img" alt="Receipt"></div>'+
+      '<div class="rcpt-hint">Pinch or scroll to zoom · drag to pan · double-tap to reset</div>';
+    document.body.appendChild(v);
+    stage=v.querySelector('.rcpt-stage'); img=v.querySelector('.rcpt-img');
+    v.querySelector('.rcpt-close').addEventListener('click', close);
+    v.addEventListener('click', function(e){ if(e.target===v) close(); });
+    // desktop: wheel zoom (about center) + drag pan + dblclick toggle
+    stage.addEventListener('wheel', function(e){ e.preventDefault(); scale=clamp(scale*(1 - e.deltaY*0.0015)); if(scale===1){tx=0;ty=0;} apply(); }, {passive:false});
+    stage.addEventListener('mousedown', function(e){ if(scale<=1) return; drag=true; lastX=e.clientX; lastY=e.clientY; });
+    window.addEventListener('mousemove', function(e){ if(!drag) return; tx+=e.clientX-lastX; ty+=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; apply(); });
+    window.addEventListener('mouseup', function(){ drag=false; });
+    img.addEventListener('dblclick', function(e){ e.preventDefault(); scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); });
+    // touch: pinch zoom + drag pan + double-tap reset
+    stage.addEventListener('touchstart', function(e){
+      if(e.touches.length===2){ pinch=true; startDist=dist(e.touches); startScale=scale; }
+      else if(e.touches.length===1){
+        var now=Date.now();
+        if(now-lastTap<300){ scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); lastTap=0; }
+        else { lastTap=now; if(scale>1){ drag=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; } }
+      }
+    }, {passive:false});
+    stage.addEventListener('touchmove', function(e){
+      if(pinch && e.touches.length===2){ e.preventDefault(); scale=clamp(startScale*(dist(e.touches)/startDist)); if(scale===1){tx=0;ty=0;} apply(); }
+      else if(drag && e.touches.length===1){ e.preventDefault(); tx+=e.touches[0].clientX-lastX; ty+=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; apply(); }
+    }, {passive:false});
+    stage.addEventListener('touchend', function(e){ if(e.touches.length===0){ pinch=false; drag=false; } });
+  }
+  window.__receiptViewer = function(src){
+    if(!v) build();
+    img.src = src || window.__demoReceipt();
+    resetView();
+    v.classList.add('on');
+    document.addEventListener('keydown', onKey);
+  };
+
+  // A .rcpt-thumb OR any [data-rcpt-open] element opens the viewer (delegated).
+  // Empty data-rcpt-src falls back to the demo receipt.
+  document.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('.rcpt-thumb, [data-rcpt-open]') : null;
+    if(t){ e.preventDefault(); window.__receiptViewer(t.getAttribute('data-rcpt-src') || null); }
+  });
+
+  // Static-HTML hydration: drop <span data-receipt-demo [data-rcpt-src] [data-label]
+  // [data-width]> anywhere (e.g. inside a string-built screen that can't call
+  // __receiptThumb) and it becomes a tall/narrow, zoomable thumbnail after load.
+  function hydrate(root){
+    (root||document).querySelectorAll('[data-receipt-demo]').forEach(function(el){
+      var html = window.__receiptThumb(el.getAttribute('data-rcpt-src') || null, el.getAttribute('data-label') || 'TAP TO ZOOM');
+      var w = el.getAttribute('data-width');
+      if(w){ html = html.replace('class="rcpt-thumb"', 'class="rcpt-thumb" style="--w:'+w+'px"'); }
+      el.insertAdjacentHTML('beforebegin', html);
+      el.parentNode.removeChild(el);
+    });
+  }
+  if(document.readyState !== 'loading') hydrate(); else document.addEventListener('DOMContentLoaded', function(){ hydrate(); });
+  // Walkthrough/SPA screens are often injected via innerHTML AFTER load — observe
+  // the DOM so placeholders added later still hydrate.
+  if(typeof MutationObserver !== 'undefined'){
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ if(muts[i].addedNodes && muts[i].addedNodes.length){ hydrate(); break; } }
+    });
+    var startObs = function(){ if(document.body) mo.observe(document.body, {childList:true, subtree:true}); };
+    if(document.body) startObs(); else document.addEventListener('DOMContentLoaded', startObs);
+  }
+})();
+</script>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gopher App Footer + Go segments — standalone sketch</title>
+<style>
+  :root{
+    --nav:#002461;        /* brand navy */
+    --green:#33D975;      /* brand green — sampled from GO logo/tile */
+    --white:#ffffff;
+    --seg-idle:#5b6472;   /* inactive segment text */
+    --seg-track:#eef1f5;  /* segmented-control track */
+    /* NOTE for CC: map to the prototype's real tokens; #33D975 sampled, not final */
+  }
+  body{margin:0;background:#eef1f5;font-family:'Nunito','DM Sans',system-ui,sans-serif}
+  .stage{max-width:420px;margin:36px auto;padding:0 16px}
+  .stage h2{font:700 12px/1.4 system-ui;color:#5b6472;text-transform:uppercase;letter-spacing:.05em;margin:26px 0 10px}
+
+  /* ===== Gopher Go — top segmented control (Available/Active/Scheduled) ===== */
+  .g40-segs{display:flex;gap:6px;background:var(--seg-track);border-radius:14px;padding:5px}
+  .g40-seg{
+    flex:1;border:0;cursor:pointer;padding:11px 0;border-radius:10px;background:none;
+    color:var(--seg-idle);font:700 14px/1 'Nunito',sans-serif;
+  }
+  .g40-seg[aria-selected="true"]{background:var(--nav);color:var(--white)} /* was black → navy */
+  .g40-seg:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+  /* ===== FOOTER COMPONENT (folds into each app) ===== */
+  .g40-tabbar{
+    position:relative;display:flex;align-items:flex-end;justify-content:space-between;
+    background:var(--nav);border-radius:24px;padding:12px 20px 14px;
+    /* in-app: position:fixed;left:0;right:0;bottom:0;border-radius:24px 24px 0 0; */
+  }
+  .g40-tab{
+    flex:1;background:none;border:0;cursor:pointer;padding:10px 0;
+    color:var(--white);font:700 15px/1 'Nunito',sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  .g40-tab:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:10px}
+  .g40-tab[aria-current="page"]{color:var(--green)}
+  .g40-tab--go{flex:0 0 auto;transform:translateY(-24px);gap:6px}
+  .g40-go-tile{
+    width:62px;height:62px;border-radius:18px;background:var(--green);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px rgba(51,217,117,.42);
+  }
+  .g40-go-label{color:var(--green);font:800 16px/1 'Nunito',sans-serif}
+
+  /* ===== demo-only toast (sketch feedback; NOT part of the component) ===== */
+  .g40-toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+    background:var(--nav);color:var(--white);font:800 13px/1.3 'Nunito',sans-serif;
+    padding:11px 16px;border-radius:12px;box-shadow:0 12px 30px rgba(0,16,42,.3);
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:88vw;text-align:center;
+  }
+  .g40-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style></head>
+<body>
+<div class="stage">
+
+  <h2>Request app — GO → Categories</h2>
+  <nav class="g40-tabbar" data-app="request" aria-label="Primary">
+    <button class="g40-tab" data-nav="home">home</button>
+    <button class="g40-tab" data-nav="inbox">inbox</button>
+    <button class="g40-tab g40-tab--go" data-nav="go" aria-label="GO">
+      <span class="g40-go-tile">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="11.5" y="5" width="9" height="22" rx="3.5" fill="#002461"/>
+          <rect x="5" y="11.5" width="22" height="9" rx="3.5" fill="#002461"/>
+        </svg>
+      </span>
+      <span class="g40-go-label">GO</span>
+    </button>
+    <button class="g40-tab" data-nav="refer">refer</button>
+    <button class="g40-tab" data-nav="help">help</button>
+  </nav>
+
+  <h2>Gopher Go — top segments (active = navy) + GO → All available requests</h2>
+  <div class="g40-segs" role="tablist" aria-label="Requests filter">
+    <button class="g40-seg" role="tab" aria-selected="true">Available</button>
+    <button class="g40-seg" role="tab" aria-selected="false">Active</button>
+    <button class="g40-seg" role="tab" aria-selected="false">Scheduled</button>
+  </div>
+  <div style="height:14px"></div>
+  <nav class="g40-tabbar" data-app="go" aria-label="Primary">
+    <button class="g40-tab" data-nav="home">home</button>
+    <button class="g40-tab" data-nav="inbox">inbox</button>
+    <button class="g40-tab g40-tab--go" data-nav="go" aria-label="GO">
+      <span class="g40-go-tile">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+          <rect x="11.5" y="5" width="9" height="22" rx="3.5" fill="#002461"/>
+          <rect x="5" y="11.5" width="22" height="9" rx="3.5" fill="#002461"/>
+        </svg>
+      </span>
+      <span class="g40-go-label">GO</span>
+    </button>
+    <button class="g40-tab" data-nav="refer">refer</button>
+    <button class="g40-tab" data-nav="help">help</button>
+  </nav>
+
+</div>
+
+<div class="g40-toast" id="g40Toast" role="status" aria-live="polite"></div>
+
+<script>
+  // ── Standalone sketch behaviour — DEMO ONLY, no real navigation. ──────────
+  // The GO button is a launch action (not a page): it routes per HOST app.
+  //   Request app  → Categories
+  //   Gopher Go    → All available requests
+  // In-app, swap the toast for the real router:  router.go(GO_TARGET[app]).
+  const GO_TARGET = { request:'categories', go:'available-requests' };
+  const LABELS = { categories:'Categories', 'available-requests':'All available requests' };
+
+  // tiny toast (sketch feedback; NOT part of the shipped component)
+  const toastEl = document.getElementById('g40Toast');
+  let toastT = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  }
+
+  // ── Footer tab bars (one component, folded into each app via data-app) ──
+  document.querySelectorAll('.g40-tabbar').forEach(bar => {
+    const app = bar.dataset.app;
+    bar.addEventListener('click', e => {
+      const tab = e.target.closest('.g40-tab');
+      if(!tab) return;
+      const nav = tab.dataset.nav;
+      if(nav === 'go'){
+        // GO is a launch action, not a "current page" — route per host app.
+        const target = GO_TARGET[app] || 'home';
+        toast('GO → ' + (LABELS[target] || target));
+        return;
+      }
+      // Mark the tapped destination as the current page within THIS bar only.
+      bar.querySelectorAll('.g40-tab').forEach(t => t.removeAttribute('aria-current'));
+      tab.setAttribute('aria-current', 'page');
+      toast(app + ' → ' + nav);
+    });
+  });
+
+  // ── Gopher Go top segmented control (WAI-ARIA tablist, roving tabindex) ──
+  document.querySelectorAll('.g40-segs[role="tablist"]').forEach(list => {
+    const tabs = Array.from(list.querySelectorAll('[role="tab"]'));
+    const syncTabindex = () => tabs.forEach(t =>
+      t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1);
+    const select = (i, focus) => {
+      tabs.forEach((t, j) => t.setAttribute('aria-selected', j === i ? 'true' : 'false'));
+      syncTabindex();
+      if(focus) tabs[i].focus();
+      toast('filter → ' + tabs[i].textContent.trim());
+    };
+    syncTabindex();
+    list.addEventListener('click', e => {
+      const t = e.target.closest('[role="tab"]');
+      if(t) select(tabs.indexOf(t), false);
+    });
+    list.addEventListener('keydown', e => {
+      const cur = tabs.findIndex(t => t.getAttribute('aria-selected') === 'true');
+      let next = null;
+      if(e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (cur + 1) % tabs.length;
+      else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (cur - 1 + tabs.length) % tabs.length;
+      else if(e.key === 'Home') next = 0;
+      else if(e.key === 'End') next = tabs.length - 1;
+      if(next !== null){ e.preventDefault(); select(next, true); }
+    });
+  });
+</script>
+</body>
+</html>

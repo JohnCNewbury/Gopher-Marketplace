@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G40-80 — Reschedule flow (front-end reference)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#33D975; --navy:#002461; --white:#fff; --tan:#EBE8E5;
+    --green-dark:#1CB061; --aqua:#87F7BD; --cornflower:#BADBFC;
+    --green-light:#e8f7ea; --navy-mid:#253a7e; --navy-light:#eef0f8;
+    --gray:#f5f6fa; --text:#424242; --muted:#6b7280; --error:#e0364f;
+    --radius:16px; --shadow:0 4px 24px rgba(0,36,97,.10);
+  }
+  *{box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;color:var(--text);background:linear-gradient(160deg,#eef0f8,#fff 60%);margin:0;padding:28px 18px 60px;-webkit-font-smoothing:antialiased}
+  h1{font-family:'Nunito',sans-serif;font-weight:900;color:var(--navy);font-size:26px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13.5px;max-width:640px;margin:0 auto 6px}
+  .tref{text-align:center;font-size:12px;color:var(--green-dark);font-weight:700;margin-bottom:22px}
+  .stage{display:flex;gap:34px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  /* phone */
+  .phone{width:340px;background:var(--white);border-radius:34px;box-shadow:var(--shadow);border:1px solid #e7e9f2;overflow:hidden;display:flex;flex-direction:column}
+  .pbar{background:var(--navy);color:#fff;padding:12px 18px 11px;display:flex;align-items:center;gap:9px}
+  .pbar .dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
+  .pbar b{font-family:'Nunito';font-weight:800;font-size:14px;letter-spacing:.2px}
+  .pbar .role{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--aqua)}
+  .screen{padding:16px 16px 20px;min-height:498px;display:flex;flex-direction:column;gap:13px;position:relative}
+  .stitle{font-family:'Nunito';font-weight:800;color:var(--navy);font-size:12px;letter-spacing:1.4px;text-transform:uppercase}
+  /* order card */
+  .oc{border:1.5px solid #eceef5;border-radius:14px;padding:14px;background:#fbfcff}
+  .oc-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .oc-cat{font-family:'Nunito';font-weight:900;font-size:14px;color:var(--navy)}
+  .pill{margin-left:auto;font-family:'Nunito';font-weight:900;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;padding:4px 9px;border-radius:99px}
+  .pill.prog{background:#fff2d6;color:#9a6a00}
+  .pill.sched{background:var(--green-light);color:var(--green-dark)}
+  .oc-row{font-size:12.5px;color:var(--text);display:flex;gap:6px;margin-top:3px}
+  .oc-row .k{color:var(--muted);min-width:66px}
+  .oc-row .v{font-weight:600}
+  /* buttons */
+  .btn{font-family:'Nunito';font-weight:800;font-size:14px;border-radius:11px;padding:13px;border:none;cursor:pointer;width:100%;transition:transform .12s,filter .15s;text-align:center}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--green);color:var(--navy)}
+  .btn-primary:hover{filter:brightness(1.03)}
+  .btn-navy{background:var(--navy);color:#fff}
+  .btn-ghost{background:#fff;color:var(--navy);border:1.6px solid #d8dcea}
+  .btn-danger{background:#fff;color:var(--error);border:1.6px solid #f3c9d1}
+  .btn-row{display:flex;gap:9px}
+  .btn-row .btn{flex:1}
+  /* chip / banner */
+  .chip{display:flex;align-items:center;gap:9px;border-radius:12px;padding:11px 12px;font-size:12.5px;font-weight:600;line-height:1.35}
+  .chip.pending{background:#fff8e8;border:1.4px solid #ffe4a3;color:#8a5a00}
+  .chip.ok{background:var(--green-light);border:1.4px solid #b8ebc8;color:var(--green-dark)}
+  .chip.err{background:#fdecef;border:1.4px solid #f3c9d1;color:var(--error)}
+  .chip .ico{font-size:16px;line-height:1}
+  .count{margin-left:auto;font-family:'Nunito';font-weight:900;font-size:11px;color:#8a5a00;background:#fff;border-radius:8px;padding:3px 7px;white-space:nowrap}
+  .banner{background:linear-gradient(135deg,#fff,#f3f7ff);border:1.5px solid #d7e0f5;border-radius:14px;padding:13px;box-shadow:0 3px 12px rgba(0,36,97,.06)}
+  .banner .bt{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:13.5px;display:flex;align-items:center;gap:7px}
+  .banner .bnew{margin:8px 0 10px;background:#fff;border:1px dashed #c7d2ec;border-radius:10px;padding:9px 11px;font-size:12.5px}
+  .banner .bnew .lab{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+  .banner .bnew .val{font-family:'Nunito';font-weight:800;color:var(--navy);font-size:14px;margin-top:2px}
+  .strike{color:var(--muted);text-decoration:line-through;font-weight:600;font-size:11.5px}
+  /* picker */
+  .field{margin-top:2px}
+  .field label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:5px}
+  .field input,.field select{width:100%;border:1.5px solid #d8dcea;border-radius:10px;padding:11px;font-family:'DM Sans';font-size:14px;color:var(--navy);background:#fff}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.4}
+  .sheet{position:absolute;inset:0;background:rgba(0,18,49,.35);backdrop-filter:blur(2px);display:flex;align-items:flex-end;border-radius:0}
+  .sheet[hidden]{display:none}
+  .sheet-card{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 16px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(0,36,97,.2)}
+  .sheet-h{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:16px}
+  .cap{font-size:10.5px;color:var(--muted);text-align:center;margin-top:2px}
+  .scn{display:inline-block;background:var(--navy-light);color:var(--navy);font-weight:700;font-size:9.5px;border-radius:6px;padding:2px 6px;margin-left:4px}
+  /* control strip */
+  .ctl{max-width:720px;margin:26px auto 0;background:#fff;border:1px solid #e7e9f2;border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .ctl h3{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:13px;margin:0 0 10px;letter-spacing:.3px}
+  .ctl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .ctl label{font-size:12px;color:var(--text);font-weight:600}
+  .ctl select{border:1.5px solid #d8dcea;border-radius:9px;padding:8px 10px;font-family:'DM Sans';font-size:12.5px;color:var(--navy)}
+  .ctl .reset{margin-left:auto;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:'Nunito';font-weight:800;font-size:12.5px;cursor:pointer}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5}
+  .legend b{color:var(--navy)}
+  @media(max-width:740px){.phone{width:min(92vw,340px)}}
+</style>
+</head>
+<body>
+  <h1>Reschedule an active request</h1>
+  <p class="sub">Front-end reference for the Gopher-proposed reschedule-with-approval flow. Click through both apps; the Stripe outcome is selectable in the control strip below. This is a visual blueprint — the real build extends the existing <code>re_schedule.js</code> feature.</p>
+  <p class="tref">G40-80 · Gopher Go (propose) ↔ Gopher Request (approve) · reference only</p>
+
+  <div class="stage">
+    <!-- ============ GOPHER GO (worker proposes) ============ -->
+    <div class="phone">
+      <div class="pbar"><span class="dot"></span><b>Gopher Go</b><span class="role">Worker · Marcus</span></div>
+      <div class="screen">
+        <div class="stitle">Active request</div>
+        <div class="oc">
+          <div class="oc-top">
+            <span class="oc-cat">Furniture assembly</span>
+            <span class="pill prog" id="goPill">In progress</span>
+          </div>
+          <div class="oc-row"><span class="k">Request</span><span class="v">#GR-00142</span></div>
+          <div class="oc-row"><span class="k">Requester</span><span class="v">Dana R.</span></div>
+          <div class="oc-row"><span class="k">Time</span><span class="v" id="goTime">Today · 3:00 PM</span></div>
+        </div>
+
+        <!-- default action -->
+        <div id="goActions">
+          <button class="btn btn-ghost" onclick="openSheet()">🗓️ Reschedule</button>
+          <p class="cap">Shown on any active order, Accepted → In Progress <span class="scn">S10 · S12</span></p>
+        </div>
+
+        <!-- pending state -->
+        <div id="goPending" hidden>
+          <div class="chip pending"><span class="ico">⏳</span><span>Reschedule pending — waiting on Dana</span><span class="count" id="goCount">3:59</span></div>
+          <p class="cap">Job stays visibly active until Dana responds <span class="scn">S2</span></p>
+        </div>
+
+        <!-- resolved states -->
+        <div id="goDone" hidden></div>
+
+        <!-- bottom sheet: propose -->
+        <div class="sheet" id="goSheet" hidden>
+          <div class="sheet-card">
+            <div class="sheet-h">Propose a new time</div>
+            <div class="field"><label>New date</label><input type="date" id="goDate"></div>
+            <div class="field"><label>New time</label>
+              <select id="goSlot"><option>9:00 AM</option><option>12:00 PM</option><option selected>2:00 PM</option><option>4:00 PM</option><option>6:00 PM</option></select>
+            </div>
+            <p class="note">This sends a request to <b>Dana</b> to approve the new time. You and Dana are pausing this job and resuming at the new time — the job stays active until she responds.</p>
+            <button class="btn btn-primary" onclick="confirmPropose()">Send reschedule request</button>
+            <button class="btn btn-ghost" onclick="closeSheet()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ GOPHER REQUEST (requester approves) ============ -->
+    <div class="phone">
+      <div class="pbar"><span class="dot"></span><b>Gopher Request</b><span class="role">Requester · Dana</span></div>
+      <div class="screen">
+        <div class="stitle">Your request</div>
+        <div class="oc">
+          <div class="oc-top">
+            <span class="oc-cat">Furniture assembly</span>
+            <span class="pill prog" id="reqPill">In progress</span>
+          </div>
+          <div class="oc-row"><span class="k">Request</span><span class="v">#GR-00142</span></div>
+          <div class="oc-row"><span class="k">Gopher</span><span class="v">Marcus T.</span></div>
+          <div class="oc-row"><span class="k">Time</span><span class="v" id="reqTime">Today · 3:00 PM</span></div>
+        </div>
+
+        <!-- idle -->
+        <div id="reqIdle">
+          <p class="cap" style="margin-top:30px">No reschedule proposed yet.<br>Requesters can't initiate — Gopher only <span class="scn">S12</span></p>
+        </div>
+
+        <!-- approval banner -->
+        <div id="reqBanner" hidden>
+          <div class="banner">
+            <div class="bt">🗓️ Marcus proposed a new time</div>
+            <div class="bnew">
+              <div class="lab">New time</div>
+              <div class="val" id="reqNewTime">Fri, Jul 10 · 2:00 PM</div>
+              <div class="strike" id="reqOldTime">was Today · 3:00 PM</div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="approve()">Approve</button>
+              <button class="btn btn-danger" onclick="decline()">Decline</button>
+            </div>
+            <div class="chip pending" style="margin-top:10px"><span class="ico">⏳</span><span>Respond within 4 hours</span><span class="count" id="reqCount">3:59</span></div>
+          </div>
+          <p class="cap">Push + in-app banner · reminder at 1 hr left <span class="scn">S1 · S9</span></p>
+        </div>
+
+        <!-- resolved states -->
+        <div id="reqDone" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONTROL STRIP ============ -->
+  <div class="ctl">
+    <h3>Demo controls</h3>
+    <div class="ctl-row">
+      <label for="stripeCase">Stripe outcome on approve:</label>
+      <select id="stripeCase">
+        <option value="A">A — new time within existing auth window (no Stripe action)</option>
+        <option value="B">B — past window, incremental auth extends</option>
+        <option value="C-ok">C — not extendable, re-authorize succeeds</option>
+        <option value="C-fail">C — re-authorize fails (card declined)</option>
+      </select>
+      <button class="reset" onclick="resetAll()">Reset</button>
+    </div>
+    <p class="legend">
+      <b>Flow:</b> Gopher taps Reschedule → picks a time → sends → order shows <b>Reschedule pending</b> (base state unchanged).
+      Dana gets an Approve/Decline banner with a 4-hour countdown.
+      On <b>Approve</b>, the Stripe step runs per the selected case
+      (<b>A</b> no-op · <b>B</b> extend · <b>C-ok</b> release + re-auth · <b>C-fail</b> reject + revert, with a path to update payment).
+      On success both apps show the order rescheduled — indistinguishable from a normally-scheduled request <span class="scn">S11</span>.
+      Timeout (4 hrs, no response) is treated as a decline <span class="scn">S8</span>.
+    </p>
+  </div>
+
+<script>
+  const $=id=>document.getElementById(id);
+  let timer=null;
+
+  function openSheet(){
+    const d=new Date(); d.setDate(d.getDate()+7);
+    $('goDate').value=d.toISOString().slice(0,10);
+    $('goSheet').hidden=false;
+  }
+  function closeSheet(){ $('goSheet').hidden=true; }
+
+  function prettyDate(iso){
+    const d=new Date(iso+'T12:00:00');
+    return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  }
+
+  function confirmPropose(){
+    const newT = prettyDate($('goDate').value)+' · '+$('goSlot').value;
+    closeSheet();
+    // Gopher side → pending
+    $('goActions').hidden=true; $('goDone').hidden=true;
+    $('goPending').hidden=false;
+    // Requester side → banner
+    $('reqIdle').hidden=true; $('reqDone').hidden=true;
+    $('reqNewTime').textContent=newT;
+    $('reqOldTime').textContent='was '+$('reqTime').textContent;
+    $('reqBanner').hidden=false;
+    startCountdown();
+  }
+
+  function startCountdown(){
+    let s=239; // 3:59 demo
+    clearInterval(timer);
+    const tick=()=>{
+      const m=Math.floor(s/60), ss=String(s%60).padStart(2,'0');
+      const t=m+':'+ss;
+      if($('goCount'))$('goCount').textContent=t;
+      if($('reqCount'))$('reqCount').textContent=t;
+      if(s<=0){clearInterval(timer);expire();}
+      s--;
+    };
+    tick(); timer=setInterval(tick,1000);
+  }
+
+  function approve(){
+    clearInterval(timer);
+    const c=$('stripeCase').value;
+    const newT=$('reqNewTime').textContent;
+    if(c==='C-fail'){
+      // reject + revert
+      $('reqBanner').hidden=true;
+      $('reqDone').hidden=false;
+      $('reqDone').innerHTML=
+        '<div class="chip err"><span class="ico">⚠️</span><span><b>Card couldn’t authorize</b> the new time. Your original time stands.</span></div>'+
+        '<button class="btn btn-navy" style="margin-top:10px" onclick="resetAll()">Update payment method</button>'+
+        '<p class="cap">Reschedule rejected · order reverts to original time <span class="scn">S6</span></p>';
+      // gopher side revert
+      $('goPending').hidden=true;
+      $('goDone').hidden=false;
+      $('goDone').innerHTML='<div class="chip err"><span class="ico">⚠️</span><span>Dana’s card didn’t authorize — time unchanged.</span></div>';
+      return;
+    }
+    // success cases
+    const stripeMsg={
+      'A':'No Stripe action needed — new time is within the existing authorization.',
+      'B':'Stripe extended the existing authorization to cover the new time.',
+      'C-ok':'Original hold released · new authorization captured on your card.'
+    }[c];
+    // both sides → confirmed + scheduled
+    $('reqTime').textContent=newT; $('goTime').textContent=newT;
+    $('goPill').textContent='Scheduled'; $('goPill').className='pill sched';
+    $('reqPill').textContent='Scheduled'; $('reqPill').className='pill sched';
+    $('reqBanner').hidden=true; $('reqDone').hidden=false;
+    $('reqDone').innerHTML=
+      '<div class="chip ok"><span class="ico">✓</span><span>Rescheduled to <b>'+newT+'</b>.</span></div>'+
+      '<p class="cap">'+stripeMsg+' <span class="scn">S'+({A:'3',B:'4','C-ok':'5'}[c])+'</span></p>';
+    $('goPending').hidden=true; $('goDone').hidden=false;
+    $('goDone').innerHTML=
+      '<div class="chip ok"><span class="ico">✓</span><span>Dana approved — now scheduled for <b>'+newT+'</b>.</span></div>'+
+      '<p class="cap">Falls into your Scheduled tab · same as any scheduled job <span class="scn">S11</span></p>';
+  }
+
+  function decline(){
+    clearInterval(timer);
+    $('reqBanner').hidden=true; $('reqDone').hidden=false;
+    $('reqDone').innerHTML='<div class="chip"><span class="ico">↩️</span><span style="color:var(--muted)">Reschedule declined — original time stands.</span></div>'+
+      '<p class="cap">Order unchanged, not cancelled <span class="scn">S7</span></p>';
+    $('goPending').hidden=true; $('goDone').hidden=false;
+    $('goDone').innerHTML='<div class="chip"><span class="ico">↩️</span><span style="color:var(--muted)">Dana declined the new time.</span></div>';
+  }
+
+  function expire(){
+    $('reqBanner').hidden=true; $('reqDone').hidden=false;
+    $('reqDone').innerHTML='<div class="chip"><span class="ico">⌛</span><span style="color:var(--muted)">Reschedule request expired — original time stands.</span></div>'+
+      '<p class="cap">4 hrs, no response = decline <span class="scn">S8</span></p>';
+    $('goPending').hidden=true; $('goDone').hidden=false;
+    $('goDone').innerHTML='<div class="chip"><span class="ico">⌛</span><span style="color:var(--muted)">Request expired — time unchanged.</span></div>';
+  }
+
+  function resetAll(){
+    clearInterval(timer);
+    $('goTime').textContent='Today · 3:00 PM'; $('reqTime').textContent='Today · 3:00 PM';
+    $('goPill').textContent='In progress'; $('goPill').className='pill prog';
+    $('reqPill').textContent='In progress'; $('reqPill').className='pill prog';
+    $('goActions').hidden=false; $('goPending').hidden=true; $('goDone').hidden=true; $('goSheet').hidden=true;
+    $('reqIdle').hidden=false; $('reqBanner').hidden=true; $('reqDone').hidden=true;
+  }
+</script>
+</body>
+</html>

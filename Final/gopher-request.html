@@ -4164,6 +4164,9 @@
     font-family:'Nunito',sans-serif; font-weight:700; font-size:12.5px; color:var(--muted);
   }
   .gr-modal-btn-text:hover { color:var(--navy); }
+  /* G40-40 early-cancel: "Still cancel" reads as the destructive option */
+  .gr-modal-btn-text.ec-danger { color:#c44257; font-weight:800; }
+  .gr-modal-btn-text.ec-danger:hover { color:#a83648; }
 
   /* Standard identity verification flow (photo of ID → selfie) — D-029 / D-002 */
   .idv-steps { display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0 16px; }
@@ -5707,10 +5710,18 @@
     margin-bottom:14px;
   }
   .profile-link {
-    display:block; font-family:'Nunito',sans-serif; font-weight:700;
+    display:block; width:100%; background:none; border:none;
+    font-family:'Nunito',sans-serif; font-weight:700;
     font-size:13px; color:var(--navy);
     text-decoration:underline; padding:4px 0;
     cursor:pointer;
+  }
+  /* G40-68 — active filter option + category empty state */
+  .profile-link.on { color:var(--green-dark); text-decoration:none; }
+  .profile-link:hover { color:var(--green-dark); }
+  .profile-history-empty {
+    text-align:center; padding:22px 10px; font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:13px; color:var(--muted);
   }
   .profile-history-item {
     padding:10px 0;
@@ -7111,6 +7122,12 @@
   .req-detail-status.pending { background:rgba(251,191,36,0.18); color:#92580d; }
   .req-detail-status.in-progress { background:rgba(51,217,117,0.12); color:var(--green-dark); }
   .req-detail-status.scheduled { background:rgba(26,42,94,0.10); color:var(--navy); }
+  /* G40-78: shown in place of Cancel once the Gopher has started the job. */
+  .req-detail-started-note {
+    margin:12px 0 4px; padding:12px 14px; border-radius:12px;
+    background:rgba(26,42,94,0.06); border:1px solid rgba(26,42,94,0.12);
+    color:var(--navy); font-size:13px; line-height:1.5;
+  }
   .req-detail-topbar {
     display:flex; align-items:center; justify-content:space-between;
     gap:10px; margin-bottom:14px;
@@ -11691,6 +11708,17 @@
     return pool;
   }
 
+  // ── Duplicate-request signature (G40-77) ──────────────────────────────
+  // "Virtually identical" = same category + same job description + same primary
+  // drop-off. Drives the soft duplicate warning before broadcasting. BACKEND SEAM:
+  // production computes/looks this up server-side against the user's live active
+  // orders; this client key is the prototype stand-in.
+  function computeRequestDupKey(){
+    const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const primaryDropoff = (Array.isArray(state.dropoffStops) && state.dropoffStops.length) ? state.dropoffStops[0] : '';
+    return [norm(state.category), norm(state.description), norm(primaryDropoff)].join('|');
+  }
+
   // Capture the just-submitted request into the dashboard's request store, so it
   // appears on the home cards and opens a full Request Details page. Only does
   // anything when the dashboard layer is present (signed in). Returns the new id.
@@ -11736,6 +11764,7 @@
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      dupKey: computeRequestDupKey(),
       perWorkerCost: perWorker,
       workersNeeded,
       amountLabel: perWorker ? `$${(perWorker * workersNeeded).toFixed(2)} total` : '',
@@ -11898,6 +11927,7 @@
     payMode: 'set',                   // 'set' | 'bids'
     payAmount: '',                    // never pre-populated — user must enter
     lowOfferAck: false,               // true once the user chose "Send as-is" on the low-offer notice
+    dupWarnAck: false,                // "Submit anyway" acked on the duplicate-request notice (G40-77)
 
     // Page 9 — Schedule / Review
     scheduleType: 'now',              // 'now' | 'flexible' | 'scheduled'
@@ -12807,7 +12837,7 @@
         ${(myUnlocked && state.workerSelection==='my') ? `
         <div class="mygopher-cadence">
           <div class="mgc-head"><span class="mgc-ico">⭐</span> MY Gophers get first dibs</div>
-          <p>We alert your saved Gophers first. If none accept &mdash; or you skip &mdash; it opens to the wider workforce after your set broadcast interval. Any worker outside MY Gophers will need your approval before they&rsquo;re hired.</p>
+          <p>We alert your saved Gophers first. If none accept &mdash; or you skip &mdash; the request rolls out to the wider workforce on our standard broadcast cadence. Any worker outside MY Gophers will need your approval before they&rsquo;re hired.</p>
         </div>
         <div class="mygopher-pick">
           <div class="mgp-head">
@@ -14088,6 +14118,20 @@
         return { ok:false, label:'Identity verification', selector:'.ar-banner', msg };
       }
     }
+    // Step 4 (Locations) — pick-up and drop-off must be different addresses (G40-274 regression).
+    // Only when a specific pickup is set (not "Any location") and both sides have entries.
+    // Normalized compare (case/space/punctuation-insensitive) catches slight formatting diffs.
+    // Also backstops the footer Submit at Step 6.
+    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup
+       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+      const normAddr = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const pk = state.pickupStops.map(normAddr).filter(Boolean);
+      const dp = state.dropoffStops.map(normAddr).filter(Boolean);
+      if(pk.some(p => dp.includes(p))){
+        return { ok:false, label:'Addresses', selector:'.field-input',
+                 msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.' };
+      }
+    }
     // Step 5 — Worker Pay. When setting a flat price, an amount must be entered.
     // Requesting bids needs no amount, so only gate the "set your own price" mode.
     if(state.step === 5 && state.payMode === 'set'){
@@ -14277,6 +14321,13 @@
     } else if(state.step === 6){
       // Step 6 = Review. Advancing SUBMITS: capture into the dashboard log (if
       // signed in) AND show the in-place Step 7 confirmation with the band.
+      // Duplicate-request backstop (G40-77): if a virtually-identical request is
+      // already active/broadcasting, warn once. "Submit anyway" re-enters here
+      // with dupWarnAck set; "Go back" stays on Review (inputs preserved).
+      if(!state.dupWarnAck && window.__findDuplicateActive){
+        const dup = window.__findDuplicateActive(computeRequestDupKey());
+        if(dup && window.__openDuplicateNotice && window.__openDuplicateNotice(dup)) return;
+      }
       submitRequestAndCapture();
       state.step = 7;
       if(state.maxStepReached < 7) state.maxStepReached = 7;
@@ -14488,6 +14539,43 @@
         const isRide = state.category === 'ride';
         rangeEl.textContent = 'Most neighbors offer around $' + model.low + '–$' + model.suggested
           + ' for ' + (isRide ? 'a ride like this' : 'a delivery like this') + '.';
+      }
+      overlay.hidden = false;
+      return true;
+    };
+  })();
+
+  // ── Duplicate-request notice (G40-77) ──
+  // Soft warning shown at the Review→Submit gate when a virtually-identical
+  // request is already active. Lazy-wired; returns true only when shown so a
+  // missing node fails open (the submit then proceeds).
+  (function initDuplicateModal(){
+    let wired = false;
+    function wireOnce(overlay){
+      if(wired) return; wired = true;
+      const hide = () => { overlay.hidden = true; };
+      overlay.addEventListener('click', e => { if(e.target === overlay) hide(); });
+      const closeBtn = document.getElementById('dupNoticeClose');
+      if(closeBtn) closeBtn.addEventListener('click', hide);
+      const back = document.getElementById('dupNoticeBack');
+      if(back) back.addEventListener('click', hide);   // stay on Review, inputs preserved
+      const proceed = document.getElementById('dupNoticeProceed');
+      if(proceed) proceed.addEventListener('click', () => {
+        state.dupWarnAck = true;   // ack suppresses the re-check
+        hide();
+        $btnNext.click();          // resume the submit (mirrors the low-offer flow)
+      });
+    }
+    window.__openDuplicateNotice = function(existing){
+      const overlay = document.getElementById('dupNoticeOverlay');
+      if(!overlay) return false;   // markup absent — fail open
+      wireOnce(overlay);
+      const box = document.getElementById('dupNoticeExisting');
+      if(box){
+        const title = (existing && (existing.title || 'Your existing request')) || 'Your existing request';
+        const idTxt = existing && existing.id ? ('#' + existing.id) : '';
+        box.innerHTML = '<span style=\"font-weight:800;\">' + title + '</span>'
+          + (idTxt ? '<span style=\"opacity:.7; margin-left:6px;\">' + idTxt + '</span>' : '');
       }
       overlay.hidden = false;
       return true;
@@ -15858,6 +15946,38 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   </div>
 </div>
 
+<!-- EARLY-CANCELLATION MODAL (G40-40) — shown when cancelling a request that is
+     still broadcasting (pending, pre-acceptance). Body is filled by JS: variant A
+     (fresh + strong coverage → reassure) or B (standard). -->
+<div class="gr-modal-overlay" id="earlyCancelOverlay" hidden>
+  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="earlyCancelTitle">
+    <button type="button" class="gr-modal-close" id="earlyCancelClose" aria-label="Close">×</button>
+    <div id="earlyCancelBody"></div>
+  </div>
+</div>
+
+<!-- ACCEPTED-CANCELLATION MODAL (G40-78) — shown when cancelling a request a
+     Gopher has ACCEPTED but has NOT yet started (not in-progress). Offers
+     "Repost to new Gophers" (release this Gopher + re-broadcast the same
+     request) or "Cancel request". Body is filled by JS. -->
+<div class="gr-modal-overlay" id="acceptedCancelOverlay" hidden>
+  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="acceptedCancelTitle">
+    <button type="button" class="gr-modal-close" id="acceptedCancelClose" aria-label="Close">×</button>
+    <div id="acceptedCancelBody"></div>
+  </div>
+</div>
+
+<!-- REVIEW PRE-PROMPT MODAL (G40-107) — branded gate shown to an engaged
+     Requestor (≥5 completed requests) when they open Request History. "Rate us"
+     → the native App Store / Play Store review API (dev seam); "Not now"
+     dismisses. Body is filled by JS. -->
+<div class="gr-modal-overlay" id="reviewPromptOverlay" hidden>
+  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="reviewPromptTitle">
+    <button type="button" class="gr-modal-close" id="reviewPromptClose" aria-label="Close">×</button>
+    <div id="reviewPromptBody"></div>
+  </div>
+</div>
+
 <!-- REQUEST AGAIN FAST ⚡ — MY Gophers checklist modal -->
 <div class="gr-modal-overlay" id="raFastOverlay" hidden>
   <div class="gr-modal raf-modal" role="dialog" aria-modal="true" aria-labelledby="raFastTitle">
@@ -15939,6 +16059,24 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <button type="button" class="gr-modal-btn lo-btn-text" id="lowOfferSend">Send as-is</button>
   </div>
 </div>
+
+<!-- ============================================================
+     DUPLICATE-REQUEST NOTICE (G40-77) — soft warning before broadcasting a
+     virtually-identical request that's already active. Mirrors the low-offer
+     modal shell; "Submit anyway" proceeds, "Go back" keeps you on Review.
+     ============================================================ -->
+<div class="gr-modal-overlay" id="dupNoticeOverlay" hidden>
+  <div class="gr-modal dup-modal" role="dialog" aria-modal="true" aria-labelledby="dupNoticeTitle">
+    <button type="button" class="gr-modal-close" id="dupNoticeClose" aria-label="Close">×</button>
+    <h4 id="dupNoticeTitle">You already have this request out</h4>
+    <p class="lo-body">It looks like you already have a nearly identical request broadcasting right now. Posting it again sends two of the same job to Gophers — and splits their attention across duplicates.</p>
+    <div class="dup-existing" id="dupNoticeExisting" style="margin:12px 0; padding:10px 12px; background:var(--green-light,#e8faf0); border:1px solid #bfe9d0; border-radius:10px; font-family:'DM Sans'; font-size:13px; line-height:1.4;"></div>
+    <p class="lo-body">Keep waiting on the one you already sent, or send this as a separate request anyway?</p>
+    <button type="button" class="gr-modal-btn" id="dupNoticeBack">Go back — keep the one I have</button>
+    <button type="button" class="gr-modal-btn lo-btn-text" id="dupNoticeProceed">Submit anyway</button>
+  </div>
+</div>
+
 
 <!-- ============================================================
      GOPHER DEALS — coming-soon notice (interim: opens from "View Local
@@ -18440,6 +18578,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         // requestFee 6.1092; gmvTotal 63+6.1092=69.1092 → "$69.11".
         pendingAdjustment:{
           comment:'The grocery order rang up higher than the estimate — a few items were priced above what we expected. Adjusting the cost of items to match the actual receipt.',
+          // Receipt attached by the Gopher when the Cost of Items rose (G40-101).
+          // DEV SEAM: src is the stored receipt URL the backend returns on the cost
+          // adjustment record (null here → the demo renders a generated receipt via
+          // window.__demoReceipt). See gopher-go-backend-wiring-checklist.md §5.
+          receipt:{ src:null, filename:'receipt-grocery.jpg', addedAt:'2026-07-02T15:41:00Z' },
           adjusted:{
             costOfItems:48, workerPay:15, workersNeeded:1,
             gopherFee:0.99, ageFee:0, instantTransfer:5.1192, requestFee:6.1092,
@@ -18459,6 +18602,52 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       //     Footing (canonical schedule; no promo; NON-AR → NO TrustShield, NO age
       //     fee): cogOffer 70.00; Gopher Fee 0.99; Age Fee 0; ITF 0.08×(70.00+0.99)=
       //     5.6792; requestFee 5.6792; gmvTotal 70.00+5.6792=76.6792... → "$76.67 total".
+      // ── ACTIVE / In Progress — NEED A RIDE (G40-142 demo). Ride requests show the
+      //     accepting Gopher's vehicle card (front+rear real photos + Year/Make/Model,
+      //     color, plate) below the assigned-worker card, gated on category==='ride'.
+      //     Vehicle data lives on live.crew[0].vehicle. DEV SEAM: front/rearPhoto are the
+      //     stored driver-profile photo URLs (null here → demo car via __demoCarPhoto).
+      //     Ride fare footing: workerPay 28 → cogOffer 28; Gopher Fee 0.99; ITF
+      //     0.08×(28+0.99)=2.3192; requestFee 3.3092; total 31.3092 → "$31.31".
+      {
+        id:'GR-00131', icon:'🚗', title:'Ride — RDU Airport to 412 Oakwood Ave',
+        status:'in-progress', statusLabel:'In Progress', needsAttention:false, userCreated:false,
+        scheduledForLater:false, workersNeeded:1, perWorkerCost:28.00, multiIndividual:false,
+        category:'ride',
+        worker:'Sarah R. (Elite+)', amount:'$31.31 total',
+        when:'ETA 6 min · Today, 5:10 PM',
+        interestedWorkers:[ makeSeedWorker('SR','Sarah R.','elite+','hired') ],
+        userStarted:true,
+        live:{
+          crew:[
+            { name:'Sarah R.', tier:'elite+', phone:'+1 (919) 555-0173', photo:'',
+              tagline:'Safe, on-time driver. I’ll text when I’m pulling up.',
+              verified:'Verified', reviews:264, rating:4.97,
+              // Real front + rear car photos the Gopher uploaded in Work Settings & Radius.
+              vehicle:{ year:'2022', make:'Toyota', model:'Camry', color:'Silver',
+                        plate:'HXR-4471', maxPax:4, frontPhoto:'', rearPhoto:'' } }
+          ],
+          statusSteps:[ {k:'Accepted',done:true}, {k:'Driver en route',done:true}, {k:'Arrived',done:false}, {k:'Completed',done:false} ],
+          urgency:'Pickup at arrivals',
+          description:'Airport pickup at RDU Terminal 2 arrivals, drop at 412 Oakwood Ave. 1 passenger, 1 carry-on.',
+          pics:[],
+          pickupStairs:0, destStairs:0
+        },
+        reviewSnapshot:{
+          category:'ride', ageRestricted:false,
+          itemsPurchased:false,
+          urgency:'Pickup at arrivals',
+          worker:'Sarah R. (Elite+)',
+          pickup:'RDU Airport — Terminal 2 Arrivals, Morrisville, NC 27560',
+          dropoff:'412 Oakwood Ave, Raleigh, NC 27601',
+          description:'Airport pickup at RDU Terminal 2 arrivals, drop at 412 Oakwood Ave. 1 passenger, 1 carry-on.',
+          costOfItems:0, workerPay:28, workersNeeded:1,
+          fee:{ gopherFee:0.99, ageFee:0, instantTransfer:2.3192, requestFee:3.3092,
+                fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:2.3192, fullRequestFee:3.3092,
+                promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:28, gmvTotal:31.3092 },
+          total:31.3092
+        }
+      },
       {
         id:'GR-00128', icon:'📦', title:'Hardware-store run — drill bits + anchors',
         status:'in-progress', statusLabel:'In Progress', needsAttention:false, userCreated:false,
@@ -18588,6 +18777,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     MyGophers.seedFromHistory();
   }
 
+
+  // Duplicate-request lookup (G40-77): does the signed-in user already have a
+  // virtually-identical request that's still active/broadcasting? Terminal
+  // statuses (completed/cancelled/expired) are excluded. Returns the match or null.
+  // BACKEND SEAM: production runs this server-side against live orders.
+  window.__findDuplicateActive = (dupKey) => {
+    if(!dupKey) return null;
+    const TERMINAL = ['completed', 'cancelled', 'canceled', 'expired'];
+    return (DASH_DATA.activeRequests || []).find(r =>
+      r && r.dupKey === dupKey && !TERMINAL.includes(String(r.status || '').toLowerCase())
+    ) || null;
+  };
   // Create a dashboard request from the flow's submitted data; returns its id.
   // Per the Connect lifecycle spec: at submit a request is ALWAYS pending +
   // needsAttention, with NO worker assigned (worker = a COUNT of the interested
@@ -18605,6 +18806,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       title: data.title || 'New request',
       status: 'pending',            // ← ALWAYS pending at submit
       statusLabel: 'Pending',
+      submittedAt: Date.now(),      // G40-40: drives the <20-min early-cancel variant
       needsAttention: true,         // ← ALWAYS true at submit (drives the red button)
       userCreated: true,            // deletable user-made request (red X)
       scheduledForLater: !!data.scheduledForLater,
@@ -18626,6 +18828,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       worker: `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
       amount: data.amountLabel || '',  // "$<total> total"
       when: data.when || 'Just now · awaiting your selection',
+      dupKey: data.dupKey || null,
       interestedWorkers: interested,
     };
     DASH_DATA.activeRequests.unshift(req);  // newest on top
@@ -18803,6 +19006,28 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(typeof arg === 'function'){
       _cancelConfirmCb = arg;
     } else if(typeof arg === 'string' && arg){
+      // Status-aware cancel routing:
+      //   • in-progress  → G40-78: cancel is NOT allowed once the Gopher has
+      //     started. Show the "already started" note and stop.
+      //   • pending + a Gopher hired (accepted, not started) → G40-78: offer
+      //     Repost (release + re-broadcast) or Cancel.
+      //   • pending, no Gopher hired (still broadcasting) → G40-40 early-cancel.
+      //   • anything else → the generic confirm.
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === arg);
+      const started = r && (r.status === 'in-progress' || r.status === 'active');
+      const hasHired = r && (r.interestedWorkers || []).some(w => w.status === 'hired');
+      if(started && typeof window.__openStartedCantCancel === 'function'){
+        window.__openStartedCantCancel(arg);
+        return;
+      }
+      if(r && r.status === 'pending' && hasHired && typeof window.__openAcceptedCancelModal === 'function'){
+        window.__openAcceptedCancelModal(arg);
+        return;
+      }
+      if(r && r.status === 'pending' && typeof window.__openEarlyCancelModal === 'function'){
+        window.__openEarlyCancelModal(arg);
+        return;
+      }
       _pendingCancelDashId = arg;
     }
     const overlay = document.getElementById('cancelReqOverlay');
@@ -18905,6 +19130,298 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
     overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
     document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+  })();
+
+  // ── Early-cancellation flow (G40-40) ──
+  // While a request is still BROADCASTING (status 'pending', not yet accepted),
+  // cancelling opens THIS modal instead of the generic confirm. Variant A
+  // (reassure) shows when the request is fresh (≤20 min since submit) AND the
+  // area has strong coverage — >20 Gophers with ≥1 recent completed order, read
+  // live from GopherIQData (workers / activeLast3mo). Otherwise variant B.
+  //   "Still need it" → re-broadcast (demo: confirmation panel; real push =
+  //                     backend) — request stays as-is so less time is left.
+  //   "Still cancel"  → routes into the normal __cancelDashboardRequest path.
+  (function initEarlyCancel(){
+    const overlay = document.getElementById('earlyCancelOverlay');
+    if(!overlay) return;
+    const body = document.getElementById('earlyCancelBody');
+    let _dashId = null;
+
+    function coverageFor(req){
+      // Derive an area string from the request's drop-off / pickup, then ask the
+      // Gopher iQ data brain how many Gophers cover it.
+      const pick = (arr) => {
+        if(Array.isArray(arr)){ for(const s of arr){ const v = (s && (s.city || s.zip || s.address || s.label)) || (typeof s === 'string' ? s : ''); if(v) return v; } }
+        return '';
+      };
+      const place = pick(req && req.dropoffs) || pick(req && req.pickups) || '';
+      let workers = 0, active = 0, area = '';
+      try{
+        if(place && window.GopherIQData && typeof GopherIQData.lookup === 'function'){
+          const r = GopherIQData.lookup(place);
+          if(r && !r.ambiguous && r.inData){ workers = r.workers || 0; active = r.activeLast3mo || 0; area = r.city || ''; }
+        }
+      }catch(_e){}
+      // Prototype fallback: a representative strong-coverage area so variant A is
+      // demonstrable when the request has no resolvable/known location.
+      if(!area){ workers = 24; active = 3; area = ''; }
+      return { workers, active, area };
+    }
+
+    function pickVariant(req){
+      const elapsedMin = (req && req.submittedAt) ? (Date.now() - req.submittedAt) / 60000 : 999;
+      const cov = coverageFor(req);
+      const strong = cov.workers > 20 && cov.active >= 1;
+      return { v: (elapsedMin <= 20 && strong) ? 'A' : 'B', cov };
+    }
+
+    function areaTxt(cov){ return cov.area ? ('near <b>' + cov.area + '</b>') : 'in your area'; }
+
+    function render(variant, cov){
+      if(variant === 'A'){
+        body.innerHTML =
+            '<div class="gr-modal-icon gr-modal-icon-go">📣</div>'
+          + '<h4 id="earlyCancelTitle">Hang tight — a Gopher’s likely close</h4>'
+          + '<p class="gr-modal-sub">You sent this out just moments ago, and there are <b>' + cov.workers + '+ Gophers</b> active ' + areaTxt(cov) + ' right now. Requests like yours usually get picked up within minutes. Want us to keep looking?</p>'
+          + '<button type="button" class="gr-modal-btn" id="earlyCancelKeep">Still need it — keep looking</button>'
+          + '<button type="button" class="gr-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
+      } else {
+        body.innerHTML =
+            '<div class="gr-modal-icon">🔎</div>'
+          + '<h4 id="earlyCancelTitle">Still want us to keep looking?</h4>'
+          + '<p class="gr-modal-sub">We’re still broadcasting your request to Gophers ' + areaTxt(cov) + '. Tap <b>Still need it</b> and we’ll send a fresh alert to local Gophers — your request stays exactly as it is, so there may be less time left on the clock. Changed your plans? You can cancel below.</p>'
+          + '<button type="button" class="gr-modal-btn" id="earlyCancelKeep">Still need it — re-alert Gophers</button>'
+          + '<button type="button" class="gr-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
+      }
+      const keep = document.getElementById('earlyCancelKeep');
+      const stop = document.getElementById('earlyCancelStop');
+      if(keep) keep.addEventListener('click', showRebroadcast);   // Still need! → re-broadcast
+      if(stop) stop.addEventListener('click', doCancel);           // Still cancel → normal cancel path
+    }
+
+    function showRebroadcast(){
+      body.innerHTML =
+          '<div class="gr-modal-icon gr-modal-icon-go">✅</div>'
+        + '<h4>On it!</h4>'
+        + '<p class="gr-modal-sub">We’ve sent a fresh alert to Gophers near you. Hang tight — we’ll let you know the moment someone accepts.</p>'
+        + '<button type="button" class="gr-modal-btn" id="earlyCancelDone">Got it</button>';
+      const d = document.getElementById('earlyCancelDone');
+      if(d) d.addEventListener('click', close);
+    }
+
+    function doCancel(){
+      const id = _dashId;
+      close();
+      if(id && typeof window.__cancelDashboardRequest === 'function'){
+        window.__cancelDashboardRequest(id);
+        if(typeof showSection === 'function') showSection('previous');
+      }
+    }
+
+    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
+
+    window.__openEarlyCancelModal = (dashId, forceVariant) => {
+      const req = (DASH_DATA.activeRequests || []).find(r => r.id === dashId) || null;
+      _dashId = dashId;
+      const info = pickVariant(req || {});
+      render((forceVariant === 'A' || forceVariant === 'B') ? forceVariant : info.v, info.cov);
+      overlay.hidden = false;
+    };
+    // Demo helper (console): __previewEarlyCancel('A'|'B') — preview either variant.
+    window.__previewEarlyCancel = (v) => { _dashId = null; render((v === 'B') ? 'B' : 'A', { workers:24, active:3, area:'Holly Springs' }); overlay.hidden = false; };
+
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+    const x = document.getElementById('earlyCancelClose');
+    if(x) x.addEventListener('click', close);
+  })();
+
+  // ── Accepted-cancellation flow (G40-78) ──
+  // When cancelling a request a Gopher has ACCEPTED but has NOT started
+  // (r.status 'pending' with a hired worker), offer two paths instead of the
+  // generic confirm:
+  //   "Repost to new Gophers" → release the hired Gopher(s) and re-broadcast the
+  //     SAME request. Released Gophers are excluded from re-accepting (recorded
+  //     in r.excludedGophers) and — in production — notified (BACKEND SEAM).
+  //   "Cancel request"        → routes into the normal __cancelDashboardRequest.
+  // Decisions (John, 2026-07-02): no cancel fee before the job starts; once
+  // in-progress, cancel is removed (see __openStartedCantCancel + the detail
+  // header gate in renderRequestDetail).
+  (function initAcceptedCancel(){
+    const overlay = document.getElementById('acceptedCancelOverlay');
+    if(!overlay) return;
+    const body = document.getElementById('acceptedCancelBody');
+    let _dashId = null;
+
+    function hiredNames(r){
+      const names = (r.interestedWorkers || []).filter(w => w.status === 'hired')
+                      .map(w => w.name || 'your Gopher');
+      if(!names.length) return 'Your Gopher';
+      if(names.length === 1) return names[0];
+      if(names.length === 2) return names[0] + ' and ' + names[1];
+      return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+    }
+
+    function renderChoice(r){
+      body.innerHTML =
+          '<div class="gr-modal-icon">🔄</div>'
+        + '<h4 id="acceptedCancelTitle">Cancel this request?</h4>'
+        + '<p class="gr-modal-sub">' + hiredNames(r) + ' accepted but hasn’t started yet, so you’re '
+        + 'free to make a change — no fee. Want us to line up someone else, or cancel altogether?</p>'
+        + '<button type="button" class="gr-modal-btn" id="acceptedRepost">Repost to new Gophers</button>'
+        + '<button type="button" class="gr-modal-btn-text ec-danger" id="acceptedCancelStop">Cancel request</button>';
+      const rp = document.getElementById('acceptedRepost');
+      const st = document.getElementById('acceptedCancelStop');
+      if(rp) rp.addEventListener('click', doRepost);
+      if(st) st.addEventListener('click', doCancel);
+    }
+
+    function renderStartedNote(){
+      body.innerHTML =
+          '<div class="gr-modal-icon">🔒</div>'
+        + '<h4 id="acceptedCancelTitle">This request is already in progress</h4>'
+        + '<p class="gr-modal-sub">Your Gopher has started, so it can’t be cancelled here. Message your '
+        + 'Gopher below, or contact support if there’s a problem.</p>'
+        + '<button type="button" class="gr-modal-btn" id="acceptedMsg">Message your Gopher</button>'
+        + '<button type="button" class="gr-modal-btn-text" id="acceptedGotIt">Got it</button>';
+      const msg = document.getElementById('acceptedMsg');
+      const ok  = document.getElementById('acceptedGotIt');
+      if(msg) msg.addEventListener('click', () => { const id=_dashId; close(); if(id && typeof openInboxThread==='function') openInboxThread(id); });
+      if(ok)  ok.addEventListener('click', close);
+    }
+
+    function doRepost(){
+      const id = _dashId;
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === id);
+      if(!r){ close(); return; }
+      // Release every hired Gopher and exclude them from re-accepting this repost
+      // (they were dropped on purpose). Production: notify them + push a fresh
+      // broadcast to nearby Gophers (BACKEND SEAM).
+      r.excludedGophers = r.excludedGophers || [];
+      (r.interestedWorkers || []).forEach(w => {
+        if(w.status === 'hired') r.excludedGophers.push(w.id != null ? w.id : w.name);
+      });
+      r.interestedWorkers = (r.interestedWorkers || []).filter(w => w.status !== 'hired');
+      // Back to broadcasting, same request record (no repost-from-scratch).
+      r.status = 'pending';
+      r.statusLabel = 'Reposted · Live';
+      r.needsAttention = true;
+      r.worker = 'Finding your Gopher…';
+      if(typeof renderActiveRequests === 'function') renderActiveRequests();
+      if(typeof renderRequestDetail === 'function') renderRequestDetail();
+      if(typeof recountKpis === 'function') recountKpis();
+      showReposted();
+    }
+
+    function showReposted(){
+      body.innerHTML =
+          '<div class="gr-modal-icon gr-modal-icon-go">✅</div>'
+        + '<h4 id="acceptedCancelTitle">Done — we’re on it</h4>'
+        + '<p class="gr-modal-sub">We’ve released your previous Gopher and re-posted your request to nearby '
+        + 'Gophers. We’ll let you know the moment someone new accepts.</p>'
+        + '<button type="button" class="gr-modal-btn" id="acceptedRepostDone">Got it</button>';
+      const d = document.getElementById('acceptedRepostDone');
+      if(d) d.addEventListener('click', close);
+    }
+
+    function doCancel(){
+      const id = _dashId;
+      close();
+      if(id && typeof window.__cancelDashboardRequest === 'function'){
+        window.__cancelDashboardRequest(id);
+        if(typeof showSection === 'function') showSection('previous');
+      }
+    }
+
+    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
+
+    window.__openAcceptedCancelModal = (dashId) => {
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === dashId) || null;
+      if(!r) return;
+      _dashId = dashId;
+      renderChoice(r);
+      overlay.hidden = false;
+    };
+    window.__openStartedCantCancel = (dashId) => {
+      _dashId = dashId;
+      renderStartedNote();
+      overlay.hidden = false;
+    };
+    // Demo helpers (console): preview either state without a live request.
+    window.__previewAcceptedCancel = () => { _dashId = null; renderChoice({ interestedWorkers:[{status:'hired',name:'Marcus T.'}] }); overlay.hidden = false; };
+    window.__previewStartedCantCancel = () => { _dashId = null; renderStartedNote(); overlay.hidden = false; };
+
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+    const x = document.getElementById('acceptedCancelClose');
+    if(x) x.addEventListener('click', close);
+  })();
+
+  // ── App-store review pre-prompt (G40-107) ──
+  // A branded gate shown to an ENGAGED Requestor at a positive moment: when a
+  // user with ≥5 completed requests opens Request History. "Rate us" fires the
+  // native store-review API (SKStoreReviewController / Play In-App Review) — the
+  // dev seam; "Not now" dismisses. Shows at most once per session here; in
+  // production the server gates eligibility and the OS enforces its own rate
+  // limit (iOS: ≤3 / 365 days), so we never track whether a review was left.
+  // Decisions (John, 2026-07-02): Request trigger = ≥5 completed + opens history.
+  (function initReviewPrompt(){
+    const overlay = document.getElementById('reviewPromptOverlay');
+    if(!overlay) return;
+    const body = document.getElementById('reviewPromptBody');
+    const REQUEST_THRESHOLD = 5;   // completed requests to become eligible (Request app)
+    let _shownThisSession = false;
+
+    function completedCount(){
+      return ((DASH_DATA && DASH_DATA.previousRequests) || []).length;
+    }
+
+    function renderAsk(){
+      body.innerHTML =
+          '<div class="gr-modal-icon">🙏</div>'
+        + '<h4 id="reviewPromptTitle">Enjoying Gopher?</h4>'
+        + '<p class="gr-modal-sub">You’ve completed ' + completedCount() + ' requests with us — thank you! '
+        + 'If Gopher’s been good to you, a quick App Store rating helps your neighbors find us.</p>'
+        + '<button type="button" class="gr-modal-btn" id="reviewPromptRate">Rate us</button>'
+        + '<button type="button" class="gr-modal-btn-text" id="reviewPromptLater">Not now</button>';
+      const rate = document.getElementById('reviewPromptRate');
+      const later = document.getElementById('reviewPromptLater');
+      if(rate) rate.addEventListener('click', doRate);
+      if(later) later.addEventListener('click', close);
+    }
+
+    function doRate(){
+      // BACKEND/NATIVE SEAM: this is where the app calls the native review API
+      // (iOS SKStoreReviewController.requestReview / Android Play ReviewManager).
+      // The OS renders its own prompt and never reports the outcome back.
+      body.innerHTML =
+          '<div class="gr-modal-icon gr-modal-icon-go">⭐</div>'
+        + '<h4 id="reviewPromptTitle">Thank you!</h4>'
+        + '<p class="gr-modal-sub">This is where the App Store review prompt opens. '
+        + '(The system prompt is shown by iOS/Android — not a custom screen.)</p>'
+        + '<button type="button" class="gr-modal-btn" id="reviewPromptDone">Done</button>';
+      const d = document.getElementById('reviewPromptDone');
+      if(d) d.addEventListener('click', close);
+    }
+
+    function close(){ overlay.hidden = true; body.innerHTML = ''; }
+
+    // Eligibility gate — called when Request History opens. Shows once/session.
+    window.__maybeReviewPrompt = (app) => {
+      if(app && app !== 'request') return;
+      if(_shownThisSession) return;
+      if(completedCount() < REQUEST_THRESHOLD) return;
+      _shownThisSession = true;
+      renderAsk();
+      overlay.hidden = false;
+    };
+    // Demo helper (console): force the pre-prompt regardless of eligibility.
+    window.__previewReviewPrompt = () => { renderAsk(); overlay.hidden = false; };
+
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+    const x = document.getElementById('reviewPromptClose');
+    if(x) x.addEventListener('click', close);
   })();
 
   // ── Render the dynamic active-request cards on the home section ──
@@ -19065,6 +19582,50 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
   }
 
+  // ── Previous-jobs category filter (G40-68) ──
+  // Maps the active/broadcast request to one of the four top-level categories —
+  // Delivery, Need A Ride, Service, Other — and lets the Requestor toggle All vs
+  // that-category-only in a Gopher's job history (with an empty state).
+  function __topCategoryOf(r){
+    const key = ((r && (r.topCategory || r.category)) || '').toString().toLowerCase();
+    const MAP = { delivery:'Delivery', errand:'Delivery', ride:'Need A Ride', moving:'Service', home:'Service', labor:'Service', junk:'Service', yard:'Service', service:'Service', other:'Other' };
+    if(MAP[key]) return MAP[key];
+    const t = ((r && r.title) || '') + '';
+    if(/ride|airport|chauffeur|need a ride/i.test(t)) return 'Need A Ride';
+    if(/deliver|errand|grocery|food|courier|package|pharmacy|retail/i.test(t)) return 'Delivery';
+    if(/\bother\b/i.test(t)) return 'Other';
+    return 'Service';
+  }
+  function __demoJobsFor(w){
+    // Deterministic demo history spanning categories so the filter + empty state
+    // are demonstrable. Real per-job top-level category tags come from the backend.
+    return [
+      { id:'#212121', date:'3/4/26',  type:'Home Services · Handyman',   details:'Install ceiling fan',        amount:'$140.00', rating:'5.00', comment:'Excellent — professional and quick. Highly recommend.', cat:'Service' },
+      { id:'#20245',  date:'3/1/26',  type:'Delivery — Age-Restricted',  details:'1 can of ZYN wintergreen',   amount:'$40.00',  rating:'4.95', comment:'', cat:'Delivery' },
+      { id:'#20188',  date:'2/22/26', type:'Junk Removal',               details:'Garage cleanout — 6 items',  amount:'$210.00', rating:'5.00', comment:'Fast and careful with everything.', cat:'Service' },
+      { id:'#20102',  date:'2/10/26', type:'Need A Ride',                details:'Airport drop-off',           amount:'$55.00',  rating:'4.90', comment:'', cat:'Need A Ride' }
+    ];
+  }
+  (function initJobFilter(){
+    document.addEventListener('click', function(e){
+      const btn = e.target.closest && e.target.closest('[data-jobfilter]');
+      if(!btn) return;
+      const detail = btn.closest('.profile-detail'); if(!detail) return;
+      const mode = btn.getAttribute('data-jobfilter');                 // 'all' | 'cat'
+      const wrap = detail.querySelector('[data-topcat]');
+      const cat = wrap ? wrap.getAttribute('data-topcat') : '';
+      detail.querySelectorAll('[data-jobfilter]').forEach(b => b.classList.toggle('on', b === btn));
+      let shown = 0;
+      detail.querySelectorAll('.profile-history-item').forEach(it => {
+        const show = (mode === 'all') || (it.getAttribute('data-cat') === cat);
+        it.style.display = show ? '' : 'none';
+        if(show) shown++;
+      });
+      const empty = detail.querySelector('.profile-history-empty');
+      if(empty) empty.style.display = (mode === 'cat' && shown === 0) ? '' : 'none';
+    });
+  })();
+
   // ── renderWorkerProfile — full-profile view in Request Details ──
   // Ported from Connect. Mirrors the flow's Step-7 profile markup so styling is
   // shared. Maps the dashboard worker shape (badge / ratingNum / jobsNum) onto
@@ -19074,7 +19635,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const tierLabel = tier.replace('+','');
     const reviews = (w.reviews != null) ? w.reviews : (w.jobsNum || 0);
     const rating = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : 5.0);
-    const firstWord = (r.title || 'Previous').split(/[\s·]/)[0];
+    const topCat = __topCategoryOf(r);
+    const jobsHtml = __demoJobsFor(w).map(j => `
+        <div class="profile-history-item" data-cat="${j.cat}">
+          <div class="phi-id">Request ${j.id}</div>
+          <div><b>Date:</b> ${j.date}</div>
+          <div><b>Request Type:</b> ${j.type}</div>
+          <div><b>Details:</b> ${j.details}</div>
+          <div><b>Gopher Name:</b> ${w.name}</div>
+          <div><b>Amount Spent:</b> ${j.amount}</div>
+          <div><b>Rating:</b> ${j.rating}</div>
+          ${j.comment ? `<div><b>Comments:</b></div><div class="phi-comment">${j.comment}</div>` : ''}
+        </div>`).join('');
     return `
       <div class="profile-detail">
         <div class="profile-detail-head">
@@ -19115,29 +19687,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
 
         <div class="profile-links">
-          <span class="profile-link">View All Previous Jobs</span>
-          <span class="profile-link">View All Previous ${firstWord} Jobs Only</span>
+          <button type="button" class="profile-link on" data-jobfilter="all">View All Previous Jobs</button>
+          <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${topCat} Jobs Only</button>
         </div>
 
-        <div class="profile-history-item">
-          <div class="phi-id">Request #212121</div>
-          <div><b>Date:</b> 3/4/26</div>
-          <div><b>Request Type:</b> ${w.dealServiceName || 'Home Services'}</div>
-          <div><b>Details:</b> ${w.dealServiceOffer || 'Install ceiling fan'}</div>
-          <div><b>Gopher Name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> $140.00</div>
-          <div><b>Rating:</b> 5.00</div>
-          <div><b>Comments:</b></div>
-          <div class="phi-comment">${w.dealServiceName ? 'Outstanding service — professional, on time, and thorough. Highly recommend!' : 'Excellent job moving our furniture. Highly recommend and will use again.'}</div>
-        </div>
-        <div class="profile-history-item">
-          <div class="phi-id">Request #20245</div>
-          <div><b>Date:</b> 3/1/26</div>
-          <div><b>Request Type:</b> ${w.dealServiceName || 'Delivery — Age-Restricted'}</div>
-          <div><b>Details:</b> ${w.dealServiceOffer || '1 can of ZYN wintergreen'}</div>
-          <div><b>Gopher Name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> ${w.dealServiceName ? '$120.00' : '$40.00'}</div>
-          <div><b>Rating:</b> ${w.dealServiceName ? '4.95' : 'No Rating'}</div>
+        <div class="profile-history" data-topcat="${topCat}">
+          ${jobsHtml}
+          <div class="profile-history-empty" style="display:none">No Previous ${topCat} Jobs</div>
         </div>
       </div>
     `;
@@ -19150,6 +19706,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(!body) return;
     if(!r){ body.innerHTML = ''; return; }
 
+    // G40-78: once the Gopher has started (in-progress/active), cancel is no
+    // longer an option — hide the header Cancel button and show a short note.
+    // Before start (pending, incl. an accepted-but-not-started Gopher) the
+    // button stays; __openCancelModal routes it to the right cancel flow.
+    const _started = r.status === 'in-progress' || r.status === 'active';
+    const _cancelBtnEl = document.getElementById('reqDetailCancelBtn');
+    if(_cancelBtnEl) _cancelBtnEl.style.display = _started ? 'none' : '';
+    const startedNote = _started
+      ? `<div class="req-detail-started-note">🔒 Your Gopher has started this request — it can no longer be
+           cancelled here. Message your Gopher below, or contact support if there’s a problem.</div>`
+      : '';
+
     const headerHtml = `
       <div class="req-detail-header ${r.needsAttention?'has-attention':''}">
         <div style="flex:1;">
@@ -19159,6 +19727,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
         <span class="req-detail-status ${r.status}">${r.statusLabel}</span>
       </div>
+      ${startedNote}
     `;
 
     let workersHtml = '';
@@ -19434,6 +20003,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                   </a>
                 </div>
               </div>
+              ${((r.reviewSnapshot && r.reviewSnapshot.category==='ride') || r.category==='ride') && lw.vehicle && window.__vehicleCard ? window.__vehicleCard(lw.vehicle) : ''}
             `;
           };
 
@@ -19834,6 +20404,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
         <div class="adj-body">
           <div class="adj-reason"><span class="adj-who">${workerName}:</span> “${P.comment}”</div>
+          ${P.receipt ? `<div class="rcpt-row">${window.__receiptThumb((P.receipt && P.receipt.src), 'TAP TO ZOOM')}<div class="rcpt-cap"><b>Receipt attached.</b> Tap to zoom in and verify the line items and total before you approve.</div></div>` : ''}
           <div class="adj-prices">
             <div class="adj-price old"><div class="adj-lbl">Current total</div><div class="adj-val">${fmt(snap.total)}</div></div>
             <div class="adj-arrow">→</div>
@@ -19997,6 +20568,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               <div class="ca-cl">Comments</div>
               <div class="ca-cbox">${P.comment}</div>
             </div>
+            ${P.receipt ? `<div class="ca-eyebrow">Receipt</div><div class="rcpt-row">${window.__receiptThumb((P.receipt && P.receipt.src), 'TAP TO ZOOM')}<div class="rcpt-cap">Pinch or scroll to zoom the receipt and confirm the total before approving.</div></div>` : ''}
             <div class="ca-actions">
               <button class="ca-approve" data-adj-action="approve">Approve</button>
               <button class="ca-decline" data-adj-action="decline">Decline</button>
@@ -20996,7 +21568,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(name === 'home') renderActiveRequests();
     // Whenever the Previous section is shown, reset the detail panel back to the
     // list view and repaint — covers nav from sidebar, KPI, or any data mutation.
-    if(name === 'previous'){ closePrevDetail(); /* closePrevDetail already calls renderPrevRequests */ }
+    if(name === 'previous'){
+      closePrevDetail(); /* closePrevDetail already calls renderPrevRequests */
+      // G40-107: opening Request History is a positive moment — offer the
+      // review pre-prompt to engaged users (≥5 completed). Deferred so the
+      // section paints first.
+      if(window.__maybeReviewPrompt) setTimeout(() => window.__maybeReviewPrompt('request'), 350);
+    }
     if(name === 'inbox'){ renderInbox(); }
     if(name === 'gophers'){ renderGophers(); }
     const main = dash.querySelector('.dash-main'); if(main) main.scrollTop = 0;
@@ -23075,5 +23653,288 @@ function initPersonalEdit(){
 })();
 </script>
 
+
+
+<!-- GOPHER-RECEIPT-COMPONENT (G40-101) START -->
+<!-- ============================================================================
+     COST-ADJUSTMENT RECEIPT — shared front-end component  (Jira G40-101)
+     ----------------------------------------------------------------------------
+     ONE component, dropped identically into every surface that shows a cost
+     adjustment to the customer (Gopher Request, Connect, Deals) and — for the
+     tall/narrow display + attach gate — the Gopher Go worker app.
+
+     WHAT IT PROVIDES (global, singleton — safe to include once per page):
+       window.__receiptThumb(src, label)  -> returns tall/narrow thumbnail HTML
+                                             (2:5, object-fit:contain, no crop).
+       window.__receiptViewer(src)        -> opens a fullscreen pinch-to-zoom
+                                             viewer (touch pinch + drag-pan +
+                                             double-tap; desktop wheel + drag).
+       window.__demoReceipt()             -> DEMO ONLY: a generated SVG receipt
+                                             so the flow renders with no asset
+                                             server. DELETE in production.
+
+     DEV SEAM (the only place the backend plugs in):
+       The customer's cost-adjustment object carries a `receipt.src` = the stored
+       receipt URL (S3/CDN) the backend returns on the cost_adjustment record.
+       Render it with:  window.__receiptThumb(adj.receipt && adj.receipt.src)
+       When src is null/undefined the demo receipt shows; pass the real URL and
+       the demo generator is never called. Server-side, a receipt is REQUIRED
+       whenever new Cost of Items > original — enforce that on the endpoint, not
+       only in the UI. See gopher-go-backend-wiring-checklist.md §5.
+     ============================================================================ -->
+<style id="rcpt-styles">
+  .rcpt-thumb{--w:92px;width:var(--w);aspect-ratio:2/5;border-radius:10px;overflow:hidden;
+    background:#f4f1ea;border:1px solid rgba(0,0,0,.14);cursor:zoom-in;position:relative;
+    display:block;padding:0;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.10)}
+  .rcpt-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+  .rcpt-thumb .rcpt-badge{position:absolute;left:0;right:0;bottom:0;padding:2px 0;
+    font:700 8.5px/1.4 system-ui,-apple-system,sans-serif;text-align:center;color:#fff;
+    background:rgba(20,20,24,.62);letter-spacing:.04em}
+  .rcpt-row{display:flex;gap:11px;align-items:center;margin:11px 0}
+  .rcpt-row .rcpt-cap{font:500 12.5px/1.5 system-ui,-apple-system,sans-serif;color:#5b6472}
+  .rcpt-row .rcpt-cap b{color:#111;font-weight:700}
+  .rcpt-viewer{position:fixed;inset:0;z-index:99999;background:rgba(12,12,14,.93);display:none;
+    align-items:center;justify-content:center;touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none}
+  .rcpt-viewer.on{display:flex}
+  .rcpt-stage{position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .rcpt-img{max-width:90vw;max-height:86vh;transform-origin:center center;will-change:transform;
+    -webkit-user-drag:none;user-select:none;touch-action:none;background:#fff;border-radius:4px;box-shadow:0 8px 44px rgba(0,0,0,.55)}
+  .rcpt-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;border:0;
+    background:rgba(255,255,255,.15);color:#fff;font-size:22px;line-height:1;cursor:pointer;z-index:2}
+  .rcpt-hint{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:rgba(255,255,255,.72);
+    font:500 12px/1.4 system-ui,-apple-system,sans-serif;pointer-events:none;z-index:2}
+</style>
+<script>
+(function(){
+  if(window.__receiptViewer) return;                         // singleton per page
+
+  // ---- DEMO ONLY: generated SVG receipt (delete in production) ---------------
+  window.__demoReceipt = function(){
+    var rows=[['Eggs, large dozen','4.99'],['Milk, 1 gal','3.79'],['Chicken breast 2lb','12.48'],
+      ['Olive oil 500ml','9.29'],['Pasta x3','5.07'],['Tomatoes 2lb','4.18'],
+      ['Bread, sourdough','4.49'],['Coffee 12oz','8.99']];
+    var y=150, items=rows.map(function(r){var line="<text x='24' y='"+y+"' font-size='15'>"+r[0]+"</text>"+
+      "<text x='296' y='"+y+"' font-size='15' text-anchor='end'>"+r[1]+"</text>";y+=32;return line;}).join('');
+    var bars=Array.from({length:26},function(_,i){return "<line x1='"+(40+i*9)+"' y1='680' x2='"+(40+i*9)+
+      "' y2='740' stroke-width='"+((i%3)+1)+"'/>";}).join('');
+    var svg="<svg xmlns='http://www.w3.org/2000/svg' width='320' height='800' viewBox='0 0 320 800'>"+
+      "<rect width='320' height='800' fill='#fffdf7'/><g font-family='monospace' fill='#222'>"+
+      "<text x='160' y='54' font-size='26' text-anchor='middle' font-weight='bold'>FRESH MART</text>"+
+      "<text x='160' y='82' font-size='14' text-anchor='middle'>123 Main St &#183; (555) 010-2233</text>"+
+      "<line x1='24' y1='108' x2='296' y2='108' stroke='#bbb' stroke-dasharray='4 4'/>"+items+
+      "<line x1='24' y1='418' x2='296' y2='418' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='24' y='452' font-size='15'>Subtotal</text><text x='296' y='452' font-size='15' text-anchor='end'>57.28</text>"+
+      "<text x='24' y='482' font-size='15'>Tax</text><text x='296' y='482' font-size='15' text-anchor='end'>5.72</text>"+
+      "<text x='24' y='518' font-size='19' font-weight='bold'>TOTAL</text><text x='296' y='518' font-size='19' text-anchor='end' font-weight='bold'>63.00</text>"+
+      "<line x1='24' y1='540' x2='296' y2='540' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='160' y='580' font-size='13' text-anchor='middle'>VISA ****4242   APPROVED</text>"+
+      "<text x='160' y='608' font-size='12' text-anchor='middle'>07/02/2026  3:41 PM</text>"+
+      "<text x='160' y='656' font-size='14' text-anchor='middle'>*** THANK YOU ***</text>"+
+      "<g stroke='#222'>"+bars+"</g>"+
+      "<text x='160' y='772' font-size='12' text-anchor='middle'>0 63000 42420 7</text></g></svg>";
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+  };
+
+  // ---- Thumbnail (tall/narrow, never cropped or distorted) -------------------
+  window.__receiptThumb = function(src, label){
+    var s = src || window.__demoReceipt();
+    return '<button type="button" class="rcpt-thumb" data-rcpt-src="'+s+'" '+
+           'aria-label="View receipt — tap to zoom"><img src="'+s+'" alt="Receipt">'+
+           '<span class="rcpt-badge">'+(label||'ZOOM')+'</span></button>';
+  };
+
+  // ---- Fullscreen pinch-to-zoom viewer ---------------------------------------
+  var v, stage, img, scale=1, tx=0, ty=0, MIN=1, MAX=6;
+  var drag=false, lastX=0, lastY=0, pinch=false, startDist=0, startScale=1, lastTap=0;
+  function apply(){ img.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
+  function resetView(){ scale=1; tx=0; ty=0; apply(); }
+  function clamp(s){ return Math.max(MIN, Math.min(MAX, s)); }
+  function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
+  function close(){ v.classList.remove('on'); document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  function build(){
+    v=document.createElement('div'); v.className='rcpt-viewer'; v.setAttribute('role','dialog'); v.setAttribute('aria-modal','true');
+    v.innerHTML='<button class="rcpt-close" aria-label="Close">✕</button>'+
+      '<div class="rcpt-stage"><img class="rcpt-img" alt="Receipt"></div>'+
+      '<div class="rcpt-hint">Pinch or scroll to zoom · drag to pan · double-tap to reset</div>';
+    document.body.appendChild(v);
+    stage=v.querySelector('.rcpt-stage'); img=v.querySelector('.rcpt-img');
+    v.querySelector('.rcpt-close').addEventListener('click', close);
+    v.addEventListener('click', function(e){ if(e.target===v) close(); });
+    // desktop: wheel zoom (about center) + drag pan + dblclick toggle
+    stage.addEventListener('wheel', function(e){ e.preventDefault(); scale=clamp(scale*(1 - e.deltaY*0.0015)); if(scale===1){tx=0;ty=0;} apply(); }, {passive:false});
+    stage.addEventListener('mousedown', function(e){ if(scale<=1) return; drag=true; lastX=e.clientX; lastY=e.clientY; });
+    window.addEventListener('mousemove', function(e){ if(!drag) return; tx+=e.clientX-lastX; ty+=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; apply(); });
+    window.addEventListener('mouseup', function(){ drag=false; });
+    img.addEventListener('dblclick', function(e){ e.preventDefault(); scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); });
+    // touch: pinch zoom + drag pan + double-tap reset
+    stage.addEventListener('touchstart', function(e){
+      if(e.touches.length===2){ pinch=true; startDist=dist(e.touches); startScale=scale; }
+      else if(e.touches.length===1){
+        var now=Date.now();
+        if(now-lastTap<300){ scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); lastTap=0; }
+        else { lastTap=now; if(scale>1){ drag=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; } }
+      }
+    }, {passive:false});
+    stage.addEventListener('touchmove', function(e){
+      if(pinch && e.touches.length===2){ e.preventDefault(); scale=clamp(startScale*(dist(e.touches)/startDist)); if(scale===1){tx=0;ty=0;} apply(); }
+      else if(drag && e.touches.length===1){ e.preventDefault(); tx+=e.touches[0].clientX-lastX; ty+=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; apply(); }
+    }, {passive:false});
+    stage.addEventListener('touchend', function(e){ if(e.touches.length===0){ pinch=false; drag=false; } });
+  }
+  window.__receiptViewer = function(src){
+    if(!v) build();
+    img.src = src || window.__demoReceipt();
+    resetView();
+    v.classList.add('on');
+    document.addEventListener('keydown', onKey);
+  };
+
+  // A .rcpt-thumb OR any [data-rcpt-open] element opens the viewer (delegated).
+  // Empty data-rcpt-src falls back to the demo receipt.
+  document.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('.rcpt-thumb, [data-rcpt-open]') : null;
+    if(t){ e.preventDefault(); window.__receiptViewer(t.getAttribute('data-rcpt-src') || null); }
+  });
+
+  // Static-HTML hydration: drop <span data-receipt-demo [data-rcpt-src] [data-label]
+  // [data-width]> anywhere (e.g. inside a string-built screen that can't call
+  // __receiptThumb) and it becomes a tall/narrow, zoomable thumbnail after load.
+  function hydrate(root){
+    (root||document).querySelectorAll('[data-receipt-demo]').forEach(function(el){
+      var html = window.__receiptThumb(el.getAttribute('data-rcpt-src') || null, el.getAttribute('data-label') || 'TAP TO ZOOM');
+      var w = el.getAttribute('data-width');
+      if(w){ html = html.replace('class="rcpt-thumb"', 'class="rcpt-thumb" style="--w:'+w+'px"'); }
+      el.insertAdjacentHTML('beforebegin', html);
+      el.parentNode.removeChild(el);
+    });
+  }
+  if(document.readyState !== 'loading') hydrate(); else document.addEventListener('DOMContentLoaded', function(){ hydrate(); });
+  // Walkthrough/SPA screens are often injected via innerHTML AFTER load — observe
+  // the DOM so placeholders added later still hydrate.
+  if(typeof MutationObserver !== 'undefined'){
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ if(muts[i].addedNodes && muts[i].addedNodes.length){ hydrate(); break; } }
+    });
+    var startObs = function(){ if(document.body) mo.observe(document.body, {childList:true, subtree:true}); };
+    if(document.body) startObs(); else document.addEventListener('DOMContentLoaded', startObs);
+  }
+})();
+</script>
+
+<!-- GOPHER-RECEIPT-COMPONENT (G40-101) END -->
+
+<!-- GOPHER-VEHICLE-COMPONENT (G40-142) START -->
+<!-- ============================================================================
+     RIDE VEHICLE CARD — shared front-end component  (Jira G40-142)
+     ----------------------------------------------------------------------------
+     Shows the accepting Gopher's REAL car photos (front + rear) + Year/Make/Model,
+     Color, and plate on the requestor's ACTIVE ride screen — so the rider can
+     identify the vehicle Uber-style. Ride requests only, after acceptance.
+
+     GLOBALS (singleton, safe to include once):
+       window.__vehicleCard(v)  -> returns the vehicle-card HTML for a vehicle
+                                   object v = { frontPhoto, rearPhoto, year, make,
+                                   model, color, plate }.
+       window.__demoCarPhoto(color, view) -> DEMO ONLY: a generated color-matched
+                                   car SVG (view = 'front' | 'rear') so the card
+                                   renders with no photo server. DELETE in prod.
+
+     Tapping a photo opens the shared fullscreen zoom viewer (window.__receiptViewer,
+     from receipt-flow-component.html) via the delegated [data-rcpt-open] handler —
+     both components ship together on the ride surface.
+
+     DEV SEAM (the only backend hookup): the Gopher uploads REAL front + rear car
+     photos in Gopher Go → Work Settings & Radius (already in gopher-go.html). Store
+     the two photo URLs on the driver profile; on ride ACCEPT, return them as
+     v.frontPhoto / v.rearPhoto (+ year/make/model/color/plate). Null photo → the
+     demo car shows; pass the real URL and the demo generator never runs. The message
+     button already exists on the active screen (the crew card's Text button).
+     ============================================================================ -->
+<style id="veh-styles">
+  .veh-card{margin:10px 0 4px;border:1px solid rgba(0,0,0,.10);border-radius:14px;
+    background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+  .veh-head{display:flex;align-items:center;gap:7px;padding:10px 13px;
+    font:700 13px/1.2 system-ui,-apple-system,sans-serif;color:#111;
+    border-bottom:1px solid rgba(0,0,0,.07);background:#fafafa}
+  .veh-head .veh-ico{font-size:15px}
+  .veh-photos{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:11px}
+  .veh-photo{position:relative;padding:0;border:1px solid rgba(0,0,0,.10);border-radius:10px;
+    overflow:hidden;background:#eef1f4;cursor:zoom-in;aspect-ratio:4/3;display:block}
+  .veh-photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .veh-photo .veh-tag{position:absolute;left:0;bottom:0;right:0;padding:2px 6px;
+    font:600 9.5px/1.4 system-ui,-apple-system,sans-serif;color:#fff;text-align:left;
+    background:linear-gradient(transparent,rgba(0,0,0,.55))}
+  .veh-meta{padding:0 13px 12px;display:flex;flex-direction:column;gap:5px}
+  .veh-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .veh-name{font:700 15px/1.2 system-ui,-apple-system,sans-serif;color:#111}
+  .veh-color{display:inline-flex;align-items:center;gap:6px;
+    font:600 13px/1.2 system-ui,-apple-system,sans-serif;color:#374151}
+  .veh-swatch{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25);display:inline-block}
+  .veh-plate{font:600 12.5px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#4b5563}
+  .veh-plate b{color:#111;letter-spacing:.06em;font-weight:700}
+</style>
+<script>
+(function(){
+  if(window.__vehicleCard) return;                               // singleton
+
+  var COLORS = { white:'#e9ebee', silver:'#c7ccd1', gray:'#8b9099', grey:'#8b9099',
+    black:'#23262b', red:'#c0392b', blue:'#2c5aa0', navy:'#22385f', green:'#2e7d55',
+    gold:'#c8a24a', tan:'#c9b48c', charcoal:'#3a3d43', maroon:'#7b2233' };
+  function hexFor(c){ return COLORS[String(c||'').trim().toLowerCase()] || (c || '#9aa0a8'); }
+
+  // DEMO ONLY: color-matched car SVG (front or rear). Delete in production.
+  window.__demoCarPhoto = function(color, view){
+    var body = hexFor(color), glass='#b9c6d6', dark='rgba(0,0,0,.28)';
+    var rear = (view === 'rear');
+    var lamps = rear
+      ? "<rect x='40' y='96' width='34' height='16' rx='4' fill='#b23'/><rect x='246' y='96' width='34' height='16' rx='4' fill='#b23'/>"
+      : "<rect x='40' y='96' width='34' height='16' rx='4' fill='#f4e9c1'/><rect x='246' y='96' width='34' height='16' rx='4' fill='#f4e9c1'/>";
+    var plateTxt = rear ? "<text x='160' y='142' font-size='15' text-anchor='middle' font-family='monospace' fill='#222'>HXR&#8226;4471</text>" : "";
+    var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='240' viewBox='0 0 320 240'>"+
+      "<rect width='320' height='240' fill='#eef1f4'/>"+
+      "<ellipse cx='160' cy='210' rx='120' ry='14' fill='rgba(0,0,0,.10)'/>"+
+      "<rect x='70' y='40' width='180' height='60' rx='22' fill='"+body+"'/>"+          // roof/cabin
+      "<rect x='86' y='50' width='148' height='34' rx='12' fill='"+glass+"'/>"+          // windshield
+      "<rect x='34' y='86' width='252' height='74' rx='18' fill='"+body+"'/>"+           // body
+      "<rect x='34' y='86' width='252' height='74' rx='18' fill='none' stroke='"+dark+"' stroke-width='2'/>"+
+      lamps+
+      "<rect x='120' y='126' width='80' height='24' rx='4' fill='#fff' stroke='"+dark+"' stroke-width='1.5'/>"+  // plate
+      plateTxt+
+      "<circle cx='96' cy='168' r='24' fill='#2b2e33'/><circle cx='96' cy='168' r='10' fill='#565b63'/>"+
+      "<circle cx='224' cy='168' r='24' fill='#2b2e33'/><circle cx='224' cy='168' r='10' fill='#565b63'/>"+
+      "<text x='160' y='28' font-size='11' text-anchor='middle' font-family='system-ui,sans-serif' fill='#8a9099'>"+
+        (rear?'REAR':'FRONT')+" &#183; demo photo</text></svg>";
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+  };
+
+  function photoBtn(src, tag){
+    return '<button type="button" class="veh-photo" data-rcpt-open data-rcpt-src="'+src+'" '+
+           'aria-label="'+tag+' — tap to zoom"><img src="'+src+'" alt="Vehicle '+tag+'">'+
+           '<span class="veh-tag">'+tag+'</span></button>';
+  }
+
+  // v = { frontPhoto, rearPhoto, year, make, model, color, plate }
+  window.__vehicleCard = function(v){
+    if(!v) return '';
+    var front = v.frontPhoto || window.__demoCarPhoto(v.color, 'front');
+    var rear  = v.rearPhoto  || window.__demoCarPhoto(v.color, 'rear');
+    var name  = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'Vehicle';
+    var color = v.color || '';
+    var plate = v.plate ? '<div class="veh-plate">Plate <b>'+v.plate+'</b></div>' : '';
+    return '<div class="veh-card">'+
+        '<div class="veh-head"><span class="veh-ico">🚗</span> Look for this vehicle</div>'+
+        '<div class="veh-photos">'+ photoBtn(front,'Front') + photoBtn(rear,'Rear · plate') +'</div>'+
+        '<div class="veh-meta">'+
+          '<div class="veh-line"><span class="veh-name">'+name+'</span>'+
+            (color ? '<span class="veh-color"><i class="veh-swatch" style="background:'+hexFor(color)+'"></i>'+color+'</span>' : '')+
+          '</div>'+ plate +
+        '</div>'+
+      '</div>';
+  };
+})();
+</script>
+
+<!-- GOPHER-VEHICLE-COMPONENT (G40-142) END -->
 </body>
 </html>

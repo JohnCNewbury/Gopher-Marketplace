@@ -947,6 +947,9 @@
     box-shadow:0 6px 18px rgba(196,66,87,0.3);
   }
   .gc-modal-btn-danger:hover { background:#a83648; }
+  /* G40-40 early-cancel: "Still cancel" reads as the destructive option */
+  .gc-modal-btn-text.ec-danger { color:#C44257; font-weight:800; }
+  .gc-modal-btn-text.ec-danger:hover { color:#a83648; }
 
   /* ─── Personal Info edit modal — canonical Gopher profile form ─── */
   .gc-modal.pe-modal { max-width:600px; text-align:left; padding:26px 26px 22px; max-height:90vh; overflow-y:auto; }
@@ -3801,10 +3804,18 @@
     margin-bottom:14px;
   }
   .profile-link {
-    display:block; font-family:'Nunito',sans-serif; font-weight:700;
+    display:block; width:100%; background:none; border:none;
+    font-family:'Nunito',sans-serif; font-weight:700;
     font-size:13px; color:var(--navy);
     text-decoration:underline; padding:4px 0;
     cursor:pointer;
+  }
+  /* G40-68 — active filter option + category empty state */
+  .profile-link.on { color:var(--green-dark); text-decoration:none; }
+  .profile-link:hover { color:var(--green-dark); }
+  .profile-history-empty {
+    text-align:center; padding:22px 10px; font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:13px; color:var(--muted);
   }
   .profile-history-item {
     padding:10px 0;
@@ -4780,6 +4791,12 @@
   .req-detail-status.pending { background:rgba(255,222,0,0.18); color:#92580D; }
   .req-detail-status.in-progress { background:rgba(51,217,117,0.12); color:var(--green-dark); }
   .req-detail-status.scheduled { background:rgba(26,42,94,0.10); color:var(--navy); }
+  /* G40-78: shown in place of Cancel once the Gopher has started the job. */
+  .req-detail-started-note {
+    margin:12px 0 4px; padding:12px 14px; border-radius:12px;
+    background:rgba(26,42,94,0.06); border:1px solid rgba(26,42,94,0.12);
+    color:var(--navy); font-size:13px; line-height:1.5;
+  }
   .req-detail-back {
     background:transparent;
     border:1.5px solid #d4d8e3;
@@ -7374,6 +7391,26 @@
     <p class="gc-modal-sub">This will cancel the request and notify any interested workers. Don't worry — a cancelled request isn't gone for good. You can always find it later under <b>Previous Requests</b>.</p>
     <button type="button" class="gc-modal-btn gc-modal-btn-danger" id="cancelReqConfirm">Yes, cancel request</button>
     <button type="button" class="gc-modal-btn-text" id="cancelReqKeep">Never mind, keep it</button>
+  </div>
+</div>
+
+<!-- EARLY-CANCELLATION MODAL (G40-40) — shown when cancelling a request that is
+     still broadcasting (pending, pre-acceptance). Body filled by JS: variant A
+     (fresh + strong coverage → reassure) or B (standard). -->
+<div class="gc-modal-overlay" id="earlyCancelOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="earlyCancelTitle">
+    <button type="button" class="gc-modal-close" id="earlyCancelClose" aria-label="Close">×</button>
+    <div id="earlyCancelBody"></div>
+  </div>
+</div>
+
+<!-- ACCEPTED-CANCELLATION MODAL (G40-78) — cancelling a request a Gopher has
+     ACCEPTED but has NOT started (not in-progress). Offers Repost (release +
+     re-broadcast the same request) or Cancel. Body filled by JS. -->
+<div class="gc-modal-overlay" id="acceptedCancelOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="acceptedCancelTitle">
+    <button type="button" class="gc-modal-close" id="acceptedCancelClose" aria-label="Close">×</button>
+    <div id="acceptedCancelBody"></div>
   </div>
 </div>
 
@@ -11634,29 +11671,13 @@ const PAY_BADGES = {
           </div>
 
           <div class="profile-links">
-            <span class="profile-link">View All Previous Jobs</span>
-            <span class="profile-link">View All Previous ${c.name.split(/[\s\/]/)[0]} Jobs Only</span>
+            <button type="button" class="profile-link on" data-jobfilter="all">View All Previous Jobs</button>
+            <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${window.__ecTopCat(state.category)} Jobs Only</button>
           </div>
 
-          <div class="profile-history-item">
-            <div class="phi-id">Request #212121</div>
-            <div><b>Date:</b> 3/4/26</div>
-            <div><b>Request Type:</b> Home Services</div>
-            <div><b>Details:</b> Install ceiling fan</div>
-            <div><b>Gopher Name:</b> ${pw.name}</div>
-            <div><b>Amount Spent:</b> $140.00</div>
-            <div><b>Rating:</b> 5.00</div>
-            <div><b>Comments:</b></div>
-            <div class="phi-comment">Excellent job moving our furniture. Highly recommend and will use again.</div>
-          </div>
-          <div class="profile-history-item">
-            <div class="phi-id">Request #20245</div>
-            <div><b>Date:</b> 3/1/26</div>
-            <div><b>Request Type:</b> Delivery — Age-Restricted</div>
-            <div><b>Details:</b> 1 can of ZYN wintergreen</div>
-            <div><b>Gopher Name:</b> ${pw.name}</div>
-            <div><b>Amount Spent:</b> $40.00</div>
-            <div><b>Rating:</b> No Rating</div>
+          <div class="profile-history" data-topcat="${window.__ecTopCat(state.category)}">
+            ${window.__ecJobs(pw)}
+            <div class="profile-history-empty" style="display:none">No Previous ${window.__ecTopCat(state.category)} Jobs</div>
           </div>
         </div>
         `;
@@ -13115,12 +13136,17 @@ const PAY_BADGES = {
         // fullCF 1.99+0+4.0392=6.0292; ITF 0.08×(48.50+1.99)=4.0392;
         // connectFee 6.0292−0−0=6.0292; gmvTotal 48.50+6.0292=54.5292.
         pendingAdjustment:{
-          comment:'Order was larger than described — two extra trays plus a 2-flight carry at the drop-off. Adjusting the delivery payment to match the heavier job.',
+          comment:'The catering order rang up higher than the estimate — the vendor added two extra trays. Adjusting the cost of items to match the receipt.',
+          // Receipt attached because the Cost of Items increased (G40-101). DEV SEAM:
+          // receipt.src = stored receipt URL from the backend on the cost adjustment
+          // record (null here → the demo renders a generated receipt via
+          // window.__demoReceipt). See gopher-go-backend-wiring-checklist.md §5.
+          receipt:{ src:null, filename:'receipt-catering.jpg', addedAt:'2026-07-02T11:18:00Z' },
           adjusted:{
-            costOfItems:0, workerPay:48.50, workersNeeded:1,
-            gopherFee:1.99, ageFee:0, instantTransfer:4.0392, connectFee:6.0292,
-            fullGopherFee:1.99, fullAgeFee:0, fullInstantTransfer:4.0392, fullConnectFee:6.0292,
-            promo:null, promoDiscount:0, tsDiscount:0, gmvTotal:54.5292,
+            costOfItems:25, workerPay:38.50, workersNeeded:1,
+            gopherFee:1.99, ageFee:0, instantTransfer:5.2392, connectFee:7.2292,
+            fullGopherFee:1.99, fullAgeFee:0, fullInstantTransfer:5.2392, fullConnectFee:7.2292,
+            promo:null, promoDiscount:0, tsDiscount:0, gmvTotal:70.7292,
             dealBoostFee:0, serviceDealZeroFee:false
           }
         }
@@ -14738,6 +14764,25 @@ const PAY_BADGES = {
   window.__openCancelModal = (dashRequestId) => {
     const overlay = document.getElementById('cancelReqOverlay');
     if(!overlay) return;
+    // Status-aware cancel routing:
+    //   • in-progress → G40-78: cancel not allowed once the Gopher has started.
+    //   • pending + a Gopher hired (accepted, not started) → G40-78: Repost or Cancel.
+    //   • pending, no Gopher hired (still broadcasting) → G40-40 early-cancel.
+    //   • else → generic confirm.
+    if(dashRequestId){
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === dashRequestId);
+      const started = r && (r.status === 'in-progress' || r.status === 'active');
+      const hasHired = r && (r.interestedWorkers || []).some(w => w.status === 'hired');
+      if(started && typeof window.__openStartedCantCancel === 'function'){
+        window.__openStartedCantCancel(dashRequestId); return;
+      }
+      if(r && r.status === 'pending' && hasHired && typeof window.__openAcceptedCancelModal === 'function'){
+        window.__openAcceptedCancelModal(dashRequestId); return;
+      }
+      if(r && r.status === 'pending' && typeof window.__openEarlyCancelModal === 'function'){
+        window.__openEarlyCancelModal(dashRequestId); return;
+      }
+    }
     pendingCancelDashId = dashRequestId || null;
     overlay.hidden = false;
   };
@@ -14772,6 +14817,217 @@ const PAY_BADGES = {
     });
     overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
     document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+  })();
+
+  // ── Early-cancellation flow (G40-40) ──
+  // While a request is still BROADCASTING (status 'pending', not yet accepted),
+  // cancelling opens THIS modal instead of the generic confirm. Variant A
+  // (reassure) shows when the request is fresh (≤20 min) AND the area has strong
+  // coverage — >20 Gophers with ≥1 recent completed order, read from GopherIQData
+  // when present (Connect doesn't load it, so it uses the representative fallback).
+  //   "Still need it" → re-broadcast (demo confirmation; real push = backend).
+  //   "Still cancel"  → routes into the normal __cancelDashboardRequest path.
+  (function initEarlyCancel(){
+    const overlay = document.getElementById('earlyCancelOverlay');
+    if(!overlay) return;
+    const body = document.getElementById('earlyCancelBody');
+    let _dashId = null;
+
+    function coverageFor(req){
+      const pick = (arr) => {
+        if(Array.isArray(arr)){ for(const s of arr){ const v = (s && (s.city || s.zip || s.address || s.label)) || (typeof s === 'string' ? s : ''); if(v) return v; } }
+        return '';
+      };
+      const place = pick(req && req.dropoffs) || pick(req && req.pickups) || '';
+      let workers = 0, active = 0, area = '';
+      try{
+        if(place && window.GopherIQData && typeof GopherIQData.lookup === 'function'){
+          const r = GopherIQData.lookup(place);
+          if(r && !r.ambiguous && r.inData){ workers = r.workers || 0; active = r.activeLast3mo || 0; area = r.city || ''; }
+        }
+      }catch(_e){}
+      if(!area){ workers = 24; active = 3; area = ''; }   // representative strong-coverage fallback
+      return { workers, active, area };
+    }
+
+    function pickVariant(req){
+      const elapsedMin = (req && req.submittedAt) ? (Date.now() - req.submittedAt) / 60000 : 999;
+      const cov = coverageFor(req);
+      const strong = cov.workers > 20 && cov.active >= 1;
+      return { v: (elapsedMin <= 20 && strong) ? 'A' : 'B', cov };
+    }
+
+    function areaTxt(cov){ return cov.area ? ('near <b>' + cov.area + '</b>') : 'in your area'; }
+
+    function render(variant, cov){
+      if(variant === 'A'){
+        body.innerHTML =
+            '<div class="gc-modal-icon gc-modal-icon-go">📣</div>'
+          + '<h4 id="earlyCancelTitle">Hang tight — a Gopher’s likely close</h4>'
+          + '<p class="gc-modal-sub">You sent this out just moments ago, and there are <b>' + cov.workers + '+ Gophers</b> active ' + areaTxt(cov) + ' right now. Requests like yours usually get picked up within minutes. Want us to keep looking?</p>'
+          + '<button type="button" class="gc-modal-btn" id="earlyCancelKeep">Still need it — keep looking</button>'
+          + '<button type="button" class="gc-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
+      } else {
+        body.innerHTML =
+            '<div class="gc-modal-icon">🔎</div>'
+          + '<h4 id="earlyCancelTitle">Still want us to keep looking?</h4>'
+          + '<p class="gc-modal-sub">We’re still broadcasting your request to Gophers ' + areaTxt(cov) + '. Tap <b>Still need it</b> and we’ll send a fresh alert to local Gophers — your request stays exactly as it is, so there may be less time left on the clock. Changed your plans? You can cancel below.</p>'
+          + '<button type="button" class="gc-modal-btn" id="earlyCancelKeep">Still need it — re-alert Gophers</button>'
+          + '<button type="button" class="gc-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
+      }
+      const keep = document.getElementById('earlyCancelKeep');
+      const stop = document.getElementById('earlyCancelStop');
+      if(keep) keep.addEventListener('click', showRebroadcast);
+      if(stop) stop.addEventListener('click', doCancel);
+    }
+
+    function showRebroadcast(){
+      body.innerHTML =
+          '<div class="gc-modal-icon gc-modal-icon-go">✅</div>'
+        + '<h4>On it!</h4>'
+        + '<p class="gc-modal-sub">We’ve sent a fresh alert to Gophers near you. Hang tight — we’ll let you know the moment someone accepts.</p>'
+        + '<button type="button" class="gc-modal-btn" id="earlyCancelDone">Got it</button>';
+      const d = document.getElementById('earlyCancelDone');
+      if(d) d.addEventListener('click', close);
+    }
+
+    function doCancel(){
+      const id = _dashId;
+      close();
+      if(id && typeof window.__cancelDashboardRequest === 'function'){
+        window.__cancelDashboardRequest(id);
+        if(typeof showSection === 'function') showSection('previous');
+      }
+    }
+
+    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
+
+    window.__openEarlyCancelModal = (dashId, forceVariant) => {
+      const req = (DASH_DATA.activeRequests || []).find(r => r.id === dashId) || null;
+      _dashId = dashId;
+      const info = pickVariant(req || {});
+      render((forceVariant === 'A' || forceVariant === 'B') ? forceVariant : info.v, info.cov);
+      overlay.hidden = false;
+    };
+    window.__previewEarlyCancel = (v) => { _dashId = null; render((v === 'B') ? 'B' : 'A', { workers:24, active:3, area:'Holly Springs' }); overlay.hidden = false; };
+
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+    const x = document.getElementById('earlyCancelClose');
+    if(x) x.addEventListener('click', close);
+  })();
+
+  // ── Accepted-cancellation flow (G40-78) ──
+  // Cancelling a request a Gopher has ACCEPTED but has NOT started (r.status
+  // 'pending' with a hired worker). "Repost to new Gophers" releases the hired
+  // Gopher(s), excludes them from re-accepting (r.excludedGophers) and — in
+  // production — notifies them (BACKEND SEAM), then re-broadcasts the SAME
+  // request. "Cancel request" routes into __cancelDashboardRequest. No cancel
+  // fee before start; once in-progress, cancel is removed (see the detail
+  // header gate in renderRequestDetail + __openStartedCantCancel).
+  (function initAcceptedCancel(){
+    const overlay = document.getElementById('acceptedCancelOverlay');
+    if(!overlay) return;
+    const body = document.getElementById('acceptedCancelBody');
+    let _dashId = null;
+
+    function hiredNames(r){
+      const names = (r.interestedWorkers || []).filter(w => w.status === 'hired')
+                      .map(w => w.name || 'your Gopher');
+      if(!names.length) return 'Your Gopher';
+      if(names.length === 1) return names[0];
+      if(names.length === 2) return names[0] + ' and ' + names[1];
+      return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+    }
+
+    function renderChoice(r){
+      body.innerHTML =
+          '<div class="gc-modal-icon">🔄</div>'
+        + '<h4 id="acceptedCancelTitle">Cancel this request?</h4>'
+        + '<p class="gc-modal-sub">' + hiredNames(r) + ' accepted but hasn’t started yet, so you’re '
+        + 'free to make a change — no fee. Want us to line up someone else, or cancel altogether?</p>'
+        + '<button type="button" class="gc-modal-btn" id="acceptedRepost">Repost to new Gophers</button>'
+        + '<button type="button" class="gc-modal-btn-text ec-danger" id="acceptedCancelStop">Cancel request</button>';
+      const rp = document.getElementById('acceptedRepost');
+      const st = document.getElementById('acceptedCancelStop');
+      if(rp) rp.addEventListener('click', doRepost);
+      if(st) st.addEventListener('click', doCancel);
+    }
+
+    function renderStartedNote(){
+      body.innerHTML =
+          '<div class="gc-modal-icon">🔒</div>'
+        + '<h4 id="acceptedCancelTitle">This request is already in progress</h4>'
+        + '<p class="gc-modal-sub">Your Gopher has started, so it can’t be cancelled here. Message your '
+        + 'Gopher below, or contact support if there’s a problem.</p>'
+        + '<button type="button" class="gc-modal-btn" id="acceptedMsg">Message your Gopher</button>'
+        + '<button type="button" class="gc-modal-btn-text" id="acceptedGotIt">Got it</button>';
+      const msg = document.getElementById('acceptedMsg');
+      const ok  = document.getElementById('acceptedGotIt');
+      if(msg) msg.addEventListener('click', () => { const id=_dashId; close(); if(id && typeof openInboxThread==='function') openInboxThread(id); });
+      if(ok)  ok.addEventListener('click', close);
+    }
+
+    function doRepost(){
+      const id = _dashId;
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === id);
+      if(!r){ close(); return; }
+      r.excludedGophers = r.excludedGophers || [];
+      (r.interestedWorkers || []).forEach(w => {
+        if(w.status === 'hired') r.excludedGophers.push(w.id != null ? w.id : w.name);
+      });
+      r.interestedWorkers = (r.interestedWorkers || []).filter(w => w.status !== 'hired');
+      r.status = 'pending';
+      r.statusLabel = 'Reposted · Live';
+      r.needsAttention = true;
+      r.worker = 'Finding your Gopher…';
+      if(typeof renderActiveRequests === 'function') renderActiveRequests();
+      if(typeof renderRequestDetail === 'function') renderRequestDetail();
+      if(typeof recountKpis === 'function') recountKpis();
+      showReposted();
+    }
+
+    function showReposted(){
+      body.innerHTML =
+          '<div class="gc-modal-icon">✅</div>'
+        + '<h4 id="acceptedCancelTitle">Done — we’re on it</h4>'
+        + '<p class="gc-modal-sub">We’ve released your previous Gopher and re-posted your request to nearby '
+        + 'Gophers. We’ll let you know the moment someone new accepts.</p>'
+        + '<button type="button" class="gc-modal-btn" id="acceptedRepostDone">Got it</button>';
+      const d = document.getElementById('acceptedRepostDone');
+      if(d) d.addEventListener('click', close);
+    }
+
+    function doCancel(){
+      const id = _dashId;
+      close();
+      if(id && typeof window.__cancelDashboardRequest === 'function'){
+        window.__cancelDashboardRequest(id);
+        if(typeof showSection === 'function') showSection('previous');
+      }
+    }
+
+    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
+
+    window.__openAcceptedCancelModal = (dashId) => {
+      const r = (DASH_DATA.activeRequests || []).find(x => x.id === dashId) || null;
+      if(!r) return;
+      _dashId = dashId;
+      renderChoice(r);
+      overlay.hidden = false;
+    };
+    window.__openStartedCantCancel = (dashId) => {
+      _dashId = dashId;
+      renderStartedNote();
+      overlay.hidden = false;
+    };
+    window.__previewAcceptedCancel = () => { _dashId = null; renderChoice({ interestedWorkers:[{status:'hired',name:'Marcus T.'}] }); overlay.hidden = false; };
+    window.__previewStartedCantCancel = () => { _dashId = null; renderStartedNote(); overlay.hidden = false; };
+
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+    const x = document.getElementById('acceptedCancelClose');
+    if(x) x.addEventListener('click', close);
   })();
 
   // ─── Start a job: move the pending request into the active dashboard ───
@@ -15017,6 +15273,16 @@ const PAY_BADGES = {
     const r = DASH_DATA.activeRequests.find(x => x.id === id);
     if(!r){ document.getElementById('reqDetailBody').innerHTML = ''; return; }
 
+    // G40-78: once the Gopher has started (in-progress/active), cancel is no
+    // longer an option — hide the header Cancel button and show a short note.
+    const _started = r.status === 'in-progress' || r.status === 'active';
+    const _cancelBtnEl = document.getElementById('reqDetailCancelBtn');
+    if(_cancelBtnEl) _cancelBtnEl.style.display = _started ? 'none' : '';
+    const startedNote = _started
+      ? `<div class="req-detail-started-note">🔒 Your Gopher has started this request — it can no longer be
+           cancelled here. Message your Gopher below, or contact support if there’s a problem.</div>`
+      : '';
+
     const headerHtml = `
       <div class="req-detail-header ${r.needsAttention?'has-attention':''}">
         <div style="flex:1;">
@@ -15026,6 +15292,7 @@ const PAY_BADGES = {
         </div>
         <span class="req-detail-status ${r.status}">${r.statusLabel}</span>
       </div>
+      ${startedNote}
     `;
 
     // Interested workers (only the pending one has these populated)
@@ -15835,6 +16102,7 @@ const PAY_BADGES = {
         </div>
         <div class="adj-body">
           <div class="adj-reason"><span class="adj-who">${workerName}:</span> “${P.comment}”</div>
+          ${P.receipt ? `<div class="rcpt-row">${window.__receiptThumb((P.receipt && P.receipt.src), 'TAP TO ZOOM')}<div class="rcpt-cap"><b>Receipt attached.</b> Tap to zoom in and verify the line items and total before you approve.</div></div>` : ''}
           <div class="adj-prices">
             <div class="adj-price old"><div class="adj-lbl">Current total</div><div class="adj-val">${fmt(snap.total)}</div></div>
             <div class="adj-arrow">→</div>
@@ -15986,6 +16254,7 @@ const PAY_BADGES = {
               <div class="ca-cl">Comments</div>
               <div class="ca-cbox">${P.comment}</div>
             </div>
+            ${P.receipt ? `<div class="ca-eyebrow">Receipt</div><div class="rcpt-row">${window.__receiptThumb((P.receipt && P.receipt.src), 'TAP TO ZOOM')}<div class="rcpt-cap">Pinch or scroll to zoom the receipt and confirm the total before approving.</div></div>` : ''}
             <div class="ca-actions">
               <button class="ca-approve" data-adj-action="approve">Approve</button>
               <button class="ca-decline" data-adj-action="decline">Decline</button>
@@ -17533,6 +17802,7 @@ const PAY_BADGES = {
       title: data.title || 'New request',
       status: 'pending',
       statusLabel: 'Pending',
+      submittedAt: Date.now(),           // G40-40: drives the <20-min early-cancel variant
       needsAttention: true,
       userCreated: true,                 // flags the red X + deletability
       scheduledForLater: !!data.scheduledForLater,
@@ -20893,5 +21163,221 @@ const PAY_BADGES = {
   window.__eqPathTabs=eqTabs;
 })();
 </script>
+<script>
+/* G40-68 — previous-jobs category filter (Connect). Maps the active request's
+   flow category key (state.category) to one of the four top-level buckets —
+   Delivery / Need A Ride / Service / Other — renders a category-tagged demo job
+   list, and wires the All-vs-category toggle + empty state. Real per-job category
+   tags come from the backend. */
+(function(){
+  var MAP = { delivery:'Delivery', errand:'Delivery', ride:'Need A Ride', moving:'Service', home:'Service', labor:'Service', junk:'Service', yard:'Service', service:'Service', other:'Other' };
+  window.__ecTopCat = function(key){ return MAP[(key||'').toString().toLowerCase()] || 'Service'; };
+  window.__ecJobs = function(pw){
+    var name = (pw && pw.name) || 'Gopher';
+    var jobs = [
+      { id:'#212121', date:'3/4/26',  type:'Home Services · Handyman',  details:'Install ceiling fan',       amount:'$140.00', rating:'5.00', comment:'Excellent — professional and quick. Highly recommend.', cat:'Service' },
+      { id:'#20245',  date:'3/1/26',  type:'Delivery — Age-Restricted', details:'1 can of ZYN wintergreen',  amount:'$40.00',  rating:'4.95', comment:'', cat:'Delivery' },
+      { id:'#20188',  date:'2/22/26', type:'Junk Removal',              details:'Garage cleanout — 6 items', amount:'$210.00', rating:'5.00', comment:'Fast and careful with everything.', cat:'Service' },
+      { id:'#20102',  date:'2/10/26', type:'Need A Ride',               details:'Airport drop-off',          amount:'$55.00',  rating:'4.90', comment:'', cat:'Need A Ride' }
+    ];
+    return jobs.map(function(j){
+      return '<div class="profile-history-item" data-cat="'+j.cat+'">'
+        + '<div class="phi-id">Request '+j.id+'</div>'
+        + '<div><b>Date:</b> '+j.date+'</div>'
+        + '<div><b>Request Type:</b> '+j.type+'</div>'
+        + '<div><b>Details:</b> '+j.details+'</div>'
+        + '<div><b>Gopher Name:</b> '+name+'</div>'
+        + '<div><b>Amount Spent:</b> '+j.amount+'</div>'
+        + '<div><b>Rating:</b> '+j.rating+'</div>'
+        + (j.comment ? '<div><b>Comments:</b></div><div class="phi-comment">'+j.comment+'</div>' : '')
+        + '</div>';
+    }).join('');
+  };
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest && e.target.closest('[data-jobfilter]');
+    if(!btn) return;
+    var detail = btn.closest('.profile-detail'); if(!detail) return;
+    var mode = btn.getAttribute('data-jobfilter');
+    var wrap = detail.querySelector('[data-topcat]');
+    var cat = wrap ? wrap.getAttribute('data-topcat') : '';
+    var opts = detail.querySelectorAll('[data-jobfilter]');
+    for(var i=0;i<opts.length;i++){ opts[i].classList.toggle('on', opts[i]===btn); }
+    var items = detail.querySelectorAll('.profile-history-item'), shown=0;
+    for(var j=0;j<items.length;j++){ var show=(mode==='all')||(items[j].getAttribute('data-cat')===cat); items[j].style.display = show?'':'none'; if(show)shown++; }
+    var empty = detail.querySelector('.profile-history-empty');
+    if(empty) empty.style.display = (mode==='cat' && shown===0) ? '' : 'none';
+  });
+})();
+</script>
+
+
+<!-- GOPHER-RECEIPT-COMPONENT (G40-101) START -->
+<!-- ============================================================================
+     COST-ADJUSTMENT RECEIPT — shared front-end component  (Jira G40-101)
+     ----------------------------------------------------------------------------
+     ONE component, dropped identically into every surface that shows a cost
+     adjustment to the customer (Gopher Request, Connect, Deals) and — for the
+     tall/narrow display + attach gate — the Gopher Go worker app.
+
+     WHAT IT PROVIDES (global, singleton — safe to include once per page):
+       window.__receiptThumb(src, label)  -> returns tall/narrow thumbnail HTML
+                                             (2:5, object-fit:contain, no crop).
+       window.__receiptViewer(src)        -> opens a fullscreen pinch-to-zoom
+                                             viewer (touch pinch + drag-pan +
+                                             double-tap; desktop wheel + drag).
+       window.__demoReceipt()             -> DEMO ONLY: a generated SVG receipt
+                                             so the flow renders with no asset
+                                             server. DELETE in production.
+
+     DEV SEAM (the only place the backend plugs in):
+       The customer's cost-adjustment object carries a `receipt.src` = the stored
+       receipt URL (S3/CDN) the backend returns on the cost_adjustment record.
+       Render it with:  window.__receiptThumb(adj.receipt && adj.receipt.src)
+       When src is null/undefined the demo receipt shows; pass the real URL and
+       the demo generator is never called. Server-side, a receipt is REQUIRED
+       whenever new Cost of Items > original — enforce that on the endpoint, not
+       only in the UI. See gopher-go-backend-wiring-checklist.md §5.
+     ============================================================================ -->
+<style id="rcpt-styles">
+  .rcpt-thumb{--w:92px;width:var(--w);aspect-ratio:2/5;border-radius:10px;overflow:hidden;
+    background:#f4f1ea;border:1px solid rgba(0,0,0,.14);cursor:zoom-in;position:relative;
+    display:block;padding:0;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,0,0,.10)}
+  .rcpt-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}
+  .rcpt-thumb .rcpt-badge{position:absolute;left:0;right:0;bottom:0;padding:2px 0;
+    font:700 8.5px/1.4 system-ui,-apple-system,sans-serif;text-align:center;color:#fff;
+    background:rgba(20,20,24,.62);letter-spacing:.04em}
+  .rcpt-row{display:flex;gap:11px;align-items:center;margin:11px 0}
+  .rcpt-row .rcpt-cap{font:500 12.5px/1.5 system-ui,-apple-system,sans-serif;color:#5b6472}
+  .rcpt-row .rcpt-cap b{color:#111;font-weight:700}
+  .rcpt-viewer{position:fixed;inset:0;z-index:99999;background:rgba(12,12,14,.93);display:none;
+    align-items:center;justify-content:center;touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none}
+  .rcpt-viewer.on{display:flex}
+  .rcpt-stage{position:relative;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .rcpt-img{max-width:90vw;max-height:86vh;transform-origin:center center;will-change:transform;
+    -webkit-user-drag:none;user-select:none;touch-action:none;background:#fff;border-radius:4px;box-shadow:0 8px 44px rgba(0,0,0,.55)}
+  .rcpt-close{position:absolute;top:14px;right:16px;width:42px;height:42px;border-radius:50%;border:0;
+    background:rgba(255,255,255,.15);color:#fff;font-size:22px;line-height:1;cursor:pointer;z-index:2}
+  .rcpt-hint{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:rgba(255,255,255,.72);
+    font:500 12px/1.4 system-ui,-apple-system,sans-serif;pointer-events:none;z-index:2}
+</style>
+<script>
+(function(){
+  if(window.__receiptViewer) return;                         // singleton per page
+
+  // ---- DEMO ONLY: generated SVG receipt (delete in production) ---------------
+  window.__demoReceipt = function(){
+    var rows=[['Eggs, large dozen','4.99'],['Milk, 1 gal','3.79'],['Chicken breast 2lb','12.48'],
+      ['Olive oil 500ml','9.29'],['Pasta x3','5.07'],['Tomatoes 2lb','4.18'],
+      ['Bread, sourdough','4.49'],['Coffee 12oz','8.99']];
+    var y=150, items=rows.map(function(r){var line="<text x='24' y='"+y+"' font-size='15'>"+r[0]+"</text>"+
+      "<text x='296' y='"+y+"' font-size='15' text-anchor='end'>"+r[1]+"</text>";y+=32;return line;}).join('');
+    var bars=Array.from({length:26},function(_,i){return "<line x1='"+(40+i*9)+"' y1='680' x2='"+(40+i*9)+
+      "' y2='740' stroke-width='"+((i%3)+1)+"'/>";}).join('');
+    var svg="<svg xmlns='http://www.w3.org/2000/svg' width='320' height='800' viewBox='0 0 320 800'>"+
+      "<rect width='320' height='800' fill='#fffdf7'/><g font-family='monospace' fill='#222'>"+
+      "<text x='160' y='54' font-size='26' text-anchor='middle' font-weight='bold'>FRESH MART</text>"+
+      "<text x='160' y='82' font-size='14' text-anchor='middle'>123 Main St &#183; (555) 010-2233</text>"+
+      "<line x1='24' y1='108' x2='296' y2='108' stroke='#bbb' stroke-dasharray='4 4'/>"+items+
+      "<line x1='24' y1='418' x2='296' y2='418' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='24' y='452' font-size='15'>Subtotal</text><text x='296' y='452' font-size='15' text-anchor='end'>57.28</text>"+
+      "<text x='24' y='482' font-size='15'>Tax</text><text x='296' y='482' font-size='15' text-anchor='end'>5.72</text>"+
+      "<text x='24' y='518' font-size='19' font-weight='bold'>TOTAL</text><text x='296' y='518' font-size='19' text-anchor='end' font-weight='bold'>63.00</text>"+
+      "<line x1='24' y1='540' x2='296' y2='540' stroke='#bbb' stroke-dasharray='4 4'/>"+
+      "<text x='160' y='580' font-size='13' text-anchor='middle'>VISA ****4242   APPROVED</text>"+
+      "<text x='160' y='608' font-size='12' text-anchor='middle'>07/02/2026  3:41 PM</text>"+
+      "<text x='160' y='656' font-size='14' text-anchor='middle'>*** THANK YOU ***</text>"+
+      "<g stroke='#222'>"+bars+"</g>"+
+      "<text x='160' y='772' font-size='12' text-anchor='middle'>0 63000 42420 7</text></g></svg>";
+    return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+  };
+
+  // ---- Thumbnail (tall/narrow, never cropped or distorted) -------------------
+  window.__receiptThumb = function(src, label){
+    var s = src || window.__demoReceipt();
+    return '<button type="button" class="rcpt-thumb" data-rcpt-src="'+s+'" '+
+           'aria-label="View receipt — tap to zoom"><img src="'+s+'" alt="Receipt">'+
+           '<span class="rcpt-badge">'+(label||'ZOOM')+'</span></button>';
+  };
+
+  // ---- Fullscreen pinch-to-zoom viewer ---------------------------------------
+  var v, stage, img, scale=1, tx=0, ty=0, MIN=1, MAX=6;
+  var drag=false, lastX=0, lastY=0, pinch=false, startDist=0, startScale=1, lastTap=0;
+  function apply(){ img.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
+  function resetView(){ scale=1; tx=0; ty=0; apply(); }
+  function clamp(s){ return Math.max(MIN, Math.min(MAX, s)); }
+  function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
+  function close(){ v.classList.remove('on'); document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  function build(){
+    v=document.createElement('div'); v.className='rcpt-viewer'; v.setAttribute('role','dialog'); v.setAttribute('aria-modal','true');
+    v.innerHTML='<button class="rcpt-close" aria-label="Close">✕</button>'+
+      '<div class="rcpt-stage"><img class="rcpt-img" alt="Receipt"></div>'+
+      '<div class="rcpt-hint">Pinch or scroll to zoom · drag to pan · double-tap to reset</div>';
+    document.body.appendChild(v);
+    stage=v.querySelector('.rcpt-stage'); img=v.querySelector('.rcpt-img');
+    v.querySelector('.rcpt-close').addEventListener('click', close);
+    v.addEventListener('click', function(e){ if(e.target===v) close(); });
+    // desktop: wheel zoom (about center) + drag pan + dblclick toggle
+    stage.addEventListener('wheel', function(e){ e.preventDefault(); scale=clamp(scale*(1 - e.deltaY*0.0015)); if(scale===1){tx=0;ty=0;} apply(); }, {passive:false});
+    stage.addEventListener('mousedown', function(e){ if(scale<=1) return; drag=true; lastX=e.clientX; lastY=e.clientY; });
+    window.addEventListener('mousemove', function(e){ if(!drag) return; tx+=e.clientX-lastX; ty+=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY; apply(); });
+    window.addEventListener('mouseup', function(){ drag=false; });
+    img.addEventListener('dblclick', function(e){ e.preventDefault(); scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); });
+    // touch: pinch zoom + drag pan + double-tap reset
+    stage.addEventListener('touchstart', function(e){
+      if(e.touches.length===2){ pinch=true; startDist=dist(e.touches); startScale=scale; }
+      else if(e.touches.length===1){
+        var now=Date.now();
+        if(now-lastTap<300){ scale = scale>1 ? 1 : 3; tx=0; ty=0; apply(); lastTap=0; }
+        else { lastTap=now; if(scale>1){ drag=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; } }
+      }
+    }, {passive:false});
+    stage.addEventListener('touchmove', function(e){
+      if(pinch && e.touches.length===2){ e.preventDefault(); scale=clamp(startScale*(dist(e.touches)/startDist)); if(scale===1){tx=0;ty=0;} apply(); }
+      else if(drag && e.touches.length===1){ e.preventDefault(); tx+=e.touches[0].clientX-lastX; ty+=e.touches[0].clientY-lastY; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; apply(); }
+    }, {passive:false});
+    stage.addEventListener('touchend', function(e){ if(e.touches.length===0){ pinch=false; drag=false; } });
+  }
+  window.__receiptViewer = function(src){
+    if(!v) build();
+    img.src = src || window.__demoReceipt();
+    resetView();
+    v.classList.add('on');
+    document.addEventListener('keydown', onKey);
+  };
+
+  // A .rcpt-thumb OR any [data-rcpt-open] element opens the viewer (delegated).
+  // Empty data-rcpt-src falls back to the demo receipt.
+  document.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('.rcpt-thumb, [data-rcpt-open]') : null;
+    if(t){ e.preventDefault(); window.__receiptViewer(t.getAttribute('data-rcpt-src') || null); }
+  });
+
+  // Static-HTML hydration: drop <span data-receipt-demo [data-rcpt-src] [data-label]
+  // [data-width]> anywhere (e.g. inside a string-built screen that can't call
+  // __receiptThumb) and it becomes a tall/narrow, zoomable thumbnail after load.
+  function hydrate(root){
+    (root||document).querySelectorAll('[data-receipt-demo]').forEach(function(el){
+      var html = window.__receiptThumb(el.getAttribute('data-rcpt-src') || null, el.getAttribute('data-label') || 'TAP TO ZOOM');
+      var w = el.getAttribute('data-width');
+      if(w){ html = html.replace('class="rcpt-thumb"', 'class="rcpt-thumb" style="--w:'+w+'px"'); }
+      el.insertAdjacentHTML('beforebegin', html);
+      el.parentNode.removeChild(el);
+    });
+  }
+  if(document.readyState !== 'loading') hydrate(); else document.addEventListener('DOMContentLoaded', function(){ hydrate(); });
+  // Walkthrough/SPA screens are often injected via innerHTML AFTER load — observe
+  // the DOM so placeholders added later still hydrate.
+  if(typeof MutationObserver !== 'undefined'){
+    var mo = new MutationObserver(function(muts){
+      for(var i=0;i<muts.length;i++){ if(muts[i].addedNodes && muts[i].addedNodes.length){ hydrate(); break; } }
+    });
+    var startObs = function(){ if(document.body) mo.observe(document.body, {childList:true, subtree:true}); };
+    if(document.body) startObs(); else document.addEventListener('DOMContentLoaded', startObs);
+  }
+})();
+</script>
+
+<!-- GOPHER-RECEIPT-COMPONENT (G40-101) END -->
 </body>
 </html>
