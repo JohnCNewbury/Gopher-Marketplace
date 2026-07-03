@@ -1756,7 +1756,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'</div>';
     }
 
-    let coOpen=false, coVal=amtNum;
+    // Counter opens one step ABOVE the requester's offer — a counter must beat it (real live-app rule).
+    let coOpen=false, coVal=(j.mode==='bid'?amtNum:amtNum+1);
 
     function body(){
       const picRv=!!(j.priority||j.accepted), rv=!!j.accepted;
@@ -1801,6 +1802,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-co-h">'+coLabel+'</div>'
         +(j.mode==='bid'?'':'<div class="rq-co-cur">Requester&#8217;s offer <b>'+(j.amt||'\u2014')+'</b></div>')
         +'<div class="rq-co-step"><button class="rq-st js-dec">&#8722;</button><div class="rq-amt">$<input class="js-coin" inputmode="numeric" value="'+coVal+'"></div><button class="rq-st js-inc">+</button></div>'
+        +(j.mode==='bid'?'':'<div class="js-corule" style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.4;margin:-2px 0 9px;color:#8a94a3;">Your counter must be higher than the '+(j.amt||'offer')+' offer.</div>')
         +'<input class="rq-note js-conote" placeholder="Add a short note (optional) &#8212; e.g. why your price">'
         +'<button class="rq-co-send js-cosend">'+coSend+'</button>'
         +'</div>') : '';
@@ -1813,12 +1815,22 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       else { cta='Accept Request'; }
       // priority banner
       const prio = j.priority ? '<div class="rq-prio"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' prioritized you</b> &mdash; requested as their Gopher, details unlocked</div>' : '';
-      // secondary actions
+      // secondary actions — reflect a counter that's been sent and is awaiting the requester's reply
       const showCo = (!lock);
+      const coPending = !!(j.counter && !j.counterAccepted && !j.counterDeclined);
+      const coBtn = coPending
+        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Counter sent &middot; $'+j.counter.amt+'</button>'
+        : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?'Place Bid':(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       const acts = '<div class="rq-acts">'
         +'<button class="rq-2nd js-ask"><span>'+sv(I.msg)+'</span>Ask a Question</button>'
-        +(showCo?'<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?'Place Bid':'Counter-Offer')+'</button>':'')
+        +(showCo?coBtn:'')
         +'</div>';
+      // requester's verdict on a counter (set by the harness when they Accept/Decline)
+      const coStatus = (j.counter && j.counterAccepted)
+        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+j.counter.amt+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
+        : ((j.counter && j.counterDeclined)
+          ? '<div class="rq-hint">'+sv(I.tag)+who+' declined your $'+j.counter.amt+' counter &mdash; counter again or accept the '+(j.amt||'offer')+'.</div>'
+          : '');
 
       return '<div class="rq-top"><button class="rq-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button><h1>Request Details</h1><button class="rq-flag js-rep">'+sv('<path d="M5 3v18M5 4h13l-2.5 4 2.5 4H5"/>')+'</button></div>'
         +'<div class="rq-card rq-head">'
@@ -1828,6 +1840,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'</div>'
         +(rv?'':'<div class="rq-hint">'+sv(I.lock)+(picRv?'Exact addresses unlock when you accept':'Requester photo &amp; exact addresses unlock when you accept'+(j.priority?'':' &mdash; or when they Prioritize you'))+'</div>')
         +prio
+        +coStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
         +'<div class="rq-facts">'+facts+'</div>'
         +'<div class="rq-sec">The task</div><div class="rq-card rq-task"><div class="rq-tt">'+(j.cat||'Request')+(j.biz?(' &middot; '+j.biz):'')+'</div><p>'+(j.scope||'See requester notes after you accept.')+'</p></div>'
@@ -1848,10 +1861,26 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       $('.js-ask').onclick=()=>{ state.msgJob=j; load('inbox'); };
       const co=$('.js-co'); if(co) co.onclick=()=>{ coOpen=!coOpen; draw(); if(coOpen){ const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); } };
       const dec=$('.js-dec'), inc=$('.js-inc'), coin=$('.js-coin');
-      if(coin){ coin.oninput=()=>{ coVal=parseInt(coin.value.replace(/[^0-9]/g,''))||0; }; }
-      if(dec) dec.onclick=()=>{ coVal=Math.max(1,coVal-1); coin.value=coVal; };
-      if(inc) inc.onclick=()=>{ coVal=coVal+1; coin.value=coVal; };
-      const cs=$('.js-cosend'); if(cs) cs.onclick=()=>{ coOpen=false; draw(); toast((j.mode==='bid'?'Bid':'Counter-offer')+' of <b>$'+coVal+'</b> sent to '+who+' &#8594;'); };
+      const coMin=(j.mode==='bid')?1:amtNum+1;   // a counter must beat the requester's offer
+      const send=$('.js-cosend'), rule=$('.js-corule');
+      // Live-app rule: block any counter at or below the offer; keep the send state honest as they type.
+      function coValidate(){ const bad=(j.mode!=='bid' && coVal<=amtNum);
+        if(send) send.style.opacity=bad?'.5':'';
+        if(rule){ rule.style.color=bad?'#d23b3b':'#8a94a3';
+          rule.textContent=bad?('Enter more than '+(j.amt||'the offer')+' — you can’t counter at or below it.')
+                              :('Your counter must be higher than the '+(j.amt||'offer')+' offer.'); }
+        return !bad; }
+      if(coin){ coin.oninput=()=>{ coVal=parseInt(coin.value.replace(/[^0-9]/g,''))||0; coValidate(); }; }
+      if(dec) dec.onclick=()=>{ coVal=Math.max(coMin,coVal-1); coin.value=coVal; coValidate(); };
+      if(inc) inc.onclick=()=>{ coVal=coVal+1; coin.value=coVal; coValidate(); };
+      coValidate();
+      if(send) send.onclick=()=>{
+        if(!coValidate()){ if(coin) coin.focus(); return; }   // reject same/below-offer counter
+        const noteEl=$('.js-conote'), note=noteEl?noteEl.value.trim():'';
+        if(j.mode!=='bid'){ j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'}; }  // shared-store write for the harness
+        coOpen=false; draw();
+        toast((j.mode==='bid'?'Bid':'Counter-offer')+' of <b>$'+coVal+'</b> sent to '+who+' &#8594;');
+      };
       $('.js-cta').onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ state.msgJob=j; load('inbox'); return; }
@@ -2016,7 +2045,70 @@ function load(id,isBack){
  document.querySelectorAll('aside a').forEach(a=>a.classList.toggle('on',a.dataset.id===id));
 }
 document.getElementById('restart').onclick=()=>{hist=[];load('splash');};
-load('splash');
+
+/* ===== PT / split-screen mode: clean phone, empty live feed, real-time injection ===== */
+var PT=false; try{ PT=new URLSearchParams(location.search).get('pt')==='1'; }catch(_){}
+if(PT){
+  // (a) empty the Available feed in place — keep app furniture (tiles, deals, settings)
+  try{ Object.keys(JOBS).forEach(function(k){ JOBS[k].length=0; }); }catch(_){}
+  // (b) strip the design-review chrome so ONLY the phone fills the iframe
+  (function(){ var s=document.createElement('style'); s.textContent=
+     'body{display:block!important;height:auto!important;min-height:0!important;overflow:hidden!important;background:#FBF7EF!important;}'
+    +'aside{display:none!important;} main{display:block!important;height:100vh!important;}'
+    +'main>.bar{display:none!important;}'
+    +'.stage{padding:0!important;background:#FBF7EF!important;height:100vh!important;display:block!important;overflow:hidden!important;}'
+    +'.host{width:100%!important;height:100vh!important;max-height:none!important;min-height:0!important;border:0!important;border-radius:0!important;}';
+    (document.head||document.documentElement).appendChild(s); })();
+  // (c) force the inner phone frame (shadow DOM) to fill; relay nav to the harness
+  var __ptLoad=load;
+  load=function(id,isBack){ __ptLoad(id,isBack);
+    // Overlay fix: the "new job" banner must never sit over the opened request — retract it on entry.
+    if(id==='job-detail'){ try{ var _bn=document.getElementById('ptBanner'); if(_bn){ clearTimeout(_bn._h); _bn.style.transform='translateX(-50%) translateY(-160%)'; } }catch(_){} }
+    try{ var host=stage&&stage.querySelector('.host'), sr=host&&host.shadowRoot;
+      if(sr && !sr.querySelector('style[data-ptfill]')){ var st=document.createElement('style'); st.setAttribute('data-ptfill','1');
+        st.textContent='.frame{width:100%!important;min-width:0!important;min-height:100vh!important;border-radius:0!important;box-shadow:none!important;}'; sr.appendChild(st); } }catch(_){}
+    try{ if(window.__ptOnNav) window.__ptOnNav(id, state.job); }catch(_){} };
+  // (d) Request category -> prototype JOBS key
+  var PT_CATMAP={delivery:'Delivery / Errand',home:'Home / Office Services',junk:'Junk Removal',moving:'Moving',labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Other'};
+  window.__ptJobs={};   // id -> live job object (harness watches .accepted)
+  // (e) inject a real submitted request into the live feed + fire the notification
+  window.__injectJob=function(order){
+    if(!order||!order.id) return null;
+    var pcat=PT_CATMAP[String(order.cat||'').toLowerCase()]||'Delivery / Errand';
+    var stats=[{i:'pin',t:(order.dist||'2.0')+' mi',s:'away'}];
+    if(order.when) stats.push({i:'cal',t:order.when});
+    var job={ id:order.id, cat:pcat, posted:'just now', mode:'pay', amt:'$'+(+order.pay||0), per:'', top:true,
+      who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
+      pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
+      stats:stats, flags:[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}] };
+    if(!JOBS[pcat]) JOBS[pcat]=[];
+    var ix=JOBS[pcat].map(function(x){return x.id;}).indexOf(order.id); if(ix>=0) JOBS[pcat].splice(ix,1);
+    JOBS[pcat].unshift(job); window.__ptJobs[order.id]=job;
+    try{ if(current==='jobs-list') load('jobs-list'); }catch(_){}
+    ptBanner(job); return job;
+  };
+  // (f) native-feeling "new job near you" banner
+  function ptBanner(job){ var b=document.getElementById('ptBanner');
+    if(!b){ b=document.createElement('div'); b.id='ptBanner';
+      b.setAttribute('style','position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-160%);z-index:9999;width:340px;max-width:88%;background:#002461;color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.35);font-family:Nunito,sans-serif;cursor:pointer;transition:transform .38s cubic-bezier(.2,.9,.3,1.3);');
+      document.body.appendChild(b); }
+    b.innerHTML='<div style="font-weight:900;font-size:13.5px;">🔔 New job near you · '+(job.amt||'')+'</div><div style="font-size:12px;opacity:.85;margin-top:2px;font-family:DM Sans,sans-serif;">'+String(job.scope||'New request').slice(0,52)+' — tap to view</div>';
+    b.onclick=function(){ hide(); state.category=job.cat; state.job=job; state.jobCat=job.cat; load('jobs-list'); };
+    void b.offsetWidth; b.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(b._h); b._h=setTimeout(hide,7000);
+    function hide(){ b.style.transform='translateX(-50%) translateY(-160%)'; } }
+  // (g) requester's verdict on a counter, relayed by the harness → reflect live in the Go app
+  window.__ptDecision=function(id,decision,amt){
+    var job=window.__ptJobs[id]; if(!job) return;
+    if(decision==='accepted'){ job.counterAccepted=true; job.accepted=true; if(amt) job.amt='$'+amt;
+      toast('🎉 '+(job.who||'The requester')+' accepted your $'+amt+' counter — you’re hired'); }
+    else { job.counterDeclined=true; toast((job.who||'The requester')+' declined your counter'); }
+    try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
+  };
+  load('home');   // boot straight to the logged-in worker home
+} else {
+  load('splash');
+}
 
 </script><script>function initDeals(R){
 window.__navHook=function(u){try{load('home');}catch(e){}};

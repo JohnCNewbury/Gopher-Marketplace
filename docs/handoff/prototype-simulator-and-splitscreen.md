@@ -56,29 +56,97 @@ cd "/…/Claude Code Review:Cleanup/Code" && python3 -m http.server 8000
 # Go screens:      http://localhost:8000/_prototypes/Go/<screen>.html  (and Final/gopher-go.html#app)
 ```
 
-## Live split-screen harness — `_prototypes/split-screen.html`
-A from-scratch two-phone harness: **Request (left) ↔ Go (right)**, both loaded **live** (iframe
-`src`, not base64), fully interactive, plus a control bar and a cross-app **message bus**.
-Open: `http://localhost:8000/_prototypes/split-screen.html` (must be http — the panes talk
-same-origin).
+## Live split-screen harness — `_prototypes/split-screen.html`  (two real apps, one shared store)
+A two-phone harness: **Request (left) ↔ Go (right)**, both the **real, correct app files**, loaded
+live (iframe `src`, not base64), in **PT mode** (`?pt=1`). Must be served over http (the panes read
+each other same-origin). Open: `http://localhost:<port>/_prototypes/split-screen.html`.
 
-Panes: left `Request/gopher-request-home.html`, right `Go/gopher-go-worker.html`.
+Panes:
+- left  `Request/gopher-request-home.html?pt=1`
+- right `Go/gopher-go-prototype.html?pt=1`  ← the polished *gopher GO* worker app (Pro tier ·
+  Available/Active/Scheduled · LOCAL JOBS), **not** the older `gopher-go-worker.html` concept page.
 
-Core loop wired (submit → accept):
-- **"▶ Requestor submits a request"** → adds a `stage:'searching'` request to the left via
-  `L.GReq.add()` + `initPending()` (broadcasting), and fires the Go worker's incoming-job push
-  (`R.simulate()`).
-- On the right: tap the push → open job → **Accept**. The harness **wraps the Go app's global
-  `acceptJob(id)`** so it `postMessage`s `{source:'gopher-split', type:'job:accepted'}` to the
-  parent.
-- The parent relays it to the left: flips that request to `stage:'active'` + `hired` via
-  `L.GReq.update()` / `L.__onJobStarted()`, and toasts “Gopher accepted your request”.
+**Design principle:** the harness is a **thin, invisible data-sync layer** — no top-bar form, no
+Reset, no overlays, no control sheets. Both apps drive themselves through their **own native
+screens**; the harness only relays state between their two real stores. There is no separate "harness
+DB": the Request app's `GReq` store and the Go app's `JOBS`/`__ptJobs` ARE the database (this is the
+"the two prototypes together are the DB" model John asked for).
 
-Bus contract (extend from here): parent listens for `window` messages with
-`source:'gopher-split'`. To add stages/completion, wrap the relevant Go/Request globals the same
-way (e.g. Go's `go('active')` / stage advance → emit `job:progress`; Request reflects it). No app
-files are modified — all wiring lives in the harness, re-applied on each iframe `load`.
+**PT mode (`?pt=1`)** — what the query param changes in each app (standalone default is untouched):
+- **Request** (`gopher-request-home.html` + `gopher-request-flow.html`): `GReq.seed()` returns `[]`
+  so the requester starts with **no pending requests** (clean categories+deals home). Sticky via a
+  `sessionStorage['gopher_pt']` flag so it survives the home↔flow navigation.
+- **Go** (`gopher-go-prototype.html`, PT block near the old `load('splash')` boot): empties every
+  `JOBS[cat]` in place (keeps app furniture — tiles, deals, settings), **strips the design-review
+  chrome** (hides `<aside>` + title bar, makes the phone fill the iframe), boots to **`home`** instead
+  of `splash`, and installs `window.__injectJob(order)` + a "new job near you" notification banner.
 
-Status: **v1 scaffold**, verified by syntax + code review (not live-run in the authoring sandbox).
-The left-pane “broadcasting” visibility depends on the home’s submitted-bucket rendering; if it
-doesn’t flip visibly, that’s the first thing to tune after a live look.
+**The loop, both directions (all through native screens):**
+1. **Submit** — requester goes through the Request app's own 7-step flow (＋ start a request → Submit).
+   `submitRequest()` → `stashPending()` → `GReq.add(buildPending())`. `buildPending()` was enriched to
+   carry the **real** details entered (worker pay via `perWorkerPay()`, cost of goods via
+   `currentItemCost()`, pickup, drop-off, scope=description, distance, schedule). Category keys
+   (`delivery/junk/moving/home/labor/yard/ride/other`) map 1:1 to the Go `PT_CATMAP`.
+2. **Inject** — the harness polls the left `GReq` (`watchNative`, 600ms), and for any new
+   `stage:'searching'`, non-scheduled record calls `R.__injectJob(orderFromReq(r))`. The Go app
+   unshifts it into `JOBS[mappedCat]`, repaints its live `jobs-list`, and shows the banner. Scheduled
+   requests are skipped (they land in the Request "Scheduled" bucket).
+3. **View** — banner → `jobs-list` (live Available feed) shows the real card; tapping it opens
+   `job-detail` (NATIVE screen, reads `state.job`) — real pay/scope/requester/locations.
+4. **Accept** — job-detail's "Accept Request" CTA sets `job.accepted=true` on the very object the
+   harness injected (`state.job` === the `JOBS` entry === `__ptJobs[id]`). No edit to the accept
+   handler was needed.
+5. **Sync back** — the harness polls `R.__ptJobs[id].accepted` (`watchAccept`, 600ms); on true it
+   `GReq.update(id,{stage:'active',hired:'Marcus K.',...})` + re-renders the Request home, so the
+   request moves into the requester's **Active** list ("Job in progress · Track live"). Reload the
+   page to start over — there is no reset button by design.
+
+**Counter-offer negotiation (bidirectional, added 2026-07-03):**
+- **Rule (real live-app logic, always on — not PT-gated):** a Gopher's counter **must be higher than
+  the requester's offer**. In `job-detail`, the counter stepper opens one step above the offer
+  (`coVal = amtNum+1`), its min clamps to `offer+1`, and `js-cosend` blocks any send where
+  `coVal <= amtNum` (rule line turns red, send dims). Only a valid counter writes
+  `j.counter = {amt, was, note, by}` onto the shared job object.
+- **Counter → requester** — the harness `watchCounter` (600ms) sees `__ptJobs[id].counter` and sets
+  `GReq.update(id,{attention:{type:'counter', label:'Counter-offer from … — $X (offer was $Y)', …}})`.
+  The request card flips to **"⚠ … ACTION NEEDED · Review now →"** (uses the existing `attention`
+  model; a `type:'counter'` attention routes the CTA to `data-pending-action="counter"`, **not** the
+  disconnected `rdPanel`).
+- **Accept / Decline** — "Review now" opens `openCounterReview()` (a `gModal`). **Accept** →
+  `GReq.update(id,{stage:'active', hired:by, amount:'$X', pay:X, counterDecision:'accepted', …})`;
+  **Decline** → stays `searching`, `counterDecision:'declined'`.
+- **Decision → Gopher** — the harness `watchDecision` (600ms) relays `r.counterDecision` to Go via
+  `R.__ptDecision(id, decision, amt)`: accepted → `job.accepted=true`, `job.amt='$X'` and (if the
+  detail is open) it live-redraws to "accepted at the new price"; declined → `job.counterDeclined=true`
+  and the Gopher can counter again. `accepted[id]` is pre-set on accept so `watchAccept` doesn't
+  double-fire.
+- **PT gate on the requester sim** — `initPending()` now calls `startAccepting()` **only when not in
+  PT mode** (`isPTmode()`), so in the split-screen the Go app is the *only* thing that advances a
+  request; the old auto-"New bid from Marcus K." simulator no longer fires and can't collide with the
+  real counter loop.
+
+**App-file changes (all additive, PT-gated except the counter rule, backward compatible):**
+- `gopher-request-home.html` / `gopher-request-flow.html`: `ptEmpty()` guard in `seed()`; enriched
+  `buildPending()`. Home also adds `isPTmode()` (gates `startAccepting`), the `type:'counter'`
+  card CTA, and `openCounterReview()` (Accept/Decline `gModal`).
+- `gopher-go-prototype.html`: the `if(PT){…}` block (empty feed, chrome-strip, boot-to-home,
+  `__injectJob`, banner, and `__ptDecision`) replacing the bare `load('splash')`; **plus** the
+  counter validation + `j.counter` write in `job-detail` (real logic, runs in standalone too) and the
+  banner-retract-on-`job-detail` overlay fix.
+- `split-screen.html`: the thin sync layer — `orderFromReq`, `watchNative`, `watchAccept`,
+  `watchCounter`, `watchDecision`; iframes point at the `?pt=1` correct files.
+
+**Verified live** (browser-driven via the preview tools, 2026-07-03): empty state on both phones,
+chrome stripped on Go, submit→inject→banner→`jobs-list` card→`job-detail` (all real data)→Accept→
+Request flips to **Active**. Counter loop: same-amount counter **blocked**, valid counter surfaces as
+**ACTION NEEDED** on the request, **Accept** → Active/hired at the new price (Go live-shows "hired at
+new price"), **Decline** → request stays open and the Gopher is notified. Screenshots captured.
+
+**Known gaps / next iteration:**
+- Go **home** is a static base64 frame, so its baked tab/tile counts ("Available 59 · Active 2",
+  "22"/"9") don't zero out — only the **live** `jobs-list` is truly empty. Zeroing those means editing
+  the static home frame (or making home live).
+- `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
+  `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
+- Back-half beyond Accept (en route → complete → rate, and syncing those states back) runs on Go's
+  **static** `worker-flow`/`purchase-*` frames — not yet wired for live status/complete/rate sync.
