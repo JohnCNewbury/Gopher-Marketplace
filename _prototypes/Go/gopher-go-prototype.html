@@ -1782,9 +1782,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         pay='<div class="rq-payk">This request is open to bids</div><div class="rq-payv">You set your price</div>'
           +'<div class="rq-paysub">'+(j.per?('Typical rate '+j.per+' &middot; '):'')+'the requester compares bids &amp; picks a Gopher</div>';
       } else {
+        var costN=+j.cost||0;
         pay='<div class="rq-payk">You&#8217;ll receive</div><div class="rq-payv">'+(j.amt||'\u2014')+'</div>'
           +'<div class="rq-paysub">'+(j.per?(j.per+' &middot; '):'')+'paid out when the requester confirms completion</div>'
-          +(purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':'');
+          +(costN>0
+              ? '<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Plus <b>$'+costN+'</b> for items you buy &mdash; reimbursed in full at drop-off</div>'
+              : (purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':''));
       }
       // location
       const loc = rv
@@ -2077,10 +2080,13 @@ if(PT){
     var pcat=PT_CATMAP[String(order.cat||'').toLowerCase()]||'Delivery / Errand';
     var stats=[{i:'pin',t:(order.dist||'2.0')+' mi',s:'away'}];
     if(order.when) stats.push({i:'cal',t:order.when});
-    var job={ id:order.id, cat:pcat, posted:'just now', mode:'pay', amt:'$'+(+order.pay||0), per:'', top:true,
+    var costN=+order.cost||0;
+    var flags=[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
+    if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
+    var job={ id:order.id, cat:pcat, posted:'just now', mode:'pay', amt:'$'+(+order.pay||0), cost:costN, per:'', top:true,
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
-      stats:stats, flags:[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}] };
+      stats:stats, flags:flags };
     if(!JOBS[pcat]) JOBS[pcat]=[];
     var ix=JOBS[pcat].map(function(x){return x.id;}).indexOf(order.id); if(ix>=0) JOBS[pcat].splice(ix,1);
     JOBS[pcat].unshift(job); window.__ptJobs[order.id]=job;
