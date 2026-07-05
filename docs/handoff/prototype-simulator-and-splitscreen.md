@@ -176,8 +176,21 @@ the banner. Active reflects accepted jobs; Scheduled stays 0 (PT injects only `s
 token so a fresh load always serves the *current* app files — without it Safari/Chrome can serve a stale
 `?pt=1` copy (old baked jobs / missing fixes).
 
+**Post-accept status lifecycle (added 2026-07-05, was a known gap):** after Accept, the Go `job-detail`
+now shows a **Job status** stepper (`STATUS_FLOW` = on the way → arrived → complete). Each tap writes
+`job.substage` onto the shared job object (`__ptJobs[id]`) and live-redraws. The harness relays both ways:
+- **Status → requester** — `watchStatus` (600ms) sees `job.substage` change and `GReq.update(id,
+  {stage:'active', substage})`; the requester card's status line reflects it live ("🚗 On the way…",
+  "📍 Arrived…"). On `done` it sets `attention:{type:'rate'}` so the card CTA becomes **"Rate now →"**.
+- **Rate → worker** — the requester's `openRateModal` (star picker, `data-pending-action="rate"`) writes
+  `{substage:'rated', rating, attention:null}`; `watchRating` relays the stars to Go via
+  `window.__ptRated(id, stars)`, which sets `job.rated`, toasts, and shows "…rated you N★" on the
+  worker's job-detail. `statusText()` on the request side maps each substage to its display line.
+- Verified live (preview-driven, 2026-07-05): submit → accept → on the way → arrived → complete → the
+  requester rates 5★ → the worker sees "Jamie L. rated you 5★". Zero console errors. Screenshot captured.
+
 **Known gaps / next iteration:**
 - `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
   `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
-- Back-half beyond Accept (en route → complete → rate, and syncing those states back) runs on Go's
-  **static** `worker-flow`/`purchase-*` frames — not yet wired for live status/complete/rate sync.
+- The status stepper is a clean PT-friendly path layered on `job-detail`; Go's older **static**
+  `worker-flow`/`purchase-*` completion frames are left as-is (not part of the live sync path).

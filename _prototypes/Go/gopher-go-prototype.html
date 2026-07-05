@@ -1759,6 +1759,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Counter opens one step ABOVE the requester's offer — a counter must beat it (real live-app rule).
     let coOpen=false, coVal=(j.mode==='bid'?amtNum:amtNum+1);
 
+    // Post-accept status lifecycle. Each step writes j.substage onto the shared job object so the
+    // split-screen harness can reflect it live on the requester's card (on the way → arrived → complete).
+    const STATUS_FLOW=[
+      {key:'enroute', label:'On the way',        cta:'I’m on my way'},
+      {key:'arrived', label:'Arrived at pickup', cta:'I’ve arrived'},
+      {key:'done',    label:'Job complete',      cta:'Mark job complete'}
+    ];
+
     function body(){
       const picRv=!!(j.priority||j.accepted), rv=!!j.accepted;
       const lock=j.lock;
@@ -1835,6 +1843,23 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           ? '<div class="rq-hint">'+sv(I.tag)+who+' declined your $'+j.counter.amt+' counter &mdash; counter again or accept the '+(j.amt||'offer')+'.</div>'
           : '');
 
+      // Post-accept status stepper: the worker advances the job and the requester sees each step live.
+      let stepper='';
+      if(j.accepted && j.mode!=='bid'){
+        const curIdx = j.substage ? STATUS_FLOW.findIndex(s=>s.key===j.substage) : -1;
+        const rows = STATUS_FLOW.map((s,i)=>{ const on=i<=curIdx;
+          return '<div style="display:flex;align-items:center;gap:9px;font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:'+(on?'#002461':'#8C8675')+';">'
+            +'<span style="width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;background:'+(on?'#1CB061':'#e3ddcd')+';color:'+(on?'#fff':'#8C8675')+';">'+(on?'✓':(i+1))+'</span>'+s.label+'</div>';
+        }).join('');
+        const next = STATUS_FLOW[curIdx+1];
+        const action = next
+          ? '<button class="rq-cta js-status" data-next="'+next.key+'" style="margin-top:11px;">'+next.cta+' &#8594;</button>'
+          : (j.rated
+              ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' rated you '+j.rated+'★</b> &mdash; nice work!</div>'
+              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm &amp; rate.</div>');
+        stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
+      }
+
       return '<div class="rq-top"><button class="rq-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button><h1>Request Details</h1><button class="rq-flag js-rep">'+sv('<path d="M5 3v18M5 4h13l-2.5 4 2.5 4H5"/>')+'</button></div>'
         +'<div class="rq-card rq-head">'
           +avatar()
@@ -1845,6 +1870,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +prio
         +coStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
+        +stepper
         +'<div class="rq-facts">'+facts+'</div>'
         +'<div class="rq-sec">The task</div><div class="rq-card rq-task"><div class="rq-tt">'+(j.cat||'Request')+(j.biz?(' &middot; '+j.biz):'')+'</div><p>'+(j.scope||'See requester notes after you accept.')+'</p></div>'
         +'<div class="rq-sec">What&#8217;s required</div><div class="rq-reqs">'+reqs+'</div>'
@@ -1890,6 +1916,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(j.cat==='Ride Sharing' && !(state.ridePhotos&&state.ridePhotos.front&&state.ridePhotos.rear)){ showModal('<h3>Vehicle photos required</h3><p>Ride Sharing jobs require clear front and rear photos of your vehicle before you can accept. Add them in Work Settings under Ride sharing info.</p><button class="mclose">Got it</button>'); return; }
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
+      };
+      const stbtn=$('.js-status'); if(stbtn) stbtn.onclick=()=>{
+        const nk=stbtn.getAttribute('data-next');
+        j.substage=nk;                    // shared-store write — the harness reflects it on the requester's card
+        draw();
+        const M={enroute:'You’re on the way — the requester can see it',arrived:'Marked arrived at pickup',done:'Job marked complete — the requester can now rate you'};
+        toast(M[nk]||('Status updated: '+nk));
       };
     }
     draw();
@@ -2140,6 +2173,13 @@ if(PT){
     if(decision==='accepted'){ job.counterAccepted=true; job.accepted=true; if(amt) job.amt='$'+amt;
       toast('🎉 '+(job.who||'The requester')+' accepted your $'+amt+' counter — you’re hired'); }
     else { job.counterDeclined=true; toast((job.who||'The requester')+' declined your counter'); }
+    try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
+  };
+  // (h) requester's star rating, relayed by the harness → show it on the worker's job + toast
+  window.__ptRated=function(id,stars){
+    var job=window.__ptJobs[id]; if(!job) return;
+    job.rated=stars; if(!job.substage) job.substage='done';
+    toast('⭐ '+(job.who||'The requester')+' rated you '+stars+'★ — nice work!');
     try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
   };
   load('home');   // boot straight to the logged-in worker home

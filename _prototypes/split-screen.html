@@ -79,6 +79,8 @@
   var accepted={};   // GReq order id -> true  (already synced back to Request)
   var countered={};  // GReq order id -> true  (Go counter already surfaced on Request)
   var decided={};    // GReq order id -> true  (requester's Accept/Decline already relayed to Go)
+  var statusSeen={}; // GReq order id -> last post-accept substage relayed to Request
+  var ratingSeen={}; // GReq order id -> true  (requester's star rating already relayed to Go)
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -176,7 +178,51 @@
     }catch(_){}
   }
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); setTimeout(tick, 600); }
+  /* ── Go → shared store → Request: the worker advances the job status after accepting;
+        each step (on the way → arrived → complete) reflects live on the request card. ── */
+  function watchStatus(){
+    try{
+      var w=R(), l=L();
+      if(w && w.__ptJobs && l && l.GReq){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id];
+          if(job && job.accepted && job.substage && statusSeen[id]!==job.substage){
+            var r=l.GReq.get(id); if(!r){ continue; }   // request not ready — retry next tick
+            statusSeen[id]=job.substage;
+            var patch={ stage:'active', substage:job.substage };
+            if(job.substage==='done'){ patch.attention={ type:'rate',
+              label:'Rate '+(r.hired||'your Gopher')+' — job complete' }; }
+            l.GReq.update(id, patch);
+            try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            var LB={enroute:'is on the way',arrived:'has arrived at pickup',working:'started the job',done:'completed the job'};
+            status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
+              +(job.substage==='done'?' Open the request card on the left and tap <b>Rate now</b>.':''));
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Request → shared store → Go: relay the requester's star rating back to the worker. ── */
+  function watchRating(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq){
+        var list=l.GReq.all()||[];
+        for(var i=0;i<list.length;i++){
+          var r=list[i];
+          if(r && r.rating && !ratingSeen[r.order]){
+            ratingSeen[r.order]=true;
+            try{ if(w && w.__ptRated) w.__ptRated(r.order, r.rating); }catch(_){}
+            status('You rated the Gopher <b>'+r.rating+'★</b> on '+r.order+' — it just landed in their app. 🎉');
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); setTimeout(tick, 600); }
   tick();
 })();
 </script>

@@ -850,6 +850,15 @@ function bucketList(b){ return GReq.all().filter(function(r){return statusBucket
 function statusText(r){
  if(r.attention) return '<span class="attn-ic">⚠</span>'+r.attention.label+'<span class="rc-attn-tag">ACTION NEEDED</span>';
  if(r.stage==='matched') return 'Matched with <b>'+(r.hired||'a Gopher')+'</b> · arriving ~12 min';
+ if(r.stage==='active' && r.substage){
+  var _who=r.hired||'your Gopher';
+  var _S={ enroute:'🚗 <b>On the way</b> · '+_who+' is heading over',
+           arrived:'📍 <b>Arrived</b> · '+_who+' is at the pickup',
+           working:'🛠️ <b>Job in progress</b> · '+_who+' is on it',
+           done:'✅ <b>Job complete</b> · confirm &amp; rate',
+           rated:'⭐ <b>Rated</b> · thanks for your feedback' };
+  if(_S[r.substage]) return _S[r.substage];
+ }
  if(r.stage==='active') return '<b>Job in progress</b> · your crew is on it';
  if(r.stage==='scheduled') return 'Scheduled · '+(r.when||'booked for later');
  if(r.stage==='accepted'){ var n=r.accepted||0; return '<b>'+n+' Gopher'+(n!==1?'s':'')+'</b> accepted — ready to review'; }
@@ -864,7 +873,9 @@ function cardHTML(r){
  var btn = attn
   ? (attn.type==='counter'
      ? '<button class="rc-view urgent" data-pending-action="counter" data-order="'+r.order+'">Review now →</button>'
-     : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
+     : attn.type==='rate'
+       ? '<button class="rc-view urgent" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
+       : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
  return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+(DEMO_SHOW_CARD_DISMISS?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
   +'<div class="rc-top"><span class="rc-ico"><svg viewBox="0 0 24 24" fill="none">'+ico+'</svg></span>'
@@ -917,6 +928,7 @@ document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
+ else if(act==='rate'){ if(order) openRateModal(order); return; }
  else if(act==='view'){ var ns=a.getAttribute('data-nav-screen'); if(order&&window.GReq) GReq.openOrder(order); if(ns&&window.__navHook){ window.__navHook(ns); return; } var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
 });
@@ -959,6 +971,23 @@ function openCounterReview(order){
     GReq.update(order,{ attention:null, counterDecision:'declined', counterAmt:amt });
     o.remove(); renderPending(); toast('Counter declined \u2014 request stays open');
   };
+}
+// Rate your Gopher \u2014 opens when the worker marks the job complete (attention.type==='rate').
+function openRateModal(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var who=r.hired||'your Gopher', picked=0;
+  var stars=[1,2,3,4,5].map(function(n){return '<span class="rt-star" data-star="'+n+'" style="font-size:34px;cursor:pointer;color:#d9d2c2;line-height:1;">\u2605</span>';}).join('');
+  var o=gModal(
+    '<h3 class="gm-h">Rate '+who+'</h3>'
+    +'<p class="gm-p">Your job <b>#'+order+'</b> is complete. How did '+who+' do?</p>'
+    +'<div class="rt-stars" style="display:flex;gap:8px;justify-content:center;margin:14px 0 4px;">'+stars+'</div>'
+    +'<div class="rt-label" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
+    +'<button class="gm-rate-submit" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#cfe9d9;color:#7aa790;font-family:Nunito;font-weight:800;font-size:14px;cursor:not-allowed;" disabled>Submit rating</button>');
+  var starEls=o.querySelectorAll('.rt-star'), lab=o.querySelector('.rt-label'), sub=o.querySelector('.gm-rate-submit');
+  var LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
+  function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
+  starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
+  sub.onclick=function(){ if(!picked) return; GReq.update(order,{ substage:'rated', attention:null, rating:picked, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
 }
 const IQ_ANSWER="I can help you start a request, find a deal, track an active request, or refer a friend \u2014 pick a quick action below, or tell me what you need and I'll point you to the right place.";
 function openIQ(){ gSheet('Gopher iQ','<p class="gs-sub">Tell us what you need \u2014 or tap a quick action.</p><div class="iq-row"><span class="iq-b">iQ</span><input class="iq-ask" id="iqAsk" placeholder="Ask Gopher iQ\u2026"><span class="iq-send" data-iq-send>\u2192</span></div><div class="iq-ans" id="iqAns" hidden></div><div class="iq-ctas"><button class="iq-cta" data-goto="flow">Start a request \u2192</button><button class="iq-cta" data-goto="deals">Browse deals \u2192</button><button class="iq-cta" data-goto="track">Track my request \u2192</button><button class="iq-cta" data-goto="refer">Refer &amp; earn \u2192</button></div><div class="gs-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'); }
