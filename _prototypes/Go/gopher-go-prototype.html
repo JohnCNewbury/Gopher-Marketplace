@@ -2070,7 +2070,38 @@ if(PT){
     try{ var host=stage&&stage.querySelector('.host'), sr=host&&host.shadowRoot;
       if(sr && !sr.querySelector('style[data-ptfill]')){ var st=document.createElement('style'); st.setAttribute('data-ptfill','1');
         st.textContent='.frame{width:100%!important;min-width:0!important;min-height:100vh!important;border-radius:0!important;box-shadow:none!important;}'; sr.appendChild(st); } }catch(_){}
+    if(id==='home'){ try{ ptSyncHome(); }catch(_){} }
     try{ if(window.__ptOnNav) window.__ptOnNav(id, state.job); }catch(_){} };
+  // (c2) Go home starts EMPTY and its counts are LIVE — no phantom jobs before a real
+  //      request is submitted. Tab counts (Available/Active/Scheduled) and each category
+  //      tile's badge are recomputed from JOBS; empty categories hide, and a "waiting"
+  //      hint shows until the requester submits. Called on every home render + on inject.
+  function setCt(tab,n){ var c=tab&&tab.querySelector('.ct'); if(c) c.textContent=n; }
+  function ptSyncHome(){
+    var host=stage&&stage.querySelector('.host'), sr=host&&host.shadowRoot;
+    if(!sr || !sr.querySelector('.tabs')) return;
+    var byCat={}, avail=0, active=0;
+    Object.keys(JOBS).forEach(function(k){ (JOBS[k]||[]).forEach(function(j){
+      if(j.accepted) active++; else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
+    var tabs=sr.querySelectorAll('.tabs .tab');
+    if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],0);
+    sr.querySelectorAll('.cats .cat').forEach(function(cat){
+      var n=byCat[cat.getAttribute('data-cat')||'']||0;
+      var badge=cat.querySelector('.cnt'); if(badge){ badge.textContent=n; badge.style.display=n>0?'':'none'; }
+      cat.style.display=n>0?'':'none';
+    });
+    var catsRow=sr.querySelector('.cats');
+    if(catsRow){
+      var hint=sr.querySelector('.pt-emptyjobs');
+      if(avail===0){
+        if(!hint){ hint=document.createElement('div'); hint.className='pt-emptyjobs';
+          hint.setAttribute('style','padding:16px 14px;margin:2px 2px 8px;border:1px dashed #d9d2c2;border-radius:14px;background:#FCFAF4;color:#8C8675;font-family:Nunito,sans-serif;font-weight:700;font-size:12.5px;text-align:center;line-height:1.5;');
+          hint.innerHTML='No local jobs yet — you’ll be notified the moment a request comes in.';
+          catsRow.parentNode.insertBefore(hint, catsRow); }
+        hint.style.display='';
+      } else if(hint){ hint.style.display='none'; }
+    }
+  }
   // (d) Request category -> prototype JOBS key
   var PT_CATMAP={delivery:'Delivery / Errand',home:'Home / Office Services',junk:'Junk Removal',moving:'Moving',labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Other'};
   window.__ptJobs={};   // id -> live job object (harness watches .accepted)
@@ -2090,7 +2121,7 @@ if(PT){
     if(!JOBS[pcat]) JOBS[pcat]=[];
     var ix=JOBS[pcat].map(function(x){return x.id;}).indexOf(order.id); if(ix>=0) JOBS[pcat].splice(ix,1);
     JOBS[pcat].unshift(job); window.__ptJobs[order.id]=job;
-    try{ if(current==='jobs-list') load('jobs-list'); }catch(_){}
+    try{ if(current==='jobs-list') load('jobs-list'); else if(current==='home') ptSyncHome(); }catch(_){}
     ptBanner(job); return job;
   };
   // (f) native-feeling "new job near you" banner

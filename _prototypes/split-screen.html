@@ -46,14 +46,14 @@
     <div class="label">Requester <span class="pill">Request app</span></div>
     <div class="phone">
       <div class="notch"></div>
-      <div class="screen"><iframe id="reqFrame" src="Request/gopher-request-home.html?pt=1" title="Gopher Request"></iframe></div>
+      <div class="screen"><iframe id="reqFrame" data-src="Request/gopher-request-home.html?pt=1" title="Gopher Request"></iframe></div>
     </div>
   </div>
   <div class="col go">
     <div class="label">Gopher <span class="pill">Go app</span></div>
     <div class="phone">
       <div class="notch"></div>
-      <div class="screen"><iframe id="goFrame" src="Go/gopher-go-prototype.html?pt=1" title="Gopher Go"></iframe></div>
+      <div class="screen"><iframe id="goFrame" data-src="Go/gopher-go-prototype.html?pt=1" title="Gopher Go"></iframe></div>
     </div>
   </div>
 </div>
@@ -66,6 +66,11 @@
 (function(){
   var reqFrame=document.getElementById('reqFrame'), goFrame=document.getElementById('goFrame');
   var statusEl=document.getElementById('status');
+  // Always load the CURRENT app files — a cache-bust token defeats Safari/Chrome serving a
+  // stale ?pt=1 copy of either phone (which would show old baked jobs / miss recent fixes).
+  var _v='&v='+Date.now();
+  reqFrame.src=reqFrame.getAttribute('data-src')+_v;
+  goFrame.src=goFrame.getAttribute('data-src')+_v;
   function L(){ try{ return reqFrame.contentWindow; }catch(_){ return null; } }
   function R(){ try{ return goFrame.contentWindow;  }catch(_){ return null; } }
   function status(m){ statusEl.innerHTML=m; }

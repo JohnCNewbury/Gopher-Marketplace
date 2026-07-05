@@ -164,10 +164,19 @@ fronts to buy goods). The record and harness already carried it (`buildPending()
   shows `Worker takes home $20 · Cost of items $100 · Request fee $10.67 · Total $130.67`; Go job-detail
   shows `$20` + `Plus $100 for items you buy — reimbursed…`. Both Final apps load with zero JS errors.
 
+**Go home starts empty — live counts (added 2026-07-05, was a known gap):** the Go home is HTML (not a
+base64 image), so its counts are editable text. `ptSyncHome()` (in the `if(PT){}` block) now recomputes
+the tab counts (`.tabs .tab > .ct`: Available/Active/Scheduled) and each category tile's badge
+(`.cats .cat[data-cat] > .cnt`) from live `JOBS` on every home render **and** on `__injectJob`. At boot
+`JOBS` is empty → **Available 0 · Active 0 · Scheduled 0**, every category tile hides, and a dashed
+"No local jobs yet — you'll be notified…" hint shows. When the requester submits, the harness injects
+the job and the count ticks (Available 1, the matching tile appears with its count, hint hides) alongside
+the banner. Active reflects accepted jobs; Scheduled stays 0 (PT injects only `searching` non-scheduled).
+**Cache note:** `split-screen.html` now sets the two iframe `src`s from `data-src` + a `&v=Date.now()`
+token so a fresh load always serves the *current* app files — without it Safari/Chrome can serve a stale
+`?pt=1` copy (old baked jobs / missing fixes).
+
 **Known gaps / next iteration:**
-- Go **home** is a static base64 frame, so its baked tab/tile counts ("Available 59 · Active 2",
-  "22"/"9") don't zero out — only the **live** `jobs-list` is truly empty. Zeroing those means editing
-  the static home frame (or making home live).
 - `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
   `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
 - Back-half beyond Accept (en route → complete → rate, and syncing those states back) runs on Go's
