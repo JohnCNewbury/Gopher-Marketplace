@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40-308 — Modal Kit (Guide A + Guide B)</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+  G40-308 Pop-up Modal Standards — reference implementation + reusable component.
+  Guide A = Request + Connect (centered card, .g-modal + GModal API).
+  Guide B = the 2 native apps (bottom sheet, .g-sheet + GSheet API).
+  Canonical brand tokens only. No old-Figma carryover. Companion to G40-308-popup-modal-standards.md.
+-->
+<style>
+  :root{
+    --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
+    --ink-on-green:#002461;                 /* Midnight Blue on green — never white */
+    --navy:#002461; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
+    --sand:#FBF3E4; --text:#424242; --muted:#6b7280;
+    --terracotta:#D97757; --error:#C44257; --warn-bg:#fdeaec; --info-bg:#fff5e6;
+    --radius:18px; --sheet-radius:26px;
+    --scrim-a:rgba(13,26,62,.55); --scrim-b:rgba(3,16,43,.55);
+    --shadow-card:0 30px 80px rgba(0,0,0,.35); --shadow-sheet:0 -10px 40px rgba(0,0,0,.25);
+    --nunito:'Nunito','Trebuchet MS',Arial,sans-serif; --body:'DM Sans',-apple-system,'Segoe UI',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--sand);color:var(--text);font-family:var(--body);padding:28px 18px 60px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-family:var(--nunito);font-weight:900;color:var(--navy);font-size:22px;margin:0 0 4px}
+  .lede{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.5}
+  h2{font-family:var(--nunito);font-weight:900;color:var(--navy);font-size:15px;letter-spacing:.02em;margin:30px 0 4px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .row{display:flex;flex-wrap:wrap;gap:10px}
+  .demo-btn{font-family:var(--nunito);font-weight:800;font-size:13px;color:var(--navy);background:#fff;
+    border:1.5px solid #dfe3ec;border-radius:12px;padding:11px 16px;cursor:pointer;transition:.15s}
+  .demo-btn:hover{border-color:var(--green);background:#fff}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+  .sw{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e6eaef;border-radius:10px;padding:7px 11px;font-size:11.5px}
+  .chip{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,.08)}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+
+  /* ===== GUIDE A — centered card (.g-modal) ===== */
+  .g-modal-overlay{position:fixed;inset:0;z-index:9500;background:var(--scrim-a);display:flex;
+    align-items:center;justify-content:center;padding:24px;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+  .g-modal-overlay.show{opacity:1;visibility:visible}
+  .g-modal{background:#fff;border-radius:var(--radius);padding:28px 26px 24px;width:100%;max-width:380px;
+    position:relative;text-align:center;box-shadow:var(--shadow-card);transform:scale(.96);transition:transform .2s}
+  .g-modal-overlay.show .g-modal{transform:scale(1)}
+  .g-modal.wide{max-width:600px;text-align:left;padding:26px;max-height:90vh;overflow:auto}
+  .g-modal-close{position:absolute;top:12px;right:15px;background:none;border:none;font-size:23px;line-height:1;color:var(--muted);cursor:pointer}
+  .g-modal-close:hover{color:var(--navy)}
+  .g-modal-icon{width:54px;height:54px;margin:2px auto 14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:var(--info-bg);border-radius:50%}
+  .g-modal-icon.go{background:var(--green-light)} .g-modal-icon.warn{background:var(--warn-bg)}
+  .g-modal h4{font-family:var(--nunito);font-weight:900;font-size:19px;color:var(--navy);margin:0 0 8px}
+  .g-modal-sub{font-family:var(--body);font-size:13.5px;color:var(--muted);line-height:1.55;margin:0 0 20px}
+  .g-btn{width:100%;padding:13px;border:none;border-radius:11px;cursor:pointer;background:var(--green);
+    color:var(--ink-on-green);font-family:var(--nunito);font-weight:800;font-size:14px;box-shadow:0 6px 18px rgba(51,217,117,.3);transition:background .2s}
+  .g-btn:hover{background:var(--green-dark)}
+  .g-btn:disabled{background:#d8dee6;color:#9aa6b4;cursor:not-allowed;box-shadow:none}
+  .g-btn.secondary{background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;margin-top:8px}
+  .g-btn.secondary:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .g-btn.danger{background:var(--error);color:#fff;box-shadow:0 6px 18px rgba(196,66,87,.3)}
+  .g-btn.danger:hover{background:#a83648}
+  .g-btn-text{width:100%;margin-top:10px;padding:6px;border:none;background:none;cursor:pointer;font-family:var(--nunito);font-weight:700;font-size:12.5px;color:var(--muted)}
+  .g-btn-text:hover{color:var(--navy)} .g-btn-text.danger{color:var(--error);font-weight:800}
+  .g-input{width:100%;padding:12px 14px;border:1.5px solid #dfe3ec;border-radius:11px;font-family:var(--body);font-size:15px;margin-bottom:16px}
+  .g-input:focus{outline:none;border-color:var(--green)}
+
+  /* ===== GUIDE B — bottom sheet (.g-sheet), shown in a phone frame ===== */
+  .phone{position:relative;width:300px;height:600px;margin:6px auto 0;background:linear-gradient(160deg,#eaf7ef,#f7fbff);
+    border:10px solid #0d1a3e;border-radius:42px;overflow:hidden;box-shadow:0 20px 60px rgba(0,36,97,.25)}
+  .phone-hint{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);text-align:center;color:#8aa;font-size:12px;font-family:var(--nunito);font-weight:800}
+  .g-sheet-overlay{position:absolute;inset:0;z-index:90;background:var(--scrim-b);backdrop-filter:blur(2px);opacity:0;visibility:hidden;transition:.28s}
+  .g-sheet-overlay.show{opacity:1;visibility:visible}
+  .g-sheet{position:absolute;left:0;right:0;bottom:0;z-index:91;background:#fff;border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;
+    padding:22px 20px 26px;transform:translateY(100%);transition:transform .34s cubic-bezier(.2,.8,.3,1);box-shadow:var(--shadow-sheet)}
+  .g-sheet.show{transform:translateY(0)}
+  .g-sheet .grab{width:42px;height:5px;border-radius:99px;background:#dfe4ee;margin:0 auto 16px}
+  .g-sheet .sh-ic{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--green),var(--green-dark));
+    display:flex;align-items:center;justify-content:center;font-size:27px;margin:0 auto 14px;box-shadow:0 8px 20px rgba(28,176,97,.35)}
+  .g-sheet h3{font-family:var(--nunito);font-weight:900;font-size:19px;color:var(--navy);text-align:center;letter-spacing:-.3px;margin:0}
+  .g-sheet .sh-sub{font-size:13px;color:var(--muted);text-align:center;margin:6px 14px 16px;line-height:1.45}
+  .g-sheet .sh-list{background:#f7f9fc;border-radius:14px;padding:6px 14px;margin-bottom:16px}
+  .g-sheet .sh-item{display:flex;gap:11px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #edf1f7}
+  .g-sheet .sh-item:last-child{border-bottom:none}
+  .g-sheet .sh-item .ct{font-family:var(--nunito);font-weight:800;font-size:12.5px;color:var(--navy)}
+  .g-sheet .sh-item .cs{font-size:11.5px;color:var(--muted);margin-top:1px;line-height:1.35}
+  .g-sheet .sh-cta{width:100%;background:linear-gradient(135deg,var(--green),var(--green-dark));color:var(--ink-on-green);
+    border:none;border-radius:14px;padding:16px;font-family:var(--nunito);font-weight:900;font-size:14.5px;cursor:pointer;box-shadow:0 8px 22px rgba(51,217,117,.4)}
+  .g-sheet .sh-close{width:100%;background:none;border:none;color:var(--muted);font-family:var(--nunito);font-weight:800;font-size:12.5px;padding:12px;cursor:pointer;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gopher Modal Kit — G40-308</h1>
+  <p class="lede">Reference implementation of the two pop-up standards, on the canonical brand palette
+  (Midnight Blue <b>#002461</b>, Shamrock <b>#33D975</b>, ink-on-green = navy — never white). Click a
+  trigger to see the live component. This file <b>is</b> the reusable component — <code>GModal</code> and
+  <code>GSheet</code> build every modal from config.</p>
+
+  <div class="swatches">
+    <span class="sw"><span class="chip" style="background:#002461"></span>Midnight Blue #002461</span>
+    <span class="sw"><span class="chip" style="background:#33D975"></span>Shamrock #33D975</span>
+    <span class="sw"><span class="chip" style="background:#1CB061"></span>Mountain Meadow #1CB061</span>
+    <span class="sw"><span class="chip" style="background:#FBF3E4"></span>Sand #FBF3E4</span>
+    <span class="sw"><span class="chip" style="background:#D97757"></span>Terracotta #D97757</span>
+    <span class="sw"><span class="chip" style="background:#C44257"></span>Error #C44257</span>
+  </div>
+
+  <h2>Guide A — Request + Connect (centered card)</h2>
+  <p class="sub">One <code>.g-modal</code> component. Variants below.</p>
+  <div class="row">
+    <button class="demo-btn" onclick="demoA('info')">Info</button>
+    <button class="demo-btn" onclick="demoA('confirm')">Confirm</button>
+    <button class="demo-btn" onclick="demoA('success')">Success</button>
+    <button class="demo-btn" onclick="demoA('warning')">Warning</button>
+    <button class="demo-btn" onclick="demoA('destructive')">Destructive</button>
+    <button class="demo-btn" onclick="demoA('input')">Input</button>
+    <button class="demo-btn" onclick="demoA('wide')">Wide / form</button>
+  </div>
+
+  <h2>Guide B — the 2 native apps (bottom sheet)</h2>
+  <p class="sub">One <code>.g-sheet</code> component — slides up inside the app. Shown in a phone frame.</p>
+  <div class="row">
+    <button class="demo-btn" onclick="demoB('info')">Info sheet</button>
+    <button class="demo-btn" onclick="demoB('success')">Success sheet</button>
+    <button class="demo-btn" onclick="demoB('list')">With info list</button>
+  </div>
+  <div class="phone" id="phone"><div class="phone-hint">Gopher Go — tap a trigger above</div></div>
+  <p class="note">Icon shapes are deliberately different between guides: <b>circle</b> (Guide A) vs
+  <b>rounded-square badge</b> (Guide B). Sheet enters with a spring curve and a swipe-grab handle.</p>
+</div>
+
+<!-- Guide A host -->
+<div class="g-modal-overlay" id="gmOverlay" role="dialog" aria-modal="true" aria-labelledby="gmTitle"></div>
+
+<script>
+/* ============ GModal — Guide A (centered card) ============ */
+const GModal = (() => {
+  const overlay = document.getElementById('gmOverlay');
+  function close(){ overlay.classList.remove('show'); setTimeout(()=>overlay.innerHTML='',200); }
+  function open(cfg){
+    const iconClass = cfg.variant==='success'?'go':(cfg.variant==='warning'||cfg.variant==='destructive')?'warn':'';
+    const card = document.createElement('div');
+    card.className = 'g-modal' + (cfg.size==='wide'?' wide':'');
+    let html = '<button class="g-modal-close" aria-label="Close">&times;</button>';
+    if(cfg.icon) html += `<div class="g-modal-icon ${iconClass}">${cfg.icon}</div>`;
+    html += `<h4 id="gmTitle">${cfg.title||''}</h4>`;
+    if(cfg.body) html += `<p class="g-modal-sub">${cfg.body}</p>`;
+    if(cfg.input) html += `<input class="g-input" placeholder="${cfg.input}">`;
+    if(cfg.primary){ const d=cfg.variant==='destructive'?' danger':''; html += `<button class="g-btn${d}" data-a="p">${cfg.primary}</button>`; }
+    if(cfg.secondary) html += `<button class="g-btn secondary" data-a="s">${cfg.secondary}</button>`;
+    if(cfg.text){ const d=cfg.textDanger?' danger':''; html += `<button class="g-btn-text${d}" data-a="t">${cfg.text}</button>`; }
+    card.innerHTML = html;
+    overlay.innerHTML=''; overlay.appendChild(card);
+    overlay.querySelector('.g-modal-close').onclick=close;
+    card.querySelectorAll('[data-a]').forEach(b=>b.onclick=close);
+    if(cfg.blocking!==true) overlay.onclick=e=>{ if(e.target===overlay) close(); };
+    requestAnimationFrame(()=>overlay.classList.add('show'));
+  }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  return { open, close };
+})();
+
+/* ============ GSheet — Guide B (bottom sheet, inside .phone) ============ */
+const GSheet = (() => {
+  const phone = document.getElementById('phone');
+  function close(){
+    const ov=phone.querySelector('.g-sheet-overlay'); const sh=phone.querySelector('.g-sheet');
+    if(sh) sh.classList.remove('show'); if(ov) ov.classList.remove('show');
+    setTimeout(()=>{ ov&&ov.remove(); sh&&sh.remove(); },340);
+  }
+  function open(cfg){
+    close();
+    const ov=document.createElement('div'); ov.className='g-sheet-overlay';
+    const sh=document.createElement('div'); sh.className='g-sheet'; sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true');
+    let html='<div class="grab"></div>';
+    if(cfg.icon) html+=`<div class="sh-ic">${cfg.icon}</div>`;
+    html+=`<h3>${cfg.title||''}</h3>`;
+    if(cfg.sub) html+=`<p class="sh-sub">${cfg.sub}</p>`;
+    if(cfg.list&&cfg.list.length){ html+='<div class="sh-list">'+cfg.list.map(i=>`<div class="sh-item"><span class="ci">${i.icon||'•'}</span><div><div class="ct">${i.title}</div><div class="cs">${i.detail||''}</div></div></div>`).join('')+'</div>'; }
+    html+=`<button class="sh-cta">${cfg.cta||'Continue'}</button>`;
+    html+=`<button class="sh-close">${cfg.closeLabel||'Not now'}</button>`;
+    sh.innerHTML=html;
+    phone.appendChild(ov); phone.appendChild(sh);
+    ov.onclick=close; sh.querySelector('.sh-cta').onclick=close; sh.querySelector('.sh-close').onclick=close;
+    requestAnimationFrame(()=>{ ov.classList.add('show'); sh.classList.add('show'); });
+  }
+  return { open, close };
+})();
+
+/* ============ demo triggers ============ */
+function demoA(v){
+  const map={
+    info:{icon:'👋',title:'Still need a Gopher?',body:'We’re still matching you with the right Gopher for your request — nothing to do unless your plans changed.',primary:'Open my request',text:'Dismiss'},
+    confirm:{icon:'📅',title:'Reschedule this request?',body:'Your Gopher will be asked to approve the new time before it’s locked in.',primary:'Send new time',secondary:'Keep current time'},
+    success:{variant:'success',icon:'✅',title:'You’re all set!',body:'Your request is live and we’re notifying nearby Gophers now.',primary:'Great'},
+    warning:{variant:'warning',icon:'⚠️',title:'This looks age-restricted',body:'Your description mentions items that require ID at hand-off. We’ll flag it so the right Gophers can help.',primary:'Got it',text:'Edit description'},
+    destructive:{variant:'destructive',icon:'🗑️',title:'Cancel this request?',body:'This notifies any interested workers. You can always find it later under Previous Requests.',primary:'Yes, cancel request',text:'Never mind, keep it',textDanger:false},
+    input:{icon:'🏷️',title:'Have a promo code?',body:'Enter it below to apply your discount.',input:'Promo code',primary:'Apply'},
+    wide:{size:'wide',title:'Edit personal info',body:'Wide / form variant — 600px, left-aligned, scrolls. Used for multi-field forms like profile edit.',input:'Full name',primary:'Save changes',secondary:'Cancel'}
+  };
+  GModal.open(map[v]);
+}
+function demoB(v){
+  const map={
+    info:{icon:'💬',title:'Counter-Offer Update',sub:'Your counter-offer has been accepted! With Standard Gopher status, you have 4 remaining Counter-Offers until 08-01-2026. Elite Gophers have unlimited.',cta:'Continue',closeLabel:'Close'},
+    success:{icon:'🎉',title:'Job accepted!',sub:'You’re booked. Head to the pickup when you’re ready — we’ll guide you from here.',cta:'Start job',closeLabel:'Later'},
+    list:{icon:'🚗',title:'Before you start',sub:'Quick checklist for this ride request.',list:[{icon:'📍',title:'Confirm pickup',detail:'218 Fayetteville St, Raleigh'},{icon:'🧳',title:'2 passengers · 1 bag',detail:'Trunk space needed'},{icon:'⭐',title:'Rider rated 4.9',detail:'Repeat customer'}],cta:'I’m on my way',closeLabel:'Cancel'}
+  };
+  GSheet.open(map[v]);
+}
+</script>
+</body>
+</html>

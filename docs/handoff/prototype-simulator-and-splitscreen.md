@@ -142,6 +142,28 @@ Request flips to **Active**. Counter loop: same-amount counter **blocked**, vali
 **ACTION NEEDED** on the request, **Accept** → Active/hired at the new price (Go live-shows "hired at
 new price"), **Decline** → request stays open and the Gopher is notified. Screenshots captured.
 
+**Cost-of-items pass-through (added 2026-07-05):** every input the Request app collects is data the
+Go worker must see when the job is shared — the flagged miss was **cost of items** (the money a worker
+fronts to buy goods). The record and harness already carried it (`buildPending()` sets `cost`/`pay`;
+`orderFromReq` passes `cost:+r.cost`), but two ends dropped it:
+- **Requester Submitted screen** (`renderStep7`) itemised Worker-takes-home + Request-fee + Total, but
+  the Total (`gmvTotal`) silently **included** the item cost with no row for it — so `$20 + $11.82`
+  looked like it should be `$31.82`, not `$131.82`. Fix: a `Cost of items` row now renders whenever
+  `costNum > 0`, so the rows visibly reconcile to the Total.
+- **Go worker `job-detail`** received the job but `__injectJob` never copied `order.cost` onto the job,
+  and the pay block showed only an amount-less *"Out-of-pocket purchase — reimbursed…"* line. Fix:
+  `__injectJob` now carries `cost` + pushes a **"Purchase needed"** flag when `cost > 0`; the pay block
+  shows the real figure — *"You'll receive **$20** · Plus **$100** for items you buy — reimbursed in
+  full at drop-off."*
+- **Same fix mirrored into the production apps** (not just the split): `Final/gopher-request.html`
+  (Step-7 `s7costItems` row) and `Final/gopher-connect.html` (Step-7 `costItemsNum` row — its pre-submit
+  Review and recap already itemised it). There is **no Final worker job-browsing view** to change
+  (`gopher-go.html` is only a provider-signup landing page); that surface lives only in the prototype
+  `gopher-go-prototype.html`.
+- Verified live (preview-driven, 2026-07-05): submit `$20` pay + `$100` items → requester Submitted
+  shows `Worker takes home $20 · Cost of items $100 · Request fee $10.67 · Total $130.67`; Go job-detail
+  shows `$20` + `Plus $100 for items you buy — reimbursed…`. Both Final apps load with zero JS errors.
+
 **Known gaps / next iteration:**
 - Go **home** is a static base64 frame, so its baked tab/tile counts ("Available 59 · Active 2",
   "22"/"9") don't zero out — only the **live** `jobs-list` is truly empty. Zeroing those means editing

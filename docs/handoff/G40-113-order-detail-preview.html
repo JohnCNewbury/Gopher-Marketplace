@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40-113 — Order detail: Suggested offer used</title>
+<!--
+  Faithful standalone preview of the HQ Dashboard order-detail "Request" card with the new
+  G40-113 field "Suggested offer used". Reproduces the real _opSec / _opKV / _opEarmark markup
+  and styling from Dashboard/app_part4.js. Shown in all three states.
+-->
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1b2733; --muted:#6b7480;
+    --line:#e6eaee; --line-2:#eef1f4; --navy:#0b2a4a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;padding:26px 16px}
+  .wrap{max-width:840px;margin:0 auto}
+  h1{font-size:16px;letter-spacing:.02em;margin:0 0 4px}
+  .lede{color:var(--muted);font-size:13px;margin:0 0 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .sec-title{font-weight:800;font-size:13px;letter-spacing:.02em;margin-bottom:10px}
+  .state-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:22px 0 8px}
+  /* _opKV */
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line-2)}
+  .kv .k{color:var(--muted);font-size:12.5px}
+  .kv .v{font-weight:600;font-size:13px;text-align:right;min-width:0;word-break:break-word}
+  .hl{background:#f3fbf6;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:6px}
+  .hl .v{color:#0a7d3f}
+  /* _opEarmark */
+  .earmark{color:#9a6b00;background:#fff6e0;border:1px dashed #e3b341;border-radius:6px;
+    padding:1px 7px;font-size:11px;font-weight:700;white-space:nowrap}
+  .note{color:var(--muted);font-size:12px;margin-top:18px;line-height:1.5;
+    border-top:1px solid var(--line-2);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Order&nbsp;#&nbsp;detail — “Request” card</h1>
+  <p class="lede">HQ Dashboard order detail. The new <b>Suggested offer used</b> row (G40-113) sits right under Age-restricted, styled exactly like every other field. Three states below.</p>
+
+  <div class="state-tag">1 · Delivery / Ride — offer set via Gopher iQ &nbsp;→&nbsp; Yes</div>
+  <div class="grid">
+    <div class="card">
+      <div class="sec-title">Request</div>
+      <div class="kv"><span class="k">Title</span><span class="v">Delivery · Grocery run — Harris Teeter</span></div>
+      <div class="kv"><span class="k">Category</span><span class="v">Delivery</span></div>
+      <div class="kv"><span class="k">Age-restricted</span><span class="v">No</span></div>
+      <div class="kv hl"><span class="k">Suggested offer used</span><span class="v">Yes</span></div>
+      <div class="kv"><span class="k">Gopher mode</span><span class="v">Standard</span></div>
+      <div class="kv"><span class="k">Request complete by</span><span class="v"><span class="earmark">Add to order bake</span></span></div>
+    </div>
+  </div>
+
+  <div class="state-tag">2 · Delivery / Ride — price typed manually (or backed out of iQ) &nbsp;→&nbsp; No</div>
+  <div class="grid">
+    <div class="card">
+      <div class="sec-title">Request</div>
+      <div class="kv"><span class="k">Title</span><span class="v">Need a Ride · Airport → Downtown</span></div>
+      <div class="kv"><span class="k">Category</span><span class="v">Need a Ride</span></div>
+      <div class="kv"><span class="k">Age-restricted</span><span class="v">No</span></div>
+      <div class="kv hl"><span class="k">Suggested offer used</span><span class="v">No</span></div>
+      <div class="kv"><span class="k">Gopher mode</span><span class="v">Standard</span></div>
+      <div class="kv"><span class="k">Request complete by</span><span class="v"><span class="earmark">Add to order bake</span></span></div>
+    </div>
+  </div>
+
+  <div class="state-tag">3 · Historical order, or a non-Delivery/Ride request &nbsp;→&nbsp; earmark (no backfill)</div>
+  <div class="grid">
+    <div class="card">
+      <div class="sec-title">Request</div>
+      <div class="kv"><span class="k">Title</span><span class="v">Labor · Help moving a couch</span></div>
+      <div class="kv"><span class="k">Category</span><span class="v">Labor / Moving</span></div>
+      <div class="kv"><span class="k">Age-restricted</span><span class="v">No</span></div>
+      <div class="kv hl"><span class="k">Suggested offer used</span><span class="v"><span class="earmark">Going-forward capture · no backfill</span></span></div>
+      <div class="kv"><span class="k">Gopher mode</span><span class="v">Standard</span></div>
+      <div class="kv"><span class="k">Request complete by</span><span class="v"><span class="earmark">Add to order bake</span></span></div>
+    </div>
+  </div>
+
+  <p class="note">The <b>Suggested offer used</b> row is highlighted here only to draw the eye — in the live dashboard it renders in the same plain style as the neighbouring rows. It shows <b>Yes/No</b> once the order carries the flag, otherwise the amber earmark (all 60k historical orders + any non-Delivery/Ride request). The quick-look drawer shows the row only when a Yes/No value exists.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G40-100 — Inbox Deleted tab + swipe-to-delete (front-end reference)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#33D975;--navy:#002461;--white:#fff;--tan:#EBE8E5;--green-dark:#1CB061;
+    --aqua:#87F7BD;--green-light:#e8f7ea;--navy-light:#eef0f8;--gray:#f5f6fa;
+    --text:#424242;--muted:#6b7280;--error:#e0364f;--radius:16px;--shadow:0 4px 24px rgba(0,36,97,.10);
+  }
+  *{box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;color:var(--text);background:linear-gradient(160deg,#eef0f8,#fff 60%);margin:0;padding:28px 18px 60px;-webkit-font-smoothing:antialiased}
+  h1{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:25px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13.5px;max-width:640px;margin:0 auto 6px}
+  .tref{text-align:center;font-size:12px;color:var(--green-dark);font-weight:700;margin-bottom:20px}
+  .stage{display:flex;justify-content:center}
+  .phone{width:360px;background:var(--white);border-radius:34px;box-shadow:var(--shadow);border:1px solid #e7e9f2;overflow:hidden;display:flex;flex-direction:column}
+  .pbar{background:var(--navy);color:#fff;padding:12px 18px 11px;display:flex;align-items:center;gap:9px}
+  .pbar .dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
+  .pbar b{font-family:'Nunito';font-weight:800;font-size:14px}
+  .pbar .role{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--aqua)}
+  .ihead{padding:14px 16px 0}
+  .ititle{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:19px}
+  .tabs{display:flex;gap:6px;margin:12px 0 0;border-bottom:1.5px solid #eef0f5}
+  .tab{flex:1;text-align:center;padding:10px 6px;font-family:'Nunito';font-weight:800;font-size:13.5px;color:var(--muted);border-bottom:2.5px solid transparent;cursor:pointer;background:none;border-top:none;border-left:none;border-right:none}
+  .tab.on{color:var(--navy);border-bottom-color:var(--green)}
+  .tab .cnt{display:inline-block;min-width:18px;font-size:11px;background:var(--navy-light);color:var(--navy);border-radius:9px;padding:1px 6px;margin-left:5px;font-weight:800}
+  .list{padding:8px 0 0;min-height:430px;position:relative;overflow:hidden}
+  /* row + swipe */
+  .rowwrap{position:relative;overflow:hidden;border-bottom:1px solid #f1f2f6}
+  .rowdel{position:absolute;inset:0;background:var(--error);display:flex;align-items:center;justify-content:flex-end;padding-right:22px;color:#fff;font-family:'Nunito';font-weight:800;font-size:14px;gap:7px}
+  .row{position:relative;background:#fff;padding:13px 16px;display:flex;gap:12px;align-items:flex-start;transition:transform .18s ease;touch-action:pan-y;cursor:grab}
+  .row.unread{background:#fbfdff}
+  .av{width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:15px;color:#fff;background:var(--navy)}
+  .av.sys{background:var(--green-dark)}
+  .av.promo{background:#7c5cff}
+  .av.admin{background:#e0364f}
+  .rmain{flex:1;min-width:0}
+  .rtop{display:flex;align-items:center;gap:8px}
+  .rname{font-family:'Nunito';font-weight:800;color:var(--navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rtime{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .rprev{font-size:12.5px;color:var(--text);margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .badge{font-size:9px;font-family:'Nunito';font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:6px;background:#fff3d6;color:#9a6a00;white-space:nowrap}
+  .dot-un{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none;margin-top:5px}
+  /* deleted row trash */
+  .trash{margin-left:auto;background:none;border:none;color:var(--error);font-size:18px;cursor:pointer;padding:4px 2px;align-self:center}
+  .swipehint{font-size:11px;color:var(--muted);text-align:center;padding:8px 16px 0}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:60px 24px}
+  .cap{font-size:10.5px;color:var(--muted);text-align:center;padding:10px 14px 14px;line-height:1.5}
+  .scn{display:inline-block;background:var(--navy-light);color:var(--navy);font-weight:700;font-size:9.5px;border-radius:6px;padding:2px 6px;margin:0 2px}
+  /* confirm modal */
+  .ov{position:absolute;inset:0;background:rgba(0,18,49,.4);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:26px}
+  .ov[hidden]{display:none}
+  .modal{background:#fff;border-radius:18px;padding:20px 18px;width:100%;box-shadow:0 12px 40px rgba(0,36,97,.3);text-align:center}
+  .modal h3{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:17px;margin:0 0 6px}
+  .modal p{font-size:13px;color:var(--muted);margin:0 0 16px}
+  .mbtns{display:flex;gap:9px}
+  .mbtn{flex:1;font-family:'Nunito';font-weight:800;font-size:14px;border-radius:11px;padding:12px;border:none;cursor:pointer}
+  .mbtn.cancel{background:#fff;color:var(--navy);border:1.6px solid #d8dcea}
+  .mbtn.del{background:var(--error);color:#fff}
+  /* controls */
+  .ctl{max-width:640px;margin:22px auto 0;background:#fff;border:1px solid #e7e9f2;border-radius:14px;padding:15px 18px;box-shadow:var(--shadow)}
+  .ctl h3{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:13px;margin:0 0 9px}
+  .ctl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .ctl .sim{background:#fff;border:1.5px solid #d8dcea;color:var(--navy);border-radius:9px;padding:8px 13px;font-family:'Nunito';font-weight:800;font-size:12px;cursor:pointer}
+  .ctl .reset{margin-left:auto;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:9px 15px;font-family:'Nunito';font-weight:800;font-size:12.5px;cursor:pointer}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.55}
+  .legend b{color:var(--navy)}
+</style>
+</head>
+<body>
+  <h1>Inbox — Deleted tab &amp; swipe-to-delete</h1>
+  <p class="sub">Front-end reference for the <b>company / system-message</b> inbox (welcome, updates, promos, referral notices) — <i>not</i> order chat. Swipe a message left to move it to Deleted; delete from Deleted is permanent (with confirm). Identical in both apps.</p>
+  <p class="tref">G40-100 · Gopher Request &amp; Gopher Go · reference only</p>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="pbar"><span class="dot"></span><b>Inbox</b><span class="role" id="appLbl">Gopher Request</span></div>
+      <div class="ihead">
+        <div class="ititle">Messages</div>
+        <div class="tabs">
+          <button class="tab on" data-tab="inbox" onclick="setTab('inbox')">Inbox <span class="cnt" id="cntInbox">0</span></button>
+          <button class="tab" data-tab="deleted" onclick="setTab('deleted')">Deleted <span class="cnt" id="cntDeleted">0</span></button>
+        </div>
+      </div>
+      <div class="swipehint" id="hint">‹ Swipe a message left to delete</div>
+      <div class="list" id="list"></div>
+      <div class="cap" id="cap"></div>
+
+      <!-- confirm modal -->
+      <div class="ov" id="ov" hidden>
+        <div class="modal" role="dialog" aria-modal="true">
+          <h3>Delete permanently?</h3>
+          <p>This cannot be undone.</p>
+          <div class="mbtns">
+            <button class="mbtn cancel" onclick="closeConfirm()">Cancel</button>
+            <button class="mbtn del" onclick="confirmDelete()">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <h3>Demo controls</h3>
+    <div class="ctl-row">
+      <button class="sim" onclick="expireAdmin()">Simulate admin-message expiry</button>
+      <button class="sim" onclick="toggleApp()">View as: <span id="appToggle">Gopher Go</span></button>
+      <button class="reset" onclick="resetAll()">Reset</button>
+    </div>
+    <p class="legend">
+      <b>Swipe left</b> on an Inbox message → moves to <b>Deleted</b> <span class="scn">S1</span> (no "silence" option <span class="scn">S7</span>).
+      In <b>Deleted</b>, the only action is <b>permanent delete</b> — no restore <span class="scn">S2</span> — and it asks to confirm <span class="scn">S3</span>.
+      An <b>admin message with an expiry</b> auto-moves Inbox→Deleted at its expiry <span class="scn">S5</span>, then follows the same rules <span class="scn">S6</span>.
+      After <b>90 days</b> in Deleted a message auto-purges from view <span class="scn">S4</span>. Per John: delete/purge <b>soft-flag &amp; hide</b> — the row is retained in the DB for audit, never hard-deleted.
+    </p>
+  </div>
+
+<script>
+  const $=id=>document.getElementById(id);
+  let tab='inbox', pendingId=null;
+
+  const SEED=[
+    {id:1, kind:'sys',  from:'Gopher Team',      time:'2m',  unread:true,  title:'Welcome to Gopher! 👋', prev:'Here’s how to get the most out of your account and find help fast.'},
+    {id:2, kind:'promo',from:'Gopher Offers',    time:'1h',  unread:true,  title:'Promo: $10 off your next request', prev:'Use code GOPHER10 at checkout. Limited time — tap for details.'},
+    {id:3, kind:'sys',  from:'Gopher',           time:'3h',  unread:false, title:'You have a Favorite Gopher referral', prev:'Marcus recommended a trusted local Gopher for you.'},
+    {id:4, kind:'admin',from:'Gopher Support',   time:'1d',  unread:false, title:'Scheduled maintenance notice', prev:'Brief downtime Sunday 2–3am ET.', expires:true},
+    {id:5, kind:'sys',  from:'Gopher',           time:'2d',  unread:false, title:'Refer yourself — share your code', prev:'Invite new customers to add you as their saved Gopher.'}
+  ];
+  let msgs=[];
+
+  function reseed(){ msgs = SEED.map(m => ({...m, state:'inbox'})); }
+  reseed();
+
+  const APPS=['Gopher Request','Gopher Go'];
+  let appIx=0;
+
+  function counts(){
+    $('cntInbox').textContent   = msgs.filter(m=>m.state==='inbox').length;
+    $('cntDeleted').textContent = msgs.filter(m=>m.state==='deleted').length;
+  }
+  function setTab(t){
+    tab=t;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+    $('hint').style.display = t==='inbox' ? 'block':'none';
+    render();
+  }
+  function initials(s){ return s.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+  function render(){
+    const list=$('list'); list.innerHTML='';
+    const rows = msgs.filter(m=> m.state===tab);
+    if(!rows.length){
+      list.innerHTML = '<div class="empty">'+(tab==='inbox'?'No messages.':'Nothing in Deleted.')+'</div>';
+      $('cap').innerHTML = tab==='deleted'
+        ? 'Deleted keeps messages until you permanently delete them, or 90 days pass. <span class="scn">S4</span>' : '';
+      counts(); return;
+    }
+    rows.forEach(m=>{
+      const wrap=document.createElement('div'); wrap.className='rowwrap';
+      if(tab==='inbox'){
+        wrap.innerHTML =
+          '<div class="rowdel">🗑 Delete</div>'+
+          '<div class="row '+(m.unread?'unread':'')+'" data-id="'+m.id+'">'+
+            (m.unread?'<span class="dot-un"></span>':'')+
+            '<div class="av '+m.kind+'">'+initials(m.from)+'</div>'+
+            '<div class="rmain"><div class="rtop"><span class="rname">'+m.from+'</span>'+
+              (m.expires?'<span class="badge">Expires</span>':'')+
+              '<span class="rtime">'+m.time+'</span></div>'+
+              '<div class="rprev"><b>'+m.title+'</b> — '+m.prev+'</div></div>'+
+          '</div>';
+      } else {
+        wrap.innerHTML =
+          '<div class="row" data-id="'+m.id+'">'+
+            '<div class="av '+m.kind+'">'+initials(m.from)+'</div>'+
+            '<div class="rmain"><div class="rtop"><span class="rname">'+m.from+'</span>'+
+              '<span class="rtime">deleted '+(m.delAgo||'just now')+'</span></div>'+
+              '<div class="rprev"><b>'+m.title+'</b> — '+m.prev+'</div></div>'+
+            '<button class="trash" title="Delete permanently" onclick="askDelete('+m.id+')">🗑</button>'+
+          '</div>';
+      }
+      list.appendChild(wrap);
+    });
+    if(tab==='inbox') wireSwipe();
+    $('cap').innerHTML = tab==='inbox'
+      ? 'Swipe any row left past the line to move it to Deleted. <span class="scn">S1</span>'
+      : 'Tap 🗑 to permanently delete (confirm required). No restore. <span class="scn">S2 · S3</span>';
+    counts();
+  }
+
+  // pointer-drag swipe-left
+  function wireSwipe(){
+    document.querySelectorAll('.list .row').forEach(row=>{
+      let startX=0, dx=0, dragging=false;
+      const down=e=>{ dragging=true; startX=(e.touches?e.touches[0].clientX:e.clientX); row.style.transition='none'; };
+      const move=e=>{
+        if(!dragging) return;
+        const x=(e.touches?e.touches[0].clientX:e.clientX);
+        dx=Math.min(0, x-startX);
+        row.style.transform='translateX('+dx+'px)';
+      };
+      const up=()=>{
+        if(!dragging) return; dragging=false;
+        row.style.transition='transform .18s ease';
+        if(dx < -90){
+          row.style.transform='translateX(-110%)';
+          const id=+row.dataset.id;
+          setTimeout(()=>{ moveToDeleted(id); }, 160);
+        } else { row.style.transform='translateX(0)'; }
+        dx=0;
+      };
+      row.addEventListener('mousedown',down); row.addEventListener('mousemove',move);
+      window.addEventListener('mouseup',up);
+      row.addEventListener('touchstart',down,{passive:true}); row.addEventListener('touchmove',move,{passive:true}); row.addEventListener('touchend',up);
+    });
+  }
+
+  function moveToDeleted(id){
+    const m=msgs.find(x=>x.id===id); if(!m) return;
+    m.state='deleted'; m.unread=false; m.delAgo='just now';
+    render();
+  }
+  function askDelete(id){ pendingId=id; $('ov').hidden=false; }
+  function closeConfirm(){ pendingId=null; $('ov').hidden=true; }
+  function confirmDelete(){
+    // soft-purge: hide from user (retained in DB for audit) — here we drop from the demo view
+    msgs = msgs.filter(m=>m.id!==pendingId);
+    pendingId=null; $('ov').hidden=true; render();
+  }
+  function expireAdmin(){
+    const m=msgs.find(x=>x.expires && x.state==='inbox');
+    if(!m){ return; }
+    m.state='deleted'; m.delAgo='on expiry'; m.expires=false;
+    render();
+  }
+  function toggleApp(){
+    appIx=1-appIx; $('appLbl').textContent=APPS[appIx]; $('appToggle').textContent=APPS[1-appIx];
+  }
+  function resetAll(){ reseed(); closeConfirm(); setTab('inbox'); }
+
+  setTab('inbox');
+</script>
+</body>
+</html>
