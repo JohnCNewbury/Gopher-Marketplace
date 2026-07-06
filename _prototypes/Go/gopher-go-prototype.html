@@ -2145,9 +2145,13 @@ if(PT){
     var stats=[{i:'pin',t:(order.dist||'2.0')+' mi',s:'away'}];
     if(order.when) stats.push({i:'cal',t:order.when});
     var costN=+order.cost||0;
+    var isBid=!!order.bids;   // requester is asking for bids (no set price) — NEVER broadcast $0
     var flags=[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
-    var job={ id:order.id, cat:pcat, posted:'just now', mode:'pay', amt:'$'+(+order.pay||0), cost:costN, per:'', top:true,
+    var job={ id:order.id, cat:pcat, posted:'just now',
+      mode:(isBid?'bid':'pay'),                 // bid jobs render "Submit a Bid / You set your price"
+      amt:(isBid?'':('$'+(+order.pay||0))),     // no dollar figure on a bid — the worker names their price
+      cost:costN, per:'', top:!isBid,           // "TOP PAY" is meaningless on an open-to-bids job
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };
@@ -2162,7 +2166,8 @@ if(PT){
     if(!b){ b=document.createElement('div'); b.id='ptBanner';
       b.setAttribute('style','position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-160%);z-index:9999;width:340px;max-width:88%;background:#002461;color:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.35);font-family:Nunito,sans-serif;cursor:pointer;transition:transform .38s cubic-bezier(.2,.9,.3,1.3);');
       document.body.appendChild(b); }
-    b.innerHTML='<div style="font-weight:900;font-size:13.5px;">🔔 New job near you · '+(job.amt||'')+'</div><div style="font-size:12px;opacity:.85;margin-top:2px;font-family:DM Sans,sans-serif;">'+String(job.scope||'New request').slice(0,52)+' — tap to view</div>';
+    var payLabel=(job.mode==='bid')?'Open to bids':(job.amt||'');
+    b.innerHTML='<div style="font-weight:900;font-size:13.5px;">🔔 New job near you'+(payLabel?(' · '+payLabel):'')+'</div><div style="font-size:12px;opacity:.85;margin-top:2px;font-family:DM Sans,sans-serif;">'+String(job.scope||'New request').slice(0,52)+' — tap to view</div>';
     b.onclick=function(){ hide(); state.category=job.cat; state.job=job; state.jobCat=job.cat; load('jobs-list'); };
     void b.offsetWidth; b.style.transform='translateX(-50%) translateY(0)';
     clearTimeout(b._h); b._h=setTimeout(hide,7000);

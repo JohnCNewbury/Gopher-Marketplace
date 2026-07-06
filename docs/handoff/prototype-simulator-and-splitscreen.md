@@ -195,7 +195,19 @@ now shows a **Job status** stepper (`STATUS_FLOW` = on the way → arrived → c
 - Verified live (preview-driven, 2026-07-05): submit → accept → on the way → arrived → complete → the
   requester rates 5★ → the worker sees "Jamie L. rated you 5★". Zero console errors. Screenshot captured.
 
+**Bid-mode requests broadcast correctly (fixed 2026-07-05):** a request submitted *open to bids*
+(`payMode!=='set'` → `bids:true`, `pay:0`) was reaching Go as a hardcoded `mode:'pay'` / `amt:'$0'`
+job — the Go card, banner, and job-detail all advertised **$0** (and even "★ TOP PAY"). We never want to
+broadcast $0. Fix: `orderFromReq` now passes `bids`, and `__injectJob` sets `mode:'bid'`, `amt:''`,
+`top:false` for bid jobs. The Go app already had the right bid rendering — card → "Submit a Bid",
+detail → "This request is open to bids / You set your price", CTA → "Submit a Bid", banner → "Open to
+bids". Verified live.
+
 **Known gaps / next iteration:**
+- **Bid submit-back is not wired.** When the worker taps "Submit a Bid", the job-detail send handler
+  gates the shared-store write to non-bid mode (`if(j.mode!=='bid')`), so a bid never reaches the
+  requester and their "Total · TBD after bid" never resolves. Wiring it would mirror the counter loop
+  (write `j.bid`, add a `watchBid` relay, surface an "N bids — review" attention on the request card).
 - `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
   `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
 - The status stepper is a clean PT-friendly path layered on `job-detail`; Go's older **static**
