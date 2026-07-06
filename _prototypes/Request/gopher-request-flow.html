@@ -1068,7 +1068,7 @@ function makeInitialState(){
     // Step 6 — review
     promoCode:'', promoApplied:false, promoError:false,
     paymentMethod:'visa', paymentPickerOpen:false,
-    sseOpen:false, waiverChecked:false,
+    sseOpen:false, wteOpen:false, waiverChecked:false,
     scheduleType:'now', flexibleWindow:'24hr',
     schedDate:null, calViewISO:null, timeSlot:'2:00 PM',
     // ui
@@ -1656,15 +1656,35 @@ function renderStep6(){
   // Second set of eyes
   h+=renderSSE();
 
-  // What to expect
-  h+=`<div class="section-label">What to expect after you submit</div>
-    <div class="wte"><ol class="wte-list">
-      <li><span class="wte-num">1</span><span class="wte-text">Your payment method <b>won't be authorized</b> until a worker is matched.</span></li>
-      <li><span class="wte-num">2</span><span class="wte-text">When a worker accepts, we pre-authorize an extra 20% — a hold of <b>${bids?'TBD':fmt(total*1.2)}</b>. If no cost adjustments are needed, you're only charged <b>${bids?'TBD':fmt(total)}</b>.</span></li>
-      <li><span class="wte-num">3</span><span class="wte-text">Once accepted, you can <b>text or call your worker</b> directly and <b>track progress in real time</b> when applicable.</span></li>
-      <li><span class="wte-num">4</span><span class="wte-text">When the job is done, you'll <b>confirm on your end</b> and rate your worker before final billing.</span></li>
-      ${state.ageRestricted?`<li><span class="wte-num wte-id-mark">!</span><span class="wte-text">This request requires <b>a photo of a valid ID</b> before items can be exchanged.</span></li>`:''}
-    </ol><div class="wte-footer">That said — let's get you connected.</div></div>`;
+  // What to expect — bid-aware + collapsible (G40: billing rundown is wrong for bid
+  // requests; collapsed by default to save space for repeat users, like the iQ pill)
+  {
+    const wteSteps = bids ? [
+      `You will be alerted to <b>all incoming worker bids</b>.`,
+      `You'll be able to review <b>worker ratings, reviews, job history &amp; bid amounts</b> before making your selection.`,
+      `Once you accept your worker(s), you can <b>text or call them</b> directly and <b>track progress in real time</b> when applicable.`,
+      `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
+    ] : [
+      `Your payment method <b>won't be authorized</b> until a worker is matched.`,
+      `When a worker accepts, we pre-authorize an extra 20% — a hold of <b>${fmt(total*1.2)}</b>. If no cost adjustments are needed, you're only charged <b>${fmt(total)}</b>.`,
+      `Once accepted, you can <b>text or call your worker</b> directly and <b>track progress in real time</b> when applicable.`,
+      `When the job is done, you'll <b>confirm on your end</b> and rate your worker before final billing.`
+    ];
+    const wteSub = bids
+      ? `A quick rundown of how bidding and the worker handoff work — so there are no surprises.`
+      : `A quick rundown of how billing and the worker handoff work — so there are no surprises.`;
+    h+=`<div class="sse-block wte-block ${state.wteOpen?'open':''}" style="margin-top:18px;">
+      <div class="sse-head" data-action="toggle-wte">
+        <span class="sse-brain" style="display:flex;align-items:center;justify-content:center;font-size:22px;">🧾</span>
+        <div class="sse-head-text"><h4>What to expect after you submit</h4><p>${wteSub}</p></div>
+        <span class="sse-chev">${state.wteOpen?'▲':'▼'}</span>
+      </div>
+      ${state.wteOpen?`<div class="sse-body"><div class="wte"><ol class="wte-list">
+        ${wteSteps.map((s,i)=>`<li><span class="wte-num">${i+1}</span><span class="wte-text">${s}</span></li>`).join('')}
+        ${state.ageRestricted?`<li><span class="wte-num wte-id-mark">!</span><span class="wte-text">This request requires <b>a photo of a valid ID</b> before items can be exchanged.</span></li>`:''}
+      </ol><div class="wte-footer">That said — let's get you connected.</div></div></div>`:''}
+    </div>`;
+  }
 
   // When do you need this? — deliberate selection (not a submit action)
   h+=`<div class="timing-block">
@@ -1827,10 +1847,10 @@ function renderStep7(){
     <div class="review-row"><span class="rl">Request fee</span><span class="rv">${bids?'TBD':fmt(fee.requestFee)}</span></div>
     <div class="review-row total"><span class="rl">Total</span><span class="rv">${bids?'TBD after bid':fmt(fee.gmvTotal)}</span></div>
   </div>
-  <div class="si-band">
+  ${(function(){try{return new URLSearchParams(location.search).get('pt')==='1'||sessionStorage.getItem('gopher_pt')==='1';}catch(_){return false;}})() ? `` : `<div class="si-band">
     <span class="si-ico">${svgIco('users')}</span>
     <div class="si-text"><h5>${interested} worker${interested!==1?'s':''} already interested</h5><p>Review profiles, hire, or consider workers from your dashboard.</p></div>
-  </div>
+  </div>`}
   ${state.demo ? `` : `<button class="si-btn" data-action="see-workers">Track it on your home screen →</button>
   <div class="matched-actions">
     <button class="ma-btn" data-action="edit-request">Edit request</button>
@@ -1841,6 +1861,38 @@ function renderStep7(){
 /* ============================================================
    RENDER ENGINE
    ============================================================ */
+/* ── G40-308 request modals (G40-309 survivors) for the Request app ──
+   Appended to #phone (like the iQ offer modal); reachable via the in-frame "G40"
+   launcher (window.__g40ReqMenu). Real triggers to be wired at each flow point. */
+(function initG40ReqAppModals(){
+  function rqModal(html){
+    var ph=document.getElementById('phone'); if(!ph) return;
+    var ov=document.createElement('div');
+    ov.style.cssText='position:absolute;inset:0;z-index:120;background:rgba(0,36,97,.55);display:flex;align-items:center;justify-content:center;padding:18px;';
+    ov.innerHTML='<div style="width:100%;max-width:300px;max-height:88%;overflow:auto;background:#fff;border-radius:18px;padding:20px;text-align:center;box-shadow:0 24px 60px rgba(0,36,97,.4);font-family:\'DM Sans\',sans-serif;color:#002461;">'+html+'</div>';
+    ov.addEventListener('click',function(e){ if(e.target===ov||e.target.classList.contains('grx')) ov.remove(); });
+    ph.appendChild(ov); return ov;
+  }
+  function h(t){ return '<h3 style="font-family:\'Nunito\';font-weight:900;font-size:18px;margin:0 0 6px;">'+t+'</h3>'; }
+  function p(t){ return '<p style="font-size:12.5px;color:#3A4D74;line-height:1.5;margin:6px 0 4px;">'+t+'</p>'; }
+  function b1(t){ return '<button class="grx" style="margin-top:14px;height:46px;border-radius:12px;background:#33D975;color:#002461;border:none;font-family:\'Nunito\';font-weight:900;font-size:14px;width:100%;cursor:pointer;">'+t+'</button>'; }
+  function b2(t){ return '<button class="grx" style="margin-top:8px;height:44px;border-radius:12px;background:transparent;color:#002461;border:1.5px solid #d4d8e3;font-family:\'Nunito\';font-weight:800;font-size:13px;width:100%;cursor:pointer;">'+t+'</button>'; }
+  window.G40_REQ={
+    phoneEntered:function(){return rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));},
+    paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re gone, we’ll rebroadcast immediately.')+b1('Update payment'));},
+    pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving a single location? Slide the pick-up toggle to <b>“No specific pick-up location.”</b>)')+b1('Got it'));},
+    selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
+    cantDeleteOnlyCard:function(){return rqModal(h('Add a card before removing this one')+p('You need at least one card on file. Add a new card, then you can remove this one.')+b1('Add new card')+b2('Cancel'));},
+    expiredInterestedWorkers:function(){return rqModal(h('Your request expired — workers are interested')+p('Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.')+b1('View interested workers')+b2('Cancel request'));},
+    duplicateRequest:function(){return rqModal(h('You already have this request out')+p('You currently have a nearly identical request broadcasting. Posting it again sends two of the same job to Gophers and splits their attention. Continue only if you truly need a second.')+b1('Continue — post anyway')+b2('Keep the one I have'));}
+  };
+  window.__g40ReqMenu=function(){
+    var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['cantDeleteOnlyCard','Can’t delete only card on file'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
+    rqModal(h('G40-308 request modals')+p('Preview each rebuilt modal.')+items.map(function(i){return '<button class="grx" style="margin-top:6px;height:40px;border-radius:10px;background:#eef0f8;color:#002461;border:none;font-family:\'Nunito\';font-weight:800;font-size:12px;width:100%;cursor:pointer;text-align:left;padding:0 12px;" onclick="setTimeout(function(){window.G40_REQ.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+b2('Close'));
+  };
+  function addLaunch(){ var ph=document.getElementById('phone'); if(!ph||document.getElementById('g40ReqLaunch'))return; var b=document.createElement('button'); b.id='g40ReqLaunch'; b.textContent='G40'; b.style.cssText='position:absolute;right:10px;bottom:10px;z-index:130;background:#002461;color:#33D975;border:none;border-radius:9px;padding:7px 11px;font-family:sans-serif;font-weight:800;font-size:11px;cursor:pointer;box-shadow:0 6px 18px rgba(0,36,97,.3)'; b.onclick=function(){ try{ window.__g40ReqMenu(); }catch(e){} }; ph.appendChild(b); }
+  if(document.getElementById('phone')) addLaunch(); else document.addEventListener('DOMContentLoaded', addLaunch);
+})();
 const RENDERERS=[null,renderStep1,renderStep2,renderStep3,renderStep4,renderStep5,renderStep6,renderStep7];
 function render(){
   const content=$('#content');
@@ -2079,6 +2131,7 @@ document.addEventListener('click',(e)=>{
     case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.lowOfferAck=false; } state.osOpen=false; render(); } break;
     case 'ack-low': state.lowOfferAck=true; render(); break;
     case 'toggle-sse': state.sseOpen=!state.sseOpen; render(); break;
+    case 'toggle-wte': state.wteOpen=!state.wteOpen; render(); break;
     case 'toggle-waiver': state.waiverChecked=!state.waiverChecked; render(); break;
     case 'toggle-pay': state.paymentPickerOpen=!state.paymentPickerOpen; render(); break;
     case 'pick-pay': state.paymentMethod=act.dataset.pay; state.paymentPickerOpen=false; render(); break;
@@ -2131,7 +2184,10 @@ return { all:all, save:save,
   // split-screen Go job card show a faithful request (not an empty shell).
   const pay=Math.round((perWorkerPay()||0)*100)/100;
   const cost=currentItemCost();
-  const pickup=state.noSpecificPickup?'':(state.pickupStop||'');
+  // A pickup only exists for categories that actually collect one (delivery/moving/ride). Junk, home,
+  // labor, yard, other are single-location (the work happens AT the destination) — carry no pickup so
+  // the Go job shows one Location row + a one-pin map.
+  const pickup=(isVisible('pickupSection') && !state.noSpecificPickup)?(state.pickupStop||''):'';
   const dropoff=state.dropoffStop||'';
   const when=state.scheduleType==='now'?'Now · ASAP':((state.schedDate?state.schedDate+' · ':'')+(state.timeSlot||''));
   const scope=(state.description && state.description.trim())?state.description.trim():title;
