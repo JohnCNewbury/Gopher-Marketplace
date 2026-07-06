@@ -1788,6 +1788,17 @@ function renderStep7(){
   // Cost of items is baked into the Total (gmvTotal) — surface it as its own row
   // so the rows visibly sum to the Total the requester is charged.
   const costNum=(state.itemsPurchased && state.category==='delivery') ? currentItemCost() : 0;
+  // Full detail rows — the submitted summary shows everything the requester entered (not an abbreviation).
+  const wCount=workerCount();
+  const hasPickup=!state.noSpecificPickup && !!(state.pickupStop||'').trim();
+  const desc=(state.description||'').trim();
+  const deliveryType=(state.category==='delivery')?((state.ageRestricted?'Age-restricted · ':'')+(state.itemsPurchased?'Purchase needed':'Items in hand')):'';
+  const detailRows=
+    (desc?`<div class="review-row"><span class="rl">Details</span><span class="rv" style="max-width:60%;text-align:right;">${esc(desc)}</span></div>`:'')
+    +(deliveryType?`<div class="review-row"><span class="rl">Delivery type</span><span class="rv">${deliveryType}</span></div>`:'')
+    +((wCount>1||state.payByHour)?`<div class="review-row"><span class="rl">Worker info</span><span class="rv">${wCount} worker${wCount>1?'s':''}${state.payByHour?` · ${state.numHours}hr`:''}</span></div>`:'')
+    +(hasPickup?`<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:60%;text-align:right;">${esc(state.pickupStop)}</span></div>`:'')
+    +`<div class="review-row"><span class="rl">${hasPickup?'Destination':'Location'}</span><span class="rv" style="max-width:60%;text-align:right;">${esc(state.dropoffStop||'—')}</span></div>`;
   const interested = 2 + Math.floor(Math.random()*4);
   const timing = state.scheduleType==='now' ? 'ASAP · matching now'
     : state.scheduleType==='flexible'
@@ -1806,6 +1817,7 @@ function renderStep7(){
     <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green-dark);">Submitted · ${expires}</span></div>
     <div class="review-row"><span class="rl">Timing</span><span class="rv">${timing}</span></div>
     <div class="review-row"><span class="rl">Category</span><span class="rv">${c.name}</span></div>
+    ${detailRows}
     <div class="review-row earn"><span class="rl">Worker takes home</span><span class="rv">${bids?'Pending bids':fmt(workerPayTotal())}</span></div>
     ${costNum>0?`<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costNum)}</span></div>`:''}
     <div class="review-row"><span class="rl">Request fee</span><span class="rv">${bids?'TBD':fmt(fee.requestFee)}</span></div>
@@ -2069,7 +2081,7 @@ document.addEventListener('click',(e)=>{
     case 'see-workers': goHome(); break;
     case 'go-home': goHome(); break;
     case 'demo-signup': gotoURL('signin'); break;
-    case 'demo-restart': state.step=1; state.maxStepReached=1; render(); break;
+    case 'demo-restart': state._stashed=false; state.step=1; state.maxStepReached=1; render(); break;
     case 'edit-request': state.step=6; render(); break;
     case 'edit-service': goStep(1); break;
     case 'cancel-request': if(confirm('Cancel this request?')){ resetAll(); } break;
@@ -2117,12 +2129,23 @@ return { all:all, save:save,
   const dropoff=state.dropoffStop||'';
   const when=state.scheduleType==='now'?'Now · ASAP':((state.schedDate?state.schedDate+' · ':'')+(state.timeSlot||''));
   const scope=(state.description && state.description.trim())?state.description.trim():title;
+  const workers=workerCount();
+  const timingLabel=(state.scheduleType==='now')?'ASAP · matching now'
+    :(state.scheduleType==='flexible'?({'24hr':'Within 24 hours',week:'Within a week','2weeks':'Within 2 weeks'}[state.flexibleWindow]||'Flexible window')
+      :(typeof schedLabel==='function'?schedLabel():when));
+  const deliveryType=(state.category==='delivery')?((state.ageRestricted?'Age-restricted · ':'')+(state.itemsPurchased?'Purchase needed':'Items in hand')):'';
   return {cat:state.category,title:title,amount:amount,order:(window.GReq?GReq.nextOrder():'GR-00001'),
     stage:'searching',accepted:0,scheduledForLater:(state.scheduleType!=='now'),
     cost:cost,pay:pay,pickup:pickup,dropoff:dropoff,
-    scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids};
+    scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
+    // richer detail carried for the crew pill + full "View details" summary
+    workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
+    ageRestricted:!!state.ageRestricted,itemsPurchased:!!state.itemsPurchased,
+    description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup};
 }
-function stashPending(){ try{ if(window.GReq&&GReq.add){ GReq.add(buildPending()); } }catch(_){} }
+// Stash the submitted request ONCE. submitRequest() and goHome()/see-workers all call this;
+// without the guard a submit-then-"Go to Home" would broadcast the SAME request twice (two order ids).
+function stashPending(){ try{ if(window.GReq&&GReq.add&&!state._stashed){ GReq.add(buildPending()); state._stashed=true; } }catch(_){} }
 function goHome(){ stashPending(); gotoURL('gopher-request-home.html'); }
 function resetAll(){ try{ sessionStorage.removeItem('gopher_pending'); }catch(_){} state=makeInitialState(); render(); }
 

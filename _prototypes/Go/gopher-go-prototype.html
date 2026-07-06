@@ -1797,15 +1797,24 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
               ? '<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Plus <b>$'+costN+'</b> for items you buy &mdash; reimbursed in full at drop-off</div>'
               : (purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':''));
       }
-      // location
-      const loc = rv
-        ? '<div class="rq-locrow"><span class="rq-lp pick">Pick-up</span><div>1240 Hillsborough St, Raleigh</div></div><div class="rq-locrow"><span class="rq-lp drop">Drop-off</span><div>88 Morgan St, Durham</div></div>'
-        : '<div class="rq-locrow"><span class="rq-lp pick">Pick-up</span><div>General area &middot; <i>exact address unlocks on accept</i></div></div><div class="rq-locrow"><span class="rq-lp drop">Drop-off</span><div>General area &middot; <i>exact address unlocks on accept</i></div></div>';
+      // location — a destination-only request (e.g. day labor at one site) has NO pick-up: show one row.
+      const hasPickup = !!(j.pickup && String(j.pickup).trim());
+      const dropLabel = hasPickup ? 'Drop-off' : 'Location';
+      const pickRow = '<div class="rq-locrow"><span class="rq-lp pick">Pick-up</span><div>'
+        +(rv?'1240 Hillsborough St, Raleigh':'General area &middot; <i>exact address unlocks on accept</i>')+'</div></div>';
+      const dropRow = '<div class="rq-locrow"><span class="rq-lp drop">'+dropLabel+'</span><div>'
+        +(rv?'88 Morgan St, Durham':'General area &middot; <i>exact address unlocks on accept</i>')+'</div></div>';
+      const loc = (hasPickup?pickRow:'')+dropRow;
       /* MAP: stylized placeholder for the live Google Maps embed (integration in progress).
          Swap rqMap below for the Maps render. Preserve the privacy treatment — show approximate
          ZONES, not exact pins, until the address is revealed (rv===true) — and keep the
          .rq-mapnote caption logic. Marker colors: pick-up #1CB061, drop-off #002461. */
-      const rqMap='<svg class="rq-mapsvg" viewBox="0 0 340 188" xmlns="http://www.w3.org/2000/svg"><rect width="340" height="188" fill="#E9EDE3"/><rect x="6" y="10" width="78" height="52" rx="11" fill="#CFE6CF"/><ellipse cx="314" cy="172" rx="54" ry="32" fill="#BAD6E8"/><path d="M118 188 Q150 122 252 110 T340 72" fill="none" stroke="#BAD6E8" stroke-width="13" stroke-linecap="round" opacity="0.8"/><g stroke="#ffffff" stroke-width="6" stroke-linecap="round"><line x1="0" y1="48" x2="340" y2="48"/><line x1="0" y1="100" x2="340" y2="100"/><line x1="0" y1="150" x2="340" y2="150"/><line x1="92" y1="0" x2="92" y2="188"/><line x1="180" y1="0" x2="180" y2="188"/><line x1="268" y1="0" x2="268" y2="188"/></g><g stroke="#ffffff" stroke-width="3" opacity="0.8"><line x1="0" y1="74" x2="340" y2="74"/><line x1="0" y1="125" x2="340" y2="125"/><line x1="136" y1="0" x2="136" y2="188"/><line x1="224" y1="0" x2="224" y2="188"/></g><line x1="8" y1="180" x2="332" y2="24" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/><path d="M70 138 Q150 80 262 58" fill="none" stroke="#002461" stroke-width="2.6" stroke-dasharray="2 6" stroke-linecap="round"/><circle cx="70" cy="138" r="30" fill="rgba(28,176,97,0.15)" stroke="rgba(28,176,97,0.55)" stroke-width="1.5"/><circle cx="70" cy="138" r="8" fill="#1CB061" stroke="#ffffff" stroke-width="2.5"/><circle cx="262" cy="58" r="30" fill="rgba(0,36,97,0.13)" stroke="rgba(0,36,97,0.5)" stroke-width="1.5"/><circle cx="262" cy="58" r="8" fill="#002461" stroke="#ffffff" stroke-width="2.5"/><g font-family="Nunito,sans-serif" font-weight="800"><rect x="44" y="171" width="52" height="16" rx="8" fill="#ffffff"/><text x="70" y="182" text-anchor="middle" font-size="9" fill="#1CB061">Pick-up</text><rect x="234" y="13" width="56" height="16" rx="8" fill="#ffffff"/><text x="262" y="24" text-anchor="middle" font-size="9" fill="#002461">Drop-off</text></g></svg>';
+      const _mapBase='<svg class="rq-mapsvg" viewBox="0 0 340 188" xmlns="http://www.w3.org/2000/svg"><rect width="340" height="188" fill="#E9EDE3"/><rect x="6" y="10" width="78" height="52" rx="11" fill="#CFE6CF"/><ellipse cx="314" cy="172" rx="54" ry="32" fill="#BAD6E8"/><path d="M118 188 Q150 122 252 110 T340 72" fill="none" stroke="#BAD6E8" stroke-width="13" stroke-linecap="round" opacity="0.8"/><g stroke="#ffffff" stroke-width="6" stroke-linecap="round"><line x1="0" y1="48" x2="340" y2="48"/><line x1="0" y1="100" x2="340" y2="100"/><line x1="0" y1="150" x2="340" y2="150"/><line x1="92" y1="0" x2="92" y2="188"/><line x1="180" y1="0" x2="180" y2="188"/><line x1="268" y1="0" x2="268" y2="188"/></g><g stroke="#ffffff" stroke-width="3" opacity="0.8"><line x1="0" y1="74" x2="340" y2="74"/><line x1="0" y1="125" x2="340" y2="125"/><line x1="136" y1="0" x2="136" y2="188"/><line x1="224" y1="0" x2="224" y2="188"/></g><line x1="8" y1="180" x2="332" y2="24" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>';
+      const _mapPick='<path d="M70 138 Q150 80 262 58" fill="none" stroke="#002461" stroke-width="2.6" stroke-dasharray="2 6" stroke-linecap="round"/><circle cx="70" cy="138" r="30" fill="rgba(28,176,97,0.15)" stroke="rgba(28,176,97,0.55)" stroke-width="1.5"/><circle cx="70" cy="138" r="8" fill="#1CB061" stroke="#ffffff" stroke-width="2.5"/>';
+      const _dx=hasPickup?262:170, _dy=hasPickup?58:96;
+      const _mapDrop='<circle cx="'+_dx+'" cy="'+_dy+'" r="30" fill="rgba(0,36,97,0.13)" stroke="rgba(0,36,97,0.5)" stroke-width="1.5"/><circle cx="'+_dx+'" cy="'+_dy+'" r="8" fill="#002461" stroke="#ffffff" stroke-width="2.5"/>';
+      const _mapLbl='<g font-family="Nunito,sans-serif" font-weight="800">'+(hasPickup?'<rect x="44" y="171" width="52" height="16" rx="8" fill="#ffffff"/><text x="70" y="182" text-anchor="middle" font-size="9" fill="#1CB061">Pick-up</text>':'')+'<rect x="'+(_dx-28)+'" y="'+(hasPickup?13:_dy+18)+'" width="56" height="16" rx="8" fill="#ffffff"/><text x="'+_dx+'" y="'+(hasPickup?24:_dy+29)+'" text-anchor="middle" font-size="9" fill="#002461">'+dropLabel+'</text></g>';
+      const rqMap=_mapBase+(hasPickup?_mapPick:'')+_mapDrop+_mapLbl+'</svg>';
       // counter / bid panel
       const coLabel = j.mode==='bid' ? 'Your bid' : 'Your counter-offer';
       const coSend  = j.mode==='bid' ? 'Submit Bid &#8594;' : 'Send Counter-Offer &#8594;';
@@ -1852,6 +1861,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         : ((j.bid && j.bidDeclined)
           ? '<div class="rq-hint">'+sv(I.tag)+who+' passed on your $'+j.bid.amt+' bid &mdash; you can place a new bid.</div>'
           : '');
+      // Crew request (Gopher Request never splits a multi-worker job into per-worker broadcasts) —
+      // the accepting Gopher is responsible for bringing the whole crew.
+      const crewNote = (j.workers>1 && !j.accepted)
+        ? '<div class="rq-prio" style="background:#FFF4E5;border-color:#f2d9a8;color:#8a5a00;"><span class="rq-ri">'+sv(I.box)+'</span><b>Crew request &mdash; '+j.workers+' workers needed.</b> By accepting, you&#8217;re responsible for bringing the full crew.</div>'
+        : '';
 
       // Post-accept status stepper: the worker advances the job and the requester sees each step live.
       let stepper='';
@@ -1881,12 +1895,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +coStatus
         +bidStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
+        +crewNote
         +stepper
         +'<div class="rq-facts">'+facts+'</div>'
         +'<div class="rq-sec">The task</div><div class="rq-card rq-task"><div class="rq-tt">'+(j.cat||'Request')+(j.biz?(' &middot; '+j.biz):'')+'</div><p>'+(j.scope||'See requester notes after you accept.')+'</p></div>'
         +'<div class="rq-sec">What&#8217;s required</div><div class="rq-reqs">'+reqs+'</div>'
         +'<div class="rq-sec">Location</div><div class="rq-card rq-loc">'+loc+'</div>'
-        +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?'Pick-up &amp; drop-off areas':'Approximate areas &middot; exact pins unlock on accept')+'</div></div>'
+        +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?(hasPickup?'Pick-up &amp; drop-off areas':'Job location'):(hasPickup?'Approximate areas &middot; exact pins unlock on accept':'Approximate area &middot; exact pin unlocks on accept'))+'</div></div>'
         +acts
         +coPanel
         +'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>By accepting you agree to complete this request as proposed. Cancelling after accepting may incur up to a $5 fee.</div></div>'
@@ -2159,12 +2174,15 @@ if(PT){
     if(order.when) stats.push({i:'cal',t:order.when});
     var costN=+order.cost||0;
     var isBid=!!order.bids;   // requester is asking for bids (no set price) — NEVER broadcast $0
+    var crew=Math.max(1, +order.workers||1);   // Gopher Request = ONE broadcast; the accepter brings the whole crew
     var flags=[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
+    if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
     var job={ id:order.id, cat:pcat, posted:'just now',
       mode:(isBid?'bid':'pay'),                 // bid jobs render "Submit a Bid / You set your price"
-      amt:(isBid?'':('$'+(+order.pay||0))),     // no dollar figure on a bid — the worker names their price
-      cost:costN, per:'', top:!isBid,           // "TOP PAY" is meaningless on an open-to-bids job
+      amt:(isBid?'':('$'+((+order.pay||0)*crew))),   // crew total the accepter coordinates (per-worker × crew)
+      per:((!isBid&&crew>1)?('$'+(+order.pay||0)+'/worker'):''),
+      cost:costN, workers:crew, top:!isBid,     // "TOP PAY" is meaningless on an open-to-bids job
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };

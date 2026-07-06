@@ -932,7 +932,7 @@ document.addEventListener('click',function(e){
  if(act==='counter'){ if(order) openCounterReview(order); return; }
  else if(act==='bid'){ if(order) openBidReview(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
- else if(act==='view'){ var ns=a.getAttribute('data-nav-screen'); if(order&&window.GReq) GReq.openOrder(order); if(ns&&window.__navHook){ window.__navHook(ns); return; } var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); } }
+ else if(act==='view'){ var ns=a.getAttribute('data-nav-screen'); if(order&&window.GReq) GReq.openOrder(order); if(ns&&window.__navHook){ window.__navHook(ns); return; } var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); } if(r){ openDetails(order); } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
 });
 window.__onJobStarted=function(order){ var o=order||((GReq.all()[0]||{}).order); if(o){ GReq.update(o,{stage:'active',attention:null}); renderPending(); } };
@@ -1014,6 +1014,35 @@ function openRateModal(order){
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
   sub.onclick=function(){ if(!picked) return; GReq.update(order,{ substage:'rated', attention:null, rating:picked, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
+}
+// Full request details \u2014 opened from a card's "View details" (a submitted/scheduled request has no
+// tracking screen yet, so this sheet shows everything the requester entered).
+function openDetails(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];}); };
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  var cat=(typeof CATLABEL!=='undefined'&&CATLABEL[r.cat])?CATLABEL[r.cat]:(r.cat||'Request');
+  var bids=!!r.bids, hasPickup=!!(r.hasPickup&&r.pickup);
+  var stat=r.stage==='active'?'In progress':(r.stage==='scheduled'?'Scheduled':(r.stage==='accepted'?'Gopher accepted':'Finding Gophers near you'));
+  var row=function(l,v){ return (v!=null&&v!=='')?'<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0eef2;font-family:\'DM Sans\',sans-serif;font-size:13px;"><span style="color:#8a94a3;font-weight:600;flex:0 0 auto;">'+l+'</span><span style="color:#002461;font-weight:700;text-align:right;max-width:62%;">'+v+'</span></div>':''; };
+  var wc=+r.workers||1;
+  var html='<div style="margin-top:4px;">'
+    +row('Order','#'+r.order)
+    +row('Status', stat)
+    +row('Category', cat)
+    +row('Timing', esc(r.timingLabel||r.when||'ASAP'))
+    +(r.description?row('Details', esc(r.description)):'')
+    +(r.deliveryType?row('Delivery type', esc(r.deliveryType)):'')
+    +((wc>1||r.payByHour)?row('Worker info', wc+' worker'+(wc>1?'s':'')+(r.payByHour?' \u00b7 '+(r.numHours||1)+'hr':'')):'')
+    +(hasPickup?row('Pick-up', esc(r.pickup)):'')
+    +row(hasPickup?'Destination':'Location', esc(r.dropoff||'\u2014'))
+    +(r.dist?row('Distance', esc(r.dist)+(/mi/i.test(r.dist)?'':' mi')):'')
+    +'<div style="height:10px;"></div>'
+    +row(wc>1?'Payment to workers':'Worker takes home', bids?'Pending bids':(money((+r.pay||0)*wc)+(wc>1?' <span style="color:#8a94a3;font-weight:600;">('+wc+' × '+money(r.pay)+')</span>':'')))
+    +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
+    +row('Total', bids?'TBD after bid':(r.amount||money((+r.pay||0)+(+r.cost||0))))
+    +'</div>';
+  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>'));
 }
 const IQ_ANSWER="I can help you start a request, find a deal, track an active request, or refer a friend \u2014 pick a quick action below, or tell me what you need and I'll point you to the right place.";
 function openIQ(){ gSheet('Gopher iQ','<p class="gs-sub">Tell us what you need \u2014 or tap a quick action.</p><div class="iq-row"><span class="iq-b">iQ</span><input class="iq-ask" id="iqAsk" placeholder="Ask Gopher iQ\u2026"><span class="iq-send" data-iq-send>\u2192</span></div><div class="iq-ans" id="iqAns" hidden></div><div class="iq-ctas"><button class="iq-cta" data-goto="flow">Start a request \u2192</button><button class="iq-cta" data-goto="deals">Browse deals \u2192</button><button class="iq-cta" data-goto="track">Track my request \u2192</button><button class="iq-cta" data-goto="refer">Refer &amp; earn \u2192</button></div><div class="gs-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'); }

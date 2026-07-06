@@ -220,8 +220,27 @@ pending state (CTA "Bid submitted · $X — pending", secondary "Bid sent · $X"
 - **Single-round** (same as the counter loop): after a Pass, a *re-bid* won't re-surface on the requester
   (the `bidSeen`/`bidDecided` guard is set) — fine for the demo; multi-round would need edge-triggering.
 
+**Canonical-flow fixes (2026-07-06) — four violations John flagged on a multi-worker labor request:**
+1. **Duplicate broadcast.** `submitRequest()` stashed the pending record, then the Step-7 "Go to Home"
+   button (`goHome()` / `see-workers`) stashed it *again* with a new order id → the same request
+   broadcast twice. Fixed: `stashPending()` is now idempotent per submission (`state._stashed` guard,
+   reset on new-request / demo-restart). Affected every request, not just multi-worker.
+2. **Pick-up shown for a destination-only job.** The flow correctly sets `pickup:''` for a
+   `noSpecificPickup` job, but the Go `job-detail` hardcoded both rows. Fixed: the location block +
+   the placeholder map now key off `j.pickup` — no pickup ⇒ a single **"Location"** row and a one-pin map.
+3. **Multi-worker = ONE broadcast (never per-worker; that's Connect-only).** `buildPending` now carries
+   `workers`; `orderFromReq`/`__injectJob` add a **"Needs N workers"** card pill and a job-detail crew
+   note ("you're responsible for bringing the full crew"). The Go pay shows the **crew total**
+   (`pay × workers`, e.g. `$180` with `$90/worker`) so it reconciles with the requester's total.
+4. **Summary too abbreviated + dead "View details".** `renderStep7` now lists the full detail set
+   (Details, Worker info, Location/Pick-up, …). The home card's **View details** opens `openDetails()`
+   — a `gSheet` rendering every field from the record (pay shown as `total (N × per)`).
+   Verified live end-to-end (labor, 2 workers, single location): one broadcast, no pickup row, crew
+   pill + note, `$180 ($90/worker)`, full summary, working View details. Zero console errors.
+
 **Known gaps / next iteration:**
-- `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
-  `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
+- The `job-detail` **address strings** are still the screen defaults (`1240 Hillsborough St` → `88 Morgan
+  St`) — only the *structure* (pickup shown vs hidden) is now request-driven; wiring the real typed
+  addresses is a separate step John has deferred.
 - The status stepper is a clean PT-friendly path layered on `job-detail`; Go's older **static**
   `worker-flow`/`purchase-*` completion frames are left as-is (not part of the live sync path).
