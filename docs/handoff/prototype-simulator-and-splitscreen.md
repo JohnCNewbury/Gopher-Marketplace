@@ -238,6 +238,18 @@ pending state (CTA "Bid submitted · $X — pending", secondary "Bid sent · $X"
    Verified live end-to-end (labor, 2 workers, single location): one broadcast, no pickup row, crew
    pill + note, `$180 ($90/worker)`, full summary, working View details. Zero console errors.
 
+**Bids-availability rule corrected (2026-07-06) — canonical + code.** Gopher Request was wrongly hiding
+the "ask for bids" option whenever `moreThanOneWorker` (`bidsHiddenByMultiWorker = moreThanOneWorker`).
+That's a **Connect-only** notion. In Request, a >1-worker request **keeps bids** — the single bidder is
+responsible for paying the whole crew, so one bid covers every worker (no discrepancy). New rule
+(`bidsAllowed()` in `gopher-request-flow.html` + `Final/gopher-request.html`):
+`showBids = isVisible('bidsOption') && !(payByHour && (category==='labor'||category==='yard'))`.
+Bids are hidden only **by category** (Delivery, Ride) and — for **Labor/Yard** — when **paying by the
+hour** (a bid is a fixed price; hourly is open-ended). `payMode` falls back to `set` on category/toggle
+change when bids become unavailable. The canonical master `Documentation/Canonical Request Flow -
+Master/connect-flows-granular.html` (divergence table + invariant note) was corrected to match. Verified
+the full 8-category matrix (junk + 2 workers now offers bids; labor+hourly hides them).
+
 **Known gaps / next iteration:**
 - The `job-detail` **address strings** are still the screen defaults (`1240 Hillsborough St` → `88 Morgan
   St`) — only the *structure* (pickup shown vs hidden) is now request-driven; wiring the real typed

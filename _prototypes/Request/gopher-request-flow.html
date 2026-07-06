@@ -1094,6 +1094,10 @@ const STEP_TITLES = ['Pick a service','Job details','Worker info','Locations','W
 function workerCount(){ return state.moreThanOneWorker ? (parseInt(state.numWorkers,10)||1) : 1; }
 function perWorkerPay(){ const r=toNum(state.payAmount); return state.payByHour ? r*(parseInt(state.numHours,10)||1) : r; }
 function workerPayTotal(){ return perWorkerPay()*workerCount(); }
+// Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
+// crew, so one bid covers every worker (no discrepancy). Bids are hidden only by category (bidsOption
+// matrix) and, for Labor/Yard, when paying by the hour. NOTE: NOT gated by moreThanOneWorker.
+function bidsAllowed(){ return isVisible('bidsOption') && !(state.payByHour && (state.category==='labor'||state.category==='yard')); }
 // "Low offer" floor — only meaningful where Gopher iQ pricing exists
 // (Delivery + Ride). Other categories have no suggested-pricing model, so we
 // never show a low-offer caution for them.
@@ -1435,7 +1439,7 @@ function renderStep4(){
    STEP 5 — Worker pay
    ============================================================ */
 function renderStep5(){
-  const showBids = isVisible('bidsOption') && !state.moreThanOneWorker;
+  const showBids = bidsAllowed();
   const rate = toNum(state.payAmount);
   const oneWorkerPay = perWorkerPay();
   const lowThresh = offerLowThreshold();
@@ -2002,7 +2006,7 @@ document.addEventListener('click',(e)=>{
 
   // category select — selects only, no auto-advance
   const cat=e.target.closest('[data-cat]');
-  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
+  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
   // outside tap closes an open popover (only relevant on step 1)
   if(state.step===1 && state.openCatInfo){ state.openCatInfo=null; render(); return; }
 
@@ -2016,7 +2020,9 @@ document.addEventListener('click',(e)=>{
   if(tg){ const k=tg.dataset.toggle; state[k]=!state[k];
     if(k==='multipleItems' && !state[k]) { /* keep itemCount */ }
     if(k==='moreThanOneWorker' && state[k] && state.numWorkers<2) state.numWorkers=2;
-    if(k==='moreThanOneWorker' && state[k]) state.payMode='set'; // bids hidden w/ multi
+    // Bids remain valid for >1-worker requests; only fall back to a set price when bids are truly
+    // unavailable (by category, or Labor/Yard paying by the hour).
+    if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set';
     render(); return; }
 
   // radios
@@ -2117,7 +2123,7 @@ return { all:all, save:save,
  currentOpen:function(){ try{ return sessionStorage.getItem('gopher_open'); }catch(_){ return null; } } };
 })();
   function buildPending(){
-  const c=CATEGORIES[state.category]; const bids=state.payMode!=='set';
+  const c=CATEGORIES[state.category]; const bids=(state.payMode!=='set') && bidsAllowed();
   const fee=computeRequestFee(cogOfferNow());
   const title=(state.description && state.description.trim())? state.description.trim().slice(0,42) : (c.name+' request');
   const amount=bids?'Pending bids':fmt(fee.gmvTotal);
