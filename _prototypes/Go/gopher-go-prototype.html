@@ -1822,6 +1822,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(lock==='connect'){ cta='For Gopher Elite &amp; Pros &mdash; Tier up &#8594;'; ccls=' lock'; }
       else if(lock==='deal'){ cta='Verify your account to unlock this Deal &#8594;'; ccls=' lock'; }
       else if(j.accepted){ cta='Accepted &#10003; &middot; Open Inbox'; ccls=' done'; }
+      else if(j.mode==='bid' && j.bid && !j.bidDeclined){ cta='Bid submitted &middot; $'+j.bid.amt+' &mdash; pending'; ccls=' done'; }
       else if(j.mode==='bid'){ cta='Submit a Bid &#8594;'; }
       else { cta='Accept Request'; }
       // priority banner
@@ -1829,9 +1830,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // secondary actions — reflect a counter that's been sent and is awaiting the requester's reply
       const showCo = (!lock);
       const coPending = !!(j.counter && !j.counterAccepted && !j.counterDeclined);
+      const bidPending = !!(j.bid && !j.bidAccepted && !j.bidDeclined);
       const coBtn = coPending
         ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Counter sent &middot; $'+j.counter.amt+'</button>'
-        : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?'Place Bid':(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
+        : bidPending
+        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Bid sent &middot; $'+j.bid.amt+'</button>'
+        : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?(j.bidDeclined?'Bid again':'Place Bid'):(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       const acts = '<div class="rq-acts">'
         +'<button class="rq-2nd js-ask"><span>'+sv(I.msg)+'</span>Ask a Question</button>'
         +(showCo?coBtn:'')
@@ -1841,6 +1845,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+j.counter.amt+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
         : ((j.counter && j.counterDeclined)
           ? '<div class="rq-hint">'+sv(I.tag)+who+' declined your $'+j.counter.amt+' counter &mdash; counter again or accept the '+(j.amt||'offer')+'.</div>'
+          : '');
+      // requester's verdict on a bid (open-to-bids job; set by the harness on Accept/Decline)
+      const bidStatus = (j.bid && j.bidAccepted)
+        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' hired you at your $'+j.bid.amt+' bid</b> &mdash; you&#8217;re on the job</div>'
+        : ((j.bid && j.bidDeclined)
+          ? '<div class="rq-hint">'+sv(I.tag)+who+' passed on your $'+j.bid.amt+' bid &mdash; you can place a new bid.</div>'
           : '');
 
       // Post-accept status stepper: the worker advances the job and the requester sees each step live.
@@ -1869,6 +1879,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +(rv?'':'<div class="rq-hint">'+sv(I.lock)+(picRv?'Exact addresses unlock when you accept':'Requester photo &amp; exact addresses unlock when you accept'+(j.priority?'':' &mdash; or when they Prioritize you'))+'</div>')
         +prio
         +coStatus
+        +bidStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
         +stepper
         +'<div class="rq-facts">'+facts+'</div>'
@@ -1906,13 +1917,15 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(send) send.onclick=()=>{
         if(!coValidate()){ if(coin) coin.focus(); return; }   // reject same/below-offer counter
         const noteEl=$('.js-conote'), note=noteEl?noteEl.value.trim():'';
-        if(j.mode!=='bid'){ j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'}; }  // shared-store write for the harness
+        if(j.mode==='bid'){ j.bid={amt:coVal, note:note, by:'Marcus K.'}; }              // shared-store write — harness surfaces the bid to the requester
+        else { j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'}; }             // shared-store write for the harness
         coOpen=false; draw();
         toast((j.mode==='bid'?'Bid':'Counter-offer')+' of <b>$'+coVal+'</b> sent to '+who+' &#8594;');
       };
       $('.js-cta').onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ state.msgJob=j; load('inbox'); return; }
+        if(j.mode==='bid' && j.bid && !j.bidDeclined){ toast('Your $'+j.bid.amt+' bid is in — waiting for '+who+' to decide.'); return; }
         if(j.cat==='Ride Sharing' && !(state.ridePhotos&&state.ridePhotos.front&&state.ridePhotos.rear)){ showModal('<h3>Vehicle photos required</h3><p>Ride Sharing jobs require clear front and rear photos of your vehicle before you can accept. Add them in Work Settings under Ride sharing info.</p><button class="mclose">Got it</button>'); return; }
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
@@ -2178,6 +2191,14 @@ if(PT){
     if(decision==='accepted'){ job.counterAccepted=true; job.accepted=true; if(amt) job.amt='$'+amt;
       toast('🎉 '+(job.who||'The requester')+' accepted your $'+amt+' counter — you’re hired'); }
     else { job.counterDeclined=true; toast((job.who||'The requester')+' declined your counter'); }
+    try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
+  };
+  // (h2) requester's verdict on the worker's bid (open-to-bids job), relayed by the harness
+  window.__ptBidResult=function(id,decision,amt){
+    var job=window.__ptJobs[id]; if(!job) return;
+    if(decision==='accepted'){ job.bidAccepted=true; job.accepted=true; job.mode='pay'; if(amt) job.amt='$'+amt;
+      toast('🎉 '+(job.who||'The requester')+' hired you at your $'+amt+' bid — you’re on the job'); }
+    else { job.bidDeclined=true; toast((job.who||'The requester')+' passed on your bid — you can bid again'); }
     try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
   };
   // (h) requester's star rating, relayed by the harness → show it on the worker's job + toast

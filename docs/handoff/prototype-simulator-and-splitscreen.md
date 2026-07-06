@@ -203,11 +203,24 @@ broadcast $0. Fix: `orderFromReq` now passes `bids`, and `__injectJob` sets `mod
 detail → "This request is open to bids / You set your price", CTA → "Submit a Bid", banner → "Open to
 bids". Verified live.
 
+**Bid submit-back loop (added 2026-07-06):** the full open-to-bids negotiation, mirroring the counter
+loop. The worker's "Submit a Bid" send writes `j.bid = {amt, note, by}`; the job-detail reflects the
+pending state (CTA "Bid submitted · $X — pending", secondary "Bid sent · $X"). The harness relays both ways:
+- **Bid → requester** — `watchBid` (600ms) sets `attention:{type:'bid', label:'Bid from … — $X'}`; the
+  request card flips to **"⚠ Bid from … — $X · ACTION NEEDED"** with a **"Review bid →"** CTA
+  (`data-pending-action="bid"` → `openBidReview`).
+- **Hire / Pass → worker** — `openBidReview` (gModal): **Hire** → `GReq.update({stage:'active', hired,
+  amount, pay, bidDecision:'accepted', bidAmt})`; **Pass** → stays `searching`, `bidDecision:'declined'`.
+  `watchBidDecision` relays via `window.__ptBidResult(id, decision, amt)`, which on accept flips the Go
+  job to `accepted` + **`mode:'pay'`** + `amt:'$X'` (so it renders a normal hired job **and** the
+  post-accept status stepper kicks in), or on pass sets `bidDeclined` (worker can bid again).
+- Verified live (2026-07-06): submit bid request → worker bids $175 → requester sees it → **Hire** →
+  worker "hired at your $175 bid", `You'll receive $175`, status stepper appears; and the **Pass** branch
+  (stays open, worker notified). No `$0` anywhere. Zero console errors. Screenshot captured.
+- **Single-round** (same as the counter loop): after a Pass, a *re-bid* won't re-surface on the requester
+  (the `bidSeen`/`bidDecided` guard is set) — fine for the demo; multi-round would need edge-triggering.
+
 **Known gaps / next iteration:**
-- **Bid submit-back is not wired.** When the worker taps "Submit a Bid", the job-detail send handler
-  gates the shared-store write to non-bid mode (`if(j.mode!=='bid')`), so a bid never reaches the
-  requester and their "Total · TBD after bid" never resolves. Wiring it would mirror the counter loop
-  (write `j.bid`, add a `watchBid` relay, surface an "N bids — review" attention on the request card).
 - `job-detail`'s exact pickup/drop-off use the screen's own defaults, not the submitted
   `pickup`/`dropoff` (its unlock logic isn't wired to the injected fields yet).
 - The status stepper is a clean PT-friendly path layered on `job-detail`; Go's older **static**

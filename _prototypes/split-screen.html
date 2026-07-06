@@ -86,6 +86,8 @@
   var decided={};    // GReq order id -> true  (requester's Accept/Decline already relayed to Go)
   var statusSeen={}; // GReq order id -> last post-accept substage relayed to Request
   var ratingSeen={}; // GReq order id -> true  (requester's star rating already relayed to Go)
+  var bidSeen={};    // GReq order id -> true  (worker's bid already surfaced on Request)
+  var bidDecided={}; // GReq order id -> true  (requester's bid Accept/Decline already relayed to Go)
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -227,6 +229,50 @@
     }catch(_){}
   }
 
+  /* ── Go → shared store → Request: a worker's bid on an open-to-bids job surfaces on the request card. ── */
+  function watchBid(){
+    try{
+      var w=R(), l=L();
+      if(w && w.__ptJobs && l && l.GReq){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id];
+          if(job && job.bid && !bidSeen[id] && !job.bidAccepted && !job.bidDeclined){
+            var r=l.GReq.get(id); if(!r){ continue; }   // request not ready yet — retry next tick
+            bidSeen[id]=true;
+            var bd=job.bid, by=bd.by||'A Gopher';
+            l.GReq.update(id, { attention:{ type:'bid', label:'Bid from '+by+' — $'+bd.amt,
+              amt:bd.amt, by:by, note:bd.note||'' } });
+            try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            status('Gopher <b>bid $'+bd.amt+'</b> on '+id+' → open the request card on the left and tap <b>Review bid</b> to hire or pass.');
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Request → shared store → Go: relay the requester's bid Accept/Decline back to the worker. ── */
+  function watchBidDecision(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq){
+        var list=l.GReq.all()||[];
+        for(var i=0;i<list.length;i++){
+          var r=list[i];
+          if(r && r.bidDecision && !bidDecided[r.order]){
+            bidDecided[r.order]=true;
+            var amt=r.bidAmt||'';
+            if(r.bidDecision==='accepted') accepted[r.order]=true;   // this WAS the hire — don't let watchAccept re-fire
+            try{ if(w && w.__ptBidResult) w.__ptBidResult(r.order, r.bidDecision, amt); }catch(_){}
+            status(r.bidDecision==='accepted'
+              ? 'You <b>hired</b> '+(r.hired||'the Gopher')+' at <b>$'+amt+'</b> → '+r.order+' is now Active. 🎉'
+              : 'You <b>passed</b> on the bid → '+r.order+' stays open for more bids.');
+          }
+        }
+      }
+    }catch(_){}
+  }
+
   /* ── One-click reset: wipe the shared store + harness memory and reboot both phones empty. ── */
   var resetBtn=document.getElementById('resetDemo');
   function resetDemo(){
@@ -236,7 +282,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={};
+    injected={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={};
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -249,7 +295,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); watchBid(); watchBidDecision(); setTimeout(tick, 600); }
   tick();
 })();
 </script>

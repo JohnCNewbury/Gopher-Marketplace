@@ -873,7 +873,9 @@ function cardHTML(r){
  var btn = attn
   ? (attn.type==='counter'
      ? '<button class="rc-view urgent" data-pending-action="counter" data-order="'+r.order+'">Review now →</button>'
-     : attn.type==='rate'
+     : attn.type==='bid'
+       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">Review bid →</button>'
+       : attn.type==='rate'
        ? '<button class="rc-view urgent" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
@@ -928,6 +930,7 @@ document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
+ else if(act==='bid'){ if(order) openBidReview(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
  else if(act==='view'){ var ns=a.getAttribute('data-nav-screen'); if(order&&window.GReq) GReq.openOrder(order); if(ns&&window.__navHook){ window.__navHook(ns); return; } var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
@@ -970,6 +973,29 @@ function openCounterReview(order){
   if(dec) dec.onclick=function(){
     GReq.update(order,{ attention:null, counterDecision:'declined', counterAmt:amt });
     o.remove(); renderPending(); toast('Counter declined \u2014 request stays open');
+  };
+}
+// Bid review: an open-to-bids request received a Gopher's bid \u2014 Hire (at their price) or Pass (stay open).
+function openBidReview(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='bid') return;
+  var a=r.attention, amt=a.amt, by=a.by||'the Gopher', note=a.note||'';
+  var o=gModal(
+    '<h3 class="gm-h">Bid from '+by+'</h3>'
+    +'<p class="gm-p">'+by+' will take <b>#'+order+'</b> for <b style="color:#0a7d44">$'+amt+'</b>.'
+    +(note?'<br><span style="color:#5b6472">\u201c'+note+'\u201d</span>':'')+'</p>'
+    +'<div style="display:flex;gap:10px;margin-top:16px;">'
+      +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Pass</button>'
+      +'<button class="gm-accept" style="flex:1;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Hire \u2014 $'+amt+'</button>'
+    +'</div>');
+  var acc=o.querySelector('.gm-accept'), dec=o.querySelector('.gm-decline');
+  if(acc) acc.onclick=function(){
+    GReq.update(order,{ stage:'active', accepted:1, hired:by, amount:'$'+Number(amt).toFixed(2), pay:Number(amt),
+      attention:null, bidDecision:'accepted', bidAmt:amt, when:'Accepted \u00b7 $'+amt+' \u00b7 on the job' });
+    o.remove(); uiBucket='active'; uiIdx=0; renderPending(); toast('Hired '+by+' at $'+amt);
+  };
+  if(dec) dec.onclick=function(){
+    GReq.update(order,{ attention:null, bidDecision:'declined', bidAmt:amt });
+    o.remove(); renderPending(); toast('Bid passed \u2014 request stays open');
   };
 }
 // Rate your Gopher \u2014 opens when the worker marks the job complete (attention.type==='rate').
