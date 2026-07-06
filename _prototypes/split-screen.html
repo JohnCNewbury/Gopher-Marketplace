@@ -197,14 +197,14 @@
             var r=l.GReq.get(id); if(!r){ continue; }   // request not ready — retry next tick
             statusSeen[id]=job.substage;
             var patch={ stage:'active', substage:job.substage };
-            if(job.substage==='done'){ patch.attention={ type:'rate',
+            if(job.substage==='completed'){ patch.attention={ type:'rate',
               label:'Rate '+(r.hired||'your Gopher')+' — job complete' }; }
             l.GReq.update(id, patch);
             try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
-            var LB={enroute:'is on the way',arrived:'has arrived at pickup',working:'started the job',done:'completed the job'};
+            var LB={inprogress:'started the job',items:'secured the items',completed:'completed the job'};
             status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
-              +(job.substage==='done'?' Open the request card on the left and tap <b>Rate now</b>.':''));
+              +(job.substage==='completed'?' Open the request card on the left and tap <b>Rate now</b>.':''));
           }
         }
       }

@@ -828,6 +828,27 @@ const MODAL_CSS = `
 .modal-card .probadge{height:34px;display:block;margin-bottom:8px;}
 `;
 function showModal(html){ const ov=document.createElement('div'); ov.className='modal-overlay'; ov.innerHTML='<div class="modal-card">'+html+'</div>'; ov.addEventListener('click',e=>{ if(e.target===ov||e.target.classList.contains('mclose')) ov.remove(); }); const host=stage.querySelector('.host'); const root=host&&host.shadowRoot; const frame=root&&root.querySelector('.frame'); if(frame){ if(!root.querySelector('style[data-modal]')){ const st=document.createElement('style'); st.setAttribute('data-modal','1'); st.textContent=MODAL_CSS; root.appendChild(st); } ov.style.top=host.scrollTop+'px'; ov.style.bottom='auto'; ov.style.height=host.clientHeight+'px'; frame.appendChild(ov); } else { document.body.appendChild(ov); } return ov; }
+/* ── G40-308 worker modals (G40-309 survivors built for the Go app) ──────────
+   Each is a G40-308-styled showModal(). Reachable now via the review launcher
+   (bottom-right "G40" button → window.__g40Menu). Real triggers to be wired at
+   each flow point by the dev; content + presentation are canonical here. */
+function __g40btn2(label){ return '<button class="mclose" style="margin-top:8px;height:44px;border-radius:12px;background:transparent;color:#002461;border:1.5px solid #d4d8e3;font-family:\'Nunito\';font-weight:800;font-size:13px;width:100%;cursor:pointer;">'+label+'</button>'; }
+window.G40_GO = {
+  purchaseNeeded: function(){ return showModal('<h3>You’ll front the cost of items</h3><p>This request needs you to pay for the items out of pocket first. Once the order is completed and confirmed, your full payout transfers to your bank right away. If you can’t or don’t want to front the cost, please don’t accept.</p><button class="mclose">Accept — I’ll front the cost</button>'+__g40btn2('Do not accept')); },
+  pendingCA: function(){ return showModal('<h3>Approve the cost adjustment first</h3><p>This request can’t be completed while a cost adjustment is pending. Message your requester to approve it — or cancel the adjustment to complete for the original amount.</p><button class="mclose">Message requester</button>'+__g40btn2('Cancel the adjustment')); },
+  idNotConfirmed: function(){ return showModal('<h3>ID &amp; identity not confirmed?</h3><p>You’re marking that you could <b>not</b> confirm the requester’s ID and identity. Please add the details that led to this — it’s logged for Trust &amp; Safety.</p><textarea placeholder="What happened at hand-off?" style="width:100%;min-height:70px;border:1.5px solid #d4d8e3;border-radius:10px;padding:9px;font-family:inherit;font-size:12.5px;box-sizing:border-box;"></textarea><button class="mclose">Submit</button>'+__g40btn2('Back')); },
+  caOver20: function(){ return showModal('<h3>This exceeds the pre-authorized amount</h3><p>The requester is pre-authorized for a set amount. Anything higher needs a new temporary authorization on their end. <b>Don’t purchase additional items</b> until the adjustment is approved and funded — if it fails, the order reverts to the original amount.</p><button class="mclose">Got it</button>'); },
+  acceptedAgeRestricted: function(){ return showModal('<h3>Age-restricted — verify ID at hand-off</h3><p>Before handing off the items, <b>take a photo of the requester’s ID and verify their identity</b> in the app. Message them to introduce yourself and update each checkpoint as you go.</p><button class="mclose">Got it</button>'); },
+  payoutRequired: function(){ return showModal('<h3>Set up your payout account</h3><p>You’ll need a valid payout account before you can view request details and get paid. It only takes a minute.</p><button class="mclose">Set up payout account</button>'); },
+  requesterPaymentHold: function(){ return showModal('<h3>Requester is fixing their payment</h3><p>We’ve given the requester under 5 minutes to correct a payment issue. Once it’s cleared and funds are guaranteed, this request is yours. Want to hold it?</p><button class="mclose">Continue — hold it</button>'+__g40btn2('Do not accept')); },
+  multiWorker: function(){ return showModal('<h3>You’re accepting a multi-worker job</h3><p>You’re responsible for the full worker headcount on this job, and the total pay reflects all of them. Only accept if you can provide every worker needed and perform the job.</p><button class="mclose">Continue</button>'+__g40btn2('Do not accept')); },
+  adjustedPayLow: function(){ return showModal('<h3>This is below the original offer</h3><p>The pay you’re adjusting to is <b>less than the original offer</b> — this amount is your net earnings. Continue only if this is agreed.</p><button class="mclose">Continue</button>'+__g40btn2('Edit adjustment')); }
+};
+window.__g40Menu = function(){
+  var items=[['purchaseNeeded','Purchase-needed — front the cost'],['pendingCA','Can’t complete — pending cost adjustment'],['idNotConfirmed','ID &amp; identity not confirmed'],['caOver20','Cost adjustment &gt; 20% auth'],['acceptedAgeRestricted','Accepted age-restricted — next steps'],['payoutRequired','Payout account required'],['requesterPaymentHold','Requester payment issue — hold'],['multiWorker','Multi-worker job accept'],['adjustedPayLow','Adjusted pay below original offer']];
+  showModal('<h3>G40-308 worker modals</h3><p>Preview each rebuilt modal.</p>'+items.map(function(i){return '<button class="mclose" style="margin-top:6px;height:40px;border-radius:10px;background:#eef0f8;color:#002461;border:none;font-family:\'Nunito\';font-weight:800;font-size:12.5px;width:100%;cursor:pointer;text-align:left;padding:0 12px;" onclick="setTimeout(function(){window.G40_GO.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+'<button class="mclose" style="margin-top:10px;background:transparent;color:#9aa1ad;border:none;font-weight:700;">Close</button>');
+};
+(function(){ function add(){ if(document.getElementById('g40Launch'))return; var b=document.createElement('button'); b.id='g40Launch'; b.textContent='G40'; b.title='Preview G40-308 worker modals'; b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99999;background:#002461;color:#33D975;border:none;border-radius:10px;padding:9px 13px;font-family:sans-serif;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,36,97,.3)'; b.onclick=function(){ try{ window.__g40Menu(); }catch(e){} }; document.body.appendChild(b); } if(document.body) add(); else document.addEventListener('DOMContentLoaded', add); })();
 /* ── Personal Info edit — canonical Gopher profile, DUAL SAME-CHANNEL OTP on Save (mirror of f5318a5 / Jira G40-203) ──
    Go is the worker APP -> default OTP channel = SMS (web surfaces default Email). Routing on Save:
      email changed  -> two EMAIL codes, sequential: CURRENT email then NEW email
@@ -1759,13 +1780,15 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Counter opens one step ABOVE the requester's offer — a counter must beat it (real live-app rule).
     let coOpen=false, coVal=(j.mode==='bid'?amtNum:amtNum+1);
 
-    // Post-accept status lifecycle. Each step writes j.substage onto the shared job object so the
-    // split-screen harness can reflect it live on the requester's card (on the way → arrived → complete).
-    const STATUS_FLOW=[
-      {key:'enroute', label:'On the way',        cta:'I’m on my way'},
-      {key:'arrived', label:'Arrived at pickup', cta:'I’ve arrived'},
-      {key:'done',    label:'Job complete',      cta:'Mark job complete'}
-    ];
+    // Post-accept status lifecycle (canonical): In progress → Items Picked Up | Items Purchased →
+    // Completed. The middle "items" stage only applies to a delivery/errand (something to pick up or
+    // buy); labor/yard/etc. collapse to In progress → Completed. The label depends on cost of items:
+    // Items Purchased when the worker fronts money, Items Picked Up otherwise.
+    const _hasItems = (+j.cost>0) || /delivery|errand/i.test(j.cat||'');
+    const _itemsLabel = (+j.cost>0) ? 'Items Purchased' : 'Items Picked Up';
+    const STATUS_FLOW=[{key:'inprogress', label:'In progress', cta:'Start the job'}]
+      .concat(_hasItems ? [{key:'items', label:_itemsLabel, cta:((+j.cost>0)?'Items purchased':'Items picked up')}] : [])
+      .concat([{key:'completed', label:'Completed', cta:'Mark job complete'}]);
 
     function body(){
       const picRv=!!(j.priority||j.accepted), rv=!!j.accepted;
@@ -1846,8 +1869,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Bid sent &middot; $'+j.bid.amt+'</button>'
         : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?(j.bidDeclined?'Bid again':'Place Bid'):(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       const acts = '<div class="rq-acts">'
-        +'<button class="rq-2nd js-ask"><span>'+sv(I.msg)+'</span>Ask a Question</button>'
-        +(showCo?coBtn:'')
+        +'<button class="rq-2nd js-ask"><span>'+sv(I.msg)+'</span>Message '+String(who||'requester').split(' ')[0]+'</button>'
+        +((showCo && !j.accepted)?coBtn:'')   // once hired (accept/counter/bid), no more countering
         +'</div>';
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)

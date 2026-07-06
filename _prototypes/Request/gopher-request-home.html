@@ -852,10 +852,10 @@ function statusText(r){
  if(r.stage==='matched') return 'Matched with <b>'+(r.hired||'a Gopher')+'</b> · arriving ~12 min';
  if(r.stage==='active' && r.substage){
   var _who=r.hired||'your Gopher';
-  var _S={ enroute:'🚗 <b>On the way</b> · '+_who+' is heading over',
-           arrived:'📍 <b>Arrived</b> · '+_who+' is at the pickup',
-           working:'🛠️ <b>Job in progress</b> · '+_who+' is on it',
-           done:'✅ <b>Job complete</b> · confirm &amp; rate',
+  var _items=(+r.cost>0)?'Items purchased':'Items picked up';
+  var _S={ inprogress:'🛠️ <b>In progress</b> · '+_who+' is on the job',
+           items:'📦 <b>'+_items+'</b> · '+_who+' has your items',
+           completed:'✅ <b>Completed</b> · confirm &amp; rate',
            rated:'⭐ <b>Rated</b> · thanks for your feedback' };
   if(_S[r.substage]) return _S[r.substage];
  }
@@ -932,7 +932,7 @@ document.addEventListener('click',function(e){
  if(act==='counter'){ if(order) openCounterReview(order); return; }
  else if(act==='bid'){ if(order) openBidReview(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
- else if(act==='view'){ var ns=a.getAttribute('data-nav-screen'); if(order&&window.GReq) GReq.openOrder(order); if(ns&&window.__navHook){ window.__navHook(ns); return; } var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); } if(r){ openDetails(order); } }
+ else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
 });
 window.__onJobStarted=function(order){ var o=order||((GReq.all()[0]||{}).order); if(o){ GReq.update(o,{stage:'active',attention:null}); renderPending(); } };
@@ -1014,6 +1014,49 @@ function openRateModal(order){
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
   sub.onclick=function(){ if(!picked) return; GReq.update(order,{ substage:'rated', attention:null, rating:picked, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
+}
+// Live tracker \u2014 opened from an ACTIVE request's "Track live". Shows the ONE assigned gopher (Request
+// never tracks workers individually), a live map, and a single canonical status ladder driven by the
+// live substage: In progress \u2192 Items Picked Up | Items Purchased \u2192 Completed.
+function openLiveTracker(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; }); };
+  var who=r.hired||'your Gopher';
+  var initials=(who.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('')||'G').toUpperCase();
+  var hasItems=(+r.cost>0)||/delivery|errand/i.test(r.cat||'');
+  var itemsLabel=(+r.cost>0)?'Items purchased':'Items picked up';
+  var hasPickup=!!(r.hasPickup&&r.pickup);
+  var STAGES=[{k:'accepted',l:'Accepted',s:who+' is hired'},{k:'inprogress',l:'In progress',s:who+' is on the job'}]
+    .concat(hasItems?[{k:'items',l:itemsLabel,s:who+' has your items'}]:[])
+    .concat([{k:'completed',l:'Completed',s:'All done \u2014 thanks!'}]);
+  var keys=STAGES.map(function(x){return x.k;});
+  var cur=r.substage?keys.indexOf(r.substage):0; if(cur<0)cur=0;
+  var isDone=cur>=keys.indexOf('completed');
+  var eta=isDone?'Completed \u2014 thanks for using Gopher!':(who+' is on it \u00b7 updates in real time');
+  var dpx=hasPickup?250:170, dpy=hasPickup?60:100;
+  var map='<svg viewBox="0 0 320 150" style="width:100%;display:block;border-radius:14px;background:#E9EDE3;">'
+    +'<g stroke="#fff" stroke-width="5"><line x1="0" y1="42" x2="320" y2="42"/><line x1="0" y1="96" x2="320" y2="96"/><line x1="90" y1="0" x2="90" y2="150"/><line x1="210" y1="0" x2="210" y2="150"/></g>'
+    +(hasPickup?'<path d="M60 118 Q140 70 250 60" fill="none" stroke="#002461" stroke-width="2.4" stroke-dasharray="2 6"/><circle cx="60" cy="118" r="7" fill="#1CB061" stroke="#fff" stroke-width="2.4"/>':'')
+    +'<circle cx="'+dpx+'" cy="'+dpy+'" r="7" fill="#002461" stroke="#fff" stroke-width="2.4"/></svg>';
+  var goph='<div style="display:flex;align-items:center;gap:11px;padding:12px;border:1px solid #e6ece6;border-radius:14px;background:#fff;margin-top:10px;">'
+    +'<div style="width:46px;height:46px;border-radius:50%;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:900;font-size:16px;flex:0 0 auto;">'+esc(initials)+'</div>'
+    +'<div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:900;font-size:15px;color:#002461;">'+esc(who)+'</div>'
+    +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#1CB061;font-weight:700;">\u2713 TrustShield Verified \u00b7 \u2605 4.9</div></div>'
+    +'<button class="lt-msg" style="border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:12px;cursor:pointer;">Message</button></div>';
+  var steps=STAGES.map(function(x,i){ var done=i<=cur;
+    return '<div style="display:flex;gap:10px;align-items:flex-start;">'
+      +'<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;"><span style="width:18px;height:18px;border-radius:50%;background:'+(done?'#1CB061':'#e3ddcd')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;">'+(done?'\u2713':'')+'</span>'+(i<STAGES.length-1?'<span style="width:2px;height:20px;background:'+(i<cur?'#1CB061':'#e3ddcd')+';"></span>':'')+'</div>'
+      +'<div style="padding-bottom:6px;"><div style="font-family:Nunito;font-weight:800;font-size:13px;color:'+(done?'#002461':'#8C8675')+';">'+x.l+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8C8675;">'+esc(x.s)+'</div></div></div>';
+  }).join('');
+  var body='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:2px 0 10px;">'+esc(r.title||'Your request')+' \u00b7 #'+order+'</div>'
+    +map
+    +'<div style="display:flex;align-items:center;gap:7px;margin:10px 0 2px;font-family:Nunito;font-weight:700;font-size:12px;color:#15623a;"><span style="width:8px;height:8px;border-radius:50%;background:#1CB061;display:inline-block;"></span>'+esc(eta)+'</div>'
+    +goph
+    +'<div style="font-family:Nunito;font-weight:900;font-size:12px;color:#8C8675;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;">Status</div><div>'+steps+'</div>'
+    +(r.attention&&r.attention.type==='rate'?'<button class="lt-rate" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Rate '+esc(who)+' \u2192</button>':'');
+  var o=gSheet('Live tracking', body);
+  var mb=o.querySelector('.lt-msg'); if(mb) mb.onclick=function(){ o.remove(); toast('Messaging '+who+'\u2026'); };
+  var rb=o.querySelector('.lt-rate'); if(rb) rb.onclick=function(){ o.remove(); openRateModal(order); };
 }
 // Full request details \u2014 opened from a card's "View details" (a submitted/scheduled request has no
 // tracking screen yet, so this sheet shows everything the requester entered).
