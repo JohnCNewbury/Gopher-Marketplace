@@ -955,20 +955,41 @@ function gSheet(title,html){ gClose(); const o=document.createElement('div'); o.
 // Counter-offer review: a Gopher countered above your offer \u2014 Accept (hire at the new price) or Decline (stay open).
 function openCounterReview(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='counter') return;
-  var a=r.attention, amt=a.amt, was=a.was, by=a.by||'the Gopher', note=a.note||'';
+  var a=r.attention, amt=+a.amt, was=+a.was, by=a.by||'the Gopher', note=a.note||'';
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  // Full cost-difference breakdown. A counter changes the payment to the Gopher; that flows through
+  // the instant-transfer fee (8%) to the total. Cost of items is unchanged by a pay counter.
+  var cost=+r.cost||0;
+  var origTotal=parseFloat(String(r.amount||'').replace(/[^0-9.]/g,''))||(was+cost);
+  var origFee=Math.max(0, origTotal - was - cost);
+  var feeDelta=0.08*(amt-was);
+  var newFee=origFee+feeDelta, newTotal=amt+cost+newFee;
+  var diffTxt=function(d){ var s=(d>0?'+':(d<0?'\u2212':'')); var c=(d>0?'#0a7d44':(d<0?'#c0392b':'#8a94a3')); return '<span style="color:'+c+';font-weight:800;">'+s+money(Math.abs(d))+'</span>'; };
+  var row=function(l,o1,n1,d,strong){ return '<div style="display:grid;grid-template-columns:1.4fr 1fr auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0eef2;'+(strong?'border-top:2px solid #dfe3ea;margin-top:2px;':'')+'font-family:\'DM Sans\',sans-serif;font-size:12.5px;">'
+    +'<span style="color:'+(strong?'#002461':'#8a94a3')+';font-weight:'+(strong?'800':'600')+';">'+l+'</span>'
+    +'<span style="text-align:right;color:#8a94a3;"><s>'+money(o1)+'</s> \u2192 <b style="color:#002461;">'+money(n1)+'</b></span>'
+    +'<span style="text-align:right;min-width:64px;">'+diffTxt(d)+'</span></div>'; };
+  var breakdown='<div style="margin:10px 0 4px;border:1px solid #eceaf0;border-radius:12px;padding:10px 12px;background:#fbfafc;">'
+    +row('Cost of items', cost, cost, 0)
+    +row('Payment to '+by.split(' ')[0], was, amt, amt-was)
+    +row('Request fee', origFee, newFee, feeDelta)
+    +row('Total', origTotal, newTotal, newTotal-origTotal, true)
+    +'</div>'
+    +(note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:2px 0 4px;"><b>'+esc(by.split(' ')[0])+'\u2019s note:</b> \u201C'+esc(note)+'\u201D</div>':'');
   var o=gModal(
-    '<h3 class="gm-h">Counter-offer from '+by+'</h3>'
-    +'<p class="gm-p">'+by+' will take <b>#'+order+'</b> for <b style="color:#0a7d44">$'+amt+'</b> \u2014 your offer was <s style="color:#8a94a3">$'+was+'</s>.'
-    +(note?'<br><span style="color:#5b6472">\u201C'+note+'\u201D</span>':'')+'</p>'
-    +'<div style="display:flex;gap:10px;margin-top:16px;">'
+    '<h3 class="gm-h">Counter-offer from '+esc(by)+'</h3>'
+    +'<p class="gm-p" style="margin-bottom:4px;">'+esc(by)+' will take <b>#'+order+'</b> for <b style="color:#0a7d44">'+money(amt)+'</b> \u2014 your offer was <s style="color:#8a94a3">'+money(was)+'</s>. Here\u2019s exactly what changes:</p>'
+    +breakdown
+    +'<div style="display:flex;gap:10px;margin-top:12px;">'
       +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Decline</button>'
-      +'<button class="gm-accept" style="flex:1;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Accept \u2014 $'+amt+'</button>'
+      +'<button class="gm-accept" style="flex:1.3;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Accept \u2014 '+money(newTotal)+' total</button>'
     +'</div>');
   var acc=o.querySelector('.gm-accept'), dec=o.querySelector('.gm-decline');
   if(acc) acc.onclick=function(){
-    GReq.update(order,{ stage:'active', accepted:1, hired:by, amount:'$'+Number(amt).toFixed(2), pay:Number(amt),
-      attention:null, counterDecision:'accepted', counterAmt:amt, when:'Accepted \u00B7 $'+amt+' \u00B7 on the job' });
-    o.remove(); uiBucket='active'; uiIdx=0; renderPending(); toast('Hired '+by+' at $'+amt);
+    GReq.update(order,{ stage:'active', accepted:1, hired:by, amount:money(newTotal), pay:amt,
+      attention:null, counterDecision:'accepted', counterAmt:amt, when:'Accepted \u00B7 '+money(newTotal)+' \u00B7 on the job' });
+    o.remove(); uiBucket='active'; uiIdx=0; renderPending(); toast('Hired '+by+' at '+money(amt));
   };
   if(dec) dec.onclick=function(){
     GReq.update(order,{ attention:null, counterDecision:'declined', counterAmt:amt });

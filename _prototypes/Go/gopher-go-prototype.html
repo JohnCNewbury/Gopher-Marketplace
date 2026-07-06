@@ -2148,7 +2148,13 @@ if(PT){
     (document.head||document.documentElement).appendChild(s); })();
   // (c) force the inner phone frame (shadow DOM) to fill; relay nav to the harness
   var __ptLoad=load;
-  load=function(id,isBack){ __ptLoad(id,isBack);
+  // PT guard: the imported multi-frame "design-review" job screens are static annotation mockups
+  // (e.g. "Gopher Go — Request lifecycle…") — they must NEVER surface in the live split. Redirect any
+  // attempt to reach one to the real live screen (the open job, else the Available feed).
+  var PT_BLOCK={requests:1,'worker-flow':1,'purchase-delivery':1,'purchase-disclaimer':1,'counter-offer':1,'job-card-states':1,'completion-flow':1};
+  load=function(id,isBack){
+    if(PT_BLOCK[id]){ id = (state.job ? 'job-detail' : 'jobs-list'); isBack=false; }
+    __ptLoad(id,isBack);
     // Overlay fix: the "new job" banner must never sit over the opened request — retract it on entry.
     if(id==='job-detail'){ try{ var _bn=document.getElementById('ptBanner'); if(_bn){ clearTimeout(_bn._h); _bn.style.transform='translateX(-50%) translateY(-160%)'; } }catch(_){} }
     try{ var host=stage&&stage.querySelector('.host'), sr=host&&host.shadowRoot;
