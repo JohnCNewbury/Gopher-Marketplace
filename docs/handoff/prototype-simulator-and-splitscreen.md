@@ -176,6 +176,12 @@ the banner. Active reflects accepted jobs; Scheduled stays 0 (PT injects only `s
 token so a fresh load always serves the *current* app files — without it Safari/Chrome can serve a stale
 `?pt=1` copy (old baked jobs / missing fixes).
 
+**Reset demo button (added 2026-07-05):** a `↺ Reset demo` button in the harness top bar (`resetDemo()`)
+clears the shared store + both frames' `sessionStorage`, forgets every harness relay map
+(`injected/accepted/countered/decided/statusSeen/ratingSeen`), and reboots both iframes empty (cache-busted).
+It disables during the reload and re-enables on both `onload`s (~a few seconds for the 1.6 MB Go file).
+This is more thorough than a page reload, which would leave the persisted `sessionStorage` records behind.
+
 **Post-accept status lifecycle (added 2026-07-05, was a known gap):** after Accept, the Go `job-detail`
 now shows a **Job status** stepper (`STATUS_FLOW` = on the way → arrived → complete). Each tap writes
 `job.substage` onto the shared job object (`__ptJobs[id]`) and live-redraws. The harness relays both ways:

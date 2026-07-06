@@ -16,6 +16,10 @@
   .bar .spacer{ flex:1; }
   .status{ width:100%; font-size:12.5px; color:rgba(255,255,255,.78); font-family:'DM Sans',sans-serif; line-height:1.5; }
   .status b{ color:var(--green); }
+  .reset{ font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; color:#cfe0ff; background:rgba(120,170,255,.15); border:1px solid rgba(120,170,255,.38); border-radius:99px; padding:7px 15px; cursor:pointer; white-space:nowrap; transition:background .15s, opacity .15s; }
+  .reset:hover{ background:rgba(120,170,255,.30); }
+  .reset:active{ transform:translateY(1px); }
+  .reset[disabled]{ opacity:.5; cursor:default; }
 
   .stage{ display:flex; gap:44px; justify-content:center; align-items:flex-start; padding:26px 20px 44px; flex-wrap:wrap; }
   .col{ display:flex; flex-direction:column; align-items:center; gap:10px; }
@@ -38,6 +42,7 @@
 <div class="bar">
   <h1><span class="dot"></span> Gopher · Request ↔ Go — live</h1>
   <span class="spacer"></span>
+  <button id="resetDemo" class="reset" type="button" title="Clear both phones and start fresh">↺ Reset demo</button>
   <div class="status" id="status">Two real apps sharing one in-browser database. In the <b>Request</b> phone (left), tap <b>＋ start a request</b>, fill in the details and submit — it appears live as a job on the <b>Go</b> phone (right) with a notification. Accept it there to update the request.</div>
 </div>
 
@@ -59,7 +64,7 @@
 </div>
 
 <div class="hint">
-  <b>How it works —</b> there is no server and no fake bridge. Both phones load the real apps, empty of any demo requests, and share one browser-side store. A request you submit on the left is written to that store; the Go app reads it as a genuine <b>Available job</b> and raises a notification. When the Gopher opens and <b>accepts</b> it, that flips back through the same store and the request moves to your <b>Active</b> list on the left. Reload the page to start over.
+  <b>How it works —</b> there is no server and no fake bridge. Both phones load the real apps, empty of any demo requests, and share one browser-side store. A request you submit on the left is written to that store; the Go app reads it as a genuine <b>Available job</b> and raises a notification. When the Gopher opens and <b>accepts</b> it, that flips back through the same store and the request moves to your <b>Active</b> list on the left. Tap <b>↺ Reset demo</b> (top-right) to wipe both phones and start fresh.
 </div>
 
 <script>
@@ -221,6 +226,28 @@
       }
     }catch(_){}
   }
+
+  /* ── One-click reset: wipe the shared store + harness memory and reboot both phones empty. ── */
+  var resetBtn=document.getElementById('resetDemo');
+  function resetDemo(){
+    if(resetBtn){ resetBtn.disabled=true; }
+    status('Resetting… clearing both phones.');
+    // 1) clear the shared store + any persisted state on both same-origin frames
+    try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
+    try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
+    // 2) forget everything the harness has relayed so the fresh frames start clean
+    injected={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={};
+    // 3) reboot both phones to their empty state (cache-busted, like the first load)
+    var v='&v='+Date.now();
+    reqFrame.src=reqFrame.getAttribute('data-src')+v;
+    goFrame.src=goFrame.getAttribute('data-src')+v;
+    // 4) re-enable once both frames have reloaded
+    var pending=2;
+    function done(){ if(--pending<=0){ if(resetBtn) resetBtn.disabled=false;
+      status('Ready — both phones are empty. On the <b>Request</b> phone (left), tap <b>＋ start a request</b> and submit; it appears live on the <b>Go</b> phone (right).'); } }
+    reqFrame.onload=done; goFrame.onload=done;
+  }
+  if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
   function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); setTimeout(tick, 600); }
   tick();
