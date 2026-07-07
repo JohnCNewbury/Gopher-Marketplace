@@ -3945,7 +3945,7 @@
      come from a privacy-safe, client-side dataset (assets/js/gopher-deals-audience.js:
      ZIP-centroid + jitter, no real home coordinates, no backend / no network calls).
      If Maps is briefly unavailable, we fall back to the regional view. */
-  var MARKER_CAP = 2000;   // dots drawn max (counts stay exact); keeps dense metros smooth
+  var MARKER_CAP = 4000;   // max dots drawn (counts stay exact); evenly sampled, keeps it smooth
   var _map=null,_center=null,_ring=null,_pinMarkers=[],_centerMarker=null;
   var _gmapsReady=false,_audience=[],_mapTries=0,_gcTries=0;
   var GOPHER_MAP_STYLE=[
@@ -4092,10 +4092,13 @@
   function drawPins(){
     for(var i=0;i<_pinMarkers.length;i++){ _pinMarkers[i].setMap(null); }
     _pinMarkers=[];
-    var shown=0;
+    // If a radius holds more points than we cap-draw, take an EVEN sample across the whole
+    // set (stride) so the dots stay spread out. Drawing the first N bunched them in one corner.
+    var total=0; eachInRadius(function(){ total++; });
+    var stride = total>MARKER_CAP ? Math.ceil(total/MARKER_CAP) : 1;
+    var idx=0;
     eachInRadius(function(lat,lng,role){
-      if(shown>=MARKER_CAP) return;   // counts stay exact; only the drawn dots are capped
-      shown++;
+      if((idx++ % stride)!==0) return;
       var color = role===1 ? '#002461' : '#33D975';   // worker navy / customer green
       _pinMarkers.push(new google.maps.Marker({ map:_map, position:{lat:lat,lng:lng},
         clickable:false, optimized:true,
