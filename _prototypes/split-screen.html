@@ -79,6 +79,8 @@
   function L(){ try{ return reqFrame.contentWindow; }catch(_){ return null; } }
   function R(){ try{ return goFrame.contentWindow;  }catch(_){ return null; } }
   function status(m){ statusEl.innerHTML=m; }
+  /* Branded Gopher Request banner (G40-306), rendered inside the request phone. */
+  function reqBanner(t,s){ try{ var l=L(); if(l && l.GopherBanner) l.GopherBanner.show({app:'request',title:t,sub:s}); }catch(_){}}
 
   var injected={};   // GReq order id -> true  (already pushed to Go)
   var injectedSeq={};// GReq order id -> last resubmitSeq injected (re-inject on edit-resubmit)
@@ -140,6 +142,7 @@
               try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
               try{ if(l.initPending) l.initPending(); else if(l.renderPending) l.renderPending(); }catch(_){}
             }
+            reqBanner('Your Request Was Accepted','Select here to view details');
             status('Gopher <b>accepted</b> '+id+' → the request just moved to your <b>Active</b> list on the left. 🎉');
           }
         }
@@ -164,6 +167,7 @@
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
             try{ if(l.__counterAlert) l.__counterAlert(id); }catch(_){}   // fire the requester's NEEDS-ATTENTION banner
+            reqBanner('Gopher Interested In Your Request','Select here to view details');
             status('Gopher <b>countered</b> '+id+' at <b>$'+c.amt+'</b> (you offered $'+c.was+') → the requester\'s card lit up a <b>banner</b>. Tap <b>Review now</b> to Accept or Decline.');
           }
         }
@@ -180,10 +184,13 @@
         for(var i=0;i<list.length;i++){
           var r=list[i];
           if(r && r.counterDecision && !decided[r.order]){
-            decided[r.order]=true;
+            // Only mark relayed once the Go side actually has the hook AND the job — otherwise a tick
+            // where the Go phone is mid-reload would swallow the accept/decline forever (retry next tick).
+            if(!(w && w.__ptDecision && w.__ptJobs && w.__ptJobs[r.order])){ continue; }
             var amt=r.counterAmt||'';
+            try{ w.__ptDecision(r.order, r.counterDecision, amt); }catch(_){ continue; }
+            decided[r.order]=true;
             if(r.counterDecision==='accepted') accepted[r.order]=true;   // this WAS the accept — don't let watchAccept re-fire
-            try{ if(w && w.__ptDecision) w.__ptDecision(r.order, r.counterDecision, amt); }catch(_){}
             status(r.counterDecision==='accepted'
               ? 'You <b>accepted</b> the $'+amt+' counter → '+r.order+' is now <b>Active</b> and the Gopher is hired at the new price. 🎉'
               : 'You <b>declined</b> the counter → the Gopher was notified; '+r.order+' stays open for offers.');
@@ -211,6 +218,10 @@
             try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
             var LB={inprogress:'started the job',items:'secured the items',completed:'completed the job'};
+            var GB={inprogress:['Your Request Is In-Progress','Select here to view details'],
+                    items:['Your Items Have Been Purchased','Select here to view details'],
+                    completed:['Your Request Was Completed!','Please select here to confirm']};
+            if(GB[job.substage]) reqBanner(GB[job.substage][0],GB[job.substage][1]);
             status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
               +(job.substage==='completed'?' Open the request card on the left and tap <b>Rate now</b>.':''));
           }
@@ -228,8 +239,9 @@
         for(var i=0;i<list.length;i++){
           var r=list[i];
           if(r && r.rating && !ratingSeen[r.order]){
+            if(!(w && w.__ptRated && w.__ptJobs && w.__ptJobs[r.order])){ continue; }   // Go not ready — retry next tick
+            try{ w.__ptRated(r.order, r.rating); }catch(_){ continue; }
             ratingSeen[r.order]=true;
-            try{ if(w && w.__ptRated) w.__ptRated(r.order, r.rating); }catch(_){}
             status('You rated the Gopher <b>'+r.rating+'★</b> on '+r.order+' — it just landed in their app. 🎉');
           }
         }
@@ -261,6 +273,7 @@
             l.GReq.update(id, { bidsList:list, attention:{ type:'bid', label:list.length+' bids — review & hire', count:list.length } });
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            reqBanner('Gopher Interested In Your Request','Select here to view details');
             status('Gopher <b>bid $'+ra+'</b> on '+id+' → open the request card and tap <b>Review bids</b> to compare & hire.');
           }
         }
@@ -277,10 +290,11 @@
         for(var i=0;i<list.length;i++){
           var r=list[i];
           if(r && r.bidDecision && !bidDecided[r.order]){
-            bidDecided[r.order]=true;
+            if(!(w && w.__ptBidResult && w.__ptJobs && w.__ptJobs[r.order])){ continue; }   // Go not ready — retry next tick
             var amt=r.bidAmt||'';
+            try{ w.__ptBidResult(r.order, r.bidDecision, amt); }catch(_){ continue; }
+            bidDecided[r.order]=true;
             if(r.bidDecision==='accepted') accepted[r.order]=true;   // this WAS the hire — don't let watchAccept re-fire
-            try{ if(w && w.__ptBidResult) w.__ptBidResult(r.order, r.bidDecision, amt); }catch(_){}
             status(r.bidDecision==='accepted'
               ? 'You <b>hired</b> '+(r.hired||'the Gopher')+' at <b>$'+amt+'</b> → '+r.order+' is now Active. 🎉'
               : 'You <b>passed</b> on the bid → '+r.order+' stays open for more bids.');
@@ -307,6 +321,7 @@
             goMsgSeen[id]=goMsgs.length;
             l.GReq.update(id, { messages:rm, unread:((r.unread||0) + (goMsgs.length-prevSeen)) });
             try{ if(l.__inboxAlert) l.__inboxAlert(id, goMsgs[goMsgs.length-1].text); }catch(_){}
+            reqBanner('New Message Available','Select here to view details');
             status('New message from the Gopher on '+id+' → the requester\'s <b>inbox</b> lit up (banner + red badge). 🔔');
           }
           // requester → Gopher
