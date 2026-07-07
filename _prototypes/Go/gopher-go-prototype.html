@@ -1779,6 +1779,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 
     // Counter opens one step ABOVE the requester's offer — a counter must beat it (real live-app rule).
     let coOpen=false, coVal=(j.mode==='bid'?amtNum:amtNum+1);
+    // Bids carry TWO line items (many jobs need materials / dump fees): expected cost + labor.
+    let bidCost=(+j.cost>0?+j.cost:0), bidLabor=0;
 
     // Post-accept status lifecycle (canonical): In progress → Items Picked Up | Items Purchased →
     // Completed. The middle "items" stage only applies to a delivery/errand (something to pick up or
@@ -1843,9 +1845,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const coSend  = j.mode==='bid' ? 'Submit Bid &#8594;' : 'Send Counter-Offer &#8594;';
       const coPanel = coOpen ? ('<div class="rq-co">'
         +'<div class="rq-co-h">'+coLabel+'</div>'
-        +(j.mode==='bid'?'':'<div class="rq-co-cur">Requester&#8217;s offer <b>'+(j.amt||'\u2014')+'</b></div>')
-        +'<div class="rq-co-step"><button class="rq-st js-dec">&#8722;</button><div class="rq-amt">$<input class="js-coin" inputmode="numeric" value="'+coVal+'"></div><button class="rq-st js-inc">+</button></div>'
-        +(j.mode==='bid'?'':'<div class="js-corule" style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.4;margin:-2px 0 9px;color:#8a94a3;">Your counter must be higher than the '+(j.amt||'offer')+' offer.</div>')
+        +(j.mode==='bid'
+          ? '<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:-2px 0 9px;line-height:1.4;">Bid <b>two line items</b> &mdash; expected <b>cost</b> (materials, dump fees, supplies) plus your <b>labor</b>. The requester reimburses the cost and pays your labor.</div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Expected cost<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">materials / dump fees</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidcost" inputmode="numeric" value="'+bidCost+'"></div></div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Your labor<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">what you take home</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidlabor" inputmode="numeric" value="'+bidLabor+'"></div></div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 2px;border-top:1px dashed #dcd7ca;margin-bottom:6px;font-family:Nunito,sans-serif;font-weight:900;font-size:13.5px;color:#002461;">Total bid<span class="js-bidtotal">$'+(bidCost+bidLabor)+'</span></div>'
+          : '<div class="rq-co-cur">Requester&#8217;s offer <b>'+(j.amt||'\u2014')+'</b></div>'
+            +'<div class="rq-co-step"><button class="rq-st js-dec">&#8722;</button><div class="rq-amt">$<input class="js-coin" inputmode="numeric" value="'+coVal+'"></div><button class="rq-st js-inc">+</button></div>'
+            +'<div class="js-corule" style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.4;margin:-2px 0 9px;color:#8a94a3;">Your counter must be higher than the '+(j.amt||'offer')+' offer.</div>')
         +(j.mode==='bid'?'':'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;line-height:1.45;margin:-2px 0 10px;padding:8px 10px;border-radius:9px;background:#FFF4E5;border:1px solid #f2d9a8;color:#8a5a00;">&#9888; <b>Standard Gopher</b> &mdash; you get <b>5</b> counter-offers this month. If this one is accepted, you&#8217;ll have <b>4 left</b>. <span style="color:#b06a00;">Elite &amp; Pro Gophers get unlimited.</span></div>')
         +'<input class="rq-note js-conote" placeholder="Add a short note (optional) &#8212; e.g. why your price">'
         +'<button class="rq-co-send js-cosend">'+coSend+'</button>'
@@ -1953,13 +1960,23 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(dec) dec.onclick=()=>{ coVal=Math.max(coMin,coVal-1); coin.value=coVal; coValidate(); };
       if(inc) inc.onclick=()=>{ coVal=coVal+1; coin.value=coVal; coValidate(); };
       coValidate();
+      // bid two-line-item inputs (expected cost + labor)
+      const bidCostEl=$('.js-bidcost'), bidLaborEl=$('.js-bidlabor'), bidTotEl=$('.js-bidtotal');
+      function syncBidTotal(){ if(bidTotEl) bidTotEl.textContent='$'+(bidCost+bidLabor); if(send && j.mode==='bid') send.style.opacity=(bidLabor>0?'':'.5'); }
+      if(bidCostEl) bidCostEl.oninput=()=>{ bidCost=parseInt(bidCostEl.value.replace(/[^0-9]/g,''))||0; syncBidTotal(); };
+      if(bidLaborEl) bidLaborEl.oninput=()=>{ bidLabor=parseInt(bidLaborEl.value.replace(/[^0-9]/g,''))||0; syncBidTotal(); };
+      if(j.mode==='bid') syncBidTotal();
       if(send) send.onclick=()=>{
-        if(!coValidate()){ if(coin) coin.focus(); return; }   // reject same/below-offer counter
         const noteEl=$('.js-conote'), note=noteEl?noteEl.value.trim():'';
-        if(j.mode==='bid'){ j.bid={amt:coVal, note:note, by:'Marcus K.'}; }              // shared-store write — harness surfaces the bid to the requester
-        else { j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'}; }             // shared-store write for the harness
+        if(j.mode==='bid'){
+          if(bidLabor<=0){ if(bidLaborEl) bidLaborEl.focus(); toast('Enter your labor amount to submit a bid'); return; }
+          j.bid={cost:bidCost, labor:bidLabor, amt:bidCost+bidLabor, note:note, by:'Marcus K.'};   // two line items
+        } else {
+          if(!coValidate()){ if(coin) coin.focus(); return; }   // reject same/below-offer counter
+          j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'};
+        }
         coOpen=false; draw();
-        toast((j.mode==='bid'?'Bid':'Counter-offer')+' of <b>$'+coVal+'</b> sent to '+who+' &#8594;');
+        toast((j.mode==='bid'?('Bid of <b>$'+(bidCost+bidLabor)+'</b>'):('Counter-offer of <b>$'+coVal+'</b>'))+' sent to '+who+' &#8594;');
       };
       $('.js-cta').onclick=()=>{
         if(j.lock){ openTiers(); return; }

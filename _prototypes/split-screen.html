@@ -239,12 +239,21 @@
           if(job && job.bid && !bidSeen[id] && !job.bidAccepted && !job.bidDeclined){
             var r=l.GReq.get(id); if(!r){ continue; }   // request not ready yet — retry next tick
             bidSeen[id]=true;
-            var bd=job.bid, by=bd.by||'A Gopher';
-            l.GReq.update(id, { attention:{ type:'bid', label:'Bid from '+by+' — $'+bd.amt,
-              amt:bd.amt, by:by, note:bd.note||'' } });
+            var bd=job.bid, by=bd.by||'Marcus K.';
+            var rc=+bd.cost||0, rl=(+bd.labor|| (+bd.amt-rc))||+bd.amt||0, ra=+bd.amt||(rc+rl);
+            var real={by:by, cost:rc, labor:rl, amt:ra, dist:(r.dist||'2.4')+' mi', rating:'4.9', jobs:212, note:bd.note||'', status:'new', real:true};
+            // Seed a couple of nearby demo bids so the requester sees the "Workers Interested" list —
+            // multiple bids on one screen (a core value prop). These are NOT auto-accepting gophers.
+            var demos=[
+              {by:'Andre W.',  cost:Math.round(rc*1.1), labor:Math.round(Math.max(rl*1.15, rl+10)), dist:'3.0 mi', rating:'4.96', jobs:203, note:'Can start within the hour.', status:'new', real:false},
+              {by:'Bianca L.', cost:Math.round(rc*0.9), labor:Math.round(Math.max(rl*1.4,  rl+25)), dist:'3.4 mi', rating:'4.97', jobs:288, note:'', status:'new', real:false}
+            ];
+            demos.forEach(function(d){ d.amt=d.cost+d.labor; });
+            var list=[real].concat(demos);
+            l.GReq.update(id, { bidsList:list, attention:{ type:'bid', label:list.length+' bids — review & hire', count:list.length } });
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
-            status('Gopher <b>bid $'+bd.amt+'</b> on '+id+' → open the request card on the left and tap <b>Review bid</b> to hire or pass.');
+            status('Gopher <b>bid $'+ra+'</b> on '+id+' → open the request card and tap <b>Review bids</b> to compare & hire.');
           }
         }
       }

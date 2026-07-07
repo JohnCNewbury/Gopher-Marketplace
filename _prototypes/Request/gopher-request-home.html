@@ -874,7 +874,7 @@ function cardHTML(r){
   ? (attn.type==='counter'
      ? '<button class="rc-view urgent" data-pending-action="counter" data-order="'+r.order+'">Review now →</button>'
      : attn.type==='bid'
-       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">Review bid →</button>'
+       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+' bids · Review →'):'Review bid →')+'</button>'
        : attn.type==='rate'
        ? '<button class="rc-view urgent" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
@@ -930,7 +930,7 @@ document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
- else if(act==='bid'){ if(order) openBidReview(order); return; }
+ else if(act==='bid'){ if(order) openBidsList(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
  else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
@@ -996,28 +996,66 @@ function openCounterReview(order){
     o.remove(); renderPending(); toast('Counter declined \u2014 request stays open');
   };
 }
-// Bid review: an open-to-bids request received a Gopher's bid \u2014 Hire (at their price) or Pass (stay open).
-function openBidReview(order){
-  if(!window.GReq) return; var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='bid') return;
-  var a=r.attention, amt=a.amt, by=a.by||'the Gopher', note=a.note||'';
-  var o=gModal(
-    '<h3 class="gm-h">Bid from '+by+'</h3>'
-    +'<p class="gm-p">'+by+' will take <b>#'+order+'</b> for <b style="color:#0a7d44">$'+amt+'</b>.'
-    +(note?'<br><span style="color:#5b6472">\u201c'+note+'\u201d</span>':'')+'</p>'
-    +'<div style="display:flex;gap:10px;margin-top:16px;">'
-      +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Pass</button>'
-      +'<button class="gm-accept" style="flex:1;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Hire \u2014 $'+amt+'</button>'
-    +'</div>');
-  var acc=o.querySelector('.gm-accept'), dec=o.querySelector('.gm-decline');
-  if(acc) acc.onclick=function(){
-    GReq.update(order,{ stage:'active', accepted:1, hired:by, amount:'$'+Number(amt).toFixed(2), pay:Number(amt),
-      attention:null, bidDecision:'accepted', bidAmt:amt, when:'Accepted \u00b7 $'+amt+' \u00b7 on the job' });
-    o.remove(); uiBucket='active'; uiIdx=0; renderPending(); toast('Hired '+by+' at $'+amt);
-  };
-  if(dec) dec.onclick=function(){
-    GReq.update(order,{ attention:null, bidDecision:'declined', bidAmt:amt });
-    o.remove(); renderPending(); toast('Bid passed \u2014 request stays open');
-  };
+// Workers Interested \u2014 the bids list for an open-to-bids request. Shows every bid on one screen (a core
+// value prop), sortable, each with its two line items (materials cost + labor) and Hire/Consider/Deny.
+var _bidSort='amount';
+function openBidsList(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  function sortList(list){ var l=list.slice();
+    if(_bidSort==='amount') l.sort(function(a,b){return a.amt-b.amt;});
+    else if(_bidSort==='distance') l.sort(function(a,b){return (parseFloat(a.dist)||99)-(parseFloat(b.dist)||99);});
+    else if(_bidSort==='rating') l.sort(function(a,b){return (parseFloat(b.rating)||0)-(parseFloat(a.rating)||0);});
+    else if(_bidSort==='jobs') l.sort(function(a,b){return (b.jobs||0)-(a.jobs||0);});
+    return l; }
+  function bidRow(b,i){
+    var initials=(b.by.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('')||'G').toUpperCase();
+    var considering=b.status==='considered';
+    return '<div style="border:1px solid '+(considering?'#bfe6cf':'#eceaf0')+';border-radius:14px;padding:11px;margin-bottom:9px;background:'+(considering?'#f3faf5':'#fff')+';">'
+      +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<div style="width:40px;height:40px;border-radius:50%;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:900;font-size:14px;flex:0 0 auto;">'+esc(initials)+'</div>'
+        +'<div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">'+esc(b.by)+(considering?' <span style="font-size:10px;color:#1CB061;font-weight:800;">\u00b7 Considering</span>':'')+'</div>'
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;">\u2605 '+esc(b.rating)+' \u00b7 '+(b.jobs||0)+' jobs \u00b7 '+esc(b.dist)+' away</div></div>'
+        +'<div style="text-align:right;flex:0 0 auto;"><div style="font-family:Nunito;font-weight:900;font-size:17px;color:#1CB061;">'+money(b.amt)+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:9.5px;color:#8a94a3;text-transform:uppercase;letter-spacing:.5px;">bid</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:16px;margin:9px 0 2px;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;"><span>Materials cost <b style="color:#002461;">'+money(b.cost)+'</b></span><span>Labor <b style="color:#002461;">'+money(b.labor)+'</b></span></div>'
+      +(b.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;margin-bottom:4px;">\u201c'+esc(b.note)+'\u201d</div>':'')
+      +'<div style="display:flex;gap:7px;margin-top:9px;">'
+        +'<button data-bid-act="hire" data-bid-i="'+i+'" style="flex:1.2;border:0;background:#1CB061;color:#fff;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Hire</button>'
+        +'<button data-bid-act="consider" data-bid-i="'+i+'" style="flex:1;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">'+(considering?'Considering':'Consider')+'</button>'
+        +'<button data-bid-act="deny" data-bid-i="'+i+'" style="flex:0.85;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Deny</button>'
+      +'</div></div>';
+  }
+  var o=gSheet('Workers interested', '<div id="bidsBody"></div>');
+  function renderBody(){
+    var rr=GReq.get(order); var list=(rr&&rr.bidsList)||[];
+    var active=sortList(list.filter(function(b){return b.status!=='denied';}));
+    var sorts=[['amount','Bid amount'],['distance','Distance'],['rating','Ratings'],['jobs','Total jobs']];
+    var tabs='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;">'+sorts.map(function(s){var on=_bidSort===s[0];return '<button class="bid-sort" data-bs="'+s[0]+'" style="flex:0 0 auto;border:1px solid '+(on?'#002461':'#e3ddcd')+';background:'+(on?'#002461':'#fff')+';color:'+(on?'#fff':'#002461')+';border-radius:99px;padding:6px 12px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">'+s[1]+'</button>';}).join('')+'</div>';
+    var body=o.querySelector('#bidsBody'); if(!body) return;
+    body.innerHTML='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:-2px 0 8px;">'+esc(rr.title||'Request')+' \u00b7 #'+order+' \u00b7 <b>'+active.length+'</b> interested</div>'+tabs+active.map(bidRow).join('');
+    body.querySelectorAll('.bid-sort').forEach(function(t){ t.onclick=function(){ _bidSort=t.getAttribute('data-bs'); renderBody(); }; });
+    body.querySelectorAll('[data-bid-act]').forEach(function(bt){ bt.onclick=function(){ bidAction(bt.getAttribute('data-bid-act'), +bt.getAttribute('data-bid-i')); }; });
+  }
+  function bidAction(act, idx){
+    var rr=GReq.get(order); var list=(rr&&rr.bidsList)||[];
+    var active=sortList(list.filter(function(b){return b.status!=='denied';}));
+    var b=active[idx]; if(!b) return;
+    if(act==='hire'){
+      GReq.update(order,{ stage:'active', accepted:1, hired:b.by, amount:money(b.amt), pay:b.labor, cost:b.cost,
+        attention:null, bidsList:null, bidDecision:(b.real?'accepted':'declined'), bidAmt:b.amt,
+        when:'Accepted \u00b7 '+money(b.amt)+' \u00b7 on the job' });
+      o.remove(); uiBucket='active'; uiIdx=0; renderPending(); toast('Hired '+b.by+' at '+money(b.amt)); return;
+    }
+    if(act==='consider'){ b.status=(b.status==='considered'?'new':'considered'); GReq.update(order,{bidsList:list}); renderBody(); return; }
+    if(act==='deny'){ b.status='denied'; GReq.update(order,{bidsList:list});
+      var remaining=list.filter(function(x){return x.status!=='denied';});
+      if(!remaining.length){ GReq.update(order,{attention:null}); o.remove(); renderPending(); toast('All bids passed \u2014 request stays open'); return; }
+      GReq.update(order,{ attention:{type:'bid',label:remaining.length+' bids \u2014 review & hire',count:remaining.length} });
+      renderBody(); toast('Bid denied'); return; }
+  }
+  renderBody();
 }
 // Rate your Gopher \u2014 opens when the worker marks the job complete (attention.type==='rate').
 function openRateModal(order){
