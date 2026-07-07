@@ -33,6 +33,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Nunito:wght@600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Gopher Banner Notification template (Jira G40-306): branded push banners.
+     Request banners carry the full Gopher character. docs/handoff/G40-306-banner-notifications.html -->
+<script src="gopher-banner.js"></script>
 <style>
 :root{
   --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
@@ -2201,15 +2204,20 @@ return { all:all, save:save,
   // the Go job shows one Location row + a one-pin map.
   const pickup=(isVisible('pickupSection') && !state.noSpecificPickup)?(state.pickupStop||''):'';
   const dropoff=state.dropoffStop||'';
-  const when=state.scheduleType==='now'?'Now · ASAP':((state.schedDate?state.schedDate+' · ':'')+(state.timeSlot||''));
+  var flexLabel=({'24hr':'Within 24 hours',week:'Within a week','2weeks':'Within 2 weeks'}[state.flexibleWindow]||'Flexible window');
+  const when=state.scheduleType==='now'?'Now · ASAP'
+    :(state.scheduleType==='flexible'?flexLabel
+      :((state.schedDate?state.schedDate+' · ':'')+(state.timeSlot||'')));
   const scope=(state.description && state.description.trim())?state.description.trim():title;
   const workers=workerCount();
   const timingLabel=(state.scheduleType==='now')?'ASAP · matching now'
-    :(state.scheduleType==='flexible'?({'24hr':'Within 24 hours',week:'Within a week','2weeks':'Within 2 weeks'}[state.flexibleWindow]||'Flexible window')
+    :(state.scheduleType==='flexible'?flexLabel
       :(typeof schedLabel==='function'?schedLabel():when));
   const deliveryType=(state.category==='delivery')?((state.ageRestricted?'Age-restricted · ':'')+(state.itemsPurchased?'Purchase needed':'Items in hand')):'';
   return {cat:state.category,title:title,amount:amount,order:(window.GReq?GReq.nextOrder():'GR-00001'),
-    stage:'searching',accepted:0,scheduledForLater:(state.scheduleType!=='now'),
+    // Only a true exact-time booking is "scheduled for later" (held back from broadcast). A flexible
+    // window (within 24h / a week) is an OPEN request that should broadcast to workers now.
+    stage:'searching',accepted:0,scheduledForLater:(state.scheduleType==='scheduled'),
     cost:cost,pay:pay,pickup:pickup,dropoff:dropoff,
     scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
     // richer detail carried for the crew pill + full "View details" summary
