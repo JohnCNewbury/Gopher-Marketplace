@@ -89,6 +89,8 @@
   var ratingSeen={}; // GReq order id -> true  (requester's star rating already relayed to Go)
   var bidSeen={};    // GReq order id -> true  (worker's bid already surfaced on Request)
   var bidDecided={}; // GReq order id -> true  (requester's bid Accept/Decline already relayed to Go)
+  var goMsgSeen={};  // GReq order id -> count of Gopher messages already relayed to Request
+  var reqMsgSeen={}; // GReq order id -> count of Requester messages already relayed to Go
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -287,6 +289,36 @@
     }catch(_){}
   }
 
+  /* ── Inbox sync (both ways): Gopher messages light up the requester's inbox (banner + badge);
+        requester replies are delivered to the worker's thread. ── */
+  function watchMessages(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq && w && w.__ptJobs){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id]; var r=l.GReq.get(id); if(!r){ continue; }
+          // Gopher → requester
+          var goMsgs=job.msgs||[];
+          var prevSeen=goMsgSeen[id]||0;
+          if(prevSeen < goMsgs.length){
+            var rm=(r.messages||[]).slice();
+            for(var i=prevSeen; i<goMsgs.length; i++){ rm.push({from:'gopher', text:goMsgs[i].text}); }
+            goMsgSeen[id]=goMsgs.length;
+            l.GReq.update(id, { messages:rm, unread:((r.unread||0) + (goMsgs.length-prevSeen)) });
+            try{ if(l.__inboxAlert) l.__inboxAlert(id, goMsgs[goMsgs.length-1].text); }catch(_){}
+            status('New message from the Gopher on '+id+' → the requester\'s <b>inbox</b> lit up (banner + red badge). 🔔');
+          }
+          // requester → Gopher
+          var reqMsgs=(r.messages||[]).filter(function(m){return m.from==='req';});
+          if((reqMsgSeen[id]||0) < reqMsgs.length){
+            for(var j=(reqMsgSeen[id]||0); j<reqMsgs.length; j++){ try{ if(w.__ptInboxDeliver) w.__ptInboxDeliver(id, reqMsgs[j].text); }catch(_){} }
+            reqMsgSeen[id]=reqMsgs.length;
+          }
+        }
+      }
+    }catch(_){}
+  }
+
   /* ── One-click reset: wipe the shared store + harness memory and reboot both phones empty. ── */
   var resetBtn=document.getElementById('resetDemo');
   function resetDemo(){
@@ -296,7 +328,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={};
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={};
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -309,7 +341,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); watchBid(); watchBidDecision(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
