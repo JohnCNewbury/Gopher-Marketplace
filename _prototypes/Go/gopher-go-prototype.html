@@ -1864,6 +1864,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       else if(j.accepted){ cta='Accepted &#10003; &middot; Open Inbox'; ccls=' done'; }
       else if(j.mode==='bid' && j.bid && !j.bidDeclined){ cta='Bid submitted &middot; $'+j.bid.amt+' &mdash; pending'; ccls=' done'; }
       else if(j.mode==='bid'){ cta='Submit a Bid &#8594;'; }
+      else if(j.counter && !j.counterAccepted && !j.counterDeclined){ cta='Counter sent &middot; $'+j.counter.amt+' &mdash; awaiting reply'; ccls=' done'; }
       else { cta='Accept Request'; }
       // priority banner
       const prio = j.priority ? '<div class="rq-prio"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' prioritized you</b> &mdash; requested as their Gopher, details unlocked</div>' : '';
@@ -1982,6 +1983,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ state.msgJob=j; load('inbox'); return; }
         if(j.mode==='bid' && j.bid && !j.bidDeclined){ toast('Your $'+j.bid.amt+' bid is in — waiting for '+who+' to decide.'); return; }
+        if(j.counter && !j.counterAccepted && !j.counterDeclined){ toast('Your $'+j.counter.amt+' counter is in — waiting for '+who+' to approve.'); return; }   // don't let a counter get accepted at the original price
         if(j.cat==='Ride Sharing' && !(state.ridePhotos&&state.ridePhotos.front&&state.ridePhotos.rear)){ showModal('<h3>Vehicle photos required</h3><p>Ride Sharing jobs require clear front and rear photos of your vehicle before you can accept. Add them in Work Settings under Ride sharing info.</p><button class="mclose">Got it</button>'); return; }
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
