@@ -93,6 +93,7 @@
   var bidDecided={}; // GReq order id -> true  (requester's bid Accept/Decline already relayed to Go)
   var goMsgSeen={};  // GReq order id -> count of Gopher messages already relayed to Request
   var reqMsgSeen={}; // GReq order id -> count of Requester messages already relayed to Go
+  var adjustSeen={}; // GReq order id -> last charge-adjustment seq relayed to Request
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -230,6 +231,30 @@
     }catch(_){}
   }
 
+  /* ── Go → shared store → Request: the worker adjusts the agreed charge (offer + item cost) on site;
+        the new amount reflects on the requester's card + tracker. ── */
+  function watchAdjust(){
+    try{
+      var w=R(), l=L();
+      if(w && w.__ptJobs && l && l.GReq){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id];
+          if(job && job.adjust && adjustSeen[id]!==job.adjust.seq){
+            var r=l.GReq.get(id); if(!r){ continue; }
+            adjustSeen[id]=job.adjust.seq;
+            var offer=+job.adjust.offer||0, cost=+job.adjust.cost||0;
+            var fee=Math.round(0.08*offer*100)/100;             // instant-transfer fee, mirrors the counter model
+            var total=offer+cost+fee;
+            l.GReq.update(id, { pay:offer, cost:cost, amount:'$'+total.toFixed(2) });
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            try{ if(l.__adjustAlert) l.__adjustAlert(id, offer, cost, total); }catch(_){}
+            status('Gopher <b>adjusted the charge</b> on '+id+' → new total <b>$'+total.toFixed(2)+'</b> (offer $'+offer+(cost?(' + $'+cost+' items'):'')+') — the requester\'s card updated.');
+          }
+        }
+      }
+    }catch(_){}
+  }
+
   /* ── Request → shared store → Go: relay the requester's star rating back to the worker. ── */
   function watchRating(){
     try{
@@ -262,15 +287,9 @@
             var bd=job.bid, by=bd.by||'Marcus K.';
             var rc=+bd.cost||0, rl=(+bd.labor|| (+bd.amt-rc))||+bd.amt||0, ra=+bd.amt||(rc+rl);
             var real={by:by, cost:rc, labor:rl, amt:ra, dist:(r.dist||'2.4')+' mi', rating:'4.9', jobs:212, note:bd.note||'', status:'new', real:true};
-            // Seed a couple of nearby demo bids so the requester sees the "Workers Interested" list —
-            // multiple bids on one screen (a core value prop). These are NOT auto-accepting gophers.
-            var demos=[
-              {by:'Andre W.',  cost:Math.round(rc*1.1), labor:Math.round(Math.max(rl*1.15, rl+10)), dist:'3.0 mi', rating:'4.96', jobs:203, note:'Can start within the hour.', status:'new', real:false},
-              {by:'Bianca L.', cost:Math.round(rc*0.9), labor:Math.round(Math.max(rl*1.4,  rl+25)), dist:'3.4 mi', rating:'4.97', jobs:288, note:'', status:'new', real:false}
-            ];
-            demos.forEach(function(d){ d.amt=d.cost+d.labor; });
-            var list=[real].concat(demos);
-            l.GReq.update(id, { bidsList:list, attention:{ type:'bid', label:list.length+' bids — review & hire', count:list.length } });
+            // This is a 1-requester ↔ 1-gopher prototype — surface ONLY the real Gopher's bid, no demo bidders.
+            var list=[real];
+            l.GReq.update(id, { bidsList:list, attention:{ type:'bid', label:'New bid from '+by+' — review & hire', count:1 } });
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
             reqBanner('Gopher Interested In Your Request','Select here to view details');
@@ -344,7 +363,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={};
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={};
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -357,7 +376,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
   tick();
 })();
 </script>

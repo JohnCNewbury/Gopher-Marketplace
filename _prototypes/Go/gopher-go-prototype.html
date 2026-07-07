@@ -2078,25 +2078,35 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
       const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
     }
-    // Update request — advance the job, adjust the cost of items, or cancel (fee warning + reason).
+    // Update request — advance the job, adjust the CHARGE (offer + item cost), or cancel.
     function openUpdateSheet(nk){
       const nextStep = STATUS_FLOW.find(s=>s.key===nk) || {label:'Next step', cta:'Continue'};
       const hasItems = (+j.cost>0) || /delivery|errand/i.test(j.cat||'');
-      const costBlock = hasItems
-        ? '<div style="margin-top:14px;font-family:Nunito;font-weight:900;font-size:13px;color:#002461;">Adjust cost of items</div>'
-          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:2px 0 7px;">If the real spend differs from the estimate, update it — the requester reimburses the actual cost at drop-off.</div>'
-          +'<div class="rq-amt" style="display:inline-flex;">$<input class="js-upcost" inputmode="numeric" value="'+(+j.cost||0)+'" style="width:70px;"></div>'
-          +'<button class="js-savecost" style="margin-left:8px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Save cost</button>'
-        : '';
+      const curOffer = parseInt(String(j.amt||'').replace(/[^0-9]/g,'')) || amtNum || 0;
+      const curCost = (+j.cost||0);
+      // Adjust the agreed charge — the offer (labor) AND item cost. Handles the on-site case where the
+      // scope/crew changes (e.g. 3 booked, 2 show up, requester OK with a reduced rate).
+      const offerRow = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
+          +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Your offer<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">labor — what you take home</span></div>'
+          +'<div class="rq-amt" style="display:inline-flex;flex:0 0 auto;">$<input class="js-upoffer" inputmode="numeric" value="'+curOffer+'" style="width:78px;"></div></div>';
+      const itemRow = hasItems ? '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
+          +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Cost of items<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">reimbursed at drop-off</span></div>'
+          +'<div class="rq-amt" style="display:inline-flex;flex:0 0 auto;">$<input class="js-upcost" inputmode="numeric" value="'+curCost+'" style="width:78px;"></div></div>' : '';
+      const adjustBlock =
+        '<div style="margin-top:16px;font-family:Nunito;font-weight:900;font-size:13px;color:#002461;">Adjust the charge</div>'
+        +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:2px 0 9px;line-height:1.45;">If the scope or crew changed on site (e.g. fewer workers showed), update the offer and/or item cost. The requester sees the new amount.</div>'
+        +offerRow + itemRow
+        +'<div style="display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px dashed #dcd7ca;font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">You&#8217;ll receive<span class="js-uptotal">$'+curOffer+'</span></div>'
+        +'<button class="js-savecharge" style="width:100%;margin-top:11px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Save charge changes</button>';
       const ov=showModal(
         '<h3>Update request</h3>'
-        +'<p>Advance the job, adjust the cost of items, or cancel this request.</p>'
+        +'<p>Advance the job, adjust the charge, or cancel this request.</p>'
         +'<div style="margin-top:6px;padding:12px;border:1px solid #e6e2d6;border-radius:12px;background:#F7F5EF;">'
           +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#8C8675;font-weight:800;">Next step</div>'
           +'<div style="font-family:Nunito;font-weight:900;font-size:15px;color:#002461;margin:2px 0 9px;">'+nextStep.label+'</div>'
           +'<button class="js-advance" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">'+nextStep.cta+' &#10003;</button>'
         +'</div>'
-        +costBlock
+        +adjustBlock
         +'<button class="js-cancelreq" style="width:100%;margin-top:16px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13.5px;cursor:pointer;">Cancel this request</button>'
         +'<span class="mlink js-upclose" style="margin-top:10px;">Never mind</span>');
       ov.querySelector('.js-upclose').onclick=()=>ov.remove();
@@ -2106,9 +2116,16 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         toast(nk==='completed' ? 'Job marked complete — '+who+' can now confirm &amp; rate you'
               : (nk==='items' ? 'Marked — the requester can see it' : 'You’re on the job — the requester can see it'));
       };
-      const savec=ov.querySelector('.js-savecost'); if(savec) savec.onclick=()=>{
-        const el=ov.querySelector('.js-upcost'); const v=parseInt((el.value||'').replace(/[^0-9]/g,''))||0;
-        j.cost=v; ov.remove(); draw(); toast('Cost of items updated to $'+v);
+      const offerEl=ov.querySelector('.js-upoffer'), totEl=ov.querySelector('.js-uptotal');
+      if(offerEl) offerEl.oninput=()=>{ const o=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0; if(totEl) totEl.textContent='$'+o; };
+      const saveBtn=ov.querySelector('.js-savecharge'); if(saveBtn) saveBtn.onclick=()=>{
+        const cEl=ov.querySelector('.js-upcost');
+        const newOffer=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0;
+        const newCost=cEl?(parseInt((cEl.value||'').replace(/[^0-9]/g,''))||0):curCost;
+        j.amt='$'+newOffer; j.cost=newCost;
+        j.adjust={offer:newOffer, cost:newCost, seq:((j.adjust&&j.adjust.seq)||0)+1};   // harness relays the new amount to the requester
+        ov.remove(); draw();
+        toast('Charge updated — '+who+' now sees $'+newOffer+(newCost?(' + $'+newCost+' items'):''));
       };
       ov.querySelector('.js-cancelreq').onclick=()=>{ ov.remove(); openCancelRequest(); };
     }
