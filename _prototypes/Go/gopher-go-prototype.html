@@ -613,6 +613,8 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rq-cta{margin-top:14px;background:#002461;color:#fff;border:none;border-radius:15px;padding:16px;font-family:'Nunito';font-weight:900;font-size:15px;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(0,36,97,.22);}
   .rq-cta.lock{background:#8C8675;box-shadow:none;}
   .rq-cta.done{background:#1CB061;}
+  .rq-cta.rate{background:#1CB061;animation:goRatePulse 1.5s ease-in-out infinite;}
+  @keyframes goRatePulse{0%{box-shadow:0 0 0 0 rgba(196,66,87,.55),0 10px 24px rgba(28,176,97,.28);}70%{box-shadow:0 0 0 14px rgba(196,66,87,0),0 10px 24px rgba(28,176,97,.28);}100%{box-shadow:0 0 0 0 rgba(196,66,87,0),0 10px 24px rgba(28,176,97,.28);}}
 
   /* ===== Inbox / messaging (mi-) ===== */
   .mibody{display:flex;flex-direction:column;height:100%;background:var(--paper);}
@@ -833,7 +835,8 @@ const MODAL_CSS = `
 // ── Messaging — unified UX with Gopher Request: a bottom sheet that opens over the current screen and
 //    grows with the conversation (same bubble/header/composer as the Request app; no preset chips). ──
 function goEnsureConvos(){
-  if(!state.inboxConvos){ state.inboxConvos=[
+  // In the split/PT demo the inbox tracks ONLY the live conversation — no seeded demo threads.
+  if(!state.inboxConvos){ state.inboxConvos = PT ? [] : [
     {id:'c1',name:'Maria G.',ctx:'Delivery · $43.73',verified:true,time:'2:14 PM',unread:2,
       msgs:[{s:'them',t:'Hi! Are you able to grab the catering trays by 2?'},{s:'me',t:'Yep, heading over now.'},{s:'them',t:'Great, see you at 2 — I’ll have the trays ready.'}]},
     {id:'c2',name:'Trevor B.',ctx:'Home Services · $120',verified:true,time:'11:40 AM',unread:0,
@@ -1995,7 +1998,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
             // Two-way ratings (canonical): once the job is complete the Gopher rates the requester too.
             + (j.reqRated
                 ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.star)+'</span><b>You rated '+who+' '+j.reqRated+'★</b> &mdash; thanks for the feedback.</div>'
-                : '<button class="rq-cta js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
+                : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
 

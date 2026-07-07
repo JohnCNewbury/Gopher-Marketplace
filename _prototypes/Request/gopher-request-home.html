@@ -115,6 +115,8 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .rc-view{width:100%;margin-top:13px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:12px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
 .rc-view:active{transform:scale(.99);}
 .rc-view.urgent{background:#C44257;box-shadow:0 8px 20px -8px rgba(196,66,87,.65);}
+.rc-view.rate{background:#1CB061;animation:ratePulse 1.5s ease-in-out infinite;}
+@keyframes ratePulse{0%{box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5);}70%{box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5);}100%{box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5);}}
 .req-card.attn{border-color:#EBB6BE;animation:rcAttn 1.6s ease-in-out infinite;}
 @keyframes rcAttn{0%,100%{box-shadow:var(--card-sh),0 0 0 0 rgba(196,66,87,0);}50%{box-shadow:var(--card-sh),0 0 0 4px rgba(196,66,87,.13),0 14px 30px -8px rgba(196,66,87,.55);}}
 .rc-pulse.red{background:#E0506B;animation:pulseRed 1.6s infinite;}
@@ -857,6 +859,7 @@ if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
 function statusText(r){
  if(r.attention) return '<span class="attn-ic">⚠</span>'+r.attention.label+'<span class="rc-attn-tag">ACTION NEEDED</span>';
+ if(r.disputed) return '⚑ <b>Issue reported</b> · under review';
  if(r.stage==='matched') return 'Matched with <b>'+(r.hired||'a Gopher')+'</b> · arriving ~12 min';
  if(r.stage==='active' && r.substage){
   var _who=r.hired||'your Gopher';
@@ -884,7 +887,9 @@ function cardHTML(r){
      : attn.type==='bid'
        ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+' bids · Review →'):'Review bid →')+'</button>'
        : attn.type==='rate'
-       ? '<button class="rc-view urgent" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
+       ? '<button class="rc-view rate" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
+       : attn.type==='confirm'
+       ? '<button class="rc-view rate" data-pending-action="confirm" data-order="'+r.order+'">Review completion →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
  return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+(DEMO_SHOW_CARD_DISMISS?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
@@ -943,6 +948,7 @@ document.addEventListener('click',function(e){
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
  else if(act==='bid'){ if(order) openBidsList(order); return; }
+ else if(act==='confirm'){ if(order) openConfirmCompletion(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
  else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
@@ -1075,6 +1081,42 @@ function openBidsList(order){
       renderBody(); toast('Bid denied'); return; }
   }
   renderBody();
+}
+// Confirm completion \u2014 the worker marked the job done; the requester confirms (releases payment \u2192 rate)
+// or reports an issue (dispute). Opens from the 'confirm' attention on the card.
+function openConfirmCompletion(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  var who=r.hired||'your Gopher';
+  var total=r.amount||money((+r.pay||0)+(+r.cost||0));
+  var itemsRow=(+r.cost>0)?'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Items purchased</span><b style="color:#002461;">'+money(r.cost)+'</b></div>':'';
+  var o=gSheet('Confirm completion',
+    '<p class="gs-sub" style="margin-top:-2px;"><b>'+esc(who)+'</b> marked <b>#'+order+'</b> complete. Confirm to release payment and rate '+esc(who.split(' ')[0])+', or report an issue if something\u2019s wrong.</p>'
+    +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:10px 13px;margin:6px 0 4px;background:#fbfafc;font-family:\'DM Sans\',sans-serif;font-size:13px;">'
+      +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Request</span><b style="color:#002461;">'+esc(r.title||'Request')+'</b></div>'
+      +itemsRow
+      +'<div style="display:flex;justify-content:space-between;padding:9px 0 2px;"><span style="color:#002461;font-weight:800;">Total</span><b style="color:#0a7d44;font-size:16px;">'+total+'</b></div>'
+    +'</div>'
+    +'<button class="cc-confirm" style="width:100%;margin-top:12px;padding:14px;border:0;border-radius:13px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:900;font-size:15px;cursor:pointer;">Confirm completion &amp; release payment</button>'
+    +'<button class="cc-dispute" style="width:100%;margin-top:9px;padding:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:13px;font-family:Nunito;font-weight:800;font-size:13.5px;cursor:pointer;">Report an issue</button>');
+  var cf=o.querySelector('.cc-confirm'), dp=o.querySelector('.cc-dispute');
+  if(cf) cf.onclick=function(){ GReq.update(order,{ confirmed:1, attention:{ type:'rate', label:'Rate '+who+' \u2014 job complete' } }); o.remove(); renderPending(); toast('Completion confirmed \u2014 payment released'); openRateModal(order); };
+  if(dp) dp.onclick=function(){ o.remove(); openDispute(order); };
+}
+function openDispute(order){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var who=r.hired||'your Gopher';
+  var o=gSheet('Report an issue',
+    '<p class="gs-sub" style="margin-top:-2px;">Tell us what went wrong with <b>#'+order+'</b>. Payment is held while our team reviews \u2014 we\u2019ll follow up shortly.</p>'
+    +'<textarea class="dp-reason" placeholder="What happened? (required)" style="width:100%;min-height:84px;border:1px solid #e2ddd0;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#002461;resize:vertical;box-sizing:border-box;"></textarea>'
+    +'<button class="dp-submit" disabled style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:13px;background:#eecabd;color:#fff;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit report</button>'
+    +'<span class="gm-link dp-back" style="display:block;text-align:center;margin-top:11px;color:#8a94a3;cursor:pointer;font-family:Nunito;font-weight:700;font-size:12.5px;">Back to confirm</span>');
+  var ta=o.querySelector('.dp-reason'), btn=o.querySelector('.dp-submit'), back=o.querySelector('.dp-back');
+  if(ta) ta.oninput=function(){ var ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#e0623d':'#eecabd'; btn.style.cursor=ok?'pointer':'not-allowed'; };
+  if(back) back.onclick=function(){ o.remove(); openConfirmCompletion(order); };
+  if(btn) btn.onclick=function(){ if(ta.value.trim().length<3) return; GReq.update(order,{ disputed:1, attention:null, when:'Issue reported \u00b7 under review' }); o.remove(); renderPending(); toast('Report submitted \u2014 our team will review and follow up.'); };
 }
 // Rate your Gopher \u2014 opens when the worker marks the job complete (attention.type==='rate').
 function openRateModal(order){
@@ -1258,7 +1300,37 @@ const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Remo
 function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
 function openMyGophers(){ var L=[['Devon M.','elite+',true,'Delivery \u00B7 312 jobs'],['Rosa P.','elite',false,'Home Services \u00B7 4.8\u2605'],['Marcus K.','elite+',false,'Labor \u00B7 508 jobs']]; gSheet('MY Gophers','<p class="gs-sub">Favorited Gophers \u2014 prioritized on new requests.</p><div class="gs-list" style="margin-top:10px;">'+L.map(g=>'<div class="gph"><span class="gph-pic">'+g[0].split(/\s+/).map(w=>w[0]).join('').slice(0,2)+'</span><div class="gph-tx"><div class="gph-nm">'+g[0]+' '+window.__tierBadge(g[1],g[2])+'</div><div class="gph-tag">'+g[3]+'</div></div><button class="gph-hire" data-goto="flow">Hire again</button></div>').join('')+'</div>'); }
-function openHistory(){ gSheet('Request history','<div class="gs-sech">Completed</div><div class="gs-list"><div class="gs-li"><b>Grocery + pharmacy run</b> \u00B7 $24.91 \u00B7 Devon M. \u00B7 5\u2605<br><span class="gs-link" data-goto="flow">Request again \u2192</span></div><div class="gs-li"><b>Lawn mowing</b> \u00B7 $45 \u00B7 Yard U \u00B7 5\u2605<br><span class="gs-link" data-goto="flow">Request again \u2192</span></div></div><div class="gs-sech">Cancelled</div><div class="gs-list"><div class="gs-li">Furniture moving \u00B7 cancelled before match</div></div>'); }
+// Request history (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
+// fulfilled it, and the rating THEY gave. Pulls live completed requests from the store first, then a few
+// representative past ones, so a job completed during the demo shows up at the top.
+function openHistory(){
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  var live=(window.GReq?GReq.all():[]).filter(function(r){ return r.substage==='rated' || r.confirmed; }).map(function(r){
+    return { title:r.title||'Request', order:r.order, cat:(CATLABEL[r.cat]||'Request'), date:'Just now',
+      paid:(r.amount||money((+r.pay||0)+(+r.cost||0))), who:(r.hired||'your Gopher'), rating:(+r.rating||0), note:(r.ratingNote||'') };
+  });
+  var demo=[
+    { title:'Grocery + pharmacy run', order:'GR-00187', cat:'Delivery', date:'Mar 4', paid:'$24.91', who:'Devon M.', rating:5, note:'Fast and friendly \u2014 grabbed everything on the list.' },
+    { title:'Lawn mowing', order:'GR-00171', cat:'Home Services', date:'Feb 26', paid:'$45.00', who:'Yard Guys U.', rating:5, note:'' },
+    { title:'Ceiling fan install', order:'GR-00148', cat:'Home Services', date:'Feb 12', paid:'$140.00', who:'Rosa P.', rating:5, note:'Professional and quick.' }
+  ];
+  var card=function(j){
+    var stars=j.rating?('<span style="color:#F5B301;letter-spacing:1px;">'+Array(j.rating+1).join('\u2605')+'</span><span style="color:#8a94a3;"> you rated</span>'):'';
+    return '<div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;margin-bottom:10px;background:#fff;">'
+      +'<div style="display:flex;align-items:center;gap:8px;"><b style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;flex:1;min-width:0;">'+esc(j.title)+'</b><span style="background:#e7f7ec;color:#0a7d44;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">Completed</span></div>'
+      +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:3px 0 7px;">#'+esc(j.order)+' &middot; '+esc(j.cat)+' &middot; '+esc(j.date)+'</div>'
+      +'<div style="display:flex;justify-content:space-between;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#1b2a44;"><span>You paid <b style="color:#002461;">'+esc(j.paid)+'</b></span><span>by <b style="color:#002461;">'+esc(j.who)+'</b></span></div>'
+      +(stars?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;margin-top:6px;">'+stars+'</div>':'')
+      +(j.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;font-style:italic;margin-top:3px;">&ldquo;'+esc(j.note)+'&rdquo;</div>':'')
+      +'<span class="gs-link" data-goto="flow" style="display:inline-block;margin-top:8px;">Request again &rarr;</span>'
+    +'</div>';
+  };
+  gSheet('Request history',
+    '<div class="gs-sech">Completed</div>'+live.concat(demo).map(card).join('')
+    +'<div class="gs-sech">Cancelled</div>'
+    +'<div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;background:#fff;"><b style="font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">Furniture moving</b><div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-top:2px;">#GR-00120 &middot; cancelled before a Gopher was matched &middot; no charge</div></div>');
+}
 /* ── Canonical Gopher account (single source of truth for the My Profile sheet) ── */
 var PROFILE={firstName:'John',lastName:'Newbury',email:'johnnewbury@sbcglobal.net',phone:'(805) 624-1724',accountId:'GPH-000001-NEWBURY',street:'405 Shorehouse Way',city:'Holly Springs',state:'NC',zip:'27540',dob:'02-03-1976',source:'Referral',referredBy:'Ken Newbury',memberSince:'2024',lastSignin:'Today · Holly Springs, NC',rating:'4.9 (128)'};
 function peInitials(){return ((PROFILE.firstName[0]||'')+(PROFILE.lastName[0]||'')).toUpperCase();}
