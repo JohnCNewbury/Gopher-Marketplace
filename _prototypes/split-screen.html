@@ -81,6 +81,7 @@
   function status(m){ statusEl.innerHTML=m; }
 
   var injected={};   // GReq order id -> true  (already pushed to Go)
+  var injectedSeq={};// GReq order id -> last resubmitSeq injected (re-inject on edit-resubmit)
   var accepted={};   // GReq order id -> true  (already synced back to Request)
   var countered={};  // GReq order id -> true  (Go counter already surfaced on Request)
   var decided={};    // GReq order id -> true  (requester's Accept/Decline already relayed to Go)
@@ -108,10 +109,14 @@
         var list=l.GReq.all()||[];
         for(var i=0;i<list.length;i++){
           var r=list[i];
-          if(r && r.stage==='searching' && !r.scheduledForLater && !injected[r.order]){
-            injected[r.order]=true;
-            var w=R(); if(w && w.__injectJob){ w.__injectJob(orderFromReq(r)); }
-            status('Request <b>'+r.order+'</b> submitted → it is now a live job on the Go phone (right) with a notification. Tap the banner → open the job → <b>Accept</b>.');
+          if(r && r.stage==='searching' && !r.scheduledForLater){
+            var seq=r.resubmitSeq||0;
+            if(!injected[r.order] || injectedSeq[r.order]!==seq){   // first submit, or an edit-resubmit (seq bumped)
+              var edited=(injected[r.order] && injectedSeq[r.order]!==seq);
+              injected[r.order]=true; injectedSeq[r.order]=seq;
+              var w=R(); if(w && w.__injectJob){ w.__injectJob(orderFromReq(r)); }
+              status('Request <b>'+r.order+'</b> '+(edited?'was <b>edited &amp; resubmitted</b> → the Go phone got a fresh notification':'submitted → it is now a live job on the Go phone (right) with a notification. Tap the banner → open the job → <b>Accept</b>')+'.');
+            }
           }
         }
       }
@@ -291,7 +296,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={};
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={};
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;

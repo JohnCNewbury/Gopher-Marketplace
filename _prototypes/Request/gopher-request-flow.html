@@ -2005,7 +2005,19 @@ function goStep(n){ if(n<=state.maxStepReached){ state.openCatInfo=null; state.s
 function submitRequest(){
   const g=stepGate();
   if(!g.ok){ showToast(g.msg,g.tone); flashGate(g); return; }
-  state.step=7; state.maxStepReached=7; stashPending(); render();
+  state.step=7; state.maxStepReached=7;
+  if(state._stashed && state._stashedOrder && window.GReq){
+    // Edited & resubmitted — UPDATE the existing request and bump resubmitSeq so the harness
+    // re-injects it and the worker gets a fresh "request updated" notification.
+    var upd=buildPending(); upd.order=state._stashedOrder;
+    var prev=GReq.get(state._stashedOrder);
+    upd.resubmitSeq=((prev&&prev.resubmitSeq)||0)+1;
+    upd.stage='searching'; upd.attention=null; upd.accepted=0;
+    GReq.update(state._stashedOrder, upd);
+  } else {
+    stashPending();
+  }
+  render();
 }
 
 /* ============================================================
@@ -2207,7 +2219,7 @@ return { all:all, save:save,
 }
 // Stash the submitted request ONCE. submitRequest() and goHome()/see-workers all call this;
 // without the guard a submit-then-"Go to Home" would broadcast the SAME request twice (two order ids).
-function stashPending(){ try{ if(window.GReq&&GReq.add&&!state._stashed){ GReq.add(buildPending()); state._stashed=true; } }catch(_){} }
+function stashPending(){ try{ if(window.GReq&&GReq.add&&!state._stashed){ var _rec=buildPending(); state._stashedOrder=_rec.order; GReq.add(_rec); state._stashed=true; } }catch(_){} }
 function goHome(){ stashPending(); gotoURL('gopher-request-home.html'); }
 function resetAll(){ try{ sessionStorage.removeItem('gopher_pending'); }catch(_){} state=makeInitialState(); render(); }
 
