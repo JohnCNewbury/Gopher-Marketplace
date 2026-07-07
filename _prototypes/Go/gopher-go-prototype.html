@@ -1861,7 +1861,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       let cta,ccls='';
       if(lock==='connect'){ cta='For Gopher Elite &amp; Pros &mdash; Tier up &#8594;'; ccls=' lock'; }
       else if(lock==='deal'){ cta='Verify your account to unlock this Deal &#8594;'; ccls=' lock'; }
-      else if(j.accepted){ cta='Accepted &#10003; &middot; Open Inbox'; ccls=' done'; }
+      else if(j.accepted){ cta=''; }   // once hired, the actions live in Job status + Message — no redundant bottom CTA
       else if(j.mode==='bid' && j.bid && !j.bidDeclined){ cta='Bid submitted &middot; $'+j.bid.amt+' &mdash; pending'; ccls=' done'; }
       else if(j.mode==='bid'){ cta='Submit a Bid &#8594;'; }
       else if(j.counter && !j.counterAccepted && !j.counterDeclined){ cta='Counter sent &middot; $'+j.counter.amt+' &mdash; awaiting reply'; ccls=' done'; }
@@ -1898,6 +1898,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const crewNote = (j.workers>1 && !j.accepted)
         ? '<div class="rq-prio" style="background:#FFF4E5;border-color:#f2d9a8;color:#8a5a00;"><span class="rq-ri">'+sv(I.box)+'</span><b>Crew request &mdash; '+j.workers+' workers needed.</b> By accepting, you&#8217;re responsible for bringing the full crew.</div>'
         : '';
+      // A plainly-accepted job (no counter / no bid) still needs the requester's name up top — who you're
+      // working with — plus the message shortcut. Countered / bid jobs already surface this via coStatus/bidStatus.
+      const acceptedNote = (j.accepted && !(j.counter) && !(j.bid))
+        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>You&#8217;re hired by '+who+'</b> &mdash; addresses unlocked. Message '+String(who||'them').split(' ')[0]+' anytime below.</div>'
+        : '';
 
       // Post-accept status stepper: the worker advances the job and the requester sees each step live.
       let stepper='';
@@ -1908,11 +1913,17 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
             +'<span style="width:20px;height:20px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;background:'+(on?'#1CB061':'#e3ddcd')+';color:'+(on?'#fff':'#8C8675')+';">'+(on?'✓':(i+1))+'</span>'+s.label+'</div>';
         }).join('');
         const next = STATUS_FLOW[curIdx+1];
+        // Update request → one control to advance the job, adjust the cost of items, or cancel (with a
+        // per-terms fee warning + required reason). Replaces the old single-purpose "Mark …" buttons.
         const action = next
-          ? '<button class="rq-cta js-status" data-next="'+next.key+'" style="margin-top:11px;">'+next.cta+' &#8594;</button>'
-          : (j.rated
+          ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
+          : ((j.rated
               ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' rated you '+j.rated+'★</b> &mdash; nice work!</div>'
-              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm &amp; rate.</div>');
+              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm &amp; rate.</div>')
+            // Two-way ratings (canonical): once the job is complete the Gopher rates the requester too.
+            + (j.reqRated
+                ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.star)+'</span><b>You rated '+who+' '+j.reqRated+'★</b> &mdash; thanks for the feedback.</div>'
+                : '<button class="rq-cta js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
 
@@ -1924,6 +1935,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'</div>'
         +(rv?'':'<div class="rq-hint">'+sv(I.lock)+(picRv?'Exact addresses unlock when you accept':'Requester photo &amp; exact addresses unlock when you accept'+(j.priority?'':' &mdash; or when they Prioritize you'))+'</div>')
         +prio
+        +acceptedNote
         +coStatus
         +bidStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
@@ -1936,8 +1948,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?(hasPickup?'Pick-up &amp; drop-off areas':'Job location'):(hasPickup?'Approximate areas &middot; exact pins unlock on accept':'Approximate area &middot; exact pin unlocks on accept'))+'</div></div>'
         +acts
         +coPanel
-        +'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>By accepting you agree to complete this request as proposed. Cancelling after accepting may incur up to a $5 fee.</div></div>'
-        +'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>';
+        +(j.accepted?'':'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>By accepting you agree to complete this request as proposed. Cancelling after accepting may incur up to a $5 fee.</div></div>')
+        +(cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'');
     }
 
     function draw(){ r.querySelector('.rqbody').innerHTML=body(); wire(); }
@@ -1979,7 +1991,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         coOpen=false; draw();
         toast((j.mode==='bid'?('Bid of <b>$'+(bidCost+bidLabor)+'</b>'):('Counter-offer of <b>$'+coVal+'</b>'))+' sent to '+who+' &#8594;');
       };
-      $('.js-cta').onclick=()=>{
+      const ctaBtn=$('.js-cta'); if(ctaBtn) ctaBtn.onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ state.msgJob=j; load('inbox'); return; }
         if(j.mode==='bid' && j.bid && !j.bidDeclined){ toast('Your $'+j.bid.amt+' bid is in — waiting for '+who+' to decide.'); return; }
@@ -1988,13 +2000,78 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
       };
-      const stbtn=$('.js-status'); if(stbtn) stbtn.onclick=()=>{
-        const nk=stbtn.getAttribute('data-next');
+      const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
+      const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
+    }
+    // Update request — advance the job, adjust the cost of items, or cancel (fee warning + reason).
+    function openUpdateSheet(nk){
+      const nextStep = STATUS_FLOW.find(s=>s.key===nk) || {label:'Next step', cta:'Continue'};
+      const hasItems = (+j.cost>0) || /delivery|errand/i.test(j.cat||'');
+      const costBlock = hasItems
+        ? '<div style="margin-top:14px;font-family:Nunito;font-weight:900;font-size:13px;color:#002461;">Adjust cost of items</div>'
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:2px 0 7px;">If the real spend differs from the estimate, update it — the requester reimburses the actual cost at drop-off.</div>'
+          +'<div class="rq-amt" style="display:inline-flex;">$<input class="js-upcost" inputmode="numeric" value="'+(+j.cost||0)+'" style="width:70px;"></div>'
+          +'<button class="js-savecost" style="margin-left:8px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:8px 14px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Save cost</button>'
+        : '';
+      const ov=showModal(
+        '<h3>Update request</h3>'
+        +'<p>Advance the job, adjust the cost of items, or cancel this request.</p>'
+        +'<div style="margin-top:6px;padding:12px;border:1px solid #e6e2d6;border-radius:12px;background:#F7F5EF;">'
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#8C8675;font-weight:800;">Next step</div>'
+          +'<div style="font-family:Nunito;font-weight:900;font-size:15px;color:#002461;margin:2px 0 9px;">'+nextStep.label+'</div>'
+          +'<button class="js-advance" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">'+nextStep.cta+' &#10003;</button>'
+        +'</div>'
+        +costBlock
+        +'<button class="js-cancelreq" style="width:100%;margin-top:16px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13.5px;cursor:pointer;">Cancel this request</button>'
+        +'<span class="mlink js-upclose" style="margin-top:10px;">Never mind</span>');
+      ov.querySelector('.js-upclose').onclick=()=>ov.remove();
+      ov.querySelector('.js-advance').onclick=()=>{
         j.substage=nk;                    // shared-store write — the harness reflects it on the requester's card
-        draw();
-        const M={enroute:'You’re on the way — the requester can see it',arrived:'Marked arrived at pickup',done:'Job marked complete — the requester can now rate you'};
-        toast(M[nk]||('Status updated: '+nk));
+        ov.remove(); draw();
+        toast(nk==='completed' ? 'Job marked complete — '+who+' can now confirm &amp; rate you'
+              : (nk==='items' ? 'Marked — the requester can see it' : 'You’re on the job — the requester can see it'));
       };
+      const savec=ov.querySelector('.js-savecost'); if(savec) savec.onclick=()=>{
+        const el=ov.querySelector('.js-upcost'); const v=parseInt((el.value||'').replace(/[^0-9]/g,''))||0;
+        j.cost=v; ov.remove(); draw(); toast('Cost of items updated to $'+v);
+      };
+      ov.querySelector('.js-cancelreq').onclick=()=>{ ov.remove(); openCancelRequest(); };
+    }
+    // Cancel — the Gopher is warned a cancellation fee may apply per terms and must give a reason.
+    function openCancelRequest(){
+      const ov=showModal(
+        '<h3>Cancel this request?</h3>'
+        +'<div style="margin:6px 0 10px;padding:11px 12px;border-radius:11px;background:#FDECE6;border:1px solid #f3c3b2;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#a3401f;line-height:1.5;">&#9888; Cancelling after you’ve accepted may incur a <b>cancellation fee (up to $5)</b> per the Gopher terms, and can affect your reliability score.</div>'
+        +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;margin-bottom:5px;">Reason for cancelling <span style="color:#e0623d;">*</span></div>'
+        +'<textarea class="js-canreason" placeholder="Tell the requester what happened (required)" style="width:100%;min-height:72px;border:1px solid #d9d2c2;border-radius:11px;padding:10px;font-family:\'DM Sans\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>'
+        +'<button class="js-confirmcancel" disabled style="width:100%;margin-top:12px;border:0;background:#eecabd;color:#fff;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit cancellation</button>'
+        +'<span class="mlink js-keepjob" style="margin-top:10px;">Keep the job</span>');
+      const ta=ov.querySelector('.js-canreason'), btn=ov.querySelector('.js-confirmcancel');
+      ta.oninput=()=>{ const ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#e0623d':'#eecabd'; btn.style.cursor=ok?'pointer':'not-allowed'; };
+      ov.querySelector('.js-keepjob').onclick=()=>ov.remove();
+      btn.onclick=()=>{ if(ta.value.trim().length<3) return;
+        // Prototype: surface the outcome. In the live app this releases the job and notifies the requester.
+        j.cancelled=true; ov.remove();
+        toast('Cancellation submitted — '+who+' has been notified. A fee may apply per terms.');
+      };
+    }
+    // The Gopher rates the requester after completion (two-way ratings).
+    function openRateRequester(){
+      let picked=0;
+      const stars=()=>[1,2,3,4,5].map(n=>'<span class="js-rrstar" data-n="'+n+'" style="font-size:34px;cursor:pointer;color:'+(n<=picked?'#F5B301':'#d9d2c2')+';line-height:1;">&#9733;</span>').join('');
+      const ov=showModal(
+        '<h3 style="text-align:center;">Rate '+who+'</h3>'
+        +'<p style="text-align:center;">Job <b>#'+(j.id||'')+'</b> is complete. How was working with '+String(who||'the requester').split(' ')[0]+'?</p>'
+        +'<div class="js-rrstars" style="display:flex;gap:8px;justify-content:center;margin:12px 0 4px;">'+stars()+'</div>'
+        +'<div class="js-rrlab" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
+        +'<textarea class="js-rrnote" placeholder="Add a note (optional)" style="width:100%;min-height:60px;margin-top:8px;border:1px solid #d9d2c2;border-radius:11px;padding:10px;font-family:\'DM Sans\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>'
+        +'<button class="js-rrsubmit" disabled style="width:100%;margin-top:12px;border:0;background:#cfe9d9;color:#7aa790;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit rating</button>');
+      const LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
+      const sub=ov.querySelector('.js-rrsubmit'), lab=ov.querySelector('.js-rrlab');
+      function paint(){ ov.querySelector('.js-rrstars').innerHTML=stars(); wireStars(); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
+      function wireStars(){ ov.querySelectorAll('.js-rrstar').forEach(s=>s.onclick=()=>{ picked=+s.getAttribute('data-n'); paint(); }); }
+      wireStars();
+      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — you rated '+who+' '+picked+'★'); };
     }
     draw();
   } },

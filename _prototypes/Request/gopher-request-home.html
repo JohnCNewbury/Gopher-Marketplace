@@ -965,16 +965,22 @@ function openCounterReview(order){
   var origFee=Math.max(0, origTotal - was - cost);
   var feeDelta=0.08*(amt-was);
   var newFee=origFee+feeDelta, newTotal=amt+cost+newFee;
-  var diffTxt=function(d){ var s=(d>0?'+':(d<0?'\u2212':'')); var c=(d>0?'#0a7d44':(d<0?'#c0392b':'#8a94a3')); return '<span style="color:'+c+';font-weight:800;">'+s+money(Math.abs(d))+'</span>'; };
-  var row=function(l,o1,n1,d,strong){ return '<div style="display:grid;grid-template-columns:1.4fr 1fr auto;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0eef2;'+(strong?'border-top:2px solid #dfe3ea;margin-top:2px;':'')+'font-family:\'DM Sans\',sans-serif;font-size:12.5px;">'
-    +'<span style="color:'+(strong?'#002461':'#8a94a3')+';font-weight:'+(strong?'800':'600')+';">'+l+'</span>'
-    +'<span style="text-align:right;color:#8a94a3;"><s>'+money(o1)+'</s> \u2192 <b style="color:#002461;">'+money(n1)+'</b></span>'
-    +'<span style="text-align:right;min-width:64px;">'+diffTxt(d)+'</span></div>'; };
-  var breakdown='<div style="margin:10px 0 4px;border:1px solid #eceaf0;border-radius:12px;padding:10px 12px;background:#fbfafc;">'
+  var diffTxt=function(d){ if(!d) return '<span style="color:#9aa3af;font-weight:700;">no change</span>'; var s=(d>0?'+':'\u2212'); var c=(d>0?'#0a7d44':'#c0392b'); return '<span style="color:'+c+';font-weight:800;">'+s+money(Math.abs(d))+'</span>'; };
+  // One row per line item, laid out on two lines so the old\u2192new figures are large and easy to read
+  // (the old cramped 3-column layout squeezed the strikethroughs into an unreadable sliver).
+  var row=function(l,o1,n1,d,strong){ var changed=(Math.abs(d)>0.004);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:'+(strong?'11px 0 2px':'10px 0')+';border-bottom:1px solid #eef0f4;'+(strong?'border-bottom:0;border-top:2px solid #dfe3ea;margin-top:4px;':'')+'font-family:\'DM Sans\',sans-serif;">'
+    +'<div style="min-width:0;"><div style="color:'+(strong?'#002461':'#5b6472')+';font-weight:'+(strong?'900':'700')+';font-size:'+(strong?'15px':'13.5px')+';">'+l+'</div>'
+      +'<div style="margin-top:2px;font-size:11px;">'+diffTxt(d)+'</div></div>'
+    +'<div style="text-align:right;flex:0 0 auto;white-space:nowrap;">'
+      +(changed?'<span style="color:#a0a8b2;font-size:12.5px;text-decoration:line-through;">'+money(o1)+'</span> <span style="color:#c0c6cf;">\u2192</span> ':'')
+      +'<b style="color:'+(strong?'#0a7d44':'#002461')+';font-size:'+(strong?'19px':'15px')+';">'+money(n1)+'</b></div>'
+    +'</div>'; };
+  var breakdown='<div style="margin:12px 0 4px;border:1px solid #eceaf0;border-radius:14px;padding:6px 14px 10px;background:#fbfafc;">'
     +row('Cost of items', cost, cost, 0)
     +row('Payment to '+by.split(' ')[0], was, amt, amt-was)
     +row('Request fee', origFee, newFee, feeDelta)
-    +row('Total', origTotal, newTotal, newTotal-origTotal, true)
+    +row('New total', origTotal, newTotal, newTotal-origTotal, true)
     +'</div>'
     +(note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:2px 0 4px;"><b>'+esc(by.split(' ')[0])+'\u2019s note:</b> \u201C'+esc(note)+'\u201D</div>':'');
   var o=gModal(
@@ -985,6 +991,7 @@ function openCounterReview(order){
       +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Decline</button>'
       +'<button class="gm-accept" style="flex:1.3;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Accept \u2014 '+money(newTotal)+' total</button>'
     +'</div>');
+  var card=o.querySelector('.gmodal'); if(card){ card.style.maxWidth='344px'; card.style.padding='22px 20px'; }   // widen for the cost breakdown legibility
   var acc=o.querySelector('.gm-accept'), dec=o.querySelector('.gm-decline');
   if(acc) acc.onclick=function(){
     GReq.update(order,{ stage:'active', accepted:1, hired:by, amount:money(newTotal), pay:amt,
@@ -1067,12 +1074,13 @@ function openRateModal(order){
     +'<p class="gm-p">Your job <b>#'+order+'</b> is complete. How did '+who+' do?</p>'
     +'<div class="rt-stars" style="display:flex;gap:8px;justify-content:center;margin:14px 0 4px;">'+stars+'</div>'
     +'<div class="rt-label" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
+    +'<textarea class="rt-note" placeholder="Add a comment (optional) \u2014 what stood out about '+who.split(' ')[0]+'?" style="width:100%;min-height:64px;margin-top:10px;border:1px solid #e2ddd0;border-radius:12px;padding:10px 12px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#002461;resize:vertical;box-sizing:border-box;"></textarea>'
     +'<button class="gm-rate-submit" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#cfe9d9;color:#7aa790;font-family:Nunito;font-weight:800;font-size:14px;cursor:not-allowed;" disabled>Submit rating</button>');
-  var starEls=o.querySelectorAll('.rt-star'), lab=o.querySelector('.rt-label'), sub=o.querySelector('.gm-rate-submit');
+  var starEls=o.querySelectorAll('.rt-star'), lab=o.querySelector('.rt-label'), sub=o.querySelector('.gm-rate-submit'), note=o.querySelector('.rt-note');
   var LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
-  sub.onclick=function(){ if(!picked) return; GReq.update(order,{ substage:'rated', attention:null, rating:picked, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
+  sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():''; GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
 }
 // Inbox alert (H) \u2014 a new message from the Gopher fires a banner + a red badge on the footer inbox
 // icon (mirrors the current app's updateInboxBadge() + #rqInboxNavBadge). Tapping opens an in-app thread.
@@ -1089,6 +1097,19 @@ function __inboxAlert(order, preview){
   setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 6000);
 }
 window.__inboxAlert=__inboxAlert;
+// Counter alert (G) — a Gopher's counter-offer fires a NEEDS-ATTENTION banner. Tapping it opens the
+// review popup; the counter still requires the requester's approval (never auto-connects).
+function __counterAlert(order){
+  var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='counter') return;
+  var a=r.attention, by=a.by||'A Gopher';
+  var ov=document.createElement('div');
+  ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#B3261E;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
+  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">⚠ Counter-offer · action needed</div><div style="font-size:11.5px;opacity:.9;margin-top:2px;font-family:\'DM Sans\',sans-serif;">'+String(by)+' will take #'+order+' for $'+a.amt+' (you offered $'+a.was+') — tap to review</div>';
+  ov.onclick=function(){ ov.remove(); openCounterReview(order); };
+  $('#phone').appendChild(ov);
+  setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 7000);
+}
+window.__counterAlert=__counterAlert;
 function openInboxThread(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };

@@ -163,7 +163,8 @@
               amt:c.amt, was:c.was, by:by, note:c.note||'' } });
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
-            status('Gopher <b>countered</b> '+id+' at <b>$'+c.amt+'</b> (you offered $'+c.was+') → open the request card on the left and tap <b>Review now</b> to Accept or Decline.');
+            try{ if(l.__counterAlert) l.__counterAlert(id); }catch(_){}   // fire the requester's NEEDS-ATTENTION banner
+            status('Gopher <b>countered</b> '+id+' at <b>$'+c.amt+'</b> (you offered $'+c.was+') → the requester\'s card lit up a <b>banner</b>. Tap <b>Review now</b> to Accept or Decline.');
           }
         }
       }
