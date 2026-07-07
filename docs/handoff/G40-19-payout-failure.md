@@ -1,6 +1,13 @@
-# G40-19 — Failed Instant Transfer: alert + email + new-debit-card protocol
+# G40-19 — Payout-card management: failed-transfer recovery + last-card protection
 
-**Jira:** G40-19 (Task, High) · Component **Gopher Go App** · Label `worker` · Fix version *Phase 1 — Bug Fixes & Polish*
+> **Umbrella note (2026-07-07):** G40-19 now **absorbs G40-194** ("Prevent deletion of the last payout card").
+> Both are the same worker payout-card recovery flow — a payout fails → the Gopher must add a replacement,
+> and they must never be able to delete their only card mid-recovery and orphan the Stripe account. G40-194
+> is to be **canceled as a duplicate**, merged here (full backend fix in the "Merged: G40-194" section below).
+> Two new modals (payout-failure alert + last-card "Attention!") are built to **G40-308** in
+> `docs/handoff/G40-308-modal-kit.html` and tracked in `docs/handoff/G40-309-modal-dispositions.md`.
+
+**Jira:** G40-19 (Task, High) · Component **Gopher Go App** · Label `worker` · Fix version *Phase 1 — Bug Fixes & Polish* · **absorbs G40-194** (`pay`, Bug)
 **Assignee:** John Newbury
 **Surface:** worker app — `Final/gopher-go.html` (the redesigned Gopher Go dashboard)
 **Scope of this branch:** FRONT-END / prototype reference only. No payment, webhook, email, or
@@ -149,3 +156,80 @@ correct timestamp. Confirm Requestor Confirmed and Payout Completed never log to
 The prototype has no backend: the failure trigger is the manual **Preview** button, the history is
 seeded JS (`HISTORY[]`), and no email/push/Stripe call is made. It exists to lock the copy, states,
 timing, and deep-link — not to function. Build the real pipeline against the contract above.
+
+---
+
+# Merged: G40-194 — Prevent deletion of the last payout card
+
+The other half of payout-card management. When a payout fails (above), the Gopher must add a replacement —
+but they must never be able to delete their **only** card and orphan the Stripe connected account's payout
+method. This is the guard on that recovery flow. **Verified against the 2026-06-12 `gopher-backend-api` export.**
+
+### Root cause (verified)
+Deleting a payout card runs with **no check on how many cards remain**:
+- **Controller** — `controllers/user/payment.js:383 delete_payout_card` (route `controllers/user/index.js:193`,
+  `DELETE .../payout-card/:cardid`) calls `payment_actions.delete_payout_card(id, cardid)` directly — **zero guard**.
+- **Lib** — `lib/payment.stripe.js:583 delete_payout_card` → `stripe.accounts.deleteExternalAccount(stripe_id, card_id)`,
+  detaches unconditionally.
+- A lister already gives the count for free: `lib/payment.stripe.js:56 get_gopher_cards(id)` returns every
+  `external_accounts.data` entry (all cards, regardless of health).
+
+### The fix (server-side — the business rule requires it before the Stripe detach)
+```js
+// lib/payment.stripe.js — delete_payout_card, BEFORE deleteExternalAccount
+const cards = await this.get_gopher_cards(id);            // existing lister
+if (!cards || cards.length <= 1) throw createHttpError(409, 'LAST_PAYOUT_CARD');
+await stripe.accounts.deleteExternalAccount(stripe_id, card_id);
+```
+- **Count ALL cards regardless of status** — expired/declined still count (Scenario 5); don't add a health filter.
+- Put the guard in the **lib** so every caller is covered; the controller (`:383`) already propagates via
+  `next(error)` → the app receives a distinct, mappable `LAST_PAYOUT_CARD` code.
+
+### Edge cases for the dev
+- **Default-card handling** — if the deleted card was `default_for_currency` and others remain, Stripe may not
+  auto-promote; call `set_default_payout_card` (`payment.stripe.js:607`) after so a default always exists.
+- **Concurrency** — two simultaneous deletes could each read `count=2` then both detach → 0; re-check immediately
+  before the detach (or accept the tiny risk) and note for QA.
+- **Verify the real Stripe cascade** — Stripe doesn't literally delete a connected account when its last external
+  account is removed, but it can't receive payouts; the guard (never 0 cards) is correct regardless. QA confirms
+  account + payout history survive a blocked attempt (Scenario 4).
+
+### Acceptance mapping (G40-194 scenarios)
+S1 block only-card delete → `length <= 1` guard + modal · S2 add-then-delete → 2 cards passes (keep a default) ·
+S3 multi-card delete → passes, no modal · S4 account preserved → never reaches 0 · S5 bad card can't be removed →
+guard counts all regardless of health.
+
+### Files to touch
+`lib/payment.stripe.js` (`delete_payout_card` `:583` + `set_default_payout_card` `:607`),
+`controllers/user/payment.js` (`:383` surface the code), Gopher Go app (delete handler → "Attention!" modal on 409).
+
+---
+
+# The two modals (built to G40-308, tracked in G40-309)
+
+Both are **Gopher Go worker** modals → **Guide B (bottom sheet)**. Built as reusable `GSheet` configs in
+`docs/handoff/G40-308-modal-kit.html` (click **"Payout failed (G40-19)"** / **"Last card — Attention!"**), and
+logged in `docs/handoff/G40-309-modal-dispositions.md` under *"New — built to G40-308"*.
+
+1. **Payout-failure alert** (`demoB('payoutfail')`) — icon badge, title *"Payout couldn't be sent"*, sub with the
+   card last-4 + failed amount, a 2-step retry list (next business day → following business day), CTA
+   **"Update debit card →"** (deep-links to Payout Info → Add a new card), close **"Later"**.
+   **✅ The prototype `#payoutFailOverlay` in `Final/gopher-go.html` is now reskinned to this standard**
+   (2026-07-07): moved off the ad-hoc `.rhm-overlay`/red-CTA onto the file's `.gc-modal` — the G40-308
+   centered-card component this surface already uses (navy title, **Shamrock-green** primary w/ ink-on-green,
+   warn-tint icon badge, close × + outlined "Later"). The kit demos the Guide-B *sheet* form; this dashboard
+   surface uses the centered-card form — both are valid G40-308.
+2. **Last-card "Attention!"** (`demoB('lastcard')`) — blocking; title *"Attention!"*, sub *"Stripe requires a card
+   on file…"*, primary **"Add New Card"** (John's option-1: route straight to add-card, less friction), secondary
+   **"Back"**. Shown on the `409 LAST_PAYOUT_CARD` response.
+
+---
+
+# Jira actions (pending — apply when the Atlassian connection is back)
+
+The Atlassian MCP was disconnected when this merge was done, so these ticket ops are **staged, not yet applied**:
+1. **G40-19** — append the "Merged: G40-194" + modals content to the description (or link this handoff); note it
+   absorbs G40-194; keep In Progress / assigned to John.
+2. **G40-194** — **Cancel** ("no longer necessary"), link **duplicates → G40-19**, comment: *"Merged into G40-19
+   (payout-card management umbrella) — same worker payout-card recovery flow; full backend fix + Attention! modal
+   carried into G40-19; modals built to G40-308 (kit + G40-309 tracker)."*

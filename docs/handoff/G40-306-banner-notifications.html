@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gopher Banner Notifications — G40-306</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#002461; --ink:#002461; --green:#1CB061; --green-bright:#32D876;
+    --paper:#FBF7EF; --sand:#FBF3E4; --muted:#5b6472; --line:#EAE3D5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  body{font-family:'DM Sans',system-ui,sans-serif;color:var(--ink);
+    background:#eef1f6 radial-gradient(circle at 15% 0%,#e6ecf6,transparent 42%) no-repeat;
+    background-attachment:fixed;padding:38px 22px 80px;line-height:1.5;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-family:'Nunito';font-weight:900;font-size:30px;letter-spacing:-.5px;}
+  .tag{display:inline-block;font-family:'Nunito';font-weight:800;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--green);background:#e8f7ef;border:1px solid #cdeeda;border-radius:999px;padding:3px 11px;margin-bottom:12px;}
+  .lede{font-size:15px;color:#3A4D74;max-width:70ch;margin-top:8px;}
+  .lede b{color:var(--navy);}
+  h2{font-family:'Nunito';font-weight:900;font-size:20px;margin:40px 0 4px;letter-spacing:-.3px;}
+  h2 .app-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:9px;vertical-align:middle;}
+  .h2sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+  h3{font-family:'Nunito';font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#8C8675;
+    margin:26px 0 12px;display:flex;align-items:center;gap:10px;}
+  h3::after{content:"";flex:1;height:1px;background:var(--line);}
+  .cat{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:720px){.cat{grid-template-columns:1fr;}}
+
+  /* ── anatomy panel ── */
+  .anatomy{display:flex;gap:26px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--line);
+    border-radius:20px;padding:22px 24px;margin-top:20px;box-shadow:0 1px 2px rgba(0,36,97,.05),0 10px 30px -18px rgba(0,36,97,.25);}
+  .anatomy .note{flex:1 1 300px;min-width:260px;}
+  .anatomy .note ul{list-style:none;font-size:13px;color:#3A4D74;}
+  .anatomy .note li{padding:5px 0 5px 22px;position:relative;}
+  .anatomy .note li::before{content:"";position:absolute;left:0;top:11px;width:9px;height:9px;border-radius:3px;background:var(--green-bright);}
+  .anatomy .note code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:#f2f4f8;border:1px solid #e3e7ef;border-radius:5px;padding:1px 5px;color:var(--navy);}
+
+  /* ═══════════════════════════════════════════════════════════════
+     CANONICAL GOPHER BANNER NOTIFICATION TEMPLATE  (G40-306)
+     Copy this block (CSS + JS + icons) verbatim into each app.
+     ═══════════════════════════════════════════════════════════════ */
+  .gbn{display:flex;align-items:flex-start;gap:11px;width:100%;
+    background:rgba(255,255,255,.86);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);
+    border:1px solid rgba(0,36,97,.06);border-radius:20px;padding:11px 13px;
+    box-shadow:0 10px 30px -8px rgba(0,36,97,.30),0 2px 5px rgba(0,36,97,.09);
+    cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
+  .gbn-ico{flex:0 0 auto;width:42px;height:42px;border-radius:12px;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,36,97,.20);}
+  .gbn-ico svg{display:block;}
+  .gbn[data-app="request"] .gbn-ico{background:#fff;}
+  .gbn[data-app="request"] .gbn-ico svg{width:35px;height:35px;}
+  .gbn[data-app="go"] .gbn-ico{background:#012462;}
+  .gbn[data-app="go"] .gbn-ico svg{width:31px;height:auto;}
+  .gbn-body{flex:1 1 auto;min-width:0;padding-top:1px;display:flex;flex-direction:column;}
+  .gbn-title{display:block;font-family:'Nunito',sans-serif;font-weight:800;font-size:13.5px;line-height:1.22;color:#002461;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gbn-sub{display:block;font-family:'DM Sans',sans-serif;font-weight:400;font-size:12px;line-height:1.28;color:#5b6472;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gbn-time{flex:0 0 auto;font-family:'DM Sans',sans-serif;font-size:10.5px;color:#9aa1ac;padding-top:2px;}
+  /* live overlay: slides down from the top of the phone frame */
+  .gbn-wrap{position:absolute;top:0;left:0;right:0;z-index:9000;display:flex;flex-direction:column;gap:8px;
+    padding:10px 10px 0;pointer-events:none;}
+  .gbn-wrap .gbn{pointer-events:auto;transform:translateY(-150%);opacity:0;
+    transition:transform .44s cubic-bezier(.22,1,.36,1),opacity .3s;}
+  .gbn-wrap .gbn.gbn-in{transform:translateY(0);opacity:1;}
+  /* ═══════════════════════════════════════════════════════════════ */
+
+  /* demo phones */
+  .stage{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;margin:26px 0 8px;}
+  .phone-col{width:330px;max-width:100%;}
+  .phone-col h4{font-family:'Nunito';font-weight:800;font-size:13px;text-align:center;margin-bottom:10px;color:var(--navy);}
+  .phone{position:relative;height:250px;border-radius:36px;overflow:hidden;background:#0a1730;
+    box-shadow:0 24px 60px -22px rgba(0,36,97,.55),0 0 0 9px #0a1730,0 0 0 11px #1f2c44;}
+  .phone .wall{position:absolute;inset:0;background:
+    radial-gradient(circle at 25% 18%,#2b3f6b,transparent 55%),
+    radial-gradient(circle at 80% 90%,#123a2a,transparent 55%),linear-gradient(160deg,#0e1d3c,#0a1730);}
+  .phone .clock{position:absolute;top:0;left:0;right:0;text-align:center;padding-top:44px;color:#fff;opacity:.9;}
+  .phone .clock .t{font-family:'Nunito';font-weight:800;font-size:44px;letter-spacing:-1px;}
+  .phone .clock .d{font-family:'DM Sans';font-size:12px;opacity:.8;margin-top:-2px;}
+  .btn-row{text-align:center;margin-top:12px;}
+  .playbtn{font-family:'Nunito';font-weight:800;font-size:12px;color:#fff;background:var(--navy);
+    border:none;border-radius:999px;padding:9px 18px;cursor:pointer;}
+  .playbtn.alt{background:var(--green);}
+
+  /* catalog cards */
+  .bcard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:13px 13px 12px;
+    box-shadow:0 1px 2px rgba(0,36,97,.04);}
+  .bcard .gbn{cursor:default;box-shadow:0 4px 14px -6px rgba(0,36,97,.28),0 1px 3px rgba(0,36,97,.08);}
+  .bcard .meta{margin-top:11px;padding-top:10px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--muted);}
+  .bcard .meta div{display:flex;gap:7px;padding:2px 0;}
+  .bcard .meta .k{flex:0 0 58px;font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.05em;
+    text-transform:uppercase;color:#a7a394;padding-top:1px;}
+  .bcard .meta .v{color:#3A4D74;}
+  .figma-only{display:inline-block;font-family:'Nunito';font-weight:800;font-size:9.5px;letter-spacing:.05em;
+    color:#92580D;background:#FFF4D6;border:1px solid #F3E3B0;border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:1px;}
+  .foot{margin-top:52px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:#8C8675;text-align:center;}
+  .foot a{color:var(--green);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="tag">G40-306 · Banner Notifications</span>
+  <h1>Gopher Banner Notifications.</h1>
+  <p class="lede">One collapsed push-banner template, two brands. <b>Gopher Request / Connect</b> banners carry the
+  <b>full Gopher character</b>; <b>Gopher Go</b> banners carry the <b>“GO” mark</b> lifted from the Gopher Go logo.
+  Everything below is production copy from ticket G40-306 — every trigger, tap-target, and sound group is labelled.
+  Tap any live banner (or the play buttons) to see the slide-in.</p>
+
+  <!-- ── ANATOMY ─────────────────────────────────────────────── -->
+  <div class="anatomy">
+    <div style="flex:0 0 300px;max-width:100%;">
+      <div class="bcard" style="border:none;box-shadow:none;padding:0;">
+        <button class="gbn" data-app="request" type="button">
+          <span class="gbn-ico" data-ico="request"></span>
+          <span class="gbn-body">
+            <span class="gbn-title">Your Request Was Accepted</span>
+            <span class="gbn-sub">Select here to view details</span>
+          </span>
+          <span class="gbn-time">now</span>
+        </button>
+      </div>
+    </div>
+    <div class="note">
+      <h3 style="margin-top:0;">Anatomy of the template</h3>
+      <ul>
+        <li><b>App icon</b> <code>.gbn-ico</code> — 42&nbsp;px squircle. Request = white tile + full Gopher character. Go = navy tile + green “GO”.</li>
+        <li><b>Title</b> <code>.gbn-title</code> — Nunito 800, Midnight&nbsp;Blue, single line.</li>
+        <li><b>Subtitle</b> <code>.gbn-sub</code> — DM&nbsp;Sans, cool grey — the “Select here to…” action line.</li>
+        <li><b>Timestamp</b> <code>.gbn-time</code> — “now”, quiet grey.</li>
+        <li>Frosted white card, 20&nbsp;px radius, soft Midnight-Blue shadow; slides in from the top edge.</li>
+        <li>Sound + on-tap destination come from the G40-306 deck; the <b>New/Legacy</b> toggle only swaps the sound.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════════ REQUEST / CONNECT ══════════════ -->
+  <h2><span class="app-dot" style="background:#32D876;"></span>Gopher Request &amp; Connect <span style="font-weight:400;color:var(--muted);font-size:14px;">— requestor app</span></h2>
+  <p class="h2sub">App icon: the full Gopher character on a white tile.</p>
+
+  <div class="stage">
+    <div class="phone-col">
+      <h4>Live preview</h4>
+      <div class="phone" id="phoneReq">
+        <div class="wall"></div>
+        <div class="clock"><div class="t">9:41</div><div class="d">Tuesday, July 7</div></div>
+      </div>
+      <div class="btn-row"><button class="playbtn" data-demo="req">▶ Play a Request banner</button></div>
+    </div>
+  </div>
+
+  <div id="req-catalog"></div>
+
+  <!-- ══════════════ GOPHER GO ══════════════ -->
+  <h2><span class="app-dot" style="background:#002461;"></span>Gopher Go <span style="font-weight:400;color:var(--muted);font-size:14px;">— worker app</span></h2>
+  <p class="h2sub">App icon: the “GO” mark on a navy tile.</p>
+
+  <div class="stage">
+    <div class="phone-col">
+      <h4>Live preview</h4>
+      <div class="phone" id="phoneGo">
+        <div class="wall"></div>
+        <div class="clock"><div class="t">9:41</div><div class="d">Tuesday, July 7</div></div>
+      </div>
+      <div class="btn-row"><button class="playbtn alt" data-demo="go">▶ Play a Go banner</button></div>
+    </div>
+  </div>
+
+  <div id="go-catalog"></div>
+
+  <div class="foot">
+    Gopher Banner Notification template · G40-306 · added to the Gopher Style Guide (§7.7).<br>
+    Source of truth for copy / sound / tap: <b>JS App Notification Flow and Audio Files.pptx</b> · Development/Sounds&nbsp;Files/
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     GOPHER BANNER — brand marks + JS helper  (G40-306)
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+window.GopherBannerIcons = {
+  request: '<svg viewBox="0 0 309.59 303.84" xmlns="http://www.w3.org/2000/svg"><path fill="#012462" d="m248.22,32.8c-4.74,1.51-8.83,4.31-12.49,7.97l-.22.22c-7.97-9.47-17.87-17.44-29.06-23.25l2.15-3.88c.65-1.08.22-2.58-1.08-3.01l-11.63-4.52c-5.81-2.15-11.63-3.88-17.65-4.95-37.89-6.24-73.84,9.26-95.16,38.54-6.46-6.03-14.85-9.26-23.68-9.26-21.1,0-37.89,18.51-34.66,40.26,2.37,17.22,17.87,29.92,35.52,29.92h4.09v132.01c-.35-.03-.71-.05-1.08-.05-6.24,0-11.63,4.52-12.7,10.55-1.29-.65-2.58-.86-3.88-.86-4.95,0-9.04,4.09-9.04,9.04v.22c-.65,0-1.08-.22-1.72-.22-7.1,0-12.92,5.81-12.92,12.92s5.81,12.92,12.92,12.92c1.51,0,3.01-.22,4.31-.86,1.29,3.44,4.52,6.03,8.4,6.03,2.15,0,4.09-.86,5.6-2.15,2.37,3.66,6.24,6.03,10.76,6.03,2.58,0,4.95-.86,7.1-2.15,1.08,3.66,4.52,6.24,8.61,6.24,2.37,0,4.52-.86,6.03-2.37,2.15,4.31,6.46,7.1,11.41,7.1,4.52,0,8.61-2.37,10.98-6.03,2.15,1.94,5.17,3.01,8.18,3.01,4.09,0,7.53-1.94,9.9-4.74.65,4.31,4.31,7.75,8.83,7.75,4.09,0,7.53-2.8,8.61-6.67,2.37,2.15,5.38,3.66,8.83,3.66,3.01,0,5.81-1.08,8.18-3.01,1.72,5.17,6.46,8.83,12.27,8.83,5.38,0,9.9-3.23,11.84-7.75,1.72,2.37,4.31,3.88,7.32,3.88,2.8,0,5.17-1.29,6.89-3.23,2.15,4.09,6.46,7.1,11.41,7.1,4.52,0,8.61-2.37,10.98-6.03,2.37,3.66,6.24,6.03,10.98,6.03,5.17,0,9.69-3.23,11.84-7.75,2.37,0,4.52-.86,6.03-2.37,2.37,2.58,5.6,4.09,9.47,4.09,5.38,0,9.9-3.23,11.84-7.75,2.58-.22,4.95-1.51,6.46-3.44,1.08.22,2.15.43,3.23.43,7.1,0,12.92-5.81,12.92-12.92.65-4.52-1.51-8.18-4.74-10.55.22-.86.43-1.51.43-2.37,0-4.95-4.09-9.04-9.04-9.04-1.94,0-3.66.65-5.17,1.72-1.51-5.6-6.46-9.69-12.49-9.69v-.65c0-4.88-3.97-8.91-8.83-9.03v-127.67h3.88c18.94,0,35.09-14.42,36.17-33.15,1.51-24.11-21.96-43.49-47.15-35.09Zm17.14,54.78c-.27.06-.54.12-.82.17-.2.04-.39.08-.59.11-.47.08-.95.13-1.44.18-.14.01-.27.02-.41.03-.53.04-1.07.07-1.61.07h-6.67c0-11.19,7.75-20.67,18.3-23.04-1.43-.36-3.02-.56-4.62-.62-.32-.01-.65-.03-.98-.03-13.13,0-23.9,10.76-23.9,23.9,0,1.07.08,2.1.22,3.11v158.06c-.96-.22-1.97-.35-3.01-.35-6.46,0-11.84,4.74-12.7,10.98-1.51-1.29-3.44-1.94-5.6-1.94-3.01,0-5.38,1.51-7.1,3.66-1.29-3.66-4.52-6.24-8.61-6.24-1.21,0-2.34.25-3.39.68-2.3.93-4.12,2.77-5.01,5.14-2.15-4.09-6.46-6.89-11.41-6.89-5.81,0-10.76,3.88-12.27,9.26-2.37-2.15-5.38-3.44-8.83-3.44-2.58,0-5.17.86-7.1,2.15v-.22c0-4.95-4.09-9.04-9.04-9.04s-9.04,4.09-9.04,9.04v1.08c-1.72-1.72-3.88-3.01-6.67-3.01-2.58,0-4.74,1.08-6.46,2.8-.68-4.91-4.15-9.01-8.74-10.54-1.25-.42-2.58-.66-3.96-.66-5.38,0-10.12,3.44-12.06,8.18-.86-3.88-4.52-6.89-8.83-6.89-1.51,0-3.01.43-4.09,1.08.22-.86.22-1.51.22-2.37,0-6.81-5.35-12.42-12.06-12.87-.07,0-.14,0-.22-.01V91.1c.14-.96.22-1.95.22-2.97,0-.14,0-.29-.01-.43-.23-12.94-10.9-23.47-23.89-23.47-1.94,0-3.66.22-5.6.65,10.62,2.55,18.3,11.82,18.5,22.82,0,.07,0,.14,0,.22h-6.88c-12.27,0-22.39-10.12-22.39-22.39s10.12-22.39,22.39-22.39c6.24,0,11.84,2.37,15.93,6.46l10.33,10.33c13.78-28.2,42.63-47.58,75.99-47.58,10.55,0,20.67,1.94,29.92,5.38l-3.23,5.6c19.38,6.46,35.52,19.81,45.86,37.03l.22-.22,10.33-10.33c4.09-3.88,9.69-6.46,15.93-6.46,12.49,0,22.39,10.12,22.39,22.39,0,4.92-1.63,9.5-4.37,13.21-.27.36-.55.72-.83,1.06-3.07,3.74-7.38,6.46-12.31,7.56Z"/><path fill="#32d876" d="m281.59,72.84c-.7,2.21-1.75,4.26-3.08,6.11,2.74-3.72,4.37-8.29,4.37-13.21,0-12.27-9.9-22.39-22.39-22.39-6.24,0-11.84,2.58-15.93,6.46l-10.33,10.33-.22.22c-10.33-17.22-26.48-30.57-45.86-37.03l3.23-5.6c-9.26-3.44-19.38-5.38-29.92-5.38-33.37,0-62.22,19.38-75.99,47.58l-10.33-10.33c-4.09-4.09-9.69-6.46-15.93-6.46-12.27,0-22.39,10.12-22.39,22.39s10.12,22.39,22.39,22.39h6.88c0-.07,0-.14,0-.22h-6.66c-1.51,0-2.8-.22-4.09-.43-.22,0-.65-.22-1.08-.22-1.08-.22-1.94-.43-2.8-.86-.43-.22-.65-.22-1.08-.43-1.29-.43-2.37-1.08-3.44-1.72l-.22-.22c-.86-.65-1.72-1.29-2.58-2.15-.22-.22-.65-.65-.86-.86-.65-.65-1.29-1.51-1.72-2.15-.43-.43-.65-.65-.86-1.08-.65-1.08-1.29-2.15-1.72-3.23.22-10.98,9.26-19.81,20.24-19.81,5.81,0,11.19,2.58,14.85,6.67l9.69,9.69c12.7-29.28,41.98-49.95,75.99-49.95h.22v33.8c17.44,0,31.43,13.99,31.43,31.43v19.33c9.69,2.99,16.93,11.95,17.65,22.43.43,13.78-10.55,25.19-24.33,25.19-2.09,0-4.11-.26-6.03-.73v14.7c9.82,5.82,16.77,16.1,17.87,28.23l5.87,60.96c1.04-.42,2.18-.68,3.39-.68,4.09,0,7.32,2.58,8.61,6.24,1.72-2.15,4.09-3.66,7.1-3.66,2.15,0,4.09.65,5.6,1.94.86-6.24,6.24-10.98,12.7-10.98,1.04,0,2.05.13,3.01.35V91.45c-.14-1.01-.22-2.04-.22-3.11,0-13.13,10.76-23.9,23.9-23.9.33,0,.65.02.98.03.18,0,.35-.03.53-.03,5.81,0,10.98,3.44,13.56,8.4Z"/><path fill="#1baf61" d="m141.23,167.11v-14.57c8.16-1.83,14.81-7.73,17.65-15.54.43-1.29,2.37-1.29,2.8,0,2.78,7.63,9.05,13.44,17.01,15.41,1.92.48,3.94.73,6.03.73,13.78,0,24.76-11.41,24.33-25.19-.72-10.48-7.96-19.44-17.65-22.43-1.86-.57-3.8-.93-5.81-1.04h-3.37c.78,1.35,1.21,2.8,1.21,4.31,0,7.49-10.51,13.56-23.47,13.56-10.22,0-18.9-3.77-22.13-9.04h-3.28c-11.41.65-20.88,9.04-22.6,20.24-.22-1.94-.43-3.66-.43-5.6.36-10.4,7.44-19.3,17.01-22.36v-19.41c0-17.44,13.99-31.43,31.43-31.43V20.96h-.22c-34.01,0-63.29,20.67-75.99,49.95l-9.69-9.69c-3.66-4.09-9.04-6.67-14.85-6.67-10.98,0-20.02,8.83-20.24,19.81.43,1.08,1.08,2.15,1.72,3.23.22.43.43.65.86,1.08.43.65,1.08,1.51,1.72,2.15.22.22.65.65.86.86.86.86,1.72,1.51,2.58,2.15l.22.22c1.08.65,2.15,1.29,3.44,1.72.43.22.65.22,1.08.43.86.43,1.72.65,2.8.86.43,0,.86.22,1.08.22,1.29.22,2.58.43,4.09.43h6.66c-.2-11-7.87-20.27-18.5-22.82,1.94-.43,3.66-.65,5.6-.65,12.99,0,23.65,10.53,23.89,23.47h.01v151.39c6.71.45,12.06,6.06,12.06,12.87,0,.86,0,1.51-.22,2.37,1.08-.65,2.58-1.08,4.09-1.08,4.31,0,7.97,3.01,8.83,6.89,1.94-4.74,6.67-8.18,12.06-8.18,1.38,0,2.71.24,3.96.66l5.51-57.28c1.1-12.14,8.04-22.41,17.87-28.23Z"/><path fill="#86f7bc" d="m178.68,167.11v1.32c0,.86-.65,1.51-1.51,1.51h-5.19c-2.75,2.09-7.11,3.44-12.04,3.44s-9.29-1.36-12.04-3.44h-5.19c-.86,0-1.51-.65-1.51-1.51v-1.32c-9.82,5.82-16.77,16.1-17.87,28.23l-5.51,57.28c4.59,1.53,8.07,5.63,8.74,10.54,1.72-1.72,3.88-2.8,6.46-2.8,2.8,0,4.95,1.29,6.67,3.01v-1.08c0-4.95,4.09-9.04,9.04-9.04s9.04,4.09,9.04,9.04v.22c1.94-1.29,4.52-2.15,7.1-2.15,3.44,0,6.46,1.29,8.83,3.44,1.51-5.38,6.46-9.26,12.27-9.26,4.95,0,9.26,2.8,11.41,6.89.89-2.37,2.71-4.21,5.01-5.14l-5.87-60.96c-1.1-12.14-8.04-22.41-17.87-28.23Z"/><path fill="#fff" d="m161.68,137c-.43-1.29-2.37-1.29-2.8,0-2.84,7.81-9.49,13.71-17.65,15.54v15.89c0,.86.65,1.51,1.51,1.51h34.45c.86,0,1.51-.65,1.51-1.51v-16.02c-7.96-1.97-14.23-7.78-17.01-15.41Z"/><path fill="#fff" d="m128.52,86.19v19.41c1.92-.61,3.94-1,6.03-1.11h3.15c3.11-5.38,11.9-9.26,22.25-9.26s19.14,3.88,22.25,9.26h3.37c2.01.1,3.96.46,5.81,1.04v-19.33c0-17.44-13.99-31.43-31.43-31.43s-31.43,13.99-31.43,31.43Zm39.83-9.26c0-1.94,1.72-3.66,3.66-3.66s3.66,1.51,3.66,3.66v9.04c0,1.94-1.72,3.66-3.66,3.66s-3.66-1.72-3.66-3.66v-9.04Zm-23.9,0c0-1.94,1.72-3.66,3.66-3.66s3.66,1.51,3.66,3.66v9.04c0,1.94-1.72,3.66-3.66,3.66s-3.66-1.72-3.66-3.66v-9.04Z"/><path fill="#012462" d="m159.96,95.23c-10.35,0-19.14,3.88-22.25,9.26-.78,1.35-1.21,2.8-1.21,4.31,0,1.59.48,3.11,1.34,4.52,3.22,5.27,11.91,9.04,22.13,9.04,12.96,0,23.47-6.07,23.47-13.56,0-1.51-.43-2.95-1.21-4.31-3.11-5.38-11.9-9.26-22.25-9.26Z"/><path fill="#012462" d="m172.01,89.63c1.94,0,3.66-1.72,3.66-3.66v-9.04c0-2.15-1.72-3.66-3.66-3.66s-3.66,1.72-3.66,3.66v9.04c0,1.94,1.72,3.66,3.66,3.66Z"/><path fill="#012462" d="m148.11,89.63c1.94,0,3.66-1.72,3.66-3.66v-9.04c0-2.15-1.72-3.66-3.66-3.66s-3.66,1.72-3.66,3.66v9.04c0,1.94,1.72,3.66,3.66,3.66Z"/></svg>',
+  go: '<svg viewBox="725.25 19.76 315.95 149.98" xmlns="http://www.w3.org/2000/svg"><path fill="#32d876" d="m968.89,19.76c-48.07,0-81.56,38.21-81.56,82.99,0,40.26,32.05,66.97,71.9,66.97,48.07,0,81.97-40.26,81.97-83.4,0-39.85-32.05-66.56-72.31-66.56Zm-8.22,119.97c-23.42,0-38.41-15-38.41-38.83,0-26.71,17.87-50.74,45.4-50.74,23.42,0,38.62,17.26,38.62,38.21,0,26.09-17.26,51.36-45.61,51.36Zm-163.11,29.99c-40.06,0-72.31-24.86-72.31-66.97s33.48-82.99,82.38-82.99c35.54,0,64.09,17.67,70.05,56.08h-33.49c-5.14-16.85-19.72-25.88-38-25.88-28.14,0-46.22,24.65-46.22,53.21,0,23.21,13.97,37.8,39.24,37.8,17.87,0,31.02-10.27,35.95-20.54h-44.99l5.75-28.55h82.58c-3.7,40.26-33.28,77.86-80.94,77.86Z"/></svg>'
+};
+
+window.GopherBanner = (function(){
+  var DEFAULT_APP = 'request';
+  function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+  function build(o){
+    var app = o.app || DEFAULT_APP;
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'gbn';
+    el.setAttribute('data-app', app);
+    el.innerHTML =
+      '<span class="gbn-ico">'+(window.GopherBannerIcons[app]||'')+'</span>'+
+      '<span class="gbn-body">'+
+        '<span class="gbn-title">'+esc(o.title)+'</span>'+
+        '<span class="gbn-sub">'+esc(o.sub)+'</span>'+
+      '</span>'+
+      '<span class="gbn-time">'+esc(o.time||'now')+'</span>';
+    return el;
+  }
+  function ensureWrap(host){
+    var w = host.querySelector(':scope > .gbn-wrap');
+    if(!w){ w=document.createElement('div'); w.className='gbn-wrap'; host.appendChild(w); }
+    return w;
+  }
+  return {
+    config: function(o){ if(o&&o.app) DEFAULT_APP=o.app; },
+    render: build, // returns a static banner element (for catalogs/style guide)
+    /* show({app,title,sub,time,host,duration,onTap}) — slide a live banner into `host` (default #phone or body) */
+    show: function(o){
+      o = o||{};
+      var host = o.host || document.getElementById('phone') || document.body;
+      if(getComputedStyle(host).position==='static') host.style.position='relative';
+      var wrap = ensureWrap(host);
+      var el = build(o);
+      if(o.onTap) el.addEventListener('click', function(){ o.onTap(); dismiss(); });
+      wrap.appendChild(el);
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('gbn-in'); }); });
+      var t = setTimeout(dismiss, o.duration||4800);
+      function dismiss(){ clearTimeout(t); el.classList.remove('gbn-in');
+        setTimeout(function(){ el.remove(); }, 460); }
+      return el;
+    }
+  };
+})();
+
+/* ── catalog data (verbatim from G40-306) ── */
+var REQ = [
+  ['Request Accepted', [
+    {t:'Your Request Was Accepted', s:'Select here to view details', trig:'A Need-ASAP request is accepted', tap:"That request's screen"},
+    {t:'Gopher Interested In Your Request', s:'Select here to view details', trig:'A Gopher accepts an “I\'ll select my worker” request or makes a bid', tap:'“New Request Info” — interested Gophers'},
+    {t:'Your Request Is Still Pending…', s:'Select here to view details', trig:'Request pending with no activity', tap:"That request's screen", figma:true}
+  ]],
+  ['Request Progress Actions', [
+    {t:'Your Gopher Has Started Your Request', s:'Select here to view details', trig:'A scheduled / flexible request has started', tap:'That request'},
+    {t:'Your Request Is In-Progress', s:'Select here to view details', trig:'Status → “In-Progress”', tap:'That request'},
+    {t:'Your Items Have Been Purchased', s:'Select here to view details', trig:'Status → “Items Purchased”', tap:'That request'},
+    {t:'Your Items Have Been Picked-Up', s:'Select here to view details', trig:'Status → “Items Picked-Up”', tap:'That request'}
+  ]],
+  ['Request Completed', [
+    {t:'Your Request Was Completed!', s:'Please select here to confirm', trig:'The Gopher marks the request complete', tap:"That request's confirmation screen"}
+  ]],
+  ['Cash Register', [
+    {t:'Cost Adjustment Requested', s:'Select here to view details', trig:'A cost adjustment needs approval', tap:'“Cost Adjustment” screen'},
+    {t:'Gopher Rewards Cash Just Added!', s:'Save money on your next request!', trig:'Gopher Rewards Cash has been added', tap:'Cost Adjustment / Rewards'}
+  ]],
+  ['New Message', [
+    {t:'New Message Available', s:'Select here to view details', trig:'The requestor receives a message', tap:'That message in the inbox'},
+    {t:'You Have A Favorite Gopher Referral', s:'Select here to view details', trig:'A Favorite Gopher referral arrives', tap:'That message in the inbox'}
+  ]],
+  ['Payment Failure', [
+    {t:'Looks Like There Was A Payment Issue', s:'Please select here to update your card', trig:'The requestor’s card authorization fails', tap:'“Credit / Debit Card” screen'}
+  ]],
+  ['Request Cancelled', [
+    {t:'Your Request Has Been Cancelled', s:'Please select here to quickly assign a new Gopher', trig:'A Gopher cancels a request', tap:'Request History → Cancelled (“Request Again”)'}
+  ]],
+  ['Reschedule Request', [
+    {t:'Rescheduled Request Approval Needed', s:'Select here to view details', trig:'A reschedule needs the requestor’s approval', tap:'Home (red “Needs Attention” prompt)'}
+  ]]
+];
+var GO = [
+  ['New Request Available', [
+    {t:'New Request Available In Your Area!', s:'Select here to view details', trig:'A new request is available', tap:'“Available Requests” queue'},
+    {t:'Priority Request Available!', s:'Select here to view details', trig:'A new priority request is available', tap:'“Available Requests” queue', figma:true}
+  ]],
+  ['Requests Accepted', [
+    {t:'You Have Been Chosen For Request #12345', s:'Select here to view', trig:'The requestor selects this Gopher (select-my-worker or bid)', tap:'Request details'},
+    {t:'Your Counter-Offer Was Accepted', s:'Select here to view', trig:'The requestor accepts this Gopher’s counter-offer', tap:'Request details'},
+    {t:'Rescheduled Request Approved', s:'Click here to view', trig:'The requestor approves a rescheduled request', tap:'Request details'}
+  ]],
+  ['Payout and Cost Adjustments', [
+    {t:'Payday!', s:'Your payout for request #22222 on the way!', trig:'A completed request is confirmed (payout)', tap:'“Available Requests” queue'},
+    {t:'Cost Adjustment Approved', s:'Please select here to review details', trig:'The requestor approves a cost adjustment', tap:'That active request’s details'},
+    {t:'Gopher Rewards Payday!', s:'Your Rewards Cash Has Just Been Paid', trig:'Gopher Rewards Cash has been paid', tap:'That active request’s details'}
+  ]],
+  ['New Message', [
+    {t:'New Message Available', s:'Click here to view', trig:'The requestor sends a message', tap:'That message in the inbox'}
+  ]],
+  ['Favorite Gopher Congrats', [
+    {t:'Congrats! You\'re A Favorite Gopher', s:'Click here to view', trig:'Gopher becomes a requestor’s Favorite', tap:'“Congrats you’re a favorite Gopher” modal'}
+  ]],
+  ['Payment Failure', [
+    {t:'Your Counter-Offer Was Declined', s:'Select here to submit a different offer', trig:'The requestor declines this Gopher’s counter-offer', tap:'“Available Requests” queue'},
+    {t:'Your Request Is Being Disputed :(', s:'Please select here to review details', trig:'A completed request is disputed', tap:'“Request Disputed” details'},
+    {t:'Payout Failure Occurred', s:'Please select here to review details', trig:'The requestor declines a cost adjustment', tap:'Active Requests tab'}
+  ]],
+  ['Request Cancelled', [
+    {t:'Your Request Has Been Cancelled', s:'Please select here to quickly assign a new Gopher', trig:'A Gopher cancels a request (worker-side confirmation)', tap:'Worker-side cancel confirmation'}
+  ]]
+];
+
+function catalog(groups, app){
+  var html = '';
+  groups.forEach(function(g){
+    html += '<h3>Sound = '+g[0]+'</h3><div class="cat">';
+    g[1].forEach(function(b){
+      html += '<div class="bcard"><div class="gbn" data-app="'+app+'">'+
+        '<span class="gbn-ico">'+window.GopherBannerIcons[app]+'</span>'+
+        '<span class="gbn-body"><span class="gbn-title">'+b.t+'</span><span class="gbn-sub">'+b.s+'</span></span>'+
+        '<span class="gbn-time">now</span></div>'+
+        '<div class="meta">'+
+          '<div><span class="k">Trigger</span><span class="v">'+b.trig+(b.figma?'<span class="figma-only">Figma-only</span>':'')+'</span></div>'+
+          '<div><span class="k">Tap →</span><span class="v">'+b.tap+'</span></div>'+
+        '</div></div>';
+    });
+    html += '</div>';
+  });
+  return html;
+}
+
+document.getElementById('req-catalog').innerHTML = catalog(REQ, 'request');
+document.getElementById('go-catalog').innerHTML = catalog(GO, 'go');
+document.querySelectorAll('.gbn-ico[data-ico]').forEach(function(n){ n.innerHTML = window.GopherBannerIcons[n.dataset.ico]; });
+
+/* play buttons cycle through that app's banners */
+var idx = {req:0, go:0};
+function flat(groups){ var a=[]; groups.forEach(function(g){ g[1].forEach(function(b){ a.push(b); }); }); return a; }
+var LIST = {req:flat(REQ), go:flat(GO)};
+document.querySelectorAll('[data-demo]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var k = btn.dataset.demo, app = k==='req'?'request':'go';
+    var host = document.getElementById(k==='req'?'phoneReq':'phoneGo');
+    var b = LIST[k][idx[k] % LIST[k].length]; idx[k]++;
+    window.GopherBanner.show({app:app, title:b.t, sub:b.s, host:host, duration:3600});
+  });
+});
+</script>
+</body>
+</html>

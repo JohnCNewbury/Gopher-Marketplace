@@ -124,6 +124,8 @@
     <button class="demo-btn" onclick="demoB('info')">Info sheet</button>
     <button class="demo-btn" onclick="demoB('success')">Success sheet</button>
     <button class="demo-btn" onclick="demoB('list')">With info list</button>
+    <button class="demo-btn" onclick="demoB('payoutfail')">Payout failed (G40-19)</button>
+    <button class="demo-btn" onclick="demoB('lastcard')">Last card — Attention! (G40-19/194)</button>
   </div>
   <div class="phone" id="phone"><div class="phone-hint">Gopher Go — tap a trigger above</div></div>
   <p class="note">Icon shapes are deliberately different between guides: <b>circle</b> (Guide A) vs
@@ -205,7 +207,13 @@ function demoB(v){
   const map={
     info:{icon:'💬',title:'Counter-Offer Update',sub:'Your counter-offer has been accepted! With Standard Gopher status, you have 4 remaining Counter-Offers until 08-01-2026. Elite Gophers have unlimited.',cta:'Continue',closeLabel:'Close'},
     success:{icon:'🎉',title:'Job accepted!',sub:'You’re booked. Head to the pickup when you’re ready — we’ll guide you from here.',cta:'Start job',closeLabel:'Later'},
-    list:{icon:'🚗',title:'Before you start',sub:'Quick checklist for this ride request.',list:[{icon:'📍',title:'Confirm pickup',detail:'218 Fayetteville St, Raleigh'},{icon:'🧳',title:'2 passengers · 1 bag',detail:'Trunk space needed'},{icon:'⭐',title:'Rider rated 4.9',detail:'Repeat customer'}],cta:'I’m on my way',closeLabel:'Cancel'}
+    list:{icon:'🚗',title:'Before you start',sub:'Quick checklist for this ride request.',list:[{icon:'📍',title:'Confirm pickup',detail:'218 Fayetteville St, Raleigh'},{icon:'🧳',title:'2 passengers · 1 bag',detail:'Trunk space needed'},{icon:'⭐',title:'Rider rated 4.9',detail:'Repeat customer'}],cta:'I’m on my way',closeLabel:'Cancel'},
+    // G40-19 — payout-failure alert (worker). Card last-4 + failed amount + the 2-day retry sequence;
+    // primary CTA deep-links to Payout Info → Add a new card. In-app popup half of the failed-transfer flow.
+    payoutfail:{icon:'💳',title:'Payout couldn’t be sent',sub:'Your debit card ending in 4242 is no longer valid, so your $52.00 payout couldn’t be deposited. Add a new card to receive it.',list:[{icon:'🗓️',title:'Next business day',detail:'Your new card is assigned to the existing payout balance'},{icon:'💸',title:'Following business day',detail:'The deposit lands on your new card'}],cta:'Update debit card →',closeLabel:'Later'},
+    // G40-194 (merged into G40-19) — last-card deletion block. Shown on a 409 LAST_PAYOUT_CARD from the
+    // delete-card call; blocking. Primary = Add New Card (John's option-1), secondary = Back.
+    lastcard:{icon:'💳',title:'Attention!',sub:'Stripe requires a card on file in order to maintain your account history. Please add the new card, then you can delete the old one.',cta:'Add New Card',closeLabel:'Back'}
   };
   GSheet.open(map[v]);
 }
