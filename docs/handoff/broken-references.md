@@ -4,7 +4,7 @@
 
 _Original audit: 2026-06-24 · Remediation pass: 2026-06-24 · Service-page pass: 2026-06-24_
 _Scope: all `href`, `src`, `srcset`, `poster`, CSS `url()`, and `fetch()` / XHR
-references across the 134 HTML pages plus `gopher-ai-engine.js` and the CSS files
+references across the 133 HTML pages plus `gopher-ai-engine.js` and the CSS files
 under `Final/` (the GitHub Pages site root)._
 
 The original audit found **45** broken internal references. Remediation resolved

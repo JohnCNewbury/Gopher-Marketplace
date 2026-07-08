@@ -20,12 +20,41 @@ full-res masters are archived in **`Final/assets/img/originals/`** for the rebui
 - ✅ **DONE — 4 EXACT** (Group 1): externalized byte-for-byte (no re-encode) as `.jpg`.
 - ✅ **DONE — 15 high-confidence d0 upgrades** (Group 2): the 7 HQ masters + 8 hero pics,
   converted to web-sized WebP (capped ≤1600px, q82) with originals archived.
-- ⏳ **OUTSTANDING — your call:** the 2 downgrades (`Blind Pelican`, `Buoy Bowls`) and all
-  `med`/`low` "verify visually" rows were intentionally **left untouched**.
+- ✅ **VERIFY-VISUALLY DONE (2026-07-05):** all `med`/`low` rows eyeballed (see the
+  **Visual-verify pass** section below) — **4 swapped** (img-140/144/060/025, ~409 KB base64
+  removed), **2 correctness traps left** (img-037 false match, img-052 different version). The
+  2 downgrades (`Blind Pelican`, `Buoy Bowls`): **Buoy Bowls UPGRADED 2026-07-06** with an
+  owner-supplied transparent logo (325px WebP, 3 pages); **Blind Pelican UPGRADED 2026-07-06**
+  too — owner supplied a corrected transparent logo, swapped into `gopher-deals.html`
+  (`LOGO_PELICAN`: 365px no-alpha PNG → 336px transparent WebP). Both downgrade rows now resolved.
 - ⛔ **Not part of this phase:** the shared header/footer chrome dedup (the big remaining
   lever) — see [base64-image-plan.md](base64-image-plan.md).
 
 Per-row status is marked in the tables below.
+
+## 🔍 Visual-verify pass (2026-07-05)
+
+All `med`/`low` "verify visually" rows were eyeballed by extracting each embedded blob
+(matched by mime + exact decoded byte-size) and comparing it side-by-side with its
+external-master candidate. Result: **4 of 6 completed** — 2 straight swaps plus 2 that took
+light work we did ourselves (a center-crop, a clean-variant). The remaining **2 are
+correctness traps, not cost savings**: the external asset is a *different image/version*, so
+swapping would inject a wrong/changed screenshot rather than upgrade the same one.
+
+| Embedded | External candidate | Verdict | Action |
+|---|---|---|---|
+| img-140 | `delivery.jpeg` | ✅ **Real match** — same photo, external 600×360 vs 300×198 | **Swapped** → `assets/img/go101-delivery.webp` (orig archived) |
+| img-144 | `moving.jpeg` | ✅ **Real match** — same photo, HQ upgrade | **Swapped** → `assets/img/go101-moving.webp` (orig archived) |
+| img-060 | `Junk-Removal.png` | ✅ **Real match** — center-crop of the square master matches the embedded 3:2 framing exactly | **Swapped** (center-cropped square→3:2) → `assets/img/connect-junk-removal.webp` |
+| img-025 | `gopher-laptop-clean.png` | ✅ **Same image, clean variant** — external removes stray blue screen guide-lines | **Swapped** → `assets/img/services-laptop.webp` (also shrank a 216 KB PNG blob → 12 KB WebP) |
+| img-037 | `Connect Deals.png` | ❌ **FALSE MATCH** — different screenshot (Connect *business* deals view vs Request *customer* deals view) | **Do NOT swap** |
+| img-052 | `Copy of Perspective iPhone 17 Mockup…png` | ❌ **Different version** — external has a different featured deal and **no bottom-nav**; embedded has the green bottom-nav bar | **Do NOT swap** (would change page content) |
+
+_img-009 (`Request Home.png`) was already moot — img-009 was externalized earlier via `Deals Home.png`._
+
+The 4 swaps removed base64 across three pages: ~29 KB from `gopher-go-101.html` (img-140/144),
+~84 KB from `gopher-connect.html` (img-060), and ~296 KB from `gopher-services.html` (img-025) —
+**~409 KB total**.
 
 ## 1. EXACT MATCHES — safe, certain swaps ✅ DONE
 
@@ -66,15 +95,15 @@ _All four extracted **byte-for-byte (no re-encode)** and referenced via relative
 | high (d0) | `Main Page Hero Pics/plumber.png` | 557.5 KB / 1012×438 / png | img-069 | 47.4 KB / 1012×438 / png | `index.html` | same dims; external less-compressed | ✅ DONE → `assets/img/hero-plumber.webp` |
 | high (d4) | `other.jpeg` | 28.7 KB / 600×360 / jpeg | img-131 | 15.0 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master | ⏳ outstanding (d4, not d0) — your call |
 | high (d4) | `home.jpeg` | 21.7 KB / 600×360 / jpeg | img-142 | 10.9 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master | ⏳ outstanding (d4, not d0) — your call |
-| high (d4) | `Target Merchants/Blind Pelican.png` | 8.5 KB / 62×62 / png | img-096 | 29.7 KB / 365×365 / png | `gopher-deals.html` | ⚠ external is *lower*-res than embedded (swap = downgrade) | ⛔ left — downgrade |
-| med (d6) | `delivery.jpeg` | 20.5 KB / 600×360 / jpeg | img-140 | 11.1 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master | ⏳ verify visually — your call |
-| med (d6) | `Target Merchants/Buoy Bowls.png` | 19.6 KB / 110×110 / png | img-098 | 14.5 KB / 256×256 / webp | `gopher-connect.html`, `gopher-request.html` | ⚠ external is *lower*-res than embedded (swap = downgrade) | ⛔ left — downgrade |
-| med (d8) | `Copy of Perspective iPhone 17 Mockup (Semi Right) (Mockuuups Studio).png` | 5.0 MB / 2456×4096 / png | img-052 | 75.7 KB / 839×1400 / webp | `gopher-go.html` | **HQ** external is higher-res master; verify visually | ⏳ verify visually — your call |
+| high (d4) | `Target Merchants/Blind Pelican.png` | 8.5 KB / 62×62 / png | img-096 | 29.7 KB / 365×365 / png | `gopher-deals.html` | ⚠ the *source-images* copy is lower-res | ✅ UPGRADED (2026-07-06) — **owner supplied** a corrected **transparent** logo (`source-assets/Target Merchants/blind-pelican.svg`); swapped the `LOGO_PELICAN` constant in `gopher-deals.html` from a 365px **RGB (no-alpha)** PNG → **336px transparent WebP** (fixed pelican-in-circle art, also smaller). |
+| med (d6) | `delivery.jpeg` | 20.5 KB / 600×360 / jpeg | img-140 | 11.1 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master | ✅ DONE (2026-07-05, visually verified — real match) → `assets/img/go101-delivery.webp` |
+| med (d6) | `Target Merchants/Buoy Bowls.png` | 19.6 KB / 110×110 / png | img-098 | 14.5 KB / 256×256 / webp | `gopher-connect.html`, `gopher-request.html` | ⚠ the *source-images* copy is lower-res (swap = downgrade) | ✅ UPGRADED (2026-07-06) — **owner supplied** a transparent 335px logo (via SVG-raster); swapped in at **325px transparent WebP** across `gopher-connect`, `gopher-request`, **and** `gopher-customer-deals` (the last was a 150px PNG). The *source-images* 110px copy is still correctly ignored. |
+| med (d8) | `Copy of Perspective iPhone 17 Mockup (Semi Right) (Mockuuups Studio).png` | 5.0 MB / 2456×4096 / png | img-052 | 75.7 KB / 839×1400 / webp | `gopher-go.html` | **HQ** external is higher-res master; verify visually | ❌ NOT SWAPPED (2026-07-05) — **different version** (diff featured deal; embedded has bottom-nav) |
 | med (d8) | `Request Home.png` | 5.1 MB / 2456×4096 / png | img-009 | 822.4 KB / 960×1601 / png | `gopher-customer-deals.html` | **HQ** external is higher-res master; verify visually | ⏳ verify — note img-009 already swapped via `Deals Home.png` |
-| med (d8) | `Connect Deals.png` | 563.9 KB / 1500×963 / png | img-037 | 129.1 KB / 1400×899 / png | `gopher-deals.html` | same dims; external less-compressed; verify visually | ⏳ verify visually — your call |
-| med (d8) | `moving.jpeg` | 21.6 KB / 600×360 / jpeg | img-144 | 10.7 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master; verify visually | ⏳ verify visually — your call |
-| low (d10) | `gopher-laptop-clean.png` | 227.3 KB / 1500×963 / png | img-025 | 216.8 KB / 1500×963 / png | `gopher-services.html` | near-identical; verify visually | ⏳ verify visually — your call |
-| low (d12) | `Junk-Removal.png` | 1.7 MB / 1024×1024 / png | img-060 | 61.5 KB / 600×400 / jpeg | `gopher-connect.html` | **HQ** external is higher-res master; verify visually | ⏳ verify visually — your call |
+| med (d8) | `Connect Deals.png` | 563.9 KB / 1500×963 / png | img-037 | 129.1 KB / 1400×899 / png | `gopher-deals.html` | same dims; external less-compressed; verify visually | ❌ NOT SWAPPED (2026-07-05) — **FALSE MATCH** (Connect-business vs Request-customer deals) |
+| med (d8) | `moving.jpeg` | 21.6 KB / 600×360 / jpeg | img-144 | 10.7 KB / 300×198 / jpeg | `gopher-go-101.html` | **HQ** external is higher-res master; verify visually | ✅ DONE (2026-07-05, visually verified — real match) → `assets/img/go101-moving.webp` |
+| low (d10) | `gopher-laptop-clean.png` | 227.3 KB / 1500×963 / png | img-025 | 216.8 KB / 1500×963 / png | `gopher-services.html` | near-identical; verify visually | ✅ DONE (2026-07-05, clean no-guides variant) → `assets/img/services-laptop.webp` |
+| low (d12) | `Junk-Removal.png` | 1.7 MB / 1024×1024 / png | img-060 | 61.5 KB / 600×400 / jpeg | `gopher-connect.html` | **HQ** external is higher-res master; verify visually | ✅ DONE (2026-07-05, center-cropped square→3:2) → `assets/img/connect-junk-removal.webp` |
 
 ## 3. NO MATCH
 
@@ -215,4 +244,4 @@ The remaining unmatched blobs are mostly per-page service-card art (many `webp`/
 | External, no counterpart | 76 | Net-new assets (incl. 20 videos, 18 merchant logos, 8 SVGs) |
 | Embedded, no counterpart | 139 | Still must be extracted from HTML (incl. all shared chrome) |
 
-**Takeaways for the swap decision:** (1) the asset pack is mostly **higher-quality masters** — many `high (d0)` rows are large PNG/JPEG sources for embedded images that were downscaled/re-compressed, so swapping *upgrades* quality; (2) the **8 Main-Page hero PNGs** match embedded copies at identical dimensions but far larger file size (less compression) — a quality choice, not a resolution gain; (3) **two merchant logos** (`Blind Pelican`, `Buoy Bowls`) are *lower*-res than the embedded versions — don't swap those; (4) the asset pack does **not** replace the shared header/footer chrome — that extraction is separate (see [base64-image-plan.md](base64-image-plan.md)).
+**Takeaways for the swap decision:** (1) the asset pack is mostly **higher-quality masters** — many `high (d0)` rows are large PNG/JPEG sources for embedded images that were downscaled/re-compressed, so swapping *upgrades* quality; (2) the **8 Main-Page hero PNGs** match embedded copies at identical dimensions but far larger file size (less compression) — a quality choice, not a resolution gain; (3) **two merchant logos** (`Blind Pelican`, `Buoy Bowls`): the *source-images* copies are lower-res (correctly ignored), but on 2026-07-06 the **owner supplied corrected transparent logos** which were swapped in (see the Visual-verify pass / per-row status); (4) the asset pack does **not** replace the shared header/footer chrome — that extraction is separate (see [base64-image-plan.md](base64-image-plan.md)).

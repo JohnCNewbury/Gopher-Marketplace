@@ -26,12 +26,17 @@ masters archived in `Final/assets/img/originals/`. Per-page HTML reduction:
 | `gopher-our-story.html` | 1.7 MB → 1.5 MB | 211 KB |
 | **Total** | | **~4.9 MB** |
 
-**⛔ NOT yet done — the big remaining lever:** the **shared header/footer chrome
-deduplication** (logos, social icons, app-store badges embedded on 100+ pages each,
-~14.3 MB of duplicated bytes). That is the largest single win and has **not** been
-started. Also still pending: the page-specific raster across the other heavy pages
-(`gopher-deals.html`, `gopher-connect.html`, etc.), the SVG externalization, and the
-GIF→animated-WebP/MP4 conversion. The plan below remains the roadmap for that work.
+**✅ Done — shared header/footer chrome deduplication (2026-06-26).** The 7
+highest-duplication chrome blobs (5 brand logos + 2 app-store badges, embedded on 100+
+pages each) were externalized to single shared files in `assets/img/` and all **862**
+inline base64 copies replaced with relative, case-exact references — **16.76 MB of base64
+text removed** from the HTML across **127 pages**, collapsing to 7 cached files (106.8 KB).
+Zero inline chrome base64 remains. Full detail: **[chrome-dedup-manifest.md](chrome-dedup-manifest.md)**.
+
+**⛔ Still pending:** the page-specific raster across the other heavy pages
+(`gopher-deals.html`, `gopher-connect.html`, etc.), the lower-duplication shared blobs
+(2–3 pages each), the remaining SVG externalization, and the GIF→animated-WebP/MP4
+conversion. The plan below remains the roadmap for that work.
 
 ---
 
@@ -148,7 +153,7 @@ conversion is raster-only.)
 
 | Stage | Footprint |
 |---|---|
-| Today — base64 text inlined across 134 pages | ~36 MB (27.4 MB decoded) |
+| Today — base64 text inlined across 133 pages | ~36 MB (27.4 MB decoded) |
 | After dedupe + externalize (no recompress) | **13.1 MB** unique, cached across pages |
 | After raster → WebP on top | **~8–9 MB** total |
 

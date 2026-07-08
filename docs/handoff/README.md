@@ -12,6 +12,23 @@
 > no real payments**. Data lives in in-memory JavaScript and disappears on page reload.
 > Treat the pages as a clickable spec, not as a system to extend.
 
+### 🧹 State of cleanup — updated 2026-06-26
+
+**Done:** image externalization — **4.9 MB** of content images + **16.66 MB** of shared
+header/footer chrome (logos/badges: 862 inline base64 copies → 7 cached files) moved out
+of the HTML; honesty copy fixes in `gopher-request.html`; handoff-doc page-count
+reconciliation to the verified **133 files / 107 service-detail** after a duplicate page
+was deleted.
+**Verified clean:** **zero** inline chrome base64 remains site-wide (sha256-checked); all
+page/component counts re-verified against the filesystem, not memory.
+**Outstanding (parked, by reason):** next base64 batch — page-specific rasters on
+deals/connect/etc. (in scope, lower yield); the 8 hero clips (**blocked** — videos must be
+produced, see [missing-files.md](missing-files.md)); the "verify visually" image rows + two
+downgrades (**human review by design**, see [asset-match-report.md](asset-match-report.md));
+the inbound-link-graph counts in [page-inventory.md](page-inventory.md) (**cosmetic** re-scan).
+Detail: [chrome-dedup-manifest.md](chrome-dedup-manifest.md) and
+[base64-image-manifest.csv](base64-image-manifest.csv).
+
 _This brief is the front door to `docs/handoff/`. Skim it, then dive into the linked
 documents for detail. All handoff docs are dated 2026-06-24._
 
@@ -31,14 +48,14 @@ a price the customer sets. It has three sides:
 - **Gopher Connect** (`gopher-connect.html`) — the business side: on-demand workforce for
   companies, with paid plans.
 
-Supporting surfaces: a **Services hub** (`gopher-services.html`) organizing **108
+Supporting surfaces: a **Services hub** (`gopher-services.html`) organizing **107
 service-detail pages** across **7 categories** (Delivery & Errands, Home Services, Yard &
 Outdoor, Moving, Junk Removal, Hourly & Day Labor, Ride Sharing); a **Deals** product for
 merchants (`gopher-deals.html`) and customers (`gopher-customer-deals.html`); a **"gopher
 iQ"** AI-style search assistant; plus blog, FAQs, our-story, contact, and legal pages.
 
-See the full map: **[page-inventory.md](page-inventory.md)** (134 files = 19 core/brand/
-legal + 108 service-detail + 7 components/fragments, with titles, sizes, inbound links,
+See the full map: **[page-inventory.md](page-inventory.md)** (133 files = 19 core/brand/
+legal + 107 service-detail + 7 components/fragments, with titles, sizes, inbound links,
 a Mermaid sitemap, and duplicate analysis).
 
 ## 2. Deployment facts
@@ -61,8 +78,8 @@ a Mermaid sitemap, and duplicate analysis).
 | **Broken internal references** | 🟡 22 of 45 fixed; 23 remain (mostly intentional demo code + CDN-resolved icons) | [broken-references.md](broken-references.md) |
 | **Files still to create** | 8 hero-clip videos (+1 optional shared-header script) | [missing-files.md](missing-files.md) |
 | **Unfinished / fake JS & forms** | Almost everything is faked; 1 real submission site-wide | [unfinished-functions.md](unfinished-functions.md) |
-| **Structural duplication** | Header/footer copy-pasted into ~128 pages; 108 service pages are one cloned template | [component-structure.md](component-structure.md) |
-| **Page map / orphans / duplicates** | 134 pages catalogued; `e-waste-removal_1.html` is a stray duplicate | [page-inventory.md](page-inventory.md) |
+| **Structural duplication** | Header/footer copy-pasted into ~128 pages; 107 service pages are one cloned template | [component-structure.md](component-structure.md) |
+| **Page map / orphans / duplicates** | 133 pages catalogued; the stray `e-waste-removal_1.html` duplicate has been deleted | [page-inventory.md](page-inventory.md) |
 
 Other expected prototype traits (documented in `CLAUDE.md`): multi-megabyte base64-bloated
 pages, duplicate element IDs, and demo-only JS (`bookService`, `analyzeUpload`,
@@ -91,12 +108,12 @@ matching, and security (per `CLAUDE.md`). Full per-function scope is in
 
 ## 5. Recommended rebuild approach
 
-Move from 134 self-contained HTML pages to a **component/partials architecture** with a
+Move from 133 self-contained HTML pages to a **component/partials architecture** with a
 real backend. Full breakdown (component tree, CSS/JS extraction) is in
 [component-structure.md](component-structure.md).
 
 **Front-end:** a component framework (React/Vue/Svelte) or a templating/partials system
-(Astro, 11ty, Nunjucks, etc.). Render shared chrome once; drive the 108 service pages
+(Astro, 11ty, Nunjucks, etc.). Render shared chrome once; drive the 107 service pages
 from **one template + a data file**; extract shared `tokens.css` / `base.css` and shared
 `header.js` / `footer.js`. This also kills the base64-bloat and duplicate-ID problems.
 
@@ -107,7 +124,7 @@ calls. Keep all secrets server-side (see §6).
 
 1. **Scaffold the new app** (framework + routing) and extract **header + footer** into
    shared components/partials — touches ~128 pages, biggest immediate win.
-2. **Collapse the 108 service pages** into one `ServiceDetailPage` template + a
+2. **Collapse the 107 service pages** into one `ServiceDetailPage` template + a
    service-data file; extract shared CSS (`tokens`/`base`/`service-detail`).
 3. **Stand up auth + accounts** (real login/signup, OTP) — gates everything user-specific.
 4. **Add the database/persistence layer** and wire the request flow to it (replace the

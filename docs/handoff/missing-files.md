@@ -21,9 +21,9 @@ left for you to produce or source.
   `hero-media/clip-2.webm`, `hero-media/clip-2.mp4`,
   `hero-media/clip-3.webm`, `hero-media/clip-3.mp4`,
   `hero-media/clip-4.webm`, `hero-media/clip-4.mp4`
-- **Referenced by:** `gopher-connect.html` — `clip-1` (lines 6698–6699),
-  `clip-2` (6702–6703), `clip-3` (6706–6707), `clip-4` (6710–6711),
-  via `<video class="hero-clip"><source>` tags.
+- **Referenced by:** `gopher-connect.html` — `clip-1` (lines 6976–6977),
+  `clip-2` (6980–6981), `clip-3` (6984–6985), `clip-4` (6988–6989),
+  via `<video class="hero-clip"><source>` tags. _(Line numbers refreshed 2026-07-05.)_
 - **What they are:** Four decorative, looping, muted background clips that crossfade
   behind the Gopher Connect hero (`aria-hidden`, staggered 6-second animation delays).
   Each needs both a `.webm` and an `.mp4` source.

@@ -2,9 +2,9 @@
 
 _Generated: 2026-06-24 · Read-only audit — no pages were modified._
 
-**134 HTML files** in `Final/` (the GitHub Pages site root):
+**133 HTML files** in `Final/` (the GitHub Pages site root):
 - **19** core / brand / legal pages
-- **108** service-detail pages (one shared template family)
+- **107** service-detail pages (one shared template family)
 - **7** components & fragments (not standalone pages)
 
 Inbound-link counts come from scanning every page's `href`s (including the static
@@ -16,7 +16,6 @@ links to them.
 
 | File | Orphan type | Notes |
 |---|---|---|
-| [`e-waste-removal_1.html`](Final/e-waste-removal_1.html) | ⚠️ **Real orphan** | Near-duplicate of `e-waste-removal.html` (see Duplicates). Not in the services grid — looks like a leftover copy. |
 | [`gopher-header.html`](Final/gopher-header.html) | Expected | Shared header **component**, injected via JS — not meant to be linked directly. |
 | [`gopher-footer.html`](Final/gopher-footer.html) | Expected | Shared footer **component** — not meant to be linked directly. |
 | [`gopher-iq-sandbox-standalone.html`](Final/gopher-iq-sandbox-standalone.html) | Expected | Standalone demo/sandbox of the "gopher iQ" engine; intentionally not in nav. |
@@ -25,7 +24,8 @@ links to them.
 | [`2-engine-js-block.html`](Final/2-engine-js-block.html) | Expected | Code fragment (JS block), not a page. |
 | [`4-pill-markup.html`](Final/4-pill-markup.html) | Expected | Code fragment (markup snippet), not a page. |
 
-Only **`e-waste-removal_1.html`** is a genuine orphan worth resolving; the rest are
+The one genuine orphan worth resolving — **`e-waste-removal_1.html`**, a near-duplicate
+of `e-waste-removal.html` — **has since been deleted**. The remaining orphans above are
 intentional shared components or code snippets, not navigable pages.
 
 ---
@@ -50,13 +50,13 @@ intentional shared components or code snippets, not navigable pages.
 | [`gopher-prohibited-list.html`](Final/gopher-prohibited-list.html) | Prohibited List – Gopher | Prohibited items & services list (policy). | 158.1 KB | **127** — global nav + footer |
 | [`gopher-request-101.html`](Final/gopher-request-101.html) | Gopher Request Tutorial | Tutorial / walkthrough for Gopher Request (customer flow). | 200.0 KB | **127** — global nav + footer |
 | [`gopher-request.html`](Final/gopher-request.html) | Gopher Request – Neighbors Helping Neighbors | Core product — Hire a Gopher / request a service (request flow). | 2.9 MB | **127** — global nav + footer |
-| [`gopher-services.html`](Final/gopher-services.html) | Services &amp; Marketplace – Gopher | Services & marketplace hub — 7 categories linking all 108 service-detail pages. | 5.6 MB | **111** — global nav + footer |
+| [`gopher-services.html`](Final/gopher-services.html) | Services &amp; Marketplace – Gopher | Services & marketplace hub — 7 categories linking all 107 service-detail pages. | 5.6 MB | **111** — global nav + footer |
 | [`gopher-terms-of-service.html`](Final/gopher-terms-of-service.html) | Terms of Service – Gopher | Terms of Service (legal). | 210.7 KB | **127** — global nav + footer |
 | [`gopher-tiers.html`](Final/gopher-tiers.html) | Worker Verification Tiers — Gopher Go | Worker verification tiers explainer (Gopher Go). | 491.3 KB | 3 — `gopher-go.html`, `gopher-request.html`, `gopher-terms-of-service.html` |
 | [`gopher-trustshield.html`](Final/gopher-trustshield.html) | Gopher TrustShield&trade; &mdash; Free identity verification | TrustShield identity-verification explainer. | 185.4 KB | 2 — `gopher-go.html`, `gopher-request.html` |
 | [`index.html`](Final/index.html) | Gopher – The Human Services Marketplace | Homepage — marketing landing for the marketplace. | 1.3 MB | **127** — global nav + footer |
 
-### B. Service-detail pages (108 — shared template family)
+### B. Service-detail pages (107 — shared template family)
 
 Grouped by marketplace category. All share one identical structural template (see Duplicate analysis).
 
@@ -150,7 +150,7 @@ Grouped by marketplace category. All share one identical structural template (se
 | [`truck-loading.html`](Final/truck-loading.html) | Truck &amp; Trailer Loading – Gopher | 204.7 KB | 1 — `gopher-services.html` |
 | [`uhaul-help.html`](Final/uhaul-help.html) | U-Haul Help – Gopher | 204.9 KB | 1 — `gopher-services.html` |
 
-#### Junk Removal (13)
+#### Junk Removal (12)
 
 | File | Title | Size | Linked by |
 |---|---|---|---|
@@ -159,7 +159,6 @@ Grouped by marketplace category. All share one identical structural template (se
 | [`donation-pickup.html`](Final/donation-pickup.html) | Donation Pickups – Gopher | 207.7 KB | 1 — `gopher-services.html` |
 | [`dump-runs.html`](Final/dump-runs.html) | Dump Runs – Gopher | 207.7 KB | 1 — `gopher-services.html` |
 | [`e-waste-removal.html`](Final/e-waste-removal.html) | E-Waste Removal – Gopher | 207.9 KB | 1 — `gopher-services.html` |
-| [`e-waste-removal_1.html`](Final/e-waste-removal_1.html) | E-Waste Removal – Gopher | 195.1 KB | **0 — ORPHAN** |
 | [`estate-cleanout.html`](Final/estate-cleanout.html) | Estate &amp; Whole-Home Cleanouts – Gopher | 207.7 KB | 1 — `gopher-services.html` |
 | [`furniture-removal.html`](Final/furniture-removal.html) | Furniture Removal – Gopher | 207.8 KB | 1 — `gopher-services.html` |
 | [`garage-cleanout.html`](Final/garage-cleanout.html) | Garage Cleanouts – Gopher | 207.8 KB | 1 — `gopher-services.html` |
@@ -221,7 +220,7 @@ Grouped by marketplace category. All share one identical structural template (se
 
 This is the **logical** navigation backbone. The shared header and footer are injected
 on every page by JS, so the global pages below are reachable from essentially anywhere;
-the diagram shows intent rather than 134×N raw edges. The 108 service-detail pages are
+the diagram shows intent rather than 133×N raw edges. The 107 service-detail pages are
 collapsed into their 7 categories for readability.
 
 ```mermaid
@@ -270,7 +269,7 @@ flowchart TD
   SVC --> C6["Hourly & Day Labor (14)"]
   SVC --> C7["Ride Sharing (12)"]
 
-  C1 --> DETAIL["108 service-detail pages<br/>(shared template)"]
+  C1 --> DETAIL["107 service-detail pages<br/>(shared template)"]
   C2 --> DETAIL
   C3 --> DETAIL
   C4 --> DETAIL
@@ -288,7 +287,6 @@ flowchart TD
 
   %% Orphans (no inbound href)
   subgraph ORPH["Orphans / components (no inbound href)"]
-    OWASTE["e-waste-removal_1.html<br/>(duplicate)"]
     OREFER["refer-card.html"]
     OIQ["gopher-iq-sandbox-standalone.html"]
     OHDR["gopher-header.html (component)"]
@@ -301,22 +299,22 @@ flowchart TD
 
 ## Duplicate & near-duplicate analysis
 
-**1. The 108 service-detail pages are one template cloned 108 times.** Every service
+**1. The 107 service-detail pages are one template cloned 107 times.** Every service
 page (e.g. `food-delivery.html`, `lawn-mowing.html`, `tv-mounting.html`) shares an
 identical structure: the same `gopher-fd-css` style block and the same section sequence
 (hero → THREE PILLARS → COMPARISON → HONEST PRICE → HOW IT WORKS → DIRECT ORDER CTA).
 They differ only in service-specific copy and the hero image (line counts 1115–1258,
 sizes 166–213 KB). This is by design for the prototype, but for the production rebuild
-it should collapse into **one template + a data file**, not 108 near-identical HTML
+it should collapse into **one template + a data file**, not 107 near-identical HTML
 files. (The same shared header/footer/CSS is also duplicated inline into every one of
-the 134 pages.)
+the 133 pages.)
 
-**2. `e-waste-removal.html` ↔ `e-waste-removal_1.html` — near-identical pair.** The
-`_1` copy differs by only ~12 non-base64 lines (an older header-component variant:
+**2. `e-waste-removal.html` ↔ `e-waste-removal_1.html` — near-identical pair (resolved).**
+The `_1` copy differed by only ~12 non-base64 lines (an older header-component variant:
 different logo source, an older media-query breakpoint, slightly different login-link
-handling). `e-waste-removal_1.html` is an **orphan** (not in the services grid) and
-appears to be an accidental leftover. Recommend the human developer delete it after
-confirming `e-waste-removal.html` is the canonical version.
+handling). It was an **orphan** (not in the services grid) and an accidental leftover, so
+**`e-waste-removal_1.html` has been deleted**; `e-waste-removal.html` is the canonical
+version that remains.
 
 **3. `gopher-deals.html` ↔ `gopher-customer-deals.html` — two variants of Deals.** Same
 core structure (both embed a Leaflet map and the deals UI), aimed at different audiences
