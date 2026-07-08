@@ -27,23 +27,43 @@ OUT  = os.path.join(REPO, "Final", "assets", "js", "gopher-age-keywords.js")
 
 def norm(s): return " ".join(str(s).strip().lower().split())
 
-def collect(fname, sheet, col, acc):
+# The alcohol xlsx tags each row with a Keyword_Type. Its own Summary sheet says:
+# "Flag High confidence matches automatically; queue Medium confidence slang/generic
+# matches for review." The "Slang or generic keyword" rows are everyday words
+# (bottle, can, shot, pint, cold one, ...) that would false-positive on ordinary
+# grocery orders, so we EXCLUDE them from the auto-flag brain per that guidance.
+ALCOHOL_EXCLUDE_TYPES = {"slang or generic keyword"}
+
+# Everyday-word collisions that survive in the brand-only lists (tobacco/beer files
+# have no type column). "carton of cigarettes" stays; bare "carton" (of eggs/milk) goes.
+GENERIC_STOPLIST = {
+    "bottle", "bottles", "can", "cans", "carton", "cartons", "pack", "packs",
+    "case", "cases", "box", "boxes", "shot", "shots", "pint", "pints",
+    "glass", "glasses", "cold one", "cold ones",
+}
+
+def collect(fname, sheet, col, acc, type_col=None):
     wb = openpyxl.load_workbook(os.path.join(SRC, fname), read_only=True, data_only=True)
     ws = wb[sheet]
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0:  # header
             continue
-        if row and len(row) > col and row[col] is not None:
-            s = norm(row[col])
-            if s and len(s) >= 2:
-                acc.add(s)
+        if not (row and len(row) > col and row[col] is not None):
+            continue
+        if type_col is not None and len(row) > type_col and row[type_col] is not None:
+            if norm(row[type_col]) in ALCOHOL_EXCLUDE_TYPES:
+                continue
+        s = norm(row[col])
+        if s and len(s) >= 2:
+            acc.add(s)
     wb.close()
 
 def main():
     kws = set()
     collect("Age_Restricted_Tobacco_Keywords.xlsx",   "Keywords",         0, kws)
-    collect("Age_Restricted_Alcohol_Keywords.xlsx",   "Keywords",         3, kws)
+    collect("Age_Restricted_Alcohol_Keywords.xlsx",   "Keywords",         3, kws, type_col=4)
     collect("Popular_Beer_Wine_Liquor_Keywords.xlsx", "Alcohol Keywords", 1, kws)
+    kws -= GENERIC_STOPLIST
     arr = sorted(kws)
     hdr = ("/* AUTO-GENERATED — Gopher iQ age-restricted keyword brain.\n"
            "   Source of truth: Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/\n"
