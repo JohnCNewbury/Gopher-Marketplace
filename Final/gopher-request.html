@@ -11350,15 +11350,20 @@
     const key = o + '|' + d;
     if((_tripCache && _tripCache.key === key) || _tripPending === key) return;   // cached / in-flight
     _tripPending = key;
+    const setPill = function(t){ const el=document.getElementById('tripDistanceVal'); if(el) el.textContent=t; };
+    setPill('calculating\u2026');
     new google.maps.DistanceMatrixService().getDistanceMatrix({
       origins:[o], destinations:[d], travelMode:'DRIVING',
       unitSystem: google.maps.UnitSystem.IMPERIAL
     }, function(res, status){
       _tripPending = '';
-      if(status !== 'OK') return;
+      if(status !== 'OK'){ setPill('unavailable ('+status+')'); console.error('[gopher] DistanceMatrix status:', status); return; }
       const el = res && res.rows[0] && res.rows[0].elements[0];
-      if(!el || el.status !== 'OK') return;
-      _tripCache = { key: key, miles: el.distance.value / 1609.34, minutes: Math.round(el.duration.value / 60) };
+      if(!el || el.status !== 'OK'){ setPill('unavailable ('+(el?el.status:'no result')+')'); console.error('[gopher] DistanceMatrix element:', el && el.status); return; }
+      const miles = el.distance.value / 1609.34, minutes = Math.round(el.duration.value / 60);
+      _tripCache = { key: key, miles: miles, minutes: minutes };
+      state.tripDistance = miles.toFixed(1) + ' mi';   // feed the Locations-step pill
+      setPill(state.tripDistance);
       // If the iQ offer-suggestion modal is open, repaint it with the real numbers.
       const ov = document.getElementById('offerSuggestOverlay');
       if(ov && !ov.hidden && window.__openOfferSuggest) window.__openOfferSuggest();
@@ -12059,7 +12064,7 @@
     destStairs: 0,
     serviceElevatorDest: false,       // Moving only — access to a service elevator at destination
     dropoffStops: [''],
-    tripDistance: '14.2 mi',
+    tripDistance: '\u2014',
 
     // Page 8 — Worker Pay
     payMode: 'set',                   // 'set' | 'bids'
@@ -13090,7 +13095,7 @@
         </div>
         ` : ''}
         ${isVisible('pickupSection') && !state.noSpecificPickup ? `
-          <div class="trip-distance">🛣 Estimated trip distance: <strong>${state.tripDistance}</strong></div>
+          <div class="trip-distance">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>
         ` : ''}
         ${reqAvailabilityLine()}
       </div>

@@ -10174,7 +10174,7 @@ const PAY_BADGES = {
     // Page 7 — Destination Location
     destStairs: 0,
     dropoffStops: [''],
-    tripDistance: '14.2 mi',
+    tripDistance: '\u2014',
 
     // Page 8 — Worker Pay
     businessPlan: false,              // plan tier: false = Starter/Standard (free) · true = Business ($49.99/mo) reduced base fees. A/R stays flat $2.99 regardless.
@@ -10963,7 +10963,7 @@ const PAY_BADGES = {
         </div>
         ` : ''}
         ${isVisible('pickupSection') && !state.noSpecificPickup ? `
-          <div class="trip-distance">🛣 Estimated trip distance: <strong>${state.tripDistance}</strong></div>
+          <div class="trip-distance">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>
         ` : ''}
       </div>
     `;
@@ -13122,15 +13122,20 @@ const PAY_BADGES = {
     const key = o + '|' + d;
     if((_tripCache && _tripCache.key === key) || _tripPending === key) return;   // cached / in-flight
     _tripPending = key;
+    const setPill = function(t){ const el=document.getElementById('tripDistanceVal'); if(el) el.textContent=t; };
+    setPill('calculating\u2026');
     new google.maps.DistanceMatrixService().getDistanceMatrix({
       origins:[o], destinations:[d], travelMode:'DRIVING',
       unitSystem: google.maps.UnitSystem.IMPERIAL
     }, function(res, status){
       _tripPending = '';
-      if(status !== 'OK') return;
+      if(status !== 'OK'){ setPill('unavailable ('+status+')'); console.error('[gopher] DistanceMatrix status:', status); return; }
       const el = res && res.rows[0] && res.rows[0].elements[0];
-      if(!el || el.status !== 'OK') return;
-      _tripCache = { key: key, miles: el.distance.value / 1609.34, minutes: Math.round(el.duration.value / 60) };
+      if(!el || el.status !== 'OK'){ setPill('unavailable ('+(el?el.status:'no result')+')'); console.error('[gopher] DistanceMatrix element:', el && el.status); return; }
+      const miles = el.distance.value / 1609.34, minutes = Math.round(el.duration.value / 60);
+      _tripCache = { key: key, miles: miles, minutes: minutes };
+      state.tripDistance = miles.toFixed(1) + ' mi';
+      setPill(state.tripDistance);
       const ov = document.getElementById('offerSuggestOverlay');
       if(ov && !ov.hidden && window.__openOfferSuggest) window.__openOfferSuggest();
     });
