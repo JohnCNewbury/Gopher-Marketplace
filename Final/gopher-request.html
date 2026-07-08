@@ -3442,6 +3442,16 @@
 .field-input input.fi-value{ border:none; background:transparent; outline:none; flex:1 1 auto; min-width:0; width:100%; font:inherit; color:var(--text); padding:0; }
 .field-input input.fi-value::placeholder{ color:var(--muted); }
 .pac-container{ z-index: 100000 !important; }
+.saved-addr-picker{ position:fixed; z-index:100001; background:#fff; border:1px solid #e3e8ef; border-radius:14px; box-shadow:0 12px 34px rgba(13,26,62,.18); padding:6px; max-width:380px; }
+.saved-addr-picker .sap-head{ font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:#8a93a3; text-transform:uppercase; letter-spacing:.06em; padding:8px 10px 6px; }
+.saved-addr-picker .sap-row{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:none; background:none; padding:9px 10px; border-radius:10px; cursor:pointer; }
+.saved-addr-picker .sap-row:hover{ background:#eef7f1; }
+.saved-addr-picker .sap-pin{ font-size:15px; flex:0 0 auto; }
+.saved-addr-picker .sap-text{ display:flex; flex-direction:column; min-width:0; }
+.saved-addr-picker .sap-label{ font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:#002461; }
+.saved-addr-picker .sap-addr{ font-family:'DM Sans',sans-serif; font-weight:500; font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.saved-addr-picker .sap-add{ display:block; width:100%; text-align:left; border:none; background:none; padding:10px; margin-top:2px; border-top:1px solid #eef2f6; color:#1CB061; font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; cursor:pointer; }
+.saved-addr-picker .sap-add:hover{ background:#eef7f1; }
   .field-pills { display:flex; flex-wrap:wrap; gap:6px; }
   .field-pill {
     background:white; border:2px solid #eef0f5; border-radius:8px;
@@ -10965,7 +10975,7 @@
     const t = e.target; if(!t) return;
     const id = t.id;
     if(id==='g40EditPickup'||id==='g40EditDropoff'||id==='dealPickup'||id==='dealDropoff') bindAddressAutocomplete();
-    if(t.matches && t.matches('input[data-locedit]')) bindStopAutocomplete(t);
+    if(t.matches && t.matches('input[data-locedit]')){ bindStopAutocomplete(t); showSavedPicker(t); }
   });
 
   // Editable Step-4 pickup/drop-off stops (data-locedit): write into state, recompute distance.
@@ -10987,6 +10997,48 @@
   document.addEventListener('change', function(e){
     if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) _writeStop(e.target);
   });
+
+  // ── Saved-address quick-pick: focus an address field → choose Home/Work/etc. ──
+  var SAVED_ADDRESSES = [
+    { label:'Home',  addr:'4101 NC-55, Apex, NC 27502' },
+    { label:'Work',  addr:'120 Grand Hill Pl, Holly Springs, NC 27540' },
+    { label:"Mom's", addr:'55 Pinecrest Dr, Cary, NC 27511' },
+    { label:'Gym',   addr:'900 Town Center Blvd, Apex, NC 27502' }
+  ];
+  var _savedPickerEl = null;
+  function hideSavedPicker(){ if(_savedPickerEl){ _savedPickerEl.remove(); _savedPickerEl = null; } }
+  function showSavedPicker(input){
+    if(!input || !SAVED_ADDRESSES.length) return;
+    hideSavedPicker();
+    var box = document.createElement('div');
+    box.className = 'saved-addr-picker';
+    box.innerHTML = '<div class="sap-head">Saved addresses</div>'
+      + SAVED_ADDRESSES.map(function(s,i){
+          return '<button type="button" class="sap-row" data-sap="'+i+'"><span class="sap-pin">\uD83D\uDCCD</span>'
+            + '<span class="sap-text"><span class="sap-label">'+s.label+'</span>'
+            + '<span class="sap-addr">'+s.addr+'</span></span></button>';
+        }).join('')
+      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new address</button>';
+    document.body.appendChild(box);
+    var r = input.getBoundingClientRect();
+    box.style.left  = Math.round(r.left) + 'px';
+    box.style.top   = Math.round(r.bottom + 6) + 'px';
+    box.style.width = Math.round(Math.max(240, r.width)) + 'px';
+    _savedPickerEl = box;
+    box.addEventListener('mousedown', function(e){ e.preventDefault(); });   // keep the input focused
+    box.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-sap]'); if(!btn) return;
+      var v = btn.getAttribute('data-sap');
+      if(v === 'add'){ hideSavedPicker(); try{ input.focus(); }catch(_){} return; }
+      var s = SAVED_ADDRESSES[+v];
+      if(s){ input.value = s.addr; if(typeof _writeStop === 'function') _writeStop(input); }
+      hideSavedPicker();
+    });
+  }
+  // Typing hides the saved picker (Google autocomplete takes over); close on scroll / outside tap.
+  document.addEventListener('input', function(e){ if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) hideSavedPicker(); });
+  document.addEventListener('mousedown', function(e){ if(_savedPickerEl && !_savedPickerEl.contains(e.target) && !(e.target.matches && e.target.matches('input[data-locedit]'))) hideSavedPicker(); }, true);
+  window.addEventListener('scroll', hideSavedPicker, true);
 
   function rideSuggestedOffer(miles, minutes, scheduled){
     const r = RIDE_RATES;
