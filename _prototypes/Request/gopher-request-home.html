@@ -1717,6 +1717,27 @@ document.addEventListener('click',function(e){
   function classify(t){
     t=' '+t.toLowerCase()+' ';
     var has=function(){for(var i=0;i<arguments.length;i++){if(t.indexOf(arguments[i])>-1)return true;}return false;};
+    // ── Location / availability — answer with the REAL coverage brain (window.GopherIQData) ──
+    var availCue = has('are you in','are you serving','do you serve','do you cover','do you have gophers','service in','available in','coming to','gophers in','service area','coverage in','operate in','you serve','you in ');
+    var placeM = t.match(/\b(?:in|serve|servicing|serving|cover|covering|to)\s+([a-z][a-z .'\-]{1,26}(?:,\s*[a-z]{2})?)\s*[?!.]*\s*$/i)
+              || t.match(/\b(\d{5})\b/);
+    if((availCue || (placeM && /,\s*[a-z]{2}\b/.test(t))) && placeM && window.GopherIQData && GopherIQData.lookup){
+      var place=String(placeM[1]).trim();
+      var cov=GopherIQData.lookup(place);
+      var startChip=[{label:'Start a request',go:1,act:'cat:delivery'}];
+      var findChip=[{label:'Find MY Gopher',go:0,act:'nav:gopher-request-refer.html'}];
+      if(cov && cov.ambiguous){
+        var opts=(cov.options||[]).map(function(o){return o.state+' ('+o.workers+' Gophers)';}).join(', ');
+        return {reply:"There’s more than one <b>"+esc(cov.city)+"</b> — which state? "+opts+".",chips:startChip};
+      }
+      var pretty=(cov&&cov.city)?cov.city:place.replace(/\b([a-z])/g,function(c){return c.toUpperCase();});
+      if(!cov || !cov.inData || (cov.workers||0)===0){
+        return {reply:"We’re not live in <b>"+esc(pretty)+"</b> just yet — but every request helps us grow there. You can post a request to gauge interest, or help bring Gopher to your area.",chips:startChip.concat(findChip)};
+      }
+      var w=cov.workers||0;
+      if(w<20) return {reply:"Word’s just getting out in <b>"+esc(pretty)+"</b> — a small crew of Gophers so far. Post a request to reach them (and if we can’t connect you, you don’t pay a dime), or use <b>Find MY Gopher</b>.",chips:startChip.concat(findChip)};
+      return {reply:"Yes — <b>"+esc(pretty)+"</b> has <b>"+w+"</b> active Gophers ready to help. Start a request and I’ll get you matched.",chips:startChip};
+    }
     if(has('alcohol','wine','beer','liquor','tobacco','vape','cigarette','cig','smokes','nicotine','juul','booze','whiskey','vodka','tequila','rum','hard seltzer',' 21')||has('age restricted','age-restricted'))
       return {reply:"Sure — age-restricted items (like alcohol or tobacco) need a quick identity check. With <b>TrustShield</b> on your profile it's automatic; otherwise you'll snap a photo of your ID in the flow. There's a $1.99 age-verification fee (TrustShield takes $1 off the request fee).",chips:[catChip('delivery')]};
     if(has('price','cost','fee','how much','charge',' pay ','expensive','cheap'))
@@ -2261,6 +2282,8 @@ document.addEventListener('click',function(e){
 })();
 </script>
 
+<!-- Real Gopher iQ coverage brain (same data as the Final apps) — powers location/availability answers -->
+<script src="../../Final/assets/js/gopher-iq-data.js"></script>
 <script>/* G40 footer — per-app GO routing (Request: GO -> Categories). */document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-gnav]');if(!t)return;var M={home:'gopher-request-home.html',inbox:'gopher-request-inbox.html',go:'gopher-request-flow.html',refer:'gopher-request-refer.html',help:'gopher-request-help.html'};var p=M[t.getAttribute('data-gnav')];if(p&&window.__navHook){try{window.__navHook(p);}catch(_){}}});</script>
 </body>
 </html>
