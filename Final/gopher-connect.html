@@ -13141,14 +13141,21 @@ const PAY_BADGES = {
     });
   }
 
+  // Display label — business name + address for establishments, plain address otherwise.
+  function _placeLabel(pl){
+    if(!pl) return '';
+    const addr = pl.formatted_address || '';
+    if(pl.name && addr && addr.indexOf(pl.name) === -1) return pl.name + ', ' + addr;
+    return addr || pl.name || '';
+  }
   function bindAddressAutocomplete(){
     if(!_gmReady || !window.google || !google.maps.places) return;
     ['g40EditPickup','g40EditDropoff','dealPickup','dealDropoff'].forEach(function(id){
       const el = document.getElementById(id);
       if(!el || el._acBound) return;
-      const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry'], types:['geocode'] });
+      const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry','name'] });
       ac.addListener('place_changed', function(){
-        const pl = ac.getPlace(); if(pl && pl.formatted_address) el.value = pl.formatted_address;
+        const lab = _placeLabel(ac.getPlace()); if(lab) el.value = lab;
       });
       el._acBound = true;
     });
@@ -13169,9 +13176,9 @@ const PAY_BADGES = {
   }
   function bindStopAutocomplete(el){
     if(!_gmReady || !window.google || !google.maps.places || el._acBound) return;
-    const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry'], types:['geocode'] });
+    const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry','name'] });
     ac.addListener('place_changed', function(){
-      const pl = ac.getPlace(); if(pl && pl.formatted_address) el.value = pl.formatted_address;
+      const lab = _placeLabel(ac.getPlace()); if(lab) el.value = lab;
       _writeStop(el);
     });
     el._acBound = true;
