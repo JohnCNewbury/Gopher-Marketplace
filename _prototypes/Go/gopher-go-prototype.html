@@ -2096,10 +2096,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const isHourly = !!j.payByHour;
       const numHours = parseInt(j.numHours,10)||1;
       const hourlyRate = (isHourly && numHours>0) ? Math.max(1,Math.round(curOffer/numHours)) : 0;
+      const quarterRate = isHourly ? Math.max(1,Math.round(hourlyRate*0.25)) : 0;   // G40-217 — 15-min (0.25 hr) increments
       let receiptAttached = false;
       const hourlyRow = isHourly ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;padding:8px 10px;border-radius:9px;background:#eef4ff;border:1px solid #cdd9f0;">'
-          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#33507e;line-height:1.3;">Hourly &middot; '+numHours+' hr @ ~$'+hourlyRate+'/hr<br><span style="color:#8a94a3;">Add time if the job ran long</span></div>'
-          +'<button class="js-addhr" style="flex:0 0 auto;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:9px;padding:7px 10px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">+1 hr (+$'+hourlyRate+')</button></div>' : '';
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#33507e;line-height:1.3;">Hourly &middot; '+numHours+' hr @ ~$'+hourlyRate+'/hr<br><span style="color:#8a94a3;">Add time in 15-min steps if it ran long</span></div>'
+          +'<button class="js-addhr" style="flex:0 0 auto;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:9px;padding:7px 10px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">+15 min (+$'+quarterRate+')</button></div>' : '';
       // G40-101 — changing item cost (±) requires a receipt.
       const receiptRow = hasItems ? '<div class="js-receipt-req" style="display:none;margin:2px 0 9px;padding:9px 11px;border-radius:9px;background:#FFF4E5;border:1px solid #f2d9a8;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a5a00;line-height:1.45;">&#128206; A receipt is required when the item cost changes. <button class="js-attach-receipt" style="border:0;background:#8a5a00;color:#fff;border-radius:8px;padding:5px 10px;font-family:Nunito;font-weight:800;font-size:11px;cursor:pointer;margin-left:2px;">Attach receipt</button> <span class="js-receipt-ok" style="color:#0a7d44;font-weight:800;"></span></div>' : '';
       const adjustBlock =
@@ -2133,7 +2134,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const offerEl=ov.querySelector('.js-upoffer'), totEl=ov.querySelector('.js-uptotal'), costEl=ov.querySelector('.js-upcost');
       function syncTotal(){ const o=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0; if(totEl) totEl.textContent='$'+o; }
       if(offerEl) offerEl.oninput=syncTotal;
-      const addhr=ov.querySelector('.js-addhr'); if(addhr) addhr.onclick=()=>{ offerEl.value=(parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0)+hourlyRate; syncTotal(); };
+      const addhr=ov.querySelector('.js-addhr'); if(addhr) addhr.onclick=()=>{ offerEl.value=(parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0)+quarterRate; syncTotal(); };
       const receiptReq=ov.querySelector('.js-receipt-req'), receiptOk=ov.querySelector('.js-receipt-ok');
       if(costEl) costEl.oninput=()=>{ const c=parseInt((costEl.value||'').replace(/[^0-9]/g,''))||0;
         if(receiptReq) receiptReq.style.display=(c!==curCost)?'block':'none';
