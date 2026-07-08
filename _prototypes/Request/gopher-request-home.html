@@ -1090,18 +1090,37 @@ function openConfirmCompletion(order){
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
   var who=r.hired||'your Gopher';
   var total=r.amount||money((+r.pay||0)+(+r.cost||0));
+  var initials=(who.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('')||'G').toUpperCase();
   var itemsRow=(+r.cost>0)?'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Items purchased</span><b style="color:#002461;">'+money(r.cost)+'</b></div>':'';
-  var o=gSheet('Confirm completion',
-    '<p class="gs-sub" style="margin-top:-2px;"><b>'+esc(who)+'</b> marked <b>#'+order+'</b> complete. Confirm to release payment and rate '+esc(who.split(' ')[0])+', or report an issue if something\u2019s wrong.</p>'
-    +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:10px 13px;margin:6px 0 4px;background:#fbfafc;font-family:\'DM Sans\',sans-serif;font-size:13px;">'
-      +'<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Request</span><b style="color:#002461;">'+esc(r.title||'Request')+'</b></div>'
+  // Completion photos shared by the Gopher at drop-off (non-age-restricted). Age-restricted orders verify
+  // by ID instead (handled in the age-restricted confirm path), so no drop-off photos there.
+  var photos=(!r.ageRestricted && r.completionPhotos && r.completionPhotos.length) ? r.completionPhotos : [];
+  var photosBlock = photos.length
+    ? '<div style="font-family:Nunito;font-weight:800;font-size:12px;color:#002461;margin:10px 0 6px;">Photos from '+esc(who.split(' ')[0])+' at completion</div>'
+      +'<div style="display:flex;gap:7px;flex-wrap:wrap;">'+photos.map(function(p){return '<img src="'+p+'" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid #eceaf0;">';}).join('')+'</div>'
+    : (r.ageRestricted ? '' : '<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-top:8px;">'+esc(who.split(' ')[0])+' didn\u2019t share completion photos.</div>');
+  var detailsBody='<div class="cc-detailsbody" style="display:none;border:1px solid #eceaf0;border-radius:12px;padding:11px 13px;margin:4px 0 2px;background:#fbfafc;font-family:\'DM Sans\',sans-serif;font-size:12.5px;">'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Request</span><b style="color:#002461;text-align:right;max-width:62%;">'+esc(r.title||'Request')+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0eef2;"><span style="color:#8a94a3;">Order</span><b style="color:#002461;">#'+esc(order)+'</b></div>'
       +itemsRow
-      +'<div style="display:flex;justify-content:space-between;padding:9px 0 2px;"><span style="color:#002461;font-weight:800;">Total</span><b style="color:#0a7d44;font-size:16px;">'+total+'</b></div>'
+      +'<div style="display:flex;justify-content:space-between;padding:8px 0 2px;"><span style="color:#002461;font-weight:800;">Total</span><b style="color:#0a7d44;font-size:15px;">'+total+'</b></div>'
+      +photosBlock
+    +'</div>';
+  var o=gSheet('Request completed',
+    '<div style="text-align:center;margin:-4px 0 4px;">'
+      +'<div style="width:74px;height:74px;border-radius:50%;margin:0 auto;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:900;font-size:26px;">'+esc(initials)+'</div>'
+      +'<div style="font-family:Nunito;font-weight:900;font-size:16.5px;color:#0a7d44;margin-top:10px;line-height:1.25;">Request Completed by<br>'+esc(who)+'!</div>'
     +'</div>'
-    +'<button class="cc-confirm" style="width:100%;margin-top:12px;padding:14px;border:0;border-radius:13px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:900;font-size:15px;cursor:pointer;">Confirm completion &amp; release payment</button>'
-    +'<button class="cc-dispute" style="width:100%;margin-top:9px;padding:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:13px;font-family:Nunito;font-weight:800;font-size:13.5px;cursor:pointer;">Report an issue</button>');
+    +'<button class="cc-details" style="display:block;width:100%;text-align:center;background:none;border:0;font-family:Nunito;font-weight:800;font-size:11.5px;letter-spacing:.6px;color:#5b6472;text-decoration:underline;cursor:pointer;margin:8px 0 6px;">TAP TO VIEW DETAILS</button>'
+    +detailsBody
+    +'<button class="cc-confirm" style="width:100%;margin-top:12px;padding:15px;border:0;border-radius:13px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:900;font-size:15px;letter-spacing:.3px;cursor:pointer;">CONFIRM COMPLETED</button>'
+    +'<p style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;line-height:1.5;text-align:center;margin:8px 4px 14px;">Selecting <b>Confirm Completed</b> will finalize your order. Your receipt will be emailed immediately after. Once this request is confirmed, payment to the worker will be transferred and <b>cannot be cancelled or refunded</b>.</p>'
+    +'<button class="cc-dispute" style="width:100%;padding:14px;border:0;border-radius:13px;background:#C44257;color:#fff;font-family:Nunito;font-weight:900;font-size:15px;letter-spacing:.3px;cursor:pointer;">DISPUTE</button>'
+    +'<p style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;line-height:1.5;text-align:center;margin:8px 4px 2px;">If a request is disputed, you and your Gopher will have the ability to work together to resolve any issues. All app features will still be available during a dispute.</p>');
+  var det=o.querySelector('.cc-details'), body=o.querySelector('.cc-detailsbody');
+  if(det) det.onclick=function(){ var open=body.style.display!=='none'; body.style.display=open?'none':'block'; det.textContent=open?'TAP TO VIEW DETAILS':'HIDE DETAILS'; };
   var cf=o.querySelector('.cc-confirm'), dp=o.querySelector('.cc-dispute');
-  if(cf) cf.onclick=function(){ GReq.update(order,{ confirmed:1, attention:{ type:'rate', label:'Rate '+who+' \u2014 job complete' } }); o.remove(); renderPending(); toast('Completion confirmed \u2014 payment released'); openRateModal(order); };
+  if(cf) cf.onclick=function(){ GReq.update(order,{ confirmed:1, attention:{ type:'rate', label:'Rate '+who+' \u2014 job complete' } }); o.remove(); renderPending(); toast('Completion confirmed \u2014 receipt emailed, payment released'); openRateModal(order); };
   if(dp) dp.onclick=function(){ o.remove(); openDispute(order); };
 }
 function openDispute(order){
