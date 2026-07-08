@@ -21196,7 +21196,7 @@ const PAY_BADGES = {
     <div class="sa-form">
       <div class="sa-form-title">Add a new address</div>
       <input type="text" id="saNameInput" class="sa-input" placeholder="Name it (e.g. Home, Work, Gym)" autocomplete="off">
-      <input type="text" id="saAddrInput" class="sa-input" placeholder="Start typing the address…" autocomplete="off">
+      <input type="text" id="saAddrInput" class="sa-input" placeholder="Type the full address (street, city, state, ZIP)" autocomplete="off">
       <div class="sa-err" id="saErr"></div>
       <button class="sa-save" id="saSave">Save address</button>
       <div class="sa-note">Addresses are verified with Google so distance &amp; pricing stay accurate.</div>
@@ -21240,14 +21240,7 @@ const PAY_BADGES = {
       return '<div class="sa-item"><span class="sa-pin">📍</span><span class="sa-item-text"><b>'+esc(s.label)+'</b><span>'+esc(s.addr)+'</span></span><button class="sa-del" data-sadel="'+i+'" aria-label="Remove">✕</button></div>';
     }).join('') : '<div class="sa-empty">No saved addresses yet. Add one below — it’ll appear when you set a pick-up or drop-off.</div>';
   }
-  function bindAC(){
-    var ad=$('saAddrInput'); if(!ad||ad._acb) return;
-    if(!(window.google&&google.maps&&google.maps.places)) return;
-    var ac=new google.maps.places.Autocomplete(ad,{fields:['formatted_address','geometry','name']});
-    ac.addListener('place_changed',function(){ var p=ac.getPlace(); if(!p) return; var a=p.formatted_address||''; var v=(p.name&&a&&a.indexOf(p.name)===-1)?(p.name+', '+a):(a||p.name||ad.value); ad.value=v; picked=v; });
-    ad._acb=true;
-  }
-  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); bindAC(); }
+  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); }
   function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; }
   function save(){
     var label=(($('saNameInput')||{}).value||'').trim(), addr=(($('saAddrInput')||{}).value||'').trim(), err=$('saErr');
@@ -21257,7 +21250,7 @@ const PAY_BADGES = {
     var commit=function(fa){ if(window.GopherSaved) window.GopherSaved.add(label,fa); if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; picked=''; render(); };
     if(picked && picked===addr){ commit(addr); return; }
     if(window.google&&google.maps){
-      new google.maps.Geocoder().geocode({address:addr},function(res,st){ if(st==='OK'&&res[0]) commit(res[0].formatted_address); else if(err) err.textContent='We couldn’t verify that address with Google — try picking one from the dropdown.'; });
+      new google.maps.Geocoder().geocode({address:addr},function(res,st){ if(st==='OK'&&res[0]) commit(res[0].formatted_address); else if(err){ err.textContent=(st==='OVER_QUERY_LIMIT') ? 'Google is rate-limiting right now — wait a moment and try again.' : 'We couldn’t verify that address — check the street, city, and state.'; } });
     } else commit(addr);
   }
   document.addEventListener('click', function(e){
