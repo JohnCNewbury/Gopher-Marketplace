@@ -147,15 +147,17 @@ a{color:var(--green-dark);}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px;}
 .caption{font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;}
 
-/* category tiles */
-.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px;}
-.cat{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:16px 14px;box-shadow:var(--card-shadow);transition:transform .15s, border-color .15s, box-shadow .15s;}
+/* category tiles — the job categories a worker can switch on, shown with the
+   same photo + badge card the Request/Connect 101 guides use, for consistency. */
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px;}
+.cat{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:0;overflow:hidden;box-shadow:var(--card-shadow);transition:transform .15s, border-color .15s, box-shadow .15s;}
 .cat:hover{transform:translateY(-3px);border-color:var(--green);box-shadow:var(--card-shadow-lg);}
-.cat .ico{font-size:26px;}
-.cat .ph{width:100%;height:80px;border-radius:11px;overflow:hidden;margin-bottom:9px;background:var(--paper);border:1px solid var(--line);}
-.cat .ph img{width:100%;height:100%;object-fit:cover;display:block;}
-.cat .nm{font-family:'Nunito';font-weight:800;font-size:14px;color:var(--navy);margin-top:8px;}
-.cat .tg{font-size:11.5px;color:var(--muted);}
+.cat .thumb{position:relative;aspect-ratio:16/10;background:var(--line);overflow:hidden;}
+.cat .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.cat .badge{position:absolute;top:8px;left:8px;background:rgba(255,255,255,.93);color:var(--navy);font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;box-shadow:0 1px 5px rgba(0,20,60,.18);}
+.cat .txt{padding:11px 13px 13px;}
+.cat .nm{font-family:'Nunito';font-weight:800;font-size:14px;color:var(--navy);line-height:1.2;}
+.cat .tg{font-size:11.5px;color:var(--muted);margin-top:3px;}
 
 /* numbered / brand list */
 ul.brand,ol.brand{list-style:none;margin:14px 0 0;padding:0;}
@@ -252,8 +254,10 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 /* gopher-it button */
 .gopher-it{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#fff;font-family:'Nunito';font-weight:900;font-size:17px;padding:14px 30px;border-radius:14px;box-shadow:0 8px 22px rgba(51,217,117,.4);border:none;margin-top:8px;}
 
-/* comparison table */
-.fee{width:100%;border-collapse:collapse;margin-top:18px;font-size:13px;line-height:1.3;background:#fff;border-radius:14px;overflow:hidden;box-shadow:var(--card-shadow);border:1px solid var(--line);}
+/* comparison table — wrapped in .fee-wrap so it scrolls inside its own box on
+   very narrow phones (≤~340px) instead of bleeding the whole page. */
+.fee-wrap{margin-top:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;box-shadow:var(--card-shadow);border:1px solid var(--line);}
+.fee{width:100%;border-collapse:collapse;font-size:13px;line-height:1.3;background:#fff;}
 .fee th,.fee td{padding:6px 12px;text-align:left;border-bottom:1px solid var(--line);}
 .fee th{background:var(--navy-light);font-family:'Nunito';font-weight:800;color:var(--navy);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding-top:9px;padding-bottom:9px;}
 .fee th.c,.fee td.c{text-align:center;}
@@ -459,14 +463,14 @@ body.nav-open .sections-fab{opacity:0;pointer-events:none;}
       <h2>Work settings &amp; radius</h2>
       <p>Tell Gopher Go what you want to do and how far you'll travel. Open <b>More → Work Settings &amp; Radius</b>, pick your job categories, and set your distance.</p>
       <div class="cat-grid">
-        <div class="cat"><div class="ph"><img src="assets/img/go101-delivery.webp" alt="Delivery / Errand" loading="lazy"></div><div class="nm">Delivery / Errand</div><div class="tg">Pick-up &amp; drop-off</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-delivery-errand.webp" alt="Junk Removal" loading="lazy"></div><div class="nm">Junk Removal</div><div class="tg">Hauling</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-moving.webp" alt="Moving" loading="lazy"></div><div class="nm">Moving</div><div class="tg">Relocation</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-moving.webp" alt="Home / Office Services" loading="lazy"></div><div class="nm">Home / Office</div><div class="tg">Cleaning &amp; installs</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-home-office-services.webp" alt="Hourly / Day Labor" loading="lazy"></div><div class="nm">Hourly / Day Labor</div><div class="tg">Crews by the hour</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-hourly-day-labor.webp" alt="Yard / Outdoor Projects" loading="lazy"></div><div class="nm">Yard / Outdoor</div><div class="tg">Outdoor projects</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-yard-outdoor-projects.webp" alt="Ride Sharing" loading="lazy"></div><div class="nm">Ride Sharing</div><div class="tg">Rides &amp; airport runs</div></div>
-        <div class="cat"><div class="ph"><img src="assets/img/go101-ride-sharing.webp" alt="Other" loading="lazy"></div><div class="nm">Other</div><div class="tg">Anything else</div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Errand</span><img src="assets/img/go101-delivery.webp" alt="Delivery / Errand" loading="lazy"></div><div class="txt"><div class="nm">Delivery / Errand</div><div class="tg">Pick-up &amp; drop-off</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Hauling</span><img src="assets/img/go101-junk-removal.webp" alt="Junk Removal" loading="lazy"></div><div class="txt"><div class="nm">Junk Removal</div><div class="tg">Furniture &amp; debris haul-away</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Relocation</span><img src="assets/img/go101-moving.webp" alt="Moving" loading="lazy"></div><div class="txt"><div class="nm">Moving</div><div class="tg">Load, move &amp; unload</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Services</span><img src="assets/img/go101-home-office.webp" alt="Home / Office Services" loading="lazy"></div><div class="txt"><div class="nm">Home / Office Services</div><div class="tg">Cleaning, installs &amp; handyman</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Labor</span><img src="assets/img/go101-hourly-day-labor.webp" alt="Hourly / Day Labor" loading="lazy"></div><div class="txt"><div class="nm">Hourly / Day Labor</div><div class="tg">Crews by the hour</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Outdoor</span><img src="assets/img/go101-yard-outdoor.webp" alt="Yard / Outdoor" loading="lazy"></div><div class="txt"><div class="nm">Yard / Outdoor</div><div class="tg">Mowing, cleanup &amp; tree work</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Ride</span><img src="assets/img/go101-ride-sharing.webp" alt="Ride Sharing" loading="lazy"></div><div class="txt"><div class="nm">Ride Sharing</div><div class="tg">Rides &amp; airport runs</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Custom</span><img src="assets/img/go101-other.webp" alt="Other" loading="lazy"></div><div class="txt"><div class="nm">Other</div><div class="tg">Anything else</div></div></div>
       </div>
       <div class="mock">
         <div class="mock-label">Travel radius — jobs follow you</div>
@@ -705,6 +709,7 @@ body.nav-open .sections-fab{opacity:0;pointer-events:none;}
         </div>
       </div>
 
+      <div class="fee-wrap">
       <table class="fee">
         <thead>
           <tr>
@@ -727,6 +732,7 @@ body.nav-open .sections-fab{opacity:0;pointer-events:none;}
           <tr><td class="row">Verify professional credential (Licence, Bonded and/or Insured)</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c ck">✓</td></tr>
         </tbody>
       </table>
+      </div>
       <p class="caption"><b>Ride Sharing isn't a tier unlock</b> — any active Gopher can accept ride-sharing jobs once it's selected in Work Settings &amp; Radius and all required vehicle and licence details are on file. <b>Service-Provider Deals eligibility</b> is automatic once you're a verified tier (Elite, Elite+, or Pro) with <b>20+ completed jobs</b> and a <b>4.75★ average over your last 20 requests</b>.</p>
       <div class="note info"><span class="nico">🚀</span><div>All three verified tiers also unlock a <b>100-mile work radius</b> (delivery and ride-sharing jobs stay at 50 miles) and <b>bullet-speed payouts</b> from your very first job — no trust-building phase.</div></div>
 
