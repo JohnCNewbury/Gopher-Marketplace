@@ -11735,6 +11735,11 @@ const PAY_BADGES = {
   // stepGate() returns whether the current step may advance. When it can't,
   // it names the missing field (`label`) and the DOM selector to flash
   // (`selector`) so the prompt can point the user at exactly what's needed.
+  // Exposed so code outside this scope (e.g. the address-field _writeStop) can re-sync the
+  // Continue button live — stepGate is only otherwise evaluated inside render() on step change.
+  window.__gopherSyncGate = function(){
+    try { var bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(e){}
+  };
   function stepGate(){
     // Step 1 — a service category must be selected before continuing.
     if(state.step === 1 && !state.category){
@@ -12542,8 +12547,8 @@ const PAY_BADGES = {
     if(arr){ arr[idx] = el.value.trim(); }
     refreshTripDistance();
     // Filling/clearing an address changes the required-field gate — re-sync the Continue
-    // button now (render() only runs it on step transitions, so it wouldn't update live).
-    try { const bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(_e){}
+    // button live via the window helper (defined in stepGate's scope, so scope doesn't matter).
+    if(window.__gopherSyncGate) window.__gopherSyncGate();
   }
   function bindStopAutocomplete(el){
     if(!_gmReady || !window.google || !google.maps.places || el._acBound) return;
