@@ -237,6 +237,24 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   browser (service + branded pages styled, footer navy, no 404s). Detail:
   `docs/handoff/css-consolidation-2026-07-07.md`. **Deploy must include `assets/css/`.**
 
+- **Mobile responsiveness pass (done 2026-07-08, G40-317).** Verified the 8 priority templates
+  at phone (375) + tablet (768): **0 horizontal overflow** on all (index, a service page repping
+  all 107, connect, request, deals, go, services, faqs). Mobile burger drawer opens the full
+  styled nav (incl. Deals/Tutorials sub-dropdowns) from the shared `gopher-header.js`; gopher iQ
+  search pill renders correctly at 375. **No fixes required** — the site is already consistently
+  responsive, now structurally so via the shared components. Not exhaustive (every page / extreme
+  widths / real devices) — follow-up if wanted. Detail: `docs/handoff/mobile-responsiveness-2026-07-08.md`.
+
+- **Navigation paths & broken refs (done 2026-07-08, G40-318).** Audited every href/src across
+  all pages + the shared header/footer JS vs real filenames: **0 root-absolute paths, 0 case
+  mismatches**; Home/logo → `index.html` confirmed. Fixed 1 legacy broken link
+  (`terms-of-service.html` → `gopher-terms-of-service.html` in request-101). **Localized 13
+  external `gophergo.io/wp-content` images** (hot-linked from the live WP site — would 404 when
+  gophergo.io is replaced) → `assets/img/wp-*.webp`+`blog-*.webp`, repointed across 7 pages; 0
+  hotlinks remain; `mailto:` addresses untouched. Only unresolved refs left = the 8 known-missing
+  hero clips (video production, degrades gracefully). Verified in browser. Detail:
+  `docs/handoff/nav-paths-2026-07-08.md`.
+
 ### Outstanding to-do
 
 - **8 hero clips** still needed: `hero-media/clip-1..4.{webm,mp4}` referenced by
