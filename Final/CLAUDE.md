@@ -255,6 +255,25 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   hero clips (video production, degrades gracefully). Verified in browser. Detail:
   `docs/handoff/nav-paths-2026-07-08.md`.
 
+- **Per-page SEO basics (done 2026-07-08, G40-319).** Base domain `https://gophergo.io/` (owner
+  decision). Injected into **126 pages**: `<link rel="canonical">` (home → `/`, others →
+  `/<page>.html`), Open Graph (type/site_name/title/description/url/image) + Twitter
+  `summary_large_image`; **filled 13 missing meta descriptions** with hand-written copy. Titles
+  (127/127) and single-`<h1>` were already good. Created a 1200×630 share image
+  `assets/img/og-default.jpg` (cream + navy/green logo + tagline), used as default og/twitter
+  image. Idempotent; verified 1 canonical/og:image/desc per page, header/footer intact, no errors.
+  `gopher-go-101.html` skipped (concurrent refactor) — add its SEO block once that lands. If prod
+  adopts clean URLs, regenerate canonicals without `.html`. Detail: `docs/handoff/seo-basics-2026-07-08.md`.
+
+- **Asset naming + folder organization (done 2026-07-08, G40-320 — final epic ticket).** Created
+  `draft-content/` (staging); **consolidated all loose root CSS/JS into `assets/`** (`gopher-ai-engine.css`,
+  `3-pill-css.css` → `assets/css/`; `gopher-ai-engine.js`, `gopher-iq-data.js` → `assets/js/`; only
+  iq-data is `src`-loaded (4 pages, refs updated) — engines are inlined). Archived 4 unref spare
+  images → `assets/img/originals/`. **0 broken refs** (verified `GopherIQData.lookup` still works).
+  Documented the naming convention (`<context>-<descriptor>[-n].<ext>`) + live-vs-spare + what the
+  rebuild should still move (root `.mp4` scene videos → `assets/video/`; generic `*-img-N` names left
+  as-is; go-101 pending concurrent refactor). Full map: `docs/handoff/folder-structure.md`.
+
 ### Outstanding to-do
 
 - **8 hero clips** still needed: `hero-media/clip-1..4.{webm,mp4}` referenced by
