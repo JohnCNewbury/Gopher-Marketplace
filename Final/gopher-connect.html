@@ -28,6 +28,10 @@
      Connect (requestor-side) banners carry the full Gopher character. Component API: window.GopherBanner.
      Trigger-wiring is left to the production rebuild (see Final/CLAUDE.md). -->
 <script src="assets/js/gopher-banner.js"></script>
+<!-- Age-restricted keyword brain — generated from the canonical Gopher iQ xlsx
+     (Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx).
+     Consumed by findAgeRestrictedKeyword(); regenerate from the xlsx, do not hand-edit. -->
+<script src="assets/js/gopher-age-keywords.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -9632,11 +9636,17 @@ const PAY_BADGES = {
   function findAgeRestrictedKeyword(text){
     const orig = String(text || '');
     if(!orig.trim()) return null;
-    for(const kw of AGE_RESTRICTED_KEYWORDS){
-      const esc = kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
-      const re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','i');
-      const m = orig.match(re);
-      if(m) return m[1];
+    // Canonical age-restricted keyword brain (tobacco + alcohol, generated from the
+    // Gopher iQ xlsx: assets/js/gopher-age-keywords.js) first, then the local list
+    // (THC/kratom/lottery + intent phrases not in the xlsx). Single source of truth.
+    const lists = [ (window.GopherAgeKeywords || []), AGE_RESTRICTED_KEYWORDS ];
+    for(const list of lists){
+      for(const kw of list){
+        const esc = String(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
+        const re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','i');
+        const m = orig.match(re);
+        if(m) return m[1];
+      }
     }
     return null;
   }
@@ -21232,6 +21242,9 @@ const PAY_BADGES = {
 .sa-save{ width:100%; padding:12px; border:none; border-radius:12px; background:#33D975; color:#002461; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; }
 .sa-save:hover{ background:#2fc76c; }
 .sa-note{ font-size:11px; color:#8a93a3; text-align:center; margin-top:10px; line-height:1.4; }
+.sa-pred{ position:fixed; z-index:100002; background:#fff; border:1px solid #e3e8ef; border-radius:12px; box-shadow:0 12px 30px rgba(13,26,62,.2); padding:5px; max-height:240px; overflow:auto; }
+.sa-pred-row{ display:block; width:100%; text-align:left; border:none; background:none; padding:9px 11px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:12.5px; color:#2b2f36; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-pred-row:hover{ background:#eef7f1; }
 </style>
 <script>
 (function(){
@@ -21245,8 +21258,8 @@ const PAY_BADGES = {
       return '<div class="sa-item"><span class="sa-pin">📍</span><span class="sa-item-text"><b>'+esc(s.label)+'</b><span>'+esc(s.addr)+'</span></span><button class="sa-del" data-sadel="'+i+'" aria-label="Remove">✕</button></div>';
     }).join('') : '<div class="sa-empty">No saved addresses yet. Add one below — it’ll appear when you set a pick-up or drop-off.</div>';
   }
-  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); }
-  function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; }
+  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); _tok=null; _hidePred(); }
+  function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; _hidePred(); }
   function save(){
     var label=(($('saNameInput')||{}).value||'').trim(), addr=(($('saAddrInput')||{}).value||'').trim(), err=$('saErr');
     if(!label){ if(err)err.textContent='Give it a name (e.g. Home).'; return; }
@@ -21266,6 +21279,33 @@ const PAY_BADGES = {
     if(e.target.id==='saSave'){ save(); return; }
     var d=e.target.closest('[data-sadel]'); if(d){ if(window.GopherSaved) window.GopherSaved.removeAt(+d.getAttribute('data-sadel')); render(); }
   });
+  // Google-mapped suggestions via AutocompleteService (custom dropdown — avoids the deprecated
+  // Autocomplete widget that errored in the modal). Selecting stores a full Google place; Save
+  // geocodes it to the canonical formatted_address.
+  var _acSvc=null, _tok=null, _predEl=null;
+  function _hidePred(){ if(_predEl){ _predEl.remove(); _predEl=null; } }
+  function _showPred(){
+    var ad=$('saAddrInput'); if(!ad) return;
+    if(!(window.google&&google.maps&&google.maps.places)) return;
+    var q=(ad.value||'').trim();
+    if(q.length<3){ _hidePred(); return; }
+    if(!_acSvc) _acSvc=new google.maps.places.AutocompleteService();
+    if(!_tok) _tok=new google.maps.places.AutocompleteSessionToken();
+    _acSvc.getPlacePredictions({ input:q, sessionToken:_tok, componentRestrictions:{country:'us'} }, function(preds,status){
+      _hidePred();
+      if(status!=='OK'||!preds||!preds.length) return;
+      var box=document.createElement('div'); box.className='sa-pred';
+      box.innerHTML=preds.slice(0,5).map(function(p){ return '<button type="button" class="sa-pred-row" data-desc="'+esc(p.description)+'">'+esc(p.description)+'</button>'; }).join('');
+      document.body.appendChild(box);
+      var r=ad.getBoundingClientRect();
+      box.style.left=Math.round(r.left)+'px'; box.style.top=Math.round(r.bottom+4)+'px'; box.style.width=Math.round(r.width)+'px';
+      _predEl=box;
+      box.addEventListener('mousedown', function(e){ e.preventDefault(); });
+      box.addEventListener('click', function(e){ var b=e.target.closest('[data-desc]'); if(!b) return; ad.value=b.getAttribute('data-desc'); picked=ad.value; _tok=null; _hidePred(); });
+    });
+  }
+  document.addEventListener('input', function(e){ if(e.target && e.target.id==='saAddrInput') _showPred(); });
+  document.addEventListener('mousedown', function(e){ if(_predEl && !_predEl.contains(e.target) && !(e.target && e.target.id==='saAddrInput')) _hidePred(); }, true);
   window.openSavedAddrModal=openM;
 })();
 </script>
