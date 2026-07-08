@@ -217,7 +217,8 @@
             statusSeen[id]=job.substage;
             var patch={ stage:'active', substage:job.substage };
             if(job.substage==='completed'){ patch.attention={ type:'confirm',
-              label:(r.hired||'Your Gopher')+' marked the job complete — confirm or report' }; }
+              label:(r.hired||'Your Gopher')+' marked the job complete — confirm or report' };
+              if(job.completionPhotos && job.completionPhotos.length) patch.completionPhotos=job.completionPhotos.slice(); }   // drop-off photos → requester confirm screen
             l.GReq.update(id, patch);
             try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
             try{ if(l.renderPending) l.renderPending(); }catch(_){}

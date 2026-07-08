@@ -2125,6 +2125,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ov.querySelector('.js-upclose').onclick=()=>ov.remove();
       ov.querySelector('.js-advance').onclick=()=>{
         if(nk==='completed' && j.ageRestricted){ ov.remove(); openAgeIdConfirm(); return; }   // age-restricted → verify recipient ID at drop-off first
+        if(nk==='completed' && !j.ageRestricted && (/delivery|errand/i.test(j.cat||'') || +j.cost>0)){ ov.remove(); openCompletionPhotos(); return; }   // delivery → optional drop-off photos
         j.substage=nk;                    // shared-store write — the harness reflects it on the requester's card
         ov.remove(); draw();
         toast(nk==='completed' ? 'Job marked complete — '+who+' can now confirm &amp; rate you'
@@ -2202,6 +2203,40 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         toast('Reported as no-show — you&#8217;re paid in full; items not released.'); }
       ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
       ov.querySelector('.js-nsreport').onclick=()=>finishNoShow();
+    }
+    // Completion photos (non-age-restricted delivery) — the Gopher shares up to 3 drop-off photos so the
+    // requester can verify (helpful for contactless). Optional. Relayed to the requester's confirm screen.
+    function demoDropPhoto(n){
+      var bg=['#cfe6cf','#e8dcc0','#cdd9f0'][n%3];
+      return 'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140"><rect width="140" height="140" fill="'+bg+'"/><rect x="0" y="104" width="140" height="36" fill="#b6a58c"/><rect x="44" y="58" width="52" height="46" fill="#c19a5b" stroke="#8a5a2a" stroke-width="2"/><path d="M44 58h52M70 58v46" stroke="#8a5a2a" stroke-width="2"/><rect x="10" y="18" width="30" height="86" fill="#9fb0c8"/><text x="70" y="34" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="12" fill="#4a6a4a">Left at door '+(n+1)+'</text></svg>');
+    }
+    function openCompletionPhotos(){
+      var photos=[];
+      function complete(){ j.completionPhotos=photos.slice(); j.substage='completed'; draw();
+        toast(photos.length?('Job complete — '+photos.length+' photo'+(photos.length>1?'s':'')+' shared with '+who):('Job marked complete — '+who+' can now confirm &amp; rate you')); }
+      const ov=showModal(
+        '<h3>Add completion photos</h3>'
+        +'<p>Up to 3 photos so <b>'+who+'</b> can verify the drop-off — helpful for contactless deliveries. Optional.</p>'
+        +'<div class="js-cptiles" style="display:flex;gap:8px;margin:12px 0;"></div>'
+        +'<button class="js-cpsample" style="width:100%;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:11px;padding:10px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Add a sample photo (demo)</button>'
+        +'<button class="js-cpsubmit" style="width:100%;margin-top:10px;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Complete without photos</button>'
+        +'<span class="mlink js-cpskip" style="margin-top:10px;">Skip — no photos</span>');
+      const tilesEl=ov.querySelector('.js-cptiles'), submitB=ov.querySelector('.js-cpsubmit');
+      function syncSubmit(){ submitB.textContent=photos.length?('Complete &amp; share '+photos.length+' photo'+(photos.length>1?'s':'')):'Complete without photos'; }
+      function pickFile(){ if(photos.length>=3) return; const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+        inp.onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ photos.push(rd.result); renderTiles(); syncSubmit(); }; rd.readAsDataURL(f); }; inp.click(); }
+      function renderTiles(){
+        tilesEl.innerHTML=[0,1,2].map((_,i)=>{ const p=photos[i];
+          return p ? '<div data-rm="'+i+'" style="position:relative;width:74px;height:74px;border-radius:10px;background-image:url('+JSON.stringify(p)+');background-size:cover;background-position:center;cursor:pointer;border:1px solid #eceaf0;"><span style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#C44257;color:#fff;font-size:12px;line-height:18px;text-align:center;font-family:Nunito;">&times;</span></div>'
+                   : '<div data-add="1" style="width:74px;height:74px;border-radius:10px;border:2px dashed #d9d2c2;display:flex;align-items:center;justify-content:center;color:#8C8675;font-family:Nunito;font-weight:800;font-size:11px;cursor:pointer;background:#F7F5EF;">+ Add</div>';
+        }).join('');
+        tilesEl.querySelectorAll('[data-add]').forEach(t=>t.onclick=pickFile);
+        tilesEl.querySelectorAll('[data-rm]').forEach(t=>t.onclick=()=>{ photos.splice(+t.getAttribute('data-rm'),1); renderTiles(); syncSubmit(); });
+      }
+      ov.querySelector('.js-cpsample').onclick=()=>{ if(photos.length>=3) return; photos.push(demoDropPhoto(photos.length)); renderTiles(); syncSubmit(); };
+      submitB.onclick=()=>{ ov.remove(); complete(); };
+      ov.querySelector('.js-cpskip').onclick=()=>{ photos=[]; ov.remove(); complete(); };
+      renderTiles(); syncSubmit();
     }
     // Cancel — the Gopher is warned a cancellation fee may apply per terms and must give a reason.
     function openCancelRequest(){
