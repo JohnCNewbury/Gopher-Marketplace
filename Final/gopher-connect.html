@@ -8291,6 +8291,9 @@
       <button class="dash-nav-item" data-dash-section="personal">
         <span class="dni-ico">👤</span><span class="dni-label">Personal Info</span>
       </button>
+      <button class="dash-nav-item" id="gcDashSavedAddr">
+        <span class="dni-ico">📍</span><span class="dni-label">Saved Addresses</span>
+      </button>
       <button class="dash-nav-item" data-dash-section="payment">
         <span class="dni-ico">💳</span><span class="dni-label">Payment Info</span>
       </button>
@@ -21159,5 +21162,89 @@ const PAY_BADGES = {
 </script>
 
 <!-- GOPHER-RECEIPT-COMPONENT (G40-101) END -->
+<!-- Saved Addresses manager (session store; Google-validated) -->
+<div class="sa-overlay" id="savedAddrModal" hidden>
+  <div class="sa-backdrop" data-sa-close></div>
+  <div class="sa-modal" role="dialog" aria-modal="true" aria-label="Saved addresses">
+    <div class="sa-head"><h3>Saved Addresses</h3><button class="sa-x" id="saClose" aria-label="Close" data-sa-close>✕</button></div>
+    <div class="sa-list" id="saList"></div>
+    <div class="sa-form">
+      <div class="sa-form-title">Add a new address</div>
+      <input type="text" id="saNameInput" class="sa-input" placeholder="Name it (e.g. Home, Work, Gym)" autocomplete="off">
+      <input type="text" id="saAddrInput" class="sa-input" placeholder="Start typing the address…" autocomplete="off">
+      <div class="sa-err" id="saErr"></div>
+      <button class="sa-save" id="saSave">Save address</button>
+      <div class="sa-note">Addresses are verified with Google so distance &amp; pricing stay accurate.</div>
+    </div>
+  </div>
+</div>
+<style id="saved-addr-css">
+.sa-overlay{ position:fixed; inset:0; z-index:99990; display:flex; align-items:center; justify-content:center; }
+.sa-overlay[hidden]{ display:none; }
+.sa-backdrop{ position:absolute; inset:0; background:rgba(13,26,62,.5); }
+.sa-modal{ position:relative; width:min(440px,92vw); max-height:86vh; overflow:auto; background:#fff; border-radius:20px; box-shadow:0 30px 80px rgba(0,0,0,.35); padding:20px 22px; font-family:'DM Sans',sans-serif; }
+.sa-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sa-head h3{ font-family:'Nunito',sans-serif; font-weight:900; color:#002461; font-size:19px; margin:0; }
+.sa-x{ border:none; background:none; font-size:18px; color:#8a93a3; cursor:pointer; line-height:1; }
+.sa-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.sa-item{ display:flex; align-items:center; gap:10px; background:#f6f8fb; border:1px solid #e9eef4; border-radius:12px; padding:10px 12px; }
+.sa-pin{ font-size:15px; }
+.sa-item-text{ display:flex; flex-direction:column; min-width:0; flex:1; }
+.sa-item-text b{ font-family:'Nunito',sans-serif; color:#002461; font-size:13.5px; }
+.sa-item-text span{ font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-del{ border:none; background:none; color:#C44257; font-size:14px; cursor:pointer; padding:4px; }
+.sa-empty{ font-size:12.5px; color:#8a93a3; padding:8px 2px 4px; line-height:1.5; }
+.sa-form{ border-top:1px solid #eef2f6; padding-top:14px; }
+.sa-form-title{ font-family:'Nunito',sans-serif; font-weight:800; color:#002461; font-size:13px; margin-bottom:8px; }
+.sa-input{ width:100%; box-sizing:border-box; padding:11px 13px; margin-bottom:8px; border:1px solid #dfe5ec; border-radius:11px; font-size:13.5px; font-family:'DM Sans',sans-serif; outline:none; }
+.sa-input:focus{ border-color:#33D975; }
+.sa-err{ color:#C44257; font-size:12px; min-height:14px; margin-bottom:6px; }
+.sa-save{ width:100%; padding:12px; border:none; border-radius:12px; background:#33D975; color:#002461; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; }
+.sa-save:hover{ background:#2fc76c; }
+.sa-note{ font-size:11px; color:#8a93a3; text-align:center; margin-top:10px; line-height:1.4; }
+</style>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var picked='';
+  function render(){
+    var w=$('saList'); if(!w) return;
+    var l=(window.GopherSaved?window.GopherSaved.list():[]);
+    w.innerHTML = l.length ? l.map(function(s,i){
+      return '<div class="sa-item"><span class="sa-pin">📍</span><span class="sa-item-text"><b>'+esc(s.label)+'</b><span>'+esc(s.addr)+'</span></span><button class="sa-del" data-sadel="'+i+'" aria-label="Remove">✕</button></div>';
+    }).join('') : '<div class="sa-empty">No saved addresses yet. Add one below — it’ll appear when you set a pick-up or drop-off.</div>';
+  }
+  function bindAC(){
+    var ad=$('saAddrInput'); if(!ad||ad._acb) return;
+    if(!(window.google&&google.maps&&google.maps.places)) return;
+    var ac=new google.maps.places.Autocomplete(ad,{fields:['formatted_address','geometry','name']});
+    ac.addListener('place_changed',function(){ var p=ac.getPlace(); if(!p) return; var a=p.formatted_address||''; var v=(p.name&&a&&a.indexOf(p.name)===-1)?(p.name+', '+a):(a||p.name||ad.value); ad.value=v; picked=v; });
+    ad._acb=true;
+  }
+  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); bindAC(); }
+  function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; }
+  function save(){
+    var label=(($('saNameInput')||{}).value||'').trim(), addr=(($('saAddrInput')||{}).value||'').trim(), err=$('saErr');
+    if(!label){ if(err)err.textContent='Give it a name (e.g. Home).'; return; }
+    if(!addr){ if(err)err.textContent='Enter an address.'; return; }
+    if(err)err.textContent='';
+    var commit=function(fa){ if(window.GopherSaved) window.GopherSaved.add(label,fa); if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; picked=''; render(); };
+    if(picked && picked===addr){ commit(addr); return; }
+    if(window.google&&google.maps){
+      new google.maps.Geocoder().geocode({address:addr},function(res,st){ if(st==='OK'&&res[0]) commit(res[0].formatted_address); else if(err) err.textContent='We couldn’t verify that address with Google — try picking one from the dropdown.'; });
+    } else commit(addr);
+  }
+  document.addEventListener('click', function(e){
+    if(e.target.closest('#rqDashSavedAddr, #gcDashSavedAddr, [data-open-saved-addr]')){ e.preventDefault(); e.stopImmediatePropagation(); openM(); }
+  }, true);
+  document.addEventListener('click', function(e){
+    if(e.target.closest('[data-sa-close]')){ closeM(); return; }
+    if(e.target.id==='saSave'){ save(); return; }
+    var d=e.target.closest('[data-sadel]'); if(d){ if(window.GopherSaved) window.GopherSaved.removeAt(+d.getAttribute('data-sadel')); render(); }
+  });
+  window.openSavedAddrModal=openM;
+})();
+</script>
 </body>
 </html>
