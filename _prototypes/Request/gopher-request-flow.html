@@ -36,6 +36,8 @@
 <!-- Gopher Banner Notification template (Jira G40-306): branded push banners.
      Request banners carry the full Gopher character. docs/handoff/G40-306-banner-notifications.html -->
 <script src="gopher-banner.js"></script>
+<!-- Age-restricted keyword brain — generated from Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx (canonical source). -->
+<script src="../../Final/assets/js/gopher-age-keywords.js"></script>
 <style>
 :root{
   --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
@@ -966,10 +968,17 @@ function findAgeRestrictedKeyword(text){
   if(!text) return null;
   const hay=' '+String(text).toLowerCase().replace(/[^a-z0-9&!\- ]+/g,' ').replace(/\s+/g,' ')+' ';
   const isAlnum=ch=> ch!==undefined && /[a-z0-9]/.test(ch);
-  for(const kw of AGE_RESTRICTED_KEYWORDS){
-    const k=kw.toLowerCase(); const idx=hay.indexOf(k);
-    if(idx===-1) continue;
-    if(!isAlnum(hay[idx-1]) && !isAlnum(hay[idx+k.length])) return kw;
+  // Canonical age-restricted keyword brain (tobacco + alcohol, generated from the
+  // Gopher iQ xlsx) first, then the local list (THC/kratom/lottery + intent phrases
+  // not in the xlsx). Single source of truth: Final/assets/js/gopher-age-keywords.js
+  const lists = [ (window.GopherAgeKeywords||[]), AGE_RESTRICTED_KEYWORDS ];
+  for(const list of lists){
+    for(const kw of list){
+      const k=String(kw).toLowerCase(); if(k.length<2) continue;
+      const idx=hay.indexOf(k);
+      if(idx===-1) continue;
+      if(!isAlnum(hay[idx-1]) && !isAlnum(hay[idx+k.length])) return kw;
+    }
   }
   return null;
 }
