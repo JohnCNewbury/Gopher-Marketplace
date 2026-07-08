@@ -5,6 +5,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gopher Connect – On-Demand Workforce for Businesses</title>
+  <!-- SEO (G40-319) -->
+  <meta name="description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <link rel="canonical" href="https://gophergo.io/gopher-connect.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Gopher">
+  <meta property="og:title" content="Gopher Connect – On-Demand Workforce for Businesses">
+  <meta property="og:description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <meta property="og:url" content="https://gophergo.io/gopher-connect.html">
+  <meta property="og:image" content="https://gophergo.io/assets/img/og-default.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gopher Connect – On-Demand Workforce for Businesses">
+  <meta name="twitter:description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
+
 <!-- Shared in-app messaging guard (prototype layer). Client-side keyword
      deterrent that wraps the inbox send; same pattern as the age-restricted
      keyword backstop. Relative + case-exact path (GitHub Pages serves on Linux).
@@ -12519,6 +12533,9 @@ const PAY_BADGES = {
     const arr = kind==='dropoff' ? state.dropoffStops : state.pickupStops;
     if(arr){ arr[idx] = el.value.trim(); }
     refreshTripDistance();
+    // Filling/clearing an address changes the required-field gate — re-sync the Continue
+    // button now (render() only runs it on step transitions, so it wouldn't update live).
+    try { const bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(_e){}
   }
   function bindStopAutocomplete(el){
     if(!_gmReady || !window.google || !google.maps.places || el._acBound) return;
