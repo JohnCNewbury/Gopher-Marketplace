@@ -94,6 +94,7 @@
   var goMsgSeen={};  // GReq order id -> count of Gopher messages already relayed to Request
   var reqMsgSeen={}; // GReq order id -> count of Requester messages already relayed to Go
   var adjustSeen={}; // GReq order id -> last charge-adjustment seq relayed to Request
+  var adjustDecided={}; // GReq order id -> last adjust approve/decline seq relayed back to Go
   var noShowAlerted={}; // GReq order id -> last no-show-timer seq the requester was alerted about
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
@@ -288,14 +289,51 @@
           var job=w.__ptJobs[id];
           if(job && job.adjust && adjustSeen[id]!==job.adjust.seq){
             var r=l.GReq.get(id); if(!r){ continue; }
-            adjustSeen[id]=job.adjust.seq;
-            var offer=+job.adjust.offer||0, cost=+job.adjust.cost||0;
-            var fee=Math.round(0.08*offer*100)/100;             // instant-transfer fee, mirrors the counter model
-            var total=offer+cost+fee;
-            l.GReq.update(id, { pay:offer, cost:cost, amount:'$'+total.toFixed(2) });
-            try{ if(l.renderPending) l.renderPending(); }catch(_){}
-            try{ if(l.__adjustAlert) l.__adjustAlert(id, offer, cost, total); }catch(_){}
-            status('Gopher <b>adjusted the charge</b> on '+id+' → new total <b>$'+total.toFixed(2)+'</b> (offer $'+offer+(cost?(' + $'+cost+' items'):'')+') — the requester\'s card updated.');
+            var a=job.adjust;
+            if(a.status==='pending'){
+              // The change RAISES the charge → the requester must approve/decline before it applies.
+              // Only mark relayed once the Request hook exists (else a mid-reload tick would swallow it).
+              if(!l.__adjustApproval){ continue; }
+              try{ l.__adjustApproval(id, {
+                seq:a.seq, origOffer:+a.origOffer||0, origCost:+a.origCost||0,
+                newOffer:+a.newOffer||0, newCost:+a.newCost||0, comment:a.comment||'',
+                hasReceipt:!!a.hasReceipt, ageRestricted:!!a.ageRestricted, trustShield:!!a.trustShield
+              }); }catch(_){ continue; }
+              adjustSeen[id]=a.seq;
+              status('Gopher <b>submitted a cost adjustment</b> on '+id+' (raises the charge) → waiting for the requester to <b>approve or decline</b>.');
+            } else {
+              // status 'applied' — same/lower total, no re-auth needed → reflect on the card immediately.
+              var offer=+a.newOffer||0, cost=+a.newCost||0;
+              var fee=Math.round(0.08*offer*100)/100; var total=offer+cost+fee;
+              l.GReq.update(id, { pay:offer, cost:cost, amount:'$'+total.toFixed(2) });
+              try{ if(l.renderPending) l.renderPending(); }catch(_){}
+              try{ if(l.__adjustAlert) l.__adjustAlert(id, offer, cost, total); }catch(_){}
+              adjustSeen[id]=a.seq;
+              status('Gopher adjusted '+id+' with <b>no charge increase</b> → applied automatically (new total $'+total.toFixed(2)+').');
+            }
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Request → shared store → Go: relay the requester's APPROVE/DECLINE on a cost adjustment back to
+        the worker. Approve applies the new charge on both sides; decline leaves the original. ── */
+  function watchAdjustDecision(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq){
+        var list=l.GReq.all()||[];
+        for(var i=0;i<list.length;i++){
+          var r=list[i];
+          if(r && r.adjustDecision && adjustDecided[r.order]!==r.adjustDecision.seq){
+            if(!(w && w.__ptAdjustDecision && w.__ptJobs && w.__ptJobs[r.order])){ continue; }
+            var d=r.adjustDecision;
+            try{ w.__ptAdjustDecision(r.order, !!d.approved, d.newOffer, d.newCost); }catch(_){ continue; }
+            adjustDecided[r.order]=d.seq;
+            status(d.approved
+              ? 'You <b>approved</b> the cost adjustment on '+r.order+' → the new total is authorized and the Gopher was notified. ✅'
+              : 'You <b>declined</b> the cost adjustment on '+r.order+' → the original charge stands; the Gopher was notified.');
           }
         }
       }
@@ -410,7 +448,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; noShowAlerted={}; noShowDone={}; referralSeen=0;
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -423,7 +461,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>

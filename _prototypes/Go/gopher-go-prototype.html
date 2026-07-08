@@ -2107,12 +2107,19 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           +'<button class="js-addhr" style="flex:0 0 auto;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:9px;padding:7px 10px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">+15 min (+$'+quarterRate+')</button></div>' : '';
       // G40-101 — changing item/materials cost (±) requires a receipt.
       const receiptRow = '<div class="js-receipt-req" style="display:none;margin:2px 0 9px;padding:9px 11px;border-radius:9px;background:#FFF4E5;border:1px solid #f2d9a8;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a5a00;line-height:1.45;">&#128206; A receipt is required when the '+(isDelivery?'item':'materials')+' cost changes. <button class="js-attach-receipt" style="border:0;background:#8a5a00;color:#fff;border-radius:8px;padding:5px 10px;font-family:Nunito;font-weight:800;font-size:11px;cursor:pointer;margin-left:2px;">Attach receipt</button> <span class="js-receipt-ok" style="color:#0a7d44;font-weight:800;"></span></div>';
+      // Comments for the requester (Live UX shows the worker's reason on the approval screen).
+      const commentRow = '<textarea class="js-upcomment" rows="2" placeholder="Add a note for '+who+' — why the cost changed…" style="width:100%;box-sizing:border-box;border:1.5px solid #e3ddcd;border-radius:9px;padding:9px 11px;font-family:\'DM Sans\',sans-serif;font-size:12px;margin-bottom:9px;resize:none;"></textarea>';
+      // A cost adjustment already awaiting the requester's approval blocks a re-submit until it resolves.
+      const adjPending = !!(j.adjust && j.adjust.status==='pending');
+      const saveArea = adjPending
+        ? '<div style="margin-top:11px;padding:11px;border-radius:11px;background:#FFF4E5;border:1px solid #f2d9a8;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#8a5a00;text-align:center;line-height:1.5;">&#9203; Adjustment sent — <b>awaiting '+who+'&#8217;s approval</b>. You&#8217;ll be notified when they approve or decline.</div>'
+        : '<button class="js-savecharge" style="width:100%;margin-top:11px;border:0;background:#002461;color:#fff;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Send adjustment for approval</button>';
       const adjustBlock =
         '<div style="margin-top:10px;padding:12px;border:1px solid #e6e2d6;border-radius:12px;background:#F7F5EF;">'
-        +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:0 0 10px;line-height:1.45;">Only adjust if the scope or crew changed on site — fewer workers showed, the job ran long, or item/materials cost differs. The requester sees the new itemized breakdown.</div>'
-        +hourlyRow + offerRow + itemRow + receiptRow
+        +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:0 0 10px;line-height:1.45;">Only adjust if the scope or crew changed on site — fewer workers showed, the job ran long, or item/materials cost differs. If it <b>raises the charge</b>, '+who+' must approve it before it applies.</div>'
+        +hourlyRow + offerRow + itemRow + receiptRow + commentRow
         +'<div style="display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px dashed #dcd7ca;font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">You&#8217;ll receive<span class="js-uptotal">$'+curOffer+'</span></div>'
-        +'<button class="js-savecharge" style="width:100%;margin-top:11px;border:0;background:#002461;color:#fff;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Save charge changes</button>'
+        +saveArea
         +'</div>';
       const ov=showModal(
         '<h3>Update request</h3>'
@@ -2143,17 +2150,28 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const addhr=ov.querySelector('.js-addhr'); if(addhr) addhr.onclick=()=>{ offerEl.value=(parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0)+quarterRate; syncTotal(); };
       const receiptReq=ov.querySelector('.js-receipt-req'), receiptOk=ov.querySelector('.js-receipt-ok');
       if(costEl) costEl.oninput=()=>{ const c=parseInt((costEl.value||'').replace(/[^0-9]/g,''))||0;
-        if(receiptReq) receiptReq.style.display=(c!==curCost)?'block':'none';
-        if(c===curCost){ receiptAttached=false; if(receiptOk) receiptOk.textContent=''; } };
+        if(receiptReq) receiptReq.style.display=(c>curCost)?'block':'none';   // G40-101 — only an INCREASE needs a receipt
+        if(c<=curCost){ receiptAttached=false; if(receiptOk) receiptOk.textContent=''; } };
       const attach=ov.querySelector('.js-attach-receipt'); if(attach) attach.onclick=()=>{ receiptAttached=true; if(receiptOk) receiptOk.textContent='✓ Receipt attached'; };
       const saveBtn=ov.querySelector('.js-savecharge'); if(saveBtn) saveBtn.onclick=()=>{
         const newOffer=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0;
         const newCost=costEl?(parseInt((costEl.value||'').replace(/[^0-9]/g,''))||0):curCost;
-        if(newCost!==curCost && !receiptAttached){ if(receiptReq) receiptReq.style.display='block'; toast('Attach a receipt to change the item cost'); return; }   // G40-101
-        j.amt='$'+newOffer; j.cost=newCost;
-        j.adjust={offer:newOffer, cost:newCost, seq:((j.adjust&&j.adjust.seq)||0)+1};   // harness relays the new amount to the requester
+        if(newCost>curCost && !receiptAttached){ if(receiptReq) receiptReq.style.display='block'; toast('Attach a receipt to raise the item cost'); return; }   // G40-101 — receipt on COG increase
+        const cmt=(((ov.querySelector('.js-upcomment')||{}).value)||'').trim();
+        // Does this RAISE what the requester pays? If so it needs approval — Stripe can't capture more than
+        // the original 7-day authorization (G40-18), so the increase re-authorizes on the requester's OK.
+        const raises=(newOffer+newCost)>(curOffer+curCost);
+        j.adjust={
+          seq:((j.adjust&&j.adjust.seq)||0)+1,
+          status: raises ? 'pending' : 'applied',
+          origOffer:curOffer, origCost:curCost, newOffer:newOffer, newCost:newCost,
+          comment:cmt, hasReceipt:!!receiptAttached,
+          ageRestricted:!!j.ageRestricted, trustShield:!!j.trustShield
+        };
+        if(!raises){ j.amt='$'+newOffer; j.cost=newCost; }   // same/lower total → applies immediately (no re-auth needed)
         ov.remove(); draw();
-        toast('Charge updated — '+who+' now sees $'+newOffer+(newCost?(' + $'+newCost+' items'):''));
+        toast(raises ? ('Adjustment sent to '+who+' for approval')
+                     : ('Charge updated — '+who+' now sees $'+newOffer));
       };
       ov.querySelector('.js-cancelreq').onclick=()=>{ ov.remove(); openCancelRequest(); };
     }
@@ -2537,6 +2555,19 @@ if(PT){
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'Your Counter-Offer Was Accepted',sub:'Select here to view',onTap:openJob}); }
     else { job.counterDeclined=true; toast((job.who||'The requester')+' declined your counter');
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'Your Counter-Offer Was Declined',sub:'Select here to submit a different offer',onTap:openJob}); }
+    try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
+  };
+  // (h1b) requester's verdict on the worker's COST ADJUSTMENT, relayed by the harness. Approve applies
+  //        the new charge (re-authorized on the requester's card); decline leaves the original charge.
+  window.__ptAdjustDecision=function(id, approved, newOffer, newCost){
+    var job=window.__ptJobs[id]; if(!job) return;
+    function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
+    if(job.adjust){ job.adjust.status = approved ? 'approved' : 'declined'; }
+    if(approved){ if(newOffer!=null) job.amt='$'+newOffer; if(newCost!=null) job.cost=(+newCost||0);
+      toast('✅ '+(job.who||'The requester')+' approved your cost adjustment');
+      if(window.GopherBanner) GopherBanner.show({app:'go',title:'Cost Adjustment Approved',sub:'Select here to view',onTap:openJob}); }
+    else { toast((job.who||'The requester')+' declined the adjustment — the original charge stands');
+      if(window.GopherBanner) GopherBanner.show({app:'go',title:'Cost Adjustment Declined',sub:'Select here to view',onTap:openJob}); }
     try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
   };
   // (h2) requester's verdict on the worker's bid (open-to-bids job), relayed by the harness

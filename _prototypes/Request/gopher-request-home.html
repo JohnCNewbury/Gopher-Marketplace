@@ -892,6 +892,8 @@ function cardHTML(r){
        ? '<button class="rc-view rate" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
        : attn.type==='confirm'
        ? '<button class="rc-view rate" data-pending-action="confirm" data-order="'+r.order+'">Review completion →</button>'
+       : attn.type==='adjust'
+       ? '<button class="rc-view urgent" data-pending-action="adjust" data-order="'+r.order+'">Review adjustment →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
  return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+(DEMO_SHOW_CARD_DISMISS?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
@@ -953,6 +955,7 @@ document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
+ else if(act==='adjust'){ if(order) openAdjustReview(order); return; }
  else if(act==='bid'){ if(order) openBidsList(order); return; }
  else if(act==='confirm'){ if(order) openConfirmCompletion(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
@@ -1196,34 +1199,145 @@ function __counterAlert(order){
 window.__counterAlert=__counterAlert;
 // Charge adjustment (worker changed the offer/item cost on site) — a light banner + the card amount
 // updates. Favourable/agreed changes apply directly; no approval gate.
+// A cost adjustment that DIDN'T raise the charge (same/lower total) is applied automatically — a gentle
+// heads-up (you can always capture ≤ the original authorization, so no re-approval is needed).
 function __adjustAlert(order, offer, cost, total){
   var r=GReq.get(order); var who=(r&&r.hired)||'Your Gopher';
   var ov=document.createElement('div');
   ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#0a7d44;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
-  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">✎ Charge updated · '+String(who)+'</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">New total $'+Number(total||0).toFixed(2)+' — tap to see the itemized breakdown</div>';
-  ov.onclick=function(){ ov.remove(); openAdjustReview(order, +offer||0, +cost||0, +total||0); };
+  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">✎ Charge updated · '+String(who)+'</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">New total $'+Number(total||0).toFixed(2)+' — no approval needed (not an increase)</div>';
+  ov.onclick=function(){ ov.remove(); };
   $('#phone').appendChild(ov);
   setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 6000);
 }
 window.__adjustAlert=__adjustAlert;
-// Itemized view of a charge adjustment (delivery/ride = cost of items; service = cost of materials).
-function openAdjustReview(order, offer, cost, total){
-  var r=GReq.get(order); var who=(r&&r.hired)||'your Gopher';
-  var isDelivery=/delivery|errand|ride/i.test(r&&r.cat||'');
+
+/* ── Cost-adjustment APPROVAL gate (G40-101 + Stripe re-auth) ────────────────────────────────
+   When a Gopher raises what you pay, Stripe can't capture more than the original 7-day
+   authorization (G40-18) — so the increase needs a NEW authorization, gated by your approval.
+   You review an itemized Original/Adjusted/Difference breakdown, the Gopher's comment, and a
+   receipt (required when item cost went up), then Approve (re-authorize) or Decline (charge stands). */
+var PENDING_ADJ={};
+// Shared prototype fee model — mirrors Dev-Handoff-FeeModel: perCategory + ageFee, ITF = 8% of the
+// full undiscounted base, promo = 50% of the whole fee bundle, TrustShield = flat $1, discount capped
+// at 100% of fees, single round at the end. Total = cost + offer + fee − discount (always reconciles).
+function adjBreakdown(offer, cost, o){
+  o=o||{}; offer=+offer||0; cost=+cost||0;
+  var R=function(v){ return Math.round(v*100)/100; };
+  var ageFee = o.ageRestricted ? 3.99 : 0;
+  var perCat = R(Math.max(2, (offer+cost)*0.08));
+  var fullSub = perCat + ageFee;
+  var itf = R((cost+offer+fullSub)*0.08);
+  var fee = R(perCat + ageFee + itf);
+  var totalFees = fullSub + itf;
+  var trustShield = o.trustShield ? 1.00 : 0;
+  var promo = o.promo ? R(0.50*totalFees) : 0;
+  var discount = R(Math.min(promo+trustShield, totalFees));
+  var total = R(cost + offer + fee - discount);
+  return {offer:offer, cost:cost, fee:fee, discount:discount, total:total};
+}
+// DEMO receipt (tall/narrow) + tap-to-zoom viewer for the requester side.
+function __reqReceiptDemo(){
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 520"><rect width="220" height="520" fill="#fff"/>'
+    +'<text x="110" y="42" text-anchor="middle" font-family="monospace" font-size="17" font-weight="bold" fill="#111">CORNER MART</text>'
+    +'<text x="110" y="64" text-anchor="middle" font-family="monospace" font-size="10" fill="#555">123 Main St · Apex NC</text>'
+    +'<line x1="16" y1="84" x2="204" y2="84" stroke="#bbb" stroke-dasharray="3 3"/>'
+    +[['CIGARS 2CT','18.00'],['LIGHTER','2.49'],['SPARK WATER','1.99'],['TAX','2.02']].map(function(r,i){return '<text x="16" y="'+(112+i*26)+'" font-family="monospace" font-size="12" fill="#222">'+r[0]+'</text><text x="204" y="'+(112+i*26)+'" text-anchor="end" font-family="monospace" font-size="12" fill="#222">$'+r[1]+'</text>';}).join('')
+    +'<line x1="16" y1="228" x2="204" y2="228" stroke="#bbb" stroke-dasharray="3 3"/>'
+    +'<text x="16" y="256" font-family="monospace" font-size="14" font-weight="bold" fill="#111">TOTAL</text><text x="204" y="256" text-anchor="end" font-family="monospace" font-size="14" font-weight="bold" fill="#111">$30.00</text>'
+    +'<text x="110" y="300" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">VISA ****4242  APPROVED</text>'
+    +'<text x="110" y="330" text-anchor="middle" font-family="monospace" font-size="9" fill="#999">THANK YOU · 07/08/26 14:22</text>'
+    +'<rect x="40" y="360" width="140" height="46" fill="#111"/>'
+    +Array.apply(null,{length:34}).map(function(_,i){return '<rect x="'+(46+i*4)+'" y="366" width="'+(i%3?1.4:2.6)+'" height="34" fill="#fff"/>';}).join('')
+    +'</svg>';
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+function __reqReceiptViewer(src){
+  var ov=document.createElement('div');
+  ov.setAttribute('style','position:absolute;inset:0;z-index:10050;background:rgba(6,10,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out;');
+  var big=false;
+  ov.innerHTML='<div style="color:#cfd6e4;font-family:Nunito,sans-serif;font-weight:800;font-size:12px;margin-bottom:10px;">Tap the receipt to zoom · tap the backdrop to close</div><img src="'+(src||__reqReceiptDemo())+'" style="width:64%;max-height:76%;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);transition:transform .18s ease;cursor:zoom-in;">';
+  var img=ov.querySelector('img');
+  img.onclick=function(e){ e.stopPropagation(); big=!big; img.style.transform=big?'scale(1.7)':'scale(1)'; img.style.cursor=big?'zoom-out':'zoom-in'; };
+  ov.onclick=function(){ ov.remove(); };
+  $('#phone').appendChild(ov);
+}
+// Pending adjustment arrives from Go (via the harness) — flag the card for attention + banner.
+function __adjustApproval(order, p){
+  if(!p) return; PENDING_ADJ[order]=p;
+  var r=GReq.get(order); var who=(r&&r.hired)||'Your Gopher';
+  try{ GReq.update(order,{attention:{type:'adjust'}}); if(renderPending) renderPending(); }catch(_){}
+  var ov=document.createElement('div');
+  ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#C44257;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
+  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">⚠ Cost adjustment needs your approval</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">'+String(who)+' updated the charge on #'+order+' — tap to review, approve or decline</div>';
+  ov.onclick=function(){ ov.remove(); openAdjustReview(order); };
+  $('#phone').appendChild(ov);
+  setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 9000);
+}
+window.__adjustApproval=__adjustApproval;
+// The Approve/Decline gate — itemized Original/Adjusted/Difference (matches the Live UX cost-adjustment screen).
+function openAdjustReview(order){
+  var p=PENDING_ADJ[order]; if(!p){ return; }
+  var r=GReq.get(order); var who=(r&&r.hired)||'your Gopher'; var whoF=String(who).split(' ')[0];
+  var isDelivery=/delivery|errand|ride/i.test((r&&r.cat)||'');
   var itemLabel=isDelivery?'Cost of items':'Cost of materials';
-  var fee=Math.max(0, (+total||0)-(+offer||0)-(+cost||0));
-  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
-  var row=function(l,v,strong){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(strong?'10px 0 2px':'8px 0')+';'+(strong?'border-top:2px solid #dfe3ea;margin-top:2px;':'border-bottom:1px solid #f0eef2;')+'font-family:\'DM Sans\',sans-serif;font-size:13px;"><span style="color:'+(strong?'#002461':'#8a94a3')+';font-weight:'+(strong?'800':'600')+';">'+l+'</span><b style="color:'+(strong?'#0a7d44':'#002461')+';font-size:'+(strong?'17px':'13.5px')+';">'+money(v)+'</b></div>'; };
+  var opts={ageRestricted:!!p.ageRestricted, trustShield:!!p.trustShield, promo:!!p.promo};
+  var O=adjBreakdown(p.origOffer, p.origCost, opts);
+  var A=adjBreakdown(p.newOffer, p.newCost, opts);
+  var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+  var m=function(v){ return (v<0?'−':'')+'$'+Math.abs(v).toFixed(2); };            // signed money (keeps minus for reductions)
+  // A group = Original contribution, Adjusted contribution, Difference (green if it grows the total, red if it shrinks it).
+  var grp=function(label, oc, ac, emphasize){
+    var diff=Math.round((ac-oc)*100)/100;
+    var dcol=diff>0?'#0a7d44':(diff<0?'#C44257':'#8a94a3');
+    var dtxt=(diff>0?'+':(diff<0?'−':''))+'$'+Math.abs(diff).toFixed(2);
+    var pad=emphasize?'9px 0 2px':'7px 0 5px';
+    return '<div style="padding:'+pad+';'+(emphasize?'border-top:2px solid #d9dee7;margin-top:3px;':'border-bottom:1px solid #f1eef4;')+'">'
+      +'<div style="display:flex;justify-content:space-between;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#8a94a3;padding:1px 0;"><span>Original '+label+'</span><span style="font-variant-numeric:tabular-nums;">'+m(oc)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#8a94a3;padding:1px 0;"><span>Adjusted '+label+'</span><span style="font-variant-numeric:tabular-nums;">'+m(ac)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:2px;"><span style="font-family:Nunito;font-weight:'+(emphasize?'900':'800')+';font-size:'+(emphasize?'14px':'12.5px')+';color:#002461;">'+label+(emphasize?'':' Difference')+'</span><b style="color:'+dcol+';font-size:'+(emphasize?'19px':'14px')+';font-variant-numeric:tabular-nums;">'+dtxt+'</b></div>'
+      +'</div>';
+  };
+  var rows='';
+  if(O.cost||A.cost) rows+=grp(itemLabel, O.cost, A.cost);
+  rows+=grp('Payment to '+whoF, O.offer, A.offer);
+  rows+=grp('Fee', O.fee, A.fee);
+  if(O.discount||A.discount) rows+=grp('Discount', -O.discount, -A.discount);
+  rows+=grp('Total', O.total, A.total, true);
+  var receiptBlock = p.hasReceipt
+    ? '<div style="margin:12px 0 2px;padding:11px 12px;border:1px solid #e6e2d6;border-radius:12px;background:#F7F5EF;display:flex;gap:11px;align-items:center;">'
+       +'<div class="js-adj-receipt" style="flex:0 0 auto;width:52px;height:74px;border-radius:8px;overflow:hidden;border:1px solid #d9d2c2;cursor:zoom-in;background:#fff;"><img src="'+__reqReceiptDemo()+'" style="width:100%;height:100%;object-fit:cover;"></div>'
+       +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;line-height:1.5;">Receipt attached. <b>Tap to zoom</b> and verify the line items and total before you approve.</div>'
+      +'</div>'
+    : '';
+  var commentBlock = p.comment
+    ? '<div style="margin:10px 0 2px;padding:10px 12px;border-radius:12px;background:#eef1f5;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#1b2a44;line-height:1.5;">💬 <b>'+esc(whoF)+':</b> “'+esc(p.comment)+'”</div>'
+    : '';
   var o=gModal(
-    '<h3 class="gm-h">Charge updated</h3>'
-    +'<p class="gm-p"><b>'+who+'</b> adjusted the charge on <b>#'+order+'</b>. Here’s the new itemized breakdown:</p>'
-    +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:6px 13px;margin:8px 0 4px;background:#fbfafc;">'
-      +row('Payment to '+who.split(' ')[0], offer)
-      +row(itemLabel, cost)
-      +row('Request fee', fee)
-      +row('New total', total, true)
-    +'</div>'
-    +'<button class="gm-close" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Got it</button>');
+    '<div style="font-family:Nunito;font-weight:700;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:#8C8675;">Adjustment details</div>'
+    +'<h3 class="gm-h" style="margin-top:2px;">Cost Adjustment</h3>'
+    +'<p class="gm-p" style="margin-bottom:6px;"><b>'+esc(who)+'</b> updated the charge on <b>#'+order+'</b>. Review the change and approve or decline.</p>'
+    +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:2px 13px 8px;margin:6px 0 2px;background:#fbfafc;">'+rows+'</div>'
+    +commentBlock
+    +receiptBlock
+    +'<div style="margin:12px 0 2px;padding:10px 12px;border-radius:12px;background:#eaf3ff;border:1px solid #cfe0f5;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#274b7a;line-height:1.5;">🔒 Approving <b>re-authorizes your card</b> for the new total. You’re only charged after the job is confirmed complete — decline if this isn’t right and the original charge stands.</div>'
+    +'<button class="adj-approve" style="width:100%;margin-top:10px;padding:14px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:900;font-size:14.5px;cursor:pointer;">Approve · new total '+ '$'+A.total.toFixed(2)+'</button>'
+    +'<button class="adj-decline" style="width:100%;margin-top:9px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13.5px;cursor:pointer;">Decline</button>');
+  var rc=o.querySelector('.js-adj-receipt'); if(rc) rc.onclick=function(){ __reqReceiptViewer(__reqReceiptDemo()); };
+  var ap=o.querySelector('.adj-approve'), dc=o.querySelector('.adj-decline');
+  if(ap) ap.onclick=function(){
+    GReq.update(order,{ pay:A.offer, cost:A.cost, amount:'$'+A.total.toFixed(2), attention:null,
+      adjustDecision:{seq:p.seq, approved:true, newOffer:A.offer, newCost:A.cost} });
+    delete PENDING_ADJ[order]; o.remove();
+    try{ if(renderPending) renderPending(); }catch(_){}
+    toast('✅ Adjustment approved — new total $'+A.total.toFixed(2));
+  };
+  if(dc) dc.onclick=function(){
+    GReq.update(order,{ attention:null, adjustDecision:{seq:p.seq, approved:false} });
+    delete PENDING_ADJ[order]; o.remove();
+    try{ if(renderPending) renderPending(); }catch(_){}
+    toast('Adjustment declined — original charge stands');
+  };
 }
 window.openAdjustReview=openAdjustReview;
 // Age-restricted no-show (G40-192) — the Gopher is at the drop-off but you're not there to verify ID.
