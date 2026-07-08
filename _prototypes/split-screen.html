@@ -96,6 +96,7 @@
   var adjustSeen={}; // GReq order id -> last charge-adjustment seq relayed to Request
   var noShowAlerted={}; // GReq order id -> last no-show-timer seq the requester was alerted about
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
+  var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -230,6 +231,22 @@
             status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
               +(job.substage==='completed'?' Open the request card on the left and tap <b>Rate now</b>.':''));
           }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Go → shared store → Request: a "Refer Yourself" referral from the Gopher lands in the requester's
+        inbox with an "Add to MY Gophers" option. ── */
+  function watchReferral(){
+    try{
+      var w=R(), l=L();
+      if(w && l && l.GReq){
+        var ref=w.__ptReferral;
+        if(ref && ref.seq && referralSeen!==ref.seq){
+          referralSeen=ref.seq;
+          try{ if(l.__referralInbox) l.__referralInbox(ref.gopher, ref.refId); }catch(_){}
+          status('Gopher <b>'+ref.gopher+'</b> sent a <b>Refer-Yourself</b> referral → it landed in the requester\'s <b>inbox</b> with an "Add to MY Gophers" option. 🎉');
         }
       }
     }catch(_){}
@@ -393,7 +410,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; noShowAlerted={}; noShowDone={};
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; noShowAlerted={}; noShowDone={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -406,7 +423,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>

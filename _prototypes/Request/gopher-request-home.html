@@ -1168,7 +1168,7 @@ function openRateModal(order){
 }
 // Inbox alert (H) \u2014 a new message from the Gopher fires a banner + a red badge on the footer inbox
 // icon (mirrors the current app's updateInboxBadge() + #rqInboxNavBadge). Tapping opens an in-app thread.
-function reqInboxUnread(){ var n=0; (GReq.all()||[]).forEach(function(r){ n+=(+r.unread||0); }); return n; }
+function reqInboxUnread(){ var n=0; (GReq.all()||[]).forEach(function(r){ n+=(+r.unread||0); }); if(PENDING_REFERRAL && !PENDING_REFERRAL.seen) n+=1; return n; }
 function refreshInboxBadge(){ var b=$('#reqInboxBadge'); if(!b) return; var n=reqInboxUnread(); if(n>0){ b.textContent=(n>9?'9+':n); b.style.display='flex'; } else { b.style.display='none'; } }
 function __inboxAlert(order, preview){
   refreshInboxBadge();
@@ -1232,6 +1232,34 @@ function __noShowComplete(order){
   if(dp) dp.onclick=function(){ o.remove(); openDispute(order); };
 }
 window.__noShowComplete=__noShowComplete;
+// Referral → inbox: the prototype Gopher does "Refer Yourself" and it lands in the requester's inbox as a
+// message (banner + badge). Tapping it lets John add the Gopher to MY Gophers (prioritized on future requests).
+var PENDING_REFERRAL=null;
+function __referralInbox(gopher, refId){
+  PENDING_REFERRAL={gopher:gopher||'A Gopher', refId:refId||'', added:false, seen:false};
+  refreshInboxBadge();
+  var ov=document.createElement('div');
+  ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#002461;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
+  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">💬 '+String(gopher)+' referred you</div><div style="font-size:11.5px;opacity:.88;margin-top:2px;font-family:\'DM Sans\',sans-serif;">Add them as your saved Gopher — tap to view</div>';
+  ov.onclick=function(){ ov.remove(); openReferralMsg(); };
+  $('#phone').appendChild(ov);
+  setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 7000);
+}
+window.__referralInbox=__referralInbox;
+function openReferralMsg(){
+  if(!PENDING_REFERRAL) return; var g=PENDING_REFERRAL.gopher, gf=g.split(' ')[0];
+  PENDING_REFERRAL.seen=true; refreshInboxBadge();
+  var o=gModal(
+    '<h3 class="gm-h">'+g+' referred you</h3>'
+    +'<p class="gm-p"><b>'+g+'</b> invited you to hire them directly on Gopher'+(PENDING_REFERRAL.refId?(' (Referral ID '+PENDING_REFERRAL.refId+')'):'')+'. Add '+gf+' to your <b>MY Gophers</b> to prioritize them on future requests.</p>'
+    +'<button class="rf-add" style="width:100%;margin-top:6px;padding:13px;border:0;border-radius:12px;background:'+(PENDING_REFERRAL.added?'#0a7d44':'#1CB061')+';color:#fff;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">'+(PENDING_REFERRAL.added?('✓ '+gf+' is in MY Gophers'):('★ Add '+gf+' to MY Gophers'))+'</button>'
+    +'<button class="gm-close" style="width:100%;margin-top:9px;padding:11px;border:1.5px solid #e2ddd0;background:#fff;color:#5b6472;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Close</button>');
+  var add=o.querySelector('.rf-add');
+  if(add) add.onclick=function(){ if(PENDING_REFERRAL.added){ o.remove(); return; }
+    try{ addMyGopher(g,'elite','Referred you'); }catch(_){}
+    PENDING_REFERRAL.added=true; add.textContent='✓ '+gf+' is in MY Gophers'; add.style.background='#0a7d44';
+    toast(gf+' added to MY Gophers'); };
+}
 function openInboxThread(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
@@ -1256,6 +1284,7 @@ function openInboxThread(order){
 }
 // Footer inbox \u2192 open the in-app thread (don't navigate to a separate file in the split).
 document.addEventListener('click',function(e){ var t=e.target.closest&&e.target.closest('[data-gnav="inbox"]'); if(!t) return;
+  if(PENDING_REFERRAL && !PENDING_REFERRAL.seen){ e.preventDefault(); e.stopPropagation(); openReferralMsg(); return; }   // an unread referral opens first
   var withMsgs=(GReq.all()||[]).filter(function(r){return (r.messages&&r.messages.length);});
   if(withMsgs.length){ e.preventDefault(); e.stopPropagation(); withMsgs.sort(function(a,b){return (b.unread||0)-(a.unread||0);}); openInboxThread(withMsgs[0].order); }
 }, true);

@@ -1805,7 +1805,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const addC=()=>{ const inp=ov.querySelector('.js-einput'); const v=inp.value.trim(); if(v){ contacts.push(v); inp.value=''; renderChips(); } };
       ov.querySelector('.js-eadd').onclick=addC;
       ov.querySelector('.js-einput').addEventListener('keydown',e=>{ if(e.key==='Enter') addC(); });
-      ov.querySelector('.js-esubmit').onclick=()=>{ const inp=ov.querySelector('.js-einput'); if(inp.value.trim()){ contacts.push(inp.value.trim()); inp.value=''; } if(!contacts.length) return; const t=new Date(); const ds=(t.getMonth()+1)+'/'+t.getDate()+'/'+String(t.getFullYear()).slice(2); contacts.forEach(c=>state.referrals.pending.unshift({date:ds,info:c,type:channel==='sms'?'SMS':'Email'})); show('done'); };
+      ov.querySelector('.js-esubmit').onclick=()=>{ const inp=ov.querySelector('.js-einput'); if(inp.value.trim()){ contacts.push(inp.value.trim()); inp.value=''; } if(!contacts.length) return; const t=new Date(); const ds=(t.getMonth()+1)+'/'+t.getDate()+'/'+String(t.getFullYear()).slice(2); contacts.forEach(c=>state.referrals.pending.unshift({date:ds,info:c,type:channel==='sms'?'SMS':'Email'}));
+        if(kind==='self'){ try{ var gn=((state.fn&&state.ln)?state.fn+' '+state.ln:'Marcus Hale'); window.__ptReferral={gopher:gn, refId:(refId||'633973'), seq:((window.__ptReferral&&window.__ptReferral.seq)||0)+1}; }catch(_){} }   // Refer-Yourself → the harness drops it in the requester's inbox
+        show('done'); };
       ov.querySelector('.js-donehist').onclick=()=>{ ov.remove(); r.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('active',x.getAttribute('data-tab')==='pending')); renderTrack('pending'); };
       ov.querySelector('.js-again').onclick=()=>show('home');
     }
