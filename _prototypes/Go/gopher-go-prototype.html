@@ -1470,7 +1470,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   init(r){ const hasCat=!!state.category; const cat=state.category||'Local jobs';
     r.querySelector('.js-cat-title').textContent = hasCat ? cat : 'Available jobs';
     const sub=r.querySelector('.sub'); const list=r.querySelector('.js-list');
-    const base=jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who));
+    const base=jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted);   // accepted/completed jobs leave the Available feed
     const numAmt=j=>{ const m=(j.amt||'').replace(/[^0-9.]/g,''); return m?parseFloat(m):-1; };
     const distOf=j=>{ const s=(j.stats||[]).find(x=>x.i==='pin'); const mm=s&&/([0-9.]+)\s*mi/.exec(s.t); return mm?parseFloat(mm[1]):999; };
     const agoOf=j=>{ const q=(j.posted||'').toLowerCase(); if(q.indexOf('hr')>=0){return (parseFloat(q)||1)*60;} if(q.indexOf('min')>=0){return parseFloat(q)||0;} if(q.indexOf('today')>=0){return 300;} return 600; };
@@ -2453,6 +2453,7 @@ if(PT){
     if(!sr || !sr.querySelector('.tabs')) return;
     var byCat={}, avail=0, active=0;
     Object.keys(JOBS).forEach(function(k){ (JOBS[k]||[]).forEach(function(j){
+      if(j.substage==='completed' || j.noShow) return;   // done → out of Available AND Active (it's history now)
       if(j.accepted) active++; else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
     var tabs=sr.querySelectorAll('.tabs .tab');
     if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],0);

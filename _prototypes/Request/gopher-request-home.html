@@ -854,7 +854,8 @@ const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toU
 const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
-function statusBucket(r){ if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
+function statusBucket(r){ if(r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Request history
+  if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
 function statusText(r){
@@ -901,11 +902,15 @@ function cardHTML(r){
   +btn+'</div>';
 }
 function renderPending(){
+ try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Request history counts in sync
  var slot=$('#hubSlot'); if(!slot) return;
  /* FIX: only a total of ZERO requests (across Active+Scheduled+Submitted) hides the whole
     multi-request block — no switcher, no card, no gap. A selected-but-empty bucket keeps the
     switcher (handled below). */
- if(!GReq.all().length){ slot.hidden=true; slot.innerHTML=''; PEND=null; try{window.__PEND=null;}catch(_){} return; }
+ // Hide the whole multi-request block when nothing is live in the three home buckets — a terminal
+ // (rated / no-show) request has moved to Request history, so the home clears.
+ var _homeLive=bucketList('active').length+bucketList('scheduled').length+bucketList('submitted').length;
+ if(!_homeLive){ slot.hidden=true; slot.innerHTML=''; PEND=null; try{window.__PEND=null;}catch(_){} return; }
  slot.hidden=false;
  var counts={active:bucketList('active').length,scheduled:bucketList('scheduled').length,submitted:bucketList('submitted').length};
  // A bucket with a request that needs the requester's action (counter / bid / rate) gets a red alert
@@ -1149,12 +1154,17 @@ function openRateModal(order){
     +'<div class="rt-stars" style="display:flex;gap:8px;justify-content:center;margin:14px 0 4px;">'+stars+'</div>'
     +'<div class="rt-label" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
     +'<textarea class="rt-note" placeholder="Add a comment (optional) \u2014 what stood out about '+who.split(' ')[0]+'?" style="width:100%;min-height:64px;margin-top:10px;border:1px solid #e2ddd0;border-radius:12px;padding:10px 12px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#002461;resize:vertical;box-sizing:border-box;"></textarea>'
+    +'<div class="rt-fav" style="display:flex;align-items:center;gap:9px;margin-top:10px;padding:10px 12px;border:1.5px solid #e2ddd0;border-radius:12px;cursor:pointer;"><span class="rt-favstar" style="font-size:20px;color:#d9d2c2;">\u2606</span><div style="font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#002461;line-height:1.35;"><b>Add '+who.split(' ')[0]+' to MY Gophers</b><br><span style="color:#8a94a3;font-size:11px;">Prioritized on your future requests</span></div></div>'
     +'<button class="gm-rate-submit" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#cfe9d9;color:#7aa790;font-family:Nunito;font-weight:800;font-size:14px;cursor:not-allowed;" disabled>Submit rating</button>');
   var starEls=o.querySelectorAll('.rt-star'), lab=o.querySelector('.rt-label'), sub=o.querySelector('.gm-rate-submit'), note=o.querySelector('.rt-note');
+  var favRow=o.querySelector('.rt-fav'), favStar=o.querySelector('.rt-favstar'), fav=false;
+  if(favRow) favRow.onclick=function(){ fav=!fav; favStar.textContent=fav?'\u2605':'\u2606'; favStar.style.color=fav?'#F5B301':'#d9d2c2'; favRow.style.borderColor=fav?'#F5B301':'#e2ddd0'; };
   var LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
-  sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():''; GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' }); o.remove(); renderPending(); toast('Thanks \u2014 you rated '+who+' '+picked+'\u2605'); };
+  sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():''; GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' });
+    if(fav){ try{ addMyGopher(who,'elite',(CATLABEL[r.cat]||'Request')+' \u00b7 '+picked+'\u2605'); }catch(_){} }
+    o.remove(); renderPending(); toast(fav?('Rated '+who+' '+picked+'\u2605 \u00b7 added to MY Gophers'):('Thanks \u2014 you rated '+who+' '+picked+'\u2605')); };
 }
 // Inbox alert (H) \u2014 a new message from the Gopher fires a banner + a red badge on the footer inbox
 // icon (mirrors the current app's updateInboxBadge() + #rqInboxNavBadge). Tapping opens an in-app thread.
@@ -1357,37 +1367,67 @@ function openNotif(){ var dot=document.querySelector('.bell .dot'); if(dot) dot.
 const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Removal'],['moving','Moving'],['labor','Labor'],['yard','Yard / Outdoor'],['ride','Ride Sharing'],['other','Other']];
 function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
-function openMyGophers(){ var L=[['Devon M.','elite+',true,'Delivery \u00B7 312 jobs'],['Rosa P.','elite',false,'Home Services \u00B7 4.8\u2605'],['Marcus K.','elite+',false,'Labor \u00B7 508 jobs']]; gSheet('MY Gophers','<p class="gs-sub">Favorited Gophers \u2014 prioritized on new requests.</p><div class="gs-list" style="margin-top:10px;">'+L.map(g=>'<div class="gph"><span class="gph-pic">'+g[0].split(/\s+/).map(w=>w[0]).join('').slice(0,2)+'</span><div class="gph-tx"><div class="gph-nm">'+g[0]+' '+window.__tierBadge(g[1],g[2])+'</div><div class="gph-tag">'+g[3]+'</div></div><button class="gph-hire" data-goto="flow">Hire again</button></div>').join('')+'</div>'); }
+// MY Gophers \u2014 session-only favorites. In the split/PT demo this starts EMPTY (0) and only fills when
+// John adds the prototype Gopher this session; the standalone app keeps a few representative favorites.
+var SESS_MYGOPHERS=[];
+function addMyGopher(name, tier, tag){ if(!name) return false; if(SESS_MYGOPHERS.some(function(g){return g.name===name;})) return false;
+  SESS_MYGOPHERS.push({name:name,tier:tier||'elite',plus:false,tag:tag||''}); updateAccountLabels(); return true; }
+function myGopherRows(){ return isPTmode()
+  ? SESS_MYGOPHERS.map(function(g){return [g.name,g.tier,g.plus,g.tag];})
+  : [['Devon M.','elite+',true,'Delivery \u00B7 312 jobs'],['Rosa P.','elite',false,'Home Services \u00B7 4.8\u2605'],['Marcus K.','elite+',false,'Labor \u00B7 508 jobs']]; }
+function openMyGophers(){ var L=myGopherRows();
+  var body=L.length
+    ? '<p class="gs-sub">Favorited Gophers \u2014 prioritized on new requests.</p><div class="gs-list" style="margin-top:10px;">'+L.map(g=>'<div class="gph"><span class="gph-pic">'+g[0].split(/\s+/).map(w=>w[0]).join('').slice(0,2)+'</span><div class="gph-tx"><div class="gph-nm">'+g[0]+' '+window.__tierBadge(g[1],g[2])+'</div><div class="gph-tag">'+g[3]+'</div></div><button class="gph-hire" data-goto="flow">Hire again</button></div>').join('')+'</div>'
+    : '<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.55;padding:24px 12px;">No favorited Gophers yet.<br>After a completed request, add your Gopher here \u2014 they\u2019ll be prioritized on your future requests.</div>';
+  gSheet('MY Gophers', body); }
+// Keep the account tool-row sub-labels (MY Gophers / Request history) in sync with session state.
+function updateAccountLabels(){
+  try{
+    var mg=isPTmode()? (SESS_MYGOPHERS||[]).length : 3;   // guard: initPending() may run before SESS_MYGOPHERS is assigned
+    var done=(window.GReq?GReq.all().filter(function(r){return r.substage==='rated'||r.confirmed||r.noShow;}).length:0)+(isPTmode()?0:12);
+    (document.querySelectorAll('.tool-row')||[]).forEach(function(row){ var g=row.getAttribute('data-goto'), s=row.querySelector('.trt .s'); if(!s) return;
+      if(g==='mygophers') s.textContent=mg?(mg+' favorited \u00B7 prioritized on new requests'):'None yet \u00B7 add a Gopher';
+      if(g==='history') s.textContent=done+' completed \u00B7 reorder in one tap';
+    });
+  }catch(_){}
+}
 // Request history (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
 // fulfilled it, and the rating THEY gave. Pulls live completed requests from the store first, then a few
 // representative past ones, so a job completed during the demo shows up at the top.
 function openHistory(){
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
-  var live=(window.GReq?GReq.all():[]).filter(function(r){ return r.substage==='rated' || r.confirmed; }).map(function(r){
+  var live=(window.GReq?GReq.all():[]).filter(function(r){ return r.substage==='rated' || r.confirmed || r.noShow; }).map(function(r){
     return { title:r.title||'Request', order:r.order, cat:(CATLABEL[r.cat]||'Request'), date:'Just now',
-      paid:(r.amount||money((+r.pay||0)+(+r.cost||0))), who:(r.hired||'your Gopher'), rating:(+r.rating||0), note:(r.ratingNote||'') };
+      paid:(r.amount||money((+r.pay||0)+(+r.cost||0))), who:(r.hired||'your Gopher'), rating:(+r.rating||0), note:(r.ratingNote||''), noShow:!!r.noShow };
   });
-  var demo=[
+  // In the split/PT demo, Request history starts EMPTY and fills only from this session's completed
+  // requests. The standalone app keeps a few representative past requests.
+  var demo=isPTmode()? [] : [
     { title:'Grocery + pharmacy run', order:'GR-00187', cat:'Delivery', date:'Mar 4', paid:'$24.91', who:'Devon M.', rating:5, note:'Fast and friendly \u2014 grabbed everything on the list.' },
     { title:'Lawn mowing', order:'GR-00171', cat:'Home Services', date:'Feb 26', paid:'$45.00', who:'Yard Guys U.', rating:5, note:'' },
     { title:'Ceiling fan install', order:'GR-00148', cat:'Home Services', date:'Feb 12', paid:'$140.00', who:'Rosa P.', rating:5, note:'Professional and quick.' }
   ];
   var card=function(j){
-    var stars=j.rating?('<span style="color:#F5B301;letter-spacing:1px;">'+Array(j.rating+1).join('\u2605')+'</span><span style="color:#8a94a3;"> you rated</span>'):'';
+    var badge=j.noShow?'<span style="background:#FDECE6;color:#a3401f;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">No Show</span>':'<span style="background:#e7f7ec;color:#0a7d44;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">Completed</span>';
+    var stars=(!j.noShow && j.rating)?('<span style="color:#F5B301;letter-spacing:1px;">'+Array(j.rating+1).join('\u2605')+'</span><span style="color:#8a94a3;"> you rated</span>'):'';
     return '<div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;margin-bottom:10px;background:#fff;">'
-      +'<div style="display:flex;align-items:center;gap:8px;"><b style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;flex:1;min-width:0;">'+esc(j.title)+'</b><span style="background:#e7f7ec;color:#0a7d44;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">Completed</span></div>'
+      +'<div style="display:flex;align-items:center;gap:8px;"><b style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;flex:1;min-width:0;">'+esc(j.title)+'</b>'+badge+'</div>'
       +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:3px 0 7px;">#'+esc(j.order)+' &middot; '+esc(j.cat)+' &middot; '+esc(j.date)+'</div>'
       +'<div style="display:flex;justify-content:space-between;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#1b2a44;"><span>You paid <b style="color:#002461;">'+esc(j.paid)+'</b></span><span>by <b style="color:#002461;">'+esc(j.who)+'</b></span></div>'
+      +(j.noShow?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#a3401f;margin-top:5px;">No items received \u2014 no valid ID at drop-off.</div>':'')
       +(stars?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;margin-top:6px;">'+stars+'</div>':'')
       +(j.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;font-style:italic;margin-top:3px;">&ldquo;'+esc(j.note)+'&rdquo;</div>':'')
       +'<span class="gs-link" data-goto="flow" style="display:inline-block;margin-top:8px;">Request again &rarr;</span>'
     +'</div>';
   };
-  gSheet('Request history',
-    '<div class="gs-sech">Completed</div>'+live.concat(demo).map(card).join('')
-    +'<div class="gs-sech">Cancelled</div>'
-    +'<div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;background:#fff;"><b style="font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">Furniture moving</b><div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-top:2px;">#GR-00120 &middot; cancelled before a Gopher was matched &middot; no charge</div></div>');
+  var all=live.concat(demo);
+  var completedBlock = all.length
+    ? all.map(card).join('')
+    : '<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;padding:22px 10px;">No completed requests yet \u2014 your finished requests will appear here.</div>';
+  var cancelledBlock = isPTmode()? ''
+    : '<div class="gs-sech">Cancelled</div><div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;background:#fff;"><b style="font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">Furniture moving</b><div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-top:2px;">#GR-00120 &middot; cancelled before a Gopher was matched &middot; no charge</div></div>';
+  gSheet('Request history', '<div class="gs-sech">Completed</div>'+completedBlock+cancelledBlock);
 }
 /* ── Canonical Gopher account (single source of truth for the My Profile sheet) ── */
 var PROFILE={firstName:'John',lastName:'Newbury',email:'johnnewbury@sbcglobal.net',phone:'(805) 624-1724',accountId:'GPH-000001-NEWBURY',street:'405 Shorehouse Way',city:'Holly Springs',state:'NC',zip:'27540',dob:'02-03-1976',source:'Referral',referredBy:'Ken Newbury',memberSince:'2024',lastSignin:'Today · Holly Springs, NC',rating:'4.9 (128)'};
