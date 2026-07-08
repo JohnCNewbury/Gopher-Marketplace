@@ -5,6 +5,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gopher Connect – On-Demand Workforce for Businesses</title>
+  <!-- SEO (G40-319) -->
+  <meta name="description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <link rel="canonical" href="https://gophergo.io/gopher-connect.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Gopher">
+  <meta property="og:title" content="Gopher Connect – On-Demand Workforce for Businesses">
+  <meta property="og:description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <meta property="og:url" content="https://gophergo.io/gopher-connect.html">
+  <meta property="og:image" content="https://gophergo.io/assets/img/og-default.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Gopher Connect – On-Demand Workforce for Businesses">
+  <meta name="twitter:description" content="Gopher Connect gives your business on-demand access to vetted local couriers, laborers, cleaners, and skilled pros — staff up the moment you need help.">
+  <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
+
 <!-- Shared in-app messaging guard (prototype layer). Client-side keyword
      deterrent that wraps the inbox send; same pattern as the age-restricted
      keyword backstop. Relative + case-exact path (GitHub Pages serves on Linux).
@@ -1076,7 +1090,7 @@
     font-family:'DM Sans',sans-serif; font-size:12px; color:#7a2230; line-height:1.5;
   }
   .age-kw-consequences b { color:#C44257; }
-  .age-kw-actions { display:flex; flex-direction:column; gap:9px; }
+  .age-kw-actions { display:flex; flex-direction:column; gap:12px; }
 
   /* Distinct "valid ID" bullet inside the "What to expect" list */
   .wte-list li.wte-id {
@@ -2202,6 +2216,17 @@
 .field-input input.fi-value{ border:none; background:transparent; outline:none; flex:1 1 auto; min-width:0; width:100%; font:inherit; color:var(--text); padding:0; }
 .field-input input.fi-value::placeholder{ color:var(--muted); }
 .pac-container{ z-index: 100000 !important; }
+.saved-addr-picker{ position:fixed; z-index:100001; background:#fff; border:1px solid #e3e8ef; border-radius:14px; box-shadow:0 12px 34px rgba(13,26,62,.18); padding:6px; max-width:380px; }
+.saved-addr-picker .sap-head{ font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:#8a93a3; text-transform:uppercase; letter-spacing:.06em; padding:8px 10px 6px; }
+.saved-addr-picker .sap-row{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:none; background:none; padding:9px 10px; border-radius:10px; cursor:pointer; }
+.saved-addr-picker .sap-row:hover{ background:#eef7f1; }
+.saved-addr-picker .sap-pin{ font-size:15px; flex:0 0 auto; }
+.saved-addr-picker .sap-text{ display:flex; flex-direction:column; min-width:0; }
+.saved-addr-picker .sap-label{ font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:#002461; }
+.saved-addr-picker .sap-addr{ font-family:'DM Sans',sans-serif; font-weight:500; font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.saved-addr-picker .sap-add{ display:block; width:100%; text-align:left; border:none; background:none; padding:10px; margin-top:2px; border-top:1px solid #eef2f6; color:#1CB061; font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; cursor:pointer; }
+.saved-addr-picker .sap-add:hover{ background:#eef7f1; }
+.saved-addr-picker .sap-empty{ padding:10px 12px 12px; font-family:'DM Sans',sans-serif; font-size:12px; color:#8a93a3; line-height:1.5; }
   .field-pills { display:flex; flex-wrap:wrap; gap:6px; }
   .field-pill {
     background:white; border:2px solid #eef0f5; border-radius:8px;
@@ -8280,6 +8305,9 @@
       <button class="dash-nav-item" data-dash-section="personal">
         <span class="dni-ico">👤</span><span class="dni-label">Personal Info</span>
       </button>
+      <button class="dash-nav-item" id="gcDashSavedAddr">
+        <span class="dni-ico">📍</span><span class="dni-label">Saved Addresses</span>
+      </button>
       <button class="dash-nav-item" data-dash-section="payment">
         <span class="dni-ico">💳</span><span class="dni-label">Payment Info</span>
       </button>
@@ -10282,9 +10310,6 @@ const PAY_BADGES = {
           </span>
         </div>
         ` : ''}
-        ${isVisible('pickupSection') && !state.noSpecificPickup ? `
-          <div class="trip-distance">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>
-        ` : ''}
       </div>
     `;
   }
@@ -11211,6 +11236,7 @@ const PAY_BADGES = {
           ${dropoffExpanded ? `Drop-off stops (${dropoffs.length})` : 'Destination address'}
         </label>
         ${renderStops}
+        ${(isVisible('pickupSection') && !state.noSpecificPickup) ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
         ${footer}
       </div>
     `;
@@ -11736,6 +11762,18 @@ const PAY_BADGES = {
       return { ok:false, label:'Liability waiver', selector:'.waiver-box',
                msg:'Please check the liability waiver before submitting.' };
     }
+    // Step 4 — pick-up and drop-off addresses are REQUIRED now that Maps is live.
+    // Returns the first empty field so the gate redirects the user to it in sequence.
+    if(state.step === 4 && !state.noSpecificPickup && isVisible('pickupSection')
+       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+      const firstEmpty = (arr) => { for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; } return -1; };
+      const pe = firstEmpty(state.pickupStops);
+      if(pe > -1) return { ok:false, label:'Pick-up address', selector:`input[data-locedit="pickup"][data-idx="${pe}"]`,
+                           msg:'Add a pick-up address so your Gopher knows where to start.' };
+      const de = firstEmpty(state.dropoffStops);
+      if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
+                           msg:'Add a drop-off address so your Gopher knows where to go.' };
+    }
     return { ok:true };
   }
 
@@ -11761,7 +11799,9 @@ const PAY_BADGES = {
         ? field.closest('.cost-input-box')
         : field.matches('#descriptionInput')
           ? field.closest('.field-textarea')
-          : null;
+          : field.matches('input[data-locedit]')
+            ? field.closest('.field-input')
+            : null;
       if(card){
         // Old inline indicator must be GONE, not layered under the new one.
         field.classList.remove('field-required-flash');
@@ -12484,7 +12524,7 @@ const PAY_BADGES = {
     const t = e.target; if(!t) return;
     const id = t.id;
     if(id==='g40EditPickup'||id==='g40EditDropoff'||id==='dealPickup'||id==='dealDropoff') bindAddressAutocomplete();
-    if(t.matches && t.matches('input[data-locedit]')) bindStopAutocomplete(t);
+    if(t.matches && t.matches('input[data-locedit]')){ bindStopAutocomplete(t); showSavedPicker(t); }
   });
 
   // Editable Step-4 pickup/drop-off stops (data-locedit): write into state, recompute distance.
@@ -12493,6 +12533,9 @@ const PAY_BADGES = {
     const arr = kind==='dropoff' ? state.dropoffStops : state.pickupStops;
     if(arr){ arr[idx] = el.value.trim(); }
     refreshTripDistance();
+    // Filling/clearing an address changes the required-field gate — re-sync the Continue
+    // button now (render() only runs it on step transitions, so it wouldn't update live).
+    try { const bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(_e){}
   }
   function bindStopAutocomplete(el){
     if(!_gmReady || !window.google || !google.maps.places || el._acBound) return;
@@ -12506,6 +12549,53 @@ const PAY_BADGES = {
   document.addEventListener('change', function(e){
     if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) _writeStop(e.target);
   });
+
+  // ── Saved-address quick-pick: focus an address field → choose Home/Work/etc. ──
+  // In-session saved-address store (sessionStorage; empty until the user adds addresses
+  // in the dashboard "Saved Addresses" section). Each entry: { label, addr }.
+  window.GopherSaved = window.GopherSaved || (function(){
+    var KEY='gcSavedAddr';
+    function get(){ try{ return JSON.parse(sessionStorage.getItem(KEY)||'[]'); }catch(e){ return []; } }
+    function save(l){ try{ sessionStorage.setItem(KEY, JSON.stringify(l)); }catch(e){} }
+    return { list:get,
+      add:function(label,addr){ var l=get(); l.push({label:String(label||'').trim()||'Saved', addr:String(addr||'').trim()}); save(l); return l; },
+      removeAt:function(i){ var l=get(); l.splice(i,1); save(l); return l; } };
+  })();
+  var _savedPickerEl = null;
+  function hideSavedPicker(){ if(_savedPickerEl){ _savedPickerEl.remove(); _savedPickerEl = null; } }
+  function showSavedPicker(input){
+    if(!input) return;
+    hideSavedPicker();
+    var saved = window.GopherSaved.list();
+    var box = document.createElement('div');
+    box.className = 'saved-addr-picker';
+    box.innerHTML = '<div class="sap-head">Saved addresses</div>'
+      + (saved.length ? saved.map(function(s,i){
+          return '<button type="button" class="sap-row" data-sap="'+i+'"><span class="sap-pin">\uD83D\uDCCD</span>'
+            + '<span class="sap-text"><span class="sap-label">'+s.label+'</span>'
+            + '<span class="sap-addr">'+s.addr+'</span></span></button>';
+        }).join('') : '<div class="sap-empty">No saved addresses yet \u2014 add them in your dashboard under \u201CSaved Addresses.\u201D</div>')
+      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new address</button>';
+    document.body.appendChild(box);
+    var r = input.getBoundingClientRect();
+    box.style.left  = Math.round(r.left) + 'px';
+    box.style.top   = Math.round(r.bottom + 6) + 'px';
+    box.style.width = Math.round(Math.max(240, r.width)) + 'px';
+    _savedPickerEl = box;
+    box.addEventListener('mousedown', function(e){ e.preventDefault(); });   // keep the input focused
+    box.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-sap]'); if(!btn) return;
+      var v = btn.getAttribute('data-sap');
+      if(v === 'add'){ hideSavedPicker(); try{ input.focus(); }catch(_){} return; }
+      var s = window.GopherSaved.list()[+v];
+      if(s){ input.value = s.addr; if(typeof _writeStop === 'function') _writeStop(input); }
+      hideSavedPicker();
+    });
+  }
+  // Typing hides the saved picker (Google autocomplete takes over); close on scroll / outside tap.
+  document.addEventListener('input', function(e){ if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) hideSavedPicker(); });
+  document.addEventListener('mousedown', function(e){ if(_savedPickerEl && !_savedPickerEl.contains(e.target) && !(e.target.matches && e.target.matches('input[data-locedit]'))) hideSavedPicker(); }, true);
+  window.addEventListener('scroll', hideSavedPicker, true);
 
   function rideSuggestedOffer(miles, minutes, scheduled){
     const r = RIDE_RATES;
@@ -21089,5 +21179,89 @@ const PAY_BADGES = {
 </script>
 
 <!-- GOPHER-RECEIPT-COMPONENT (G40-101) END -->
+<!-- Saved Addresses manager (session store; Google-validated) -->
+<div class="sa-overlay" id="savedAddrModal" hidden>
+  <div class="sa-backdrop" data-sa-close></div>
+  <div class="sa-modal" role="dialog" aria-modal="true" aria-label="Saved addresses">
+    <div class="sa-head"><h3>Saved Addresses</h3><button class="sa-x" id="saClose" aria-label="Close" data-sa-close>✕</button></div>
+    <div class="sa-list" id="saList"></div>
+    <div class="sa-form">
+      <div class="sa-form-title">Add a new address</div>
+      <input type="text" id="saNameInput" class="sa-input" placeholder="Name it (e.g. Home, Work, Gym)" autocomplete="off">
+      <input type="text" id="saAddrInput" class="sa-input" placeholder="Start typing the address…" autocomplete="off">
+      <div class="sa-err" id="saErr"></div>
+      <button class="sa-save" id="saSave">Save address</button>
+      <div class="sa-note">Addresses are verified with Google so distance &amp; pricing stay accurate.</div>
+    </div>
+  </div>
+</div>
+<style id="saved-addr-css">
+.sa-overlay{ position:fixed; inset:0; z-index:99990; display:flex; align-items:center; justify-content:center; }
+.sa-overlay[hidden]{ display:none; }
+.sa-backdrop{ position:absolute; inset:0; background:rgba(13,26,62,.5); }
+.sa-modal{ position:relative; width:min(440px,92vw); max-height:86vh; overflow:auto; background:#fff; border-radius:20px; box-shadow:0 30px 80px rgba(0,0,0,.35); padding:20px 22px; font-family:'DM Sans',sans-serif; }
+.sa-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sa-head h3{ font-family:'Nunito',sans-serif; font-weight:900; color:#002461; font-size:19px; margin:0; }
+.sa-x{ border:none; background:none; font-size:18px; color:#8a93a3; cursor:pointer; line-height:1; }
+.sa-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.sa-item{ display:flex; align-items:center; gap:10px; background:#f6f8fb; border:1px solid #e9eef4; border-radius:12px; padding:10px 12px; }
+.sa-pin{ font-size:15px; }
+.sa-item-text{ display:flex; flex-direction:column; min-width:0; flex:1; }
+.sa-item-text b{ font-family:'Nunito',sans-serif; color:#002461; font-size:13.5px; }
+.sa-item-text span{ font-size:12px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-del{ border:none; background:none; color:#C44257; font-size:14px; cursor:pointer; padding:4px; }
+.sa-empty{ font-size:12.5px; color:#8a93a3; padding:8px 2px 4px; line-height:1.5; }
+.sa-form{ border-top:1px solid #eef2f6; padding-top:14px; }
+.sa-form-title{ font-family:'Nunito',sans-serif; font-weight:800; color:#002461; font-size:13px; margin-bottom:8px; }
+.sa-input{ width:100%; box-sizing:border-box; padding:11px 13px; margin-bottom:8px; border:1px solid #dfe5ec; border-radius:11px; font-size:13.5px; font-family:'DM Sans',sans-serif; outline:none; }
+.sa-input:focus{ border-color:#33D975; }
+.sa-err{ color:#C44257; font-size:12px; min-height:14px; margin-bottom:6px; }
+.sa-save{ width:100%; padding:12px; border:none; border-radius:12px; background:#33D975; color:#002461; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; }
+.sa-save:hover{ background:#2fc76c; }
+.sa-note{ font-size:11px; color:#8a93a3; text-align:center; margin-top:10px; line-height:1.4; }
+</style>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var picked='';
+  function render(){
+    var w=$('saList'); if(!w) return;
+    var l=(window.GopherSaved?window.GopherSaved.list():[]);
+    w.innerHTML = l.length ? l.map(function(s,i){
+      return '<div class="sa-item"><span class="sa-pin">📍</span><span class="sa-item-text"><b>'+esc(s.label)+'</b><span>'+esc(s.addr)+'</span></span><button class="sa-del" data-sadel="'+i+'" aria-label="Remove">✕</button></div>';
+    }).join('') : '<div class="sa-empty">No saved addresses yet. Add one below — it’ll appear when you set a pick-up or drop-off.</div>';
+  }
+  function bindAC(){
+    var ad=$('saAddrInput'); if(!ad||ad._acb) return;
+    if(!(window.google&&google.maps&&google.maps.places)) return;
+    var ac=new google.maps.places.Autocomplete(ad,{fields:['formatted_address','geometry','name']});
+    ac.addListener('place_changed',function(){ var p=ac.getPlace(); if(!p) return; var a=p.formatted_address||''; var v=(p.name&&a&&a.indexOf(p.name)===-1)?(p.name+', '+a):(a||p.name||ad.value); ad.value=v; picked=v; });
+    ad._acb=true;
+  }
+  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); bindAC(); }
+  function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; }
+  function save(){
+    var label=(($('saNameInput')||{}).value||'').trim(), addr=(($('saAddrInput')||{}).value||'').trim(), err=$('saErr');
+    if(!label){ if(err)err.textContent='Give it a name (e.g. Home).'; return; }
+    if(!addr){ if(err)err.textContent='Enter an address.'; return; }
+    if(err)err.textContent='';
+    var commit=function(fa){ if(window.GopherSaved) window.GopherSaved.add(label,fa); if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; picked=''; render(); };
+    if(picked && picked===addr){ commit(addr); return; }
+    if(window.google&&google.maps){
+      new google.maps.Geocoder().geocode({address:addr},function(res,st){ if(st==='OK'&&res[0]) commit(res[0].formatted_address); else if(err) err.textContent='We couldn’t verify that address with Google — try picking one from the dropdown.'; });
+    } else commit(addr);
+  }
+  document.addEventListener('click', function(e){
+    if(e.target.closest('#rqDashSavedAddr, #gcDashSavedAddr, [data-open-saved-addr]')){ e.preventDefault(); e.stopImmediatePropagation(); openM(); }
+  }, true);
+  document.addEventListener('click', function(e){
+    if(e.target.closest('[data-sa-close]')){ closeM(); return; }
+    if(e.target.id==='saSave'){ save(); return; }
+    var d=e.target.closest('[data-sadel]'); if(d){ if(window.GopherSaved) window.GopherSaved.removeAt(+d.getAttribute('data-sadel')); render(); }
+  });
+  window.openSavedAddrModal=openM;
+})();
+</script>
 </body>
 </html>

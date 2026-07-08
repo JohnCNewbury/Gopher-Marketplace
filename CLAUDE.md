@@ -237,6 +237,43 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   browser (service + branded pages styled, footer navy, no 404s). Detail:
   `docs/handoff/css-consolidation-2026-07-07.md`. **Deploy must include `assets/css/`.**
 
+- **Mobile responsiveness pass (done 2026-07-08, G40-317).** Verified the 8 priority templates
+  at phone (375) + tablet (768): **0 horizontal overflow** on all (index, a service page repping
+  all 107, connect, request, deals, go, services, faqs). Mobile burger drawer opens the full
+  styled nav (incl. Deals/Tutorials sub-dropdowns) from the shared `gopher-header.js`; gopher iQ
+  search pill renders correctly at 375. **No fixes required** — the site is already consistently
+  responsive, now structurally so via the shared components. Not exhaustive (every page / extreme
+  widths / real devices) — follow-up if wanted. Detail: `docs/handoff/mobile-responsiveness-2026-07-08.md`.
+
+- **Navigation paths & broken refs (done 2026-07-08, G40-318).** Audited every href/src across
+  all pages + the shared header/footer JS vs real filenames: **0 root-absolute paths, 0 case
+  mismatches**; Home/logo → `index.html` confirmed. Fixed 1 legacy broken link
+  (`terms-of-service.html` → `gopher-terms-of-service.html` in request-101). **Localized 13
+  external `gophergo.io/wp-content` images** (hot-linked from the live WP site — would 404 when
+  gophergo.io is replaced) → `assets/img/wp-*.webp`+`blog-*.webp`, repointed across 7 pages; 0
+  hotlinks remain; `mailto:` addresses untouched. Only unresolved refs left = the 8 known-missing
+  hero clips (video production, degrades gracefully). Verified in browser. Detail:
+  `docs/handoff/nav-paths-2026-07-08.md`.
+
+- **Per-page SEO basics (done 2026-07-08, G40-319).** Base domain `https://gophergo.io/` (owner
+  decision). Injected into **126 pages**: `<link rel="canonical">` (home → `/`, others →
+  `/<page>.html`), Open Graph (type/site_name/title/description/url/image) + Twitter
+  `summary_large_image`; **filled 13 missing meta descriptions** with hand-written copy. Titles
+  (127/127) and single-`<h1>` were already good. Created a 1200×630 share image
+  `assets/img/og-default.jpg` (cream + navy/green logo + tagline), used as default og/twitter
+  image. Idempotent; verified 1 canonical/og:image/desc per page, header/footer intact, no errors.
+  `gopher-go-101.html` skipped (concurrent refactor) — add its SEO block once that lands. If prod
+  adopts clean URLs, regenerate canonicals without `.html`. Detail: `docs/handoff/seo-basics-2026-07-08.md`.
+
+- **Asset naming + folder organization (done 2026-07-08, G40-320 — final epic ticket).** Created
+  `draft-content/` (staging); **consolidated all loose root CSS/JS into `assets/`** (`gopher-ai-engine.css`,
+  `3-pill-css.css` → `assets/css/`; `gopher-ai-engine.js`, `gopher-iq-data.js` → `assets/js/`; only
+  iq-data is `src`-loaded (4 pages, refs updated) — engines are inlined). Archived 4 unref spare
+  images → `assets/img/originals/`. **0 broken refs** (verified `GopherIQData.lookup` still works).
+  Documented the naming convention (`<context>-<descriptor>[-n].<ext>`) + live-vs-spare + what the
+  rebuild should still move (root `.mp4` scene videos → `assets/video/`; generic `*-img-N` names left
+  as-is; go-101 pending concurrent refactor). Full map: `docs/handoff/folder-structure.md`.
+
 ### Outstanding to-do
 
 - **8 hero clips** still needed: `hero-media/clip-1..4.{webm,mp4}` referenced by
