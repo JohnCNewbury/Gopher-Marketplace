@@ -2124,6 +2124,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<span class="mlink js-upclose" style="margin-top:10px;">Never mind</span>');
       ov.querySelector('.js-upclose').onclick=()=>ov.remove();
       ov.querySelector('.js-advance').onclick=()=>{
+        if(nk==='completed' && j.ageRestricted){ ov.remove(); openAgeIdConfirm(); return; }   // age-restricted → verify recipient ID at drop-off first
         j.substage=nk;                    // shared-store write — the harness reflects it on the requester's card
         ov.remove(); draw();
         toast(nk==='completed' ? 'Job marked complete — '+who+' can now confirm &amp; rate you'
@@ -2150,6 +2151,57 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         toast('Charge updated — '+who+' now sees $'+newOffer+(newCost?(' + $'+newCost+' items'):''));
       };
       ov.querySelector('.js-cancelreq').onclick=()=>{ ov.remove(); openCancelRequest(); };
+    }
+    // Age-restricted delivery — verify the recipient's ID at drop-off before completing (G40-116).
+    // TrustShield holders are pre-verified (ID on file); everyone else needs an on-site physical-ID check.
+    function openAgeIdConfirm(){
+      function done(method){ j.substage='completed'; j.ageVerified=method; draw();
+        toast('ID verified — items released. '+who+' can now confirm &amp; rate.'); }
+      if(j.trustShield){
+        const ov=showModal(
+          '<h3>Age-Restricted ID Confirmation</h3>'
+          +'<div style="text-align:center;margin:6px 0 12px;"><div style="width:52px;height:52px;margin:0 auto 8px;border-radius:50%;background:#e7f7ec;display:flex;align-items:center;justify-content:center;font-size:24px;">&#128737;&#65039;</div><div style="font-family:Nunito;font-weight:900;font-size:15px;color:#0a7d44;">TrustShield&#8482; Verified</div></div>'
+          +'<p style="text-align:center;">ID on file — <b>nothing to submit</b> for this order. Confirm the recipient is <b>'+who+'</b> and hand off the items.</p>'
+          +'<div style="margin:10px 0;padding:10px 12px;border:1px solid #bfe6cd;border-radius:11px;background:#f3faf5;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#0a7d44;font-weight:800;text-align:center;">&#10003; ID and Identity Confirmed on file</div>'
+          +'<button class="js-idok" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">ID and Identity Confirmed</button>'
+          +'<span class="mlink js-idcancel" style="margin-top:10px;">Not yet</span>');
+        ov.querySelector('.js-idok').onclick=()=>{ ov.remove(); done('trustshield'); };
+        ov.querySelector('.js-idcancel').onclick=()=>ov.remove();
+      } else {
+        let captured=false;
+        const ov=showModal(
+          '<h3>Confirm ID and Identity</h3>'
+          +'<p>Verify the recipient&#8217;s ID before exchanging items — check the <b>photo</b>, <b>name</b>, and that they&#8217;re <b>21+</b>.</p>'
+          +'<div class="js-idtile" style="margin:10px 0;height:104px;border:2px dashed #d9d2c2;border-radius:12px;background:#F7F5EF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:Nunito;font-weight:800;font-size:12.5px;color:#8C8675;"><div style="font-size:26px;">&#129706;</div>Tap to capture the ID</div>'
+          +'<button class="js-idok" disabled style="width:100%;border:0;background:#cfe9d9;color:#7aa790;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">ID and Identity Confirmed</button>'
+          +'<button class="js-idnopresent" style="width:100%;margin-top:9px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:12px;padding:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Recipient not present</button>'
+          +'<button class="js-idfail" style="width:100%;margin-top:9px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:12px;padding:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">ID verification failed</button>');
+        const tile=ov.querySelector('.js-idtile'), okb=ov.querySelector('.js-idok');
+        tile.onclick=()=>{ captured=true; tile.innerHTML='<div style="font-size:26px;">&#9989;</div>ID captured'; tile.style.borderColor='#1CB061'; tile.style.color='#0a7d44'; okb.disabled=false; okb.style.background='#1CB061'; okb.style.color='#fff'; okb.style.cursor='pointer'; };
+        okb.onclick=()=>{ if(!captured){ toast('Capture the ID first'); return; } ov.remove(); done('physical'); };
+        ov.querySelector('.js-idnopresent').onclick=()=>{ ov.remove(); openNoShowTimer(); };
+        ov.querySelector('.js-idfail').onclick=()=>{ ov.remove(); toast('ID didn&#8217;t match / expired — items not released. Flagged for review.'); };
+      }
+    }
+    // 10-minute requester no-show at age-restricted drop-off (G40-192). On expiry (or explicit report)
+    // the order auto-completes as a no-show — the worker is paid in full and the items are not released.
+    function openNoShowTimer(){
+      j.noShowActive=(j.noShowActive||0)+1;   // harness fires the requester "your Gopher is here — 10 min" alert
+      let secs=600, tick=0;
+      const fmt=s=>Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);
+      const ov=showModal(
+        '<h3>Recipient not present</h3>'
+        +'<p>You&#8217;re at the drop-off but <b>'+who+'</b> isn&#8217;t here to verify ID. They have <b>10 minutes</b> to arrive — stay in range.</p>'
+        +'<div class="js-nscount" style="text-align:center;font-family:Nunito;font-weight:900;font-size:40px;color:#C44257;margin:8px 0 4px;letter-spacing:1px;">10:00</div>'
+        +'<div style="text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-bottom:14px;line-height:1.5;">If they don&#8217;t arrive, the order auto-completes as a no-show — you&#8217;re paid in full and items are not released.</div>'
+        +'<button class="js-nsarrived" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Recipient arrived</button>'
+        +'<button class="js-nsreport" style="width:100%;margin-top:9px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;padding:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Report to No Show</button>');
+      const cd=ov.querySelector('.js-nscount');
+      tick=setInterval(()=>{ secs--; if(cd) cd.textContent=fmt(Math.max(0,secs)); if(secs<=0){ finishNoShow(); } }, 1000);
+      function finishNoShow(){ clearInterval(tick); j.noShow=1; j.noShowActive=0; j.substage='completed'; if(ov&&ov.remove) ov.remove(); draw();
+        toast('Reported as no-show — you&#8217;re paid in full; items not released.'); }
+      ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
+      ov.querySelector('.js-nsreport').onclick=()=>finishNoShow();
     }
     // Cancel — the Gopher is warned a cancellation fee may apply per terms and must give a reason.
     function openCancelRequest(){
@@ -2400,12 +2452,14 @@ if(PT){
     var crew=Math.max(1, +order.workers||1);   // Gopher Request = ONE broadcast; the accepter brings the whole crew
     var flags=[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
+    if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
     var job={ id:order.id, cat:pcat, posted:'just now',
       mode:(isBid?'bid':'pay'),                 // bid jobs render "Submit a Bid / You set your price"
       amt:(isBid?'':('$'+((+order.pay||0)*crew))),   // crew total the accepter coordinates (per-worker × crew)
       per:((!isBid&&crew>1)?('$'+(+order.pay||0)+'/worker'):''),
       cost:costN, workers:crew, top:(!isBid && !!order.topOffer),   // TOP PAY only for a genuinely high (above-suggested) offer — never a low one; meaningless on bids
+      ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };

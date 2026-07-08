@@ -94,12 +94,15 @@
   var goMsgSeen={};  // GReq order id -> count of Gopher messages already relayed to Request
   var reqMsgSeen={}; // GReq order id -> count of Requester messages already relayed to Go
   var adjustSeen={}; // GReq order id -> last charge-adjustment seq relayed to Request
+  var noShowAlerted={}; // GReq order id -> last no-show-timer seq the requester was alerted about
+  var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
     return {
       id:r.order, cat:r.cat, title:r.title,
       bids:!!r.bids, topOffer:(r.offerBand==='generous'), pay:+r.pay||0, cost:+r.cost||0, workers:+r.workers||1,
+      ageRestricted:!!r.ageRestricted, trustShield:!!r.trustShield,
       pickup:r.pickup||'', dropoff:r.dropoff?[r.dropoff]:[],
       scope:r.scope||r.title, dist:r.dist||'2.4',
       when:r.when||'Now · ASAP', requestor:r.requestor||'A requester'
@@ -209,7 +212,7 @@
       if(w && w.__ptJobs && l && l.GReq){
         for(var id in w.__ptJobs){
           var job=w.__ptJobs[id];
-          if(job && job.accepted && job.substage && statusSeen[id]!==job.substage){
+          if(job && job.accepted && job.substage && statusSeen[id]!==job.substage && !job.noShow){   // no-show is relayed by watchNoShow instead
             var r=l.GReq.get(id); if(!r){ continue; }   // request not ready — retry next tick
             statusSeen[id]=job.substage;
             var patch={ stage:'active', substage:job.substage };
@@ -225,6 +228,32 @@
             if(GB[job.substage]) reqBanner(GB[job.substage][0],GB[job.substage][1]);
             status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
               +(job.substage==='completed'?' Open the request card on the left and tap <b>Rate now</b>.':''));
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Age-restricted no-show (G40-192): the worker is at the drop-off but the requester isn't present.
+        Alert the requester during the 10-min window; on report/expiry auto-complete as a no-show. ── */
+  function watchNoShow(){
+    try{
+      var w=R(), l=L();
+      if(w && w.__ptJobs && l && l.GReq){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id]; var r=l.GReq.get(id); if(!r){ continue; }
+          if(job.noShowActive && noShowAlerted[id]!==job.noShowActive){
+            noShowAlerted[id]=job.noShowActive;
+            try{ if(l.__noShowAlert) l.__noShowAlert(id); }catch(_){}
+            status('Gopher is at the age-restricted drop-off for '+id+' but '+(r.hired||'the requester')+' isn\'t present — <b>10-minute no-show timer</b> started. ⏳');
+          }
+          if(job.noShow && !noShowDone[id]){
+            noShowDone[id]=true; statusSeen[id]='completed';   // block watchStatus's normal completed→confirm
+            l.GReq.update(id, { stage:'active', substage:'completed', noShow:1, attention:null, when:'No show · 10-min timer expired' });
+            try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            try{ if(l.__noShowComplete) l.__noShowComplete(id); }catch(_){}
+            status('No-show on '+id+' → '+(r.hired||'the Gopher')+' was paid in full, items not released; order marked <b>Completed (No Show)</b>.');
           }
         }
       }
@@ -363,7 +392,7 @@
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={};
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; noShowAlerted={}; noShowDone={};
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -376,7 +405,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
