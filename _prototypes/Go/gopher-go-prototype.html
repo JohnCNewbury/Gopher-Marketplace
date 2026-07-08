@@ -2083,17 +2083,19 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Update request — advance the job, adjust the CHARGE (offer + item cost), or cancel.
     function openUpdateSheet(nk){
       const nextStep = STATUS_FLOW.find(s=>s.key===nk) || {label:'Next step', cta:'Continue'};
-      const hasItems = (+j.cost>0) || /delivery|errand/i.test(j.cat||'');
       const curOffer = parseInt(String(j.amt||'').replace(/[^0-9]/g,'')) || amtNum || 0;
       const curCost = (+j.cost||0);
-      // Adjust the agreed charge — the offer (labor) AND item cost. Handles the on-site case where the
-      // scope/crew changes (e.g. 3 booked, 2 show up, requester OK with a reduced rate).
+      // A cost-of-items (delivery/ride) OR cost-of-materials (service) field is ALWAYS available — even if
+      // it started at $0 — in case the requester and worker agree on something extra on site.
+      const isDelivery = /delivery|errand|ride/i.test(j.cat||'');
+      const itemLabel = isDelivery ? 'Cost of items' : 'Cost of materials';
+      const itemSub = isDelivery ? 'reimbursed at drop-off' : 'materials you supplied';
       const offerRow = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
           +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Your offer<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">labor — what you take home</span></div>'
           +'<div class="rq-amt" style="display:inline-flex;flex:0 0 auto;">$<input class="js-upoffer" inputmode="numeric" value="'+curOffer+'" style="width:78px;"></div></div>';
-      const itemRow = hasItems ? '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
-          +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Cost of items<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">reimbursed at drop-off</span></div>'
-          +'<div class="rq-amt" style="display:inline-flex;flex:0 0 auto;">$<input class="js-upcost" inputmode="numeric" value="'+curCost+'" style="width:78px;"></div></div>' : '';
+      const itemRow = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">'
+          +'<div style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">'+itemLabel+'<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">'+itemSub+'</span></div>'
+          +'<div class="rq-amt" style="display:inline-flex;flex:0 0 auto;">$<input class="js-upcost" inputmode="numeric" value="'+curCost+'" style="width:78px;"></div></div>';
       // G40-217 — hourly jobs can add time (bumps the offer by the hourly rate).
       const isHourly = !!j.payByHour;
       const numHours = parseInt(j.numHours,10)||1;
@@ -2103,11 +2105,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const hourlyRow = isHourly ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;padding:8px 10px;border-radius:9px;background:#eef4ff;border:1px solid #cdd9f0;">'
           +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#33507e;line-height:1.3;">Hourly &middot; '+numHours+' hr @ ~$'+hourlyRate+'/hr<br><span style="color:#8a94a3;">Add time in 15-min steps if it ran long</span></div>'
           +'<button class="js-addhr" style="flex:0 0 auto;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:9px;padding:7px 10px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">+15 min (+$'+quarterRate+')</button></div>' : '';
-      // G40-101 — changing item cost (±) requires a receipt.
-      const receiptRow = hasItems ? '<div class="js-receipt-req" style="display:none;margin:2px 0 9px;padding:9px 11px;border-radius:9px;background:#FFF4E5;border:1px solid #f2d9a8;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a5a00;line-height:1.45;">&#128206; A receipt is required when the item cost changes. <button class="js-attach-receipt" style="border:0;background:#8a5a00;color:#fff;border-radius:8px;padding:5px 10px;font-family:Nunito;font-weight:800;font-size:11px;cursor:pointer;margin-left:2px;">Attach receipt</button> <span class="js-receipt-ok" style="color:#0a7d44;font-weight:800;"></span></div>' : '';
+      // G40-101 — changing item/materials cost (±) requires a receipt.
+      const receiptRow = '<div class="js-receipt-req" style="display:none;margin:2px 0 9px;padding:9px 11px;border-radius:9px;background:#FFF4E5;border:1px solid #f2d9a8;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a5a00;line-height:1.45;">&#128206; A receipt is required when the '+(isDelivery?'item':'materials')+' cost changes. <button class="js-attach-receipt" style="border:0;background:#8a5a00;color:#fff;border-radius:8px;padding:5px 10px;font-family:Nunito;font-weight:800;font-size:11px;cursor:pointer;margin-left:2px;">Attach receipt</button> <span class="js-receipt-ok" style="color:#0a7d44;font-weight:800;"></span></div>';
       const adjustBlock =
         '<div style="margin-top:10px;padding:12px;border:1px solid #e6e2d6;border-radius:12px;background:#F7F5EF;">'
-        +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:0 0 10px;line-height:1.45;">Only adjust if the scope or crew changed on site — fewer workers showed, the job ran long, or item cost differs. The requester sees the new amount.</div>'
+        +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:0 0 10px;line-height:1.45;">Only adjust if the scope or crew changed on site — fewer workers showed, the job ran long, or item/materials cost differs. The requester sees the new itemized breakdown.</div>'
         +hourlyRow + offerRow + itemRow + receiptRow
         +'<div style="display:flex;align-items:center;justify-content:space-between;padding-top:9px;border-top:1px dashed #dcd7ca;font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">You&#8217;ll receive<span class="js-uptotal">$'+curOffer+'</span></div>'
         +'<button class="js-savecharge" style="width:100%;margin-top:11px;border:0;background:#002461;color:#fff;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Save charge changes</button>'

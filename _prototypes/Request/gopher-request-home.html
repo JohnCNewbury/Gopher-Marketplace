@@ -1200,12 +1200,32 @@ function __adjustAlert(order, offer, cost, total){
   var r=GReq.get(order); var who=(r&&r.hired)||'Your Gopher';
   var ov=document.createElement('div');
   ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#0a7d44;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
-  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">✎ Charge updated · '+String(who)+'</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">New total $'+Number(total||0).toFixed(2)+' — offer $'+offer+(cost?(' + $'+cost+' items'):'')+'</div>';
-  ov.onclick=function(){ ov.remove(); };
+  ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">✎ Charge updated · '+String(who)+'</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">New total $'+Number(total||0).toFixed(2)+' — tap to see the itemized breakdown</div>';
+  ov.onclick=function(){ ov.remove(); openAdjustReview(order, +offer||0, +cost||0, +total||0); };
   $('#phone').appendChild(ov);
   setTimeout(function(){ if(ov.parentNode) ov.remove(); }, 6000);
 }
 window.__adjustAlert=__adjustAlert;
+// Itemized view of a charge adjustment (delivery/ride = cost of items; service = cost of materials).
+function openAdjustReview(order, offer, cost, total){
+  var r=GReq.get(order); var who=(r&&r.hired)||'your Gopher';
+  var isDelivery=/delivery|errand|ride/i.test(r&&r.cat||'');
+  var itemLabel=isDelivery?'Cost of items':'Cost of materials';
+  var fee=Math.max(0, (+total||0)-(+offer||0)-(+cost||0));
+  var money=function(v){ return '$'+Number(v||0).toFixed(2); };
+  var row=function(l,v,strong){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(strong?'10px 0 2px':'8px 0')+';'+(strong?'border-top:2px solid #dfe3ea;margin-top:2px;':'border-bottom:1px solid #f0eef2;')+'font-family:\'DM Sans\',sans-serif;font-size:13px;"><span style="color:'+(strong?'#002461':'#8a94a3')+';font-weight:'+(strong?'800':'600')+';">'+l+'</span><b style="color:'+(strong?'#0a7d44':'#002461')+';font-size:'+(strong?'17px':'13.5px')+';">'+money(v)+'</b></div>'; };
+  var o=gModal(
+    '<h3 class="gm-h">Charge updated</h3>'
+    +'<p class="gm-p"><b>'+who+'</b> adjusted the charge on <b>#'+order+'</b>. Here’s the new itemized breakdown:</p>'
+    +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:6px 13px;margin:8px 0 4px;background:#fbfafc;">'
+      +row('Payment to '+who.split(' ')[0], offer)
+      +row(itemLabel, cost)
+      +row('Request fee', fee)
+      +row('New total', total, true)
+    +'</div>'
+    +'<button class="gm-close" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Got it</button>');
+}
+window.openAdjustReview=openAdjustReview;
 // Age-restricted no-show (G40-192) — the Gopher is at the drop-off but you're not there to verify ID.
 // A red banner warns you're on the 10-minute clock; if it expires the order auto-completes as a no-show.
 function __noShowAlert(order){
@@ -1374,7 +1394,7 @@ document.addEventListener('click',function(e){
     if(k==='iq'){ openIQ(); return; }
     if(k==='rewards'){ openRewards(); return; }
     if(k==='points'){ gClose(); openPoints(); return; }
-    if(k==='help'){ gClose(); gotoURL('gopher-request-help.html'); return; }
+    if(k==='help'){ openHelpCenter(); return; }
     if(k==='terms'){ try{window.open('https://gophergo.io/gopher-terms-of-service.html','_blank','noopener');}catch(_){} toast('Opening Terms of Service \u2192'); return; }
     if(k==='social'){ openSocial(); return; }
     if(k==='refer'){ gClose(); gotoURL('gopher-request-refer.html'); return; }
@@ -1396,6 +1416,20 @@ function openNotif(){ var dot=document.querySelector('.bell .dot'); if(dot) dot.
 const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Removal'],['moving','Moving'],['labor','Labor'],['yard','Yard / Outdoor'],['ride','Ride Sharing'],['other','Other']];
 function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
+// Help Center \u2014 in-app (no separate page to 404 on). Common topics + contact support.
+function openHelpCenter(){
+  var topics=[
+    ['How Gopher works','Post a request, a nearby Gopher accepts, and you confirm & rate when it\u2019s done. You\u2019re only charged when a Gopher is hired.'],
+    ['Payments & receipts','Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'],
+    ['Age-restricted deliveries','These require a valid ID at drop-off. Verify once with TrustShield\u2122 to skip re-verifying on future orders.'],
+    ['Cancellations & disputes','Cancel before a match at no charge. If something goes wrong after, open a dispute \u2014 you and your Gopher work it out with our team.'],
+    ['Safety & TrustShield\u2122','Every Gopher is background-checked. Verify your own identity with TrustShield\u2122 for two-way trust and $1 off age-restricted orders.']
+  ];
+  gSheet('Help Center',
+    '<p class="gs-sub">Answers to the most common questions.</p>'
+    +'<div class="gs-list" style="margin-top:10px;">'+topics.map(function(t){ return '<div class="gs-li"><b>'+t[0]+'</b><br><span style="color:#5b6472;">'+t[1]+'</span></div>'; }).join('')+'</div>'
+    +'<button class="gm-close" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;" onclick="try{if(window.toast)toast(\'Support: help@gophergo.io \u00b7 in-app chat 24/7\');}catch(_){}">Contact support</button>');
+}
 // MY Gophers \u2014 session-only favorites. In the split/PT demo this starts EMPTY (0) and only fills when
 // John adds the prototype Gopher this session; the standalone app keeps a few representative favorites.
 var SESS_MYGOPHERS=[];

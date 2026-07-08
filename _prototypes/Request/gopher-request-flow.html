@@ -1925,7 +1925,15 @@ function render(){
   render._lastStep = state.step;
   bindFieldInputs();
   syncOfferModal();
+  // Once a Gopher accepts, ALWAYS move the requester off the submitted screen to Home so they see it's
+  // accepted (otherwise they'd be stuck on "Request submitted!" with no signal).
+  if(_step7Watch){ clearInterval(_step7Watch); _step7Watch=0; }
+  if(state.step===7 && state._stashedOrder && window.GReq){
+    _step7Watch=setInterval(function(){ try{ var r=GReq.get(state._stashedOrder);
+      if(r && (r.accepted || r.stage==='active' || r.stage==='matched')){ clearInterval(_step7Watch); _step7Watch=0; goHome(); } }catch(_){} }, 700);
+  }
 }
+var _step7Watch=0;
 
 function renderFooter(){
   const f=$('#foot');
@@ -1936,9 +1944,10 @@ function renderFooter(){
     f.innerHTML = `<button class="btn btn-outline" data-action="back">Back</button>
       <button class="btn btn-primary ${blocked?'is-disabled':''}" data-action="submit">Submit request</button>`;
   } else if(state.step===7){
+    // Submitted screen: demo keeps its CTAs; the real app drops the redundant Go-to-Home / Start-new
+    // footer (the "Track it on your home screen" action + auto-transition-on-accept cover it).
     f.innerHTML = state.demo ? `<button class="btn btn-primary" data-action="demo-signup">Create your free account to hire →</button>
-      <button class="btn btn-navy" data-action="demo-restart">Try another request</button>` : `<button class="btn btn-primary" data-action="go-home">Go to Home →</button>
-      <button class="btn btn-navy" data-action="new-request">Start a new request</button>`;
+      <button class="btn btn-navy" data-action="demo-restart">Try another request</button>` : '';
   } else {
     f.innerHTML = `<button class="btn btn-outline" data-action="back">Back</button>
       <button class="btn btn-primary ${blocked?'is-disabled':''}" data-action="next">Continue</button>`;
