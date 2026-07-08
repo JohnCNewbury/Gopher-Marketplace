@@ -12673,9 +12673,6 @@
           </span>
         </div>
         ` : ''}
-        ${isVisible('pickupSection') && !state.noSpecificPickup ? `
-          <div class="trip-distance">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>
-        ` : ''}
         ${reqAvailabilityLine()}
       </div>
     `;
@@ -13397,6 +13394,7 @@
           ${dropoffExpanded ? `Drop-off stops (${dropoffs.length})` : 'Destination address'}
         </label>
         ${renderStops}
+        ${(isVisible('pickupSection') && !state.noSpecificPickup) ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
         ${footer}
       </div>
     `;
@@ -13959,6 +13957,18 @@
     // Step 4 (Locations) — pick-up and drop-off must be different addresses (G40-274 regression).
     // Only when a specific pickup is set (not "Any location") and both sides have entries.
     // Normalized compare (case/space/punctuation-insensitive) catches slight formatting diffs.
+    // Step 4 — pick-up and drop-off addresses are REQUIRED now that Maps is live.
+    // Returns the first empty field so the gate redirects the user to it in sequence.
+    if(state.step === 4 && !state.noSpecificPickup && isVisible('pickupSection')
+       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+      const firstEmpty = (arr) => { for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; } return -1; };
+      const pe = firstEmpty(state.pickupStops);
+      if(pe > -1) return { ok:false, label:'Pick-up address', selector:`input[data-locedit="pickup"][data-idx="${pe}"]`,
+                           msg:'Add a pick-up address so your Gopher knows where to start.' };
+      const de = firstEmpty(state.dropoffStops);
+      if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
+                           msg:'Add a drop-off address so your Gopher knows where to go.' };
+    }
     // Also backstops the footer Submit at Step 6.
     if((state.step === 4 || state.step === 6) && !state.noSpecificPickup
        && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
@@ -14015,7 +14025,9 @@
         ? field.closest('.cost-input-box')
         : field.matches('#descriptionInput')
           ? field.closest('.field-textarea')
-          : null;
+          : field.matches('input[data-locedit]')
+            ? field.closest('.field-input')
+            : null;
       if(card){
         // Old inline indicator must be GONE, not layered under the new one.
         field.classList.remove('field-required-flash');

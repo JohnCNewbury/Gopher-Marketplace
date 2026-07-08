@@ -727,7 +727,7 @@ function buildCoverageCard(loc, cov){
   if(tier===1){
     const has = (n>0)
       ? Where+' has <strong>~'+n+'</strong> neighbors fully registered as a local worker, which means the word is just getting out. '
-      : Where+' doesn’t have neighbors registered as a local worker just yet — which means the word is just getting out. ';
+      : Where+' doesn’t have many neighbors registered as a local worker just yet — which means the word is just getting out. ';
     const b = 'The Gopher Marketplace is available <strong>anywhere in the US</strong>. '+has
       +'You can always submit a request <strong>risk-free</strong> — '+RISK+' '
       +'If the service you’re looking for isn’t available in your area, tap <strong>Find MY Gopher</strong> — the Gopher Marketplace can pop up in your area, literally within a day, with your help.';

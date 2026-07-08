@@ -143,6 +143,40 @@ repo-root `docs/handoff/` folder, one level above this file._
   **prototype static data layer** — production swaps the tables for a live query behind the same
   `GopherIQData.lookup()` seam. Full detail + regeneration recipe:
   `docs/handoff/gopher-iq-location-intelligence.md`.
+- **Canonical-flow scrub — Connect/Request prototypes vs the flow spec (done 2026-07-05).**
+  Audited `gopher-connect.html` + `gopher-request.html` against the canonical
+  `Documentation/Canonical Request Flow - Master/connect-flows-granular.html` (v3.2) —
+  all 19 invariants, the visibility matrix, fee tables, and the Connect↔Request
+  divergence table. Verdict: **both adhere**, with two fixes:
+  (1) **Connect `eligibleWorkers` enum** normalized `pros`/`my`/`all` → canonical
+  `elite_pros`/`my_gophers`/`entire_workforce` across all 10 read/write sites (brings
+  Connect into parity with the already-migrated Request app; no behavior/UX change). The
+  field is **not yet in the submit payload** — that wiring is matching logic, flagged for
+  the human dev in `docs/handoff/connect-eligibleworkers-backend-seam.md`.
+  (2) **TrustShield $1 perk scope** — both builds gate it to *age-restricted delivery + all
+  ride*; the canonical doc had claimed a broader "all delivery & ride" scope. Owner decision
+  (Jul 5): the **narrow build scope is authoritative** — corrected the canonical doc (Master
+  + the byte-identical `Dev-Handoff-FeeModel/` copy; older `Jira Tickets/` snapshot left as-is).
+  **No prototype code changed for #2** (it was already correct; fee-engine = human-dev only).
+- **Asset "verify visually" pass + 4 swaps (done 2026-07-05).** Eyeballed all 6 `med`/`low`
+  candidate rows in `asset-match-report.md` by extracting each embedded blob (matched by mime +
+  exact decoded byte-size) and comparing side-by-side with its external master. **Completed 4
+  of 6** — `img-140`→`go101-delivery.webp` + `img-144`→`go101-moving.webp` (gopher-go-101.html,
+  straight swaps), `img-060`→`connect-junk-removal.webp` (gopher-connect.html, center-cropped
+  the square master to 3:2 to match the embedded framing), and `img-025`→`services-laptop.webp`
+  (gopher-services.html, the clean no-guides variant, which also shrank a 216 KB PNG blob → 12 KB
+  WebP). WebP q82, originals archived in `assets/img/originals/`; **~409 KB of base64 removed**.
+  The other **2 were left as correctness traps, not cost savings**: `img-037` is a **false match**
+  (Connect-business vs Request-customer deals screenshot — the pHash collision the report warned
+  about) and `img-052` is a **different version** (different featured deal; the embedded has a
+  bottom-nav the master lacks) — swapping either would inject a wrong/changed screenshot. Verdicts
+  in `asset-match-report.md` → "Visual-verify pass". _(Principle applied: do the crop/clean work
+  ourselves where the asset is genuinely the same image; only decline when swapping would be a bug.)_
+  **Follow-on (2026-07-06):** the two merchant logos originally flagged "downgrade — don't swap"
+  (`Blind Pelican`, `Buoy Bowls`) were **upgraded with owner-supplied transparent art** — Buoy Bowls
+  → 325px transparent WebP across `gopher-connect`/`gopher-request`/`gopher-customer-deals` (replacing
+  a 256px WebP + a 150px PNG); Blind Pelican → swapped the `LOGO_PELICAN` constant in `gopher-deals.html`
+  from a 365px **no-alpha** PNG to a 336px **transparent** WebP with corrected pelican-in-circle art.
 
 ### Asset packs at repo root — spare/upgrade assets, NOT live-site dependencies
 
@@ -153,9 +187,61 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
 23 merchant logos as thumbnails; the folders are just crisp upgrade sources. (See
 `deals-asset-match.md` and `asset-match-report.md`.)
 
+- **Full base64 externalization — images + video (done 2026-07-07, G40-313).** Removed
+  **all** remaining inline base64: **~14.6 MB** of base64 raster images across 15 pages
+  (217 occurrences → **145 unique files**, SHA-dedup) externalized to `assets/img/`, plus
+  the **~4.64 MB** inline base64 video montage in `gopher-services.html` (18 clips →
+  `assets/video/services-clip-1..18.mp4`, referenced from the JS `CLIPS[]` array). Real file
+  types detected by magic bytes; **exact original bytes** written (lossless — compression/resize
+  is G40-314). Biggest drops: `gopher-connect` 5.64→1.20 MB, `gopher-deals` 5.22→0.52 MB,
+  `gopher-services` 5.03→0.35 MB, `gopher-customer-deals` 1.93→0.29 MB, `gopher-our-story`
+  1.42→0.13 MB. **Zero** base64 raster/video remains (tiny URL-encoded inline `<svg>` icons kept
+  intentionally). Verified: 0 missing refs site-wide + live render checks (deals/connect/
+  customer-deals/services-video) pass. Generic auto-names (`connect-img-N`, `request-img-N`,
+  `shared-img-N`) left for G40-320 to polish. Full mapping:
+  `docs/handoff/base64-externalization-2026-07-07.md`. _(Part of Epic G40-312 scale-readiness.)_
+
+- **Image compression + resize (done 2026-07-07, G40-314).** Compressed the externalized
+  assets in `assets/img/` — **~6.1 MB saved**. **83** raster files (PNG/JPG/GIF) → **WebP q82**
+  (alpha preserved, longest side capped 1400 px) = 4.42 MB saved; the **2 large deals-page Figma
+  SVGs** (vector-wrapped layered rasters, 918 KB + 875 KB) composited to flat WebP (52 KB + 72 KB,
+  **visually verified pixel-identical** before swap) = 1.67 MB saved. Live `assets/img/` footprint
+  ~12 MB → **6.2 MB** (excl. `originals/`). **330** references updated across **118** files (incl.
+  the App-Store/Google-Play badges on 100+ pages); 0 broken/missing refs site-wide, verified in
+  browser (deals/connect/customer-deals/services). Done with Pillow 11.3 (no cwebp/ffmpeg). Kept
+  as-is where WebP wasn't smaller (`04-labor.jpg`, `go-gg-share-label.png`, animated `story-pin.gif`).
+  **Video not compressed** — `assets/video/*.mp4` (~3.4 MB) needs ffmpeg (unavailable); flagged for
+  dev. Full detail: `docs/handoff/image-compression-2026-07-07.md`. _(Epic G40-312.)_
+
+- **Shared header/footer components — client-side include (done 2026-07-07, G40-315).**
+  Header + footer were duplicated inline on every page (~25 KB header CSS+JS/page + ~5.8 KB
+  static footer/page). Now shared: **`assets/js/gopher-header.js`** (26 KB, on **124 pages**;
+  per-page logo via `window.GopherHeader={logo:'…'}`, mounts `<header class="gh-header">`) and
+  **`assets/js/gopher-footer.js`** (6.5 KB, on **108 pages**; mounts at `<div id="gopher-footer">`).
+  **~3.6 MB of duplicated HTML removed**, 0 broken refs, verified in browser (default + all branded
+  logos, Deals dropdown, footer styling). Built from the canonical inline block (not the stale
+  standalone `gopher-header.html`, now a pointer stub). Reconciled connect/request/request-101
+  variants onto canonical (logos byte-identical); deleted 5 duplicate logo SVGs; **removed the
+  external `gophergo.io/wp-content` footer-logo dependency** → local `assets/img/gopher-logo-footer.webp`.
+  18 branded/variant footers + index/go/sandbox bespoke headers intentionally left inline.
+  SEO caveat (accepted): nav/footer links are JS-injected — production rebuild should use
+  server/build-time components. Full detail: `docs/handoff/header-footer-componentization-2026-07-07.md`.
+
+- **CSS consolidation (done 2026-07-08, G40-316).** Extracted the two large **duplicated**
+  inline `<style>` blocks into the new `assets/css/`: service-detail CSS (`gopher-fd-css`,
+  ~12 KB) → **`assets/css/gopher-fd.css`** on **107** service pages; footer CSS (`.gopher-footer`,
+  ~7.7 KB) → **`assets/css/gopher-footer.css`** on **124** pages. Replaced in place with
+  `<link>` (cascade preserved); no `url()` so no path rewrites. **~2.25 MB removed.** With the
+  header CSS already in `gopher-header.js` (G40-315), all shared chrome CSS is now cached files.
+  Page-specific blocks (dashboard/services/os, single pages) correctly left inline. Verified in
+  browser (service + branded pages styled, footer navy, no 404s). Detail:
+  `docs/handoff/css-consolidation-2026-07-07.md`. **Deploy must include `assets/css/`.**
+
 ### Outstanding to-do
 
-- **The "verify visually" image rows** + the two downgrades — left for human review
-  (`docs/handoff/asset-match-report.md`).
 - **8 hero clips** still needed: `hero-media/clip-1..4.{webm,mp4}` referenced by
-  `gopher-connect.html` (`docs/handoff/missing-files.md`).
+  `gopher-connect.html` lines 6976–6989 (`Final/docs/handoff/missing-files.md`). Genuine
+  video-asset production — cannot be auto-generated; the hero degrades gracefully to its
+  base64 poster images meanwhile (the 8 missing `<source>`s do 404 in the console). Optional
+  stopgap documented: point the `.mp4` sources at existing scene videos + drop `.webm`.
+- ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).
