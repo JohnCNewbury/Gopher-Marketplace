@@ -2283,6 +2283,13 @@
   /* card on file + add card */
   .pc-card { background:linear-gradient(135deg, #002461 0%, #1a3a7a 100%); color:#fff; border-radius:14px; padding:20px; margin-bottom:14px; position:relative; overflow:hidden; width:340px; max-width:100%; aspect-ratio:1.586 / 1; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 10px 28px rgba(0,36,97,0.25); }
   .pc-card::after { content:''; position:absolute; right:-30px; top:-30px; width:120px; height:120px; border-radius:50%; background:rgba(51,217,117,0.18); }
+  /* G40-19/194 — a payout card is tappable to update / remove it. */
+  .pc-card { cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+  .pc-card:hover { transform:translateY(-2px); box-shadow:0 16px 36px rgba(0,36,97,0.34); }
+  .pc-card:focus-visible { outline:3px solid var(--green); outline-offset:3px; }
+  .pc-taphint { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); margin:-4px 0 12px; }
+  .gc-modal-btn.gc-modal-btn-danger { color:#C44257; border-color:#eccfd4; }
+  .gc-modal-btn.gc-modal-btn-danger:hover { background:#C44257; color:#fff; border-color:#C44257; }
   .pc-top { display:flex; align-items:center; gap:8px; position:relative; z-index:1; }
   .pc-chip { width:34px; height:25px; border-radius:5px; background:linear-gradient(135deg,#f4d27a,#d4a843); flex-shrink:0; }
   .pc-def { background:var(--green); color:var(--ink-on-green); font-family:'Nunito',sans-serif; font-weight:800; font-size:9.5px; letter-spacing:0.5px; text-transform:uppercase; padding:3px 8px; border-radius:5px; }
@@ -2622,6 +2629,7 @@
           <p class="panel-desc">Your identity is already verified through Stripe. Manage the card(s) we pay out to here.</p>
 
           <div class="sec-h">Debit card (instant payouts)</div>
+          <p class="pc-taphint">Tap a card to update it, remove it, or set it as your default.</p>
           <div id="cardsOnFile"></div>
           <button type="button" class="add-card-btn" id="addCardBtn"><span>&#43;</span> Add a new card</button>
           <div id="addCardForm" hidden>
@@ -2723,6 +2731,32 @@
     </ul>
     <button class="gc-modal-btn" id="pfGoToCard">Update debit card &rarr;</button>
     <button type="button" class="gc-modal-btn" id="pfClose2" style="background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;margin-top:8px;">Later</button>
+  </div>
+</div>
+
+<!-- ░░ Payout-card actions (G40-19) — tap a card to update / remove / set default ░░ -->
+<div class="gc-modal-overlay" id="cardActionsOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="cardActionsTitle">
+    <button type="button" class="gc-modal-close" data-card-close aria-label="Close">&times;</button>
+    <div class="gc-modal-icon" style="background:#eaf1ff">&#128179;</div>
+    <h4 id="cardActionsTitle">Manage this card</h4>
+    <p class="gc-modal-sub" id="cardActionsSub">&bull;&bull;&bull;&bull; 0000</p>
+    <button class="gc-modal-btn" id="cardSetDefaultBtn" type="button">Set as default</button>
+    <button class="gc-modal-btn gc-modal-btn-secondary" id="cardEditBtn" type="button">Update card details</button>
+    <button class="gc-modal-btn gc-modal-btn-secondary gc-modal-btn-danger" id="cardRemoveBtn" type="button">Remove card</button>
+  </div>
+</div>
+
+<!-- ░░ Last-card guard (G40-194, merged into G40-19) — a Gopher must keep ≥1 payout
+     card on file or Stripe payouts stop / the payout account can be cancelled. ░░ -->
+<div class="gc-modal-overlay" id="lastCardOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="lastCardTitle">
+    <button type="button" class="gc-modal-close" data-lastcard-close aria-label="Close">&times;</button>
+    <div class="gc-modal-icon" style="background:#fdeaec">&#9888;&#65039;</div>
+    <h4 id="lastCardTitle">Keep one card on file</h4>
+    <p class="gc-modal-sub">This is your only payout card. Removing it would stop your Stripe payouts and can cancel your payout account. Add another debit card first &mdash; then you can remove this one.</p>
+    <button class="gc-modal-btn" data-lastcard-addcard type="button">Add another card</button>
+    <button type="button" class="gc-modal-btn gc-modal-btn-secondary" data-lastcard-close>Not now</button>
   </div>
 </div>
 
@@ -3224,19 +3258,27 @@
       onCommit(section){
         const numEl = document.getElementById('poCardNum');
         const addForm = document.getElementById('addCardForm');
+        if(!addForm || addForm.hidden) return;
         const num = (numEl.value||'').replace(/\s/g,'');
-        if(addForm && !addForm.hidden && num.length>=4){
-          const def = addForm.querySelector('.js-default').classList.contains('on');
+        const def = addForm.querySelector('.js-default').classList.contains('on');
+        const name = (document.getElementById('poCardName').value||'Cardholder').trim();
+        const exp  = (document.getElementById('poCardExp').value||'').replace(/\s/g,'');
+        // Edit mode — update the tapped card in place (a blank number keeps the current one).
+        if(editingIdx != null && CARDS[editingIdx]){
+          const c = CARDS[editingIdx];
+          if(num.length>=4){ c.last4 = num.slice(-4); c.brand = brandOf(num); }
+          if(name) c.name = name;
+          if(exp)  c.exp  = exp;
+          if(def){ CARDS.forEach(x => x.def=false); c.def = true; }
+          renderCards(); closeAddForm();
+          return;
+        }
+        // Add mode — a new card needs a number.
+        if(num.length>=4){
           if(def) CARDS.forEach(c => c.def=false);
-          const card = {
-            name: (document.getElementById('poCardName').value||'Cardholder').trim(),
-            last4: num.slice(-4), brand: brandOf(num),
-            exp: (document.getElementById('poCardExp').value||'').replace(/\s/g,''), def: def
-          };
+          const card = { name, last4:num.slice(-4), brand:brandOf(num), exp, def };
           def ? CARDS.unshift(card) : CARDS.push(card);
-          renderCards();
-          ['poCardName','poCardNum','poCardExp','poCvv','poNickname'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-          addForm.hidden = true; document.getElementById('addCardBtn').hidden = false;
+          renderCards(); closeAddForm();
         }
       }
     });
@@ -3244,20 +3286,73 @@
     function brandOf(num){ num=(num||'').replace(/\s/g,''); if(/^3/.test(num)) return 'Amex'; if(/^4/.test(num)) return 'Visa'; if(/^5/.test(num)) return 'Mastercard'; if(/^6/.test(num)) return 'Discover'; return 'Card'; }
     function renderCards(){
       const wrap = document.getElementById('cardsOnFile'); if(!wrap) return;
-      wrap.innerHTML = CARDS.map(c =>
-        '<div class="pc-card"><div class="pc-top"><span class="pc-chip"></span>' + (c.def?'<span class="pc-def">Default</span>':'') +
+      wrap.innerHTML = CARDS.map((c,i) =>
+        '<div class="pc-card" data-card-idx="'+i+'" tabindex="0" role="button" aria-label="Manage card ending '+c.last4+'"><div class="pc-top"><span class="pc-chip"></span>' + (c.def?'<span class="pc-def">Default</span>':'') +
         '<span class="pc-brand">'+(c.brand||'Card').toUpperCase()+'</span></div>' +
         '<div class="pc-num">\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 '+c.last4+'</div>' +
         '<div class="pc-bot"><span><span class="pc-k">Cardholder</span><br><span class="pc-v">'+c.name+'</span></span>' +
         '<span style="text-align:right"><span class="pc-k">Expires</span><br><span class="pc-v">'+c.exp+'</span></span></div></div>'
       ).join('');
     }
+    var editingIdx = null;   // set while the add-form is repurposed to EDIT a card
+    function closeAddForm(){
+      ['poCardName','poCardNum','poCardExp','poCvv','poNickname'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+      const af=document.getElementById('addCardForm'); if(af){ af.hidden=true; const t=af.querySelector('.sec-h'); if(t) t.textContent='Add a different card'; }
+      const ab=document.getElementById('addCardBtn'); if(ab) ab.hidden=false;
+      const pn=document.getElementById('poCardNum'); if(pn) pn.placeholder='1234 5678 9012 3456';
+      editingIdx = null;
+    }
     if(payout){
       renderCards();
       const addBtn = document.getElementById('addCardBtn');
       const addForm = document.getElementById('addCardForm');
       const numEl = document.getElementById('poCardNum');
-      addBtn.addEventListener('click', () => { addForm.hidden=false; addBtn.hidden=true; if(numEl) numEl.focus(); });
+      addBtn.addEventListener('click', () => { editingIdx=null; addForm.hidden=false; addBtn.hidden=true; if(numEl) numEl.focus(); });
+
+      // ── G40-19/194 — tap a card to manage it (set default / update / remove) ──
+      const cardsWrap = document.getElementById('cardsOnFile');
+      const actOverlay = document.getElementById('cardActionsOverlay');
+      const lastOverlay = document.getElementById('lastCardOverlay');
+      const actSub = document.getElementById('cardActionsSub');
+      const setDefBtn = document.getElementById('cardSetDefaultBtn');
+      let selIdx = null;
+      function openActions(idx){
+        const c = CARDS[idx]; if(!c) return;
+        selIdx = idx;
+        actSub.innerHTML = '•••• '+c.last4+' · '+(c.brand||'Card')+(c.exp ? (' · exp '+c.exp) : '');
+        setDefBtn.style.display = c.def ? 'none' : '';
+        actOverlay.hidden = false;
+      }
+      function closeActions(){ actOverlay.hidden = true; selIdx = null; }
+      cardsWrap.addEventListener('click', (e) => { const card=e.target.closest('.pc-card'); if(card) openActions(+card.getAttribute('data-card-idx')); });
+      cardsWrap.addEventListener('keydown', (e) => { const card=e.target.closest('.pc-card'); if(card && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); openActions(+card.getAttribute('data-card-idx')); } });
+      setDefBtn.addEventListener('click', () => { if(selIdx==null) return; CARDS.forEach(x=>x.def=false); CARDS[selIdx].def=true; renderCards(); closeActions(); });
+      document.getElementById('cardEditBtn').addEventListener('click', () => {
+        if(selIdx==null) return; const c = CARDS[selIdx];
+        editingIdx = selIdx;
+        addForm.hidden=false; addBtn.hidden=true;
+        const t = addForm.querySelector('.sec-h'); if(t) t.textContent='Update card details';
+        document.getElementById('poCardName').value = c.name || '';
+        const pn = document.getElementById('poCardNum'); pn.value=''; pn.placeholder='•••• '+c.last4+' — leave blank to keep';
+        document.getElementById('poCardExp').value = c.exp || '';
+        const sw = addForm.querySelector('.js-default'); if(sw) sw.classList.toggle('on', !!c.def);
+        if(payout.__refresh) payout.__refresh();
+        closeActions();
+        try{ document.getElementById('poCardName').focus(); }catch(_){}
+      });
+      document.getElementById('cardRemoveBtn').addEventListener('click', () => {
+        if(selIdx==null) return;
+        if(CARDS.length <= 1){ closeActions(); lastOverlay.hidden=false; return; }   // G40-194 last-card guard
+        const wasDef = CARDS[selIdx].def;
+        CARDS.splice(selIdx,1);
+        if(wasDef && CARDS.length){ CARDS.forEach(x=>x.def=false); CARDS[0].def=true; }   // keep a default
+        renderCards(); closeActions();
+      });
+      actOverlay.addEventListener('click', (e) => { if(e.target===actOverlay || e.target.closest('[data-card-close]')) closeActions(); });
+      lastOverlay.addEventListener('click', (e) => {
+        if(e.target.closest('[data-lastcard-addcard]')){ lastOverlay.hidden=true; addBtn.click(); return; }
+        if(e.target===lastOverlay || e.target.closest('[data-lastcard-close]')) lastOverlay.hidden=true;
+      });
       // card-number formatting
       if(numEl) numEl.addEventListener('input', () => { const d=(numEl.value||'').replace(/\D/g,'').slice(0,16); numEl.value=(d.match(/.{1,4}/g)||[]).join(' '); });
       const cvv = document.getElementById('poCvv'); if(cvv) cvv.addEventListener('input', () => { cvv.value=(cvv.value||'').replace(/\D/g,'').slice(0,4); });
