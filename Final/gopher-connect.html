@@ -12423,10 +12423,15 @@ const PAY_BADGES = {
     return isNaN(n) ? 0 : n;
   }
   function currentRegionIsNC(){
-    const drop = (state.dropoffStops && state.dropoffStops[0]) || '';
-    const pick = (state.pickupStops && state.pickupStops[0]) || '';
-    const st = regionStateFromAddress(drop) || regionStateFromAddress(pick);
-    return st === 'NC';
+    // Gopher currently operates in NC → always price with the NC column.
+    // Owner directive 2026-07-09: use NC pricing, NOT US. The US column in
+    // OFFER_TABLE and regionStateFromAddress are retained for future non-NC
+    // expansion — restore the address-based detection below when that happens.
+    // const drop = (state.dropoffStops && state.dropoffStops[0]) || '';
+    // const pick = (state.pickupStops && state.pickupStops[0]) || '';
+    // const st = regionStateFromAddress(drop) || regionStateFromAddress(pick);
+    // return st === 'NC';
+    return true;
   }
   function suggestedOffer(itemCost, isNC){
     const idx = isNC ? 0 : 1;
@@ -21241,6 +21246,12 @@ const PAY_BADGES = {
 .sa-err{ color:#C44257; font-size:12px; min-height:14px; margin-bottom:6px; }
 .sa-save{ width:100%; padding:12px; border:none; border-radius:12px; background:#33D975; color:#002461; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; }
 .sa-save:hover{ background:#2fc76c; }
+.sa-save.is-inactive, .sa-save.is-inactive:hover{ background:#c8d0da; color:#8a93a3; cursor:not-allowed; box-shadow:none; }
+/* Standard reddish pulsing shadow (mirrors the canonical .attn-pulse / attnRedGlow):
+   flashes behind a required field left empty when Save was tapped. */
+.sa-input.sa-need{ border-color:#e2574c; animation:saNeedGlow 2.6s ease-in-out infinite; will-change:box-shadow; }
+@keyframes saNeedGlow{ 0%,100%{ box-shadow:0 2px 8px rgba(196,66,87,0.30); } 50%{ box-shadow:0 4px 22px rgba(196,66,87,0.62); } }
+@media (prefers-reduced-motion:reduce){ .sa-input.sa-need{ animation:none; box-shadow:0 3px 14px rgba(196,66,87,0.45); } }
 .sa-note{ font-size:11px; color:#8a93a3; text-align:center; margin-top:10px; line-height:1.4; }
 .sa-pred{ position:fixed; z-index:100002; background:#fff; border:1px solid #e3e8ef; border-radius:12px; box-shadow:0 12px 30px rgba(13,26,62,.2); padding:5px; max-height:240px; overflow:auto; }
 .sa-pred-row{ display:block; width:100%; text-align:left; border:none; background:none; padding:9px 11px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:12.5px; color:#2b2f36; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -21251,6 +21262,21 @@ const PAY_BADGES = {
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   var picked='';
+  // Save is inactive until BOTH name + address have input; tapping it while a
+  // field is empty pulses that field with the standard reddish glow.
+  function syncSaveBtn(){
+    var b=$('saSave'); if(!b) return;
+    var okN=((($('saNameInput')||{}).value)||'').trim()!=='';
+    var okA=((($('saAddrInput')||{}).value)||'').trim()!=='';
+    b.classList.toggle('is-inactive', !(okN&&okA));
+  }
+  function pulseNeed(el){
+    if(!el) return;
+    el.classList.remove('sa-need'); void el.offsetWidth; el.classList.add('sa-need');
+    var clear=function(){ el.classList.remove('sa-need'); el.removeEventListener('input',clear); };
+    el.addEventListener('input', clear);
+    setTimeout(clear, 6000);
+  }
   function render(){
     var w=$('saList'); if(!w) return;
     var l=(window.GopherSaved?window.GopherSaved.list():[]);
@@ -21258,14 +21284,16 @@ const PAY_BADGES = {
       return '<div class="sa-item"><span class="sa-pin">📍</span><span class="sa-item-text"><b>'+esc(s.label)+'</b><span>'+esc(s.addr)+'</span></span><button class="sa-del" data-sadel="'+i+'" aria-label="Remove">✕</button></div>';
     }).join('') : '<div class="sa-empty">No saved addresses yet. Add one below — it’ll appear when you set a pick-up or drop-off.</div>';
   }
-  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); _tok=null; _hidePred(); }
+  function openM(){ var ov=$('savedAddrModal'); if(!ov) return; ov.hidden=false; picked=''; if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; if($('saErr'))$('saErr').textContent=''; render(); _tok=null; _hidePred(); syncSaveBtn(); }
   function closeM(){ var ov=$('savedAddrModal'); if(ov) ov.hidden=true; _hidePred(); }
   function save(){
     var label=(($('saNameInput')||{}).value||'').trim(), addr=(($('saAddrInput')||{}).value||'').trim(), err=$('saErr');
-    if(!label){ if(err)err.textContent='Give it a name (e.g. Home).'; return; }
-    if(!addr){ if(err)err.textContent='Enter an address.'; return; }
+    var miss=false;
+    if(!label){ pulseNeed($('saNameInput')); miss=true; }
+    if(!addr){ pulseNeed($('saAddrInput')); miss=true; }
+    if(miss){ if(err)err.textContent='Add a name and an address to save.'; return; }
     if(err)err.textContent='';
-    var commit=function(fa){ if(window.GopherSaved) window.GopherSaved.add(label,fa); if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; picked=''; render(); };
+    var commit=function(fa){ if(window.GopherSaved) window.GopherSaved.add(label,fa); if($('saNameInput'))$('saNameInput').value=''; if($('saAddrInput'))$('saAddrInput').value=''; picked=''; render(); syncSaveBtn(); };
     if(picked && picked===addr){ commit(addr); return; }
     if(window.google&&google.maps){
       new google.maps.Geocoder().geocode({address:addr},function(res,st){ if(st==='OK'&&res[0]) commit(res[0].formatted_address); else if(err){ err.textContent=(st==='OVER_QUERY_LIMIT') ? 'Google is rate-limiting right now — wait a moment and try again.' : 'We couldn’t verify that address — check the street, city, and state.'; } });
@@ -21304,7 +21332,12 @@ const PAY_BADGES = {
       box.addEventListener('click', function(e){ var b=e.target.closest('[data-desc]'); if(!b) return; ad.value=b.getAttribute('data-desc'); picked=ad.value; _tok=null; _hidePred(); });
     });
   }
-  document.addEventListener('input', function(e){ if(e.target && e.target.id==='saAddrInput') _showPred(); });
+  document.addEventListener('input', function(e){
+    if(!e.target || (e.target.id!=='saAddrInput' && e.target.id!=='saNameInput')) return;
+    if(e.target.id==='saAddrInput') _showPred();
+    e.target.classList.remove('sa-need');   // typing clears the "needs input" glow
+    syncSaveBtn();
+  });
   document.addEventListener('mousedown', function(e){ if(_predEl && !_predEl.contains(e.target) && !(e.target && e.target.id==='saAddrInput')) _hidePred(); }, true);
   window.openSavedAddrModal=openM;
 })();
