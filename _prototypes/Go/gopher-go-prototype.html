@@ -1961,8 +1961,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?(j.bidDeclined?'Bid again':'Place Bid'):(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       // Message button sits directly under the requester card; the counter/bid action stays down by the pay.
       const msgBtn = '<div class="rq-acts" style="margin-top:11px;"><button class="rq-2nd js-ask" style="flex:1;"><span>'+sv(I.msg)+'</span>Message '+String(who||'requester').split(' ')[0]+'</button></div>';
-      // Counter (fixed-price) flow keeps its action button down by the pay. The BID flow moves its action
-      // up under the pay card (bidSection) — so no bottom counter/bid button for bids.
+      // Both flows now surface their actions right under the pay card (bidSection / payActions) — accepting
+      // and bidding share the same layout. No action buttons at the bottom of the page.
       const coActs = (showCo && !j.accepted && j.mode!=='bid' && coBtn) ? '<div class="rq-acts">'+coBtn+'</div>' : '';
       // Bid flow: Submit-a-Bid + the two-line-item panel render right under the "You set your price" card.
       // Once a bid is in, offer Change / Cancel. (These replace the old bottom Place-Bid + Submit-a-Bid CTAs.)
@@ -1976,6 +1976,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         } else {
           bidSection = '<button class="rq-cta bidgo js-bidopen" style="margin-top:11px;">'+(j.bidDeclined?'Bid again':'Submit a Bid')+' &#8594;</button>';
         }
+      }
+      // Fixed-price flow: Counter-Offer + Accept Request live right under the "You'll receive" pay card too
+      // (matching the bid flow) instead of at the bottom of the page. The counter panel opens between them.
+      let payActions='';
+      if(j.mode!=='bid' && !j.accepted){
+        payActions = coActs + coPanel + (cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'');
       }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)
@@ -2037,6 +2043,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +bidStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
         +bidSection
+        +payActions
         +crewNote
         +stepper
         +'<div class="rq-facts">'+facts+'</div>'
@@ -2044,9 +2051,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-sec">What&#8217;s required</div><div class="rq-reqs">'+reqs+'</div>'
         +'<div class="rq-sec">Location</div><div class="rq-card rq-loc">'+loc+'</div>'
         +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?(hasPickup?'Pick-up &amp; drop-off areas':'Job location'):(hasPickup?'Approximate areas &middot; exact pins unlock on accept':'Approximate area &middot; exact pin unlocks on accept'))+'</div></div>'
-        +coActs
-        +(j.mode!=='bid'?coPanel:'')
-        +((j.mode!=='bid' && cta)?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'')
+        // Action buttons (bid / counter / accept) now render up under the pay card via bidSection/payActions.
         // Cancellation policy lives at the very bottom of the request details (per-mode copy + ToS link).
         +(j.accepted?'':'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>'+(j.mode==='bid'
             ? 'If your submitted bid is accepted, you agree to complete this request as proposed. Unapproved cancellations are subject to a cancellation fee. Please see our <span class="js-tos" style="color:#0a7d44;font-weight:800;text-decoration:underline;cursor:pointer;">ToS</span> for more details.'
