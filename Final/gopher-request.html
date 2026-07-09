@@ -2723,6 +2723,10 @@
     background:linear-gradient(180deg, transparent 60%, var(--green-light) 60%);
     padding:0 4px;
   }
+  .bite-footer a.bite-link {
+    color:var(--green-dark); font-weight:900; text-decoration:none; white-space:nowrap;
+  }
+  .bite-footer a.bite-link:hover { text-decoration:underline; }
 
   /* ── PRICING-FIRST HOW IT WORKS (replaces 4-step soft list) ── */
   /* We override .how-steps to be 3 wider cards with the first one elevated */
@@ -3022,21 +3026,21 @@
   .flow-demo-header .section-label {
     display:inline-block;
     font-family:'Caveat',cursive; font-weight:700;
-    color:var(--terracotta); font-size:24px;
-    margin-bottom:8px; transform:rotate(-1deg);
+    color:var(--terracotta); font-size:clamp(32px, 4.4vw, 54px);
+    line-height:1; margin-bottom:6px; transform:rotate(-1deg);
   }
   .flow-demo-header h2 {
     font-family:'Nunito',sans-serif; font-weight:900;
-    font-size:44px; color:var(--navy); line-height:1.1;
-    letter-spacing:-1px;
+    font-size:clamp(30px, 5.2vw, 62px); color:var(--navy); line-height:1.12;
+    letter-spacing:-1px; max-width:1000px; margin:0 auto;
   }
   .flow-demo-header h2 em { font-style:normal; color:var(--green); }
-  .flow-demo-header .flow-demo-aside { margin-top:14px; margin-bottom:0; font-size:48px; }
+  .flow-demo-header .flow-demo-aside { margin-top:14px; margin-bottom:0; font-size:clamp(30px, 4.2vw, 50px); }
   .flow-demo-sub {
-    margin-top:12px;
-    font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500;
+    margin-top:16px;
+    font-family:'DM Sans',sans-serif; font-size:16px; font-weight:600;
     color:var(--navy); line-height:1.6;
-    max-width:680px; margin-left:auto; margin-right:auto;
+    max-width:720px; margin-left:auto; margin-right:auto;
   }
 
   /* AI Search Bar */
@@ -7786,6 +7790,10 @@
   .dash-section[data-rqsec="new-request"] .flow-mockup .mockup-topbar {
     display:none;
   }
+  /* "Start over" is a demo-only affordance; the dashboard has +New Request instead. */
+  .dash-section[data-rqsec="new-request"] .flow-mockup .mockup-startover {
+    display:none;
+  }
   /* v76 — with chrome + inner topbar hidden, .mockup-progress is the first
      visible element, so round its top corners to match the card's bottom. */
   .dash-section[data-rqsec="new-request"] .flow-mockup .mockup-progress {
@@ -8135,6 +8143,15 @@
     display:flex; flex-wrap:wrap; gap:9px;
     padding:16px 22px 4px;
   }
+  /* Step-pills row + demo-only "Start over" (right-aligned, matching the pills' top). */
+  .mockup-steprow { display:flex; align-items:flex-start; }
+  .mockup-steprow .mockup-step-tabs { flex:1 1 auto; min-width:0; }
+  .mockup-startover {
+    flex:0 0 auto; margin:16px 22px 0 8px; padding:9px 4px;
+    border:none; background:none; cursor:pointer; white-space:nowrap;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; color:#C44257;
+  }
+  .mockup-startover:hover { text-decoration:underline; }
   .mst-tab {
     border:none; cursor:pointer;
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px;
@@ -9072,9 +9089,9 @@
   <div class="flow-demo-inner">
 
     <div class="flow-demo-header">
-      <p class="section-label">Demo Gopher Request</p>
-      <h2>Most say their process is easy&hellip;<br>We&rsquo;ll <em>prove</em> it to you!</h2>
-      <p class="section-label flow-demo-aside">&mdash; AND before you even sign-up</p>
+      <p class="section-label">Give it a try</p>
+      <h2>Gopher Request is the easiest way to find local <em>fair-priced</em> services.</h2>
+      <p class="section-label flow-demo-aside">&mdash; and we&rsquo;ll prove it to you</p>
       <p class="flow-demo-sub">Feel free to play around. You can test it out with as many request types as you want, as many times as you want.</p>
     </div>
 
@@ -9112,7 +9129,10 @@
           <div class="progress-track" id="progressTrack"></div>
         </div>
         <!-- Horizontal jump-tabs (dashboard version only; shown via CSS inside the dashboard) -->
-        <div class="mockup-step-tabs" id="mockupStepTabs"></div>
+        <div class="mockup-steprow">
+          <div class="mockup-step-tabs" id="mockupStepTabs"></div>
+          <button type="button" class="mockup-startover" id="demoStartOver" title="Reset the demo and start fresh">Start over</button>
+        </div>
         <div class="mockup-content" id="mockupContent"></div>
         <div class="mockup-foot">
           <span class="mockup-foot-note" id="footNote">Your progress stays here while this page is open</span>
@@ -9189,7 +9209,7 @@
     </div>
 
     <p class="bite-footer">
-      Don&rsquo;t see your task? <em>Describe it in the app.</em> Odds are, a Gopher down the street already does it.
+      Take a look at a comprehensive list of services some of your incredible neighbors can help you with. Visit our designated page here &rarr; <a href="gopher-services.html" class="bite-link">Gopher Services</a>
     </p>
   </div>
 </section>
@@ -11771,6 +11791,16 @@
     Object.keys(state).forEach(k => { if(!(k in fresh)) delete state[k]; });
     Object.assign(state, fresh);
   }
+
+  // Demo-only "Start over" — full reset back to Step 1 (same as the cancel path).
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id === 'demoStartOver'){
+      e.preventDefault();
+      resetFlowState();
+      if(typeof render === 'function') render();
+      scrollFlowToTop();
+    }
+  });
 
   // Scroll so the top of the flow is back in view. Works whether the flow is on
   // the public demo (window scroll) or hosted inside the dashboard (the dashboard
