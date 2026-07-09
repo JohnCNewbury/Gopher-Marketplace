@@ -606,6 +606,7 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rq-st{width:42px;height:42px;border-radius:12px;border:1px solid #e7e2d3;background:#FBF7EF;font-size:22px;color:#002461;cursor:pointer;font-family:'Nunito';font-weight:900;}
   .rq-amt{flex:1;display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:26px;color:#002461;border:1px solid #e7e2d3;border-radius:12px;padding:6px 4px;}
   .rq-amt input{width:88px;border:none;outline:none;background:none;font:inherit;color:#002461;text-align:center;}
+  .rq-amt input::placeholder{color:#c7c0b0;font-weight:600;}   /* faded $0 until the worker taps in */
   .rq-note{width:100%;border:1px solid #e7e2d3;border-radius:11px;padding:11px 12px;font-family:'Nunito';font-weight:600;font-size:12.5px;color:#002461;outline:none;box-sizing:border-box;}
   .rq-co-send{width:100%;margin-top:11px;background:#1CB061;color:#fff;border:none;border-radius:13px;padding:13px;font-family:'Nunito';font-weight:900;font-size:14px;cursor:pointer;}
   .rq-pol{display:flex;align-items:flex-start;gap:9px;margin-top:16px;padding:0 4px;font-size:11px;color:#8C8675;line-height:1.45;font-family:'Nunito';font-weight:600;}
@@ -1940,8 +1941,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-co-h">'+coLabel+'</div>'
         +(j.mode==='bid'
           ? '<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:-2px 0 9px;line-height:1.4;">Bid <b>two line items</b> &mdash; expected <b>cost</b> (materials, dump fees, supplies) plus your <b>labor</b>. The requester reimburses the cost and pays your labor.</div>'
-            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Expected cost<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">materials / dump fees</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidcost" inputmode="numeric" value="'+bidCost+'"></div></div>'
-            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Your labor<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">what you take home</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidlabor" inputmode="numeric" value="'+bidLabor+'"></div></div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Expected cost<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">materials / dump fees</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidcost" inputmode="numeric" '+((+bidCost>0)?('value="'+bidCost+'"'):'placeholder="0"')+'></div></div>'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;"><div style="font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:#002461;line-height:1.2;">Your labor<br><span style="font-weight:600;font-size:10.5px;color:#8a94a3;">what you take home</span></div><div class="rq-amt" style="min-width:92px;flex:0 0 auto;">$<input class="js-bidlabor" inputmode="numeric" '+((+bidLabor>0)?('value="'+bidLabor+'"'):'placeholder="0"')+'></div></div>'
             +'<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 2px;border-top:1px dashed #dcd7ca;margin-bottom:6px;font-family:Nunito,sans-serif;font-weight:900;font-size:13.5px;color:#002461;">Total bid<span class="js-bidtotal">$'+(bidCost+bidLabor)+'</span></div>'
           : '<div class="rq-co-cur">Requester&#8217;s offer <b>'+(j.amt||'\u2014')+'</b></div>'
             +'<div class="rq-co-step"><button class="rq-st js-dec">&#8722;</button><div class="rq-amt">$<input class="js-coin" inputmode="numeric" value="'+coVal+'"></div><button class="rq-st js-inc">+</button></div>'
@@ -2093,8 +2094,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // bid two-line-item inputs (expected cost + labor)
       const bidCostEl=$('.js-bidcost'), bidLaborEl=$('.js-bidlabor'), bidTotEl=$('.js-bidtotal');
       function syncBidTotal(){ if(bidTotEl) bidTotEl.textContent='$'+(bidCost+bidLabor); if(send && j.mode==='bid') send.style.opacity=(bidLabor>0?'':'.5'); }
-      if(bidCostEl) bidCostEl.oninput=()=>{ bidCost=parseInt(bidCostEl.value.replace(/[^0-9]/g,''))||0; syncBidTotal(); };
-      if(bidLaborEl) bidLaborEl.oninput=()=>{ bidLabor=parseInt(bidLaborEl.value.replace(/[^0-9]/g,''))||0; syncBidTotal(); };
+      // Digits only, NEVER a leading zero (01 → 1), and a lone "0" clears to the faded placeholder.
+      function cleanAmt(el){ var d=(el.value||'').replace(/[^0-9]/g,'').replace(/^0+/,''); el.value=d; return parseInt(d)||0; }
+      [bidCostEl,bidLaborEl].forEach(function(el){ if(el) el.onfocus=function(){ if(el.value==='0') el.value=''; }; });
+      if(bidCostEl) bidCostEl.oninput=()=>{ bidCost=cleanAmt(bidCostEl); syncBidTotal(); };
+      if(bidLaborEl) bidLaborEl.oninput=()=>{ bidLabor=cleanAmt(bidLaborEl); syncBidTotal(); };
       if(j.mode==='bid') syncBidTotal();
       if(send) send.onclick=()=>{
         const noteEl=$('.js-conote'), note=noteEl?noteEl.value.trim():'';

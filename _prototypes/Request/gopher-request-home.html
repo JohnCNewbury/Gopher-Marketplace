@@ -1157,17 +1157,34 @@ function openRateModal(order){
     +'<div class="rt-stars" style="display:flex;gap:8px;justify-content:center;margin:14px 0 4px;">'+stars+'</div>'
     +'<div class="rt-label" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
     +'<textarea class="rt-note" placeholder="Add a comment (optional) \u2014 what stood out about '+who.split(' ')[0]+'?" style="width:100%;min-height:64px;margin-top:10px;border:1px solid #e2ddd0;border-radius:12px;padding:10px 12px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#002461;resize:vertical;box-sizing:border-box;"></textarea>'
-    +'<div class="rt-fav" style="display:flex;align-items:center;gap:9px;margin-top:10px;padding:10px 12px;border:1.5px solid #e2ddd0;border-radius:12px;cursor:pointer;"><span class="rt-favstar" style="font-size:20px;color:#d9d2c2;">\u2606</span><div style="font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#002461;line-height:1.35;"><b>Add '+who.split(' ')[0]+' to MY Gophers</b><br><span style="color:#8a94a3;font-size:11px;">Prioritized on your future requests</span></div></div>'
+    +'<div class="rt-fav" style="display:flex;align-items:center;gap:9px;margin-top:10px;padding:10px 12px;border:1.5px solid #e2ddd0;border-radius:12px;cursor:pointer;"><span class="rt-favstar" style="font-size:20px;color:#d9d2c2;">\u2606</span><div style="font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#002461;line-height:1.35;"><b class="rt-fav-t"></b><br><span class="rt-fav-s" style="color:#8a94a3;font-size:11px;"></span></div></div>'
     +'<button class="gm-rate-submit" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#cfe9d9;color:#7aa790;font-family:Nunito;font-weight:800;font-size:14px;cursor:not-allowed;" disabled>Submit rating</button>');
   var starEls=o.querySelectorAll('.rt-star'), lab=o.querySelector('.rt-label'), sub=o.querySelector('.gm-rate-submit'), note=o.querySelector('.rt-note');
-  var favRow=o.querySelector('.rt-fav'), favStar=o.querySelector('.rt-favstar'), fav=false;
-  if(favRow) favRow.onclick=function(){ fav=!fav; favStar.textContent=fav?'\u2605':'\u2606'; favStar.style.color=fav?'#F5B301':'#d9d2c2'; favRow.style.borderColor=fav?'#F5B301':'#e2ddd0'; };
+  // If the worker is ALREADY in MY Gophers, the star is pre-selected and the row says "\u2026 is already MY
+  // Gopher"; unchecking it removes them on submit. Reflects live SESS_MYGOPHERS membership.
+  var whoF=who.split(' ')[0];
+  var favRow=o.querySelector('.rt-fav'), favStar=o.querySelector('.rt-favstar'), favT=o.querySelector('.rt-fav-t'), favS=o.querySelector('.rt-fav-s');
+  var already=isMyGopher(who), fav=already;
+  function renderFav(){
+    favStar.textContent=fav?'\u2605':'\u2606'; favStar.style.color=fav?'#F5B301':'#d9d2c2';
+    favRow.style.borderColor=fav?'#F5B301':'#e2ddd0'; favRow.style.background=fav?'#FFFBEF':'#fff';
+    favT.textContent = fav ? (whoF+' is'+(already?' already':'')+' MY Gopher') : ('Add '+whoF+' to MY Gophers');
+    favS.textContent = fav ? ('Uncheck the star to remove '+whoF) : 'Prioritized on your future requests';
+  }
+  renderFav();
+  if(favRow) favRow.onclick=function(){ fav=!fav; renderFav(); };
   var LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
   sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():''; GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' });
-    if(fav){ try{ addMyGopher(who,'elite',(CATLABEL[r.cat]||'Request')+' \u00b7 '+picked+'\u2605'); }catch(_){} }
-    o.remove(); renderPending(); toast(fav?('Rated '+who+' '+picked+'\u2605 \u00b7 added to MY Gophers'):('Thanks \u2014 you rated '+who+' '+picked+'\u2605')); };
+    // Reconcile MY Gophers to the toggle: newly-checked adds, unchecked-while-member removes.
+    var member=isMyGopher(who), addedNow=false, removedNow=false;
+    if(fav && !member){ try{ addMyGopher(who,'elite',(CATLABEL[r.cat]||'Request')+' \u00b7 '+picked+'\u2605'); addedNow=true; }catch(_){} }
+    else if(!fav && member){ try{ removeMyGopher(who); removedNow=true; }catch(_){} }
+    o.remove(); renderPending();
+    toast(addedNow?('Rated '+who+' '+picked+'\u2605 \u00b7 added to MY Gophers')
+         :removedNow?('Rated '+who+' '+picked+'\u2605 \u00b7 removed from MY Gophers')
+         :('Thanks \u2014 you rated '+who+' '+picked+'\u2605')); };
 }
 // Inbox alert (H) \u2014 a new message from the Gopher fires a banner + a red badge on the footer inbox
 // icon (mirrors the current app's updateInboxBadge() + #rqInboxNavBadge). Tapping opens an in-app thread.
@@ -1422,6 +1439,28 @@ document.addEventListener('click',function(e){ var t=e.target.closest&&e.target.
   var withMsgs=(GReq.all()||[]).filter(function(r){return (r.messages&&r.messages.length);});
   if(withMsgs.length){ e.preventDefault(); e.stopPropagation(); withMsgs.sort(function(a,b){return (b.unread||0)-(a.unread||0);}); openInboxThread(withMsgs[0].order); }
 }, true);
+// Every footer button is active. home = back to top; GO = start a new request; refer = share sheet;
+// help = Help Center; inbox with no messages = a friendly empty state (the capture handler above opens a
+// thread when there IS one). (Functions documented for all footer buttons.)
+document.addEventListener('click',function(e){
+  var t=e.target.closest&&e.target.closest('[data-gnav]'); if(!t) return;
+  var k=t.getAttribute('data-gnav');
+  if(k==='home'){ var ph=$('#phone'); if(ph&&ph.scrollTo) ph.scrollTo({top:0,behavior:'smooth'}); else if(ph) ph.scrollTop=0; return; }
+  if(k==='go'){ gotoURL('gopher-request-flow.html'); return; }
+  if(k==='refer'){ openReferSheet(); return; }
+  if(k==='help'){ openHelpCenter(); return; }
+  if(k==='inbox'){ if(!(PENDING_REFERRAL && !PENDING_REFERRAL.seen) && !(GReq.all()||[]).some(function(r){return r.messages&&r.messages.length;})) toast('No messages yet — messages from your Gopher show up here'); }
+});
+function openReferSheet(){
+  var o=gModal(
+    '<h3 class="gm-h">Refer a friend, earn rewards</h3>'
+    +'<p class="gm-p">Share your invite — when a friend completes their first request, you both earn Gopher credit toward future requests.</p>'
+    +'<div style="margin:10px 0 4px;padding:11px 13px;border:1.5px dashed #cdd9f0;border-radius:12px;background:#f5f8ff;display:flex;align-items:center;justify-content:space-between;gap:10px;"><span style="font-family:\'DM Sans\',monospace;font-weight:800;color:#002461;font-size:14px;letter-spacing:.5px;">JOHN-GOPHER</span><span class="rf-copy" style="font-family:Nunito;font-weight:800;font-size:12px;color:#1CB061;cursor:pointer;">Copy</span></div>'
+    +'<button class="rf-share" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Share invite</button>'
+    +'<button class="gm-close" style="width:100%;margin-top:9px;padding:11px;border:1.5px solid #e2ddd0;background:#fff;color:#5b6472;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Close</button>');
+  var cp=o.querySelector('.rf-copy'); if(cp) cp.onclick=function(){ try{ if(navigator.clipboard) navigator.clipboard.writeText('JOHN-GOPHER'); }catch(_){} cp.textContent='Copied ✓'; };
+  var sh=o.querySelector('.rf-share'); if(sh) sh.onclick=function(){ try{ if(navigator.share){ navigator.share({title:'Gopher',text:'Get things done with Gopher — use my code JOHN-GOPHER',url:'https://gophergo.io'}); return; } }catch(_){} toast('Invite ready to share — code JOHN-GOPHER'); };
+}
 // Live tracker \u2014 opened from an ACTIVE request's "Track live". Shows the ONE assigned gopher (Request
 // never tracks workers individually), a live map, and a single canonical status ladder driven by the
 // live substage: In progress \u2192 Items Picked Up | Items Purchased \u2192 Completed.
@@ -1567,6 +1606,8 @@ function openHelpCenter(){
 var SESS_MYGOPHERS=[];
 function addMyGopher(name, tier, tag){ if(!name) return false; if(SESS_MYGOPHERS.some(function(g){return g.name===name;})) return false;
   SESS_MYGOPHERS.push({name:name,tier:tier||'elite',plus:false,tag:tag||''}); updateAccountLabels(); return true; }
+function isMyGopher(name){ return (SESS_MYGOPHERS||[]).some(function(g){return g.name===name;}); }
+function removeMyGopher(name){ if(!name) return false; var i=SESS_MYGOPHERS.findIndex(function(g){return g.name===name;}); if(i<0) return false; SESS_MYGOPHERS.splice(i,1); updateAccountLabels(); return true; }
 function myGopherRows(){ return isPTmode()
   ? SESS_MYGOPHERS.map(function(g){return [g.name,g.tier,g.plus,g.tag];})
   : [['Devon M.','elite+',true,'Delivery \u00B7 312 jobs'],['Rosa P.','elite',false,'Home Services \u00B7 4.8\u2605'],['Marcus K.','elite+',false,'Labor \u00B7 508 jobs']]; }
