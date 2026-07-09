@@ -613,6 +613,7 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rq-cta{margin-top:14px;background:#002461;color:#fff;border:none;border-radius:15px;padding:16px;font-family:'Nunito';font-weight:900;font-size:15px;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(0,36,97,.22);}
   .rq-cta.lock{background:#8C8675;box-shadow:none;}
   .rq-cta.done{background:#1CB061;}
+  .rq-cta.bidgo{background:linear-gradient(135deg,var(--green),var(--green-dark));box-shadow:0 9px 22px rgba(51,217,117,.32);}
   .rq-cta.rate{background:#1CB061;animation:goRatePulse 1.5s ease-in-out infinite;}
   @keyframes goRatePulse{0%{box-shadow:0 0 0 0 rgba(196,66,87,.55),0 10px 24px rgba(28,176,97,.28);}70%{box-shadow:0 0 0 14px rgba(196,66,87,0),0 10px 24px rgba(28,176,97,.28);}100%{box-shadow:0 0 0 0 rgba(196,66,87,0),0 10px 24px rgba(28,176,97,.28);}}
 
@@ -799,7 +800,11 @@ function renderJobCard(j){
   const src=j.lock==='connect'?'<span class="jc-source connect">Connect</span>':(j.lock==='deal'?'<span class="jc-source deal">Gopher Deal</span>':'');
   const top='<div class="jc-top">'+cat+src+'<span class="jc-posted">'+(j.posted||'')+'</span></div>';
   const biz=j.biz?'<div class="jc-biz"><span class="biz-nm">'+j.biz+'</span><span class="vbiz-chip"><span class="mi">'+IC.check+'</span>Verified Business</span></div>':'';
-  const pay=j.mode==='bid'?'<div class="jc-pay"><span class="bid-cta">Submit a Bid</span></div>':'<div class="jc-pay"><span class="amt">'+(j.amt||'')+'</span>'+(j.per?'<span class="per">'+j.per+'</span>':'')+'</div>';
+  const pay=j.mode==='bid'
+    ? (j.bid && !j.bidDeclined
+        ? '<div class="jc-pay"><span class="bid-cta pending" style="background:#e7f7ec;color:#0a7d44;box-shadow:none;border:1px solid #bfe6cd;">$'+j.bid.amt+' bid pending</span></div>'
+        : '<div class="jc-pay"><span class="bid-cta">Submit a Bid</span></div>')
+    : '<div class="jc-pay"><span class="amt">'+(j.amt||'')+'</span>'+(j.per?'<span class="per">'+j.per+'</span>':'')+'</div>';
   const scope=j.scope?'<div class="jc-scope">'+j.scope+'</div>':'';
   const stats=(j.stats&&j.stats.length)?'<div class="jc-stats">'+j.stats.map(jcStat).join('')+'</div>':'';
   const flags=(j.flags&&j.flags.length)?'<div class="jc-flags">'+j.flags.map(jcFlag).join('')+'</div>':'';
@@ -1857,7 +1862,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Counter opens one step ABOVE the requester's offer — a counter must beat it (real live-app rule).
     let coOpen=false, coVal=(j.mode==='bid'?amtNum:amtNum+1);
     // Bids carry TWO line items (many jobs need materials / dump fees): expected cost + labor.
-    let bidCost=(+j.cost>0?+j.cost:0), bidLabor=0;
+    let bidCost=(j.bid?(+j.bid.cost||0):(+j.cost>0?+j.cost:0)), bidLabor=(j.bid?(+j.bid.labor||0):0);   // pre-fill when changing an existing bid
 
     // Post-accept status lifecycle (canonical): In progress → Items Picked Up | Items Purchased →
     // Completed. The middle "items" stage only applies to a delivery/errand (something to pick up or
@@ -1956,7 +1961,22 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?(j.bidDeclined?'Bid again':'Place Bid'):(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       // Message button sits directly under the requester card; the counter/bid action stays down by the pay.
       const msgBtn = '<div class="rq-acts" style="margin-top:11px;"><button class="rq-2nd js-ask" style="flex:1;"><span>'+sv(I.msg)+'</span>Message '+String(who||'requester').split(' ')[0]+'</button></div>';
-      const coActs = (showCo && !j.accepted && coBtn) ? '<div class="rq-acts">'+coBtn+'</div>' : '';   // once hired, no more countering
+      // Counter (fixed-price) flow keeps its action button down by the pay. The BID flow moves its action
+      // up under the pay card (bidSection) — so no bottom counter/bid button for bids.
+      const coActs = (showCo && !j.accepted && j.mode!=='bid' && coBtn) ? '<div class="rq-acts">'+coBtn+'</div>' : '';
+      // Bid flow: Submit-a-Bid + the two-line-item panel render right under the "You set your price" card.
+      // Once a bid is in, offer Change / Cancel. (These replace the old bottom Place-Bid + Submit-a-Bid CTAs.)
+      let bidSection='';
+      if(j.mode==='bid' && !j.accepted){
+        if(coOpen){
+          bidSection = coPanel;
+        } else if(j.bid && !j.bidDeclined){
+          bidSection = '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>$'+j.bid.amt+' bid pending</b> &mdash; waiting for '+who+' to review your bid</div>'
+            +'<div class="rq-acts" style="margin-top:9px;"><button class="rq-2nd js-bidchange" style="flex:1;"><span>'+sv(I.tag)+'</span>Change bid</button><button class="rq-2nd js-bidcancel" style="flex:1;border-color:#e0623d;color:#e0623d;"><span>'+sv(I.tag)+'</span>Cancel bid</button></div>';
+        } else {
+          bidSection = '<button class="rq-cta bidgo js-bidopen" style="margin-top:11px;">'+(j.bidDeclined?'Bid again':'Submit a Bid')+' &#8594;</button>';
+        }
+      }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)
         ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+j.counter.amt+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
@@ -2016,6 +2036,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +coStatus
         +bidStatus
         +'<div class="rq-card rq-pay">'+pay+'</div>'
+        +bidSection
         +crewNote
         +stepper
         +'<div class="rq-facts">'+facts+'</div>'
@@ -2024,9 +2045,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-sec">Location</div><div class="rq-card rq-loc">'+loc+'</div>'
         +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?(hasPickup?'Pick-up &amp; drop-off areas':'Job location'):(hasPickup?'Approximate areas &middot; exact pins unlock on accept':'Approximate area &middot; exact pin unlocks on accept'))+'</div></div>'
         +coActs
-        +coPanel
-        +(j.accepted?'':'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>By accepting you agree to complete this request as proposed. Cancelling after accepting may incur up to a $5 fee.</div></div>')
-        +(cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'');
+        +(j.mode!=='bid'?coPanel:'')
+        +((j.mode!=='bid' && cta)?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'')
+        // Cancellation policy lives at the very bottom of the request details (per-mode copy + ToS link).
+        +(j.accepted?'':'<div class="rq-pol"><span class="rq-ri">'+sv(I.check)+'</span><div>'+(j.mode==='bid'
+            ? 'If your submitted bid is accepted, you agree to complete this request as proposed. Unapproved cancellations are subject to a cancellation fee. Please see our <span class="js-tos" style="color:#0a7d44;font-weight:800;text-decoration:underline;cursor:pointer;">ToS</span> for more details.'
+            : 'By accepting, you agree to complete this request as proposed. Unapproved cancellations are subject to a cancellation fee. Please see our <span class="js-tos" style="color:#0a7d44;font-weight:800;text-decoration:underline;cursor:pointer;">ToS</span> for more details.')+'</div></div>');
     }
 
     function draw(){ r.querySelector('.rqbody').innerHTML=body(); wire(); }
@@ -2077,6 +2101,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
       };
+      // Bid flow controls (live under the pay card): open / change / cancel the bid.
+      const bidOpen=$('.js-bidopen'); if(bidOpen) bidOpen.onclick=()=>{ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); };
+      const bidChg=$('.js-bidchange'); if(bidChg) bidChg.onclick=()=>{ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); };
+      const bidCxl=$('.js-bidcancel'); if(bidCxl) bidCxl.onclick=()=>{
+        const mv=showModal('<h3>Withdraw your bid?</h3><p>Your $'+(j.bid?j.bid.amt:'')+' bid will be removed. You can place a new bid anytime while the request is open.</p><button class="js-cxl-yes" style="width:100%;margin-top:4px;border:0;background:#e0623d;color:#fff;border-radius:12px;padding:13px;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Withdraw bid</button><button class="mclose" style="width:100%;margin-top:9px;border:1.5px solid #e0dccb;background:#fff;color:#5b6472;border-radius:12px;padding:11px;font-family:Nunito;font-weight:800;cursor:pointer;">Keep my bid</button>');
+        const yes=mv&&mv.querySelector('.js-cxl-yes'); if(yes) yes.onclick=()=>{ j.bid=null; j.bidDeclined=false; coOpen=false; if(mv)mv.remove(); draw(); toast('Bid withdrawn'); };
+      };
+      const tosLink=$('.js-tos'); if(tosLink) tosLink.onclick=()=>showModal('<h3>Terms of Service</h3><p>By placing a bid or accepting a request, you agree to complete it as proposed. Unapproved cancellations after acceptance may incur a cancellation fee. Full terms are available on the Gopher website.</p><button class="mclose">Close</button>');
       const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
       const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
     }

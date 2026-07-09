@@ -1437,9 +1437,6 @@ function openLiveTracker(order){
     .concat(hasItems?[{k:'items',l:itemsLabel,s:who+' has your items'}]:[])
     .concat([{k:'completed',l:'Completed',s:'All done \u2014 thanks!'}]);
   var keys=STAGES.map(function(x){return x.k;});
-  var cur=r.substage?keys.indexOf(r.substage):0; if(cur<0)cur=0;
-  var isDone=cur>=keys.indexOf('completed');
-  var eta=isDone?'Completed \u2014 thanks for using Gopher!':(who+' is on it \u00b7 updates in real time');
   var dpx=hasPickup?250:170, dpy=hasPickup?60:100;
   var map='<svg viewBox="0 0 320 150" style="width:100%;display:block;border-radius:14px;background:#E9EDE3;">'
     +'<g stroke="#fff" stroke-width="5"><line x1="0" y1="42" x2="320" y2="42"/><line x1="0" y1="96" x2="320" y2="96"/><line x1="90" y1="0" x2="90" y2="150"/><line x1="210" y1="0" x2="210" y2="150"/></g>'
@@ -1450,20 +1447,41 @@ function openLiveTracker(order){
     +'<div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:900;font-size:15px;color:#002461;">'+esc(who)+'</div>'
     +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#1CB061;font-weight:700;">\u2713 TrustShield Verified \u00b7 \u2605 4.9</div></div>'
     +'<button class="lt-msg" style="border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:8px 12px;font-family:Nunito;font-weight:800;font-size:12px;cursor:pointer;">Message</button></div>';
-  var steps=STAGES.map(function(x,i){ var done=i<=cur;
-    return '<div style="display:flex;gap:10px;align-items:flex-start;">'
-      +'<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;"><span style="width:18px;height:18px;border-radius:50%;background:'+(done?'#1CB061':'#e3ddcd')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;">'+(done?'\u2713':'')+'</span>'+(i<STAGES.length-1?'<span style="width:2px;height:20px;background:'+(i<cur?'#1CB061':'#e3ddcd')+';"></span>':'')+'</div>'
-      +'<div style="padding-bottom:6px;"><div style="font-family:Nunito;font-weight:800;font-size:13px;color:'+(done?'#002461':'#8C8675')+';">'+x.l+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8C8675;">'+esc(x.s)+'</div></div></div>';
-  }).join('');
+  // The eta + step tracker re-render LIVE: when the Gopher advances the job (substage changes on the shared
+  // record), a poll repaints the .lt-live block in place \u2014 so the requester sees each step update in real
+  // time, for a bid-accepted job exactly like a fixed-price one. (Previously this snapshot never refreshed.)
+  function liveInner(){
+    var rr=GReq.get(order)||r;
+    var cur=rr.substage?keys.indexOf(rr.substage):0; if(cur<0)cur=0;
+    var isDone=cur>=keys.indexOf('completed');
+    var eta=isDone?'Completed \u2014 thanks for using Gopher!':(who+' is on it \u00b7 updates in real time');
+    var steps=STAGES.map(function(x,i){ var done=i<=cur;
+      return '<div style="display:flex;gap:10px;align-items:flex-start;">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;"><span style="width:18px;height:18px;border-radius:50%;background:'+(done?'#1CB061':'#e3ddcd')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;">'+(done?'\u2713':'')+'</span>'+(i<STAGES.length-1?'<span style="width:2px;height:20px;background:'+(i<cur?'#1CB061':'#e3ddcd')+';"></span>':'')+'</div>'
+        +'<div style="padding-bottom:6px;"><div style="font-family:Nunito;font-weight:800;font-size:13px;color:'+(done?'#002461':'#8C8675')+';">'+x.l+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8C8675;">'+esc(x.s)+'</div></div></div>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:7px;margin:10px 0 2px;font-family:Nunito;font-weight:700;font-size:12px;color:#15623a;"><span style="width:8px;height:8px;border-radius:50%;background:#1CB061;display:inline-block;"></span>'+esc(eta)+'</div>'
+      +goph
+      +'<div style="font-family:Nunito;font-weight:900;font-size:12px;color:#8C8675;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;">Status</div><div>'+steps+'</div>'
+      +((rr.attention&&rr.attention.type==='rate')?'<button class="lt-rate" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Rate '+esc(who)+' \u2192</button>':'');
+  }
   var body='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:2px 0 10px;">'+esc(r.title||'Your request')+' \u00b7 #'+order+'</div>'
     +map
-    +'<div style="display:flex;align-items:center;gap:7px;margin:10px 0 2px;font-family:Nunito;font-weight:700;font-size:12px;color:#15623a;"><span style="width:8px;height:8px;border-radius:50%;background:#1CB061;display:inline-block;"></span>'+esc(eta)+'</div>'
-    +goph
-    +'<div style="font-family:Nunito;font-weight:900;font-size:12px;color:#8C8675;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px;">Status</div><div>'+steps+'</div>'
-    +(r.attention&&r.attention.type==='rate'?'<button class="lt-rate" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Rate '+esc(who)+' \u2192</button>':'');
+    +'<div class="lt-live">'+liveInner()+'</div>';
   var o=gSheet('Live tracking', body);
-  var mb=o.querySelector('.lt-msg'); if(mb) mb.onclick=function(){ o.remove(); openInboxThread(order); };
-  var rb=o.querySelector('.lt-rate'); if(rb) rb.onclick=function(){ o.remove(); openRateModal(order); };
+  var _ltPoll=0;
+  function bindLive(){
+    var mb=o.querySelector('.lt-msg'); if(mb) mb.onclick=function(){ if(_ltPoll)clearInterval(_ltPoll); o.remove(); openInboxThread(order); };
+    var rb=o.querySelector('.lt-rate'); if(rb) rb.onclick=function(){ if(_ltPoll)clearInterval(_ltPoll); o.remove(); openRateModal(order); };
+  }
+  bindLive();
+  var _lastSub=(GReq.get(order)||{}).substage||'';
+  var _lastAttn=(r.attention&&r.attention.type)||'';
+  _ltPoll=setInterval(function(){ try{
+    if(!o.isConnected){ clearInterval(_ltPoll); return; }   // sheet closed \u2192 stop polling
+    var rr=GReq.get(order)||{}; var s=rr.substage||''; var a=(rr.attention&&rr.attention.type)||'';
+    if(s!==_lastSub || a!==_lastAttn){ _lastSub=s; _lastAttn=a; var el=o.querySelector('.lt-live'); if(el){ el.innerHTML=liveInner(); bindLive(); } }
+  }catch(_){ clearInterval(_ltPoll); } }, 600);
 }
 // Full request details \u2014 opened from a card's "View details" (a submitted/scheduled request has no
 // tracking screen yet, so this sheet shows everything the requester entered).

@@ -1018,8 +1018,11 @@ function regionStateFromAddress(addr){
 }
 function currentItemCost(){ const n=parseFloat(String(state.costOfItems).replace(/[^\d.]/g,'')); return isNaN(n)?0:n; }
 function currentRegionIsNC(){
-  const st = regionStateFromAddress(state.dropoffStop) || regionStateFromAddress(state.pickupStop);
-  return st === 'NC';
+  // Gopher operates in NC → always NC pricing (owner directive 2026-07-09; NC not US).
+  // Restore address detection for future non-NC expansion:
+  // const st = regionStateFromAddress(state.dropoffStop) || regionStateFromAddress(state.pickupStop);
+  // return st === 'NC';
+  return true;
 }
 function suggestedOffer(itemCost, isNC){
   const idx = isNC ? 0 : 1;
@@ -1934,12 +1937,14 @@ function render(){
   render._lastStep = state.step;
   bindFieldInputs();
   syncOfferModal();
-  // Once a Gopher accepts, ALWAYS move the requester off the submitted screen to Home so they see it's
-  // accepted (otherwise they'd be stuck on "Request submitted!" with no signal).
+  // Once a Gopher accepts — OR a bid/counter lands that needs the requester's attention — ALWAYS move
+  // the requester off the "Request submitted!" screen to Home so they see the alert card (a submitted bid
+  // must behave exactly like a fixed-price accept: transition home immediately). Otherwise they'd be
+  // stuck on "Request submitted!" with no signal.
   if(_step7Watch){ clearInterval(_step7Watch); _step7Watch=0; }
   if(state.step===7 && state._stashedOrder && window.GReq){
     _step7Watch=setInterval(function(){ try{ var r=GReq.get(state._stashedOrder);
-      if(r && (r.accepted || r.stage==='active' || r.stage==='matched')){ clearInterval(_step7Watch); _step7Watch=0; goHome(); } }catch(_){} }, 700);
+      if(r && (r.accepted || r.stage==='active' || r.stage==='matched' || r.attention)){ clearInterval(_step7Watch); _step7Watch=0; goHome(); } }catch(_){} }, 700);
   }
 }
 var _step7Watch=0;
