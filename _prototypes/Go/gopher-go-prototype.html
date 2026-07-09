@@ -814,8 +814,11 @@ function renderJobCard(j){
     const lt=j.lock==='connect'?'Connect job \u2014 for <b>Gopher Elite &amp; Pros</b>':'Gopher Deal \u2014 unlocks once <b>verified</b>';
     const cta='<div class="lock-cta">'+IC.lock+'<span class="lt">'+lt+'</span><span class="lgo js-tier">Tier up</span></div>';
     return '<div class="job-card">'+ribbon+'<div class="lockwrap">'+inner+'</div>'+cta+'</div>'; }
-  const tm=j.top?'<span class="topmatch">\u2605 TOP PAY</span>':'';
-  return '<div class="job-card'+(j.top?' hot':'')+'">'+tm+inner+'</div>';
+  // A Deal request the Gopher CAN take (tier'd/verified \u2014 not locked) still shows the "Gopher Deal"
+  // corner ribbon in the top-right, matching the locked-card treatment minus the shading + tier-up gate.
+  const tm=(j.top && !j.deal)?'<span class="topmatch">\u2605 TOP PAY</span>':'';
+  const dealRibbon=j.deal?'<span class="lock-ribbon">Gopher Deal</span>':'';
+  return '<div class="job-card'+(j.top?' hot':'')+'">'+tm+dealRibbon+inner+'</div>';
 }
 function open101(){ try{ const html=decodeURIComponent(Array.prototype.map.call(atob(DOC101),c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')); showGuide(html); }catch(e){ toast('Could not open the guide'); } }
 function showGuide(html){ const host=document.querySelector('.host'); const sr=host&&host.shadowRoot; if(!sr) return; closeGuide(); const ov=document.createElement('div'); ov.id='guideOv'; ov.setAttribute('style','position:fixed;inset:0;z-index:200;background:#FBF7EF;border-radius:43px;overflow:hidden;display:flex;'); const fr=document.createElement('iframe'); fr.setAttribute('style','width:100%;height:100%;border:0;background:#fff;'); fr.srcdoc=html; ov.appendChild(fr); sr.appendChild(ov); }
@@ -2576,6 +2579,7 @@ if(PT){
       per:((!isBid&&crew>1)?('$'+(+order.pay||0)+'/worker'):''),
       cost:costN, workers:crew, top:(!isBid && !!order.topOffer),   // TOP PAY only for a genuinely high (above-suggested) offer — never a low one; meaningless on bids
       ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
+      deal:!!order.deal, dealMerchant:order.dealMerchant||'',   // Gopher Deal request → card shows the "Gopher Deal" badge (unshaded — this Gopher is Pro)
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };

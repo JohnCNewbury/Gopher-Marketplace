@@ -2270,6 +2270,7 @@ return { all:all, save:save,
     // richer detail carried for the crew pill + full "View details" summary
     workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
     ageRestricted:!!state.ageRestricted,itemsPurchased:!!state.itemsPurchased,
+    deal:!!state.fromDeal,dealMerchant:(state.dealMerchant||''),   // Gopher Deal request → Go card shows the "Gopher Deal" badge
     description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup};
 }
 // Stash the submitted request ONCE. submitRequest() and goHome()/see-workers all call this;
@@ -2308,6 +2309,7 @@ state.category='delivery';
     const cost=q.get('cost'); if(cost && parseFloat(cost)>0) state.costOfItems='$'+(parseFloat(cost)||0);
     const pay=q.get('pay'); if(pay && parseFloat(pay)>0) state.payAmount='$'+(parseFloat(pay)||0);
     state.dealMerchant=q.get('merchant')||'';
+    state.fromDeal=true;   // marks this as a Gopher Deal request → the Go card shows the "Gopher Deal" badge
     state.step=6; state.maxStepReached=6;
     render(); return;
   }
