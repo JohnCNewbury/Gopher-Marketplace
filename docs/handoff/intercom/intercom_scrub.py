@@ -67,6 +67,11 @@ NAME_ALLOWLIST = {
     "guy", "jack", "don", "max", "ray", "van", "wade", "chip", "buck",
 }
 
+# Names that collide with a common dictionary word but ARE real people in this
+# data, so they must be stripped even though the heuristic would spare them.
+# Add a name here when the redaction report lists it under "Names left alone."
+FORCE_STRIP = {"holly"}
+
 # A name token appearing in more than this share of conversations is being used
 # as an ordinary word, not as somebody's name.
 COMMON_WORD_RATIO = 0.02
@@ -121,7 +126,9 @@ def build_name_vocab(convos):
         print("WARNING: %s missing; name filtering is frequency-only." % DICT_PATH)
         spared = {t for t in candidates if doc_freq[t] >= threshold}
 
-    return candidates - spared, sorted(spared)
+    spared -= FORCE_STRIP                       # never spare an explicit override
+    vocab = (candidates - spared) | FORCE_STRIP  # strip overrides even if unseen in author names
+    return vocab, sorted(spared)
 
 
 def redact(text, name_re, counts):
