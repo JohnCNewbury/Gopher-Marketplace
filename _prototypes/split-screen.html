@@ -98,6 +98,7 @@
   var noShowAlerted={}; // GReq order id -> last no-show-timer seq the requester was alerted about
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
+  var DEMO_GOPHER='Marcus';  // the one Gopher on the Go phone; a provider deal only surfaces here when it's directed to them
 
   /* Build the Go-side order from a Request-app GReq record (enriched by the flow). */
   function orderFromReq(r){
@@ -107,7 +108,8 @@
       ageRestricted:!!r.ageRestricted, trustShield:!!r.trustShield, deal:!!r.deal, dealMerchant:r.dealMerchant||'',
       pickup:r.pickup||'', dropoff:r.dropoff?[r.dropoff]:[],
       scope:r.scope||r.title, dist:r.dist||'2.4',
-      when:r.when||'Now · ASAP', requestor:r.requestor||'A requester'
+      when:r.when||'Now · ASAP', requestor:r.requestor||'A requester',
+      directBooking:!!r.directBooking, provider:r.provider||''
     };
   }
 
@@ -119,7 +121,7 @@
         var list=l.GReq.all()||[];
         for(var i=0;i<list.length;i++){
           var r=list[i];
-          if(r && r.stage==='searching' && !r.scheduledForLater){
+          if(r && r.stage==='searching' && !r.scheduledForLater && (!r.directTo || r.directTo===DEMO_GOPHER)){
             var seq=r.resubmitSeq||0;
             if(!injected[r.order] || injectedSeq[r.order]!==seq){   // first submit, or an edit-resubmit (seq bumped)
               var edited=(injected[r.order] && injectedSeq[r.order]!==seq);

@@ -417,7 +417,7 @@ const USER_ADDR='4101 NC-55, Apex, NC 27502';
 const DEALS=[
   {key:'localpro',title:'Local Service Provider Deals',merchants:[
     {id:'lp-power',name:'Power Washing',pro:'John Newbury',tier:'elite+',proCred:true,price:150,normalRate:225,offer:'Full exterior house & driveway wash',kind:'service',reqCategory:'home',reviews:312,rating:4.9,testimonial:'Driveways and siding like new.',dealSpecifics:'I will power wash any residential home under 2000 sq ft for $150 flat rate. My normal rate is $225. I use a special solution that will kill mold for up to 1 year.'},
-    {id:'lp-junk',name:'Junk Removal',pro:"Dan's Disposal",tier:'elite+',price:50,normalRate:90,offer:'Full truckload hauled away',kind:'service',reqCategory:'junk',reviews:524,rating:5.0,testimonial:'You make the mess, we do the rest.',dealSpecifics:'Full truckload haul-away for a flat $50 (normally $90). I handle all the loading, sweep up after, and dispose responsibly. Hazardous materials excluded.'},
+    {id:'lp-junk',name:'Junk Removal',pro:'Marcus',tier:'elite+',price:50,normalRate:90,offer:'Full truckload hauled away',kind:'service',reqCategory:'junk',reviews:524,rating:5.0,testimonial:'You make the mess, we do the rest.',dealSpecifics:'Full truckload haul-away for a flat $50 (normally $90). I handle all the loading, sweep up after, and dispose responsibly. Hazardous materials excluded.'},
     {id:'lp-window',name:'Window Cleaning',pro:'APS Window Cleaning',tier:'elite',proCred:true,price:120,normalRate:180,offer:'Whole-home interior & exterior windows',kind:'service',reqCategory:'home',reviews:188,rating:4.8,testimonial:'Streak-free, inside and out.',dealSpecifics:'Interior and exterior windows for a single-story home, $120 flat (normally $180). Screens and sills wiped down, with a streak-free guarantee.'},
     {id:'lp-lawn',name:'Lawn Mowing',pro:'Yard U',tier:'standard',price:45,normalRate:70,offer:'Mow, edge & trim (up to half acre)',kind:'service',reqCategory:'yard',reviews:203,rating:4.9,testimonial:'Crisp lines every visit.',dealSpecifics:'Mow, edge, and trim up to a half-acre lot for $45 (normally $70). Clippings bagged and hauled. Weekly and biweekly season plans available.'},
     {id:'lp-hvac',name:'HVAC Maintenance',pro:'Southern Flow',tier:'elite+',price:49,normalRate:129,offer:'Seasonal system tune-up & inspection',kind:'service',reqCategory:'home',reviews:147,rating:4.9,testimonial:'Cool in summer, warm in winter.',dealSpecifics:'Seasonal HVAC tune-up and 21-point inspection for $49 (normally $129). Filter check, coil clean, refrigerant check, and a full system health report.'},
@@ -883,7 +883,17 @@ function openReview(id){ const m=BY_ID[id]; closeSheet(); $('#reviewBody').inner
    set provider price); scheduled as a flexible window because a service isn't an instant
    ASAP delivery. scheduledForLater:false => it broadcasts now (a flexible window is an
    OPEN request, per the flow's rule), and the harness relays it to the Go phone. */
-function pushServiceRequest(m){
+/* Demo Gopher on the Go phone. A provider deal whose provider IS this Gopher surfaces on
+   the Go side as a direct booking; every other provider stays requester-side only. */
+var DEMO_GOPHER='Marcus';
+
+/* A SERVICE (provider) deal is a DIRECTED booking to one specific Gopher — never an open
+   broadcast to the pool. We write a real request (so it lands in the requester's Activity)
+   tagged directTo:<provider>. The split-screen harness only surfaces it on the demo Go
+   phone when that phone IS the provider (Marcus); any other provider is off-screen. Pay =
+   the deal's locked flat rate (the Matrix-set provider price); scheduled as a flexible
+   window since a service isn't an instant ASAP delivery. */
+function bookServiceDeal(m){
   try{
     if(!window.GReq || !GReq.add) return '#GD-00001';
     var order=GReq.nextOrder();
@@ -897,19 +907,21 @@ function pushServiceRequest(m){
       payByHour:false, numHours:1, ageRestricted:false, itemsPurchased:false,
       deal:true, dealMerchant:m.pro, description:(m.dealSpecifics||''), deliveryType:'',
       timingLabel:'Flexible \u2014 within 24 hours', hasPickup:false,
-      providerDeal:true, provider:m.pro, serviceName:m.name, flexible:true
+      providerDeal:true, provider:m.pro, directTo:m.pro, directBooking:true,
+      serviceName:m.name, flexible:true
     });
     return order;
   }catch(_){ return '#GD-00001'; }
 }
 function submitted(id){
   const m=BY_ID[id];
-  var order=(m.kind==='service') ? pushServiceRequest(m) : '#GD-00001';
+  var order=(m.kind==='service') ? bookServiceDeal(m) : '#GD-00001';
+  var onGo=(m.kind==='service' && m.pro===DEMO_GOPHER);
   $('#reviewTitle').textContent='Request submitted';
   $('#reviewBody').innerHTML=`<div class="burst"><div class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
-    <h4>Deal redeemed!</h4><p>${m.kind==='service'?('Matching you with '+esc(m.pro)):('Finding a Gopher for your '+esc(m.name)+' run')} · Order <b>${esc(order)}</b></p></div>
+    <h4>Deal redeemed!</h4><p>${m.kind==='service'?('Booked with '+esc(m.pro)):('Finding a Gopher for your '+esc(m.name)+' run')} · Order <b>${esc(order)}</b></p></div>
     <div class="rv-note" style="margin-top:20px;"><svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
-      <span>${m.kind==='service'?('Sent to nearby '+esc(REQ_NAME[m.reqCategory]||'service')+' Gophers as a flexible request. Track it in Activity — you’ll confirm completion and rate before final billing.'):'Track it in Activity. You’ll confirm completion and rate before final billing.'}</span></div>
+      <span>${m.kind==='service'?('Sent directly to '+esc(m.pro)+' as a flexible booking'+(onGo?' — it just hit their Go phone':'')+'. Track it in Activity; you’ll confirm completion and rate before final billing.'):'Track it in Activity. You’ll confirm completion and rate before final billing.'}</span></div>
     <button class="dd-cta" data-done>Back to Deals</button>`;
 }
 

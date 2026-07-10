@@ -2032,14 +2032,18 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         const next = STATUS_FLOW[curIdx+1];
         // Update request → one control to advance the job, adjust the cost of items, or cancel (with a
         // per-terms fee warning + required reason). Replaces the old single-purpose "Mark …" buttons.
+        // Ratings are NEVER surfaced to either party (a low score from a requester who may be
+        // standing right there is a safety/retaliation risk, and it feeds worker pay). On confirm
+        // we show a neutral "confirmed · paid out" state — no star — then the app returns home.
         const action = next
           ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
-          : ((j.rated
-              ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' rated you '+j.rated+'★</b> &mdash; nice work!</div>'
-              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm &amp; rate.</div>')
-            // Two-way ratings (canonical): once the job is complete the Gopher rates the requester too.
+          : ((j.confirmed
+              ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>Confirmed by '+who+'</b> &mdash; '+(j.amt||'your payout')+' paid out.</div>'
+              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm.</div>')
+            // Two-way ratings stay (canonical) — the Gopher still rates the requester; the score is
+            // recorded for the system but not shown back to either side.
             + (j.reqRated
-                ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.star)+'</span><b>You rated '+who+' '+j.reqRated+'★</b> &mdash; thanks for the feedback.</div>'
+                ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.check)+'</span><b>You rated '+who+'</b> &mdash; thanks for the feedback.</div>'
                 : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
@@ -2349,7 +2353,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       function paint(){ ov.querySelector('.js-rrstars').innerHTML=stars(); wireStars(); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
       function wireStars(){ ov.querySelectorAll('.js-rrstar').forEach(s=>s.onclick=()=>{ picked=+s.getAttribute('data-n'); paint(); }); }
       wireStars();
-      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — you rated '+who+' '+picked+'★'); };
+      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — your rating of '+who+' was submitted'); };
     }
     draw();
   } },
@@ -2569,7 +2573,11 @@ if(PT){
     var costN=+order.cost||0;
     var isBid=!!order.bids;   // requester is asking for bids (no set price) — NEVER broadcast $0
     var crew=Math.max(1, +order.workers||1);   // Gopher Request = ONE broadcast; the accepter brings the whole crew
-    var flags=[{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
+    // A directed provider-deal booking (the requester redeemed THIS Gopher's deal) is not
+    // an open broadcast — badge it as a direct booking rather than a time-sensitive grab.
+    var flags = order.directBooking
+      ? [{t:'Direct booking',k:'good'}]
+      : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
     if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
@@ -2654,12 +2662,19 @@ if(PT){
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'New Message Available',sub:'Click here to view',onTap:function(){ openGoMsgSheet(c); }});
     }catch(_){}
   };
-  // (h) requester's star rating, relayed by the harness → show it on the worker's job + toast
+  // (h) requester confirms completion — their star rating rides along, relayed by the harness.
+  //     Policy: the received rating is NEVER shown to the worker (retaliation risk when the parties
+  //     are near each other; it also affects pay). We keep the value in the shared store for the
+  //     system, mark the job confirmed, reflect a neutral "paid out" state for ~2s, then return the
+  //     worker to a plain home for the next job.
   window.__ptRated=function(id,stars){
     var job=window.__ptJobs[id]; if(!job) return;
-    job.rated=stars; if(!job.substage) job.substage='done';
-    toast('⭐ '+(job.who||'The requester')+' rated you '+stars+'★ — nice work!');
-    try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
+    job.rated=stars;                 // stored for the system only — never displayed
+    job.confirmed=true; job.substage='completed';
+    try{ if(current==='job-detail' && state.job===job){
+      load('job-detail');            // re-render as "Confirmed · paid out" (no star)
+      setTimeout(function(){ if(current==='job-detail' && state.job===job) load('home'); }, 2200);
+    } }catch(_){}
   };
   load('home');   // boot straight to the logged-in worker home
 } else {
