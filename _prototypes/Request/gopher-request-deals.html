@@ -605,12 +605,10 @@ function detailHTML(m){
       <button class="dd-history" data-jobhist="${esc(m.pro)}">Review Job History</button>`;
   }
   const live=realUrlFor(m);   // null for merchants without a wired site -> sample site
-  const url=domainOf(live||(m.portalUrl||(m.name.toLowerCase().replace(/[^a-z0-9]+/g,'')+'.com')));
-  // Header intentionally minimal: the live merchant site + URL bar carry the branding, so
-  // the portal gets nearly the whole screen. One slim strip keeps the offer + redeem code.
+  // Header intentionally minimal: the live merchant site carries its own branding, so the
+  // portal gets the whole screen. One slim strip keeps the offer + redeem code.
   return `<div class="dd-web-strip">${esc(m.offer)}${m.promo?`<span class="code">Code ${esc(m.promo)}</span>`:''}</div>
     <div class="portal">
-      <div class="portal-bar"><span class="pd"></span><span class="pd"></span><span class="pd"></span><span class="url">${esc(url)}</span></div>
       <div class="portal-live">${realUrlFor(m) ? liveFrameHTML(m,live) : `<div class="pl-sample">${siteHTML(m)}</div>`}</div>
     </div>`;
 }
