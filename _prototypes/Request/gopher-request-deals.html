@@ -637,7 +637,33 @@ function openWebview(id){ var ph=document.getElementById('phone'); if(ph) ph.scr
 function openDetail(id){ var ph=document.getElementById('phone'); if(ph) ph.scrollTop=0; const m=BY_ID[id]; $('#detailBody').innerHTML=detailHTML(m); $('#detailBody').classList.toggle('is-web', m.kind!=='service'); $('#detailBody').scrollTop=0; $('#detailFoot').innerHTML=(m.kind==='service')?('<button class="dd-cta" data-redeem="'+m.id+'">Redeem Deal</button>'):deliverCTA(m); wireLive($('#detailBody')); $('#detail').classList.add('on'); }
 
 /* ---------- REDEEM SHEET ---------- */
+/* Shared multi-request store — the SAME sessionStorage-backed GReq the home/flow pages
+   use. The split-screen harness relays any record with stage:'searching' to the Go
+   phone, so redeeming a service deal here can broadcast a real job. */
+window.GReq = window.GReq || (function(){
+var KEY='gopher_requests';
+// PT (split-screen) mode: start with NO pending requests. Sticky via sessionStorage so it
+// survives home↔flow navigation. Standalone default (no ?pt) keeps the demo seed.
+function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
+function seed(){ if(ptEmpty()) return []; return [
+ {order:'GR-00127',cat:'delivery',title:'Grocery run — Harris Teeter',amount:'$69.11',hired:'Marcus B.',stage:'active',accepted:3,scheduledForLater:false,cost:35,pay:15,pickup:'Harris Teeter',dropoff:'412 Oakwood Ave',when:'ETA 14 min · Today, 2:30 PM'},
+ {order:'GR-00128',cat:'home',title:'Hardware run — drill bits + anchors',amount:'$76.67',hired:'Priya N.',stage:'active',accepted:2,scheduledForLater:false,cost:52,pay:18,pickup:'Ace Hardware',dropoff:'88 Maple Court',when:'ETA 19 min · Today, 3:05 PM'},
+ {order:'GR-00124',cat:'home',title:'Ceiling fan install — conference room',amount:'$145.00',hired:'Rosa P.',stage:'scheduled',scheduledForLater:true,accepted:0,cost:0,pay:120,pickup:'',dropoff:'88 Maple Court',when:'Tomorrow, 9:00 AM'}
+]; }
+function all(){ try{ var a=JSON.parse(sessionStorage.getItem(KEY)); if(Array.isArray(a)) return a; }catch(_){} var s=seed(); save(s); return s; }
+function save(a){ try{ sessionStorage.setItem(KEY, JSON.stringify(a)); }catch(_){} }
+function nextOrder(){ var mx=127; all().forEach(function(x){ var m=/GR-0*(\d+)/.exec(x.order||''); if(m){ var n=+m[1]; if(n>mx) mx=n; } }); return 'GR-'+('00000'+(mx+1)).slice(-5); }
+return { all:all, save:save,
+ add:function(r){ var a=all(); a.unshift(r); save(a); return r; },
+ get:function(o){ return all().filter(function(x){return x.order===o;})[0]||null; },
+ update:function(o,p){ var a=all(); for(var i=0;i<a.length;i++){ if(a[i].order===o){ for(var k in p) a[i][k]=p[k]; } } save(a); },
+ remove:function(o){ save(all().filter(function(x){return x.order!==o;})); },
+ nextOrder:nextOrder,
+ openOrder:function(o){ try{ sessionStorage.setItem('gopher_open', o); }catch(_){} },
+ currentOpen:function(){ try{ return sessionStorage.getItem('gopher_open'); }catch(_){ return null; } } };
+})();
 let activeId=null;
+let activeDrop='';
 /* ===== D-029 (Deals): age-restricted identity, resolved on the redeem sheet =====
    Age is known from profile. <21 -> moot (ineligible). 21+ with TrustShield ->
    seal stamped, no prompt (D-029 skip). 21+ without TrustShield -> waiver, then the
@@ -816,6 +842,7 @@ function feeFor(m){ if(m.kind==='service') return 0; /* provider/service deals a
 function reviewHTML(m){
   const svc=m.kind==='service';
   const drop=($('#fDrop')&&$('#fDrop').value.trim())||USER_ADDR;
+  activeDrop=drop;
   const fee=feeFor(m);
   if(svc){
     const total=m.price;   // provider deals are a flat rate — no request fee surfaced
@@ -851,13 +878,38 @@ function reviewHTML(m){
     <button class="dd-cta" data-submit="${m.id}">Submit request</button>`;
 }
 function openReview(id){ const m=BY_ID[id]; closeSheet(); $('#reviewBody').innerHTML=reviewHTML(m); $('#reviewBody').scrollTop=0; $('#review').classList.add('on'); }
+/* Broadcast a redeemed SERVICE (provider) deal to the workforce as a real, FLEXIBLE
+   request so it lands on the Gopher side. Pay = the deal's locked flat rate (the Matrix-
+   set provider price); scheduled as a flexible window because a service isn't an instant
+   ASAP delivery. scheduledForLater:false => it broadcasts now (a flexible window is an
+   OPEN request, per the flow's rule), and the harness relays it to the Go phone. */
+function pushServiceRequest(m){
+  try{
+    if(!window.GReq || !GReq.add) return '#GD-00001';
+    var order=GReq.nextOrder();
+    var drop=activeDrop||(typeof USER_ADDR!=='undefined'?USER_ADDR:'');
+    GReq.add({
+      order:order, cat:(m.reqCategory||'home'), title:(m.name+' \u2014 '+m.pro),
+      amount:'$'+(m.price||0)+'.00', stage:'searching', accepted:0, scheduledForLater:false,
+      offerBand:'suggested', cost:0, pay:(m.price||0),
+      pickup:'', dropoff:drop, scope:(m.offer||m.dealSpecifics||m.name), dist:'',
+      when:'Flexible \u00b7 within 24 hrs', requestor:'Jamie L.', bids:false, workers:1,
+      payByHour:false, numHours:1, ageRestricted:false, itemsPurchased:false,
+      deal:true, dealMerchant:m.pro, description:(m.dealSpecifics||''), deliveryType:'',
+      timingLabel:'Flexible \u2014 within 24 hours', hasPickup:false,
+      providerDeal:true, provider:m.pro, serviceName:m.name, flexible:true
+    });
+    return order;
+  }catch(_){ return '#GD-00001'; }
+}
 function submitted(id){
   const m=BY_ID[id];
+  var order=(m.kind==='service') ? pushServiceRequest(m) : '#GD-00001';
   $('#reviewTitle').textContent='Request submitted';
   $('#reviewBody').innerHTML=`<div class="burst"><div class="check"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
-    <h4>Deal redeemed!</h4><p>${m.kind==='service'?('Matching you with '+esc(m.pro)):('Finding a Gopher for your '+esc(m.name)+' run')} · Order <b>#GD-00001</b></p></div>
+    <h4>Deal redeemed!</h4><p>${m.kind==='service'?('Matching you with '+esc(m.pro)):('Finding a Gopher for your '+esc(m.name)+' run')} · Order <b>${esc(order)}</b></p></div>
     <div class="rv-note" style="margin-top:20px;"><svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
-      <span>Track it in Activity. You'll confirm completion and rate before final billing.</span></div>
+      <span>${m.kind==='service'?('Sent to nearby '+esc(REQ_NAME[m.reqCategory]||'service')+' Gophers as a flexible request. Track it in Activity — you’ll confirm completion and rate before final billing.'):'Track it in Activity. You’ll confirm completion and rate before final billing.'}</span></div>
     <button class="dd-cta" data-done>Back to Deals</button>`;
 }
 
