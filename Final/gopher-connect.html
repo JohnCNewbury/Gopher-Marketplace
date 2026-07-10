@@ -18162,29 +18162,13 @@ const PAY_BADGES = {
   // as PAY_BADGES) so there's no external/asset dependency. Navy shield + green check.
   const TRUSTSHIELD_MARK = '<img src="assets/img/connect-img-4.webp" alt="Gopher TrustShield">';
 
-  // Worker-tier award seals (inline SVG so there's no asset dependency).
-  const TIER_SEAL = {
-    // Elite — navy seal, green ring, gold star, green ribbon.
-    elite: '<svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-      + '<path d="M21 45 L16 68 L30 60 L44 68 L39 45 Z" fill="#1fb85f"/>'
-      + '<circle cx="30" cy="28" r="23" fill="#012462"/>'
-      + '<circle cx="30" cy="28" r="23" fill="none" stroke="#33d975" stroke-width="3"/>'
-      + '<path d="M30 15 L33.5 24.1 L43.3 24.7 L35.7 30.85 L38.2 40.3 L30 35 L21.8 40.3 L24.3 30.85 L16.7 24.7 L26.5 24.1 Z" fill="#ffce4f"/>'
-      + '</svg>',
-    // Pro — green seal, navy ring, white check, navy ribbon.
-    pro: '<svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-      + '<path d="M21 45 L16 68 L30 60 L44 68 L39 45 Z" fill="#012462"/>'
-      + '<circle cx="30" cy="28" r="23" fill="#33d975"/>'
-      + '<circle cx="30" cy="28" r="23" fill="none" stroke="#012462" stroke-width="3"/>'
-      + '<path d="M20 28 l6 6 14 -15" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-      + '</svg>'
+  // Real branded tier pills, shared across Connect / Request / Deals / Go so every
+  // Personal Info page shows the same official logo. Every tier has a lockup, so the
+  // rail always renders the real pill as a credential chip (never the generic seal).
+  const TIER_LOCKUP = {
+    elite: 'assets/img/tier-elite-plus.webp',  // this account is Gopher Elite+
+    pro:   'assets/img/tier-pro.svg'
   };
-
-  // Official worker-tier brand lockups (horizontal wordmarks). When a tier has a
-  // lockup, the rail shows it as a wide credential chip instead of the compact seal.
-  // Elite+ art supplied by the member's account; embedded inline (self-contained).
-  const ELITE_LOCKUP = 'assets/img/connect-img-6.webp';
-  const TIER_LOCKUP = { elite: ELITE_LOCKUP };
 
   // Verified Business emblem (inline SVG, no asset dependency) — navy trust shield
   // with a company glyph and a green verification check. The company-entity
@@ -18250,25 +18234,15 @@ const PAY_BADGES = {
     }
 
     // 2) Worker tier — only when this customer is ALSO a Gopher worker (Elite / Pro).
+    //    Shows the real branded tier pill as a credential chip (matches Request/Deals/Go).
     const tier = String(p.workerTier || '').toLowerCase();
-    if(tier === 'elite' || tier === 'pro'){
-      const label = tier === 'elite' ? 'Elite+ Verified<br>Worker' : 'Pro Verified<br>Worker';
-      if(TIER_LOCKUP[tier]){
-        // Wide official lockup → horizontal credential chip (art slot still 62px tall
-        // so it top-aligns with the TrustShield seal).
-        tiles.push(
-          '<div class="ph-badge ph-badge-lockup tier-' + tier + '">'
-          + '<div class="ph-badge-lockup-art"><img src="' + TIER_LOCKUP[tier] + '" alt="Gopher ' + (tier==='elite'?'Elite+':'Pro') + ' verified worker"></div>'
-          + '<div class="ph-badge-label">Verified Worker</div>'
-          + '</div>');
-      } else {
-        // No lockup art → compact seal tile.
-        tiles.push(
-          '<div class="ph-badge tier-' + tier + '">'
-          + '<div class="ph-badge-art">' + TIER_SEAL[tier] + '</div>'
-          + '<div class="ph-badge-label">' + label + '</div>'
-          + '</div>');
-      }
+    if(TIER_LOCKUP[tier]){
+      // Art slot still 62px tall so it top-aligns with the TrustShield seal.
+      tiles.push(
+        '<div class="ph-badge ph-badge-lockup tier-' + tier + '">'
+        + '<div class="ph-badge-lockup-art"><img src="' + TIER_LOCKUP[tier] + '" alt="Gopher ' + (tier==='elite'?'Elite+':'Pro') + ' verified worker"></div>'
+        + '<div class="ph-badge-label">Verified Worker</div>'
+        + '</div>');
     }
 
     rail.innerHTML = tiles.join('');

@@ -8461,6 +8461,17 @@
   }
   .ph-badge-art { height:62px; display:flex; align-items:center; justify-content:center; }
   .ph-badge-art img, .ph-badge-art svg { height:62px; width:auto; display:block; }
+  /* Worker-tier official pill — wide credential chip (matches Connect/Deals). Same 62px
+     art-slot height as the seals so it top-aligns; the pill itself sits ~30px tall. */
+  .ph-badge-lockup { width:auto; }
+  .ph-badge-lockup .ph-badge-lockup-art {
+    height:62px; display:flex; align-items:center; justify-content:center;
+    padding:0 18px; border-radius:14px;
+    background:linear-gradient(135deg, rgba(51,217,117,0.12), rgba(1,36,98,0.05));
+    border:1px solid rgba(51,217,117,0.32);
+  }
+  .ph-badge-lockup .ph-badge-lockup-art img { height:30px; width:auto; display:block; }
+  .ph-badge-lockup .ph-badge-label { color:var(--green-dark); letter-spacing:0.2px; }
   .ph-badge-label {
     font-family:'Nunito'; font-weight:800; font-size:12.5px; line-height:1.2;
   }
@@ -21317,21 +21328,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // too for the ~10% of customers who are also Gopher workers. New reward badges
   // just push another tile. Driven by DASH_DATA.profile.trustShield (bool) and
   // .workerTier ('elite' | 'pro' | null).
-  const TIER_SEAL = {
-    // Elite — navy seal, green ring, gold star, green ribbon.
-    elite: '<svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-      + '<path d="M21 45 L16 68 L30 60 L44 68 L39 45 Z" fill="#1fb85f"/>'
-      + '<circle cx="30" cy="28" r="23" fill="#012462"/>'
-      + '<circle cx="30" cy="28" r="23" fill="none" stroke="#33d975" stroke-width="3"/>'
-      + '<path d="M30 15 L33.5 24.1 L43.3 24.7 L35.7 30.85 L38.2 40.3 L30 35 L21.8 40.3 L24.3 30.85 L16.7 24.7 L26.5 24.1 Z" fill="#ffce4f"/>'
-      + '</svg>',
-    // Pro — green seal, navy ring, white check, navy ribbon.
-    pro: '<svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-      + '<path d="M21 45 L16 68 L30 60 L44 68 L39 45 Z" fill="#012462"/>'
-      + '<circle cx="30" cy="28" r="23" fill="#33d975"/>'
-      + '<circle cx="30" cy="28" r="23" fill="none" stroke="#012462" stroke-width="3"/>'
-      + '<path d="M20 28 l6 6 14 -15" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-      + '</svg>'
+  // Real branded tier pills, shared across Connect / Request / Deals / Go so every
+  // Personal Info page shows the same official logo as a credential chip.
+  const TIER_LOCKUP = {
+    elite: 'assets/img/tier-elite.svg',   // this account is Gopher Elite
+    pro:   'assets/img/tier-pro.svg'
   };
 
   function rqRenderBadges(){
@@ -21355,13 +21356,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         + '</button>');
     }
     // 2) Worker tier — only when this customer is ALSO a worker (Elite / Pro).
+    //    Shows the real branded tier pill as a credential chip (matches Connect/Deals/Go).
     const tier = String(p.workerTier || '').toLowerCase();
-    if(tier === 'elite' || tier === 'pro'){
-      const label = tier === 'elite' ? 'Elite<br>Worker' : 'Pro<br>Worker';
+    if(TIER_LOCKUP[tier]){
       tiles.push(
-        '<div class="ph-badge tier-' + tier + '">'
-        + '<div class="ph-badge-art">' + TIER_SEAL[tier] + '</div>'
-        + '<div class="ph-badge-label">' + label + '</div>'
+        '<div class="ph-badge ph-badge-lockup tier-' + tier + '">'
+        + '<div class="ph-badge-lockup-art"><img src="' + TIER_LOCKUP[tier] + '" alt="Gopher ' + (tier==='elite'?'Elite':'Pro') + ' verified worker"></div>'
+        + '<div class="ph-badge-label">Verified Worker</div>'
         + '</div>');
     }
     rail.innerHTML = tiles.join('');
