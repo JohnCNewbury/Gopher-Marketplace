@@ -38,6 +38,8 @@
 <script src="gopher-banner.js"></script>
 <!-- Age-restricted keyword brain — generated from Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx (canonical source). -->
 <script src="../../Final/assets/js/gopher-age-keywords.js"></script>
+<!-- G40-38 payment methods — shared store + checkout pay-picker (same session store as the account Payment Info screen). -->
+<script src="gopher-pay-store.js"></script>
 <style>
 :root{
   --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
@@ -1650,18 +1652,28 @@ function renderStep6(){
   // Total (total-led, Go style)
   rows+=`<div class="review-row total"><span class="rl">Total</span><span class="rv">${bids?'TBD after bid':fmt(total)}</span></div>`;
 
-  // Payment method picker
-  rows+=`<div class="review-row pay-picker ${state.paymentPickerOpen?'open':''}" data-action="toggle-pay">
-    <span class="rl">Payment method</span><span class="rv">${PAY_METHODS[state.paymentMethod].name}<span class="pay-chev">▼</span></span></div>`;
-  if(state.paymentPickerOpen){
-    rows+=`<div class="pay-panel">
-      ${Object.entries(PAY_METHODS).map(([k,m])=>`
-        <div class="pay-opt ${state.paymentMethod===k?'selected':''}" data-action="pick-pay" data-pay="${k}">
-          <span class="pmo-badge" style="background:${m.bg};">${m.badge}</span>
-          <span class="pmo-body"><div class="pmo-name">${m.name}</div><div class="pmo-sub">${m.sub}</div></span>
-          <span class="pmo-tick"></span></div>`).join('')}
-      <div class="pay-opt add-new"><span class="pmo-badge">+</span><span class="pmo-body"><div class="pmo-name">Add payment method</div><div class="pmo-sub">Card, bank, or wallet</div></span><span class="pmo-tick" style="visibility:hidden;"></span></div>
-    </div>`;
+  // Payment method picker — G40-38 shared store (cards + Apple/Google Pay, PayPal, Cash App, Venmo).
+  // Tapping opens the full chooser (with "+ New payment method"); fee methods disclose a small surcharge.
+  if(window.GopherPay){
+    const _sel=GopherPay.selected();
+    const _payName=_sel?_sel.name:'Visa';
+    const _payMark=_sel?GopherPay.brandMark(_sel.brand):'';
+    const _payFee=!!(_sel&&GopherPay.feeFor(_sel.brand));
+    rows+=`<div class="review-row pay-picker" data-action="toggle-pay">
+      <span class="rl">Payment method</span><span class="rv" style="display:flex;align-items:center;gap:7px;justify-content:flex-end;">${_payMark}<span>${_payName}</span>${_payFee?' <span style="font-family:Nunito;font-weight:800;font-size:9.5px;background:#FFF4E5;color:#8a5a00;padding:2px 7px;border-radius:99px;">small fee</span>':''}<span class="pay-chev">›</span></span></div>`;
+  } else {
+    rows+=`<div class="review-row pay-picker ${state.paymentPickerOpen?'open':''}" data-action="toggle-pay">
+      <span class="rl">Payment method</span><span class="rv">${PAY_METHODS[state.paymentMethod].name}<span class="pay-chev">▼</span></span></div>`;
+    if(state.paymentPickerOpen){
+      rows+=`<div class="pay-panel">
+        ${Object.entries(PAY_METHODS).map(([k,m])=>`
+          <div class="pay-opt ${state.paymentMethod===k?'selected':''}" data-action="pick-pay" data-pay="${k}">
+            <span class="pmo-badge" style="background:${m.bg};">${m.badge}</span>
+            <span class="pmo-body"><div class="pmo-name">${m.name}</div><div class="pmo-sub">${m.sub}</div></span>
+            <span class="pmo-tick"></span></div>`).join('')}
+        <div class="pay-opt add-new"><span class="pmo-badge">+</span><span class="pmo-body"><div class="pmo-name">New payment method</div><div class="pmo-sub">Card, bank, or wallet</div></span><span class="pmo-tick" style="visibility:hidden;"></span></div>
+      </div>`;
+    }
   }
 
   let h=`<div class="step-head"><h3>Let's review your request</h3>
@@ -2191,7 +2203,7 @@ document.addEventListener('click',(e)=>{
     case 'toggle-sse': state.sseOpen=!state.sseOpen; render(); break;
     case 'toggle-wte': state.wteOpen=!state.wteOpen; render(); break;
     case 'toggle-waiver': state.waiverChecked=!state.waiverChecked; render(); break;
-    case 'toggle-pay': state.paymentPickerOpen=!state.paymentPickerOpen; render(); break;
+    case 'toggle-pay': if(window.GopherPay){ GopherPay.openPicker(function(){ render(); }); } else { state.paymentPickerOpen=!state.paymentPickerOpen; render(); } break;
     case 'pick-pay': state.paymentMethod=act.dataset.pay; state.paymentPickerOpen=false; render(); break;
     case 'apply-promo': { const code=(state.promoCode||'').trim(); if(getPromo(code)){ state.promoApplied=true; state.promoError=false; } else { state.promoError=true; state.promoApplied=false; } render(); } break;
     case 'remove-promo': state.promoApplied=false; state.promoCode=''; render(); break;
