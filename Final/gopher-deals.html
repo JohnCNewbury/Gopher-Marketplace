@@ -2302,6 +2302,7 @@
 </style>
 <script async
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnc2wRsy54nvUgrFKAPcJ5hnMhjfUVJAU&libraries=places&callback=onGopherMapsReady&loading=async"></script>
+<script src="assets/js/gopher-address-autocomplete.js"></script>
 </head>
 <body>
 
@@ -3332,21 +3333,14 @@
   };
 
   function initAudienceAutocomplete(){
-    if(!_gmapsReady || !window.google || !google.maps.places) return;
+    if(!window.GopherAddressAC) return;
     var input=document.getElementById('audience-address');
-    if(!input || input._acBound) return;
-    var ac=new google.maps.places.Autocomplete(input,{fields:['geometry','formatted_address','name']});
-    ac.addListener('place_changed',function(){
-      var pl=ac.getPlace();
-      if(pl && pl.geometry){
-        var addr=pl.formatted_address||'';
-        input.value=(pl.name && addr && addr.indexOf(pl.name)===-1) ? (pl.name+', '+addr) : (addr||pl.name||input.value);
-        viewAudienceAt(pl.geometry.location.lat(), pl.geometry.location.lng());
-      } else {
-        viewAudience();   // enter without picking a suggestion -> geocode the text
-      }
-    });
-    input._acBound=true;
+    if(!input) return;
+    // Custom dropdown (no deprecated widget); on pick we geocode → lat/lng → draw the audience.
+    GopherAddressAC.attach(input, { onPick:function(d){
+      if(d.lat!=null && d.lng!=null) viewAudienceAt(d.lat, d.lng);
+      else viewAudience();   // geocode failed (e.g. key/referrer) → fall back to geocoding the text
+    }});
   }
 
   // Open overlay for a resolved location: fetch real audience, then draw
@@ -5659,7 +5653,12 @@ function initPersonalEdit(){
   document.getElementById('peCancel').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
-  editable.forEach(el => { if(el !== fMobile) el.addEventListener('input', refresh); });
+  editable.forEach(el => { if(el !== fMobile){ el.addEventListener('input', refresh); el.addEventListener('change', refresh); } });
+  // Google-mapped address suggestions for the profile Home Address (fills City/ZIP on pick).
+  if(window.GopherAddressAC) GopherAddressAC.attach(fAddress, { onPick:function(d){
+    var c=document.getElementById('peCity'), z=document.getElementById('peZip');
+    if(c && d.city) c.value=d.city; if(z && d.zip) z.value=d.zip;
+  }});
   // Live-format the mobile number as typed (progressive mask), capped at 10 digits.
   fMobile.addEventListener('input', () => {
     const d = (fMobile.value.match(/\d/g) || []).join('').slice(0,10);
@@ -5823,6 +5822,22 @@ function renderProfileBadges(){
 function setTrustShield(v){ DEALS_PROFILE.trustShield = !!v; renderProfileBadges(); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderProfileBadges);
 else renderProfileBadges();
+</script>
+<script>
+/* Google-mapped suggestions for the remaining Deals address fields — sign-up (personal +
+   business), business registration, owner address, new-deal location, and the dynamically
+   injected per-location rows (.la-addr). Fill-only. attachOnFocus is lazy and covers fields
+   that are rendered on demand, so it's safe before Maps loads. */
+(function(){
+  if(!window.GopherAddressAC) return;
+  GopherAddressAC.attachOnFocus(function(t){
+    if(!t || t.tagName !== 'INPUT') return false;
+    if(['snAddress','snBizAddress','ndAddress','naLocAddr'].indexOf(t.id) > -1) return true;
+    if(t.name === 'address' || t.name === 'owner_address') return true;
+    if(t.classList && t.classList.contains('la-addr')) return true;
+    return false;
+  }, {});
+})();
 </script>
 </body>
 </html>

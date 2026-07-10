@@ -3558,26 +3558,17 @@
      To enable live autocomplete, add your key and UNCOMMENT the script tag below.
      The address field, City, State & ZIP will then auto-fill on selection. */
   function initGoaddr(){
-    if(!(window.google && google.maps && google.maps.places)) return;
-    const addr = document.getElementById('piAddr'); if(!addr) return;
-    window.__placesActive = true;
-    const ac = new google.maps.places.Autocomplete(addr, { types:['address'], componentRestrictions:{country:'us'}, fields:['address_components'] });
-    ac.addListener('place_changed', () => {
-      const p = ac.getPlace(); if(!p || !p.address_components) return;
-      let num='', route='', city='', st='', zip='';
-      p.address_components.forEach(c => {
-        if(c.types.includes('street_number')) num=c.long_name;
-        if(c.types.includes('route')) route=c.long_name;
-        if(c.types.includes('locality')||c.types.includes('sublocality')) city=c.long_name;
-        if(c.types.includes('administrative_area_level_1')) st=c.short_name;
-        if(c.types.includes('postal_code')) zip=c.long_name;
-      });
-      if(window.__applyPlace) window.__applyPlace((num+' '+route).trim(), city, st, zip);
-    });
+    var addr = document.getElementById('piAddr'); if(!addr || !window.GopherAddressAC) return;
+    window.__placesActive = true;   // yield the lightweight typed-parser to real autocomplete
+    GopherAddressAC.attach(addr, { onPick:function(d){
+      // Geocoded parts fill Home address + the locked City / State / ZIP fields.
+      if(window.__applyPlace) window.__applyPlace(d.street || d.description, d.city, d.state, d.zip);
+    }});
   }
   window.initGoaddr = initGoaddr;
-  // <script async src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&callback=initGoaddr"><\/script>
 </script>
+<script src="assets/js/gopher-address-autocomplete.js"></script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnc2wRsy54nvUgrFKAPcJ5hnMhjfUVJAU&libraries=places&callback=initGoaddr&loading=async"></script>
 
 </body>
 </html>

@@ -1773,6 +1773,7 @@
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
      page falls back to a default mileage estimate (nothing breaks). -->
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnc2wRsy54nvUgrFKAPcJ5hnMhjfUVJAU&libraries=places&callback=onGopherMapsReady&loading=async"></script>
+<script src="assets/js/gopher-address-autocomplete.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11033,15 +11034,11 @@
     return addr || pl.name || '';
   }
   function bindAddressAutocomplete(){
-    if(!_gmReady || !window.google || !google.maps.places) return;
+    if(!window.GopherAddressAC) return;
     ['g40EditPickup','g40EditDropoff','dealPickup','dealDropoff'].forEach(function(id){
-      const el = document.getElementById(id);
-      if(!el || el._acBound) return;
-      const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry','name'] });
-      ac.addListener('place_changed', function(){
-        const lab = _placeLabel(ac.getPlace()); if(lab) el.value = lab;
-      });
-      el._acBound = true;
+      var el = document.getElementById(id);
+      if(!el) return;
+      GopherAddressAC.attach(el, {});   // robust dropdown; fills the field with the picked address
     });
   }
   // Address fields live inside modals rendered on demand — bind autocomplete when one gains focus.
@@ -11063,13 +11060,8 @@
     if(window.__gopherSyncGate) window.__gopherSyncGate();
   }
   function bindStopAutocomplete(el){
-    if(!_gmReady || !window.google || !google.maps.places || el._acBound) return;
-    const ac = new google.maps.places.Autocomplete(el, { fields:['formatted_address','geometry','name'] });
-    ac.addListener('place_changed', function(){
-      const lab = _placeLabel(ac.getPlace()); if(lab) el.value = lab;
-      _writeStop(el);
-    });
-    el._acBound = true;
+    if(!window.GopherAddressAC || !el) return;
+    GopherAddressAC.attach(el, { onPick:function(){ _writeStop(el); } });
   }
   document.addEventListener('change', function(e){
     if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) _writeStop(e.target);
@@ -23835,7 +23827,12 @@ function initPersonalEdit(){
   document.getElementById('peCancel').addEventListener('click', close);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
   document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
-  editable.forEach(el => { if(el !== fMobile) el.addEventListener('input', refresh); });
+  editable.forEach(el => { if(el !== fMobile){ el.addEventListener('input', refresh); el.addEventListener('change', refresh); } });
+  // Google-mapped address suggestions for the profile Home Address (fills City/ZIP on pick).
+  if(window.GopherAddressAC) GopherAddressAC.attach(fAddress, { onPick:function(d){
+    var c=document.getElementById('peCity'), z=document.getElementById('peZip');
+    if(c && d.city) c.value=d.city; if(z && d.zip) z.value=d.zip;
+  }});
   // Live-format the mobile number as typed (progressive mask), capped at 10 digits.
   fMobile.addEventListener('input', () => {
     const d = (fMobile.value.match(/\d/g) || []).join('').slice(0,10);
@@ -24461,6 +24458,14 @@ function initPersonalEdit(){
     });
   });
   if(head) render('pending');
+})();
+</script>
+<script>
+/* Google-mapped suggestions for the sign-up address field. Fill-only — sign-up validation
+   handles the rest. attachOnFocus is lazy, so it's safe before Maps finishes loading. */
+(function(){
+  if(!window.GopherAddressAC) return;
+  GopherAddressAC.attachOnFocus('rqSuAddr', {});
 })();
 </script>
 </body>
