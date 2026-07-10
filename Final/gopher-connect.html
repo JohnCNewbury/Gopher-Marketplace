@@ -13709,6 +13709,18 @@ const PAY_BADGES = {
   const DEALS_ORDER_URLS = {
     'r-myway': { order: 'https://mywaytavernhs.mobilebytes.com/menu', menu: 'https://www.mywaytavern.com' }
   };
+  // Hosts that refuse iframe embedding (X-Frame-Options / frame-ancestors CSP) — order
+  // platforms and the big delivery apps. A blocked frame and a loaded cross-origin frame
+  // are indistinguishable from JS (the iframe fires `load` either way, and its document
+  // reads as empty), so this can't be detected at runtime: we match on host and hand off
+  // to a real "open in a new tab" instead of gambling on a blank frame. Production's native
+  // in-app browser (SFSafariViewController / Chrome Custom Tabs) has no such limit and
+  // renders every one of these in full — this list is a prototype-only guard.
+  const DEALS_NO_EMBED_HOSTS = ['toasttab.com','toast.com','order.online','sheetz.com','doordash.com','ubereats.com','grubhub.com','squareup.com','square.site','clover.com','olo.com','chownow.com','slicelife.com'];
+  function dealsHostBlocked(u){
+    try { const h = new URL(u).host.replace(/^www\./,''); return DEALS_NO_EMBED_HOSTS.some(b => h === b || h.endsWith('.' + b)); }
+    catch(e){ return false; }
+  }
   const DEALS_GO_SVG   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
   const DEALS_GRID_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
   const DEALS_CROWN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 18h16l1.3-9.6-4.85 3.35L12 5.1 7.55 11.75 2.7 8.4 4 18z"/></svg>';
@@ -13924,6 +13936,18 @@ const PAY_BADGES = {
       if(barClose) barClose.hidden=false;
       if(barOpen){ barOpen.hidden=false; barOpen.href=url; }
       if(urlEl) urlEl.textContent=hostOf(url);
+      // Known non-embeddable host: skip the frame entirely and hand off to a new tab, so a
+      // blocked site (which still fires `load`) can never leave a blank frame behind.
+      if(dealsHostBlocked(url)){
+        if(timer){ clearTimeout(timer); timer=null; }
+        loaded=false;
+        if(frame) frame.removeAttribute('src');
+        if(fbTitle) fbTitle.textContent='This site can\u2019t be shown here';
+        if(fbSub) fbSub.textContent=hostOf(url) + ' blocks in-page previews. Open it in a new tab to continue \u2014 fully live.';
+        if(fbOpen){ fbOpen.href=url; fbOpen.hidden=false; }
+        if(fb) fb.hidden=false;
+        return;
+      }
       loaded=false;
       if(fb) fb.hidden=false;
       if(fbTitle) fbTitle.textContent='Opening ' + m.name + '\u2026';
@@ -13932,14 +13956,16 @@ const PAY_BADGES = {
       if(frame.getAttribute('src')!==url) frame.setAttribute('src', url);
       else if(loaded && fb) fb.hidden=true;
       if(timer) clearTimeout(timer);
+      // Generous backstop for a site that simply never loads \u2014 a slow but embeddable site
+      // (Wix/Squarespace) can take >5s, and a late load clears this via the `load` listener.
       timer=setTimeout(function(){
         if(!loaded){
-          if(fbTitle) fbTitle.textContent='This site can\u2019t be shown here';
-          if(fbSub) fbSub.textContent='Some sites block being embedded. Open it in a new tab to continue \u2014 fully live.';
+          if(fbTitle) fbTitle.textContent='This site is taking a while';
+          if(fbSub) fbSub.textContent='Open it in a new tab to continue \u2014 fully live.';
           if(fbOpen){ fbOpen.href=url; fbOpen.hidden=false; }
           if(fb) fb.hidden=false;
         }
-      }, 4000);
+      }, 8000);
     }
     function closeLive(){
       if(live) live.hidden=true; if(body) body.hidden=false;
