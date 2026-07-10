@@ -21331,29 +21331,77 @@ const PAY_BADGES = {
     if(e.target.id==='saSave'){ save(); return; }
     var d=e.target.closest('[data-sadel]'); if(d){ if(window.GopherSaved) window.GopherSaved.removeAt(+d.getAttribute('data-sadel')); render(); }
   });
-  // Google-mapped suggestions via AutocompleteService (custom dropdown — avoids the deprecated
-  // Autocomplete widget that errored in the modal). Selecting stores a full Google place; Save
-  // geocodes it to the canonical formatted_address.
-  var _acSvc=null, _tok=null, _predEl=null;
+  // Google-mapped suggestions in the modal — custom dropdown, no deprecated Autocomplete widget.
+  // Tries Places API (New) first, falls back to the legacy AutocompleteService, and surfaces the
+  // failure status instead of going silent. Selecting stores a full Google place; Save geocodes it.
+  var _acSvc=null, _tok=null, _predEl=null, _acSeq=0;
   function _hidePred(){ if(_predEl){ _predEl.remove(); _predEl=null; } }
+  function _note(msg){ var e=$('saErr'); if(e) e.textContent=msg||''; }
+  function _newTok(){ try{ return new google.maps.places.AutocompleteSessionToken(); }catch(_){ return null; } }
+  // cb(list) with an array of description strings; cb(null, status) when Google refuses the call.
+  // Note: when the key blocks this domain, the NEW api rejects but the LEGACY one never calls back
+  // at all — so the legacy leg is time-boxed, otherwise the dropdown just silently never appears.
+  function _fetchPreds(q, cb){
+    var P=google.maps.places;
+    if(P.AutocompleteSuggestion && P.AutocompleteSuggestion.fetchAutocompleteSuggestions){
+      var req={ input:q, includedRegionCodes:['us'] }; if(_tok) req.sessionToken=_tok;
+      P.AutocompleteSuggestion.fetchAutocompleteSuggestions(req).then(function(r){
+        cb(((r&&r.suggestions)||[]).map(function(s){
+          var p=s.placePrediction; return (p && p.text && p.text.text) || '';
+        }).filter(Boolean));
+      }).catch(function(e){
+        var m=String((e&&e.message)||e);
+        // A referer/API-key rejection will fail the legacy path identically — report, don't retry.
+        if(/referer|referrer|blocked|not authorized|ApiNotActivated|API key/i.test(m)){ cb(null, _keyHint(m)); return; }
+        _legacyPreds(q, cb);   // New API simply not enabled on this key → try legacy
+      });
+      return;
+    }
+    _legacyPreds(q, cb);
+  }
+  function _keyHint(msg){
+    return /referer|referrer|blocked/i.test(msg)
+      ? 'this domain is not authorized on the Google Maps API key'
+      : msg;
+  }
+  function _legacyPreds(q, cb){
+    var P=google.maps.places;
+    if(!P.AutocompleteService){ cb(null,'Places library unavailable'); return; }
+    if(!_acSvc) _acSvc=new P.AutocompleteService();
+    var done=false;
+    var t=setTimeout(function(){ if(!done){ done=true; cb(null,'Google did not respond — check the API key restrictions'); } }, 5000);
+    _acSvc.getPlacePredictions({ input:q, sessionToken:_tok, componentRestrictions:{country:'us'} }, function(preds,status){
+      if(done) return; done=true; clearTimeout(t);
+      if(status==='OK'&&preds&&preds.length) cb(preds.map(function(p){ return p.description; }));
+      else if(status==='ZERO_RESULTS') cb([]);
+      else cb(null, status||'ERROR');
+    });
+  }
   function _showPred(){
     var ad=$('saAddrInput'); if(!ad) return;
     if(!(window.google&&google.maps&&google.maps.places)) return;
     var q=(ad.value||'').trim();
     if(q.length<3){ _hidePred(); return; }
-    if(!_acSvc) _acSvc=new google.maps.places.AutocompleteService();
-    if(!_tok) _tok=new google.maps.places.AutocompleteSessionToken();
-    _acSvc.getPlacePredictions({ input:q, sessionToken:_tok, componentRestrictions:{country:'us'} }, function(preds,status){
+    if(!_tok) _tok=_newTok();
+    var seq=++_acSeq;
+    _fetchPreds(q, function(list,status){
+      if(seq!==_acSeq) return;                       // a newer keystroke already superseded this one
       _hidePred();
-      if(status!=='OK'||!preds||!preds.length) return;
+      if(!list){
+        console.warn('[gopher] Places autocomplete unavailable:', status);
+        _note('Address suggestions are unavailable ('+status+') — type the full address and Save; we still verify it.');
+        return;
+      }
+      _note('');
+      if(!list.length) return;
       var box=document.createElement('div'); box.className='sa-pred';
-      box.innerHTML=preds.slice(0,5).map(function(p){ return '<button type="button" class="sa-pred-row" data-desc="'+esc(p.description)+'">'+esc(p.description)+'</button>'; }).join('');
+      box.innerHTML=list.slice(0,5).map(function(d){ return '<button type="button" class="sa-pred-row" data-desc="'+esc(d)+'">'+esc(d)+'</button>'; }).join('');
       document.body.appendChild(box);
       var r=ad.getBoundingClientRect();
       box.style.left=Math.round(r.left)+'px'; box.style.top=Math.round(r.bottom+4)+'px'; box.style.width=Math.round(r.width)+'px';
       _predEl=box;
       box.addEventListener('mousedown', function(e){ e.preventDefault(); });
-      box.addEventListener('click', function(e){ var b=e.target.closest('[data-desc]'); if(!b) return; ad.value=b.getAttribute('data-desc'); picked=ad.value; _tok=null; _hidePred(); });
+      box.addEventListener('click', function(e){ var b=e.target.closest('[data-desc]'); if(!b) return; ad.value=b.getAttribute('data-desc'); picked=ad.value; _tok=null; _hidePred(); syncSaveBtn(); });
     });
   }
   document.addEventListener('input', function(e){
