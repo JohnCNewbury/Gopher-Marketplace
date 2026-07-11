@@ -1195,9 +1195,11 @@ function openRateModal(order){
     if(fav && !member){ try{ addMyGopher(who,'elite',(CATLABEL[r.cat]||'Request')+' \u00b7 '+picked+'\u2605'); addedNow=true; }catch(_){} }
     else if(!fav && member){ try{ removeMyGopher(who); removedNow=true; }catch(_){} }
     o.remove(); renderPending();
-    toast(addedNow?('Rated '+who+' '+picked+'\u2605 \u00b7 added to MY Gophers')
-         :removedNow?('Rated '+who+' '+picked+'\u2605 \u00b7 removed from MY Gophers')
-         :('Thanks \u2014 you rated '+who+' '+picked+'\u2605')); };
+    // Ratings are not surfaced to either party in the live moment (symmetry with the Go app) \u2014
+    // the score is recorded, but the toast never echoes the star.
+    toast(addedNow?(who+' added to MY Gophers')
+         :removedNow?(who+' removed from MY Gophers')
+         :('Thanks \u2014 your rating of '+who+' was submitted')); };
 }
 // Inbox alert (H) \u2014 a new message from the Gopher fires a banner + a red badge on the footer inbox
 // icon (mirrors the current app's updateInboxBadge() + #rqInboxNavBadge). Tapping opens an in-app thread.

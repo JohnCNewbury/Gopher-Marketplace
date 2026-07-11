@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gopher Deals — Merchant Recruiting Playbook</title>
+<style>
+  :root{
+    --navy:#002461; --navy-soft:#3A4D74; --green:#1CB061; --green-bright:#33D975;
+    --terracotta:#D97757; --cream:#FAF6EF; --card:#FFFFFF; --line:#E3E7EF;
+    --ink:#12203B; --muted:#6B7280; --tint-green:#EAF7EF; --tint-navy:#EAF1FC;
+    --radius:14px; --shadow:0 6px 20px rgba(0,18,48,.08);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:'Nunito','DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55; font-size:16px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:28px 20px 80px}
+  header.hero{
+    background:linear-gradient(140deg,var(--navy) 0%,#013a7e 100%); color:#fff;
+    border-radius:20px; padding:34px 30px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  header.hero::after{content:""; position:absolute; right:-60px; top:-60px; width:220px; height:220px;
+    background:radial-gradient(circle,rgba(51,217,117,.28),transparent 70%);}
+  .badge{display:inline-block; background:rgba(51,217,117,.18); color:var(--green-bright);
+    font-weight:800; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    padding:5px 12px; border-radius:100px; margin-bottom:14px;}
+  header.hero h1{margin:0 0 8px; font-size:30px; line-height:1.15}
+  header.hero p{margin:0; max-width:640px; color:#DCE6F5; font-size:16px}
+  .stamp{margin-top:16px; font-size:12.5px; color:#9FB2D0}
+
+  /* config bar */
+  .config{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:18px 20px; margin:22px 0 8px}
+  .config h2{margin:0 0 4px; font-size:15px; color:var(--navy); text-transform:uppercase; letter-spacing:.05em}
+  .config p{margin:0 0 14px; font-size:13.5px; color:var(--muted)}
+  .cfg-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px}
+  .cfg-field label{display:block; font-size:12px; font-weight:700; color:var(--navy-soft); margin-bottom:4px}
+  .cfg-field input{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px;
+    font-size:14px; font-family:inherit; background:#fff}
+  .cfg-field input:focus{outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(28,176,97,.15)}
+
+  .progress-bar{position:sticky; top:0; z-index:20; background:var(--cream); padding:12px 0 6px; margin-top:10px}
+  .progress-track{height:10px; background:#E7E2D8; border-radius:100px; overflow:hidden}
+  .progress-fill{height:100%; width:0; background:linear-gradient(90deg,var(--green),var(--green-bright)); transition:width .3s}
+  .progress-label{font-size:12.5px; color:var(--muted); margin-top:6px; font-weight:700}
+
+  .toc{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 4px}
+  .toc a{font-size:13px; text-decoration:none; color:var(--navy); background:#fff; border:1px solid var(--line);
+    padding:6px 12px; border-radius:100px; font-weight:700}
+  .toc a:hover{border-color:var(--green); color:var(--green)}
+
+  section.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:24px 26px; margin:18px 0}
+  section.card > h2{margin:0 0 4px; font-size:21px; color:var(--navy); display:flex; align-items:center; gap:10px}
+  .sec-num{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px;
+    background:var(--tint-green); color:var(--green); border-radius:9px; font-size:15px; font-weight:900; flex:0 0 auto}
+  section.card > .lead{margin:2px 0 16px; color:var(--muted); font-size:14.5px}
+  h3{font-size:15.5px; color:var(--navy); margin:18px 0 8px}
+
+  ul.plain{margin:0; padding-left:20px}
+  ul.plain li{margin:6px 0}
+  .why li{margin:9px 0; padding-left:4px}
+  .why b{color:var(--navy)}
+
+  /* checklist */
+  .check{list-style:none; margin:6px 0; padding:0}
+  .check li{display:flex; gap:11px; align-items:flex-start; padding:9px 11px; border:1px solid var(--line);
+    border-radius:10px; margin:7px 0; background:#fff; transition:background .15s,border-color .15s}
+  .check li:hover{border-color:#cfd7e6}
+  .check input[type=checkbox]{margin-top:3px; width:18px; height:18px; accent-color:var(--green); flex:0 0 auto; cursor:pointer}
+  .check label{cursor:pointer; font-size:14.5px}
+  .check li.done{background:var(--tint-green); border-color:#bfe6cf}
+  .check li.done label{color:var(--muted); text-decoration:line-through}
+  .check small{display:block; color:var(--muted); font-size:12.5px; margin-top:2px; text-decoration:none!important}
+
+  /* templates */
+  .tmpl{border:1px solid var(--line); border-radius:11px; overflow:hidden; margin:10px 0 4px}
+  .tmpl-head{display:flex; justify-content:space-between; align-items:center; background:var(--tint-navy);
+    padding:8px 13px; font-size:12.5px; font-weight:800; color:var(--navy); text-transform:uppercase; letter-spacing:.04em}
+  .copy-btn{border:none; background:var(--navy); color:#fff; font-weight:700; font-size:12px; padding:6px 12px;
+    border-radius:7px; cursor:pointer; font-family:inherit}
+  .copy-btn:hover{background:#013a7e}
+  .copy-btn.copied{background:var(--green)}
+  .tmpl pre{margin:0; padding:14px 15px; white-space:pre-wrap; font-family:'DM Sans',ui-monospace,monospace;
+    font-size:13.5px; color:var(--ink); background:#fff}
+  .tok{color:var(--terracotta); font-weight:700}
+
+  .callout{border-left:4px solid var(--green); background:var(--tint-green); padding:13px 16px;
+    border-radius:0 10px 10px 0; margin:14px 0; font-size:14px}
+  .callout.warn{border-left-color:var(--terracotta); background:#FBEDE7}
+  .callout b{color:var(--navy)}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+  .pill{display:inline-block; background:var(--tint-navy); color:var(--navy); font-size:12px; font-weight:800;
+    padding:3px 10px; border-radius:100px; margin:0 4px 4px 0}
+
+  .faq details{border:1px solid var(--line); border-radius:10px; margin:8px 0; background:#fff; padding:2px 14px}
+  .faq summary{cursor:pointer; font-weight:800; color:var(--navy); padding:10px 0; font-size:14.5px}
+  .faq p{margin:0 0 12px; font-size:14px; color:var(--ink)}
+
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+  .btn{border:none; border-radius:9px; padding:11px 18px; font-weight:800; font-size:14px; cursor:pointer; font-family:inherit}
+  .btn-green{background:var(--green); color:#fff} .btn-green:hover{background:#159152}
+  .btn-ghost{background:#fff; border:1px solid var(--line); color:var(--navy)} .btn-ghost:hover{border-color:var(--navy)}
+
+  footer{text-align:center; color:var(--muted); font-size:12.5px; margin-top:30px}
+
+  @media print{
+    body{background:#fff}
+    .progress-bar,.toc,.copy-btn,.actions,.config p{display:none}
+    section.card,header.hero,.config{box-shadow:none; break-inside:avoid}
+    header.hero{color:#000; background:#fff; border:1px solid #ccc}
+    header.hero p{color:#333} .badge{color:var(--green)}
+    a{color:var(--navy); text-decoration:underline}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="badge">Gopher Deals · Merchant Recruiting Playbook</span>
+    <h1>Get local merchants to pre-register for Gopher Deals</h1>
+    <p>A step-by-step, channel-by-channel checklist for recruiting restaurants, shops, food trucks, and local pros onto the platform — with copy-paste messaging you can send today.</p>
+    <div class="stamp">Internal owner playbook · v1 · 2026-07-09 · Pairs with the Deals pre-registration page (<code>gopher-deals.html</code>)</div>
+  </header>
+
+  <!-- CONFIG -->
+  <div class="config">
+    <h2>⚙️ Set this once — it fills every template below</h2>
+    <p>Type your details and each message template auto-updates. Nothing is saved to any server — this stays in your browser.</p>
+    <div class="cfg-grid">
+      <div class="cfg-field"><label>Your Deals pre-registration link</label><input id="cfg-link" type="text" placeholder="https://gophergo.io/gopher-deals.html" value="https://gophergo.io/gopher-deals.html"></div>
+      <div class="cfg-field"><label>Your city / target area</label><input id="cfg-city" type="text" placeholder="Raleigh, NC"></div>
+      <div class="cfg-field"><label>Your name</label><input id="cfg-name" type="text" placeholder="John from Gopher"></div>
+      <div class="cfg-field"><label>Your phone / contact</label><input id="cfg-phone" type="text" placeholder="(555) 555-5555"></div>
+    </div>
+    <div class="callout warn" style="margin-bottom:0">⚠️ <b>Confirm your live link first.</b> The default above is a placeholder — replace it with the real published URL of your Deals pre-registration page before you send anything.</div>
+  </div>
+
+  <!-- progress -->
+  <div class="progress-bar">
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0 of 0 steps complete</div>
+  </div>
+
+  <nav class="toc">
+    <a href="#offer">The offer</a>
+    <a href="#target">Who to target</a>
+    <a href="#prep">Prep</a>
+    <a href="#email">Email</a>
+    <a href="#social">Social</a>
+    <a href="#website">Website</a>
+    <a href="#inperson">In-person / flyer</a>
+    <a href="#sms">SMS / DM</a>
+    <a href="#followup">Follow-up</a>
+    <a href="#objections">Objections</a>
+    <a href="#master">Master checklist</a>
+  </nav>
+
+  <!-- 1 OFFER -->
+  <section class="card" id="offer">
+    <h2><span class="sec-num">1</span> The offer — why a merchant says yes</h2>
+    <p class="lead">Lead every conversation with these. They are the actual Gopher Deals value props — keep the language consistent everywhere.</p>
+    <ul class="why plain">
+      <li><b>Keep 100% of the profit.</b> No lead fees, no bidding wars, no commissions on your deals — you keep the full amount you charge.</li>
+      <li><b>One honest price.</b> Same price in-store and on Gopher — no inflating prices to cover platform fees.</li>
+      <li><b>No pay-to-play.</b> You're seen by <em>every</em> Gopher user in the radius you choose (up to 50 miles) — not a thumbnail you have to pay to surface.</li>
+      <li><b>You keep your brand and your customers.</b> Your logo, tagline, and voice stay front and center; customers order on <em>your</em> site.</li>
+      <li><b>Gopher handles the last mile.</b> Orders can parlay into a Gopher delivery at no cost to you.</li>
+      <li><b>Free to pre-register.</b> It takes ~2 minutes and there's no charge to get listed.</li>
+    </ul>
+    <div class="callout">💡 <b>One-line pitch:</b> "List your deal on Gopher, reach thousands of nearby neighbors, keep 100% of what you charge, and we handle the delivery — free to join."</div>
+  </section>
+
+  <!-- 2 TARGET -->
+  <section class="card" id="target">
+    <h2><span class="sec-num">2</span> Who to target first</h2>
+    <p class="lead">These map to the live Deals categories. Start with businesses that already do takeout/online orders — they convert fastest.</p>
+    <div>
+      <span class="pill">Restaurants &amp; Food Trucks</span>
+      <span class="pill">Local Favorites (cafés, bakeries, treats)</span>
+      <span class="pill">Retail Merchants</span>
+      <span class="pill">Age-Restricted Shops</span>
+      <span class="pill">Service Providers (Local Pros)</span>
+    </div>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="t1"><label for="t1">Build a target list of 25–50 local businesses (name, owner, email, phone, IG handle)<small>Prioritize places that already offer takeout, delivery, or online ordering.</small></label></li>
+      <li><input type="checkbox" id="t2"><label for="t2">Flag 5–10 "anchor" merchants you have a personal/warm connection to — pitch these first</label></li>
+      <li><input type="checkbox" id="t3"><label for="t3">Note each one's category so your pitch uses the right example deal</label></li>
+    </ul>
+  </section>
+
+  <!-- 3 PREP -->
+  <section class="card" id="prep">
+    <h2><span class="sec-num">3</span> Before you send anything (prep)</h2>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="p1"><label for="p1">Confirm the live pre-registration link works end-to-end (submit a test lead yourself)<small>The form backs up to the browser and posts to your lead endpoint — verify a test submission arrives.</small></label></li>
+      <li><input type="checkbox" id="p2"><label for="p2">Fill in the config bar at the top of this page (link, city, name, phone)</label></li>
+      <li><input type="checkbox" id="p3"><label for="p3">Prepare a one-page flyer / PDF leave-behind with the 6 value props + a QR code to the link</label></li>
+      <li><input type="checkbox" id="p4"><label for="p4">Create a QR code that points to your pre-registration link (for flyers, table tents, in-person)</label></li>
+      <li><input type="checkbox" id="p5"><label for="p5">Decide a simple tracking scheme — e.g. add <code>?src=email</code> / <code>?src=ig</code> / <code>?src=flyer</code> to the link per channel<small>Lets you see which channel drives the most sign-ups.</small></label></li>
+      <li><input type="checkbox" id="p6"><label for="p6">Have 2–3 example deals ready per category ("10% off online orders", "Free appetizer with 2 entrées", "Buy 2 dogs, drink's on us")</label></li>
+    </ul>
+  </section>
+
+  <!-- 4 EMAIL -->
+  <section class="card" id="email">
+    <h2><span class="sec-num">4</span> Channel: Email</h2>
+    <p class="lead">Best for your warm list and researched cold outreach. Keep it short, lead with the merchant's benefit, one clear CTA.</p>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="e1"><label for="e1">Send warm/personal contacts first (highest reply rate)</label></li>
+      <li><input type="checkbox" id="e2"><label for="e2">Personalize the first line for cold sends (mention their business by name)</label></li>
+      <li><input type="checkbox" id="e3"><label for="e3">Use the <code>?src=email</code> tracked link</label></li>
+    </ul>
+    <h3>Subject-line options</h3>
+    <ul class="plain">
+      <li>Put <span class="tok tokspan" data-tok="city">[your city]</span> customers in front of your door — free</li>
+      <li>A free way to reach nearby customers (and keep 100%)</li>
+      <li>Quick one for <span class="tok tokspan" data-tok="biz">[Business name]</span> — list a deal on Gopher?</li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>Cold / warm email body</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>Hi [First name],
+
+I'm <span class="tok tokspan" data-tok="name">[your name]</span> with Gopher. We're bringing free local deals to customers around <span class="tok tokspan" data-tok="city">[your city]</span>, and I'd love to feature [Business name].
+
+Here's the short version:
+• You keep 100% of what you charge — no lead fees, no commissions, no bidding wars.
+• One honest price — same in-store and on Gopher.
+• You're seen by every Gopher user in the radius you choose (up to 50 miles) — no pay-to-play.
+• Your logo and brand stay front and center; customers order on your site.
+• Gopher handles the last-mile delivery at no cost to you.
+
+It's free and takes about 2 minutes to pre-register:
+<span class="tok tokspan" data-tok="link">[your link]</span>
+
+Happy to answer anything — just reply here or call/text me at <span class="tok tokspan" data-tok="phone">[your phone]</span>.
+
+Thanks,
+<span class="tok tokspan" data-tok="name">[your name]</span>
+Gopher</pre>
+    </div>
+  </section>
+
+  <!-- 5 SOCIAL -->
+  <section class="card" id="social">
+    <h2><span class="sec-num">5</span> Channel: Social media</h2>
+    <p class="lead">Instagram / Facebook for local businesses; LinkedIn for service providers. Post publicly, then DM merchants directly (DM template in §7).</p>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="s1"><label for="s1">Post the announcement to your Gopher page (IG + FB)</label></li>
+      <li><input type="checkbox" id="s2"><label for="s2">Tag 5–10 local businesses per post to start conversations</label></li>
+      <li><input type="checkbox" id="s3"><label for="s3">Add the link in bio / use the <code>?src=ig</code> tracked link</label></li>
+      <li><input type="checkbox" id="s4"><label for="s4">Repost as a Story with the "link" sticker + a poll ("Want your deal featured?")</label></li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>Instagram / Facebook post</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>📣 Local business owners in <span class="tok tokspan" data-tok="city">[your city]</span> — list your deal on Gopher, free.
+
+✅ Keep 100% of what you charge (no lead fees, no commissions)
+✅ One honest price — same in-store &amp; on Gopher
+✅ Seen by every Gopher user in your radius (up to 50 mi) — no pay-to-play
+✅ Keep your brand &amp; your customers
+✅ We handle the delivery
+
+Pre-register in ~2 min 👉 <span class="tok tokspan" data-tok="link">[your link]</span>
+
+#<span class="tok tokspan" data-tok="cityhash">[YourCity]</span> #ShopLocal #SmallBusiness #LocalDeals #Gopher</pre>
+    </div>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>LinkedIn (service providers / local pros)</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>Local service pros in <span class="tok tokspan" data-tok="city">[your city]</span>: offer a defined-price deal on Gopher and reach nearby customers directly — no lead fees, no bidding wars, no paying for a lead five other pros also bought.
+
+Set your price, set your radius (up to 50 miles), keep 100% of what you charge.
+
+Free to pre-register 👉 <span class="tok tokspan" data-tok="link">[your link]</span></pre>
+    </div>
+  </section>
+
+  <!-- 6 WEBSITE -->
+  <section class="card" id="website">
+    <h2><span class="sec-num">6</span> Channel: Website &amp; newsletter</h2>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="w1"><label for="w1">Add a "For Merchants — List Your Deal" banner/CTA on the Gopher site linking to the pre-registration page</label></li>
+      <li><input type="checkbox" id="w2"><label for="w2">Add a short "Are you a local business?" section to the homepage or footer</label></li>
+      <li><input type="checkbox" id="w3"><label for="w3">Include a merchant call-out in your customer newsletter ("Know a local spot? Tell them to join.")</label></li>
+      <li><input type="checkbox" id="w4"><label for="w4">Use the <code>?src=web</code> tracked link</label></li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>Website banner / button copy</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>Own a local business? Reach thousands of nearby neighbors and keep 100% of what you charge — free to join.
+[ Button: List your deal on Gopher → <span class="tok tokspan" data-tok="link">[your link]</span> ]</pre>
+    </div>
+  </section>
+
+  <!-- 7 IN PERSON -->
+  <section class="card" id="inperson">
+    <h2><span class="sec-num">7</span> Channel: In-person / flyer / walk-in</h2>
+    <p class="lead">The highest-converting channel for local merchants. Walk in, ask for the owner/manager, keep it under 60 seconds, leave the flyer + QR.</p>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="i1"><label for="i1">Bring flyers with the QR code to your pre-registration link</label></li>
+      <li><input type="checkbox" id="i2"><label for="i2">Ask for the owner/manager by name where you can</label></li>
+      <li><input type="checkbox" id="i3"><label for="i3">Deliver the 30-second pitch, then leave the flyer even if they're busy</label></li>
+      <li><input type="checkbox" id="i4"><label for="i4">Log who you visited + follow up in 3–4 days</label></li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>30-second in-person script</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>"Hi — I'm <span class="tok tokspan" data-tok="name">[your name]</span> with Gopher. We put local deals in front of nearby customers, and I think [Business name] would be a great fit.
+
+The short version: it's free, you keep 100% of what you charge, you set your own price, and we handle delivery. No lead fees, no commissions.
+
+I'll leave this flyer — you can scan the code and pre-register in about two minutes. Can I follow up later this week?"</pre>
+    </div>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>Flyer headline + bullets</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>LIST YOUR DEAL ON GOPHER — FREE
+
+Reach thousands of nearby neighbors. Keep 100% of what you charge.
+• No lead fees · no commissions · no pay-to-play
+• One honest price — same in-store &amp; on Gopher
+• Seen by every Gopher user in your radius (up to 50 mi)
+• Keep your brand &amp; your customers — we handle delivery
+
+Pre-register in ~2 minutes:  [ QR CODE ]   <span class="tok tokspan" data-tok="link">[your link]</span>
+Questions? <span class="tok tokspan" data-tok="name">[your name]</span> · <span class="tok tokspan" data-tok="phone">[your phone]</span></pre>
+    </div>
+  </section>
+
+  <!-- 8 SMS -->
+  <section class="card" id="sms">
+    <h2><span class="sec-num">8</span> Channel: SMS / DM (short-form)</h2>
+    <p class="lead">Only text merchants you have a relationship with or who opted in. Keep it to 2–3 lines with one link.</p>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="m1"><label for="m1">Text/DM warm contacts only (respect opt-in / anti-spam rules)</label></li>
+      <li><input type="checkbox" id="m2"><label for="m2">One link, one ask</label></li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>SMS / Instagram DM</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>Hey [First name]! It's <span class="tok tokspan" data-tok="name">[your name]</span> with Gopher. We're featuring free local deals around <span class="tok tokspan" data-tok="city">[your city]</span> — you'd keep 100% of what you charge and we handle delivery. Free + ~2 min to pre-register: <span class="tok tokspan" data-tok="link">[your link]</span></pre>
+    </div>
+  </section>
+
+  <!-- 9 FOLLOW UP -->
+  <section class="card" id="followup">
+    <h2><span class="sec-num">9</span> Follow-up &amp; tracking</h2>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="f1"><label for="f1">Follow up with non-responders after 3–4 days (one nudge, then leave it)</label></li>
+      <li><input type="checkbox" id="f2"><label for="f2">Log every pre-registration as it comes in (business, category, channel)</label></li>
+      <li><input type="checkbox" id="f3"><label for="f3">Thank each merchant who signs up + tell them the next step (deal review before it goes live)</label></li>
+      <li><input type="checkbox" id="f4"><label for="f4">Track sign-ups by <code>?src=</code> tag to see which channel wins — double down there</label></li>
+      <li><input type="checkbox" id="f5"><label for="f5">Ask happy merchants for a referral to one other local business</label></li>
+    </ul>
+    <div class="tmpl">
+      <div class="tmpl-head"><span>Nudge / follow-up message</span><button class="copy-btn" data-copy>Copy</button></div>
+      <pre data-template>Hi [First name] — just circling back on featuring [Business name] on Gopher. It's free, you keep 100% of what you charge, and it takes about 2 minutes: <span class="tok tokspan" data-tok="link">[your link]</span>. Happy to walk you through it — <span class="tok tokspan" data-tok="phone">[your phone]</span>.</pre>
+    </div>
+  </section>
+
+  <!-- 10 OBJECTIONS -->
+  <section class="card faq" id="objections">
+    <h2><span class="sec-num">10</span> Handling common questions</h2>
+    <details><summary>Is it really free?</summary><p>Yes — pre-registration is free and there are no lead fees, no bidding wars, and no commissions on your deals. You keep 100% of the amount you charge for every deal you complete.</p></details>
+    <details><summary>Do I keep my customers and my brand?</summary><p>Yes. Your logo, tagline, and voice stay front and center, and customers order on your own site. Gopher puts you in front of nearby neighbors — it doesn't flatten you into a thumbnail.</p></details>
+    <details><summary>What's the catch / how do you make money?</summary><p>There's no per-order commission on your deal. Gopher earns on the last-mile delivery side (small customer-paid fees), not by taxing your sale — so you can publish one honest price, the same in-store and on Gopher.</p></details>
+    <details><summary>How do orders actually work?</summary><p>Customers browse local deals, view yours, and order directly on your site. If they want it delivered, the order can parlay into a Gopher request and a nearby Gopher brings it — at no cost to you.</p></details>
+    <details><summary>I have more than one location.</summary><p>No problem — you add each location in your owner dashboard and post a deal per location. Each deal (and its pickup) is tied to that specific location.</p></details>
+    <details><summary>I'm a service provider, not a shop.</summary><p>Eligible local pros can offer a defined-price service deal within a radius you choose (up to 50 miles). Customers redeem it and it routes a request directly to you.</p></details>
+  </section>
+
+  <!-- MASTER -->
+  <section class="card" id="master">
+    <h2><span class="sec-num">✓</span> Master checklist (printable)</h2>
+    <p class="lead">The whole campaign at a glance. Check items off — progress saves in your browser. Use the buttons to print or reset.</p>
+    <ul class="check" data-check>
+      <li><input type="checkbox" id="mm1"><label for="mm1"><b>Prep:</b> live link tested, config filled, flyer + QR ready, tracking tags decided</label></li>
+      <li><input type="checkbox" id="mm2"><label for="mm2"><b>Target list:</b> 25–50 merchants researched, anchors flagged</label></li>
+      <li><input type="checkbox" id="mm3"><label for="mm3"><b>Email:</b> warm list sent, cold list personalized + sent (<code>?src=email</code>)</label></li>
+      <li><input type="checkbox" id="mm4"><label for="mm4"><b>Social:</b> IG + FB posted, businesses tagged, LinkedIn for pros (<code>?src=ig</code>)</label></li>
+      <li><input type="checkbox" id="mm5"><label for="mm5"><b>Website:</b> merchant CTA/banner live + newsletter mention (<code>?src=web</code>)</label></li>
+      <li><input type="checkbox" id="mm6"><label for="mm6"><b>In-person:</b> walk-ins done, flyers left, visits logged (<code>?src=flyer</code>)</label></li>
+      <li><input type="checkbox" id="mm7"><label for="mm7"><b>SMS/DM:</b> warm contacts messaged</label></li>
+      <li><input type="checkbox" id="mm8"><label for="mm8"><b>Follow-up:</b> nudges sent, sign-ups logged + thanked, referrals asked</label></li>
+      <li><input type="checkbox" id="mm9"><label for="mm9"><b>Review:</b> best channel identified — double down next cycle</label></li>
+    </ul>
+    <div class="actions">
+      <button class="btn btn-green" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <button class="btn btn-ghost" id="resetBtn">Reset all checkboxes</button>
+    </div>
+  </section>
+
+  <footer>
+    Gopher Deals — Merchant Recruiting Playbook · Internal owner tool · Progress + config are stored only in your browser (localStorage).<br>
+    Value props sourced from the live Deals page (<code>Final/gopher-deals.html</code>). Confirm your live pre-registration URL before distributing.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var LS_CFG='gopherRecruitCfg', LS_CHK='gopherRecruitChecks';
+
+  /* ---------- config → live template fill ---------- */
+  var inputs={link:document.getElementById('cfg-link'), city:document.getElementById('cfg-city'),
+              name:document.getElementById('cfg-name'), phone:document.getElementById('cfg-phone')};
+  var defaults={link:'https://gophergo.io/gopher-deals.html', city:'[your city]', name:'[your name]',
+                phone:'[your phone]', biz:'[Business name]', cityhash:'[YourCity]'};
+
+  function cfg(){
+    return {
+      link: (inputs.link.value.trim()||defaults.link),
+      city: (inputs.city.value.trim()||defaults.city),
+      name: (inputs.name.value.trim()||defaults.name),
+      phone:(inputs.phone.value.trim()||defaults.phone),
+      biz:  defaults.biz,
+      cityhash: (inputs.city.value.trim()? inputs.city.value.replace(/[^A-Za-z0-9]/g,'') : defaults.cityhash)
+    };
+  }
+  function fillTokens(){
+    var c=cfg();
+    document.querySelectorAll('.tokspan').forEach(function(el){
+      var k=el.getAttribute('data-tok'); if(c[k]!=null) el.textContent=c[k];
+    });
+    saveCfg();
+  }
+  function saveCfg(){
+    try{ localStorage.setItem(LS_CFG, JSON.stringify({
+      link:inputs.link.value, city:inputs.city.value, name:inputs.name.value, phone:inputs.phone.value
+    })); }catch(e){}
+  }
+  function loadCfg(){
+    try{ var s=JSON.parse(localStorage.getItem(LS_CFG)||'{}');
+      if(s.link!=null) inputs.link.value=s.link;
+      if(s.city) inputs.city.value=s.city;
+      if(s.name) inputs.name.value=s.name;
+      if(s.phone) inputs.phone.value=s.phone;
+    }catch(e){}
+  }
+  Object.keys(inputs).forEach(function(k){ inputs[k].addEventListener('input', fillTokens); });
+
+  /* ---------- copy buttons ---------- */
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre=btn.closest('.tmpl').querySelector('[data-template]');
+      var text=pre.innerText;
+      function done(){ var old=btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent=old; btn.classList.remove('copied'); },1600); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, function(){ fallback(text); done(); });
+      } else { fallback(text); done(); }
+    });
+  });
+  function fallback(text){
+    var ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);
+  }
+
+  /* ---------- checklist state + progress ---------- */
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('.check input[type=checkbox]'));
+  function saveChecks(){
+    var st={}; boxes.forEach(function(b){ if(b.id) st[b.id]=b.checked; });
+    try{ localStorage.setItem(LS_CHK, JSON.stringify(st)); }catch(e){}
+  }
+  function loadChecks(){
+    var st={}; try{ st=JSON.parse(localStorage.getItem(LS_CHK)||'{}'); }catch(e){}
+    boxes.forEach(function(b){ if(b.id && st[b.id]){ b.checked=true; } syncRow(b); });
+  }
+  function syncRow(b){ var li=b.closest('li'); if(li) li.classList.toggle('done', b.checked); }
+  function updateProgress(){
+    var total=boxes.length, done=boxes.filter(function(b){return b.checked;}).length;
+    var pct= total? Math.round(done/total*100):0;
+    document.getElementById('pfill').style.width=pct+'%';
+    document.getElementById('plabel').textContent=done+' of '+total+' steps complete ('+pct+'%)';
+  }
+  boxes.forEach(function(b){
+    b.addEventListener('change', function(){ syncRow(b); saveChecks(); updateProgress(); });
+  });
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(!confirm('Reset all checkboxes?')) return;
+    boxes.forEach(function(b){ b.checked=false; syncRow(b); }); saveChecks(); updateProgress();
+  });
+
+  /* ---------- init ---------- */
+  loadCfg(); fillTokens(); loadChecks(); updateProgress();
+})();
+</script>
+</body>
+</html>

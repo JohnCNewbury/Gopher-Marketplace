@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gopher Deals — Pathway Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#002461; --navy-mid:#0a3a8c; --navy-soft:#eef0f8;
+    --green:#1CB061; --green-br:#33D975; --green-soft:#e2f3e9;
+    --deals:#e8743b; --deals-dk:#c95a26; --deals-soft:#fdeee4;   /* Merchant / DLM */
+    --prov:#3457c9; --prov-dk:#243f9e; --prov-soft:#e9edfb;      /* Provider / DLP */
+    --sand:#FBF3E4; --card:#ffffff; --ink:#1f2733; --muted:#6b7280;
+    --line:#e7e2d4; --line2:#eceadf; --code:#0d2350;
+    --shadow:0 1px 2px rgba(0,36,97,.06), 0 8px 24px rgba(0,36,97,.07);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; font-family:'Nunito',system-ui,-apple-system,Segoe UI,sans-serif;
+    color:var(--ink); background:var(--sand);
+    background-image:radial-gradient(circle at 12% 0%, #fff8ec 0, transparent 45%),
+                     radial-gradient(circle at 100% 8%, #f4faf6 0, transparent 40%);
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 20px 80px}
+
+  /* ── Header ── */
+  header.top{
+    position:sticky; top:0; z-index:20; margin:0 -20px 0; padding:14px 20px;
+    background:rgba(251,243,228,.86); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:11px; margin-right:auto}
+  .brand .dot{width:30px;height:30px;border-radius:9px;background:var(--green);
+    display:grid;place-items:center;color:#fff;font-weight:900;font-size:17px;box-shadow:0 3px 8px rgba(28,176,97,.35)}
+  .brand h1{font-size:16px;margin:0;font-weight:900;color:var(--navy);letter-spacing:-.01em;line-height:1.1}
+  .brand span{font-size:12px;color:var(--muted);font-weight:700}
+  .legend{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;
+    padding:4px 9px;border-radius:999px;border:1px solid var(--line)}
+  .chip i{width:9px;height:9px;border-radius:3px;display:inline-block}
+  .chip.m i{background:var(--deals)} .chip.p i{background:var(--prov)}
+  .chip.m{background:var(--deals-soft);color:var(--deals-dk);border-color:#f4d3c1}
+  .chip.p{background:var(--prov-soft);color:var(--prov-dk);border-color:#cdd6f4}
+  .btn{font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--navy);
+    padding:7px 13px;border-radius:9px;transition:.15s}
+  .btn:hover{border-color:var(--green);color:var(--green)}
+
+  /* ── Hero ── */
+  .hero{padding:34px 0 8px}
+  .hero .kicker{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin:0 0 8px}
+  .hero h2{font-size:30px;line-height:1.12;margin:0 0 10px;font-weight:900;color:var(--navy);letter-spacing:-.02em}
+  .hero p{font-size:15px;color:var(--muted);max-width:640px;margin:0}
+  .hero .meta{margin-top:14px;font-size:12px;color:var(--muted);font-weight:700}
+  .hero .meta b{color:var(--navy)}
+
+  /* ── Two-track summary ── */
+  .tracks{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 6px}
+  .track{border-radius:var(--radius);padding:16px 17px;box-shadow:var(--shadow);border:1px solid var(--line2)}
+  .track.m{background:linear-gradient(180deg,var(--deals-soft),#fff);border-color:#f2cdb9}
+  .track.p{background:linear-gradient(180deg,var(--prov-soft),#fff);border-color:#cfd8f5}
+  .track h3{margin:0 0 3px;font-size:15px;font-weight:900}
+  .track.m h3{color:var(--deals-dk)} .track.p h3{color:var(--prov-dk)}
+  .track .who{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:9px}
+  .track ul{margin:0;padding-left:16px;font-size:12.8px;color:var(--ink)}
+  .track li{margin:3px 0}
+  .track li b{font-weight:800}
+
+  /* ── Stage spine ── */
+  .spine{position:relative;margin-top:30px;padding-left:0}
+  .stage{position:relative;margin:0 0 16px;padding-left:66px}
+  .stage:before{content:"";position:absolute;left:26px;top:44px;bottom:-16px;width:2px;
+    background:linear-gradient(var(--green),var(--green-br));opacity:.4}
+  .stage:last-child:before{display:none}
+  .node{position:absolute;left:0;top:0;width:52px;height:52px;border-radius:15px;
+    background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900;font-size:21px;
+    box-shadow:0 6px 16px rgba(0,36,97,.28);border:3px solid #fff}
+  .stage.redeem .node{background:var(--green)}
+  .card{background:var(--card);border:1px solid var(--line2);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden}
+  .card > .head{display:flex;align-items:center;gap:12px;padding:15px 17px;cursor:pointer;user-select:none}
+  .card > .head:hover{background:#fcfaf4}
+  .card .head .t{flex:1}
+  .card .head h3{margin:0;font-size:16.5px;font-weight:900;color:var(--navy);letter-spacing:-.01em}
+  .card .head p{margin:2px 0 0;font-size:12.8px;color:var(--muted);font-weight:600}
+  .caret{width:24px;height:24px;flex:none;border-radius:7px;background:var(--navy-soft);color:var(--navy);
+    display:grid;place-items:center;font-size:13px;transition:.2s;font-weight:900}
+  .card.open .caret{transform:rotate(180deg);background:var(--green-soft);color:var(--green)}
+  .body{display:none;padding:0 17px 17px;border-top:1px solid var(--line2)}
+  .card.open .body{display:block;animation:fade .22s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .body h4{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+  .body p{font-size:13.4px;margin:8px 0}
+  .body ul{font-size:13.2px;margin:8px 0;padding-left:18px}
+  .body li{margin:4px 0}
+
+  /* code chip */
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:700;
+    background:var(--navy-soft);color:var(--code);padding:1.5px 7px;border-radius:6px;white-space:nowrap;
+    border:1px solid #dfe4f4}
+  .tag{display:inline-block;font-size:10.5px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;
+    padding:2px 8px;border-radius:999px;vertical-align:middle}
+  .tag.built{background:var(--green-soft);color:#0f7a44}
+  .tag.seam{background:#fff1e0;color:#a5560d}
+  .tag.m{background:var(--deals-soft);color:var(--deals-dk)}
+  .tag.p{background:var(--prov-soft);color:var(--prov-dk)}
+
+  /* ── Data-model tree ── */
+  .tree{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:#fbfaf6;border:1px solid var(--line2);border-radius:12px;padding:15px 16px;margin:10px 0}
+  .tree .lvl{display:flex;align-items:center;gap:8px;padding:3px 0}
+  .tree .box{font-weight:800;color:#fff;padding:2px 9px;border-radius:7px;font-family:'Nunito',sans-serif;font-size:12px}
+  .tree .b-acc{background:var(--navy)} .tree .b-biz{background:var(--prov)}
+  .tree .b-loc{background:var(--deals)} .tree .b-deal{background:var(--green)}
+  .tree .note{color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;font-size:11.5px}
+  .tree .ind1{margin-left:22px} .tree .ind2{margin-left:44px} .tree .ind3{margin-left:66px}
+
+  /* ── form field grid ── */
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:8px 0}
+  .field{font-size:12.5px;padding:6px 10px;background:#fbfaf6;border:1px solid var(--line2);border-radius:8px}
+  .field b{display:block;font-weight:800;color:var(--navy);font-size:12px}
+  .field span{color:var(--muted);font-size:11px}
+  .field.hot{background:#fff8ef;border-color:#f3d9bf}
+  .field.hot b{color:var(--deals-dk)}
+
+  /* ── API table ── */
+  .apis{margin:10px 0;border-radius:12px;overflow:hidden;border:1px solid var(--line2)}
+  .api{display:grid;grid-template-columns:1.15fr 1.5fr .8fr;gap:10px;padding:11px 14px;font-size:12.6px;align-items:center}
+  .api + .api{border-top:1px solid var(--line2)}
+  .api.h{background:var(--navy);color:#fff;font-weight:900;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+  .api .nm{font-weight:800;color:var(--navy)}
+  .api .st{font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em;justify-self:start;
+    padding:3px 9px;border-radius:999px}
+  .api .st.live{background:var(--green-soft);color:#0f7a44}
+  .api .st.need{background:#ffe6e0;color:#c0392b}
+  .api .st.baked{background:#fdf0d9;color:#9a6a11}
+  .api:nth-child(even):not(.h){background:#fcfbf7}
+
+  /* ── redemption fork ── */
+  .fork{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0}
+  .path{border-radius:14px;padding:15px;border:1px solid var(--line2);background:#fff}
+  .path.m{border-color:#f2cdb9;background:linear-gradient(180deg,#fff9f4,#fff)}
+  .path.p{border-color:#cfd8f5;background:linear-gradient(180deg,#f6f8ff,#fff)}
+  .path h5{margin:0 0 8px;font-size:14px;font-weight:900}
+  .path.m h5{color:var(--deals-dk)} .path.p h5{color:var(--prov-dk)}
+  .path .step{display:flex;gap:9px;font-size:12.5px;margin:7px 0;align-items:flex-start}
+  .path .step .n{flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;
+    font-size:11px;font-weight:900;color:#fff}
+  .path.m .step .n{background:var(--deals)} .path.p .step .n{background:var(--prov)}
+
+  .callout{display:flex;gap:11px;padding:12px 14px;border-radius:12px;background:var(--navy-soft);
+    border:1px solid #dbe1f2;font-size:12.8px;margin:12px 0}
+  .callout .ic{flex:none;font-size:17px;line-height:1.3}
+  .callout b{color:var(--navy)}
+  .callout.warn{background:#fff6ea;border-color:#f3ddbb} .callout.warn b{color:var(--deals-dk)}
+
+  /* ── seams checklist ── */
+  .section-h{margin:40px 0 4px;font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--green)}
+  .section-sub{margin:0 0 16px;font-size:22px;font-weight:900;color:var(--navy);letter-spacing:-.01em}
+  .seams{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seam{display:flex;gap:11px;padding:13px 15px;background:#fff;border:1px solid var(--line2);border-radius:13px;box-shadow:var(--shadow)}
+  .seam .num{flex:none;width:26px;height:26px;border-radius:8px;background:#fff1e0;color:#a5560d;
+    display:grid;place-items:center;font-weight:900;font-size:13px}
+  .seam h5{margin:0 0 2px;font-size:13.5px;font-weight:900;color:var(--navy)}
+  .seam p{margin:0;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4}
+  .seam .code{font-size:10.5px}
+
+  /* ── #2 tracker preview ── */
+  .tracker{margin-top:30px;border-radius:var(--radius);padding:22px 22px 20px;color:#fff;box-shadow:var(--shadow);
+    background:linear-gradient(135deg,var(--navy),var(--navy-mid))}
+  .tracker .lab{font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--green-br);margin:0 0 7px}
+  .tracker h3{margin:0 0 6px;font-size:20px;font-weight:900;letter-spacing:-.01em}
+  .tracker > p{margin:0 0 15px;font-size:13.4px;color:#cdd6ea;max-width:640px}
+  .tgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .tcell{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:11px;padding:12px 13px}
+  .tcell b{display:block;font-size:12.5px;font-weight:900;margin-bottom:3px}
+  .tcell span{font-size:11.5px;color:#b9c4dc;line-height:1.4}
+  .tracker .foot{margin-top:14px;font-size:11.5px;color:#9fb0d0;font-weight:700}
+
+  footer.end{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);font-weight:600}
+  footer.end code{font-family:ui-monospace,monospace;color:var(--navy);font-size:11.5px}
+
+  @media (max-width:720px){
+    .tracks,.fork,.seams,.fields{grid-template-columns:1fr}
+    .tgrid{grid-template-columns:1fr 1fr}
+    .api{grid-template-columns:1fr;gap:3px}
+    .api.h{display:none}
+    .stage{padding-left:56px}
+    .node{width:44px;height:44px;font-size:18px}
+    .stage:before{left:22px}
+    .hero h2{font-size:25px}
+  }
+  @media print{
+    header.top,.btn{display:none} body{background:#fff}
+    .body{display:block!important} .caret{display:none}
+    .card,.seam,.track{box-shadow:none} .stage{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="dot">G</div>
+    <div><h1>Gopher Deals™ — Pathway Map</h1><span>registration → data → redemption → dashboard</span></div>
+  </div>
+  <div class="legend">
+    <span class="chip m"><i></i>DLM · Merchant</span>
+    <span class="chip p"><i></i>DLP · Provider</span>
+    <button class="btn" id="toggleAll">Expand all</button>
+    <button class="btn" onclick="window.print()">Print / PDF</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <p class="kicker">End-to-end architecture</p>
+    <h2>How a deal travels — from sign-up to the customer's tap.</h2>
+    <p>Two marketplaces share one system: <b>merchants</b> post promos with last-mile delivery, and <b>Local Pros</b> post defined-price services. Every stage below is built in the prototype — click any stage to see the exact code seams.</p>
+    <div class="meta">Grounded in <b>gopher-deals.html</b>, <b>gopher-request.html</b>, <b>gopher-connect.html</b> · companion to <b>gopher-deals-pathway.md</b></div>
+  </section>
+
+  <!-- Two-track summary -->
+  <div class="tracks">
+    <div class="track m">
+      <h3>DLM — Merchant / last-mile</h3>
+      <div class="who">A local business (restaurant, retail, convenience, age-restricted)</div>
+      <ul>
+        <li><b>Deal:</b> a promo/offer + optional code</li>
+        <li><b>Redeem:</b> order on their site, or parlay into a Gopher delivery</li>
+        <li><b>Reach:</b> the merchant's fixed location(s)</li>
+      </ul>
+    </div>
+    <div class="track p">
+      <h3>DLP — Local Pro / provider</h3>
+      <div class="who">An existing Worker who qualifies for the Service-Provider tier</div>
+      <ul>
+        <li><b>Deal:</b> one honest defined price for a service</li>
+        <li><b>Register:</b> eligibility funnel on the web → deal posted in the Gopher Go app</li>
+        <li><b>Redeem:</b> a provider-directed request, auto-accepted</li>
+        <li><b>Reach:</b> up to 50 mi, set in the Gopher Go app</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- STAGE SPINE -->
+  <div class="spine">
+
+    <!-- Stage 1 -->
+    <div class="stage">
+      <div class="node">1</div>
+      <div class="card">
+        <div class="head">
+          <div class="t"><h3>Registration <span class="tag built">Built</span></h3><p>Merchant registers on the web; provider is a two-entry flow (eligibility → in-app)</p></div>
+          <div class="caret">▾</div>
+        </div>
+        <div class="body">
+          <h4>Merchant form — captured fields</h4>
+          <div class="fields">
+            <div class="field"><b>Business name / logo / tagline</b><span>brand identity</span></div>
+            <div class="field hot"><b>Business address + "is mobile"</b><span>drives pickup at redemption</span></div>
+            <div class="field hot"><b>Website</b><span>powers the order-on-site embed</span></div>
+            <div class="field"><b>Category</b><span>Restaurants · Retail · Age-Restricted…</span></div>
+            <div class="field"><b>Deal + promo code</b><span>the offer itself</span></div>
+            <div class="field hot"><b>Searchable keywords (×3)</b><span>becomes the customer search index</span></div>
+            <div class="field"><b>Owner name / phone / email</b><span>+ referral code</span></div>
+            <div class="field"><b>Phone verified (OTP)</b><span>currently simulated</span></div>
+          </div>
+          <h4>Provider — a two-entry flow <span class="tag p">DLP</span></h4>
+          <p><b>Entry A · public eligibility funnel</b> (<span class="code">gopher-deals.html</span>) — the "I'm a Service Provider" card collects only <b>First, Last, SMS, Email, Gopher ID</b> (the ⓘ points to Refer &amp; Earn). Submit → "we'll email you eligibility terms + next steps + a Gopher Go inbox message." No deal, price or reach here.</p>
+          <p><b>Entry B · in-app deal form</b> (<span class="code">gopher-go.html</span>) — an eligible worker taps <b>"Offer My Service →"</b> above Profile and posts the deal <i>minus personal</i>: earn → <b>customer pays ×1.10</b> (Deal Boost), normal → struck ×1.10, and a <b>1–50 mi reach slider</b> (capped 50). Not eligible → the button locks and redirects to <span class="code">gopher-go-101.html#offer-deals</span>.</p>
+          <h4>Where the info goes — today</h4>
+          <ul>
+            <li><span class="code">submitForm()</span> <span class="code">gopher-deals.html:3664</span> serializes the form</li>
+            <li>Writes a local backup → <span class="code">localStorage['gopherLeads']</span> <span class="code">:3702</span></li>
+            <li>POSTs to a <b>Google Apps Script Web App</b> as <span class="code">text/plain</span> (CORS-simple) → appends a <b>Google Sheet</b> row <span class="code">:3662 / :3710</span></li>
+            <li>Console escape hatch: <span class="code">downloadGopherLeads()</span> <span class="code">:3719</span> exports the backup as CSV</li>
+          </ul>
+          <div class="callout warn"><span class="ic">⚠️</span><div><b>This is the current persistence layer.</b> There is no deals database yet — a "lead" is a Sheet row. Production replaces the endpoint behind this same seam; until then, <b>the Sheet is the merchant pipeline.</b></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage 2 -->
+    <div class="stage">
+      <div class="node">2</div>
+      <div class="card">
+        <div class="head">
+          <div class="t"><h3>Data model <span class="tag built">Built</span></h3><p>Registration becomes structure — account → businesses → locations → deals</p></div>
+          <div class="caret">▾</div>
+        </div>
+        <div class="body">
+          <p>Defined in the <span class="code">ACCOUNT</span> object at <span class="code">gopher-deals.html:4943</span>:</p>
+          <div class="tree">
+            <div class="lvl"><span class="box b-acc">ACCOUNT</span> <span class="note">one owner login</span></div>
+            <div class="lvl ind1"><span class="box b-biz">business</span> <span class="note">{ id, name, tagline, color, locations[] }</span></div>
+            <div class="lvl ind2"><span class="box b-loc">location</span> <span class="note">{ label, address, deals, mobileAddress?, orderSite? }</span></div>
+            <div class="lvl ind3"><span class="box b-deal">deal</span> <span class="note">authored per-location</span></div>
+          </div>
+          <h4>The load-bearing rule — deals are location-bound</h4>
+          <ul>
+            <li>Each deal ties to <b>exactly one</b> location. That location's ordering site <i>and</i> the parlayed pickup both resolve to <b>that</b> address.</li>
+            <li>To offer elsewhere, the owner <b>adds a location</b> <span class="code">:5189</span> and submits a <b>new</b> deal there — no "one deal, many locations" fan-out. Keeps pickup unambiguous.</li>
+            <li><b>Mobile / food-truck</b> sets <span class="code">mobileAddress:true</span> <span class="code">applyMobileAddr() :5037</span> — this is what makes redemption ask the customer for a pickup address.</li>
+          </ul>
+          <p><b>Authoring:</b> the New-Deal form has a business/location picker <span class="code">populateLocationSelect() :4970</span> that pre-fills from the last deal at that location <span class="code">prefillFromLocation() :4980</span>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage 3 -->
+    <div class="stage">
+      <div class="node">3</div>
+      <div class="card">
+        <div class="head">
+          <div class="t"><h3>APIs &amp; external services</h3><p>What the pathway calls out to — and what still needs building</p></div>
+          <div class="caret">▾</div>
+        </div>
+        <div class="body">
+          <div class="apis">
+            <div class="api h"><div>Service</div><div>Purpose</div><div>Status</div></div>
+            <div class="api"><div class="nm">Google Maps JS</div><div>Renders the merchant audience map <span class="code">:2316</span></div><div><span class="st live">Live·key</span></div></div>
+            <div class="api"><div class="nm">Google Places</div><div>Address autocomplete on merchant address fields <span class="code">:3208</span></div><div><span class="st live">Live·key</span></div></div>
+            <div class="api"><div class="nm">Google Geocoding</div><div>Address → lat/lng to drop the pin <span class="code">:3194</span></div><div><span class="st live">Live·key</span></div></div>
+            <div class="api"><div class="nm">Google Distance Matrix</div><div>Real mileage → delivery price when a deal parlays into a request</div><div><span class="st live">Live</span></div></div>
+            <div class="api"><div class="nm">Google Apps Script</div><div>Current lead/registration persistence → Sheet <span class="code">:3662</span></div><div><span class="st baked">Interim</span></div></div>
+            <div class="api"><div class="nm">SMS / OTP provider</div><div>Verify owner phone at registration</div><div><span class="st need">Needed</span></div></div>
+          </div>
+          <div class="callout"><span class="ic">🗺️</span><div><b>The audience map uses NO live data API.</b> "X customers · Y workers in radius" comes from a <b>baked static dataset</b> — <span class="code">assets/js/gopher-deals-audience.js</span> (an <span class="code">AUDIENCE_POINTS</span> array of <span class="code">[lat,lng,role]</span>) filtered client-side via <span class="code">eachInRadius()</span>. Production swaps it for a live <span class="code">GopherIQData.lookup(zip,radius)</span> behind the same seam.</div></div>
+          <div class="callout warn"><span class="ic">🔑</span><div><b>Deploy gotcha:</b> the Maps key is HTTP-referrer restricted. On any new origin (e.g. <span class="code">*.netlify.app</span>) the map errors until you allowlist <span class="code">https://&lt;origin&gt;/*</span> in Google Cloud Console. Registration + lead capture still work without it. Walkthrough: <span class="code">SETUP-Google-Maps-Steps.html</span>.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage 4 -->
+    <div class="stage">
+      <div class="node">4</div>
+      <div class="card">
+        <div class="head">
+          <div class="t"><h3>Dashboard management <span class="tag built">Built</span></h3><p>The merchant portal inside the Deals page</p></div>
+          <div class="caret">▾</div>
+        </div>
+        <div class="body">
+          <p>Left nav: <b>Dashboard · My Deals · Inbox · Business Info · Users &amp; Access · Feature My Business</b>, with a live-preview phone mirroring the customer view.</p>
+          <h4>My Deals — status is real <span class="code">:4432</span></h4>
+          <p style="margin-bottom:6px">
+            <span class="tag" style="background:var(--green-soft);color:#0f7a44">● Live</span>
+            <span class="tag" style="background:#fdf0d9;color:#9a6a11">In review</span>
+            <span class="tag" style="background:#eef0f8;color:#4a5673">Draft</span>
+            + a <b>Views</b> counter per deal.
+          </p>
+          <ul>
+            <li><b>Display list today</b> — edit / pause / delete are backend actions, not yet wired.</li>
+            <li><b>Business Info</b> shows Active / Verified <span class="code">:4486</span> — the identity surface SPINE-1 will own.</li>
+            <li><b>Feature My Business</b> <span class="code">:4524</span> — an open-bid auction; top bid per category is featured next month, top overall = the Featured Deal.</li>
+            <li><b>Live preview</b> embeds the merchant's own ordering site in a sandboxed <span class="code">&lt;iframe&gt;</span> <span class="code">:4386</span>.</li>
+          </ul>
+          <div class="callout"><span class="ic">🛠️</span><div><b>Providers create + manage deals in the Gopher Go app</b> (the "Offer My Service" flow — built), not this merchant portal. Admin deal-review + click tracking live in the HQ Dashboard's <span class="code">advertiserDeals.js</span>.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage 5 -->
+    <div class="stage redeem">
+      <div class="node">5</div>
+      <div class="card">
+        <div class="head">
+          <div class="t"><h3>Application &amp; redemption <span class="tag built">Built</span></h3><p>In request · connect · Go — browse, find, and the two redemption paths</p></div>
+          <div class="caret">▾</div>
+        </div>
+        <div class="body">
+          <h4>Browse &amp; find</h4>
+          <p>"View Local Deals": keyword search (<b>matches the registration keywords</b>), category rails incl. a Local-Pro rail, and distance labels. Ordering is proximity — customer vs. the merchant's <b>fixed</b> address (mobile → registered business address).</p>
+          <h4>Then the fork</h4>
+          <div class="fork">
+            <div class="path m">
+              <h5>Merchant deal <span class="tag m">DLM</span></h5>
+              <div class="step"><span class="n">A</span><div><b>Order directly</b> — merchant site in a sandboxed iframe with a load-timeout + "open in new tab" fallback (many sites block embedding). <span class="code">:22584/:22783</span></div></div>
+              <div class="step"><span class="n">B</span><div><b>"Bring you your deal"</b> parlay → Gopher Request. <span class="code">data-deal-cta :23011</span></div></div>
+              <div class="step"><span class="n">↳</span><div>Fixed loc → pickup auto-fills, field hidden. <b>Mobile</b> → pickup field shown for the customer <span class="code">dealPickupField :23035</span></div></div>
+            </div>
+            <div class="path p">
+              <h5>Provider deal <span class="tag p">DLP</span></h5>
+              <div class="step"><span class="n">1</span><div><b>Redeem Deal</b> <span class="code">svcDealRedeem :22883</span></div></div>
+              <div class="step"><span class="n">2</span><div>Sets <span class="code">state.dealProvider</span> <span class="code">:14494</span> → routes to <b>that provider only</b></div></div>
+              <div class="step"><span class="n">3</span><div><b>Auto-accepted</b>, flexible within-2-week request — <b>no broadcast</b>. Provider contacts to schedule.</div></div>
+            </div>
+          </div>
+          <div class="callout warn"><span class="ic">🚧</span><div><b>Temporary open gate:</b> <span class="code">isDealsEligible()</span> <span class="code">:21888</span> returns <span class="code">true</span> for all users so anyone can demo. Production restores <span class="code">return !!_sessionUserProfile;</span> once accounts exist.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /spine -->
+
+  <!-- Backend seams -->
+  <p class="section-h">Handoff</p>
+  <h3 class="section-sub">8 backend seams the human dev wires</h3>
+  <p style="margin:-8px 0 16px;font-size:13px;color:var(--muted);font-weight:600">All built at prototype scale · all gated on SPINE-1 identity + a real deals table.</p>
+  <div class="seams">
+    <div class="seam"><div class="num">1</div><div><h5>Persistence</h5><p>Replace Apps Script/Sheet + localStorage with a real deals/locations DB behind <span class="code">submitForm</span>.</p></div></div>
+    <div class="seam"><div class="num">2</div><div><h5>My Deals actions</h5><p>Wire edit / pause / delete — display-only today.</p></div></div>
+    <div class="seam"><div class="num">3</div><div><h5>Mobile-address flag</h5><p>Carry <span class="code">mobileAddress</span> into the request payload. <span class="code">TODO :5042</span></p></div></div>
+    <div class="seam"><div class="num">4</div><div><h5>Provider routing</h5><p>Real directed routing + real accept (simulated now) + 2-week scheduling → matching.</p></div></div>
+    <div class="seam"><div class="num">5</div><div><h5>Re-gate customer Deals</h5><p>Restore <span class="code">isDealsEligible()</span> <span class="code">:21888</span> once accounts are real.</p></div></div>
+    <div class="seam"><div class="num">6</div><div><h5>OTP</h5><p>Real SMS provider behind the <span class="code">phone_verified</span> affordance.</p></div></div>
+    <div class="seam"><div class="num">7</div><div><h5>Live audience data</h5><p>Swap the baked <span class="code">gopher-deals-audience.js</span> for a live query.</p></div></div>
+    <div class="seam"><div class="num">8</div><div><h5>DLP eligibility + gate</h5><p>Auto: Elite/Elite+/Pro · 20+ jobs · <b>4.75★</b>/last-20. Wire the Gopher-ID → eligibility lookup, the email/inbox, and the in-app button gate (demo toggle today).</p></div></div>
+    <div class="seam"><div class="num">9</div><div><h5>Gopher-ID tooltip asset</h5><p>Export the Refer &amp; Earn screen to <span class="code">assets/img/gopher-id-refer.webp</span> (funnel tooltip self-hides until present).</p></div></div>
+  </div>
+
+  <!-- #2 tracker preview -->
+  <div class="tracker">
+    <p class="lab">Drafted · to build next</p>
+    <h3>#2 — Merchant-coverage tracker</h3>
+    <p>Ensure ≥ <b>20 merchants per category per 15-mi radius across the Raleigh DMA</b> — a recruiting KPI managed by ZIP code and visualized on a dashboard map. Bolts onto the existing audience/ZIP-centroid infrastructure rather than being net-new.</p>
+    <div class="tgrid">
+      <div class="tcell"><b>ZIP-coverage model</b><span>per ZIP × category: target 20, signed, gap</span></div>
+      <div class="tcell"><b>Dashboard map</b><span>reuse the Maps + centroid seam; color ZIPs by coverage gap</span></div>
+      <div class="tcell"><b>Category × ZIP grid</b><span>"signed / 20" cells; gaps highlighted for recruiting</span></div>
+      <div class="tcell"><b>Feeds the playbook</b><span>gaps → target list in the recruiting playbook</span></div>
+    </div>
+    <div class="foot">Full spec + build in a dedicated session.</div>
+  </div>
+
+  <footer class="end">
+    Source: <code>docs/handoff/gopher-deals-pathway.md</code> · every <code>file:line</code> verified against the shipped prototype.
+    Companion ticket: <b>G40-286</b> (Deals front-end, consolidated).
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('.card .head').forEach(function(h){
+    h.addEventListener('click', function(){ h.closest('.card').classList.toggle('open'); });
+  });
+  var allOpen = false;
+  document.getElementById('toggleAll').addEventListener('click', function(){
+    allOpen = !allOpen;
+    document.querySelectorAll('.card').forEach(function(c){ c.classList.toggle('open', allOpen); });
+    this.textContent = allOpen ? 'Collapse all' : 'Expand all';
+  });
+</script>
+</body>
+</html>
