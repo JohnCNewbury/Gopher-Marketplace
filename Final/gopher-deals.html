@@ -924,7 +924,7 @@
     .vs-divider span { transform:rotate(90deg); }
   }
 
-  /* ── Light variant (Service providers): white backdrop, cards identical to merchant ── */
+  /* ── Light variant (Service Providers): white backdrop, cards identical to merchant ── */
   .disrupt-light { background:var(--white); color:var(--brand-navy); }
   .disrupt-light::before {
     background:
@@ -1277,17 +1277,20 @@
     background:#c3cad6; cursor:not-allowed;
   }
   .keyword-add button:disabled:hover { background:#c3cad6; }
-  .label-with-info { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+  .label-with-info { position:relative; display:flex; align-items:center; gap:7px; margin-bottom:8px; }
   .label-with-info label { margin-bottom:0; }
   .info-btn {
-    position:relative; display:inline-flex; align-items:center; justify-content:center;
+    position:static; display:inline-flex; align-items:center; justify-content:center;
     width:17px; height:17px; border-radius:50%;
     background:var(--brand-navy); color:#fff; font-size:11px; font-weight:700;
     font-family:'Nunito',sans-serif; cursor:help; flex-shrink:0; user-select:none;
   }
+  /* Tooltip is anchored to the field's label row (.label-with-info), not the tiny button, so a
+     left-positioned button can't push it off the modal's left edge; width is capped to the
+     viewport so it stays inside on mobile too. */
   .info-btn .info-tip {
-    position:absolute; bottom:calc(100% + 9px); left:50%; transform:translateX(-50%);
-    width:260px; background:var(--brand-navy); color:#fff;
+    position:absolute; bottom:calc(100% + 9px); left:0; right:auto; transform:none;
+    width:max-content; max-width:min(260px, calc(100vw - 44px)); background:var(--brand-navy); color:#fff;
     font-family:'DM Sans',sans-serif; font-weight:400; font-size:13px; line-height:1.5;
     text-align:left; padding:12px 14px; border-radius:10px;
     box-shadow:0 10px 30px rgba(0,18,48,0.32);
@@ -1295,12 +1298,12 @@
     pointer-events:none;
   }
   .info-btn .info-tip::after {
-    content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    content:''; position:absolute; top:100%; left:18px; transform:none;
     border:7px solid transparent; border-top-color:var(--brand-navy);
   }
   .info-btn .info-tip a { color:#5ee49b; font-weight:600; text-decoration:underline; }
   .info-btn .info-tip a:hover { color:#86f7bc; }
-  .info-btn .info-tip .info-tip-img { display:block; width:100%; margin-top:9px; border-radius:8px; border:1px solid rgba(255,255,255,0.22); }
+  .info-btn .info-tip .info-tip-img { display:block; width:auto; max-width:100%; max-height:190px; margin:9px auto 0; border-radius:8px; border:1px solid rgba(255,255,255,0.22); }
   .info-btn:hover .info-tip, .info-btn:focus .info-tip { opacity:1; visibility:visible; pointer-events:auto; }
   .modal-submit {
     width:100%; margin-top:8px; padding:15px; border:none; border-radius:12px;
@@ -2816,7 +2819,7 @@
               <div class="dp-pv-slide"><div class="bigphone dp-bigphone"><div class="bigphone-screen mp-feed">
                 <div class="bp-status"><span>9:41</span><span>&#128246; &#128267;</span></div>
                 <div class="mpf-scroll">
-                  <div class="mpf-sec-title dim">Local Service provider Deals</div>
+                  <div class="mpf-sec-title dim">Local Service Provider Deals</div>
                   <div class="mpf-row">
                     <div class="mpf-svc"><div class="mpf-svc-top"><span class="mpf-ava">JN</span><span class="mpf-svc-pro">John Newbury</span></div><div class="mpf-svc-name">Power Washing</div><div class="mpf-svc-desc">Full exterior house &amp; driveway wash</div><div class="mpf-svc-price"><b>$150</b><s>$225</s></div><div class="mpf-view">View Details</div></div>
                     <div class="mpf-svc"><div class="mpf-svc-top"><span class="mpf-ava dk">DD</span><span class="mpf-svc-pro">Dan&rsquo;s Disposal</span></div><div class="mpf-svc-name">Junk Removal</div><div class="mpf-svc-desc">Full truckload hauled away</div><div class="mpf-svc-price"><b>$50</b><s>$90</s></div><div class="mpf-view">View Details</div></div>
@@ -2979,7 +2982,7 @@
 </svg>
         <button class="modal-close" onclick="closeModal('worker')" aria-label="Close">&times;</button>
         <h3>Offer your service on Gopher</h3>
-        <p>If you&rsquo;re interested in offering a local Service provider Deal, complete the quick form below and we&rsquo;ll email you with eligibility terms and next steps &mdash; plus a message in your Gopher Go inbox.</p>
+        <p>If you&rsquo;re interested in offering a local Service Provider Deal, complete the quick form below and we&rsquo;ll email you with eligibility terms and next steps &mdash; plus a message in your Gopher Go inbox.</p>
       </div>
       <div class="modal-body">
         <!-- Eligibility funnel (G40 · DLP). Public entry checks eligibility only — the deal itself
@@ -3005,9 +3008,9 @@
         <div class="field">
           <div class="label-with-info">
             <label>Gopher ID</label>
-            <span class="info-btn" tabindex="0">i<span class="info-tip">Your Gopher ID is your referral code &mdash; find it in the Gopher Go app under <strong>Refer &amp; Earn</strong>, shown beneath your QR code / Share link (e.g. <strong>MARCUS-4F9</strong>).<img class="info-tip-img" src="assets/img/gopher-id-refer.webp" alt="Where to find your Gopher ID in Refer &amp; Earn" onerror="this.style.display='none'"></span></span>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">Your Gopher ID is your referral code &mdash; find it in the Gopher Go app under <strong>Refer &amp; Earn</strong>, by your QR code (e.g. <strong>820083</strong>).<img class="info-tip-img" src="assets/img/gopher-id-refer.webp" alt="Your Refer &amp; Earn QR code in the Gopher Go app" onerror="this.style.display='none'"></span></span>
           </div>
-          <input type="text" name="gopher_id" placeholder="e.g. MARCUS-4F9" autocomplete="off">
+          <input type="text" name="gopher_id" placeholder="e.g. 820083" autocomplete="off">
         </div>
 
         <button class="modal-submit" onclick="submitForm('worker')">Submit</button>
@@ -3139,6 +3142,7 @@
       <ul>
         <li><a href="gopher-privacy.html">Privacy Policy</a></li>
         <li><a href="gopher-terms-of-service.html">Terms of Service</a></li>
+        <li><a href="gopher-merchant-agreement.html">Merchant Agreement</a></li>
         <li><a href="gopher-prohibited-list.html">Prohibited List</a></li>
       </ul>
     </div>
@@ -3837,7 +3841,7 @@
 
       <div class="portal-roles" role="tablist" aria-label="Account type">
         <button type="button" class="portal-role active" data-role="merchant">Merchant</button>
-        <button type="button" class="portal-role" data-role="provider">Service provider</button>
+        <button type="button" class="portal-role" data-role="provider">Service Provider</button>
       </div>
 
       <div id="merchantAuth">
@@ -3895,7 +3899,7 @@
           <div class="sp-note-ico">🛠️</div>
           <div class="sp-note-body">
             <b>Gophers manage everything in Gopher Go</b>
-            <p>Service providers run their deals and worker account from the Gopher Go dashboard. The Deals site stays informational for Gophers to start.</p>
+            <p>Service Providers run their deals and worker account from the Gopher Go dashboard. The Deals site stays informational for Gophers to start.</p>
           </div>
         </div>
         <button type="button" class="portal-submit sp-go-btn" id="goGopherGo">Continue to Gopher Go →</button>
@@ -4323,7 +4327,7 @@
                   <div class="ndc-slide"><div class="bigphone"><div class="bigphone-screen mp-feed">
                     <div class="bp-status"><span>9:41</span><span>&#128246; &#128267;</span></div>
                     <div class="mpf-scroll">
-                      <div class="mpf-sec-title dim">Local Service provider Deals</div>
+                      <div class="mpf-sec-title dim">Local Service Provider Deals</div>
                       <div class="mpf-row">
                         <div class="mpf-svc"><div class="mpf-svc-top"><span class="mpf-ava">JN</span><span class="mpf-svc-pro">John Newbury</span></div><div class="mpf-svc-name">Power Washing</div><div class="mpf-svc-desc">Full exterior house &amp; driveway wash</div><div class="mpf-svc-price"><b>$150</b><s>$225</s></div><div class="mpf-view">View Details</div></div>
                         <div class="mpf-svc"><div class="mpf-svc-top"><span class="mpf-ava dk">DD</span><span class="mpf-svc-pro">Dan&rsquo;s Disposal</span></div><div class="mpf-svc-name">Junk Removal</div><div class="mpf-svc-desc">Full truckload hauled away</div><div class="mpf-svc-price"><b>$50</b><s>$90</s></div><div class="mpf-view">View Details</div></div>
@@ -4597,7 +4601,7 @@
     opts = opts || {};
     $('loginScreen').classList.add('hidden');
     $('dashboard').classList.add('open');
-    $('bizPlan').textContent = (role === 'provider' ? 'Service provider' : 'Merchant') + ' · Active';
+    $('bizPlan').textContent = (role === 'provider' ? 'Service Provider' : 'Merchant') + ' · Active';
     if(opts.biz){ $('bizName').textContent = opts.biz; }
     if(opts.name){ $('greeting').textContent = 'Welcome back, ' + opts.name.split(' ')[0] + ' \uD83D\uDC4B'; }
     window.scrollTo(0,0);
@@ -4643,7 +4647,7 @@
       refreshGates();
     });
   });
-  /* --- Role: Merchant vs Service provider --- */
+  /* --- Role: Merchant vs Service Provider --- */
   var signinRole = 'merchant';
   function applyRole(){
     var sp = signinRole === 'provider';
@@ -5226,12 +5230,12 @@ var PAY_BADGES = {
 
   /* ---- Category-card bidding (front-end demo) ---- */
   /* Ongoing top bid per category, shown openly so bidding is never blind. Demo seed values. */
-  var CATS = ['Service providers','Restaurants and Food Trucks','Local Favorites','Convenience Stores','Age-Restricted'];
+  var CATS = ['Service Providers','Restaurants and Food Trucks','Local Favorites','Convenience Stores','Age-Restricted'];
   /* Live placements for this month's auction. One entry per bid; the category holding the top
      overall bid also appears as its own category card (its 2nd-highest), so one category shows twice. */
   var PLACEMENTS = [
     { category:'Restaurants and Food Trucks', amount:500, holder:'Boundary Street Diner', mine:false },
-    { category:'Service providers',           amount:410, holder:'A nearby merchant', mine:false },
+    { category:'Service Providers',           amount:410, holder:'A nearby merchant', mine:false },
     { category:'Local Favorites',             amount:300, holder:'A nearby merchant', mine:false },
     { category:'Convenience Stores',          amount:225, holder:'You \u00B7 My Way Tavern', mine:true },
     { category:'Restaurants and Food Trucks', amount:180, holder:'A nearby merchant', mine:false },
