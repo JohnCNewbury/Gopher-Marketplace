@@ -97,8 +97,11 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
   var BK='<path d="M15 5l-7 7 7 7"/>';
   function ava(v){ return '<div class="mi-ava'+(v?'':' lock')+'"><div class="mi-photo"><svg viewBox="0 0 80 80"><defs><linearGradient id="mig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7c9a8"/><stop offset="1" stop-color="#d3ab82"/></linearGradient></defs><rect width="80" height="80" fill="#b9c6df"/><circle cx="40" cy="32" r="15" fill="url(#mig)"/><path d="M40 31c-6 0-9-4-9-8 0 0 3 1 9 1s9-1 9-1c0 4-3 8-9 8z" fill="#5b4636"/><path d="M12 78c3-16 14-24 28-24s25 8 28 24z" fill="url(#mig)"/></svg></div>'+(v?'':'<span class="mi-lk">'+sv(LK)+'</span>')+'</div>'; }
 
-  // The Requestor's threads are with their assigned Gophers.
-  var convos=[
+  // PT (split-screen) mode starts EMPTY — no seeded/fake threads in the live demo.
+  // Sticky via sessionStorage so it survives home↔inbox navigation (which drops ?pt).
+  function ptMode(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
+  // The Requestor's threads are with their assigned Gophers (standalone demo seed).
+  var __convoSeed=[
     {id:'c1',name:'Marcus B.',ctx:'Grocery run · $69.11',verified:true,time:'2:30 PM',unread:2,
       msgs:[{s:'them',t:'Heading to Harris Teeter now — anything specific on the produce?'},{s:'me',t:'Just ripe avocados if they have them, thanks!'},{s:'them',t:'On it — ETA about 14 min.'}]},
     {id:'c2',name:'Priya N.',ctx:'Hardware run · $76.67',verified:true,time:'1:05 PM',unread:0,
@@ -108,6 +111,7 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     {id:'c4',name:'Andre W.',ctx:'Junk haul · $95',verified:false,time:'Sat',unread:0,
       msgs:[{s:'them',t:'All hauled away. Thanks for the tip!'}]}
   ];
+  var convos = ptMode() ? [] : __convoSeed;
   var openId=null;
 
   function renderList(){
@@ -117,6 +121,7 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
         +'<div class="mi-rprev">'+(last.s==='me'?'You: ':'')+(last.t||'')+'</div></div>'
         +(c.unread?'<span class="mi-udot"></span>':'')+'</div>';
     }).join('');
+    if(!convos.length) rows='<div style="text-align:center;color:#9aa4b5;font-family:\'DM Sans\',sans-serif;font-size:13px;padding:52px 26px;line-height:1.55;">No messages yet<br><span style="font-size:12px;color:#aeb6c4;">Messages from your Gopher show up here.</span></div>';
     body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>'+'<div class="nav">'+'<button class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</button>'+'<button class="nv g40nv" data-gnav="inbox" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</button>'+'<button class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</button>'+'<button class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</button>'+'<button class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</button>'+'</div>';
     body.querySelector('.js-back').onclick=function(){ if(window.__navHook){ try{window.__navHook('gopher-request-home.html');}catch(_){ } } else { location.href='gopher-request-home.html'; } };
     body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; openId=c.id; render(); } }; });
