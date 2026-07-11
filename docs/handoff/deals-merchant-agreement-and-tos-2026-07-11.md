@@ -89,3 +89,35 @@ task, not a cleanup task.
 ### Recurring hazard
 Any future footer change must be made in **`gopher-footer.js` AND the 19 inline pages**, or
 it will appear to work while silently missing the homepage and every product/Deals page.
+
+## 5. Footer fully canonicalized — all 128 footers now byte-identical (2026-07-11)
+
+Follow-up to §3/§4. The footer link sync exposed broader drift, so all footers were made
+byte-identical in content (still two systems — component + 19 inline — no architecture change,
+so no SEO regression). Audit found **7 distinct footer variants**; reconciled to one canonical:
+
+- **Logo:** standardized to `assets/img/gopher-logo.svg` (vector, crispest, smallest — same
+  artwork as the `gopher-logo-footer.webp` the component used and the `wp-hero-logo-peek-1.webp`
+  the two request pages misused).
+- **Socials:** all **8 incl LinkedIn** everywhere. Previously LinkedIn was missing from the
+  component (109 pages), gopher-deals, gopher-customer-deals, and gopher-request-101 — i.e. a
+  company social link was absent from main pages. Fixed.
+- **Legal:** all 4 links incl Merchant Agreement everywhere. Note: the **ToS page's *footer*
+  genuinely lacked the Merchant Agreement link** — the earlier "19/19" check was fooled by the
+  Section 8 *body* cross-link. Fixed.
+
+Canonical source = the majority (13-page) inline footer. Applied by replacing the **last**
+`<footer class="gopher-footer">…</footer>` in each page (important: `gopher-request.html` has a
+second, earlier match inside an HTML *comment* documenting the footer — left untouched).
+
+### ⚠️ Footer logo is NOT broken — do not "fix" it
+The navy/green logo on the navy footer reads cleanly because `.gf-logo-wrap` wraps it in a
+**white rounded pill** (`background: var(--gf-white); padding:10px 18px; border-radius:10px`) —
+intended design, CSS byte-identical to the 2026-06-26 backup. A logo composited *without* the
+pill looks invisible on navy, which can trigger a false "the wordmark disappeared" alarm. It's
+fine as-is; no white-wordmark asset is needed.
+
+### Minor cleanup left
+`gopher-request.html` still has a **stale HTML comment** (prose, inert) describing the footer as
+referencing `wp-hero-logo-peek-1.webp` — no longer accurate after the logo standardized to
+`gopher-logo.svg`. Cosmetic; safe to delete whenever that file is next touched.
