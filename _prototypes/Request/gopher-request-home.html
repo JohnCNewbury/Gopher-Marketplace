@@ -1462,9 +1462,9 @@ document.addEventListener('click',function(e){
   var k=t.getAttribute('data-gnav');
   if(k==='home'){ var ph=$('#phone'); if(ph&&ph.scrollTo) ph.scrollTo({top:0,behavior:'smooth'}); else if(ph) ph.scrollTop=0; return; }
   if(k==='go'){ gotoURL('gopher-request-flow.html'); return; }
-  if(k==='refer'){ openReferSheet(); return; }
+  if(k==='refer'){ gotoURL('gopher-request-refer.html'); return; }
   if(k==='help'){ openHelpCenter(); return; }
-  if(k==='inbox'){ if(!(PENDING_REFERRAL && !PENDING_REFERRAL.seen) && !(GReq.all()||[]).some(function(r){return r.messages&&r.messages.length;})) toast('No messages yet — messages from your Gopher show up here'); }
+  if(k==='inbox'){ gotoURL('gopher-request-inbox.html'); return; }
 });
 function openReferSheet(){
   var o=gModal(
@@ -2476,6 +2476,6 @@ document.addEventListener('click',function(e){
 
 <!-- Real Gopher iQ coverage brain (same data as the Final apps) — powers location/availability answers -->
 <script src="../../Final/assets/js/gopher-iq-data.js"></script>
-<script>/* G40 footer — per-app GO routing (Request: GO -> Categories). */document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-gnav]');if(!t)return;var M={home:'gopher-request-home.html',inbox:'gopher-request-inbox.html',go:'gopher-request-flow.html',refer:'gopher-request-refer.html',help:'gopher-request-help.html'};var p=M[t.getAttribute('data-gnav')];if(p&&window.__navHook){try{window.__navHook(p);}catch(_){}}});</script>
+<!-- footer nav is handled by the single [data-gnav] listener above (gotoURL: __navHook when present, else location.href) -->
 </body>
 </html>

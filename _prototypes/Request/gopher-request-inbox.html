@@ -118,7 +118,7 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
         +(c.unread?'<span class="mi-udot"></span>':'')+'</div>';
     }).join('');
     body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>'+'<div class="nav">'+'<button class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</button>'+'<button class="nv g40nv" data-gnav="inbox" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</button>'+'<button class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</button>'+'<button class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</button>'+'<button class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</button>'+'</div>';
-    body.querySelector('.js-back').onclick=function(){ if(window.__navHook){ try{window.__navHook('gopher-request-home.html');}catch(_){ } } };
+    body.querySelector('.js-back').onclick=function(){ if(window.__navHook){ try{window.__navHook('gopher-request-home.html');}catch(_){ } } else { location.href='gopher-request-home.html'; } };
     body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; openId=c.id; render(); } }; });
   }
 
@@ -154,6 +154,6 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
   render();
 })();
 </script>
-<script>/* G40 footer routing on the inbox (Request: GO -> Categories). */document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-gnav]');if(!t)return;var M={home:'gopher-request-home.html',inbox:'gopher-request-inbox.html',go:'gopher-request-flow.html',refer:'gopher-request-refer.html',help:'gopher-request-help.html'};var p=M[t.getAttribute('data-gnav')];if(p&&window.__navHook){try{window.__navHook(p);}catch(_){}}});</script>
+<script>/* G40 footer routing on the inbox (Request: GO -> Categories). */document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-gnav]');if(!t)return;var M={home:'gopher-request-home.html',inbox:'gopher-request-inbox.html',go:'gopher-request-flow.html',refer:'gopher-request-refer.html',help:'gopher-request-help.html'};var g=t.getAttribute('data-gnav');var p=M[g];if(p){if(window.__navHook){try{window.__navHook(p);}catch(_){}}else if(g!=='help'){location.href=p;}}});</script>
 </body>
 </html>
