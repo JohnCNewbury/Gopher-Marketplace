@@ -153,13 +153,13 @@ Notable user-facing copy covered by the patches: cancellation-policy "…unless 
 
 Re-verified 2026-07-12. The July-6 guide's verdict stands — `gopher-go.html`'s "Gopher Pro" strings are all the NEW Pro tier (correct, leave) — but line numbers drifted after the G40-319/320 SEO/asset commits: the tiers-page Yardstik note is now **:647-649** (was ~1062), go.html badge **:1344**, identity panel **:2555**, business docs **:2589/2594**, tier fallback **:2654**, request.html "look for a Gopher Pro" **:11485**, provider-name fallback **:14501**.
 
-Still legacy in `Final/` (NOT yet fixed; candidates for a John-approved cleanup pass):
+Status after the 2026-07-12 owner-approved cleanup pass:
 
-1. **FAQS corpus — the largest un-renamed body of copy.** 7 surfaces (`index.html:2575`, `gopher-services.html:1337`, `2-engine-js-block.html:152`, `gopher-iq-sandbox-standalone.html:749`, `assets/js/gopher-ai-engine.js:151`, `gopher-request.html:14847` [drifted copy], `gopher-faqs.html` rendered) each carry ~10× "Gopher Pro" + 3× "Pro+" with the **old Yardstik meaning** ("one-time fee to become a Gopher Pro or Gopher Pro+…"). request.html's copy is half-converted (Pro+ scrubbed, meaning still legacy). Same corpus exists in `Dashboard/iq_faq.json` (fix at that source for the dashboard). Remember the deploy rule: `const FAQS =` must be 1 line in all 7 copies.
-2. **Internal `'pro+'` tier key** still produced at `gopher-request.html:22852` and accepted at :18720 (connect.html's equivalent already uses `'standard'`).
-3. **`gopher-blog.html:611,622`** presents the ladder as "Pro → Elite → Elite+" — wrong order vs canonical (Standard → Elite → Elite+, Pro = separate credential).
-4. `shared-gopher-elite-2.svg` misnomer (§8).
-5. Cosmetic: ToS :403 "…as a Pro perk" phrasing; memorial "our 1st Gopher Pro at the time" (gopher-connect-101:623, gopher-request-101:484) is explicitly historical — fine to keep.
+1. **FAQS corpus — ✅ FIXED.** All 9 legacy sentences (10× "Gopher Pro" + 3× "Pro+", old Yardstik meaning) renamed to Elite/Elite+ across all 7 Final surfaces (`index.html`, `gopher-services.html`, `2-engine-js-block.html`, `gopher-iq-sandbox-standalone.html`, `assets/js/gopher-ai-engine.js`, `gopher-request.html` [its drifted blob included], `gopher-faqs.html` rendered) **plus** `Dashboard/iq_faq.json` (the dashboard/public-engine source) — and the public engine was rebuilt via `build_iq.py` (exposure-guard clean) with `gopher-iq-engine.SAMPLE.html` refreshed. `const FAQS =` verified still exactly 1 single-line occurrence per copy. **Browser-verified:** the live iQ pill answers "Is there a fee to become a gopher?" with "…one-time fee to become a Gopher Elite or Gopher Elite+…". The FAQ page's new-Pro badge copy ("licensed, bonded, and/or insured") was left intact.
+2. **Internal `'pro+'` key — reclassified, deliberately NOT changed.** Deeper audit showed `'pro+'` in gopher-request.html is an internal badge *slug meaning the NEW Pro tier* throughout the display layer (`tier==='pro+'` → the `tier-pro` chip; `tierLabel('pro+') → 'Pro'`; it's the default badge in seed data). Visible output is already correct new-taxonomy — this is a confusing key *name*, not wrong copy. Renaming it means refactoring the demo badge vocabulary (~dozens of seed workers + 10 render sites) for zero visual change: leave for the production rebuild, which should use clear keys (`standard`/`elite`/`elite+` + a `proCred` flag, as gopher-connect.html already does).
+3. **`gopher-blog.html:611,622` — ✅ FIXED:** ladder now "Standard → Elite → Elite+" in both places (browser-verified).
+4. **svg misnomer — ✅ FIXED** (§8: now `shared-gopher-pro.svg`).
+5. Cosmetic, intentionally kept: ToS :403 "…as a Pro perk" phrasing; memorial "our 1st Gopher Pro at the time" (gopher-connect-101:623, gopher-request-101:484) is explicitly historical.
 
 ## 11. HQ Dashboard + Documentation-tree cleanup
 
@@ -173,14 +173,14 @@ Still legacy in `Final/` (NOT yet fixed; candidates for a John-approved cleanup 
 
 Rebuilt via `python3 build.py` → `output/Gopher_HQ_Dashboard.html` (78 MB, 2026-07-12 16:20).
 
-**Documentation tree — true remaining legacy copy** (everything else "Pro/Pro+" in the tree is intentional migration documentation or false positives):
+**Documentation tree — legacy-copy stragglers, status after the 2026-07-12 pass** (everything else "Pro/Pro+" in the tree is intentional migration documentation or false positives):
 
-- `Gopher — Intended/Gopher-Worker-Flow-Build-Spec.md` :44 ("Gopher Pro / Pro+ … Yardstik"), :91 ("Gopher Pros start on Instant") — the spec claims v1.1-migrated but these lines remain
-- `Gopher — Intended/Gopher-Account-Ownership-Checklist.md` :104 ("Yardstik (Gopher Pro background checks)") + the same string in `Gopher-Account-Ownership-Tracker.xlsx`
-- Pitch deck ×4 HTML (`gopher-pitch-deck.html`, `-mobile.html`, `deck_work.html`, `mobile_work.html`): testimonial attribution `"— Gopher Pro"` (decision D-7)
-- `Gopher Go App (retired 6:29)/gopher-go-prototype.html` — 8 legacy hits + inline PRO badge (retired; lowest priority)
-- `SMS:Emails/gopher-go.html` — inline base64 badge `alt="Gopher Pro"`
-- `SMS:Emails/impl-tier-grants.md` — carries its own TODOs (legacy subject "You're a Gopher Pro now" for case 39; log strings) that the backend work in §5 resolves
+- ✅ `Gopher — Intended/Gopher-Worker-Flow-Build-Spec.md` :44, :91 — **fixed** (Gopher Elite / Elite+; "Gopher Elites start on Instant")
+- ✅ `Gopher — Intended/Gopher-Account-Ownership-Checklist.md` :104 **and** `Gopher-Account-Ownership-Tracker.xlsx` (Account Ownership!B22) — **fixed** ("Yardstik (Gopher Elite background checks)"). xlsx note: its 3 COUNTIF summary formulas lose their cached values until Excel next opens/recalcs the file (formulas intact)
+- ✅ Pitch deck ×4 (`gopher-pitch-deck.html`, `-mobile.html`, `deck_work.html`, `mobile_work.html`) — testimonial now **"— Gopher Elite"** (D-7)
+- `Gopher Go App (retired 6:29)/gopher-go-prototype.html` — 8 legacy hits + inline PRO badge — **left as-is** (retired app folder, historical)
+- `SMS:Emails/gopher-go.html` — **reclassified, no change needed:** its base64 badge decodes to the NEW-Pro wordmark (byte-identical to `shared-gopher-pro.svg`), so `alt="Gopher Pro"` is correct
+- `SMS:Emails/impl-tier-grants.md` — carries its own TODOs (legacy subject "You're a Gopher Pro now" for case 39; log strings) that the backend work in §5 resolves — left for the dev, as designed
 - **Do NOT touch:** `SMS:Emails/gopher-email-tier-pro.html` (NEW Pro grant email — intentional), Jira-title dumps (`Jira Tickets/Gopher-Build-Console.html`, `Gopher-Jira-Reconciliation-Worksheet.xlsx` — renaming would desync from Jira), all "Elite/Elite+/Pro" three-tier lists, D-021's `elite_pros` audience enum (canonical, not legacy)
 
 ## 12. Decisions — resolved 2026-07-12 unless marked OPEN
@@ -209,7 +209,7 @@ Rebuilt via `python3 build.py` → `output/Gopher_HQ_Dashboard.html` (78 MB, 202
 5. **Mobile:** apply the 3 patches (worker patch → worker part-2; requester single patch) — labels + URLs are fully covered; swap the 25-per-app art files in place (§8). Ship both app updates.
 6. **Marketing + Yardstik:** publish tiers page per D-2; 301 `become-a-gopher-pro/`; Yardstik package renames (parallel); later remove the tiers-page legacy-names note.
 7. **Comms:** D-4 announcement to grandfathered workers.
-8. **Cleanup:** §10 prototype items (with consent), §11 dashboard fixes + doc-tree stragglers; update store listings.
+8. **Cleanup: ✅ done 2026-07-12** — §10 prototype items, §11 dashboard fixes, and the doc-tree stragglers are all resolved (see those sections). Remaining for the dev: update store listings when the renamed app builds ship.
 
 **Verification checklist:**
 
