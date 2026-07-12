@@ -38,12 +38,19 @@ brand/content license, regulated-goods compliance, revocable privileges, merchan
 disclaimers, $100/12-mo liability cap (mirrors ToS §31), NC arbitration + class waiver
 (mirrors ToS §30). Cross-linked both ways with the ToS (§8 "Deal Submission & Approval").
 
-### ⚠️ Enforceability depends on an acceptance gate (dev action required)
-This agreement only binds a merchant if the **Deal-submission flow presents an explicit
-"I Agree" checkpoint linking to it.** There is no built merchant-submission surface in the
-prototype today (Deals is Google-Maps/listing only). When that intake is built, it needs a
-recorded acceptance step (checkbox + timestamp) referencing this page. Until then the
-agreement is published but not contractually accepted by anyone.
+### Acceptance gate — BUILT (2026-07-12)
+The merchant Deal-submission flow in `gopher-deals.html` (the "Join the Disruption" modal →
+deal form → preview) now ends in a **clickwrap acceptance gate** on the final preview step:
+a required checkbox — *"I have read and agree to the [Gopher Deals Merchant Agreement], and I
+am authorized to accept it on behalf of this business"* — that **disables "Submit My Deal"
+until checked** (with a `dpSubmit()` backstop that blocks a bypass). On submit, the payload
+records `merchant_agreement_accepted`, `merchant_agreement_accepted_at` (ISO timestamp), and
+`merchant_agreement_version` (constant `MERCHANT_AGREEMENT_VERSION`, currently `2026-07-10`,
+= the agreement's Effective Date). Verified end-to-end in-browser (gate blocks; metadata
+recorded). Merchant Agreement §26 updated to reference this recorded acceptance.
+**Dev note:** bump `MERCHANT_AGREEMENT_VERSION` whenever the agreement's Effective Date
+changes, and persist the acceptance fields server-side when the form endpoint is productionized
+(today they ride along in the same Google-Sheets/Formspree lead payload as every other field).
 
 ## 3. Merchant Agreement link in the footer — site-wide
 
