@@ -89,6 +89,30 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
    -> back. BACKEND SEAM: conversations + unread state are seeded in-memory here;
    production loads the Requestor's real threads from the messaging service.
    Navigation between screens uses the simulator's window.__navHook(path). */
+/* Shared multi-request store — identical to home/flow. In the split, live messages ride on
+   GReq records ({from:'req'|'gopher'}), relayed both ways by the harness. */
+window.GReq = window.GReq || (function(){
+var KEY='gopher_requests';
+// PT (split-screen) mode: start with NO pending requests. Sticky via sessionStorage so it
+// survives home↔flow navigation. Standalone default (no ?pt) keeps the demo seed.
+function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
+function seed(){ if(ptEmpty()) return []; return [
+ {order:'GR-00127',cat:'delivery',title:'Grocery run — Harris Teeter',amount:'$69.11',hired:'Marcus B.',stage:'active',accepted:3,scheduledForLater:false,cost:35,pay:15,pickup:'Harris Teeter',dropoff:'412 Oakwood Ave',when:'ETA 14 min · Today, 2:30 PM'},
+ {order:'GR-00128',cat:'home',title:'Hardware run — drill bits + anchors',amount:'$76.67',hired:'Priya N.',stage:'active',accepted:2,scheduledForLater:false,cost:52,pay:18,pickup:'Ace Hardware',dropoff:'88 Maple Court',when:'ETA 19 min · Today, 3:05 PM'},
+ {order:'GR-00124',cat:'home',title:'Ceiling fan install — conference room',amount:'$145.00',hired:'Rosa P.',stage:'scheduled',scheduledForLater:true,accepted:0,cost:0,pay:120,pickup:'',dropoff:'88 Maple Court',when:'Tomorrow, 9:00 AM'}
+]; }
+function all(){ try{ var a=JSON.parse(sessionStorage.getItem(KEY)); if(Array.isArray(a)) return a; }catch(_){} var s=seed(); save(s); return s; }
+function save(a){ try{ sessionStorage.setItem(KEY, JSON.stringify(a)); }catch(_){} }
+function nextOrder(){ var mx=127; all().forEach(function(x){ var m=/GR-0*(\d+)/.exec(x.order||''); if(m){ var n=+m[1]; if(n>mx) mx=n; } }); return 'GR-'+('00000'+(mx+1)).slice(-5); }
+return { all:all, save:save,
+ add:function(r){ var a=all(); a.unshift(r); save(a); return r; },
+ get:function(o){ return all().filter(function(x){return x.order===o;})[0]||null; },
+ update:function(o,p){ var a=all(); for(var i=0;i<a.length;i++){ if(a[i].order===o){ for(var k in p) a[i][k]=p[k]; } } save(a); },
+ remove:function(o){ save(all().filter(function(x){return x.order!==o;})); },
+ nextOrder:nextOrder,
+ openOrder:function(o){ try{ sessionStorage.setItem('gopher_open', o); }catch(_){} },
+ currentOpen:function(){ try{ return sessionStorage.getItem('gopher_open'); }catch(_){ return null; } } };
+})();
 (function(){
   var body=document.getElementById('mibody');
   var sv=function(p){return '<svg viewBox="0 0 24 24">'+p+'</svg>';};
@@ -111,8 +135,38 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     {id:'c4',name:'Andre W.',ctx:'Junk haul · $95',verified:false,time:'Sat',unread:0,
       msgs:[{s:'them',t:'All hauled away. Thanks for the tip!'}]}
   ];
-  var convos = ptMode() ? [] : __convoSeed;
+  var PT=ptMode();
+  /* PT (split) mode: threads are LIVE — one per request that's hired a Gopher or has
+     messages. Sending writes {from:'req'} to the record (the harness relays it to the Go
+     phone); Gopher replies arrive via GReq.update on this window. No fake auto-replies. */
+  function liveConvos(){
+    if(!window.GReq) return [];
+    var out=[];
+    (GReq.all()||[]).forEach(function(r){
+      if(!((r.messages&&r.messages.length) || r.hired)) return;
+      out.push({ id:r.order, name:(r.hired||r.provider||'Your Gopher'),
+        ctx:(r.title||'Request')+(r.amount?(' \u00b7 '+r.amount):''), verified:true, time:'',
+        unread:(+r.unread||0),
+        msgs:(r.messages||[]).map(function(m){ return {s:(m.from==='req'?'me':'them'), t:m.text}; }) });
+    });
+    return out;
+  }
+  var convos = PT ? liveConvos() : __convoSeed;
   var openId=null;
+  /* Re-render only when the store actually changed; preserve a half-typed reply. */
+  function sigOf(list){ return JSON.stringify(list.map(function(c){ return [c.id,c.unread,c.msgs.length]; })); }
+  var lastSig=sigOf(convos);
+  function syncNow(force){
+    if(!PT) return;
+    var fresh=liveConvos(), s=sigOf(fresh);
+    if(!force && s===lastSig) return;
+    lastSig=s; convos=fresh;
+    if(openId && !convos.some(function(c){return c.id===openId;})) openId=null;
+    var iv=body.querySelector('.js-in'), val=iv?iv.value:null, foc=(iv&&document.activeElement===iv);
+    render();
+    if(val!=null){ var iv2=body.querySelector('.js-in'); if(iv2){ iv2.value=val; if(foc){ try{iv2.focus();}catch(_){}} } }
+  }
+  if(PT){ setInterval(function(){ syncNow(false); }, 700); window.__inboxAlert=function(){ try{ syncNow(true); }catch(_){}}; }
 
   function renderList(){
     var rows=convos.map(function(c){ var last=c.msgs[c.msgs.length-1]||{};
@@ -124,7 +178,7 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     if(!convos.length) rows='<div style="text-align:center;color:#9aa4b5;font-family:\'DM Sans\',sans-serif;font-size:13px;padding:52px 26px;line-height:1.55;">No messages yet<br><span style="font-size:12px;color:#aeb6c4;">Messages from your Gopher show up here.</span></div>';
     body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>'+'<div class="nav">'+'<button class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</button>'+'<button class="nv g40nv" data-gnav="inbox" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</button>'+'<button class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</button>'+'<button class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</button>'+'<button class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</button>'+'</div>';
     body.querySelector('.js-back').onclick=function(){ if(window.__navHook){ try{window.__navHook('gopher-request-home.html');}catch(_){ } } else { location.href='gopher-request-home.html'; } };
-    body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; openId=c.id; render(); } }; });
+    body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ c.unread=0; if(PT&&window.GReq) GReq.update(c.id,{unread:0}); openId=c.id; render(); } }; });
   }
 
   function renderThread(c){ var who=c.name;
@@ -145,7 +199,11 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
       else a='Sounds good — thanks for letting me know!';
       setTimeout(function(){ add('them',a); }, 650);
     }
-    function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(){ add('me',t); inp.value=''; reply(t); };
+    function send(t){ t=(t||'').trim(); if(!t) return;
+      var deliver=function(){
+        if(PT&&window.GReq){ var rr=GReq.get(c.id); if(rr){ var mm=(rr.messages||[]).slice(); mm.push({from:'req',text:t}); GReq.update(c.id,{messages:mm}); } inp.value=''; syncNow(true); }
+        else { add('me',t); inp.value=''; reply(t); }
+      };
       if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'request-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
     body.querySelector('.js-send').onclick=function(){ send(inp.value); };
     inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });
