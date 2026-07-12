@@ -1,5 +1,32 @@
 # Typography sentence-case scrub + ratings-visibility change — 2026-07-11
 
+> **⚠️ POSTMORTEM — added 2026-07-11 (deploy-blocker fix).** The commit that carried this
+> scrub (`8e8d56d`) also **corrupted `Final/gopher-faqs.html`**: its
+> `const FAQS = [...]` declaration plus ~18 leading entries and the tail of the static FAQ
+> accordion (474 lines total) were deleted, leaving `FAQS` undefined and the FAQ-page search
+> throwing (entry count fell 183 → 165 orphaned fragments). This blocked the `main` deploy.
+>
+> **Root cause was NOT the casing scrub.** The scrub scripts only target
+> `<button>/<a class=btn>/<label…>/<h3–h6>` text nodes and were reproduced to leave
+> `const FAQS` fully intact. The damage came from the **cancellation-policy copy rewrite**
+> in the same commit: the *old* answer for "Can I cancel my request after the worker has
+> started?" existed **verbatim in two places** — the static HTML `<p>` accordion *and* the
+> FAQS JSON `"a"` value. A find/replace to swap in the new copy matched an ambiguous span
+> (the repeated `<div class="faq-a-inner">` boundary) and deleted everything between the
+> HTML occurrence and the JSON occurrence, taking `const FAQS = [` with it.
+>
+> **Fixes landed:**
+> 1. `gopher-faqs.html` repaired — canonical 183-entry `FAQS` re-injected (matches the other
+>    6 inlined copies), static accordion restored, sentence-case HTML edits preserved.
+> 2. `sentence-case-scrub.py` (this scrub, now persisted here) hardened to **skip
+>    `<script>`/`<style>` blocks** — it can never touch inline JSON/JS again (belt-and-
+>    suspenders; the scrub was not the culprit but this removes the whole risk class).
+> 3. `verify-faqs-integrity.py` added — a pre-deploy guard that fails loudly if any inlined
+>    copy loses its `const FAQS`, drops below 183 entries, or stops round-tripping. Run it
+>    before every `main` deploy. This is the guard that would have caught the original break.
+
+---
+
 Two related pieces of work, both **copy/behavior only** (no logic, data, backend, or
 structural HTML changes):
 
