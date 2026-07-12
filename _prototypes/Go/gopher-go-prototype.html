@@ -1071,6 +1071,11 @@ function reverify(queue,done){ if(!queue.length){ done(); return; } const it=que
 /* ===== NATIVE interactive screens ===== */
 const NATIVE = {
 
+/* DEV HEADS-UP — LEGACY STORYBOARD, superseded 2026-07-08+ by the in-job completion path
+   (Update-request sheet → completion photos / age-restricted ID confirm → requester confirm via
+   __ptRated → openRateRequester + __goFavCongrats). This screen still shows the pre-INV-RATING
+   model (simulated confirm banner, non-dismissible rating via setBack(true), demo fav toggle).
+   Do NOT build from it — canonical: gopher-go-canonical.html §9.5–9.10. Kept for reference. */
 "completion-flow":{ html:`<div class="frame">${SBAR}<div class="top"><h1>Job complete</h1></div><div class="cf-stage js-cfstage"></div></div>`, init(r){
   const frame=r.querySelector('.frame'); frame.style.position='relative';
   const stage=r.querySelector('.js-cfstage');
@@ -2353,7 +2358,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       function paint(){ ov.querySelector('.js-rrstars').innerHTML=stars(); wireStars(); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
       function wireStars(){ ov.querySelectorAll('.js-rrstar').forEach(s=>s.onclick=()=>{ picked=+s.getAttribute('data-n'); paint(); }); }
       wireStars();
-      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — your rating of '+who+' was submitted'); };
+      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — your rating of '+who+' was submitted');
+        // Favorite congrats — only if the requester has favorited this Gopher (relayed via __ptRated).
+        if(j.favorited && !j.favCongrats){ j.favCongrats=1; if(window.__goFavCongrats) window.__goFavCongrats(who); } };
     }
     draw();
   } },
@@ -2667,10 +2674,21 @@ if(PT){
   //     are near each other; it also affects pay). We keep the value in the shared store for the
   //     system, mark the job confirmed, reflect a neutral "paid out" state for ~2s, then return the
   //     worker to a plain home for the next job.
-  window.__ptRated=function(id,stars){
+  // "Favorite congrats" — canonical: fires after the worker submits their rating, only if the
+  // requester has the worker in MY Gophers (live: fav_gophers row + favoriteGopher notification).
+  window.__goFavCongrats=function(who){
+    return showModal('<div style="text-align:center;font-size:38px;line-height:1;">&#127881;</div>'
+      +'<h3 style="text-align:center;">You&rsquo;re a Favorite!</h3>'
+      +'<p style="text-align:center;">'+String(who||'Your requester')+' added you as a <b>Favorite Gopher</b> &mdash; you&rsquo;ll get priority on their future requests.</p>'
+      +'<button class="mclose">Got it</button>');
+  };
+  window.__ptRated=function(id,stars,fav){
     var job=window.__ptJobs[id]; if(!job) return;
     job.rated=stars;                 // stored for the system only — never displayed
     job.confirmed=true; job.substage='completed';
+    job.favorited=!!fav;             // requester's MY-Gophers state at confirm — drives the congrats modal
+    // If the worker already rated before the confirm arrived, fire the congrats now (once).
+    try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}
     try{ if(current==='job-detail' && state.job===job){
       load('job-detail');            // re-render as "Confirmed · paid out" (no star)
       setTimeout(function(){ if(current==='job-detail' && state.job===job) load('home'); }, 2200);

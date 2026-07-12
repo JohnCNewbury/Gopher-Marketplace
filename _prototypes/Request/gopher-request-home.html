@@ -1189,7 +1189,10 @@ function openRateModal(order){
   var LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
   function paint(){ starEls.forEach(function(s){ s.style.color=(+s.getAttribute('data-star')<=picked)?'#F5B301':'#d9d2c2'; }); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
   starEls.forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-star'); paint(); }; });
-  sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():''; GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' });
+  sub.onclick=function(){ if(!picked) return; var cmt=note?note.value.trim():'';
+    // myGopher rides along so the harness can tell the worker's app whether the requester has
+    // favorited them (drives Go's "Favorite congrats" after the worker rates).
+    GReq.update(order,{ substage:'rated', attention:null, rating:picked, ratingNote:cmt, myGopher:!!fav, when:'\u2713 Completed \u00b7 you rated '+picked+'\u2605' });
     // Reconcile MY Gophers to the toggle: newly-checked adds, unchecked-while-member removes.
     var member=isMyGopher(who), addedNow=false, removedNow=false;
     if(fav && !member){ try{ addMyGopher(who,'elite',(CATLABEL[r.cat]||'Request')+' \u00b7 '+picked+'\u2605'); addedNow=true; }catch(_){} }
