@@ -19,7 +19,7 @@ from **inside the Gopher Go app**:
 | Deal shape | A promo/offer (e.g. "10% off", "free appetizer") + optional promo code | **One honest defined price** for a service (e.g. "power wash up to 2,500 sq ft — $150, normally $225") |
 | Registration | A public form on the Deals page (business + deal) | **Two-entry:** the public Deals page collects only an **eligibility funnel**; the deal itself is created **in the Gopher Go app** by eligible workers (Stage 1) |
 | Redemption | Order on the merchant's own site **or** parlay into a Gopher Request for last-mile delivery | Spawns a **provider-directed** Gopher Request routed only to that provider |
-| Reach | The merchant's fixed location(s) | Up to **50 mi**, set in the Gopher Go app — **not** on the public page |
+| Reach | Customers & workers within **25 mi** of the merchant's fixed location(s) (canonical 2026-07-12) | Up to **50 mi**, set in the Gopher Go app — **not** on the public page |
 
 ---
 
@@ -57,8 +57,8 @@ deal submission — it gates first.
 `gopher-deals.html` (the "I'm a Service Provider" card opens it). A short form captures only identity:
 **First, Last, SMS, Email, Gopher ID** (`first_name` / `last_name` / `sms` / `email` / `gopher_id`,
 at `gopher-deals.html:2991`–`3010`). The Gopher-ID field has an info tooltip pointing to **Refer &
-Earn** in the Gopher Go app (the referral code, e.g. `MARCUS-4F9`) — a screen-grab slot is wired but
-the export is still to be dropped at `assets/img/gopher-id-refer.webp` (self-hides until present).
+Earn** in the Gopher Go app (the referral code, e.g. `820083`), with a screen-grab captured from that
+panel at `assets/img/gopher-id-refer.webp` (rendered from `gopher-go.html`'s Refer & Earn section).
 Submit posts through the same `submitForm('worker')` lead plumbing (`:3013`) → thank-you: *"we'll
 check your eligibility, email you terms + next steps, and message your Gopher Go inbox."* No deal, no
 price, no reach here — this only determines eligibility.
@@ -184,6 +184,11 @@ phone that mirrors how the deal will appear in the customer apps.
 > Entry B), not this merchant portal. On the public Deals page they only check eligibility (Entry A).
 > The eligibility terms live in `gopher-go-101.html#offer-deals`.
 
+> **Interim data pipeline (owner note 2026-07-12):** the Apps Script Sheet (live registrations,
+> now with `lat`/`lng` + a `source` channel column) is **periodically uploaded into the Gopher HQ
+> Dashboard** to refresh the Raleigh DMA merchant-coverage map (`deals-coverage.js` manual upload)
+> until the real backend/DB connection automates it.
+
 **Admin side (Gopher HQ):** deal lifecycle state, click tracking, and CSV export also exist in the
 HQ Dashboard's `advertiserDeals.js` (the G40-180 admin tool) — the manual "review before it goes
 live" step happens there.
@@ -279,8 +284,20 @@ parlay + provider-directed).
    lookup** behind the public funnel, the real **email + Gopher Go inbox** notification, and the real
    **eligibility gate** on the in-app "Offer My Service" button (simulated by the `ELIGIBLE` demo
    toggle today). (Source: `Gopher — Intended/Gopher-Roles-Capability-Matrix.md`.)
-9. **Gopher-ID tooltip asset** — export the Refer & Earn screen to `assets/img/gopher-id-refer.webp`
-   (the funnel tooltip references it and self-hides until it exists).
+9. ~~**Gopher-ID tooltip asset**~~ — **DONE**: captured from `gopher-go.html`'s Refer & Earn panel to
+   `assets/img/gopher-id-refer.webp` (shows "the Refer & Earn QR code"). Reconciled the tooltip/placeholder
+   example from the figma's `MARCUS-4F9` to the built app's numeric `820083`. *Open design question for the
+   dev/owner: the referral-code format differs between the figma (`MARCUS-4F9`, name-based) and the built app
+   (`820083`, numeric) — pick one as canonical for the real "Gopher ID."*
+10. **Owner Personal-Info parity (owner ruling 2026-07-12; PRE-dev-handoff, done by US not the dev).**
+    Per the standard Gopher process, every sign-up provisions a Gopher Request account — the canonical
+    baseline for "Personal Info." A merchant owner must therefore provide, at minimum, all the Personal
+    Info a standard Gopher Request sign-up captures. The live pre-registration form deliberately does
+    NOT capture the full set yet (left as-is so the recruiting push isn't disrupted). **Before dev
+    handoff, WE expand the merchant form's "Business Owner Verification" section to request ALL
+    standard-signup Personal Info fields**, and that Personal Info **auto-populates the Merchant
+    dashboard → Personal Info** panel. Until then, the gap between pre-registration leads and full
+    accounts is closed manually at approval time.
 
 ---
 

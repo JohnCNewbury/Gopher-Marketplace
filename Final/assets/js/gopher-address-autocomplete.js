@@ -47,9 +47,15 @@
           var p = s.placePrediction; return (p && p.text && p.text.text) || '';
         }).filter(Boolean));
       }).catch(function(e){
+        // Whatever the New Places API failure (blocked by the key's API allowlist,
+        // not enabled, referer, quota), ALWAYS try the legacy AutocompleteService —
+        // it's a separate API that is commonly still allowed on the key. Only show
+        // a hint if the legacy leg fails too.
         var m = String((e && e.message) || e);
-        if (/referer|referrer|blocked|not authorized|ApiNotActivated|API key|PERMISSION_DENIED/i.test(m)){ cb(null, keyHint(m)); return; }
-        legacyPreds(q, country, cb);   // New API simply not enabled on this key → try legacy
+        legacyPreds(q, country, function(preds, err){
+          if (preds){ cb(preds); return; }
+          cb(null, /referer|referrer|blocked|not authorized|ApiNotActivated|API key|PERMISSION_DENIED/i.test(m) ? keyHint(m) : (err || keyHint(m)));
+        });
       });
       return;
     }

@@ -22988,9 +22988,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +   '</div>'
       +   '<div class="dd-offer-banner">' + dealEsc(m.offer) + (m.promo ? ' <span class="dd-promo">Code ' + dealEsc(m.promo) + '</span>' : '') + '</div>'
       +   '<div class="dd-portal" id="ddPortal">'
-      +     '<div class="dd-portal-bar"><span class="dd-dot"></span><span class="dd-dot"></span><span class="dd-dot"></span><span class="dd-url" id="ddUrl">' + dealEsc(url) + '</span>'
-      +       '<a class="dd-live-open" id="ddLiveOpen" target="_blank" rel="noopener" hidden>Open \u2197</a>'
-      +       '<button type="button" class="dd-live-close" id="ddLiveClose" aria-label="Back to deal" hidden>\u00D7</button></div>'
       +     '<div class="dd-portal-body" id="ddPortalBody">'
       +       ((typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id])
             ? '<div class="dd-portal-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
@@ -24373,9 +24370,12 @@ function initPersonalEdit(){
         }).filter(Boolean));
       }).catch(function(e){
         var m=String((e&&e.message)||e);
-        // A referer/API-key rejection will fail the legacy path identically — report, don't retry.
-        if(/referer|referrer|blocked|not authorized|ApiNotActivated|API key/i.test(m)){ cb(null, _keyHint(m)); return; }
-        _legacyPreds(q, cb);   // New API simply not enabled on this key → try legacy
+        // ALWAYS try legacy Places first — the key's API allowlist can block the New
+        // Places API while legacy is still allowed. Hint only if legacy fails too.
+        _legacyPreds(q, function(preds, err){
+          if(preds){ cb(preds); return; }
+          cb(null, /referer|referrer|blocked|not authorized|ApiNotActivated|API key/i.test(m) ? _keyHint(m) : (err || _keyHint(m)));
+        });
       });
       return;
     }
