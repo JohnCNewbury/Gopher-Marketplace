@@ -182,7 +182,7 @@ shared-img-8.webp                                4,510B  x2   gopher-connect.htm
 shared-img-9.webp                                4,476B  x2   gopher-connect.html, gopher-request.html
 go-gg-share-label.png                            4,200B  x1   gopher-go.html
 shared-img-10.svg                                3,373B  x3   gopher-connect.html, gopher-request-101.html, gopher-request.html
-shared-gopher-elite-2.svg                        3,143B  x3   gopher-go-101.html, gopher-go.html, gopher-tiers.html
+shared-gopher-pro.svg (renamed from shared-gopher-elite-2.svg 2026-07-12; it is the Pro wordmark)                        3,143B  x3   gopher-go-101.html, gopher-go.html, gopher-tiers.html
 request-img-17.webp                              2,784B  x1   gopher-request.html
 connect-img-27.webp                              2,752B  x1   gopher-connect.html
 connect-img-28.webp                              2,048B  x1   gopher-connect.html
