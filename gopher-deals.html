@@ -1191,6 +1191,10 @@
     transition:border-color 0.2s; background:#fff;
   }
   .field input:focus, .field select:focus, .field textarea:focus { outline:none; border-color:var(--brand-green); }
+  .field input.field-invalid, .field input.field-invalid:focus,
+  .field select.field-invalid, .field select.field-invalid:focus,
+  .field textarea.field-invalid, .field textarea.field-invalid:focus { border-color:var(--error,#C44257); }
+  .field-err { color:var(--error,#C44257); font-size:12px; font-weight:600; margin-top:5px; }
   .field textarea { resize:vertical; min-height:84px; }
   .field-optional { font-weight:500; color:var(--muted); font-size:12px; }
   .field-hint { font-size:12px; color:var(--muted); line-height:1.45; margin-top:7px; }
@@ -1369,7 +1373,14 @@
   .dp-btn-next { background:var(--brand-navy); color:#fff; }
   .dp-btn-next:hover { transform:translateY(-2px); box-shadow:0 10px 24px rgba(0,36,97,0.22); }
   .dp-btn-submit { background:var(--brand-green); color:var(--brand-navy); }
-  .dp-btn-submit:hover { transform:translateY(-2px); box-shadow:0 10px 24px rgba(51,217,117,0.4); background:var(--brand-green-dk); }
+  .dp-btn-submit:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 24px rgba(51,217,117,0.4); background:var(--brand-green-dk); }
+  .dp-btn-submit:disabled { opacity:.5; cursor:not-allowed; }
+  /* Merchant Agreement acceptance gate (clickwrap) — shown on the final preview step */
+  .dp-accept { margin:2px 0 14px; }
+  .dp-accept-label { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.5; color:var(--brand-navy); cursor:pointer; }
+  .dp-accept-label input { margin-top:2px; width:16px; height:16px; flex:0 0 auto; accent-color:var(--brand-green-dk); cursor:pointer; }
+  .dp-accept-label a { color:var(--green-dark); font-weight:700; text-decoration:underline; }
+  .dp-accept-err { margin:8px 0 0; font-size:12.5px; color:#c0451f; font-weight:600; }
   .dp-skip { display:inline-block; margin:14px 0 0; background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:0; }
   .dp-skip:hover { color:var(--brand-navy); }
   @media (max-width:480px) {
@@ -2494,7 +2505,7 @@
 
       <details class="faq-item">
         <summary>Who will actually see my deal?</summary>
-        <div class="faq-answer">Every Gopher user near you &mdash; <strong>both Customers and Workers</strong> &mdash; inside the reach radius you set in the Gopher Go app, up to <strong>50 miles</strong>. You decide how far your deal travels.</div>
+        <div class="faq-answer">Every Gopher user near you &mdash; <strong>both Customers and Workers</strong> &mdash; anytime they&rsquo;re within <strong>25 miles</strong> of your business. So it&rsquo;s a lot more than just the local population.</div>
       </details>
 
       <details class="faq-item">
@@ -2639,7 +2650,7 @@
       <p class="panel-desc">Give them a great deal and we&rsquo;ll get it to their door&hellip; at NO COST to you!</p>
       <div class="radius-control">
         <div class="radius-row"><span class="radius-label">Reach radius</span><span class="radius-val"><strong id="radius-mi">7</strong> mi</span></div>
-        <input type="range" id="radius-slider" min="1" max="50" step="1" value="7" oninput="setRadiusMiles(this.value)" onchange="commitRadius()">
+        <input type="range" id="radius-slider" min="1" max="25" step="1" value="7" oninput="setRadiusMiles(this.value)" onchange="commitRadius()">
         <p class="radius-hint">Drag to grow the radius &mdash; counts update live.</p>
       </div>
       <ul class="panel-stats">
@@ -2903,6 +2914,13 @@
             <span class="dp-dot" id="dp-dot-1"></span>
             <span class="dp-dot" id="dp-dot-2"></span>
             <span class="dp-dot" id="dp-dot-3"></span>
+          </div>
+          <div class="dp-accept" id="dp-accept" hidden>
+            <label class="dp-accept-label">
+              <input type="checkbox" id="dp-accept-check" name="merchant_agreement_accepted" onchange="dpAcceptChanged()">
+              <span>I have read and agree to the <a href="gopher-merchant-agreement.html" target="_blank" rel="noopener">Gopher Deals Merchant Agreement</a>, and I am authorized to accept it on behalf of this business.</span>
+            </label>
+            <p class="dp-accept-err" id="dp-accept-err" hidden>Please agree to the Merchant Agreement to submit your deal.</p>
           </div>
           <div class="dp-nav">
             <button class="dp-btn dp-btn-back" id="dp-back">&larr; Back</button>
@@ -3525,6 +3543,7 @@
   }
   (function(){ var fr=document.getElementById('rpFrame'); if(fr) fr.addEventListener('load', function(){ rpLiveLoaded=true; rpSetFb('hide'); }); })();
   function openPreview(type) {
+    if (!dcValidateAll('modal-' + type)) return;
     document.getElementById('form-wrap-' + type).style.display = 'none';
     document.getElementById('preview-' + type).classList.add('show');
     var modalCard = document.querySelector('#modal-' + type + ' .modal');
@@ -3548,15 +3567,30 @@
     if (dpStep === 0) { dpBack.textContent = '\u2190 Edit my info'; dpBack.onclick = dpEdit; }
     else { dpBack.textContent = '\u2190 Back'; dpBack.onclick = dpPrev; }
     var next = document.getElementById('dp-next');
+    var accept = document.getElementById('dp-accept');
+    var acceptCheck = document.getElementById('dp-accept-check');
     if (dpStep === dpSteps.length - 1) {
       next.textContent = 'Submit My Deal \u2192';
       next.className = 'dp-btn dp-btn-submit';
       next.onclick = dpSubmit;
+      // Merchant Agreement acceptance gate: reveal the clickwrap and block submit until checked.
+      if (accept) accept.hidden = false;
+      next.disabled = !(acceptCheck && acceptCheck.checked);
     } else {
       next.textContent = 'Next \u2192';
       next.className = 'dp-btn dp-btn-next';
       next.onclick = function(){ dpStopAuto(); dpNext(); };
+      next.disabled = false;
+      if (accept) accept.hidden = true;
     }
+  }
+  function dpAcceptChanged() {
+    var acceptCheck = document.getElementById('dp-accept-check');
+    var next = document.getElementById('dp-next');
+    var err = document.getElementById('dp-accept-err');
+    var ok = !!(acceptCheck && acceptCheck.checked);
+    if (next && dpStep === dpSteps.length - 1) next.disabled = !ok;
+    if (err && ok) err.hidden = true;
   }
   function dpStartAuto() {
     dpStopAuto();
@@ -3576,6 +3610,16 @@
     document.getElementById('form-wrap-merchant').style.display = '';
   }
   function dpSubmit() {
+    // Backstop: never submit a merchant deal without recorded agreement acceptance.
+    var acceptCheck = document.getElementById('dp-accept-check');
+    if (!acceptCheck || !acceptCheck.checked) {
+      var err = document.getElementById('dp-accept-err');
+      if (err) err.hidden = false;
+      var next = document.getElementById('dp-next');
+      if (next) next.disabled = true;
+      if (acceptCheck) acceptCheck.focus();
+      return;
+    }
     dpStopAuto();
     document.getElementById('preview-merchant').classList.remove('show');
     submitForm('merchant');
@@ -3638,6 +3682,115 @@
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verify'; sb.disabled = false;
     var hv = field.querySelector('input[name="phone_verified"]'); if (hv) hv.value = 'false';
   }
+  /* ── Registration field housekeeping: name Title Case · phone (###) ###-#### mask (digits only) ·
+        email must contain @ and a dot. Applies to the merchant form + the provider funnel. ── */
+  function dcTitleCase(s){ return (s||'').toLowerCase().replace(/(^|[\s\-\/])([a-z])/g, function(_,p,c){ return p + c.toUpperCase(); }); } // capitalize word-starts only (keeps possessive 's: Maria's)
+  function dcFormatPhone(el){
+    var d = (el.value||'').replace(/\D/g,'').slice(0,10), o='';
+    if (d.length) o = '(' + d.slice(0,3);
+    if (d.length >= 4) o += ') ' + d.slice(3,6);
+    if (d.length >= 7) o += '-' + d.slice(6);
+    el.value = o;
+  }
+  function dcIsEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s||'').trim()); }
+  function dcSetErr(inp, msg){
+    var field = inp.closest('.field') || inp.parentNode;
+    var err = field.querySelector('.field-err');
+    if (msg){ if (!err){ err = document.createElement('div'); err.className = 'field-err'; field.appendChild(err); } err.textContent = msg; }
+    else if (err){ err.remove(); }
+  }
+  function dcClear(inp){ inp.classList.remove('field-invalid'); dcSetErr(inp, ''); }
+  // Required-field gate (owner-locked spec): merchant = Business Name, Logo, Address (unless
+  // mobile), Category, Deal, ≥1 keyword, Owner Name/Phone/Email/Address. Funnel = all 5 fields.
+  // NOTE: the simulated OTP "Verify" is NOT required to submit — it's front-end theater until
+  // Twilio is wired; requiring it would add friction with zero real verification.
+  function dcValidateRequired(modalId){
+    var modal = document.getElementById(modalId); if (!modal) return true;
+    var firstBad = null;
+    function bad(inp, msg){
+      if (!inp) return;
+      inp.classList.add('field-invalid'); dcSetErr(inp, msg);
+      if (!firstBad) firstBad = inp;
+    }
+    function need(sel, msg){
+      var inp = modal.querySelector(sel); if (!inp) return;
+      if (!(inp.value||'').trim()) bad(inp, msg); else { inp.classList.remove('field-invalid'); dcSetErr(inp,''); }
+    }
+    if (modalId === 'modal-merchant'){
+      need('input[name="business_name"]', 'Business name is required.');
+      var logo = modal.querySelector('input[name="logo"]');
+      if (logo){
+        var lf = logo.closest('.field') || logo.parentNode.parentNode;
+        var lerr = lf.querySelector('.field-err');
+        if (!(logo.files && logo.files.length)){
+          if (!lerr){ lerr = document.createElement('div'); lerr.className='field-err'; lf.appendChild(lerr); }
+          lerr.textContent = 'Please upload your logo.'; if (!firstBad) firstBad = logo;
+        } else if (lerr) lerr.remove();
+      }
+      var mobile = modal.querySelector('#regAddrMobile');
+      if (!(mobile && mobile.checked)) need('input[name="address"]', 'Business address is required (or check "address is mobile").');
+      else { var a = modal.querySelector('input[name="address"]'); if (a){ a.classList.remove('field-invalid'); dcSetErr(a,''); } }
+      need('select[name="category"]', 'Pick a category.');
+      need('textarea[name="deal"]', 'Tell us the deal you’re offering.');
+      var kws = (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list) || [];
+      var kwInp = modal.querySelector('#kw-input');
+      if (kwInp){ if (kws.length < 1) bad(kwInp, 'Add at least one searchable keyword.'); else { kwInp.classList.remove('field-invalid'); dcSetErr(kwInp,''); } }
+      need('input[name="owner_name"]', 'Owner name is required.');
+      need('input[name="owner_phone"]', 'Owner phone is required.');
+      need('input[name="owner_email"]', 'Owner email is required.');
+      need('input[name="owner_address"]', 'Owner address is required.');
+    } else {
+      need('input[name="first_name"]', 'First name is required.');
+      need('input[name="last_name"]', 'Last name is required.');
+      need('input[name="sms"]', 'Mobile number is required.');
+      need('input[name="email"]', 'Email is required.');
+      need('input[name="gopher_id"]', 'Your Gopher ID is required — tap the ⓘ to find it.');
+    }
+    if (firstBad){ firstBad.focus(); if (firstBad.scrollIntoView) firstBad.scrollIntoView({block:'center', behavior:'smooth'}); return false; }
+    return true;
+  }
+  function dcValidateAll(modalId){
+    var r = dcValidateRequired(modalId);
+    var c = dcValidateContact(modalId);
+    return r && c;
+  }
+  // Submit gate: email must be valid; a phone, if entered, must be a complete 10 digits.
+  function dcValidateContact(modalId){
+    var modal = document.getElementById(modalId); if (!modal) return true;
+    var ok = true, firstBad = null;
+    modal.querySelectorAll('input[name="owner_email"], input[name="email"]').forEach(function(inp){
+      var bad = !dcIsEmail(inp.value);
+      inp.classList.toggle('field-invalid', bad);
+      dcSetErr(inp, bad ? 'Enter a valid email — e.g. name@business.com' : '');
+      if (bad){ ok = false; firstBad = firstBad || inp; }
+    });
+    modal.querySelectorAll('input[name="owner_phone"], input[name="sms"]').forEach(function(inp){
+      var d = (inp.value||'').replace(/\D/g,''), bad = d.length > 0 && d.length < 10;
+      inp.classList.toggle('field-invalid', bad);
+      dcSetErr(inp, bad ? 'Enter a 10-digit phone number.' : '');
+      if (bad){ ok = false; firstBad = firstBad || inp; }
+    });
+    if (firstBad) firstBad.focus();
+    return ok;
+  }
+  (function(){
+    function wire(mid){
+      var modal = document.getElementById(mid); if (!modal) return;
+      modal.querySelectorAll('input[name="business_name"], input[name="owner_name"], input[name="first_name"], input[name="last_name"]').forEach(function(inp){
+        inp.addEventListener('blur', function(){ var v = inp.value; if (v && v === v.toLowerCase()) inp.value = dcTitleCase(v); }); // only fix all-lowercase; leave intentional casing (IHOP, McDonald's)
+      });
+      modal.querySelectorAll('input[name="owner_phone"], input[name="sms"]').forEach(function(inp){
+        inp.setAttribute('inputmode','tel'); inp.setAttribute('maxlength','14');
+        inp.addEventListener('input', function(){ dcFormatPhone(inp); dcClear(inp); });
+      });
+      modal.querySelectorAll('input[name="owner_email"], input[name="email"]').forEach(function(inp){
+        inp.addEventListener('input', function(){ dcClear(inp); });
+        inp.addEventListener('blur', function(){ var bad = inp.value.trim() !== '' && !dcIsEmail(inp.value); inp.classList.toggle('field-invalid', bad); dcSetErr(inp, bad ? 'Enter a valid email — e.g. name@business.com' : ''); });
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function(){ wire('modal-merchant'); wire('modal-worker'); });
+  })();
+
   function openModal(type) {
     document.getElementById('modal-' + type).classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -3667,11 +3820,18 @@
   ============================================================ */
   var GOPHER_BACKEND = "sheets";
   var GOPHER_FORM_ENDPOINT = "https://script.google.com/macros/s/AKfycbxSIbfXelHFBd1RcF3H50v_QLorKskgj5LRNgDTQbV79mHEXerC_lOwnNueRjnITAEAjg/exec";
+  // Version stamp recorded with each merchant's Merchant Agreement acceptance (see gopher-merchant-agreement.html
+  // "Effective Date"). Bump this whenever the agreement's effective date changes so acceptances stay auditable.
+  var MERCHANT_AGREEMENT_VERSION = "2026-07-10";
 
   function submitForm(type) {
+    if (!dcValidateAll('modal-' + type)) return;
     // Collect every named field in this modal into one object.
     var modal = document.getElementById('modal-' + type);
     var data = { submission_type: type, submitted_at: new Date().toISOString() };
+    // Channel attribution: links shared as ...?src=email / ?src=ig / ?src=sms tag the lead
+    // with its source; a bare link (e.g. the printed QR) records as "direct".
+    try { data.source = new URLSearchParams(location.search).get('src') || 'direct'; } catch (e) { data.source = 'direct'; }
     modal.querySelectorAll('input, select, textarea').forEach(function(el) {
       if (!el.name) return;
       if (el.type === 'checkbox') { data[el.name] = el.checked; return; }
@@ -3693,6 +3853,16 @@
       data.opt_out_featured = !consentEl.checked;
     }
 
+    // Merchant Agreement acceptance record (clickwrap). The checkbox lives in the preview
+    // step; capture the affirmative acceptance plus a timestamp and the agreement version so
+    // there is an auditable record of what was agreed to and when.
+    if (type === 'merchant') {
+      var mAccept = document.getElementById('dp-accept-check');
+      data.merchant_agreement_accepted = !!(mAccept && mAccept.checked);
+      data.merchant_agreement_accepted_at = data.merchant_agreement_accepted ? new Date().toISOString() : '';
+      data.merchant_agreement_version = MERCHANT_AGREEMENT_VERSION;
+    }
+
     // Tidy email subject line for the inbox alert.
     data._subject = 'Gopher Deals pre-registration — ' +
       (data.business_name || data.name || 'New ' + type);
@@ -3702,24 +3872,51 @@
       document.getElementById('thankyou-' + type).classList.add('show');
     }
 
-    // Local backup so a network hiccup never loses a lead.
-    try {
-      var backup = JSON.parse(localStorage.getItem('gopherLeads') || '[]');
-      backup.push(data);
-      localStorage.setItem('gopherLeads', JSON.stringify(backup));
-    } catch (e) { /* private mode etc. */ }
+    var sent = false;
+    function send() {
+      if (sent) return; sent = true;
 
-    if (!GOPHER_FORM_ENDPOINT) { console.log('Stored locally (no endpoint):', data); showThanks(); return; }
+      // Local backup so a network hiccup never loses a lead.
+      try {
+        var backup = JSON.parse(localStorage.getItem('gopherLeads') || '[]');
+        backup.push(data);
+        localStorage.setItem('gopherLeads', JSON.stringify(backup));
+      } catch (e) { /* private mode etc. */ }
 
-    // Google Apps Script needs a "simple" request (text/plain) to avoid a
-    // CORS preflight it can't answer. Formspree wants real JSON.
-    var fetchOpts = (GOPHER_BACKEND === 'sheets')
-      ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(data) }
-      : { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(data) };
+      if (!GOPHER_FORM_ENDPOINT) { console.log('Stored locally (no endpoint):', data); showThanks(); return; }
 
-    fetch(GOPHER_FORM_ENDPOINT, fetchOpts)
-      .then(function(res) { if (!res.ok) throw new Error('Bad response: ' + res.status); showThanks(); })
-      .catch(function(err) { console.error('Submission failed (saved locally as backup):', err); showThanks(); });
+      // Google Apps Script needs a "simple" request (text/plain) to avoid a
+      // CORS preflight it can't answer. Formspree wants real JSON.
+      var fetchOpts = (GOPHER_BACKEND === 'sheets')
+        ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(data) }
+        : { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(data) };
+
+      fetch(GOPHER_FORM_ENDPOINT, fetchOpts)
+        .then(function(res) { if (!res.ok) throw new Error('Bad response: ' + res.status); showThanks(); })
+        .catch(function(err) { console.error('Submission failed (saved locally as backup):', err); showThanks(); });
+    }
+
+    // Geocode-at-submit: stamp lat/lng on the lead so the coverage tracker can pin it
+    // precisely (not just at the ZIP centroid). Never blocks the lead — a 1.6s race
+    // sends without coordinates if Maps is slow, blocked (referrer key), or absent.
+    var geoAddr = (type === 'merchant') ? (data.address || '').trim() : '';
+    if (geoAddr && window.google && google.maps && google.maps.Geocoder) {
+      var geoTimer = setTimeout(send, 1600);
+      try {
+        new google.maps.Geocoder().geocode({ address: geoAddr }, function (res, status) {
+          clearTimeout(geoTimer);
+          if (status === 'OK' && res && res[0] && res[0].geometry) {
+            var ll = res[0].geometry.location;
+            data.lat = +ll.lat().toFixed(6);
+            data.lng = +ll.lng().toFixed(6);
+            data.geo_formatted = res[0].formatted_address || '';
+          }
+          send();
+        });
+      } catch (e) { clearTimeout(geoTimer); send(); }
+    } else {
+      send();
+    }
   }
 
   /* Backup export: open the page, then type downloadGopherLeads() in the console. */
