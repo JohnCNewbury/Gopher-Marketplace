@@ -17473,10 +17473,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // ── Existing sign-in behavior ──
     closeOtp();
     if(otpPurpose === 'login-email'){
-      // Email-OTP path: mark verified, surface the pill, and let the user tap
-      // Sign in (consistent with how SMS-OTP shows ✓ Verified before sign-in).
+      // Email-OTP path signs the user straight in — verifying the code IS the
+      // sign-in, no redundant second "Sign In" tap. Matches the SMS path and
+      // every other Gopher sign-in pop-up.
       emailVerifPill.hidden = false;
       signInBtn.disabled = false;
+      completeSignIn(pendingName);
     } else if(otpPurpose === 'login-user' && digits(smsPhone.value) === DEMO_USER){
       completeSignIn(pendingName);
     } else if(otpPurpose === 'signup-email'){
