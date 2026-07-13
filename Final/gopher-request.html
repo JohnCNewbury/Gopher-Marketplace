@@ -7925,9 +7925,13 @@
 
   /* ── Deals Home (bid-winners landing) — parity with Connect ── */
   .deals-home { font-family:'DM Sans',sans-serif; }
-  .dh-near { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .dh-near { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .dh-near-r { display:flex; align-items:center; gap:12px; flex:0 0 auto; }
+  .dh-viewall-link { display:inline-flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:#1a9d4b; background:#eafaf0; border:1px solid #cdeeda; border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; transition:background .15s ease, transform .15s ease; }
+  .dh-viewall-link:hover { background:#dff6e8; transform:translateY(-1px); }
+  .dh-viewall-link svg { width:15px; height:15px; flex:0 0 auto; }
   .dh-near-l { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; letter-spacing:-.01em; color:var(--navy); line-height:1.08; }
-  .dh-sponsored { flex:0 0 auto; margin-top:7px; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:.06em; color:var(--muted);
+  .dh-sponsored { flex:0 0 auto; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:.06em; color:var(--muted);
     border:1px solid #d7dce6; border-radius:7px; padding:4px 9px; background:#fff; white-space:nowrap; }
   .dh-hand { font-family:'Caveat', cursive; font-weight:700; font-size:24px; color:var(--terracotta); margin:2px 0 18px; line-height:1.2; }
 
@@ -7987,13 +7991,7 @@
     border:1.5px solid var(--navy); border-radius:11px; padding:9px 26px; transition:background .15s ease, color .15s ease, border-color .15s ease; }
   .dh-cat:hover .dh-cat-cta { background:var(--green); border-color:var(--green); color:#fff; }
 
-  /* "View All Local Deals" button + back-to-featured link */
-  .dh-viewall { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box;
-    margin-top:22px; padding:15px 20px; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; color:#fff;
-    background:var(--green); border:none; border-radius:14px; box-shadow:0 10px 24px rgba(51,217,117,.35);
-    transition:background .15s ease, transform .15s ease; }
-  .dh-viewall:hover { background:var(--green-dark); transform:translateY(-2px); }
-  .dh-viewall svg { width:18px; height:18px; flex:0 0 auto; }
+  /* back-to-featured link */
   .dh-back { display:inline-flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
     color:var(--navy); background:var(--navy-light); border:none; border-radius:999px; padding:8px 14px 8px 11px; cursor:pointer;
     margin:0 0 14px; transition:background .15s ease, color .15s ease; }
@@ -22743,7 +22741,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     catch(e){ return false; }
   }
   const DEALS_GO_SVG   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-  const DEALS_GRID_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
   const DEALS_CROWN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 18h16l1.3-9.6-4.85 3.35L12 5.1 7.55 11.75 2.7 8.4 4 18z"/></svg>';
 
   function renderDealsHome(){
@@ -22797,11 +22794,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     host.innerHTML =
       '<div class="deals-home">' +
-        '<div class="dh-near"><span class="dh-near-l">Feature Deals Near You</span><span class="dh-sponsored">SPONSORED</span></div>' +
+        '<div class="dh-near"><span class="dh-near-l">Feature Deals Near You</span>' +
+          '<span class="dh-near-r"><button type="button" class="dh-viewall-link" id="dhViewAll"><span>View all deals</span>' + DEALS_GO_SVG + '</button><span class="dh-sponsored">SPONSORED</span></span></div>' +
         '<div class="dh-hand">— showing love to our neighborhood favs</div>' +
         featuredHTML +
         '<div class="dh-cats">' + cats.map(catCardHTML).join('') + '</div>' +
-        '<button type="button" class="dh-viewall" id="dhViewAll">' + DEALS_GRID_SVG + '<span>View All Local Deals</span>' + DEALS_GO_SVG + '</button>' +
       '</div>';
 
     host.querySelectorAll('.dh-featured, .dh-cat').forEach(btn => {
