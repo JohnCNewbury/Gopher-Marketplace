@@ -13725,13 +13725,22 @@
       $desc.addEventListener('input', () => {
         state.description = $desc.value;
         state.descriptionIsPlaceholder = $desc.value.trim() === '';
-        // Editing the description re-arms the age-restricted keyword backstop so
-        // a newly typed keyword re-triggers the confirmation on the next Continue.
+        // Editing the description re-arms the age-restricted keyword backstop AND
+        // the category-mismatch nudge so newly typed text re-triggers on the next
+        // blur / Continue.
         state.ageKeywordAck = false;
         state.idRequiredAtCompletion = false;
+        state.userAcknowledgedCategory = false;
         if(state.step === 2 && isVisible('describe')){
           $btnNext.classList.toggle('is-disabled', !$desc.value.trim());
         }
+      });
+      // Category-mismatch nudge on blur (Step 2). Age-restricted items are owned by
+      // the Continue gate, so skip the nudge when an age keyword is present.
+      $desc.addEventListener('blur', () => {
+        if(state.step !== 2) return;
+        if(findAgeRestrictedKeyword(state.description)) return;
+        if(window.__checkCategoryMismatch) window.__checkCategoryMismatch();
       });
     }
     const $cost = $content.querySelector('#costOfItemsInput');
@@ -14297,11 +14306,14 @@
     // flash the missing field and tell the user which one is required.
     const gate = stepGate();
     if(!gate.ok){ showGatePrompt(gate); return; }
-    // ── Age-restricted keyword backstop ──
-    // On the Job Details step (2) for a delivery where the age slider is OFF and
-    // the prompt hasn't been resolved for this description, scan the description
-    // for an age-restricted keyword. If found, block Continue and confirm.
-    if(state.step === 2 && state.category === 'delivery' && !state.ageRestricted && !state.ageKeywordAck){
+    // ── Age-restricted keyword backstop (ALL categories — compliance) ──
+    // On Job Details (step 2), scan the description for an age-restricted keyword
+    // whenever age handling isn't already active (delivery + slider on) and the
+    // prompt hasn't been resolved. Runs for EVERY category so age-restricted items
+    // requested under Other / Ride / etc. can't bypass the ID/waiver flow. If found,
+    // block Continue and confirm; the modal's "Yes" routes it to age-restricted
+    // Delivery, "No" force-flags ID-at-drop-off (no silent bypass).
+    if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
       const kw = findAgeRestrictedKeyword(state.description);
       if(kw){
         // Block Continue only if the confirmation actually opened; if the modal
@@ -14309,6 +14321,13 @@
         if(window.__openAgeKeywordModal && window.__openAgeKeywordModal(kw)) return;
         state.ageKeywordAck = true;
       }
+    }
+    // ── Category-mismatch nudge (worker visibility) ──
+    // After the age gate (which takes precedence): if no age-restricted keyword is
+    // present and the description confidently points to a different category, block
+    // Continue once to recommend the switch. Dismissible via "Keep as-is".
+    if(state.step === 2 && !findAgeRestrictedKeyword(state.description)){
+      if(window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
     }
     // ── Age-restricted "no purchase" guardrail (G40-310) ──
     // Age-restricted auto-enables "purchase needed"; if the user turned it back
@@ -14534,8 +14553,13 @@
       const yesBtn = document.getElementById('ageKwYes');
       const noBtn  = document.getElementById('ageKwNo');
       if(yesBtn) yesBtn.addEventListener('click', () => {
-        // Slide the slider ON for them: re-render Job Details in place so the
-        // safe-guarding disclaimer + $2.99 age fee appear; they then tap Continue.
+        // Route it to age-restricted Delivery. If they're in another category
+        // (e.g. Other), switch to Delivery so the ID/waiver + $2.99 age flow
+        // applies; then re-render Job Details in place and they tap Continue.
+        if(state.category !== 'delivery'){
+          state.category = 'delivery';
+          if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
+        }
         state.ageRestricted = true;
         state.ageKeywordAck = true;
         overlay.hidden = true;
@@ -14556,6 +14580,103 @@
       const termEl = document.getElementById('ageKwTerm');
       if(termEl) termEl.textContent = kw || 'this item';
       overlay.hidden = false;
+      return true;
+    };
+  })();
+
+  // ── Category-mismatch nudge (worker visibility) ────────────────────────────
+  // Reuses the iQ intent classifier (scoreCategories) — the same keyword brain the
+  // search pill uses — to catch a description that confidently points to a DIFFERENT
+  // category than the one selected. A mis-categorized request is invisible to the
+  // workers who filter jobs by category, so we recommend the switch (dismissible:
+  // the requester may know something the text doesn't). The age-restricted gate
+  // takes precedence — this only runs when no age-restricted keyword is present.
+  (function initCategoryMismatch(){
+    // Tuned against the Step-5 test matrix (JXA harness). Do NOT lower without
+    // re-running it: the double condition (strong top AND weak selected AND a
+    // margin) is what stops genuinely dual-category jobs — "moving labor", "haul
+    // away branches", "move a couch to the dump" — from nagging.
+    const MIN_CONTENT_WORDS = 2;   // skip short/empty descriptions
+    const STRONG_BAR        = 8;   // top must be a confident match (seeded = CAT_HIGH)
+    const MARGIN            = 5;   // top must beat the selected category's score by this
+    // The submission UI uses short category keys; the classifier uses full slugs.
+    const UI_TO_SLUG = { junk:'junk_removal', ride:'ride_sharing', yard:'yard_work_outdoor_projects',
+                         home:'home_services', labor:'hourly_day_labor',
+                         delivery:'delivery', moving:'moving', other:'other' };
+    const SLUG_TO_UI = {}; Object.keys(UI_TO_SLUG).forEach(k => { SLUG_TO_UI[UI_TO_SLUG[k]] = k; });
+
+    // Pure, UI-decoupled, unit-tested (Step 5). Returns null or a suggestion.
+    function detectCategoryMismatch(selectedSlug, description){
+      if(catWords(description || '').length < MIN_CONTENT_WORDS) return null;
+      const scored = scoreCategories(description || '');
+      if(!scored.length) return null;
+      const top = scored[0];
+      let selectedScore = 0;
+      for(const s of scored){ if(s.slug === selectedSlug){ selectedScore = s.score; break; } }
+      const strongTop = top.score >= STRONG_BAR && top.slug !== 'other';   // never suggest TO the catch-all
+      // Escape-the-catch-all: suggesting FROM Other TO a concrete category is helpful.
+      if(selectedSlug === 'other' && strongTop)
+        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
+      // Confident disagreement: strong top AND weak selected AND a clear margin.
+      if(strongTop && top.slug !== selectedSlug
+         && (top.score - selectedScore) >= MARGIN && selectedScore < CAT_THRESH)
+        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
+      return null;
+    }
+    window.__detectCategoryMismatch = detectCategoryMismatch;   // for the JXA test harness
+
+    // Telemetry — no analytics backend in the prototype, so emit a window event +
+    // console debug carrying the exact payload; the production rebuild points this
+    // at its analytics util. Payload: { requestId, selectedSlug, suggestedSlug,
+    // selectedScore, suggestedScore, action:'shown'|'accepted'|'dismissed' }.
+    function emitCategoryEvent(action, r){
+      const payload = { requestId: state.requestId || state.draftId || null,
+        selectedSlug: r.selectedSlug, suggestedSlug: r.suggestedSlug,
+        selectedScore: r.selectedScore, suggestedScore: r.suggestedScore, action };
+      try { window.dispatchEvent(new CustomEvent('gopher:category_check', { detail: payload })); } catch(e){}
+      try { if(window.GopherTelemetry && window.GopherTelemetry.track) window.GopherTelemetry.track('category_check', payload); } catch(e){}
+      try { console.debug('[category_check]', payload); } catch(e){}
+    }
+
+    function buildOverlay(html){
+      const ov = document.createElement('div'); ov.className = 'gr-modal-overlay';
+      ov.innerHTML = '<div class="gr-modal">' + html + '</div>';
+      document.body.appendChild(ov); ov.hidden = false; return ov;
+    }
+
+    // Returns true if a modal opened (caller blocks Continue). Maps UI-key <-> slug
+    // only at this boundary; detectCategoryMismatch stays pure on slugs.
+    window.__checkCategoryMismatch = function(){
+      const selectedSlug = UI_TO_SLUG[state.category] || state.category;
+      const r = detectCategoryMismatch(selectedSlug, state.description);
+      state.lastCheckedDescription = state.description;
+      if(!r) return false;
+      if(state.userAcknowledgedCategory) return false;   // they chose Keep-as-is; re-armed on edit
+      r.selectedSlug = selectedSlug;
+      const selectedLabel = (CATEGORIES[state.category] && CATEGORIES[state.category].name) || state.category;
+      emitCategoryEvent('shown', r);
+      const ov = buildOverlay(
+        '<div class="gr-modal-icon" style="font-size:26px;line-height:1;">🧭</div>' +
+        '<h4>This looks like a ' + r.suggestedLabel + ' job</h4>' +
+        '<p class="gr-modal-sub">Requests in the wrong category may not reach the right workers — workers filter available jobs by category. Switch to <b>' + r.suggestedLabel + '</b>?</p>' +
+        '<button type="button" class="gr-modal-btn" id="catSwitchYes">Switch to ' + r.suggestedLabel + '</button>' +
+        '<button type="button" class="gr-modal-btn gr-modal-btn-secondary" id="catSwitchNo">Keep as ' + selectedLabel + '</button>'
+      );
+      const yes = ov.querySelector('#catSwitchYes'), no = ov.querySelector('#catSwitchNo');
+      if(yes) yes.addEventListener('click', () => {
+        emitCategoryEvent('accepted', r);
+        state.category = SLUG_TO_UI[r.suggestedSlug] || r.suggestedSlug;   // slug -> UI key
+        state.userAcknowledgedCategory = false;                            // fresh category
+        if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
+        ov.remove();
+        render();
+        setTimeout(() => { if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); }, 0); // confirm resolution
+      });
+      if(no) no.addEventListener('click', () => {
+        emitCategoryEvent('dismissed', r);
+        state.userAcknowledgedCategory = true;   // low-friction — they may know better
+        ov.remove();
+      });
       return true;
     };
   })();

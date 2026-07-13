@@ -32,6 +32,10 @@
      (Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx).
      Consumed by findAgeRestrictedKeyword(); regenerate from the xlsx, do not hand-edit. -->
 <script src="assets/js/gopher-age-keywords.js"></script>
+<!-- iQ service-category intent classifier (shared, generated from the same keyword
+     sources as the engine). Connect has no inline engine, so it loads scoreCategories
+     from here for the category-mismatch nudge — same brain the Request flow uses. -->
+<script src="assets/js/gopher-category-classifier.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -11425,12 +11429,20 @@ const PAY_BADGES = {
         // age-restricted keyword re-triggers the backstop on the next submit.
         state.ageKeywordAck = false;
         state.idRequiredAtCompletion = false;
+        state.userAcknowledgedCategory = false;
         // Live-toggle the Continue button so it activates the moment there's
         // text, and deactivates again if the field is cleared. No re-render so
         // the textarea keeps focus while typing.
         if(state.step === 2 && isVisible('describe')){
           $btnNext.classList.toggle('is-disabled', !$desc.value.trim());
         }
+      });
+      // Category-mismatch nudge on blur (Step 2). Age-restricted items are owned by
+      // the Continue gate, so skip the nudge when an age keyword is present.
+      $desc.addEventListener('blur', () => {
+        if(state.step !== 2) return;
+        if(findAgeRestrictedKeyword(state.description)) return;
+        if(window.__checkCategoryMismatch) window.__checkCategoryMismatch();
       });
     }
     const $cost = $content.querySelector('#costOfItemsInput');
@@ -11959,15 +11971,22 @@ const PAY_BADGES = {
     // flash the missing field and tell the user which one ("X") is required.
     const gate = stepGate();
     if(!gate.ok){ showGatePrompt(gate); return; }
-    // AGE-RESTRICTED KEYWORD BACKSTOP: when leaving the Job Details step (step 2)
-    // of a DELIVERY request that the user did NOT flag age-restricted, scan the
-    // description for known keywords. If one matches and it hasn't been resolved,
-    // open the confirmation pop-up instead of advancing. Triggering here (the
-    // step that holds the slider) means a "Yes" can slide the slider on in place,
-    // so the user sees the safe-guarding disclaimer + fee before continuing.
-    if(state.step === 2 && state.category === 'delivery' && !state.ageRestricted && !state.ageKeywordAck){
+    // AGE-RESTRICTED KEYWORD BACKSTOP (ALL categories — compliance): when leaving
+    // the Job Details step (step 2), scan the description for known age-restricted
+    // keywords whenever age handling isn't already active (delivery + slider on) and
+    // it hasn't been resolved. Runs for EVERY category so age-restricted items
+    // requested under Other / Ride / etc. can't bypass the ID/waiver flow. "Yes"
+    // routes it to age-restricted Delivery; "No" force-flags ID-at-drop-off.
+    if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
       const kw = findAgeRestrictedKeyword(state.description);
       if(kw){ if(window.__openAgeKeywordModal) window.__openAgeKeywordModal(kw); return; }
+    }
+    // ── Category-mismatch nudge (worker visibility) ──
+    // After the age gate (which takes precedence): if no age-restricted keyword is
+    // present and the description confidently points to a different category, block
+    // Continue once to recommend the switch. Dismissible via "Keep as-is".
+    if(state.step === 2 && !findAgeRestrictedKeyword(state.description)){
+      if(window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
     }
     // ── Age-restricted "no purchase" guardrail (G40-310) ──
     // Age-restricted auto-enables "purchase needed"; if the user turned it back
@@ -12036,6 +12055,7 @@ const PAY_BADGES = {
     // decision resolved, and re-render the Job Details step so the safe-guarding
     // disclaimer + $2.99 fee appear in place. They review it, then tap Continue.
     if(yesBtn) yesBtn.addEventListener('click', () => {
+      if(state.category !== 'delivery') state.category = 'delivery'; // route age-restricted → Delivery
       state.ageRestricted = true;
       state.ageKeywordAck = true;
       state.idRequiredAtCompletion = false; // age-restricted path already requires ID
@@ -12060,6 +12080,87 @@ const PAY_BADGES = {
       // Resume submission — the ack flag now suppresses a re-trigger.
       $btnNext.click();
     });
+  })();
+
+  // ── Category-mismatch nudge (worker visibility) — mirrors gopher-request.html ──
+  // Connect has no inline engine, so the iQ classifier is loaded from the shared
+  // assets/js/gopher-category-classifier.js. Catches a description that confidently
+  // points to a different category than the one selected. Dismissible; the
+  // age-restricted gate above takes precedence. No-ops if the classifier is absent.
+  (function initCategoryMismatch(){
+    const CLS = window.GopherCategoryClassifier || null;
+    if(!CLS) return;   // classifier not loaded — fail safe
+    const scoreCategories = CLS.scoreCategories, catWords = CLS.catWords, CAT_THRESH = CLS.CAT_THRESH;
+    // Tuned against the Step-5 test matrix (JXA). The double condition (strong top
+    // AND weak selected AND a margin) is what stops dual-category jobs from nagging.
+    const MIN_CONTENT_WORDS = 2, STRONG_BAR = 8, MARGIN = 5;
+    const UI_TO_SLUG = { junk:'junk_removal', ride:'ride_sharing', yard:'yard_work_outdoor_projects',
+                         home:'home_services', labor:'hourly_day_labor',
+                         delivery:'delivery', moving:'moving', other:'other' };
+    const SLUG_TO_UI = {}; Object.keys(UI_TO_SLUG).forEach(k => { SLUG_TO_UI[UI_TO_SLUG[k]] = k; });
+
+    function detectCategoryMismatch(selectedSlug, description){
+      if(catWords(description || '').length < MIN_CONTENT_WORDS) return null;
+      const scored = scoreCategories(description || '');
+      if(!scored.length) return null;
+      const top = scored[0];
+      let selectedScore = 0;
+      for(const s of scored){ if(s.slug === selectedSlug){ selectedScore = s.score; break; } }
+      const strongTop = top.score >= STRONG_BAR && top.slug !== 'other';
+      if(selectedSlug === 'other' && strongTop)
+        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
+      if(strongTop && top.slug !== selectedSlug
+         && (top.score - selectedScore) >= MARGIN && selectedScore < CAT_THRESH)
+        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
+      return null;
+    }
+    window.__detectCategoryMismatch = detectCategoryMismatch;
+
+    function emitCategoryEvent(action, r){
+      const payload = { requestId: state.requestId || state.draftId || null,
+        selectedSlug: r.selectedSlug, suggestedSlug: r.suggestedSlug,
+        selectedScore: r.selectedScore, suggestedScore: r.suggestedScore, action };
+      try { window.dispatchEvent(new CustomEvent('gopher:category_check', { detail: payload })); } catch(e){}
+      try { if(window.GopherTelemetry && window.GopherTelemetry.track) window.GopherTelemetry.track('category_check', payload); } catch(e){}
+      try { console.debug('[category_check]', payload); } catch(e){}
+    }
+    function buildOverlay(html){
+      const ov = document.createElement('div'); ov.className = 'gc-modal-overlay';
+      ov.innerHTML = '<div class="gc-modal">' + html + '</div>';
+      document.body.appendChild(ov); ov.hidden = false; return ov;
+    }
+    window.__checkCategoryMismatch = function(){
+      const selectedSlug = UI_TO_SLUG[state.category] || state.category;
+      const r = detectCategoryMismatch(selectedSlug, state.description);
+      state.lastCheckedDescription = state.description;
+      if(!r) return false;
+      if(state.userAcknowledgedCategory) return false;
+      r.selectedSlug = selectedSlug;
+      const selectedLabel = (CATEGORIES[state.category] && CATEGORIES[state.category].name) || state.category;
+      emitCategoryEvent('shown', r);
+      const ov = buildOverlay(
+        '<div class="gc-modal-icon" style="font-size:26px;line-height:1;">🧭</div>' +
+        '<h4>This looks like a ' + r.suggestedLabel + ' job</h4>' +
+        '<p class="gc-modal-sub">Requests in the wrong category may not reach the right workers — workers filter available jobs by category. Switch to <b>' + r.suggestedLabel + '</b>?</p>' +
+        '<button type="button" class="gc-modal-btn" id="catSwitchYes">Switch to ' + r.suggestedLabel + '</button>' +
+        '<button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="catSwitchNo">Keep as ' + selectedLabel + '</button>'
+      );
+      const yes = ov.querySelector('#catSwitchYes'), no = ov.querySelector('#catSwitchNo');
+      if(yes) yes.addEventListener('click', () => {
+        emitCategoryEvent('accepted', r);
+        state.category = SLUG_TO_UI[r.suggestedSlug] || r.suggestedSlug;
+        state.userAcknowledgedCategory = false;
+        ov.remove();
+        render();
+        setTimeout(() => { if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); }, 0);
+      });
+      if(no) no.addEventListener('click', () => {
+        emitCategoryEvent('dismissed', r);
+        state.userAcknowledgedCategory = true;
+        ov.remove();
+      });
+      return true;
+    };
   })();
 
   // ─── Age-restricted "no purchase" guardrail wiring (G40-310) ───
