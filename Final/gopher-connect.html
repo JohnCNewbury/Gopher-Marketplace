@@ -5057,6 +5057,9 @@
   .cmp-confirm-btn { width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
   .cmp-confirm-btn:hover { filter:brightness(1.08); }
   .cmp-confirmed { border:1px solid #cfeede; background:#f1faf4; border-radius:12px; padding:13px 16px; margin:18px 0 4px; text-align:center; font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--green-dark,#13784a); }
+  /* persistent rate CTA — pulses until rated (INV-RATING, ruled Jul 12 2026) */
+  .cmp-rate-now { width:100%; margin-top:10px; background:#1CB061; color:#fff; border:none; border-radius:12px; padding:12px; font-family:'Nunito'; font-weight:800; font-size:13.5px; cursor:pointer; animation:cmpRatePulse 1.5s ease-in-out infinite; }
+  @keyframes cmpRatePulse { 0% { box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5); } 70% { box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } 100% { box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } }
   .cmp-detail-rows { margin-bottom:6px; }
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
   .cmp-drow span:first-child { color:var(--muted); font-weight:600; }
@@ -15420,9 +15423,10 @@ const PAY_BADGES = {
       b.addEventListener('click', () => resolveAdjustment(r, b.dataset.adjAction));
     });
 
-    // Completion confirmation + star-conditional rating (G40-65 / G40-39 / G40-300).
-    // Tap-to-view-details opens the pics modal; Confirm completion opens the rating
-    // modal; the rating modal is NON-DISMISSIBLE (no ✕, no backdrop handler) until Done.
+    // Completion confirmation + star-conditional rating (G40-65 / G40-39 / G40-300;
+    // INV-RATING Jul 12 2026). Tap-to-view-details opens the pics modal; Confirm
+    // completion finalizes immediately and PROMPTS the rating modal, which is
+    // dismissible (✕ + backdrop) — the card's "Rate now" CTA persists until rated.
     document.querySelectorAll('#reqDetailBody [data-completion-details]').forEach(b => {
       b.addEventListener('click', () => { const ov = document.getElementById('completionDetailsOverlay'); if(ov) ov.hidden = false; });
     });
@@ -15454,10 +15458,19 @@ const PAY_BADGES = {
       });
     }
     document.querySelectorAll('#reqDetailBody [data-confirm-complete]').forEach(b => {
+      b.addEventListener('click', () => resolveCompletion(r));
+    });
+    document.querySelectorAll('#reqDetailBody [data-rate-open]').forEach(b => {
       b.addEventListener('click', () => { const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = false; });
     });
     document.querySelectorAll('#reqDetailBody [data-rate-submit]').forEach(b => {
-      b.addEventListener('click', () => resolveCompletion(r));
+      b.addEventListener('click', () => {
+        const stars = document.querySelectorAll('#rateStars .rate-star.on').length;
+        submitRating(r, stars);
+      });
+    });
+    if(_ratingOv) _ratingOv.addEventListener('click', (e) => {
+      if(e.target === _ratingOv || e.target.closest('[data-rate-close]')) _ratingOv.hidden = true;
     });
 
     // Dispute branch (GA-285). Open reason entry → submit (notify + mark disputed) →
@@ -15881,13 +15894,14 @@ const PAY_BADGES = {
   // Difference = adjusted − original; positive → +$X green, negative → −$X red (pure
   // sign, no semantic judgment). Discount lines (Promo, TrustShield) display negative.
   // Completion-details + star-conditional rating modals (G40-65 / G40-39 requestor-
-  // facing / G40-300). Both reuse the .ca-modal shell. Details: request recap + the
-  // worker's completion pics — the pics section is OMITTED when the worker skipped
-  // photos (completionPhotos empty). Rating: 5-star input that is NON-DISMISSIBLE (no
-  // ✕, no backdrop close) until Done; the follow-up options are filled by the wiring
+  // facing / G40-300; INV-RATING Jul 12 2026). Both reuse the .ca-modal shell.
+  // Details: request recap + the worker's completion pics — the pics section is
+  // OMITTED when the worker skipped photos (completionPhotos empty). Rating: 5-star
+  // input, DISMISSIBLE (✕ + backdrop); the modals stay in the DOM until rated so the
+  // card's "Rate now" CTA can reopen them; follow-up options are filled by the wiring
   // based on the live star value (≥4 → Add MY Gopher + Recommend; ≤3 → block).
   function buildCompletionModals(r){
-    if(!r || !r.awaitingConfirmation) return '';
+    if(!r || !(r.awaitingConfirmation || (r.confirmed && !r.rated))) return '';
     const w = (r.live && r.live.worker) || {};
     const photos = r.completionPhotos || [];
     const snap = r.reviewSnapshot || {};
@@ -15907,11 +15921,11 @@ const PAY_BADGES = {
           </div>
         </div>
       </div>`;
-    // NON-DISMISSIBLE: no ✕ in the head, and the wiring adds no backdrop-close handler.
+    // DISMISSIBLE (✕ + backdrop) — the card's pulsing "Rate now" CTA persists until rated.
     const ratingModal = `
       <div class="ca-overlay" id="ratingOverlay" hidden>
         <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
-          <div class="ca-head"><h3>Rate your Gopher</h3></div>
+          <div class="ca-head"><h3>Rate your Gopher</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
             <div class="rate-stars" id="rateStars">${[1,2,3,4,5].map(n => `<button class="rate-star on" data-star="${n}" aria-label="${n} star">★</button>`).join('')}</div>
@@ -15936,14 +15950,27 @@ const PAY_BADGES = {
     return detailsModal + ratingModal + unableModal;
   }
 
-  // Requestor confirmed + rated → finalize (faked). Clears the awaiting state, marks
-  // confirmed (release-payment line), closes the rating modal, and re-renders.
+  // Confirm finalizes IMMEDIATELY (release-payment line); rating is decoupled and
+  // optional (INV-RATING, ruled Jul 12 2026). The re-render rebuilds a fresh, wired
+  // rating modal (kept in the DOM until rated), which we then open as a prompt.
   function resolveCompletion(r){
     r.awaitingConfirmation = false;
     r.confirmed = true;
     r.statusLabel = 'Completed';
+    if(typeof toast === 'function') toast('Completion confirmed — receipt emailed, payment released');
+    renderActiveRequests();
+    renderRequestDetail();
+    const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = false;
+  }
+
+  // Rating submit — records the score and clears the card's "Rate now" CTA. The
+  // toast never echoes the star to the worker (INV-RATING: other-party privacy).
+  function submitRating(r, stars){
+    r.rated = true;
+    r.ratingValue = stars;
+    const wnm = (r.live && r.live.worker && r.live.worker.name) || 'your Gopher';
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
-    if(typeof toast === 'function') toast('Completion confirmed — thanks for rating!');
+    if(typeof toast === 'function') toast('Thanks — your rating of ' + wnm + ' was submitted');
     renderActiveRequests();
     renderRequestDetail();
   }
@@ -16145,7 +16172,8 @@ const PAY_BADGES = {
       ? r.live.worker.name
       : (r.worker || 'your Gopher').replace(/\s*\(.*$/, '').replace(/\s*·.*$/, '');
     if(r.confirmed){
-      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`;
+      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`
+        + (r.rated ? '' : `<button class="cmp-rate-now" data-rate-open>Rate now →</button>`);
     }
     if(r.disputeState === 'entry'){
       return `

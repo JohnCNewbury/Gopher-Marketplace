@@ -122,6 +122,12 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .opt.block input{accent-color:var(--error);}
 .sh-primary{width:100%;border:none;border-radius:14px;padding:15px;font-family:'Nunito';font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--green-bright),var(--green-dark));color:var(--navy);box-shadow:0 8px 20px -6px rgba(28,176,97,.5);cursor:pointer;}
 
+/* persistent rate CTA — pulses on the confirmed card until rated (INV-RATING, ruled Jul 12 2026) */
+.rc-view{width:100%;margin-top:13px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:12px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.rc-view:active{transform:scale(.99);}
+.rc-view.rate{background:#1CB061;animation:ratePulse 1.5s ease-in-out infinite;}
+@keyframes ratePulse{0%{box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5);}70%{box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5);}100%{box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5);}}
+
 /* toast */
 .toast{position:absolute;left:16px;right:16px;bottom:96px;background:var(--navy);color:#fff;border-radius:13px;padding:12px 15px;font-family:'Nunito';font-weight:700;font-size:12.5px;box-shadow:var(--over-sh);z-index:90;display:flex;align-items:center;gap:9px;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .25s,transform .25s;}
 .toast.show{opacity:1;transform:none;}
@@ -226,10 +232,10 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     </div>
   </div>
 
-  <!-- rating modal (non-dismissible) -->
+  <!-- rating modal (dismissible — the card's "Rate now" CTA persists until rated) -->
   <div class="ov" id="rateOv">
     <div class="sheet">
-      <div class="sh-head"><span class="sh-title">Rate your Gopher</span></div>
+      <div class="sh-head"><span class="sh-title">Rate your Gopher</span><button class="sh-x" data-close="rateOv" aria-label="Close">✕</button></div>
       <div class="rate-top"><div class="rate-nm">Please rate Marcus B.</div></div>
       <div class="stars" id="stars">
         <button class="star on" data-star="1">★</button>
@@ -267,7 +273,7 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
 <script>
 (function(){
   var WORKER='Marcus B.';
-  var state={ phase:'initial', rating:5 };  // phase: initial | entry | disputed | confirmed
+  var state={ phase:'initial', rating:5, rated:false };  // phase: initial | entry | disputed | confirmed
   var host=document.getElementById('cmpHost');
   var sumPill=document.getElementById('sumPill');
 
@@ -276,7 +282,8 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
   function render(){
     var h='';
     if(state.phase==='confirmed'){
-      h='<div class="cmp-done"><span>✓</span> Completion confirmed — payment released to '+esc(WORKER)+'.</div>';
+      h='<div class="cmp-done"><span>✓</span> Completion confirmed — payment released to '+esc(WORKER)+'.</div>'
+       +(state.rated?'':'<button class="rc-view rate" data-rate-open>Rate now →</button>');
       sumPill.textContent='Completed'; sumPill.style.background='var(--green-tint)'; sumPill.style.color='var(--green-dark)';
     } else if(state.phase==='entry'){
       h='<div class="cmp is-dispute">'
@@ -332,14 +339,15 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     if(t.closest('[data-back]')){ if(window.__navHook) window.__navHook('gopher-request-home.html'); return; }
     if(t.closest('[data-details]')){ openOv('detailsOv'); return; }
     if(t.closest('[data-close]')){ closeOv(t.closest('[data-close]').getAttribute('data-close')); return; }
-    if(t.closest('[data-confirm]')){ state.rating=5; openOv('rateOv'); paintRating(); return; }
+    if(t.closest('[data-confirm]')){ state.phase='confirmed'; state.rating=5; render(); toast('Completion confirmed — receipt emailed, payment released'); openOv('rateOv'); paintRating(); return; }
+    if(t.closest('[data-rate-open]')){ state.rating=5; openOv('rateOv'); paintRating(); return; }
     if(t.closest('[data-star]')){ state.rating=parseInt(t.closest('[data-star]').getAttribute('data-star'),10); paintRating(); return; }
-    if(t.closest('[data-rate-done]')){ closeOv('rateOv'); state.phase='confirmed'; render(); toast('Completion confirmed — thanks for rating!'); return; }
+    if(t.closest('[data-rate-done]')){ closeOv('rateOv'); state.rated=true; render(); toast('Thanks — your rating of '+WORKER+' was submitted'); return; }
     if(t.closest('[data-dispute-open]')){ state.phase='entry'; render(); return; }
     if(t.closest('[data-dispute-submit]')){ state.phase='disputed'; render(); toast('Dispute submitted — your Gopher has been notified.'); return; }
     if(t.closest('[data-unable]')){ openOv('unableOv'); return; }
-    // backdrop close for dismissible overlays only (rating is non-dismissible)
-    if(t.classList && t.classList.contains('ov') && t.id!=='rateOv'){ t.classList.remove('show'); return; }
+    // backdrop closes any overlay — rating included (INV-RATING, ruled Jul 12 2026)
+    if(t.classList && t.classList.contains('ov')){ t.classList.remove('show'); return; }
   });
 
   render();
