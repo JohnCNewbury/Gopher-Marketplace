@@ -3307,7 +3307,13 @@
   .progress-meta-title {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy);
   }
-  .progress-meta-count { font-size:11px; color:var(--muted); font-weight:600; }
+  .progress-meta-left { display:flex; align-items:center; gap:8px; min-width:0; }
+  .progress-meta-cat {
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px; color:#1a9d4b;
+    background:#eafaf0; border:1px solid #cdeeda; border-radius:999px; padding:3px 9px; white-space:nowrap;
+  }
+  .progress-meta-count { font-size:11px; color:var(--muted); font-weight:600; flex:0 0 auto; }
   .progress-track {
     display:flex; gap:4px; height:5px;
   }
@@ -9159,7 +9165,10 @@
              title reads "New Request Details" so the flow reads as the screen. -->
         <div class="mockup-progress">
           <div class="progress-meta">
-            <span class="progress-meta-title" id="progressTitle">New Request Details</span>
+            <div class="progress-meta-left">
+              <span class="progress-meta-title" id="progressTitle">New Request Details</span>
+              <span class="progress-meta-cat" id="progressCat" hidden></span>
+            </div>
             <span class="progress-meta-count" id="progressCount">Step 1 of 5</span>
           </div>
           <div class="progress-track" id="progressTrack"></div>
@@ -11880,6 +11889,7 @@
   const $progressTrack = document.getElementById('progressTrack');
   const $progressCount = document.getElementById('progressCount');
   const $progressTitle = document.getElementById('progressTitle');
+  const $progressCat = document.getElementById('progressCat');
   const $content = document.getElementById('mockupContent');
   const $btnBack = document.getElementById('btnBack');
   const $btnNext = document.getElementById('btnNext');
@@ -12001,6 +12011,12 @@
     }).join('');
     $progressCount.textContent = `Step ${state.step} of 7`;
     $progressTitle.textContent = state.step === 7 ? 'Request Submitted' : 'New Request Details';
+    // Keep the picked category visible through every step (badge beside the title).
+    const catData = state.category ? CATEGORIES[state.category] : null;
+    if($progressCat){
+      if(catData){ $progressCat.textContent = `${catData.icon} ${catData.name}`; $progressCat.hidden = false; }
+      else { $progressCat.hidden = true; }
+    }
   }
 
   // ---- Step content renderers ----
