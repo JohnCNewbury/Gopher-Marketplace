@@ -7945,6 +7945,22 @@
   .dh-sponsored { flex:0 0 auto; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:.06em; color:var(--muted);
     border:1px solid #d7dce6; border-radius:7px; padding:4px 9px; background:#fff; white-space:nowrap; }
   .dh-hand { font-family:'Caveat', cursive; font-weight:700; font-size:24px; color:var(--terracotta); margin:2px 0 18px; line-height:1.2; }
+  /* ── Two-column hero band: featured card slides left; copy block carries the
+     relocated "View all deals" button. Featured/category cards are untouched;
+     the featured card is only left-anchored here via a scoped override. ── */
+  .dh-hero-row { display:flex; align-items:center; gap:40px; margin:8px 0 6px; }
+  .dh-hero-row .dh-featured { flex:0 0 clamp(360px, 40%, 448px); max-width:448px; margin:0; }
+  .dh-hero-copy { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:26px; padding:8px 20px; }
+  .dh-hero-head { font-family:'Nunito',sans-serif; font-weight:900; letter-spacing:-.012em; font-size:clamp(27px, 3vw, 40px); line-height:1.16; color:var(--navy); max-width:16ch; }
+  .dh-hero-head .hl { color:var(--green-dark); }
+  .dh-viewall-hero { font-size:15px; padding:12px 22px; }
+  .dh-viewall-hero svg { width:16px; height:16px; }
+  @media (max-width:860px){
+    .dh-hero-row { flex-direction:column; align-items:stretch; gap:20px; }
+    .dh-hero-row .dh-featured { flex:1 1 auto; width:100%; max-width:600px; margin:0 auto; }
+    .dh-hero-copy { padding:4px 0 2px; }
+    .dh-hero-head { max-width:none; }
+  }
 
   /* Featured Deal hero — the single HIGHEST overall bid; large, CENTERED spotlight */
   .dh-featured { display:flex; flex-direction:column; align-items:center; text-align:center;
@@ -22692,9 +22708,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     host.innerHTML =
       '<div class="deals-home">' +
         '<div class="dh-near"><span class="dh-near-l">Feature Deals Near You</span>' +
-          '<span class="dh-near-r"><button type="button" class="dh-viewall-link" id="dhViewAll"><span>View all deals</span>' + DEALS_GO_SVG + '</button><span class="dh-sponsored">SPONSORED</span></span></div>' +
+          '<span class="dh-near-r"><span class="dh-sponsored">SPONSORED</span></span></div>' +
         '<div class="dh-hand">— showing love to our neighborhood favs</div>' +
-        featuredHTML +
+        '<div class="dh-hero-row">' +
+          featuredHTML +
+          '<div class="dh-hero-copy">' +
+            '<div class="dh-hero-head">Order from a <span class="hl">local merchant</span> and hire a <span class="hl">local worker</span> for delivery in one <span class="hl">GO</span>!</div>' +
+            '<button type="button" class="dh-viewall-link dh-viewall-hero" id="dhViewAll"><span>View all deals</span>' + DEALS_GO_SVG + '</button>' +
+          '</div>' +
+        '</div>' +
         '<div class="dh-cats">' + cats.map(catCardHTML).join('') + '</div>' +
       '</div>';
 
