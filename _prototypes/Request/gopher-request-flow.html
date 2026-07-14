@@ -38,6 +38,13 @@
 <script src="gopher-banner.js"></script>
 <!-- Age-restricted keyword brain — generated from Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx (canonical source). -->
 <script src="../../Final/assets/js/gopher-age-keywords.js"></script>
+<script src="../../Final/assets/js/gopher-age-supplement.js"></script>
+<!-- iQ service-category intent classifier (shared, generated) — for the category-
+     mismatch nudge. Same brain the Final Request/Connect web apps use. -->
+<script src="../../Final/assets/js/gopher-category-classifier.js"></script>
+<!-- Shared request decision logic (category-mismatch detection). Single source of
+     truth across Request web / Connect / this app prototype. -->
+<script src="../../Final/assets/js/gopher-request-logic.js"></script>
 <!-- G40-38 payment methods — shared store + checkout pay-picker (same session store as the account Payment Info screen). -->
 <script src="gopher-pay-store.js"></script>
 <style>
@@ -931,41 +938,7 @@ const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
    Matching is whole-word/phrase, case-insensitive. The source's "everyday
    word" parity block (carton, game, smoke, reds, on!, burners) is pruned
    here — the false-positive friction isn't worth it for this prototype. */
-const AGE_RESTRICTED_KEYWORDS = [
-  // intent phrases (specific first)
-  'tobacco run','beer run','liquor run','booze run','vape run','need cigs','need cigarettes',
-  'pick up dip','pick up beer','pick up cigarettes','pick up smokes','grab some beer','grab beer',
-  'run to the liquor store','run to abc','get me cigarettes','get me beer',
-  // tobacco / cigarettes
-  'cigarette','cigarettes','cig','cigs','ciggy','ciggies','cigar','cigars','cigarillo','cigarillos','smokes','cancer sticks','coffin nails',
-  'darts','rollies','rolling tobacco','loose tobacco','pipe tobacco','chewing tobacco',
-  'dip','snuff','snus','nicotine pouches','nicotine','tobacco','pack of cigarettes','pack of smokes',
-  'menthols','cloves',
-  // cigarette / smokeless brands (+ misspellings)
-  'marlboro','malboro','newport','camel','camels','pall mall','lucky strike','american spirit',
-  'winston','kool','parliament','virginia slims','black & mild','swisher','swishers','swisher sweet',
-  'dutch masters','dutches','backwoods','grizzly','grizley','copenhagen','skoal','kodiak','red man',
-  'zyn','rogue','velo','lucy','njoy',
-  // vape / e-cig (+ misspellings)
-  'vape','vapes','vaping','e-cig','e-cigarette','ecig','vape pen','vape juice','e-liquid','eliquid',
-  'vape cartridge','disposable vape','juul','juuls','puff bar','elf bar','elfbar','geek bar',
-  'lost mary','blu','vuse','nic salt','vape pods','hookah','shisha','nicotene',
-  // alcohol
-  'alcohol','beer','beers','wine','liquor','booze','vodka','whiskey','whisky','bourbon','tequila',
-  'rum','gin','brandy','cognac','scotch','champagne','prosecco','hard seltzer','seltzer','white claw',
-  'truly','twisted tea','malt liquor','moonshine','schnapps','sake','mezcal','lager','ale','pinot',
-  'merlot','cabernet','chardonnay','sangria','margarita','six pack','sixpack','case of beer','keg',
-  'wine cooler','hard cider','everclear','jagermeister','fireball','hennessy','smirnoff','bacardi',
-  'jack daniels','captain morgan','grey goose','total wine','abc store','liquor store','package store',
-  // THC / cannabis
-  'weed','marijuana','cannabis','thc','delta 8','delta-8','delta 9','delta-9','delta 10','delta-10',
-  'hhc','edibles','edible','gummies','thc gummies','cbd','hemp','dabs','wax','shatter','vape cart',
-  'prerolls','pre-roll','joint','blunt','blunts','dispensary','kush','indica','sativa','hashish',
-  'tincture','distillate',
-  // other age-restricted
-  'kratom','nitrous','nitrous oxide','whippets','whip-its','lottery','lotto','lottery tickets',
-  'scratch off','scratch-off','scratchers','powerball','mega millions','kava','poppers'
-];
+const AGE_RESTRICTED_KEYWORDS = (window.GopherAgeSupplement || []);   // hand-maintained supplement is SHARED — edit assets/js/gopher-age-supplement.js, never here
 function findAgeRestrictedKeyword(text){
   if(!text) return null;
   const hay=' '+String(text).toLowerCase().replace(/[^a-z0-9&!\- ]+/g,' ').replace(/\s+/g,' ')+' ';
@@ -1987,8 +1960,8 @@ function stepGate(){
   if(state.step===1 && !state.category) return {ok:false,sel:'.cat-grid',msg:'Pick a service category to continue.'};
   if(state.step===2 && isVisible('describe') && !state.description.trim()) return {ok:false,sel:'#descriptionInput',msg:'Add a description before continuing.'};
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
-  if(state.step===2 && state.category==='delivery' && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
-    return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};
+  if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
+    return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
   if(state.step===2 && state.category==='delivery' && state.ageRestricted && !state.idVerified) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
   if(state.step===5 && state.payMode==='set' && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
   if(state.step===6 && !state.waiverChecked) return {ok:false,sel:'.waiver-box',msg:'Check the liability waiver before submitting.'};
@@ -2035,6 +2008,8 @@ function flashGate(gate){
 function goNext(){
   const g=stepGate();
   if(!g.ok){ if(g.age){ openAgeKwModal(); return; } showToast(g.msg,g.tone); flashGate(g); return; }
+  // Category-mismatch nudge (worker visibility) — after the age gate (precedence).
+  if(state.step===2 && !findAgeRestrictedKeyword(state.description) && window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
   state.openCatInfo=null;
   if(state.step<6){ state.step++; if(state.step>state.maxStepReached)state.maxStepReached=state.step; render(); }
 }
@@ -2055,9 +2030,60 @@ function openAgeKwModal(){
     +'<button class="js-agekw-no" style="width:100%;margin-top:12px;border:0;background:#c44257;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">No — this is NOT age-restricted</button>'
   +'</div>';
   document.body.appendChild(ov);
-  ov.querySelector('.js-agekw-yes').onclick=function(){ state.ageRestricted=true; state.ageKeywordAck=true; ov.remove(); render(); };
-  ov.querySelector('.js-agekw-no').onclick=function(){ state.ageKeywordAck=true; ov.remove(); goNext(); };
+  ov.querySelector('.js-agekw-yes').onclick=function(){ if(state.category!=='delivery') state.category='delivery'; state.ageRestricted=true; state.ageKeywordAck=true; ov.remove(); render(); };   // route age-restricted → Delivery
+  ov.querySelector('.js-agekw-no').onclick=function(){ state.ageKeywordAck=true; if(findAgeRestrictedKeyword(state.description)) state.idRequiredAtCompletion=true; ov.remove(); goNext(); };   // no silent bypass: force ID-at-completion
 }
+/* Category-mismatch nudge (worker visibility) — parity with the Final Request/Connect
+   web apps. Reuses the shared iQ classifier (gopher-category-classifier.js, loaded
+   above). Pure detectCategoryMismatch + a dismissible Switch/Keep pop-up; the
+   age-restricted gate above takes precedence. No-ops if the classifier didn't load. */
+(function initCategoryMismatch(){
+  /* DECISION LOGIC LIVES IN THE SHARED MODULE (Final/assets/js/gopher-request-logic.js)
+     — one source of truth across Request web / Connect / this app prototype. This IIFE
+     is only the per-platform UI wiring. Fail-safe no-op if the module didn't load.
+     Do not re-implement detection here — the parity harness fails if a local copy
+     reappears. */
+  var L = window.GopherRequestLogic;
+  if(!L) return;
+  window.__detectCategoryMismatch = L.detectCategoryMismatch;   // for the JXA test harness
+  window.__checkCategoryMismatch=function(){
+    var selectedSlug=L.uiToSlug(state.category);
+    var r=L.detectCategoryMismatch(selectedSlug,state.description);
+    state.lastCheckedDescription=state.description;
+    if(!r) return false;
+    if(state.userAcknowledgedCategory) return false;
+    r.selectedSlug=selectedSlug;
+    var reqId=state.requestId||state.draftId||null;
+    var selectedLabel=(CATEGORIES[state.category]&&CATEGORIES[state.category].name)||state.category;
+    L.emitCategoryCheck('shown',r,reqId);
+    var e=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
+    var old=document.getElementById('catMismatchOv'); if(old) old.remove();
+    var ov=document.createElement('div'); ov.id='catMismatchOv';
+    ov.setAttribute('style','position:fixed;inset:0;z-index:99999;background:rgba(0,18,49,.55);display:flex;align-items:center;justify-content:center;padding:22px;');
+    ov.innerHTML='<div role="dialog" aria-modal="true" style="background:#fff;width:100%;max-width:340px;border-radius:22px;padding:24px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,18,55,.5);font-family:Nunito,sans-serif;">'
+      +'<div style="font-size:30px;line-height:1;margin-bottom:8px;">🧭</div>'
+      +'<h4 style="font-weight:900;font-size:19px;color:#002461;margin:0 0 8px;">This looks like a '+e(r.suggestedLabel)+' job</h4>'
+      +'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#5b6472;line-height:1.5;margin:0 0 18px;">Requests in the wrong category may not reach the right workers — workers filter available jobs by category. Switch to <b>'+e(r.suggestedLabel)+'</b>?</p>'
+      +'<button class="js-catsw-yes" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Switch to '+e(r.suggestedLabel)+'</button>'
+      +'<button class="js-catsw-no" style="width:100%;margin-top:12px;border:1.5px solid #dfe3ec;background:transparent;color:#002461;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Keep as '+e(selectedLabel)+'</button>'
+    +'</div>';
+    document.body.appendChild(ov);
+    ov.querySelector('.js-catsw-yes').onclick=function(){
+      L.emitCategoryCheck('accepted',r,reqId);
+      state.category=L.slugToUi(r.suggestedSlug);
+      state.userAcknowledgedCategory=false;
+      if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set';
+      ov.remove(); render();
+      setTimeout(function(){ if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); },0);
+    };
+    ov.querySelector('.js-catsw-no').onclick=function(){
+      L.emitCategoryCheck('dismissed',r,reqId);
+      state.userAcknowledgedCategory=true;
+      ov.remove();
+    };
+    return true;
+  };
+})();
 function goBack(){ if(state.step>1){ state.openCatInfo=null; state.step--; render(); } else if(state.demo){ gotoURL('signin'); } }
 function goStep(n){ if(n<=state.maxStepReached){ state.openCatInfo=null; state.step=n; render(); } }
 function submitRequest(){
@@ -2095,8 +2121,8 @@ function bindFieldInputs(){
       }
       state[key]=el.value;
       { const good=MONEY_FIELDS[key]?(toNum(el.value)>0):!!el.value.trim(); if(good){ const host=el.closest('.sub-field')||el; host.classList.remove('field-invalid'); el.classList.remove('field-invalid'); } }
-      // re-arm the age-restricted backstop when the description changes (no re-render mid-typing)
-      if(key==='description' && state.category==='delivery') state.ageKeywordAck=false;
+      // re-arm the age-restricted backstop AND the category nudge when the description changes
+      if(key==='description'){ state.ageKeywordAck=false; state.idRequiredAtCompletion=false; state.userAcknowledgedCategory=false; }
       if(key==='payAmount') syncWageSummary();   // live hourly breakdown
       syncFooterGate();   // re-activate Continue the moment a required value is valid
     });
@@ -2104,10 +2130,13 @@ function bindFieldInputs(){
   document.querySelectorAll('[data-select]').forEach(el=>{
     el.addEventListener('change',()=>{ state[el.dataset.select]=el.value; });
   });
-  // surface the age-restricted prompt once the user leaves the description field
+  // On leaving the description: surface the age prompt (age items own it, any category);
+  // otherwise run the category-mismatch nudge.
   const di=$('#descriptionInput');
   if(di) di.addEventListener('blur',()=>{
-    if(state.category==='delivery' && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description)) render();
+    if(state.step!==2) return;
+    if(findAgeRestrictedKeyword(state.description)){ if(!state.ageRestricted && !state.ageKeywordAck) render(); return; }
+    if(window.__checkCategoryMismatch) window.__checkCategoryMismatch();
   });
   const pi=$('[data-promo]'); if(pi) pi.addEventListener('input',()=>{ state.promoCode=pi.value; state.promoError=false; });
   const st=$('#schedTime'); if(st) st.addEventListener('change',()=>{ state.timeSlot=st.value; render(); });
