@@ -1025,7 +1025,9 @@ function makeInitialState(){
     // age-restricted keyword backstop
     ageKeywordAck:false,
     // gopher iQ offer slider
-    osOpen:false
+    osOpen:false,
+    // MY Gophers given first dibs (Request again NOW / w-edits) — parity with web
+    hireAgainGophers:[]
   };
 }
 let state = makeInitialState();
@@ -1791,6 +1793,14 @@ function renderStep7(){
     +(hasPickup?`<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:60%;text-align:right;">${esc(pickupAddr())}</span></div>`:'')
     +`<div class="review-row"><span class="rl">${hasPickup?'Destination':'Location'}</span><span class="rv" style="max-width:60%;text-align:right;">${esc(dropoffAddr()||'—')}</span></div>`;
   const interested = 2 + Math.floor(Math.random()*4);
+  // MY Gophers first-dibs: the request is held for them before it opens to
+  // anyone else, so "Looking for your worker…" would be wrong here.
+  const haNames = (state.hireAgainGophers||[]).filter(Boolean);
+  const haFirst = haNames.length > 0;
+  const haLabel = haNames.length > 1
+    ? haNames.slice(0,-1).map(esc).join(', ') + ' and ' + esc(haNames[haNames.length-1])
+    : esc(haNames[0]||'');
+  const haSubject = haNames.length > 1 ? 'they are' : haLabel + ' is';
   const timing = state.scheduleType==='now' ? 'ASAP · matching now'
     : state.scheduleType==='flexible'
       ? (state.flexibleWindow==='24hr'?'Within 24 hours':state.flexibleWindow==='week'?'Within a week':'Within 2 weeks')
@@ -1801,8 +1811,8 @@ function renderStep7(){
       : `for ${schedLabel()}`;
   return `<div class="burst">
     <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
-    <h4>Request submitted!</h4>
-    <p>Looking for your worker… · Order <strong>#GR-00001</strong></p>
+    <h4>${haFirst ? 'Request sent!' : 'Request submitted!'}</h4>
+    <p>${haFirst ? (haLabel + ' has first dibs…') : 'Looking for your worker…'} · Order <strong>#GR-00001</strong></p>
   </div>
   <div class="review-card">
     <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green-dark);">Submitted · ${expires}</span></div>
@@ -1814,7 +1824,10 @@ function renderStep7(){
     <div class="review-row"><span class="rl">Request fee</span><span class="rv">${bids?'TBD':fmt(fee.requestFee)}</span></div>
     <div class="review-row total"><span class="rl">Total</span><span class="rv">${bids?'TBD after bid':fmt(fee.gmvTotal)}</span></div>
   </div>
-  ${(function(){try{return new URLSearchParams(location.search).get('pt')==='1'||sessionStorage.getItem('gopher_pt')==='1';}catch(_){return false;}})() ? `` : `<div class="si-band">
+  ${(function(){try{return new URLSearchParams(location.search).get('pt')==='1'||sessionStorage.getItem('gopher_pt')==='1';}catch(_){return false;}})() ? `` : haFirst ? `<div class="si-band">
+    <span class="si-ico">⚡</span>
+    <div class="si-text"><h5>${haLabel} ${haNames.length>1?'have':'has'} first dibs</h5><p>${haLabel} will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if ${haSubject} not available.</p></div>
+  </div>` : `<div class="si-band">
     <span class="si-ico">${svgIco('users')}</span>
     <div class="si-text"><h5>${interested} worker${interested!==1?'s':''} already interested</h5><p>Review profiles, hire, or consider workers from your dashboard.</p></div>
   </div>`}
@@ -2324,6 +2337,18 @@ state.category='delivery';
     state.dealMerchant=q.get('merchant')||'';
     state.fromDeal=true;   // marks this as a Gopher Deal request → the Go card shows the "Gopher Deal" badge
     state.step=6; state.maxStepReached=6;
+    render(); return;
+  }
+  // "?from=again" — re-request a past job from Home's request history.
+  // now=1  → "Request again NOW": nothing to review, land on the confirmation.
+  // otherwise → "Request again w/ edits": land on the canonical Review (Step 6).
+  // The past job's worker rides along in hireAgainGophers and gets first dibs.
+  if(q.get('from')==='again'){
+    const d=q.get('desc');   if(d) state.description=d;
+    const w=q.get('worker'); if(w) state.hireAgainGophers=[w];
+    state.waiverChecked=true;
+    const land=q.get('now')==='1' ? 7 : 6;
+    state.step=land; state.maxStepReached=land;
     render(); return;
   }
   state.step=2; state.maxStepReached=2;

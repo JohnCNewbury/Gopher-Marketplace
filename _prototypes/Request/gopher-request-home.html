@@ -373,6 +373,10 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gs-sub{font-size:13px;color:var(--body);line-height:1.5;}
 .gm-p{font-size:13px;color:var(--body);line-height:1.55;margin-bottom:14px;}
 .gm-link,.gs-link{display:inline-block;font-family:'Nunito';font-weight:800;color:var(--green-dark);cursor:pointer;}
+.ra-ctas{display:flex;gap:8px;margin-top:9px;}
+.ra-cta{flex:1 1 0;padding:10px 8px;border:none;border-radius:11px;background:var(--navy);color:#fff;font-family:'Nunito';font-weight:800;font-size:12px;cursor:pointer;line-height:1.25;}
+.ra-cta.ra-now{background:#33D975;color:var(--navy);}
+@media (max-width:360px){.ra-ctas{flex-direction:column;}}
 .gm-link{margin-bottom:14px;}
 .gm-close{display:block;width:100%;background:var(--navy);color:#fff;border:none;border-radius:12px;padding:12px;font-family:'Nunito';font-weight:800;font-size:14px;cursor:pointer;}
 .gs-sech{font-family:'Nunito';font-weight:800;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--green-dark);margin:16px 0 8px;}.pf-head{display:flex;gap:13px;align-items:center;background:var(--navy);border-radius:18px;padding:17px;margin:4px 0;}.pf-av{width:56px;height:56px;border-radius:50%;background:#e8edf7;color:var(--navy);font-family:'Nunito';font-weight:800;font-size:19px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 0 0 3px rgba(255,255,255,.16);}.pf-id{min-width:0;}.pf-name{font-family:'Fraunces',serif;font-weight:600;font-size:21px;color:#fff;line-height:1.1;}.pf-meta{font-family:'Nunito';font-weight:600;font-size:12px;color:#c4cee0;margin-top:3px;}.pf-rate{color:#fff;white-space:nowrap;}.pf-badges{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;}.pf-badge{display:inline-flex;align-items:center;gap:5px;font-family:'Nunito';font-weight:800;font-size:10.5px;border-radius:99px;}.pf-ts{background:#fff;color:var(--navy);padding:4px 10px 4px 6px;}.pf-ts img{height:15px;width:auto;display:block;}.pf-tier{background:#33D975;color:var(--navy);padding:4px 11px;}.pf-tier2{background:#fff;padding:4px 9px;border-radius:99px;display:inline-flex;align-items:center;}.pf-tier2 img{height:14px;width:auto;display:block;}.pf-card{background:#fff;border:1px solid var(--line-cool);border-radius:14px;overflow:hidden;}.pf-row{display:flex;justify-content:space-between;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line-cool);font-family:'Nunito';align-items:baseline;}.pf-row:last-child{border-bottom:none;}.pf-k{font-weight:600;font-size:12.5px;color:var(--ink-soft);flex:0 0 auto;}.pf-v{font-weight:700;font-size:12.5px;color:var(--navy);text-align:right;}.pf-ok{color:var(--green-dark);}.pf-actions{display:flex;gap:10px;margin-top:16px;}.pf-btn{flex:1;padding:13px;border:none;border-radius:12px;font-family:'Nunito';font-weight:800;font-size:13px;cursor:pointer;}.pf-primary{background:var(--navy);color:#fff;}.pf-secondary{background:#eef0f8;color:var(--navy);}
@@ -1648,6 +1652,23 @@ function updateAccountLabels(){
 // Request history (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
 // fulfilled it, and the rating THEY gave. Pulls live completed requests from the store first, then a few
 // representative past ones, so a job completed during the demo shows up at the top.
+/* "Request again" from a completed job in the request history.
+   NOW  → skip the review page, land on the submitted confirmation.
+   edits→ land on the canonical Review (Step 6), everything prefilled.
+   Either way the past job's Gopher rides along and gets first dibs. */
+var RA_CAT_KEYS={'delivery':'delivery','junk removal':'junk','moving':'moving','home services':'home',
+  'home / office services':'home','hourly / day labor':'labor','day labor':'labor','yard':'yard',
+  'yard / outdoor projects':'yard','ride':'ride','other':'other'};
+function raCatKey(label){ return RA_CAT_KEYS[String(label||'').trim().toLowerCase()] || 'delivery'; }
+document.addEventListener('click', function(e){
+  var b=e.target.closest('[data-ra]'); if(!b) return;
+  var q='gopher-request-flow.html?from=again'
+       +'&category='+encodeURIComponent(raCatKey(b.getAttribute('data-ra-cat')))
+       +'&worker='+encodeURIComponent(b.getAttribute('data-ra-who')||'')
+       +'&desc='+encodeURIComponent(b.getAttribute('data-ra-desc')||'')
+       +(b.getAttribute('data-ra')==='now' ? '&now=1' : '');
+  gClose(); gotoURL(q);
+});
 function openHistory(){
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
@@ -1672,7 +1693,10 @@ function openHistory(){
       +(j.noShow?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#a3401f;margin-top:5px;">No items received \u2014 no valid ID at drop-off.</div>':'')
       +(stars?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;margin-top:6px;">'+stars+'</div>':'')
       +(j.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;font-style:italic;margin-top:3px;">&ldquo;'+esc(j.note)+'&rdquo;</div>':'')
-      +'<span class="gs-link" data-goto="flow" style="display:inline-block;margin-top:8px;">Request again &rarr;</span>'
+      +'<div class="ra-ctas">'
+        +'<button class="ra-cta ra-now" data-ra="now" data-ra-cat="'+esc(j.cat||'')+'" data-ra-who="'+esc(j.who||'')+'" data-ra-desc="'+esc(j.title||'')+'">Request again NOW \u26A1\uFE0F</button>'
+        +'<button class="ra-cta" data-ra="edit" data-ra-cat="'+esc(j.cat||'')+'" data-ra-who="'+esc(j.who||'')+'" data-ra-desc="'+esc(j.title||'')+'">Request again w/ edits</button>'
+      +'</div>'
     +'</div>';
   };
   var all=live.concat(demo);

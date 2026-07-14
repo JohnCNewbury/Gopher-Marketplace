@@ -8381,6 +8381,7 @@
   /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
      beside the navy "Request again w/ edits" (prefill → Review). */
   .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-block { border-bottom:none; padding-bottom:0; margin-top:4px; }
   .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
   .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
   .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
@@ -13318,11 +13319,23 @@
       <p class="mc-sub" style="margin-top:10px;">${_esc(prov.name)} offered this deal and automatically accepted your request. From here it works like any other accepted request — message them, track progress, and pay on completion.</p>
     ` : '';
 
+    // MY Gophers first-dibs (Request again NOW / w-edits, or the MY Gophers picker):
+    // the request is held for them before it opens to anyone else, so the generic
+    // "looking for your worker" confirmation would be wrong. Connect parity — same
+    // promise as its "Request sent!" modal.
+    const haNames = (state.hireAgainGophers || []).filter(Boolean);
+    const haFirst = !isServiceDeal && haNames.length > 0;
+    const haLabel = haNames.length > 1
+      ? haNames.slice(0,-1).map(_esc).join(', ') + ' and ' + _esc(haNames[haNames.length-1])
+      : _esc(haNames[0] || '');
+    const haSubject = haNames.length > 1 ? 'they are' : `${haLabel} is`;
+
     return `
       <div class="matched-burst">
         <div class="check-circle">✓</div>
-        <h4>${isServiceDeal ? "You're Connected!" : "Request Submitted!"}</h4>
-        <p>${isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.') : 'Currently looking for your worker\u2026'} · Request Order <strong>#${reqNum}</strong></p>
+        <h4>${isServiceDeal ? "You're Connected!" : (haFirst ? 'Request sent!' : 'Request Submitted!')}</h4>
+        <p>${isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.')
+              : (haFirst ? (haLabel + ' has first dibs\u2026') : 'Currently looking for your worker\u2026')} · Request Order <strong>#${reqNum}</strong></p>
       </div>
 
       <div class="review-card" style="margin-top:14px;">
@@ -13337,7 +13350,15 @@
 
       <!-- Connect parity: interested workers are managed from the dashboard,
            not listed inline. Compact green band + "See workers in dashboard". -->
-      ${isServiceDeal ? connectedHTML : `
+      ${isServiceDeal ? connectedHTML : haFirst ? `
+      <div class="si-workers-band">
+        <div class="si-workers-ico">⚡</div>
+        <div class="si-workers-text">
+          <h5>${haLabel} ${haNames.length > 1 ? 'have' : 'has'} first dibs</h5>
+          <p>${haLabel} will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if ${haSubject} not available.</p>
+        </div>
+        <button class="si-workers-btn attn-pulse" data-action="see-workers-dashboard">Track in dashboard →</button>
+      </div>` : `
       <div class="si-workers-band">
         <div class="si-workers-ico">👥</div>
         <div class="si-workers-text">
@@ -21644,14 +21665,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
+          </div>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
+          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
-          </div>
-          <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
-            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
           </div>
         </div>`;
     } else {
@@ -21668,7 +21691,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
           <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
             <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
           </div>
         </div>`;

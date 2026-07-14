@@ -6212,6 +6212,7 @@
   /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
      beside the navy "Request again w/ edits" (prefill → Review). */
   .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-block { border-bottom:none; padding-bottom:0; margin-top:4px; }
   .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
   .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
   .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
@@ -7555,7 +7556,7 @@
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="hireAgainDoneTitle">
     <div class="gc-modal-icon gc-modal-icon-go">📲</div>
     <h4 id="hireAgainDoneTitle">Request sent!</h4>
-    <p class="gc-modal-sub" id="hireAgainDoneBody">Devon M. will be alerted to your request immediately. If they accept, the request will move into your dashboard automatically. We'll also open it to other workers after 5 minutes just in case.</p>
+    <p class="gc-modal-sub" id="hireAgainDoneBody">Devon M. will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if Devon M. is not available.</p>
     <button type="button" class="gc-modal-btn" id="hireAgainDoneOk">Got it</button>
   </div>
 </div>
@@ -16901,14 +16902,16 @@ const PAY_BADGES = {
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
+          </div>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
+          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
-          </div>
-          <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
-            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
           </div>
         </div>`;
     } else {
@@ -16924,7 +16927,7 @@ const PAY_BADGES = {
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
           <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
             <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
           </div>
         </div>`;
@@ -17573,6 +17576,18 @@ const PAY_BADGES = {
   // Decides whether to prompt for extra Gophers (multi-worker) before confirming.
   window.__onHireAgainSubmit = (requestId, needed) => {
     hireAgainState.pendingRequestId = requestId;
+    // Requests that reach here straight from the flow ("Request again NOW" /
+    // "Request again w/ edits") never opened the MY-Gophers modal, so
+    // hireAgainState.gopher is empty. Seed it from the request record so the
+    // confirmation names the actual worker instead of "Your Gopher".
+    if(!hireAgainState.gopher){
+      const rec = DASH_DATA.activeRequests.find(x => x.id === requestId);
+      const picked = (rec && rec.hireAgainGophers) || [];
+      if(picked.length){
+        hireAgainState.gopher = picked[0];
+        hireAgainState.extraGophers = picked.slice(1);
+      }
+    }
     if(needed > 1){
       // Offer the remaining MY Gophers (excluding the one already chosen).
       const chosen = hireAgainState.gopher;
@@ -17580,8 +17595,12 @@ const PAY_BADGES = {
       const ov2 = document.getElementById('addGophersOverlay');
       document.getElementById('addGophersSub').textContent =
         `This request needs ${needed} workers. Add any of your other MY Gophers to give them first chance, or skip to send it out normally.`;
+      // Connect hires each worker individually, so a multi-worker re-request can
+      // already carry several MY Gophers. Pre-select those — otherwise Confirm
+      // (which reads the selection) would silently drop them.
+      const carried = hireAgainState.extraGophers || [];
       document.getElementById('addGophersList').innerHTML = remaining.map(g =>
-        `<button class="agl-row" data-gopher="${g.name}">
+        `<button class="agl-row${carried.includes(g.name) ? ' selected' : ''}" data-gopher="${g.name}">
            <div class="agl-photo"><img src="${g.photo}" alt=""></div>
            <div class="agl-main"><div class="agl-name">${g.name}</div><div class="agl-spec">${g.specialty}</div></div>
            <div class="agl-check"></div>
@@ -17595,29 +17614,38 @@ const PAY_BADGES = {
     }
   };
 
-  // Show the submit confirmation, then schedule the MY Gopher auto-accept.
+  // Show the submit confirmation, then run the first-dibs window.
   function finalizeHireAgain(){
     const id = hireAgainState.pendingRequestId;
     const all = [hireAgainState.gopher, ...hireAgainState.extraGophers].filter(Boolean);
     const names = all.length > 1
       ? all.slice(0,-1).join(', ') + ' and ' + all.slice(-1)
       : (all[0] || 'Your Gopher');
+    const subject = all.length > 1 ? 'they are' : `${names} is`;
     const body = document.getElementById('hireAgainDoneBody');
     if(body){
-      body.textContent = `${names} will be alerted to your request immediately. If they accept, the request will move into your dashboard automatically. We'll also open it to other workers after 5 minutes just in case.`;
+      body.textContent = `${names} will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if ${subject} not available.`;
     }
     document.getElementById('hireAgainDoneOverlay').hidden = false;
-    // Auto-accept after ~3s to demonstrate the flow.
     scheduleGopherAcceptance(id, all);
   }
 
-  // After a short delay, the MY Gopher(s) "accept": auto-move them into the
-  // request's Hire Approved list (up to the needed count). Non-MY-Gophers still
-  // require manual approval. Once the needed count is met, the rest stay pending.
+  // First-dibs window — the behavior the "Request sent!" copy promises.
+  //   accepts        → the job is theirs; they land in Hire Approved and the
+  //                    request never opens to anyone else.
+  //   not available  → the request is broadcast to the wider workforce.
+  // DEMO ONLY: the prototype simulates the accept on a ~3s timer. Real
+  // accept/decline + broadcast is matching logic (human dev — see CLAUDE.md);
+  // broadcastToWorkforce() below is the seam it plugs into.
+  const HIRE_AGAIN_DEMO_ACCEPTS = true;   // flip to false to demo the broadcast path
   function scheduleGopherAcceptance(requestId, gopherNames){
     setTimeout(() => {
       const r = DASH_DATA.activeRequests.find(x => x.id === requestId);
       if(!r) return; // request may have been cancelled
+      if(!HIRE_AGAIN_DEMO_ACCEPTS || !gopherNames.length){
+        broadcastToWorkforce(requestId);   // MY Gopher didn't take it → open it up
+        return;
+      }
       // First-right-of-refusal only applies if the user hasn't already hired.
       const list = r.interestedWorkers || [];
       const needed = r.workersNeeded || 1;
@@ -17647,6 +17675,24 @@ const PAY_BADGES = {
         renderRequestDetail();
       }
     }, 3000);
+  }
+
+  // The "if they're not available" half of the promise: drop the MY-Gopher-only
+  // hold and let the request go out to the wider workforce, exactly as a normal
+  // (non-hire-again) request does. Prototype seam — the real trigger is the
+  // worker's decline/timeout, which is matching logic for the human dev.
+  function broadcastToWorkforce(requestId){
+    const r = DASH_DATA.activeRequests.find(x => x.id === requestId);
+    if(!r) return;
+    r.hireAgainGophers = null;             // no longer reserved
+    r.eligibleWorkers = 'entire_workforce';
+    r.broadcastOpen = true;
+    renderKpiCounts();
+    renderActiveRequests();
+    if(document.querySelector('.dash-section.active')?.dataset.section === 'request-detail'
+       && dashState.requestDetailId === requestId){
+      renderRequestDetail();
+    }
   }
 
   // ─── Logo: try to swap text wordmark for the real image logo if available ───
