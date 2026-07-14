@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why the Gophers Quit — Session 4 (July 2026)</title>
+<style>
+:root {
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#1baf7a; --warn:#fab219; --crit:#d03b3b;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#199e70;
+} }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1020px; margin:0 auto; padding:36px 28px 64px; }
+h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:40px 0 6px; }
+.sub { color:var(--ink2); margin:0 0 24px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px; margin:16px 0; }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:20px 0; }
+.kpi { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.kpi .label { color:var(--ink2); font-size:13px; } .kpi .value { font-size:30px; font-weight:600; margin:2px 0; }
+.kpi .note { color:var(--muted); font-size:12.5px; }
+.tick { font:11.5px system-ui,sans-serif; fill:var(--muted); }
+.dlabel { font:12px system-ui,sans-serif; font-weight:600; fill:var(--ink2); }
+.rowlab { font:13px system-ui,sans-serif; fill:var(--ink2); }
+.legend { display:flex; gap:18px; align-items:center; font-size:13px; color:var(--ink2); margin:2px 0 10px; flex-wrap:wrap; }
+.legend .key { display:inline-block; width:14px; height:3px; border-radius:2px; margin-right:6px; vertical-align:3px; }
+.tablewrap { overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:13.5px; }
+th { text-align:left; color:var(--ink2); font-weight:600; border-bottom:1px solid var(--baseline); padding:7px 10px 7px 0; white-space:nowrap; }
+td { border-bottom:1px solid var(--grid); padding:6px 10px 6px 0; vertical-align:middle; }
+td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+td.name { font-weight:600; white-space:nowrap; }
+.muted { color:var(--muted); white-space:nowrap; }
+.chip { display:inline-block; font-size:11px; font-weight:600; padding:1px 8px; border-radius:999px; margin-left:8px; vertical-align:1px; }
+.cbad { background:var(--crit); color:#fff; } .cwarn { background:var(--warn); color:#0b0b0b; }
+.tip { position:fixed; pointer-events:none; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:13px; box-shadow:0 4px 14px rgba(0,0,0,.12); visibility:hidden; z-index:10; }
+.tip .v { font-weight:700; font-size:15px; } .tip .l { color:var(--ink2); font-size:12px; }
+ul { margin:8px 0; padding-left:22px; } li { margin:5px 0; }
+.foot { color:var(--muted); font-size:12.5px; margin-top:36px; border-top:1px solid var(--grid); padding-top:14px; }
+</style></head><body>
+<div class="wrap">
+<h1>Why the gophers quit</h1>
+<p class="sub">Research session 4 &middot; the supply side of the scissors &middot; gophers active Jul&ndash;Dec 2025 who never delivered again, vs those who stayed &middot; companion to sessions 1&ndash;3</p>
+
+<div class="card" style="border-left:4px solid var(--crit)">
+<strong>Headline: they weren&rsquo;t fired, rated down, or banned &mdash; the math just doesn&rsquo;t work.</strong>
+Of 382 gophers who delivered in H2 2025, <strong>235 (62%) never delivered again in 2026</strong>. Both groups carry 5.0&#9733; ratings; 212 of the 235 never even closed their accounts. The difference is work volume: the typical quitter found <strong>1.3 deliveries a month at ~$4.30 each</strong> and walked after 47 days. Gopher churn and requestor churn (session 2) are the same disease &mdash; demand too thin per gopher, supply too thin per requestor &mdash; seen from opposite sides.
+</div>
+
+<div class="kpis">
+ <div class="kpi"><div class="label">H2 &rsquo;25 fleet</div><div class="value">382</div><div class="note">delivered &ge;1 order Jul&ndash;Dec 2025</div></div>
+ <div class="kpi"><div class="label">Gone in 2026</div><div class="value">235</div><div class="note">62% &mdash; zero 2026 deliveries</div></div>
+ <div class="kpi"><div class="label">Median take per delivery</div><div class="value">$3.27</div><div class="note">all-time, all gophers</div></div>
+ <div class="kpi"><div class="label">Quitters&rsquo; monthly earnings</div><div class="value">$6</div><div class="note">median, active months &mdash; vs $9 for stayers</div></div>
+</div>
+
+<h2>Quitters vs stayers, side by side</h2>
+<div class="card">
+<p style="margin-top:0">Medians for the 235 who left vs the 147 who stayed. Ratings are identical &mdash; quality isn&rsquo;t the filter. Tenure and delivery volume are: staying is something that happens to gophers who find enough work early.</p>
+<div class="tablewrap"><table>
+<tr><th></th><th class="num">Quit after 2025 (235)</th><th class="num">Still active 2026 (147)</th></tr>
+<tr><td>Median deliveries per active month</td><td class="num">1.3</td><td class="num">2.0</td></tr><tr><td>Median earnings per delivery</td><td class="num">$4.30</td><td class="num">$4.41</td></tr><tr><td>Median earnings per active month</td><td class="num">$6</td><td class="num">$9</td></tr><tr><td>Median lifetime deliveries</td><td class="num">3</td><td class="num">19</td></tr><tr><td>Median tenure (first to last delivery)</td><td class="num">47 days</td><td class="num">539 days</td></tr><tr><td>Median rating received</td><td class="num">5.00★</td><td class="num">5.00★</td></tr>
+</table></div>
+</div>
+
+<h2>The washout curve</h2>
+<div class="card">
+<p style="margin-top:0">Lifetime deliveries for all 2,027 gophers who ever completed one. Almost half never make a second delivery; only 1 in 8 ever reaches ten. The platform doesn&rsquo;t lose gophers slowly &mdash; it fails to convert them in the first weeks.</p>
+<svg viewBox="0 0 860 212" width="100%" role="img" aria-label="Lifetime deliveries per gopher, all 2,027 gophers who ever delivered"><text x="128" y="28.0" text-anchor="end" class="rowlab">1 delivery</text><rect x="140" y="13" width="610.0" height="22" rx="3" fill="var(--s1)"><title>1 delivery: 877 gophers (43% of all who ever delivered)</title></rect><text x="758.0" y="28.0" class="dlabel">877 (43%)</text><text x="128" y="68.0" text-anchor="end" class="rowlab">2–3</text><rect x="140" y="53" width="370.7" height="22" rx="3" fill="var(--s1)"><title>2–3: 533 gophers (26% of all who ever delivered)</title></rect><text x="518.7" y="68.0" class="dlabel">533 (26%)</text><text x="128" y="108.0" text-anchor="end" class="rowlab">4–9</text><rect x="140" y="93" width="231.6" height="22" rx="3" fill="var(--s1)"><title>4–9: 333 gophers (16% of all who ever delivered)</title></rect><text x="379.6" y="108.0" class="dlabel">333 (16%)</text><text x="128" y="148.0" text-anchor="end" class="rowlab">10–49</text><rect x="140" y="133" width="157.9" height="22" rx="3" fill="var(--s1)"><title>10–49: 227 gophers (11% of all who ever delivered)</title></rect><text x="305.9" y="148.0" class="dlabel">227 (11%)</text><text x="128" y="188.0" text-anchor="end" class="rowlab">50+</text><rect x="140" y="173" width="39.6" height="22" rx="3" fill="var(--s1)"><title>50+: 57 gophers (3% of all who ever delivered)</title></rect><text x="187.6" y="188.0" class="dlabel">57 (3%)</text></svg>
+</div>
+
+<h2>Intake vs exits</h2>
+<div class="card">
+<div class="legend">
+ <span><span class="key" style="background:var(--s1)"></span>First-ever delivery that month (intake)</span>
+ <span><span class="key" style="background:var(--s2)"></span>Last-ever delivery that month (exit)</span>
+</div>
+<p style="margin-top:0" class="sub">Two years of fleet flow. Exits are shown only through April 2026 &mdash; a &ldquo;last delivery&rdquo; in May or June can&rsquo;t be distinguished from a pause yet. Exits have outpaced intake for most of the last 18 months, and intake itself fell to 16 new gophers in June 2026 &mdash; the fleet is shrinking from both ends.</p>
+<svg viewBox="0 0 860 300" width="100%" role="img" aria-label="New gophers making a first delivery vs gophers making their last, per month" id="flowChart">
+<line x1="52" y1="266.0" x2="844" y2="266.0" stroke="var(--grid)" stroke-width="1"/><text x="44" y="270.0" text-anchor="end" class="tick">0</text><line x1="52" y1="182.7" x2="844" y2="182.7" stroke="var(--grid)" stroke-width="1"/><text x="44" y="186.7" text-anchor="end" class="tick">20</text><line x1="52" y1="99.3" x2="844" y2="99.3" stroke="var(--grid)" stroke-width="1"/><text x="44" y="103.3" text-anchor="end" class="tick">40</text><line x1="52" y1="16.0" x2="844" y2="16.0" stroke="var(--grid)" stroke-width="1"/><text x="44" y="20.0" text-anchor="end" class="tick">60</text><text x="52.0" y="288" text-anchor="middle" class="tick">Jul '24</text><text x="258.6" y="288" text-anchor="middle" class="tick">Jan '25</text><text x="465.2" y="288" text-anchor="middle" class="tick">Jul '25</text><text x="671.8" y="288" text-anchor="middle" class="tick">Jan '26</text>
+<polyline points="52.0,16.0 86.4,16.0 120.9,16.0 155.3,16.0 189.7,16.0 224.2,82.7 258.6,32.7 293.0,78.5 327.5,82.7 361.9,70.2 396.3,16.0 430.8,107.7 465.2,124.3 499.7,116.0 534.1,145.2 568.5,153.5 603.0,174.3 637.4,182.7 671.8,153.5 706.3,207.7 740.7,166.0 775.1,199.3 809.6,161.8 844.0,199.3" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="52.0,16.0 86.4,16.0 120.9,16.0 155.3,16.0 189.7,45.2 224.2,45.2 258.6,36.8 293.0,91.0 327.5,128.5 361.9,61.8 396.3,16.0 430.8,78.5 465.2,103.5 499.7,78.5 534.1,145.2 568.5,91.0 603.0,74.3 637.4,124.3 671.8,95.2 706.3,149.3 740.7,66.0 775.1,120.2" fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="844.0" cy="199.3" r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+<circle cx="775.1" cy="120.2" r="4.5" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"/>
+<text x="842.0" y="189.3" text-anchor="end" class="dlabel">16</text>
+<text x="783.1" y="124.2" class="dlabel">35</text>
+<line id="xhair" x1="0" x2="0" y1="16" y2="266" stroke="var(--baseline)" stroke-width="1" visibility="hidden"/>
+</svg>
+</div>
+
+<h2>Tier and retention</h2>
+<div class="card">
+<p style="margin-top:0">Retention by gopher tier (share of the H2 &rsquo;25 fleet still delivering in 2026). The accredited tiers retain at 2&ndash;3&times; the Standard rate &mdash; partly selection (committed people upgrade), but it means the tier program is where retention already works.</p>
+<div class="tablewrap"><table>
+<tr><th>Tier</th><th class="num">H2 &rsquo;25 fleet</th><th class="num">Still active &rsquo;26</th><th class="num">Retention</th></tr>
+<tr><td>Standard</td><td class="num">248</td><td class="num">77</td><td class="num">31%</td></tr><tr><td>Elite (legacy Pro)</td><td class="num">65</td><td class="num">30</td><td class="num">46%</td></tr><tr><td>Elite+ (legacy Pro+)</td><td class="num">69</td><td class="num">40</td><td class="num">58%</td></tr>
+</table></div>
+</div>
+
+<h2>Top 15 lost gophers <span class="chip cwarn" style="vertical-align:3px;margin-left:10px">re-activation targets</span></h2>
+<div class="card">
+<p style="margin-top:0">The most productive H2 &rsquo;25 gophers who went dark, ranked by deliveries in that half. Most are in session-3 gap states, rated 5&#9733;, and still hold open accounts &mdash; these are the cheapest supply you will ever acquire. Two are deleted accounts (unreachable).</p>
+<div class="tablewrap"><table>
+<tr><th>#</th><th>Gopher</th><th>Home market</th><th class="num">H2 &rsquo;25 deliveries</th><th class="num">Lifetime</th><th class="num">Lifetime earnings</th><th class="num">Earn rate</th><th class="num">Rating</th><th>Last delivery</th></tr>
+<tr><td class="num muted">1</td><td class="name">Deleted User <span class="chip cbad">deleted</span></td><td>Raleigh, NC</td><td class="num">33</td><td class="num">40</td><td class="num">$257</td><td class="num">$37/mo</td><td class="num">4.97</td><td class="muted">2025-10-21</td></tr><tr><td class="num muted">2</td><td class="name">Jason Allen</td><td>Richmond, VA</td><td class="num">22</td><td class="num">51</td><td class="num">$334</td><td class="num">$20/mo</td><td class="num">5</td><td class="muted">2025-12-24</td></tr><tr><td class="num muted">3</td><td class="name">Shirley Locklear</td><td>Southern Pines, NC</td><td class="num">22</td><td class="num">35</td><td class="num">$226</td><td class="num">$25/mo</td><td class="num">5</td><td class="muted">2025-11-11</td></tr><tr><td class="num muted">4</td><td class="name">Gina Martin</td><td>Smithfield, NC</td><td class="num">16</td><td class="num">16</td><td class="num">$64</td><td class="num">$22/mo</td><td class="num">5</td><td class="muted">2025-11-13</td></tr><tr><td class="num muted">5</td><td class="name">Lisa Trammell</td><td>Conway, SC</td><td class="num">13</td><td class="num">13</td><td class="num">$80</td><td class="num">$27/mo</td><td class="num">5</td><td class="muted">2025-10-10</td></tr><tr><td class="num muted">6</td><td class="name">Jesse Fernandez</td><td>Denver, CO</td><td class="num">12</td><td class="num">14</td><td class="num">$59</td><td class="num">$12/mo</td><td class="num">5</td><td class="muted">2025-11-12</td></tr><tr><td class="num muted">7</td><td class="name">John Jones</td><td>Spokane, WA</td><td class="num">12</td><td class="num">40</td><td class="num">$164</td><td class="num">$11/mo</td><td class="num">4.97</td><td class="muted">2025-10-27</td></tr><tr><td class="num muted">8</td><td class="name">Dale Smith</td><td>Raleigh, NC</td><td class="num">12</td><td class="num">17</td><td class="num">$141</td><td class="num">$28/mo</td><td class="num">5</td><td class="muted">2025-09-15</td></tr><tr><td class="num muted">9</td><td class="name">Anne McAllister</td><td>Atlantic Beach, NC</td><td class="num">12</td><td class="num">20</td><td class="num">$10</td><td class="num">$3/mo</td><td class="num">5</td><td class="muted">2025-08-03</td></tr><tr><td class="num muted">10</td><td class="name">Maliek Herndon <span class="chip cwarn">deactivated</span></td><td>Raleigh, NC</td><td class="num">11</td><td class="num">12</td><td class="num">$31</td><td class="num">$10/mo</td><td class="num">5</td><td class="muted">2025-12-26</td></tr><tr><td class="num muted">11</td><td class="name">Lauren Hinson <span class="chip cwarn">deactivated</span></td><td>Wilmington, NC</td><td class="num">11</td><td class="num">11</td><td class="num">$45</td><td class="num">$15/mo</td><td class="num">5</td><td class="muted">2025-10-29</td></tr><tr><td class="num muted">12</td><td class="name">Deleted User <span class="chip cbad">deleted</span></td><td>Nashville, TN</td><td class="num">11</td><td class="num">125</td><td class="num">$757</td><td class="num">$47/mo</td><td class="num">4.86</td><td class="muted">2025-10-13</td></tr><tr><td class="num muted">13</td><td class="name">Phillip Fehler</td><td>Spring Lake, NC</td><td class="num">10</td><td class="num">39</td><td class="num">$298</td><td class="num">$17/mo</td><td class="num">5</td><td class="muted">2025-12-11</td></tr><tr><td class="num muted">14</td><td class="name">Nicholas Murphy</td><td>Wake Forest, NC</td><td class="num">10</td><td class="num">10</td><td class="num">$33</td><td class="num">$16/mo</td><td class="num">5</td><td class="muted">2025-10-19</td></tr><tr><td class="num muted">15</td><td class="name">Kamil Areshov</td><td>Holly Springs, NC</td><td class="num">10</td><td class="num">10</td><td class="num">$24</td><td class="num">$12/mo</td><td class="num">5</td><td class="muted">2025-10-10</td></tr>
+</table></div>
+</div>
+
+<h2>What this says, across all four sessions</h2>
+<div class="card">
+<ul style="margin-top:0">
+<li><strong>The flywheel is running backwards in thin markets.</strong> Requestors leave because orders expire (session 2); gophers leave because orders are too few (session 4). Every market below critical density loses both sides simultaneously.</li>
+<li><strong>Earnings are the lever, density is the mechanism.</strong> $4.30/delivery &times; 1.3 deliveries/month isn&rsquo;t an income, it&rsquo;s a curiosity. No recruiting message fixes that; only concentrated order flow does. Focusing growth spend on the Raleigh DMA + the five win-back markets (session 3) beats spreading it nationally.</li>
+<li><strong>Fix week-one, not year-one.</strong> 47% of gophers never deliver twice. A first-week experience target (e.g., 3 deliveries in 7 days via priority routing for new gophers) attacks the washout curve directly.</li>
+<li><strong>Re-activation list is ready:</strong> 212 ex-gophers with open accounts (plus 14 deactivated), almost all 5&#9733;-rated &mdash; message = &ldquo;order volume in your area is up X% since you left&rdquo; where session 1 shows it&rsquo;s true.</li>
+<li><strong>Caveat on earnings figures:</strong> GOPHER EARNINGS in Orders.csv is the per-order payout column; it excludes any cash tips and predates current pricing (suggested-offer NC pricing went platform-wide 2026-07). If payout policy changed recently, the historical medians understate today&rsquo;s offer &mdash; worth restating in any recruiting copy.</li>
+</ul>
+</div>
+
+<h2>Method</h2>
+<div class="card">
+<ul style="margin-top:0">
+<li><strong>Churned</strong> = delivered &ge;1 order Jul&ndash;Dec 2025, zero deliveries Jan 1 &ndash; Jul 14, 2026. <strong>Retained</strong> = delivered in both periods. Internal/test gopher accounts excluded.</li>
+<li><strong>Earnings</strong> = the GOPHER EARNINGS column on delivered orders (net payout per order). Monthly figures divide lifetime earnings by months with &ge;1 delivery, so idle months don&rsquo;t deflate them.</li>
+<li><strong>Ratings received</strong> from Ratings.csv (<code>rated_id</code> = gopher). <strong>Washout curve</strong> covers all 2,027 gophers with &ge;1 lifetime delivery, all-time.</li>
+<li><strong>Exit month</strong> = a gopher&rsquo;s last-ever delivery, censored after Apr 2026 (later months can&rsquo;t distinguish quit from pause).</li>
+</ul>
+</div>
+
+<div class="foot">Generated 2026-07-14 &middot; Orders.csv + Users.csv + Ratings.csv + order_declines.csv &middot; series complete: sessions 1&ndash;4 in docs/research/</div>
+</div>
+<div class="tip" id="tip"><div class="v" id="tipv"></div><div class="l" id="tipl"></div></div>
+<script>
+(function() {
+  var a = [116, 128, 82, 79, 72, 44, 56, 45, 44, 47, 85, 38, 34, 36, 29, 27, 22, 20, 27, 14, 24, 16, 25, 16], b = [88, 99, 72, 86, 53, 53, 55, 42, 33, 49, 80, 45, 39, 45, 29, 42, 46, 34, 41, 28, 48, 35, 0, 0];
+  var labels = ["2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
+  var cens = 22;
+  var svg = document.getElementById('flowChart');
+  var xh = document.getElementById('xhair');
+  var tip = document.getElementById('tip'), tv=document.getElementById('tipv'), tl=document.getElementById('tipl');
+  var PL=52, PR=16, W=860, n=labels.length;
+  function px(i) { return PL + (W-PL-PR)*i/(n-1); }
+  svg.addEventListener('pointermove', function(e) {
+    var r = svg.getBoundingClientRect();
+    var sx = (e.clientX - r.left) * (W / r.width);
+    var i = Math.max(0, Math.min(n-1, Math.round((sx - PL) / ((W-PL-PR)/(n-1)))));
+    xh.setAttribute('x1', px(i)); xh.setAttribute('x2', px(i)); xh.setAttribute('visibility','visible');
+    tv.textContent = a[i] + ' new · ' + (i<cens ? b[i]+' exits' : 'exits n/a yet');
+    tl.textContent = labels[i];
+    tip.style.visibility='visible';
+    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 190) + 'px';
+    tip.style.top = (e.clientY - 14) + 'px';
+  });
+  svg.addEventListener('pointerleave', function() { xh.setAttribute('visibility','hidden'); tip.style.visibility='hidden'; });
+})();
+</script>
+</body></html>
