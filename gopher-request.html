@@ -1770,6 +1770,11 @@
      (Documentation/Dashboard/Gopher iQ Keywords/Age-Restricted Key Words/*.xlsx).
      Consumed by findAgeRestrictedKeyword(); regenerate from the xlsx, do not hand-edit. -->
 <script src="assets/js/gopher-age-keywords.js"></script>
+<script src="assets/js/gopher-age-supplement.js"></script>
+<!-- Shared request decision logic (category-mismatch detection). Single source of
+     truth across Request web / Connect / the Request App prototype — the parity
+     harness asserts no surface re-implements it locally. -->
+<script src="assets/js/gopher-request-logic.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -3307,7 +3312,13 @@
   .progress-meta-title {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy);
   }
-  .progress-meta-count { font-size:11px; color:var(--muted); font-weight:600; }
+  .progress-meta-left { display:flex; align-items:center; gap:8px; min-width:0; }
+  .progress-meta-cat {
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px; color:#1a9d4b;
+    background:#eafaf0; border:1px solid #cdeeda; border-radius:999px; padding:3px 9px; white-space:nowrap;
+  }
+  .progress-meta-count { font-size:11px; color:var(--muted); font-weight:600; flex:0 0 auto; }
   .progress-track {
     display:flex; gap:4px; height:5px;
   }
@@ -4913,12 +4924,12 @@
   }
   /* Inline toast shown above the footer when a disabled button is tapped. */
   .req-gate-toast {
-    position:absolute; right:28px; bottom:calc(100% + 8px);
-    z-index:40;
+    position:absolute; left:28px; right:28px; bottom:calc(100% + 10px);
+    z-index:50;
     display:flex; align-items:center; gap:7px;
-    max-width:88%; padding:9px 14px;
+    padding:9px 14px;
     background:#fff; border:1px solid rgba(196,66,87,0.3);
-    border-radius:10px; box-shadow:0 8px 22px rgba(26,42,84,0.14);
+    border-radius:10px; box-shadow:0 8px 22px rgba(26,42,84,0.18);
     font-family:'DM Sans',sans-serif; font-size:12.5px; font-weight:600; color:#a8364b;
     animation:reqGateToastIn 0.22s ease;
   }
@@ -5868,7 +5879,7 @@
     padding:16px 28px; background:#fafbfd; border-top:1px solid #eef0f5;
     display:flex; justify-content:space-between; align-items:center;
     border-radius:0 0 20px 20px;
-    position:relative;
+    position:relative; z-index:5;
   }
   .mockup-foot-note { font-size:11px; color:var(--muted); }
   .mockup-foot-actions { display:flex; gap:8px; }
@@ -7056,6 +7067,9 @@
   .cmp-confirm-btn { width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
   .cmp-confirm-btn:hover { filter:brightness(1.08); }
   .cmp-confirmed { border:1px solid #cfeede; background:#f1faf4; border-radius:12px; padding:13px 16px; margin:18px 0 4px; text-align:center; font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--green-dark,#13784a); }
+  /* persistent rate CTA — pulses until rated (INV-RATING, ruled Jul 12 2026) */
+  .cmp-rate-now { width:100%; margin-top:10px; background:#1CB061; color:#fff; border:none; border-radius:12px; padding:12px; font-family:'Nunito'; font-weight:800; font-size:13.5px; cursor:pointer; animation:cmpRatePulse 1.5s ease-in-out infinite; }
+  @keyframes cmpRatePulse { 0% { box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5); } 70% { box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } 100% { box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } }
   .cmp-detail-rows { margin-bottom:6px; }
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
   .cmp-drow span:first-child { color:var(--muted); font-weight:600; }
@@ -7922,9 +7936,13 @@
 
   /* ── Deals Home (bid-winners landing) — parity with Connect ── */
   .deals-home { font-family:'DM Sans',sans-serif; }
-  .dh-near { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .dh-near { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .dh-near-r { display:flex; align-items:center; gap:12px; flex:0 0 auto; }
+  .dh-viewall-link { display:inline-flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:#1a9d4b; background:#eafaf0; border:1px solid #cdeeda; border-radius:999px; padding:8px 14px; cursor:pointer; white-space:nowrap; transition:background .15s ease, transform .15s ease; }
+  .dh-viewall-link:hover { background:#dff6e8; transform:translateY(-1px); }
+  .dh-viewall-link svg { width:15px; height:15px; flex:0 0 auto; }
   .dh-near-l { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; letter-spacing:-.01em; color:var(--navy); line-height:1.08; }
-  .dh-sponsored { flex:0 0 auto; margin-top:7px; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:.06em; color:var(--muted);
+  .dh-sponsored { flex:0 0 auto; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:.06em; color:var(--muted);
     border:1px solid #d7dce6; border-radius:7px; padding:4px 9px; background:#fff; white-space:nowrap; }
   .dh-hand { font-family:'Caveat', cursive; font-weight:700; font-size:24px; color:var(--terracotta); margin:2px 0 18px; line-height:1.2; }
 
@@ -7984,13 +8002,7 @@
     border:1.5px solid var(--navy); border-radius:11px; padding:9px 26px; transition:background .15s ease, color .15s ease, border-color .15s ease; }
   .dh-cat:hover .dh-cat-cta { background:var(--green); border-color:var(--green); color:#fff; }
 
-  /* "View All Local Deals" button + back-to-featured link */
-  .dh-viewall { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box;
-    margin-top:22px; padding:15px 20px; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; color:#fff;
-    background:var(--green); border:none; border-radius:14px; box-shadow:0 10px 24px rgba(51,217,117,.35);
-    transition:background .15s ease, transform .15s ease; }
-  .dh-viewall:hover { background:var(--green-dark); transform:translateY(-2px); }
-  .dh-viewall svg { width:18px; height:18px; flex:0 0 auto; }
+  /* back-to-featured link */
   .dh-back { display:inline-flex; align-items:center; gap:6px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
     color:var(--navy); background:var(--navy-light); border:none; border-radius:999px; padding:8px 14px 8px 11px; cursor:pointer;
     margin:0 0 14px; transition:background .15s ease, color .15s ease; }
@@ -9158,7 +9170,10 @@
              title reads "New Request Details" so the flow reads as the screen. -->
         <div class="mockup-progress">
           <div class="progress-meta">
-            <span class="progress-meta-title" id="progressTitle">New Request Details</span>
+            <div class="progress-meta-left">
+              <span class="progress-meta-title" id="progressTitle">New Request Details</span>
+              <span class="progress-meta-cat" id="progressCat" hidden></span>
+            </div>
             <span class="progress-meta-count" id="progressCount">Step 1 of 5</span>
           </div>
           <div class="progress-track" id="progressTrack"></div>
@@ -10855,43 +10870,7 @@
   // on!, burners) are known false-positives kept for parity; the modal's "No"
   // option lets a user recover in one tap. Prune that block if the friction
   // isn't worth it — it's a one-line edit.
-  const AGE_RESTRICTED_KEYWORDS = [
-    // intent phrases (specific first)
-    'tobacco run','beer run','liquor run','booze run','vape run','need cigs','need cigarettes',
-    'pick up dip','pick up beer','pick up cigarettes','pick up smokes','grab some beer','grab beer',
-    'run to the liquor store','run to abc','get me cigarettes','get me beer',
-    // tobacco / cigarettes
-    'cigarette','cigarettes','cig','cigs','ciggy','ciggies','cigar','cigars','cigarillo','cigarillos','smokes','cancer sticks','coffin nails',
-    'darts','rollies','rolling tobacco','loose tobacco','pipe tobacco','chewing tobacco','chew',
-    'dip','snuff','snus','nicotine pouches','nicotine','tobacco','pack of cigarettes','pack of smokes',
-    'menthols','cloves','cartons',
-    // cigarette / smokeless brands (+ misspellings)
-    'marlboro','malboro','newport','camel','camels','pall mall','lucky strike','american spirit',
-    'winston','kool','parliament','virginia slims','black & mild','swisher','swishers','swisher sweet',
-    'dutch masters','dutches','backwoods','grizzly','grizley','copenhagen','skoal','kodiak','red man',
-    'zyn','rogue','velo','lucy','njoy',
-    // vape / e-cig (+ misspellings)
-    'vape','vapes','vaping','e-cig','e-cigarette','ecig','vape pen','vape juice','e-liquid','eliquid',
-    'vape cartridge','disposable vape','juul','juuls','puff bar','elf bar','elfbar','geek bar',
-    'lost mary','blu','vuse','nic salt','vape pods','hookah','shisha','nicotene',
-    // alcohol
-    'alcohol','beer','beers','wine','liquor','booze','vodka','whiskey','whisky','bourbon','tequila',
-    'rum','gin','brandy','cognac','scotch','champagne','prosecco','hard seltzer','seltzer','white claw',
-    'truly','twisted tea','malt liquor','moonshine','schnapps','sake','mezcal','lager','ale','pinot',
-    'merlot','cabernet','chardonnay','sangria','margarita','six pack','sixpack','case of beer','keg',
-    'wine cooler','hard cider','everclear','jagermeister','fireball','hennessy','smirnoff','bacardi',
-    'jack daniels','captain morgan','grey goose','total wine','abc store','liquor store','package store',
-    // THC / cannabis
-    'weed','marijuana','cannabis','thc','delta 8','delta-8','delta 9','delta-9','delta 10','delta-10',
-    'hhc','edibles','edible','gummies','thc gummies','cbd','hemp','dabs','wax','shatter','vape cart',
-    'prerolls','pre-roll','joint','blunt','blunts','dispensary','kush','indica','sativa','hashish',
-    'tincture','distillate',
-    // other age-restricted
-    'kratom','nitrous','nitrous oxide','whippets','whip-its','lottery','lotto','lottery tickets',
-    'scratch off','scratch-off','scratchers','powerball','mega millions','kava','poppers',
-    // ── known everyday-word false positives (parity; prune this line if unwanted) ──
-    'carton','game','basic','smoke','reds','on!','burners'
-  ];
+  const AGE_RESTRICTED_KEYWORDS = (window.GopherAgeSupplement || []);   // hand-maintained supplement is SHARED — edit assets/js/gopher-age-supplement.js, never here
   function findAgeRestrictedKeyword(text){
     const orig = String(text || '');
     if(!orig.trim()) return null;
@@ -11879,6 +11858,7 @@
   const $progressTrack = document.getElementById('progressTrack');
   const $progressCount = document.getElementById('progressCount');
   const $progressTitle = document.getElementById('progressTitle');
+  const $progressCat = document.getElementById('progressCat');
   const $content = document.getElementById('mockupContent');
   const $btnBack = document.getElementById('btnBack');
   const $btnNext = document.getElementById('btnNext');
@@ -12000,6 +11980,12 @@
     }).join('');
     $progressCount.textContent = `Step ${state.step} of 7`;
     $progressTitle.textContent = state.step === 7 ? 'Request Submitted' : 'New Request Details';
+    // Keep the picked category visible through every step (badge beside the title).
+    const catData = state.category ? CATEGORIES[state.category] : null;
+    if($progressCat){
+      if(catData){ $progressCat.textContent = `${catData.icon} ${catData.name}`; $progressCat.hidden = false; }
+      else { $progressCat.hidden = true; }
+    }
   }
 
   // ---- Step content renderers ----
@@ -14138,8 +14124,11 @@
       if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
                            msg:'Add a drop-off address so your Gopher knows where to go.' };
     }
-    // Also backstops the footer Submit at Step 6.
-    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup
+    // Also backstops the footer Submit at Step 6. Only for categories that actually
+    // have a pick-up AND a drop-off (Delivery/Moving/Ride) — single-location service
+    // requests (Home/Office, Labor, Yard, Junk, Other), incl. redeemed Service-Provider
+    // deals, have no pickup/drop-off distinction, so this rule must not apply to them.
+    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup && isVisible('pickupSection')
        && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
       const normAddr = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
       const pk = state.pickupStops.map(normAddr).filter(Boolean);
@@ -14592,51 +14581,14 @@
   // the requester may know something the text doesn't). The age-restricted gate
   // takes precedence — this only runs when no age-restricted keyword is present.
   (function initCategoryMismatch(){
-    // Tuned against the Step-5 test matrix (JXA harness). Do NOT lower without
-    // re-running it: the double condition (strong top AND weak selected AND a
-    // margin) is what stops genuinely dual-category jobs — "moving labor", "haul
-    // away branches", "move a couch to the dump" — from nagging.
-    const MIN_CONTENT_WORDS = 2;   // skip short/empty descriptions
-    const STRONG_BAR        = 8;   // top must be a confident match (seeded = CAT_HIGH)
-    const MARGIN            = 5;   // top must beat the selected category's score by this
-    // The submission UI uses short category keys; the classifier uses full slugs.
-    const UI_TO_SLUG = { junk:'junk_removal', ride:'ride_sharing', yard:'yard_work_outdoor_projects',
-                         home:'home_services', labor:'hourly_day_labor',
-                         delivery:'delivery', moving:'moving', other:'other' };
-    const SLUG_TO_UI = {}; Object.keys(UI_TO_SLUG).forEach(k => { SLUG_TO_UI[UI_TO_SLUG[k]] = k; });
-
-    // Pure, UI-decoupled, unit-tested (Step 5). Returns null or a suggestion.
-    function detectCategoryMismatch(selectedSlug, description){
-      if(catWords(description || '').length < MIN_CONTENT_WORDS) return null;
-      const scored = scoreCategories(description || '');
-      if(!scored.length) return null;
-      const top = scored[0];
-      let selectedScore = 0;
-      for(const s of scored){ if(s.slug === selectedSlug){ selectedScore = s.score; break; } }
-      const strongTop = top.score >= STRONG_BAR && top.slug !== 'other';   // never suggest TO the catch-all
-      // Escape-the-catch-all: suggesting FROM Other TO a concrete category is helpful.
-      if(selectedSlug === 'other' && strongTop)
-        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
-      // Confident disagreement: strong top AND weak selected AND a clear margin.
-      if(strongTop && top.slug !== selectedSlug
-         && (top.score - selectedScore) >= MARGIN && selectedScore < CAT_THRESH)
-        return { suggestedSlug:top.slug, suggestedLabel:top.label, selectedScore, suggestedScore:top.score };
-      return null;
-    }
-    window.__detectCategoryMismatch = detectCategoryMismatch;   // for the JXA test harness
-
-    // Telemetry — no analytics backend in the prototype, so emit a window event +
-    // console debug carrying the exact payload; the production rebuild points this
-    // at its analytics util. Payload: { requestId, selectedSlug, suggestedSlug,
-    // selectedScore, suggestedScore, action:'shown'|'accepted'|'dismissed' }.
-    function emitCategoryEvent(action, r){
-      const payload = { requestId: state.requestId || state.draftId || null,
-        selectedSlug: r.selectedSlug, suggestedSlug: r.suggestedSlug,
-        selectedScore: r.selectedScore, suggestedScore: r.suggestedScore, action };
-      try { window.dispatchEvent(new CustomEvent('gopher:category_check', { detail: payload })); } catch(e){}
-      try { if(window.GopherTelemetry && window.GopherTelemetry.track) window.GopherTelemetry.track('category_check', payload); } catch(e){}
-      try { console.debug('[category_check]', payload); } catch(e){}
-    }
+    // DECISION LOGIC LIVES IN THE SHARED MODULE (assets/js/gopher-request-logic.js)
+    // — one source of truth across Request web / Connect / the App prototype. This
+    // IIFE is only the per-platform UI wiring (modal, state). Fail-safe no-op if
+    // the module didn't load. Do not re-implement detection here — the parity
+    // harness fails the build if a local copy reappears.
+    const L = window.GopherRequestLogic;
+    if(!L) return;
+    window.__detectCategoryMismatch = L.detectCategoryMismatch;   // for the JXA test harness
 
     function buildOverlay(html){
       const ov = document.createElement('div'); ov.className = 'gr-modal-overlay';
@@ -14647,14 +14599,15 @@
     // Returns true if a modal opened (caller blocks Continue). Maps UI-key <-> slug
     // only at this boundary; detectCategoryMismatch stays pure on slugs.
     window.__checkCategoryMismatch = function(){
-      const selectedSlug = UI_TO_SLUG[state.category] || state.category;
-      const r = detectCategoryMismatch(selectedSlug, state.description);
+      const selectedSlug = L.uiToSlug(state.category);
+      const r = L.detectCategoryMismatch(selectedSlug, state.description);
       state.lastCheckedDescription = state.description;
       if(!r) return false;
       if(state.userAcknowledgedCategory) return false;   // they chose Keep-as-is; re-armed on edit
       r.selectedSlug = selectedSlug;
+      const reqId = state.requestId || state.draftId || null;
       const selectedLabel = (CATEGORIES[state.category] && CATEGORIES[state.category].name) || state.category;
-      emitCategoryEvent('shown', r);
+      L.emitCategoryCheck('shown', r, reqId);
       const ov = buildOverlay(
         '<div class="gr-modal-icon" style="font-size:26px;line-height:1;">🧭</div>' +
         '<h4>This looks like a ' + r.suggestedLabel + ' job</h4>' +
@@ -14664,8 +14617,8 @@
       );
       const yes = ov.querySelector('#catSwitchYes'), no = ov.querySelector('#catSwitchNo');
       if(yes) yes.addEventListener('click', () => {
-        emitCategoryEvent('accepted', r);
-        state.category = SLUG_TO_UI[r.suggestedSlug] || r.suggestedSlug;   // slug -> UI key
+        L.emitCategoryCheck('accepted', r, reqId);
+        state.category = L.slugToUi(r.suggestedSlug);                      // slug -> UI key
         state.userAcknowledgedCategory = false;                            // fresh category
         if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
         ov.remove();
@@ -14673,7 +14626,7 @@
         setTimeout(() => { if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); }, 0); // confirm resolution
       });
       if(no) no.addEventListener('click', () => {
-        emitCategoryEvent('dismissed', r);
+        L.emitCategoryCheck('dismissed', r, reqId);
         state.userAcknowledgedCategory = true;   // low-friction — they may know better
         ov.remove();
       });
@@ -16707,6 +16660,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <option value="Apple App Store">Apple App Store</option>
           <option value="Facebook">Facebook</option>
           <option value="Google Play Store">Google Play Store</option>
+          <option value="Gopher Deals">Gopher Deals</option>
           <option value="iHeart Radio">iHeart Radio</option>
           <option value="Indeed">Indeed</option>
           <option value="Instagram">Instagram</option>
@@ -20529,23 +20483,27 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           return (DASH_DATA.activeRequests || []).find(x => x.id === id);
         };
 
-        // Completion + dispute + star-conditional rating (G40-65/G40-39/G40-300 + GA-285).
-        // All routed through this single delegated handler (Request's pattern). The
-        // rating overlay is NON-DISMISSIBLE: no backdrop-close branch for it.
+        // Completion + dispute + star-conditional rating (G40-65/G40-39/G40-300 + GA-285;
+        // INV-RATING Jul 12 2026). All routed through this single delegated handler
+        // (Request's pattern). Confirm finalizes immediately and PROMPTS the rating
+        // overlay, which is dismissible (✕ + backdrop) — the card's "Rate now" CTA
+        // persists until rated.
         if(target.closest('[data-completion-details]')){ const o = document.getElementById('completionDetailsOverlay'); if(o) o.hidden = false; return; }
         if(target.closest('[data-completion-close]') || target.id === 'completionDetailsOverlay'){ const o = document.getElementById('completionDetailsOverlay'); if(o) o.hidden = true; return; }
-        if(target.closest('[data-confirm-complete]')){
+        if(target.closest('[data-confirm-complete]')){ const r = getR(); if(r) resolveCompletion(r); return; }
+        if(target.closest('[data-rate-open]')){
           const r = getR(); if(!r) return;
           if(r.ratingValue == null) r.ratingValue = 5;
           const o = document.getElementById('ratingOverlay'); if(o) o.hidden = false;
           paintRating(r); return;
         }
+        if(target.closest('[data-rate-close]') || target.id === 'ratingOverlay'){ const o = document.getElementById('ratingOverlay'); if(o) o.hidden = true; return; }
         if(target.closest('[data-star]')){
           const r = getR(); if(!r) return;
           r.ratingValue = parseInt(target.closest('[data-star]').dataset.star, 10);
           paintRating(r); return;
         }
-        if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) resolveCompletion(r); return; }
+        if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) submitRating(r); return; }
         if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
         if(target.closest('[data-dispute-submit]')){
           const r = getR(); if(!r) return;
@@ -20848,12 +20806,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // TrustShield) display negative. The .ca-modal shell is built REUSABLY so Port
   // Commit 6 (counter-offers) can reuse it, exactly as Connect did.
   // Completion-details + star-conditional rating + unable modals (mirrors Connect;
-  // G40-65/G40-39/G40-300 + GA-285). Reuse the .ca-modal shell. Details pics section
-  // OMITTED when completionPhotos empty. Rating is NON-DISMISSIBLE (no ✕, no backdrop
-  // close handler) until Done; options filled live by the delegated handler based on
-  // the star value stored on r.ratingValue.
+  // G40-65/G40-39/G40-300 + GA-285; INV-RATING Jul 12 2026). Reuse the .ca-modal
+  // shell. Details pics section OMITTED when completionPhotos empty. Rating is
+  // DISMISSIBLE (✕ + backdrop); the modals stay in the DOM until rated so the card's
+  // "Rate now" CTA can reopen them; options filled live by the delegated handler
+  // based on the star value stored on r.ratingValue.
   function buildCompletionModals(r){
-    if(!r || !r.awaitingConfirmation) return '';
+    if(!r || !(r.awaitingConfirmation || (r.confirmed && !r.rated))) return '';
     const w = (r.live && (Array.isArray(r.live.crew) ? r.live.crew[0] : r.live.worker)) || {};
     const photos = r.completionPhotos || [];
     const snap = r.reviewSnapshot || {};
@@ -20876,7 +20835,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const ratingModal = `
       <div class="ca-overlay" id="ratingOverlay" hidden>
         <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
-          <div class="ca-head"><h3>Rate your Gopher</h3></div>
+          <div class="ca-head"><h3>Rate your Gopher</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
             <div class="rate-stars" id="rateStars">${[1,2,3,4,5].map(n => `<button class="rate-star on" data-star="${n}" aria-label="${n} star">★</button>`).join('')}</div>
@@ -20915,13 +20874,29 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       : `<label class="rate-opt rate-opt-block"><input type="checkbox" id="optBlock"> Do not send requests to ${wname} again</label>`;
   }
 
-  // Requestor confirmed + rated → finalize (faked). Mirrors Connect resolveCompletion.
+  // Confirm finalizes IMMEDIATELY; rating is decoupled and optional (INV-RATING,
+  // ruled Jul 12 2026). Mirrors Connect resolveCompletion: the re-render rebuilds a
+  // fresh rating modal (kept in the DOM until rated), which we then open as a prompt.
   function resolveCompletion(r){
     r.awaitingConfirmation = false;
     r.confirmed = true;
     r.statusLabel = 'Completed';
+    if(typeof toast === 'function') toast('Completion confirmed — receipt emailed, payment released');
+    renderActiveRequests();
+    renderRequestDetail();
+    if(r.ratingValue == null) r.ratingValue = 5;
+    const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = false;
+    paintRating(r);
+  }
+
+  // Rating submit — records the score and clears the card's "Rate now" CTA. The
+  // toast never echoes the star to the worker (INV-RATING: other-party privacy).
+  function submitRating(r){
+    r.rated = true;
+    const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
+    const wnm = (_crew[0] && _crew[0].name) || (r.live && r.live.worker && r.live.worker.name) || 'your Gopher';
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
-    if(typeof toast === 'function') toast('Completion confirmed — thanks for rating!');
+    if(typeof toast === 'function') toast('Thanks — your rating of ' + wnm + ' was submitted');
     renderActiveRequests();
     renderRequestDetail();
   }
@@ -21196,7 +21171,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       ? _crew[0].name
       : (r.worker || 'your Gopher').replace(/\s*\(.*$/, '').replace(/\s*·.*$/, '');
     if(r.confirmed){
-      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`;
+      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`
+        + (r.rated ? '' : `<button class="cmp-rate-now" data-rate-open>Rate now →</button>`);
     }
     if(r.disputeState === 'entry'){
       return `
@@ -22480,9 +22456,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         kind:'merchant', category:'delivery', address:'105 Avent Ferry Rd, Holly Springs, NC 27540', mobile:false, promo:'GOPHER', pay:12, portalUrl:'mywaytavern.com', portalTag:'The best food (& drinks) around',
         logoSvg:'<svg viewBox="0 0 220 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="My Way Tavern"><rect x="104" y="22" width="10" height="138" rx="3" fill="#3a3a3a"/><rect x="104" y="22" width="4" height="138" rx="2" fill="#606060"/><circle cx="109" cy="20" r="9" fill="#454545"/><circle cx="109" cy="20" r="4" fill="#6f6f6f"/><path d="M150 122 q-12 -10 -22 -6 q14 -10 26 2 z" fill="#2a2a2a"/><path d="M68 122 q12 -10 22 -6 q-14 -10 -26 2 z" fill="#2a2a2a"/><g transform="rotate(8 109 76)"><path d="M104 62 H196 L208 76 L196 90 H104 Z" fill="#1f7a3d" stroke="#ffffff" stroke-width="4"/><text x="150" y="82" text-anchor="middle" font-family="Nunito, Arial, sans-serif" font-weight="800" font-size="19" fill="#ffffff" letter-spacing="1">TAVERN</text></g><g transform="rotate(-8 109 76)"><path d="M114 62 H22 L10 76 L22 90 H114 Z" fill="#1f7a3d" stroke="#ffffff" stroke-width="4"/><text x="64" y="82" text-anchor="middle" font-family="Nunito, Arial, sans-serif" font-weight="800" font-size="19" fill="#ffffff" letter-spacing="1">MY WAY</text></g></svg>' },
       { id:'r-frankks', name:'Frankie Frankks Hot Dogs', sub:'Hot Dog Cart', offer:"Buy 2 dogs, the drink's on us", distance:'2.2 mi',
-        kind:'merchant', category:'delivery', address:null, mobile:true, pay:9, portalUrl:'frankiefrankks.com', portalTag:"Frankly, we're the best!" },
-      { id:'r-diced',   name:'Diced',                    sub:'Salads · Wraps · Bowls', offer:'Free topping upgrade', distance:'2.5 mi',
-        kind:'merchant', category:'delivery', address:'441 N Main St, Holly Springs, NC 27540', mobile:false, pay:11, portalUrl:'dicedhollysprings.com', portalTag:'Healthy and fresh' },
+        kind:'merchant', category:'delivery', address:null, mobile:true, noOrdering:true, pay:9, portalUrl:'frankiefrankks.com', portalTag:"Frankly, we're the best!" },
+      { id:'r-freshfork',   name:'Fresh Fork',                    sub:'Salads · Wraps · Bowls', offer:'Free topping upgrade', distance:'2.5 mi',
+        kind:'merchant', category:'delivery', address:'308 Village Walk Dr, Holly Springs, NC 27540', mobile:false, pay:11, portalUrl:'freshforkhs.com', portalTag:'Healthy and fresh' },
       { id:'r-buoy',     name:'Buoy Bowls',                sub:'Açaí Bowls · Smoothies', offer:'10% off your first order', distance:'3.1 mi',
         kind:'merchant', category:'delivery', address:'441 Village Walk Dr, Holly Springs, NC 27540', mobile:false, pay:14, portalUrl:'buoybowls.com', portalTag:'Bowls, smoothies & good vibes' },
       { id:'r-randys',  name:"Randy's Pizza",                sub:'Pizza · Subs', offer:'$5 off any large carryout', distance:'1.4 mi',
@@ -22527,7 +22503,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   const DEAL_LOGOS = {
     'r-myway': 'assets/img/request-img-17.webp',
     'r-frankks': 'assets/img/request-img-13.webp',
-    'r-diced': 'assets/img/request-img-18.webp',
+    'r-freshfork': 'assets/img/deal-fresh-fork.webp',
     'r-randys': 'assets/img/deal-randys-pizza.webp',
     'f-hatch': 'assets/img/request-img-2.webp',
     'f-sugar': 'assets/img/request-img-9.webp',
@@ -22718,7 +22694,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     catch(e){ return false; }
   }
   const DEALS_GO_SVG   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-  const DEALS_GRID_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
   const DEALS_CROWN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 18h16l1.3-9.6-4.85 3.35L12 5.1 7.55 11.75 2.7 8.4 4 18z"/></svg>';
 
   function renderDealsHome(){
@@ -22772,11 +22747,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     host.innerHTML =
       '<div class="deals-home">' +
-        '<div class="dh-near"><span class="dh-near-l">Feature Deals Near You</span><span class="dh-sponsored">SPONSORED</span></div>' +
+        '<div class="dh-near"><span class="dh-near-l">Feature Deals Near You</span>' +
+          '<span class="dh-near-r"><button type="button" class="dh-viewall-link" id="dhViewAll"><span>View all deals</span>' + DEALS_GO_SVG + '</button><span class="dh-sponsored">SPONSORED</span></span></div>' +
         '<div class="dh-hand">— showing love to our neighborhood favs</div>' +
         featuredHTML +
         '<div class="dh-cats">' + cats.map(catCardHTML).join('') + '</div>' +
-        '<button type="button" class="dh-viewall" id="dhViewAll">' + DEALS_GRID_SVG + '<span>View All Local Deals</span>' + DEALS_GO_SVG + '</button>' +
       '</div>';
 
     host.querySelectorAll('.dh-featured, .dh-cat').forEach(btn => {
@@ -23219,12 +23194,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
-    // Cost of items: age-restricted merchant deals only. These shops have no online
-    // ordering, so the customer fronts the in-person purchase — capture it here so it
-    // rides into the COG fee base. Never pre-fill (placeholder 0.00 only).
+    // Cost of items: shown whenever the Gopher fronts the in-person purchase —
+    // age-restricted shops (can't be pre-paid online) AND merchants registered with
+    // "no online ordering" (no_online_ordering flag; common for food trucks). Captured
+    // here so it rides into the COG fee base. Never pre-fill (placeholder 0.00 only).
     const ageDeal = !isService && !!m.ageRestricted;
+    const frontsItems = ageDeal || (!isService && !!m.noOrdering);
     const costF = document.getElementById('dealCostField');
-    costF.hidden = !ageDeal;
+    costF.hidden = !frontsItems;
+    const costHint = costF.querySelector('.deal-cost-hint');
+    if(costHint) costHint.textContent = ageDeal
+      ? 'The product cost your Gopher fronts in person — age-restricted shops can’t be pre-paid online.'
+      : 'The product cost your Gopher fronts in person — this merchant takes orders on site, not online.';
     document.getElementById('dealCost').value = '';
     // Identity-verification pairing for age-restricted (mirrors the main delivery flow).
     const ageNote = document.getElementById('dealAgeNote');
