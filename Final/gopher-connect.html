@@ -6209,6 +6209,13 @@
     transition:all 0.15s;
   }
   .prev-detail-cta:hover { background:var(--navy-mid); }
+  /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
+     beside the navy "Request again w/ edits" (prefill → Review). */
+  .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
+  .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
+  .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
+  @media (max-width:560px){ .prev-detail-ctas { flex-direction:column; } }
   .prev-detail-reason {
     padding:12px 14px; background:#f7f8fc; border-left:3px solid #d4d8e3; border-radius:8px;
     font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted);
@@ -12420,6 +12427,22 @@ const PAY_BADGES = {
     render();
   };
 
+  // ---- Request NOW ⚡ — 1-click re-submit (no Review) ----
+  // Identical prefill to __startRequestAgainFast (which already forces Need ASAP),
+  // but submits immediately instead of stopping on Review. Firing the real Continue
+  // button reuses the normal step-6 submit path, so the duplicate backstop and every
+  // other gate still run; if something is genuinely missing, the gate simply leaves
+  // the user on Review to fix it. The liability waiver carries over from the original
+  // request — re-requesting re-affirms the terms already accepted on the first submit.
+  window.__startRequestAgainNow = (prev, selectedGophers) => {
+    if(typeof window.__startRequestAgainFast !== 'function') return false;
+    window.__startRequestAgainFast(prev, selectedGophers);
+    state.waiverChecked = true;
+    const btn = document.getElementById('btnNext');   // step 6: Continue == Submit
+    if(btn) btn.click();
+    return true;
+  };
+
   // ---- Gopher Deal → Request bridge ----
   // A Gopher Deal pre-fills the flow and lands the user directly on Review (step 6)
   // with every earlier step unlocked, so they can edit any detail like a normal
@@ -16883,7 +16906,10 @@ const PAY_BADGES = {
               <span>Do not send requests to ${firstName} again</span>
             </button>
           </div>
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     } else {
       panel.innerHTML = `
@@ -16897,7 +16923,10 @@ const PAY_BADGES = {
             <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     }
 
@@ -16913,11 +16942,22 @@ const PAY_BADGES = {
     panel.querySelector('[data-prev-back]').addEventListener('click', closePrevDetail);
     const again = panel.querySelector('[data-prev-again]');
     if(again) again.addEventListener('click', () => {
-      // Request again FAST: if the user has MY Gophers, ask who to route to first
+      // Request again w/ edits: if the user has MY Gophers, ask who to route to first
       // (select all / some / none), then prefill from history and jump to review.
       const myG = (DASH_DATA.myGophers || []);
       if(myG.length){ openRaFastModal(r); }
       else { window.__startRequestAgainFast(r, []); }
+    });
+    const nowBtn = panel.querySelector('[data-prev-now]');
+    if(nowBtn) nowBtn.addEventListener('click', () => {
+      // Request NOW ⚡: no picker, no Review — send it exactly as it went out before,
+      // routed back to the same worker when they're one of MY Gophers, timing = ASAP.
+      const names = (DASH_DATA.myGophers || []).map(g => (g && g.name) || g);
+      const prior = String((r && r.worker) || '').trim();
+      const sel = (prior && names.indexOf(prior) !== -1) ? [prior] : [];
+      moveFlowMockupToDashboard();
+      if(typeof window.__startRequestAgainNow === 'function'){ window.__startRequestAgainNow(r, sel); }
+      showSection('new-request');
     });
 
     listPanel.hidden = true;

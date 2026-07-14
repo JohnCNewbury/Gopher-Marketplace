@@ -8378,6 +8378,13 @@
     transition:all 0.15s;
   }
   .prev-detail-cta:hover { background:var(--navy-mid); }
+  /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
+     beside the navy "Request again w/ edits" (prefill → Review). */
+  .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
+  .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
+  .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
+  @media (max-width:560px){ .prev-detail-ctas { flex-direction:column; } }
 
   /* ─── Info cards (Business Info, Personal info) ─── */
   .info-card {
@@ -14438,6 +14445,22 @@
     state.step = 6;
     state.maxStepReached = 6;
     render();
+    return true;
+  };
+
+  // Request NOW ⚡ — 1-click re-submit. Identical prefill to __startRequestAgainFast
+  // (which already forces Need ASAP), but submits immediately instead of stopping on
+  // Review. Firing the real Continue button reuses the normal step-6 submit path, so
+  // the duplicate backstop and every other gate still run; if something is genuinely
+  // missing the gate simply leaves the user on Review to fix it.
+  // The liability waiver carries over from the original request — re-requesting is
+  // treated as re-affirming the terms already accepted on the first submit.
+  window.__startRequestAgainNow = function(prev, selected){
+    if(typeof window.__startRequestAgainFast !== 'function') return false;
+    if(!window.__startRequestAgainFast(prev, selected)) return false;
+    state.waiverChecked = true;
+    const btn = document.getElementById('btnNext');   // step 6: Continue == Submit
+    if(btn) btn.click();
     return true;
   };
 
@@ -21626,7 +21649,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               <span>Do not send requests to ${firstName} again</span>
             </button>
           </div>
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     } else {
       // ── Cancelled / Expired view: slim record + reason + Request again ──
@@ -21641,7 +21667,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request NOW ⚡</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     }
 
@@ -21675,6 +21704,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // passed so the fast-start can map its category/details/pay.
     const again = panel.querySelector('[data-prev-again]');
     if(again) again.addEventListener('click', () => openRaFastModal(r));
+    const nowBtn = panel.querySelector('[data-prev-now]');
+    if(nowBtn) nowBtn.addEventListener('click', () => launchRaNow(r));
 
     // Swap panels
     listPanel.hidden = true;
@@ -21742,6 +21773,22 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     moveFlowToDash();
     if(typeof window.__startRequestAgainFast === 'function'){
       window.__startRequestAgainFast(prev, selected);
+    }
+    showSection('new-request');
+    const dashMain = document.querySelector('.dash-main');
+    if(dashMain) dashMain.scrollTo({ top:0, behavior:'instant' });
+  }
+
+  // Request NOW ⚡ — instant re-submit: no MY-Gophers picker, no Review step. Routes
+  // back to the same worker as last time when they're one of MY Gophers (i.e. exactly
+  // as it went out before); the flow lands straight on the submitted confirmation.
+  function launchRaNow(prev){
+    moveFlowToDash();
+    const myNames = gatherMyGophers().map(g => g.name);
+    const prior = String((prev && prev.worker) || '').trim();
+    const selected = (prior && myNames.indexOf(prior) !== -1) ? [prior] : [];
+    if(typeof window.__startRequestAgainNow === 'function'){
+      window.__startRequestAgainNow(prev, selected);
     }
     showSection('new-request');
     const dashMain = document.querySelector('.dash-main');
