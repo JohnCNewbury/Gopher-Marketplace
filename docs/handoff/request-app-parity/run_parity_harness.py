@@ -162,32 +162,42 @@ def main():
         check(local == 0 and loads and uses, "%s delegates to the module" % name,
               "(local:%d loads:%s uses:%s)" % (local, loads, uses))
 
-    print("== 3. AGE — identical verdicts from each surface's own detector ==")
-    brain = read(AGE_BRAIN) + "\n" + read(AGE_SUPP)   # generated brain + shared supplement
-    verdicts = {}
+    print("== 3. AGE — single-sourced detector; every surface delegates ==")
+    # The detector now lives ONLY in the shared module (brain + supplement).
+    brain = read(AGE_BRAIN) + "\n" + read(AGE_SUPP)
+    module_verdicts = jxa("var window={};\n" + brain + "\n" + mod +
+                          "\nvar C=" + json.dumps([c for c, _ in AGE_CASES]) + ";" +
+                          "JSON.stringify(C.map(function(t){var k=window.GopherRequestLogic.findAgeRestrictedKeyword(t);return k?String(k).toLowerCase():null;}));")
+    for i, (case, expect) in enumerate(AGE_CASES):
+        v = module_verdicts[i]
+        exp_ok = True if expect is None else ((v is not None) == expect)
+        check(exp_ok, "age(module): %r" % case[:44], "-> %s" % v)
+    names = list(SURFACES)
     for name, rel in SURFACES.items():
         src = read(rel)
-        parts = ["var window={};", brain, extract_const(src, "AGE_RESTRICTED_KEYWORDS"),
-                 extract_fn(src, "findAgeRestrictedKeyword"),
-                 "var C=" + json.dumps([c for c, _ in AGE_CASES]) + ";",
-                 "JSON.stringify(C.map(function(t){var k=findAgeRestrictedKeyword(t);return k?String(k).toLowerCase():null;}));"]
-        verdicts[name] = jxa("\n".join(parts))
-    names = list(SURFACES)
-    for i, (case, expect) in enumerate(AGE_CASES):
-        vals = [verdicts[n][i] for n in names]
-        same = len(set(vals)) == 1
-        exp_ok = True if expect is None else ((vals[0] is not None) == expect)
-        check(same and exp_ok, "age: %r" % case[:44],
-              "-> " + " / ".join("%s:%s" % (n, v) for n, v in zip(names, vals)))
+        body = extract_fn(src, "findAgeRestrictedKeyword")
+        delegates = "GopherRequestLogic" in body
+        no_local_list = "const AGE_RESTRICTED_KEYWORDS" not in src
+        check(delegates and no_local_list, "%s age detector is a delegating shim" % name,
+              "(delegates:%s localList:%s)" % (delegates, not no_local_list))
 
-    print("== 4. OFFER — pricing table identical across surfaces ==")
-    tables = {}
+    print("== 4. OFFER — single-sourced pricing; canonical values locked ==")
+    # Table + math live ONLY in the module. Spot values lock the NC-forced model
+    # ($100 -> 16/21/26, the owner-verified numbers) AND the >$200 terminal-slope
+    # extrapolation (NC +$0.40/$, US +$0.16/$) that superseded the flat variant.
+    spots = jxa("var window={};\n" + mod +
+                "\nvar S=window.GopherRequestLogic.suggestedOffer;" +
+                "JSON.stringify([S(100,true),S(100,false),S(300,true),S(300,false)]);")
+    expected = [{"low":16,"suggested":21,"generous":26},{"low":26,"suggested":35,"generous":44},
+                {"low":64,"suggested":85,"generous":106},{"low":50,"suggested":66,"generous":83}]
+    for lbl, got, exp in zip(["NC $100","US $100","NC $300","US $300"], spots, expected):
+        check(got == exp, "offer %s == %s" % (lbl, exp), "got %s" % got)
     for name, rel in SURFACES.items():
-        t = extract_const(read(rel), "OFFER_TABLE")
-        tables[name] = jxa("var window={};\n" + t + "\nJSON.stringify(OFFER_TABLE);")
-    base = tables[names[0]]
-    for n in names[1:]:
-        check(tables[n] == base, "OFFER_TABLE %s == %s" % (n, names[0]))
+        src = read(rel)
+        no_table = "const OFFER_TABLE" not in src
+        shim = "GopherRequestLogic.suggestedOffer" in src
+        check(no_table and shim, "%s pricing is a delegating shim" % name,
+              "(localTable:%s shim:%s)" % (not no_table, shim))
 
     print("== 5. STATE — canonical core present; new drift reported ==")
     known = CORE_FIELDS | DOCUMENTED_EXTRA

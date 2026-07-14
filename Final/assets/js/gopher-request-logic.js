@@ -82,11 +82,85 @@
     return payload;
   }
 
+  /* ── Age-restricted keyword detection ─────────────────────────────────────
+     Scans free text against the GENERATED keyword brain (gopher-age-keywords.js,
+     built from the canonical xlsx — regenerate, never hand-edit) plus the shared
+     hand-maintained supplement (gopher-age-supplement.js: THC/lottery vocabulary,
+     intent phrases, brands, misspellings). Whole-word/phrase match, case-
+     insensitive, whitespace-flexible. Returns the matched term or null. */
+  function findAgeRestrictedKeyword(text){
+    var orig = String(text || '');
+    if(!orig.trim()) return null;
+    var lists = [ (window.GopherAgeKeywords || []), (window.GopherAgeSupplement || []) ];
+    for(var li = 0; li < lists.length; li++){
+      var list = lists[li];
+      for(var i = 0; i < list.length; i++){
+        var esc = String(list[i]).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
+        var re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','i');
+        var m = orig.match(re);
+        if(m) return m[1];
+      }
+    }
+    return null;
+  }
+
+  /* ── Suggested-offer model (delivery, cost-of-items based) ────────────────
+     Data-calibrated against 9,147 real delivery orders (Suggested Pricing Model
+     — Variance Analysis). Each row: item cost -> [NC suggested, US suggested].
+     REGION POLICY (owner directive 2026-07-09): Gopher operates in NC — always
+     price with the NC column. The US column and regionStateFromAddress are
+     retained for future non-NC expansion. Above $200 the curve extrapolates on
+     the table's own terminal slopes (NC +$0.40/$, US +$0.16/$ — the 195->200
+     segment continued); this superseded an older flat-44.5 variant that
+     contradicted the curve (drift caught by the parity harness 2026-07-14). */
+  var OFFER_TABLE = {
+    5:[10,10],10:[10,12.67],15:[10.5,15.33],20:[11,18],25:[11,19],30:[11.5,20],
+    35:[12,22.5],40:[12.5,25],45:[13,27.5],50:[13.5,30],55:[14,30],60:[15,30],
+    65:[15.5,30.67],70:[16,31.33],75:[16.5,32],80:[17.5,32.6],85:[18,33.2],
+    90:[18.5,33.8],95:[19.5,34.4],100:[20.5,35],105:[21,35.7],110:[22,36.4],
+    115:[23,37.1],120:[23.5,37.8],125:[24.5,38.5],130:[25.5,39.2],135:[26.5,39.9],
+    140:[27.5,40.6],145:[29,41.3],150:[30,42],155:[31,42.8],160:[32.5,43.6],
+    165:[33.5,44.4],170:[35,45.2],175:[36.5,46],180:[38,46.8],185:[39.5,47.6],
+    190:[41,48.4],195:[42.5,49.2],200:[44.5,50]
+  };
+  var OFFER_PTS = Object.keys(OFFER_TABLE).map(Number).sort(function(a,b){return a-b;});
+  function suggestedOffer(itemCost, isNC){
+    var idx = isNC ? 0 : 1, s;
+    if(itemCost <= OFFER_PTS[0]) s = OFFER_TABLE[OFFER_PTS[0]][idx];
+    else if(itemCost >= OFFER_PTS[OFFER_PTS.length-1]) s = isNC ? 44.5 + (itemCost-200)*0.40 : 50 + (itemCost-200)*0.16;
+    else {
+      var lo = OFFER_PTS[0], hi = OFFER_PTS[OFFER_PTS.length-1];
+      for(var i = 0; i < OFFER_PTS.length-1; i++){
+        if(itemCost >= OFFER_PTS[i] && itemCost <= OFFER_PTS[i+1]){ lo = OFFER_PTS[i]; hi = OFFER_PTS[i+1]; break; }
+      }
+      var f = (itemCost-lo)/(hi-lo);
+      s = OFFER_TABLE[lo][idx] + f*(OFFER_TABLE[hi][idx]-OFFER_TABLE[lo][idx]);
+    }
+    s = Math.round(s);
+    return { low: Math.round(s*0.75), suggested: s, generous: Math.round(s*1.25) };
+  }
+  function regionIsNC(){
+    /* Owner directive 2026-07-09: NC pricing platform-wide. Restore address-based
+       detection (regionStateFromAddress over dropoff, fallback pickup) when
+       non-NC expansion happens. */
+    return true;
+  }
+  function regionStateFromAddress(addr){
+    if(!addr) return '';
+    var m = String(addr).toUpperCase().match(/\b([A-Z]{2})\b(?:\s+\d{5})?\s*$/);
+    return m ? m[1] : '';
+  }
+
   window.GopherRequestLogic = {
     detectCategoryMismatch: detectCategoryMismatch,
     emitCategoryCheck: emitCategoryCheck,
     uiToSlug: function(key){ return UI_TO_SLUG[key] || key; },
     slugToUi: function(slug){ return SLUG_TO_UI[slug] || slug; },
-    MIN_CONTENT_WORDS: MIN_CONTENT_WORDS, STRONG_BAR: STRONG_BAR, MARGIN: MARGIN
+    MIN_CONTENT_WORDS: MIN_CONTENT_WORDS, STRONG_BAR: STRONG_BAR, MARGIN: MARGIN,
+    findAgeRestrictedKeyword: findAgeRestrictedKeyword,
+    suggestedOffer: suggestedOffer,
+    regionIsNC: regionIsNC,
+    regionStateFromAddress: regionStateFromAddress,
+    OFFER_TABLE: OFFER_TABLE
   };
 })();
