@@ -34,6 +34,15 @@ MATRIX = [
     ("moving", "need help loading a u-haul", None),
     ("hourly_day_labor", "need moving labor for a few hours", None),
     ("yard_work_outdoor_projects", "", None),
+    ("junk_removal", "I need an electrician.", "home_services"),
+    ("junk_removal", "need a plumber", "home_services"),
+    ("other", "I need an electrician", "home_services"),
+    ("junk_removal", "paint my bedroom", "home_services"),
+    ("junk_removal", "furniture", None),
+    ("delivery", "furniture", None),
+    ("moving", "dolly rental", None),
+    ("ride_sharing", "boxes", None),
+    ("junk_removal", "help", None),
 ]
 
 
