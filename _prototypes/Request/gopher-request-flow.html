@@ -995,7 +995,7 @@ function currentItemCost(){ const n=parseFloat(String(state.costOfItems).replace
 function currentRegionIsNC(){
   // Gopher operates in NC → always NC pricing (owner directive 2026-07-09; NC not US).
   // Restore address detection for future non-NC expansion:
-  // const st = regionStateFromAddress(state.dropoffStop) || regionStateFromAddress(state.pickupStop);
+  // const st = regionStateFromAddress(dropoffAddr()) || regionStateFromAddress(pickupAddr());
   // return st === 'NC';
   return true;
 }
@@ -1040,7 +1040,15 @@ function makeInitialState(){
     // Step 2 — describe
     description:'', picThumbs:[],
     // delivery type
-    ageRestricted:false, idVerified:false, itemsPurchased:false, costOfItems:'',
+    ageRestricted:false, itemsPurchased:false, costOfItems:'',
+    // ID verification — canonical capture fields (same shape as the Request web app;
+    // see docs/handoff/request-app-parity/canonical-request-state-schema.md §3a).
+    // "verified" is DERIVED: savedOnFile || (idFrontCaptured && selfieCaptured).
+    idFrontCaptured:false, idFrontSrc:'', selfieCaptured:false, selfieSrc:'', savedOnFile:false,
+    // age-compliance contract fields (parity with web)
+    idRequiredAtCompletion:false, agePurchaseAck:false, agePurchaseDismissed:false,
+    // schedule + offer-telemetry contract fields (parity with web)
+    scheduleConfirmed:false, selectedDate:null, suggestedOfferUsed:false,
     // rider info
     numRiders:'2', numBags:'1', specialInstructions:'',
     // item info
@@ -1050,9 +1058,9 @@ function makeInitialState(){
     workerSelection:'first',
     // Step 4 — locations
     noSpecificPickup:false, pickupStairs:0, serviceElevatorPickup:false,
-    pickupStop:'218 Fayetteville St, Raleigh, NC',
+    pickupStops:['218 Fayetteville St, Raleigh, NC'],   // canonical ARRAY shape (multi-stop capable) — parity with web
     destStairs:0, serviceElevatorDest:false,
-    dropoffStop:'4101 NC-55, Apex, NC', tripDistance:'14.2 mi',
+    dropoffStops:['4101 NC-55, Apex, NC'], tripDistance:'14.2 mi',
     // Step 5 — pay
     payMode:'set', payAmount:'', lowOfferAck:false,
     // Step 6 — review
@@ -1070,6 +1078,14 @@ function makeInitialState(){
   };
 }
 let state = makeInitialState();
+// ── Canonical-schema accessors (parity with the Request web app) ──
+// Locations are ARRAYS (multi-stop capable); this single-stop UI reads/writes
+// element 0. ID-verified is DERIVED from the canonical capture fields, never
+// stored as its own flag.
+function pickupAddr(){ return (state.pickupStops && state.pickupStops[0]) || ''; }
+function dropoffAddr(){ return (state.dropoffStops && state.dropoffStops[0]) || ''; }
+function idVerifiedNow(){ return !!(state.savedOnFile || (state.idFrontCaptured && state.selfieCaptured)); }
+function markIdVerified(onFile){ state.idFrontCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
 
 /* ============================================================
    HELPERS
@@ -1147,7 +1163,7 @@ function renderStep1(){
    ============================================================ */
 function tsPromo(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
-  if(state.idVerified) return `<div class="ts-verified">${svgIco('shield')}Identity verified — you're all set for this delivery.</div>`;
+  if(idVerifiedNow()) return `<div class="ts-verified">${svgIco('shield')}Identity verified — you're all set for this delivery.</div>`;
   return `<div class="ts-promo">
     <span class="ts-shield">${tsSeal(20)}</span>
     <span class="ts-promo-text"><h5>Verify your identity</h5><p>Get TrustShield™ once, or submit an ID for this order.</p></span>
@@ -1384,7 +1400,7 @@ function renderStep4(){
         <div class="sf-value">The worker can purchase anywhere your items are available, or there's no fixed pick-up location.</div></div>
       ` : `
         <div class="addr-block"><span class="addr-pin">${svgIco('location')}</span>
-          <input class="addr-input" data-field="pickupStop" value="${esc(state.pickupStop)}" placeholder="Add pick-up address"></div>
+          <input class="addr-input" data-field="pickupStops" value="${esc(pickupAddr())}" placeholder="Add pick-up address"></div>
         ${isVisible('pickupStairs') ? `
         <div class="toggle-row spaced" style="margin-top:11px;">
           <span class="tr-label">Flights of stairs at pick-up</span>
@@ -1405,7 +1421,7 @@ function renderStep4(){
   h+=`<div class="step-section">
     <div class="sst"><span class="sst-ico">${svgIco('flag')}</span>Destination</div>
     <div class="addr-block"><span class="addr-pin">${svgIco('flag')}</span>
-      <input class="addr-input" data-field="dropoffStop" value="${esc(state.dropoffStop)}" placeholder="Add destination address"></div>
+      <input class="addr-input" data-field="dropoffStops" value="${esc(dropoffAddr())}" placeholder="Add destination address"></div>
     ${isVisible('destStairs') ? `
     <div class="toggle-row spaced" style="margin-top:11px;">
       <span class="tr-label">Flights of stairs at destination</span>
@@ -1602,11 +1618,11 @@ function renderStep6(){
   if(isVisible('pickupSection')){
     rows+= state.noSpecificPickup
       ? `<div class="review-row"><span class="rl">Pick-up</span><span class="rv">Any location</span></div>`
-      : `<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:62%;">${esc(state.pickupStop)}</span></div>`;
+      : `<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:62%;">${esc(pickupAddr())}</span></div>`;
     if(isVisible('pickupStairs') && !state.noSpecificPickup && (state.pickupStairs>0||state.serviceElevatorPickup))
       rows+=`<div class="review-row"><span class="rl">Pick-up access</span><span class="rv" style="max-width:62%;">${accessLine(state.pickupStairs,state.serviceElevatorPickup)}</span></div>`;
   }
-  rows+=`<div class="review-row"><span class="rl">Destination</span><span class="rv" style="max-width:62%;">${esc(state.dropoffStop)}</span></div>`;
+  rows+=`<div class="review-row"><span class="rl">Destination</span><span class="rv" style="max-width:62%;">${esc(dropoffAddr())}</span></div>`;
   if(isVisible('destStairs') && (state.destStairs>0||state.serviceElevatorDest))
     rows+=`<div class="review-row"><span class="rl">Destination access</span><span class="rv" style="max-width:62%;">${accessLine(state.destStairs,state.serviceElevatorDest)}</span></div>`;
   if(showCost) rows+=`<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costNum)}</span></div>`;
@@ -1814,15 +1830,15 @@ function renderStep7(){
   const costNum=(state.itemsPurchased && state.category==='delivery') ? currentItemCost() : 0;
   // Full detail rows — the submitted summary shows everything the requester entered (not an abbreviation).
   const wCount=workerCount();
-  const hasPickup=!state.noSpecificPickup && !!(state.pickupStop||'').trim();
+  const hasPickup=!state.noSpecificPickup && !!pickupAddr().trim();
   const desc=(state.description||'').trim();
   const deliveryType=(state.category==='delivery')?((state.ageRestricted?'Age-restricted · ':'')+(state.itemsPurchased?'Purchase needed':'Items in hand')):'';
   const detailRows=
     (desc?`<div class="review-row"><span class="rl">Details</span><span class="rv" style="max-width:60%;text-align:right;">${esc(desc)}</span></div>`:'')
     +(deliveryType?`<div class="review-row"><span class="rl">Delivery type</span><span class="rv">${deliveryType}</span></div>`:'')
     +((wCount>1||state.payByHour)?`<div class="review-row"><span class="rl">Worker info</span><span class="rv">${wCount} worker${wCount>1?'s':''}${state.payByHour?` · ${state.numHours}hr`:''}</span></div>`:'')
-    +(hasPickup?`<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:60%;text-align:right;">${esc(state.pickupStop)}</span></div>`:'')
-    +`<div class="review-row"><span class="rl">${hasPickup?'Destination':'Location'}</span><span class="rv" style="max-width:60%;text-align:right;">${esc(state.dropoffStop||'—')}</span></div>`;
+    +(hasPickup?`<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="max-width:60%;text-align:right;">${esc(pickupAddr())}</span></div>`:'')
+    +`<div class="review-row"><span class="rl">${hasPickup?'Destination':'Location'}</span><span class="rv" style="max-width:60%;text-align:right;">${esc(dropoffAddr()||'—')}</span></div>`;
   const interested = 2 + Math.floor(Math.random()*4);
   const timing = state.scheduleType==='now' ? 'ASAP · matching now'
     : state.scheduleType==='flexible'
@@ -1962,7 +1978,7 @@ function stepGate(){
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
-  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !state.idVerified) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
+  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
   if(state.step===5 && state.payMode==='set' && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
   if(state.step===6 && !state.waiverChecked) return {ok:false,sel:'.waiver-box',msg:'Check the liability waiver before submitting.'};
   return {ok:true};
@@ -2109,6 +2125,8 @@ function submitRequest(){
    ============================================================ */
 function bindFieldInputs(){
   const MONEY_FIELDS={payAmount:1,costOfItems:1};
+  // Canonical location fields are ARRAYS; this single-stop UI writes element 0.
+  const ARRAY_FIELDS={pickupStops:1,dropoffStops:1};
   document.querySelectorAll('[data-field]').forEach(el=>{
     const key=el.dataset.field;
     el.addEventListener('input',()=>{
@@ -2119,7 +2137,7 @@ function bindFieldInputs(){
         if(dot!==-1) raw=raw.slice(0,dot+1)+raw.slice(dot+1).replace(/\./g,'');
         if(raw!==el.value) el.value=raw;
       }
-      state[key]=el.value;
+      state[key]=ARRAY_FIELDS[key]?[el.value]:el.value;
       { const good=MONEY_FIELDS[key]?(toNum(el.value)>0):!!el.value.trim(); if(good){ const host=el.closest('.sub-field')||el; host.classList.remove('field-invalid'); el.classList.remove('field-invalid'); } }
       // re-arm the age-restricted backstop AND the category nudge when the description changes
       if(key==='description'){ state.ageKeywordAck=false; state.idRequiredAtCompletion=false; state.userAcknowledgedCategory=false; }
@@ -2224,7 +2242,10 @@ document.addEventListener('click',(e)=>{
     case 'add-pic': if(state.picThumbs.length<3){ const pics=['📷','🛋️','📦','🧾','🏠']; state.picThumbs.push(pics[state.picThumbs.length%pics.length]); render(); } break;
     case 'remove-pic': state.picThumbs.splice(parseInt(act.dataset.i,10),1); render(); break;
     case 'verify-id': window.__openSignup(true,{hideDemo:true, signedIn:true, trustShield: !!state.trustShield}); break;
-    case 'demo-ts': state.trustShield=!state.trustShield; state.idVerified=state.trustShield; render(); break;
+    case 'demo-ts': state.trustShield=!state.trustShield;
+      if(state.trustShield){ markIdVerified(true); }
+      else { state.idFrontCaptured=false; state.selfieCaptured=false; state.savedOnFile=false; }
+      render(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
     case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.lowOfferAck=false; } state.osOpen=false; render(); } break;
@@ -2290,8 +2311,8 @@ return { all:all, save:save,
   // A pickup only exists for categories that actually collect one (delivery/moving/ride). Junk, home,
   // labor, yard, other are single-location (the work happens AT the destination) — carry no pickup so
   // the Go job shows one Location row + a one-pin map.
-  const pickup=(isVisible('pickupSection') && !state.noSpecificPickup)?(state.pickupStop||''):'';
-  const dropoff=state.dropoffStop||'';
+  const pickup=(isVisible('pickupSection') && !state.noSpecificPickup)?pickupAddr():'';
+  const dropoff=dropoffAddr();
   var flexLabel=({'24hr':'Within 24 hours',week:'Within a week','2weeks':'Within 2 weeks'}[state.flexibleWindow]||'Flexible window');
   const when=state.scheduleType==='now'?'Now · ASAP'
     :(state.scheduleType==='flexible'?flexLabel
@@ -2326,7 +2347,7 @@ $('#backBtn').addEventListener('click',goBack);
    satisfy the flow's identity gate (Step 2) and re-render. Backdrop-dismiss does
    NOT fire this, so an unfinished verify correctly leaves the gate closed. */
 window.__onSignupComplete = function(r){
-  if(r && r.identitySatisfied){ state.idVerified = true; state.trustShield = !!(r.user && r.user.trustShield); render(); showOk(state.trustShield ? 'Identity verified — TrustShield on file' : 'Identity verified for this order'); }
+  if(r && r.identitySatisfied){ state.trustShield = !!(r.user && r.user.trustShield); markIdVerified(state.trustShield); render(); showOk(state.trustShield ? 'Identity verified — TrustShield on file' : 'Identity verified for this order'); }
 };
 /* boot — simulate arriving from Home's "Start a request": a category was already
    chosen there, so we land directly on Job details (Step 2) instead of re-showing
@@ -2344,8 +2365,8 @@ state.category='delivery';
   if(cat && CATEGORIES[cat]) state.category=cat;
   if(q.get('from')==='deal'){
     state.category = (cat && CATEGORIES[cat]) ? cat : 'delivery';
-    if(q.get('age')==='1'){ state.ageRestricted=true; state.idVerified=true; } // identity already resolved in Deals (D-029)
-    if(q.get('ts')==='1'){ state.trustShield=true; state.idVerified=true; }
+    if(q.get('age')==='1'){ state.ageRestricted=true; markIdVerified(false); } // identity already resolved in Deals (D-029)
+    if(q.get('ts')==='1'){ state.trustShield=true; markIdVerified(true); }
     if(q.get('items')==='1'){ state.itemsPurchased=true; }
     const cost=q.get('cost'); if(cost && parseFloat(cost)>0) state.costOfItems='$'+(parseFloat(cost)||0);
     const pay=q.get('pay'); if(pay && parseFloat(pay)>0) state.payAmount='$'+(parseFloat(pay)||0);

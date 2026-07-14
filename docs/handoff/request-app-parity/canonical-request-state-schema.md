@@ -58,14 +58,16 @@ Ordered by severity. **These are the concrete things that break "resume where yo
 
 ### 3a. STRUCTURAL — same concept, different shape (HIGH — breaks rehydrate)
 
-| Concept | Prototype (P) | Final R/C | Canonical decision needed |
-|---|---|---|---|
-| Pickup location | `pickupStop` *(string)* | `pickupStops` *(array)* | **Pick one shape.** Recommend the **array** (`pickupStops`) — supports multi-stop, superset of the string. App must migrate. |
-| Drop-off location | `dropoffStop` *(string)* | `dropoffStops` *(array)* | Same — recommend the **array**. |
-| ID verification | `idVerified` *(bool)* | `idVerification`, `idFrontCaptured`, `idFrontSrc`, `selfieCaptured`, `selfieSrc`, `savedOnFile` | Final models the full capture; P has a single bool. **Adopt Final's object** as canonical; app sets the same fields. |
+> **✅ RECONCILED 2026-07-14.** The prototype was migrated to the canonical shapes below;
+> the parity harness now enforces a **50-field universal core** (the original 42 + the
+> location arrays + the §3b contract fields) and treats any reappearance of the retired
+> shapes (`pickupStop`/`dropoffStop` strings, `idVerified` bool) as new drift.
 
-A request with `pickupStop:"218 Fayetteville St"` cannot rehydrate on a web build that reads
-`pickupStops[0]` — this is the literal failure of the portability goal, in one field.
+| Concept | Prototype (P) — retired | Canonical (all surfaces) | Resolution |
+|---|---|---|---|
+| Pickup location | `pickupStop` *(string)* | `pickupStops` *(array)* | Migrated: init/inputs/reads/submit use the array (single-stop UI reads/writes element 0 via `pickupAddr()`); binder writes `[value]`. |
+| Drop-off location | `dropoffStop` *(string)* | `dropoffStops` *(array)* | Same, via `dropoffAddr()`. |
+| ID verification | `idVerified` *(bool)* | `idFrontCaptured`, `idFrontSrc`, `selfieCaptured`, `selfieSrc`, `savedOnFile` | Migrated: "verified" is **derived** (`savedOnFile || (idFrontCaptured && selfieCaptured)`, helper `idVerifiedNow()`); writes go through `markIdVerified(onFile)`. |
 
 ### 3b. CONTRACT GAPS — a real data field missing on a surface (MED — add it)
 
@@ -96,10 +98,13 @@ A request with `pickupStop:"218 Fayetteville St"` cannot rehydrate on a web buil
    modules — so the resumed request is validated identically to a fresh one.
 3. **Location shape = arrays** (`pickupStops`/`dropoffStops`); ID = Final's capture object.
 
-## 5. Immediate reconciliation actions (in the prototypes, to converge the schema)
+## 5. Immediate reconciliation actions — ✅ DONE 2026-07-14
 
-- Migrate the prototype's `pickupStop`/`dropoffStop` → `pickupStops`/`dropoffStops` arrays.
-- Adopt Final's ID-verification fields in the prototype; retire the single `idVerified` bool.
-- Add `idRequiredAtCompletion`, `agePurchaseAck/Dismissed`, `scheduleConfirmed`, `selectedDate`,
-  `suggestedOfferUsed` to the prototype's `makeInitialState()`.
-- Keep the transient set (§1) explicitly out of any persisted payload.
+- ✅ Prototype `pickupStop`/`dropoffStop` → `pickupStops`/`dropoffStops` arrays (all
+  init/input/review/submit sites; accessors `pickupAddr()`/`dropoffAddr()`).
+- ✅ Final's ID-verification fields adopted in the prototype; `idVerified` bool retired
+  (derived `idVerifiedNow()` + `markIdVerified(onFile)`).
+- ✅ `idRequiredAtCompletion`, `agePurchaseAck/Dismissed`, `scheduleConfirmed`,
+  `selectedDate`, `suggestedOfferUsed` added to the prototype's `makeInitialState()`.
+- The universal core is now **50 fields**, enforced by `run_parity_harness.py`.
+- Still on the dev: keep the transient set (§1) out of any persisted payload.

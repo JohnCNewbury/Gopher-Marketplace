@@ -64,22 +64,29 @@ AGE_CASES = [  # (text, expected hit? True/False/None=only cross-surface equalit
     ("grab me a lighter and some rolling papers", None),
 ]
 # Canonical persisted+shared core — must exist in EVERY surface (see schema doc §2).
+# Grew 42 -> 50 with the 2026-07-14 reconciliation: canonical location ARRAYS
+# (pickupStops/dropoffStops) + the age-compliance/schedule/offer contract fields
+# are now universal.
 CORE_FIELDS = set("""ageKeywordAck ageRestricted calViewISO category costOfItems description
 destStairs flexibleWindow hazardous itemCount itemsPurchased lowOfferAck maxStepReached
 moreThanOneWorker multipleItems noSpecificPickup numBags numHours numRiders numWorkers
 payAmount payByHour payMode paymentMethod paymentPickerOpen picThumbs pickupStairs
 promoApplied promoCode promoError schedDate scheduleType serviceElevatorDest
 serviceElevatorPickup specialInstructions sseOpen step timeSlot tripDistance waiverChecked
-workerSelection wteOpen""".split())
+workerSelection wteOpen
+pickupStops dropoffStops idRequiredAtCompletion agePurchaseAck agePurchaseDismissed
+scheduleConfirmed selectedDate suggestedOfferUsed""".split())
 # Documented drift (schema doc §3) — present-but-not-universal fields. New fields
-# outside core+documented are reported as NEW DRIFT (warning).
-DOCUMENTED_EXTRA = set("""agePurchaseAck agePurchaseDismissed businessPlan dealBoost dealKind
-descriptionIsPlaceholder descriptionPlaceholder dropoffStop dropoffStops dupWarnAck
+# outside core+documented are reported as NEW DRIFT (warning). The RETIRED legacy
+# shapes (pickupStop/dropoffStop strings, idVerified bool) are deliberately NOT
+# listed: if one reappears anywhere, it surfaces as NEW-DRIFT.
+DOCUMENTED_EXTRA = set("""businessPlan dealBoost dealKind
+descriptionIsPlaceholder descriptionPlaceholder dupWarnAck
 eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
-idRequiredAtCompletion idVerification idVerified laborManagement lowAvailabilityAck
-openCatInfo openInfo osOpen pickupStop pickupStops profileOpen savedOnFile scheduleConfirmed
-selectedDate selfieCaptured selfieSrc submittedAt suggestedOfferUsed waiverPrompted
-userAcknowledgedCategory lastCheckedDescription""".split())
+idVerification laborManagement lowAvailabilityAck
+openCatInfo openInfo osOpen profileOpen savedOnFile
+selfieCaptured selfieSrc submittedAt waiverPrompted
+userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())
 
 
 def read(rel):
