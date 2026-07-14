@@ -36,17 +36,20 @@ only a short **eligibility funnel** (the deal is created later, in the Gopher Go
 |---|---|---|
 | Business Name | `business_name` | |
 | Business Logo | `logo` (file) | Upload; `showLogoName()` shows the chosen filename |
-| Business Tagline | `tagline` | |
+| Business Tagline | `tagline` | **Required** (2026-07-14) — ⓘ: no formal tagline? any sub-header works |
 | Business Address | `address` | Places autocomplete-backed |
 | **Address is mobile** | `address_is_mobile` (checkbox) | Food-truck / no-fixed-location case — drives redemption pickup (Stage 5) |
-| Business Website | `website` | Used for the "order on merchant site" embed (Stage 5) |
+| **Website for Online Ordering** | `website` | Renamed 2026-07-14. The ordering URL shown in the in-app web view (Stage 5) |
+| **No online ordering** | `no_online_ordering` (checkbox) | 2026-07-14 — common for food trucks. Triggers (a) Gopher follow-up email to establish an ordering URL (likely a social page) and (b) the **cost-of-items field** in the shortened redemption flow (Gopher fronts the purchase) |
 | Business Category | `category` | Restaurants & Food Trucks / Local Favorites / Age-Restricted / Retail / … |
 | Deal Offered | `deal` | Free text |
 | Promo Code | `promo` | e.g. `GOPHER10` |
 | **Searchable Keywords** | up to 3 chips | **These become the customer keyword-search index** (Stage 5) |
-| Owner Name / Phone / Email / Address | `owner_*` | |
+| Owner **Personal Info** (First, Last, DOB, Phone, Email, Address) | `owner_first_name` `owner_last_name` `owner_dob` `owner_phone` `owner_email` `owner_address` | **2026-07-14: exact parity with standard-signup Personal Info** (seam #10 front-end DONE). Photo excluded — prompted at first sign-in to any Gopher platform |
+| Source — How did you discover Gopher? | `discovery_source` | Canonical signup list + **"Gopher Deals"** added platform-wide. (`source` was taken by channel attribution) |
+| Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; 6-digit ID; skippable |
 | **Phone verified** | `phone_verified` (hidden) | OTP affordance — **currently simulated**, see backend seams |
-| Referral Code | `referral_code` | Optional |
+
 
 ### Service Provider (DLP) — a two-entry model
 
@@ -289,7 +292,12 @@ parlay + provider-directed).
    example from the figma's `MARCUS-4F9` to the built app's numeric `820083`. *Open design question for the
    dev/owner: the referral-code format differs between the figma (`MARCUS-4F9`, name-based) and the built app
    (`820083`, numeric) — pick one as canonical for the real "Gopher ID."*
-10. **Owner Personal-Info parity (owner ruling 2026-07-12; PRE-dev-handoff, done by US not the dev).**
+10. **Owner Personal-Info parity — FRONT-END DONE 2026-07-14** (ruling 2026-07-12; validated
+    against John's signup screenshots). The merchant form's Business Owner Verification now
+    collects the exact standard-signup set (First/Last/DOB/Phone/Email/Address/Source + the
+    Referral→6-digit-ID pattern). Remaining for the dev: provision the owner's Gopher account
+    from these fields, and the **first-sign-in photo prompt** (Deals dashboard or any platform).
+    Original ruling:
     Per the standard Gopher process, every sign-up provisions a Gopher Request account — the canonical
     baseline for "Personal Info." A merchant owner must therefore provide, at minimum, all the Personal
     Info a standard Gopher Request sign-up captures. The live pre-registration form deliberately does
