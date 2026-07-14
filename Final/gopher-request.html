@@ -14139,8 +14139,11 @@
       if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
                            msg:'Add a drop-off address so your Gopher knows where to go.' };
     }
-    // Also backstops the footer Submit at Step 6.
-    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup
+    // Also backstops the footer Submit at Step 6. Only for categories that actually
+    // have a pick-up AND a drop-off (Delivery/Moving/Ride) — single-location service
+    // requests (Home/Office, Labor, Yard, Junk, Other), incl. redeemed Service-Provider
+    // deals, have no pickup/drop-off distinction, so this rule must not apply to them.
+    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup && isVisible('pickupSection')
        && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
       const normAddr = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
       const pk = state.pickupStops.map(normAddr).filter(Boolean);
