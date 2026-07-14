@@ -20,9 +20,11 @@
      Do NOT lower without re-running it: the double condition (strong top AND weak
      selected AND a margin) is what stops genuinely dual-category jobs — "moving
      labor", "haul away branches", "move a couch to the dump" — from nagging. */
-  var MIN_CONTENT_WORDS = 2;   // skip short/empty descriptions
+  var MIN_CONTENT_WORDS = 1;   // skip empty/all-filler descriptions ("I need an electrician"
+                               // has exactly ONE content word and must still be judged)
   var STRONG_BAR        = 8;   // top category must be a confident match (= CAT_HIGH)
   var MARGIN            = 5;   // top must beat the selected category's score by this
+  var UNAMBIG_RATIO     = 2.5; // modest-top path: top must dwarf the runner-up by this
 
   /* The submission UIs use short category keys; the classifier uses full slugs. */
   var UI_TO_SLUG = { junk:'junk_removal', ride:'ride_sharing', yard:'yard_work_outdoor_projects',
@@ -49,14 +51,19 @@
   function detectCategoryMismatch(selectedSlug, description){
     var CLS = resolveClassifier();
     if(!CLS) return null;                                   // no classifier — fail safe
-    if(CLS.catWords(description || '').length < MIN_CONTENT_WORDS) return null;
+    var contentWords = CLS.catWords(description || '');
+    if(contentWords.length < MIN_CONTENT_WORDS) return null;
+    /* One content word ("furniture", "boxes") is never STRONG evidence — such
+       queries may only fire via the unambiguous no-rival path below, however
+       high the single word scores across dual-use categories. */
+    var single = contentWords.length === 1;
     var scored = CLS.scoreCategories(description || '');
     if(!scored.length) return null;
     var top = scored[0], selectedScore = 0;
     for(var i = 0; i < scored.length; i++){
       if(scored[i].slug === selectedSlug){ selectedScore = scored[i].score; break; }
     }
-    var strongTop = top.score >= STRONG_BAR && top.slug !== 'other';  // never suggest TO the catch-all
+    var strongTop = !single && top.score >= STRONG_BAR && top.slug !== 'other';  // never suggest TO the catch-all
     /* Escape-the-catch-all: suggesting FROM Other TO a concrete category is helpful. */
     if(selectedSlug === 'other' && strongTop)
       return { suggestedSlug: top.slug, suggestedLabel: top.label,
@@ -64,6 +71,21 @@
     /* Confident disagreement: strong top AND weak selected AND a clear margin. */
     if(strongTop && top.slug !== selectedSlug
        && (top.score - selectedScore) >= MARGIN && selectedScore < CLS.CAT_THRESH)
+      return { suggestedSlug: top.slug, suggestedLabel: top.label,
+               selectedScore: selectedScore, suggestedScore: top.score };
+    /* Modest-but-UNAMBIGUOUS disagreement: a single strong signal word like
+       "electrician" scores only ~4 (one hint) yet has no rival at all — the
+       engine's own confidence rule treats an unrivaled modest match as high
+       confidence. Fire when the selected category has essentially NO textual
+       support and the top dwarfs every rival. This is what catches
+       "I need an electrician" filed under Junk Removal. */
+    var second = 0;
+    for(var j = 0; j < scored.length; j++){
+      if(scored[j].slug !== top.slug){ second = scored[j].score; break; }
+    }
+    if(top.slug !== selectedSlug && top.slug !== 'other'
+       && top.score >= CLS.CAT_THRESH && selectedScore < 1
+       && top.score >= UNAMBIG_RATIO * second)
       return { suggestedSlug: top.slug, suggestedLabel: top.label,
                selectedScore: selectedScore, suggestedScore: top.score };
     return null;
