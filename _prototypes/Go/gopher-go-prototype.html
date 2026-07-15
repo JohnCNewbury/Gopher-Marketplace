@@ -2124,6 +2124,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         coOpen=false; draw();
         toast((j.mode==='bid'?('Bid of <b>$'+(bidCost+bidLabor)+'</b>'):('Counter-offer of <b>$'+coVal+'</b>'))+' sent to '+who+' &#8594;');
       };
+      function doAccept(){ j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked'); }
       const ctaBtn=$('.js-cta'); if(ctaBtn) ctaBtn.onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ openGoMsgSheet(goConvoForJob(j)); return; }
@@ -2131,7 +2132,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(j.counter && !j.counterAccepted && !j.counterDeclined){ toast('Your $'+j.counter.amt+' counter is in — waiting for '+who+' to approve.'); return; }   // don't let a counter get accepted at the original price
         if(j.cat==='Ride Sharing' && !(state.ridePhotos&&state.ridePhotos.front&&state.ridePhotos.rear)){ showModal('<h3>Vehicle photos required</h3><p>Ride Sharing jobs require clear front and rear photos of your vehicle before you can accept. Add them in Work Settings under Ride sharing info.</p><button class="mclose">Got it</button>'); return; }
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
-        j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked');
+        // Purchase-needed gate (LIVE-app rule, mobile-gopher RequestDetailPullOver.js): a plain accept on a
+        // request carrying a cost of goods must first pass the "Attention!" acknowledgment. Counter/bid
+        // paths are exempt, exactly like live. Same localStorage key as production.
+        if(+j.cost>0 && !JSON.parse(localStorage.getItem('hideAcceptRequestAttentionModalChecked'))){ openPurchaseAttention(doAccept); return; }
+        doAccept();
       };
       // Bid flow controls (live under the pay card): open / change / cancel the bid.
       const bidOpen=$('.js-bidopen'); if(bidOpen) bidOpen.onclick=()=>{ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); };
@@ -2143,6 +2148,42 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const tosLink=$('.js-tos'); if(tosLink) tosLink.onclick=()=>showModal('<h3>Terms of Service</h3><p>By placing a bid or accepting a request, you agree to complete it as proposed. Unapproved cancellations after acceptance may incur a cancellation fee. Full terms are available on the Gopher website.</p><button class="mclose">Close</button>');
       const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
       const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
+    }
+    // Purchase-needed acknowledgment — the accept-flow deterrent from the LIVE worker app, presented per
+    // the designed screen (gopher-go-purchase-disclaimer-figma.html). Live parity: shown only when the
+    // request carries a cost of goods; payout shown = combined offering (your offer + items you front);
+    // "Do not show me this again" persists ONLY when Accept Request is tapped — Back never saves it.
+    function openPurchaseAttention(onAccept){
+      const earn=amtNum, fronted=(+j.cost||0), total=earn+fronted;
+      let dontShow=false;
+      const ov=showModal(
+        '<div style="display:flex;flex-direction:column;align-items:center;">'
+          +'<span style="width:54px;height:54px;border-radius:50%;background:#FBEAEC;border:1px solid #f0cdd2;display:flex;align-items:center;justify-content:center;color:#C44257;"><svg viewBox="0 0 24 24" style="width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".4"/></svg></span>'
+          +'<h3 style="color:#C44257;margin-top:9px;">Attention!</h3>'
+          +'<span style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;background:#FFF4D6;color:#92580D;border:1px solid #ECD58A;border-radius:99px;padding:7px 13px;font-family:\'Nunito\';font-weight:800;font-size:11.5px;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;"><path d="M5 7h14l-1 11H6z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Purchase needed &mdash; you pay out of pocket</span>'
+        +'</div>'
+        +'<p style="text-align:center;margin-top:13px;">This request requires you to <b>pay for the items out of pocket</b> before Gopher pays you.</p>'
+        +'<p style="text-align:center;">If you don&#8217;t have the funds &mdash; or you&#8217;d rather not front the cost &mdash; <b style="color:#C44257;">please do not accept this request.</b></p>'
+        +'<p style="text-align:center;">Once the order is completed and confirmed, your deposit is released in full, including your earnings.</p>'
+        +'<div style="margin-top:11px;border:1px solid #EAE3D5;border-radius:15px;padding:14px;text-align:center;background:#FBF7EF;">'
+          +'<div style="font-family:\'Nunito\';font-weight:800;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:#6B7280;">Once completed, you&#8217;ll receive</div>'
+          +'<div style="font-family:\'Nunito\';font-weight:900;font-size:24px;color:#002461;margin:5px 0 2px;">Total Deposit $'+total+'</div>'
+          +'<div style="font-size:12px;color:#6B7280;"><b style="color:#1CB061;font-weight:800;">Earn $'+earn+'</b> <span style="color:#3A4D74;font-weight:700;">+ $'+fronted+' you fronted, reimbursed</span></div>'
+        +'</div>'
+        +'<button class="js-pn-accept" style="margin-top:15px;height:48px;border-radius:13px;background:#1CB061;color:#002461;border:none;font-family:\'Nunito\';font-weight:900;font-size:14.5px;width:100%;cursor:pointer;box-shadow:0 10px 24px rgba(51,217,117,.28);">Accept Request</button>'
+        +'<button class="js-pn-back" style="margin-top:9px;height:46px;border-radius:13px;background:transparent;color:#002461;border:1.5px solid #E3E7EF;font-family:\'Nunito\';font-weight:900;font-size:14px;width:100%;cursor:pointer;">Back</button>'
+        +'<div class="js-pn-dns" style="display:flex;align-items:center;justify-content:center;gap:9px;margin-top:14px;cursor:pointer;user-select:none;">'
+          +'<span class="js-pn-cb" style="width:20px;height:20px;border-radius:6px;border:2px solid #cdd6e4;background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;line-height:1;flex:0 0 auto;"></span>'
+          +'<span style="font-size:12.5px;color:#3A4D74;font-weight:500;">Do not show me this again</span>'
+        +'</div>');
+      const cb=ov.querySelector('.js-pn-cb');
+      ov.querySelector('.js-pn-dns').onclick=()=>{ dontShow=!dontShow;
+        cb.style.background=dontShow?'#002461':'#fff'; cb.style.borderColor=dontShow?'#002461':'#cdd6e4'; cb.innerHTML=dontShow?'&#10003;':''; };
+      ov.querySelector('.js-pn-back').onclick=()=>ov.remove();
+      ov.querySelector('.js-pn-accept').onclick=()=>{
+        if(dontShow) localStorage.setItem('hideAcceptRequestAttentionModalChecked','true');   // persisted ONLY on accept — live behavior
+        ov.remove(); onAccept();
+      };
     }
     // Update request — advance the job, adjust the CHARGE (offer + item cost), or cancel.
     function openUpdateSheet(nk){

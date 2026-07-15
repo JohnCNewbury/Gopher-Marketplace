@@ -449,6 +449,9 @@
     // 1) clear the shared store + any persisted state on both same-origin frames
     try{ var l=L(); if(l){ if(l.GReq) l.GReq.save([]); if(l.sessionStorage) l.sessionStorage.clear(); } }catch(_){}
     try{ var w=R(); if(w && w.sessionStorage) w.sessionStorage.clear(); }catch(_){}
+    // Also forget the purchase-needed "Do not show me this again" choice (localStorage, same key as the
+    // live app) so a fresh demo run gets the Attention! acknowledgment again.
+    try{ localStorage.removeItem('hideAcceptRequestAttentionModalChecked'); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
     injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
