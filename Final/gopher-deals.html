@@ -1616,6 +1616,9 @@
   }
   .portal-field input:focus, .signup-field input:focus, .signup-field select:focus { outline:none; border-color:var(--green); }
   .portal-otp-btn { width:100%; padding:12px; border:1.5px solid var(--navy); background:#fff; color:var(--navy); border-radius:11px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; cursor:pointer; transition:all .15s; }
+  .portal-meta { display:flex; align-items:center; margin-top:12px; font-size:13px; }
+  .portal-meta .checkbox-row { display:flex; align-items:center; gap:6px; color:var(--muted); cursor:pointer; font-family:'Nunito',sans-serif; font-weight:700; }
+  .portal-meta .checkbox-row input { accent-color:var(--green); }
   .portal-otp-btn:hover:not(:disabled) { background:var(--navy); color:#fff; }
   .portal-otp-btn:disabled { opacity:.45; cursor:default; }
   .portal-sms-hint { font-size:12.5px; color:var(--green-dark); font-weight:600; margin-top:9px; }
@@ -1795,6 +1798,9 @@
   .dash-sidebar-footer { padding-top:14px; border-top:1px solid rgba(255,255,255,.08); margin-top:auto; }
   .dash-signout { width:100%; background:transparent; border:1.5px solid rgba(255,255,255,.25); color:#fff; font-family:'Nunito'; font-weight:700; font-size:12px; padding:9px 12px; border-radius:8px; cursor:pointer; transition:all .15s; }
   .dash-signout:hover { border-color:#fff; background:rgba(255,255,255,.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* Main */
   .dash-main { overflow-y:auto; }
@@ -4175,6 +4181,9 @@
       </div>
 
       <button class="portal-submit" id="signInBtn" disabled>Sign in →</button>
+      <div class="portal-meta">
+        <label class="checkbox-row"><input type="checkbox" id="dlRememberMe" checked> Remember me</label>
+      </div>
 
       <button type="button" class="portal-divider" id="newToggle" aria-expanded="false" aria-controls="signupPaths">New to Gopher Deals? <span class="portal-divider-chev">▾</span></button>
 
@@ -4465,6 +4474,7 @@
     </nav>
 
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="backMain">← Back to main page</button>
       <button class="dash-signout" id="signOut">← Sign out</button>
     </div>
   </aside>
@@ -4984,11 +4994,21 @@
   $('sendSmsOtpBtn').addEventListener('click', function(){
     openOtp($('signinPhone').value, function(){ signinVerified = true; $('smsVerified').hidden = false; refreshGates(); doSignIn(); });
   });
+  /* --- Remember me: a checked sign-in persists the session in localStorage
+         until Sign out; openPortal then bypasses credentials entirely. --- */
+  var REMEMBER_KEY = 'gopherRemember.deals';
+  function getRemembered(){ try{ return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); }catch(e){ return null; } }
+  function setRemembered(data){ try{ localStorage.setItem(REMEMBER_KEY, JSON.stringify(data)); }catch(e){} }
+  function clearRemembered(){ try{ localStorage.removeItem(REMEMBER_KEY); }catch(e){} }
+
   // A verified OTP logs the user straight in; this stays as a no-JS-needed fallback.
   function doSignIn(){
     if(typeof signinVerified !== 'undefined' && !signinVerified) return;
     var em = $('signinEmail').value.trim();
     var nm = em ? em.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }) : '';
+    var rm = $('dlRememberMe');
+    if(rm && rm.checked) setRemembered({ name: nm, role: signinRole });
+    else clearRemembered();
     enterDashboard({ name: nm });
   }
   $('signInBtn').addEventListener('click', doSignIn);
@@ -5640,7 +5660,7 @@ var PAY_BADGES = {
   }
 
     /* ---- merged-page integration ---- */
-  function openPortal(){ showView('signinView'); var rmRole=document.querySelector('#signinView .portal-role[data-role="merchant"]'); if(rmRole) rmRole.click(); var sp=$('signupPaths'); if(sp) sp.hidden=true; var nt=$('newToggle'); if(nt) nt.setAttribute('aria-expanded','false'); $('loginScreen').classList.remove('hidden'); window.scrollTo(0,0); }
+  function openPortal(){ var saved=getRemembered(); if(saved){ role = saved.role || role; enterDashboard({ name: saved.name }); return; } showView('signinView'); var rmRole=document.querySelector('#signinView .portal-role[data-role="merchant"]'); if(rmRole) rmRole.click(); var sp=$('signupPaths'); if(sp) sp.hidden=true; var nt=$('newToggle'); if(nt) nt.setAttribute('aria-expanded','false'); $('loginScreen').classList.remove('hidden'); window.scrollTo(0,0); }
   function closePortal(){ $('loginScreen').classList.add('hidden'); if(location.hash==='#login'){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; } } }
   /* Deep link: arriving at gopher-deals.html#login opens the portal (matches Connect/Request) */
   function maybeOpenFromHash(){
@@ -5649,7 +5669,11 @@ var PAY_BADGES = {
   }
   window.addEventListener('hashchange', maybeOpenFromHash);
   if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', maybeOpenFromHash); } else { maybeOpenFromHash(); }
-  $('signOut').addEventListener('click', function(){ $('dashboard').classList.remove('open'); });
+  // Remember me ends at Sign out — the next login asks for credentials again.
+  $('signOut').addEventListener('click', function(){ clearRemembered(); $('dashboard').classList.remove('open'); });
+  // Back to main page — lightweight exit: keeps the signed-in session, so the
+  // next login drops the user straight back into the dashboard via Remember me.
+  $('backMain').addEventListener('click', function(){ $('dashboard').classList.remove('open'); window.scrollTo(0,0); });
   $('loginScreen').addEventListener('click', function(e){ if(e.target===$('loginScreen')) closePortal(); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ if(!$('otpOverlay').hidden){ closeOtp(); } else if(!$('loginScreen').classList.contains('hidden')){ closePortal(); } } });
   /* Hook the shared Gopher header: clicking "Gopher Deals" in Login/Sign-Up opens this portal in-place */

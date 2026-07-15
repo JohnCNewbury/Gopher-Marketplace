@@ -6883,6 +6883,9 @@
     cursor:pointer; transition:all 0.15s;
   }
   .dash-signout:hover { border-color:white; background:rgba(255,255,255,0.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* ─── Main area ─── */
   .dash-main {
@@ -16589,7 +16592,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
       <button class="portal-submit" id="rqSignInBtn">Sign in →</button>
       <div class="portal-meta">
-        <label class="checkbox-row"><input type="checkbox"> Remember me</label>
+        <label class="checkbox-row"><input type="checkbox" id="rqRememberMe" checked> Remember me</label>
       </div>
 
       <button type="button" class="portal-divider portal-divider-toggle" id="rqNewToggle" aria-expanded="false" aria-controls="rqSignupPaths">New to Gopher? <span class="portal-divider-chev">▾</span></button>
@@ -16903,8 +16906,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
   const digits = s => (s||'').replace(/\D/g,'');
 
+  // ── Remember me ──
+  // A sign-in with the box checked persists the session in localStorage until
+  // Sign out, so every subsequent login bypasses credentials — openPortal
+  // short-circuits straight to the dashboard. Age-restricted opens are the one
+  // exception: the D-029 identity checkpoint must still settle in the pop-up.
+  const REMEMBER_KEY = 'gopherRemember.request';
+  function getRemembered(){ try{ return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); }catch(_e){ return null; } }
+  function setRemembered(name, opts){ try{ localStorage.setItem(REMEMBER_KEY, JSON.stringify({ name, opts })); }catch(_e){} }
+  function clearRemembered(){ try{ localStorage.removeItem(REMEMBER_KEY); }catch(_e){} }
+  window.__rqClearRemembered = clearRemembered;   // Sign out (dashboard IIFE) ends the remembered session
+
   // ── Open / close portal ──
   function openPortal(opts){
+    // Remember me: a live remembered session skips the credential form entirely.
+    const saved = getRemembered();
+    if(saved && !(opts && opts.ageRestricted)){
+      proceedSignIn(saved.name, Object.assign({}, saved.opts, { isSignup:false }));
+      return;
+    }
     // D-029: opening for an age-restricted entry makes the pop-up settle identity
     // before hand-off. Fresh state each open.
     portalAgeRestricted = !!(opts && opts.ageRestricted);
@@ -17801,6 +17821,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     proceedSignIn(name, opts);
   }
   function proceedSignIn(name, opts){
+    // Remember me: persist (or explicitly forget) the session at the one point
+    // every successful sign-in funnels through.
+    const rm = document.getElementById('rqRememberMe');
+    if(rm && rm.checked) setRemembered(name, opts);
+    else clearRemembered();
     closePortalSilent();
     const dashOpened = (typeof window.openRequestDashboard === 'function');
     if(dashOpened) window.openRequestDashboard(opts);
@@ -17898,6 +17923,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       </button>
     </nav>
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="rqDashBackMain">← Back to main page</button>
       <button class="dash-signout" id="rqDashSignOut">← Sign out</button>
     </div>
   </aside>
@@ -22135,7 +22161,20 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     document.body.classList.remove('dashboard-mode');
     dash.classList.remove('open');
   }
-  if(signOutBtn) signOutBtn.addEventListener('click', closeDashboard);
+  if(signOutBtn) signOutBtn.addEventListener('click', () => {
+    // Remember me ends at Sign out — the next login asks for credentials again.
+    if(typeof window.__rqClearRemembered === 'function') window.__rqClearRemembered();
+    closeDashboard();
+  });
+  // Back to main page — lightweight exit (same contract as "Visit Request site"):
+  // keeps the signed-in session and all dashboard data intact, so Login/Sign-Up
+  // drops the user straight back into the dashboard via Remember me.
+  const backMainBtn = document.getElementById('rqDashBackMain');
+  if(backMainBtn) backMainBtn.addEventListener('click', () => {
+    document.body.classList.remove('dashboard-mode');
+    dash.classList.remove('open');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
 
   // ── Complete-your-profile photo modal (cross-app prompt) ──────────────────
   // Reuses the signup uploader pattern (preview + data-URL read). Blocking: no

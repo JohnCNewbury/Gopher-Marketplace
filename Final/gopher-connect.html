@@ -4573,6 +4573,9 @@
     cursor:pointer; transition:all 0.15s;
   }
   .dash-signout:hover { border-color:white; background:rgba(255,255,255,0.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* ─── Main area ─── */
   .dash-main {
@@ -6731,6 +6734,9 @@
       </div>
 
       <button class="portal-submit" id="signInBtn" disabled>Sign in →</button>
+      <div class="portal-meta">
+        <label class="checkbox-row"><input type="checkbox" id="cnRememberMe" checked> Remember me</label>
+      </div>
 
       <!-- Collapsible "New to Connect?" section -->
       <button type="button" class="portal-divider portal-divider-toggle" id="newToConnectToggle" aria-expanded="false" aria-controls="signupPaths">New to Connect? <span class="portal-divider-chev">▾</span></button>
@@ -8409,6 +8415,7 @@
       </button>
     </nav>
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="dashBackMain">← Back to main page</button>
       <button class="dash-signout" id="dashSignOut">← Sign out</button>
     </div>
   </aside>
@@ -18585,6 +18592,40 @@ const PAY_BADGES = {
     }
   };
 
+  // ── Remember me ──
+  // A sign-in with the box checked persists the credential in localStorage until
+  // Sign out; openSigninModal then bypasses the credential form entirely and
+  // replays the same sign-in funnel below.
+  const CN_REMEMBER_KEY = 'gopherRemember.connect';
+  function cnGetRemembered(){ try{ return JSON.parse(localStorage.getItem(CN_REMEMBER_KEY) || 'null'); }catch(_e){ return null; } }
+  function cnSetRemembered(data){ try{ localStorage.setItem(CN_REMEMBER_KEY, JSON.stringify(data)); }catch(_e){} }
+  function cnClearRemembered(){ try{ localStorage.removeItem(CN_REMEMBER_KEY); }catch(_e){} }
+
+  // Single sign-in funnel — used by the Sign in button AND the Remember-me
+  // bypass. If the verified email/phone matches a known Gopher account,
+  // personalize the dashboard for that user (name, contact, worker tier, AND
+  // Gopher Deals eligibility) — the same result as the "I have a Gopher
+  // account" flow. Without this, signing in here opened a generic dashboard,
+  // so deals-eligible users (e.g. 805-624-1724) still saw the "coming soon"
+  // notice.
+  function signInWithCredential(channel, value){
+    try {
+      const known = (channel && value) ? lookupGopherAccount(channel, value) : null;
+      if(known && typeof window.__applySessionUser === 'function'){
+        window.__recognizedGopherProfile = known;   // carry through for consistency
+        window.__applySessionUser(known, {});        // business stays seeded default
+      } else {
+        // Unrecognized sign-in: clear the seeded-verified Acme default so the user
+        // is treated as unverified (needs TrustShield/ID). Only the seeded verified
+        // demo account (805-624-1724 = John) should surface TrustShield.
+        window.__recognizedGopherProfile = null;
+        if(DASH_DATA.profile) DASH_DATA.profile.trustShield = false;
+        if(typeof setTrustShield === 'function') setTrustShield(false);
+      }
+    } catch(_) { /* non-fatal: fall through to a generic dashboard */ }
+    openDashboard();
+  }
+
   if($signInBtn){
     $signInBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -18592,34 +18633,19 @@ const PAY_BADGES = {
       // Close the sign-in modal before showing the dashboard
       const ov = document.getElementById('signinOverlay');
       if(ov) ov.hidden = true;
-      // If the verified email/phone matches a known Gopher account, personalize
-      // the dashboard for that user (name, contact, worker tier, AND Gopher Deals
-      // eligibility) — the same result as the "I have a Gopher account" flow.
-      // Without this, signing in here opened a generic dashboard, so deals-eligible
-      // users (e.g. 805-624-1724) still saw the "coming soon" notice.
-      try {
-        const emailHint = document.getElementById('emailVerified');
-        const phoneHint = document.getElementById('smsVerified');
-        let channel = null, value = null;
-        if(phoneHint && !phoneHint.hidden){
-          channel = 'phone'; value = (document.getElementById('smsPhone') || {}).value;
-        } else if(emailHint && !emailHint.hidden){
-          channel = 'email'; value = (document.getElementById('signinEmail') || {}).value;
-        }
-        const known = (channel && value) ? lookupGopherAccount(channel, value) : null;
-        if(known && typeof window.__applySessionUser === 'function'){
-          window.__recognizedGopherProfile = known;   // carry through for consistency
-          window.__applySessionUser(known, {});        // business stays seeded default
-        } else {
-          // Unrecognized sign-in: clear the seeded-verified Acme default so the user
-          // is treated as unverified (needs TrustShield/ID). Only the seeded verified
-          // demo account (805-624-1724 = John) should surface TrustShield.
-          window.__recognizedGopherProfile = null;
-          if(DASH_DATA.profile) DASH_DATA.profile.trustShield = false;
-          if(typeof setTrustShield === 'function') setTrustShield(false);
-        }
-      } catch(_) { /* non-fatal: fall through to a generic dashboard */ }
-      openDashboard();
+      const emailHint = document.getElementById('emailVerified');
+      const phoneHint = document.getElementById('smsVerified');
+      let channel = null, value = null;
+      if(phoneHint && !phoneHint.hidden){
+        channel = 'phone'; value = (document.getElementById('smsPhone') || {}).value;
+      } else if(emailHint && !emailHint.hidden){
+        channel = 'email'; value = (document.getElementById('signinEmail') || {}).value;
+      }
+      // Remember me: persist (or explicitly forget) the verified credential.
+      const rm = document.getElementById('cnRememberMe');
+      if(rm && rm.checked && channel) cnSetRemembered({ channel, value });
+      else cnClearRemembered();
+      signInWithCredential(channel, value);
     });
   }
 
@@ -18657,6 +18683,12 @@ const PAY_BADGES = {
     const btn  = document.getElementById('navLoginBtn');
     if(menu) menu.hidden = true;
     if(btn)  btn.setAttribute('aria-expanded','false');
+    // Remember me: a live remembered session skips the credential form entirely
+    // for a plain sign-in open. Explicit signup modes still show the portal.
+    if(!mode || mode === 'signin'){
+      const saved = cnGetRemembered();
+      if(saved){ signInWithCredential(saved.channel, saved.value); return; }
+    }
     // mode = 'signin' (default), 'signup-new', or 'signup-existing'
     const ov = document.getElementById('signinOverlay');
     if(!ov) return;
@@ -20480,6 +20512,8 @@ const PAY_BADGES = {
   })();
 
   $signOutBtn.addEventListener('click', () => {
+    // Remember me ends at Sign out — the next login asks for credentials again.
+    cnClearRemembered();
     // Signing out must wipe any in-progress request so the demo starts fresh.
     if(window.__resetFlowToStart) window.__resetFlowToStart();
     // Session-scoped personalization: restore the Acme defaults so the next
@@ -20488,6 +20522,15 @@ const PAY_BADGES = {
     // Clear the recognized-Gopher carry-over so the next signup starts fresh.
     window.__recognizedGopherProfile = null;
     window.__prefilledFromGopherAccount = false;
+    closeDashboard();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  // Back to main page — lightweight exit (same contract as "Visit Connect site"):
+  // keeps the signed-in session and all dashboard data intact, so Login/Sign-Up
+  // drops the user straight back into the dashboard via Remember me.
+  const $backMainBtn = document.getElementById('dashBackMain');
+  if($backMainBtn) $backMainBtn.addEventListener('click', () => {
     closeDashboard();
     window.scrollTo({ top:0, behavior:'smooth' });
   });
