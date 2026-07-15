@@ -274,11 +274,22 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   rebuild should still move (root `.mp4` scene videos → `assets/video/`; generic `*-img-N` names left
   as-is; go-101 pending concurrent refactor). Full map: `docs/handoff/folder-structure.md`.
 
+- **Connect hero b-roll stand-ins + Maps localhost fix (done 2026-07-15, audit response).**
+  The 8 hero-clip 404s in `gopher-connect.html` are **gone**: the 4 hero `<video>` sources now
+  point at existing `assets/video/services-clip-{1,5,9,14}.mp4` (the documented stopgap —
+  approved services b-roll; `.webm` sources dropped). Photo-cycle fallback + clip swap-in JS
+  unchanged; comments mark where to re-point at `hero-media/clip-1..4` when the produced clips
+  arrive. Deployed live (main `7972687`) together with a new **`.nojekyll`** on main — GitHub
+  Pages' Jekyll was silently dropping underscore files (`__maps-check.html`, `_redirects` were
+  404 live; now 200). Also verified the Maps key end-to-end: works on the live github.io domain
+  AND (after owner fixed the allowlist) on `localhost:8123` — Google's referrer matcher does
+  **not** support wildcard ports (`localhost:*` never matches; use `localhost:8123/*`).
+  `file://` can never be allowlisted — reviewers must serve the folder
+  (`python3 -m http.server 8123`).
+
 ### Outstanding to-do
 
-- **8 hero clips** still needed: `hero-media/clip-1..4.{webm,mp4}` referenced by
-  `gopher-connect.html` lines 6976–6989 (`Final/docs/handoff/missing-files.md`). Genuine
-  video-asset production — cannot be auto-generated; the hero degrades gracefully to its
-  base64 poster images meanwhile (the 8 missing `<source>`s do 404 in the console). Optional
-  stopgap documented: point the `.mp4` sources at existing scene videos + drop `.webm`.
+- **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
+  (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
+  meanwhile (see 2026-07-15 entry); swap the `<source>`s back when production clips exist.
 - ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).
