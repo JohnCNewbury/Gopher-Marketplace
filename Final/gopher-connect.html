@@ -6623,10 +6623,10 @@
 /* Hero background behavior:
    - prefers-reduced-motion: clips don't play; the static first photo shows
      (animation disabled via CSS).
-   - otherwise: the photos cycle as the interim look, and as soon as any real
-     video clip can play (its file exists in hero-media/), the photo cycle is
-     hidden and the clips take over. With no clip files present, nothing fires
-     and the photos keep cycling. */
+   - otherwise: the photos cycle until any video clip can play, then the photo
+     cycle is hidden and the clips take over. Clips currently point at
+     services b-roll stand-ins (assets/video/); swap the sources to
+     hero-media/clip-1..4 when the produced hero clips arrive. */
 (function(){
   function ready(fn){ document.readyState!=='loading' ? fn() : document.addEventListener('DOMContentLoaded', fn); }
   var reduce = false;
@@ -6652,7 +6652,7 @@
 <section class="hero">
   <!-- HERO background: photo cycle now, video cycle when files are added -->
   <div class="hero-video-bg">
-    <!-- Interim: existing photos cycle here. The 4 <video> clips sit on top; once a real clip file in hero-media/ loads, JS hides the photos and the videos take over. -->
+    <!-- Fallback: photos cycle here until a video clip loads, then JS hides them and the clips take over. -->
     <div class="hero-imgs">
       <img class="hero-img" style="animation-delay:0s" src="assets/img/connect-hero-imgs.webp" alt="">
       <img class="hero-img" style="animation-delay:5s" src="assets/img/connect-hero-img-4.webp" alt="">
@@ -6664,21 +6664,19 @@
       <img class="hero-img" style="animation-delay:35s" src="assets/img/connect-hero-img-6.webp" alt="">
       <img class="hero-img" style="animation-delay:40s" src="assets/img/connect-hero-img-2.webp" alt="">
     </div>
+    <!-- STAND-INS: services b-roll until the 4 produced hero clips arrive.
+         To swap in production clips, point these sources at hero-media/clip-1..4 (webm+mp4). -->
     <video class="hero-clip" style="animation-delay:0s" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-      <source src="hero-media/clip-1.webm" type="video/webm">
-      <source src="hero-media/clip-1.mp4" type="video/mp4">
+      <source src="assets/video/services-clip-1.mp4" type="video/mp4">
     </video>
     <video class="hero-clip" style="animation-delay:6s" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-      <source src="hero-media/clip-2.webm" type="video/webm">
-      <source src="hero-media/clip-2.mp4" type="video/mp4">
+      <source src="assets/video/services-clip-5.mp4" type="video/mp4">
     </video>
     <video class="hero-clip" style="animation-delay:12s" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-      <source src="hero-media/clip-3.webm" type="video/webm">
-      <source src="hero-media/clip-3.mp4" type="video/mp4">
+      <source src="assets/video/services-clip-9.mp4" type="video/mp4">
     </video>
     <video class="hero-clip" style="animation-delay:18s" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-      <source src="hero-media/clip-4.webm" type="video/webm">
-      <source src="hero-media/clip-4.mp4" type="video/mp4">
+      <source src="assets/video/services-clip-14.mp4" type="video/mp4">
     </video>
   </div>
   <div class="hero-overlay"></div>
