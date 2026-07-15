@@ -268,6 +268,12 @@
             try{ if(l.__noShowAlert) l.__noShowAlert(id); }catch(_){}
             status('Gopher is at the age-restricted drop-off for '+id+' but '+(r.hired||'the requester')+' isn\'t present — <b>10-minute no-show timer</b> started. ⏳');
           }
+          // Requester arrived (worker cancelled the window without a no-show) → clear the card countdown.
+          if(!job.noShowActive && !job.noShow && noShowAlerted[id] && r.noShowWait){
+            l.GReq.update(id, { noShowWait:null });
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            status('Requester arrived on '+id+' — no-show window cleared, back to the ID check.');
+          }
           if(job.noShow && !noShowDone[id]){
             noShowDone[id]=true; statusSeen[id]='completed';   // block watchStatus's normal completed→confirm
             l.GReq.update(id, { stage:'active', substage:'completed', noShow:1, attention:null, when:'No show · 10-min timer expired' });
