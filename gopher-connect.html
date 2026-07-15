@@ -4573,6 +4573,9 @@
     cursor:pointer; transition:all 0.15s;
   }
   .dash-signout:hover { border-color:white; background:rgba(255,255,255,0.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* ─── Main area ─── */
   .dash-main {
@@ -5733,7 +5736,14 @@
   .dh-hero-copy { flex:0 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:26px; padding:8px 20px; }
   .dh-hero-head { font-family:'Nunito',sans-serif; font-weight:900; letter-spacing:-.012em; font-size:clamp(27px, 3vw, 40px); line-height:1.16; color:var(--navy); max-width:16ch; }
   .dh-hero-head .hl { color:var(--green-dark); }
-  .dh-viewall-hero { font-size:15px; padding:12px 22px; }
+  /* Hero variant: featured-card cream gradient, Gopher-standard 14px radius (no pill),
+     sized to match the card's View Details button. */
+  .dh-viewall-hero { font-size:15px; gap:8px; padding:12px 34px; /* 12px + 1px border = View Details' 13px */
+    background:linear-gradient(160deg,#FFFDF8 0%, #FBF3E4 58%, #F6E9D0 100%);
+    border:1px solid #EAD9B6; border-radius:14px;
+    box-shadow:0 12px 26px rgba(0,36,97,.10); }
+  .dh-viewall-hero:hover { background:linear-gradient(160deg,#FBF3E4 0%, #F6E9D0 100%);
+    border-color:var(--green); transform:translateY(-1px); }
   .dh-viewall-hero svg { width:16px; height:16px; }
   @media (max-width:860px){
     .dh-hero-row { flex-direction:column; align-items:stretch; gap:20px; }
@@ -6209,6 +6219,14 @@
     transition:all 0.15s;
   }
   .prev-detail-cta:hover { background:var(--navy-mid); }
+  /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
+     beside the navy "Request again w/ edits" (prefill → Review). */
+  .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-block { border-bottom:none; padding-bottom:0; margin-top:4px; }
+  .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
+  .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
+  .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
+  @media (max-width:560px){ .prev-detail-ctas { flex-direction:column; } }
   .prev-detail-reason {
     padding:12px 14px; background:#f7f8fc; border-left:3px solid #d4d8e3; border-radius:8px;
     font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted);
@@ -6716,6 +6734,9 @@
       </div>
 
       <button class="portal-submit" id="signInBtn" disabled>Sign in →</button>
+      <div class="portal-meta">
+        <label class="checkbox-row"><input type="checkbox" id="cnRememberMe" checked> Remember me</label>
+      </div>
 
       <!-- Collapsible "New to Connect?" section -->
       <button type="button" class="portal-divider portal-divider-toggle" id="newToConnectToggle" aria-expanded="false" aria-controls="signupPaths">New to Connect? <span class="portal-divider-chev">▾</span></button>
@@ -7548,7 +7569,7 @@
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="hireAgainDoneTitle">
     <div class="gc-modal-icon gc-modal-icon-go">📲</div>
     <h4 id="hireAgainDoneTitle">Request sent!</h4>
-    <p class="gc-modal-sub" id="hireAgainDoneBody">Devon M. will be alerted to your request immediately. If they accept, the request will move into your dashboard automatically. We'll also open it to other workers after 5 minutes just in case.</p>
+    <p class="gc-modal-sub" id="hireAgainDoneBody">Devon M. will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if Devon M. is not available.</p>
     <button type="button" class="gc-modal-btn" id="hireAgainDoneOk">Got it</button>
   </div>
 </div>
@@ -8394,6 +8415,7 @@
       </button>
     </nav>
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="dashBackMain">← Back to main page</button>
       <button class="dash-signout" id="dashSignOut">← Sign out</button>
     </div>
   </aside>
@@ -12420,6 +12442,22 @@ const PAY_BADGES = {
     render();
   };
 
+  // ---- Request NOW ⚡ — 1-click re-submit (no Review) ----
+  // Identical prefill to __startRequestAgainFast (which already forces Need ASAP),
+  // but submits immediately instead of stopping on Review. Firing the real Continue
+  // button reuses the normal step-6 submit path, so the duplicate backstop and every
+  // other gate still run; if something is genuinely missing, the gate simply leaves
+  // the user on Review to fix it. The liability waiver carries over from the original
+  // request — re-requesting re-affirms the terms already accepted on the first submit.
+  window.__startRequestAgainNow = (prev, selectedGophers) => {
+    if(typeof window.__startRequestAgainFast !== 'function') return false;
+    window.__startRequestAgainFast(prev, selectedGophers);
+    state.waiverChecked = true;
+    const btn = document.getElementById('btnNext');   // step 6: Continue == Submit
+    if(btn) btn.click();
+    return true;
+  };
+
   // ---- Gopher Deal → Request bridge ----
   // A Gopher Deal pre-fills the flow and lands the user directly on Review (step 6)
   // with every earlier step unlocked, so they can edit any detail like a normal
@@ -13510,7 +13548,7 @@ const PAY_BADGES = {
       { id:'r-myway', logo:'assets/img/connect-img-27.webp',   name:'My Way Tavern',            sub:'American · Burgers · Drinks', offer:'10% off online orders, use promo code GOPHER', distance:'0.5 mi',
         kind:'merchant', category:'delivery', address:'105 Avent Ferry Rd, Holly Springs, NC 27540', mobile:false, promo:'GOPHER', pay:12, portalUrl:'mywaytavern.com', portalTag:'The best food (& drinks) around' },
       { id:'r-frankks', logo:'assets/img/connect-img-9.webp', name:'Frankie Frankks Hot Dogs', sub:'Hot Dog Cart', offer:"Buy 2 dogs, the drink's on us", distance:'2.2 mi',
-        kind:'merchant', category:'delivery', address:null, mobile:true, pay:9, portalUrl:'frankiefrankks.com', portalTag:"Frankly, we're the best!" },
+        kind:'merchant', category:'delivery', address:null, mobile:true, noOrdering:true, pay:9, portalUrl:'frankiefrankks.com', portalTag:"Frankly, we're the best!" },
       { id:'r-freshfork', logo:'assets/img/deal-fresh-fork.webp',   name:'Fresh Fork',                    sub:'Salads · Wraps · Bowls', offer:'Free topping upgrade', distance:'2.5 mi',
         kind:'merchant', category:'delivery', address:'308 Village Walk Dr, Holly Springs, NC 27540', mobile:false, pay:11, portalUrl:'freshforkhs.com', portalTag:'Healthy and fresh' },
       { id:'r-buoy', logo:'assets/img/shared-hatch-coffee.webp', name:'Buoy Bowls',            sub:'Açaí Bowls · Smoothies', offer:'10% off your first order', distance:'3.1 mi',
@@ -14227,11 +14265,17 @@ const PAY_BADGES = {
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
-    // Age-restricted deals can't be bought online, so the Gopher fronts the purchase:
-    // collect the item cost (COG) above Pay to Gopher.
+    // Cost of items (COG) is collected whenever the Gopher fronts the purchase:
+    // age-restricted deals (can't be bought online) AND merchants registered with
+    // "no online ordering" (no_online_ordering flag; common for food trucks).
     const ageDeal = !isService && !!m.ageRestricted;
+    const frontsItems = ageDeal || (!isService && !!m.noOrdering);
     const costF = document.getElementById('dealCostField');
-    costF.hidden = !ageDeal;
+    costF.hidden = !frontsItems;
+    const costHint = costF.querySelector('.deal-cost-hint');
+    if(costHint) costHint.textContent = ageDeal
+      ? 'The product cost your Gopher fronts in person — age-restricted shops can’t be pre-paid online.'
+      : 'The product cost your Gopher fronts in person — this merchant takes orders on site, not online.';
     document.getElementById('dealCost').value = '';
     // Age-restricted deals surface identity verification IN the pop-up (D-029). The
     // banner ALWAYS shows for age-restricted deals; its content reflects status — a
@@ -14448,8 +14492,6 @@ const PAY_BADGES = {
 
   // Activate the deal cards (renderDealsPanel calls this hook on tap).
   window.__openDealDetail = openDealDetail;
-
-
 
   (function initDealsPathToggle(){
     const tabNew   = document.getElementById('pathTabNew');
@@ -16878,12 +16920,17 @@ const PAY_BADGES = {
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
+          </div>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
+          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
           </div>
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
         </div>`;
     } else {
       panel.innerHTML = `
@@ -16897,7 +16944,10 @@ const PAY_BADGES = {
             <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     }
 
@@ -16913,11 +16963,22 @@ const PAY_BADGES = {
     panel.querySelector('[data-prev-back]').addEventListener('click', closePrevDetail);
     const again = panel.querySelector('[data-prev-again]');
     if(again) again.addEventListener('click', () => {
-      // Request again FAST: if the user has MY Gophers, ask who to route to first
+      // Request again w/ edits: if the user has MY Gophers, ask who to route to first
       // (select all / some / none), then prefill from history and jump to review.
       const myG = (DASH_DATA.myGophers || []);
       if(myG.length){ openRaFastModal(r); }
       else { window.__startRequestAgainFast(r, []); }
+    });
+    const nowBtn = panel.querySelector('[data-prev-now]');
+    if(nowBtn) nowBtn.addEventListener('click', () => {
+      // Request NOW ⚡: no picker, no Review — send it exactly as it went out before,
+      // routed back to the same worker when they're one of MY Gophers, timing = ASAP.
+      const names = (DASH_DATA.myGophers || []).map(g => (g && g.name) || g);
+      const prior = String((r && r.worker) || '').trim();
+      const sel = (prior && names.indexOf(prior) !== -1) ? [prior] : [];
+      moveFlowMockupToDashboard();
+      if(typeof window.__startRequestAgainNow === 'function'){ window.__startRequestAgainNow(r, sel); }
+      showSection('new-request');
     });
 
     listPanel.hidden = true;
@@ -17533,6 +17594,18 @@ const PAY_BADGES = {
   // Decides whether to prompt for extra Gophers (multi-worker) before confirming.
   window.__onHireAgainSubmit = (requestId, needed) => {
     hireAgainState.pendingRequestId = requestId;
+    // Requests that reach here straight from the flow ("Request again NOW" /
+    // "Request again w/ edits") never opened the MY-Gophers modal, so
+    // hireAgainState.gopher is empty. Seed it from the request record so the
+    // confirmation names the actual worker instead of "Your Gopher".
+    if(!hireAgainState.gopher){
+      const rec = DASH_DATA.activeRequests.find(x => x.id === requestId);
+      const picked = (rec && rec.hireAgainGophers) || [];
+      if(picked.length){
+        hireAgainState.gopher = picked[0];
+        hireAgainState.extraGophers = picked.slice(1);
+      }
+    }
     if(needed > 1){
       // Offer the remaining MY Gophers (excluding the one already chosen).
       const chosen = hireAgainState.gopher;
@@ -17540,8 +17613,12 @@ const PAY_BADGES = {
       const ov2 = document.getElementById('addGophersOverlay');
       document.getElementById('addGophersSub').textContent =
         `This request needs ${needed} workers. Add any of your other MY Gophers to give them first chance, or skip to send it out normally.`;
+      // Connect hires each worker individually, so a multi-worker re-request can
+      // already carry several MY Gophers. Pre-select those — otherwise Confirm
+      // (which reads the selection) would silently drop them.
+      const carried = hireAgainState.extraGophers || [];
       document.getElementById('addGophersList').innerHTML = remaining.map(g =>
-        `<button class="agl-row" data-gopher="${g.name}">
+        `<button class="agl-row${carried.includes(g.name) ? ' selected' : ''}" data-gopher="${g.name}">
            <div class="agl-photo"><img src="${g.photo}" alt=""></div>
            <div class="agl-main"><div class="agl-name">${g.name}</div><div class="agl-spec">${g.specialty}</div></div>
            <div class="agl-check"></div>
@@ -17555,29 +17632,38 @@ const PAY_BADGES = {
     }
   };
 
-  // Show the submit confirmation, then schedule the MY Gopher auto-accept.
+  // Show the submit confirmation, then run the first-dibs window.
   function finalizeHireAgain(){
     const id = hireAgainState.pendingRequestId;
     const all = [hireAgainState.gopher, ...hireAgainState.extraGophers].filter(Boolean);
     const names = all.length > 1
       ? all.slice(0,-1).join(', ') + ' and ' + all.slice(-1)
       : (all[0] || 'Your Gopher');
+    const subject = all.length > 1 ? 'they are' : `${names} is`;
     const body = document.getElementById('hireAgainDoneBody');
     if(body){
-      body.textContent = `${names} will be alerted to your request immediately. If they accept, the request will move into your dashboard automatically. We'll also open it to other workers after 5 minutes just in case.`;
+      body.textContent = `${names} will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if ${subject} not available.`;
     }
     document.getElementById('hireAgainDoneOverlay').hidden = false;
-    // Auto-accept after ~3s to demonstrate the flow.
     scheduleGopherAcceptance(id, all);
   }
 
-  // After a short delay, the MY Gopher(s) "accept": auto-move them into the
-  // request's Hire Approved list (up to the needed count). Non-MY-Gophers still
-  // require manual approval. Once the needed count is met, the rest stay pending.
+  // First-dibs window — the behavior the "Request sent!" copy promises.
+  //   accepts        → the job is theirs; they land in Hire Approved and the
+  //                    request never opens to anyone else.
+  //   not available  → the request is broadcast to the wider workforce.
+  // DEMO ONLY: the prototype simulates the accept on a ~3s timer. Real
+  // accept/decline + broadcast is matching logic (human dev — see CLAUDE.md);
+  // broadcastToWorkforce() below is the seam it plugs into.
+  const HIRE_AGAIN_DEMO_ACCEPTS = true;   // flip to false to demo the broadcast path
   function scheduleGopherAcceptance(requestId, gopherNames){
     setTimeout(() => {
       const r = DASH_DATA.activeRequests.find(x => x.id === requestId);
       if(!r) return; // request may have been cancelled
+      if(!HIRE_AGAIN_DEMO_ACCEPTS || !gopherNames.length){
+        broadcastToWorkforce(requestId);   // MY Gopher didn't take it → open it up
+        return;
+      }
       // First-right-of-refusal only applies if the user hasn't already hired.
       const list = r.interestedWorkers || [];
       const needed = r.workersNeeded || 1;
@@ -17607,6 +17693,24 @@ const PAY_BADGES = {
         renderRequestDetail();
       }
     }, 3000);
+  }
+
+  // The "if they're not available" half of the promise: drop the MY-Gopher-only
+  // hold and let the request go out to the wider workforce, exactly as a normal
+  // (non-hire-again) request does. Prototype seam — the real trigger is the
+  // worker's decline/timeout, which is matching logic for the human dev.
+  function broadcastToWorkforce(requestId){
+    const r = DASH_DATA.activeRequests.find(x => x.id === requestId);
+    if(!r) return;
+    r.hireAgainGophers = null;             // no longer reserved
+    r.eligibleWorkers = 'entire_workforce';
+    r.broadcastOpen = true;
+    renderKpiCounts();
+    renderActiveRequests();
+    if(document.querySelector('.dash-section.active')?.dataset.section === 'request-detail'
+       && dashState.requestDetailId === requestId){
+      renderRequestDetail();
+    }
   }
 
   // ─── Logo: try to swap text wordmark for the real image logo if available ───
@@ -18488,6 +18592,40 @@ const PAY_BADGES = {
     }
   };
 
+  // ── Remember me ──
+  // A sign-in with the box checked persists the credential in localStorage until
+  // Sign out; openSigninModal then bypasses the credential form entirely and
+  // replays the same sign-in funnel below.
+  const CN_REMEMBER_KEY = 'gopherRemember.connect';
+  function cnGetRemembered(){ try{ return JSON.parse(localStorage.getItem(CN_REMEMBER_KEY) || 'null'); }catch(_e){ return null; } }
+  function cnSetRemembered(data){ try{ localStorage.setItem(CN_REMEMBER_KEY, JSON.stringify(data)); }catch(_e){} }
+  function cnClearRemembered(){ try{ localStorage.removeItem(CN_REMEMBER_KEY); }catch(_e){} }
+
+  // Single sign-in funnel — used by the Sign in button AND the Remember-me
+  // bypass. If the verified email/phone matches a known Gopher account,
+  // personalize the dashboard for that user (name, contact, worker tier, AND
+  // Gopher Deals eligibility) — the same result as the "I have a Gopher
+  // account" flow. Without this, signing in here opened a generic dashboard,
+  // so deals-eligible users (e.g. 805-624-1724) still saw the "coming soon"
+  // notice.
+  function signInWithCredential(channel, value){
+    try {
+      const known = (channel && value) ? lookupGopherAccount(channel, value) : null;
+      if(known && typeof window.__applySessionUser === 'function'){
+        window.__recognizedGopherProfile = known;   // carry through for consistency
+        window.__applySessionUser(known, {});        // business stays seeded default
+      } else {
+        // Unrecognized sign-in: clear the seeded-verified Acme default so the user
+        // is treated as unverified (needs TrustShield/ID). Only the seeded verified
+        // demo account (805-624-1724 = John) should surface TrustShield.
+        window.__recognizedGopherProfile = null;
+        if(DASH_DATA.profile) DASH_DATA.profile.trustShield = false;
+        if(typeof setTrustShield === 'function') setTrustShield(false);
+      }
+    } catch(_) { /* non-fatal: fall through to a generic dashboard */ }
+    openDashboard();
+  }
+
   if($signInBtn){
     $signInBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -18495,34 +18633,19 @@ const PAY_BADGES = {
       // Close the sign-in modal before showing the dashboard
       const ov = document.getElementById('signinOverlay');
       if(ov) ov.hidden = true;
-      // If the verified email/phone matches a known Gopher account, personalize
-      // the dashboard for that user (name, contact, worker tier, AND Gopher Deals
-      // eligibility) — the same result as the "I have a Gopher account" flow.
-      // Without this, signing in here opened a generic dashboard, so deals-eligible
-      // users (e.g. 805-624-1724) still saw the "coming soon" notice.
-      try {
-        const emailHint = document.getElementById('emailVerified');
-        const phoneHint = document.getElementById('smsVerified');
-        let channel = null, value = null;
-        if(phoneHint && !phoneHint.hidden){
-          channel = 'phone'; value = (document.getElementById('smsPhone') || {}).value;
-        } else if(emailHint && !emailHint.hidden){
-          channel = 'email'; value = (document.getElementById('signinEmail') || {}).value;
-        }
-        const known = (channel && value) ? lookupGopherAccount(channel, value) : null;
-        if(known && typeof window.__applySessionUser === 'function'){
-          window.__recognizedGopherProfile = known;   // carry through for consistency
-          window.__applySessionUser(known, {});        // business stays seeded default
-        } else {
-          // Unrecognized sign-in: clear the seeded-verified Acme default so the user
-          // is treated as unverified (needs TrustShield/ID). Only the seeded verified
-          // demo account (805-624-1724 = John) should surface TrustShield.
-          window.__recognizedGopherProfile = null;
-          if(DASH_DATA.profile) DASH_DATA.profile.trustShield = false;
-          if(typeof setTrustShield === 'function') setTrustShield(false);
-        }
-      } catch(_) { /* non-fatal: fall through to a generic dashboard */ }
-      openDashboard();
+      const emailHint = document.getElementById('emailVerified');
+      const phoneHint = document.getElementById('smsVerified');
+      let channel = null, value = null;
+      if(phoneHint && !phoneHint.hidden){
+        channel = 'phone'; value = (document.getElementById('smsPhone') || {}).value;
+      } else if(emailHint && !emailHint.hidden){
+        channel = 'email'; value = (document.getElementById('signinEmail') || {}).value;
+      }
+      // Remember me: persist (or explicitly forget) the verified credential.
+      const rm = document.getElementById('cnRememberMe');
+      if(rm && rm.checked && channel) cnSetRemembered({ channel, value });
+      else cnClearRemembered();
+      signInWithCredential(channel, value);
     });
   }
 
@@ -18560,6 +18683,12 @@ const PAY_BADGES = {
     const btn  = document.getElementById('navLoginBtn');
     if(menu) menu.hidden = true;
     if(btn)  btn.setAttribute('aria-expanded','false');
+    // Remember me: a live remembered session skips the credential form entirely
+    // for a plain sign-in open. Explicit signup modes still show the portal.
+    if(!mode || mode === 'signin'){
+      const saved = cnGetRemembered();
+      if(saved){ signInWithCredential(saved.channel, saved.value); return; }
+    }
     // mode = 'signin' (default), 'signup-new', or 'signup-existing'
     const ov = document.getElementById('signinOverlay');
     if(!ov) return;
@@ -20383,6 +20512,8 @@ const PAY_BADGES = {
   })();
 
   $signOutBtn.addEventListener('click', () => {
+    // Remember me ends at Sign out — the next login asks for credentials again.
+    cnClearRemembered();
     // Signing out must wipe any in-progress request so the demo starts fresh.
     if(window.__resetFlowToStart) window.__resetFlowToStart();
     // Session-scoped personalization: restore the Acme defaults so the next
@@ -20391,6 +20522,15 @@ const PAY_BADGES = {
     // Clear the recognized-Gopher carry-over so the next signup starts fresh.
     window.__recognizedGopherProfile = null;
     window.__prefilledFromGopherAccount = false;
+    closeDashboard();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
+
+  // Back to main page — lightweight exit (same contract as "Visit Connect site"):
+  // keeps the signed-in session and all dashboard data intact, so Login/Sign-Up
+  // drops the user straight back into the dashboard via Remember me.
+  const $backMainBtn = document.getElementById('dashBackMain');
+  if($backMainBtn) $backMainBtn.addEventListener('click', () => {
     closeDashboard();
     window.scrollTo({ top:0, behavior:'smooth' });
   });

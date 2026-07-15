@@ -6883,6 +6883,9 @@
     cursor:pointer; transition:all 0.15s;
   }
   .dash-signout:hover { border-color:white; background:rgba(255,255,255,0.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* ─── Main area ─── */
   .dash-main {
@@ -7953,7 +7956,14 @@
   .dh-hero-copy { flex:0 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:26px; padding:8px 20px; }
   .dh-hero-head { font-family:'Nunito',sans-serif; font-weight:900; letter-spacing:-.012em; font-size:clamp(27px, 3vw, 40px); line-height:1.16; color:var(--navy); max-width:16ch; }
   .dh-hero-head .hl { color:var(--green-dark); }
-  .dh-viewall-hero { font-size:15px; padding:12px 22px; }
+  /* Hero variant: featured-card cream gradient, Gopher-standard 14px radius (no pill),
+     sized to match the card's View Details button. */
+  .dh-viewall-hero { font-size:15px; gap:8px; padding:12px 34px; /* 12px + 1px border = View Details' 13px */
+    background:linear-gradient(160deg,#FFFDF8 0%, #FBF3E4 58%, #F6E9D0 100%);
+    border:1px solid #EAD9B6; border-radius:14px;
+    box-shadow:0 12px 26px rgba(0,36,97,.10); }
+  .dh-viewall-hero:hover { background:linear-gradient(160deg,#FBF3E4 0%, #F6E9D0 100%);
+    border-color:var(--green); transform:translateY(-1px); }
   .dh-viewall-hero svg { width:16px; height:16px; }
   @media (max-width:860px){
     .dh-hero-row { flex-direction:column; align-items:stretch; gap:20px; }
@@ -8378,6 +8388,14 @@
     transition:all 0.15s;
   }
   .prev-detail-cta:hover { background:var(--navy-mid); }
+  /* 1-click re-request: green "Request NOW ⚡" (instant, always Need ASAP) sits
+     beside the navy "Request again w/ edits" (prefill → Review). */
+  .prev-detail-ctas { display:flex; gap:10px; }
+  .prev-detail-block { border-bottom:none; padding-bottom:0; margin-top:4px; }
+  .prev-detail-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
+  .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
+  .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
+  @media (max-width:560px){ .prev-detail-ctas { flex-direction:column; } }
 
   /* ─── Info cards (Business Info, Personal info) ─── */
   .info-card {
@@ -13311,11 +13329,23 @@
       <p class="mc-sub" style="margin-top:10px;">${_esc(prov.name)} offered this deal and automatically accepted your request. From here it works like any other accepted request — message them, track progress, and pay on completion.</p>
     ` : '';
 
+    // MY Gophers first-dibs (Request again NOW / w-edits, or the MY Gophers picker):
+    // the request is held for them before it opens to anyone else, so the generic
+    // "looking for your worker" confirmation would be wrong. Connect parity — same
+    // promise as its "Request sent!" modal.
+    const haNames = (state.hireAgainGophers || []).filter(Boolean);
+    const haFirst = !isServiceDeal && haNames.length > 0;
+    const haLabel = haNames.length > 1
+      ? haNames.slice(0,-1).map(_esc).join(', ') + ' and ' + _esc(haNames[haNames.length-1])
+      : _esc(haNames[0] || '');
+    const haSubject = haNames.length > 1 ? 'they are' : `${haLabel} is`;
+
     return `
       <div class="matched-burst">
         <div class="check-circle">✓</div>
-        <h4>${isServiceDeal ? "You're Connected!" : "Request Submitted!"}</h4>
-        <p>${isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.') : 'Currently looking for your worker\u2026'} · Request Order <strong>#${reqNum}</strong></p>
+        <h4>${isServiceDeal ? "You're Connected!" : (haFirst ? 'Request sent!' : 'Request Submitted!')}</h4>
+        <p>${isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.')
+              : (haFirst ? (haLabel + ' has first dibs\u2026') : 'Currently looking for your worker\u2026')} · Request Order <strong>#${reqNum}</strong></p>
       </div>
 
       <div class="review-card" style="margin-top:14px;">
@@ -13330,7 +13360,15 @@
 
       <!-- Connect parity: interested workers are managed from the dashboard,
            not listed inline. Compact green band + "See workers in dashboard". -->
-      ${isServiceDeal ? connectedHTML : `
+      ${isServiceDeal ? connectedHTML : haFirst ? `
+      <div class="si-workers-band">
+        <div class="si-workers-ico">⚡</div>
+        <div class="si-workers-text">
+          <h5>${haLabel} ${haNames.length > 1 ? 'have' : 'has'} first dibs</h5>
+          <p>${haLabel} will be alerted to your request immediately. If they accept, the job is theirs. We'll also broadcast your request to other workers if ${haSubject} not available.</p>
+        </div>
+        <button class="si-workers-btn attn-pulse" data-action="see-workers-dashboard">Track in dashboard →</button>
+      </div>` : `
       <div class="si-workers-band">
         <div class="si-workers-ico">👥</div>
         <div class="si-workers-text">
@@ -14438,6 +14476,22 @@
     state.step = 6;
     state.maxStepReached = 6;
     render();
+    return true;
+  };
+
+  // Request NOW ⚡ — 1-click re-submit. Identical prefill to __startRequestAgainFast
+  // (which already forces Need ASAP), but submits immediately instead of stopping on
+  // Review. Firing the real Continue button reuses the normal step-6 submit path, so
+  // the duplicate backstop and every other gate still run; if something is genuinely
+  // missing the gate simply leaves the user on Review to fix it.
+  // The liability waiver carries over from the original request — re-requesting is
+  // treated as re-affirming the terms already accepted on the first submit.
+  window.__startRequestAgainNow = function(prev, selected){
+    if(typeof window.__startRequestAgainFast !== 'function') return false;
+    if(!window.__startRequestAgainFast(prev, selected)) return false;
+    state.waiverChecked = true;
+    const btn = document.getElementById('btnNext');   // step 6: Continue == Submit
+    if(btn) btn.click();
     return true;
   };
 
@@ -16538,7 +16592,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
       <button class="portal-submit" id="rqSignInBtn">Sign in →</button>
       <div class="portal-meta">
-        <label class="checkbox-row"><input type="checkbox"> Remember me</label>
+        <label class="checkbox-row"><input type="checkbox" id="rqRememberMe" checked> Remember me</label>
       </div>
 
       <button type="button" class="portal-divider portal-divider-toggle" id="rqNewToggle" aria-expanded="false" aria-controls="rqSignupPaths">New to Gopher? <span class="portal-divider-chev">▾</span></button>
@@ -16852,8 +16906,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
   const digits = s => (s||'').replace(/\D/g,'');
 
+  // ── Remember me ──
+  // A sign-in with the box checked persists the session in localStorage until
+  // Sign out, so every subsequent login bypasses credentials — openPortal
+  // short-circuits straight to the dashboard. Age-restricted opens are the one
+  // exception: the D-029 identity checkpoint must still settle in the pop-up.
+  const REMEMBER_KEY = 'gopherRemember.request';
+  function getRemembered(){ try{ return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); }catch(_e){ return null; } }
+  function setRemembered(name, opts){ try{ localStorage.setItem(REMEMBER_KEY, JSON.stringify({ name, opts })); }catch(_e){} }
+  function clearRemembered(){ try{ localStorage.removeItem(REMEMBER_KEY); }catch(_e){} }
+  window.__rqClearRemembered = clearRemembered;   // Sign out (dashboard IIFE) ends the remembered session
+
   // ── Open / close portal ──
   function openPortal(opts){
+    // Remember me: a live remembered session skips the credential form entirely.
+    const saved = getRemembered();
+    if(saved && !(opts && opts.ageRestricted)){
+      proceedSignIn(saved.name, Object.assign({}, saved.opts, { isSignup:false }));
+      return;
+    }
     // D-029: opening for an age-restricted entry makes the pop-up settle identity
     // before hand-off. Fresh state each open.
     portalAgeRestricted = !!(opts && opts.ageRestricted);
@@ -17750,6 +17821,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     proceedSignIn(name, opts);
   }
   function proceedSignIn(name, opts){
+    // Remember me: persist (or explicitly forget) the session at the one point
+    // every successful sign-in funnels through.
+    const rm = document.getElementById('rqRememberMe');
+    if(rm && rm.checked) setRemembered(name, opts);
+    else clearRemembered();
     closePortalSilent();
     const dashOpened = (typeof window.openRequestDashboard === 'function');
     if(dashOpened) window.openRequestDashboard(opts);
@@ -17847,6 +17923,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       </button>
     </nav>
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="rqDashBackMain">← Back to main page</button>
       <button class="dash-signout" id="rqDashSignOut">← Sign out</button>
     </div>
   </aside>
@@ -21621,12 +21698,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
+          </div>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
+          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
           </div>
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
         </div>`;
     } else {
       // ── Cancelled / Expired view: slim record + reason + Request again ──
@@ -21641,7 +21723,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
-          <button class="prev-detail-cta" data-prev-again="${r.id}">Request again FAST ⚡</button>
+          <div class="prev-detail-ctas">
+            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
+            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
+          </div>
         </div>`;
     }
 
@@ -21675,6 +21760,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // passed so the fast-start can map its category/details/pay.
     const again = panel.querySelector('[data-prev-again]');
     if(again) again.addEventListener('click', () => openRaFastModal(r));
+    const nowBtn = panel.querySelector('[data-prev-now]');
+    if(nowBtn) nowBtn.addEventListener('click', () => launchRaNow(r));
 
     // Swap panels
     listPanel.hidden = true;
@@ -21742,6 +21829,22 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     moveFlowToDash();
     if(typeof window.__startRequestAgainFast === 'function'){
       window.__startRequestAgainFast(prev, selected);
+    }
+    showSection('new-request');
+    const dashMain = document.querySelector('.dash-main');
+    if(dashMain) dashMain.scrollTo({ top:0, behavior:'instant' });
+  }
+
+  // Request NOW ⚡ — instant re-submit: no MY-Gophers picker, no Review step. Routes
+  // back to the same worker as last time when they're one of MY Gophers (i.e. exactly
+  // as it went out before); the flow lands straight on the submitted confirmation.
+  function launchRaNow(prev){
+    moveFlowToDash();
+    const myNames = gatherMyGophers().map(g => g.name);
+    const prior = String((prev && prev.worker) || '').trim();
+    const selected = (prior && myNames.indexOf(prior) !== -1) ? [prior] : [];
+    if(typeof window.__startRequestAgainNow === 'function'){
+      window.__startRequestAgainNow(prev, selected);
     }
     showSection('new-request');
     const dashMain = document.querySelector('.dash-main');
@@ -22058,7 +22161,20 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     document.body.classList.remove('dashboard-mode');
     dash.classList.remove('open');
   }
-  if(signOutBtn) signOutBtn.addEventListener('click', closeDashboard);
+  if(signOutBtn) signOutBtn.addEventListener('click', () => {
+    // Remember me ends at Sign out — the next login asks for credentials again.
+    if(typeof window.__rqClearRemembered === 'function') window.__rqClearRemembered();
+    closeDashboard();
+  });
+  // Back to main page — lightweight exit (same contract as "Visit Request site"):
+  // keeps the signed-in session and all dashboard data intact, so Login/Sign-Up
+  // drops the user straight back into the dashboard via Remember me.
+  const backMainBtn = document.getElementById('rqDashBackMain');
+  if(backMainBtn) backMainBtn.addEventListener('click', () => {
+    document.body.classList.remove('dashboard-mode');
+    dash.classList.remove('open');
+    window.scrollTo({ top:0, behavior:'smooth' });
+  });
 
   // ── Complete-your-profile photo modal (cross-app prompt) ──────────────────
   // Reuses the signup uploader pattern (preview + data-URL read). Blocking: no

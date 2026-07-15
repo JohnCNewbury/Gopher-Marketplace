@@ -1195,6 +1195,15 @@
   .field select.field-invalid, .field select.field-invalid:focus,
   .field textarea.field-invalid, .field textarea.field-invalid:focus { border-color:var(--error,#C44257); }
   .field-err { color:var(--error,#C44257); font-size:12px; font-weight:600; margin-top:5px; }
+  /* Standard reddish pulsing shadow alert (same as .attn-pulse in the Request app). */
+  .attn-pulse { animation:attnRedGlow 2.6s ease-in-out infinite; will-change:box-shadow; border-radius:12px; }
+  @keyframes attnRedGlow {
+    0%, 100% { box-shadow:0 2px 8px rgba(196,66,87,0.30); }
+    50%      { box-shadow:0 4px 22px rgba(196,66,87,0.62); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .attn-pulse { animation:none; box-shadow:0 3px 14px rgba(196,66,87,0.45); }
+  }
   .field textarea { resize:vertical; min-height:84px; }
   .field-optional { font-weight:500; color:var(--muted); font-size:12px; }
   .field-hint { font-size:12px; color:var(--muted); line-height:1.45; margin-top:7px; }
@@ -1607,6 +1616,9 @@
   }
   .portal-field input:focus, .signup-field input:focus, .signup-field select:focus { outline:none; border-color:var(--green); }
   .portal-otp-btn { width:100%; padding:12px; border:1.5px solid var(--navy); background:#fff; color:var(--navy); border-radius:11px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; cursor:pointer; transition:all .15s; }
+  .portal-meta { display:flex; align-items:center; margin-top:12px; font-size:13px; }
+  .portal-meta .checkbox-row { display:flex; align-items:center; gap:6px; color:var(--muted); cursor:pointer; font-family:'Nunito',sans-serif; font-weight:700; }
+  .portal-meta .checkbox-row input { accent-color:var(--green); }
   .portal-otp-btn:hover:not(:disabled) { background:var(--navy); color:#fff; }
   .portal-otp-btn:disabled { opacity:.45; cursor:default; }
   .portal-sms-hint { font-size:12.5px; color:var(--green-dark); font-weight:600; margin-top:9px; }
@@ -1786,6 +1798,9 @@
   .dash-sidebar-footer { padding-top:14px; border-top:1px solid rgba(255,255,255,.08); margin-top:auto; }
   .dash-signout { width:100%; background:transparent; border:1.5px solid rgba(255,255,255,.25); color:#fff; font-family:'Nunito'; font-weight:700; font-size:12px; padding:9px 12px; border-radius:8px; cursor:pointer; transition:all .15s; }
   .dash-signout:hover { border-color:#fff; background:rgba(255,255,255,.06); }
+  /* Back to main page — sits above Sign out; green accent = non-destructive exit */
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
   /* Main */
   .dash-main { overflow-y:auto; }
@@ -2348,7 +2363,6 @@
         <span></span> For local businesses &amp; Pros
       </div>
       <h1>You create the <em>Deal.</em><br>We&rsquo;ll get it <em>Done.</em></h1>
-      <p class="hero-caveat">&mdash; keeping it local, always!</p>
       <p>Gopher Deals puts your business in front of thousands of neighbors nearby, lets you share a deal they&rsquo;ll love, and when redeemed, 100% of the profit is yours. AND we&rsquo;ll take care of the last mile without cost to you. It&rsquo;s not too good to be true&hellip; <span class="hero-gd">&mdash; it&rsquo;s Gopher Deals</span></p>
       <p class="loc-prompt">See just how many neighbors you&rsquo;ll reach.</p>
       <div class="location-bar">
@@ -2718,7 +2732,10 @@
           </label>
         </div>
         <div class="field">
-          <label>Business Tagline</label>
+          <div class="label-with-info">
+            <label>Business Tagline</label>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">If you do not have a formal business tagline, please enter whatever you want as a sub-header under your business name.</span></span>
+          </div>
           <input type="text" name="tagline" placeholder="e.g. Your neighborhood burger hub">
         </div>
         <div class="field">
@@ -2734,10 +2751,17 @@
         </div>
         <div class="field">
           <div class="label-with-info">
-            <label>Business Website</label>
-            <span class="info-btn" tabindex="0">i<span class="info-tip">Please enter your website URL OR if you have a separate URL for online orders, use that. The URL submitted will be shown in a web view within the Gopher Request App and allow users to engage and order directly with your business. No need for integration cost, contracts or depleted margins. (!) If you do not have a website or URL, please enter <a href="mailto:deals@gophergo.io">deals@gophergo.io</a> and we'll provide you a link with alternative options to showcase your deal.</span></span>
+            <label>Website for Online Ordering</label>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">Please enter your online ordering website address (especially if different from your main website). The URL submitted will be shown in a web view that allows Gopher users to order directly from you. (!) If you do not have a website or URL, please check the box below and continue with your registration &mdash; this will prompt us to email you to ensure customers know how to order from you directly on site.</span></span>
           </div>
           <input type="url" name="website" placeholder="https://yourbusiness.com">
+        </div>
+        <div class="field addr-mobile-field">
+          <label class="addr-mobile-toggle">
+            <input type="checkbox" name="no_online_ordering" id="regNoOrdering" onchange="var h=document.getElementById('regNoOrderingHint'); if(h) h.hidden=!this.checked;">
+            <span>My business does not have online ordering</span>
+          </label>
+          <p class="field-hint addr-mobile-hint" id="regNoOrderingHint" hidden>No problem &mdash; we&rsquo;ll email you to set up how customers order from you directly on site. Deal requests for your business will include an estimated cost of items, which the Gopher covers up front.</p>
         </div>
         <div class="field">
           <label>Business Category</label>
@@ -2754,7 +2778,7 @@
         <div class="field">
           <div class="label-with-info">
             <label>Deal Offered</label>
-            <span class="info-btn" tabindex="0">i<span class="info-tip">You can offer whatever deal you want. We do recommend however offering something trackable and that feels exclusive to Gopher Marketplace users.</span></span>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">You can offer whatever deal you want. We do recommend however offering something trackable and that feels exclusive to Gopher Marketplace users. This will be redeemed by you on your site, so please make sure the redemption is simple and clear.</span></span>
           </div>
           <textarea name="deal" placeholder="e.g. 10% off your online order"></textarea>
         </div>
@@ -2778,40 +2802,99 @@
         </div>
 
         <div class="form-section-head">Business Owner Verification</div>
-        <div class="field">
-          <label>Owner Name</label>
-          <input type="text" name="owner_name" placeholder="Full name">
-        </div>
-        <div class="field">
-          <label>Owner Phone</label>
-          <div class="otp-row">
-            <input type="tel" name="owner_phone" placeholder="(555) 555-5555" oninput="resetOtp(this)">
-            <button type="button" class="btn-verify otp-send-btn" onclick="sendOtp(this)">Verify</button>
-          </div>
-          <!-- OTP is a front-end affordance only. Wire sendOtp()/checkOtp() to an SMS provider
-               (e.g. Twilio Verify). A code is only sent when the number is exactly 10 digits. -->
-          <div class="otp-confirm">
-            <p class="field-hint">Enter the 6-digit code we texted you.</p>
-            <div class="otp-code-row">
-              <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="••••••">
-              <button type="button" class="btn-verify" onclick="checkOtp(this)">Confirm</button>
+        <!-- Personal-Info parity (owner ruling 2026-07-14): these are EXACTLY the fields every
+             new Gopher account collects (minus photo — prompted at first sign-in to the Deals
+             dashboard or any Gopher platform). This info seeds the owner's Gopher account. -->
+        <p class="field-hint" style="margin:-4px 0 14px">This is the standard Personal Info for every Gopher account &mdash; it sets up your owner login. (You&rsquo;ll add a profile photo the first time you sign in.)</p>
+        <div class="field-row">
+          <div class="field">
+            <div class="label-with-info">
+              <label>First Name</label>
+              <span class="info-btn" tabindex="0">i<span class="info-tip">This is the business owner&rsquo;s legal name. Your Gopher account and anything tied to it use this name, so please use your legal name to avoid authorization issues.</span></span>
             </div>
+            <input type="text" name="owner_first_name" placeholder="Jamie">
           </div>
-          <span class="otp-verified">&check; Phone verified</span>
-          <input type="hidden" name="phone_verified" value="false">
+          <div class="field">
+            <div class="label-with-info">
+              <label>Last Name</label>
+              <span class="info-btn" tabindex="0">i<span class="info-tip">This is the business owner&rsquo;s legal name. Your Gopher account and anything tied to it use this name, so please use your legal name to avoid authorization issues.</span></span>
+            </div>
+            <input type="text" name="owner_last_name" placeholder="Lopez">
+          </div>
+        </div>
+        <div class="field-row">
+          <!-- DOB needs less width than Phone+Verify — lend it to the phone field. -->
+          <div class="field" style="flex:0.72">
+            <div class="label-with-info">
+              <label>Date of Birth</label>
+              <span class="info-btn" tabindex="0">i<span class="info-tip">Your date of birth is required to ensure you&rsquo;re old enough to use the platform. It also determines eligibility for certain requests with age restrictions.</span></span>
+            </div>
+            <input type="text" name="owner_dob" inputmode="numeric" maxlength="14" placeholder="MM / DD / YYYY" oninput="dcFormatDob(this)">
+          </div>
+          <div class="field" style="flex:1.28">
+            <div class="label-with-info">
+              <label>Phone</label>
+              <span class="info-btn" tabindex="0">i<span class="info-tip">Your phone number is how you sign in, as well as how you communicate with your Gopher through the app.</span></span>
+            </div>
+            <div class="otp-row">
+              <input type="tel" name="owner_phone" placeholder="(555) 555-5555" oninput="resetOtp(this)">
+              <button type="button" class="btn-verify otp-send-btn" onclick="sendOtp(this)">Verify</button>
+            </div>
+            <!-- OTP is a front-end affordance only. Wire sendOtp()/checkOtp() to an SMS provider
+                 (e.g. Twilio Verify). A code is only sent when the number is exactly 10 digits. -->
+            <div class="otp-confirm">
+              <p class="field-hint">Enter the 6-digit code we texted you.</p>
+              <div class="otp-code-row">
+                <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="••••••">
+                <button type="button" class="btn-verify" onclick="checkOtp(this)">Confirm</button>
+              </div>
+            </div>
+            <span class="otp-verified">&check; Phone verified</span>
+            <input type="hidden" name="phone_verified" value="false">
+          </div>
         </div>
         <div class="field">
-          <label>Owner Email</label>
-          <input type="email" name="owner_email" placeholder="you@business.com">
+          <div class="label-with-info">
+            <label>Email</label>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">Your email address is how you&rsquo;ll receive request confirmations, completed-request receipts, and app update info.</span></span>
+          </div>
+          <input type="email" name="owner_email" placeholder="you@email.com">
         </div>
         <div class="field">
-          <label>Owner Address</label>
-          <input type="text" name="owner_address" placeholder="Street, City, State, ZIP">
+          <div class="label-with-info">
+            <label>Address</label>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">Your physical address helps determine the activity level in your area. We&rsquo;re growing all over the nation and want to make sure we can set realistic expectations when tasks are requested.</span></span>
+          </div>
+          <input type="text" name="owner_address" placeholder="Street, City, State ZIP">
         </div>
         <div class="field">
-          <label>Referral Code <span class="field-optional">(if applicable)</span></label>
-          <input type="text" name="referral_code" placeholder="Enter your referrer's code">
-          <p class="field-hint">Were you referred to Gopher Deals by another business or a Gopher rep? Enter their code here — this is about your referral to the program and isn't shown to customers or tied to your deal.</p>
+          <label>Source &mdash; How did you discover Gopher?</label>
+          <select name="discovery_source" onchange="var r=document.getElementById('regReferredRow'); if(r) r.hidden = this.value !== 'Referral';">
+            <option value="">Select one&hellip;</option>
+            <option value="AI Search (ChatGPT, Gemini, etc.)">AI Search (ChatGPT, Gemini, etc.)</option>
+            <option value="Apple App Store">Apple App Store</option>
+            <option value="Facebook">Facebook</option>
+            <option value="Google Play Store">Google Play Store</option>
+            <option value="Gopher Deals">Gopher Deals</option>
+            <option value="iHeart Radio">iHeart Radio</option>
+            <option value="Indeed">Indeed</option>
+            <option value="Instagram">Instagram</option>
+            <option value="Nextdoor">Nextdoor</option>
+            <option value="Outdoor Signage">Outdoor Signage</option>
+            <option value="Reddit">Reddit</option>
+            <option value="Referral">Referral</option>
+            <option value="Web/Internet/Google Search">Web/Internet/Google Search</option>
+            <option value="X">X</option>
+            <option value="YouTube">YouTube</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <!-- Referred-by ONLY appears when Source = Referral. The referrer is identified by their
+             6-digit Gopher User ID; "Skip this" lets the owner proceed if they don't know it. -->
+        <div class="field" id="regReferredRow" hidden>
+          <label>Referred by &mdash; Gopher User ID</label>
+          <input type="text" name="referred_by_gopher_id" inputmode="numeric" maxlength="6" placeholder="6-digit User ID">
+          <p class="field-hint">Don&rsquo;t know it? <a href="#" onclick="var r=document.getElementById('regReferredRow'); if(r){ r.hidden=true; r.querySelector('input').value=''; } return false;">Skip this</a></p>
         </div>
 
         <button class="modal-submit" onclick="openPreview('merchant')">Review my deal</button>
@@ -3422,6 +3505,13 @@
       wrap.appendChild(chip);
     });
     updateKeywordAddState(which);
+    // adding a keyword satisfies the ≥1 rule — stop the pulsing alert immediately
+    if (which === 'merchant' && store.list.length > 0) {
+      var kb = document.querySelector('#modal-merchant .keyword-add');
+      if (kb) kb.classList.remove('attn-pulse');
+      var ki = document.getElementById('kw-input');
+      if (ki && typeof dcClear === 'function') dcClear(ki);
+    }
   }
   function addKeyword(which) {
     which = which || 'merchant';
@@ -3693,6 +3783,14 @@
     el.value = o;
   }
   function dcIsEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s||'').trim()); }
+  function dcFormatDob(el){
+    var d = (el.value||'').replace(/\D/g,'').slice(0,8), o = '';
+    if (d.length)      o = d.slice(0,2);
+    if (d.length >= 3) o += ' / ' + d.slice(2,4);
+    if (d.length >= 5) o += ' / ' + d.slice(4);
+    el.value = o;
+  }
+  function dcIsDob(s){ return /^\d{2} \/ \d{2} \/ \d{4}$/.test((s||'').trim()); }
   function dcSetErr(inp, msg){
     var field = inp.closest('.field') || inp.parentNode;
     var err = field.querySelector('.field-err');
@@ -3718,6 +3816,7 @@
     }
     if (modalId === 'modal-merchant'){
       need('input[name="business_name"]', 'Business name is required.');
+      need('input[name="tagline"]', 'Tagline is required — no formal tagline? Enter any sub-header you like under your business name.');
       var logo = modal.querySelector('input[name="logo"]');
       if (logo){
         var lf = logo.closest('.field') || logo.parentNode.parentNode;
@@ -3734,11 +3833,22 @@
       need('textarea[name="deal"]', 'Tell us the deal you’re offering.');
       var kws = (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list) || [];
       var kwInp = modal.querySelector('#kw-input');
-      if (kwInp){ if (kws.length < 1) bad(kwInp, 'Add at least one searchable keyword.'); else { kwInp.classList.remove('field-invalid'); dcSetErr(kwInp,''); } }
-      need('input[name="owner_name"]', 'Owner name is required.');
-      need('input[name="owner_phone"]', 'Owner phone is required.');
-      need('input[name="owner_email"]', 'Owner email is required.');
-      need('input[name="owner_address"]', 'Owner address is required.');
+      var kwBox = modal.querySelector('.keyword-add');   // standard reddish pulsing shadow alert
+      if (kwInp){
+        if (kws.length < 1){ bad(kwInp, 'Add at least one searchable keyword.'); if (kwBox) kwBox.classList.add('attn-pulse'); }
+        else { kwInp.classList.remove('field-invalid'); dcSetErr(kwInp,''); if (kwBox) kwBox.classList.remove('attn-pulse'); }
+      }
+      need('input[name="owner_first_name"]', 'First name is required.');
+      need('input[name="owner_last_name"]', 'Last name is required.');
+      var dob = modal.querySelector('input[name="owner_dob"]');
+      if (dob){
+        if (!dcIsDob(dob.value)) bad(dob, 'Enter date of birth as MM / DD / YYYY.');
+        else { dob.classList.remove('field-invalid'); dcSetErr(dob,''); }
+      }
+      need('input[name="owner_phone"]', 'Phone is required.');
+      need('input[name="owner_email"]', 'Email is required.');
+      need('input[name="owner_address"]', 'Address is required.');
+      need('select[name="discovery_source"]', 'Tell us how you discovered Gopher.');
     } else {
       need('input[name="first_name"]', 'First name is required.');
       need('input[name="last_name"]', 'Last name is required.');
@@ -3776,7 +3886,7 @@
   (function(){
     function wire(mid){
       var modal = document.getElementById(mid); if (!modal) return;
-      modal.querySelectorAll('input[name="business_name"], input[name="owner_name"], input[name="first_name"], input[name="last_name"]').forEach(function(inp){
+      modal.querySelectorAll('input[name="business_name"], input[name="owner_first_name"], input[name="owner_last_name"], input[name="first_name"], input[name="last_name"]').forEach(function(inp){
         inp.addEventListener('blur', function(){ var v = inp.value; if (v && v === v.toLowerCase()) inp.value = dcTitleCase(v); }); // only fix all-lowercase; leave intentional casing (IHOP, McDonald's)
       });
       modal.querySelectorAll('input[name="owner_phone"], input[name="sms"]').forEach(function(inp){
@@ -4071,6 +4181,9 @@
       </div>
 
       <button class="portal-submit" id="signInBtn" disabled>Sign in →</button>
+      <div class="portal-meta">
+        <label class="checkbox-row"><input type="checkbox" id="dlRememberMe" checked> Remember me</label>
+      </div>
 
       <button type="button" class="portal-divider" id="newToggle" aria-expanded="false" aria-controls="signupPaths">New to Gopher Deals? <span class="portal-divider-chev">▾</span></button>
 
@@ -4361,6 +4474,7 @@
     </nav>
 
     <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="backMain">← Back to main page</button>
       <button class="dash-signout" id="signOut">← Sign out</button>
     </div>
   </aside>
@@ -4880,11 +4994,21 @@
   $('sendSmsOtpBtn').addEventListener('click', function(){
     openOtp($('signinPhone').value, function(){ signinVerified = true; $('smsVerified').hidden = false; refreshGates(); doSignIn(); });
   });
+  /* --- Remember me: a checked sign-in persists the session in localStorage
+         until Sign out; openPortal then bypasses credentials entirely. --- */
+  var REMEMBER_KEY = 'gopherRemember.deals';
+  function getRemembered(){ try{ return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); }catch(e){ return null; } }
+  function setRemembered(data){ try{ localStorage.setItem(REMEMBER_KEY, JSON.stringify(data)); }catch(e){} }
+  function clearRemembered(){ try{ localStorage.removeItem(REMEMBER_KEY); }catch(e){} }
+
   // A verified OTP logs the user straight in; this stays as a no-JS-needed fallback.
   function doSignIn(){
     if(typeof signinVerified !== 'undefined' && !signinVerified) return;
     var em = $('signinEmail').value.trim();
     var nm = em ? em.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); }) : '';
+    var rm = $('dlRememberMe');
+    if(rm && rm.checked) setRemembered({ name: nm, role: signinRole });
+    else clearRemembered();
     enterDashboard({ name: nm });
   }
   $('signInBtn').addEventListener('click', doSignIn);
@@ -5536,7 +5660,7 @@ var PAY_BADGES = {
   }
 
     /* ---- merged-page integration ---- */
-  function openPortal(){ showView('signinView'); var rmRole=document.querySelector('#signinView .portal-role[data-role="merchant"]'); if(rmRole) rmRole.click(); var sp=$('signupPaths'); if(sp) sp.hidden=true; var nt=$('newToggle'); if(nt) nt.setAttribute('aria-expanded','false'); $('loginScreen').classList.remove('hidden'); window.scrollTo(0,0); }
+  function openPortal(){ var saved=getRemembered(); if(saved){ role = saved.role || role; enterDashboard({ name: saved.name }); return; } showView('signinView'); var rmRole=document.querySelector('#signinView .portal-role[data-role="merchant"]'); if(rmRole) rmRole.click(); var sp=$('signupPaths'); if(sp) sp.hidden=true; var nt=$('newToggle'); if(nt) nt.setAttribute('aria-expanded','false'); $('loginScreen').classList.remove('hidden'); window.scrollTo(0,0); }
   function closePortal(){ $('loginScreen').classList.add('hidden'); if(location.hash==='#login'){ try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){ location.hash=''; } } }
   /* Deep link: arriving at gopher-deals.html#login opens the portal (matches Connect/Request) */
   function maybeOpenFromHash(){
@@ -5545,7 +5669,11 @@ var PAY_BADGES = {
   }
   window.addEventListener('hashchange', maybeOpenFromHash);
   if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', maybeOpenFromHash); } else { maybeOpenFromHash(); }
-  $('signOut').addEventListener('click', function(){ $('dashboard').classList.remove('open'); });
+  // Remember me ends at Sign out — the next login asks for credentials again.
+  $('signOut').addEventListener('click', function(){ clearRemembered(); $('dashboard').classList.remove('open'); });
+  // Back to main page — lightweight exit: keeps the signed-in session, so the
+  // next login drops the user straight back into the dashboard via Remember me.
+  $('backMain').addEventListener('click', function(){ $('dashboard').classList.remove('open'); window.scrollTo(0,0); });
   $('loginScreen').addEventListener('click', function(e){ if(e.target===$('loginScreen')) closePortal(); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ if(!$('otpOverlay').hidden){ closeOtp(); } else if(!$('loginScreen').classList.contains('hidden')){ closePortal(); } } });
   /* Hook the shared Gopher header: clicking "Gopher Deals" in Login/Sign-Up opens this portal in-place */
