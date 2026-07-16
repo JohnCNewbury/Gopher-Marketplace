@@ -983,7 +983,7 @@ document.addEventListener('click',function(e){
  else if(act==='bid'){ if(order) openBidsList(order); return; }
  else if(act==='confirm'){ if(order) openConfirmCompletion(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
- else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
+ else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.disputed&&r.substage==='completed'){ openConfirmCompletion(order); } else if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
  else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
 });
 window.__onJobStarted=function(order){ var o=order||((GReq.all()[0]||{}).order); if(o){ GReq.update(o,{stage:'active',attention:null}); renderPending(); } };
@@ -1153,7 +1153,7 @@ function openConfirmCompletion(order){
   var det=o.querySelector('.cc-details'), body=o.querySelector('.cc-detailsbody');
   if(det) det.onclick=function(){ var open=body.style.display!=='none'; body.style.display=open?'none':'block'; det.textContent=open?'TAP TO VIEW DETAILS':'HIDE DETAILS'; };
   var cf=o.querySelector('.cc-confirm'), dp=o.querySelector('.cc-dispute');
-  if(cf) cf.onclick=function(){ GReq.update(order,{ confirmed:1, attention:{ type:'rate', label:'Rate '+who+' \u2014 job complete' } }); o.remove(); renderPending(); toast('Completion confirmed \u2014 receipt emailed, payment released'); openRateModal(order); };
+  if(cf) cf.onclick=function(){ GReq.update(order,{ confirmed:1, disputed:0, disputeNote:null, attention:{ type:'rate', label:'Rate '+who+' \u2014 job complete' } }); o.remove(); renderPending(); toast('Completion confirmed \u2014 receipt emailed, payment released'); openRateModal(order); };
   if(dp) dp.onclick=function(){ o.remove(); openDispute(order); };
 }
 function openDispute(order){
@@ -1168,7 +1168,11 @@ function openDispute(order){
   var ta=o.querySelector('.dp-reason'), btn=o.querySelector('.dp-submit'), back=o.querySelector('.dp-back');
   if(ta) ta.oninput=function(){ var ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#e0623d':'#eecabd'; btn.style.cursor=ok?'pointer':'not-allowed'; };
   if(back) back.onclick=function(){ o.remove(); openConfirmCompletion(order); };
-  if(btn) btn.onclick=function(){ if(ta.value.trim().length<3) return; GReq.update(order,{ disputed:1, attention:null, when:'Issue reported \u00b7 under review' }); o.remove(); renderPending(); toast('Report submitted \u2014 our team will review and follow up.'); };
+  if(btn) btn.onclick=function(){ if(ta.value.trim().length<3) return;
+    // Keep the comments \u2014 the harness relays them to the Gopher so they see WHY, immediately.
+    var cur=GReq.get(order)||{};
+    GReq.update(order,{ disputed:1, disputeNote:ta.value.trim(), disputeSeq:((+cur.disputeSeq)||0)+1, attention:null, when:'Issue reported \u00b7 under review' });
+    o.remove(); renderPending(); toast('Report submitted \u2014 '+who+' has been notified and our team will follow up.'); };
 }
 // Rate your Gopher \u2014 opens when the worker marks the job complete (attention.type==='rate').
 function openRateModal(order){
@@ -1373,6 +1377,7 @@ function openAdjustReview(order){
   var ap=o.querySelector('.adj-approve'), dc=o.querySelector('.adj-decline');
   if(ap) ap.onclick=function(){
     GReq.update(order,{ pay:A.offer, cost:A.cost, amount:'$'+A.total.toFixed(2), attention:null,
+      disputed:0, disputeNote:null,   // approving the adjustment resolves an open dispute
       adjustDecision:{seq:p.seq, approved:true, newOffer:A.offer, newCost:A.cost} });
     delete PENDING_ADJ[order]; o.remove();
     try{ if(renderPending) renderPending(); }catch(_){}

@@ -1932,6 +1932,10 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(j.mode==='bid'){
         pay='<div class="rq-payk">This request is open to bids</div><div class="rq-payv">You set your price</div>'
           +'<div class="rq-paysub">'+(j.per?('Typical rate '+j.per+' &middot; '):'')+'the requester compares bids &amp; picks a Gopher</div>';
+      } else if(j.disputed){
+        // Dispute state \u2014 the pay card goes RED: payment is on hold until the issue is resolved.
+        pay='<div class="rq-payk" style="color:#ffd7de;">Payment on hold</div><div class="rq-payv" style="color:#fff;">'+(j.amt||'\u2014')+'</div>'
+          +'<div class="rq-paysub" style="color:#ffd7de;">held while you and '+who+' resolve the reported issue</div>';
       } else {
         var costN=+j.cost||0;
         pay='<div class="rq-payk">You&#8217;ll receive</div><div class="rq-payv">'+(j.amt||'\u2014')+'</div>'
@@ -1940,6 +1944,20 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
               ? '<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Plus <b>$'+costN+'</b> for items you buy &mdash; reimbursed in full at drop-off</div>'
               : (purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':''));
       }
+      // Dispute card \u2014 the requester's own comments, plus the two resolution paths: message them
+      // (most disputes resolve by talking) and the cost adjustment (short/missing items \u2192 fix the
+      // charge, they approve on the spot). The adjustment seam MUST stay available here.
+      const dEsc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const disputeCard = j.disputed
+        ? '<div class="rq-sec" style="color:#C44257;">Issue reported</div>'
+          +'<div class="rq-card" style="border:1.5px solid #e3a5ae;background:#FDECE6;">'
+          +'<div style="font-family:Nunito;font-weight:900;font-size:13.5px;color:#C44257;">&#9873; '+who+' reported an issue with this job</div>'
+          +(j.disputeNote?'<div style="margin:9px 0;padding:9px 12px;border-radius:10px;background:#fff;border:1px solid #f3c3b2;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#5b2431;line-height:1.55;">&ldquo;'+dEsc(j.disputeNote)+'&rdquo;</div>':'')
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a5a5a;line-height:1.5;margin:'+(j.disputeNote?'0':'8px')+' 0 10px;">Payment is on hold. Most issues get resolved by talking it through &mdash; reach out to '+who+' now. If something was missed or short (wrong count, missing item), send a <b>cost adjustment</b> and they can approve it on the spot.</div>'
+          +'<button class="js-dispmsg" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:13.5px;cursor:pointer;">Message '+String(who||'the requester').split(' ')[0]+' now</button>'
+          +'<button class="js-dispadjust" style="width:100%;margin-top:8px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:11px;padding:11px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Send a cost adjustment</button>'
+          +'</div>'
+        : '';
       // location — a destination-only request (e.g. day labor at one site) has NO pick-up: show one row.
       const hasPickup = !!(j.pickup && String(j.pickup).trim());
       const dropLabel = hasPickup ? 'Drop-off' : 'Location';
@@ -2081,7 +2099,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +acceptedNote
         +coStatus
         +bidStatus
-        +'<div class="rq-card rq-pay">'+pay+'</div>'
+        +'<div class="rq-card rq-pay"'+(j.disputed?' style="background:linear-gradient(160deg,#5b1220,#93273b);"':'')+'>'+pay+'</div>'
+        +disputeCard
         +bidSection
         +payActions
         +crewNote
@@ -2164,6 +2183,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const tosLink=$('.js-tos'); if(tosLink) tosLink.onclick=()=>showModal('<h3>Terms of Service</h3><p>By placing a bid or accepting a request, you agree to complete it as proposed. Unapproved cancellations after acceptance may incur a cancellation fee. Full terms are available on the Gopher website.</p><button class="mclose">Close</button>');
       const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
       const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
+      // Dispute resolution CTAs — contact the requester, or fix the charge (adjust-only sheet).
+      const dmsg=$('.js-dispmsg'); if(dmsg) dmsg.onclick=()=>openGoMsgSheet(goConvoForJob(j));
+      const dadj=$('.js-dispadjust'); if(dadj) dadj.onclick=()=>openUpdateSheet('completed', true);
     }
     // Purchase-needed acknowledgment — the accept-flow deterrent from the LIVE worker app, presented per
     // the designed screen (gopher-go-purchase-disclaimer-figma.html). Live parity: shown only when the
@@ -2202,7 +2224,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       };
     }
     // Update request — advance the job, adjust the CHARGE (offer + item cost), or cancel.
-    function openUpdateSheet(nk){
+    // adjOnly=true (dispute resolution) opens straight into the cost-adjustment panel and hides
+    // the advance/cancel actions — the job is already complete; only the charge is in question.
+    function openUpdateSheet(nk, adjOnly){
       const nextStep = STATUS_FLOW.find(s=>s.key===nk) || {label:'Next step', cta:'Continue'};
       const curOffer = parseInt(String(j.amt||'').replace(/[^0-9]/g,'')) || amtNum || 0;
       const curCost = (+j.cost||0);
@@ -2265,6 +2289,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       };
       const panel=ov.querySelector('.js-costadj-panel'), toggle=ov.querySelector('.js-costadj-toggle');
       if(toggle) toggle.onclick=()=>{ const open=panel.style.display!=='none'; panel.style.display=open?'none':'block'; toggle.textContent=open?'Cost Adjustment':'Hide cost adjustment'; };
+      if(adjOnly){
+        const h=ov.querySelector('h3'); if(h) h.textContent='Cost adjustment';
+        const p1=ov.querySelector('p'); if(p1) p1.textContent='Fix the charge to match what was actually delivered — '+who+' can approve it on the spot.';
+        const advB=ov.querySelector('.js-advance'); if(advB && advB.parentElement) advB.parentElement.style.display='none';
+        const cxl=ov.querySelector('.js-cancelreq'); if(cxl) cxl.style.display='none';
+        if(toggle) toggle.style.display='none';
+        if(panel) panel.style.display='block';
+      }
       const offerEl=ov.querySelector('.js-upoffer'), totEl=ov.querySelector('.js-uptotal'), costEl=ov.querySelector('.js-upcost');
       function syncTotal(){ const o=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0; if(totEl) totEl.textContent='$'+o; }
       if(offerEl) offerEl.oninput=syncTotal;
@@ -2706,6 +2738,7 @@ if(PT){
     function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
     if(job.adjust){ job.adjust.status = approved ? 'approved' : 'declined'; }
     if(approved){ if(newOffer!=null) job.amt='$'+newOffer; if(newCost!=null) job.cost=(+newCost||0);
+      job.disputed=0; job.disputeNote=null;   // an approved adjustment resolves an open dispute
       toast('✅ '+(job.who||'The requester')+' approved your cost adjustment');
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'Cost Adjustment Approved',sub:'Select here to view',onTap:openJob}); }
     else { toast((job.who||'The requester')+' declined the adjustment — the original charge stands');
@@ -2747,10 +2780,24 @@ if(PT){
       +'<p style="text-align:center;">'+String(who||'Your requester')+' added you as a <b>Favorite Gopher</b> &mdash; you&rsquo;ll get priority on their future requests.</p>'
       +'<button class="mclose">Got it</button>');
   };
+  // Requester reported an issue (dispute) — notify the worker IMMEDIATELY, with their comments.
+  // The job detail flips to the dispute state (red pay-on-hold card + message / cost-adjust CTAs).
+  window.__ptDisputed=function(id, note){
+    var job=window.__ptJobs[id]; if(!job) return;
+    job.disputed=1; job.disputeNote=String(note||'');
+    function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
+    toast('&#9873; '+(job.who||'The requester')+' reported an issue — payment on hold. Reach out to resolve.');
+    if(window.GopherBanner) GopherBanner.show({app:'go',title:'Issue Reported on Request #'+String(id).slice(-5),sub:'Select here to see why & resolve',onTap:openJob});
+    try{ if(current==='job-detail' && state.job===job){
+      var _h=stage.querySelector('.host'), _s=_h&&_h.shadowRoot;
+      if(!(_s && _s.querySelector('.modal-overlay'))) load('job-detail');   // never yank an open modal
+    } }catch(_){}
+  };
   window.__ptRated=function(id,stars,fav){
     var job=window.__ptJobs[id]; if(!job) return;
     job.rated=stars;                 // stored for the system only — never displayed
     job.confirmed=true; job.substage='completed';
+    job.disputed=0; job.disputeNote=null;   // confirming completion resolves any open dispute
     job.favorited=!!fav;             // requester's MY-Gophers state at confirm — drives the congrats modal
     // If the worker already rated before the confirm arrived, fire the congrats now (once).
     try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}

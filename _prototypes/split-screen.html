@@ -97,6 +97,7 @@
   var adjustDecided={}; // GReq order id -> last adjust approve/decline seq relayed back to Go
   var noShowAlerted={}; // GReq order id -> last no-show-timer seq the requester was alerted about
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
+  var disputeSeen={};   // GReq order id -> last dispute seq relayed to the Gopher
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
   var DEMO_GOPHER='Marcus';  // the one Gopher on the Go phone; a provider deal only surfaces here when it's directed to them
 
@@ -313,12 +314,42 @@
               // status 'applied' — same/lower total, no re-auth needed → reflect on the card immediately.
               var offer=+a.newOffer||0, cost=+a.newCost||0;
               var fee=Math.round(0.08*offer*100)/100; var total=offer+cost+fee;
-              l.GReq.update(id, { pay:offer, cost:cost, amount:'$'+total.toFixed(2) });
+              var patch2={ pay:offer, cost:cost, amount:'$'+total.toFixed(2) };
+              // Dispute-resolution path (e.g. 4 of 5 items → gopher lowers the charge): the reduced
+              // total applies instantly, the dispute clears, and the requester gets the confirm
+              // prompt back so the order can finish normally.
+              if(r.disputed){ patch2.disputed=0; patch2.disputeNote=null;
+                if(job.substage==='completed') patch2.attention={ type:'confirm', label:(r.hired||'Your Gopher')+' adjusted the charge to $'+total.toFixed(2)+' — confirm to close it out' };
+                // The Gopher's card stays on-hold (red) until the requester confirms — that's when
+                // pay is truly released; __ptRated clears it on their confirm+rate.
+                status('Gopher <b>lowered the charge</b> on disputed '+id+' → new total $'+total.toFixed(2)+' applied — confirm the completion on the left to close it out. ✅'); }
+              l.GReq.update(id, patch2);
               try{ if(l.renderPending) l.renderPending(); }catch(_){}
               try{ if(l.__adjustAlert) l.__adjustAlert(id, offer, cost, total); }catch(_){}
               adjustSeen[id]=a.seq;
               status('Gopher adjusted '+id+' with <b>no charge increase</b> → applied automatically (new total $'+total.toFixed(2)+').');
             }
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Request → shared store → Go: the requester DISPUTED the completion — the Gopher is notified
+        IMMEDIATELY with the requester's comments; their pay card flips to on-hold (red) with message +
+        cost-adjustment CTAs to resolve it. ── */
+  function watchDispute(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq){
+        var list=l.GReq.all()||[];
+        for(var i=0;i<list.length;i++){
+          var r=list[i];
+          if(r && r.disputed && r.disputeSeq && disputeSeen[r.order]!==r.disputeSeq){
+            if(!(w && w.__ptDisputed && w.__ptJobs && w.__ptJobs[r.order])){ continue; }   // Go not ready — retry next tick
+            try{ w.__ptDisputed(r.order, r.disputeNote||''); }catch(_){ continue; }
+            disputeSeen[r.order]=r.disputeSeq;
+            status('You <b>reported an issue</b> on '+r.order+' → the Gopher was notified immediately with your comments; their payment is on hold. They can <b>message you</b> or send a <b>cost adjustment</b> to resolve it. ⚑');
           }
         }
       }
@@ -459,7 +490,7 @@
     // live app) so a fresh demo run gets the Attention! acknowledgment again.
     try{ localStorage.removeItem('hideAcceptRequestAttentionModalChecked'); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; referralSeen=0;
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; disputeSeen={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -472,7 +503,7 @@
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchDispute(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
