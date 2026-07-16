@@ -70,8 +70,15 @@
       // EMAIL address (the ticket's "Address" meant email — a physical/
       // job-site address is required and is NOT flagged).
       /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
-      /\b(?:call|text|reach|hit)\s+me\b/i,
-      /\bmy\s+(?:number|cell|phone|email|digits)\b/i
+      /\b(?:call|text|reach|hit)\s+(?:me|you|u)\b/i,
+      /\bmy\s+(?:number|cell|phone|email|digits)\b/i,
+      // REQUESTING contact info is flagged the same as sharing it — there is
+      // ZERO reason to ask for a customer's number before being connected
+      // (owner, 2026-07-16: "What is your number?" pre-connection = TOP red
+      // flag). Adjacency keeps "your order number" / "your unit number"
+      // from false-positives ("your" must sit right next to the noun).
+      /\b(?:your|ur)\s+(?:number|phone|cell|mobile|digits|email|whats\s?app)\b/i,
+      /\bnumber\s+to\s+(?:call|text|reach)\b/i
     ],
     off_platform: [
       /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
