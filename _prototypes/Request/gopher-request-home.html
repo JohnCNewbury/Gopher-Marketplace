@@ -1251,6 +1251,8 @@ window.__counterAlert=__counterAlert;
 // updates. Favourable/agreed changes apply directly; no approval gate.
 // A cost adjustment that DIDN'T raise the charge (same/lower total) is applied automatically — a gentle
 // heads-up (you can always capture ≤ the original authorization, so no re-approval is needed).
+// EXCEPTION: dispute-resolution adjustments NEVER auto-apply — they always arrive as pending
+// (__adjustApproval) and go through the approve/decline gate, regardless of direction.
 function __adjustAlert(order, offer, cost, total){
   var r=GReq.get(order); var who=(r&&r.hired)||'Your Gopher';
   var ov=document.createElement('div');
@@ -1366,7 +1368,7 @@ function openAdjustReview(order){
   var o=gModal(
     '<div style="font-family:Nunito;font-weight:700;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:#8C8675;">Adjustment details</div>'
     +'<h3 class="gm-h" style="margin-top:2px;">Cost Adjustment</h3>'
-    +'<p class="gm-p" style="margin-bottom:6px;"><b>'+esc(who)+'</b> updated the charge on <b>#'+order+'</b>. Review the change and approve or decline.</p>'
+    +'<p class="gm-p" style="margin-bottom:6px;"><b>'+esc(who)+'</b> updated the charge on <b>#'+order+'</b>. '+(p.dispute?'This settles the issue you reported — review the change and approve or decline. Approving closes out the dispute; declining keeps it open and the original charge stands.':'Review the change and approve or decline.')+'</p>'
     +'<div style="border:1px solid #eceaf0;border-radius:12px;padding:2px 13px 8px;margin:6px 0 2px;background:#fbfafc;">'+rows+'</div>'
     +commentBlock
     +receiptBlock
@@ -1376,7 +1378,11 @@ function openAdjustReview(order){
   var rc=o.querySelector('.js-adj-receipt'); if(rc) rc.onclick=function(){ __reqReceiptViewer(__reqReceiptDemo()); };
   var ap=o.querySelector('.adj-approve'), dc=o.querySelector('.adj-decline');
   if(ap) ap.onclick=function(){
-    GReq.update(order,{ pay:A.offer, cost:A.cost, amount:'$'+A.total.toFixed(2), attention:null,
+    // Approving a dispute-resolution adjustment settles the issue — the confirm prompt comes back so the
+    // order closes out normally (pay releases on confirm, same as the standard completion path).
+    var cur=GReq.get(order)||{}; var wasDisputed=!!cur.disputed;
+    GReq.update(order,{ pay:A.offer, cost:A.cost, amount:'$'+A.total.toFixed(2),
+      attention: wasDisputed ? {type:'confirm', label:String(cur.hired||'Your Gopher')+' adjusted the charge to $'+A.total.toFixed(2)+' — confirm to close it out'} : null,
       disputed:0, disputeNote:null,   // approving the adjustment resolves an open dispute
       adjustDecision:{seq:p.seq, approved:true, newOffer:A.offer, newCost:A.cost} });
     delete PENDING_ADJ[order]; o.remove();

@@ -300,29 +300,23 @@
             var r=l.GReq.get(id); if(!r){ continue; }
             var a=job.adjust;
             if(a.status==='pending'){
-              // The change RAISES the charge → the requester must approve/decline before it applies.
+              // Raises the charge OR resolves a dispute → the requester must approve/decline before it applies.
               // Only mark relayed once the Request hook exists (else a mid-reload tick would swallow it).
               if(!l.__adjustApproval){ continue; }
               try{ l.__adjustApproval(id, {
                 seq:a.seq, origOffer:+a.origOffer||0, origCost:+a.origCost||0,
                 newOffer:+a.newOffer||0, newCost:+a.newCost||0, comment:a.comment||'',
-                hasReceipt:!!a.hasReceipt, ageRestricted:!!a.ageRestricted, trustShield:!!a.trustShield
+                hasReceipt:!!a.hasReceipt, dispute:!!a.dispute, ageRestricted:!!a.ageRestricted, trustShield:!!a.trustShield
               }); }catch(_){ continue; }
               adjustSeen[id]=a.seq;
-              status('Gopher <b>submitted a cost adjustment</b> on '+id+' (raises the charge) → waiting for the requester to <b>approve or decline</b>.');
+              status('Gopher <b>submitted a cost adjustment</b> on '+id+(a.dispute?' (dispute resolution)':' (raises the charge)')+' → waiting for the requester to <b>approve or decline</b>.');
             } else {
-              // status 'applied' — same/lower total, no re-auth needed → reflect on the card immediately.
+              // status 'applied' — same/lower total OUTSIDE a dispute, no re-auth needed → reflect immediately.
+              // (A dispute-resolution adjustment is NEVER 'applied' — it always relays as 'pending' and goes
+              //  through the requester's approve/decline gate, same protocol as any cost adjustment.)
               var offer=+a.newOffer||0, cost=+a.newCost||0;
               var fee=Math.round(0.08*offer*100)/100; var total=offer+cost+fee;
               var patch2={ pay:offer, cost:cost, amount:'$'+total.toFixed(2) };
-              // Dispute-resolution path (e.g. 4 of 5 items → gopher lowers the charge): the reduced
-              // total applies instantly, the dispute clears, and the requester gets the confirm
-              // prompt back so the order can finish normally.
-              if(r.disputed){ patch2.disputed=0; patch2.disputeNote=null;
-                if(job.substage==='completed') patch2.attention={ type:'confirm', label:(r.hired||'Your Gopher')+' adjusted the charge to $'+total.toFixed(2)+' — confirm to close it out' };
-                // The Gopher's card stays on-hold (red) until the requester confirms — that's when
-                // pay is truly released; __ptRated clears it on their confirm+rate.
-                status('Gopher <b>lowered the charge</b> on disputed '+id+' → new total $'+total.toFixed(2)+' applied — confirm the completion on the left to close it out. ✅'); }
               l.GReq.update(id, patch2);
               try{ if(l.renderPending) l.renderPending(); }catch(_){}
               try{ if(l.__adjustAlert) l.__adjustAlert(id, offer, cost, total); }catch(_){}
