@@ -287,6 +287,16 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   `file://` can never be allowlisted — reviewers must serve the folder
   (`python3 -m http.server 8123`).
 
+- **SEO quick wins — sitemap, robots, structured data (done 2026-07-15, launch-readiness §11).**
+  Added `sitemap.xml` (all 127 canonical URLs, `gophergo.io` base per the SEO-basics owner
+  decision) + `robots.txt` (allow-all + sitemap pointer; header comment notes it's inert on the
+  GitHub Pages subdirectory and becomes effective at the domain root). Injected JSON-LD
+  structured data on **108 pages**: schema.org `Service` (name/description/canonical/provider)
+  on all 107 service pages, `Organization` + `WebSite` on `index.html`. Generated from each
+  page's existing title/description/canonical (no invented content, no fake ratings);
+  idempotent script; all 108 blocks machine-validated + browser render check clean (header
+  mounts, 0 console errors). Tracked in `RFP/Gopher-Launch-Readiness-Checklist.md` §11.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
