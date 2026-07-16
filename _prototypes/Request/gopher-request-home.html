@@ -1609,8 +1609,10 @@ function openDetails(order){
     +'</div>';
   gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>'));
 }
-const IQ_ANSWER="I can help you start a request, find a deal, track an active request, or refer a friend \u2014 pick a quick action below, or tell me what you need and I'll point you to the right place.";
-function openIQ(){ gSheet('Gopher iQ','<p class="gs-sub">Tell us what you need \u2014 or tap a quick action.</p><div class="iq-row"><span class="iq-b">iQ</span><input class="iq-ask" id="iqAsk" placeholder="Ask Gopher iQ\u2026"><span class="iq-send" data-iq-send>\u2192</span></div><div class="iq-ans" id="iqAns" hidden></div><div class="iq-ctas"><button class="iq-cta" data-goto="flow">Start a request \u2192</button><button class="iq-cta" data-goto="deals">Browse deals \u2192</button><button class="iq-cta" data-goto="track">Track my request \u2192</button><button class="iq-cta" data-goto="refer">Refer &amp; earn \u2192</button></div><div class="gs-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'); }
+// Deals launch gate (Raleigh DMA only) \u2014 same flag the home Deals section honors.
+function __dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
+const IQ_ANSWER="I can help you start a request, "+(__dealsLive()?"find a deal, ":"")+"track an active request, or refer a friend \u2014 pick a quick action below, or tell me what you need and I'll point you to the right place.";
+function openIQ(){ gSheet('Gopher iQ','<p class="gs-sub">Tell us what you need \u2014 or tap a quick action.</p><div class="iq-row"><span class="iq-b">iQ</span><input class="iq-ask" id="iqAsk" placeholder="Ask Gopher iQ\u2026"><span class="iq-send" data-iq-send>\u2192</span></div><div class="iq-ans" id="iqAns" hidden></div><div class="iq-ctas"><button class="iq-cta" data-goto="flow">Start a request \u2192</button>'+(__dealsLive()?'<button class="iq-cta" data-goto="deals">Browse deals \u2192</button>':'')+'<button class="iq-cta" data-goto="track">Track my request \u2192</button><button class="iq-cta" data-goto="refer">Refer &amp; earn \u2192</button></div><div class="gs-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'); }
 function openRewards(){ gModal('<h3 class="gm-h">Gopher Rewards \u2014 launching 2027</h3><p class="gm-p">Gopher Rewards officially launches in <b>2027</b>. The good news: <b>every referral point you earn starts accumulating right now</b> toward points for cash \u2014 so referring early pays off when the program goes live.</p><button class="gm-close">Got it</button>'); }
 function openPoints(){ gSheet('Your points','<div class="pts-hero"><div class="pts-n">1,240</div><div class="pts-l">points \u00B7 $12.40 credit</div></div><p class="gs-sub" style="margin-top:12px;">Points become redeemable cash credit when Rewards launches in 2027 (100 pts = $10) \u2014 and they start accruing now.</p><div class="gs-sech">How you earn</div><div class="gs-list"><div class="gs-li">Refer a friend who completes a request \u2014 <b>+100 pts</b></div><div class="gs-li">Recommend MY Gopher(s) who gets hired \u2014 <b>+50 pts</b></div><div class="gs-li">Complete a request \u2014 <b>+10 pts</b></div></div><div class="gs-sech">Recent activity</div><div class="gs-list"><div class="gs-li">Referral \u00B7 Rosa P. joined \u2014 <b>+100</b></div><div class="gs-li">Request completed \u00B7 #GR-00187 \u2014 <b>+10</b></div></div>'); }
 function openHelp(){ gSheet('Help Center','<p class="gs-sub">Answers to common questions. Still stuck? Contact support.</p><div class="gs-list" style="margin-top:10px;"><div class="faq" data-faq>How do I place a request?<div class="faq-a">Tap a category on Home, add the details and your offer, then submit \u2014 nearby Gophers can accept it.</div></div><div class="faq" data-faq>How does pricing work?<div class="faq-a">You set the payment to your Gopher; a small Gopher fee is added at review. Any item costs are reimbursed separately.</div></div><div class="faq" data-faq>What is TrustShield?<div class="faq-a">A one-time ID verification for age-restricted orders, so you don\u2019t re-verify each time.</div></div><div class="faq" data-faq>Can I cancel a request?<div class="faq-a">Yes \u2014 before a Gopher is matched it\u2019s free; after matching, the cancellation policy may apply.</div></div></div><div class="gs-hint">Still need help? <span class="gs-link" data-goto="contact">Contact support</span></div>'); }
@@ -1628,7 +1630,7 @@ document.addEventListener('click',function(e){
     if(k==='social'){ openSocial(); return; }
     if(k==='refer'){ gClose(); gotoURL('gopher-request-refer.html'); return; }
     if(k==='flow'){ gClose(); gotoURL('gopher-request-flow.html'); return; }
-    if(k==='deals'){ gClose(); gotoURL('gopher-request-deals.html'); return; }
+    if(k==='deals'){ gClose(); if(!__dealsLive()){ toast('Gopher Deals isn’t available in your area yet'); return; } gotoURL('gopher-request-deals.html'); return; }
     if(k==='track'){ openTrack(); return; }
     if(k==='website'){ try{window.open('https://gophergo.io','_blank','noopener');}catch(_){} toast('Opening gophergo.io \u2192'); return; }
     if(k==='blog'){ try{window.open('https://gophergo.io/blog','_blank','noopener');}catch(_){} toast('Opening the Gopher blog \u2192'); return; }
@@ -1959,12 +1961,14 @@ document.addEventListener('click',function(e){
   function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
 
   // ---- intent engine: keyword -> { reply, chips } -------------------
+  // Deals launch gate (Raleigh DMA only) — flag decided at load; the split-screen toggle reboots the frame.
+  var DEALS_LIVE=(function(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } })();
   var CORE=[
     {label:'Start a request',go:1,act:'cat:delivery'},
     {label:'Browse deals',go:0,act:'nav:gopher-request-deals.html'},
     {label:'Track my request',go:0,act:'msg:track'},
     {label:'Refer & earn',go:0,act:'nav:gopher-request-refer.html'}
-  ];
+  ].filter(function(c){ return DEALS_LIVE || c.act!=='nav:gopher-request-deals.html'; });
   var CATS={delivery:'Delivery / Errand',junk:'Junk Removal',moving:'Moving',home:'Home / Office Services',
             labor:'Hourly / Day Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Something else'};
   function catChip(k){ return {label:'Start a '+CATS[k].split(' / ')[0].toLowerCase()+' request',go:1,act:'cat:'+k}; }
@@ -1998,7 +2002,9 @@ document.addEventListener('click',function(e){
     if(has('price','cost','fee','how much','charge',' pay ','expensive','cheap'))
       return {reply:"Here's how pricing works: you set the <b>worker payment</b> plus any <b>cost of items</b> — the Gopher sees the total. On top there's a small request fee by category (delivery starts at $0.99), an optional 8% instant-transfer rate, and $1.99 for age-restricted orders. Promo <b>GOPHER50</b> takes 50% off fees.",chips:[catChip('delivery')]};
     if(has('deal','discount','coupon','save','offer','promo'))
-      return {reply:"We've got local deals you can have delivered or picked up. Want to browse what's near you?",chips:[{label:'Browse deals',go:1,act:'nav:gopher-request-deals.html'}]};
+      return DEALS_LIVE
+        ? {reply:"We've got local deals you can have delivered or picked up. Want to browse what's near you?",chips:[{label:'Browse deals',go:1,act:'nav:gopher-request-deals.html'}]}
+        : {reply:"Gopher Deals isn't live in your area just yet — we're rolling it out market by market. In the meantime I can get you a Gopher for anything you need.",chips:[catChip('delivery')]};
     if(has('track','where','status',' eta','how long','on its way'))
       return {reply:"If you have an active request, its live card sits right on your Home screen — tap <b>Track</b> there to follow your Gopher in real time. No active request yet? Start one and I'll get you matched.",chips:[catChip('delivery')]};
     if(has('refer','invite','friend','earn','reward','points'))
