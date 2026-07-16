@@ -901,7 +901,9 @@ function openGoMsgSheet(c){
       if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t); }        // sync to the requester
       if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // canned reply only outside the split
     };
-    if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
+    // Connected = this thread's request is already matched (accepted). Baked demo convos simulate mid-job threads.
+    var _conn=(c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true;
+    if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ connected:_conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
   c.__appendIncoming=function(txt){ if(ov.parentNode) add('them', txt); };            // harness delivers requester replies here
   function close(){ c.__appendIncoming=null; ov.remove(); }
   ov.querySelector('.gomsg-x').onclick=close;
@@ -2517,7 +2519,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t); }        // sync this message to the requester's inbox
           if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // in the split the REAL requester replies — skip the canned auto-reply
         };
-        if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
+        // Connected = this thread's request is already matched (accepted). Baked demo convos simulate mid-job threads.
+        var _conn=(c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true;
+        if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ connected:_conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
       c.__appendIncoming=function(txt){ add('them', txt); };   // harness calls this when the requester replies
       body.querySelector('.js-send').onclick=function(){ send(inp.value); };
       inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });

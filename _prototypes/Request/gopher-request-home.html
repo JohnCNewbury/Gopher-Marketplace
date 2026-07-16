@@ -12,6 +12,9 @@
 <script src="gopher-banner.js"></script>
 <!-- G40-38 payment methods — shared store + UI (account Payment Info here; the checkout pay-picker in the flow reads the same session store). -->
 <script src="gopher-pay-store.js"></script>
+<!-- G40-35 shared in-app messaging guard — same module as the Go prototype + site surfaces,
+     so the moderation lexicon + the transaction-protection alert are tuned in ONE file. -->
+<script src="../../Final/assets/js/gopher-message-guard.js"></script>
 <style>
 :root{
   --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9; --green-tint:#E8F5EE;
@@ -1485,7 +1488,12 @@ function openInboxThread(order){
       +'<div style="display:flex;gap:8px;margin-top:8px;"><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
     var inp=body.querySelector('.it-in'), snd=body.querySelector('.it-send');
     var sc=body.querySelector('.it-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;   // grow with the convo, keep newest in view
-    function doSend(){ var t=(inp.value||'').trim(); if(!t) return; var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t}); GReq.update(order,{messages:mm}); renderT(); }
+    function doSend(){ var t=(inp.value||'').trim(); if(!t) return;
+      var deliver=function(){ var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t}); GReq.update(order,{messages:mm}); renderT(); };
+      // G40-35 messaging guard — connected = a Gopher is already matched on this request
+      // (relaxed contact rules + the connected variant of the transaction alert).
+      var rr1=GReq.get(order); var conn=!!(rr1 && (rr1.accepted || rr1.hired));
+      if(window.GopherMessageGuard){ GopherMessageGuard.guard(t,'request-home',{ connected:conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){} } }); } else { deliver(); } }
     if(snd) snd.onclick=doSend;
     if(inp){ inp.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); }); inp.focus(); }
   }
