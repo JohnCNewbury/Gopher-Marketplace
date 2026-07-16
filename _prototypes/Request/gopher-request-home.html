@@ -630,6 +630,13 @@ $('#dealsRail').innerHTML = DEALS_CATS.map(([k,title,desc,ico])=>`
     <div class="dn">${title}</div><div class="ds">${desc}</div>
   </div>`).join('');
 
+// ── Gopher Deals launch gate — Raleigh DMA only at launch. The split-screen "Deals" toggle
+//    (localStorage 'gopherDealsLive', default LIVE) simulates the market: OFF = the home Deals
+//    section is removed entirely, exactly as every non-Raleigh market gets the app at launch.
+if((function(){ try{ return localStorage.getItem('gopherDealsLive')==='0'; }catch(_){ return false; } })()){
+  var _dealsSec=document.querySelector('.sec.z-deals'); if(_dealsSec) _dealsSec.remove();
+}
+
 // Preserved for a later "active request" state (when there IS an active/pending
 // request, this card pins to the top of Home). Not rendered right now.
 const HUBS={

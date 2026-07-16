@@ -20,6 +20,9 @@
   .reset:hover{ background:rgba(120,170,255,.30); }
   .reset:active{ transform:translateY(1px); }
   .reset[disabled]{ opacity:.5; cursor:default; }
+  /* Deals launch gate (Raleigh-DMA-only rollout): green = live, red = gated off */
+  .reset.deals-on{ color:#b9f4cf; background:rgba(51,217,117,.16); border-color:rgba(51,217,117,.45); }
+  .reset.deals-off{ color:#ffc9c9; background:rgba(233,90,90,.16); border-color:rgba(233,90,90,.45); }
 
   .stage{ display:flex; gap:44px; justify-content:center; align-items:flex-start; padding:26px 20px 44px; flex-wrap:wrap; }
   .col{ display:flex; flex-direction:column; align-items:center; gap:10px; }
@@ -42,6 +45,7 @@
 <div class="bar">
   <h1><span class="dot"></span> Gopher · Request ↔ Go — live</h1>
   <span class="spacer"></span>
+  <button id="dealsLive" class="reset" type="button" title="Launch gate — Gopher Deals is Raleigh-DMA-only at launch. Toggle OFF to see the apps as every other market gets them (no Deals surfaces).">Deals: …</button>
   <button id="resetDemo" class="reset" type="button" title="Clear both phones and start fresh">↺ Reset demo</button>
   <div class="status" id="status">Two real apps sharing one in-browser database. In the <b>Request</b> phone (left), tap <b>＋ start a request</b>, fill in the details and submit — it appears live as a job on the <b>Go</b> phone (right) with a notification. Accept it there to update the request.</div>
 </div>
@@ -496,6 +500,34 @@
     reqFrame.onload=done; goFrame.onload=done;
   }
   if(resetBtn) resetBtn.addEventListener('click', resetDemo);
+
+  /* ── Deals launch gate (Raleigh DMA only at launch) ──────────────────────────────────────────
+        One shared flag (localStorage 'gopherDealsLive', same-origin with both phones): ON = the
+        Raleigh experience (Deals everywhere it's built), OFF = every other market — no Deals
+        surfaces on either phone, but all the rest of the new UX ships as-is. The flag survives
+        ⟳ Reset demo on purpose: the gate is market state, not demo state. ── */
+  var dealsBtn=document.getElementById('dealsLive');
+  function dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
+  function paintDealsBtn(){ if(!dealsBtn) return; var on=dealsLive();
+    dealsBtn.textContent = on ? 'Deals: LIVE · Raleigh DMA' : 'Deals: OFF · other markets';
+    dealsBtn.classList.toggle('deals-on', on); dealsBtn.classList.toggle('deals-off', !on); }
+  function toggleDeals(){
+    var next=dealsLive()?'0':'1';
+    try{ localStorage.setItem('gopherDealsLive', next); }catch(_){}
+    paintDealsBtn();
+    // Reboot both phones so every Deals surface re-renders under the new gate (store is kept).
+    if(dealsBtn) dealsBtn.disabled=true;
+    var v='&v='+Date.now();
+    reqFrame.src=reqFrame.getAttribute('data-src')+v;
+    goFrame.src=goFrame.getAttribute('data-src')+v;
+    var pending=2;
+    function done(){ if(--pending<=0){ if(dealsBtn) dealsBtn.disabled=false;
+      status(next==='1'
+        ? 'Gopher Deals is <b>LIVE</b> (Raleigh DMA experience) — Deals surfaces are back on both phones.'
+        : 'Gopher Deals is <b>OFF</b> — this is the launch experience <b>outside the Raleigh DMA</b>: no Deals on either phone; everything else unchanged.'); } }
+    reqFrame.onload=done; goFrame.onload=done;
+  }
+  if(dealsBtn){ paintDealsBtn(); dealsBtn.addEventListener('click', toggleDeals); }
 
   function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchDispute(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
