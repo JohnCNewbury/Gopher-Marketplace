@@ -35,6 +35,9 @@
   /* ---- CONFIG (edit freely) -------------------------------------- */
   var CONFIG = {
     policyUrl: 'gopher-terms.html',   // relative + case-exact (GitHub Pages/Linux)
+    // "In-App Messaging Terms" link on the transaction-protection alert — points directly
+    // at the Terms of Service (absolute so it works from the site AND the _prototypes tree).
+    termsUrl: 'https://gophergo.io/gopher-terms-of-service.html',
     learnMoreUrl: 'gopher-faqs.html#staying-in-app',
     // Escalation is PER USER (across all threads). 1st hit -> level 1,
     // 2nd -> level 2, 3rd and beyond -> level 3 (blocked). Tune to taste.
@@ -67,8 +70,15 @@
       // EMAIL address (the ticket's "Address" meant email — a physical/
       // job-site address is required and is NOT flagged).
       /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
-      /\b(?:call|text|reach|hit)\s+me\b/i,
-      /\bmy\s+(?:number|cell|phone|email|digits)\b/i
+      /\b(?:call|text|reach|hit)\s+(?:me|you|u)\b/i,
+      /\bmy\s+(?:number|cell|phone|email|digits)\b/i,
+      // REQUESTING contact info is flagged the same as sharing it — there is
+      // ZERO reason to ask for a customer's number before being connected
+      // (owner, 2026-07-16: "What is your number?" pre-connection = TOP red
+      // flag). Adjacency keeps "your order number" / "your unit number"
+      // from false-positives ("your" must sit right next to the noun).
+      /\b(?:your|ur)\s+(?:number|phone|cell|mobile|digits|email|whats\s?app)\b/i,
+      /\bnumber\s+to\s+(?:call|text|reach)\b/i
     ],
     off_platform: [
       /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
@@ -94,43 +104,43 @@
      copy; everything else gets the stay-in-app circumvention copy. */
   function familyOf(policy) { return policy === 'conduct' ? 'conduct' : 'offplatform'; }
 
-  /* ---- MODAL COPY — two families, three escalation levels each ------
-     The tripped policy picks the family (familyOf). Verdict-by-level is
-     identical across families (1,2 = warn; 3 = block); only the wording
-     changes so a foul-language hit doesn't show "stay in the app" text.   */
+  /* ---- MODAL COPY ----------------------------------------------------
+     OFF-PLATFORM family (owner revision 2026-07-16): ONE alert, in TWO
+     variants keyed by CONNECTION STATE — is this thread attached to a
+     request the two parties are already matched on? Both variants offer
+     "Edit message" (green) and "Send as-is" (blue, red pulsing shadow —
+     the message goes out FLAGGED for human review), with an
+     "In-App Messaging Terms" link underneath. No hard block: a real
+     human reviews flags instead ("we'll always have a real human remove
+     any flags that had the best intentions").
+     CONDUCT family keeps the original three escalation levels.           */
   var COPY = {
     offplatform: {
-      1: {
-        verdict: 'warn',
+      notConnected: {
         title: 'Keep Your Transaction Protected',
-        body: 'It looks like this conversation may be encouraging payment or ' +
-              'communication outside of Gopher. Keeping everything in the app ' +
-              'protects both parties with secure payments, dispute resolution, ' +
-              'ratings, and fraud protection.',
-        primary: 'Continue in Gopher',
-        secondary: 'Learn More',
-        secondaryUrl: function () { return CONFIG.learnMoreUrl; }
+        body: 'It looks like this conversation may be encouraging communication ' +
+              'and/or transactions outside of Gopher. Keeping everything in the ' +
+              'app protects both parties with secure payments, dispute ' +
+              'resolution, ratings, and fraud protection. You can edit your ' +
+              'message to avoid it being sent as-is, which is currently flagged. ' +
+              'Once a customer and a worker are connected, communication alerts ' +
+              'are relaxed considering exchanging personal info may be part of ' +
+              'the request.'
       },
-      2: {
-        verdict: 'warn',
-        title: 'Possible Policy Violation',
-        body: 'Messages requesting Cash App, Venmo, Zelle, dollar amounts, ' +
-              'phone numbers, email addresses, or asking someone to cancel and ' +
-              'pay outside of Gopher violate our Terms of Service. Continued ' +
-              'violations may result in account restrictions.',
-        primary: 'I Understand',
-        secondary: 'View Policy',
-        secondaryUrl: function () { return CONFIG.policyUrl; }
+      connected: {
+        title: 'Keep Your Transaction Protected',
+        body: 'It looks like this conversation may be encouraging communication ' +
+              'and/or transactions outside of Gopher. Keeping everything in the ' +
+              'app protects both parties with secure payments, dispute ' +
+              'resolution, ratings, and fraud protection. You can edit your ' +
+              'message to avoid it being sent as-is, which is currently flagged. ' +
+              'Please keep in mind we might flag a message incorrectly, so ' +
+              'apologies in advance — we’ll always have a real human remove ' +
+              'any flags that had the best intentions.'
       },
-      3: {
-        verdict: 'block',
-        title: 'Message Not Sent',
-        body: 'Your message appears to request payment or communication outside ' +
-              'of Gopher. To protect everyone on the platform, this message ' +
-              "wasn't delivered.",
-        primary: 'Edit Message',
-        secondary: null
-      }
+      editLabel: 'Edit message',
+      sendLabel: 'Send as-is',
+      termsLabel: 'In-App Messaging Terms'
     },
     conduct: {
       1: {
@@ -163,9 +173,10 @@
       }
     }
   };
-  // Back-compat alias: legacy callers / exposed `.levels` default to the
-  // off-platform family. verdict-by-level is shared, so check() can read here.
-  var LEVELS = COPY.offplatform;
+  // Verdict-by-level mapping (1,2 = warn; 3 = block) now lives on the conduct
+  // family only — off-platform hits are ALWAYS 'warn' (the user can Send as-is;
+  // the message just goes out flagged for human review).
+  var LEVELS = COPY.conduct;
 
   /* ---- escalation state — PER USER across all threads (in-memory;
      resets on reload). Prototype has one simulated user, so a single key
@@ -176,9 +187,15 @@
   /* ---- detection -------------------------------------------------- *
      Returns a verdict object whose shape matches /messages/precheck:
        { verdict:'allow'|'warn'|'block', policy, level, matched }      */
-  function check(text, threadId) {
+  function check(text, threadId, opts) {
+    opts = opts || {};
     var hits = [];
     for (var policy in PATTERNS) {
+      // Connected relaxation (owner, 2026-07-16): once a customer and a worker
+      // are CONNECTED on a request, exchanging personal info may be part of the
+      // job (call on arrival, gate codes, etc.) — the 'contact' patterns are
+      // skipped. Payment / off-platform / conduct stay checked.
+      if (opts.connected && policy === 'contact') continue;
       var list = PATTERNS[policy];
       for (var i = 0; i < list.length; i++) {
         if (list[i].test(text)) { hits.push(policy); break; }
@@ -191,10 +208,15 @@
     // for the production log/telemetry; the prototype just counts per user.
     counts[USER_KEY] = (counts[USER_KEY] || 0) + 1;
     var level = Math.min(counts[USER_KEY], CONFIG.blockAtLevel);
+    var family = familyOf(hits[0]);
     return {
-      verdict: LEVELS[level].verdict,
+      // Off-platform is never hard-blocked anymore — the alert offers Send
+      // as-is and the message goes out FLAGGED. Conduct keeps its block level.
+      verdict: family === 'offplatform' ? 'warn' : LEVELS[level].verdict,
       policy: hits[0],          // first category that tripped (log/telemetry)
-      family: familyOf(hits[0]),
+      family: family,
+      connected: !!opts.connected,
+      flagged: true,            // production: message delivers with a `flagged` field for human review
       level: level,
       threadId: threadId || null,
       matched: hits
@@ -215,15 +237,20 @@
   }
 
   /* ---- the public entry point ------------------------------------ *
-     guard(text, threadId, { onAllow, onBlocked })
-       onAllow    -> called when the message may be sent (no hit, OR a
-                     warn the user acknowledged). Wire your real send here.
-       onBlocked  -> called when the message is held back (level 3).      */
+     guard(text, threadId, { connected, onAllow, onBlocked })
+       connected  -> TRUE when this thread belongs to a request the two
+                     parties are already matched on. Picks the alert
+                     variant AND relaxes the 'contact' patterns.
+       onAllow    -> called when the message may be sent (no hit, OR the
+                     user chose "Send as-is" — flagged — OR acknowledged
+                     a conduct warn). Wire your real send here.
+       onBlocked  -> called when the message is held back ("Edit message"
+                     on the transaction alert, or a conduct level-3 block). */
   function guard(text, threadId, handlers) {
     handlers = handlers || {};
     var pass = handlers.onAllow || function () {};
     var stop = handlers.onBlocked || function () {};
-    var result = check(text, threadId);
+    var result = check(text, threadId, { connected: !!handlers.connected });
 
     if (result.verdict === 'allow') { pass(); return result; }
 
@@ -231,10 +258,14 @@
 
     showModal(result.level, {
       family: result.family,
+      connected: result.connected,
       onPrimary: function () {
-        if (result.verdict === 'block') { stop(result); }  // Edit Message -> hold
-        else { pass(); }                                    // acknowledged warn -> send
-      }
+        // Off-platform: primary = "Edit message" -> hold the message.
+        if (result.family === 'offplatform') { stop(result); return; }
+        if (result.verdict === 'block') { stop(result); }  // conduct block -> hold
+        else { pass(); }                                    // acknowledged conduct warn -> send
+      },
+      onSendAsIs: function () { pass(result); }  // flagged send — human review removes good-faith flags
     });
     return result;
   }
@@ -258,9 +289,18 @@
     '.gmg-btn-primary{background:var(--green,#33D975);color:#08130b}' +
     '.gmg-btn-primary:hover{filter:brightness(.95)}' +
     '.gmg-btn-secondary{background:transparent;color:#3a444b;text-decoration:underline}' +
+    // "Send as-is" — blue, with a reddish PULSING shadow (a visual "are you
+    // sure" without blocking the choice; the message goes out flagged).
+    '.gmg-btn-sendas{background:#002461;color:#fff;animation:gmg-pulse 1.6s ease-out infinite}' +
+    '.gmg-btn-sendas:hover{filter:brightness(1.12)}' +
+    '.gmg-terms{display:block;text-align:center;margin-top:14px;font-size:.85rem;' +
+      'color:#3a444b;text-decoration:underline;cursor:pointer}' +
     '.gmg-btn:focus-visible{outline:3px solid #1b73e8;outline-offset:2px}' +
     '@keyframes gmg-fade{from{opacity:0}to{opacity:1}}' +
-    '@media (prefers-reduced-motion:reduce){.gmg-overlay{animation:none}}';
+    '@keyframes gmg-pulse{0%{box-shadow:0 0 0 0 rgba(224,74,61,.55)}' +
+      '70%{box-shadow:0 0 0 11px rgba(224,74,61,0)}100%{box-shadow:0 0 0 0 rgba(224,74,61,0)}}' +
+    '@media (prefers-reduced-motion:reduce){.gmg-overlay{animation:none}' +
+      '.gmg-btn-sendas{animation:none;box-shadow:0 0 0 3px rgba(224,74,61,.4)}}';
     var s = document.createElement('style');
     s.id = STYLE_ID; s.textContent = css;
     document.head.appendChild(s);
@@ -272,7 +312,11 @@
     // Pick the copy family (defaults to off-platform so legacy 2-arg callers
     // that pass no family keep working unchanged).
     var fam = (handlers.family && COPY[handlers.family]) ? handlers.family : 'offplatform';
-    var L = COPY[fam][level];
+    // Off-platform: ONE alert in two connection-state variants (not leveled).
+    var offp = (fam === 'offplatform');
+    var L = offp
+      ? COPY.offplatform[handlers.connected ? 'connected' : 'notConnected']
+      : COPY[fam][level];
     var lastFocus = document.activeElement;
 
     var overlay = document.createElement('div');
@@ -295,7 +339,7 @@
 
     var primary = document.createElement('button');
     primary.className = 'gmg-btn gmg-btn-primary';
-    primary.textContent = L.primary;
+    primary.textContent = offp ? COPY.offplatform.editLabel : L.primary;
 
     function close() {
       document.removeEventListener('keydown', onKey, true);
@@ -309,7 +353,17 @@
 
     actions.appendChild(primary);
 
-    if (L.secondary) {
+    if (offp) {
+      // "Send as-is" — blue with the reddish pulsing shadow. Sends flagged.
+      var sendAs = document.createElement('button');
+      sendAs.className = 'gmg-btn gmg-btn-sendas';
+      sendAs.textContent = COPY.offplatform.sendLabel;
+      sendAs.addEventListener('click', function () {
+        close();
+        if (handlers.onSendAsIs) handlers.onSendAsIs();
+      });
+      actions.appendChild(sendAs);
+    } else if (L.secondary) {
       var secondary = document.createElement('button');
       secondary.className = 'gmg-btn gmg-btn-secondary';
       secondary.textContent = L.secondary;
@@ -321,6 +375,17 @@
     }
 
     card.appendChild(h); card.appendChild(p); card.appendChild(actions);
+
+    if (offp) {
+      // "In-App Messaging Terms" — sits below the buttons, points directly
+      // at the Terms of Service.
+      var terms = document.createElement('a');
+      terms.className = 'gmg-terms';
+      terms.textContent = COPY.offplatform.termsLabel;
+      terms.href = CONFIG.termsUrl;
+      terms.target = '_blank'; terms.rel = 'noopener';
+      card.appendChild(terms);
+    }
     overlay.appendChild(card);
     document.body.appendChild(overlay);
     primary.focus();
@@ -352,6 +417,6 @@
     config: CONFIG,
     patterns: PATTERNS,
     copy: COPY,
-    levels: LEVELS   // back-compat alias (off-platform family)
+    levels: LEVELS   // back-compat alias (now the conduct family — offplatform is variant-keyed, not leveled)
   };
 })(window);

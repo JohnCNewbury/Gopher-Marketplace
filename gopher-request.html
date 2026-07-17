@@ -8138,8 +8138,27 @@
     border-radius:10px; padding:10px 12px; margin:0 0 14px;
   }
   .deal-age-note.verified { background:var(--green-light); border-color:rgba(51,217,117,0.45); color:var(--green-dark); }
-  .deal-boost-note { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--green-dark); background:var(--green-light);
-    border-radius:10px; padding:9px 12px; margin:0 0 16px; }
+  /* gopher iQ fair-pay hint under the Pay to Gopher field */
+  .deal-iq-hint { display:flex; align-items:center; gap:7px; font-family:'DM Sans',sans-serif;
+    font-size:12px; color:var(--muted); margin-top:10px; padding:2px 2px 4px; }
+  .deal-iq-hint .iq-logo { height:16px; width:auto; flex:0 0 auto; display:block; }
+  /* Deal→request savings reframe (merchant deals): you already saved by ordering
+     direct — receipt-style comparison vs the delivery apps. */
+  .deal-save-note { font-family:'DM Sans',sans-serif; background:#f1fbf4; border:1px solid #cdeeda;
+    border-radius:12px; padding:13px 15px; margin:0 0 16px; }
+  .deal-save-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+    background:none; border:none; padding:0; cursor:pointer; text-align:left; }
+  .deal-save-toggle .dsn-chev { width:16px; height:16px; color:var(--green-dark); flex:0 0 auto; transition:transform .18s ease; }
+  .deal-save-toggle[aria-expanded="true"] .dsn-chev { transform:rotate(180deg); }
+  .deal-save-head { font-family:'Nunito',sans-serif; font-weight:900; font-size:13.5px; color:var(--navy); }
+  .deal-save-sub { font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
+  .deal-save-rows { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+  .deal-save-row { display:flex; align-items:baseline; gap:7px; font-size:12.5px; color:var(--navy); }
+  .deal-save-row .dsr-dots { flex:1; border-bottom:2px dotted #b7dfc4; transform:translateY(-3px); }
+  .deal-save-row .dsr-amt { font-weight:800; white-space:nowrap; }
+  .deal-save-row.dsr-total .dsr-lbl, .deal-save-row.dsr-total .dsr-amt { font-weight:900; color:var(--green-dark); }
+  .deal-save-foot { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; }
+  .deal-save-foot b { color:var(--navy); }
   .deal-req-modal .gr-modal-btn[disabled] { opacity:.5; cursor:not-allowed; }
 
   /* Merchant detail — large, fills the screen like the New Request card (web-view portal). */
@@ -16835,26 +16854,26 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // ROWS in the Personal info card are permanent markup additions (v54).
   const DEMO_USERS = [
     { id:1,     first:'John',  last:'Newbury',  dob:'02-03-1976',
-      phone:'(805) 624-1724', phoneDigits:'8056241724',
-      email:'johnnewbury@sbcglobal.net',
+      phone:'(919) 555-0124', phoneDigits:'9195550124',
+      email:'john.demo@gophergo.io',
       address:'405 Shorehouse Way, Holly Springs, NC 26540',
       city:'Holly Springs, NC',
       source:'Referral', referredBy:'Ken Newbury' },
     { id:29158, first:'Dave',  last:'Kreeger',  dob:'02-09-1972',
-      phone:'(919) 810-7821', phoneDigits:'9198107821',
-      email:'dmknc1@gmail.com',
+      phone:'(919) 555-0171', phoneDigits:'9195550171',
+      email:'dana.demo@gophergo.io',
       address:'3220 Banbury Way, Durham, NC 27707',
       city:'Durham, NC',
       source:'Referral', referredBy:'John Newbury' },
     { id:34,    first:'Tom',   last:'Livolsi',  dob:'06-12-1979',
-      phone:'(919) 986-0021', phoneDigits:'9199860021',
-      email:'tlivolsi@gophergo.io',
+      phone:'(919) 555-0143', phoneDigits:'9195550143',
+      email:'tony.demo@gophergo.io',
       address:'5313 Moonflower Ct, Holly Springs, NC 27540',
       city:'Holly Springs, NC',
       source:'Referral', referredBy:'John Newbury' },
     { id:10511, first:'Bryan', last:'Osborne',  dob:'06-20-1976',
-      phone:'(919) 395-8160', phoneDigits:'9193958160',
-      email:'drosborne@osbornechiropractic.com',
+      phone:'(919) 555-0160', phoneDigits:'9195550160',
+      email:'drosborne.demo@gophergo.io',
       address:'8120 Ortin Ln, Raleigh, NC 27612',
       city:'Raleigh, NC',
       source:'Referral', referredBy:'John Newbury' },
@@ -18085,8 +18104,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="info-card">
           <div class="info-card-head"><h4>Personal information</h4><button class="edit-btn" id="rqPersonalEditBtn">✎ Edit</button></div>
           <div class="info-row"><div class="info-label">Full name</div><div class="info-value" id="rqInfoName">John Newbury</div></div>
-          <div class="info-row"><div class="info-label">Email</div><div class="info-value" id="rqInfoEmail">johnnewbury@sbcglobal.net</div></div>
-          <div class="info-row"><div class="info-label">Phone</div><div class="info-value" id="rqInfoPhone">(805) 624-1724</div></div>
+          <div class="info-row"><div class="info-label">Email</div><div class="info-value" id="rqInfoEmail">john.demo@gophergo.io</div></div>
+          <div class="info-row"><div class="info-label">Phone</div><div class="info-value" id="rqInfoPhone">(919) 555-0124</div></div>
           <div class="info-row"><div class="info-label">Gopher account ID</div><div class="info-value" id="rqInfoAccountId">GPH-000001-NEWBURY</div></div>
           <div class="info-row"><div class="info-label">Status</div><div class="info-value">Active <span class="info-badge">Verified</span></div></div>
           <div class="info-row"><div class="info-label">Address</div><div class="info-value" id="rqInfoAddress">405 Shorehouse Way, Holly Springs, NC 27540</div></div>
@@ -23208,7 +23227,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       + '<div class="deal-modal-card deal-req-modal" role="dialog" aria-modal="true" aria-labelledby="dealReqTitle">'
       +   '<button type="button" class="gr-modal-close" id="dealReqClose" aria-label="Close">\u00D7</button>'
       +   '<div class="deals-badge" id="dealReqBadge">Gopher Deal</div>'
-      +   '<h4 id="dealReqTitle">Bring you your deal</h4>'
+      +   '<h4 id="dealReqTitle">Let’s get you your deal.</h4>'
       +   '<p class="deal-req-intro" id="dealReqIntro"></p>'
       +   '<div class="deal-field" id="dealPickupField" hidden>'
       +     '<label for="dealPickup">Pick-up address</label>'
@@ -23227,8 +23246,23 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +   '<div class="deal-field" id="dealPayField">'
       +     '<label for="dealPay">Pay to Gopher</label>'
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealPay" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
+      +     '<div class="deal-iq-hint" id="dealIqHint"></div>'
       +   '</div>'
-      +   '<div class="deal-boost-note" id="dealBoostNote" hidden>Boosted request \u2014 earns a points multiplier when Gopher Rewards launches.</div>'
+      +   '<div class="deal-save-note" id="dealSaveNote" hidden>'
+      +     '<button type="button" class="deal-save-toggle" id="dealSaveToggle" aria-expanded="false" aria-controls="dealSaveBody">'
+      +       '<span class="deal-save-head">Ordering direct saved you money \ud83c\udf89</span>'
+      +       '<svg class="dsn-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+      +     '</button>'
+      +     '<div class="deal-save-body" id="dealSaveBody" hidden>'
+      +       '<div class="deal-save-sub">How much varies, but here\u2019s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>'
+      +       '<div class="deal-save-rows">'
+      +         '<div class="deal-save-row"><span class="dsr-lbl">Paying the restaurant directly</span><span class="dsr-dots"></span><span class="dsr-amt">$30</span></div>'
+      +         '<div class="deal-save-row"><span class="dsr-lbl">Same order on a delivery app</span><span class="dsr-dots"></span><span class="dsr-amt">$36\u201341</span></div>'
+      +         '<div class="deal-save-row dsr-total"><span class="dsr-lbl">You saved by ordering direct</span><span class="dsr-dots"></span><span class="dsr-amt">$6\u201311+</span></div>'
+      +       '</div>'
+      +       '<div class="deal-save-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you \u2014 not to a delivery app.</div>'
+      +     '</div>'
+      +   '</div>'
       +   '<button type="button" class="gr-modal-btn" id="dealReqContinue">Continue to review</button>'
       + '</div>';
     document.body.appendChild(ov);
@@ -23249,6 +23283,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     };
     ['dealDropoff','dealPickup','dealCost'].forEach(id => document.getElementById(id).addEventListener('input', validate));
     document.getElementById('dealReqContinue').addEventListener('click', () => { if(_activeDeal) launchDealRequest(_activeDeal); });
+    // Savings note starts minimized to its headline; the chevron expands it.
+    const saveTgl = document.getElementById('dealSaveToggle');
+    if(saveTgl) saveTgl.addEventListener('click', () => {
+      const body = document.getElementById('dealSaveBody');
+      const open = body.hidden;
+      body.hidden = !open;
+      saveTgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     ov.__validate = validate;
   }
 
@@ -23259,10 +23301,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const isService = m.kind === 'service';
     const addr = dealsUserAddress();
     document.getElementById('dealReqBadge').textContent = isService ? 'Provider Deal' : 'Gopher Deal';
-    document.getElementById('dealReqTitle').textContent = isService ? ('Redeem ' + m.name) : 'Bring you your deal';
+    document.getElementById('dealReqTitle').textContent = isService ? ('Redeem ' + m.name) : 'Let’s get you your deal.';
     document.getElementById('dealReqIntro').textContent = isService
       ? 'Just confirm where you need it \u2014 the rest is set by the deal. Next stop: review.'
-      : 'A couple of details and we\u2019ll send this straight to review.';
+      : 'Just a couple details we\u2019ll need.';
     // Pickup field: merchant + mobile only (fixed merchants auto-fill from registration).
     const pickF = document.getElementById('dealPickupField');
     pickF.hidden = !(!isService && m.mobile);
@@ -23276,6 +23318,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
+    // gopher iQ fair-pay hint — distance-based suggestion under the Pay field
+    // (hides with the whole field on service deals). Prototype math: $7 covers
+    // the first 2 miles, +$1/mile after, +$2 spread; the low end seeds the
+    // input placeholder. Production swaps this for the live iQ suggested-offer
+    // seam (NC-column model).
+    {
+      const mi = parseFloat(String(m.distance || '').replace(/[^\d.]/g, '')) || 2;
+      const iqLo = Math.max(6, Math.round(7 + Math.max(0, mi - 2)));
+      const iqHint = document.getElementById('dealIqHint');
+      if(iqHint) iqHint.innerHTML = '<img class="iq-logo" src="assets/img/shared-scribble.webp" alt="gopher iQ"> $' + iqLo + '–' + (iqLo + 2)
+        + ' is fair pay for this ' + (m.distance ? m.distance + ' ' : '') + 'run.';
+      document.getElementById('dealPay').placeholder = iqLo + '.00';
+    }
     // Cost of items: shown whenever the Gopher fronts the in-person purchase —
     // age-restricted shops (can't be pre-paid online) AND merchants registered with
     // "no online ordering" (no_online_ordering flag; common for food trucks). Captured
@@ -23301,8 +23356,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     } else {
       ageNote.hidden = true;
     }
-    // Boost note: merchant only
-    document.getElementById('dealBoostNote').hidden = isService;
+    // Savings reframe: merchant only — you already saved by ordering direct;
+    // pay your local Gopher fairly instead of an app's delivery fees.
+    // Re-minimize on every open so each deal starts at the one-line headline.
+    document.getElementById('dealSaveNote').hidden = isService;
+    const saveBody = document.getElementById('dealSaveBody');
+    if(saveBody) saveBody.hidden = true;
+    const saveTgl = document.getElementById('dealSaveToggle');
+    if(saveTgl) saveTgl.setAttribute('aria-expanded','false');
     document.getElementById('dealReqContinue').textContent = isService ? 'Redeem & review' : 'Continue to review';
     ov.hidden = false;
     if(ov.__validate) ov.__validate();
@@ -24631,7 +24692,7 @@ function initPersonalEdit(){
     });
   }
   var TRACK={
-    pending:[['3.12.26','919-738-2332','SMS'],['2.2.26','jnewbury@gmail.com','Email'],['1.1.26','919-222-3223','SMS']],
+    pending:[['3.12.26','919-555-0177','SMS'],['2.2.26','john.demo@gophergo.io','Email'],['1.1.26','919-555-0188','SMS']],
     added:[['3.12.26','John Newbury','Gopher'],['2.2.26','Dave Kreeger','Requestor'],['1.1.26','Tom Livolsi','Gopher']],
     active:[['3.12.26','John Newbury','Request'],['2.2.26','Dave Kreeger','Request'],['1.1.26','Tom Livolsi','Go']]
   };
