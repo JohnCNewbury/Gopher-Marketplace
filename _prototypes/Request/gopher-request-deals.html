@@ -168,6 +168,18 @@ html.embedded,html.embedded body{padding:0;margin:0;min-height:0;background:#FBF
 .pay-wrap{display:flex;align-items:center;border:1px solid #d8dde7;border-radius:11px;padding:0 13px;}
 .pay-wrap .cur{font-family:'Nunito';font-weight:800;color:var(--ink-soft);}
 .pay-wrap input{border:none;padding:12px 6px;}
+/* Savings reframe (merchant deals): you already saved by ordering direct —
+   receipt-style comparison vs the delivery apps. */
+.save-note{font-family:'DM Sans';background:#f1fbf4;border:1px solid #cdeeda;border-radius:12px;padding:12px 13px;margin:2px 0 14px;}
+.save-note .sn-h{font-family:'Nunito';font-weight:900;font-size:12.5px;color:var(--ink);}
+.save-note .sn-sub{font-size:11px;color:var(--muted-cool);line-height:1.45;margin-top:3px;}
+.save-note .sn-rows{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.save-note .sn-row{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:var(--ink);}
+.save-note .sn-row .sn-dots{flex:1;border-bottom:2px dotted #b7dfc4;transform:translateY(-2px);}
+.save-note .sn-row b{white-space:nowrap;}
+.save-note .sn-row.total span,.save-note .sn-row.total b{color:var(--green-dark);font-weight:900;}
+.save-note .sn-foot{margin-top:8px;font-size:11px;color:var(--muted-cool);line-height:1.5;}
+.save-note .sn-foot b{color:var(--ink);}
 .boost{display:flex;gap:8px;align-items:flex-start;background:var(--sand);border-radius:11px;padding:11px 12px;font-family:'DM Sans';font-size:11.5px;color:var(--warning-text);line-height:1.35;margin-bottom:14px;}
 .boost svg{width:16px;height:16px;fill:none;stroke:var(--warning-text);stroke-width:2;flex:0 0 auto;margin-top:1px;}
 .sheet .scta{width:100%;border:none;border-radius:13px;padding:15px;font-family:'Nunito';font-weight:900;font-size:15px;background:linear-gradient(135deg,var(--green-bright),var(--green-dark));color:var(--navy);box-shadow:0 8px 20px -6px rgba(28,176,97,.5);cursor:pointer;}
@@ -826,12 +838,22 @@ function sheetHTML(m){
   const pickup = (!svc && m.mobile);
   return `<div class="grab"></div>
     <span class="sbadge ${svc?'svc':''}">${svc?'Provider Deal':'Gopher Deal'}</span>
-    <h4>${svc?('Redeem '+esc(m.name)):'Bring you your deal'}</h4>
+    <h4>${svc?('Redeem '+esc(m.name)):'Let’s get you your deal.'}</h4>
     <p class="sintro">${svc?'Just confirm where you need it — the rest is set by the deal. Next stop: review.':'A couple of details and we’ll send this straight to review.'}</p>
     ${pickup?`<div class="field"><label>Pick-up address</label><input id="fPickup" placeholder="Where should we pick up?"></div>`:''}
     <div class="field"><label>${svc?'Destination (service address)':'Drop-off address'}</label><input id="fDrop" value="${esc(USER_ADDR)}"></div>
     ${(!svc&&m.ageRestricted)?`<div class="field"><label>Cost of items <span style="font-weight:600;color:var(--muted-cool,#6b7280);">— the age-restricted items the Gopher buys for you</span></label><div class="pay-wrap"><span class="cur">$</span><input id="fCost" inputmode="decimal" placeholder="0.00"></div></div>`:''}
-    ${svc?'':`<div class="field"><label>Pay to Gopher</label><div class="pay-wrap"><span class="cur">$</span><input id="fPay" inputmode="decimal" placeholder="0.00"></div></div>`}
+    ${svc?'':`<div class="field"><label>Pay to Gopher</label><div class="pay-wrap"><span class="cur">$</span><input id="fPay" inputmode="decimal" placeholder="0.00"></div></div>
+    <div class="save-note">
+      <div class="sn-h">Ordering direct saved you money 🎉</div>
+      <div class="sn-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>
+      <div class="sn-rows">
+        <div class="sn-row"><span>Paying the restaurant directly</span><span class="sn-dots"></span><b>$30</b></div>
+        <div class="sn-row"><span>Same order on a delivery app</span><span class="sn-dots"></span><b>$36–41</b></div>
+        <div class="sn-row total"><span>You saved by ordering direct</span><span class="sn-dots"></span><b>$6–11+</b></div>
+      </div>
+      <div class="sn-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>
+    </div>`}
     ${(!svc&&m.ageRestricted)?arSection(m):''}
     <button class="scta" data-toreview="${m.id}"${(!svc&&m.ageRestricted&&!idSatisfied())?' disabled':''}>${ctaLabel(m,svc)}</button>`;
 }
