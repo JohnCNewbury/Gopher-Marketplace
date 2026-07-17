@@ -1,4 +1,4 @@
-/* gopher-header.js — shared site header component (G40-315).
+/* gopher-header.js — shared site header component.
    Generated from the canonical inline block (was duplicated on 121 pages).
    Per-page logo: set window.GopherHeader={logo:'connect'} BEFORE this script. */
 (function(){
