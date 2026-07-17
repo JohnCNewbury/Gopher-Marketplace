@@ -9786,6 +9786,7 @@ const PAY_BADGES = {
     $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
       b.addEventListener('click', () => {
         state.category = b.dataset.cat;
+        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
         if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; } // jump forward when picking from outer tabs
         render();
       });
@@ -9813,6 +9814,7 @@ const PAY_BADGES = {
     const delay = opts.instant ? 100 : 700;
     setTimeout(() => {
       state.category = key;
+      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
       if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; }
       render();
       // Pulse the matched pill
@@ -10006,6 +10008,14 @@ const PAY_BADGES = {
     bidsOption:   ['delivery','ride'],
   };
   const isVisible = (field) => !FIELD_HIDDEN_FOR[field].includes(state.category);
+  // Whether "Request bids" is genuinely available for the CURRENT state — the same
+  // rule that shows/hides the Step-5 bids radio (category table + multi-worker
+  // labor management). Single source of truth for the pay gates: payMode 'bids'
+  // is only valid while this holds; otherwise it's a stale choice carried over
+  // from an earlier category/worker setup and a real offer is required (owner
+  // 2026-07-17: a worker can NEVER receive a $0 offer).
+  const bidsAvailable = () =>
+    isVisible('bidsOption') && !(state.moreThanOneWorker && state.laborManagement !== 'one-hires');
 
   // STEP 2 — Job Details (Master Pages 1, 2, 3, 5)
   //   Page 1: Describe What You Need + Add a pic
@@ -10400,9 +10410,7 @@ const PAY_BADGES = {
     // one worker is needed. The "individually" bids rule only applies then.
     const laborMgmtActive = isVisible('laborMgmt') && state.moreThanOneWorker;
     const individuallyActive = laborMgmtActive && state.laborManagement === 'individually';
-    const bidsHiddenByCategory = !isVisible('bidsOption');   // driven by FIELD_HIDDEN_FOR.bidsOption
-    const bidsHiddenByMultiWorker = state.moreThanOneWorker && state.laborManagement !== 'one-hires';
-    const showBidsOption = !bidsHiddenByCategory && !bidsHiddenByMultiWorker;
+    const showBidsOption = bidsAvailable();   // category + multi-worker rules — shared with the pay gates in stepGate()
     return `
       <h3>How would you like to pay your worker?</h3>
       <p class="mc-sub">Set your hiring price or ask for bids with certain requests</p>
@@ -11554,6 +11562,7 @@ const PAY_BADGES = {
       tiles.forEach(t => {
         t.addEventListener('click', () => {
           state.category = t.dataset.cat;
+          if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
           // Reflect the selection (visible if the user steps back to Step 1).
           tiles.forEach(o => o.classList.toggle('selected', o === t));
           $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
@@ -11836,12 +11845,25 @@ const PAY_BADGES = {
     }
     // Step 5 — Worker pay. When setting a flat price, an amount must be entered
     // (pricing is never pre-populated, so this starts empty and gates Continue).
-    // Requesting bids needs no amount, so only gate the "set your own price" mode.
-    if(state.step === 5 && state.payMode === 'set'){
+    // A REAL bids job (payMode 'bids' AND bids available for this category/worker
+    // setup) needs no amount; anything else — including a stale 'bids' choice
+    // carried onto a no-bids category — must have a positive offer (owner
+    // 2026-07-17: a worker can NEVER receive a $0 offer).
+    if(state.step === 5 && !(state.payMode === 'bids' && bidsAvailable())){
       const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
       if(!(payNum > 0)){
         return { ok:false, label:'Worker pay', selector:'#payAmountInput',
                  msg:'Please enter how much you’d like to pay your worker before continuing.' };
+      }
+    }
+    // Submit-time backstop for the same rule — step gates only check the current
+    // step, so a $0 that survived to review (stale bids choice, prefilled
+    // re-request with no pay) would otherwise submit.
+    if(state.step === 6 && !(state.payMode === 'bids' && bidsAvailable())){
+      const payNum6 = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
+      if(!(payNum6 > 0)){
+        return { ok:false, label:'Worker pay', selector:null,
+                 msg:'Your worker’s pay can’t be $0 — go back to Worker pay and set an offer.' };
       }
     }
     // Step 6 — submission requires the liability waiver.
@@ -11872,7 +11894,10 @@ const PAY_BADGES = {
   function showGatePrompt(gate){
     if(!gate || gate.ok) return;
     // Waiver has its own richer inline treatment — reuse it for consistency.
-    if(state.step === 6){ requireWaiver(); return; }
+    // (Other step-6 gates, e.g. the worker-pay backstop, fall through to the
+    // generic treatment below — a null selector just skips the field flash and
+    // shows the footer toast.)
+    if(state.step === 6 && gate.label === 'Liability waiver'){ requireWaiver(); return; }
 
     const field = gate.selector ? $content.querySelector(gate.selector) : null;
     if(field){
@@ -12082,6 +12107,7 @@ const PAY_BADGES = {
     // disclaimer + $2.99 fee appear in place. They review it, then tap Continue.
     if(yesBtn) yesBtn.addEventListener('click', () => {
       if(state.category !== 'delivery') state.category = 'delivery'; // route age-restricted → Delivery
+      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // Delivery hides bids — clear a stale choice
       state.ageRestricted = true;
       state.ageKeywordAck = true;
       state.idRequiredAtCompletion = false; // age-restricted path already requires ID
@@ -12149,6 +12175,7 @@ const PAY_BADGES = {
       if(yes) yes.addEventListener('click', () => {
         L.emitCategoryCheck('accepted', r, reqId);
         state.category = L.slugToUi(r.suggestedSlug);
+        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
         state.userAcknowledgedCategory = false;
         ov.remove();
         render();
