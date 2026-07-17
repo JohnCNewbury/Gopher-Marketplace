@@ -1943,7 +1943,13 @@ function stepGate(){
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
   if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
-  if(state.step===5 && state.payMode==='set' && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
+  // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
+  // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
+  // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop
+  // (stepGate only sees the current step, so a stale $0 could otherwise slip through review).
+  if(state.step===5 && !(state.payMode==='bids' && bidsAllowed()) && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
+  if(state.step===6 && !(state.payMode==='bids' && bidsAllowed()) && !(perWorkerPay()>0))
+    return {ok:false,sel:null,msg:'Your worker\'s pay can\'t be $0 — go back to Worker pay and set an offer.',tone:'alert'};
   if(state.step===6 && !state.waiverChecked) return {ok:false,sel:'.waiver-box',msg:'Check the liability waiver before submitting.'};
   return {ok:true};
 }
@@ -2052,7 +2058,7 @@ function openAgeKwModal(){
       L.emitCategoryCheck('accepted',r,reqId);
       state.category=L.slugToUi(r.suggestedSlug);
       state.userAcknowledgedCategory=false;
-      if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set';
+      if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set';
       ov.remove(); render();
       setTimeout(function(){ if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); },0);
     };
@@ -2139,7 +2145,7 @@ document.addEventListener('click',(e)=>{
 
   // category select — selects only, no auto-advance
   const cat=e.target.closest('[data-cat]');
-  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
+  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
   // outside tap closes an open popover (only relevant on step 1)
   if(state.step===1 && state.openCatInfo){ state.openCatInfo=null; render(); return; }
 
@@ -2155,7 +2161,7 @@ document.addEventListener('click',(e)=>{
     if(k==='moreThanOneWorker' && state[k] && state.numWorkers<2) state.numWorkers=2;
     // Bids remain valid for >1-worker requests; only fall back to a set price when bids are truly
     // unavailable (by category, or Labor/Yard paying by the hour).
-    if(state.payMode==='bid' && !bidsAllowed()) state.payMode='set';
+    if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set';
     render(); return; }
 
   // radios

@@ -11910,7 +11910,7 @@
     $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
       b.addEventListener('click', () => {
         state.category = b.dataset.cat;
-        if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set'; // bids may not apply to the new category
+        if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set'; // bids may not apply to the new category
         if(state.step === 1) state.step = 2; // jump forward when picking from outer tabs
         render();
       });
@@ -13604,7 +13604,7 @@
         }
         // Bids stay valid for >1-worker requests; only fall back to a set price when bids are truly
         // unavailable (Labor/Yard paying by the hour). NOT triggered by moreThanOneWorker.
-        if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
+        if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
         render();
       });
     });
@@ -14156,12 +14156,24 @@
       }
     }
     // Step 5 — Worker pay. When setting a flat price, an amount must be entered.
-    // Requesting bids needs no amount, so only gate the "set your own price" mode.
-    if(state.step === 5 && state.payMode === 'set'){
+    // A REAL bids job (payMode 'bids' AND the category allows bids) needs no amount;
+    // anything else — including a stale 'bids' choice carried onto a no-bids
+    // category — must have a positive offer (owner 2026-07-17: a worker can NEVER
+    // receive a $0 offer).
+    if(state.step === 5 && !(state.payMode === 'bids' && bidsAllowed())){
       const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
       if(!(payNum > 0)){
         return { ok:false, label:'Worker pay', selector:'#payAmountInput',
                  msg:'Please enter how much you’d like to pay your worker before continuing.' };
+      }
+    }
+    // Submit-time backstop for the same rule — step gates only check the current
+    // step, so a $0 that survived to review would otherwise submit.
+    if(state.step === 6 && !(state.payMode === 'bids' && bidsAllowed())){
+      const payNum6 = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
+      if(!(payNum6 > 0)){
+        return { ok:false, label:'Worker pay', selector:null,
+                 msg:'Your worker’s pay can’t be $0 — go back to Worker pay and set an offer.' };
       }
     }
     // Step 6 — a scheduled (exact-time) request must have a real time picked
@@ -14580,7 +14592,7 @@
         // applies; then re-render Job Details in place and they tap Continue.
         if(state.category !== 'delivery'){
           state.category = 'delivery';
-          if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
+          if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
         }
         state.ageRestricted = true;
         state.ageKeywordAck = true;
@@ -14653,7 +14665,7 @@
         L.emitCategoryCheck('accepted', r, reqId);
         state.category = L.slugToUi(r.suggestedSlug);                      // slug -> UI key
         state.userAcknowledgedCategory = false;                            // fresh category
-        if(state.payMode === 'bid' && !bidsAllowed()) state.payMode = 'set';
+        if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
         ov.remove();
         render();
         setTimeout(() => { if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); }, 0); // confirm resolution
