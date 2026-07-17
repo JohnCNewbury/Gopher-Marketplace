@@ -932,6 +932,13 @@ const FIELD_HIDDEN_FOR = {
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
 
+/* Step 3 renders empty (soft-note only) when BOTH worker blocks are hidden — Home/Office
+   today. Request/Connect web skip the step entirely in that case; mirror them here.
+   The skip is navigational only: the progress bar keeps all 7 segments. */
+const stepIsEmpty = (n)=> n===3 && !isVisible('workerSetup') && !isVisible('workerSelectChoice');
+const nextVisibleStep = (from)=>{ let s=from; while(s<7 && stepIsEmpty(s+1)) s++; return Math.min(7,s+1); };
+const prevVisibleStep = (from)=>{ let s=from; while(s>1 && stepIsEmpty(s-1)) s--; return Math.max(1,s-1); };
+
 /* ---- Age-restricted keyword backstop (Job Details safety net) ----
    If a delivery's description names an age-restricted product but the user
    never flipped the age toggle, we confirm before letting them continue.
@@ -1877,6 +1884,11 @@ const RENDERERS=[null,renderStep1,renderStep2,renderStep3,renderStep4,renderStep
 function render(){
   const content=$('#content');
   const sc=$('#scroll');
+  // No "how is the worker selected?" choice → the user must select their worker (web parity).
+  if(!isVisible('workerSelectChoice')) state.workerSelection='select';
+  // Never sit on an auto-hidden empty step (e.g. the category was changed to
+  // Home/Office from the context bar while on Worker info) — advance past it.
+  if(state.step>1 && state.step<7 && stepIsEmpty(state.step)) state.step=nextVisibleStep(state.step);
   const sameStep = render._lastStep===state.step && state.step!==7;
   const savedY = sameStep ? sc.scrollTop : 0;
   // Only play the stage-in animation when the step actually changes — re-renders
@@ -1894,7 +1906,7 @@ function render(){
   // progress (tap a reached step to jump back)
   $('#progress').innerHTML = [1,2,3,4,5,6,7].map(n=>{
     const cls = n<state.step?'done':(n===state.step?'current':'');
-    const reach = n<=state.maxStepReached && n!==state.step && state.step!==7;
+    const reach = n<=state.maxStepReached && n!==state.step && state.step!==7 && !stepIsEmpty(n);
     return `<button class="seg-btn ${reach?'reach':''}" data-step="${n}" ${reach?'':'disabled'} aria-label="Go to step ${n}: ${STEP_TITLES[n-1]}"><span class="seg ${cls}"></span></button>`;
   }).join('');
   renderFooter();
@@ -2000,7 +2012,7 @@ function goNext(){
   // Category-mismatch nudge (worker visibility) — after the age gate (precedence).
   if(state.step===2 && !findAgeRestrictedKeyword(state.description) && window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
   state.openCatInfo=null;
-  if(state.step<6){ state.step++; if(state.step>state.maxStepReached)state.maxStepReached=state.step; render(); }
+  if(state.step<6){ state.step=nextVisibleStep(state.step); if(state.step>state.maxStepReached)state.maxStepReached=state.step; render(); }
 }
 // Age-restricted confirmation — the VERY IMPORTANT guardrail. Blocking G40-308-standard modal (parity
 // with the Connect/Request web apps): 21 mark, consequences warning, two clearly-separated choices.
@@ -2073,8 +2085,8 @@ function openAgeKwModal(){
     return true;
   };
 })();
-function goBack(){ if(state.step>1){ state.openCatInfo=null; state.step--; render(); } else if(state.demo){ gotoURL('signin'); } }
-function goStep(n){ if(n<=state.maxStepReached){ state.openCatInfo=null; state.step=n; render(); } }
+function goBack(){ if(state.step>1){ state.openCatInfo=null; state.step=prevVisibleStep(state.step); render(); } else if(state.demo){ gotoURL('signin'); } }
+function goStep(n){ if(n<=state.maxStepReached && !stepIsEmpty(n)){ state.openCatInfo=null; state.step=n; render(); } }
 function submitRequest(){
   const g=stepGate();
   if(!g.ok){ showToast(g.msg,g.tone); flashGate(g); return; }
