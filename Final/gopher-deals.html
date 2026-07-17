@@ -1227,6 +1227,11 @@
     font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--brand-green-dk);
   }
   .otp-verified.show { display:inline-flex; }
+  /* Existing-Gopher fast path: Personal-Info fields wait (dimmed + disabled) until the
+     SMS verify pulls the account; auto-filled inputs get a green tint until edited. */
+  .egu-dim { opacity:.45; }
+  .egu-dim input, .egu-dim select { pointer-events:none; }
+  input.egu-filled, select.egu-filled { background:#f0fdf6; border-color:var(--green); }
 
   /* Featured-listing consent (deal preview) */
   .dp-consent {
@@ -2806,6 +2811,18 @@
              new Gopher account collects (minus photo — prompted at first sign-in to the Deals
              dashboard or any Gopher platform). This info seeds the owner's Gopher account. -->
         <p class="field-hint" style="margin:-4px 0 14px">This is the standard Personal Info for every Gopher account &mdash; it sets up your owner login. (You&rsquo;ll add a profile photo the first time you sign in.)</p>
+        <!-- Existing-Gopher fast path: declare an account, verify the phone by SMS, and the
+             rest of the Personal Info auto-fills from it. Prototype: lookupGopherAccount()
+             checks a demo recognition set (same seam as gopher-connect's DEMO_GOPHER_USERS);
+             production replaces it with a backend lookup keyed on the OTP-verified number. -->
+        <div class="field addr-mobile-field">
+          <label class="addr-mobile-toggle">
+            <input type="checkbox" name="existing_gopher_user" id="regExistingGopher" onchange="eguToggle(this)">
+            <span>I&rsquo;m already a Gopher user</span>
+          </label>
+          <p class="field-hint addr-mobile-hint" id="regExistingHint" hidden>Great &mdash; enter the phone number on your Gopher account below and tap <b>Verify</b>. Once your code checks out, we&rsquo;ll fill in the rest from your account.</p>
+          <input type="hidden" name="existing_gopher_user_id" value="">
+        </div>
         <div class="field-row">
           <div class="field">
             <div class="label-with-info">
@@ -3759,6 +3776,11 @@
     field.querySelector('.otp-verified').classList.add('show');
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verified'; sb.disabled = true;
     var hv = field.querySelector('input[name="phone_verified"]'); if (hv) hv.value = 'true';
+    // Existing-Gopher fast path: with the number now verified, look up the account and
+    // auto-fill the owner's Personal Info (no-op unless "I'm already a Gopher user" is checked).
+    if (field.querySelector('input[name="owner_phone"]') && typeof eguFill === 'function'){
+      eguFill((field.querySelector('input[type=tel]').value || '').replace(/\D/g, ''));
+    }
     // FUTURE (service providers): the number is now verified. Once OTP + the Gopher
     // database are live, look up this verified number and auto-load the provider's
     // profile photo into the deal preview. Hook is ready: loadGopherPhoto(number).
@@ -3771,6 +3793,84 @@
     field.querySelector('.otp-verified').classList.remove('show');
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verify'; sb.disabled = false;
     var hv = field.querySelector('input[name="phone_verified"]'); if (hv) hv.value = 'false';
+  }
+  // --- Existing-Gopher fast path (owner section). The owner declares an account,
+  //     verifies the phone by SMS, and the rest of the Personal Info auto-fills.
+  //     Prototype "database" = the demo recognition set below (mirrors
+  //     gopher-connect's DEMO_GOPHER_USERS); production replaces
+  //     lookupGopherAccount() with a backend call keyed on the OTP-verified number. ---
+  var EGU_FIELDS = ['owner_first_name','owner_last_name','owner_dob','owner_email','owner_address','discovery_source'];
+  var DEMO_GOPHER_USERS = [
+    { userId:'1', firstName:'John', lastName:'Newbury', dob:'1976-02-03', phone:'9195550124',
+      email:'john.demo@gophergo.io', address:'405 Shorehouse Way, Holly Springs, NC 27540', source:'Referral' },
+    { userId:'29158', firstName:'Dave', lastName:'Kreeger', dob:'1972-02-09', phone:'9195550171',
+      email:'dana.demo@gophergo.io', address:'3220 Banbury Way, Durham, NC 27707', source:'Referral' }
+  ];
+  function lookupGopherAccount(digits){
+    for (var i = 0; i < DEMO_GOPHER_USERS.length; i++)
+      if (DEMO_GOPHER_USERS[i].phone === digits) return DEMO_GOPHER_USERS[i];
+    return null;
+  }
+  function eguEach(fn){
+    var modal = document.getElementById('modal-merchant'); if (!modal) return;
+    EGU_FIELDS.forEach(function(n){
+      var el = modal.querySelector('[name="' + n + '"]'); if (el) fn(el);
+    });
+  }
+  function eguToggle(cb){
+    var hint = document.getElementById('regExistingHint'); if (hint) hint.hidden = !cb.checked;
+    var modal = document.getElementById('modal-merchant'); if (!modal) return;
+    var phone = modal.querySelector('input[name="owner_phone"]');
+    var hv = modal.querySelector('input[name="phone_verified"]');
+    if (!cb.checked){
+      var hid = modal.querySelector('input[name="existing_gopher_user_id"]'); if (hid) hid.value = '';
+    }
+    if (cb.checked && hv && hv.value === 'true' && phone){
+      // Phone was already verified before they checked the box — fill straight away.
+      eguFill((phone.value || '').replace(/\D/g, ''));
+      return;
+    }
+    eguEach(function(el){
+      el.disabled = cb.checked;
+      var f = el.closest('.field'); if (f) f.classList.toggle('egu-dim', cb.checked);
+      if (!cb.checked) el.classList.remove('egu-filled');
+    });
+    if (cb.checked && phone) phone.focus();
+  }
+  function eguFill(digits){
+    var cb = document.getElementById('regExistingGopher');
+    if (!cb || !cb.checked) return;
+    var hint = document.getElementById('regExistingHint');
+    var modal = document.getElementById('modal-merchant');
+    var acct = lookupGopherAccount(digits);
+    // Re-enable either way — found: review the auto-fill; not found: enter manually.
+    eguEach(function(el){
+      el.disabled = false;
+      var f = el.closest('.field'); if (f) f.classList.remove('egu-dim');
+    });
+    if (!acct){
+      cb.checked = false;
+      if (hint){ hint.hidden = false; hint.innerHTML = 'That number isn&rsquo;t on a Gopher account yet &mdash; no problem, just fill in your info below.'; }
+      return;
+    }
+    var d = (acct.dob || '').split('-');   // account YYYY-MM-DD → form MM / DD / YYYY
+    var vals = {
+      owner_first_name: acct.firstName, owner_last_name: acct.lastName,
+      owner_dob: d.length === 3 ? d[1] + ' / ' + d[2] + ' / ' + d[0] : '',
+      owner_email: acct.email, owner_address: acct.address,
+      discovery_source: acct.source || ''
+    };
+    EGU_FIELDS.forEach(function(n){
+      var el = modal.querySelector('[name="' + n + '"]'); if (!el) return;
+      el.value = vals[n] || '';
+      el.classList.add('egu-filled');
+      el.classList.remove('field-invalid'); dcSetErr(el, '');
+      el.addEventListener('input', function h(){ el.classList.remove('egu-filled'); el.removeEventListener('input', h); });
+    });
+    var src = modal.querySelector('select[name="discovery_source"]');
+    if (src && src.onchange) src.onchange();   // sync the Referred-by row to the filled Source
+    var hid = modal.querySelector('input[name="existing_gopher_user_id"]'); if (hid) hid.value = acct.userId || '';
+    if (hint){ hint.hidden = false; hint.innerHTML = '&check; Found your Gopher account &mdash; we filled in your info below. Give it a quick once-over and keep going.'; }
   }
   /* ── Registration field housekeeping: name Title Case · phone (###) ###-#### mask (digits only) ·
         email must contain @ and a dot. Applies to the merchant form + the provider funnel. ── */
@@ -3838,17 +3938,26 @@
         if (kws.length < 1){ bad(kwInp, 'Add at least one searchable keyword.'); if (kwBox) kwBox.classList.add('attn-pulse'); }
         else { kwInp.classList.remove('field-invalid'); dcSetErr(kwInp,''); if (kwBox) kwBox.classList.remove('attn-pulse'); }
       }
-      need('input[name="owner_first_name"]', 'First name is required.');
-      need('input[name="owner_last_name"]', 'Last name is required.');
-      var dob = modal.querySelector('input[name="owner_dob"]');
-      if (dob){
-        if (!dcIsDob(dob.value)) bad(dob, 'Enter date of birth as MM / DD / YYYY.');
-        else { dob.classList.remove('field-invalid'); dcSetErr(dob,''); }
+      var egu = modal.querySelector('#regExistingGopher');
+      var eguFirst = modal.querySelector('input[name="owner_first_name"]');
+      if (egu && egu.checked && eguFirst && eguFirst.disabled){
+        // Existing-Gopher fast path still waiting on the SMS verify — the rest of the
+        // Personal Info is disabled, so point at the one action that unblocks it.
+        need('input[name="owner_phone"]', 'Phone is required.');
+        bad(modal.querySelector('input[name="owner_phone"]'), 'Verify your phone to pull your account info (or uncheck “I’m already a Gopher user” to enter it manually).');
+      } else {
+        need('input[name="owner_first_name"]', 'First name is required.');
+        need('input[name="owner_last_name"]', 'Last name is required.');
+        var dob = modal.querySelector('input[name="owner_dob"]');
+        if (dob){
+          if (!dcIsDob(dob.value)) bad(dob, 'Enter date of birth as MM / DD / YYYY.');
+          else { dob.classList.remove('field-invalid'); dcSetErr(dob,''); }
+        }
+        need('input[name="owner_phone"]', 'Phone is required.');
+        need('input[name="owner_email"]', 'Email is required.');
+        need('input[name="owner_address"]', 'Address is required.');
+        need('select[name="discovery_source"]', 'Tell us how you discovered Gopher.');
       }
-      need('input[name="owner_phone"]', 'Phone is required.');
-      need('input[name="owner_email"]', 'Email is required.');
-      need('input[name="owner_address"]', 'Address is required.');
-      need('select[name="discovery_source"]', 'Tell us how you discovered Gopher.');
     } else {
       need('input[name="first_name"]', 'First name is required.');
       need('input[name="last_name"]', 'Last name is required.');
