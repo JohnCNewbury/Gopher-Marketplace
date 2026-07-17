@@ -73,7 +73,7 @@ body{
 /* ── Phone frame (Gopher Go convention: 390px, r26, soft navy shadow) ── */
 .phone{
   width:390px;max-width:100%;height:844px;max-height:calc(100vh - 40px);
-  background:#eef2f7;border-radius:42px;overflow:hidden;position:relative;
+  background:#eef2f7;border-radius:42px;overflow:hidden;overflow:clip;position:relative;
   box-shadow:0 30px 80px -20px rgba(0,36,97,.45),0 0 0 11px #0a1730,0 0 0 13px #1f2c44;
   display:flex;flex-direction:column;
 }
@@ -1899,6 +1899,9 @@ function render(){
   }).join('');
   renderFooter();
   sc.scrollTop = savedY;          // restore on same-step re-render; 0 on step change
+  // Re-anchor the shell: focusing a field can nudge the phone frame itself (overflow:hidden
+  // blocks scrollbars, not programmatic scroll) and there's no user gesture that scrolls it back.
+  $('#phone').scrollTop = 0;
   render._lastStep = state.step;
   bindFieldInputs();
   syncOfferModal();
