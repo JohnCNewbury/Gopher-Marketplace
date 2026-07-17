@@ -886,9 +886,11 @@ function statusBucket(r){ if(r.substage==='rated'||r.noShow) return 'done';   //
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
 function statusText(r){
- if(r.attention) return '<span class="attn-ic">⚠</span>'+r.attention.label+'<span class="rc-attn-tag">ACTION NEEDED</span>';
+ // Never surface a missing label as "undefined" — every attention type gets real words.
+ if(r.attention) return '<span class="attn-ic">⚠</span>'+(r.attention.label||'Needs your review')+'<span class="rc-attn-tag">ACTION NEEDED</span>';
  if(r.noShow) return '⚑ <b>Completed · No Show</b> · charged in full, items not released';
- if(r.disputed) return '⚑ <b>Issue reported</b> · under review';
+ // Red — an open issue warrants immediate attention (owner, 2026-07-17).
+ if(r.disputed) return '<span style="color:#C44257;">⚑ <b>Issue reported</b> · under review</span>';
  // No-show window live (G40-192): the worker is AT the drop-off waiting on the ID check — the card shows
  // the same 10-minute clock the worker sees (replaces the "Items purchased" line while it runs).
  if(r.noShowWait && r.substage!=='completed' && r.substage!=='rated'){
@@ -1049,7 +1051,7 @@ function openCounterReview(order){
     +'<p class="gm-p" style="margin-bottom:4px;">'+esc(by)+' will take <b>#'+order+'</b> for <b style="color:#0a7d44">'+money(amt)+'</b> \u2014 your offer was <s style="color:#8a94a3">'+money(was)+'</s>. Here\u2019s exactly what changes:</p>'
     +breakdown
     +'<div style="display:flex;gap:10px;margin-top:12px;">'
-      +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #e0623d;background:#fff;color:#e0623d;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Decline</button>'
+      +'<button class="gm-decline" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Decline</button>'
       +'<button class="gm-accept" style="flex:1.3;padding:12px;border-radius:12px;border:0;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Accept \u2014 '+money(newTotal)+' total</button>'
     +'</div>');
   var card=o.querySelector('.gmodal'); if(card){ card.style.maxWidth='344px'; card.style.padding='22px 20px'; }   // widen for the cost breakdown legibility
@@ -1092,7 +1094,7 @@ function openBidsList(order){
       +'<div style="display:flex;gap:7px;margin-top:9px;">'
         +'<button data-bid-act="hire" data-bid-i="'+i+'" style="flex:1.2;border:0;background:#1CB061;color:#fff;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Hire</button>'
         +'<button data-bid-act="consider" data-bid-i="'+i+'" style="flex:1;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">'+(considering?'Considering':'Consider')+'</button>'
-        +'<button data-bid-act="deny" data-bid-i="'+i+'" style="flex:0.85;border:1.5px solid #e0623d;background:#fff;color:#e0623d;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Deny</button>'
+        +'<button data-bid-act="deny" data-bid-i="'+i+'" style="flex:0.85;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Deny</button>'
       +'</div></div>';
   }
   var o=gSheet('Workers interested', '<div id="bidsBody"></div>');
@@ -1173,10 +1175,10 @@ function openDispute(order){
   var o=gSheet('Report an issue',
     '<p class="gs-sub" style="margin-top:-2px;">Tell us what went wrong with <b>#'+order+'</b>. Payment is held while our team reviews \u2014 we\u2019ll follow up shortly.</p>'
     +'<textarea class="dp-reason" placeholder="What happened? (required)" style="width:100%;min-height:84px;border:1px solid #e2ddd0;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#002461;resize:vertical;box-sizing:border-box;"></textarea>'
-    +'<button class="dp-submit" disabled style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:13px;background:#eecabd;color:#fff;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit report</button>'
+    +'<button class="dp-submit" disabled style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:13px;background:#ecc3cc;color:#fff;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit report</button>'
     +'<span class="gm-link dp-back" style="display:block;text-align:center;margin-top:11px;color:#8a94a3;cursor:pointer;font-family:Nunito;font-weight:700;font-size:12.5px;">Back to confirm</span>');
   var ta=o.querySelector('.dp-reason'), btn=o.querySelector('.dp-submit'), back=o.querySelector('.dp-back');
-  if(ta) ta.oninput=function(){ var ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#e0623d':'#eecabd'; btn.style.cursor=ok?'pointer':'not-allowed'; };
+  if(ta) ta.oninput=function(){ var ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#C44257':'#ecc3cc'; btn.style.cursor=ok?'pointer':'not-allowed'; };
   if(back) back.onclick=function(){ o.remove(); openConfirmCompletion(order); };
   if(btn) btn.onclick=function(){ if(ta.value.trim().length<3) return;
     // Keep the comments \u2014 the harness relays them to the Gopher so they see WHY, immediately.
@@ -1328,7 +1330,7 @@ function __reqReceiptViewer(src){
 function __adjustApproval(order, p){
   if(!p) return; PENDING_ADJ[order]=p;
   var r=GReq.get(order); var who=(r&&r.hired)||'Your Gopher';
-  try{ GReq.update(order,{attention:{type:'adjust'}}); if(renderPending) renderPending(); }catch(_){}
+  try{ GReq.update(order,{attention:{type:'adjust', label:String(who)+' sent a cost adjustment — review, approve or decline'}}); if(renderPending) renderPending(); }catch(_){}
   var ov=document.createElement('div');
   ov.setAttribute('style','position:absolute;top:10px;left:12px;right:12px;z-index:9998;background:#C44257;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 12px 34px rgba(0,0,0,.3);cursor:pointer;font-family:Nunito,sans-serif;');
   ov.innerHTML='<div style="font-weight:900;font-size:12.5px;">⚠ Cost adjustment needs your approval</div><div style="font-size:11.5px;opacity:.92;margin-top:2px;font-family:\'DM Sans\',sans-serif;">'+String(who)+' updated the charge on #'+order+' — tap to review, approve or decline</div>';
@@ -1440,7 +1442,7 @@ function __noShowComplete(order){
   var o=gModal(
     '<h3 class="gm-h" style="text-align:center;">Delivery Completed (No Show)</h3>'
     +'<p class="gm-p" style="text-align:center;">Your age-restricted order <b>#'+order+'</b> could not be completed because you weren’t present to verify your ID within the <b>10-minute window</b>.</p>'
-    +'<div style="margin:10px 0;padding:11px 13px;border-radius:12px;background:#FDECE6;border:1px solid #f3c3b2;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#a3401f;line-height:1.55;">You were <b>charged the full amount</b> and the items <b>remain with '+esc(who)+'</b> — age-restricted items can’t be released without a valid ID at drop-off.</div>'
+    +'<div style="margin:10px 0;padding:11px 13px;border-radius:12px;background:#FDECE6;border:1px solid #e3a5ae;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#C44257;line-height:1.55;">You were <b>charged the full amount</b> and the items <b>remain with '+esc(who)+'</b> — age-restricted items can’t be released without a valid ID at drop-off.</div>'
     +'<button class="ns-close" style="width:100%;margin-top:6px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Close</button>'
     +'<button class="ns-dispute" style="width:100%;margin-top:9px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">This is wrong — dispute</button>');
   var cl=o.querySelector('.ns-close'), dp=o.querySelector('.ns-dispute');
@@ -1734,13 +1736,13 @@ function openHistory(){
     { title:'Ceiling fan install', order:'GR-00148', cat:'Home Services', date:'Feb 12', paid:'$140.00', who:'Rosa P.', rating:5, note:'Professional and quick.' }
   ];
   var card=function(j){
-    var badge=j.noShow?'<span style="background:#FDECE6;color:#a3401f;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">No Show</span>':'<span style="background:#e7f7ec;color:#0a7d44;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">Completed</span>';
+    var badge=j.noShow?'<span style="background:#FDECE6;color:#C44257;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">No Show</span>':'<span style="background:#e7f7ec;color:#0a7d44;font-family:Nunito;font-weight:800;font-size:10.5px;padding:3px 9px;border-radius:99px;flex:0 0 auto;">Completed</span>';
     var stars=(!j.noShow && j.rating)?('<span style="color:#F5B301;letter-spacing:1px;">'+Array(j.rating+1).join('\u2605')+'</span><span style="color:#8a94a3;"> you rated</span>'):'';
     return '<div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;margin-bottom:10px;background:#fff;">'
       +'<div style="display:flex;align-items:center;gap:8px;"><b style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;flex:1;min-width:0;">'+esc(j.title)+'</b>'+badge+'</div>'
       +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin:3px 0 7px;">#'+esc(j.order)+' &middot; '+esc(j.cat)+' &middot; '+esc(j.date)+'</div>'
       +'<div style="display:flex;justify-content:space-between;font-family:\'DM Sans\',sans-serif;font-size:12.5px;color:#1b2a44;"><span>You paid <b style="color:#002461;">'+esc(j.paid)+'</b></span><span>by <b style="color:#002461;">'+esc(j.who)+'</b></span></div>'
-      +(j.noShow?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#a3401f;margin-top:5px;">No items received \u2014 no valid ID at drop-off.</div>':'')
+      +(j.noShow?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#C44257;margin-top:5px;">No items received \u2014 no valid ID at drop-off.</div>':'')
       +(stars?'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;margin-top:6px;">'+stars+'</div>':'')
       +(j.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;font-style:italic;margin-top:3px;">&ldquo;'+esc(j.note)+'&rdquo;</div>':'')
       +'<div class="ra-ctas">'
