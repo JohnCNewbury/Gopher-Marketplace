@@ -103,7 +103,7 @@ repo-root `docs/handoff/` folder, one level above this file._
   base64 text removed** across **127 pages**, collapsing to 7 cached files (106.8 KB).
   Each instance was sha256-verified byte-identical before merging; zero inline chrome
   base64 remains. SVG logos kept as `.svg`, badges kept as PNG (externalized as-is). Full
-  detail: `docs/handoff/chrome-dedup-manifest.md`.
+  detail: `docs/handoff/final-cleanup/chrome-dedup-manifest.md`.
 - **Honesty copy fixes in `gopher-request.html`** (copy-only, no functionality change):
   removed the false persistence claims — "Your information is saved automatically" →
   "Your progress stays here while this page is open"; "✓ Saved to your job history" →
@@ -296,6 +296,25 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   page's existing title/description/canonical (no invented content, no fake ratings);
   idempotent script; all 108 blocks machine-validated + browser render check clean (header
   mounts, 0 console errors). Tracked in `RFP/Gopher-Launch-Readiness-Checklist.md` §11.
+
+- **Public-exposure security pass (done 2026-07-17).** Audited what the two public hosts
+  (gopher-deals.netlify.app + GitHub Pages) actually serve. Verdict: no secrets, no
+  writable backend, form endpoint safe on read (Apps Script `doGet` returns a liveness
+  string only), iQ/audience data aggregate-only. Two fixes applied:
+  (1) **Demo-profile PII swapped to fictional** — the seeded demo accounts in
+  `gopher-connect.html`/`gopher-request.html` carried a real personal email + 2 real phone
+  numbers; now `john.demo@gophergo.io` / `tony.demo@gophergo.io` and 555-pattern phones
+  (`9195550124` = the TrustShield/deals-eligible demo profile, `9195550160` = the second
+  profile). Digits swapped consistently everywhere incl. logic comments — demo behavior
+  unchanged, but anyone using the old numbers to identify the demo accounts should note
+  the new ones.
+  (2) **Internal docs removed from the served tree** — `docs/handoff/*` (11 files) moved
+  to repo-root `docs/handoff/final-cleanup/`, and `GOPHER_IQ_UPDATE_KIT.md`,
+  `_MOBILE_FIX_REPORT.txt`, `SETUP-Google-Maps-Steps.html` moved to repo-root `docs/`
+  (nothing on the site linked to any of them — verified). `CLAUDE.md` must stay in
+  `Final/` for tooling: masked on Netlify via a forced `_redirects` rule
+  (`/CLAUDE.md / 301!`) and **excluded at deploy time on GitHub Pages** (the deploy
+  worktree step now `rm`s it before committing to `main`).
 
 ### Outstanding to-do
 
