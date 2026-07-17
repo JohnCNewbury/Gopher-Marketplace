@@ -5,6 +5,15 @@
   Canonical file: gopher-request_LATEST.html  (always overwrite this one)
 ------------------------------------------------------------------------------
   CHANGELOG (newest first)
+  v119 2026-07-17  Age-keyword modal "Yes" now also enables Items Purchased. The
+                   keyword backstop modal's confirm button set state.ageRestricted
+                   directly, bypassing the toggle-click handler that carries the
+                   G40-310 smart default — so "requires a purchase" stayed OFF and
+                   the user hit the guardrail nudge a step later anyway. Per owner
+                   (~99% of age-restricted deliveries need a purchase), the Yes
+                   handler now mirrors the smart default: sets itemsPurchased=true
+                   (when off) and re-arms agePurchaseAck, matching the manual-
+                   slider path exactly. "No" path unchanged.
   v118 2026-06-21  Canonical Discount Sheet (founder) — SUPERSEDES the D-033 "ITF hard-line".
                    computeRequestFee now: the % promo (GOPHER50) sizes on the WHOLE fee bundle
                    (Gopher + A/R + ITF), so it halves the ITF too; discounts come off the TOTAL;
@@ -14610,6 +14619,14 @@
           if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
         }
         state.ageRestricted = true;
+        // Mirror the G40-310 smart default (toggle-click path): ~99% of
+        // age-restricted deliveries need a purchase, so confirming via the
+        // keyword modal also enables "purchase needed" — skips a step the
+        // user would almost certainly have to do anyway.
+        if(!state.itemsPurchased){
+          state.itemsPurchased = true;
+          state.agePurchaseAck = false;
+        }
         state.ageKeywordAck = true;
         overlay.hidden = true;
         render();
