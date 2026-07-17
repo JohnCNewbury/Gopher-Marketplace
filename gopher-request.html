@@ -5,6 +5,26 @@
   Canonical file: gopher-request_LATEST.html  (always overwrite this one)
 ------------------------------------------------------------------------------
   CHANGELOG (newest first)
+  v119 2026-07-17  Gopher iQ Review Advisor — the "Want a second set of eyes?" block on
+                   Step 6 (Review) now LEARNS from completed requests instead of showing
+                   only the per-category boilerplate. New shared module
+                   assets/js/gopher-iq-review.js (same contract as gopher-request-logic.js;
+                   Connect can consume it next): a per-category pattern library recognizes
+                   what the requester actually wrote (couch → two-person, "3rd floor" with
+                   no stairs logged, airport with 0 bags, buying items with no cost set…)
+                   and surfaces up to 4 specific 💡 suggestions ranked by a learned
+                   inclusion rate — seeded counts + localStorage tallies fed by (a)
+                   DASH_DATA.previousRequests at boot (idempotent per id) and (b) every
+                   resolveCompletion. Submit stores an iqReviewAudit on the request
+                   (BACKEND SEAM: iq_review_audit) so completion closes the loop: a
+                   suggestion shown-then-fixed counts as acted-on (+2), one ignored on a
+                   job that later took an APPROVED cost adjustment counts +3 (new durable
+                   r.hadCostAdjustment set in resolveAdjustment). Generic checklist lines
+                   superseded by a specific suggestion drop out ("covers" index); the rest
+                   render under "the usual checklist". Collapsed header shows a soft green
+                   count chip ("Gopher iQ spotted N things") — deliberately calmer than
+                   attn-pulse. Boilerplate path is byte-identical when nothing fires or
+                   the module is absent (fail-safe, matches the classifier contract).
   v118 2026-06-21  Canonical Discount Sheet (founder) — SUPERSEDES the D-033 "ITF hard-line".
                    computeRequestFee now: the % promo (GOPHER50) sizes on the WHOLE fee bundle
                    (Gopher + A/R + ITF), so it halves the ITF too; discounts come off the TOTAL;
@@ -1775,6 +1795,11 @@
      truth across Request web / Connect / the Request App prototype — the parity
      harness asserts no surface re-implements it locally. -->
 <script src="assets/js/gopher-request-logic.js"></script>
+<!-- Gopher iQ Review Advisor — learns from completed requests per category and
+     turns the Review step's "Second Set of Eyes" boilerplate into suggestions
+     specific to what the requester actually wrote. Shared module (Connect can
+     consume the same engine); see the file header for the learning contract. -->
+<script src="assets/js/gopher-iq-review.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -5138,6 +5163,24 @@
   .sse-fine {
     font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--muted);
     margin:0; line-height:1.45; font-style:italic;
+  }
+  /* Gopher iQ specific suggestions (learned from completed requests) — the 💡
+     rows sit above the generic ✓ checklist and read as "spotted in YOUR job". */
+  .sse-points-iq { margin-bottom:14px; }
+  .sse-points-iq li { padding-left:24px; }
+  .sse-points-iq li::before { content:'💡'; font-size:12px; top:1px; }
+  .sse-more {
+    font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted);
+    font-weight:600; margin:0 0 7px;
+  }
+  /* Collapsed-header count chip — a soft green "n things spotted" badge. Quieter
+     than attn-pulse on purpose: suggestions are helpful, not alarming. */
+  .sse-iq-chip {
+    flex-shrink:0; min-width:22px; height:22px; padding:0 6px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--green-light); color:var(--green-dark);
+    border:1.5px solid var(--green); border-radius:11px;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:11.5px;
   }
 
   /* Schedule sub-options (Flexible vs Scheduled Time) */
@@ -11530,6 +11573,33 @@
     },
   };
 
+  // Context handed to the Gopher iQ Review Advisor (assets/js/gopher-iq-review.js).
+  // ONE builder so the Review-step render and the submit-time audit see identical
+  // input — the advisor cross-references the description against these structured
+  // fields to catch details described in words but missing from the flow (and
+  // vice versa). Ride has no free description; specialInstructions rides along.
+  function buildIQReviewCtx(){
+    return {
+      category: state.category,
+      description: state.descriptionIsPlaceholder ? '' : (state.description || ''),
+      extraText: state.specialInstructions || '',
+      fields: {
+        moreThanOneWorker: state.moreThanOneWorker,
+        numWorkers: state.numWorkers,
+        payByHour: state.payByHour,
+        numHours: state.numHours,
+        pickupStairs: state.noSpecificPickup ? 0 : state.pickupStairs,
+        destStairs: state.destStairs,
+        photoCount: (state.picThumbs || []).length,
+        itemsPurchased: state.itemsPurchased,
+        hazardous: state.hazardous,
+        numRiders: state.numRiders,
+        numBags: state.numBags,
+        scheduleType: state.scheduleType,
+      },
+    };
+  }
+
   // Extra "already interested" workers, combined with each category's 2 samples
   // to populate the Step 7 interested pool (2 samples + 6 extras = 8 total).
   const EXTRA_INTERESTED = [
@@ -11653,6 +11723,13 @@
       // the field the real submit POST sends as `suggested_offer_used`.
       suggestedOfferUsed: (state.payMode === 'set' && (state.category === 'delivery' || state.category === 'ride'))
         ? !!state.suggestedOfferUsed
+        : null,
+      // Gopher iQ Review Advisor audit — submit-time snapshot of which specific
+      // suggestions fired vs. were acted on. Rides on the record so completion
+      // can close the learning loop (see resolveCompletion). BACKEND SEAM: the
+      // real submit POST sends this as `iq_review_audit`.
+      iqReviewAudit: window.GopherIQReview
+        ? GopherIQReview.buildAudit(buildIQReviewCtx(), state.__sseShownIds || [])
         : null,
     });
     state.__lastDashRequestId = id;
@@ -13188,6 +13265,18 @@
         const sseThin = (isVisible('describe') && !state.descriptionIsPlaceholder ? state.description.trim().length < 25 : (isVisible('describe') ? true : false));
         const sseAgePurchaseMiss = (state.category === 'delivery' && state.ageRestricted && !state.itemsPurchased);
         const sseAssertive = sseThin || sseAgePurchaseMiss;
+        // Gopher iQ Review Advisor — description-specific suggestions learned
+        // from completed requests in this category. Null/empty falls back to
+        // the generic REVIEW_ADVICE checklist unchanged.
+        const iqRes = window.GopherIQReview ? GopherIQReview.analyze(buildIQReviewCtx()) : null;
+        const iqSugs = (iqRes && iqRes.suggestions) || [];
+        // Stash what's on screen while the block is open — the submit-time
+        // audit compares against this to detect suggestions the user acted on.
+        if(state.sseOpen && iqSugs.length) state.__sseShownIds = iqSugs.map(s => s.id);
+        // Generic points already superseded by a specific suggestion drop out.
+        const iqCovered = new Set(iqSugs.map(s => s.covers).filter(n => n != null));
+        const genericPts = iqSugs.length ? adv.points.filter((_, i) => !iqCovered.has(i)) : adv.points;
+        const catName = (CATEGORIES[state.category]||{}).name || 'selected';
         return `
       <div class="sse-block ${state.sseOpen ? 'open' : ''}${sseAssertive ? ' attn-pulse' : ''}">
         <div class="sse-head" data-action="toggle-sse">
@@ -13196,18 +13285,34 @@
           </span>
           <div class="sse-head-text">
             <h4>Want a second set of eyes?</h4>
-            <p>Let Gopher review your request and suggest anything worth adding.</p>
+            <p>${iqSugs.length && !state.sseOpen
+                ? `Gopher iQ read your description and spotted <b>${iqSugs.length} thing${iqSugs.length === 1 ? '' : 's'}</b> worth a look.`
+                : `Let Gopher review your request and suggest anything worth adding.`}</p>
           </div>
+          ${iqSugs.length && !state.sseOpen ? `<span class="sse-iq-chip">${iqSugs.length}</span>` : ''}
           <span class="sse-chev">${state.sseOpen ? '▲' : '▼'}</span>
         </div>
         ${state.sseOpen ? `
           <div class="sse-body">
             ${sseThin ? `<div class="sse-flag">Your description looks a little brief — adding detail helps Gophers decide if they're the right fit.</div>` : ''}
             ${sseAgePurchaseMiss ? `<div class="sse-flag">Most age-restricted items can't be purchased in advance, so we just want to make sure you didn't miss that. If you <b>do</b> need items purchased, tap <b>Job details &amp; description</b> below and enter the cost of the items.</div>` : ''}
-            <p class="sse-intro">${adv.intro}</p>
-            <ul class="sse-points">
-              ${adv.points.map(p => `<li>${p}</li>`).join('')}
-            </ul>
+            ${iqSugs.length ? `
+              <p class="sse-intro">Gopher iQ read your description. Based on <b>${iqRes.completedCount.toLocaleString()}</b> completed <b>${catName}</b> requests, here's what tends to matter for a job like yours:</p>
+              <ul class="sse-points sse-points-iq">
+                ${iqSugs.map(s => `<li>${s.html}</li>`).join('')}
+              </ul>
+              ${genericPts.length ? `
+                <p class="sse-more">And the usual checklist for ${catName}:</p>
+                <ul class="sse-points">
+                  ${genericPts.map(p => `<li>${p}</li>`).join('')}
+                </ul>
+              ` : ''}
+            ` : `
+              <p class="sse-intro">${adv.intro}</p>
+              <ul class="sse-points">
+                ${genericPts.map(p => `<li>${p}</li>`).join('')}
+              </ul>
+            `}
             <p class="sse-cta">If you left anything out, tap a section below to jump straight there and refine it:</p>
             <div class="sse-jumps">
               <button class="sse-jump" data-jump="2">Job details &amp; description →</button>
@@ -13215,7 +13320,9 @@
               <button class="sse-jump" data-jump="4">Locations →</button>
               <button class="sse-jump" data-jump="5">Worker pay →</button>
             </div>
-            <p class="sse-fine">Gopher's suggestions are general guidance for the <b>${(CATEGORIES[state.category]||{}).name || 'selected'}</b> category — you know your job best.</p>
+            <p class="sse-fine">${iqSugs.length
+              ? `Gopher iQ learns from completed <b>${catName}</b> requests — suggestions get sharper as more jobs like yours wrap up. You know your job best.`
+              : `Gopher's suggestions are general guidance for the <b>${catName}</b> category — you know your job best.`}</p>
           </div>
         ` : ''}
       </div>`;
@@ -18743,6 +18850,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // who are also Gopher workers, so their tier badge shows in the badges rail.
     profile: { rating: 4.96, trustShield: true, requestsMade: null, workerTier: 'elite', dob: '02-03-1976', idOnFile: null },
   };
+  // Gopher iQ Review Advisor — ingest PAST completed requests into the learning
+  // corpus (idempotent per record id, so reloads don't double-count). Future
+  // completions feed in live via resolveCompletion.
+  if(window.GopherIQReview) GopherIQReview.seedFromHistory(DASH_DATA.previousRequests);
   let _userReqSeq = 1;       // sequential id source (GR-00002, GR-00003, …)
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -19284,6 +19395,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       when: data.when || 'Just now · awaiting your selection',
       dupKey: data.dupKey || null,
       interestedWorkers: interested,
+      iqReviewAudit: data.iqReviewAudit || null,   // Gopher iQ learning loop (closed at completion)
     };
     DASH_DATA.activeRequests.unshift(req);  // newest on top
     // Service-provider deal: provider already accepted → connect immediately
@@ -20964,6 +21076,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     r.awaitingConfirmation = false;
     r.confirmed = true;
     r.statusLabel = 'Completed';
+    // Gopher iQ Review Advisor — a confirmed completion is a lesson. Feed the
+    // learning store: the request's text re-runs the recognizers, and the
+    // submit-time audit tells us which suggestions were acted on / ignored
+    // (an ignored suggestion + an approved cost adjustment = the costly miss).
+    if(window.GopherIQReview){
+      GopherIQReview.learnFromCompletion({
+        id: r.id,
+        audit: r.iqReviewAudit || null,
+        category: r.iqReviewAudit ? null : (r.title || '').split('·')[0],
+        description: (r.live && r.live.description) || '',
+        adjusted: !!(r.hadCostAdjustment || r.pendingAdjustment),
+      });
+    }
     if(typeof toast === 'function') toast('Completion confirmed — receipt emailed, payment released');
     renderActiveRequests();
     renderRequestDetail();
@@ -21072,6 +21197,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         snap.total = A.gmvTotal;
         r.amount = `$${A.gmvTotal.toFixed(2)} total`;   // canonical summary total
       }
+      // Durable marker for the Gopher iQ learning loop: an APPROVED adjustment
+      // means the price really changed mid-job — at completion, any review
+      // suggestion that fired and was ignored gets its strongest boost.
+      r.hadCostAdjustment = true;
     }
     delete r.pendingAdjustment;
     renderActiveRequests();   // refresh the dashboard summary card's total
