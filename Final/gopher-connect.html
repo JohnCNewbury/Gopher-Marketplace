@@ -5915,6 +5915,19 @@
   .deal-pay-wrap:focus-within { border-color:var(--green); }
   .deal-pay-cur { font-family:'Nunito',sans-serif; font-weight:800; color:var(--muted); margin-right:4px; }
   .deal-pay-wrap input { border:none; padding:11px 0; }
+  /* Deal→request savings reframe (merchant deals): you already saved by ordering
+     direct — receipt-style comparison vs the delivery apps. */
+  .deal-save-note { font-family:'DM Sans',sans-serif; background:#f1fbf4; border:1px solid #cdeeda;
+    border-radius:12px; padding:13px 15px; margin:0 0 16px; }
+  .deal-save-head { font-family:'Nunito',sans-serif; font-weight:900; font-size:13.5px; color:var(--navy); }
+  .deal-save-sub { font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
+  .deal-save-rows { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+  .deal-save-row { display:flex; align-items:baseline; gap:7px; font-size:12.5px; color:var(--navy); }
+  .deal-save-row .dsr-dots { flex:1; border-bottom:2px dotted #b7dfc4; transform:translateY(-3px); }
+  .deal-save-row .dsr-amt { font-weight:800; white-space:nowrap; }
+  .deal-save-row.dsr-total .dsr-lbl, .deal-save-row.dsr-total .dsr-amt { font-weight:900; color:var(--green-dark); }
+  .deal-save-foot { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; }
+  .deal-save-foot b { color:var(--navy); }
   .deal-verify-note { display:flex; align-items:center; gap:12px; background:var(--navy); color:#fff;
     border-radius:12px; padding:11px 13px; margin:0 0 14px; }
   .deal-verify-note .dvn-ico { flex-shrink:0; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.12);
@@ -14201,7 +14214,7 @@ const PAY_BADGES = {
       + '<div class="gc-modal deal-req-modal" role="dialog" aria-modal="true" aria-labelledby="dealReqTitle">'
       +   '<button type="button" class="gc-modal-close" id="dealReqClose" aria-label="Close">\u00D7</button>'
       +   '<div class="deals-badge" id="dealReqBadge">Gopher Deal</div>'
-      +   '<h4 id="dealReqTitle">Bring you your deal</h4>'
+      +   '<h4 id="dealReqTitle">Let’s get you your deal.</h4>'
       +   '<p class="deal-req-intro" id="dealReqIntro"></p>'
       +   '<div class="deal-field" id="dealPickupField" hidden>'
       +     '<label for="dealPickup">Pick-up address</label>'
@@ -14218,6 +14231,16 @@ const PAY_BADGES = {
       +   '<div class="deal-field" id="dealPayField">'
       +     '<label for="dealPay">Pay to Gopher</label>'
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealPay" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
+      +   '</div>'
+      +   '<div class="deal-save-note" id="dealSaveNote" hidden>'
+      +     '<div class="deal-save-head">Ordering direct saved you money 🎉</div>'
+      +     '<div class="deal-save-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>'
+      +     '<div class="deal-save-rows">'
+      +       '<div class="deal-save-row"><span class="dsr-lbl">Paying the restaurant directly</span><span class="dsr-dots"></span><span class="dsr-amt">$30</span></div>'
+      +       '<div class="deal-save-row"><span class="dsr-lbl">Same order on a delivery app</span><span class="dsr-dots"></span><span class="dsr-amt">$36–41</span></div>'
+      +       '<div class="deal-save-row dsr-total"><span class="dsr-lbl">You saved by ordering direct</span><span class="dsr-dots"></span><span class="dsr-amt">$6–11+</span></div>'
+      +     '</div>'
+      +     '<div class="deal-save-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>'
       +   '</div>'
       +   '<div class="deal-verify-note" id="dealVerifyNote" hidden></div>'
       +   '<button type="button" class="gc-modal-btn" id="dealReqContinue">Continue to review</button>'
@@ -14246,7 +14269,7 @@ const PAY_BADGES = {
     const isService = m.kind === 'service';
     const addr = dealsUserAddress();
     document.getElementById('dealReqBadge').textContent = isService ? 'Provider Deal' : 'Gopher Deal';
-    document.getElementById('dealReqTitle').textContent = isService ? ('Redeem ' + m.name) : 'Bring you your deal';
+    document.getElementById('dealReqTitle').textContent = isService ? ('Redeem ' + m.name) : 'Let’s get you your deal.';
     document.getElementById('dealReqIntro').textContent = isService
       ? 'Just confirm where you need it \u2014 the rest is set by the deal. Next stop: review.'
       : 'A couple of details and we\u2019ll send this straight to review.';
@@ -14263,6 +14286,9 @@ const PAY_BADGES = {
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
+    // Savings reframe: merchant only — you already saved by ordering direct;
+    // pay your local Gopher fairly instead of an app's delivery fees.
+    document.getElementById('dealSaveNote').hidden = isService;
     // Cost of items (COG) is collected whenever the Gopher fronts the purchase:
     // age-restricted deals (can't be bought online) AND merchants registered with
     // "no online ordering" (no_online_ordering flag; common for food trucks).
