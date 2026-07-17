@@ -2839,18 +2839,20 @@
   }
   .connect-only-block .step-section-title { margin-bottom:10px; }
 
-  /* "Need offer suggestion?" head-icon helper (Page 8) */
-  /* Gopher iQ offer-suggestion helper — showcased in an inviting (not alarming) way */
+  /* Gopher iQ suggested-offer CTA (Page 8) — a real button, not a narrative card
+     (owner 2026-07-17: the wide tinted card read as ignorable info; this must
+     present as a primary action). Solid green like the house CTAs, 14px radius
+     (no pills), narrative moved out to the caption below. */
   .ai-helper-row {
     position:relative; overflow:hidden;
     margin-top:14px;
-    display:flex; align-items:center; gap:14px;
-    padding:14px 16px;
-    background:linear-gradient(135deg, rgba(51,217,117,0.12), rgba(26,42,94,0.05));
-    border:1.5px solid rgba(51,217,117,0.40);
+    display:inline-flex; align-items:center; gap:12px;
+    padding:9px 16px 9px 9px;
+    background:linear-gradient(135deg, var(--green), var(--green-dark));
+    border:none;
     border-radius:14px; cursor:pointer;
-    box-shadow:0 4px 16px rgba(51,217,117,0.16);
-    transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    box-shadow:0 8px 20px -8px rgba(31,184,95,0.75);
+    transition:box-shadow 0.16s, transform 0.16s, filter 0.16s;
   }
   /* gentle, slow shine to draw a friendly eye — soft, never an alert */
   .ai-helper-row::after {
@@ -2866,45 +2868,44 @@
     88%, 100% { left:130%; }
   }
   .ai-helper-row:hover {
-    border-color:var(--green);
-    background:linear-gradient(135deg, rgba(51,217,117,0.18), rgba(26,42,94,0.07));
-    transform:translateY(-2px);
-    box-shadow:0 8px 22px rgba(51,217,117,0.24);
+    filter:brightness(1.05);
+    transform:translateY(-1px);
+    box-shadow:0 12px 26px -8px rgba(31,184,95,0.85);
   }
   .ai-helper-row .ai-head {
-    width:auto; height:32px; border-radius:0;
-    background:transparent;
+    /* white chip keeps the iQ lockup legible on the green fill */
+    height:38px; padding:0 11px; border-radius:10px;
+    background:#fff;
     display:inline-flex; align-items:center; justify-content:center;
     flex-shrink:0;
     border:none;
+    box-shadow:0 1px 4px rgba(26,42,94,0.18);
   }
   .ai-helper-row .ai-head img,
   .ai-helper-row .ai-head .gopher-iq-inline {
-    height:32px; width:auto; max-width:120px;
+    height:24px; width:auto; max-width:120px;
     object-fit:contain;
-    object-position:left center;
+    object-position:center;
   }
   .ai-helper-row .ai-text {
-    flex:1;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
-    color:var(--navy); line-height:1.35;
-  }
-  .ai-helper-row .ai-text small {
-    display:block; font-weight:600; font-size:11px;
-    color:var(--muted); margin-top:2px; line-height:1.35;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
+    color:#fff; line-height:1.2; text-align:left;
   }
   .ai-helper-row .ai-arrow {
     flex-shrink:0;
-    width:32px; height:32px; border-radius:50%;
+    width:30px; height:30px; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center;
-    background:var(--green); color:#fff;
-    font-weight:900; font-size:16px; line-height:1;
-    box-shadow:0 2px 8px rgba(51,217,117,0.45);
-    transition:transform 0.18s ease, background 0.18s ease;
+    background:#fff; color:var(--green-dark);
+    font-weight:800; font-size:16px; line-height:1;
+    transition:transform 0.16s;
   }
   .ai-helper-row:hover .ai-arrow {
-    background:var(--green-dark);
-    transform:translateX(3px) scale(1.05);
+    transform:translateX(3px);
+  }
+  .ai-helper-caption {
+    margin-top:7px;
+    font-family:'DM Sans',sans-serif; font-weight:600; font-size:11px;
+    color:var(--muted); line-height:1.4;
   }
   @media (prefers-reduced-motion: reduce) {
     .ai-helper-row::after { display:none; }
@@ -5915,10 +5916,23 @@
   .deal-pay-wrap:focus-within { border-color:var(--green); }
   .deal-pay-cur { font-family:'Nunito',sans-serif; font-weight:800; color:var(--muted); margin-right:4px; }
   .deal-pay-wrap input { border:none; padding:11px 0; }
-  /* gopher iQ fair-pay hint under the Pay to Gopher field */
+  /* How-Deals-works band at the foot of the deals landing */
+  .dh-how { max-width:860px; margin:26px auto 8px; background:#f7f9fc; border:1px solid #e3e7ef;
+    border-radius:16px; padding:18px 24px; text-align:center; }
+  .dh-how-eyebrow { font-family:'Nunito',sans-serif; font-weight:900; font-size:11px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--green-dark); margin-bottom:7px; }
+  .dh-how-copy { font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--muted); line-height:1.6; margin:0; }
+  .dh-how-copy b { color:var(--navy); }
+  /* gopher iQ fair-pay hint under the Offer to a Gopher field */
   .deal-iq-hint { display:flex; align-items:center; gap:7px; font-family:'DM Sans',sans-serif;
     font-size:12px; color:var(--muted); margin-top:10px; padding:2px 2px 4px; }
   .deal-iq-hint .iq-logo { height:16px; width:auto; flex:0 0 auto; display:block; }
+  /* Below-range offer: reddish pulsing shadow pulls the eye to the iQ range */
+  .deal-iq-hint.low { border-radius:10px; animation:dealIqLowPulse 1.6s ease-in-out infinite; }
+  @keyframes dealIqLowPulse {
+    0%,100% { box-shadow:0 0 0 0 rgba(196,66,87,0); }
+    50%     { box-shadow:0 0 0 4px rgba(196,66,87,.22), 0 0 14px 2px rgba(196,66,87,.32); }
+  }
   /* Deal→request savings reframe (merchant deals): you already saved by ordering
      direct — receipt-style comparison vs the delivery apps. */
   .deal-save-note { font-family:'DM Sans',sans-serif; background:#f1fbf4; border:1px solid #cdeeda;
@@ -9773,6 +9787,7 @@ const PAY_BADGES = {
     $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
       b.addEventListener('click', () => {
         state.category = b.dataset.cat;
+        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
         if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; } // jump forward when picking from outer tabs
         render();
       });
@@ -9800,6 +9815,7 @@ const PAY_BADGES = {
     const delay = opts.instant ? 100 : 700;
     setTimeout(() => {
       state.category = key;
+      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
       if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; }
       render();
       // Pulse the matched pill
@@ -9993,6 +10009,14 @@ const PAY_BADGES = {
     bidsOption:   ['delivery','ride'],
   };
   const isVisible = (field) => !FIELD_HIDDEN_FOR[field].includes(state.category);
+  // Whether "Request bids" is genuinely available for the CURRENT state — the same
+  // rule that shows/hides the Step-5 bids radio (category table + multi-worker
+  // labor management). Single source of truth for the pay gates: payMode 'bids'
+  // is only valid while this holds; otherwise it's a stale choice carried over
+  // from an earlier category/worker setup and a real offer is required (owner
+  // 2026-07-17: a worker can NEVER receive a $0 offer).
+  const bidsAvailable = () =>
+    isVisible('bidsOption') && !(state.moreThanOneWorker && state.laborManagement !== 'one-hires');
 
   // STEP 2 — Job Details (Master Pages 1, 2, 3, 5)
   //   Page 1: Describe What You Need + Add a pic
@@ -10387,9 +10411,7 @@ const PAY_BADGES = {
     // one worker is needed. The "individually" bids rule only applies then.
     const laborMgmtActive = isVisible('laborMgmt') && state.moreThanOneWorker;
     const individuallyActive = laborMgmtActive && state.laborManagement === 'individually';
-    const bidsHiddenByCategory = !isVisible('bidsOption');   // driven by FIELD_HIDDEN_FOR.bidsOption
-    const bidsHiddenByMultiWorker = state.moreThanOneWorker && state.laborManagement !== 'one-hires';
-    const showBidsOption = !bidsHiddenByCategory && !bidsHiddenByMultiWorker;
+    const showBidsOption = bidsAvailable();   // category + multi-worker rules — shared with the pay gates in stepGate()
     return `
       <h3>How would you like to pay your worker?</h3>
       <p class="mc-sub">Set your hiring price or ask for bids with certain requests</p>
@@ -10430,13 +10452,12 @@ const PAY_BADGES = {
               `;
             })() : ''}
             ${isVisible('aiPaySuggest') ? `
-            <div class="ai-helper-row" data-action="ai-pay-suggest">
+            <button type="button" class="ai-helper-row" data-action="ai-pay-suggest">
               <span class="ai-head"><img class="gopher-iq-inline" src="assets/img/connect-offersuggestclose.webp" alt="Gopher iQ" /></span>
-              <span class="ai-text">Tap here if you would like a suggestion on what offer to make
-                <small>Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</small>
-              </span>
+              <span class="ai-text">Get a suggested offer</span>
               <span class="ai-arrow">→</span>
-            </div>
+            </button>
+            <div class="ai-helper-caption">Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</div>
             ` : ''}
           </div>
         ` : ''}
@@ -11541,6 +11562,7 @@ const PAY_BADGES = {
       tiles.forEach(t => {
         t.addEventListener('click', () => {
           state.category = t.dataset.cat;
+          if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
           // Reflect the selection (visible if the user steps back to Step 1).
           tiles.forEach(o => o.classList.toggle('selected', o === t));
           $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
@@ -11823,12 +11845,25 @@ const PAY_BADGES = {
     }
     // Step 5 — Worker pay. When setting a flat price, an amount must be entered
     // (pricing is never pre-populated, so this starts empty and gates Continue).
-    // Requesting bids needs no amount, so only gate the "set your own price" mode.
-    if(state.step === 5 && state.payMode === 'set'){
+    // A REAL bids job (payMode 'bids' AND bids available for this category/worker
+    // setup) needs no amount; anything else — including a stale 'bids' choice
+    // carried onto a no-bids category — must have a positive offer (owner
+    // 2026-07-17: a worker can NEVER receive a $0 offer).
+    if(state.step === 5 && !(state.payMode === 'bids' && bidsAvailable())){
       const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
       if(!(payNum > 0)){
         return { ok:false, label:'Worker pay', selector:'#payAmountInput',
                  msg:'Please enter how much you’d like to pay your worker before continuing.' };
+      }
+    }
+    // Submit-time backstop for the same rule — step gates only check the current
+    // step, so a $0 that survived to review (stale bids choice, prefilled
+    // re-request with no pay) would otherwise submit.
+    if(state.step === 6 && !(state.payMode === 'bids' && bidsAvailable())){
+      const payNum6 = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
+      if(!(payNum6 > 0)){
+        return { ok:false, label:'Worker pay', selector:null,
+                 msg:'Your worker’s pay can’t be $0 — go back to Worker pay and set an offer.' };
       }
     }
     // Step 6 — submission requires the liability waiver.
@@ -11859,7 +11894,10 @@ const PAY_BADGES = {
   function showGatePrompt(gate){
     if(!gate || gate.ok) return;
     // Waiver has its own richer inline treatment — reuse it for consistency.
-    if(state.step === 6){ requireWaiver(); return; }
+    // (Other step-6 gates, e.g. the worker-pay backstop, fall through to the
+    // generic treatment below — a null selector just skips the field flash and
+    // shows the footer toast.)
+    if(state.step === 6 && gate.label === 'Liability waiver'){ requireWaiver(); return; }
 
     const field = gate.selector ? $content.querySelector(gate.selector) : null;
     if(field){
@@ -12069,6 +12107,7 @@ const PAY_BADGES = {
     // disclaimer + $2.99 fee appear in place. They review it, then tap Continue.
     if(yesBtn) yesBtn.addEventListener('click', () => {
       if(state.category !== 'delivery') state.category = 'delivery'; // route age-restricted → Delivery
+      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // Delivery hides bids — clear a stale choice
       state.ageRestricted = true;
       state.ageKeywordAck = true;
       state.idRequiredAtCompletion = false; // age-restricted path already requires ID
@@ -12136,6 +12175,7 @@ const PAY_BADGES = {
       if(yes) yes.addEventListener('click', () => {
         L.emitCategoryCheck('accepted', r, reqId);
         state.category = L.slugToUi(r.suggestedSlug);
+        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
         state.userAcknowledgedCategory = false;
         ov.remove();
         render();
@@ -13845,6 +13885,10 @@ const PAY_BADGES = {
           '</div>' +
         '</div>' +
         '<div class="dh-cats">' + cats.map(catCardHTML).join('') + '</div>' +
+        '<div class="dh-how">' +
+          '<div class="dh-how-eyebrow">How Deals Works</div>' +
+          '<p class="dh-how-copy"><b>Deals are delivered by neighbors, not algorithms.</b> Please keep in mind there is no tip screen \u2014 your <b>Offer to a Gopher</b> is the pay, and <b>100% of it goes to the worker</b> who chooses your request. Nothing is auto-assigned: fair offers get picked up fast, low offers tend to sit unclaimed. Deals was built so everyone in the deal wins \u2014 the merchant, you, and the worker doing the run.</p>' +
+        '</div>' +
       '</div>';
 
     // Featured hero + category cards → open that merchant's deal detail
@@ -14237,7 +14281,7 @@ const PAY_BADGES = {
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealCost" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
       +   '</div>'
       +   '<div class="deal-field" id="dealPayField">'
-      +     '<label for="dealPay">Pay to Gopher</label>'
+      +     '<label for="dealPay">Offer to a Gopher</label>'
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealPay" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
       +     '<div class="deal-iq-hint" id="dealIqHint"></div>'
       +   '</div>'
@@ -14253,7 +14297,7 @@ const PAY_BADGES = {
       +         '<div class="deal-save-row"><span class="dsr-lbl">Same order on a delivery app</span><span class="dsr-dots"></span><span class="dsr-amt">$36–41</span></div>'
       +         '<div class="deal-save-row dsr-total"><span class="dsr-lbl">You saved by ordering direct</span><span class="dsr-dots"></span><span class="dsr-amt">$6–11+</span></div>'
       +       '</div>'
-      +       '<div class="deal-save-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>'
+      +       '<div class="deal-save-foot">Larger orders save even more. And your <b>Offer to a Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>'
       +     '</div>'
       +   '</div>'
       +   '<div class="deal-verify-note" id="dealVerifyNote" hidden></div>'
@@ -14273,6 +14317,8 @@ const PAY_BADGES = {
     };
     ['dealDropoff','dealPickup'].forEach(id => document.getElementById(id).addEventListener('input', validate));
     document.getElementById('dealReqContinue').addEventListener('click', () => { if(_activeDeal) launchDealRequest(_activeDeal); });
+    // iQ hint re-prices as the address or offer changes.
+    ['dealDropoff','dealPay'].forEach(id => document.getElementById(id).addEventListener('input', () => { if(_activeDeal) updateIqHint(_activeDeal); }));
     // Savings note starts minimized to its headline; the chevron expands it.
     const saveTgl = document.getElementById('dealSaveToggle');
     if(saveTgl) saveTgl.addEventListener('click', () => {
@@ -14282,6 +14328,43 @@ const PAY_BADGES = {
       saveTgl.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
     ov.__validate = validate;
+  }
+
+  // ── gopher iQ fair-pay hint (deal quick-submit) ──
+  // Distance seam: production geocodes the drop-off and asks the iQ pricing
+  // service for merchant→drop-off mileage (Distance Matrix). Prototype: the
+  // dataset distance already reflects the user's registered address; any OTHER
+  // typed address derives a stable stand-in mileage from the text so the hint
+  // visibly re-prices when the address changes.
+  function iqDistanceFor(m, addr){
+    const base = parseFloat(String(m.distance || '').replace(/[^\d.]/g, '')) || 2;
+    const def = (dealsUserAddress() || '').trim();
+    const a = (addr || '').trim();
+    if(!a || a === def) return { mi: base, label: m.distance || (base + ' mi') };
+    let h = 0; for(let i = 0; i < a.length; i++){ h = (h * 31 + a.charCodeAt(i)) >>> 0; }
+    const mi = Math.round((0.4 + (h % 56) / 10) * 10) / 10;   // 0.4–5.9 mi, stable per address
+    return { mi, label: mi.toFixed(1) + ' mi' };
+  }
+  // Hidden until a drop-off address is present (attention goes to the address
+  // first); re-prices on every address/offer keystroke; $7 covers the first
+  // 2 miles, +$1/mile after, +$2 spread — the seam for the live iQ
+  // suggested-offer model. A below-range offer sets .low → pulsing red shadow.
+  function updateIqHint(m){
+    const hint = document.getElementById('dealIqHint');
+    if(!hint || !m || m.kind === 'service') return;
+    const drop = (document.getElementById('dealDropoff').value || '').trim();
+    const payEl = document.getElementById('dealPay');
+    if(!drop){ hint.hidden = true; hint.classList.remove('low'); if(payEl) payEl.placeholder = '0.00'; return; }
+    const d = iqDistanceFor(m, drop);
+    const iqLo = Math.max(6, Math.round(7 + Math.max(0, d.mi - 2)));
+    hint.innerHTML = '<img class="iq-logo" src="assets/img/shared-scribble.webp" alt="gopher iQ"> $' + iqLo + '–' + (iqLo + 2)
+      + ' is fair pay for this ' + d.label + ' run.';
+    hint.hidden = false;
+    if(payEl){
+      payEl.placeholder = iqLo + '.00';
+      const v = parseFloat((payEl.value || '').replace(/[^\d.]/g, ''));
+      hint.classList.toggle('low', v > 0 && v < iqLo);
+    }
   }
 
   function openDealRequestPopup(m){
@@ -14308,19 +14391,9 @@ const PAY_BADGES = {
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
-    // gopher iQ fair-pay hint — distance-based suggestion under the Pay field
-    // (hides with the whole field on service deals). Prototype math: $7 covers
-    // the first 2 miles, +$1/mile after, +$2 spread; the low end seeds the
-    // input placeholder. Production swaps this for the live iQ suggested-offer
-    // seam (NC-column model).
-    {
-      const mi = parseFloat(String(m.distance || '').replace(/[^\d.]/g, '')) || 2;
-      const iqLo = Math.max(6, Math.round(7 + Math.max(0, mi - 2)));
-      const iqHint = document.getElementById('dealIqHint');
-      if(iqHint) iqHint.innerHTML = '<img class="iq-logo" src="assets/img/shared-scribble.webp" alt="gopher iQ"> $' + iqLo + '–' + (iqLo + 2)
-        + ' is fair pay for this ' + (m.distance ? m.distance + ' ' : '') + 'run.';
-      document.getElementById('dealPay').placeholder = iqLo + '.00';
-    }
+    // gopher iQ fair-pay hint — address-aware, hidden until a drop-off exists,
+    // pulses red when the offer undercuts the range. See updateIqHint().
+    updateIqHint(m);
     // Savings reframe: merchant only — you already saved by ordering direct;
     // pay your local Gopher fairly instead of an app's delivery fees.
     // Re-minimize on every open so each deal starts at the one-line headline.
