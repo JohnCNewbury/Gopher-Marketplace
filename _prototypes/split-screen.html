@@ -458,7 +458,8 @@
           var prevSeen=goMsgSeen[id]||0;
           if(prevSeen < goMsgs.length){
             var rm=(r.messages||[]).slice();
-            for(var i=prevSeen; i<goMsgs.length; i++){ rm.push({from:'gopher', text:goMsgs[i].text}); }
+            // flagged = the Gopher chose "Send as-is" on a guard hit — the requester sees the terms-violation note
+            for(var i=prevSeen; i<goMsgs.length; i++){ rm.push({from:'gopher', text:goMsgs[i].text, flagged:goMsgs[i].flagged?1:0}); }
             goMsgSeen[id]=goMsgs.length;
             l.GReq.update(id, { messages:rm, unread:((r.unread||0) + (goMsgs.length-prevSeen)) });
             try{ if(l.__inboxAlert) l.__inboxAlert(id, goMsgs[goMsgs.length-1].text); }catch(_){}
@@ -468,7 +469,7 @@
           // requester → Gopher
           var reqMsgs=(r.messages||[]).filter(function(m){return m.from==='req';});
           if((reqMsgSeen[id]||0) < reqMsgs.length){
-            for(var j=(reqMsgSeen[id]||0); j<reqMsgs.length; j++){ try{ if(w.__ptInboxDeliver) w.__ptInboxDeliver(id, reqMsgs[j].text); }catch(_){} }
+            for(var j=(reqMsgSeen[id]||0); j<reqMsgs.length; j++){ try{ if(w.__ptInboxDeliver) w.__ptInboxDeliver(id, reqMsgs[j].text, reqMsgs[j].flagged); }catch(_){} }
             reqMsgSeen[id]=reqMsgs.length;
           }
         }

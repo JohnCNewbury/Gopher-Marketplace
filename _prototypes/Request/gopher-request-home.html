@@ -1488,14 +1488,15 @@ function openInboxThread(order){
     var rr=GReq.get(order); var msgs=rr.messages||[];
     var body=o.querySelector('#itBody'); if(!body) return;
     var bubbles=msgs.map(function(m){ var me=(m.from==='req');
-      return '<div style="display:flex;justify-content:'+(me?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div></div>';
+      // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; reciprocal in Go).
+      return '<div style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>'+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>';
     }).join('')||'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>';
     body.innerHTML='<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
       +'<div style="display:flex;gap:8px;margin-top:8px;"><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
     var inp=body.querySelector('.it-in'), snd=body.querySelector('.it-send');
     var sc=body.querySelector('.it-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;   // grow with the convo, keep newest in view
     function doSend(){ var t=(inp.value||'').trim(); if(!t) return;
-      var deliver=function(){ var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t}); GReq.update(order,{messages:mm}); renderT(); };
+      var deliver=function(res){ var _fl=!!(res&&res.flagged); var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t,flagged:_fl?1:0}); GReq.update(order,{messages:mm}); renderT(); };
       // G40-35 messaging guard — connected = a Gopher is already matched on this request
       // (relaxed contact rules + the connected variant of the transaction alert).
       var rr1=GReq.get(order); var conn=!!(rr1 && (rr1.accepted || rr1.hired));

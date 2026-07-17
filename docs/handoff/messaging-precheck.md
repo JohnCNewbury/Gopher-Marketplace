@@ -94,6 +94,14 @@ Buttons on both variants, plus a link:
 - **In-App Messaging Terms** link below the buttons →
   `gopher-terms-of-service.html` (direct).
 
+**The flag travels with the message (John, 2026-07-17).** When the sender
+chooses **Send as-is**, the delivered message carries its `flagged` state and
+the RECIPIENT sees a note with the bubble — small red line: *"⚑ This message
+was flagged for a possible terms violation."* Reciprocally applicable (worker →
+customer and customer → worker). The sender's own bubble shows no note (they
+already saw the alert). Production: the send endpoint persists `flagged` on the
+message row; every thread renderer shows the note on flagged incoming messages.
+
 **Connected relaxation (evaluation change, not just copy):** once the two
 parties are connected on a request, the **`contact` category is skipped
 entirely** (phone/email/call-me may be legitimate job coordination). Payment,

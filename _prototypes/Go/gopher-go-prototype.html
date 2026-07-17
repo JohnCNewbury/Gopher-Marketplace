@@ -868,10 +868,12 @@ function openGoMsgSheet(c){
   const host=stage.querySelector('.host'); const root=host&&host.shadowRoot; const frame=root&&root.querySelector('.frame'); if(!frame) return;
   var old=root.querySelector('.gomsg-ov'); if(old){ old.remove(); }
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(x){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x];});};
-  var bub=function(side,txt){ return '<div style="display:flex;justify-content:'+(side==='me'?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(side==='me'?'#002461':'#eef1f5')+';color:'+(side==='me'?'#fff':'#1b2a44')+';">'+esc(txt)+'</div></div>'; };
+  // fl = the sender chose "Send as-is" on a flagged message — the RECIPIENT sees a terms-violation
+  // note carried with the bubble (owner 2026-07-16; reciprocal on both apps).
+  var bub=function(side,txt,fl){ return '<div style="display:flex;flex-direction:column;align-items:'+(side==='me'?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(side==='me'?'#002461':'#eef1f5')+';color:'+(side==='me'?'#fff':'#1b2a44')+';">'+esc(txt)+'</div>'+((fl&&side!=='me')?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>'; };
   var initials=(c.name.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('')||'G').toUpperCase();
   var sysline='<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:10px 0 6px;">This is the start of your conversation with '+esc(c.name)+' — keep messages on-platform.</div>';
-  var bubbles=(c.msgs||[]).map(function(m){return bub(m.s,m.t);}).join('');
+  var bubbles=(c.msgs||[]).map(function(m){return bub(m.s,m.t,m.f);}).join('');
   var ov=document.createElement('div'); ov.className='gomsg-ov';
   ov.setAttribute('style','position:absolute;left:0;right:0;background:rgba(0,18,49,.5);display:flex;align-items:flex-end;justify-content:center;z-index:70;');
   ov.style.top=host.scrollTop+'px'; ov.style.height=host.clientHeight+'px';
@@ -888,7 +890,7 @@ function openGoMsgSheet(c){
   frame.appendChild(ov);
   var scroll=ov.querySelector('.gomsg-scroll'), inp=ov.querySelector('.gomsg-in');
   function down(){ scroll.scrollTop=scroll.scrollHeight; }
-  function add(side,txt){ var d=document.createElement('div'); d.innerHTML=bub(side,txt); scroll.appendChild(d.firstChild); c.msgs.push({s:side,t:txt}); c.time='now'; down(); }
+  function add(side,txt,fl){ var d=document.createElement('div'); d.innerHTML=bub(side,txt,fl); scroll.appendChild(d.firstChild); c.msgs.push({s:side,t:txt,f:fl?1:0}); c.time='now'; down(); }
   function reply(q){ var x=(q||'').toLowerCase(); var a;
     if(/pick|where/.test(x)) a='Pickup is the catering kitchen on Hillsborough St — I’ll share the exact suite once you accept.';
     else if(/park/.test(x)) a='There’s a loading zone out front you can use for about 10 minutes.';
@@ -897,14 +899,14 @@ function openGoMsgSheet(c){
     else a='Thanks for reaching out! That works — let me know if you have any other questions.';
     setTimeout(function(){ if(ov.parentNode) add('them',a); }, 650);
   }
-  function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(){ add('me',t); inp.value='';
-      if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t); }        // sync to the requester
+  function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(res){ var _fl=!!(res&&res.flagged); add('me',t); inp.value='';
+      if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t, _fl); }        // sync to the requester (flag rides along)
       if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // canned reply only outside the split
     };
     // Connected = this thread's request is already matched (accepted). Baked demo convos simulate mid-job threads.
     var _conn=(c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true;
     if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ connected:_conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
-  c.__appendIncoming=function(txt){ if(ov.parentNode) add('them', txt); };            // harness delivers requester replies here
+  c.__appendIncoming=function(txt,fl){ if(ov.parentNode) add('them', txt, fl); };            // harness delivers requester replies here (flag rides along)
   function close(){ c.__appendIncoming=null; ov.remove(); }
   ov.querySelector('.gomsg-x').onclick=close;
   ov.addEventListener('click',function(e){ if(e.target===ov) close(); });
@@ -2498,7 +2500,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     }
 
     function renderThread(c){ var who=c.name;
-      var bubbles=c.msgs.map(function(m){ return '<div class="mi-b '+(m.s==='me'?'me':'them')+'">'+m.t+'</div>'; }).join('');
+      // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16).
+      var _flnote='<div class="mi-fl" style="margin:2px 0 5px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>';
+      var bubbles=c.msgs.map(function(m){ return '<div class="mi-b '+(m.s==='me'?'me':'them')+'">'+m.t+'</div>'+((m.f&&m.s!=='me')?_flnote:''); }).join('');
       body.innerHTML='<div class="mi-top"><button class="mi-bk js-back">'+sv(BK)+'</button>'+ava(c.verified)
         +'<div class="mi-hd"><div class="mi-nm">'+who+'</div><div class="mi-st">'+sv(SH)+'Verified · usually replies in ~10 min</div></div></div>'
         +'<div class="mi-ctx">Re: '+c.ctx+'</div>'
@@ -2506,7 +2510,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="mi-comp"><input class="mi-in js-in" placeholder="Message '+who+'…"><button class="mi-send js-send">'+sv('<path d="M4 12l16-7-7 16-2-7z"/>')+'</button></div>';
       body.querySelector('.js-back').onclick=function(){ if(c.__fromJob){ c.__fromJob=false; state.inboxOpen=null; BACK(); } else { state.inboxOpen=null; render(); } };
       var thread=body.querySelector('#mi-thread'), inp=body.querySelector('.js-in');
-      function add(side,txt){ var b=document.createElement('div'); b.className='mi-b '+side; b.innerHTML=txt; thread.appendChild(b); thread.scrollTop=thread.scrollHeight; c.msgs.push({s:side,t:txt}); c.time='now'; }
+      function add(side,txt,fl){ var b=document.createElement('div'); b.className='mi-b '+side; b.innerHTML=txt; thread.appendChild(b);
+        if(fl&&side!=='me'){ var n=document.createElement('div'); n.innerHTML=_flnote; thread.appendChild(n.firstChild); }
+        thread.scrollTop=thread.scrollHeight; c.msgs.push({s:side,t:txt,f:fl?1:0}); c.time='now'; }
       function reply(q){ var x=(q||'').toLowerCase(); var a;
         if(/pick|where/.test(x)) a='Pickup is the catering kitchen on Hillsborough St — I’ll share the exact suite once you accept.';
         else if(/park/.test(x)) a='There’s a loading zone out front you can use for about 10 minutes.';
@@ -2515,14 +2521,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         else a='Thanks for reaching out! That works — let me know if you have any other questions.';
         setTimeout(function(){ add('them',a); }, 650);
       }
-      function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(){ add('me',t); inp.value='';
-          if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t); }        // sync this message to the requester's inbox
+      function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(res){ var _fl=!!(res&&res.flagged); add('me',t); inp.value='';
+          if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t, _fl); }        // sync this message to the requester's inbox (flag rides along)
           if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // in the split the REAL requester replies — skip the canned auto-reply
         };
         // Connected = this thread's request is already matched (accepted). Baked demo convos simulate mid-job threads.
         var _conn=(c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true;
         if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ connected:_conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
-      c.__appendIncoming=function(txt){ add('them', txt); };   // harness calls this when the requester replies
+      c.__appendIncoming=function(txt,fl){ add('them', txt, fl); };   // harness calls this when the requester replies (flag rides along)
       body.querySelector('.js-send').onclick=function(){ send(inp.value); };
       inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });
       thread.scrollTop=thread.scrollHeight;
@@ -2777,12 +2783,12 @@ if(PT){
   };
   // (i) inbox sync — the worker's message is written to the shared job so the harness can relay it to
   //      the requester; the requester's replies come back via __ptInboxDeliver.
-  window.__ptSendMsg=function(id,text){ var job=window.__ptJobs[id]; if(!job) return; job.msgs=job.msgs||[]; job.msgs.push({text:text}); };
-  window.__ptInboxDeliver=function(id,text){
+  window.__ptSendMsg=function(id,text,flagged){ var job=window.__ptJobs[id]; if(!job) return; job.msgs=job.msgs||[]; job.msgs.push({text:text, flagged:flagged?1:0}); };
+  window.__ptInboxDeliver=function(id,text,flagged){
     try{ var convos=state.inboxConvos||[]; var c=convos.filter(function(x){return x.__order===id;})[0];
       if(!c){ return; }
-      if(c.__appendIncoming){ c.__appendIncoming(text); }   // message sheet is open → drop it straight in
-      else { c.msgs.push({s:'them',t:text}); c.unread=(c.unread||0)+1; if(current==='inbox') load('inbox'); }
+      if(c.__appendIncoming){ c.__appendIncoming(text, flagged); }   // message sheet is open → drop it straight in
+      else { c.msgs.push({s:'them',t:text,f:flagged?1:0}); c.unread=(c.unread||0)+1; if(current==='inbox') load('inbox'); }
       toast('💬 '+(c.name||'The requester')+': '+String(text).slice(0,40));
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'New Message Available',sub:'Click here to view',onTap:function(){ openGoMsgSheet(c); }});
     }catch(_){}
