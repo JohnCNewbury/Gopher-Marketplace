@@ -4127,56 +4127,59 @@
   }
   .connect-only-block .step-section-title { margin-bottom:10px; }
 
-  /* "Need offer suggestion?" head-icon helper (Page 8) */
+  /* Gopher iQ suggested-offer CTA (Page 8) — a real button, not a narrative card
+     (owner 2026-07-17: the wide tinted card read as ignorable info; this must
+     present as a primary action). Solid green like the house CTAs, 14px radius
+     (no pills), narrative moved out to the caption below. */
   .ai-helper-row {
     position:relative; overflow:hidden;
-    margin-top:12px;
-    display:flex; align-items:center; gap:13px;
-    padding:14px 16px;
-    background:linear-gradient(135deg, rgba(51,217,117,0.10), rgba(26,42,94,0.04));
-    border:1.5px solid rgba(51,217,117,0.55);
+    margin-top:14px;
+    display:inline-flex; align-items:center; gap:12px;
+    padding:9px 16px 9px 9px;
+    background:linear-gradient(135deg, var(--green), var(--green-dark));
+    border:none;
     border-radius:14px; cursor:pointer;
-    box-shadow:0 6px 20px -10px rgba(51,217,117,0.55);
-    transition:border-color 0.16s, background 0.16s, box-shadow 0.16s, transform 0.16s;
+    box-shadow:0 8px 20px -8px rgba(31,184,95,0.75);
+    transition:box-shadow 0.16s, transform 0.16s, filter 0.16s;
   }
   .ai-helper-row:hover {
-    border-color:var(--green);
-    background:linear-gradient(135deg, rgba(51,217,117,0.16), rgba(26,42,94,0.06));
-    box-shadow:0 10px 26px -10px rgba(51,217,117,0.7);
+    filter:brightness(1.05);
+    transform:translateY(-1px);
+    box-shadow:0 12px 26px -8px rgba(31,184,95,0.85);
   }
   .ai-helper-row .ai-head {
-    /* Gopher iQ lockup: keep height fixed, width grows to preserve aspect ratio */
-    height:44px; border-radius:0;
-    background:transparent;
+    /* white chip keeps the iQ lockup legible on the green fill */
+    height:38px; padding:0 11px; border-radius:10px;
+    background:#fff;
     display:inline-flex; align-items:center; justify-content:center;
     flex-shrink:0;
     border:none;
+    box-shadow:0 1px 4px rgba(26,42,94,0.18);
   }
   .ai-helper-row .ai-head img {
-    height:32px; width:auto;
+    height:24px; width:auto;
     object-fit:contain;
     object-position:center;
     display:block;
   }
   .ai-helper-row .ai-text {
-    flex:1;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
-    color:var(--navy); line-height:1.25;
-  }
-  .ai-helper-row .ai-text small {
-    display:block; font-weight:600; font-size:11px;
-    color:var(--muted); margin-top:2px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
+    color:#fff; line-height:1.2; text-align:left;
   }
   .ai-helper-row .ai-arrow {
     flex-shrink:0;
-    width:34px; height:34px; border-radius:50%;
-    background:var(--green); color:#fff;
+    width:30px; height:30px; border-radius:50%;
+    background:#fff; color:var(--green-dark);
     display:inline-flex; align-items:center; justify-content:center;
-    font-size:18px; font-weight:800; line-height:1;
-    box-shadow:0 4px 10px -3px rgba(51,217,117,0.8);
-    transition:transform 0.16s, background 0.16s;
+    font-size:16px; font-weight:800; line-height:1;
+    transition:transform 0.16s;
   }
-  .ai-helper-row:hover .ai-arrow { background:var(--green-dark); transform:translateX(3px); }
+  .ai-helper-row:hover .ai-arrow { transform:translateX(3px); }
+  .ai-helper-caption {
+    margin-top:7px;
+    font-family:'DM Sans',sans-serif; font-weight:600; font-size:11px;
+    color:var(--muted); line-height:1.4;
+  }
   /* gentle premium shine sweep (deliberately NOT the red alert pulse) */
   .ai-helper-row::after {
     content:''; position:absolute; top:0; bottom:0; left:-60%; width:45%;
@@ -12882,13 +12885,12 @@
               `;
             })() : ''}
             ${isVisible('aiPaySuggest') ? `
-            <div class="ai-helper-row" data-action="ai-pay-suggest">
+            <button type="button" class="ai-helper-row" data-action="ai-pay-suggest">
               <span class="ai-head"><img src="${GOPHER_IQ_SRC}" alt="Gopher iQ"></span>
-              <span class="ai-text">Tap here if you would like a suggestion on what offer to make
-                <small>Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</small>
-              </span>
+              <span class="ai-text">Get a suggested offer</span>
               <span class="ai-arrow">→</span>
-            </div>
+            </button>
+            <div class="ai-helper-caption">Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</div>
             ` : ''}
           </div>
         ` : ''}

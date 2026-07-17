@@ -2839,18 +2839,20 @@
   }
   .connect-only-block .step-section-title { margin-bottom:10px; }
 
-  /* "Need offer suggestion?" head-icon helper (Page 8) */
-  /* Gopher iQ offer-suggestion helper — showcased in an inviting (not alarming) way */
+  /* Gopher iQ suggested-offer CTA (Page 8) — a real button, not a narrative card
+     (owner 2026-07-17: the wide tinted card read as ignorable info; this must
+     present as a primary action). Solid green like the house CTAs, 14px radius
+     (no pills), narrative moved out to the caption below. */
   .ai-helper-row {
     position:relative; overflow:hidden;
     margin-top:14px;
-    display:flex; align-items:center; gap:14px;
-    padding:14px 16px;
-    background:linear-gradient(135deg, rgba(51,217,117,0.12), rgba(26,42,94,0.05));
-    border:1.5px solid rgba(51,217,117,0.40);
+    display:inline-flex; align-items:center; gap:12px;
+    padding:9px 16px 9px 9px;
+    background:linear-gradient(135deg, var(--green), var(--green-dark));
+    border:none;
     border-radius:14px; cursor:pointer;
-    box-shadow:0 4px 16px rgba(51,217,117,0.16);
-    transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    box-shadow:0 8px 20px -8px rgba(31,184,95,0.75);
+    transition:box-shadow 0.16s, transform 0.16s, filter 0.16s;
   }
   /* gentle, slow shine to draw a friendly eye — soft, never an alert */
   .ai-helper-row::after {
@@ -2866,45 +2868,44 @@
     88%, 100% { left:130%; }
   }
   .ai-helper-row:hover {
-    border-color:var(--green);
-    background:linear-gradient(135deg, rgba(51,217,117,0.18), rgba(26,42,94,0.07));
-    transform:translateY(-2px);
-    box-shadow:0 8px 22px rgba(51,217,117,0.24);
+    filter:brightness(1.05);
+    transform:translateY(-1px);
+    box-shadow:0 12px 26px -8px rgba(31,184,95,0.85);
   }
   .ai-helper-row .ai-head {
-    width:auto; height:32px; border-radius:0;
-    background:transparent;
+    /* white chip keeps the iQ lockup legible on the green fill */
+    height:38px; padding:0 11px; border-radius:10px;
+    background:#fff;
     display:inline-flex; align-items:center; justify-content:center;
     flex-shrink:0;
     border:none;
+    box-shadow:0 1px 4px rgba(26,42,94,0.18);
   }
   .ai-helper-row .ai-head img,
   .ai-helper-row .ai-head .gopher-iq-inline {
-    height:32px; width:auto; max-width:120px;
+    height:24px; width:auto; max-width:120px;
     object-fit:contain;
-    object-position:left center;
+    object-position:center;
   }
   .ai-helper-row .ai-text {
-    flex:1;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
-    color:var(--navy); line-height:1.35;
-  }
-  .ai-helper-row .ai-text small {
-    display:block; font-weight:600; font-size:11px;
-    color:var(--muted); margin-top:2px; line-height:1.35;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
+    color:#fff; line-height:1.2; text-align:left;
   }
   .ai-helper-row .ai-arrow {
     flex-shrink:0;
-    width:32px; height:32px; border-radius:50%;
+    width:30px; height:30px; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center;
-    background:var(--green); color:#fff;
-    font-weight:900; font-size:16px; line-height:1;
-    box-shadow:0 2px 8px rgba(51,217,117,0.45);
-    transition:transform 0.18s ease, background 0.18s ease;
+    background:#fff; color:var(--green-dark);
+    font-weight:800; font-size:16px; line-height:1;
+    transition:transform 0.16s;
   }
   .ai-helper-row:hover .ai-arrow {
-    background:var(--green-dark);
-    transform:translateX(3px) scale(1.05);
+    transform:translateX(3px);
+  }
+  .ai-helper-caption {
+    margin-top:7px;
+    font-family:'DM Sans',sans-serif; font-weight:600; font-size:11px;
+    color:var(--muted); line-height:1.4;
   }
   @media (prefers-reduced-motion: reduce) {
     .ai-helper-row::after { display:none; }
@@ -10451,13 +10452,12 @@ const PAY_BADGES = {
               `;
             })() : ''}
             ${isVisible('aiPaySuggest') ? `
-            <div class="ai-helper-row" data-action="ai-pay-suggest">
+            <button type="button" class="ai-helper-row" data-action="ai-pay-suggest">
               <span class="ai-head"><img class="gopher-iq-inline" src="assets/img/connect-offersuggestclose.webp" alt="Gopher iQ" /></span>
-              <span class="ai-text">Tap here if you would like a suggestion on what offer to make
-                <small>Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</small>
-              </span>
+              <span class="ai-text">Get a suggested offer</span>
               <span class="ai-arrow">→</span>
-            </div>
+            </button>
+            <div class="ai-helper-caption">Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</div>
             ` : ''}
           </div>
         ` : ''}
