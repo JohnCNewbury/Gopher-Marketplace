@@ -168,9 +168,16 @@ html.embedded,html.embedded body{padding:0;margin:0;min-height:0;background:#FBF
 .pay-wrap{display:flex;align-items:center;border:1px solid #d8dde7;border-radius:11px;padding:0 13px;}
 .pay-wrap .cur{font-family:'Nunito';font-weight:800;color:var(--ink-soft);}
 .pay-wrap input{border:none;padding:12px 6px;}
-/* gopher iQ fair-pay hint under the Pay to Gopher field */
+/* gopher iQ fair-pay hint under the Offer to a Gopher field */
 .iq-hint{display:flex;align-items:center;gap:6px;font-family:'DM Sans';font-size:11px;color:var(--muted-cool);margin-top:9px;padding:2px 1px 3px;}
 .iq-hint .iq-logo{height:14px;width:auto;flex:0 0 auto;display:block;}
+.iq-hint.low{border-radius:10px;animation:iqLowPulse 1.6s ease-in-out infinite;}
+@keyframes iqLowPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,66,87,0);}50%{box-shadow:0 0 0 4px rgba(196,66,87,.22),0 0 14px 2px rgba(196,66,87,.32);}}
+/* How-Deals-works band at the foot of the deals list */
+.how-deals{margin:18px 16px 6px;background:#f7f9fc;border:1px solid #e3e7ef;border-radius:14px;padding:14px 16px;text-align:center;}
+.how-deals .hd-eyebrow{font-family:'Nunito';font-weight:900;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--green-dark);margin-bottom:6px;}
+.how-deals .hd-copy{font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool);line-height:1.55;margin:0;}
+.how-deals .hd-copy b{color:var(--ink);}
 /* Savings reframe (merchant deals): you already saved by ordering direct —
    receipt-style comparison vs the delivery apps. */
 .save-note{font-family:'DM Sans';background:#f1fbf4;border:1px solid #cdeeda;border-radius:12px;padding:12px 13px;margin:2px 0 14px;}
@@ -373,6 +380,10 @@ html.embedded,html.embedded body{padding:0;margin:0;min-height:0;background:#FBF
     </div>
     <div id="list"></div>
     <div class="deals-empty" id="dealsEmpty" hidden>No deals match your search yet — try another term.</div>
+    <div class="how-deals">
+      <div class="hd-eyebrow">How Deals Works</div>
+      <p class="hd-copy"><b>Deals are delivered by neighbors, not algorithms.</b> Please keep in mind there is no tip screen — your <b>Offer to a Gopher</b> is the pay, and <b>100% of it goes to the worker</b> who chooses your request. Nothing is auto-assigned: fair offers get picked up fast, low offers tend to sit unclaimed. Deals was built so everyone in the deal wins — the merchant, you, and the worker doing the run.</p>
+    </div>
     <div style="height:14px;"></div>
   </div>
 
@@ -845,10 +856,6 @@ const IQ_LOGO='data:image/webp;base64,UklGRuAoAABXRUJQVlA4WAoAAAAQAAAAJwMAvwAAQU
 function sheetHTML(m){
   const svc=m.kind==='service';
   const pickup = (!svc && m.mobile);
-  /* gopher iQ fair-pay suggestion — prototype math: $7 covers the first 2 miles,
-     +$1/mile after, +$2 spread. Production = live iQ suggested-offer seam. */
-  const iqMi=parseFloat(String(m.distance||'').replace(/[^\d.]/g,''))||2;
-  const iqLo=Math.max(6,Math.round(7+Math.max(0,iqMi-2))), iqHi=iqLo+2;
   return `<div class="grab"></div>
     <span class="sbadge ${svc?'svc':''}">${svc?'Provider Deal':'Gopher Deal'}</span>
     <h4>${svc?('Redeem '+esc(m.name)):'Let’s get you your deal.'}</h4>
@@ -856,8 +863,8 @@ function sheetHTML(m){
     ${pickup?`<div class="field"><label>Pick-up address</label><input id="fPickup" placeholder="Where should we pick up?"></div>`:''}
     <div class="field"><label>${svc?'Destination (service address)':'Drop-off address'}</label><input id="fDrop" value="${esc(USER_ADDR)}"></div>
     ${(!svc&&m.ageRestricted)?`<div class="field"><label>Cost of items <span style="font-weight:600;color:var(--muted-cool,#6b7280);">— the age-restricted items the Gopher buys for you</span></label><div class="pay-wrap"><span class="cur">$</span><input id="fCost" inputmode="decimal" placeholder="0.00"></div></div>`:''}
-    ${svc?'':`<div class="field"><label>Pay to Gopher</label><div class="pay-wrap"><span class="cur">$</span><input id="fPay" inputmode="decimal" placeholder="${iqLo}.00"></div>
-    <div class="iq-hint"><img class="iq-logo" src="${IQ_LOGO}" alt="gopher iQ"> $${iqLo}–${iqHi} is fair pay for this ${m.distance?esc(m.distance)+' ':''}run.</div></div>
+    ${svc?'':`<div class="field"><label>Offer to a Gopher</label><div class="pay-wrap"><span class="cur">$</span><input id="fPay" inputmode="decimal" placeholder="0.00"></div>
+    <div class="iq-hint" id="iqHint" hidden></div></div>
     <div class="save-note">
       <button type="button" class="sn-toggle" onclick="this.closest('.save-note').classList.toggle('open')" aria-label="Show the savings comparison">
         <span class="sn-h">Ordering direct saved you money 🎉</span>
@@ -870,13 +877,39 @@ function sheetHTML(m){
           <div class="sn-row"><span>Same order on a delivery app</span><span class="sn-dots"></span><b>$36–41</b></div>
           <div class="sn-row total"><span>You saved by ordering direct</span><span class="sn-dots"></span><b>$6–11+</b></div>
         </div>
-        <div class="sn-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>
+        <div class="sn-foot">Larger orders save even more. And your <b>Offer to a Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>
       </div>
     </div>`}
     ${(!svc&&m.ageRestricted)?arSection(m):''}
     <button class="scta" data-toreview="${m.id}"${(!svc&&m.ageRestricted&&!idSatisfied())?' disabled':''}>${ctaLabel(m,svc)}</button>`;
 }
-function openSheet(id){ activeId=id; const m=BY_ID[id]; resetIdState(m); $('#sheet').innerHTML=sheetHTML(m); $('#sheetBack').classList.add('on'); $('#sheet').classList.add('on'); }
+function iqDistFor(m,addr){
+  /* Distance seam: production geocodes the drop-off and asks the iQ pricing
+     service for merchant→drop-off mileage. Prototype: the dataset distance
+     covers the registered address; any OTHER typed address derives a stable
+     stand-in mileage from the text so the hint visibly re-prices. */
+  const base=parseFloat(String(m.distance||'').replace(/[^\d.]/g,''))||2;
+  const a=(addr||'').trim();
+  if(!a||a===USER_ADDR) return {mi:base,label:m.distance||base+' mi'};
+  let h=0; for(let i=0;i<a.length;i++){h=(h*31+a.charCodeAt(i))>>>0;}
+  const mi=Math.round((0.4+(h%56)/10)*10)/10;
+  return {mi,label:mi.toFixed(1)+' mi'};
+}
+function updateIqHint(m){
+  /* Hidden until a drop-off exists (attention goes to the address first);
+     re-prices per keystroke ($7 first 2 mi, +$1/mi, +$2 spread); a
+     below-range offer sets .low → pulsing red shadow. */
+  const hint=document.getElementById('iqHint'); if(!hint||m.kind==='service') return;
+  const drop=document.getElementById('fDrop'), pay=document.getElementById('fPay');
+  const a=drop?drop.value.trim():'';
+  if(!a){hint.hidden=true;hint.classList.remove('low');if(pay)pay.placeholder='0.00';return;}
+  const d=iqDistFor(m,a);
+  const lo=Math.max(6,Math.round(7+Math.max(0,d.mi-2)));
+  hint.innerHTML='<img class="iq-logo" src="'+IQ_LOGO+'" alt="gopher iQ"> $'+lo+'–'+(lo+2)+' is fair pay for this '+d.label+' run.';
+  hint.hidden=false;
+  if(pay){pay.placeholder=lo+'.00';const v=parseFloat((pay.value||'').replace(/[^\d.]/g,''));hint.classList.toggle('low',v>0&&v<lo);}
+}
+function openSheet(id){ activeId=id; const m=BY_ID[id]; resetIdState(m); $('#sheet').innerHTML=sheetHTML(m); ['fDrop','fPay'].forEach(fid=>{const el=document.getElementById(fid); if(el) el.addEventListener('input',()=>updateIqHint(m));}); updateIqHint(m); $('#sheetBack').classList.add('on'); $('#sheet').classList.add('on'); }
 function closeSheet(){ $('#sheetBack').classList.remove('on'); $('#sheet').classList.remove('on'); }
 
 /* ---------- REVIEW ---------- */
@@ -911,7 +944,7 @@ function reviewHTML(m){
       <div class="rv-row"><span class="rv-l">Pick-up</span><span class="rv-v">${esc(pickup)}</span></div>
       <div class="rv-row"><span class="rv-l">Drop-off</span><span class="rv-v">${esc(drop)}</span></div>
       ${m.ageRestricted?`<div class="rv-row"><span class="rv-l">Cost of items</span><span class="rv-v">${money(costV)}</span></div>`:''}
-      <div class="rv-row"><span class="rv-l">Pay to Gopher</span><span class="rv-v">${money(payV)}</span></div>
+      <div class="rv-row"><span class="rv-l">Offer to a Gopher</span><span class="rv-v">${money(payV)}</span></div>
       <div class="rv-row"><span class="rv-l">Request fee</span><span class="rv-v">${money(fee)}</span></div>
       <div class="rv-row total"><span class="rv-l">Total to Gopher</span><span class="rv-v">${money(total)}</span></div>
     </div>
