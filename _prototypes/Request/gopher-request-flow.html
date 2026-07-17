@@ -1646,6 +1646,9 @@ function renderStep6(){
       `Once accepted, you can <b>text or call your worker</b> directly and <b>track progress in real time</b> when applicable.`,
       `When the job is done, you'll <b>confirm on your end</b> and rate your worker before final billing.`
     ];
+    // Need ASAP requests expire — be explicit up front (1-hour broadcast window).
+    if(state.scheduleType==='now') wteSteps.splice(1,0,
+      `<b>Need ASAP</b> requests stay live for <b>1 hour</b> — if no worker accepts in that time, the request <b>expires</b>. You're never charged for an expired request, and you can resubmit anytime.`);
     const wteSub = bids
       ? `A quick rundown of how bidding and the worker handoff work — so there are no surprises.`
       : `A quick rundown of how billing and the worker handoff work — so there are no surprises.`;
@@ -1812,7 +1815,7 @@ function renderStep7(){
     : state.scheduleType==='flexible'
       ? (state.flexibleWindow==='24hr'?'Within 24 hours':state.flexibleWindow==='week'?'Within a week':'Within 2 weeks')
       : schedLabel();
-  const expires = state.scheduleType==='now' ? 'expires in 30 min'
+  const expires = state.scheduleType==='now' ? 'expires in 1 hour'
     : state.scheduleType==='flexible'
       ? (state.flexibleWindow==='24hr'?'expires in 24 hrs':state.flexibleWindow==='week'?'expires in 7 days':'expires in 14 days')
       : `for ${schedLabel()}`;
@@ -2312,6 +2315,8 @@ return { all:all, save:save,
     // Only a true exact-time booking is "scheduled for later" (held back from broadcast). A flexible
     // window (within 24h / a week) is an OPEN request that should broadcast to workers now.
     stage:'searching',accepted:0,scheduledForLater:(state.scheduleType==='scheduled'),offerBand:offerBand,
+    // Need ASAP expiry (1-hour broadcast window) — the home card counts down from submittedAt.
+    asap:(state.scheduleType==='now'),submittedAt:Date.now(),
     cost:cost,pay:pay,pickup:pickup,dropoff:dropoff,
     scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
     // richer detail carried for the crew pill + full "View details" summary

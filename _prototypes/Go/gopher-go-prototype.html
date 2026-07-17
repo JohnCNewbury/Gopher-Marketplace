@@ -1490,7 +1490,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const sub=r.querySelector('.sub'); const list=r.querySelector('.js-list');
     // Active tab → the requests you're connected to (pick one to engage). Available tab → the open feed.
     const base=activeMode
-      ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow)
+      ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow && !j.cancelled)
       : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted);   // accepted/completed jobs leave the Available feed
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
@@ -2445,9 +2445,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ta.oninput=()=>{ const ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#C44257':'#ecc3cc'; btn.style.cursor=ok?'pointer':'not-allowed'; };
       ov.querySelector('.js-keepjob').onclick=()=>ov.remove();
       btn.onclick=()=>{ if(ta.value.trim().length<3) return;
-        // Prototype: surface the outcome. In the live app this releases the job and notifies the requester.
-        j.cancelled=true; ov.remove();
+        // G40-9: cancelling RELEASES the job — it leaves this Gopher's screens (Active list, home
+        // counts) and lands in Request History as cancelled. The requester's app gets the recovery
+        // options via the harness relay; the reason travels with the cancellation.
+        j.cancelled=true; j.cancelReason=ta.value.trim(); ov.remove();
         toast('Cancellation submitted — '+who+' has been notified. A fee may apply per terms.');
+        setTimeout(function(){ try{ load('home'); }catch(_){} }, 900);
       };
     }
     // The Gopher rates the requester after the REQUESTER CONFIRMS (two-way ratings). The
@@ -2664,7 +2667,7 @@ if(PT){
     if(!sr || !sr.querySelector('.tabs')) return;
     var byCat={}, avail=0, active=0;
     Object.keys(JOBS).forEach(function(k){ (JOBS[k]||[]).forEach(function(j){
-      if(j.substage==='completed' || j.noShow) return;   // done → out of Available AND Active (it's history now)
+      if(j.substage==='completed' || j.noShow || j.cancelled) return;   // done/cancelled → out of Available AND Active (it's history now)
       if(j.accepted) active++; else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
     var tabs=sr.querySelectorAll('.tabs .tab');
     if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],0);

@@ -881,7 +881,7 @@ const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toU
 const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
-function statusBucket(r){ if(r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Request history
+function statusBucket(r){ if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Request history
   if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
@@ -911,6 +911,12 @@ function statusText(r){
  if(r.stage==='active') return '<b>Job in progress</b> · your crew is on it';
  if(r.stage==='scheduled') return 'Scheduled · '+(r.when||'booked for later');
  if(r.stage==='accepted'){ var n=r.accepted||0; return '<b>'+n+' Gopher'+(n!==1?'s':'')+'</b> accepted — ready to review'; }
+ // Submitted (broadcasting) — Need ASAP requests carry the 1-hour expiry ON the card so the
+ // window is evident without opening details.
+ if((r.stage==='searching'||r.stage==='pending') && r.asap && r.submittedAt){
+  var _left=60-Math.floor((Date.now()-r.submittedAt)/60000);
+  return 'Finding Gophers near you… · <b>'+(_left>0?('expires in '+(_left>=60?'1 hour':_left+' min')):'expired')+'</b>';
+ }
  return 'Finding Gophers near you…';
 }
 // G40 DEMO ONLY — card dismiss "×". MUST be false/removed for the live prototype and MUST NOT
@@ -930,6 +936,8 @@ function cardHTML(r){
        ? '<button class="rc-view rate" data-pending-action="confirm" data-order="'+r.order+'">Review completion →</button>'
        : attn.type==='adjust'
        ? '<button class="rc-view urgent" data-pending-action="adjust" data-order="'+r.order+'">Review adjustment →</button>'
+       : attn.type==='gcancel'
+       ? '<button class="rc-view urgent" data-pending-action="gcancel" data-order="'+r.order+'">Review options →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
  return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+(DEMO_SHOW_CARD_DISMISS?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
@@ -987,10 +995,17 @@ function startAccepting(){
 // In PT / split-screen mode the Go app is the ONLY thing that advances a request — never auto-simulate acceptances/bids.
 function isPTmode(){ try{ return new URLSearchParams(location.search).get('pt')==='1' || sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
 function initPending(){ renderPending(); if(!isPTmode() && GReq.all().some(function(r){return r.stage==='searching';})) startAccepting(); }
+// Keep the ASAP expiry countdown honest — refresh the cards once a minute while an ASAP
+// request is still broadcasting (skipped when a modal/sheet is up so nothing gets yanked).
+setInterval(function(){ try{
+ if(GReq.all().some(function(r){ return (r.stage==='searching'||r.stage==='pending') && r.asap; })
+    && !document.querySelector('.gov, .su-back.show')) renderPending();
+}catch(_){} }, 60000);
 document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
  if(act==='counter'){ if(order) openCounterReview(order); return; }
+ else if(act==='gcancel'){ if(order) openGopherCancelledSheet(order); return; }
  else if(act==='adjust'){ if(order) openAdjustReview(order); return; }
  else if(act==='bid'){ if(order) openBidsList(order); return; }
  else if(act==='confirm'){ if(order) openConfirmCompletion(order); return; }
@@ -1413,6 +1428,128 @@ function openAdjustReview(order){
   };
 }
 window.openAdjustReview=openAdjustReview;
+
+/* ── G40-9: the GOPHER cancelled an accepted request — recovery UX on the requester side.
+   The harness relays the Go phone's cancellation here (__gopherCancelled): the card flips to
+   ACTION NEEDED and the recovery sheet offers the three ticketed options — Assign New Gopher
+   ASAP (recommended, shamrock glow), Edit request, Cancel request — under a 15-minute
+   no-action auto-cancel. Assign/Edit close the original and repost the SAME terms under a NEW
+   order # (stage 'searching' → the harness re-broadcasts it to the Go phone as a fresh job).
+   Cancel rates the cancelling Gopher, no repost.
+   G40-9 BACKEND SEAM: real Stripe reassignment (hold funds across close→repost, NO new
+   authorization), the durable 15-min server-side timer, and cancellation logging (gopher id +
+   timestamp) are dev/backend — here the hold is a label, the timer a client interval. */
+function __gopherCancelled(order, reason, by){
+  if(!window.GReq) return; var r=GReq.get(order); if(!r || r.gCancelled) return;
+  var who=by||r.hired||'Your Gopher';
+  GReq.update(order,{ gCancelled:1, gCancelBy:who, gCancelReason:reason||'',
+    gCancelDeadline:Date.now()+15*60000, substage:null, hired:null, accepted:0,
+    attention:{ type:'gcancel', label:who.split(' ')[0]+' cancelled — review your options' } });
+  uiBucket='active'; uiIdx=0; renderPending(); __gcEnsureTick();
+  openGopherCancelledSheet(order);
+}
+window.__gopherCancelled=__gopherCancelled;
+function __gcEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function __gcCloseOriginal(order, label){
+  GReq.update(order,{ cancelled:1, attention:null, gCancelDeadline:null, when:label||'Cancelled' });
+  renderPending();
+}
+// Clone terms → new order # (the Request-Again-FAST idea behind G40-9's repost paths).
+function __gcRepost(order, edits){
+  var r=GReq.get(order); if(!r) return null;
+  var n={}; for(var k in r) n[k]=r[k];
+  n.order=GReq.nextOrder(); n.stage='searching'; n.accepted=0; n.hired=null; n.attention=null;
+  n.substage=null; n.cancelled=0; n.gCancelled=0; n.gCancelBy=null; n.gCancelReason=null;
+  n.gCancelDeadline=null; n.scheduledForLater=false; n.resubmitSeq=0;
+  n.asap=true; n.submittedAt=Date.now(); n.when='Now · ASAP';   // repost = immediate re-broadcast
+  if(edits){ for(var k2 in edits) n[k2]=edits[k2]; }
+  __gcCloseOriginal(order);
+  GReq.add(n); uiBucket='submitted'; uiIdx=0; renderPending();
+  return n.order;
+}
+function openGopherCancelledSheet(order){
+  var r=GReq.get(order); if(!r||!r.gCancelled||r.cancelled) return;
+  var who=r.gCancelBy||'Your Gopher', first=who.split(' ')[0];
+  var opt=function(cls,ico,t,p,rec){
+    return '<button class="'+cls+'" style="display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left;background:#fff;border:1.5px solid '+(rec?'#3CB54A':'#e4e8f0')+';border-radius:14px;padding:13px 14px;margin-top:10px;cursor:pointer;'+(rec?'box-shadow:0 0 0 3px rgba(60,181,74,.18),0 8px 22px -8px rgba(60,181,74,.45);':'')+'font-family:\'DM Sans\',sans-serif;">'
+      +'<span style="font-size:20px;flex:0 0 auto;line-height:1;">'+ico+'</span><span style="min-width:0;">'
+      +'<b style="display:block;font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">'+t+(rec?' <span style="font-size:10px;color:#0a7d44;background:#e8f5ee;border-radius:99px;padding:2px 8px;vertical-align:2px;">RECOMMENDED</span>':'')+'</b>'
+      +'<span style="display:block;font-size:12px;color:#5b6472;margin-top:2px;line-height:1.45;">'+p+'</span></span></button>';
+  };
+  var o=gSheet('Your Gopher cancelled',
+    '<p class="gs-sub">'+__gcEsc(who)+' cancelled your request <b>#'+order+'</b>'+(r.gCancelReason?' — “'+__gcEsc(r.gCancelReason)+'”':'')+'. Your payment hold is untouched. Choose how to continue:</p>'
+    +opt('gc-assign','⚡','Assign New Gopher ASAP','Re-broadcasts the same request — same details, same price — under a new order #. No new authorization needed.',true)
+    +opt('gc-edit','📝','Edit request','Adjust details, price, or locations, then repost under a new order #.')
+    +opt('gc-cancel','✕','Cancel request','Close it out — no repost. You can rate '+__gcEsc(first)+' on the way.')
+    +'<div style="margin-top:12px;text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;">No action in <b class="gc-mmss" style="color:#C44257;">15:00</b> auto-cancels this request.</div>');
+  var tickEl=o.querySelector('.gc-mmss');
+  var iv=setInterval(function(){ var rr=GReq.get(order);
+    if(!rr||rr.cancelled||!rr.gCancelDeadline||!document.body.contains(tickEl)){ clearInterval(iv); return; }
+    var s=Math.max(0,Math.floor((rr.gCancelDeadline-Date.now())/1000));
+    tickEl.textContent=Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);
+  },1000);
+  o.querySelector('.gc-assign').onclick=function(){ o.remove();
+    var no=__gcRepost(order); if(no) toast('Reposted as #'+no+' — broadcasting to Gophers now'); };
+  o.querySelector('.gc-edit').onclick=function(){ o.remove(); openGcEdit(order); };
+  o.querySelector('.gc-cancel').onclick=function(){ o.remove(); openGcRate(order); };
+}
+function openGcEdit(order){
+  var r=GReq.get(order); if(!r) return;
+  var f=function(l,cls,v){ return '<div style="margin-top:10px;"><label style="display:block;font-family:Nunito;font-weight:800;font-size:11px;color:#002461;margin-bottom:5px;">'+l+'</label><input class="'+cls+'" value="'+__gcEsc(v||'')+'" style="width:100%;border:1.5px solid #E3E7EF;border-radius:11px;padding:11px 12px;font-family:\'DM Sans\',sans-serif;font-size:13.5px;color:#002461;"></div>'; };
+  // G40-9: Notes field intentionally omitted from recovery edit — avoids a Go build.
+  var o=gSheet('Edit & repost',
+    '<p class="gs-sub">Update what you need — submitting closes <b>#'+order+'</b> and reposts under a new order #.</p>'
+    +'<div style="margin-top:8px;"><label style="display:block;font-family:Nunito;font-weight:800;font-size:11px;color:#002461;margin-bottom:5px;">Details</label><textarea class="gce-desc" style="width:100%;min-height:64px;border:1.5px solid #E3E7EF;border-radius:11px;padding:11px 12px;font-family:\'DM Sans\',sans-serif;font-size:13.5px;color:#002461;resize:vertical;">'+__gcEsc(r.scope||'')+'</textarea></div>'
+    +f('Payment to Gopher ($)','gce-pay',r.pay)
+    +(((+r.cost>0)||r.cat==='delivery')?f('Cost of items ($)','gce-cost',r.cost):'')
+    +(r.pickup?f('Pick-up','gce-pickup',r.pickup):'')
+    +f(r.pickup?'Destination':'Location','gce-drop',r.dropoff)
+    +'<button class="gce-submit" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Repost request →</button>');
+  o.querySelector('.gce-submit').onclick=function(){
+    var num=function(cls,fb){ var el=o.querySelector(cls); if(!el) return fb; var v=parseFloat(String(el.value).replace(/[^0-9.]/g,'')); return isNaN(v)?fb:v; };
+    var txt=function(cls,fb){ var el=o.querySelector(cls); return el?(el.value.trim()||fb):fb; };
+    var pay=num('.gce-pay',+r.pay||0), cost=num('.gce-cost',+r.cost||0);
+    var fee=Math.round(0.08*pay*100)/100;   // harness fee convention (mirrors watchAdjust)
+    var edits={ scope:txt('.gce-desc',r.scope||''), pay:pay, cost:cost,
+      pickup:r.pickup?txt('.gce-pickup',r.pickup):'', dropoff:txt('.gce-drop',r.dropoff||''),
+      amount:'$'+(pay+cost+fee).toFixed(2) };
+    o.remove();
+    var no=__gcRepost(order, edits);
+    if(no) toast('Reposted as #'+no+' — broadcasting with your edits');
+  };
+}
+function openGcRate(order){
+  var r=GReq.get(order); if(!r) return;
+  var who=r.gCancelBy||'the Gopher'; var picked=0;
+  var o=gSheet('Cancel request',
+    '<p class="gs-sub">We’ll close <b>#'+order+'</b> — no repost. Before you go: how was your experience with '+__gcEsc(who)+'? Cancelling after accepting affects a Gopher’s standing.</p>'
+    +'<div class="gcr-stars" style="display:flex;gap:8px;justify-content:center;margin:14px 0 4px;"></div>'
+    +'<button class="gcr-done" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#C44257;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Cancel request</button>');
+  var paint=function(){
+    o.querySelector('.gcr-stars').innerHTML=[1,2,3,4,5].map(function(n){ return '<span data-n="'+n+'" style="font-size:32px;cursor:pointer;color:'+(n<=picked?'#F5B301':'#d9d2c2')+';">★</span>'; }).join('');
+    o.querySelectorAll('.gcr-stars [data-n]').forEach(function(s){ s.onclick=function(){ picked=+s.getAttribute('data-n'); paint(); }; });
+  };
+  paint();
+  o.querySelector('.gcr-done').onclick=function(){
+    if(picked) GReq.update(order,{ gCancelRating:picked });   // system-only, never shown back
+    __gcCloseOriginal(order);
+    o.remove(); toast('Request cancelled'+(picked?' — thanks for the feedback':''));
+  };
+}
+// AC5 (demo): 15-minute no-action auto-cancel — a client interval standing in for the durable job.
+var __gcTick=null;
+function __gcEnsureTick(){ if(__gcTick) return;
+  __gcTick=setInterval(function(){
+    var any=false;
+    (window.GReq?GReq.all():[]).forEach(function(r){
+      if(r.gCancelled && !r.cancelled && r.gCancelDeadline){
+        if(Date.now()>=r.gCancelDeadline){ gClose(); __gcCloseOriginal(r.order,'Auto-cancelled · no action in 15 min'); toast('Request #'+r.order+' auto-cancelled — no action taken'); }
+        else any=true;
+      }
+    });
+    if(!any){ clearInterval(__gcTick); __gcTick=null; }
+  },5000);
+}
 // Age-restricted no-show (G40-192) — the Gopher is at the drop-off but you're not there to verify ID.
 // A red banner warns you're on the 10-minute clock; if it expires the order auto-completes as a no-show.
 function __noShowAlert(order){
