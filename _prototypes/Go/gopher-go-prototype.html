@@ -2080,12 +2080,17 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
           : ((j.confirmed
               ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>Confirmed by '+who+'</b> &mdash; '+(j.amt||'your payout')+' paid out.</div>'
-              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm.</div>')
+              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm. You’ll rate them once they confirm.</div>')
             // Two-way ratings stay (canonical) — the Gopher still rates the requester; the score is
-            // recorded for the system but not shown back to either side.
-            + (j.reqRated
-                ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.check)+'</span><b>You rated '+who+'</b> &mdash; thanks for the feedback.</div>'
-                : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
+            // recorded for the system but not shown back to either side. The rating GATES on the
+            // requester's confirm: confirm is what releases the payout, so a rating taken before it
+            // can't reflect the full transaction (e.g. a 40-hour confirm delay is part of the
+            // experience being rated). Until confirm, only the wait note shows — no star entry.
+            + (!j.confirmed
+                ? ''
+                : j.reqRated
+                  ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.check)+'</span><b>You rated '+who+'</b> &mdash; thanks for the feedback.</div>'
+                  : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
 
@@ -2445,7 +2450,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         toast('Cancellation submitted — '+who+' has been notified. A fee may apply per terms.');
       };
     }
-    // The Gopher rates the requester after completion (two-way ratings).
+    // The Gopher rates the requester after the REQUESTER CONFIRMS (two-way ratings). The
+    // js-raterq button that opens this only renders once j.confirmed — never at mark-complete.
     function openRateRequester(){
       let picked=0;
       const stars=()=>[1,2,3,4,5].map(n=>'<span class="js-rrstar" data-n="'+n+'" style="font-size:34px;cursor:pointer;color:'+(n<=picked?'#F5B301':'#d9d2c2')+';line-height:1;">&#9733;</span>').join('');
@@ -2819,7 +2825,8 @@ if(PT){
     job.confirmed=true; job.substage='completed';
     job.disputed=0; job.disputeNote=null;   // confirming completion resolves any open dispute
     job.favorited=!!fav;             // requester's MY-Gophers state at confirm — drives the congrats modal
-    // If the worker already rated before the confirm arrived, fire the congrats now (once).
+    // Safeguard only: the rate button is gated on confirmed, so reqRated can't normally exist
+    // before this relay lands. Kept in case an older session left a pre-gate rating behind.
     try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}
     // Never yank the screen out from under the worker: load() rebuilds the shadow root, which
     // destroys any open modal — if the confirm relay lands while the rate-requester modal is up,
