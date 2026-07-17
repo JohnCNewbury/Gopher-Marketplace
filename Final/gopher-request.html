@@ -8138,6 +8138,11 @@
     border-radius:10px; padding:10px 12px; margin:0 0 14px;
   }
   .deal-age-note.verified { background:var(--green-light); border-color:rgba(51,217,117,0.45); color:var(--green-dark); }
+  /* gopher iQ fair-pay hint under the Pay to Gopher field */
+  .deal-iq-hint { display:flex; align-items:center; gap:5px; font-family:'DM Sans',sans-serif;
+    font-size:12px; color:var(--muted); margin-top:7px; }
+  .deal-iq-hint b { font-family:'Nunito',sans-serif; font-weight:900; color:var(--navy); }
+  .deal-iq-hint .iq-g { color:var(--green-dark); }
   /* Deal→request savings reframe (merchant deals): you already saved by ordering
      direct — receipt-style comparison vs the delivery apps. */
   .deal-save-note { font-family:'DM Sans',sans-serif; background:#f1fbf4; border:1px solid #cdeeda;
@@ -23242,6 +23247,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +   '<div class="deal-field" id="dealPayField">'
       +     '<label for="dealPay">Pay to Gopher</label>'
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealPay" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
+      +     '<div class="deal-iq-hint" id="dealIqHint"></div>'
       +   '</div>'
       +   '<div class="deal-save-note" id="dealSaveNote" hidden>'
       +     '<button type="button" class="deal-save-toggle" id="dealSaveToggle" aria-expanded="false" aria-controls="dealSaveBody">'
@@ -23313,6 +23319,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const payF = document.getElementById('dealPayField');
     payF.hidden = isService;
     document.getElementById('dealPay').value = '';
+    // gopher iQ fair-pay hint — distance-based suggestion under the Pay field
+    // (hides with the whole field on service deals). Prototype math: $7 covers
+    // the first 2 miles, +$1/mile after, +$2 spread; the low end seeds the
+    // input placeholder. Production swaps this for the live iQ suggested-offer
+    // seam (NC-column model).
+    {
+      const mi = parseFloat(String(m.distance || '').replace(/[^\d.]/g, '')) || 2;
+      const iqLo = Math.max(6, Math.round(7 + Math.max(0, mi - 2)));
+      const iqHint = document.getElementById('dealIqHint');
+      if(iqHint) iqHint.innerHTML = '<b>gopher <span class="iq-g">iQ</span>:</b> $' + iqLo + '–' + (iqLo + 2)
+        + ' is fair pay for this ' + (m.distance ? m.distance + ' ' : '') + 'run.';
+      document.getElementById('dealPay').placeholder = iqLo + '.00';
+    }
     // Cost of items: shown whenever the Gopher fronts the in-person purchase —
     // age-restricted shops (can't be pre-paid online) AND merchants registered with
     // "no online ordering" (no_online_ordering flag; common for food trucks). Captured
