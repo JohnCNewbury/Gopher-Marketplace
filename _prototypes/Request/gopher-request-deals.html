@@ -171,6 +171,11 @@ html.embedded,html.embedded body{padding:0;margin:0;min-height:0;background:#FBF
 /* Savings reframe (merchant deals): you already saved by ordering direct —
    receipt-style comparison vs the delivery apps. */
 .save-note{font-family:'DM Sans';background:#f1fbf4;border:1px solid #cdeeda;border-radius:12px;padding:12px 13px;margin:2px 0 14px;}
+.save-note .sn-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left;font-family:inherit;}
+.save-note .sn-chev{width:15px;height:15px;color:var(--green-dark);flex:0 0 auto;transition:transform .18s ease;}
+.save-note.open .sn-chev{transform:rotate(180deg);}
+.save-note .sn-body{display:none;}
+.save-note.open .sn-body{display:block;}
 .save-note .sn-h{font-family:'Nunito';font-weight:900;font-size:12.5px;color:var(--ink);}
 .save-note .sn-sub{font-size:11px;color:var(--muted-cool);line-height:1.45;margin-top:3px;}
 .save-note .sn-rows{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
@@ -839,20 +844,25 @@ function sheetHTML(m){
   return `<div class="grab"></div>
     <span class="sbadge ${svc?'svc':''}">${svc?'Provider Deal':'Gopher Deal'}</span>
     <h4>${svc?('Redeem '+esc(m.name)):'Let’s get you your deal.'}</h4>
-    <p class="sintro">${svc?'Just confirm where you need it — the rest is set by the deal. Next stop: review.':'A couple of details and we’ll send this straight to review.'}</p>
+    <p class="sintro">${svc?'Just confirm where you need it — the rest is set by the deal. Next stop: review.':'Just a couple details we’ll need.'}</p>
     ${pickup?`<div class="field"><label>Pick-up address</label><input id="fPickup" placeholder="Where should we pick up?"></div>`:''}
     <div class="field"><label>${svc?'Destination (service address)':'Drop-off address'}</label><input id="fDrop" value="${esc(USER_ADDR)}"></div>
     ${(!svc&&m.ageRestricted)?`<div class="field"><label>Cost of items <span style="font-weight:600;color:var(--muted-cool,#6b7280);">— the age-restricted items the Gopher buys for you</span></label><div class="pay-wrap"><span class="cur">$</span><input id="fCost" inputmode="decimal" placeholder="0.00"></div></div>`:''}
     ${svc?'':`<div class="field"><label>Pay to Gopher</label><div class="pay-wrap"><span class="cur">$</span><input id="fPay" inputmode="decimal" placeholder="0.00"></div></div>
     <div class="save-note">
-      <div class="sn-h">Ordering direct saved you money 🎉</div>
-      <div class="sn-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>
-      <div class="sn-rows">
-        <div class="sn-row"><span>Paying the restaurant directly</span><span class="sn-dots"></span><b>$30</b></div>
-        <div class="sn-row"><span>Same order on a delivery app</span><span class="sn-dots"></span><b>$36–41</b></div>
-        <div class="sn-row total"><span>You saved by ordering direct</span><span class="sn-dots"></span><b>$6–11+</b></div>
+      <button type="button" class="sn-toggle" onclick="this.closest('.save-note').classList.toggle('open')" aria-label="Show the savings comparison">
+        <span class="sn-h">Ordering direct saved you money 🎉</span>
+        <svg class="sn-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="sn-body">
+        <div class="sn-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>
+        <div class="sn-rows">
+          <div class="sn-row"><span>Paying the restaurant directly</span><span class="sn-dots"></span><b>$30</b></div>
+          <div class="sn-row"><span>Same order on a delivery app</span><span class="sn-dots"></span><b>$36–41</b></div>
+          <div class="sn-row total"><span>You saved by ordering direct</span><span class="sn-dots"></span><b>$6–11+</b></div>
+        </div>
+        <div class="sn-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>
       </div>
-      <div class="sn-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>
     </div>`}
     ${(!svc&&m.ageRestricted)?arSection(m):''}
     <button class="scta" data-toreview="${m.id}"${(!svc&&m.ageRestricted&&!idSatisfied())?' disabled':''}>${ctaLabel(m,svc)}</button>`;

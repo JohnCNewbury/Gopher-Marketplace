@@ -5919,6 +5919,10 @@
      direct — receipt-style comparison vs the delivery apps. */
   .deal-save-note { font-family:'DM Sans',sans-serif; background:#f1fbf4; border:1px solid #cdeeda;
     border-radius:12px; padding:13px 15px; margin:0 0 16px; }
+  .deal-save-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+    background:none; border:none; padding:0; cursor:pointer; text-align:left; }
+  .deal-save-toggle .dsn-chev { width:16px; height:16px; color:var(--green-dark); flex:0 0 auto; transition:transform .18s ease; }
+  .deal-save-toggle[aria-expanded="true"] .dsn-chev { transform:rotate(180deg); }
   .deal-save-head { font-family:'Nunito',sans-serif; font-weight:900; font-size:13.5px; color:var(--navy); }
   .deal-save-sub { font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
   .deal-save-rows { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
@@ -14233,14 +14237,19 @@ const PAY_BADGES = {
       +     '<div class="deal-pay-wrap"><span class="deal-pay-cur">$</span><input type="text" id="dealPay" inputmode="decimal" autocomplete="off" placeholder="0.00"></div>'
       +   '</div>'
       +   '<div class="deal-save-note" id="dealSaveNote" hidden>'
-      +     '<div class="deal-save-head">Ordering direct saved you money 🎉</div>'
-      +     '<div class="deal-save-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>'
-      +     '<div class="deal-save-rows">'
-      +       '<div class="deal-save-row"><span class="dsr-lbl">Paying the restaurant directly</span><span class="dsr-dots"></span><span class="dsr-amt">$30</span></div>'
-      +       '<div class="deal-save-row"><span class="dsr-lbl">Same order on a delivery app</span><span class="dsr-dots"></span><span class="dsr-amt">$36–41</span></div>'
-      +       '<div class="deal-save-row dsr-total"><span class="dsr-lbl">You saved by ordering direct</span><span class="dsr-dots"></span><span class="dsr-amt">$6–11+</span></div>'
+      +     '<button type="button" class="deal-save-toggle" id="dealSaveToggle" aria-expanded="false" aria-controls="dealSaveBody">'
+      +       '<span class="deal-save-head">Ordering direct saved you money 🎉</span>'
+      +       '<svg class="dsn-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'
+      +     '</button>'
+      +     '<div class="deal-save-body" id="dealSaveBody" hidden>'
+      +       '<div class="deal-save-sub">How much varies, but here’s an honest apples-to-apples with DoorDash, Uber Eats &amp; Grubhub on a typical food order:</div>'
+      +       '<div class="deal-save-rows">'
+      +         '<div class="deal-save-row"><span class="dsr-lbl">Paying the restaurant directly</span><span class="dsr-dots"></span><span class="dsr-amt">$30</span></div>'
+      +         '<div class="deal-save-row"><span class="dsr-lbl">Same order on a delivery app</span><span class="dsr-dots"></span><span class="dsr-amt">$36–41</span></div>'
+      +         '<div class="deal-save-row dsr-total"><span class="dsr-lbl">You saved by ordering direct</span><span class="dsr-dots"></span><span class="dsr-amt">$6–11+</span></div>'
+      +       '</div>'
+      +       '<div class="deal-save-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>'
       +     '</div>'
-      +     '<div class="deal-save-foot">Larger orders save even more. And your <b>Pay to Gopher</b> goes straight to a neighbor working for you — not to a delivery app.</div>'
       +   '</div>'
       +   '<div class="deal-verify-note" id="dealVerifyNote" hidden></div>'
       +   '<button type="button" class="gc-modal-btn" id="dealReqContinue">Continue to review</button>'
@@ -14259,6 +14268,14 @@ const PAY_BADGES = {
     };
     ['dealDropoff','dealPickup'].forEach(id => document.getElementById(id).addEventListener('input', validate));
     document.getElementById('dealReqContinue').addEventListener('click', () => { if(_activeDeal) launchDealRequest(_activeDeal); });
+    // Savings note starts minimized to its headline; the chevron expands it.
+    const saveTgl = document.getElementById('dealSaveToggle');
+    if(saveTgl) saveTgl.addEventListener('click', () => {
+      const body = document.getElementById('dealSaveBody');
+      const open = body.hidden;
+      body.hidden = !open;
+      saveTgl.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     ov.__validate = validate;
   }
 
@@ -14272,7 +14289,7 @@ const PAY_BADGES = {
     document.getElementById('dealReqTitle').textContent = isService ? ('Redeem ' + m.name) : 'Let’s get you your deal.';
     document.getElementById('dealReqIntro').textContent = isService
       ? 'Just confirm where you need it \u2014 the rest is set by the deal. Next stop: review.'
-      : 'A couple of details and we\u2019ll send this straight to review.';
+      : 'Just a couple details we\u2019ll need.';
     // Pickup field: merchant + mobile only (fixed merchants auto-fill from registration).
     const pickF = document.getElementById('dealPickupField');
     pickF.hidden = !(!isService && m.mobile);
@@ -14288,7 +14305,12 @@ const PAY_BADGES = {
     document.getElementById('dealPay').value = '';
     // Savings reframe: merchant only — you already saved by ordering direct;
     // pay your local Gopher fairly instead of an app's delivery fees.
+    // Re-minimize on every open so each deal starts at the one-line headline.
     document.getElementById('dealSaveNote').hidden = isService;
+    const saveBody = document.getElementById('dealSaveBody');
+    if(saveBody) saveBody.hidden = true;
+    const saveTgl = document.getElementById('dealSaveToggle');
+    if(saveTgl) saveTgl.setAttribute('aria-expanded','false');
     // Cost of items (COG) is collected whenever the Gopher fronts the purchase:
     // age-restricted deals (can't be bought online) AND merchants registered with
     // "no online ordering" (no_online_ordering flag; common for food trucks).
