@@ -67,23 +67,60 @@ and integration untouched.
 
 ---
 
-## Escalation model
+## Alert model — REVISED (John, 2026-07-16)
 
-Per thread, each flagged attempt escalates:
+> Supersedes the original 3-level escalate-to-block ladder for the
+> off-platform/transaction family. The CONDUCT family (below) keeps the ladder.
 
-1. **Level 1 — Educational** (first detection) → `warn`. _Keep Your Transaction
-   Protected._ Buttons: **Continue in Gopher** (send) / **Learn More**.
-2. **Level 2 — Policy Warning** (second) → `warn`. _Possible Policy Violation._
-   Buttons: **I Understand** (send) / **View Policy**.
-3. **Level 3 — Blocked** (third and beyond) → `block`. _Message Not Sent._
-   Button: **Edit Message** (message held, not delivered).
+**Off-platform / transaction hits show ONE alert — "Keep Your Transaction
+Protected" — in TWO variants keyed by CONNECTION STATE** (is this thread
+attached to a request the two parties are already matched on?):
 
-Warns send the message once acknowledged; only level 3 holds it back. Tunable
-via `CONFIG.blockAtLevel` in the module. Production should drive escalation off
-the server's `severity`/history rather than a raw client counter. **Escalation
-is per user across all threads** (not per thread), and **admin@ email + account
-flag fire at level ≥ 2** (`CONFIG.adminAlertAtLevel`; level 1 stays a silent
-educational nudge). Conduct hits use the same levels with respectful-tone copy.
+- **NOT connected** — copy explains the protection and that alerts relax once a
+  customer and worker are connected (exchanging personal info may be part of
+  the request). Exact copy: `COPY.offplatform.notConnected` in the module.
+- **Connected** — same protection copy plus the false-flag apology: a real
+  human reviews and removes flags that had the best intentions. Exact copy:
+  `COPY.offplatform.connected`.
+
+Buttons on both variants, plus a link:
+
+- **Edit message** (green) — closes the alert, the message is HELD in the
+  composer.
+- **Send as-is** (blue with a reddish pulsing shadow; static red ring under
+  `prefers-reduced-motion`) — the message DELIVERS, carrying `flagged: true`
+  for the human-review queue. There is **no hard block** for this family —
+  the flag is what escalates, not the UX.
+- **In-App Messaging Terms** link below the buttons →
+  `gopher-terms-of-service.html` (direct).
+
+**Connected relaxation (evaluation change, not just copy):** once the two
+parties are connected on a request, the **`contact` category is skipped
+entirely** (phone/email/call-me may be legitimate job coordination). Payment,
+off-platform, and conduct are ALWAYS checked. The server precheck must take a
+`connected` input (client passes it today as `guard(text, threadId,
+{connected})`) and mirror this.
+
+**Requests for contact info count too (John, 2026-07-16: TOP red flag).**
+"What is your number?" pre-connection is exactly the circumvention signal the
+guard exists for — there is zero reason for a worker to ask for a customer's
+number before being connected. The lexicon must catch ASKING ("your
+number/cell/phone/email/digits", "give/send/drop your number", "can I
+text/call you", "number to call/text/reach") with the same weight as SHARING
+(an actual number/email, "call me", "my number"). Both lexicons carry this
+now — `gopher-message-guard.js` PATTERNS.contact and the Dashboard's
+`moderation_rules.json` contact category (plain-form seeds; obfuscation
+expansions come from the ML xlsx regen). **Keep the two in parity** — this gap
+existed because they drifted.
+
+**Escalation & admin alerts (unchanged):** per user across all threads;
+admin@ email + account flag fire at level ≥ 2 (`CONFIG.adminAlertAtLevel`);
+level 1 stays a silent nudge. The level no longer changes the off-platform
+UX — it drives the admin/flag pipeline.
+
+**Conduct family (unchanged):** foul/abusive/threatening language keeps the
+original 3-level ladder — warn → warn → block at level 3 (`CONFIG.blockAtLevel`)
+with respectful-tone copy — and is **never relaxed by connection state**.
 
 ---
 
@@ -96,8 +133,12 @@ to be grown by the dev.
 - **payment** — Cash App, Venmo, Zelle, PayPal, Apple/Google Pay, wire, crypto,
   "pay you cash", "pay directly", "pay outside", **and a bare `$`/dollar amount**
   (`$50`, "50 bucks") — the CashApp precursor.
-- **contact** — phone-number and **email**-address patterns, "call/text me",
-  "my number". (A physical/job-site address is **not** flagged.)
+- **contact** — phone-number and **email**-address patterns, "call/text
+  me/you", "my number", **and requests for contact info** — "your
+  number/cell/phone/email/digits", "number to call/text/reach" (owner
+  2026-07-16: asking pre-connection is a TOP red flag). (A physical/job-site
+  address is **not** flagged.) **Skipped entirely once the parties are
+  connected on a request.**
 - **off_platform** — "outside Gopher", "off the app", "cancel and pay", "meet up
   and pay", "pay in person".
 - **conduct** — foul / abusive / threatening language (own copy family). Starter
@@ -194,10 +235,19 @@ review surface.
 
 ---
 
-## Product decisions — LOCKED (John, 2026-07-02)
+## Product decisions — LOCKED (John, 2026-07-02; revised 2026-07-16)
 
 These were the open developer questions; they are now answered. No product
 decisions remain for the dev — only engineering implementation.
+
+> **2026-07-16 revisions** (see "Alert model — REVISED" above for full detail):
+> the off-platform family no longer hard-blocks — one two-variant alert
+> (connected / not-connected) with **Edit message** / **Send as-is** (delivers
+> flagged for human review) + an **In-App Messaging Terms** link; the `contact`
+> category is **skipped once the parties are connected** on a request; and
+> **requests** for contact info are flagged the same as sharing it. The
+> "Severity → level mapping" bullet below still applies to the CONDUCT family
+> and to the admin/flag pipeline, not to the off-platform pop-up UX.
 
 - **Authority on disagreement.** **Server wins.** The client check is a latency
   optimization; it may warn but must never be the sole thing enforcing a block.
