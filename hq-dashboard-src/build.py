@@ -47,6 +47,7 @@ if os.path.exists('user-trends-data.js'): _appfiles.append('user-trends-data.js'
 if os.path.exists('user-trends.js'): _appfiles.append('user-trends.js')  # Users → behavior-trends section (renders below User records)
 if os.path.exists('app_part5_iq.js'): _appfiles.append('app_part5_iq.js')  # Gopher iQ portal (registers after init)
 if os.path.exists('app_part6_admin.js'): _appfiles.append('app_part6_admin.js')  # Admin-Panel parity views (G40-321 step 4; registers Admin nav group)
+if os.path.exists('app_part7_integrations.js'): _appfiles.append('app_part7_integrations.js')  # Integrations launcher (registers Integrations nav group + in-dashboard web views)
 js='\n'.join(open(f).read() for f in _appfiles)
 # Bake the Raleigh DMA basemap (dropped into assets/) as a data URI for the coverage tracker.
 _mapsrc=''

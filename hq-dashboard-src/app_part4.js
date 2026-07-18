@@ -11,44 +11,174 @@ function phead(name,desc,color,icon,logoKey){
   return h;
 }
 
+/* ===== platform-analytics helpers (devices · adoption · markets · cohorts) ===== */
+const DEV_COLORS=[C.blue,C.green,C.amber,C.violet,C.grey];
+function devKey(d){d=(''+(d||'')).trim();return (!d||d==='—'||d==='??')?'Unknown':d;}
+function devBreakdown(list,get){const c={};list.forEach(x=>{const d=devKey(get(x));c[d]=(c[d]||0)+1;});
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]);}
+function donutCard(title,sub,pairs){
+  const data=pairs.slice(0,5).map((p,i)=>({label:p[0],value:p[1],color:DEV_COLORS[i%DEV_COLORS.length]}));
+  const tot=pairs.reduce((a,p)=>a+p[1],0)||1;
+  const w=el('div');w.style.cssText='display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:4px 0';
+  w.appendChild(donut(data,{center:fmt(tot),centerSub:'total'}));
+  const lg=el('div');lg.style.cssText='min-width:180px;flex:1';
+  data.forEach(d=>lg.appendChild(el('div','statline',`<span class="k" style="background:${d.color}"></span>${d.label}<b style="color:var(--text);margin-left:auto">${num(d.value)} · ${(d.value/tot*100).toFixed(1)}%</b>`)));
+  w.appendChild(lg);return card(title,sub,w);
+}
+function signupStack(users,title,sub){ // monthly signups by device (top 3 + Other), last 24 months
+  const devs=devBreakdown(users,u=>u.dev).slice(0,3).map(p=>p[0]);
+  const mp={};users.forEach(u=>{if(!u.signupDay)return;const ym=ymOf(u.signupDay);
+    const d=devs.includes(devKey(u.dev))?devKey(u.dev):'Other';
+    (mp[ym]=mp[ym]||{__ym:ym});mp[ym][d]=(mp[ym][d]||0)+1;});
+  const rows=Object.values(mp).sort((a,b)=>a.__ym<b.__ym?-1:1).slice(-24).map(r=>({...r,label:monShort(r.__ym)}));
+  const keys=devs.concat(['Other']);
+  const cd=card(title,sub,stackChart(rows,keys,DEV_COLORS,{h:230}));
+  cd.appendChild(legend(keys.map((k,i)=>({label:k,color:DEV_COLORS[i%DEV_COLORS.length]}))));
+  return cd;
+}
+function marketBreakdown(rows){ // orders → per-DMA stats (destination ZIP → DMA crosswalk)
+  const mp={};let unmapped=0;
+  rows.forEach(o=>{const k=o.dma||'';if(!k){unmapped++;return;}
+    (mp[k]=mp[k]||{mkt:k,orders:0,completed:0,gmv:0,gophers:new Set()});
+    mp[k].orders++;if(o.status==='delivered'){mp[k].completed++;mp[k].gmv+=o.total;if(o.gopherId)mp[k].gophers.add(o.gopherId);}});
+  const out=Object.values(mp).map(d=>({mkt:d.mkt,orders:d.orders,completed:d.completed,gmv:d.gmv,
+    active_gophers:d.gophers.size,comp_rate:d.orders?+(d.completed/d.orders*100).toFixed(1):0})).sort((a,b)=>b.orders-a.orders);
+  out.__unmapped=unmapped;return out;
+}
+function compTag(r){const cls=r<25?'t-red':r<35?'t-amber':'t-green';return `<span class="tag ${cls}">${r}%</span>`;}
+function footnote(txt){const d=el('div',null,txt);d.style.cssText='font-size:11.5px;color:var(--muted,#90A2B3);padding:8px 2px 0';return d;}
+function storesNote(side){
+  return el('div','note',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg><b>Store downloads aren't in the admin data feed</b> — install counts live in App Store Connect and Google Play Console (open both from the <b>Integrations</b> menu, left). Signups by device below are the closest in-data measure of ${side} app adoption.`);
+}
+
 VIEWS['p-request']=()=>{
-  const v=el('div');v.appendChild(phead('Gopher Request','Consumer mobile app · iOS + Android · the demand side',C.blue,'phone','request'));
+  const v=el('div');v.appendChild(phead('Gopher Request','Consumer surface · iOS · Android · web — where demand is born',C.blue,'phone','request'));
   const fo=gfOrders();const t=gfTotals(fo);const gn=gfNote();if(gn)v.appendChild(gn);
+
+  // demand-side base (lifetime, user-level)
+  const reqU=USR.filter(u=>u.role==='Requester'||u.role==='Both');
+  const maxDay=USR.reduce((m,u)=>u.signupDay>m?u.signupDay:m,0);
+  const new90=reqU.filter(u=>u.signupDay>=maxDay-90).length;
+  const placedN=new Map();ORD.forEach(o=>{if(o.reqId)placedN.set(o.reqId,(placedN.get(o.reqId)||0)+1);});
+  const evers=placedN.size,repeat=[...placedN.values()].filter(n=>n>=2).length;
+
   const k=el('div','row kpis');
-  k.appendChild(kpi('Requesters',num(M.people.requesters+M.people.both),'lifetime accounts',{dot:C.blue}));
+  k.appendChild(kpi('Requesters',num(M.people.requesters+M.people.both),`lifetime accounts · +${num(new90)} in the last 90 days`,{dot:C.blue}));
   k.appendChild(kpi('Requests placed',num(t.orders),gfActive()?gfLabel():'all time',{dot:C.blue}));
-  k.appendChild(kpi('Completion',t.completion_rate+'%','of requests',{dot:C.amber}));
-  k.appendChild(kpi('Age-restricted',t.age_restricted_share+'%','of orders are 21+',{dot:C.red}));
+  k.appendChild(kpi('Completion',t.completion_rate+'%','of requests reach delivered',{dot:C.amber}));
+  k.appendChild(kpi('Repeat requesters',(evers?(repeat/evers*100).toFixed(1):'0.0')+'%',`${num(repeat)} of ${num(evers)} who ever ordered came back`,{dot:C.green}));
   v.appendChild(k);
+
+  v.appendChild(storesNote('customer'));
+  v.appendChild(signupStack(reqU,'Requester signups by device','New requester accounts per month, split by signup device — the in-data adoption curve.'));
+
+  const g=el('div','row g2');
+  g.appendChild(donutCard('Requester accounts by device','Which devices the demand side signs up on (lifetime).',devBreakdown(reqU,u=>u.dev)));
+  g.appendChild(donutCard('Requests by device','Which devices actually place orders'+(gfActive()?' · '+gfLabel():' (all time)')+'.',devBreakdown(fo,o=>o.dev)));
+  v.appendChild(g);
+
   const m=monthly();
-  const lc=lineChart([{name:'Requests',color:C.blue,data:m.map(d=>({x:monShort(d.ym),y:d.requests}))}],{h:230,area:true});
-  v.appendChild(card('Requests placed','Demand generated by the Request app.',lc));
-  // fee schedule note
-  const tb=feeTable('Gopher App');
-  v.appendChild(card('Request fee schedule','Per-category gopher fee charged in the consumer app (the lowest schedule).',tb));
+  v.appendChild(card('Requests placed by month','Demand generated through Request.',lineChart([{name:'Requests',color:C.blue,data:m.map(d=>({x:monShort(d.ym),y:d.requests}))}],{h:230,area:true})));
+
+  // cities & markets
+  const mk=marketBreakdown(fo);
+  const tb=card('Top markets — where demand completes','By DMA (from the destination ZIP). Green rows are Raleigh-shaped; red rows are demand arriving where supply can\'t serve it yet.');
+  const wrap=el('div','tbl-wrap');wrap.style.maxHeight='420px';
+  let html='<table><thead><tr><th>Market (DMA)</th><th style="text-align:right">Requests</th><th style="text-align:right">Completed</th><th style="text-align:right">Completion</th><th style="text-align:right">GMV</th></tr></thead><tbody>';
+  mk.slice(0,14).forEach(gm=>{html+=`<tr><td style="font-weight:700">${gm.mkt}</td><td style="text-align:right" class="tnum">${num(gm.orders)}</td><td style="text-align:right" class="tnum">${num(gm.completed)}</td><td style="text-align:right">${compTag(gm.comp_rate)}</td><td style="text-align:right" class="tnum">${money(gm.gmv)}</td></tr>`;});
+  html+='</tbody></table>';wrap.innerHTML=html;tb.appendChild(wrap);
+  if(mk.__unmapped)tb.appendChild(footnote(`${num(mk.__unmapped)} requests have no ZIP→DMA match and are excluded here.`));
+  v.appendChild(tb);
+
+  const cm={};fo.forEach(o=>{const c=(o.dcity||'').trim();if(!c)return;const key=c+(o.dstate?', '+o.dstate:'');
+    (cm[key]=cm[key]||{city:key,orders:0,completed:0});cm[key].orders++;if(o.status==='delivered')cm[key].completed++;});
+  const cities=Object.values(cm).map(d=>({...d,comp_rate:d.orders?+(d.completed/d.orders*100).toFixed(1):0})).sort((a,b)=>b.orders-a.orders).slice(0,12);
+  const ct=card('Top destination cities','Street-level view of the same demand — where requests actually land.');
+  const cw=el('div','tbl-wrap');cw.style.maxHeight='360px';
+  let ch='<table><thead><tr><th>City</th><th style="text-align:right">Requests</th><th style="text-align:right">Completed</th><th style="text-align:right">Completion</th></tr></thead><tbody>';
+  cities.forEach(ci=>{ch+=`<tr><td style="font-weight:700">${ci.city}</td><td style="text-align:right" class="tnum">${num(ci.orders)}</td><td style="text-align:right" class="tnum">${num(ci.completed)}</td><td style="text-align:right">${compTag(ci.comp_rate)}</td></tr>`;});
+  ch+='</tbody></table>';cw.innerHTML=ch;ct.appendChild(cw);
+  v.appendChild(ct);
+
+  // cohorts — quarterly first-order cohorts (order-level, lifetime)
+  const firstD=new Map(),cnt=new Map(),gmvBy=new Map();
+  ORD.forEach(o=>{if(!o.reqId)return;cnt.set(o.reqId,(cnt.get(o.reqId)||0)+1);
+    const fd=firstD.get(o.reqId);if(fd==null||o.day<fd)firstD.set(o.reqId,o.day);
+    if(o.status==='delivered')gmvBy.set(o.reqId,(gmvBy.get(o.reqId)||0)+o.total);});
+  const q={};firstD.forEach((d,id)=>{const ym=ymOf(d);const key=ym.slice(0,4)+' Q'+Math.ceil(+ym.slice(5,7)/3);
+    (q[key]=q[key]||{q:key,users:0,repeat:0,orders:0,gmv:0});
+    q[key].users++;const n=cnt.get(id)||0;q[key].orders+=n;if(n>=2)q[key].repeat++;q[key].gmv+=gmvBy.get(id)||0;});
+  const qs=Object.values(q).sort((a,b)=>a.q<b.q?-1:1).slice(-10);
+  const co=card('Requester cohorts — do they come back?','Customers grouped by the quarter of their first request. Repeat % and value per requester are the retention truth behind every growth decision.');
+  const qw=el('div','tbl-wrap');
+  let qh='<table><thead><tr><th>First order in</th><th style="text-align:right">New requesters</th><th style="text-align:right">Came back (≥2)</th><th style="text-align:right">Repeat rate</th><th style="text-align:right">Requests / requester</th><th style="text-align:right">Delivered GMV / requester</th></tr></thead><tbody>';
+  qs.forEach(c=>{const rr=c.users?+(c.repeat/c.users*100).toFixed(1):0;
+    qh+=`<tr><td style="font-weight:700">${c.q}</td><td style="text-align:right" class="tnum">${num(c.users)}</td><td style="text-align:right" class="tnum">${num(c.repeat)}</td><td style="text-align:right">${compTag(rr)}</td><td style="text-align:right" class="tnum">${(c.orders/c.users).toFixed(2)}</td><td style="text-align:right" class="tnum">${money(c.gmv/c.users)}</td></tr>`;});
+  qh+='</tbody></table>';qw.innerHTML=qh;co.appendChild(qw);
+  co.appendChild(footnote('Latest cohorts have had less time to repeat — read the last 1–2 rows as still maturing. Lifetime view; unaffected by the topbar filters.'));
+  v.appendChild(co);
   return v;
 };
 
 VIEWS['p-go']=()=>{
-  const v=el('div');v.appendChild(phead('Gopher Go','Worker mobile app · your supply side',C.green,'run','go'));
+  const v=el('div');v.appendChild(phead('Gopher Go','Worker mobile app · iOS · Android — your supply side',C.green,'run','go'));
+  const gn=gfNote();if(gn)v.appendChild(gn);
   const f=M.funnel_gopher;
+  const gophU=USR.filter(u=>u.role==='Gopher'||u.role==='Both');
   const k=el('div','row kpis');
   k.appendChild(kpi('Gophers',num(M.people.gophers+M.people.both),'lifetime',{dot:C.green}));
   k.appendChild(kpi('Stripe verified',num(M.verification.stripe_gopher),'can be paid out',{dot:C.amber}));
   k.appendChild(kpi('Ever completed a job',num(M.people.gophers_completed),(M.people.gophers_completed/(M.people.gophers+M.people.both)*100).toFixed(1)+'% activation',{dot:C.red}));
   k.appendChild(kpi('Elite / Elite+',num((M.gopher_type.Pro||0)+(M.gopher_type['Pro+']||0)),'premium supply',{dot:C.violet}));
   v.appendChild(k);
+
   // supply funnel
   const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.amber,C.green];
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(8,f.values[i]/maxf*100);
     st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b>`:''}</div>`;fw.appendChild(st);});
   v.appendChild(card('Supply funnel','Sign-up → verified → active. Closing this funnel is the highest-leverage growth move at Gopher.',fw));
-  const mk=M.marketplace;
-  const g=el('div','row g3');
-  g.appendChild(kpi('Offers made',num(mk.offers),`${(mk.offers_accepted/mk.offers*100).toFixed(0)}% accepted`,{dot:C.green}));
-  g.appendChild(kpi('Declines',num(mk.declines),'jobs passed on',{dot:C.red}));
-  g.appendChild(kpi('Counter-offers',num(mk.counters),'price negotiation',{dot:C.amber}));
+
+  v.appendChild(storesNote('worker'));
+  v.appendChild(signupStack(gophU,'Gopher signups by device','New worker accounts per month, split by signup device.'));
+
+  const g=el('div','row g2');
+  g.appendChild(donutCard('Worker accounts by device','Which devices the supply side signs up on (lifetime).',devBreakdown(gophU,u=>u.dev)));
+  g.appendChild(donutCard('Supply quality mix','Worker tier distribution across the lifetime base.',Object.entries(M.gopher_type||{}).sort((a,b)=>b[1]-a[1])));
   v.appendChild(g);
+
+  // coverage — where supply meets (or misses) demand
+  const mk=marketBreakdown(gfOrders());
+  const tb=card('Supply coverage by market','Demand vs. the workers actually delivering it. Red completion with few active gophers = demand arriving with no one to serve it — the recruiting worklist.');
+  const wrap=el('div','tbl-wrap');wrap.style.maxHeight='420px';
+  let html='<table><thead><tr><th>Market (DMA)</th><th style="text-align:right">Requests</th><th style="text-align:right">Active gophers</th><th style="text-align:right">Jobs / active gopher</th><th style="text-align:right">Completion</th></tr></thead><tbody>';
+  mk.slice(0,14).forEach(gm=>{html+=`<tr><td style="font-weight:700">${gm.mkt}</td><td style="text-align:right" class="tnum">${num(gm.orders)}</td><td style="text-align:right" class="tnum">${num(gm.active_gophers)}</td><td style="text-align:right" class="tnum">${gm.active_gophers?(gm.completed/gm.active_gophers).toFixed(1):'—'}</td><td style="text-align:right">${compTag(gm.comp_rate)}</td></tr>`;});
+  html+='</tbody></table>';wrap.innerHTML=html;tb.appendChild(wrap);
+  tb.appendChild(footnote('“Active gophers” = distinct workers with at least one delivered job in that market (within the current filter).'));
+  v.appendChild(tb);
+
+  // worker cohorts — signup-year cohorts: verification, activation, output, time-to-first-job
+  const gFirst=new Map();ORD.forEach(o=>{if(o.status==='delivered'&&o.gopherId){const d=gFirst.get(o.gopherId);if(d==null||o.day<d)gFirst.set(o.gopherId,o.day);}});
+  const yc={};gophU.forEach(u=>{if(!u.signupDay)return;const y=dayToYear(u.signupDay);
+    (yc[y]=yc[y]||{y:y,signups:0,verified:0,activated:0,jobs:0,ttf:[]});
+    const c=yc[y];c.signups++;if(u.stripeG)c.verified++;if(u.completed>0)c.activated++;c.jobs+=u.completed||0;
+    const fdel=gFirst.get(u.id);if(fdel!=null&&fdel>=u.signupDay&&u.completed>0)c.ttf.push(fdel-u.signupDay);});
+  const years=Object.values(yc).sort((a,b)=>a.y-b.y).filter(c=>c.signups>0);
+  const wc=card('Worker cohorts by signup year','Of everyone who signed up that year: how many got payout-verified, how many ever worked a job, and how fast the first job came. The activation gap is the supply story.');
+  const ww=el('div','tbl-wrap');
+  let wh='<table><thead><tr><th>Signed up</th><th style="text-align:right">Signups</th><th style="text-align:right">Payout-verified</th><th style="text-align:right">Ever worked</th><th style="text-align:right">Jobs / signup</th><th style="text-align:right">Median days to first job</th></tr></thead><tbody>';
+  years.forEach(c=>{const med=c.ttf.length?c.ttf.sort((a,b)=>a-b)[Math.floor(c.ttf.length/2)]:null;
+    wh+=`<tr><td style="font-weight:700">${c.y}</td><td style="text-align:right" class="tnum">${num(c.signups)}</td><td style="text-align:right" class="tnum">${num(c.verified)} · ${(c.verified/c.signups*100).toFixed(1)}%</td><td style="text-align:right">${compTag(+(c.activated/c.signups*100).toFixed(1))}</td><td style="text-align:right" class="tnum">${(c.jobs/c.signups).toFixed(2)}</td><td style="text-align:right" class="tnum">${med!=null?num(med):'—'}</td></tr>`;});
+  wh+='</tbody></table>';ww.innerHTML=wh;wc.appendChild(ww);
+  wc.appendChild(footnote('Median days to first job is computed where a worker\'s delivered orders can be matched to their account; unmatched workers show in the other columns only. Lifetime view; unaffected by topbar filters.'));
+  v.appendChild(wc);
+
+  // marketplace engagement
+  const mkp=M.marketplace;
+  const g3=el('div','row g3');
+  g3.appendChild(kpi('Offers made',num(mkp.offers),`${(mkp.offers_accepted/mkp.offers*100).toFixed(0)}% accepted`,{dot:C.green}));
+  g3.appendChild(kpi('Declines',num(mkp.declines),'jobs passed on',{dot:C.red}));
+  g3.appendChild(kpi('Counter-offers',num(mkp.counters),'price negotiation',{dot:C.amber}));
+  v.appendChild(g3);
   return v;
 };
 
@@ -3456,9 +3586,10 @@ const VIEW_FILTERS={
   revenue:['range','market','platform'],
   growth:['range'],
   'p-request':['range','market'],
+  'p-go':['range','market'],
   financials:['range','bizcat'],
 };
-const EXPORT_VIEWS={overview:1,health:1,revenue:1,growth:1,'p-request':1,orders:1,people:1};
+const EXPORT_VIEWS={overview:1,health:1,revenue:1,growth:1,'p-request':1,'p-go':1,orders:1,people:1};
 function renderTopFilters(id){
   const box=$('#filters');if(!box)return;
   const keys=VIEW_FILTERS[id]||[];
