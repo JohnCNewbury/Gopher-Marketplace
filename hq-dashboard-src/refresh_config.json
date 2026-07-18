@@ -1,0 +1,160 @@
+{
+  "_comment": "Controls the accumulating refresh. 'datasets' maps each exported file (by filename prefix, case-insensitive) to a master CSV, a merge key, and a strategy. 'pipeline' is the recompute order. See README_REFRESH.md.",
+  "datasets": [
+    {
+      "name": "Orders.csv",
+      "match": [
+        "orders"
+      ],
+      "key": "ID",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Users.csv",
+      "match": [
+        "users",
+        "user_"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Referral.csv",
+      "match": [
+        "referral"
+      ],
+      "key": "id",
+      "strategy": "replace"
+    },
+    {
+      "name": "Invites.csv",
+      "match": [
+        "invites"
+      ],
+      "key": "id",
+      "strategy": "replace"
+    },
+    {
+      "name": "Counter_Offer.csv",
+      "match": [
+        "counter_offer",
+        "counter offer",
+        "counteroffer"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "bids.csv",
+      "match": [
+        "bids",
+        "bid_"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Ratings.csv",
+      "match": [
+        "ratings",
+        "rating_",
+        "rating"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "order_declines.csv",
+      "match": [
+        "order_declines",
+        "order declines",
+        "declines"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "cost_adjustment.csv",
+      "match": [
+        "cost_adjustment",
+        "cost adjustment",
+        "cost_adj"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "In-app messages.csv",
+      "match": [
+        "in-app messages",
+        "in-app",
+        "inapp",
+        "in_app",
+        "messages"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Flags.csv",
+      "match": [
+        "flags",
+        "flag_"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "OTPs.csv",
+      "match": [
+        "otps"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Reports.csv",
+      "match": [
+        "reports"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Gopher_Offers.csv",
+      "match": [
+        "gopher_offer"
+      ],
+      "key": "id",
+      "strategy": "upsert"
+    },
+    {
+      "name": "Truist_Accounts.xlsx",
+      "match": [
+        "truist"
+      ],
+      "key": null,
+      "strategy": "replace"
+    },
+    {
+      "name": "Gopher_Moderation_ML_Import_Package.xlsx",
+      "match": [
+        "gopher_moderation",
+        "moderation_ml",
+        "moderation"
+      ],
+      "key": null,
+      "strategy": "replace"
+    }
+  ],
+  "pipeline": [
+    "regen_ou.py",
+    "regen_full.py",
+    "regen_reports.py",
+    "regen_expenses.py",
+    "regen_stripe.py",
+    "regen_user_trends.py",
+    "build.py",
+    "build_iq.py"
+  ]
+}
