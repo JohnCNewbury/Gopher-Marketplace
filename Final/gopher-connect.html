@@ -10928,6 +10928,9 @@ const PAY_BADGES = {
           `Once accepted, you can <b>text or call your worker</b> directly, and <b>track route progress in real time</b> when applicable.`,
           `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
         ];
+        // Need ASAP requests expire — be explicit up front (1-hour broadcast window).
+        if(state.scheduleType==='now') wteSteps.splice(1,0,
+          `<b>Need ASAP</b> requests stay live for <b>1 hour</b> — if no worker accepts in that time, the request <b>expires</b>. You're never charged for an expired request, and you can resubmit anytime.`);
         const wteSub = bidsMode
           ? `A quick rundown of how bidding and the worker handoff work — so there are no surprises.`
           : `A quick rundown of how billing and the worker handoff work — so there are no surprises.`;
@@ -11002,7 +11005,7 @@ const PAY_BADGES = {
     const reqNum = 'GC-00001';
     // Build the expiration label from the chosen schedule mode
     const expiresStr = state.scheduleType === 'now'
-      ? 'expires in 30 min'
+      ? 'expires in 1 hour'
       : state.scheduleType === 'flexible'
         ? (state.flexibleWindow==='24hr' ? 'expires in 24 hrs'
            : state.flexibleWindow==='week' ? 'expires in 7 days'

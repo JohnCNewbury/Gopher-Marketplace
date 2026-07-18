@@ -79,7 +79,7 @@ const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:
 const NATIVE_CSS = `
 :host{display:flex;justify-content:center;background:#dfe4ec;padding:34px 20px 64px;font-family:'DM Sans',sans-serif;color:#002461;}
 *{box-sizing:border-box;margin:0;padding:0;}
-.frame{width:390px;min-height:786px;background:var(--bg,#FBF7EF);border-radius:30px;overflow:hidden;box-shadow:0 18px 50px rgba(0,36,97,.18);position:relative;display:flex;flex-direction:column;}
+.frame{width:390px;min-height:786px;background:var(--bg,#FBF7EF);border-radius:30px;overflow:hidden;overflow:clip;box-shadow:0 18px 50px rgba(0,36,97,.18);position:relative;display:flex;flex-direction:column;}
 .frame.sand{--bg:#fbf3e4;}
 .rib{position:absolute;top:16px;right:-36px;transform:rotate(45deg);background:#C8623C;color:#fff;font-family:'Nunito';font-weight:900;font-size:9px;letter-spacing:.6px;padding:4px 42px;z-index:9;}
 .sb{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-family:'Nunito';font-weight:800;font-size:13px;flex:0 0 auto;}
@@ -1490,8 +1490,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const sub=r.querySelector('.sub'); const list=r.querySelector('.js-list');
     // Active tab → the requests you're connected to (pick one to engage). Available tab → the open feed.
     const base=activeMode
-      ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted);   // accepted/completed jobs leave the Available feed
+      ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow && !j.cancelled)
+      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted && !j.cancelled);   // accepted/completed/cancelled jobs leave the Available feed
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
@@ -1534,7 +1534,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(!x.accepted) return;
       const icon=/move/i.test(x.cat||'')?'move':/junk/i.test(x.cat||'')?'junk':/yard|outdoor/i.test(x.cat||'')?'yard':/delivery|errand/i.test(x.cat||'')?'box':'errand';
       const base={ic:icon, cat:x.cat||'Request', id:'#'+(x.id||'GR-'+Math.abs((x.who||'').length*7919)), date:'Today', who:x.who||'Requester'};
-      if(x.cancelled){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:'You cancelled after accepting', none:'No earnings', resolve:'Cancellation submitted \u2014 a fee may apply per the Gopher terms.', cta:'View details'})); }
+      if(x.cancelledByReq){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:(x.reqCancelKind==='repost'?'Requester re-posted this request \u2014 you were released and can\u2019t re-accept it':'Cancelled by the requester before you started'), none:'No earnings impact', resolve:'No action needed \u2014 this doesn\u2019t affect your standing.', cta:'View details'})); }
+      else if(x.cancelled){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:'You cancelled after accepting', none:'No earnings', resolve:'Cancellation submitted \u2014 a fee may apply per the Gopher terms.', cta:'View details'})); }
       else if(x.substage==='completed'){
         const sub=x.noShow ? 'Completed as No Show \u2014 requester not present at drop-off; items not released'
                  : (x.ageRestricted ? 'Age-restricted delivery \u2014 ID confirmed at drop-off' : (x.scope||'Completed'));
@@ -2080,12 +2081,17 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
           : ((j.confirmed
               ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>Confirmed by '+who+'</b> &mdash; '+(j.amt||'your payout')+' paid out.</div>'
-              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm.</div>')
+              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm. You’ll rate them once they confirm.</div>')
             // Two-way ratings stay (canonical) — the Gopher still rates the requester; the score is
-            // recorded for the system but not shown back to either side.
-            + (j.reqRated
-                ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.check)+'</span><b>You rated '+who+'</b> &mdash; thanks for the feedback.</div>'
-                : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
+            // recorded for the system but not shown back to either side. The rating GATES on the
+            // requester's confirm: confirm is what releases the payout, so a rating taken before it
+            // can't reflect the full transaction (e.g. a 40-hour confirm delay is part of the
+            // experience being rated). Until confirm, only the wait note shows — no star entry.
+            + (!j.confirmed
+                ? ''
+                : j.reqRated
+                  ? '<div class="rq-prio" style="margin-top:9px;background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.check)+'</span><b>You rated '+who+'</b> &mdash; thanks for the feedback.</div>'
+                  : '<button class="rq-cta rate js-raterq" style="margin-top:9px;">Rate '+String(who||'the requester').split(' ')[0]+' &#8594;</button>'));
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
 
@@ -2440,12 +2446,16 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ta.oninput=()=>{ const ok=ta.value.trim().length>=3; btn.disabled=!ok; btn.style.background=ok?'#C44257':'#ecc3cc'; btn.style.cursor=ok?'pointer':'not-allowed'; };
       ov.querySelector('.js-keepjob').onclick=()=>ov.remove();
       btn.onclick=()=>{ if(ta.value.trim().length<3) return;
-        // Prototype: surface the outcome. In the live app this releases the job and notifies the requester.
-        j.cancelled=true; ov.remove();
+        // G40-9: cancelling RELEASES the job — it leaves this Gopher's screens (Active list, home
+        // counts) and lands in Request History as cancelled. The requester's app gets the recovery
+        // options via the harness relay; the reason travels with the cancellation.
+        j.cancelled=true; j.cancelReason=ta.value.trim(); ov.remove();
         toast('Cancellation submitted — '+who+' has been notified. A fee may apply per terms.');
+        setTimeout(function(){ try{ load('home'); }catch(_){} }, 900);
       };
     }
-    // The Gopher rates the requester after completion (two-way ratings).
+    // The Gopher rates the requester after the REQUESTER CONFIRMS (two-way ratings). The
+    // js-raterq button that opens this only renders once j.confirmed — never at mark-complete.
     function openRateRequester(){
       let picked=0;
       const stars=()=>[1,2,3,4,5].map(n=>'<span class="js-rrstar" data-n="'+n+'" style="font-size:34px;cursor:pointer;color:'+(n<=picked?'#F5B301':'#d9d2c2')+';line-height:1;">&#9733;</span>').join('');
@@ -2658,7 +2668,7 @@ if(PT){
     if(!sr || !sr.querySelector('.tabs')) return;
     var byCat={}, avail=0, active=0;
     Object.keys(JOBS).forEach(function(k){ (JOBS[k]||[]).forEach(function(j){
-      if(j.substage==='completed' || j.noShow) return;   // done → out of Available AND Active (it's history now)
+      if(j.substage==='completed' || j.noShow || j.cancelled) return;   // done/cancelled → out of Available AND Active (it's history now)
       if(j.accepted) active++; else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
     var tabs=sr.querySelectorAll('.tabs .tab');
     if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],0);
@@ -2813,13 +2823,33 @@ if(PT){
       if(!(_s && _s.querySelector('.modal-overlay'))) load('job-detail');   // never yank an open modal
     } }catch(_){}
   };
+  /* G40-40/78 — the REQUESTER cancelled or re-posted. The job leaves this phone's feeds
+     (cancelled jobs are already excluded from Available/Active/counts); an accepted Gopher
+     gets the banner + a no-fault Request History row. kind 'repost' = released & excluded
+     from re-accepting (locked rule); kind 'cancel' = the request is gone entirely. */
+  window.__ptReqCancelled=function(id,kind){
+    var job=window.__ptJobs[id]; if(!job) return;
+    var wasAccepted=!!job.accepted;
+    job.cancelled=true; job.cancelledByReq=true; job.reqCancelKind=kind||'cancel';
+    if(wasAccepted && window.GopherBanner) GopherBanner.show({app:'go',
+      title:(kind==='repost'?'You Were Released From A Request':'Request Cancelled By Requester'),
+      sub:'No fault on your end — select for details'});
+    try{
+      if(current==='job-detail' && state.job===job){
+        var _h=stage.querySelector('.host'), _s=_h&&_h.shadowRoot;
+        if(!(_s && _s.querySelector('.modal-overlay'))) load('home');   // never yank an open modal
+      } else if(current==='home'){ ptSyncHome(); }
+      else if(current==='jobs-list'){ load('jobs-list'); }
+    }catch(_){}
+  };
   window.__ptRated=function(id,stars,fav){
     var job=window.__ptJobs[id]; if(!job) return;
     job.rated=stars;                 // stored for the system only — never displayed
     job.confirmed=true; job.substage='completed';
     job.disputed=0; job.disputeNote=null;   // confirming completion resolves any open dispute
     job.favorited=!!fav;             // requester's MY-Gophers state at confirm — drives the congrats modal
-    // If the worker already rated before the confirm arrived, fire the congrats now (once).
+    // Safeguard only: the rate button is gated on confirmed, so reqRated can't normally exist
+    // before this relay lands. Kept in case an older session left a pre-gate rating behind.
     try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}
     // Never yank the screen out from under the worker: load() rebuilds the shadow root, which
     // destroys any open modal — if the confirm relay lands while the rate-requester modal is up,
