@@ -940,7 +940,7 @@ function cardHTML(r){
        ? '<button class="rc-view urgent" data-pending-action="gcancel" data-order="'+r.order+'">Review options →</button>'
        : '<button class="rc-view urgent" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>Review now →</button>')
   : '<button class="rc-view" data-pending-action="view" data-order="'+r.order+'"'+(live?' data-nav-screen="gopher-request-inprogress.html"':'')+'>'+(live?'Track live →':'View details →')+'</button>';
- return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+(DEMO_SHOW_CARD_DISMISS?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
+ return '<div class="req-card'+(attn?' attn':'')+'" data-order="'+r.order+'">'+((DEMO_SHOW_CARD_DISMISS&&!isPTmode())?'<span class="rc-x" data-pending-action="dismiss" data-order="'+r.order+'" title="Dismiss">×</span>':'')
   +'<div class="rc-top"><span class="rc-ico"><svg viewBox="0 0 24 24" fill="none">'+ico+'</svg></span>'
   +'<div class="rc-tx"><div class="rc-title">'+r.title+'</div><div class="rc-sub">#'+r.order+' &middot; '+cat+'</div></div>'
   +(r.amount?'<span class="rc-amt">'+r.amount+'</span>':'')+'</div>'
@@ -994,7 +994,12 @@ function startAccepting(){
 }
 // In PT / split-screen mode the Go app is the ONLY thing that advances a request — never auto-simulate acceptances/bids.
 function isPTmode(){ try{ return new URLSearchParams(location.search).get('pt')==='1' || sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
-function initPending(){ renderPending(); if(!isPTmode() && GReq.all().some(function(r){return r.stage==='searching';})) startAccepting(); }
+function initPending(){ renderPending(); if(!isPTmode() && GReq.all().some(function(r){return r.stage==='searching';})) startAccepting();
+ // Flow Step-7 "Cancel request" hands off here (it has no sheet chrome of its own) — open the
+ // status-aware cancel router for the stashed order.
+ try{ var _ci=sessionStorage.getItem('gopher_cancel_intent');
+  if(_ci){ sessionStorage.removeItem('gopher_cancel_intent'); if(GReq.get(_ci)) setTimeout(function(){ openReqCancel(_ci); }, 350); }
+ }catch(_){} }
 // Keep the ASAP expiry countdown honest — refresh the cards once a minute while an ASAP
 // request is still broadcasting (skipped when a modal/sheet is up so nothing gets yanked).
 setInterval(function(){ try{
@@ -1011,7 +1016,8 @@ document.addEventListener('click',function(e){
  else if(act==='confirm'){ if(order) openConfirmCompletion(order); return; }
  else if(act==='rate'){ if(order) openRateModal(order); return; }
  else if(act==='view'){ if(order&&window.GReq) GReq.openOrder(order); var r=order?GReq.get(order):null; if(r&&r.attention){ GReq.update(order,{attention:null}); renderPending(); r=GReq.get(order); } if(r){ if(r.disputed&&r.substage==='completed'){ openConfirmCompletion(order); } else if(r.stage==='active'||r.stage==='matched'){ openLiveTracker(order); } else { openDetails(order); } } }
- else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
+ else if(act==='dismiss' && DEMO_SHOW_CARD_DISMISS && !isPTmode()){ if(order&&window.GReq) GReq.remove(order); renderPending(); }
+ else if(act==='reqcancel'){ gClose(); if(order) openReqCancel(order); return; }
 });
 window.__onJobStarted=function(order){ var o=order||((GReq.all()[0]||{}).order); if(o){ GReq.update(o,{stage:'active',attention:null}); renderPending(); } };
 document.addEventListener('click',function(e){
@@ -1536,6 +1542,96 @@ function openGcRate(order){
     o.remove(); toast('Request cancelled'+(picked?' — thanks for the feedback':''));
   };
 }
+/* ── G40-40 / G40-78: REQUESTER-initiated cancel — status-aware router, ported from the web
+   builds' __openCancelModal (Final/gopher-request.html / gopher-connect.html).
+   · Broadcasting (stage searching/pending)  → G40-40 early-cancel sheet: Variant A (≤20 min
+     since submit AND strong local coverage → reassure) else Variant B. "Still need it" bumps
+     resubmitSeq — the harness re-alerts the Go phone with a fresh notification, same order #,
+     expiry clock NOT reset (spec: less time left). "Still cancel" cancels.
+   · Accepted, not started (stage active/matched, no substage) → G40-78 Cancel-or-Repost
+     sheet. Repost releases the Gopher, EXCLUDES them from re-accepting (locked rule),
+     notifies them, and re-broadcasts the SAME record under the SAME order # (contrast:
+     G40-9's Gopher-cancel recovery mints a new #). No cancellation fee either way pre-start.
+   · Started (substage set) → no cancel affordance; short started-note only.
+   G40-40/78 BACKEND SEAM: real re-broadcast push, dropped-Gopher notification, exclusion
+   enforcement in matching, the coverage signal for Variant A, and cancellation logging are
+   dev/backend — here the harness relays and the coverage check is a stubbed constant. */
+function __reqStarted(r){ return !!r.substage; }
+function __reqAcceptedNotStarted(r){ return (r.stage==='active'||r.stage==='matched') && (r.hired||r.accepted) && !r.substage; }
+function __reqBroadcasting(r){ return r.stage==='searching'||r.stage==='pending'; }
+function __reqCancelAffordance(r){
+  if(!r || r.cancelled) return '';
+  if(__reqStarted(r) && r.substage!=='completed' && r.substage!=='rated')
+    return '<div class="gs-hint" style="margin-top:12px;">'+__gcEsc(r.hired||'Your Gopher')+' has started this job — cancelling is no longer available. Message them, or contact support if something’s wrong.</div>';
+  if(__reqBroadcasting(r) || __reqAcceptedNotStarted(r))
+    return '<button data-pending-action="reqcancel" data-order="'+r.order+'" style="width:100%;margin-top:14px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Cancel request</button>';
+  return '';
+}
+function openReqCancel(order){
+  var r=GReq.get(order); if(!r||r.cancelled) return;
+  if(__reqStarted(r)){ gModal('<h3 class="gm-h">'+__gcEsc(r.hired||'Your Gopher')+' has started</h3><p class="gm-p">Cancelling is no longer available once your Gopher has started the job. Message them directly, or contact support if something’s wrong.</p><button class="gm-close">Got it</button>'); return; }
+  if(__reqAcceptedNotStarted(r)){ openAcceptedCancelSheet(order); return; }
+  openEarlyCancelSheet(order);
+}
+function __reqCancelRelay(order, kind, patch){
+  var r=GReq.get(order)||{};
+  var p={ reqCancelSeq:(r.reqCancelSeq||0)+1, reqCancelKind:kind };
+  if(patch){ for(var k in patch) p[k]=patch[k]; }
+  GReq.update(order, p); renderPending();
+}
+// G40-40 — early cancel while broadcasting.
+function openEarlyCancelSheet(order){
+  var r=GReq.get(order); if(!r) return;
+  var STRONG_COVERAGE=true;   // BACKEND SEAM (G40-40): live ">20 Gophers with ≥1 completed order in the area" signal
+  var fresh=r.submittedAt && (Date.now()-r.submittedAt) <= 20*60000;
+  var variantA=fresh && STRONG_COVERAGE;
+  var o=gSheet(variantA?'📣 Hang tight — a Gopher’s close':'🔎 Still want us to keep looking?',
+    '<p class="gs-sub">'+(variantA
+      ? 'You sent this out just moments ago, and there are <b>20+ Gophers</b> active near <b>Apex</b> right now. Most requests here get picked up quickly.'
+      : 'We’re still broadcasting your request to Gophers in your area. Tap <b>Still need it</b> and we’ll send a fresh alert — your details and price stay exactly as they are.')+'</p>'
+    +'<button class="ec-keep" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:#1CB061;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Still need it — '+(variantA?'keep looking':'re-alert Gophers')+'</button>'
+    +'<button class="ec-stop" style="width:100%;margin-top:9px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Still cancel</button>'
+    +'<p class="gs-hint" style="margin-top:10px;">Cancelling now is free — your card is never charged before a Gopher is matched.</p>');
+  o.querySelector('.ec-keep').onclick=function(){
+    // Re-broadcast the SAME request — resubmitSeq bump → the harness re-alerts the Go phone.
+    // The expiry clock is deliberately NOT reset (spec: the request keeps its remaining time).
+    GReq.update(order,{ resubmitSeq:((GReq.get(order)||{}).resubmitSeq||0)+1 });
+    o.remove(); renderPending(); toast('Fresh alert sent to Gophers near you');
+  };
+  o.querySelector('.ec-stop').onclick=function(){
+    o.remove();
+    __reqCancelRelay(order,'cancel',{ cancelled:1, attention:null, when:'Cancelled' });
+    toast('Request cancelled — nothing was charged');
+  };
+}
+// G40-78 — accepted but not started: Cancel or instant Repost.
+function openAcceptedCancelSheet(order){
+  var r=GReq.get(order); if(!r) return;
+  var who=r.hired||'Your Gopher', first=who.split(' ')[0];
+  var o=gSheet('Cancel this request?',
+    '<p class="gs-sub">'+__gcEsc(who)+' accepted but hasn’t started yet. Two ways to go — <b>no cancellation fee</b> either way:</p>'
+    +'<button class="ac-repost" style="display:block;width:100%;text-align:left;margin-top:12px;padding:13px 14px;border:1.5px solid #3CB54A;border-radius:14px;background:#fff;cursor:pointer;box-shadow:0 0 0 3px rgba(60,181,74,.18),0 8px 22px -8px rgba(60,181,74,.45);font-family:\'DM Sans\',sans-serif;">'
+      +'<b style="display:block;font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">⚡ Put it back out instantly <span style="font-size:10px;color:#0a7d44;background:#e8f5ee;border-radius:99px;padding:2px 8px;vertical-align:2px;">RECOMMENDED</span></b>'
+      +'<span style="display:block;font-size:12px;color:#5b6472;margin-top:2px;line-height:1.45;">Releases '+__gcEsc(first)+' and re-broadcasts the same request — same details, same price, same order #. '+__gcEsc(first)+' is notified and can’t re-accept this one.</span></button>'
+    +'<button class="ac-cancel" style="display:block;width:100%;text-align:left;margin-top:10px;padding:13px 14px;border:1.5px solid #e4e8f0;border-radius:14px;background:#fff;cursor:pointer;font-family:\'DM Sans\',sans-serif;">'
+      +'<b style="display:block;font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">✕ Cancel request</b>'
+      +'<span style="display:block;font-size:12px;color:#5b6472;margin-top:2px;line-height:1.45;">Close it out completely. Your card was never charged.</span></button>');
+  o.querySelector('.ac-repost').onclick=function(){
+    o.remove();
+    // Same record, same order # — release + EXCLUDE the dropped Gopher (locked rule: not
+    // eligible for this request when re-posted within this process) + notify via the harness.
+    __reqCancelRelay(order,'repost',{ stage:'searching', hired:null, accepted:0, substage:null,
+      attention:null, excludeGopher:who, when:'Now · ASAP' });
+    uiBucket='submitted'; uiIdx=0; renderPending();
+    toast('Back out to Gophers — '+first+' was released & notified');
+  };
+  o.querySelector('.ac-cancel').onclick=function(){
+    o.remove();
+    __reqCancelRelay(order,'cancel',{ cancelled:1, attention:null, when:'Cancelled' });
+    toast('Request cancelled — '+first+' was notified. Nothing was charged');
+  };
+}
+
 // AC5 (demo): 15-minute no-action auto-cancel — a client interval standing in for the durable job.
 var __gcTick=null;
 function __gcEnsureTick(){ if(__gcTick) return;
@@ -1715,7 +1811,8 @@ function openLiveTracker(order){
   }
   var body='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:2px 0 10px;">'+esc(r.title||'Your request')+' \u00b7 #'+order+'</div>'
     +map
-    +'<div class="lt-live">'+liveInner()+'</div>';
+    +'<div class="lt-live">'+liveInner()+'</div>'
+    +__reqCancelAffordance(r);
   var o=gSheet('Live tracking', body);
   var _ltPoll=0;
   function bindLive(){
@@ -1758,7 +1855,7 @@ function openDetails(order){
     +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
     +row('Total', bids?'TBD after bid':(r.amount||money((+r.pay||0)+(+r.cost||0))))
     +'</div>';
-  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>'));
+  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r));
 }
 // Deals launch gate (Raleigh DMA only) \u2014 same flag the home Deals section honors.
 function __dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }

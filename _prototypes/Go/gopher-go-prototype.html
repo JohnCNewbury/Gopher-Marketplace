@@ -1491,7 +1491,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Active tab → the requests you're connected to (pick one to engage). Available tab → the open feed.
     const base=activeMode
       ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow && !j.cancelled)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted);   // accepted/completed jobs leave the Available feed
+      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted && !j.cancelled);   // accepted/completed/cancelled jobs leave the Available feed
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
@@ -1534,7 +1534,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(!x.accepted) return;
       const icon=/move/i.test(x.cat||'')?'move':/junk/i.test(x.cat||'')?'junk':/yard|outdoor/i.test(x.cat||'')?'yard':/delivery|errand/i.test(x.cat||'')?'box':'errand';
       const base={ic:icon, cat:x.cat||'Request', id:'#'+(x.id||'GR-'+Math.abs((x.who||'').length*7919)), date:'Today', who:x.who||'Requester'};
-      if(x.cancelled){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:'You cancelled after accepting', none:'No earnings', resolve:'Cancellation submitted \u2014 a fee may apply per the Gopher terms.', cta:'View details'})); }
+      if(x.cancelledByReq){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:(x.reqCancelKind==='repost'?'Requester re-posted this request \u2014 you were released and can\u2019t re-accept it':'Cancelled by the requester before you started'), none:'No earnings impact', resolve:'No action needed \u2014 this doesn\u2019t affect your standing.', cta:'View details'})); }
+      else if(x.cancelled){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:'You cancelled after accepting', none:'No earnings', resolve:'Cancellation submitted \u2014 a fee may apply per the Gopher terms.', cta:'View details'})); }
       else if(x.substage==='completed'){
         const sub=x.noShow ? 'Completed as No Show \u2014 requester not present at drop-off; items not released'
                  : (x.ageRestricted ? 'Age-restricted delivery \u2014 ID confirmed at drop-off' : (x.scope||'Completed'));
@@ -2821,6 +2822,25 @@ if(PT){
       var _h=stage.querySelector('.host'), _s=_h&&_h.shadowRoot;
       if(!(_s && _s.querySelector('.modal-overlay'))) load('job-detail');   // never yank an open modal
     } }catch(_){}
+  };
+  /* G40-40/78 — the REQUESTER cancelled or re-posted. The job leaves this phone's feeds
+     (cancelled jobs are already excluded from Available/Active/counts); an accepted Gopher
+     gets the banner + a no-fault Request History row. kind 'repost' = released & excluded
+     from re-accepting (locked rule); kind 'cancel' = the request is gone entirely. */
+  window.__ptReqCancelled=function(id,kind){
+    var job=window.__ptJobs[id]; if(!job) return;
+    var wasAccepted=!!job.accepted;
+    job.cancelled=true; job.cancelledByReq=true; job.reqCancelKind=kind||'cancel';
+    if(wasAccepted && window.GopherBanner) GopherBanner.show({app:'go',
+      title:(kind==='repost'?'You Were Released From A Request':'Request Cancelled By Requester'),
+      sub:'No fault on your end — select for details'});
+    try{
+      if(current==='job-detail' && state.job===job){
+        var _h=stage.querySelector('.host'), _s=_h&&_h.shadowRoot;
+        if(!(_s && _s.querySelector('.modal-overlay'))) load('home');   // never yank an open modal
+      } else if(current==='home'){ ptSyncHome(); }
+      else if(current==='jobs-list'){ load('jobs-list'); }
+    }catch(_){}
   };
   window.__ptRated=function(id,stars,fav){
     var job=window.__ptJobs[id]; if(!job) return;

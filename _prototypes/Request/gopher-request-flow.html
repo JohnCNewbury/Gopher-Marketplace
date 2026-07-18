@@ -2251,7 +2251,14 @@ document.addEventListener('click',(e)=>{
     case 'demo-restart': state._stashed=false; state.step=1; state.maxStepReached=1; render(); break;
     case 'edit-request': state.step=6; render(); break;
     case 'edit-service': goStep(1); break;
-    case 'cancel-request': if(confirm('Cancel this request?')){ resetAll(); } break;
+    case 'cancel-request':
+      // G40-40/78: route through Home's status-aware cancel router — the old confirm()/resetAll()
+      // only reset THIS page's state and left the record broadcasting (a lie to the user).
+      if(state._stashed && state._stashedOrder && window.GReq){
+        try{ sessionStorage.setItem('gopher_cancel_intent', state._stashedOrder); }catch(_){}
+        goHome();
+      } else if(confirm('Cancel this request?')){ resetAll(); }
+      break;
     case 'new-request': resetAll(); break;
   }
 });

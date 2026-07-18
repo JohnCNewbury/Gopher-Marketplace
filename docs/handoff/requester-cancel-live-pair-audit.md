@@ -1,10 +1,12 @@
 # Requester-initiated cancel in the LIVE app pair — audit & gap spec (G40-40 / G40-78)
 
 **Requested by:** John Newbury, 2026-07-17 (App Prototypes session)
-**Scope of this note:** AUDIT ONLY — no wiring has been done. This documents exactly how the
-live split-screen pair is coded today ("what IS") and what must change to conform to the
-locked G40-40 / G40-78 requirements ("what's NEEDED"), so the implementation pass — and the
-production dev after it — can be checked against a written spec instead of memory.
+**Scope of this note:** originally AUDIT ONLY; the implementation pass has since LANDED
+(2026-07-17, same session — see the addendum at the bottom). The "WHAT IS" section below is
+preserved as the historical record of how the pair was coded before the fix; the "WHAT'S
+NEEDED" section is now the as-built spec the production dev verifies the live apps against.
+Owner ruling recorded 2026-07-17: **the Gopher who bailed is NOT eligible for the same
+request if re-posted within this process** — the demo honors the real rule.
 **Surfaces audited:** `_prototypes/Request/gopher-request-home.html` ·
 `_prototypes/Request/gopher-request-flow.html` ·
 `_prototypes/Request/gopher-request-inprogress.html` · `_prototypes/split-screen.html`
@@ -113,14 +115,34 @@ record broadcasting.
 Gopher notification, exclusion enforcement in matching, cancellation logging, coverage
 signal for Variant A. Fees: none to requester pre-start; Gopher-side strikes are G40-81.
 
-## Acceptance checks for the implementation pass
+## Acceptance checks — VERIFIED headlessly in the harness, 2026-07-17
 
-- [ ] Cancel a broadcasting request → Variant A/B sheet (correct variant by age), Still-need-it
-      re-alerts the Go phone (fresh notification, same order #), Still-cancel removes the job
-      from the Go phone's Available feed.
-- [ ] Cancel an accepted-not-started request → Cancel-or-Repost sheet; Repost releases +
-      notifies the Gopher on the right phone and re-broadcasts same order # with exclusion.
-- [ ] A started request (any `substage`) shows NO cancel affordance anywhere, only the note.
-- [ ] Step-7 "Cancel request" can no longer strand a live record.
-- [ ] Demo "×" dismiss is disabled in the live pair.
-- [ ] No fee is ever shown to the requester for pre-start cancels.
+- [x] Cancel a broadcasting request → Variant A/B sheet (correct variant by age), Still-need-it
+      re-alerts the Go phone (fresh notification, same order #, no duplicate card), Still-cancel
+      removes the job from the Go phone's Available feed.
+- [x] Cancel an accepted-not-started request → Cancel-or-Repost sheet; Repost releases +
+      notifies the Gopher on the right phone (banner + no-fault history row) and re-broadcasts
+      the same order # with the exclusion honored (`excludeGopher` guard in `watchNative`;
+      the harness status line narrates why the one-Gopher demo phone doesn't show it).
+- [x] A started request (any `substage`) shows NO cancel affordance anywhere, only the note
+      (router double-checks defensively).
+- [x] Step-7 "Cancel request" routes to the Home router via `gopher_cancel_intent` — it can no
+      longer strand a live record.
+- [x] Demo "×" dismiss is disabled in the live pair (pt mode).
+- [x] No fee is ever shown to the requester for pre-start cancels ("your card was never
+      charged" copy on both sheets).
+
+## Addendum — implementation landed (2026-07-17)
+
+Built per the spec above, same session, branch `claude/app-prototypes-sync-x9uaj1`:
+- `gopher-request-home.html` — `openReqCancel()` status router + `openEarlyCancelSheet()`
+  (G40-40) + `openAcceptedCancelSheet()` (G40-78) + `__reqCancelAffordance()` on the details
+  and live-tracker sheets; demo dismiss pt-gated.
+- `gopher-request-flow.html` — Step-7 Cancel hands off to the router (standalone demo keeps
+  the old confirm as fallback).
+- `split-screen.html` — `watchReqCancel()` relay + `excludeGopher` guard in `watchNative`.
+- `gopher-go-prototype.html` — `__ptReqCancelled()` (banner, feed removal, screen return),
+  no-fault "Cancelled by the requester / you were released" history rows, Available-feed
+  cancelled filter.
+Backend seams tagged in code: coverage signal (Variant A), re-broadcast push, exclusion in
+matching, dropped-Gopher notification, cancellation logging.

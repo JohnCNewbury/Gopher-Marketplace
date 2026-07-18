@@ -103,6 +103,7 @@
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
   var disputeSeen={};   // GReq order id -> last dispute seq relayed to the Gopher
   var goCancelSeen={};  // GReq order id -> true (Gopher's cancellation already relayed to Request)
+  var reqCancelSeen={}; // GReq order id -> last reqCancelSeq relayed to Go (requester cancel/repost)
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
   var DEMO_GOPHER='Marcus';  // the one Gopher on the Go phone; a provider deal only surfaces here when it's directed to them
 
@@ -127,7 +128,10 @@
         var list=l.GReq.all()||[];
         for(var i=0;i<list.length;i++){
           var r=list[i];
-          if(r && r.stage==='searching' && !r.scheduledForLater && (!r.directTo || r.directTo===DEMO_GOPHER)){
+          // G40-78 exclusion: a repost that excludes the demo Gopher is NOT re-broadcast to this
+          // phone — the status line narrates it (other Gophers would see it; Marcus can't).
+          if(r && r.stage==='searching' && !r.scheduledForLater && (!r.directTo || r.directTo===DEMO_GOPHER)
+             && !(r.excludeGopher && r.excludeGopher.indexOf(DEMO_GOPHER)===0)){
             var seq=r.resubmitSeq||0;
             if(!injected[r.order] || injectedSeq[r.order]!==seq){   // first submit, or an edit-resubmit (seq bumped)
               var edited=(injected[r.order] && injectedSeq[r.order]!==seq);
@@ -287,6 +291,31 @@
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
             try{ if(l.__noShowComplete) l.__noShowComplete(id); }catch(_){}
             status('No-show on '+id+' → '+(r.hired||'the Gopher')+' was paid in full, items not released; order marked <b>Completed (No Show)</b>.');
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Request → shared store → Go: the REQUESTER cancelled (G40-40 early cancel or G40-78
+        Cancel) or re-posted after an accept (G40-78 Repost). The Go phone drops the job; an
+        accepted Gopher is notified. A G40-78 repost EXCLUDES the dropped Gopher (locked rule)
+        — with one demo Gopher, the re-broadcast is therefore invisible on the right phone and
+        the status line explains why. ── */
+  function watchReqCancel(){
+    try{
+      var l=L(), w=R();
+      if(l && l.GReq && w && w.__ptJobs){
+        var list=l.GReq.all()||[];
+        for(var i=0;i<list.length;i++){
+          var r=list[i];
+          if(r && r.reqCancelSeq && reqCancelSeen[r.order]!==r.reqCancelSeq){
+            if(!(w.__ptReqCancelled && w.__ptJobs[r.order])){ continue; }   // Go mid-reload — retry next tick
+            try{ w.__ptReqCancelled(r.order, r.reqCancelKind||'cancel'); }catch(_){ continue; }
+            reqCancelSeen[r.order]=r.reqCancelSeq;
+            status(r.reqCancelKind==='repost'
+              ? 'You <b>put '+r.order+' back out</b> — the accepting Gopher was released &amp; notified. Per the exclusion rule they <b>can’t re-accept</b> it, so the re-broadcast doesn’t appear on this demo’s one-Gopher phone; other Gophers would see it.'
+              : 'You <b>cancelled</b> '+r.order+' → it left the Go phone’s feed'+(w.__ptJobs[r.order].accepted?' and the Gopher was notified':'')+'. No charge.');
           }
         }
       }
@@ -511,7 +540,7 @@
     // live app) so a fresh demo run gets the Attention! acknowledgment again.
     try{ localStorage.removeItem('hideAcceptRequestAttentionModalChecked'); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; disputeSeen={}; goCancelSeen={}; referralSeen=0;
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; disputeSeen={}; goCancelSeen={}; reqCancelSeen={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;
@@ -552,7 +581,7 @@
   }
   if(dealsBtn){ paintDealsBtn(); dealsBtn.addEventListener('click', toggleDeals); }
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchDispute(); watchGoCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchDispute(); watchGoCancel(); watchReqCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
