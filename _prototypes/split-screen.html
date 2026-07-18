@@ -130,7 +130,10 @@
           var r=list[i];
           // G40-78 exclusion: a repost that excludes the demo Gopher is NOT re-broadcast to this
           // phone — the status line narrates it (other Gophers would see it; Marcus can't).
-          if(r && r.stage==='searching' && !r.scheduledForLater && (!r.directTo || r.directTo===DEMO_GOPHER)
+          // A cancelled record keeps stage 'searching' (the cancel patch only sets cancelled/gCancelled)
+          // — without this guard a page refresh re-injected cancelled requests as live Go jobs.
+          if(r && r.stage==='searching' && !r.cancelled && !r.gCancelled && !r.scheduledForLater
+             && (!r.directTo || r.directTo===DEMO_GOPHER)
              && !(r.excludeGopher && r.excludeGopher.indexOf(DEMO_GOPHER)===0)){
             var seq=r.resubmitSeq||0;
             if(!injected[r.order] || injectedSeq[r.order]!==seq){   // first submit, or an edit-resubmit (seq bumped)
@@ -331,7 +334,10 @@
       if(w && w.__ptJobs && l && l.GReq){
         for(var id in w.__ptJobs){
           var job=w.__ptJobs[id];
-          if(job && job.cancelled && !goCancelSeen[id]){
+          // Only a cancel the GOPHER initiated (their flow sets cancelReason) relays G40-9 recovery
+          // to the requester. A requester-initiated cancel also lands here as job.cancelled — echoing
+          // it back as "Your Gopher Cancelled" resurrected the request via the recovery sheet.
+          if(job && job.cancelled && !job.cancelledByReq && !goCancelSeen[id]){
             var r=l.GReq.get(id); if(!r){ continue; }               // request not ready — retry next tick
             if(!l.__gopherCancelled){ continue; }                   // Request hook mid-reload — retry
             try{ l.__gopherCancelled(id, job.cancelReason||'', r.hired||'Your Gopher'); }catch(_){ continue; }
