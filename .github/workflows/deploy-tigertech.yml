@@ -1,0 +1,50 @@
+# Deploys the site to the Tiger Technologies web server over FTPS whenever
+# main is updated (main's root IS the site — the flattened Final/ folder).
+#
+# Sync behavior: the action keeps a small state file on the server
+# (.ftp-deploy-sync-state.json) so it only uploads what changed, and it
+# DELETES server files that were previously deployed by this action and have
+# since been removed from the repo. Files uploaded manually before this
+# action existed are not tracked — clean those up by hand once.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   FTP_SERVER    — the FTP hostname from the Tiger Tech control panel
+#                   (e.g. ftp.gophergo.io)
+#   FTP_USERNAME  — the FTP username
+#   FTP_PASSWORD  — the FTP password
+#
+# server-dir below is the folder on the server to deploy into, relative to
+# where the FTP login lands. It must end with a trailing slash.
+
+name: Deploy to Tiger Tech
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tigertech-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+
+      - name: Sync site to server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: preview/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            README.md
