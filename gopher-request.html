@@ -5,6 +5,12 @@
   Canonical file: gopher-request_LATEST.html  (always overwrite this one)
 ------------------------------------------------------------------------------
   CHANGELOG (newest first)
+  v121 2026-07-18  Step-1 category tiles — removed the uppercase pill tag
+                   (.ct-tag, e.g. ERRAND/HAULING) overlaying each photo: owner
+                   call, redundant with the category name in the tile footer.
+                   Footer name (.ct-name) bumped 13px -> 15px for prominence.
+                   Applied to Request + Connect web flows ONLY — the app
+                   prototypes keep their pills by design (explicit owner scope).
   v120 2026-07-18  Delivery/Errand category-tile photo — replaced the Pexels
                    courier-with-package shot with a neighbor-to-neighbor grocery
                    doorstep handoff (new assets/img/01-delivery.webp, 1.55-ratio
@@ -3399,22 +3405,14 @@
     transition:transform 0.3s ease;
   }
   .cat-tile:hover .ct-photo img { transform:scale(1.07); }
-  .cat-tile .ct-tag {
-    position:absolute; top:8px; left:8px; z-index:2;
-    background:rgba(255,255,255,0.92); color:var(--navy);
-    font-family:'Nunito',sans-serif; font-size:9px; font-weight:800;
-    letter-spacing:0.7px; text-transform:uppercase;
-    padding:3px 9px; border-radius:99px;
-    backdrop-filter:blur(3px); box-shadow:0 1px 4px rgba(0,0,0,0.12);
-  }
-  .cat-tile.selected .ct-tag { background:var(--green); color:var(--ink-on-green); }
+  /* (v121) .ct-tag pill removed — redundant with the ct-name footer, per owner. */
   .cat-tile .ct-body {
     padding:10px 12px 11px; display:flex; align-items:center;
     justify-content:space-between; gap:8px;
     border-radius:0 0 12px 12px;   /* inner bottom corners (tile is overflow:visible now) */
   }
   .cat-tile .ct-name {
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
     color:var(--navy); line-height:1.2;
   }
   .cat-tile .ct-check {
@@ -12030,7 +12028,6 @@
         ${Object.entries(CATEGORIES).map(([key,c]) => `
           <div class="cat-tile ${key===state.category?'selected':''}" data-cat="${key}">
             <div class="ct-photo">
-              <span class="ct-tag">${c.tag}</span>
               <img src="${CAT_PHOTOS[key]}" alt="" loading="lazy">
             </div>
             <div class="ct-body">
