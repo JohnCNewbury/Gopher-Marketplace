@@ -19,11 +19,15 @@ iQ reads the description, **pre-selects** the detected tier as a button, and sho
 the other two beside it so the requester can **correct** a wrong guess. Selecting a
 tier re-ranges the standard iQ offer slider to that tier's band.
 
-| Tier key | Button label | Baseline suggested | Slider band (low / generous) |
-|----------|--------------|--------------------|------------------------------|
-| `single` | Single item | **$25** | $20 / $30 |
-| `half` | Half-truck load | **$50** | $40 / $65 |
+| Tier key | Button label | Baseline suggested (fair) | Slider band (low / generous) |
+|----------|--------------|---------------------------|------------------------------|
+| `single` | Single item | **$40** | $30 / $50 |
+| `half` | Half-truck load | **$60** | $45 / $75 |
 | `full` | Full truck/trailer load | **$100** | $75 / $125 |
+
+_Fair values set by owner (John, 2026-07-19). `single`/`half` were nudged up from
+their pure data anchors (~$25/$50) so the tiers spread cleanly; `full` sits on the
+p80 envelope._
 
 `low`/`generous` are derived as ±25% of the (possibly learned) `suggested`, rounded
 to $5 — the same `low = 0.75×suggested` gate Delivery uses for the low-offer notice.
@@ -40,8 +44,9 @@ Calibrated **offline** from **715 real Junk Removal orders** in
 p20 $23 · p35 $30 · p50 $40 · p65 $50 · p80 $100 · p90 $125   (N=714, $1000 outlier dropped)
 ```
 
-The per-tier `suggested` values sit on that envelope (single ≈ low band, half ≈
-median, full ≈ upper band), so the tiers are **monotonic by construction**.
+The fair values are **owner-set** ($40/$60/$100, John 2026-07-19), informed by this
+envelope — `single`/`half` nudged above their pure data anchors (~$25/$50) so the
+tiers spread cleanly, `full` on the p80 band. Monotonic by construction.
 
 **Why we anchor to the distribution, not to volume language back-fit:** 467 / 715
 historical orders carry no parseable volume phrase, and a text back-fit came out

@@ -174,13 +174,14 @@
      correct the iQ-detected tier with a button, and the offer slider re-ranges to
      the chosen tier (owner spec 2026-07-19).
 
-     BASELINE anchors (the seed the learning starts from) were calibrated OFFLINE
-     from 715 real Junk Removal orders in Dashboard/data/master/Orders.csv, keyed
-     on GOPHER OFFER (worker pay — NOT the GOPHER EARNINGS column, which is platform
-     net take). The whole-corpus pay envelope is p20 $23 / p50 $40 / p80 $100; the
-     per-tier `suggested` values sit on that envelope (single≈low band, half≈median,
-     full≈upper band) so the tiers are MONOTONIC by construction. We anchor to the
-     distribution, NOT to volume language back-fit from the free text — 467/715
+     BASELINE anchors: the fair values ($40 / $60 / $100) are OWNER-SET (John,
+     2026-07-19), informed by — and sitting on the upper half of — the real pay
+     envelope calibrated OFFLINE from 715 Junk Removal orders in
+     Dashboard/data/master/Orders.csv, keyed on GOPHER OFFER (worker pay — NOT the
+     GOPHER EARNINGS column, which is platform net take). The whole-corpus envelope
+     is p20 $23 / p50 $40 / p80 $100; the owner nudged single/half above their pure
+     data anchors so the tiers spread cleanly and are MONOTONIC. We anchor to the
+     distribution, NOT to volume-language back-fit from the free text — 467/715
      historical orders carry no parseable volume phrase, so a text back-fit came out
      noisy/non-monotonic. The clean per-tier curve is meant to be LEARNED FORWARD
      from completed requests, where the flow captures the tier as a structured field.
@@ -198,9 +199,9 @@
     // tier -> baseline suggested (the anchor). low/generous are derived as ±25%
     // of the (possibly learned) suggested in suggestedJunkOffer() — one rule, same
     // low=0.75x gate delivery uses — so they're not duplicated here.
-    single: { label: 'Single item',            suggested: 25,
+    single: { label: 'Single item',            suggested: 40,
               hint: 'one couch, mattress, appliance, or a small pile' },
-    half:   { label: 'Half-truck load',         suggested: 50,
+    half:   { label: 'Half-truck load',         suggested: 60,
               hint: 'a garage/room cleanout or several large pieces' },
     full:   { label: 'Full truck/trailer load', suggested: 100,
               hint: 'a whole-room-plus load, or a full pickup/trailer' }
