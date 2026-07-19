@@ -1351,13 +1351,15 @@ function renderStep4(){
       ${isVisible('noSpecificPickup') ? `
       <div class="toggle-row">
         <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-        <span class="tr-label">No specific pick-up location
-          ${infoTip('nsp','No specific pick-up',['Either the worker can purchase your items anywhere they\'re available, or there\'s no actual pick-up spot for this request.'+(state.category==='moving'?' For a move, this can also mean a simple address-to-address job with nothing to pick up first.':'')])}
+        <span class="tr-label">${state.category==='moving' ? 'Single-location move' : 'No specific pick-up location'}
+          ${state.category==='moving'
+            ? infoTip('nsp','Single-location move',['Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.'])
+            : infoTip('nsp','No specific pick-up',['Either the worker can purchase your items anywhere they\'re available, or there\'s no actual pick-up spot for this request.'])}
         </span>
       </div>`:''}
       ${state.noSpecificPickup && isVisible('noSpecificPickup') ? `
-        <div class="sub-field"><div class="sf-label">Pick-up flexibility</div>
-        <div class="sf-value">The worker can purchase anywhere your items are available, or there's no fixed pick-up location.</div></div>
+        <div class="sub-field"><div class="sf-label">${state.category==='moving' ? 'Single-location move' : 'Pick-up flexibility'}</div>
+        <div class="sf-value">${state.category==='moving' ? 'Your worker helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : "The worker can purchase anywhere your items are available, or there's no fixed pick-up location."}</div></div>
       ` : `
         <div class="addr-block"><span class="addr-pin">${svgIco('location')}</span>
           <input class="addr-input" data-field="pickupStops" value="${esc(pickupAddr())}" placeholder="Add pick-up address"></div>
@@ -1870,7 +1872,7 @@ function renderStep7(){
   window.G40_REQ={
     phoneEntered:function(){return rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));},
     paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re gone, we’ll rebroadcast immediately.')+b1('Update payment'));},
-    pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving a single location? Slide the pick-up toggle to <b>“No specific pick-up location.”</b>)')+b1('Got it'));},
+    pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)')+b1('Got it'));},
     selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
     cantDeleteOnlyCard:function(){return rqModal(h('Add a card before removing this one')+p('You need at least one card on file. Add a new card, then you can remove this one.')+b1('Add new card')+b2('Cancel'));},
     expiredInterestedWorkers:function(){return rqModal(h('Your request expired — workers are interested')+p('Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.')+b1('View interested workers')+b2('Cancel request'));},
