@@ -5,7 +5,7 @@
    Request App Prototype, Gopher Go Prototype) so the logic is identical
    everywhere and is tuned in exactly one file.
 
-   SCOPE (G40-35, decisions locked by John 2026-07-02):
+   SCOPE (decisions locked by John 2026-07-02):
      Covers ALL in-app communication violations, in two families:
        • off-platform circumvention — payment terms (incl. a bare "$"/amount,
          the precursor to CashApp), phone numbers, EMAIL addresses,
