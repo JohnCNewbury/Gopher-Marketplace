@@ -206,6 +206,7 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
 .flag.neu{background:#eef1f7;color:var(--navy-mid);}
 .flag.warn{background:#fff7c2;color:var(--warning-text);}
 .flag.good{background:var(--green-light);color:var(--green-dark);}
+.flag.bad{background:#FDECE6;color:#C44257;}
 .flag.iq{background:#fff;border:1px dashed currentColor;}
 .flag.iq.neu{color:var(--navy-mid);} .flag.iq.warn{color:var(--warning-text);} .flag.iq.good{color:var(--green-dark);}
 .flag .iqm{font-size:8px;font-weight:900;color:#fff;padding:1px 4px;border-radius:4px;margin-right:5px;letter-spacing:.3px;}
@@ -808,7 +809,12 @@ function renderJobCard(j){
     : '<div class="jc-pay"><span class="amt">'+(j.amt||'')+'</span>'+(j.per?'<span class="per">'+j.per+'</span>':'')+'</div>';
   const scope=j.scope?'<div class="jc-scope">'+j.scope+'</div>':'';
   const stats=(j.stats&&j.stats.length)?'<div class="jc-stats">'+j.stats.map(jcStat).join('')+'</div>':'';
-  const flags=(j.flags&&j.flags.length)?'<div class="jc-flags">'+j.flags.map(jcFlag).join('')+'</div>':'';
+  // A completed job awaiting the requester's confirm stays on the Active list with a red badge —
+  // the requester controls the payout at this point, so the worker must see it's still pending.
+  let flagList=(j.flags||[]).slice();
+  if(j.accepted) flagList=flagList.filter(f=>f.t!=='New' && f.t!=='Time-sensitive');   // available-feed chips are stale once hired
+  if(j.accepted && j.substage==='completed' && !j.confirmed && !j.noShow) flagList.unshift({t:'Pending confirmation',k:'bad',i:'alert'});
+  const flags=flagList.length?'<div class="jc-flags">'+flagList.map(jcFlag).join('')+'</div>':'';
   const inner=top+biz+pay+scope+stats+flags;
   if(j.lock){ const ribbon='<span class="lock-ribbon">'+IC.lock+(j.lock==='connect'?'Connect':'Gopher Deal')+'</span>';
     const lt=j.lock==='connect'?'Connect job \u2014 for <b>Gopher Elite &amp; Pros</b>':'Gopher Deal \u2014 unlocks once <b>verified</b>';
@@ -1486,14 +1492,22 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <p class="sub">Sorted by fit near you</p><div class="jl-sort js-sort"><button class="jl-chip on" data-sort="fit">Best fit</button><button class="jl-chip" data-sort="pay">Pay</button><button class="jl-chip" data-sort="dist">Distance</button><button class="jl-chip" data-sort="exp">Expiring</button><button class="jl-chip" data-sort="new">Newest</button></div>
    <div class="joblist js-list"></div></div></div>`,
   init(r){ const activeMode=(state.jobsMode==='active');   // set by the home "Active" tab; reset at every Available entry point
-    const hasCat=!!state.category && !activeMode; const cat=state.category||'Local jobs';
-    r.querySelector('.js-cat-title').textContent = activeMode ? 'Active requests' : (hasCat ? cat : 'Available jobs');
-    const eyebrow=r.querySelector('.js-cat-eyebrow'); if(eyebrow) eyebrow.textContent = activeMode ? 'Active · in progress' : 'Available · near you';
+    const schedMode=(state.jobsMode==='scheduled');        // home "Scheduled" tab → accepted scheduled bookings not yet started
+    const hasCat=!!state.category && !activeMode && !schedMode; const cat=state.category||'Local jobs';
+    r.querySelector('.js-cat-title').textContent = schedMode ? 'Scheduled requests' : (activeMode ? 'Active requests' : (hasCat ? cat : 'Available jobs'));
+    const eyebrow=r.querySelector('.js-cat-eyebrow'); if(eyebrow) eyebrow.textContent = schedMode ? 'Scheduled · upcoming' : (activeMode ? 'Active · in progress' : 'Available · near you');
     const sub=r.querySelector('.sub'); const list=r.querySelector('.js-list');
     // Active tab → the requests you're connected to (pick one to engage). Available tab → the open feed.
-    const base=activeMode
-      ? jobsFor('all').filter(j=>j.accepted && j.substage!=='completed' && !j.noShow && !j.cancelled)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted && !j.cancelled);   // accepted/completed/cancelled jobs leave the Available feed
+    // Active/Scheduled scan EVERY job (jobsFor('all') is a newest-per-category home preview — it would
+    // hide an older accepted job behind a newer available one in the same category).
+    const allJobs=Object.keys(JOBS).reduce((a,k)=>a.concat(JOBS[k]||[]),[]);
+    // A completed job stays ACTIVE until the requester confirms (they control the payout at that
+    // point) — only a confirm, a no-show completion, or a cancel clears it off this list.
+    const base=schedMode
+      ? allJobs.filter(j=>j.accepted && j.scheduled && !j.substage && !j.noShow && !j.cancelled)
+      : activeMode
+      ? allJobs.filter(j=>j.accepted && !(j.scheduled && !j.substage) && !(j.substage==='completed' && j.confirmed) && !j.noShow && !j.cancelled)
+      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted && !j.cancelled);   // accepted/cancelled jobs leave the Available feed
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
@@ -1538,7 +1552,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const base={ic:icon, cat:x.cat||'Request', id:'#'+(x.id||'GR-'+Math.abs((x.who||'').length*7919)), date:'Today', who:x.who||'Requester'};
       if(x.cancelledByReq){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:(x.reqCancelKind==='repost'?'Requester re-posted this request \u2014 you were released and can\u2019t re-accept it':'Cancelled by the requester before you started'), none:'No earnings impact', resolve:'No action needed \u2014 this doesn\u2019t affect your standing.', cta:'View details'})); }
       else if(x.cancelled){ LIVE_HIST.push(Object.assign(base,{st:'cancelled', sub:'You cancelled after accepting', none:'No earnings', resolve:'Cancellation submitted \u2014 a fee may apply per the Gopher terms.', cta:'View details'})); }
-      else if(x.substage==='completed'){
+      else if(x.substage==='completed' && (x.confirmed || x.noShow)){   // pending-confirmation jobs are still ACTIVE, not history
         const sub=x.noShow ? 'Completed as No Show \u2014 requester not present at drop-off; items not released'
                  : (x.ageRestricted ? 'Age-restricted delivery \u2014 ID confirmed at drop-off' : (x.scope||'Completed'));
         const split=((x.counter&&x.counterAccepted)?'Counter accepted':(x.bid&&x.bidAccepted)?'Bid accepted':'Set pay')+' \u00b7 paid on completion'+((+x.cost>0)?(' + $'+x.cost+' items reimbursed'):'');
@@ -2084,7 +2098,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
           : ((j.confirmed
               ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>Confirmed by '+who+'</b> &mdash; '+(j.amt||'your payout')+' paid out.</div>'
-              : '<div class="rq-hint" style="margin-top:11px;">'+sv(I.check)+'Job complete &mdash; waiting for '+who+' to confirm. You’ll rate them once they confirm.</div>')
+              : '<div class="rq-prio" style="margin-top:11px;background:#FDECE6;border-color:#e3a5ae;color:#C44257;"><span class="rq-ri">'+sv(I.clock)+'</span><b>Pending confirmation</b> &mdash; your part is done, but '+who+' controls the payout until they confirm. Message '+String(who||'them').split(' ')[0]+' anytime to ask them to confirm. You’ll rate them once they do.</div>')
             // Two-way ratings stay (canonical) — the Gopher still rates the requester; the score is
             // recorded for the system but not shown back to either side. The rating GATES on the
             // requester's confirm: confirm is what releases the payout, so a rating taken before it
@@ -2673,18 +2687,21 @@ if(PT){
   function ptSyncHome(){
     var host=stage&&stage.querySelector('.host'), sr=host&&host.shadowRoot;
     if(!sr || !sr.querySelector('.tabs')) return;
-    var byCat={}, avail=0, active=0;
+    var byCat={}, avail=0, active=0, sched=0;
     Object.keys(JOBS).forEach(function(k){ (JOBS[k]||[]).forEach(function(j){
-      if(j.substage==='completed' || j.noShow || j.cancelled) return;   // done/cancelled → out of Available AND Active (it's history now)
-      if(j.accepted) active++; else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
+      // A completed job stays ACTIVE (pending-confirmation) until the requester confirms — only a
+      // confirm, a no-show completion, or a cancel retires it to history.
+      if((j.substage==='completed' && j.confirmed) || j.noShow || j.cancelled) return;
+      if(j.accepted){ if(j.scheduled && !j.substage) sched++; else active++; }
+      else { byCat[k]=(byCat[k]||0)+1; avail++; } }); });
     var tabs=sr.querySelectorAll('.tabs .tab');
-    if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],0);
+    if(tabs[0]) setCt(tabs[0],avail); if(tabs[1]) setCt(tabs[1],active); if(tabs[2]) setCt(tabs[2],sched);
     // Home hub tabs → their lists. Available = the open feed; Active = the requests you're connected to
     // (a Gopher can hold more than one — tap the tab to pick which to engage, don't jump straight into one).
     function _setTabOn(idx){ [].forEach.call(tabs,function(t,i){ if(t) t.classList.toggle('on', i===idx); }); }
     if(tabs[0]) tabs[0].onclick=function(){ state.jobsMode=null; state.category=null; _setTabOn(0); load('jobs-list'); };
     if(tabs[1]) tabs[1].onclick=function(){ if(active<=0){ toast('No active requests right now'); return; } state.jobsMode='active'; state.category=null; _setTabOn(1); load('jobs-list'); };
-    if(tabs[2]) tabs[2].onclick=function(){ _setTabOn(2); toast('No scheduled requests yet'); };
+    if(tabs[2]) tabs[2].onclick=function(){ if(sched<=0){ toast('No scheduled requests yet'); return; } state.jobsMode='scheduled'; state.category=null; _setTabOn(2); load('jobs-list'); };
     sr.querySelectorAll('.cats .cat').forEach(function(cat){
       var n=byCat[cat.getAttribute('data-cat')||'']||0;
       var badge=cat.querySelector('.cnt'); if(badge){ badge.textContent=n; badge.style.display=n>0?'':'none'; }
@@ -2718,7 +2735,9 @@ if(PT){
     // an open broadcast — badge it as a direct booking rather than a time-sensitive grab.
     var flags = order.directBooking
       ? [{t:'Direct booking',k:'good'}]
-      : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}];
+      : (order.scheduled
+        ? [{t:'New',k:'good'},{t:'Scheduled'+(order.when?(' · '+order.when):''),k:'neu',i:'cal'}]   // booked for later — not a time-sensitive grab
+        : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}]);
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
     if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
@@ -2729,6 +2748,7 @@ if(PT){
       cost:costN, workers:crew, top:(!isBid && !!order.topOffer),   // TOP PAY only for a genuinely high (above-suggested) offer — never a low one; meaningless on bids
       ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
       deal:!!order.deal, dealMerchant:order.dealMerchant||'',   // Gopher Deal request → card shows the "Gopher Deal" badge (unshaded — this Gopher is Pro)
+      scheduled:!!order.scheduled,   // exact-time booking → lands in the Scheduled tab once accepted (until the worker starts it)
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };

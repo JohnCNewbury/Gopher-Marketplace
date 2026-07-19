@@ -115,7 +115,11 @@
       ageRestricted:!!r.ageRestricted, trustShield:!!r.trustShield, deal:!!r.deal, dealMerchant:r.dealMerchant||'',
       pickup:r.pickup||'', dropoff:r.dropoff?[r.dropoff]:[],
       scope:r.scope||r.title, dist:r.dist||'2.4',
-      when:r.when||'Now · ASAP', requestor:r.requestor||'A requester',
+      // Scheduled bookings broadcast too (workers accept in advance; the Go app files them under its
+      // Scheduled tab once accepted). timingLabel is the human label ("Jul 23 · 7:00 PM").
+      scheduled:!!r.scheduledForLater,
+      when:(r.scheduledForLater && r.timingLabel) ? r.timingLabel : (r.when||'Now · ASAP'),
+      requestor:r.requestor||'A requester',
       directBooking:!!r.directBooking, provider:r.provider||''
     };
   }
@@ -132,7 +136,9 @@
           // phone — the status line narrates it (other Gophers would see it; Marcus can't).
           // A cancelled record keeps stage 'searching' (the cancel patch only sets cancelled/gCancelled)
           // — without this guard a page refresh re-injected cancelled requests as live Go jobs.
-          if(r && r.stage==='searching' && !r.cancelled && !r.gCancelled && !r.scheduledForLater
+          // Scheduled bookings broadcast like any other request (owner 2026-07-19) — workers accept in
+          // advance and the Go app files them under its Scheduled tab until start time.
+          if(r && r.stage==='searching' && !r.cancelled && !r.gCancelled
              && (!r.directTo || r.directTo===DEMO_GOPHER)
              && !(r.excludeGopher && r.excludeGopher.indexOf(DEMO_GOPHER)===0)){
             var seq=r.resubmitSeq||0;
@@ -140,7 +146,8 @@
               var edited=(injected[r.order] && injectedSeq[r.order]!==seq);
               injected[r.order]=true; injectedSeq[r.order]=seq;
               var w=R(); if(w && w.__injectJob){ w.__injectJob(orderFromReq(r)); }
-              status('Request <b>'+r.order+'</b> '+(edited?'was <b>edited &amp; resubmitted</b> → the Go phone got a fresh notification':'submitted → it is now a live job on the Go phone (right) with a notification. Tap the banner → open the job → <b>Accept</b>')+'.');
+              status('Request <b>'+r.order+'</b> '+(edited?'was <b>edited &amp; resubmitted</b> → the Go phone got a fresh notification'
+                :((r.scheduledForLater?'submitted (scheduled) → it is a live job on the Go phone; once accepted it files under the <b>Scheduled</b> tab':'submitted → it is now a live job on the Go phone (right) with a notification')+'. Tap the banner → open the job → <b>Accept</b>'))+'.');
             }
           }
         }
@@ -159,7 +166,10 @@
             accepted[id]=true;
             var l=L();
             if(l && l.GReq){
-              l.GReq.update(id, { stage:'active', accepted:1, hired:'Marcus K.', when:'Accepted · on the job' });
+              var r0=l.GReq.get(id)||{};
+              // A scheduled booking keeps its date/time on the card — the accept just adds the hire.
+              l.GReq.update(id, { stage:'active', accepted:1, hired:'Marcus K.',
+                when:(r0.scheduledForLater ? ((r0.when?r0.when+' · ':'')+'Gopher booked') : 'Accepted · on the job') });
               try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
               try{ if(l.initPending) l.initPending(); else if(l.renderPending) l.renderPending(); }catch(_){}
             }
