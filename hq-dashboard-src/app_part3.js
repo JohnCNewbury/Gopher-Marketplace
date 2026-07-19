@@ -157,31 +157,57 @@ function buildGrowthReferrals(){
 VIEWS.growth=()=>{
   const v=el('div');
   const r=window.GF&&window.GF.range;
-  const su=(r&&r!=='all')?M.signups.slice(-(+r)):M.signups;const last=su[su.length-1]||{Requester:0,Gopher:0,Both:0},prev=su[su.length-2]||{Requester:0,Gopher:0,Both:0};
-  const gn=(typeof gfNote==='function')&&gfNote();if(gn)v.appendChild(gn);
+  const months=(r&&r!=='all')?+r:null;
+  // Range-aware: when a window is set, recompute the whole page from the full user
+  // population (users_sample = all 137k rows) over that window. At "All time" we read the
+  // baked lifetime aggregates so the lifetime view stays byte-identical to before.
+  const _mx=USR.length?USR.reduce((a,u)=>u.signupDay>a?u.signupDay:a,0):0;
+  const _lo=months?_mx-months*30:-1e9;
+  const _winU=months?USR.filter(u=>u.signupDay>_lo):USR;
+  const _reqSide=u=>u.role==='Requester'||u.role==='Both';
+  const _label=months?`last ${months} mo`:'lifetime';
+
+  // signup KPIs sourced from the same monthly array the chart uses (keeps them consistent)
+  const su=months?M.signups.slice(-months):M.signups;
+  const sumReq=su.reduce((a,d)=>a+d.Requester,0),sumGoph=su.reduce((a,d)=>a+d.Gopher,0);
+  const prevSu=months?M.signups.slice(-2*months,-months):[];
+  const pReq=prevSu.reduce((a,d)=>a+d.Requester,0),pGoph=prevSu.reduce((a,d)=>a+d.Gopher,0);
+
   const k=el('div','row kpis');
-  const totalNew=su.reduce((a,d)=>a+d.Requester+d.Gopher+d.Both,0);
-  k.appendChild(kpi('New requesters / mo',num(last.Requester),trendTag(prev.Requester?(last.Requester-prev.Requester)/prev.Requester*100:0),{dot:C.blue,spark:su.map(d=>d.Requester)}));
-  k.appendChild(kpi('New gophers / mo',num(last.Gopher),trendTag(prev.Gopher?(last.Gopher-prev.Gopher)/prev.Gopher*100:0)+' supply shrinking',{dot:C.green,spark:su.map(d=>d.Gopher)}));
-  k.appendChild(kpi('Activation rate',(M.people.placed_request/M.people.total*100).toFixed(1)+'%',`${num(M.people.placed_request)} ever placed a request`,{dot:C.amber}));
-  k.appendChild(kpi('Referral conversion',M.referrals.rate+'%',`${num(M.referrals.converted)} joined of ${fmt(M.referrals.invites)} invites`,{dot:C.violet}));
+  k.appendChild(kpi(months?'New requesters':'New requesters (signup era)',num(sumReq),(months?trendTag(pReq?(sumReq-pReq)/pReq*100:0)+' vs prior '+months+' mo':'across '+su.length+' mo of signups'),{dot:C.blue,spark:su.map(d=>d.Requester)}));
+  k.appendChild(kpi(months?'New gophers':'New gophers (signup era)',num(sumGoph),(months?trendTag(pGoph?(sumGoph-pGoph)/pGoph*100:0)+' vs prior '+months+' mo':'supply shrinking')+'',{dot:C.green,spark:su.map(d=>d.Gopher)}));
+  // Activation: lifetime → baked; windowed → cohort of users who signed up in the window
+  if(months){const coh=_winU.length,cohPlaced=_winU.filter(u=>u.placed>0).length;
+    k.appendChild(kpi('Activation rate',(coh?cohPlaced/coh*100:0).toFixed(1)+'%',`${num(cohPlaced)} of ${num(coh)} who signed up in the ${_label} placed a request`,{dot:C.amber}));
+  } else {
+    k.appendChild(kpi('Activation rate',(M.people.placed_request/M.people.total*100).toFixed(1)+'%',`${num(M.people.placed_request)} ever placed a request · lifetime`,{dot:C.amber}));
+  }
+  k.appendChild(kpi('Referral conversion',M.referrals.rate+'%',`${num(M.referrals.converted)} joined of ${fmt(M.referrals.invites)} invites · lifetime`,{dot:C.violet}));
   v.appendChild(k);
 
   // signups stacked
   const rows=su.map(d=>({label:monShort(d.ym),Requester:d.Requester,Gopher:d.Gopher,Both:d.Both}));
   const sc=stackChart(rows,['Requester','Gopher','Both'],[C.blue,C.green,C.violet],{h:250});
-  const scCard=card('New sign-ups by month','Requester demand is exploding while gopher supply declines — the gap behind the fulfillment problem.',sc);
+  const scCard=card('New sign-ups by month',`Requester demand is exploding while gopher supply declines — the gap behind the fulfillment problem · ${_label}.`,sc);
   scCard.appendChild(legend([{label:'Requesters',color:C.blue},{label:'Gophers',color:C.green},{label:'Both',color:C.violet}]));
   v.appendChild(scCard);
 
-  // acquisition + funnel
-  const acq=M.acquisition;const maxa=Math.max(...acq.map(a=>a.n));
+  // acquisition + funnel (windowed → recompute from full population; lifetime → baked)
+  let acq;
+  if(months){const m={};_winU.forEach(u=>{const s=u.source;if(!s||s==='Other')return;m[s]=(m[s]||0)+1;});
+    acq=Object.entries(m).map(([src,n])=>({src,n})).sort((a,b)=>b.n-a.n).slice(0,7);}
+  else acq=M.acquisition;
+  const maxa=Math.max(1,...acq.map(a=>a.n));
   const bl=el('div','barlist');
   acq.forEach(a=>{const it=el('div','it');it.innerHTML=`<span class="nm">${a.src}</span><div class="track"><div class="fill" style="width:${a.n/maxa*100}%;background:${C.blue}"></div></div><span class="v">${fmt(a.n)}</span>`;bl.appendChild(it);});
-  const acqCard=card('Acquisition channels','How users say they found Gopher (self-reported).',bl);
+  const acqCard=card('Acquisition channels',`How users say they found Gopher (self-reported) · ${_label}.`,bl);
 
-  // requester funnel
-  const f=M.funnel_requester;const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.blue,C.green,C.amber];
+  // requester funnel (windowed → recompute; lifetime → baked)
+  const f=months
+    ?{labels:['Registered','Logged in','Placed request','Completed request'],
+      values:[_winU.length,_winU.filter(u=>u.logins>0).length,_winU.filter(u=>u.placed>0).length,_winU.filter(u=>u.completed>0).length]}
+    :M.funnel_requester;
+  const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.blue,C.green,C.amber];
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(8,f.values[i]/maxf*100);
     st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${fmt(f.values[i])}</div><div class="fmeta">${l}${i===1?` · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of registered`:i>1?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of registered`:''}</div>`;fw.appendChild(st);});
   const fCard=card('Requester activation funnel','Registration → first completed request. The drop from “logged in” to “placed” is the money leak.',fw);
@@ -189,10 +215,14 @@ VIEWS.growth=()=>{
 
   v.appendChild(buildGrowthReferrals());
 
-  // geography
-  const geo=M.geo_users;const maxg=geo[0].n;const bl2=el('div','barlist');
+  // geography (windowed → recompute; lifetime → baked)
+  let geo;
+  if(months){const m={};_winU.forEach(u=>{const s=u.state;if(!s||s==='—')return;m[s]=(m[s]||0)+1;});
+    geo=Object.entries(m).map(([state,n])=>({state,n})).sort((a,b)=>b.n-a.n).slice(0,10);}
+  else geo=M.geo_users;
+  const maxg=Math.max(1,...geo.map(g=>g.n));const bl2=el('div','barlist');
   geo.forEach(g=>{const it=el('div','it');it.innerHTML=`<span class="nm">${g.state}</span><div class="track"><div class="fill" style="width:${g.n/maxg*100}%;background:${C.green}"></div></div><span class="v">${fmt(g.n)}</span>`;bl2.appendChild(it);});
-  v.appendChild(card('Users by state','North Carolina is roughly half the base — concentration risk and expansion opportunity both.',bl2));
+  v.appendChild(card('Users by state',`Where new users signed up · ${_label}. North Carolina anchors the base — concentration risk and expansion opportunity both.`,bl2));
   return v;
 };
 
