@@ -1951,8 +1951,8 @@ function openHelpCenter(){
 }
 // Gopher iQ location/service-area answer \u2014 the FAQ pill routes ZIP / city / "do you service X"
 // questions HERE (real coverage brain, window.GopherIQData) instead of guessing from FAQ text.
-// Returns an answer string, or null when the query isn't a location question. Kept byte-identical
-// with the Go app's copy so dual users get the same behavior. audience: 'requester' | 'worker'.
+// Returns an answer string, or null when the query isn't a location question. Kept in sync with
+// the Go app's copy (same logic + copy) so dual users get the same behavior. audience: 'requester' | 'worker'.
 function iqCoverageReply(query, audience){
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var t=' '+query.toLowerCase()+' ';
@@ -1982,6 +1982,50 @@ function iqCoverageReply(query, audience){
   return worker
     ? "Yes \u2014 Gopher is active in "+pretty+", with <b>"+w+"</b> Gophers in the area. Set your Work Settings &amp; Radius to cover it and start accepting requests there."
     : "Yes \u2014 "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I\u2019ll get you matched.";
+}
+// Gopher iQ category + pricing answer \u2014 the FAQ pill's third tier (after coverage, after a
+// confident FAQ match), so "I need my couch hauled away" or "what's the fee for a move" get a
+// real answer instead of the not-found fallback. Cue words mirror the home iQ classifier so the
+// two brains agree. Kept in sync with the Go app's copy; audience only changes the wording.
+function iqTopicReply(query, audience){
+  var worker=(audience==='worker');
+  var t=' '+String(query).toLowerCase()+' ';
+  var has=function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])>-1) return true; } return false; };
+  var price=has('price','cost','fee','how much','charge','expensive','cheap','pricing',' rate',' pay ','payout','earn');
+  var cat=null;
+  if(has('alcohol','wine','beer','liquor','tobacco','vape','cigarette','nicotine','booze','whiskey','vodka','age restricted','age-restricted')) cat='age';
+  else if(has('move','moving','relocat','u-haul','furniture')) cat='moving';
+  else if(has('junk','haul','couch','dispose','trash','debris','cleanout')) cat='junk';
+  else if(has('mount','tv','assemble','install','clean','handyman','repair','fix')) cat='home';
+  else if(has('labor','hands','helper','crew')) cat='labor';
+  else if(has('yard','mow','lawn','leaves','mulch','outdoor','garden')) cat='yard';
+  else if(has('ride','airport','drive','lift','pick me up')) cat='ride';
+  else if(has('deliver','errand','pick up','pickup','drop','grocery','pharmacy','takeout','bring')) cat='delivery';
+  var CAT={ moving:['Moving','loading, hauling, and heavy lifting'],
+            junk:['Junk Removal','haul-away of furniture, debris, and cleanouts'],
+            home:['Home / Office Services','mounting, assembly, cleaning, repairs, and handyman work'],
+            labor:['Hourly / Day Labor','extra hands booked by the hour'],
+            yard:['Yard / Outdoor','mowing, leaf and yard cleanup, mulch, and garden work'],
+            ride:['Ride Sharing','getting you where you need to be'],
+            delivery:['Delivery / Errand','pickups, drop-offs, grocery and pharmacy runs, and quick errands'] };
+  var pricingMsg = worker
+    ? "You keep <b>100%</b> of the offer you accept \u2014 the requester\u2019s fees sit on their side. Payout begins when you mark the request complete and the requester confirms (or automatically after 48 hours). Your first 10 payouts use Standard speed; after that you\u2019re upgraded to Instant, and Elite/Elite+/Pro start on Instant."
+    : "You set what your Gopher takes home, plus any cost of items they front \u2014 they receive <b>100%</b> of your offer. On top there\u2019s a <b>Gopher Fee</b> ($0.99\u2013$4.99 by service type), an 8% instant-transfer fee, and $1.99 for age-restricted orders (<b>TrustShield</b> takes $1 off).";
+  if(cat==='age'){
+    return (worker
+      ? "Age-restricted requests (alcohol, tobacco) are <b>Delivery / Errand</b> jobs with an ID check at drop-off \u2014 you verify the requester\u2019s ID and identity before handing anything over. TrustShield holders are pre-verified, so there\u2019s nothing for them to submit."
+      : "Age-restricted items (alcohol, tobacco) go out as a <b>Delivery / Errand</b> request with an ID check at drop-off \u2014 you must show a valid ID in person, and contactless is never allowed. There\u2019s a $1.99 age-verification fee, and <b>TrustShield</b> takes $1 off.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(cat){
+    var c=CAT[cat];
+    return (worker
+      ? "<b>"+c[0]+"</b> jobs cover "+c[1]+". Add that category in <b>Work Settings &amp; Radius</b> and you\u2019ll see these requests near you."
+      : "That\u2019s a <b>"+c[0]+"</b> request \u2014 "+c[1]+". Start one from Home, add the details, and set your offer.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(price) return pricingMsg;
+  return null;
 }
 // FAQs \u2014 models the Gopher Go FAQ screen (Help Center hero + iQ ask pill with inline answers +
 // category tabs). Content is requester-facing; the pill behaves like the FAQ (inline answer from
@@ -2022,21 +2066,28 @@ function openReqFaqs(){
   renderList();
   // iQ pill \u2014 inline FAQ search (top matches shown as answers), NOT the home quick-action CTA.
   var STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im'.split(' '));
-  function canon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif|id|age)/.test(w))return 'trust'; return w; }
+  function canon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust'; return w; }
   function toks(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !STOP.has(w);}).map(canon); }
   function search(query){ var qw=toks(query); if(!qw.length) return [];
-    return REQ_FAQS.map(function(f){ var qset=new Set(toks(f.q)); var aset=new Set(toks(f.q+' '+f.a+' '+f.g)); var s=0; qw.forEach(function(w){ if(qset.has(w))s+=3; else if(aset.has(w))s+=1; }); return {f:f,s:s}; }).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
+    return REQ_FAQS.map(function(f){ var qset=new Set(toks(f.q)); var aset=new Set(toks(f.q+' '+f.a+' '+f.g)); var s=0,n=0; qw.forEach(function(w){ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; }).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
   }
   function card(inner){ return '<div class="riq-card"><div class="riq-lab">Gopher iQ</div>'+inner+'</div>'; }
   function ask(){ var q=inp.value.trim(); if(!q){ ansEl.setAttribute('hidden',''); ansEl.innerHTML=''; return; }
     // 1) Location / service-area questions \u2192 real coverage brain (not a stray FAQ match).
     var cov=iqCoverageReply(q,'requester');
     if(cov){ ansEl.innerHTML=card('<p class="riq-aa">'+cov+'</p>'); ansEl.removeAttribute('hidden'); return; }
-    // 2) FAQ search \u2014 but only surface a confident match (a question-word hit, score \u2265 3). A weak
-    //    answer-text-only match (e.g. "service" grazing the fee FAQ) is treated as "not found".
-    var hits=search(q).filter(function(h){return h.s>=3;});
-    ansEl.innerHTML=hits.length
-      ? card(hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join(''))
+    // 2) FAQ search \u2014 only surface a CONFIDENT match: a question-word hit (score \u2265 3) that also
+    //    covers the query. A single common word matching (e.g. "order" in "can i order beer"
+    //    hitting the previous-orders FAQ) isn't enough unless the query is one word.
+    var hits=search(q).filter(function(h){return h.s>=3 && (h.n>=2 || h.qn<=1);});
+    if(hits.length){
+      ansEl.innerHTML=card(hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join(''));
+      ansEl.removeAttribute('hidden'); return;
+    }
+    // 3) Category / pricing intent \u2014 catches what the curated FAQs don't cover.
+    var topic=iqTopicReply(q,'requester');
+    ansEl.innerHTML=topic
+      ? card('<p class="riq-aa">'+topic+'</p>')
       : card('<p class="riq-aa">I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.</p>');
     ansEl.removeAttribute('hidden');
   }

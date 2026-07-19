@@ -1088,8 +1088,8 @@ function reverify(queue,done){ if(!queue.length){ done(); return; } const it=que
 /* ===== NATIVE interactive screens ===== */
 // Gopher iQ location/service-area answer — the FAQ pill routes ZIP / city / "do you service X"
 // questions HERE (real coverage brain, window.GopherIQData) instead of guessing from FAQ text.
-// Returns an answer string, or null when the query isn't a location question. Kept byte-identical
-// with the Request app's copy so dual users get the same behavior. audience: 'requester' | 'worker'.
+// Returns an answer string, or null when the query isn't a location question. Kept in sync with
+// the Request app's copy (same logic + copy) so dual users get the same behavior. audience: 'requester' | 'worker'.
 function iqCoverageReply(query, audience){
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var t=' '+query.toLowerCase()+' ';
@@ -1119,6 +1119,50 @@ function iqCoverageReply(query, audience){
   return worker
     ? "Yes — Gopher is active in "+pretty+", with <b>"+w+"</b> Gophers in the area. Set your Work Settings &amp; Radius to cover it and start accepting requests there."
     : "Yes — "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I’ll get you matched.";
+}
+// Gopher iQ category + pricing answer — the FAQ pill's third tier (after coverage, after a
+// confident FAQ match), so "what are moving jobs" or "what's the fee" get a real answer instead
+// of the not-found fallback. Cue words mirror the Request app's home iQ classifier so the two
+// brains agree. Kept in sync with the Request app's copy; audience only changes the wording.
+function iqTopicReply(query, audience){
+  var worker=(audience==='worker');
+  var t=' '+String(query).toLowerCase()+' ';
+  var has=function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])>-1) return true; } return false; };
+  var price=has('price','cost','fee','how much','charge','expensive','cheap','pricing',' rate',' pay ','payout','earn');
+  var cat=null;
+  if(has('alcohol','wine','beer','liquor','tobacco','vape','cigarette','nicotine','booze','whiskey','vodka','age restricted','age-restricted')) cat='age';
+  else if(has('move','moving','relocat','u-haul','furniture')) cat='moving';
+  else if(has('junk','haul','couch','dispose','trash','debris','cleanout')) cat='junk';
+  else if(has('mount','tv','assemble','install','clean','handyman','repair','fix')) cat='home';
+  else if(has('labor','hands','helper','crew')) cat='labor';
+  else if(has('yard','mow','lawn','leaves','mulch','outdoor','garden')) cat='yard';
+  else if(has('ride','airport','drive','lift','pick me up')) cat='ride';
+  else if(has('deliver','errand','pick up','pickup','drop','grocery','pharmacy','takeout','bring')) cat='delivery';
+  var CAT={ moving:['Moving','loading, hauling, and heavy lifting'],
+            junk:['Junk Removal','haul-away of furniture, debris, and cleanouts'],
+            home:['Home / Office Services','mounting, assembly, cleaning, repairs, and handyman work'],
+            labor:['Hourly / Day Labor','extra hands booked by the hour'],
+            yard:['Yard / Outdoor','mowing, leaf and yard cleanup, mulch, and garden work'],
+            ride:['Ride Sharing','getting you where you need to be'],
+            delivery:['Delivery / Errand','pickups, drop-offs, grocery and pharmacy runs, and quick errands'] };
+  var pricingMsg = worker
+    ? "You keep <b>100%</b> of the offer you accept — the requester’s fees sit on their side. Payout begins when you mark the request complete and the requester confirms (or automatically after 48 hours). Your first 10 payouts use Standard speed; after that you’re upgraded to Instant, and Elite/Elite+/Pro start on Instant."
+    : "You set what your Gopher takes home, plus any cost of items they front — they receive <b>100%</b> of your offer. On top there’s a <b>Gopher Fee</b> ($0.99–$4.99 by service type), an 8% instant-transfer fee, and $1.99 for age-restricted orders (<b>TrustShield</b> takes $1 off).";
+  if(cat==='age'){
+    return (worker
+      ? "Age-restricted requests (alcohol, tobacco) are <b>Delivery / Errand</b> jobs with an ID check at drop-off — you verify the requester’s ID and identity before handing anything over. TrustShield holders are pre-verified, so there’s nothing for them to submit."
+      : "Age-restricted items (alcohol, tobacco) go out as a <b>Delivery / Errand</b> request with an ID check at drop-off — you must show a valid ID in person, and contactless is never allowed. There’s a $1.99 age-verification fee, and <b>TrustShield</b> takes $1 off.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(cat){
+    var c=CAT[cat];
+    return (worker
+      ? "<b>"+c[0]+"</b> jobs cover "+c[1]+". Add that category in <b>Work Settings &amp; Radius</b> and you’ll see these requests near you."
+      : "That’s a <b>"+c[0]+"</b> request — "+c[1]+". Start one from Home, add the details, and set your offer.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(price) return pricingMsg;
+  return null;
 }
 const NATIVE = {
 
@@ -1818,7 +1862,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     function toks(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2 && !STOP.has(w)).map(canon); }
     function search(query){
       const qw=toks(query); if(!qw.length) return [];
-      return FAQS.map(f=>{ const qset=new Set(toks(f.q)); const aset=new Set(toks(f.q+' '+f.a+' '+f.g)); let s=0; qw.forEach(w=>{ if(qset.has(w)) s+=3; else if(aset.has(w)) s+=1; }); return {f:f,s:s}; }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
+      return FAQS.map(f=>{ const qset=new Set(toks(f.q)); const aset=new Set(toks(f.q+' '+f.a+' '+f.g)); let s=0,n=0; qw.forEach(w=>{ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
     }
     const ans=r.querySelector('#iq-ans'), inp=r.querySelector('.iq-in');
     function ask(){
@@ -1827,11 +1871,16 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // 1) Location / service-area questions \u2192 real coverage brain (not a stray FAQ match).
       const cov=iqCoverageReply(q,'worker');
       if(cov){ ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div><p class="iq-aa">'+cov+'</p></div>'; ans.removeAttribute('hidden'); return; }
-      // 2) FAQ search \u2014 only surface a confident match (question-word hit, score \u2265 3). A weak
-      //    answer-text-only match is treated as "not found" rather than a wrong-but-confident answer.
-      const hits=search(q).filter(h=>h.s>=3);
-      if(!hits.length){ ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div><p class="iq-aa">I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="fq-link js-c2">contact us</span>.</p></div>'; }
-      else { ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div>'+hits.map((h,idx)=>'<div class="iq-hit'+(idx?' more':'')+'"><div class="iq-q">'+h.f.q+'</div><div class="iq-aa">'+h.f.a+'</div></div>').join('')+'</div>'; }
+      // 2) FAQ search \u2014 only surface a CONFIDENT match: a question-word hit (score \u2265 3) that also
+      //    covers the query. A single common word matching isn't enough unless the query is one word.
+      const hits=search(q).filter(h=>h.s>=3 && (h.n>=2 || h.qn<=1));
+      if(hits.length){ ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div>'+hits.map((h,idx)=>'<div class="iq-hit'+(idx?' more':'')+'"><div class="iq-q">'+h.f.q+'</div><div class="iq-aa">'+h.f.a+'</div></div>').join('')+'</div>'; }
+      else {
+        // 3) Category / pricing intent \u2014 catches what the curated FAQs don't cover.
+        const topic=iqTopicReply(q,'worker');
+        ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div><p class="iq-aa">'
+          +(topic || 'I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="fq-link js-c2">contact us</span>.')+'</p></div>';
+      }
       ans.removeAttribute('hidden');
       const c2=ans.querySelector('.js-c2'); if(c2) c2.onclick=()=>load('gopher-contact-us');
     }
