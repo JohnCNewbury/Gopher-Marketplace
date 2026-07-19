@@ -12856,7 +12856,11 @@ const PAY_BADGES = {
   function currentJunkTier(){
     const L = window.GopherRequestLogic;
     if(state.junkTier && L && L.JUNK_TIERS && L.JUNK_TIERS[state.junkTier]) return state.junkTier;
-    const det = (L && L.detectJunkVolumeTier) ? L.detectJunkVolumeTier(state.describe || '') : { tier:'half' };
+    // NOTE: the field is state.description — `describe` is only a key in the
+    // FIELD_HIDDEN_FOR visibility map, so reading state.describe always yielded
+    // undefined and the detector silently defaulted every request to the median
+    // 'half' tier ($60), regardless of what the requester wrote. Fixed 2026-07-19.
+    const det = (L && L.detectJunkVolumeTier) ? L.detectJunkVolumeTier(state.description || '') : { tier:'half' };
     return det.tier;
   }
   function getCurrentJunkModel(){
