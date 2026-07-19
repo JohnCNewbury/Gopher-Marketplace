@@ -15,6 +15,35 @@ const pct = n => (n).toFixed(1)+'%';
 const monShort = ym => {const[y,m]=ym.split('-');return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+" '"+y.slice(2);};
 const C = {green:'#13C26B',greenB:'#34E27A',blue:'#3E7BFA',violet:'#7C5CFC',amber:'#E8920C',red:'#E5484D',grey:'#B7C4D0',ink:'#0B1A2B'};
 
+/* ---------- shared table pager (Users / Orders / review queues use the same control) ----------
+   st = {page, size, sig}. size is 300|1000|2000|'all'. Call pagerSlice(total, st, sig) to get the
+   current window (it resets to page 1 when `sig` changes and clamps page on shrink), render your
+   rows, then append pagerBar(total, st, onChange). onChange re-runs the caller's render. */
+function pagerSlice(total, st, sig){
+  if(st.size==null) st.size=300;
+  if(sig!=null && sig!==st.sig){ st.sig=sig; st.page=0; }
+  const size = st.size==='all' ? Math.max(1,total) : st.size;
+  const pages = Math.max(1, Math.ceil(total/size));
+  if(st.page>=pages) st.page=pages-1;
+  if(st.page<0) st.page=0;
+  const start = st.page*size;
+  return {size, pages, start, end: Math.min(total, start+size)};
+}
+function pagerBar(total, st, onChange){
+  const ps=pagerSlice(total, st);
+  const bar=el('div');bar.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--line-2);font-size:12.5px';
+  const opt=(val,lab)=>`<option value="${val}"${''+st.size===''+val?' selected':''}>${lab}</option>`;
+  bar.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--muted)"><span>View by</span>
+      <select class="seld" data-pg="size" style="padding:5px 8px">${opt(300,'300 / page')}${opt(1000,'1,000 / page')}${opt(2000,'2,000 / page')}${opt('all','All ('+num(total)+')')}</select></div>
+    <div style="display:flex;align-items:center;gap:10px"><span style="color:var(--muted)">Page <b style="color:var(--text)">${st.page+1}</b> of ${num(ps.pages)} · rows ${num(total?ps.start+1:0)}–${num(ps.end)}</span>
+      <button class="btn" data-pg="prev" ${st.page<=0?'disabled':''} style="padding:5px 11px${st.page<=0?';opacity:.4;cursor:default':''}">‹ Prev</button>
+      <button class="btn" data-pg="next" ${st.page>=ps.pages-1?'disabled':''} style="padding:5px 11px${st.page>=ps.pages-1?';opacity:.4;cursor:default':''}">Next ›</button></div>`;
+  const sz=bar.querySelector('[data-pg="size"]'); sz.onchange=e=>{const v=e.target.value;st.size=v==='all'?'all':(+v);st.page=0;onChange();};
+  const pv=bar.querySelector('[data-pg="prev"]'); if(st.page>0)pv.onclick=()=>{st.page--;onChange();};
+  const nx=bar.querySelector('[data-pg="next"]'); if(st.page<ps.pages-1)nx.onclick=()=>{st.page++;onChange();};
+  return bar;
+}
+
 /* ---------- SVG chart helpers (dependency-free) ---------- */
 function svgEl(tag,attrs){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
 

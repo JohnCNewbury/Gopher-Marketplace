@@ -360,8 +360,7 @@ VIEWS.people=()=>{
 
     let uLast=[];
     let uAna=null;
-    // pagination state (reusable pattern — see makePager below)
-    let uPage=0, uPageSize=300, uSig='';
+    const uPg={page:0,size:300,sig:''};  // shared pager state
     function syncControls(){
       $('#u-q').value=UF.q||'';$('#u-role').value=UF.role;$('#u-state').value=UF.state;
       $('#u-ver').value=UF.ver;$('#u-act').value=UF.act;$('#u-dev').value=UF.dev;$('#u-tier').value=UF.tier;if($('#u-status'))$('#u-status').value=UF.status||'all';
@@ -432,38 +431,17 @@ VIEWS.people=()=>{
       sum.appendChild(kpi('Gophers',num(gophN),uAna?scopedLabel:'in this segment',{dot:C.green}));
       sum.appendChild(kpi('Completed a job',num(jobN),uAna?scopedLabel:'active supply in match',{dot:C.amber}));
       renderUAnalysis(rows,uAnaData);
-      // paging: reset to page 1 whenever the filtered set changes; clamp otherwise
-      const sig=scoped.length+'|'+(scoped[0]?scoped[0].id:'');
-      if(sig!==uSig){uSig=sig;uPage=0;}
-      const pageSize=uPageSize==='all'?Math.max(1,scoped.length):uPageSize;
-      const pages=Math.max(1,Math.ceil(scoped.length/pageSize));
-      if(uPage>=pages)uPage=pages-1; if(uPage<0)uPage=0;
-      const start=uPage*pageSize;
+      // paging via the shared helper: resets to page 1 when the filtered set changes
+      const ps=pagerSlice(scoped.length, uPg, scoped.length+'|'+(scoped[0]?scoped[0].id:''));
       const rc={Requester:'t-blue',Gopher:'t-green',Both:'t-violet',Other:'t-grey'};
-      const show=scoped.slice(start,start+pageSize);
-      $('#u-sub').textContent=`${num(scoped.length)} matching users (of ${num(USR.length)} total). Showing ${scoped.length?num(start+1):0}–${num(start+show.length)}; Export pulls every match.`;
+      const show=scoped.slice(ps.start, ps.end);
+      $('#u-sub').textContent=`${num(scoped.length)} matching users (of ${num(USR.length)} total). Showing ${scoped.length?num(ps.start+1):0}–${num(ps.end)}; Export pulls every match.`;
       let h='<table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>State</th><th>Device</th><th>Joined</th><th style="text-align:right">Placed</th><th style="text-align:right">Completed</th><th style="text-align:right">Jobs done</th><th>Tier</th><th>Verified</th></tr></thead><tbody>';
       show.forEach(u=>{const badges=[u.trustshield?'<span class="tag t-violet" style="padding:1px 6px">TS</span>':'',u.stripeG?'<span class="tag t-green" style="padding:1px 6px">SG</span>':'',u.emailV?'<span class="tag t-grey" style="padding:1px 6px">E</span>':''].join(' ');
         h+=`<tr><td class="tnum"><span class="dd-link" data-id="${u.id}" style="color:var(--blue);font-weight:700;cursor:pointer">${u.id}</span></td><td>${(u.name||'—').replace(/</g,'&lt;')}</td><td><span class="tag ${rc[u.role]||'t-grey'}">${u.role}</span></td><td>${u.state}</td><td>${u.dev}</td><td class="tnum">${u.signupDay?dayToStr(u.signupDay):'—'}</td><td style="text-align:right" class="tnum">${num(u.placed)}</td><td style="text-align:right" class="tnum">${num(u.completed)}</td><td style="text-align:right" class="tnum">${num(u.received)}</td><td>${_tierName(u.gopherType)}</td><td>${badges||'—'}</td></tr>`;});
       h+='</tbody></table>';
       uwrap.innerHTML=scoped.length?h:'<div style="padding:50px;text-align:center;color:var(--muted)">No users match these filters.</div>';
-      if(scoped.length){
-        const opt=(v,lab)=>`<option value="${v}"${''+uPageSize===''+v?' selected':''}>${lab}</option>`;
-        const bar=el('div');bar.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--line-2);font-size:12.5px';
-        bar.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:var(--muted)">
-            <span>View by</span>
-            <select id="u-pagesize" class="seld" style="padding:5px 8px">${opt(300,'300 / page')}${opt(1000,'1,000 / page')}${opt(2000,'2,000 / page')}${opt('all','All ('+num(scoped.length)+')')}</select>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="color:var(--muted)">Page <b style="color:var(--text)">${uPage+1}</b> of ${num(pages)} · rows ${num(start+1)}–${num(start+show.length)}</span>
-            <button class="btn" id="u-prev" ${uPage<=0?'disabled':''} style="padding:5px 11px${uPage<=0?';opacity:.4;cursor:default':''}">‹ Prev</button>
-            <button class="btn" id="u-next" ${uPage>=pages-1?'disabled':''} style="padding:5px 11px${uPage>=pages-1?';opacity:.4;cursor:default':''}">Next ›</button>
-          </div>`;
-        uwrap.appendChild(bar);
-        const ps=$('#u-pagesize');if(ps)ps.onchange=e=>{const val=e.target.value;uPageSize=val==='all'?'all':(+val);uPage=0;urender();};
-        const pv=$('#u-prev');if(pv&&uPage>0)pv.onclick=()=>{uPage--;urender();uwrap.scrollIntoView({block:'start',behavior:'smooth'});};
-        const nx=$('#u-next');if(nx&&uPage<pages-1)nx.onclick=()=>{uPage++;urender();uwrap.scrollIntoView({block:'start',behavior:'smooth'});};
-      }
+      if(scoped.length) uwrap.appendChild(pagerBar(scoped.length, uPg, ()=>{urender();uwrap.scrollIntoView({block:'start',behavior:'smooth'});}));
       uwrap.querySelectorAll('.dd-link').forEach(b=>b.onclick=()=>openUserDetail(b.dataset.id));
     }
     const UANAC=[C.green,C.blue,C.violet,C.amber,C.red,'#14b8a6','#0ea5e9','#f97316','#ec4899','#84cc16'];

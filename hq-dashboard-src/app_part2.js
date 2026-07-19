@@ -832,16 +832,18 @@ VIEWS.orders=()=>{
   let lastRows=[];
   let anaSpec=null;
   let cohortSpec=null;
+  const oPg={page:0,size:300,sig:''};  // shared pager state
   const ANAC=[C.green,C.blue,C.violet,C.amber,C.red,'#14b8a6','#0ea5e9','#f97316','#ec4899','#84cc16'];
   // shared table renderer (used by normal, analytical, and cohort modes)
   function buildOrdersTable(scoped){
-    const show=scoped.slice(0,300);
+    const ps=pagerSlice(scoped.length, oPg, scoped.length+'|'+(scoped[0]?scoped[0].id:''));
+    const show=scoped.slice(ps.start, ps.end);
     const sm={delivered:'t-green',cancelled:'t-red',expired:'t-amber'};
     let h='<table><thead><tr><th>#</th><th>Status</th><th>Date</th><th>Time</th><th>Timing preference</th><th>Expiring on</th><th>Category</th><th>Item / detail</th><th>Market</th><th>City</th><th>Type</th><th style="text-align:right">Offer</th></tr></thead><tbody>';
     show.forEach(o=>{const det=(o.desc||o.title||'').slice(0,40);const isBid=o.offerC===0;const offerTxt=isBid?'':('$'+(Number.isInteger(o.offerC)?o.offerC.toLocaleString():o.offerC.toFixed(2)));const tp=timingPref(o);const tpAsap=tp==='Need ASAP';const exp=expiringOn(o);const cityCell=[o.dcity,o.dstate].filter(Boolean).join(', ')||'—';h+=`<tr><td class="tnum"><span class="dd-link" data-dd="order" data-id="${o.id}" style="font-weight:700">${o.id}</span></td><td><span class="tag ${sm[o.status]||'t-grey'}">${o.status==='delivered'?'completed':o.status}</span></td><td class="tnum">${dayToStr(o.day)}</td><td class="tnum">${hourLabel(o.h)}</td><td${tpAsap?' style="color:var(--terracotta);font-weight:600"':''}>${iaEsc(tp)}</td><td class="tnum"${exp?'':' style="color:var(--line-2)"'}>${exp||'—'}</td><td>${o.cat}${o.ar?' <span class="ar">21+</span>':''}</td><td style="color:var(--muted);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${det.replace(/</g,'&lt;')||'—'}</td><td>${iaEsc(o.dma||o.state||'—')}</td><td>${iaEsc(cityCell)}</td><td><span class="tag ${isBid?'t-violet':'t-grey'}">${isBid?'Bids':'Fixed'}</span></td><td style="text-align:right" class="tnum">${offerTxt}</td></tr>`;});
     h+='</tbody></table>';
     wrap.innerHTML=scoped.length?h:'<div style="padding:50px;text-align:center;color:var(--muted)">No orders match these filters.</div>';
-    if(scoped.length>show.length) wrap.insertAdjacentHTML('beforeend',`<div style="padding:12px 16px;color:var(--muted);font-size:12px;border-top:1px solid var(--line-2)">Showing first ${show.length} of ${num(scoped.length)} matches. Export for the full set.</div>`);
+    if(scoped.length) wrap.appendChild(pagerBar(scoped.length, oPg, ()=>{buildOrdersTable(scoped);wrap.scrollIntoView({block:'start',behavior:'smooth'});}));
     wrap.querySelectorAll('.dd-link').forEach(b=>b.onclick=()=>{b.dataset.dd==='order'?openOrderDetail(b.dataset.id):openUserDetail(b.dataset.id);});
   }
   // cohort mode — "how many users have more than N completed orders": user-level answer + distribution chart

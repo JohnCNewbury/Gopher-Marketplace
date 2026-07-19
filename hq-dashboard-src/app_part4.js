@@ -3016,6 +3016,7 @@ VIEWS.inapp=()=>{
   const polSev={};IA.policies.forEach(p=>polSev[p.name]=p.severity);
   const userFlags={};IA.flagged.forEach(f=>userFlags[f.from]=(userFlags[f.from]||0)+1);
   let polFilter='all';
+  const iaPg={page:0,size:300,sig:''};  // shared pager state
 
   const k=el('div','row kpis');v.appendChild(k);
   function renderKpis(){k.innerHTML='';
@@ -3194,10 +3195,13 @@ VIEWS.inapp=()=>{
     if(sort==='new')rows.sort((x,y)=>iaTs(y)-iaTs(x));
     else if(sort==='old')rows.sort((x,y)=>iaTs(x)-iaTs(y));
     else rows.sort((x,y)=>iaConf(y,cal)-iaConf(x,cal));
-    const tot=rows.length,show=rows.slice(0,80);
-    $('#ia-sub').innerHTML=`${num(iaActive())} active · ${num(tot)} match${tot>80?' · showing first 80':''} · ${sort==='new'?'newest first':sort==='old'?'oldest first':'priority'}`;
+    const tot=rows.length;
+    const ps=pagerSlice(tot, iaPg, tot+'|'+sort+'|'+status+'|'+polFilter+'|'+sev+'|'+q+'|'+(rows[0]?rows[0].id:''));
+    const show=rows.slice(ps.start, ps.end);
+    $('#ia-sub').innerHTML=`${num(iaActive())} active · ${num(tot)} match · rows ${tot?num(ps.start+1):0}–${num(ps.end)} · ${sort==='new'?'newest first':sort==='old'?'oldest first':'priority'}`;
     const emptyMsg=q?`No flagged alerts for "${iaEsc(q)}" with these filters.`:'No alerts match these filters.';
     list.innerHTML=show.map(f=>card(f,a[f.id],t[f.from],cal)).join('')||`<div class="placeholder">${emptyMsg}</div>`;
+    if(tot) list.appendChild(pagerBar(tot, iaPg, ()=>{render();list.scrollIntoView({block:'start',behavior:'smooth'});}));
     list.querySelectorAll('.ia-act').forEach(b=>b.onclick=()=>action(b.dataset.id,b.dataset.act));
     list.querySelectorAll('.dd-link').forEach(b=>b.onclick=()=>{b.dataset.dd==='order'?openOrderDetail(b.dataset.id):openUserDetail(b.dataset.id);});
     renderHist(q);
@@ -3456,6 +3460,7 @@ VIEWS.cancellations=function(){
   card.innerHTML='<div class="card-h"><div><h3>Cancellation queue</h3><div class="sub" id="cx-sub"></div></div></div><div id="cx-list"></div>';
   v.appendChild(card);
   var list=card.querySelector('#cx-list');
+  var cxPg={page:0,size:300,sig:''};  // shared pager state
   var dbtn='display:inline-block;font-size:11px;font-weight:600;padding:4px 8px;border:1px solid var(--line,#e6eaee);border-radius:7px;background:var(--card,#fff);color:inherit;cursor:pointer;margin:2px 4px 2px 0';
 
   function learnbar(){
@@ -3497,8 +3502,9 @@ VIEWS.cancellations=function(){
     if(sort==='new')rows.sort(function(a,b){return b.day-a.day;});
     else if(sort==='old')rows.sort(function(a,b){return a.day-b.day;});
     else rows.sort(function(a,b){return (b.total||0)-(a.total||0);});
-    var show=rows.slice(0,150); _cxRecoStyle();
-    card.querySelector('#cx-sub').textContent=num(rows.length)+' match'+(rows.length>150?' \u00b7 showing first 150':'')+' \u00b7 '+num(afterAccept.length)+' after-accept total';
+    var ps=pagerSlice(rows.length, cxPg, rows.length+'|'+sort+'|'+status+'|'+q+'|'+(rows[0]?rows[0].id:''));
+    var show=rows.slice(ps.start, ps.end); _cxRecoStyle();
+    card.querySelector('#cx-sub').textContent=num(rows.length)+' match \u00b7 rows '+(rows.length?num(ps.start+1):0)+'\u2013'+num(ps.end)+' \u00b7 '+num(afterAccept.length)+' after-accept total';
     var h='<div style="overflow:auto"><table style="font-size:12.5px;width:100%"><thead><tr><th>Order</th><th>Date</th><th>Category</th><th>Market</th><th>Gopher</th><th style="text-align:right">Amount</th><th>Reason &amp; log</th><th>Disposition</th></tr></thead><tbody>';
     show.forEach(function(o){
       var ac=a[o.id]; var stage=_cxStage(o); var reco=(!ac)?cxRecommend(o):null;
@@ -3517,6 +3523,7 @@ VIEWS.cancellations=function(){
     });
     h+='</tbody></table></div>';
     list.innerHTML=h;
+    if(rows.length) list.appendChild(pagerBar(rows.length, cxPg, function(){paint();list.scrollIntoView({block:'start',behavior:'smooth'});}));
     list.querySelectorAll('.dd-link').forEach(function(b){b.onclick=function(){openOrderDetail(b.dataset.id);};});
     list.querySelectorAll('.cx-rl').forEach(function(s){ s.onclick=function(){ cxReasonLog(s); }; });
     list.querySelectorAll('.cx-disp').forEach(function(box){
