@@ -42,14 +42,14 @@
 | 8 | G40-43 | submitted/expiry | pending | No expire with pending offers |
 | 9 | G40-44 | broadcast | **DONE** (comment 17452) | Pilot. Legacy new_order_alert map + 4 do-not-port deltas (exact-5.0 vs ≥4.8, delays, no vacancy-collapse, non-durable timers) |
 | 10 | G40-65 | completion | **DONE** (comment 17453) | Pilot. Legacy complete/v2→DELIVERED→confirm_payout rail + crons; prototype anchors refreshed (~20940/~16379); Go "Pending confirmation" canon |
-| 11 | G40-68 | offers | pending | View-profile previous jobs |
-| 12 | G40-69 | active | pending | 10-min not-started SMS |
+| 11 | G40-68 | offers | **DONE** (17480) | Built on 3 surfaces; legacy feature is net-new (no per-job history anywhere); categoryFilter.test.js absent from flat folder |
+| 12 | G40-69 | active | **DONE** (17479) | Net-new cron; no legacy in_progress state; DESCRIPTION CONTRADICTION flagged: 10-min vs 5-min push cadence — owner decide |
 | 13 | G40-77 | creation | pending | Duplicate-request warning |
-| 14 | G40-78 | active/cancel | pending | Cancel only if no activity |
-| 15 | G40-80 | active/reschedule | pending | Reschedule w/ approval + auth handling |
+| 14 | G40-78 | active/cancel | **DONE** (17481) | Legacy hard-BLOCKS requestor cancel at accepted — new spec inverts; 'no fee' prior comment superseded by 07-10 conditional-$5 |
+| 15 | G40-80 | active/reschedule | **DONE** (17483) | re_schedule_orders has no expires_at today; stale 'no active-order surface' corrected (Scheduled tab 5978277) |
 | 16 | G40-81 | active/cancel | **DONE** (17473) | waive_fee_link mechanics + replaces-not-extends framing; cancellationGuard.js in Jira Tickets is the messaging guard, NOT this fee system |
-| 17 | G40-83 | active | pending | 1-hour nudge SMS |
-| 18 | G40-86 | active/scheduled | pending | Add-to-Calendar |
+| 17 | G40-83 | active | **DONE** (17485) | Backend-only; orders_faqs has no sender_role — derive from `from`; legacy SMS still says 'Need It Now' (rename flagged) |
+| 18 | G40-86 | active/scheduled | **DONE** (17487) | Placement frame built (purchase-delivery-figma); both earlier build comments reverted/superseded — flagged; no legacy calendar code |
 | 19 | G40-88 | submitted/update | pending | Update → email + admin log |
 | 20 | G40-91 | broadcast/MY Gopher | pending | Unblurred name/pic for MY Gopher |
 | 21 | G40-92 | submitted | pending | Activity-without-response SMS |
@@ -58,25 +58,25 @@
 | 24 | G40-108 | submitted/scheduled | pending | 48-h unaccepted check-in email |
 | 25 | G40-113 | creation/pricing data | **DONE** (17468) | suggestedOfferUsed wired both prototypes + Dashboard detail; legacy smart_price never persisted usage flag — net-new boolean + report column |
 | 26 | G40-116 | creation/age | **DONE** (17471) | Legacy: under-21 keyword block + <30 TrustShield iDenfy, no over-30 ID path; ageRestriction.test.js MISSING despite 'tests pass' claim — flagged |
-| 27 | G40-137 | offers | pending | Counter-offer monthly credits |
-| 28 | G40-139 | broadcast/worker view | pending | Available-tab instant refresh |
-| 29 | G40-138 | active/location | pending | Allow-Always location during live request |
-| 30 | G40-142 | active/ride | pending | Ride-sharing info enhance |
+| 27 | G40-137 | offers | **DONE** (17482) | Go proto counter panel + Standard-credits copy supersedes 07-03 note; D-026 canon ($20 floor / 150% ceiling, server-side) |
+| 28 | G40-139 | broadcast/worker view | **DONE** (17484) | Root cause: 7.5s setInterval poll (getOrders.js). wave2 refreshDecider/useAvailableRefresh scaffolds MISSING from flat folder |
+| 29 | G40-138 | active/location | **DONE** (17489) | Worker-app prompts Always too late (job-start only); SEC-1 hard-coded key noted dev-reserved |
+| 30 | G40-142 | active/ride | **DONE** (17491) | __vehicleCard built in request; NOT in connect — parity question flagged for owner; recap's vehicleInfo.js scaffold nonexistent |
 | 31 | G40-155 | — | **RECLASS?** | see N table — moved there (recommendation/inbox) |
 | 32 | G40-160 | creation (Connect) | **DONE** (17459) | gopher-connect.html IS the B2B FE; js_order/iswebplateform proves one-engine; eligibleWorkers still not in payload; canonical SHA anchor stale (Jun 18 rev6) |
 | 33 | G40-164 | messaging/admin log | pending | Messaging not documented in Admin |
-| 34 | G40-165 | broadcast/privacy | pending | Remove customer apt # |
+| 34 | G40-165 | broadcast/privacy | **DONE** (17486) | Current proto = stricter no-exact-address-pre-accept; legacy anchors re-verified; backend server-side strip needed |
 | 35 | G40-186 | creation | pending | Available-Gophers count (iQ built) |
 | 36 | G40-189 | submitted/admin update | pending | Admin updates a request |
 | 37 | G40-192 | completion/age | **DONE** (17456) | Legacy v1 no-show pays immediately — ack/GPS/fraud/24h-hold all net-new; noShowGuard.js tests pass |
 | 38 | G40-202 | completion/rating | **FE-GAP** | Confirm-gated host modal exists (Go proto) but Block-Requestor checkbox built nowhere; BlockRequestorCheckbox.jsx + relationships.js cited by recap are MISSING on disk — regenerate before posting |
-| 39 | G40-204 | accept/worker | pending | 2+ workers modal |
+| 39 | G40-204 | accept/worker | **DONE** (17488) | Accept-interception seam exists (doAccept); headcount modal correctly absent (no field). wave2 headcountModal.js MISSING |
 | 40 | G40-205 | messaging | pending | Favorite/Block from messaging |
 | 41 | G40-209 | submitted | pending | Info modals up to cancellation |
 | 42 | G40-216 | active/messaging | pending | Worker photo attachments |
 | 43 | G40-217 | active/cost-adjust | **DONE** (17476) | +15-min adder built; snap-validation not prototyped (by design); DECIMAL(5,2) migration is the crux |
 | 44 | G40-218 | completion/age | **DONE** (17457) | Delta layer only (07-07 comment already full); AC 'route to ratings' superseded by G40-331 gate |
-| 45 | G40-244 | broadcast/details | pending | Ride details missing on worker view |
+| 45 | G40-244 | broadcast/details | **DONE** (17490) | Backend already emits noof_rider (order_info.js:58) — no new field; requester side produces all data; anchor drift fixed (:2579) |
 | 46 | G40-250 | broadcast/backup | pending | SMS/email escalation exclusions |
 | 47 | G40-251 | creation | pending | Request Again carry-over |
 | 48 | G40-253 | creation/QA | **DONE** (17461) | Parity harness documented (run_parity_harness.py, 5 checks + run cmd); prior comment cited v3.3 — now v3.4 |
