@@ -16704,8 +16704,17 @@ const PAY_BADGES = {
         // conduct level-3 block leave the text in the box to edit. "Send as-is"
         // delivers FLAGGED (res.flagged) so the recipient side can show the
         // terms-violation note. Fails open if the module didn't load.
+        // Connected (owner 2026-07-19) = a worker ACCEPTED this thread's job:
+        // crew threads ("::name") only exist for hired crew; otherwise the
+        // request is connected once it's live or has a hired worker. Relaxes
+        // only the contact patterns — payment/conduct always checked.
+        const _sep = String(t.id).indexOf('::');
+        const _rq = (DASH_DATA.activeRequests || []).find(x => x.id === (_sep > -1 ? t.id.slice(0, _sep) : t.id));
+        const _connected = _sep > -1 || !!(_rq && (_rq.live ||
+          (_rq.interestedWorkers || []).some(w => w.status === 'hired')));
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
+            connected: _connected,
             onAllow:   function(res){ sendInboxMessage(t.id, text, !!(res && res.flagged)); },
             onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
           });

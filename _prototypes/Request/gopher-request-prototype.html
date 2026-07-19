@@ -377,7 +377,10 @@ var SCREENS={
     +       'if(!isEnter&&!btn)return;'
     +       'var t=(inp.value||"").trim();if(!t)return;'
     +       'var G=window.GopherMessageGuard;'
-    +       'var v=G.check(t,tid());'                       // single evaluation (counter ticks only on a hit)
+    // connected:true — this rd chat only exists for HIRED workers (owner
+    // 2026-07-19: contact patterns relax post-acceptance; payment/conduct
+    // stay checked regardless).
+    +       'var v=G.check(t,tid(),{connected:true});'      // single evaluation (counter ticks only on a hit)
     +       'if(v.verdict==="allow")return;'                // clean -> let the screen own send run untouched
     +       'e.preventDefault();e.stopImmediatePropagation();' // a hit -> hold the gesture, show the modal
     +       'function refire(){bypass=true;if(btn){btn.click();}else{inp.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true}));}bypass=false;}'

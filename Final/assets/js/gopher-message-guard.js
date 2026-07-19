@@ -78,7 +78,13 @@
       // flag). Adjacency keeps "your order number" / "your unit number"
       // from false-positives ("your" must sit right next to the noun).
       /\b(?:your|ur)\s+(?:number|phone|cell|mobile|digits|email|whats\s?app)\b/i,
-      /\bnumber\s+to\s+(?:call|text|reach)\b/i
+      /\bnumber\s+to\s+(?:call|text|reach)\b/i,
+      // Social handles are contact-sharing too (owner 2026-07-19; mirrors the
+      // Dashboard lexicon's social_contact category) — so they connect-gate
+      // with the rest of this family. Conservative list; John curates.
+      /\b(?:insta|instagram|snap\s?chat|tele\s?gram|whats\s?app|discord)\b/i,
+      /\b(?:dm|direct\s+message)\s+(?:me|you|u)\b/i,
+      /\bmy\s+(?:handle|socials?)\b/i
     ],
     off_platform: [
       /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
@@ -206,10 +212,16 @@
     opts = opts || {};
     var hits = [];
     for (var policy in PATTERNS) {
-      // Connected relaxation (owner, 2026-07-16): once a customer and a worker
-      // are CONNECTED on a request, exchanging personal info may be part of the
-      // job (call on arrival, gate codes, etc.) — the 'contact' patterns are
-      // skipped. Payment / off-platform / conduct stay checked.
+      // Connected relaxation (owner 2026-07-16, re-confirmed with precise scope
+      // 2026-07-19): once a worker has ACCEPTED the thread's job (assigned,
+      // accepted offer/counter, in progress, or delivered), contact exchange is
+      // legitimate post-acceptance coordination — ONLY the 'contact' family
+      // (numbers, emails, asks, social handles) is skipped. Payment /
+      // off-platform stay checked (fee circumvention doesn't stop being
+      // circumvention on an accepted job), and conduct is UNCONDITIONAL
+      // ("bad language isn't allowed, period"). This mirrors the Dashboard
+      // Message Review rule `context_rules.contact_on_connected_order`
+      // (moderation_rules.json / iaContactOnConnected in app_part4.js).
       if (opts.connected && policy === 'contact') continue;
       var list = PATTERNS[policy];
       for (var i = 0; i < list.length; i++) {

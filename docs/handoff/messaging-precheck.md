@@ -109,12 +109,22 @@ customer and customer → worker). The sender's own bubble shows no note (they
 already saw the alert). Production: the send endpoint persists `flagged` on the
 message row; every thread renderer shows the note on flagged incoming messages.
 
-**Connected relaxation (evaluation change, not just copy):** once the two
-parties are connected on a request, the **`contact` category is skipped
-entirely** (phone/email/call-me may be legitimate job coordination). Payment,
-off-platform, and conduct are ALWAYS checked. The server precheck must take a
-`connected` input (client passes it today as `guard(text, threadId,
-{connected})`) and mirror this.
+**Connected relaxation (evaluation change, not just copy — precise scope
+re-confirmed by John 2026-07-19):** once a worker has **accepted** the
+thread's job (assigned gopher, accepted offer, **accepted counter-offer**, in
+progress, or delivered), the **`contact` category is skipped entirely** —
+numbers, emails, contact ASKS, and **social handles** (added to the contact
+family 2026-07-19) may be legitimate post-acceptance coordination ("text
+760-905-xxxx when you arrive"). Payment and off-platform are ALWAYS checked
+("still fee circumvention even on an accepted job"), and conduct is
+UNCONDITIONAL ("bad language isn't allowed, period" — John). The server
+precheck must take a `connected` input (client passes it today as
+`guard(text, threadId, {connected})`) and mirror this. The Dashboard's
+Message Review queue already implements the identical rule
+(`context_rules.contact_on_connected_order` in `moderation_rules.json`,
+`iaContactOnConnected` in `app_part4.js`) — note its acceptance evidence
+includes accepted `Gopher_Offers` and `Counter_Offer` rows even when the
+order row still reads pending; production must match that nuance.
 
 **Requests for contact info count too (John, 2026-07-16: TOP red flag).**
 "What is your number?" pre-connection is exactly the circumvention signal the
