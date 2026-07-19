@@ -2048,17 +2048,41 @@ function iaTs(f){const s=f&&f.created;if(!s)return 0;const m=(''+s).match(/(\d{1
 const IA_WARN_TMPL=(msg,n)=>`Hi — our team flagged one of your recent Gopher messages for violating our Terms of Service.\n\nFlagged message: "${msg}"\n\nThis is warning #${n} on your account. Continued violations may result in deactivation. Please keep all communication and payments inside the Gopher platform. Review our Terms at gopher.go/terms.`;
 const IA_DEACT_TMPL=`Your Gopher account has been deactivated for violating our Terms of Service. If you believe this was in error, reply to this email to appeal. — The Gopher Trust & Safety Team`;
 // derive what iQ has "learned" from the admin's decisions
-function iaCalib(){const a=(iaLoad().actions)||{};const pos={},neg={},safeMsgs={};let nSafe=0,nWarn=0,nDeact=0,nIgnore=0;
+/* Owner policy (2026-07-19): contact-sharing is allowed POST-ACCEPTANCE — a worker has the
+   job (accepted / in progress / delivered), so coordination details (phone numbers, sign-in
+   instructions for remote jobs, etc.) are legitimate. The SAME content on an unconnected job
+   remains a violation (off-platform circumvention). "Connected" = the order has an assigned
+   gopher or has progressed (in-progress / picked-up / delivered). */
+const IA_CONTACT_POLS=['contact','social_contact'];
+let _iaOrdIx=null,_iaAccSet=null;
+function iaOrderConnected(f){
+  if(!f||!f.order_id)return false;
+  // accepted gopher offer / accepted counter-offer (baked by regen_reports.py) counts as
+  // connected even when the order row still reads pending — acceptance is the criterion.
+  if(!_iaAccSet)_iaAccSet=new Set(((M._inapp&&M._inapp.accepted_orders)||[]).map(String));
+  if(_iaAccSet.has(''+f.order_id))return true;
+  if(typeof ORD==='undefined')return false;
+  if(!_iaOrdIx){_iaOrdIx={};ORD.forEach(o=>_iaOrdIx[o.id]=o);}
+  const o=_iaOrdIx[+f.order_id];if(!o)return false;
+  return !!(o.gopherId>0||o.gopher||o.inProg||o.pickedUp||o.status==='delivered');
+}
+function iaContactOnConnected(f){return (f.policies||[]).some(p=>IA_CONTACT_POLS.includes(p))&&iaOrderConnected(f);}
+function iaCalib(){const a=(iaLoad().actions)||{};const pos={},neg={},safeMsgs={};let nSafe=0,nWarn=0,nDeact=0,nIgnore=0,nSafeCtx=0;
   const IA=M._inapp;const byId={};if(IA&&IA.flagged)IA.flagged.forEach(f=>byId[f.id]=f);
   Object.keys(a).forEach(id=>{const ac=a[id],f=byId[id];if(!f)return;
     if(ac.action==='warning'){nWarn++;f.policies.forEach(p=>pos[p]=(pos[p]||0)+1);}
     else if(ac.action==='deactivate'){nDeact++;f.policies.forEach(p=>pos[p]=(pos[p]||0)+2);}
-    else if(ac.action==='safe'){nSafe++;f.policies.forEach(p=>neg[p]=(neg[p]||0)+1);safeMsgs[(f.msg||'').toLowerCase().replace(/\s+/g,' ').trim()]=1;}
+    else if(ac.action==='safe'){nSafe++;const ctx=iaContactOnConnected(f);if(ctx)nSafeCtx++;
+      // Contextual safes (connected-job contact rule) must NOT soften detection on
+      // unconnected contact flags — the policy weight stays; only the context excuses it.
+      f.policies.forEach(p=>{if(ctx&&IA_CONTACT_POLS.includes(p))return;neg[p]=(neg[p]||0)+1;});
+      safeMsgs[(f.msg||'').toLowerCase().replace(/\s+/g,' ').trim()]=ctx?2:1;}
     else if(ac.action==='ignore'){nIgnore++;}
   });
-  return {pos,neg,safeMsgs,nSafe,nWarn,nDeact,nIgnore};}
+  return {pos,neg,safeMsgs,nSafe,nWarn,nDeact,nIgnore,nSafeCtx};}
 // confidence (0-100) for an alert after learning: base score + policy reinforcement − safe penalty
 function iaConf(f,cal){let d=0;f.policies.forEach(p=>{d+=6*(cal.pos[p]||0)-9*(cal.neg[p]||0);});
+  if(iaContactOnConnected(f))d-=25;  // connected-job contact rule: likely legitimate coordination
   return Math.max(1,Math.min(100,Math.round((f.score||50)+d)));}
 /* ============ DETAIL DRILL-DOWN: click a user or order → slide-in full record ============ */
 let ORD_BY_ID=null,USR_BY_ID=null,USER_ORDERS=null;
@@ -3073,6 +3097,7 @@ VIEWS.inapp=()=>{
     const conf=iaConf(f,cal);const base=f.score||50;const delta=conf-base;
     const confTag=`<span class="ia-tag" style="background:${sc}1e;color:${sc};font-weight:800" title="iQ confidence after your calibration">${iaEsc(f.actLbl||'')} · conf ${conf}${delta?` <span style="color:${delta>0?'#0a8f4f':'#b3261e'}">${delta>0?'▲':'▼'}${Math.abs(delta)}</span>`:''}</span>`;
     const cb=f.combo?`<span class="ia-sevtag" style="background:#b3261e">COMBO: ${iaEsc(f.combo)}</span>`:'';
+    const ctxChip=iaContactOnConnected(f)?`<span class="ia-tag" style="background:#0a8f4f1e;color:#0a8f4f;font-weight:800" title="Owner policy 2026-07-19: a worker accepted this job, so coordination details (phone, sign-in instructions) are allowed. The same content on an unconnected job stays a violation.">✓ Connected job — coordination OK</span>`:'';
     const tt=t||{safe:0,ignore:0,warning:0,deactivate:0};
     const hist=`${iaEsc(f.from)}: ${userFlags[f.from]||1} flag${(userFlags[f.from]||1)>1?'s':''} · safe ${tt.safe||0} · warned ${tt.warning||0}${tt.deactivate?` · deactivated ${tt.deactivate}`:''}`;
     const on=x=>act&&act.action===x?' on':'';
@@ -3086,7 +3111,7 @@ VIEWS.inapp=()=>{
     const toTxt=toId?`<span class="dd-link" data-dd="user" data-id="${toId}">${iaEsc(f.to)||'—'}</span>`:(iaEsc(f.to)||'—');
     const ordTxt=f.order_id?`<span class="dd-link" data-dd="order" data-id="${iaEsc(''+f.order_id)}">order ${iaEsc(''+f.order_id)}</span>`:'order —';
     return `<div class="ia-alert" style="border-left:3px solid ${act&&act.action==='safe'?'#0a8f4f':sc}${act?';opacity:.72':''}">
-      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span class="ia-sevtag" style="background:${sc}">${IA_SEVLBL[f.severity]}</span>${confTag}${cb}${tags}${sb}</div>
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span class="ia-sevtag" style="background:${sc}">${IA_SEVLBL[f.severity]}</span>${confTag}${cb}${ctxChip}${tags}${sb}</div>
       <div style="font-size:11.5px;color:var(--muted);margin:6px 0 0">From ${fromTxt} → ${toTxt} · ${ordTxt} · ${iaEsc(f.created)}</div>
       <div class="ia-msg">${iaEsc(f.msg)}</div>
       ${live}
@@ -3148,14 +3173,20 @@ VIEWS.inapp=()=>{
     // learning banner
     const lb=$('#ia-learn');const decided=cal.nSafe+cal.nWarn+cal.nDeact+cal.nIgnore;
     if(lb){if(decided){const up=Object.keys(cal.pos).sort((x,y)=>cal.pos[y]-cal.pos[x]).slice(0,3);const dn=Object.keys(cal.neg).sort((x,y)=>cal.neg[y]-cal.neg[x]).slice(0,3);
-      lb.innerHTML=`<div class="ia-learnbar"><span class="gb-pulse" style="width:7px;height:7px"></span><b>iQ has learned from ${decided} decision${decided>1?'s':''}</b> — ${cal.nWarn+cal.nDeact} confirmed (${cal.nSafe} marked safe, ${cal.nIgnore} ignored).${up.length?` Confidence ▲ on: ${up.map(iaEsc).join(', ')}.`:''}${dn.length?` ▼ on: ${dn.map(iaEsc).join(', ')}.`:''} <span style="color:var(--muted)">Save &amp; export to apply to the canonical rules.</span></div>`;}
+      lb.innerHTML=`<div class="ia-learnbar"><span class="gb-pulse" style="width:7px;height:7px"></span><b>iQ has learned from ${decided} decision${decided>1?'s':''}</b> — ${cal.nWarn+cal.nDeact} confirmed (${cal.nSafe} marked safe${cal.nSafeCtx?`, ${cal.nSafeCtx} under the connected-job contact rule`:''}, ${cal.nIgnore} ignored).${up.length?` Confidence ▲ on: ${up.map(iaEsc).join(', ')}.`:''}${dn.length?` ▼ on: ${dn.map(iaEsc).join(', ')}.`:''} <span style="color:var(--muted)">Save &amp; export to apply to the canonical rules.</span></div>`;}
       else lb.innerHTML=`<div class="ia-learnbar" style="color:var(--muted)"><b>iQ is ready to learn.</b> Mark alerts Safe / Ignore / Warning / Deactivate — confirmations raise confidence on similar messages, Safe lowers it. Then Save &amp; export to bake your calibration into the file.</div>`;}
     const norm=m=>(m||'').toLowerCase().replace(/\s+/g,' ').trim();
     let rows=IA.flagged.filter(f=>{
       if(polFilter!=='all'&&!f.policies.includes(polFilter))return false;
       if(sev!=='all'&&f.severity!==sev)return false;
       const ac=a[f.id];
-      if(status==='open'){ if(ac)return false; if(cal.nSafe&&!ac&&cal.safeMsgs[norm(f.msg)])return false; /* suppress look-alikes of safe msgs */ }
+      if(status==='open'){ if(ac)return false;
+        const sm=cal.nSafe&&!ac?cal.safeMsgs[norm(f.msg)]:0;
+        /* suppress look-alikes of safe msgs — but a CONTEXTUAL safe (value 2, connected-job
+           contact rule) only suppresses look-alikes that are also on connected jobs; the same
+           text on an unconnected job must still surface for review. */
+        if(sm===1)return false;
+        if(sm===2&&iaContactOnConnected(f))return false; }
       if(status!=='all'&&status!=='open'&&(!ac||ac.action!==status))return false;
       if(q&&!((f.msg||'').toLowerCase().includes(q)||(f.from||'').toLowerCase().includes(q)||(f.to||'').toLowerCase().includes(q)))return false;
       return true;
