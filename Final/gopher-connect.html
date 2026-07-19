@@ -12488,9 +12488,11 @@ const PAY_BADGES = {
       dealBoost: state.dealKind === 'service' ? Math.round(perWorker * workersNeeded * 0.10 * 100) / 100 : 0,
       dealBoostEligible: !!state.dealBoost,
       // Y/N — did the offer come from the Gopher iQ suggested-price modal?
-      // Delivery/Ride + set-price only (bids mode has no set offer → null). This is the
-      // field the real submit POST sends as `suggested_offer_used`.
-      suggestedOfferUsed: (state.payMode === 'set' && (state.category === 'delivery' || state.category === 'ride'))
+      // Priced categories + set-price only (bids mode has no set offer → null). This is
+      // the field the real submit POST sends as `suggested_offer_used`.
+      // Junk included since 2026-07-19 (owner) — it is the category whose per-tier
+      // curve is learned forward, so it is the one that most needs the signal.
+      suggestedOfferUsed: (state.payMode === 'set' && isPricedCategory())
         ? !!state.suggestedOfferUsed
         : null,
       // Frozen Review-screen snapshot for a faithful Request Details recap (data only).
@@ -12884,10 +12886,17 @@ const PAY_BADGES = {
     L.ingestJunkCompletions(seed);
   }
 
+  /* The categories Gopher iQ prices. ONE list, because three things must agree:
+     the suggested-offer modal, the low-offer Continue gate, and the
+     `suggested_offer_used` telemetry on submit. Junk joined 2026-07-19
+     (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
+  const PRICED_CATEGORIES = ['delivery','ride','junk'];
+  const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
+
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
     const isJunk = state.category === 'junk';
-    if(state.category !== 'delivery' && !isRide && !isJunk) return null;
+    if(!isPricedCategory()) return null;
     if(isJunk) return getCurrentJunkModel();
     const trip = isRide ? getRideTripEstimate() : null;
     return isRide

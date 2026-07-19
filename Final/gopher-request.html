@@ -11217,10 +11217,17 @@
     L.ingestJunkCompletions(seed);
   }
 
+  /* The categories Gopher iQ prices. ONE list, because three things must agree:
+     the suggested-offer modal, the low-offer Continue gate, and the
+     `suggested_offer_used` telemetry on submit. Junk joined 2026-07-19
+     (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
+  const PRICED_CATEGORIES = ['delivery','ride','junk'];
+  const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
+
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
     const isJunk = state.category === 'junk';
-    if(state.category !== 'delivery' && !isRide && !isJunk) return null;
+    if(!isPricedCategory()) return null;
     if(isJunk) return getCurrentJunkModel();
     const trip = isRide ? getRideTripEstimate() : null;
     return isRide
@@ -11765,9 +11772,11 @@
       dealKind: state.dealKind || null,
       providerName: (state.dealProvider && state.dealProvider.name) || null,
       // Y/N — did the offer come from the Gopher iQ suggested-price modal?
-      // Only meaningful for Delivery/Ride (bids mode has no set offer → null). This is
-      // the field the real submit POST sends as `suggested_offer_used`.
-      suggestedOfferUsed: (state.payMode === 'set' && (state.category === 'delivery' || state.category === 'ride'))
+      // Only meaningful for the priced categories (bids mode has no set offer → null).
+      // This is the field the real submit POST sends as `suggested_offer_used`.
+      // Junk included since 2026-07-19 (owner) — it is the category whose per-tier
+      // curve is learned forward, so it is the one that most needs the signal.
+      suggestedOfferUsed: (state.payMode === 'set' && isPricedCategory())
         ? !!state.suggestedOfferUsed
         : null,
     });
@@ -11906,7 +11915,8 @@
     suggestedOfferUsed: false,        // Y/N signal. true once the offer is committed via the
                                       // Gopher iQ suggested-price modal (Submit); reset to false on any
                                       // manual edit of the pay field. Rides into the request record →
-                                      // orders.suggested_offer_used (Delivery/Ride only).
+                                      // orders.suggested_offer_used (priced categories only —
+                                      // PRICED_CATEGORIES: Delivery, Ride, Junk).
     dupWarnAck: false,                // "Submit anyway" acked on the duplicate-request notice
     junkTier: null,                   // Junk only: resolved volume tier (single|half|full) for the
                                       // suggested-pay model. Defaults to the iQ-detected tier; a tier
