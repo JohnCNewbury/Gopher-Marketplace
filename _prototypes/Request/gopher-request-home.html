@@ -1879,6 +1879,9 @@ document.addEventListener('click',function(e){
     if(k==='rewards'){ openRewards(); return; }
     if(k==='points'){ gClose(); openPoints(); return; }
     if(k==='help'){ openHelpCenter(); return; }
+    if(k==='hc-faqs'){ openReqFaqs(); return; }
+    if(k==='hc-101'){ openReq101(); return; }
+    if(k==='hc-contact'){ openReqContact(); return; }
     if(k==='terms'){ try{window.open('https://gophergo.io/gopher-terms-of-service.html','_blank','noopener');}catch(_){} toast('Opening Terms of Service \u2192'); return; }
     if(k==='social'){ openSocial(); return; }
     if(k==='refer'){ gClose(); gotoURL('gopher-request-refer.html'); return; }
@@ -1890,6 +1893,7 @@ document.addEventListener('click',function(e){
     if(k==='contact'){ toast('Connecting you to support\u2026'); return; }
   }
   var faq=e.target.closest('[data-faq]'); if(faq){ faq.classList.toggle('open'); return; }
+  var hcs=e.target.closest('.hc-send'); if(hcs){ var sh=hcs.closest('.gsheet'); var m=sh&&sh.querySelector('.hc-msg'); if(m&&!m.value.trim()){ try{if(window.toast)toast('Add a short message first');}catch(_){}; return; } var tp=sh&&sh.querySelector('.hc-topic'); try{if(window.toast)toast('Message sent'+(tp?(' · '+tp.value):'')+' — we’ll be in touch');}catch(_){}; if(m)m.value=''; return; }
   var send=e.target.closest('[data-iq-send]'); if(send){ var a=$('#iqAns'); if(a){ a.hidden=false; a.textContent=IQ_ANSWER; } return; }
 });
 
@@ -1900,19 +1904,74 @@ function openNotif(){ var dot=document.querySelector('.bell .dot'); if(dot) dot.
 const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Removal'],['moving','Moving'],['labor','Labor'],['yard','Yard / Outdoor'],['ride','Ride Sharing'],['other','Other']];
 function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
-// Help Center \u2014 in-app (no separate page to 404 on). Common topics + contact support.
+// Help Center \u2014 card-based, PARITY with the Gopher Go app's Help Center (FAQs / 101 / Contact Us).
+// Identical shell/UX; the only difference is the 101 doc (Gopher REQUEST 101) and requester-facing
+// FAQ content. Cards mirror Go's .hc-card visual (icon tile + title + subtitle + chevron).
+function __hcCard(goto,ic,icBg,icCol,name,sub){
+  return '<div class="gs-li" data-goto="'+goto+'" style="display:flex;align-items:center;gap:13px;padding:15px 16px;cursor:pointer;">'
+    +'<span style="width:40px;height:40px;border-radius:11px;background:'+icBg+';color:'+icCol+';font-family:Nunito;font-weight:900;font-size:'+(ic==='101'?'13px':'18px')+';letter-spacing:'+(ic==='101'?'.5px':'0')+';display:flex;align-items:center;justify-content:center;flex:0 0 auto;">'+ic+'</span>'
+    +'<span style="flex:1;"><span style="display:block;font-family:Nunito;font-weight:900;font-size:15px;color:#002461;">'+name+'</span><span style="display:block;font-size:12px;color:#6B7280;margin-top:2px;font-family:Nunito;font-weight:600;">'+sub+'</span></span>'
+    +'<span style="color:#8C8675;font-family:Nunito;font-weight:900;font-size:18px;flex:0 0 auto;">\u203a</span></div>';
+}
 function openHelpCenter(){
-  var topics=[
-    ['How Gopher works','Post a request, a nearby Gopher accepts, and you confirm & rate when it\u2019s done. You\u2019re only charged when a Gopher is hired.'],
-    ['Payments & receipts','Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'],
-    ['Age-restricted deliveries','These require a valid ID at drop-off. Verify once with TrustShield\u2122 to skip re-verifying on future orders.'],
-    ['Cancellations & disputes','Cancel before a match at no charge. If something goes wrong after, open a dispute \u2014 you and your Gopher work it out with our team.'],
-    ['Safety & TrustShield\u2122','Every Gopher is background-checked. Verify your own identity with TrustShield\u2122 for two-way trust and $1 off age-restricted orders.']
-  ];
   gSheet('Help Center',
+    '<p class="gs-sub">Quick, mobile-friendly help \u2014 tap a topic.</p>'
+    +'<div class="gs-list" style="margin-top:10px;">'
+      +__hcCard('hc-faqs','?','#E9F1FC','#002461','FAQs','Payments, requests, TrustShield &amp; more')
+      +__hcCard('hc-101','101','#E8F5EE','#1CB061','Gopher Request 101','The basics in a 2-minute walkthrough')
+      +__hcCard('hc-contact','@','#E9F1FC','#002461','Contact Us','Reach a human on the Gopher team')
+    +'</div>');
+}
+// FAQs \u2014 requester-facing (mirrors the Go FAQ screen's collapsible list; content is customer-appropriate).
+function openReqFaqs(){
+  var FAQS=[
+    ['What are your hours?','Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'],
+    ['How much does it cost to use the app?','A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'],
+    ['How do payments &amp; receipts work?','Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'],
+    ['Can I cancel my request after the worker has started?','Before a Gopher is matched it\u2019s free. If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for details.'],
+    ['Can I request age-restricted products?','Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'],
+    ['What is TrustShield\u2122?','A free, one-time identity check. Verify once for two-way trust and $1 off every age-restricted delivery &amp; ride request \u2014 no re-verifying each time.'],
+    ['How can I see my previous orders?','Go to Account \u2192 Request History to see your completed and cancelled requests.']
+  ];
+  gSheet('FAQs',
     '<p class="gs-sub">Answers to the most common questions.</p>'
-    +'<div class="gs-list" style="margin-top:10px;">'+topics.map(function(t){ return '<div class="gs-li"><b>'+t[0]+'</b><br><span style="color:#5b6472;">'+t[1]+'</span></div>'; }).join('')+'</div>'
-    +'<button class="gm-close" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;" onclick="try{if(window.toast)toast(\'Support: help@gophergo.io \u00b7 in-app chat 24/7\');}catch(_){}">Contact support</button>');
+    +'<div class="gs-list" style="margin-top:10px;">'
+      +FAQS.map(function(f){ return '<div class="faq" data-faq>'+f[0]+'<div class="faq-a">'+f[1]+'</div></div>'; }).join('')
+    +'</div>'
+    +'<div class="gs-hint">Still need help? <span class="gs-link" data-goto="hc-contact">Contact Us \u2192</span></div>');
+}
+// Contact Us \u2014 mirrors the Go app's Contact Us (email + topic/message form).
+function openReqContact(){
+  gSheet('Contact Us',
+    '<p class="gs-sub">We\u2019re here to help \u2014 reach the Gopher team however works best for you.</p>'
+    +'<div class="gs-li" style="display:flex;align-items:center;gap:13px;padding:14px 16px;" onclick="try{if(window.toast)toast(\'Opening email to support@gophergo.io \u2192\');}catch(_){}"><span style="width:38px;height:38px;border-radius:11px;background:#E9F1FC;color:#002461;font-family:Nunito;font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">@</span><span style="flex:1;"><b>Email support</b><br><span style="color:#5b6472;">support@gophergo.io</span></span></div>'
+    +'<div class="gs-sech">Send us a message</div>'
+    +'<select class="hc-topic" style="width:100%;margin-bottom:9px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:\'DM Sans\';font-size:13px;color:var(--navy);background:#fff;"><option>A payment or receipt</option><option>A request or Gopher</option><option>My account or profile</option><option>Trust &amp; safety</option><option>Something else</option></select>'
+    +'<textarea class="hc-msg" placeholder="How can we help?" style="width:100%;min-height:76px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:\'DM Sans\';font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>'
+    +'<button class="hc-send" style="width:100%;margin-top:11px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Send message</button>'
+    +'<p class="gs-hint" style="margin-top:10px;">We typically respond within a few hours.</p>');
+}
+// Gopher Request 101 \u2014 opens the request-101 doc in an in-phone overlay (mirrors Go's open101).
+// The doc's "FAQs" links are rewired on load to close the overlay and open the in-app FAQs
+// (the reported bug: those links used to go nowhere).
+function openReq101(){
+  var ph=$('#phone'); if(!ph) return;
+  var ov=document.createElement('div'); ov.className='r101ov';
+  ov.style.cssText='position:absolute;inset:0;z-index:140;background:#FBF7EF;display:flex;flex-direction:column;';
+  ov.innerHTML='<div style="flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:9px 12px;background:rgba(0,36,97,.94);">'
+    +'<button class="r101-bk" style="cursor:pointer;color:#fff;font-family:Nunito;font-weight:800;font-size:13px;background:rgba(255,255,255,.16);border:0;padding:6px 13px;border-radius:99px;">\u2039 Back</button>'
+    +'<span style="color:#fff;font-family:Nunito;font-weight:800;font-size:13px;">Gopher Request 101</span></div>'
+    +'<iframe class="r101-fr" style="flex:1;width:100%;border:0;background:#fff;"></iframe>';
+  ph.appendChild(ov);
+  ov.querySelector('.r101-bk').onclick=function(){ ov.remove(); };
+  var fr=ov.querySelector('.r101-fr');
+  fr.src='../../Final/gopher-request-101.html';
+  fr.onload=function(){ try{ var d=fr.contentDocument; if(!d) return;
+    // Rewire the dead "gopher-faqs.html" links to the in-app FAQ sheet.
+    d.querySelectorAll('a[href$="gopher-faqs.html"]').forEach(function(a){
+      a.addEventListener('click',function(e){ e.preventDefault(); ov.remove(); openReqFaqs(); });
+    });
+  }catch(_){} };
 }
 // MY Gophers \u2014 session-only favorites. In the split/PT demo this starts EMPTY (0) and only fills when
 // John adds the prototype Gopher this session; the standalone app keeps a few representative favorites.
