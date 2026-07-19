@@ -1949,6 +1949,40 @@ function openHelpCenter(){
       +__hcCard('hc-contact','@','#E9F1FC','#002461','Contact Us','Reach a human on the Gopher team')
     +'</div>');
 }
+// Gopher iQ location/service-area answer \u2014 the FAQ pill routes ZIP / city / "do you service X"
+// questions HERE (real coverage brain, window.GopherIQData) instead of guessing from FAQ text.
+// Returns an answer string, or null when the query isn't a location question. Kept byte-identical
+// with the Go app's copy so dual users get the same behavior. audience: 'requester' | 'worker'.
+function iqCoverageReply(query, audience){
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var t=' '+query.toLowerCase()+' ';
+  var zip=query.match(/\b(\d{5})\b/);
+  var cue=/(are you (?:in|serving)|do you (?:serve|service|cover|have gopher)|servic(?:e|es|ing)\b|serving\b|available in|coming to|gophers? (?:in|near)|service area|coverage|operate in|live in|you (?:serve|service|cover)|near me)/.test(t);
+  var m=query.match(/\b(?:in|to|near|serve|service|servicing|serving|cover|covering)\s+([a-z][a-z .'\-]{1,26}(?:,\s*[a-z]{2})?)\s*[?!.]*$/i);
+  var place = zip ? zip[1] : ((cue && m) ? m[1].trim() : ((m && /,\s*[a-z]{2}\b/i.test(m[1])) ? m[1].trim() : null));
+  if(!place) return null;
+  if(!(window.GopherIQData && GopherIQData.lookup)) return null;
+  var cov=GopherIQData.lookup(place); if(!cov) return null;
+  var worker=(audience==='worker');
+  if(cov.ambiguous){
+    var opts=(cov.options||[]).map(function(o){return o.state+' ('+o.workers+' Gophers)';}).join(', ');
+    return "There\u2019s more than one <b>"+esc(cov.city)+"</b> \u2014 which state did you mean? "+opts+".";
+  }
+  var isZip=/^\d{5}$/.test(String(cov.city||place));
+  var pretty = isZip ? ('the '+esc(place)+' area') : ('<b>'+esc(cov.city)+(cov.state?(', '+cov.state):'')+'</b>');
+  var w=cov.workers||0;
+  if(!cov.inData || w===0)
+    return worker
+      ? "Gopher isn\u2019t active in "+pretty+" just yet \u2014 we\u2019re growing market by market. Keep notifications on and you\u2019ll be alerted the moment requests open up near you."
+      : "We\u2019re not live in "+pretty+" just yet \u2014 but every request helps us grow there. You can post a request to gauge interest, and if we can\u2019t connect you, you don\u2019t pay a dime.";
+  if(w<20)
+    return worker
+      ? "Gopher is just getting started in "+pretty+" \u2014 a small crew of Gophers so far. Set your Work Settings &amp; Radius to cover it and you\u2019ll see requests as they come in."
+      : "Word\u2019s just getting out in "+pretty+" \u2014 a small crew of Gophers so far. Post a request to reach them (if we can\u2019t connect you, you don\u2019t pay a dime), or use Find MY Gopher.";
+  return worker
+    ? "Yes \u2014 Gopher is active in "+pretty+", with <b>"+w+"</b> Gophers in the area. Set your Work Settings &amp; Radius to cover it and start accepting requests there."
+    : "Yes \u2014 "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I\u2019ll get you matched.";
+}
 // FAQs \u2014 models the Gopher Go FAQ screen (Help Center hero + iQ ask pill with inline answers +
 // category tabs). Content is requester-facing; the pill behaves like the FAQ (inline answer from
 // the FAQ corpus), NOT like the home iQ CTA. Kept consistent with Go for dual-user familiarity.
@@ -1993,11 +2027,17 @@ function openReqFaqs(){
   function search(query){ var qw=toks(query); if(!qw.length) return [];
     return REQ_FAQS.map(function(f){ var qset=new Set(toks(f.q)); var aset=new Set(toks(f.q+' '+f.a+' '+f.g)); var s=0; qw.forEach(function(w){ if(qset.has(w))s+=3; else if(aset.has(w))s+=1; }); return {f:f,s:s}; }).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
   }
+  function card(inner){ return '<div class="riq-card"><div class="riq-lab">Gopher iQ</div>'+inner+'</div>'; }
   function ask(){ var q=inp.value.trim(); if(!q){ ansEl.setAttribute('hidden',''); ansEl.innerHTML=''; return; }
-    var hits=search(q);
+    // 1) Location / service-area questions \u2192 real coverage brain (not a stray FAQ match).
+    var cov=iqCoverageReply(q,'requester');
+    if(cov){ ansEl.innerHTML=card('<p class="riq-aa">'+cov+'</p>'); ansEl.removeAttribute('hidden'); return; }
+    // 2) FAQ search \u2014 but only surface a confident match (a question-word hit, score \u2265 3). A weak
+    //    answer-text-only match (e.g. "service" grazing the fee FAQ) is treated as "not found".
+    var hits=search(q).filter(function(h){return h.s>=3;});
     ansEl.innerHTML=hits.length
-      ? '<div class="riq-card"><div class="riq-lab">Gopher iQ</div>'+hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join('')+'</div>'
-      : '<div class="riq-card"><div class="riq-lab">Gopher iQ</div><p class="riq-aa">I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.</p></div>';
+      ? card(hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join(''))
+      : card('<p class="riq-aa">I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.</p>');
     ansEl.removeAttribute('hidden');
   }
   sheet.querySelector('[data-rfq-go]').onclick=ask;
