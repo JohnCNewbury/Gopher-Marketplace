@@ -586,6 +586,8 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rq-lp{flex:0 0 auto;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;border-radius:7px;margin-top:1px;}
   .rq-lp.pick{background:#E8F5EE;color:#1CB061;}
   .rq-lp.drop{background:#E9F1FC;color:#002461;}
+  .rq-navbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:99px;padding:5px 11px;font-family:'Nunito';font-weight:800;font-size:10.5px;cursor:pointer;}
+  .rq-navbtn svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;}
   .jl-sort{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;margin:6px 0 2px;scrollbar-width:none;}
   .jl-sort::-webkit-scrollbar{display:none;}
   .jl-chip{flex:0 0 auto;border:1px solid #E2DCCB;background:#fff;color:#3A4D74;font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border-radius:999px;cursor:pointer;white-space:nowrap;}
@@ -1980,11 +1982,22 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // location — a destination-only request (e.g. day labor at one site) has NO pick-up: show one row.
       const hasPickup = !!(j.pickup && String(j.pickup).trim());
       const dropLabel = hasPickup ? 'Drop-off' : 'Location';
-      const pickRow = '<div class="rq-locrow"><span class="rq-lp pick">Pick-up</span><div>'
-        +(rv?'1240 Hillsborough St, Raleigh':'General area &middot; <i>exact address unlocks on accept</i>')+'</div></div>';
-      const dropRow = '<div class="rq-locrow"><span class="rq-lp drop">'+dropLabel+'</span><div>'
-        +(rv?'88 Morgan St, Durham':'General area &middot; <i>exact address unlocks on accept</i>')+'</div></div>';
+      const pickAddr='1240 Hillsborough St, Raleigh', dropAddr='88 Morgan St, Durham';
+      // Navigate (live-app parity): once the worker is ON the job, each revealed address gets a
+      // turn-by-turn handoff button. Navigation runs in the phone's maps app; the live location
+      // feed to the requester is NEVER interrupted by it (critical — they must always see the
+      // Gopher's location). The nav icon + reassurance copy live in openNavigate().
+      const canNav = !!(j.accepted && rv && !j.cancelled && !j.noShow && j.substage!=='completed');
+      const navBtn = t=>canNav?'<button class="rq-navbtn js-nav" data-navto="'+t+'"><svg viewBox="0 0 24 24"><path d="M12 2l7 20-7-5-7 5z"/></svg>Navigate</button>':'';
+      const pickRow = '<div class="rq-locrow"><span class="rq-lp pick">Pick-up</span><div style="flex:1;">'
+        +(rv?pickAddr:'General area &middot; <i>exact address unlocks on accept</i>')+'</div>'+navBtn('pick-up')+'</div>';
+      const dropRow = '<div class="rq-locrow"><span class="rq-lp drop">'+dropLabel+'</span><div style="flex:1;">'
+        +(rv?dropAddr:'General area &middot; <i>exact address unlocks on accept</i>')+'</div>'+navBtn(dropLabel.toLowerCase())+'</div>';
       const loc = (hasPickup?pickRow:'')+dropRow;
+      // Navigating state — visible on the detail so it's evident sharing continues during turn-by-turn.
+      const navNote = (canNav && j.navigating)
+        ? '<div class="rq-prio" style="background:#eef4ff;border-color:#cdd9f0;"><span class="rq-ri">'+sv(I.pin)+'</span><b>Navigating to the '+String(j.navigating.to||'').toLowerCase()+'</b> &mdash; your live location keeps streaming to '+who+' while you navigate.</div>'
+        : '';
       /* MAP: stylized placeholder for the live Google Maps embed (integration in progress).
          Swap rqMap below for the Maps render. Preserve the privacy treatment — show approximate
          ZONES, not exact pins, until the address is revealed (rv===true) — and keep the
@@ -2134,6 +2147,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="rq-sec">The task</div><div class="rq-card rq-task"><div class="rq-tt">'+(j.cat||'Request')+(j.biz?(' &middot; '+j.biz):'')+'</div><p>'+(j.scope||'See requester notes after you accept.')+'</p></div>'
         +'<div class="rq-sec">What&#8217;s required</div><div class="rq-reqs">'+reqs+'</div>'
         +'<div class="rq-sec">Location</div><div class="rq-card rq-loc">'+loc+'</div>'
+        +navNote
         +'<div class="rq-card rq-map">'+rqMap+'<div class="rq-mapnote">'+sv(I.lock)+(rv?(hasPickup?'Pick-up &amp; drop-off areas':'Job location'):(hasPickup?'Approximate areas &middot; exact pins unlock on accept':'Approximate area &middot; exact pin unlocks on accept'))+'</div></div>'
         // Action buttons (bid / counter / accept) now render up under the pay card via bidSection/payActions.
         // Cancellation policy lives at the very bottom of the request details (per-mode copy + ToS link).
@@ -2207,6 +2221,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       };
       const tosLink=$('.js-tos'); if(tosLink) tosLink.onclick=()=>showModal('<h3>Terms of Service</h3><p>By placing a bid or accepting a request, you agree to complete it as proposed. Unapproved cancellations after acceptance may incur a cancellation fee. Full terms are available on the Gopher website.</p><button class="mclose">Close</button>');
       const upbtn=$('.js-update'); if(upbtn) upbtn.onclick=()=>openUpdateSheet(upbtn.getAttribute('data-next'));
+      [...r.querySelectorAll('.js-nav')].forEach(b=>b.onclick=()=>openNavigate(b.getAttribute('data-navto')));
       const rrbtn=$('.js-raterq'); if(rrbtn) rrbtn.onclick=()=>openRateRequester();
       // Dispute resolution CTAs — contact the requester, or fix the charge (adjust-only sheet).
       const dmsg=$('.js-dispmsg'); if(dmsg) dmsg.onclick=()=>openGoMsgSheet(goConvoForJob(j));
@@ -2310,6 +2325,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(nk==='completed' && j.ageRestricted){ ov.remove(); openAgeIdConfirm(); return; }   // age-restricted → verify recipient ID at drop-off first
         if(nk==='completed' && !j.ageRestricted && (/delivery|errand/i.test(j.cat||'') || +j.cost>0)){ ov.remove(); openCompletionPhotos(); return; }   // delivery → optional drop-off photos
         j.substage=nk;                    // shared-store write — the harness reflects it on the requester's card
+        j.navigating=null;                // status advance = you arrived — turn-by-turn done (location sharing itself never stopped)
         ov.remove(); draw();
         toast(nk==='completed' ? 'Job marked complete — '+who+' can now confirm &amp; rate you'
               : (nk==='items' ? 'Marked — the requester can see it' : 'You’re on the job — the requester can see it'));
@@ -2362,7 +2378,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // Age-restricted delivery — verify the recipient's ID at drop-off before completing (G40-116).
     // TrustShield holders are pre-verified (ID on file); everyone else needs an on-site physical-ID check.
     function openAgeIdConfirm(){
-      function done(method){ j.substage='completed'; j.ageVerified=method; draw();
+      function done(method){ j.substage='completed'; j.ageVerified=method; j.navigating=null; draw();
         toast('ID verified — items released. '+who+' can now confirm &amp; rate.'); }
       if(j.trustShield){
         const ov=showModal(
@@ -2411,7 +2427,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         rp.disabled=false; rp.textContent='Report as No Show';
         rp.style.border='1.5px solid #C44257'; rp.style.background='#fff'; rp.style.color='#C44257'; rp.style.cursor='pointer';
         if(hint) hint.innerHTML='Window expired — report the no-show (you&#8217;re paid in full, items not released) or keep waiting.'; }
-      function finishNoShow(){ clearInterval(tick); j.noShow=1; j.noShowActive=0; j.substage='completed'; if(ov&&ov.remove) ov.remove(); draw();
+      function finishNoShow(){ clearInterval(tick); j.noShow=1; j.noShowActive=0; j.substage='completed'; j.navigating=null; if(ov&&ov.remove) ov.remove(); draw();
         toast('Reported as no-show — you&#8217;re paid in full; items not released.'); }
       ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
       rp.onclick=()=>{ if(rp.disabled) return; finishNoShow(); };   // pay-affecting — unreachable before 0:00
@@ -2424,7 +2440,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     }
     function openCompletionPhotos(){
       var photos=[];
-      function complete(){ j.completionPhotos=photos.slice(); j.substage='completed'; draw();
+      function complete(){ j.completionPhotos=photos.slice(); j.substage='completed'; j.navigating=null; draw();
         toast(photos.length?('Job complete — '+photos.length+' photo'+(photos.length>1?'s':'')+' shared with '+who):('Job marked complete — '+who+' can now confirm &amp; rate you')); }
       const ov=showModal(
         '<h3>Add completion photos</h3>'
@@ -2449,6 +2465,27 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       submitB.onclick=()=>{ ov.remove(); complete(); };
       ov.querySelector('.js-cpskip').onclick=()=>{ photos=[]; ov.remove(); complete(); };
       renderTiles(); syncSubmit();
+    }
+    // Navigate (live-app parity) — hands off to the phone's maps app for turn-by-turn to the
+    // pick-up or drop-off. CRITICAL: starting navigation must NEVER cut the live location feed —
+    // the requester keeps seeing the Gopher's location the whole time (sharing runs independent
+    // of the maps handoff). The modal says so explicitly; the harness relays the nav state so
+    // the requester's card shows "navigating · live location on".
+    function openNavigate(target){
+      const addr = /pick/i.test(target||'') ? '1240 Hillsborough St, Raleigh' : '88 Morgan St, Durham';   // same demo addresses the location rows show
+      const ov=showModal(
+        '<h3>Navigate to the '+String(target||'').toLowerCase()+'</h3>'
+        +'<p style="text-align:center;font-family:Nunito;font-weight:800;color:#002461;">'+addr+'</p>'
+        +'<div style="margin:10px 0;padding:10px 12px;border:1px solid #bfe6cd;border-radius:11px;background:#f3faf5;font-family:\'DM Sans\',sans-serif;font-size:12px;color:#0a7d44;line-height:1.5;"><b>&#128737;&#65039; Live location stays ON.</b> Turn-by-turn opens in your maps app while Gopher keeps streaming your location to '+who+' in the background &mdash; navigating never pauses their live view.</div>'
+        +'<button class="js-navgo" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Open turn-by-turn &#8594;</button>'
+        +'<span class="mlink js-navx" style="margin-top:10px;">Not now</span>');
+      ov.querySelector('.js-navx').onclick=()=>ov.remove();
+      ov.querySelector('.js-navgo').onclick=()=>{
+        // shared-store write — the harness relays it so the requester's card shows the nav state
+        j.navigating={ to:target, addr:addr, seq:((j.navigating&&j.navigating.seq)||0)+1 };
+        ov.remove(); draw();
+        toast('&#129517; Navigating to the '+String(target||'').toLowerCase()+' — '+who+' still sees your live location');
+      };
     }
     // Cancel — the Gopher is warned a cancellation fee may apply per terms and must give a reason.
     function openCancelRequest(){

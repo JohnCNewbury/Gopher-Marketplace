@@ -898,6 +898,10 @@ function statusText(r){
   if(_lf>0) return '⏳ <b>'+_wn+' is at the drop-off waiting</b> · '+Math.floor(_lf/60)+':'+('0'+(_lf%60)).slice(-2)+' left to verify your ID';
   return '<span class="attn-ic">⚠</span><b>ID window expired</b> · '+_wn+' may report a No Show';
  }
+ // Turn-by-turn nav (live-app parity): the worker navigating in their maps app NEVER interrupts
+ // the location feed — the card says so explicitly so the requester knows tracking is still live.
+ if(r.stage==='active' && r.navTo && r.substage!=='completed' && r.substage!=='rated' && !r.noShow)
+  return '🧭 <b>'+(r.hired||'Your Gopher')+' is navigating to the '+String(r.navTo).toLowerCase()+'</b> · live location on';
  if(r.stage==='matched') return 'Matched with <b>'+(r.hired||'a Gopher')+'</b> · arriving ~12 min';
  if(r.stage==='active' && r.substage){
   var _who=r.hired||'your Gopher';

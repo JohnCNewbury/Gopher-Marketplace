@@ -103,6 +103,7 @@
   var noShowDone={};    // GReq order id -> true (no-show completion already relayed)
   var disputeSeen={};   // GReq order id -> last dispute seq relayed to the Gopher
   var goCancelSeen={};  // GReq order id -> true (Gopher's cancellation already relayed to Request)
+  var navSeen={};       // GReq order id -> last navigation seq relayed to Request (nav state on the card)
   var reqCancelSeen={}; // GReq order id -> last reqCancelSeq relayed to Go (requester cancel/repost)
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
   var DEMO_GOPHER='Marcus';  // the one Gopher on the Go phone; a provider deal only surfaces here when it's directed to them
@@ -242,7 +243,7 @@
           if(job && job.accepted && job.substage && statusSeen[id]!==job.substage && !job.noShow){   // no-show is relayed by watchNoShow instead
             var r=l.GReq.get(id); if(!r){ continue; }   // request not ready — retry next tick
             statusSeen[id]=job.substage;
-            var patch={ stage:'active', substage:job.substage };
+            var patch={ stage:'active', substage:job.substage, navTo:null };   // a status advance ends any turn-by-turn nav state
             if(job.substage==='completed'){ patch.attention={ type:'confirm',
               label:(r.hired||'Your Gopher')+' marked the job complete — confirm or report' };
               if(job.completionPhotos && job.completionPhotos.length) patch.completionPhotos=job.completionPhotos.slice(); }   // drop-off photos → requester confirm screen
@@ -256,6 +257,32 @@
             if(GB[job.substage]) reqBanner(GB[job.substage][0],GB[job.substage][1]);
             status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
               +(job.substage==='completed'?' Open the request card on the left and tap <b>Rate now</b>.':''));
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Go → shared store → Request: the worker opened TURN-BY-TURN NAVIGATION to the pick-up or
+        drop-off. CRITICAL invariant (live-app parity): navigation NEVER interrupts the live location
+        feed — the requester's card flips to "navigating · live location on", proving the feed stays
+        alive while the worker is inside their maps app. A status advance ends the nav state. ── */
+  function watchNavigate(){
+    try{
+      var w=R(), l=L();
+      if(w && w.__ptJobs && l && l.GReq){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id]; var r=l.GReq.get(id); if(!r){ continue; }
+          if(job.navigating && job.navigating.seq && navSeen[id]!==job.navigating.seq){
+            navSeen[id]=job.navigating.seq;
+            l.GReq.update(id, { navTo: job.navigating.to||'stop' });
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            status('Gopher opened <b>turn-by-turn navigation</b> to the '+String(job.navigating.to||'stop').toLowerCase()+' → the requester\'s card shows it, and their <b>live location feed stays ON</b> — navigation never pauses tracking.');
+          }
+          // Nav ended (worker advanced the status / completed) → clear the card's nav line.
+          if(!job.navigating && navSeen[id] && r.navTo){
+            l.GReq.update(id, { navTo:null });
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
           }
         }
       }
@@ -598,7 +625,7 @@
   }
   if(dealsBtn){ paintDealsBtn(); dealsBtn.addEventListener('click', toggleDeals); }
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchDispute(); watchGoCancel(); watchReqCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchNavigate(); watchDispute(); watchGoCancel(); watchReqCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
