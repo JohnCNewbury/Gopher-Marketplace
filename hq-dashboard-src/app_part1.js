@@ -132,7 +132,7 @@ const NAV=[
  {grp:'Grow',items:[
    {id:'growth',name:'Growth & Acquisition',icon:'trend'},
    {id:'people',name:'Users',icon:'users'},
-   {id:'messaging',name:'Messaging',icon:'alert',pill:{t:'NEW',c:'new'}},
+   {id:'messaging',name:'Campaigns',icon:'alert',pill:{t:'NEW',c:'new'}},
    {id:'revenue',name:'Revenue',icon:'dollar'},
  ]},
  {grp:'Platforms',items:[
@@ -158,8 +158,8 @@ const NAV=[
  ]},
  {grp:'Listen',items:[
    {id:'quality',name:'Quality & Safety',icon:'shield'},
-   {id:'cancellations',name:'Cancellation Alerts',icon:'tag'},
-   {id:'inapp',name:'Message Alerts',icon:'alert'},
+   {id:'cancellations',name:'Cancellation Review',icon:'tag'},
+   {id:'inapp',name:'Message Review',icon:'alert'},
    {id:'reviews',name:'Ratings/Reviews',icon:'reviews'},
    {id:'support',name:'Support',icon:'chat',pill:{t:'ex-Reports',c:''}},
  ]},
@@ -221,7 +221,7 @@ function buildNav(){
 }
 
 const TITLES={
- snapshot:['Operate','Daily Snapshot','New users and orders at a glance — yesterday, last 7/30 days, lifetime, against prior periods.'],
+ snapshot:['Operate','Daily Snapshot','The operational view — yesterday and the last 7/30 days against prior periods. Lifetime lives on Overview.'],
  overview:['Operate','Overview','The one screen that answers “how is Gopher doing right now?”'],
  health:['Operate','Marketplace Health','Supply, demand, and the fulfillment gap that decides everything.'],
  orders:['Operate','Orders','Every request in one place — filter, search, and export in seconds.'],
@@ -234,7 +234,7 @@ const TITLES={
  'p-deal':['Platforms','Gopher Deals','Sponsored, pre-filled jobs that seed demand.'],
  'p-rewards':['Platforms','Gopher Rewards','Loyalty & retention — planned for early 2027.'],
  quality:['Listen','Quality & Safety','Ratings, flags, and the trust signals worth watching.'],
- inapp:['Listen','Message Alerts','Flagged in-app messages — language, threats, and off-platform attempts.'],
+ inapp:['Listen','Message Review','Flagged in-app messages — language, threats, and off-platform attempts.'],
  support:['Listen','Support inbox','User-reported issues. (This is what the old panel mislabeled “Reports.”)'],
  gamechanger:['Tools','Game Changer','The single highest-leverage move, backed by your data.'],
  greenboard:['Tools','Green Board','Your always-on strategy desk — ask iQ anything about the business.'],

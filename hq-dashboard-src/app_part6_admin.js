@@ -257,7 +257,7 @@
     ADMIN_ITEMS.forEach(function (it) { TITLES[it.id] = ['Admin', it.name, it.sub]; });
   }
   if (typeof NAV !== 'undefined' && !NAV.some(function (g) { return g.grp === 'Admin'; })) {
-    NAV.push({ grp: 'Admin', collapsible: true, collapsed: false, items: ADMIN_ITEMS.map(function (it) { return { id: it.id, name: it.name, icon: it.icon }; }) });
+    NAV.push({ grp: 'Admin', collapsible: true, collapsed: true, items: ADMIN_ITEMS.map(function (it) { return { id: it.id, name: it.name, icon: it.icon }; }) });
   }
   if (typeof buildNav === 'function') buildNav();
   if (location.hash && typeof go === 'function' && ADMIN_ITEMS.some(function (it) { return '#' + it.id === location.hash; })) {

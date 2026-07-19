@@ -183,7 +183,7 @@ VIEWS.growth=()=>{
   // requester funnel
   const f=M.funnel_requester;const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.blue,C.green,C.amber];
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(8,f.values[i]/maxf*100);
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${fmt(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b>`:''}</div>`;fw.appendChild(st);});
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${fmt(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of registered`:''}</div>`;fw.appendChild(st);});
   const fCard=card('Requester activation funnel','Registration → first completed request. The drop from “logged in” to “placed” is the money leak.',fw);
   v.appendChild((()=>{const g=el('div','row g2');g.appendChild(fCard);g.appendChild(acqCard);return g;})());
 
@@ -481,10 +481,18 @@ VIEWS.revenue=()=>{
   const v=el('div');const fo=gfOrders();const t=gfTotals(fo);const m=monthly();
   const gn=gfNote();if(gn)v.appendChild(gn);
   const k=el('div','row kpis');
-  k.appendChild(kpi(gfActive()?'GMV (filtered)':'Lifetime GMV',money(t.gmv),`${num(t.completed)} completed orders`,{dot:C.green,spark:m.slice(-12).map(d=>d.gmv)}));
-  k.appendChild(kpi('Net revenue',money(t.net_rev),'fees after Stripe',{dot:C.blue,spark:m.slice(-12).map(d=>d.net)}));
-  k.appendChild(kpi('Take rate',t.take_rate+'%','net revenue ÷ GMV',{dot:C.violet}));
-  k.appendChild(kpi('Net / order',moneyFull(t.avg_net),'avg per completed order',{dot:C.amber}));
+  if(!gfActive()){
+    const {cur,prev}=cur30();
+    k.appendChild(kpi('GMV · last 30 days',money(cur.gmv),`${d30(cur.gmv,prev.gmv)} · lifetime ${money(t.gmv)}`,{dot:C.green,spark:m.slice(-12).map(d=>d.gmv)}));
+    k.appendChild(kpi('Net revenue · last 30 days',money(cur.net_rev),`${d30(cur.net_rev,prev.net_rev)} · lifetime ${money(t.net_rev)}`,{dot:C.blue,spark:m.slice(-12).map(d=>d.net)}));
+    k.appendChild(kpi('Take rate · last 30 days',cur.take_rate+'%',`net revenue ÷ GMV · lifetime ${t.take_rate}%`,{dot:C.violet}));
+    k.appendChild(kpi('Net / order · last 30 days',moneyFull(cur.avg_net),`avg per completed order · lifetime ${moneyFull(t.avg_net)}`,{dot:C.amber}));
+  } else {
+    k.appendChild(kpi('GMV (filtered)',money(t.gmv),`${num(t.completed)} completed orders`,{dot:C.green,spark:m.slice(-12).map(d=>d.gmv)}));
+    k.appendChild(kpi('Net revenue',money(t.net_rev),'fees after Stripe',{dot:C.blue,spark:m.slice(-12).map(d=>d.net)}));
+    k.appendChild(kpi('Take rate',t.take_rate+'%','net revenue ÷ GMV',{dot:C.violet}));
+    k.appendChild(kpi('Net / order',moneyFull(t.avg_net),'avg per completed order',{dot:C.amber}));
+  }
   v.appendChild(k);
 
   // GMV + net dual line
@@ -512,7 +520,11 @@ VIEWS.revenue=()=>{
     {label:`Age-restricted · ${money(fees.age_fee)}`,color:C.red},
     {label:`Gopher fee · ${money(fees.gopher_fee)}`,color:C.blue},
   ]));
-  fw.appendChild(el('div','note',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>Instant-transfer fees dominate revenue — gophers want fast payouts. Lifetime, Stripe takes ${money(M.fees.stripe)} and promos cost ${money(M.fees.promo)}.`));
+  const _gross=fees.instant_transfer+fees.age_fee+fees.gopher_fee;
+  const _netForRecon=gfActive()?t.net_rev:M.totals.net_rev;
+  const _stripeR=gfActive()?0:M.fees.stripe, _promoR=gfActive()?0:M.fees.promo;
+  const _waived=Math.max(0,Math.round(_gross-_stripeR-_promoR-_netForRecon));
+  fw.appendChild(el('div','note',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>Instant-transfer fees dominate revenue — gophers want fast payouts. All figures are <b>delivered orders only</b> (fees quoted on cancelled/expired orders were never charged).${gfActive()?'':` Reconciliation: gross fees ${money(_gross)} − Stripe ${money(M.fees.stripe)} − promos ${money(M.fees.promo)} − refunded/waived fees ${money(_waived)} (mostly instant-transfer fee refunded when the gopher takes a standard payout) = net revenue ${money(_netForRecon)}.`}`));
   const feeCard=card('Where revenue comes from','Gross fees on completed orders, before Stripe.',fw);
 
   // by category financials

@@ -64,9 +64,15 @@ VIEWS['p-request']=()=>{
 
   const k=el('div','row kpis');
   k.appendChild(kpi('Requesters',num(M.people.requesters+M.people.both),`lifetime accounts · +${num(new90)} in the last 90 days`,{dot:C.blue}));
-  k.appendChild(kpi('Requests placed',num(t.orders),gfActive()?gfLabel():'all time',{dot:C.blue}));
-  k.appendChild(kpi('Completion',t.completion_rate+'%','of requests reach delivered',{dot:C.amber}));
-  k.appendChild(kpi('Repeat requesters',(evers?(repeat/evers*100).toFixed(1):'0.0')+'%',`${num(repeat)} of ${num(evers)} who ever ordered came back`,{dot:C.green}));
+  if(!gfActive()){
+    const {cur,prev}=cur30();
+    k.appendChild(kpi('Requests placed · last 30 days',num(cur.orders),`${d30(cur.orders,prev.orders)} · lifetime ${num(t.orders)}`,{dot:C.blue}));
+    k.appendChild(kpi('Completion · last 30 days',cur.completion_rate+'%',`prior 30d ${prev.completion_rate}% · lifetime ${t.completion_rate}%`,{dot:C.amber}));
+  } else {
+    k.appendChild(kpi('Requests placed',num(t.orders),gfLabel(),{dot:C.blue}));
+    k.appendChild(kpi('Completion',t.completion_rate+'%','of requests reach delivered',{dot:C.amber}));
+  }
+  k.appendChild(kpi('Repeat requesters',(evers?(repeat/evers*100).toFixed(1):'0.0')+'%',`${num(repeat)} of ${num(evers)} who ever placed a request placed ≥2 (lifetime)`,{dot:C.green}));
   v.appendChild(k);
 
   v.appendChild(storesNote('customer'));
@@ -126,16 +132,16 @@ VIEWS['p-go']=()=>{
   const f=M.funnel_gopher;
   const gophU=USR.filter(u=>u.role==='Gopher'||u.role==='Both');
   const k=el('div','row kpis');
-  k.appendChild(kpi('Gophers',num(M.people.gophers+M.people.both),'lifetime',{dot:C.green}));
-  k.appendChild(kpi('Stripe verified',num(M.verification.stripe_gopher),'can be paid out',{dot:C.amber}));
-  k.appendChild(kpi('Ever completed a job',num(M.people.gophers_completed),(M.people.gophers_completed/(M.people.gophers+M.people.both)*100).toFixed(1)+'% activation',{dot:C.red}));
-  k.appendChild(kpi('Elite / Elite+',num((M.gopher_type.Pro||0)+(M.gopher_type['Pro+']||0)),'premium supply',{dot:C.violet}));
+  k.appendChild(kpi('Gophers',num(M.people.gophers+M.people.both),'lifetime signups',{dot:C.green}));
+  k.appendChild(kpi('Stripe verified',num(M.verification.stripe_gopher),`can be paid out · ${(M.verification.stripe_gopher/(M.people.gophers+M.people.both)*100).toFixed(1)}% of signups`,{dot:C.amber}));
+  k.appendChild(kpi('Ever completed a job',num(M.people.gophers_completed),(M.people.gophers_completed/(M.people.gophers+M.people.both)*100).toFixed(1)+'% of all gopher signups',{dot:C.red}));
+  k.appendChild(kpi('Elite / Elite+',num((M.gopher_type.Elite||M.gopher_type.Pro||0)+(M.gopher_type['Elite+']||M.gopher_type['Pro+']||0)),'premium supply tiers',{dot:C.violet}));
   v.appendChild(k);
 
   // supply funnel
   const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.amber,C.green];
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(8,f.values[i]/maxf*100);
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b>`:''}</div>`;fw.appendChild(st);});
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;fw.appendChild(st);});
   v.appendChild(card('Supply funnel','Sign-up → verified → active. Closing this funnel is the highest-leverage growth move at Gopher.',fw));
 
   v.appendChild(storesNote('worker'));
@@ -143,7 +149,7 @@ VIEWS['p-go']=()=>{
 
   const g=el('div','row g2');
   g.appendChild(donutCard('Worker accounts by device','Which devices the supply side signs up on (lifetime).',devBreakdown(gophU,u=>u.dev)));
-  g.appendChild(donutCard('Supply quality mix','Worker tier distribution across the lifetime base.',Object.entries(M.gopher_type||{}).sort((a,b)=>b[1]-a[1])));
+  g.appendChild(donutCard('Worker tier mix','Worker tier distribution across the lifetime base (tier ≠ measured quality).',Object.entries(M.gopher_type||{}).sort((a,b)=>b[1]-a[1])));
   v.appendChild(g);
 
   // coverage — where supply meets (or misses) demand
@@ -175,9 +181,9 @@ VIEWS['p-go']=()=>{
   // marketplace engagement
   const mkp=M.marketplace;
   const g3=el('div','row g3');
-  g3.appendChild(kpi('Offers made',num(mkp.offers),`${(mkp.offers_accepted/mkp.offers*100).toFixed(0)}% accepted`,{dot:C.green}));
-  g3.appendChild(kpi('Declines',num(mkp.declines),'jobs passed on',{dot:C.red}));
-  g3.appendChild(kpi('Counter-offers',num(mkp.counters),'price negotiation',{dot:C.amber}));
+  g3.appendChild(kpi('Offers made',num(mkp.offers),`${(mkp.offers_accepted/mkp.offers*100).toFixed(0)}% accepted by requesters`,{dot:C.green}));
+  g3.appendChild(kpi('Declines',num(mkp.declines),'requests gophers explicitly declined',{dot:C.red}));
+  g3.appendChild(kpi('Counter-offers',num(mkp.counters),`${(mkp.counters_accepted/mkp.counters*100).toFixed(0)}% accepted by requesters`,{dot:C.amber}));
   v.appendChild(g3);
   return v;
 };
@@ -244,7 +250,10 @@ VIEWS['p-deal']=()=>{
   const ph=el('div','placeholder');ph.innerHTML=`<div class="pi"><svg viewBox="0 0 24 24" width="26" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/></svg></div><h3>Deal performance tracking</h3><p>Ready to track redemptions, fee subsidy spend (the waived fees + 10% boosts), and the conversion lift each deal creates — the numbers that prove whether Deals is buying real, repeat demand. Awaiting the first deal redemptions in the data feed.</p>`;
   v.appendChild(card('Deal economics',null,ph));
 
-  // 2 · Live + Pending merchant deals
+  // 2 · Live + Pending merchant deals — everything below is SAMPLE data until the live feed is wired
+  v.appendChild((()=>{const b=el('div','banner');b.style.cssText='border-color:#e3b341;background:linear-gradient(180deg,#fff8e8,#fffdf6)';
+    b.innerHTML=`<div class="bi" style="background:#fff2d6;color:#9a6b00"><svg viewBox="0 0 24 24" width="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 20h20L12 3Zm0 6v5m0 3h.01"/></svg></div>
+    <div><h4>Sample data below — not operating data.</h4><p>The merchant deals, coverage counts, map pins, and recruiting worklist are <b>demonstration data</b> until the live Deals registration feed is wired (G40-286). Do not use these figures for merchant or market decisions. The fee schedules and page structure are real.</p></div>`;return b;})());
   if(window.renderDealsMerchants)v.appendChild(window.renderDealsMerchants('active'));
 
   // 3 · Raleigh DMA coverage + Recruiting worklist + Add merchants (manual)
@@ -295,11 +304,27 @@ VIEWS['p-rewards']=()=>{
 /* ========== QUALITY & SAFETY ========== */
 VIEWS.quality=()=>{
   const v=el('div');const r=M.ratings;
+  // Listen roll-up — Quality & Safety is the front door; the review queues report in here.
+  (()=>{
+    const lbl=el('div');lbl.style.cssText='font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:2px 2px 3px';lbl.textContent='Review queues — click to open';
+    v.appendChild(lbl);
+    const strip=el('div','row kpis');
+    const _cxCand=(typeof ORD!=='undefined'?ORD:[]).filter(o=>o.status==='cancelled'&&(o.gopherId>0||o.gopher)&&(o.inProg||o.pickedUp)).length;
+    const _cxDone=(typeof cxCalib==='function')?(cxCalib().decided||0):0;
+    const _iaOpen=(typeof iaActive==='function')?iaActive():0;
+    const mk=(label,val,meta,dot,dest)=>{const c=kpi(label,val,meta,{dot});c.style.cursor='pointer';c.onclick=()=>go(dest);strip.appendChild(c);};
+    mk('Cancellation Review',num(Math.max(0,_cxCand-_cxDone)),'after-accept cancels awaiting classification →',C.amber,'cancellations');
+    mk('Message Review',num(_iaOpen),'high-priority flagged messages awaiting review →',C.red,'inapp');
+    mk('Support inbox',num((M.support&&M.support.count)||0),'lifetime contact-us tickets →',C.blue,'support');
+    v.appendChild(strip);
+    const lbl2=el('div');lbl2.style.cssText='font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:10px 2px 3px';lbl2.textContent='Quality signals';
+    v.appendChild(lbl2);
+  })();
   const k=el('div','row kpis');
   k.appendChild(kpi('Ratings collected',num(r.count),'across orders',{dot:C.green}));
   k.appendChild(kpi('Average score',r.avg+' ★','suspiciously high',{dot:C.amber}));
   k.appendChild(kpi('Low ratings (≤3★)',num(r.low),(r.low/r.count*100).toFixed(1)+'% — the real signal',{dot:C.red}));
-  k.appendChild(kpi('Safety flags',num(M.flags.count),'lifetime · '+(M.flags.date_min||'')+'–'+(M.flags.date_max||''),{dot:C.violet}));
+  k.appendChild(kpi('Safety reports',num(M.flags.count),num(M.flags.distinct_orders)+' orders affected · '+(M.flags.date_min||'')+'–'+(M.flags.date_max||''),{dot:C.violet}));
   v.appendChild(k);
 
   // ratings dist
@@ -331,18 +356,25 @@ VIEWS.quality=()=>{
     v.appendChild(card('Verification / OTP',`One-time passcodes for phone verification — ${o.used_pct}% get entered, the rest expire (onboarding friction). Last ${bd.length} days.`,spark));
   }
 
-  // recent flags — newest first, cross-linked to order/user detail drawers
+  // recent flags — grouped into CASES (same order + same reason = one case; repeat reports become a badge)
   const rec=el('div');
-  (M.flags.recent||[]).slice(0,18).forEach(f=>{const d=el('div');d.style.cssText='padding:10px 0;border-bottom:1px solid var(--line-2)';
+  const _cases=[];const _cix={};
+  (M.flags.recent||[]).forEach(f=>{
+    const key=(f.order_id?('o'+f.order_id):('u'+(f.user_id||f.user||'')))+'|'+(f.reason||'');
+    if(_cix[key]!=null){_cases[_cix[key]].n++;return;}
+    _cix[key]=_cases.length;_cases.push(Object.assign({},f,{n:1}));
+  });
+  _cases.slice(0,18).forEach(f=>{const d=el('div');d.style.cssText='padding:10px 0;border-bottom:1px solid var(--line-2)';
     d.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
       +`<span style="font-size:10.5px;font-weight:800;color:#fff;background:${rfcol(f.reason)};padding:2px 8px;border-radius:999px">${iaEsc(f.reason)}</span>`
+      +(f.n>1?`<span style="font-size:10.5px;font-weight:800;color:#7a4d00;background:#fff2d6;border:1px solid #e3b341;padding:2px 8px;border-radius:999px">× ${f.n} reports</span>`:'')
       +`<span style="color:var(--muted-2);font-size:11px">${iaEsc(f.date)}</span></div>`
       +`<div style="margin-top:4px;font-size:12.5px"><span style="font-weight:600">${iaEsc(f.title||'—')}</span>${f.cat?` <span style="color:var(--muted)">· ${iaEsc(f.cat)}</span>`:''}</div>`
       +'<div style="margin-top:2px;font-size:12px;color:var(--muted)">'
       +(f.user?`<span class="dd-link" data-dd="user" data-id="${iaEsc(''+f.user_id)}">${iaEsc(f.user)}</span>`:'—')
       +(f.order_id?` · <span class="dd-link" data-dd="order" data-id="${iaEsc(''+f.order_id)}">order #${iaEsc(''+f.order_id)}</span>`:'')+'</div>';
     rec.appendChild(d);});
-  const recCard=card('Recent flags',`Newest first — click a user or order to open its detail. Showing ${Math.min(18,(M.flags.recent||[]).length)} of ${num(M.flags.count)}.`,rec);
+  const recCard=card('Recent flags — grouped into cases',`One row per order + reason; repeated reports on the same order collapse into a badge. Showing ${Math.min(18,_cases.length)} of ${num(_cases.length)} cases (${num(M.flags.count)} total reports).`,rec);
   v.appendChild(recCard);
   rec.querySelectorAll('.dd-link').forEach(b=>b.onclick=()=>{b.dataset.dd==='order'?openOrderDetail(b.dataset.id):openUserDetail(b.dataset.id);});
   return v;
@@ -1557,11 +1589,11 @@ VIEWS.snapshot=()=>{
   const v=el('div');
   const today=(()=>{let m=0;USR.forEach(u=>{if(u.signupDay>m)m=u.signupDay;});ORD.forEach(o=>{if(o.day>m)m=o.day;});return m;})();
   const asof=today-1;  // the export's latest day is partial (pulled mid-day) — "Yesterday" = last COMPLETE day
+  // Operational window only (yesterday / 7 / 30) — lifetime totals live on Overview, not here.
   const WIN=[
     {label:'Yesterday',lo:asof,hi:asof,sub:snapFmtDate(asof)},
     {label:'Last 7 days',lo:asof-6,hi:asof,sub:snapFmtDate(asof-6)+' – '+snapFmtDate(asof)},
     {label:'Last 30 days',lo:asof-29,hi:asof,sub:snapFmtDate(asof-29)+' – '+snapFmtDate(asof)},
-    {label:'Lifetime',lo:-1e9,hi:today,sub:'through '+snapFmtDate(today)},
   ];
   // prior window of the SAME length, calendar-shifted on the hi boundary (handles leap years / month lengths)
   function priorBounds(w,dy,dm){const ph=snapShift(w.hi,dy,dm);if(w.lo<=-1e9)return[-1e9,ph];return[ph-(w.hi-w.lo),ph];}
@@ -1583,7 +1615,7 @@ VIEWS.snapshot=()=>{
     d.innerHTML='<div style="font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:800">'+txt+'</div>'+(note?'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+note+'</div>':'');return d;}
   function block(title,data,mode,fmt,priors,opts){opts=opts||{};
     const calc=(lo,hi)=>mode==='sum'?snapSum(data,lo,hi):snapCount(data,lo,hi);
-    const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:12px';
+    const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px';
     WIN.forEach(w=>{const cur=calc(w.lo,w.hi);
       const lines=priors.map(pr=>{const b=priorBounds(w,pr.dy,pr.dm);const pv=calc(b[0],b[1]);
         return '<div style="font-size:11.5px;color:var(--muted);margin-top:3px">('+fmt(pv)+')<span style="opacity:.75"> '+pr.label+'</span>'+snapDelta(cur,pv)+'</div>';}).join('');
@@ -1595,7 +1627,7 @@ VIEWS.snapshot=()=>{
     return card(title,opts.sub||null,grid);
   }
   function placeholder(title){
-    const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:12px';
+    const grid=el('div');grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:12px';
     WIN.forEach(w=>{const cell=el('div');cell.style.cssText='border:1px dashed var(--line);border-radius:12px;padding:12px 13px;background:var(--sand)';
       cell.innerHTML='<div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:800">'+w.label+'</div>'
         +'<div style="font-size:24px;font-weight:800;color:var(--muted);margin-top:2px">—</div>'
@@ -1606,7 +1638,7 @@ VIEWS.snapshot=()=>{
 
   const head=el('div','card');head.style.cssText='display:flex;align-items:center;gap:13px;background:linear-gradient(135deg,#0B1A2B,#13283E 60%,#181140);border:none;color:#fff;padding:20px 24px';
   head.innerHTML='<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,'+C.greenB+','+C.green+');display:grid;place-items:center"><svg viewBox="0 0 24 24" width="20" fill="none" stroke="#04230f" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></div>'
-    +'<div><div style="font-weight:800;font-size:18px">Daily Snapshot</div><div style="font-size:12.5px;color:#9fb3c4">Data through <b style="color:#fff">'+snapFmtDate(today)+'</b> (today — still in progress, so excluded from the day/7/30 windows). “Yesterday” = the last <b style="color:#fff">complete</b> day, '+snapFmtDate(asof)+'; 7/30-day windows end there. Lifetime is cumulative through today. Prior periods are the same-length window, calendar-shifted.</div></div>';
+    +'<div><div style="font-weight:800;font-size:18px">Daily Snapshot</div><div style="font-size:12.5px;color:#9fb3c4">What happened in the last day / 7 / 30 — the operational view. Data through <b style="color:#fff">'+snapFmtDate(today)+'</b> (today — still in progress, so excluded). “Yesterday” = the last <b style="color:#fff">complete</b> day, '+snapFmtDate(asof)+'; 7/30-day windows end there. Prior periods are the same-length window, calendar-shifted. Lifetime totals live on <b style="color:#fff">Overview</b>.</div></div>';
   v.appendChild(head);
 
   v.appendChild(section('Section 1 · User Adds','Net new <b>active</b> users by product/role (status = Active), by signup date. Parenthetical = same window one year earlier.'));
@@ -1639,7 +1671,7 @@ VIEWS.snapshot=()=>{
     +'Connect &amp; Deal lines are placeholders: those products have no users in the export yet. '
     +'Order metrics: <b>placed</b> = orders created in the window (any status); <b>completed</b> = delivered; <b>GMV</b> = gross value of delivered orders (not net take). '
     +'Prior-year figures on status-based rows reflect each cohort\'s <b>current</b> status (a point-in-time export has no status history), so they understate past churn. '
-    +'Windows are inclusive and prior periods are the same length, shifted by calendar month/year. The current day ('+snapFmtDate(today)+') is partial and is excluded from the day/7/30-day windows (it only counts toward Lifetime); numbers are static to this export, not the wall-clock date.</span>';
+    +'Windows are inclusive and prior periods are the same length, shifted by calendar month/year. The current day ('+snapFmtDate(today)+') is partial and is excluded from the day/7/30-day windows; lifetime totals live on the Overview page. Numbers are static to this export, not the wall-clock date.</span>';
   v.appendChild(note);
   return v;
 };
@@ -2945,7 +2977,7 @@ VIEWS.messaging=function(){
 
   return v;
 };
-TITLES.messaging=['Grow','Messaging','Filter any audience and send push, SMS, email, or in-app messages — with a cost estimate before you send.'];
+TITLES.messaging=['Grow','Campaigns','Build an audience and send push, SMS, email, or in-app campaigns — with a cost estimate before you send.'];
 
 TITLES.order=['Operate','Order details','Full record for a single order — request, charges, communication and log.'];
 /* =================== END FULL-PAGE ORDER DETAILS =================== */
@@ -3494,7 +3526,7 @@ VIEWS.cancellations=function(){
 
   return v;
 };
-TITLES.cancellations=['Listen','Cancellation Alerts','Gopher cancellations after accepting \u2014 classify fee / no-fee / excused; iQ learns the patterns.'];
+TITLES.cancellations=['Listen','Cancellation Review','Gopher cancellations after accepting \u2014 classify fee / no-fee / excused; iQ learns the patterns.'];
 
 VIEWS.reviews=()=>{
   const v=el('div');
@@ -3593,7 +3625,7 @@ const EXPORT_VIEWS={overview:1,health:1,revenue:1,growth:1,'p-request':1,'p-go':
 function renderTopFilters(id){
   const box=$('#filters');if(!box)return;
   const keys=VIEW_FILTERS[id]||[];
-  const rangeOpts=`<option value="all">All time</option><option value="12">Last 12 mo</option><option value="6">Last 6 mo</option><option value="3">Last 3 mo</option>`;
+  const rangeOpts=`<option value="all">All time</option><option value="12">Last 12 mo</option><option value="6">Last 6 mo</option><option value="3">Last 3 mo</option><option value="1">Last 30 days</option>`;
   let h='';
   if(keys.includes('range')) h+=`<div class="fl"><label>Range</label><select id="f-range">${rangeOpts}</select></div>`;
   if(keys.includes('market')) h+=`<div class="fl"><label>Market</label><select id="f-market"><option value="all">All markets</option>${(M.order_states_present||[]).map(s=>`<option>${s}</option>`).join('')}</select></div>`;

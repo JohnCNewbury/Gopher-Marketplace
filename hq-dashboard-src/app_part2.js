@@ -48,6 +48,19 @@ function gfStatusTrend(rows){
 /* ---- helper: monthly slice respecting global filter ---- */
 function monthly(){return gfMonthly(gfOrders());}
 
+/* ---- current-period engine (current-first, lifetime-second) ----
+   Trailing-30-day + prior-30-day totals, anchored to the newest order day in the export.
+   Respects Market/Platform filters but ignores Range — used for headline KPIs when the
+   user hasn't picked an explicit Range (GF.range==='all'). */
+function cur30(){
+  let r=ORD; const F=window.GF||{};
+  if(F.market&&F.market!=='all') r=r.filter(o=>o.state===F.market);
+  if(F.platform&&F.platform!=='all'&&F.platform!=='Request') r=r.filter(()=>false);
+  const mx=ORD.reduce((a,o)=>o.day>a?o.day:a,0);
+  return {cur:gfTotals(r.filter(o=>o.day>mx-30)),prev:gfTotals(r.filter(o=>o.day>mx-60&&o.day<=mx-30))};
+}
+function d30(cur,prev){if(!prev)return '';return trendTag((cur-prev)/prev*100)+' vs prior 30d';}
+
 /* ========== OVERVIEW ========== */
 VIEWS.overview=()=>{
   const v=el('div');
@@ -85,13 +98,21 @@ VIEWS.overview=()=>{
   const kgrp=tt=>{const d=el('div');d.style.cssText='font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:6px 2px 3px';d.textContent=tt;return d;};
   const finHint=(M._expenses?'From master file':'Add data in Financials');
 
-  // Row 1 — Marketplace
+  // Row 1 — Marketplace (current-first: last 30 days headline, lifetime as context)
   v.appendChild(kgrp('Marketplace'));
   const k1=el('div','row kpis');
-  k1.appendChild(kpi(gfActive()?'GMV (filtered)':'GMV',money(t.gmv),`${num(t.completed)} completed orders`,{dot:C.green,spark:mm.slice(-12).map(d=>d.gmv)}));
-  k1.appendChild(kpi('Revenue',money(t.net_rev),`${t.take_rate}% take · ${money(t.avg_net)}/order`,{dot:C.blue,spark:mm.slice(-12).map(d=>d.net)}));
-  k1.appendChild(kpi('Completed requests',num(t.completed),`of ${num(t.orders)} placed`,{dot:C.green,spark:mm.slice(-12).map(d=>d.completed)}));
-  k1.appendChild(kpi('Completion rate',t.completion_rate+'%','delivered ÷ all requests',{dot:C.amber,spark:mm.slice(-12).map(d=>d.comp_rate)}));
+  if(!gfActive()){
+    const {cur,prev}=cur30();
+    k1.appendChild(kpi('GMV · last 30 days',money(cur.gmv),`${d30(cur.gmv,prev.gmv)} · lifetime ${money(t.gmv)}`,{dot:C.green,spark:mm.slice(-12).map(d=>d.gmv)}));
+    k1.appendChild(kpi('Revenue · last 30 days',money(cur.net_rev),`${d30(cur.net_rev,prev.net_rev)} · lifetime ${money(t.net_rev)}`,{dot:C.blue,spark:mm.slice(-12).map(d=>d.net)}));
+    k1.appendChild(kpi('Completed · last 30 days',num(cur.completed),`of ${num(cur.orders)} placed · lifetime ${num(t.completed)}`,{dot:C.green,spark:mm.slice(-12).map(d=>d.completed)}));
+    k1.appendChild(kpi('Completion · last 30 days',cur.completion_rate+'%',`prior 30d ${prev.completion_rate}% · lifetime ${t.completion_rate}%`,{dot:C.amber,spark:mm.slice(-12).map(d=>d.comp_rate)}));
+  } else {
+    k1.appendChild(kpi('GMV (filtered)',money(t.gmv),`${num(t.completed)} completed orders`,{dot:C.green,spark:mm.slice(-12).map(d=>d.gmv)}));
+    k1.appendChild(kpi('Revenue',money(t.net_rev),`${t.take_rate}% take · ${money(t.avg_net)}/order`,{dot:C.blue,spark:mm.slice(-12).map(d=>d.net)}));
+    k1.appendChild(kpi('Completed requests',num(t.completed),`of ${num(t.orders)} placed`,{dot:C.green,spark:mm.slice(-12).map(d=>d.completed)}));
+    k1.appendChild(kpi('Completion rate',t.completion_rate+'%','delivered ÷ all requests',{dot:C.amber,spark:mm.slice(-12).map(d=>d.comp_rate)}));
+  }
   v.appendChild(k1);
 
   // Row 2 — Customers & workers
@@ -180,10 +201,17 @@ VIEWS.health=()=>{
   const v=el('div');
   const fo=gfOrders(); const t=gfTotals(fo);
   const gn=gfNote();if(gn)v.appendChild(gn);
-  // gauge + supply funnel
-  const gw=el('div','gauge-wrap');const gauges=el('div');gauges.appendChild(gauge(t.completion_rate));
+  // gauge + supply funnel — headline = last 30 days (current health), lifetime = context
+  const _h30=gfActive()?null:cur30();
+  const _hRate=_h30?_h30.cur.completion_rate:t.completion_rate;
+  const gw=el('div','gauge-wrap');const gauges=el('div');gauges.appendChild(gauge(_hRate));
   gw.appendChild(gauges);
-  gw.appendChild(el('div',null,`<div class="gauge-num" style="color:${t.completion_rate<40?C.red:C.amber}">${t.completion_rate}%</div><div class="gauge-sub">of requests complete. The remaining <b>${num(t.cancelled+t.expired)}</b> are lost to cancellations and expirations (no gopher accepted in time).</div>`));
+  if(_h30){
+    const _lost30=_h30.cur.orders-_h30.cur.completed;
+    gw.appendChild(el('div',null,`<div class="gauge-num" style="color:${_hRate<40?C.red:C.amber}">${_hRate}%</div><div class="gauge-sub">of requests in the <b>last 30 days</b> completed (${num(_h30.cur.completed)} of ${num(_h30.cur.orders)}; <b>${num(_lost30)}</b> lost to cancellations/expirations). Prior 30d: <b>${_h30.prev.completion_rate}%</b>. Lifetime: <b>${t.completion_rate}%</b> (${num(t.cancelled+t.expired)} lost).</div>`));
+  } else {
+    gw.appendChild(el('div',null,`<div class="gauge-num" style="color:${t.completion_rate<40?C.red:C.amber}">${t.completion_rate}%</div><div class="gauge-sub">of requests complete. The remaining <b>${num(t.cancelled+t.expired)}</b> are lost to cancellations and expirations (no gopher accepted in time).</div>`));
+  }
   // Top-3 cities by completion % (min sample to avoid tiny-N noise); 3 equal cards, highest on the right
   (()=>{
     const agg={};
@@ -207,7 +235,7 @@ VIEWS.health=()=>{
       gw.appendChild(row);
     }
   })();
-  const gCard=card('Fulfillment rate',null,gw);
+  const gCard=card(_h30?'Fulfillment rate · last 30 days':'Fulfillment rate',null,gw);
   gCard.style.minHeight='380px';
 
   // supply funnel
@@ -221,7 +249,7 @@ VIEWS.health=()=>{
   const _elite=(M.gopher_type&&(M.gopher_type.Elite||M.gopher_type.Pro))||0;
   const _elitePlus=(M.gopher_type&&(M.gopher_type['Elite+']||M.gopher_type['Pro+']))||0;
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(10,f.values[i]/maxf*100);
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior`:''}</div>`;
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;
     const ll=(''+l).toLowerCase();
     if(_g6&&ll.includes('stripe')){
       const sub=el('div');sub.style.cssText='font-size:11px;color:var(--muted);margin:3px 0 0 2px';
@@ -235,7 +263,7 @@ VIEWS.health=()=>{
     const lab=pair[0],val=pair[1],col=pair[2];const w=Math.max(10,val/maxf*100);
     const pct=_completed?(val/_completed*100).toFixed(1):'0.0';
     const st=el('div','step');
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${col}">${num(val)}</div><div class="fmeta">${lab} · <b>${pct}%</b> of prior</div>`;
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${col}">${num(val)}</div><div class="fmeta">${lab} tier · <b>${pct}%</b> of gophers with ≥1 completed job (not a funnel step)</div>`;
     fw.appendChild(st);
   });
   // Pro tier — earmarked; wire when the tier launches (matches dashboard earmark convention)
@@ -246,7 +274,7 @@ VIEWS.health=()=>{
   const _topTier=_elite+_elitePlus;   // + Pro tier when it launches
   const _topPct=_completed?(_topTier/_completed*100):0;
   (()=>{const s=el('div');s.style.cssText='margin:11px 2px 2px;padding-top:10px;border-top:1px dashed var(--line,#e6eaee);font-size:12px;max-width:360px';
-    s.innerHTML=`<span style="font-weight:800;font-size:15px;color:${C.violet}">${_topPct.toFixed(1)}%</span> <span style="color:var(--muted)">of active gophers are top-tier (Elite + Elite+)${_topTier?` \u2014 <b>${num(_topTier)}</b> of ${num(_completed)}`:''}. Standard gophers are the remainder.</span>`;
+    s.innerHTML=`<span style="font-weight:800;font-size:15px;color:${C.violet}">${_topPct.toFixed(1)}%</span> <span style="color:var(--muted)">of gophers who have ever completed a job are top-tier (Elite + Elite+)${_topTier?` \u2014 <b>${num(_topTier)}</b> of ${num(_completed)}`:''}. Standard gophers are the remainder.</span>`;
     fw.appendChild(s);})();
   const supCard=card('Supply activation','Most gophers sign up and never complete a job — the leak that starves demand.',fw);
   v.appendChild((()=>{const g=el('div','row g2');g.appendChild(gCard);g.appendChild(supCard);return g;})());
@@ -288,9 +316,9 @@ VIEWS.health=()=>{
   // marketplace signals
   const mk=M.marketplace;
   const sig=el('div','row g3');
-  sig.appendChild(kpi('Gopher offers',num(mk.offers),`${num(mk.offers_accepted)} accepted · ${(mk.offers_accepted/mk.offers*100).toFixed(0)}% take`,{dot:C.green}));
-  sig.appendChild(kpi('Order declines',num(mk.declines),'gophers passing on jobs',{dot:C.red}));
-  sig.appendChild(kpi('Counter-offers',num(mk.counters),`${num(mk.counters_accepted)} progressed · price friction`,{dot:C.amber}));
+  sig.appendChild(kpi('Gopher offers',num(mk.offers),`${num(mk.offers_accepted)} accepted by the requester · ${(mk.offers_accepted/mk.offers*100).toFixed(0)}% of offers`,{dot:C.green}));
+  sig.appendChild(kpi('Order declines',num(mk.declines),'requests gophers explicitly declined',{dot:C.red}));
+  sig.appendChild(kpi('Counter-offers',num(mk.counters),`${num(mk.counters_accepted)} accepted by the requester · ${(mk.counters_accepted/mk.counters*100).toFixed(0)}% of counters`,{dot:C.amber}));
   v.appendChild(sig);
 
   // geo health table
