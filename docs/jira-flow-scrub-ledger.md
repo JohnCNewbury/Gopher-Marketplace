@@ -32,12 +32,12 @@
 
 | # | Ticket | Phase | Status | Notes |
 |---|--------|-------|--------|-------|
-| 1 | G40-6 | completion | pending | Complete Order Process bug |
+| 1 | G40-6 | completion | **DONE** (17454) | Backend already excludes DELIVERED from claim guards; lock is client-side; 2-pending cap = net-new server-side. NB: Jira MCP mis-resolves key 'G40-6'→G40-217 — use numeric id 10983 |
 | 2 | G40-9 | active/cancel | pending | Auto-repost on Gopher cancel (FE; backend = G40-304) |
 | 3 | G40-18 | active/payment rail | pending | 7-day auth expiry; ties G40-297 |
 | 4 | G40-35 | messaging on submitted/active | pending | Comms guard; connect-gate depends on flow state |
 | 5 | G40-38 | creation/checkout | pending | Payment options at checkout; __payStore built |
-| 6 | G40-39 | completion/rating | pending | Ratings-screen pic bug |
+| 6 | G40-39 | completion/rating | **DONE** (17455) | Legacy has no photo screen (photos ride rating POST); non-dismissible rating retired per INV-RATING; native storyboard = DO-NOT-BUILD |
 | 7 | G40-40 | submitted/cancel | pending | Early-cancel modal A/B |
 | 8 | G40-43 | submitted/expiry | pending | No expire with pending offers |
 | 9 | G40-44 | broadcast | **DONE** (comment 17452) | Pilot. Legacy new_order_alert map + 4 do-not-port deltas (exact-5.0 vs ≥4.8, delays, no vacancy-collapse, non-durable timers) |
@@ -68,14 +68,14 @@
 | 34 | G40-165 | broadcast/privacy | pending | Remove customer apt # |
 | 35 | G40-186 | creation | pending | Available-Gophers count (iQ built) |
 | 36 | G40-189 | submitted/admin update | pending | Admin updates a request |
-| 37 | G40-192 | completion/age | pending | Age-restricted drop-off + no-show (canon) |
-| 38 | G40-202 | completion/rating | pending | Rate requestor + block |
+| 37 | G40-192 | completion/age | **DONE** (17456) | Legacy v1 no-show pays immediately — ack/GPS/fraud/24h-hold all net-new; noShowGuard.js tests pass |
+| 38 | G40-202 | completion/rating | **FE-GAP** | Confirm-gated host modal exists (Go proto) but Block-Requestor checkbox built nowhere; BlockRequestorCheckbox.jsx + relationships.js cited by recap are MISSING on disk — regenerate before posting |
 | 39 | G40-204 | accept/worker | pending | 2+ workers modal |
 | 40 | G40-205 | messaging | pending | Favorite/Block from messaging |
 | 41 | G40-209 | submitted | pending | Info modals up to cancellation |
 | 42 | G40-216 | active/messaging | pending | Worker photo attachments |
 | 43 | G40-217 | active/cost-adjust | pending | .25-hr increments |
-| 44 | G40-218 | completion/age | pending | ID-confirmed button dead on Android |
+| 44 | G40-218 | completion/age | **DONE** (17457) | Delta layer only (07-07 comment already full); AC 'route to ratings' superseded by G40-331 gate |
 | 45 | G40-244 | broadcast/details | pending | Ride details missing on worker view |
 | 46 | G40-250 | broadcast/backup | pending | SMS/email escalation exclusions |
 | 47 | G40-251 | creation | pending | Request Again carry-over |
@@ -87,14 +87,14 @@
 | 53 | G40-292 | creation (Deals seed) | pending | Seed last-mile request from merchant order |
 | 54 | G40-297 | submit/payment rail | pending | Escrow auth on submit |
 | 55 | G40-299 | all (meta) | pending | Rebuild acceptance checklist |
-| 56 | G40-300 | completion/rating | pending | Star-conditional rating options |
+| 56 | G40-300 | completion/rating | **DONE** (17458) | Star-conditional built+verified both prototypes; legacy fav checkbox unconditional; block-on-rating net-new |
 | 57 | G40-304 | active/cancel (backend spec) | pending | G40-9 backend rail; FE = n/a by design |
 | 58 | G40-307 | active/cancel deeplink | pending | Deep link into cancel flow |
 | 59 | G40-310 | creation/age | pending | Auto-enable Purchase-needed guardrail (built) |
-| 60 | G40-325 | completion/fraud | pending | False-completion detection |
+| 60 | G40-325 | completion/fraud | **DONE** (17460) | GPS already logged in order_logs — detection is a comparison legacy never does; null-GPS policy + threshold = owner decisions |
 | 61 | G40-326 | active/authorizations | pending | Extend requester auths, kill cancel-resend |
 | 62 | G40-328 | creation/fees | pending | ITF on undiscounted base (D-033) |
-| 63 | G40-331 | completion/rating | pending | Gate Rate-Requestor on confirmation |
+| 63 | G40-331 | completion/rating | **DONE** (17462) | Legacy rates at mark-complete (no state check); spec: unified finalization event + server-side enforcement |
 
 *(G40-155 counted in the N table; table numbering retained for audit.)*
 
