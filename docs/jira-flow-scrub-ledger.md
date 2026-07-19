@@ -38,7 +38,7 @@
 | 4 | G40-35 | messaging on submitted/active | **DONE** (17492) | Mobile legacy layer added (InAppMessage.js both apps); legacy client-side >9-digit masking = do-not-port; 7/19 canon layer recorded |
 | 5 | G40-38 | creation/checkout | **DONE** (17465) | Legacy card-only, no webhook gate; __payStore anchors current; wave1/ paths stale (files flat) |
 | 6 | G40-39 | completion/rating | **DONE** (17455) | Legacy has no photo screen (photos ride rating POST); non-dismissible rating retired per INV-RATING; native storyboard = DO-NOT-BUILD |
-| 7 | G40-40 | submitted/cancel | pending | Early-cancel modal A/B |
+| 7 | G40-40 | submitted/cancel | **DONE** (17513) | FE built all 3 surfaces (07-03) + cancellationGuard.js tests pass; added legacy map (cancel.js exports.delete = only path, unconditional refund at pending); Figma 52-14911 outdated (do-not-use) |
 | 8 | G40-43 | submitted/expiry | **DONE** (17493) | Legacy expiry cron mapped (crons.js:324 unconditional UPDATE) — corrects stale 'no expiry code' claim; type-17 UNION = pending-offer predicate; expiry.js scaffold missing (regen queued) |
 | 9 | G40-44 | broadcast | **DONE** (comment 17452) | Pilot. Legacy new_order_alert map + 4 do-not-port deltas (exact-5.0 vs ≥4.8, delays, no vacancy-collapse, non-durable timers) |
 | 10 | G40-65 | completion | **DONE** (comment 17453) | Pilot. Legacy complete/v2→DELIVERED→confirm_payout rail + crons; prototype anchors refreshed (~20940/~16379); Go "Pending confirmation" canon |
@@ -187,6 +187,7 @@ Flow documentation complete.
   lineage; scrub comments cite v3.4. Pilot pass posted G40-44 (17452) + G40-65 (17453);
   legacy-vs-new-spec "do NOT port" deltas proved valuable — propagated to all agents.
 - 2026-07-19 — ALL 61 applicable tickets documented (62 minus G40-155 reclassified N):
+  (G40-40 was missed in the initial fan-out and posted on resume — comment 17513.)
   60 posted by the 9 phase agents + pilots; 2 fe-gaps (G40-202, G40-205) built same-day
   (Go rating-modal checkbox 0e4941c; Request inbox Fav/Block bdd4f7a) then posted.
   Scaffold-regen batch 1 done (15 files, 9 suites passing via JXA — no node on this Mac);
