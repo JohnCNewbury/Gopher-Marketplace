@@ -531,8 +531,8 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rqbody{display:flex;flex-direction:column;padding:0 16px 26px;background:var(--paper);}
   .rq-top{display:flex;align-items:center;gap:10px;padding:12px 2px 8px;position:sticky;top:0;background:var(--paper);z-index:5;}
   .rq-top h1{flex:1;text-align:center;font-family:'Nunito';font-weight:900;font-size:17px;color:#002461;}
-  .rq-bk,.rq-flag{width:36px;height:36px;border-radius:11px;border:1px solid #e7e2d3;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;}
-  .rq-bk svg,.rq-flag svg{width:19px;height:19px;fill:none;stroke:#3A4D74;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .rq-bk,.rq-flag{width:36px;height:36px;border-radius:11px;border:1px solid #e7e2d3;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;color:#3A4D74;}
+  .rq-bk svg,.rq-flag svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
   .rq-card{background:#fff;border:1px solid #e7e2d3;border-radius:18px;padding:15px;margin-top:10px;box-shadow:0 6px 16px rgba(0,36,97,.05);}
   .rq-head{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:13px;}
   .rq-ava{position:relative;width:58px;height:58px;flex:0 0 auto;}
@@ -2125,7 +2125,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         stepper='<div class="rq-sec">Job status</div><div class="rq-card" style="padding:13px;"><div style="display:flex;flex-direction:column;gap:8px;">'+rows+'</div>'+action+'</div>';
       }
 
-      return '<div class="rq-top"><button class="rq-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button><h1>Request Details</h1><button class="rq-flag js-rep">'+sv('<path d="M5 3v18M5 4h13l-2.5 4 2.5 4H5"/>')+'</button></div>'
+      return '<div class="rq-top"><button class="rq-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button><h1>Request Details</h1><button class="rq-flag js-rep"'+(j.flagReport?' style="color:#C44257;border-color:#e3a5ae;background:#FDECE6;"':'')+'>'+sv('<path d="M5 3v18M5 4h13l-2.5 4 2.5 4H5"/>')+'</button></div>'
         +'<div class="rq-card rq-head">'
           +avatar()
           +'<div class="rq-id"><div class="rq-nm">'+who+'</div><div class="rq-badge">'+sv(I.shield,'sh')+'TrustShield Verified</div><div class="rq-rate">'+sv(I.star,'st')+'4.9 &middot; 212 requests</div></div>'
@@ -2160,7 +2160,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     function wire(){
       const $=s=>r.querySelector(s);
       $('.js-back').onclick=()=>BACK();
-      $('.js-rep').onclick=()=>showModal('<h3>Report this request</h3><p>Flag anything unsafe, miscategorized, or against policy. Our Trust &amp; Safety team reviews every report.</p><button class="mclose">Close</button>');
+      $('.js-rep').onclick=()=>openReportRequest();
       $('.js-ask').onclick=()=>{ openGoMsgSheet(goConvoForJob(j)); };   // sheet over the job — same UX as Request
       const co=$('.js-co'); if(co) co.onclick=()=>{ coOpen=!coOpen; draw(); if(coOpen){ const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); } };
       const dec=$('.js-dec'), inc=$('.js-inc'), coin=$('.js-coin');
@@ -2485,6 +2485,42 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         j.navigating={ to:target, addr:addr, seq:((j.navigating&&j.navigating.seq)||0)+1 };
         ov.remove(); draw();
         toast('&#129517; Navigating to the '+String(target||'').toLowerCase()+' — '+who+' still sees your live location');
+      };
+    }
+    // Report A Request (⚑) — LIVE-APP PARITY (gopher-mobile-gopher src/component/getOrders.js):
+    // same intro copy, the same 6 report reasons (Selectpopup list, formik field `description`),
+    // Submit gated on a picked reason. Live submit = POST orders/<id>/flag { description } →
+    // close on success; here the report is stored on the job (the harness narrates it) and the
+    // flag icon flips red. Re-opening shows the received state — no duplicate reports.
+    function openReportRequest(){
+      if(j.flagReport){
+        showModal('<h3>Report received</h3><p>You reported this request &mdash; <b>'+j.flagReport.reason+'</b>. Our team has been notified and will investigate the issue as soon as possible.</p><button class="mclose">Close</button>');
+        return;
+      }
+      const REASONS=['Inappropriate Request','Inappropriate Language','Inappropriate Picture','Request may be illegal/suspicious','Unsafe request/location','Violates Age-Restricted Policies'];
+      let picked=null;
+      const ov=showModal(
+        '<h3>Report A Request</h3>'
+        +'<p>We strive to create a community of people who respect each other and feel they are in a safe environment. If you feel like one of the listings is of inappropriate nature, please use this page to report it.</p>'
+        +'<p>Our team will be notified, and we will investigate the issue as soon as possible.</p>'
+        +'<div style="margin:10px 0;border:1px solid #d9d2c2;border-radius:12px;overflow:hidden;">'
+          +REASONS.map((t,i)=>'<div class="js-repopt" data-i="'+i+'" style="padding:11px 13px;font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;cursor:pointer;'+(i?'border-top:1px solid #f0eadd;':'')+'">'+t+'</div>').join('')
+        +'</div>'
+        +'<button class="js-repsubmit" disabled style="width:100%;border:0;background:#cfe9d9;color:#7aa790;border-radius:25px;padding:13px;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit</button>'
+        +'<span class="mlink js-repx" style="margin-top:10px;">Back</span>');
+      const sub=ov.querySelector('.js-repsubmit');
+      ov.querySelectorAll('.js-repopt').forEach(o=>o.onclick=()=>{
+        picked=REASONS[+o.getAttribute('data-i')];
+        ov.querySelectorAll('.js-repopt').forEach(x=>{ x.style.background=''; x.style.color='#002461'; });
+        o.style.background='#E8F5EE'; o.style.color='#0a7d44';
+        sub.disabled=false; sub.style.background='#33D975'; sub.style.color='#002461'; sub.style.cursor='pointer';
+      });
+      ov.querySelector('.js-repx').onclick=()=>ov.remove();
+      sub.onclick=()=>{ if(!picked) return;
+        // BACKEND SEAM: POST orders/<id>/flag { description: picked } (live: handleFlagReport)
+        j.flagReport={ reason:picked, seq:((j.flagReport&&j.flagReport.seq)||0)+1 };
+        ov.remove(); draw();
+        toast('Report submitted — our team will investigate as soon as possible');
       };
     }
     // Cancel — the Gopher is warned a cancellation fee may apply per terms and must give a reason.

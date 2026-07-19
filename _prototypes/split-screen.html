@@ -104,6 +104,7 @@
   var disputeSeen={};   // GReq order id -> last dispute seq relayed to the Gopher
   var goCancelSeen={};  // GReq order id -> true (Gopher's cancellation already relayed to Request)
   var navSeen={};       // GReq order id -> last navigation seq relayed to Request (nav state on the card)
+  var flagSeen={};      // GReq order id -> last report-a-request seq narrated (goes to Gopher HQ, NOT the requester)
   var reqCancelSeen={}; // GReq order id -> last reqCancelSeq relayed to Go (requester cancel/repost)
   var referralSeen=0;   // last Refer-Yourself seq relayed to the requester's inbox
   var DEMO_GOPHER='Marcus';  // the one Gopher on the Go phone; a provider deal only surfaces here when it's directed to them
@@ -283,6 +284,24 @@
           if(!job.navigating && navSeen[id] && r.navTo){
             l.GReq.update(id, { navTo:null });
             try{ if(l.renderPending) l.renderPending(); }catch(_){}
+          }
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ── Go → status line only: the worker REPORTED the request (⚑ Report A Request). Live parity:
+        the report posts to Gopher HQ Trust & Safety (POST orders/<id>/flag { description }) — the
+        REQUESTER is never notified, so nothing changes on the left phone. ── */
+  function watchFlagReport(){
+    try{
+      var w=R();
+      if(w && w.__ptJobs){
+        for(var id in w.__ptJobs){
+          var job=w.__ptJobs[id];
+          if(job && job.flagReport && job.flagReport.seq && flagSeen[id]!==job.flagReport.seq){
+            flagSeen[id]=job.flagReport.seq;
+            status('Gopher <b>reported</b> '+id+' — &ldquo;'+job.flagReport.reason+'&rdquo; → logged for <b>Gopher HQ Trust &amp; Safety</b> (live: POST orders/&lt;id&gt;/flag). The requester is not notified.');
           }
         }
       }
@@ -625,7 +644,7 @@
   }
   if(dealsBtn){ paintDealsBtn(); dealsBtn.addEventListener('click', toggleDeals); }
 
-  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchNavigate(); watchDispute(); watchGoCancel(); watchReqCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
+  function tick(){ watchNative(); watchAccept(); watchCounter(); watchDecision(); watchNoShow(); watchStatus(); watchNavigate(); watchFlagReport(); watchDispute(); watchGoCancel(); watchReqCancel(); watchAdjust(); watchAdjustDecision(); watchRating(); watchBid(); watchBidDecision(); watchMessages(); watchReferral(); setTimeout(tick, 600); }
   tick();
 })();
 </script>
