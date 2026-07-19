@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Shared messaging guard (G40-35) — this screen calls GopherMessageGuard.guard()
+     on send and FAILS OPEN without this include (that gap shipped once; keep it). -->
+<script src="../../Final/assets/js/gopher-message-guard.js"></script>
 <style>
 :root{
   --green:#1CB061; --green-bright:#33D975; --green-tint:#E8F5EE;
@@ -147,7 +150,7 @@ return { all:all, save:save,
       out.push({ id:r.order, name:(r.hired||r.provider||'Your Gopher'),
         ctx:(r.title||'Request')+(r.amount?(' \u00b7 '+r.amount):''), verified:true, time:'',
         unread:(+r.unread||0),
-        msgs:(r.messages||[]).map(function(m){ return {s:(m.from==='req'?'me':'them'), t:m.text}; }) });
+        msgs:(r.messages||[]).map(function(m){ return {s:(m.from==='req'?'me':'them'), t:m.text, f:(m.flagged?1:0)}; }) });
     });
     return out;
   }
@@ -182,7 +185,9 @@ return { all:all, save:save,
   }
 
   function renderThread(c){ var who=c.name;
-    var bubbles=c.msgs.map(function(m){ return '<div class="mi-b '+(m.s==='me'?'me':'them')+'">'+m.t+'</div>'; }).join('');
+    // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; same format as Go/home).
+    var _flnote='<div class="mi-fl" style="margin:2px 0 5px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>';
+    var bubbles=c.msgs.map(function(m){ return '<div class="mi-b '+(m.s==='me'?'me':'them')+'">'+m.t+'</div>'+((m.f&&m.s!=='me')?_flnote:''); }).join('');
     body.innerHTML='<div class="mi-top"><button class="mi-bk js-back">'+sv(BK)+'</button>'+ava(c.verified)
       +'<div><div class="mi-nm">'+who+'</div><div class="mi-st">'+sv(SH)+'Verified · usually replies in ~10 min</div></div></div>'
       +'<div class="mi-ctx">Re: '+c.ctx+'</div>'
@@ -200,11 +205,15 @@ return { all:all, save:save,
       setTimeout(function(){ add('them',a); }, 650);
     }
     function send(t){ t=(t||'').trim(); if(!t) return;
-      var deliver=function(){
-        if(PT&&window.GReq){ var rr=GReq.get(c.id); if(rr){ var mm=(rr.messages||[]).slice(); mm.push({from:'req',text:t}); GReq.update(c.id,{messages:mm}); } inp.value=''; syncNow(true); }
+      // res.flagged = the sender chose "Send as-is" on a guard hit — the flag rides
+      // to the recipient (harness relays it; the Go phone shows the terms-violation note).
+      var deliver=function(res){ var _fl=!!(res&&res.flagged);
+        if(PT&&window.GReq){ var rr=GReq.get(c.id); if(rr){ var mm=(rr.messages||[]).slice(); mm.push({from:'req',text:t,flagged:_fl?1:0}); GReq.update(c.id,{messages:mm}); } inp.value=''; syncNow(true); }
         else { add('me',t); inp.value=''; reply(t); }
       };
-      if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'request-prototype',{ onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
+      // Connected = these threads all belong to requests with a hired/matched Gopher
+      // (live convos require hired or an open thread; seed convos simulate mid-job).
+      if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'request-prototype',{ connected:true, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
     body.querySelector('.js-send').onclick=function(){ send(inp.value); };
     inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); send(inp.value); } });
     var chips=['What’s the ETA?','Where should you meet me?','Can you swap an item?','Thank you!'];

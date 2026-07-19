@@ -13,6 +13,13 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > **email**). Escalation is **per user**; admin email + account flag fire at
 > **level ≥ 2**. All previously-open developer questions are answered below.
 
+> **2026-07-19 update (owner):** the **conduct** family's warn levels 1–2 now
+> use the **same Edit message / Send as-is pair** as the off-platform alert —
+> the old single-button acknowledge ("Got It" → send unflagged) is retired.
+> A conduct **Send as-is delivers FLAGGED**, and the recipient sees the same
+> terms-violation note under the bubble as an off-platform flag (no new
+> format). Level 3 remains a hard block.
+
 ## Purpose
 
 Detect when an in-app message tries to push payment or communication **off
@@ -126,9 +133,14 @@ admin@ email + account flag fire at level ≥ 2 (`CONFIG.adminAlertAtLevel`);
 level 1 stays a silent nudge. The level no longer changes the off-platform
 UX — it drives the admin/flag pipeline.
 
-**Conduct family (unchanged):** foul/abusive/threatening language keeps the
-original 3-level ladder — warn → warn → block at level 3 (`CONFIG.blockAtLevel`)
-with respectful-tone copy — and is **never relaxed by connection state**.
+**Conduct family (revised 2026-07-19):** foul/abusive/threatening language
+keeps the 3-level ladder of copy — warn → warn → block at level 3
+(`CONFIG.blockAtLevel`), respectful tone, **never relaxed by connection
+state** — but warn levels 1–2 now present the same **Edit message** (green,
+holds) / **Send as-is** (blue pulsing, delivers `flagged: true`) pair as the
+off-platform alert, with the guidelines link underneath. A flagged conduct
+message shows the recipient the standard terms-violation note. Only level 3
+still refuses to deliver.
 
 ---
 
@@ -202,9 +214,11 @@ into the shipped tree for the shared module via `../Final/assets/js/…`.
 
 Each top-level page wraps its send with `window.GopherMessageGuard` present-check
 and **fails open** (sends normally) if the module didn't load — mirroring the
-age-restricted backstop's fail-safe style. Clean messages send unchanged; warns
-send once acknowledged; a level-3 block holds the message and leaves the text in
-the box.
+age-restricted backstop's fail-safe style. Clean messages send unchanged; on
+any warn the user chooses **Edit message** (held; text stays in the box) or
+**Send as-is** (delivers flagged — `onAllow(res)` receives the verdict, and
+the surface stores the flag so the recipient renderer shows the
+terms-violation note); a conduct level-3 block holds the message outright.
 
 ### The Request prototype is special (srcdoc iframe)
 

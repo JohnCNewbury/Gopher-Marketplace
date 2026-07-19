@@ -345,14 +345,21 @@ var SCREENS={
   // published Final/ tree), so the shipped module is at ../Final/assets/js/ —
   // case-exact. Same source of truth as the other three surfaces; nothing is
   // duplicated. Spec: docs/handoff/messaging-precheck.md
-  var GMG_GUARD_URL = new URL('../Final/assets/js/gopher-message-guard.js', location.href).href;
+  // This shell lives in _prototypes/Request/ — the shipped module is two levels
+  // up (the old ../Final path predates the move into Request/ and 404'd,
+  // silently disabling the guard in every srcdoc screen).
+  var GMG_GUARD_URL = new URL('../../Final/assets/js/gopher-message-guard.js', location.href).href;
   // The screen's chat send (sendChat) lives inside an IIFE, so it is NOT a
   // global we can wrap. Instead we intercept the send GESTURE at capture phase
   // (before the screen's own click/Enter handlers): hold the send, run the
-  // guard, and on the allow path RE-DISPATCH the original gesture (bypass flag)
-  // so the existing faked send runs completely unchanged. Level-3 block simply
-  // doesn't re-dispatch, leaving the text in the box. Thread id = the worker id
-  // already on the Send button (data-id).
+  // guard, and only RE-DISPATCH the original gesture (bypass flag) when the
+  // user chooses "Send as-is" — so the existing faked send runs completely
+  // unchanged. "Edit message" (the primary on every warn, and the conduct
+  // level-3 block) doesn't re-dispatch, leaving the text in the box. Thread
+  // id = the worker id already on the Send button (data-id). This screen's
+  // chat is a local demo thread (canned replies, no cross-pane recipient),
+  // so the send-as-is flag has nowhere to ride here — the recipient-side
+  // terms-violation note is demonstrated in the split-screen surfaces.
   var GMG_HEAD =
       '<script src="'+GMG_GUARD_URL+'"><\/script>'
     + '<script>(function(){'
@@ -373,10 +380,11 @@ var SCREENS={
     +       'var v=G.check(t,tid());'                       // single evaluation (counter ticks only on a hit)
     +       'if(v.verdict==="allow")return;'                // clean -> let the screen own send run untouched
     +       'e.preventDefault();e.stopImmediatePropagation();' // a hit -> hold the gesture, show the modal
-    +       'G.showModal(v.level,{onPrimary:function(){'
-    +         'if(v.verdict==="block"){try{inp.focus();}catch(_){ }}' // held; text stays in the box to edit
-    +         'else{bypass=true;if(btn){btn.click();}else{inp.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true}));}bypass=false;}' // acknowledged warn -> re-fire the real send
-    +       '}});'
+    +       'function refire(){bypass=true;if(btn){btn.click();}else{inp.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true}));}bypass=false;}'
+    +       'G.showModal(v.level,{family:v.family,connected:v.connected,'
+    +         'onPrimary:function(){try{inp.focus();}catch(_){ }},'      // Edit message / block -> held; text stays in the box
+    +         'onSendAsIs:refire'                                        // Send as-is -> re-fire the real send (flagged upstream in production)
+    +       '});'
     +     '}'
     +     'document.addEventListener("click",intercept,true);'
     +     'document.addEventListener("keydown",intercept,true);'

@@ -16643,7 +16643,7 @@ const PAY_BADGES = {
         <div class="inbox-thread" id="inboxThreadScroll">
           ${t.thread.length ? t.thread.map(m => `
             <div class="inbox-msg ${m.from==='me'?'mine':'theirs'}">
-              <div class="inbox-bubble">${m.text}</div>
+              <div class="inbox-bubble">${m.text}</div>${(m.f && m.from!=='me') ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>` : ''}
               <div class="inbox-msg-time">${m.time}</div>
             </div>`).join('') : `<div class="inbox-thread-empty">Start the conversation with ${t.worker.name.split(' ')[0]} — send your first message below.</div>`}
         </div>
@@ -16700,11 +16700,13 @@ const PAY_BADGES = {
         const text = input.value.trim();
         if(!text) return;
         // Route through the shared messaging guard (prototype deterrent). Allow
-        // path runs the existing faked send UNCHANGED; a level-3 block leaves the
-        // text in the box to edit. Fails open if the module didn't load.
+        // path runs the existing faked send UNCHANGED; "Edit message" and the
+        // conduct level-3 block leave the text in the box to edit. "Send as-is"
+        // delivers FLAGGED (res.flagged) so the recipient side can show the
+        // terms-violation note. Fails open if the module didn't load.
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
-            onAllow:   function(){ sendInboxMessage(t.id, text); },
+            onAllow:   function(res){ sendInboxMessage(t.id, text, !!(res && res.flagged)); },
             onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
           });
         } else {
@@ -16724,7 +16726,7 @@ const PAY_BADGES = {
   // one-time demo auto-reply from the worker.
   // Thread IDs may be in the per-worker format "<requestId>::<workerName>" for
   // crews with more than one hired worker — strip the suffix to find the request.
-  function sendInboxMessage(reqId, text){
+  function sendInboxMessage(reqId, text, flagged){
     const sep = String(reqId).indexOf('::');
     const baseId = sep > -1 ? reqId.slice(0, sep) : reqId;
     const crewName = sep > -1 ? reqId.slice(sep + 2) : null;
@@ -16745,7 +16747,9 @@ const PAY_BADGES = {
       thread = r.thread;
     }
     const firstMessage = thread.length === 0;
-    thread.push({ from:'me', text, time });
+    // f:1 = sent via "Send as-is" on a guard hit — the RECIPIENT's app shows
+    // the terms-violation note under this bubble (our own side renders clean).
+    thread.push(flagged ? { from:'me', text, time, f:1 } : { from:'me', text, time });
     dashState.inboxThreadId = reqId;   // preserve the full per-worker id
     renderInbox();
     updateInboxBadge();

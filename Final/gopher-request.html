@@ -18540,9 +18540,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="inbox-msg-time">${_recEsc(m.time)}</div>
           </div>`;
       }
+      // Flagged Send-as-is messages carry a terms-violation note to the
+      // RECIPIENT only (owner 2026-07-16; extended to conduct 2026-07-19) —
+      // same format as the Go/Request prototypes.
+      const flNote = (m.f && m.from !== 'me')
+        ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>`
+        : '';
       return `
             <div class="inbox-msg ${m.from === 'me' ? 'mine' : 'theirs'}">
-              <div class="inbox-bubble">${String(m.text).replace(/</g,'&lt;')}</div>
+              <div class="inbox-bubble">${String(m.text).replace(/</g,'&lt;')}</div>${flNote}
               <div class="inbox-msg-time">${m.time}</div>
             </div>`;
     }
@@ -18636,12 +18642,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const text = (input.value || '').trim();
         if(!text) return;
         // Route through the shared messaging guard (prototype deterrent). On the
-        // allow path the existing faked send runs UNCHANGED; on a level-3 block
-        // the text is left in the box for editing. Falls open if the module
-        // didn't load, mirroring the age-keyword backstop's fail-safe style.
+        // allow path the existing faked send runs UNCHANGED; "Edit message" and
+        // the conduct level-3 block leave the text in the box for editing. A
+        // "Send as-is" delivers FLAGGED (res.flagged) so the recipient side can
+        // show the terms-violation note. Falls open if the module didn't load,
+        // mirroring the age-keyword backstop's fail-safe style.
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
-            onAllow:   function(){ sendInboxMessage(t.id, text); },
+            onAllow:   function(res){ sendInboxMessage(t.id, text, !!(res && res.flagged)); },
             onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
           });
         } else {
@@ -18665,7 +18673,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
   // Send a message. Parses "<reqId>::<workerName>" if present (per spec §8 —
   // missing this parse is the most common bug; messages would silently vanish).
-  function sendInboxMessage(reqId, text){
+  function sendInboxMessage(reqId, text, flagged){
     const sep = String(reqId).indexOf('::');
     const baseId  = sep > -1 ? reqId.slice(0, sep) : reqId;
     const crewName = sep > -1 ? reqId.slice(sep + 2) : null;
@@ -18690,7 +18698,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
 
     const firstMessage = thread.length === 0;
-    thread.push({ from:'me', text, time });
+    // f:1 = sent via "Send as-is" on a guard hit — the RECIPIENT's app shows
+    // the terms-violation note under this bubble (our own side renders clean).
+    thread.push(flagged ? { from:'me', text, time, f:1 } : { from:'me', text, time });
     dashState.inboxThreadId = reqId;  // preserve the FULL per-worker id
     renderInbox();
     updateInboxBadge();
