@@ -2036,11 +2036,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           bidSection = '<button class="rq-cta bidgo js-bidopen" style="margin-top:11px;">'+(j.bidDeclined?'Bid again':'Submit a Bid')+' &#8594;</button>';
         }
       }
-      // Fixed-price flow: Counter-Offer + Accept Request live right under the "You'll receive" pay card too
-      // (matching the bid flow) instead of at the bottom of the page. The counter panel opens between them.
+      // Fixed-price flow: Accept Request + Counter-Offer live right under the "You'll receive" pay card too
+      // (matching the bid flow) instead of at the bottom of the page. Accept sits first, directly below the
+      // pay card (owner 2026-07-19); the counter panel opens beneath its Counter-Offer trigger.
       let payActions='';
       if(j.mode!=='bid' && !j.accepted){
-        payActions = coActs + coPanel + (cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'');
+        payActions = (cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'') + coActs + coPanel;
       }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)
