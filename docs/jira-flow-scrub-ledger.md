@@ -33,8 +33,8 @@
 | # | Ticket | Phase | Status | Notes |
 |---|--------|-------|--------|-------|
 | 1 | G40-6 | completion | **DONE** (17454) | Backend already excludes DELIVERED from claim guards; lock is client-side; 2-pending cap = net-new server-side. NB: Jira MCP mis-resolves key 'G40-6'→G40-217 — use numeric id 10983 |
-| 2 | G40-9 | active/cancel | pending | Auto-repost on Gopher cancel (FE; backend = G40-304) |
-| 3 | G40-18 | active/payment rail | pending | 7-day auth expiry; ties G40-297 |
+| 2 | G40-9 | active/cancel | **DONE** (17464) | Legacy cancel.js refunds hold on gopher cancel — do-NOT-port vs auth-reuse canon; live two-phone pair built; remaining = G40-304 rail + AC6 admin repost |
+| 3 | G40-18 | active/payment rail | **DONE** (17470) | re_schedule.js has ZERO Stripe code (AC3 from-scratch). Dec-2025 'Approved in STAGE' fix ABSENT from June export — dev must not assume it shipped |
 | 4 | G40-35 | messaging on submitted/active | pending | Comms guard; connect-gate depends on flow state |
 | 5 | G40-38 | creation/checkout | **DONE** (17465) | Legacy card-only, no webhook gate; __payStore anchors current; wave1/ paths stale (files flat) |
 | 6 | G40-39 | completion/rating | **DONE** (17455) | Legacy has no photo screen (photos ride rating POST); non-dismissible rating retired per INV-RATING; native storyboard = DO-NOT-BUILD |
@@ -47,14 +47,14 @@
 | 13 | G40-77 | creation | pending | Duplicate-request warning |
 | 14 | G40-78 | active/cancel | pending | Cancel only if no activity |
 | 15 | G40-80 | active/reschedule | pending | Reschedule w/ approval + auth handling |
-| 16 | G40-81 | active/cancel | pending | Two-strike Gopher cancel fee (canon in memory) |
+| 16 | G40-81 | active/cancel | **DONE** (17473) | waive_fee_link mechanics + replaces-not-extends framing; cancellationGuard.js in Jira Tickets is the messaging guard, NOT this fee system |
 | 17 | G40-83 | active | pending | 1-hour nudge SMS |
 | 18 | G40-86 | active/scheduled | pending | Add-to-Calendar |
 | 19 | G40-88 | submitted/update | pending | Update → email + admin log |
 | 20 | G40-91 | broadcast/MY Gopher | pending | Unblurred name/pic for MY Gopher |
 | 21 | G40-92 | submitted | pending | Activity-without-response SMS |
 | 22 | G40-99 | broadcast | pending | 10-min re-broadcast |
-| 23 | G40-101 | active/cost-adjust | pending | Receipt on cost increase |
+| 23 | G40-101 | active/cost-adjust | **DONE** (17475) | Shared receipt component verified both prototypes + Go gate. Spec divergence flagged: ticket=increase-only vs split-proto any-change — owner to confirm; ReceiptDisplay.jsx/costAdjustment.test.js missing on disk |
 | 24 | G40-108 | submitted/scheduled | pending | 48-h unaccepted check-in email |
 | 25 | G40-113 | creation/pricing data | **DONE** (17468) | suggestedOfferUsed wired both prototypes + Dashboard detail; legacy smart_price never persisted usage flag — net-new boolean + report column |
 | 26 | G40-116 | creation/age | **DONE** (17471) | Legacy: under-21 keyword block + <30 TrustShield iDenfy, no over-30 ID path; ageRestriction.test.js MISSING despite 'tests pass' claim — flagged |
@@ -74,7 +74,7 @@
 | 40 | G40-205 | messaging | pending | Favorite/Block from messaging |
 | 41 | G40-209 | submitted | pending | Info modals up to cancellation |
 | 42 | G40-216 | active/messaging | pending | Worker photo attachments |
-| 43 | G40-217 | active/cost-adjust | pending | .25-hr increments |
+| 43 | G40-217 | active/cost-adjust | **DONE** (17476) | +15-min adder built; snap-validation not prototyped (by design); DECIMAL(5,2) migration is the crux |
 | 44 | G40-218 | completion/age | **DONE** (17457) | Delta layer only (07-07 comment already full); AC 'route to ratings' superseded by G40-331 gate |
 | 45 | G40-244 | broadcast/details | pending | Ride details missing on worker view |
 | 46 | G40-250 | broadcast/backup | pending | SMS/email escalation exclusions |
@@ -88,11 +88,11 @@
 | 54 | G40-297 | submit/payment rail | **DONE** (17466) | Legacy already has manual capture + adjustable_amount + re_authorize_token cron; delta = buffer config + release seam + G40-9 reuse. NB escrow.test.js missing despite recap claim |
 | 55 | G40-299 | all (meta) | **DONE** (17469) | Gate ticket → pointed at Rebuild-Acceptance-Checklist.md + harness; Jira description behind the .md (Jul-10 Android criteria) — owner to update |
 | 56 | G40-300 | completion/rating | **DONE** (17458) | Star-conditional built+verified both prototypes; legacy fav checkbox unconditional; block-on-rating net-new |
-| 57 | G40-304 | active/cancel (backend spec) | pending | G40-9 backend rail; FE = n/a by design |
-| 58 | G40-307 | active/cancel deeplink | pending | Deep link into cancel flow |
+| 57 | G40-304 | active/cancel (backend spec) | **DONE** (17467) | Full legacy payment chain mapped (cal_charges/capture/transfer/refund/cron). authRefresh.js cited in description DOES NOT EXIST — stale anchor flagged |
+| 58 | G40-307 | active/cancel deeplink | **DONE** (17477) | Status-aware cancel router built; 4 static-FDL sites verified; zero deep-link route handling in either mobile app; ties to failing App Links |
 | 59 | G40-310 | creation/age | **DONE** (17472) | Built+verified both prototypes; added legacy root-cause (accept_cog new-charge when 20% buffer exceeded) |
 | 60 | G40-325 | completion/fraud | **DONE** (17460) | GPS already logged in order_logs — detection is a comparison legacy never does; null-GPS policy + threshold = owner decisions |
-| 61 | G40-326 | active/authorizations | pending | Extend requester auths, kill cancel-resend |
+| 61 | G40-326 | active/authorizations | **DONE** (17478) | Root cause: cancel.js :50–65 hard-blocks requestor cancel on ACCEPTED; amend-in-place UX needs owner-locked amendable-set spec first |
 | 62 | G40-328 | creation/fees | **DONE** (17474) | Non-compliance verified at exact lines (TrustShield subtracted pre-ITF; per-fee-line coupons); prototypes = D-033 oracle w/ $104.0746 worked example |
 | 63 | G40-331 | completion/rating | **DONE** (17462) | Legacy rates at mark-complete (no state check); spec: unified finalization event + server-side enforcement |
 
