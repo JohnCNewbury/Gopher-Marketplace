@@ -190,7 +190,10 @@ Flow documentation complete.
   60 posted by the 9 phase agents + pilots; 2 fe-gaps (G40-202, G40-205) built same-day
   (Go rating-modal checkbox 0e4941c; Request inbox Fav/Block bdd4f7a) then posted.
   Scaffold-regen batch 1 done (15 files, 9 suites passing via JXA — no node on this Mac);
-  batch 2 (expiry/editRequest/addressValidation + 7 test files) queued.
+  batch 2 DONE same day: 16 more files (expiry/editRequest/addressValidation modules+tests
+  + 7 test files for existing modules) — all 10 suites passing via JXA. Scaffold regeneration
+  COMPLETE: every module/test G40-Build-Recap.md cites now exists on disk, except
+  messageFilter.js (deliberately skipped — superseded by the live GopherMessageGuard).
 - 2026-07-19 — Remaining 59 applicable tickets fanned out to 9 themed background agents
   (broadcast / creation / creation-pay-age / offers-worker-view / active / cancel-pay-rail /
   completion / messaging-updates / umbrella-meta). Rules: comment-only, read existing comments
