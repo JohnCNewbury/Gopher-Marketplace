@@ -35,27 +35,27 @@
 | 1 | G40-6 | completion | **DONE** (17454) | Backend already excludes DELIVERED from claim guards; lock is client-side; 2-pending cap = net-new server-side. NB: Jira MCP mis-resolves key 'G40-6'→G40-217 — use numeric id 10983 |
 | 2 | G40-9 | active/cancel | **DONE** (17464) | Legacy cancel.js refunds hold on gopher cancel — do-NOT-port vs auth-reuse canon; live two-phone pair built; remaining = G40-304 rail + AC6 admin repost |
 | 3 | G40-18 | active/payment rail | **DONE** (17470) | re_schedule.js has ZERO Stripe code (AC3 from-scratch). Dec-2025 'Approved in STAGE' fix ABSENT from June export — dev must not assume it shipped |
-| 4 | G40-35 | messaging on submitted/active | pending | Comms guard; connect-gate depends on flow state |
+| 4 | G40-35 | messaging on submitted/active | **DONE** (17492) | Mobile legacy layer added (InAppMessage.js both apps); legacy client-side >9-digit masking = do-not-port; 7/19 canon layer recorded |
 | 5 | G40-38 | creation/checkout | **DONE** (17465) | Legacy card-only, no webhook gate; __payStore anchors current; wave1/ paths stale (files flat) |
 | 6 | G40-39 | completion/rating | **DONE** (17455) | Legacy has no photo screen (photos ride rating POST); non-dismissible rating retired per INV-RATING; native storyboard = DO-NOT-BUILD |
 | 7 | G40-40 | submitted/cancel | pending | Early-cancel modal A/B |
-| 8 | G40-43 | submitted/expiry | pending | No expire with pending offers |
+| 8 | G40-43 | submitted/expiry | **DONE** (17493) | Legacy expiry cron mapped (crons.js:324 unconditional UPDATE) — corrects stale 'no expiry code' claim; type-17 UNION = pending-offer predicate; expiry.js scaffold missing (regen queued) |
 | 9 | G40-44 | broadcast | **DONE** (comment 17452) | Pilot. Legacy new_order_alert map + 4 do-not-port deltas (exact-5.0 vs ≥4.8, delays, no vacancy-collapse, non-durable timers) |
 | 10 | G40-65 | completion | **DONE** (comment 17453) | Pilot. Legacy complete/v2→DELIVERED→confirm_payout rail + crons; prototype anchors refreshed (~20940/~16379); Go "Pending confirmation" canon |
 | 11 | G40-68 | offers | **DONE** (17480) | Built on 3 surfaces; legacy feature is net-new (no per-job history anywhere); categoryFilter.test.js absent from flat folder |
 | 12 | G40-69 | active | **DONE** (17479) | Net-new cron; no legacy in_progress state; DESCRIPTION CONTRADICTION flagged: 10-min vs 5-min push cadence — owner decide |
-| 13 | G40-77 | creation | pending | Duplicate-request warning |
+| 13 | G40-77 | creation | **DONE** (17497) | Legacy has zero dedupe; Request proto gated, Connect modal-only (parity item); stale anchors refreshed |
 | 14 | G40-78 | active/cancel | **DONE** (17481) | Legacy hard-BLOCKS requestor cancel at accepted — new spec inverts; 'no fee' prior comment superseded by 07-10 conditional-$5 |
 | 15 | G40-80 | active/reschedule | **DONE** (17483) | re_schedule_orders has no expires_at today; stale 'no active-order surface' corrected (Scheduled tab 5978277) |
 | 16 | G40-81 | active/cancel | **DONE** (17473) | waive_fee_link mechanics + replaces-not-extends framing; cancellationGuard.js in Jira Tickets is the messaging guard, NOT this fee system |
 | 17 | G40-83 | active | **DONE** (17485) | Backend-only; orders_faqs has no sender_role — derive from `from`; legacy SMS still says 'Need It Now' (rename flagged) |
 | 18 | G40-86 | active/scheduled | **DONE** (17487) | Placement frame built (purchase-delivery-figma); both earlier build comments reverted/superseded — flagged; no legacy calendar code |
-| 19 | G40-88 | submitted/update | pending | Update → email + admin log |
-| 20 | G40-91 | broadcast/MY Gopher | pending | Unblurred name/pic for MY Gopher |
-| 21 | G40-92 | submitted | pending | Activity-without-response SMS |
-| 22 | G40-99 | broadcast | pending | 10-min re-broadcast |
+| 19 | G40-88 | submitted/update | **DONE** (17494) | Legacy update path mapped (summary.js:228 → PATCH v2 → update_v2; generic log at update.js:707) — scaffold + test on disk |
+| 20 | G40-91 | broadcast/MY Gopher | **DONE** (17495) | Go proto already models the rule (rv unblur for priority/accepted; addresses stay locked) — supersedes 7/3 note |
+| 21 | G40-92 | submitted | **DONE** (17499) | Sharper root cause: legacy follow-up cron dedupes per order FOREVER (order_notifications) — the 'intermittent' explanation; trigger set needs owner decisions |
+| 22 | G40-99 | broadcast | **DONE** (17502) | First grooming since 2024; Not-Interested → order_declines mapped; Shaun's spam concern closed structurally (1-hr ASAP expiry caps ~5 sends) |
 | 23 | G40-101 | active/cost-adjust | **DONE** (17475) | Shared receipt component verified both prototypes + Go gate. Spec divergence flagged: ticket=increase-only vs split-proto any-change — owner to confirm; ReceiptDisplay.jsx/costAdjustment.test.js missing on disk |
-| 24 | G40-108 | submitted/scheduled | pending | 48-h unaccepted check-in email |
+| 24 | G40-108 | submitted/scheduled | **DONE** (17505) | checkin-48h-2026.ejs template ALREADY BUILT (SMS:Emails) — remaining = migration + cron + send_mail type registration |
 | 25 | G40-113 | creation/pricing data | **DONE** (17468) | suggestedOfferUsed wired both prototypes + Dashboard detail; legacy smart_price never persisted usage flag — net-new boolean + report column |
 | 26 | G40-116 | creation/age | **DONE** (17471) | Legacy: under-21 keyword block + <30 TrustShield iDenfy, no over-30 ID path; ageRestriction.test.js MISSING despite 'tests pass' claim — flagged |
 | 27 | G40-137 | offers | **DONE** (17482) | Go proto counter panel + Standard-credits copy supersedes 07-03 note; D-026 canon ($20 floor / 150% ceiling, server-side) |
@@ -64,26 +64,26 @@
 | 30 | G40-142 | active/ride | **DONE** (17491) | __vehicleCard built in request; NOT in connect — parity question flagged for owner; recap's vehicleInfo.js scaffold nonexistent |
 | 31 | G40-155 | — | **RECLASS?** | see N table — moved there (recommendation/inbox) |
 | 32 | G40-160 | creation (Connect) | **DONE** (17459) | gopher-connect.html IS the B2B FE; js_order/iswebplateform proves one-engine; eligibleWorkers still not in payload; canonical SHA anchor stale (Jun 18 rev6) |
-| 33 | G40-164 | messaging/admin log | pending | Messaging not documented in Admin |
+| 33 | G40-164 | messaging/admin log | **DONE** (17496) | H1 re-verified (INNER join + gopher-sender-only grouping); anchor drift fixed (app_part4.js:2257) |
 | 34 | G40-165 | broadcast/privacy | **DONE** (17486) | Current proto = stricter no-exact-address-pre-accept; legacy anchors re-verified; backend server-side strip needed |
-| 35 | G40-186 | creation | pending | Available-Gophers count (iQ built) |
-| 36 | G40-189 | submitted/admin update | pending | Admin updates a request |
+| 35 | G40-186 | creation | **DONE** (17500) | GET /gopher_count mapped with 5 legacy-vs-spec deltas (NULL work-settings inflation source); eligibility.test.js missing (regen queued) |
+| 36 | G40-189 | submitted/admin update | **DONE** (17498) | Dashboard host slots built, buttons net-new; tied to G40-88 cost-delta log format; crossed MCP response verified-no-dup |
 | 37 | G40-192 | completion/age | **DONE** (17456) | Legacy v1 no-show pays immediately — ack/GPS/fraud/24h-hold all net-new; noShowGuard.js tests pass |
 | 38 | G40-202 | completion/rating | **DONE** (17501) | GAP CLOSED 07-19: checkbox built into openRateRequester (commit 0e4941c) + relationships.js/.test.js (passing, JXA) + BlockRequestorCheckbox.jsx regenerated |
 | 39 | G40-204 | accept/worker | **DONE** (17488) | Accept-interception seam exists (doAccept); headcount modal correctly absent (no field). wave2 headcountModal.js MISSING |
-| 40 | G40-205 | messaging | pending | Favorite/Block from messaging |
-| 41 | G40-209 | submitted | pending | Info modals up to cancellation |
-| 42 | G40-216 | active/messaging | pending | Worker photo attachments |
+| 40 | G40-205 | messaging | **DONE** (17512) | GAP CLOSED 07-19: Fav/Block buttons built into request inbox header (commit bdd4f7a) + FavoriteBlockButtons.jsx + relationships.js regenerated; Connect-mirror question flagged to owner |
+| 41 | G40-209 | submitted | **DONE** (17503) | requestFlow.js endAt invariant verified in source; test file missing (regen queued); cancel-flow prototype live |
+| 42 | G40-216 | active/messaging | **DONE** (17506) | MAJOR corrections: worker app already has full photo stack (blocker = one appType ternary); LIVE send_image exists (location_update.js:92); zero on-order authz confirmed |
 | 43 | G40-217 | active/cost-adjust | **DONE** (17476) | +15-min adder built; snap-validation not prototyped (by design); DECIMAL(5,2) migration is the crux |
 | 44 | G40-218 | completion/age | **DONE** (17457) | Delta layer only (07-07 comment already full); AC 'route to ratings' superseded by G40-331 gate |
 | 45 | G40-244 | broadcast/details | **DONE** (17490) | Backend already emits noof_rider (order_info.js:58) — no new field; requester side produces all data; anchor drift fixed (:2579) |
-| 46 | G40-250 | broadcast/backup | pending | SMS/email escalation exclusions |
-| 47 | G40-251 | creation | pending | Request Again carry-over |
+| 46 | G40-250 | broadcast/backup | **DONE** (17508) | First code-grounded map on ticket (OOA escalation trace); legacy 5-min timer anchors to creation — must move to final-cadence-tier; no dormancy filter exists |
+| 47 | G40-251 | creation | **DONE** (17504) | raFast built; carry-over gap = address/media not in state; mapped onto INV-17 stop pattern + parity harness |
 | 48 | G40-253 | creation/QA | **DONE** (17461) | Parity harness documented (run_parity_harness.py, 5 checks + run cmd); prior comment cited v3.3 — now v3.4 |
-| 49 | G40-266 | submitted/edit | pending | Edit category → duplicate |
-| 50 | G40-270 | creation | pending | Draft order / save progress |
-| 51 | G40-273 | creation/scheduled | pending | Address time zones |
-| 52 | G40-274 | creation | pending | Pickup=dropoff regression |
+| 49 | G40-266 | submitted/edit | **DONE** (17507) | Concrete duplicate mechanism: summary.js branches on redux orderId only — cross-subcategory re-route drops it; editRequest.js+test missing (regen queued) |
+| 50 | G40-270 | creation | **DONE** (17509) | draftOrder.js IS on disk (corrects 07-07 'no scaffold'); legacy = plain redux, zero persistence |
+| 51 | G40-273 | creation/scheduled | **DONE** (17510) | Only legacy tz code = state→IANA map for email logs; device-local picker = wrong-interpretation seam; UTC storage likely correct |
+| 52 | G40-274 | creation | **DONE** (17511) | Validation entirely absent in June export; Request stepGate built, Connect not gated (parity item); addressValidation.js+test missing (regen queued); toast-vs-modal UX question to owner |
 | 53 | G40-292 | creation (Deals seed) | **DONE** (17463) | __startDealRequest built both prototypes; no deals model in legacy; fee/who-pays/COGS ACs owner-pending |
 | 54 | G40-297 | submit/payment rail | **DONE** (17466) | Legacy already has manual capture + adjustable_amount + re_authorize_token cron; delta = buffer config + release seam + G40-9 reuse. NB escrow.test.js missing despite recap claim |
 | 55 | G40-299 | all (meta) | **DONE** (17469) | Gate ticket → pointed at Rebuild-Acceptance-Checklist.md + harness; Jira description behind the .md (Jul-10 Android criteria) — owner to update |
@@ -186,6 +186,11 @@ Flow documentation complete.
 - 2026-07-19 — **Canonical doc is v3.4** (Jul 12, adds INV-RATING) — v3.2 is its changelog
   lineage; scrub comments cite v3.4. Pilot pass posted G40-44 (17452) + G40-65 (17453);
   legacy-vs-new-spec "do NOT port" deltas proved valuable — propagated to all agents.
+- 2026-07-19 — ALL 61 applicable tickets documented (62 minus G40-155 reclassified N):
+  60 posted by the 9 phase agents + pilots; 2 fe-gaps (G40-202, G40-205) built same-day
+  (Go rating-modal checkbox 0e4941c; Request inbox Fav/Block bdd4f7a) then posted.
+  Scaffold-regen batch 1 done (15 files, 9 suites passing via JXA — no node on this Mac);
+  batch 2 (expiry/editRequest/addressValidation + 7 test files) queued.
 - 2026-07-19 — Remaining 59 applicable tickets fanned out to 9 themed background agents
   (broadcast / creation / creation-pay-age / offers-worker-view / active / cancel-pay-rail /
   completion / messaging-updates / umbrella-meta). Rules: comment-only, read existing comments
