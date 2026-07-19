@@ -10325,15 +10325,15 @@ const PAY_BADGES = {
         ${isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-          <span class="tr-label">No specific pick-up location
-            <button class="info-btn" data-info="Worker can pick up / purchase anywhere${state.category === 'moving' ? ' OR this is only a simple address job.' : ''}">?</button>
+          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'No specific pick-up location'}
+            <button class="info-btn" data-info="${state.category === 'moving' ? 'Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.' : 'Worker can pick up / purchase anywhere'}">?</button>
           </span>
         </div>
         ` : ''}
         ${state.noSpecificPickup && isVisible('noSpecificPickup') ? `
           <div class="sub-field">
-            <div class="sf-label">Pick-up flexibility</div>
-            <div class="sf-value">Worker can pick up or purchase from any location.</div>
+            <div class="sf-label">${state.category === 'moving' ? 'Single-location move' : 'Pick-up flexibility'}</div>
+            <div class="sf-value">${state.category === 'moving' ? 'Your worker helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : 'Worker can pick up or purchase from any location.'}</div>
           </div>
         ` : `
           ${renderMultiAddressBlock_pickup()}
@@ -12428,7 +12428,7 @@ const PAY_BADGES = {
     window.G40_REQ = {
       phoneEntered: function(){ return gcModal('<div class="gc-modal-icon">📵</div><h4>Remove the phone number</h4><p class="gc-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your worker in-app. Please edit your message to remove it.</p><button type="button" class="gc-modal-btn grx">Edit my message</button>'+b2('Cancel')); },
       paymentNotAuthorized: function(){ return gcModal('<div class="gc-modal-icon">💳</div><h4>Update your card to keep this request</h4><p class="gc-modal-sub">A worker accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast immediately.</p><button type="button" class="gc-modal-btn grx">Update payment</button>'); },
-      pickupSameAsDropoff: function(){ return gcModal('<div class="gc-modal-icon">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gc-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving a single location? Slide the pick-up toggle to <b>“No specific pick-up location.”</b>)</p><button type="button" class="gc-modal-btn grx">Got it</button>'); },
+      pickupSameAsDropoff: function(){ return gcModal('<div class="gc-modal-icon">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gc-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gc-modal-btn grx">Got it</button>'); },
       selectedGopherBusy: function(){ return gcModal('<div class="gc-modal-icon">⚠️</div><h4>That worker is on another job</h4><p class="gc-modal-sub">The worker you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.</p><button type="button" class="gc-modal-btn grx">Message the worker</button>'+b2('Choose another')); },
       cantDeleteOnlyCard: function(){ return gcModal('<div class="gc-modal-icon">💳</div><h4>Add a card before removing this one</h4><p class="gc-modal-sub">You need at least one card on file to keep your account in good standing. Add a new card, then you can remove this one.</p><button type="button" class="gc-modal-btn grx">Add new card</button>'+b2('Cancel')); },
       expiredInterestedWorkers: function(){ return gcModal('<div class="gc-modal-icon">⏰</div><h4>Your request expired — workers are interested</h4><p class="gc-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gc-modal-btn grx">View interested workers</button>'+b2('Cancel request')); },
