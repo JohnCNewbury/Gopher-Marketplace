@@ -36,7 +36,7 @@
 | 2 | G40-9 | active/cancel | pending | Auto-repost on Gopher cancel (FE; backend = G40-304) |
 | 3 | G40-18 | active/payment rail | pending | 7-day auth expiry; ties G40-297 |
 | 4 | G40-35 | messaging on submitted/active | pending | Comms guard; connect-gate depends on flow state |
-| 5 | G40-38 | creation/checkout | pending | Payment options at checkout; __payStore built |
+| 5 | G40-38 | creation/checkout | **DONE** (17465) | Legacy card-only, no webhook gate; __payStore anchors current; wave1/ paths stale (files flat) |
 | 6 | G40-39 | completion/rating | **DONE** (17455) | Legacy has no photo screen (photos ride rating POST); non-dismissible rating retired per INV-RATING; native storyboard = DO-NOT-BUILD |
 | 7 | G40-40 | submitted/cancel | pending | Early-cancel modal A/B |
 | 8 | G40-43 | submitted/expiry | pending | No expire with pending offers |
@@ -56,14 +56,14 @@
 | 22 | G40-99 | broadcast | pending | 10-min re-broadcast |
 | 23 | G40-101 | active/cost-adjust | pending | Receipt on cost increase |
 | 24 | G40-108 | submitted/scheduled | pending | 48-h unaccepted check-in email |
-| 25 | G40-113 | creation/pricing data | pending | "Suggested Offer Used" capture |
-| 26 | G40-116 | creation/age | pending | Age-restricted ID at creation (canon in memory) |
+| 25 | G40-113 | creation/pricing data | **DONE** (17468) | suggestedOfferUsed wired both prototypes + Dashboard detail; legacy smart_price never persisted usage flag — net-new boolean + report column |
+| 26 | G40-116 | creation/age | **DONE** (17471) | Legacy: under-21 keyword block + <30 TrustShield iDenfy, no over-30 ID path; ageRestriction.test.js MISSING despite 'tests pass' claim — flagged |
 | 27 | G40-137 | offers | pending | Counter-offer monthly credits |
 | 28 | G40-139 | broadcast/worker view | pending | Available-tab instant refresh |
 | 29 | G40-138 | active/location | pending | Allow-Always location during live request |
 | 30 | G40-142 | active/ride | pending | Ride-sharing info enhance |
 | 31 | G40-155 | — | **RECLASS?** | see N table — moved there (recommendation/inbox) |
-| 32 | G40-160 | creation (Connect) | pending | B2B request submission umbrella |
+| 32 | G40-160 | creation (Connect) | **DONE** (17459) | gopher-connect.html IS the B2B FE; js_order/iswebplateform proves one-engine; eligibleWorkers still not in payload; canonical SHA anchor stale (Jun 18 rev6) |
 | 33 | G40-164 | messaging/admin log | pending | Messaging not documented in Admin |
 | 34 | G40-165 | broadcast/privacy | pending | Remove customer apt # |
 | 35 | G40-186 | creation | pending | Available-Gophers count (iQ built) |
@@ -79,21 +79,21 @@
 | 45 | G40-244 | broadcast/details | pending | Ride details missing on worker view |
 | 46 | G40-250 | broadcast/backup | pending | SMS/email escalation exclusions |
 | 47 | G40-251 | creation | pending | Request Again carry-over |
-| 48 | G40-253 | creation/QA | pending | Coverage validation, all creation flows |
+| 48 | G40-253 | creation/QA | **DONE** (17461) | Parity harness documented (run_parity_harness.py, 5 checks + run cmd); prior comment cited v3.3 — now v3.4 |
 | 49 | G40-266 | submitted/edit | pending | Edit category → duplicate |
 | 50 | G40-270 | creation | pending | Draft order / save progress |
 | 51 | G40-273 | creation/scheduled | pending | Address time zones |
 | 52 | G40-274 | creation | pending | Pickup=dropoff regression |
-| 53 | G40-292 | creation (Deals seed) | pending | Seed last-mile request from merchant order |
-| 54 | G40-297 | submit/payment rail | pending | Escrow auth on submit |
-| 55 | G40-299 | all (meta) | pending | Rebuild acceptance checklist |
+| 53 | G40-292 | creation (Deals seed) | **DONE** (17463) | __startDealRequest built both prototypes; no deals model in legacy; fee/who-pays/COGS ACs owner-pending |
+| 54 | G40-297 | submit/payment rail | **DONE** (17466) | Legacy already has manual capture + adjustable_amount + re_authorize_token cron; delta = buffer config + release seam + G40-9 reuse. NB escrow.test.js missing despite recap claim |
+| 55 | G40-299 | all (meta) | **DONE** (17469) | Gate ticket → pointed at Rebuild-Acceptance-Checklist.md + harness; Jira description behind the .md (Jul-10 Android criteria) — owner to update |
 | 56 | G40-300 | completion/rating | **DONE** (17458) | Star-conditional built+verified both prototypes; legacy fav checkbox unconditional; block-on-rating net-new |
 | 57 | G40-304 | active/cancel (backend spec) | pending | G40-9 backend rail; FE = n/a by design |
 | 58 | G40-307 | active/cancel deeplink | pending | Deep link into cancel flow |
-| 59 | G40-310 | creation/age | pending | Auto-enable Purchase-needed guardrail (built) |
+| 59 | G40-310 | creation/age | **DONE** (17472) | Built+verified both prototypes; added legacy root-cause (accept_cog new-charge when 20% buffer exceeded) |
 | 60 | G40-325 | completion/fraud | **DONE** (17460) | GPS already logged in order_logs — detection is a comparison legacy never does; null-GPS policy + threshold = owner decisions |
 | 61 | G40-326 | active/authorizations | pending | Extend requester auths, kill cancel-resend |
-| 62 | G40-328 | creation/fees | pending | ITF on undiscounted base (D-033) |
+| 62 | G40-328 | creation/fees | **DONE** (17474) | Non-compliance verified at exact lines (TrustShield subtracted pre-ITF; per-fee-line coupons); prototypes = D-033 oracle w/ $104.0746 worked example |
 | 63 | G40-331 | completion/rating | **DONE** (17462) | Legacy rates at mark-complete (no state check); spec: unified finalization event + server-side enforcement |
 
 *(G40-155 counted in the N table; table numbering retained for audit.)*
