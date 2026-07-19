@@ -69,7 +69,7 @@
 | 35 | G40-186 | creation | pending | Available-Gophers count (iQ built) |
 | 36 | G40-189 | submitted/admin update | pending | Admin updates a request |
 | 37 | G40-192 | completion/age | **DONE** (17456) | Legacy v1 no-show pays immediately — ack/GPS/fraud/24h-hold all net-new; noShowGuard.js tests pass |
-| 38 | G40-202 | completion/rating | **FE-GAP** | Confirm-gated host modal exists (Go proto) but Block-Requestor checkbox built nowhere; BlockRequestorCheckbox.jsx + relationships.js cited by recap are MISSING on disk — regenerate before posting |
+| 38 | G40-202 | completion/rating | **DONE** (17501) | GAP CLOSED 07-19: checkbox built into openRateRequester (commit 0e4941c) + relationships.js/.test.js (passing, JXA) + BlockRequestorCheckbox.jsx regenerated |
 | 39 | G40-204 | accept/worker | **DONE** (17488) | Accept-interception seam exists (doAccept); headcount modal correctly absent (no field). wave2 headcountModal.js MISSING |
 | 40 | G40-205 | messaging | pending | Favorite/Block from messaging |
 | 41 | G40-209 | submitted | pending | Info modals up to cancellation |
