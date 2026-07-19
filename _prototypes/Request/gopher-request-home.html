@@ -389,6 +389,33 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .faq-a{font-family:'DM Sans';font-weight:400;color:var(--body);margin-top:7px;line-height:1.5;display:none;}
 .faq.open .faq-a{display:block;}
 .gs-hint{font-size:11.5px;color:var(--muted-cool);margin-top:14px;text-align:center;}
+/* Request FAQ — models the Gopher Go FAQ screen (hero + iQ pill + category tabs). Prefixed
+   rfq-/riq- so it never collides with the request app's own .iq-* home-search classes. */
+.rfq-hero{text-align:center;padding:2px 2px 4px;}
+.rfq-eye{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#1CB061;}
+.rfq-h{font-family:'Nunito';font-weight:900;font-size:22px;color:var(--navy);margin:4px 0 14px;}
+.riq-pill{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #cfd9ea;border-radius:999px;padding:7px 8px;box-shadow:0 8px 22px rgba(0,36,97,.10);}
+.riq-badge{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#33D975,#1CB061);color:#002461;font-family:'Nunito';font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;letter-spacing:-.5px;}
+.riq-in{flex:1;border:none;outline:none;background:none;font-family:'Nunito';font-weight:600;font-size:13.5px;color:var(--navy);}
+.riq-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+.riq-hint{display:flex;align-items:center;justify-content:center;gap:6px;font-family:'DM Sans';font-size:11px;color:var(--muted-cool);margin-top:9px;}
+.riq-ans{margin:12px 0 0;}
+.riq-card{background:#F2FBF6;border:1px solid #bfe6cf;border-radius:16px;padding:14px 15px;}
+.riq-lab{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#1CB061;margin-bottom:7px;}
+.riq-hit.more{margin-top:12px;padding-top:12px;border-top:1px solid #cfeadd;}
+.riq-q{font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--navy);}
+.riq-aa{font-size:12.5px;color:#3A4D74;line-height:1.55;margin-top:3px;}
+.rfq-tabs{display:flex;gap:8px;margin:16px 0 0;}
+.rfq-tab{flex:1;text-align:center;padding:9px 4px;border-radius:999px;border:1px solid var(--line);background:#fff;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#6B7280;cursor:pointer;}
+.rfq-tab.on{background:#1CB061;border-color:#1CB061;color:#fff;}
+.rfq-list{margin:12px 0 0;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+.rfq-item{border-bottom:1px solid #f0eadd;}
+.rfq-item:last-child{border-bottom:none;}
+.rfq-fq{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 15px;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);cursor:pointer;line-height:1.3;}
+.rfq-cv{color:#1CB061;font-size:17px;flex:0 0 auto;}
+.rfq-fa{padding:0 15px 14px;font-size:12.5px;color:#3A4D74;line-height:1.55;}
+.rfq-help{text-align:center;margin:16px 0 4px;font-size:12px;color:#6B7280;font-family:'Nunito';font-weight:700;}
+.rfq-link{color:#1CB061;font-weight:900;cursor:pointer;}
 .pts-hero{background:linear-gradient(135deg,var(--green-bright),var(--green-dark));border-radius:16px;padding:18px;text-align:center;color:#fff;}
 .pts-n{font-family:'Nunito';font-weight:900;font-size:34px;line-height:1;}.pts-l{font-size:12px;opacity:.92;margin-top:4px;}
 .iq-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin:10px 0;}
@@ -1922,23 +1949,59 @@ function openHelpCenter(){
       +__hcCard('hc-contact','@','#E9F1FC','#002461','Contact Us','Reach a human on the Gopher team')
     +'</div>');
 }
-// FAQs \u2014 requester-facing (mirrors the Go FAQ screen's collapsible list; content is customer-appropriate).
+// FAQs \u2014 models the Gopher Go FAQ screen (Help Center hero + iQ ask pill with inline answers +
+// category tabs). Content is requester-facing; the pill behaves like the FAQ (inline answer from
+// the FAQ corpus), NOT like the home iQ CTA. Kept consistent with Go for dual-user familiarity.
+var REQ_FAQS=[
+  {g:'Requests',q:'What are your hours?',a:'Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'},
+  {g:'Requests',q:'How do I place a request?',a:'Tap a category on Home, add the details and your offer, then submit \u2014 nearby Gophers can accept it right away.'},
+  {g:'Requests',q:'Can I cancel my request after the worker has started?',a:'Before a Gopher is matched it\u2019s free. If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for details.'},
+  {g:'Requests',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
+  {g:'Requests',q:'How can I see my previous orders?',a:'Go to Account \u2192 Request History to see your completed and cancelled requests.'},
+  {g:'Payments',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'},
+  {g:'Payments',q:'How do payments & receipts work?',a:'Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'},
+  {g:'Payments',q:'How does pricing work?',a:'You set the payment to your Gopher; a small Gopher fee is added at review. Any item costs are reimbursed separately.'},
+  {g:'Trust & Safety',q:'What is TrustShield\u2122?',a:'A free, one-time identity check. Verify once for two-way trust and $1 off every age-restricted delivery & ride request \u2014 no re-verifying each time.'},
+  {g:'Trust & Safety',q:'Are Gophers background-checked?',a:'Yes. Every Gopher is background-checked before they can accept requests, so you know a verified neighbor is on the way.'},
+  {g:'Trust & Safety',q:'What if something goes wrong with my request?',a:'Open a dispute from the request \u2014 you and your Gopher work it out with our team, and payment stays on hold until it\u2019s resolved.'}
+];
+var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
 function openReqFaqs(){
-  var FAQS=[
-    ['What are your hours?','Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'],
-    ['How much does it cost to use the app?','A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'],
-    ['How do payments &amp; receipts work?','Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'],
-    ['Can I cancel my request after the worker has started?','Before a Gopher is matched it\u2019s free. If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for details.'],
-    ['Can I request age-restricted products?','Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'],
-    ['What is TrustShield\u2122?','A free, one-time identity check. Verify once for two-way trust and $1 off every age-restricted delivery &amp; ride request \u2014 no re-verifying each time.'],
-    ['How can I see my previous orders?','Go to Account \u2192 Request History to see your completed and cancelled requests.']
-  ];
-  gSheet('FAQs',
-    '<p class="gs-sub">Answers to the most common questions.</p>'
-    +'<div class="gs-list" style="margin-top:10px;">'
-      +FAQS.map(function(f){ return '<div class="faq" data-faq>'+f[0]+'<div class="faq-a">'+f[1]+'</div></div>'; }).join('')
-    +'</div>'
-    +'<div class="gs-hint">Still need help? <span class="gs-link" data-goto="hc-contact">Contact Us \u2192</span></div>');
+  var o=gSheet('FAQs',
+    '<div class="rfq-hero"><div class="rfq-eye">Help Center</div><div class="rfq-h">How can we help?</div>'
+      +'<div class="riq-pill"><span class="riq-badge">iQ</span><input class="riq-in" placeholder="Ask Gopher iQ a question\u2026"><span class="riq-go" data-rfq-go>\u2192</span></div>'
+      +'<div class="riq-hint">Powered by Gopher iQ \u00b7 answers pulled from our FAQs</div></div>'
+    +'<div class="riq-ans" hidden></div>'
+    +'<div class="rfq-tabs">'+REQ_FAQ_GROUPS.map(function(g,i){ return '<button class="rfq-tab'+(i===0?' on':'')+'" data-rfq-tab="'+g+'">'+g+'</button>'; }).join('')+'</div>'
+    +'<div class="rfq-list" data-rfq-list></div>'
+    +'<div class="rfq-help">Still need help? <span class="rfq-link" data-goto="hc-contact">Contact Us \u2192</span></div>');
+  var sheet=o.querySelector('.gsheet'); if(!sheet) return;
+  var listEl=sheet.querySelector('[data-rfq-list]'), ansEl=sheet.querySelector('.riq-ans'), inp=sheet.querySelector('.riq-in');
+  var group=REQ_FAQ_GROUPS[0];
+  function renderList(){
+    listEl.innerHTML=REQ_FAQS.filter(function(f){return f.g===group;}).map(function(f){
+      return '<div class="rfq-item"><div class="rfq-fq" data-rfq-q>'+f.q+'<span class="rfq-cv">+</span></div><div class="rfq-fa" hidden>'+f.a+'</div></div>';
+    }).join('');
+    listEl.querySelectorAll('[data-rfq-q]').forEach(function(q){ q.onclick=function(){ var a=q.nextElementSibling, c=q.querySelector('.rfq-cv'); var open=a.hasAttribute('hidden'); a.toggleAttribute('hidden'); if(c)c.textContent=open?'\u2013':'+'; }; });
+  }
+  sheet.querySelectorAll('[data-rfq-tab]').forEach(function(t){ t.onclick=function(){ group=t.getAttribute('data-rfq-tab'); sheet.querySelectorAll('.rfq-tab').forEach(function(x){ x.classList.toggle('on',x===t); }); renderList(); }; });
+  renderList();
+  // iQ pill \u2014 inline FAQ search (top matches shown as answers), NOT the home quick-action CTA.
+  var STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im'.split(' '));
+  function canon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif|id|age)/.test(w))return 'trust'; return w; }
+  function toks(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !STOP.has(w);}).map(canon); }
+  function search(query){ var qw=toks(query); if(!qw.length) return [];
+    return REQ_FAQS.map(function(f){ var qset=new Set(toks(f.q)); var aset=new Set(toks(f.q+' '+f.a+' '+f.g)); var s=0; qw.forEach(function(w){ if(qset.has(w))s+=3; else if(aset.has(w))s+=1; }); return {f:f,s:s}; }).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
+  }
+  function ask(){ var q=inp.value.trim(); if(!q){ ansEl.setAttribute('hidden',''); ansEl.innerHTML=''; return; }
+    var hits=search(q);
+    ansEl.innerHTML=hits.length
+      ? '<div class="riq-card"><div class="riq-lab">Gopher iQ</div>'+hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join('')+'</div>'
+      : '<div class="riq-card"><div class="riq-lab">Gopher iQ</div><p class="riq-aa">I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.</p></div>';
+    ansEl.removeAttribute('hidden');
+  }
+  sheet.querySelector('[data-rfq-go]').onclick=ask;
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
 }
 // Contact Us \u2014 mirrors the Go app's Contact Us (email + topic/message form).
 function openReqContact(){
