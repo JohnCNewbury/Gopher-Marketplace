@@ -56,8 +56,9 @@ function cur30(){
   let r=ORD; const F=window.GF||{};
   if(F.market&&F.market!=='all') r=r.filter(o=>o.state===F.market);
   if(F.platform&&F.platform!=='all'&&F.platform!=='Request') r=r.filter(()=>false);
-  const mx=ORD.reduce((a,o)=>o.day>a?o.day:a,0);
-  return {cur:gfTotals(r.filter(o=>o.day>mx-30)),prev:gfTotals(r.filter(o=>o.day>mx-60&&o.day<=mx-30))};
+  // Anchor to the last COMPLETE day — the export's newest day is partial (Snapshot convention).
+  const last=ORD.reduce((a,o)=>o.day>a?o.day:a,0)-1;
+  return {cur:gfTotals(r.filter(o=>o.day>last-30&&o.day<=last)),prev:gfTotals(r.filter(o=>o.day>last-60&&o.day<=last-30))};
 }
 function d30(cur,prev){if(!prev)return '';return trendTag((cur-prev)/prev*100)+' vs prior 30d';}
 
@@ -249,7 +250,7 @@ VIEWS.health=()=>{
   const _elite=(M.gopher_type&&(M.gopher_type.Elite||M.gopher_type.Pro))||0;
   const _elitePlus=(M.gopher_type&&(M.gopher_type['Elite+']||M.gopher_type['Pro+']))||0;
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(10,f.values[i]/maxf*100);
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i===1?` · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:i>1?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;
     const ll=(''+l).toLowerCase();
     if(_g6&&ll.includes('stripe')){
       const sub=el('div');sub.style.cssText='font-size:11px;color:var(--muted);margin:3px 0 0 2px';

@@ -141,7 +141,7 @@ VIEWS['p-go']=()=>{
   // supply funnel
   const fw=el('div','funnel');const maxf=f.values[0];const cols=[C.violet,C.amber,C.green];
   f.labels.forEach((l,i)=>{const st=el('div','step');const w=Math.max(8,f.values[i]/maxf*100);
-    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i>0?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;fw.appendChild(st);});
+    st.innerHTML=`<div class="fbar" style="width:${w}%;background:${cols[i]}">${num(f.values[i])}</div><div class="fmeta">${l}${i===1?` · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:i>1?` · <b>${(f.values[i]/f.values[i-1]*100).toFixed(1)}%</b> of prior step · <b>${(f.values[i]/maxf*100).toFixed(1)}%</b> of signups`:''}</div>`;fw.appendChild(st);});
   v.appendChild(card('Supply funnel','Sign-up → verified → active. Closing this funnel is the highest-leverage growth move at Gopher.',fw));
 
   v.appendChild(storesNote('worker'));
