@@ -224,7 +224,10 @@ VIEWS.health=()=>{
       .sort((x,y)=>y.rate-x.rate).slice(0,3);
     if(top.length){
       const tc=s=>s.replace(/\w\S*/g,w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase());
-      gw.appendChild(el('div',null,'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-top:18px">Top cities by completion</div>'));
+      // These aggregate over `fo` — lifetime when no Range filter is set, else the filter window.
+      // Distinct period from the 30-day gauge above, so label it to avoid a units mismatch.
+      const _cityScope=gfActive()?gfLabel():'lifetime';
+      gw.appendChild(el('div',null,`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-top:18px">Top cities by completion · ${_cityScope} <span style="font-weight:600;text-transform:none;letter-spacing:0">(min ${num(minN)} requests)</span></div>`));
       const row=el('div');row.style.cssText='display:flex;gap:8px;margin-top:8px';
       top.slice().reverse().forEach(a=>{
         const cc=el('div');cc.style.cssText='flex:1;text-align:center;border:1px solid var(--line,#e6eaee);border-radius:10px;padding:10px 6px;background:var(--card,#fff)';
