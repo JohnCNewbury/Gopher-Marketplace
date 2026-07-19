@@ -2555,13 +2555,21 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<div class="js-rrstars" style="display:flex;gap:8px;justify-content:center;margin:12px 0 4px;">'+stars()+'</div>'
         +'<div class="js-rrlab" style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;min-height:16px;"></div>'
         +'<textarea class="js-rrnote" placeholder="Add a note (optional)" style="width:100%;min-height:60px;margin-top:8px;border:1px solid #d9d2c2;border-radius:11px;padding:10px;font-family:\'DM Sans\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>'
+        +'<label class="rl-block js-rrblock"><span class="rl-bx"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="rl-bt">Do not send me requests from this Requestor again.</span></label>'
         +'<button class="js-rrsubmit" disabled style="width:100%;margin-top:12px;border:0;background:#cfe9d9;color:#7aa790;border-radius:11px;padding:12px;font-family:Nunito;font-weight:900;font-size:14px;cursor:not-allowed;">Submit rating</button>');
       const LBL={1:'Poor',2:'Fair',3:'Good',4:'Great',5:'Excellent'};
       const sub=ov.querySelector('.js-rrsubmit'), lab=ov.querySelector('.js-rrlab');
       function paint(){ ov.querySelector('.js-rrstars').innerHTML=stars(); wireStars(); lab.textContent=picked?LBL[picked]:''; if(picked){ sub.disabled=false; sub.style.background='#1CB061'; sub.style.color='#fff'; sub.style.cursor='pointer'; } }
       function wireStars(){ ov.querySelectorAll('.js-rrstar').forEach(s=>s.onclick=()=>{ picked=+s.getAttribute('data-n'); paint(); }); }
       wireStars();
-      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; ov.remove(); draw(); toast('Thanks — your rating of '+who+' was submitted');
+      // G40-202: optional block checkbox on the rating screen — applied in the SAME submission as the
+      // rating (BACKEND SEAM: write the gopher→requestor block row in the same transaction as the
+      // ratings.create call; one-directional + silent — the requester is never notified). The Available
+      // feed already filters isBlocked() (AC4) and the Blocked Requestors panel manages/undoes it.
+      let blockPicked=false;
+      const blk=ov.querySelector('.js-rrblock');
+      blk.onclick=()=>{ blockPicked=!blockPicked; blk.querySelector('.rl-bx').classList.toggle('on',blockPicked); };
+      sub.onclick=()=>{ if(!picked) return; j.reqRated=picked; if(blockPicked) blockReq(who); ov.remove(); draw(); toast('Thanks — your rating of '+who+' was submitted'+(blockPicked?' · '+who+' won’t reach you again':''));
         // Favorite congrats — only if the requester has favorited this Gopher (relayed via __ptRated).
         if(j.favorited && !j.favCongrats){ j.favCongrats=1; if(window.__goFavCongrats) window.__goFavCongrats(who); }
         // Rated + confirmed → wrap up back at Home; skipped while any modal (e.g. the congrats) is up.
