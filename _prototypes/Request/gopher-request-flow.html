@@ -1824,7 +1824,8 @@ function renderStep7(){
   return `<div class="burst">
     <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
     <h4>${haFirst ? 'Request sent!' : 'Request submitted!'}</h4>
-    <p>${haFirst ? (haLabel + ' has first dibs…') : 'Looking for your worker…'} · Order <strong>#GR-00001</strong></p>
+    <p>${haFirst ? (haLabel + ' has first dibs…')
+      : `<span style="position:relative;display:inline-block;"><span style="visibility:hidden;">Looking for your worker…</span><span data-typetext="Looking for your worker…" style="position:absolute;left:0;top:0;white-space:nowrap;"></span></span>`} · Order <strong>#GR-00001</strong></p>
   </div>
   <div class="review-card">
     <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green-dark);">Submitted · ${expires}</span></div>
@@ -1849,6 +1850,23 @@ function renderStep7(){
     <button class="ma-btn ma-btn-secondary" data-action="cancel-request">Cancel request</button>
   </div>`}`;
 }
+
+/* Typewriter for the submitted screen's "Looking for your worker…" — the line keeps re-typing
+   itself (L, Lo, Loo, …) so the requester can SEE that matching is actively running. The typed
+   text overlays an invisible full-width copy, so the "· Order #…" tail never shifts. Progress
+   lives on the element, so a re-render simply restarts the loop; the interval is a no-op when
+   no [data-typetext] element is on screen. */
+(function initTypewriter(){
+  setInterval(function(){
+    document.querySelectorAll('[data-typetext]').forEach(function(el){
+      var full=el.getAttribute('data-typetext')||'';
+      if(el._hold>0){ el._hold--; if(el._hold===0) el._i=0; return; }   // full line rests, then re-types
+      el._i=(el._i==null)?1:el._i+1;
+      if(el._i>=full.length){ el.textContent=full; el._hold=16; }
+      else el.textContent=full.slice(0,el._i)+'▏';
+    });
+  },100);
+})();
 
 /* ============================================================
    RENDER ENGINE
