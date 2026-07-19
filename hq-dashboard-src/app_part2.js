@@ -320,15 +320,18 @@ VIEWS.health=()=>{
   // marketplace signals
   const mk=M.marketplace;
   const sig=el('div','row g3');
-  sig.appendChild(kpi('Gopher offers',num(mk.offers),`${num(mk.offers_accepted)} accepted by the requester · ${(mk.offers_accepted/mk.offers*100).toFixed(0)}% of offers`,{dot:C.green}));
-  sig.appendChild(kpi('Order declines',num(mk.declines),'requests gophers explicitly declined',{dot:C.red}));
-  sig.appendChild(kpi('Counter-offers',num(mk.counters),`${num(mk.counters_accepted)} accepted by the requester · ${(mk.counters_accepted/mk.counters*100).toFixed(0)}% of counters`,{dot:C.amber}));
+  sig.appendChild(kpi('Gopher offers',num(mk.offers),`${num(mk.offers_accepted)} accepted by the requester · ${(mk.offers_accepted/mk.offers*100).toFixed(0)}% of offers · lifetime`,{dot:C.green}));
+  sig.appendChild(kpi('Order declines',num(mk.declines),'requests gophers explicitly declined · lifetime',{dot:C.red}));
+  sig.appendChild(kpi('Counter-offers',num(mk.counters),`${num(mk.counters_accepted)} accepted by the requester · ${(mk.counters_accepted/mk.counters*100).toFixed(0)}% of counters · lifetime`,{dot:C.amber}));
   v.appendChild(sig);
 
-  // geo health table
-  const geo=M.geo_orders;
+  // geo health table — windowed from the filtered orders; baked lifetime when no filter set
+  const geo=gfActive()
+    ? (()=>{const m={};fo.forEach(o=>{const s=o.state;if(!s||s==='—')return;const a=m[s]||(m[s]={state:s,orders:0,completed:0,gmv:0});a.orders++;if(o.status==='delivered'){a.completed++;a.gmv+=o.total;}});
+        return Object.values(m).map(a=>({...a,comp_rate:a.orders?+(a.completed/a.orders*100).toFixed(1):0})).sort((x,y)=>y.orders-x.orders).slice(0,12);})()
+    : M.geo_orders;
   const tb=el('div','card pad0');
-  tb.innerHTML=`<div class="card-h" style="padding:18px 18px 10px"><div><h3>Fulfillment by market</h3><div class="sub">Completion rate tells you where supply is thin.</div></div></div>`;
+  tb.innerHTML=`<div class="card-h" style="padding:18px 18px 10px"><div><h3>Fulfillment by market</h3><div class="sub">Completion rate tells you where supply is thin${gfActive()?' · '+gfLabel():''}.</div></div></div>`;
   const wrap=el('div','tbl-wrap');wrap.style.maxHeight='340px';
   let html='<table><thead><tr><th>Market</th><th style="text-align:right">Requests</th><th style="text-align:right">Completed</th><th style="text-align:right">Completion</th><th style="text-align:right">GMV</th></tr></thead><tbody>';
   geo.forEach(g=>{const cls=g.comp_rate<25?'t-red':g.comp_rate<35?'t-amber':'t-green';
