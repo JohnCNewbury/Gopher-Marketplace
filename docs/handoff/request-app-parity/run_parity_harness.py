@@ -92,7 +92,7 @@ scheduleConfirmed selectedDate suggestedOfferUsed""".split())
 DOCUMENTED_EXTRA = set("""businessPlan dealBoost dealKind
 descriptionIsPlaceholder descriptionPlaceholder dupWarnAck
 eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
-idVerification laborManagement lowAvailabilityAck
+idVerification junkTier laborManagement lowAvailabilityAck
 openCatInfo openInfo osOpen profileOpen savedOnFile
 selfieCaptured selfieSrc submittedAt waiverPrompted
 userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())

@@ -87,6 +87,36 @@ Ordered by severity. **These are the concrete things that break "resume where yo
   Connect-business features; keep out of the consumer Request contract unless the app adds business mode.
 - **Backstop-suppression / UI** (`dupWarnAck`, `lowAvailabilityAck`, `waiverPrompted`, `hireAgainGophers`,
   `submittedAt`, `profileOpen`, `openInfo`, `openCatInfo`, `osOpen`) — transient; re-derive per session.
+- **Junk volume tier** (`junkTier`) — R, C (added 2026-07-19). `'single' | 'half' | 'full' | null`.
+  Junk Removal prices on a *volume tier*, not item cost: iQ detects the tier from the description
+  (`GopherRequestLogic.detectJunkVolumeTier`) and the requester can correct it in the offer modal,
+  at which point the field owns the tier. Feeds `suggestedJunkOffer()` for the slider range and
+  `recordJunkOffer()` at completion (the forward-learning loop). **Persist it** — it is a structured
+  field the production pricing model learns from, not UI state. Add to P when the prototype adopts
+  the Junk tier model.
+
+### 3d. CATEGORY-SCOPED FIELDS — must reset when the category changes (2026-07-19)
+
+Every category gates differently, so a field owned by one category must not survive a switch to
+another. `switchCategory()` (Request + Connect) realigns these to their initial values on every
+user-driven category change, and rewinds the flow to Step 2 so the new category's gates are actually
+walked rather than skipped past.
+
+| Scope | Fields |
+|---|---|
+| Delivery | `ageRestricted`, `ageKeywordAck`, `agePurchaseAck`, `idRequiredAtCompletion`, `idVerification`, `itemsPurchased`, `costOfItems` |
+| Ride | `numRiders`, `numBags` |
+| Junk | `junkTier` |
+| Moving | `noSpecificPickup`, `serviceElevatorPickup`, `serviceElevatorDest`, `pickupStairs`, `destStairs` |
+| Labor / Yard | `payByHour`, `numHours` |
+| Item info | `itemCount`, `multipleItems`, `hazardous` |
+| Worker pay | `payMode`, `payAmount`, `lowOfferAck`, `lowAvailabilityAck`, `suggestedOfferUsed` |
+
+**Deliberately preserved** across a switch: user-typed, category-agnostic input (`description`,
+`picThumbs`, `pickupStops`, `dropoffStops`, `specialInstructions`), plus `agePurchaseDismissed`
+(a session-level "don't show me this again"). Prefill entry points (`__startDealRequest`,
+`__startRequestAgainFast`, `__startHireAgain`, `__startRequestWithCategory`) bypass this — they call
+`resetFlowState()` first and then set category-scoped values intentionally.
 
 ---
 

@@ -9701,6 +9701,67 @@ const PAY_BADGES = {
     Object.assign(state, fresh);
   }
 
+  /* ── Category realignment (owner 2026-07-19) ─────────────────────────────────
+     Mirrors gopher-request.html — keep the two in sync (see the Request/Connect
+     parity convention). Every category gates differently: Delivery has the
+     age-restricted + purchase gates, Ride has rider/bag counts, Junk has the
+     volume tier that prices the offer, Moving has the single-location toggle +
+     elevator access, Labor/Yard have hourly pay. A category switch used to keep
+     the PREVIOUS category's answers, so the new category silently inherited
+     gates the user had never seen — e.g. a Junk volume tier (and its $40–$100
+     model) still showing on a Delivery request. These keys are owned by the
+     category and snap back to their initial values on every switch.
+     Deliberately NOT reset: user-typed, category-agnostic input (description,
+     pics, addresses, specialInstructions), agePurchaseDismissed (a session-level
+     "don't show me this again"), and eligibleWorkers (a routing choice, not a
+     category detail). */
+  const CATEGORY_SCOPED_KEYS = [
+    // Delivery — age-restricted + purchase gates
+    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'itemsPurchased','costOfItems',
+    // Ride — rider info
+    'numRiders','numBags',
+    // Junk — volume tier that prices the offer
+    'junkTier',
+    // Moving — single-location move + access
+    'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
+    // Labor / Yard — hourly pay
+    'payByHour','numHours',
+    // Item info
+    'itemCount','multipleItems','hazardous',
+    // Worker pay — the fair-range model is per category, so the offer and every
+    // ack derived from it has to be re-earned rather than carried across.
+    'payMode','payAmount','lowOfferAck','lowAvailabilityAck','suggestedOfferUsed'
+  ];
+
+  // Snap category-owned state back to defaults. Values are read from
+  // makeInitialState() so this can never drift from the schema.
+  function realignCategoryState(){
+    const fresh = makeInitialState();
+    CATEGORY_SCOPED_KEYS.forEach(k => {
+      if(!(k in fresh)) return;      // key not in this surface's schema — skip
+      const v = fresh[k];
+      state[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+    });
+  }
+
+  /* The single entry point for a USER-DRIVEN category change. Returns false when
+     the category didn't actually change, so a re-click never wipes work.
+     Rewinds to Job details and clamps progress: the new category's gates must be
+     walked, not skipped past (a Junk request switched to Delivery at Step 5 had
+     never seen the age-restricted / purchase gates).
+     Prefill entry points (__startHireAgain, __startRequestAgainFast,
+     __startDealRequest) do NOT use this — they call resetFlowState() first and
+     then intentionally set category-scoped values. */
+  function switchCategory(cat){
+    if(!cat || state.category === cat) return false;
+    state.category = cat;
+    realignCategoryState();
+    state.step = 2;              // Job details — re-walk this category's gates
+    state.maxStepReached = 2;
+    return true;
+  }
+
   // ─── Age-restricted keyword backstop ───
   // Derived from the corpus of past age-restricted requests (Age-Restricted
   // Keyword Logic sheet). These are distinctive tobacco / vape / alcohol / THC
@@ -9798,9 +9859,11 @@ const PAY_BADGES = {
     `).join('');
     $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
       b.addEventListener('click', () => {
-        state.category = b.dataset.cat;
-        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
-        if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; } // jump forward when picking from outer tabs
+        // Realign category-owned state and rewind to Job details. No-ops when the
+        // already-active tab is re-clicked (so a stray click never wipes work) —
+        // in that case Step 1 still jumps forward, as it always has.
+        const changed = switchCategory(b.dataset.cat);
+        if(!changed && state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; }
         render();
       });
     });
@@ -9826,9 +9889,9 @@ const PAY_BADGES = {
     // Advance after a brief "thinking" delay so the match is visible
     const delay = opts.instant ? 100 : 700;
     setTimeout(() => {
-      state.category = key;
-      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
-      if(state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; }
+      // AI-search match is a category switch like any other — realign + rewind.
+      const changed = switchCategory(key);
+      if(!changed && state.step === 1){ state.step = 2; if(state.maxStepReached < 2) state.maxStepReached = 2; }
       render();
       // Pulse the matched pill
       const matched = $catTabs.querySelector(`.flow-cat-tab[data-cat="${key}"]`);
@@ -11577,8 +11640,9 @@ const PAY_BADGES = {
       const tiles = $content.querySelectorAll('.cat-tile');
       tiles.forEach(t => {
         t.addEventListener('click', () => {
-          state.category = t.dataset.cat;
-          if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
+          // Realigns category-owned state when the pick actually changes the
+          // category (e.g. stepping back to Step 1 and choosing a different one).
+          switchCategory(t.dataset.cat);
           // Reflect the selection (visible if the user steps back to Step 1).
           tiles.forEach(o => o.classList.toggle('selected', o === t));
           $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
@@ -12122,8 +12186,11 @@ const PAY_BADGES = {
     // decision resolved, and re-render the Job Details step so the safe-guarding
     // disclaimer + $2.99 fee appear in place. They review it, then tap Continue.
     if(yesBtn) yesBtn.addEventListener('click', () => {
-      if(state.category !== 'delivery') state.category = 'delivery'; // route age-restricted → Delivery
-      if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // Delivery hides bids — clear a stale choice
+      // switchCategory() realigns the outgoing category's state first (so a Junk
+      // volume tier / hourly pay can't survive the route into Delivery), then the
+      // age flags below are set on the clean slate. No-op if already Delivery,
+      // which leaves an in-progress Delivery request untouched.
+      switchCategory('delivery');                                   // route age-restricted → Delivery
       state.ageRestricted = true;
       state.ageKeywordAck = true;
       state.idRequiredAtCompletion = false; // age-restricted path already requires ID
@@ -12190,8 +12257,7 @@ const PAY_BADGES = {
       const yes = ov.querySelector('#catSwitchYes'), no = ov.querySelector('#catSwitchNo');
       if(yes) yes.addEventListener('click', () => {
         L.emitCategoryCheck('accepted', r, reqId);
-        state.category = L.slugToUi(r.suggestedSlug);
-        if(state.payMode === 'bids' && !bidsAvailable()) state.payMode = 'set'; // bids may not apply to the new category
+        switchCategory(L.slugToUi(r.suggestedSlug));   // realigns + rewinds to Job details
         state.userAcknowledgedCategory = false;
         ov.remove();
         render();
