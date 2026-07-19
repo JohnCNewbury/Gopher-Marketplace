@@ -167,6 +167,112 @@
        non-NC expansion happens. */
     return true;
   }
+
+  /* ── Suggested-offer model (Junk Removal, VOLUME-tier based) ──────────────────
+     Junk has no clean "item cost" axis like Delivery, so it prices on how much
+     stuff there is. Three tiers matching the flow's own vocabulary; the user can
+     correct the iQ-detected tier with a button, and the offer slider re-ranges to
+     the chosen tier (owner spec 2026-07-19).
+
+     BASELINE anchors (the seed the learning starts from) were calibrated OFFLINE
+     from 715 real Junk Removal orders in Dashboard/data/master/Orders.csv, keyed
+     on GOPHER OFFER (worker pay — NOT the GOPHER EARNINGS column, which is platform
+     net take). The whole-corpus pay envelope is p20 $23 / p50 $40 / p80 $100; the
+     per-tier `suggested` values sit on that envelope (single≈low band, half≈median,
+     full≈upper band) so the tiers are MONOTONIC by construction. We anchor to the
+     distribution, NOT to volume language back-fit from the free text — 467/715
+     historical orders carry no parseable volume phrase, so a text back-fit came out
+     noisy/non-monotonic. The clean per-tier curve is meant to be LEARNED FORWARD
+     from completed requests, where the flow captures the tier as a structured field.
+
+     THE LEARNING PROCESS (begins now): recordJunkOffer(tier, pay) accumulates the
+     accepted worker-pay of completed Junk jobs per tier in localStorage; suggestedJunkOffer()
+     blends the learned median into the baseline, weighted by how many real samples
+     we have (so early on the baseline dominates and it sharpens as jobs complete —
+     one outlier can't swing it). ingestJunkCompletions() seeds that store from a
+     surface's existing completed-request history, idempotent by order id.
+     BACKEND SEAM (production): swap the localStorage store for a query over completed
+     orders grouped by tier behind the same suggestedJunkOffer()/recordJunkOffer() seam.
+     Recalibration recipe + tier keyword list: docs/handoff/junk-suggested-pricing.md */
+  var JUNK_TIERS = {
+    // tier -> baseline suggested (the anchor). low/generous are derived as ±25%
+    // of the (possibly learned) suggested in suggestedJunkOffer() — one rule, same
+    // low=0.75x gate delivery uses — so they're not duplicated here.
+    single: { label: 'Single item',            suggested: 25,
+              hint: 'one couch, mattress, appliance, or a small pile' },
+    half:   { label: 'Half-truck load',         suggested: 50,
+              hint: 'a garage/room cleanout or several large pieces' },
+    full:   { label: 'Full truck/trailer load', suggested: 100,
+              hint: 'a whole-room-plus load, or a full pickup/trailer' }
+  };
+  var JUNK_TIER_ORDER = ['single','half','full'];
+
+  /* Keyword detector — which tier the requester's words imply. Priority full >
+     half > single; falls back to 'half' (the median tier) when nothing matches,
+     so the slider still opens somewhere sensible and the user can re-pick. */
+  function detectJunkVolumeTier(text){
+    var t = ' ' + String(text || '').toLowerCase() + ' ';
+    if(/\b(full (truck|trailer|load|pickup)|truck ?load|trailer ?load|whole (house|garage|basement|room)|entire (house|garage|basement|apartment)|10\+? ?bags|20 ?bags|dumpster|huge pile|massive|multiple rooms)\b/.test(t))
+      return { tier: 'full', confidence: 'high' };
+    if(/\b(half (a )?truck|half (a )?load|pickup truck|garage cleanout|basement cleanout|room cleanout|several (items|pieces|things|large)|multiple (items|large|big|pieces)|[5-9] ?bags|a (few|couple) (large|big) )\b/.test(t))
+      return { tier: 'half', confidence: 'high' };
+    if(/\b(single item|one (couch|item|chair|desk|table|mattress|appliance|piece)|an? (old )?(couch|chair|desk|mattress|dresser|tv|sofa|recliner|table|fridge|washer|dryer|appliance|bed frame)|old (couch|mattress|sofa|fridge|appliance|dresser)|just (a|one)|1 (item|couch|piece)|small pile|few bags|couple (of )?(bags|things|items)|1-?[0-4] ?bags)\b/.test(t))
+      return { tier: 'single', confidence: 'high' };
+    return { tier: 'half', confidence: 'low' };   // default to the median tier
+  }
+
+  /* ── Forward-learning store (localStorage; prototype layer) ───────────────────
+     Shape: { <tier>: { sum, n, ids:{<id>:1} } }.  ids{} makes ingest/record
+     idempotent so a reload or a re-seed never double-counts. */
+  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v1';
+  function junkLoadLearn(){
+    try { var o = JSON.parse((window.localStorage||{}).getItem(JUNK_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
+    catch(_){ return {}; }
+  }
+  function junkSaveLearn(o){ try { window.localStorage.setItem(JUNK_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
+  function junkTierBucket(store, tier){ if(!store[tier]) store[tier] = { sum:0, n:0, ids:{} }; return store[tier]; }
+
+  /* Record one completed Junk job's accepted worker-pay against its tier. id (an
+     order id) dedupes; pass a stable id for real completions, omit for anonymous
+     nudges. Returns the running sample count for that tier. */
+  function recordJunkOffer(tier, pay, id){
+    if(JUNK_TIERS[tier] == null) return 0;
+    var p = Number(pay); if(!(p > 0)) return 0;
+    var store = junkLoadLearn(), b = junkTierBucket(store, tier);
+    if(id != null){ if(b.ids[id]) return b.n; b.ids[id] = 1; }
+    b.sum += p; b.n += 1; junkSaveLearn(store);
+    return b.n;
+  }
+  /* Seed the learning store from a surface's existing completed-request history.
+     Each item: { id, tier, pay }.  Idempotent (by id). This is how a real completed
+     Junk job "teaches" the model without any backend. */
+  function ingestJunkCompletions(list){
+    (list || []).forEach(function(r){
+      if(r && r.tier && r.pay != null) recordJunkOffer(r.tier, r.pay, r.id);
+    });
+  }
+
+  /* Suggested offer for a Junk tier: baseline blended with the learned median,
+     weighted by sample count (learnWeight = n/(n+K), K=8 — the baseline holds until
+     ~8 real completions exist for the tier, then observed reality takes over). low/
+     generous scale with the blended suggested to keep the ±25% band. */
+  function suggestedJunkOffer(tier){
+    var base = JUNK_TIERS[tier] || JUNK_TIERS.half;
+    var suggested = base.suggested, learnedN = 0;
+    var b = junkLoadLearn()[tier];
+    if(b && b.n > 0){
+      var learnedMean = b.sum / b.n, K = 8, w = b.n / (b.n + K);
+      suggested = Math.round((base.suggested*(1-w) + learnedMean*w) / 5) * 5;   // round to $5
+      learnedN = b.n;
+    }
+    var r5 = function(x){ return Math.round(x/5)*5; };
+    return {
+      tier: (JUNK_TIERS[tier] ? tier : 'half'),
+      label: base.label, hint: base.hint,
+      low: r5(suggested * 0.75), suggested: suggested, generous: r5(suggested * 1.25),
+      learnedSamples: learnedN, baseline: base.suggested
+    };
+  }
   function regionStateFromAddress(addr){
     if(!addr) return '';
     var m = String(addr).toUpperCase().match(/\b([A-Z]{2})\b(?:\s+\d{5})?\s*$/);
@@ -183,6 +289,13 @@
     suggestedOffer: suggestedOffer,
     regionIsNC: regionIsNC,
     regionStateFromAddress: regionStateFromAddress,
-    OFFER_TABLE: OFFER_TABLE
+    OFFER_TABLE: OFFER_TABLE,
+    // Junk Removal volume-tier pricing + the forward-learning seam (owner 2026-07-19)
+    JUNK_TIERS: JUNK_TIERS,
+    JUNK_TIER_ORDER: JUNK_TIER_ORDER,
+    detectJunkVolumeTier: detectJunkVolumeTier,
+    suggestedJunkOffer: suggestedJunkOffer,
+    recordJunkOffer: recordJunkOffer,
+    ingestJunkCompletions: ingestJunkCompletions
   };
 })();
