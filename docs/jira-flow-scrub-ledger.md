@@ -40,8 +40,8 @@
 | 6 | G40-39 | completion/rating | pending | Ratings-screen pic bug |
 | 7 | G40-40 | submitted/cancel | pending | Early-cancel modal A/B |
 | 8 | G40-43 | submitted/expiry | pending | No expire with pending offers |
-| 9 | G40-44 | broadcast | pending | Broadcast cadence tiers |
-| 10 | G40-65 | completion | pending | Confirmation screen (confirm/dispute canon) |
+| 9 | G40-44 | broadcast | **DONE** (comment 17452) | Pilot. Legacy new_order_alert map + 4 do-not-port deltas (exact-5.0 vs ≥4.8, delays, no vacancy-collapse, non-durable timers) |
+| 10 | G40-65 | completion | **DONE** (comment 17453) | Pilot. Legacy complete/v2→DELIVERED→confirm_payout rail + crons; prototype anchors refreshed (~20940/~16379); Go "Pending confirmation" canon |
 | 11 | G40-68 | offers | pending | View-profile previous jobs |
 | 12 | G40-69 | active | pending | 10-min not-started SMS |
 | 13 | G40-77 | creation | pending | Duplicate-request warning |
@@ -183,3 +183,10 @@ Flow documentation complete.
 
 - 2026-07-19 — Ledger created; 135 open tickets triaged: 62 applicable, 58 N, 15 Phase II.
   GitLab exports cloned to scratchpad. Scope decisions recorded (John).
+- 2026-07-19 — **Canonical doc is v3.4** (Jul 12, adds INV-RATING) — v3.2 is its changelog
+  lineage; scrub comments cite v3.4. Pilot pass posted G40-44 (17452) + G40-65 (17453);
+  legacy-vs-new-spec "do NOT port" deltas proved valuable — propagated to all agents.
+- 2026-07-19 — Remaining 59 applicable tickets fanned out to 9 themed background agents
+  (broadcast / creation / creation-pay-age / offers-worker-view / active / cancel-pay-rail /
+  completion / messaging-updates / umbrella-meta). Rules: comment-only, read existing comments
+  first, hold fe-gap tickets for a build pass, report reclassifications.
