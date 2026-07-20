@@ -225,7 +225,13 @@
   /* ── Forward-learning store (localStorage; prototype layer) ───────────────────
      Shape: { <tier>: { sum, n, ids:{<id>:1} } }.  ids{} makes ingest/record
      idempotent so a reload or a re-seed never double-counts. */
-  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v1';
+  // v2 (2026-07-19): key bumped to DISCARD any store written while the tier detector
+  // was reading a non-existent `state.describe` and therefore always returning the
+  // median 'half' tier (fixed in 018280e). The shipped writer (ingestJunkCompletions)
+  // always passed real completed-request text and tiered correctly, but stores written
+  // during manual testing could be 'half'-skewed — and a skewed baseline is worse than
+  // no history. Bumping the key orphans old data silently; learning restarts clean.
+  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v2';
   function junkLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(JUNK_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
