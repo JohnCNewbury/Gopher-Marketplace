@@ -355,6 +355,12 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   + `.DS_Store` at any depth. Post-rsync it re-asserts the exclusions held and that `.nojekyll`
   survived before allowing a commit. Validated end-to-end: against the current clean tree it
   reports **0 files changed vs live**, i.e. it reproduces the real deploy byte-for-byte.
+  **Owner decision (2026-07-20): the deploy keeps reading from the working tree — do not
+  repoint it at a committed ref.** The preflight guard already closes the hole and makes any
+  dirty deploy explicit, and repointing would remove the ability to deliberately ship
+  in-flight work. Settled, not an open question. Re-verified by dry run on 2026-07-20: all
+  guards pass, 0 files changed. The script has not yet been run with `--push` — expected,
+  since there has been nothing to ship.
 
 - **Owner PII removed from the demo profile (done 2026-07-20).** Found while moving the
   research reports out of this (public) repo. The 2026-07-17 pass swapped the demo
