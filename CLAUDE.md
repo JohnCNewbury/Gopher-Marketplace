@@ -316,6 +316,29 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (`/CLAUDE.md / 301!`) and **excluded at deploy time on GitHub Pages** (the deploy
   worktree step now `rm`s it before committing to `main`).
 
+- **Self-hosted brand fonts — Google Fonts dependency removed (done 2026-07-19).** All three
+  brand typefaces were hot-linked from `fonts.googleapis.com` on **129 of 135** pages (108 with
+  a byte-identical request string). Now self-hosted: **`assets/fonts/`** holds 8 woff2 files
+  (**251 KB** total) — Nunito, DM Sans, DM Sans italic, Caveat, each in `latin` + `latin-ext`
+  subsets — declared via the new **`assets/css/gopher-fonts.css`** (8 `@font-face` blocks,
+  `font-display:swap` preserved, `url(../fonts/…)` **relative to the CSS file** so it survives
+  the subdirectory deploy). All are **variable fonts**, so one file per family covers the whole
+  weight range (`font-weight:400 900` for Nunito etc. — intentional, not a typo); both subsets
+  are declared with `unicode-range`, so a typical English page still only downloads ~161 KB.
+  Each page's 2 `preconnect` hints + the `css2` `<link>` were replaced by one local `<link>` at
+  the same position (cascade unchanged); **0** `fonts.googleapis.com`/`gstatic` references remain.
+  `font-family` declarations were **not** touched — family names are identical, so no other CSS
+  moved. Licensing: all three are SIL OFL 1.1 (self-hosting/redistribution permitted);
+  `assets/fonts/OFL.txt` carries the license text + all three copyright attributions.
+  Correctly skipped the 6 non-pages (engine/pill fragments, header/footer stubs, `__maps-check`).
+  Verified in browser — index, deals, a service page, and `gopher-blog` (the only page that had
+  requested the DM Sans `opsz` axis; nothing in the CSS drives that axis, so no change) all
+  render Nunito/DM Sans/Caveat correctly with 0 console errors.
+  **Deploy must include `assets/fonts/` — without it the site loses all three typefaces.**
+  _Why: removes a third-party render-path dependency, stops leaking visitor IPs to Google
+  (the GDPR exposure behind the 2022 Munich ruling), and is now strictly faster — browsers
+  partitioned the cross-site font cache in 2020, so hot-linking no longer buys a warm cache._
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
