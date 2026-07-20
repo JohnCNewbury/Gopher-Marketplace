@@ -307,7 +307,9 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (`9195550124` = the TrustShield/deals-eligible demo profile, `9195550160` = the second
   profile). Digits swapped consistently everywhere incl. logic comments — demo behavior
   unchanged, but anyone using the old numbers to identify the demo accounts should note
-  the new ones.
+  the new ones. **⚠️ That pass was incomplete — see the 2026-07-20 entry below.** It
+  swapped email + phone only, and left the real street address, DOB, home GPS, referrer
+  name, and account ID live on the public site for three more days.
   (2) **Internal docs removed from the served tree** — `docs/handoff/*` (11 files) moved
   to repo-root `docs/handoff/final-cleanup/`, and `GOPHER_IQ_UPDATE_KIT.md`,
   `_MOBILE_FIX_REPORT.txt`, `SETUP-Google-Maps-Steps.html` moved to repo-root `docs/`
@@ -353,6 +355,28 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   + `.DS_Store` at any depth. Post-rsync it re-asserts the exclusions held and that `.nojekyll`
   survived before allowing a commit. Validated end-to-end: against the current clean tree it
   reports **0 files changed vs live**, i.e. it reproduces the real deploy byte-for-byte.
+
+- **Owner PII removed from the demo profile (done 2026-07-20).** Found while moving the
+  research reports out of this (public) repo. The 2026-07-17 pass swapped the demo
+  account's email + phones but **left the rest of the owner's real identity in place**,
+  and it was being **served live** — confirmed by fetching
+  `johncnewbury.github.io/Gopher-Marketplace/gopher-request.html` and grepping the
+  response. Live at that moment: real **street address** (`405 Shorehouse Way, Holly
+  Springs, NC 27540`), **date of birth** (`02-03-1976`), **home GPS** (`35.6489,
+  -78.8231`), a **family member's name** as the referrer, and `GPH-000001-NEWBURY`.
+  Address + DOB together is identity-grade, i.e. a bigger exposure than the market data
+  that prompted the search. Now fictional and internally consistent: `100 Demo Way,
+  Raleigh, NC 27601` / `01-01-1990` / `35.7796, -78.6382` / `Demo Referrer` /
+  `GPH-000001-DEMO`, with the profile city+ZIP fields moved to match. 34 replacements
+  across 7 files (`Final/gopher-{connect,request,go,deals}.html`, 2 `_prototypes/`, 1
+  handoff doc); verified 1:1 line swaps with quote/brace parity preserved. Included the
+  URL-encoded (`%20`) copies inside the Google/Apple/Waze nav deep-links, which a
+  plain-text grep misses — **check both encodings when scrubbing an address.**
+  **Not fixed, needs an owner decision:** `docs/G40-tickets-export.csv` (tracked, public)
+  lists `805-624-1724` as the support SMS line — same number, but presented as a business
+  contact, so it wasn't changed unilaterally.
+  **Deleting these files does not unpublish them** — they were pushed to a public repo,
+  so the values remain reachable by commit SHA regardless of any later fix.
 
 ### Outstanding to-do
 

@@ -17093,12 +17093,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Demo data lives only for the current session; the Source/Referred-by
   // ROWS in the Personal info card are permanent markup additions (v54).
   const DEMO_USERS = [
-    { id:1,     first:'John',  last:'Newbury',  dob:'02-03-1976',
+    { id:1,     first:'John',  last:'Newbury',  dob:'01-01-1990',
       phone:'(919) 555-0124', phoneDigits:'9195550124',
       email:'john.demo@gophergo.io',
-      address:'405 Shorehouse Way, Holly Springs, NC 26540',
+      address:'100 Demo Way, Raleigh, NC 27601',
       city:'Holly Springs, NC',
-      source:'Referral', referredBy:'Ken Newbury' },
+      source:'Referral', referredBy:'Demo Referrer' },
     { id:29158, first:'Dave',  last:'Kreeger',  dob:'02-09-1972',
       phone:'(919) 555-0171', phoneDigits:'9195550171',
       email:'dana.demo@gophergo.io',
@@ -18346,12 +18346,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="info-row"><div class="info-label">Full name</div><div class="info-value" id="rqInfoName">John Newbury</div></div>
           <div class="info-row"><div class="info-label">Email</div><div class="info-value" id="rqInfoEmail">john.demo@gophergo.io</div></div>
           <div class="info-row"><div class="info-label">Phone</div><div class="info-value" id="rqInfoPhone">(919) 555-0124</div></div>
-          <div class="info-row"><div class="info-label">Gopher account ID</div><div class="info-value" id="rqInfoAccountId">GPH-000001-NEWBURY</div></div>
+          <div class="info-row"><div class="info-label">Gopher account ID</div><div class="info-value" id="rqInfoAccountId">GPH-000001-DEMO</div></div>
           <div class="info-row"><div class="info-label">Status</div><div class="info-value">Active <span class="info-badge">Verified</span></div></div>
-          <div class="info-row"><div class="info-label">Address</div><div class="info-value" id="rqInfoAddress">405 Shorehouse Way, Holly Springs, NC 27540</div></div>
-          <div class="info-row"><div class="info-label">Date of birth</div><div class="info-value" id="rqInfoDob">02-03-1976</div></div>
+          <div class="info-row"><div class="info-label">Address</div><div class="info-value" id="rqInfoAddress">100 Demo Way, Raleigh, NC 27601</div></div>
+          <div class="info-row"><div class="info-label">Date of birth</div><div class="info-value" id="rqInfoDob">01-01-1990</div></div>
           <div class="info-row"><div class="info-label">Source</div><div class="info-value" id="rqInfoSource">Referral</div></div>
-          <div class="info-row" id="rqInfoReferredByRow"><div class="info-label">Referred by</div><div class="info-value" id="rqInfoReferredBy">Ken Newbury</div></div>
+          <div class="info-row" id="rqInfoReferredByRow"><div class="info-label">Referred by</div><div class="info-value" id="rqInfoReferredBy">Demo Referrer</div></div>
           <div class="info-row"><div class="info-label">Last sign-in</div><div class="info-value" id="rqInfoLastSignin">Today · Holly Springs, NC</div></div>
         </div>
       </section>
@@ -18996,7 +18996,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // `requestsMade` is derived live from the request buckets unless overridden.
     // v77 — `workerTier` ('elite' | 'pro' | null): set for the ~10% of customers
     // who are also Gopher workers, so their tier badge shows in the badges rail.
-    profile: { rating: 4.96, trustShield: true, requestsMade: null, workerTier: 'elite', dob: '02-03-1976', idOnFile: null },
+    profile: { rating: 4.96, trustShield: true, requestsMade: null, workerTier: 'elite', dob: '01-01-1990', idOnFile: null },
   };
   let _userReqSeq = 1;       // sequential id source (GR-00002, GR-00003, …)
 
@@ -22400,9 +22400,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         ? ('Other — ' + opts.sourceOther) : opts.source;
       set('rqInfoSource', srcText);
     }
-    // Canonical account has a referrer (Ken Newbury); show it unless a sign-in overrides.
+    // Canonical account has a referrer (Demo Referrer); show it unless a sign-in overrides.
     const refRow = document.getElementById('rqInfoReferredByRow');
-    set('rqInfoReferredBy', opts.referredBy || 'Ken Newbury');
+    set('rqInfoReferredBy', opts.referredBy || 'Demo Referrer');
     if(refRow) refRow.hidden = false;
     if(opts.city){ set('rqInfoLastSignin', 'Today \u00b7 ' + opts.city); }
     initLogo();
@@ -23174,7 +23174,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +   '<h4 id="dealsLocTitle">Where do you need deals?</h4>'
       +   '<p class="deal-req-intro">We\u2019ll show deals near this address. Leave it on Home to use your address on file.</p>'
       +   '<div class="deal-field"><label for="dealsLocInput">Address or city</label>'
-      +     '<input type="text" id="dealsLocInput" autocomplete="off" placeholder="e.g. 405 Shorehouse Way, Holly Springs"></div>'
+      +     '<input type="text" id="dealsLocInput" autocomplete="off" placeholder="e.g. 100 Demo Way, Raleigh"></div>'
       +   '<div class="deals-loc-actions">'
       +     '<button type="button" class="gr-modal-btn ghost" id="dealsLocHome">Use home</button>'
       +     '<button type="button" class="gr-modal-btn" id="dealsLocApply">Update</button>'
@@ -24299,7 +24299,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <small class="pe-hint">Changing your number requires confirming a code at both your current and new number.</small>
         </div>
 
-        <div class="pe-field"><label>Date of birth</label><input type="text" id="peDob" value="02-03-1976" disabled></div>
+        <div class="pe-field"><label>Date of birth</label><input type="text" id="peDob" value="01-01-1990" disabled></div>
 
         <div class="pe-field full"><label>Home Address</label><input type="text" id="peAddress" autocomplete="street-address" placeholder="Street address"></div>
         <div class="pe-field full">
@@ -24312,7 +24312,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
 
         <div class="pe-field full"><label>How did you hear about us? (Sourcing)</label><input type="text" id="peSource" value="Referral" disabled></div>
-        <div class="pe-field full"><label>Referred by</label><input type="text" id="peReferredBy" value="Ken Newbury" disabled></div>
+        <div class="pe-field full"><label>Referred by</label><input type="text" id="peReferredBy" value="Demo Referrer" disabled></div>
       </div>
       <p class="pe-status" id="peStatus">No changes yet.</p>
       <button type="button" class="gr-modal-btn" id="peSave" disabled>Save changes</button>

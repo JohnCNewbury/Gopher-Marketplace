@@ -23,7 +23,7 @@ The single "G40-171 · Navigation" frame conflated baseline + Phase II. It was s
      Google Maps on Android, Apple Maps on iPhone (as the live app does today)."* No JS — pure HTML/CSS,
      consistent with this figma-import file.
    - Demo addresses: Pick-up `Sheetz · 100 Village Walk Dr, Holly Springs, NC`; Destination
-     `405 Shorehouse Way, Holly Springs, NC`.
+     `100 Demo Way, Raleigh, NC`.
    - The Phase II "purchase-from-anywhere" timer is intentionally **not** on this baseline frame (it's a
      Phase II item — see below).
 
