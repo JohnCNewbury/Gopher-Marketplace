@@ -818,7 +818,11 @@ function renderJobCard(j){
   // A completed job awaiting the requester's confirm stays on the Active list with a red badge —
   // the requester controls the payout at this point, so the worker must see it's still pending.
   let flagList=(j.flags||[]).slice();
-  if(j.accepted) flagList=flagList.filter(f=>f.t!=='New' && f.t!=='Time-sensitive');   // available-feed chips are stale once hired
+  if(j.accepted) flagList=flagList.filter(f=>f.t!=='New' && f.t!=='Time-sensitive' && f.t!=='First available' && f.t!=='Requester picks');   // available-feed chips are stale once accepted
+  // Accepted requests stay visible in the Available feed so the worker can see they've already
+  // taken it (and remove it from the detail). A clean green "Accepted" pill marks the card — shown
+  // until the job progresses to a later state (which brings its own badge below).
+  if(j.accepted && !j.substage && !j.cancelled) flagList.unshift({t:'Accepted',k:'good'});
   if(j.accepted && j.substage==='completed' && !j.confirmed && !j.noShow) flagList.unshift({t:'Pending confirmation',k:'bad',i:'alert'});
   const flags=flagList.length?'<div class="jc-flags">'+flagList.map(jcFlag).join('')+'</div>':'';
   const inner=top+biz+pay+scope+stats+flags;
@@ -1623,7 +1627,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ? allJobs.filter(j=>j.accepted && j.scheduled && !j.substage && !j.noShow && !j.cancelled)
       : activeMode
       ? allJobs.filter(j=>j.accepted && !(j.scheduled && !j.substage) && !(j.substage==='completed' && j.confirmed) && !j.noShow && !j.cancelled)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.accepted && !j.cancelled);   // accepted/cancelled jobs leave the Available feed
+      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.cancelled && !(j.accepted && j.substage));   // accepted-but-not-started stays in Available marked "Accepted" (worker can remove it); once started it lives only in Active
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
@@ -2194,6 +2198,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(j.mode!=='bid' && !j.accepted){
         payActions = (cta?'<button class="rq-cta'+ccls+' js-cta">'+cta+'</button>':'') + coActs + coPanel;
       }
+      // Once accepted (before the job is started), the Accept button flips to "Remove Accept Request"
+      // so the worker can withdraw (owner 2026-07-20). Sits in the same spot under the pay card.
+      // After the job is started (substage set), withdrawal is no longer offered here.
+      let removeAction='';
+      if(j.mode!=='bid' && j.accepted && !j.substage && !j.cancelled){
+        removeAction = '<button class="rq-cta js-removeaccept" style="background:#fff;color:#C44257;border:1.5px solid #e3a5ae;">Remove Accept Request</button>';
+      }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)
         ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+j.counter.amt+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
@@ -2265,6 +2276,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +disputeCard
         +bidSection
         +payActions
+        +removeAction
         +crewNote
         +stepper
         +'<div class="rq-facts">'+facts+'</div>'
@@ -2323,6 +2335,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         toast((j.mode==='bid'?('Bid of <b>$'+(bidCost+bidLabor)+'</b>'):('Counter-offer of <b>$'+coVal+'</b>'))+' sent to '+who+' &#8594;');
       };
       function doAccept(){ j.accepted=true; coOpen=false; draw(); toast('Request accepted &middot; requester &amp; addresses unlocked'); }
+      const rmBtn=$('.js-removeaccept'); if(rmBtn) rmBtn.onclick=()=>{ j.accepted=false; j.substage=null; coOpen=false; draw(); toast('Accept removed &middot; the request is back on the available board'); };
       const ctaBtn=$('.js-cta'); if(ctaBtn) ctaBtn.onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ openGoMsgSheet(goConvoForJob(j)); return; }
@@ -2943,17 +2956,12 @@ if(PT){
       : (order.scheduled
         ? [{t:'New',k:'good'},{t:'Scheduled'+(order.when?(' · '+order.when):''),k:'neu',i:'cal'}]   // booked for later — not a time-sensitive grab
         : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}]);
-    // Worker-selection mode — the worker must be able to tell a grab-it-now job from one where the
-    // requester picks. 'select'/'prioritize' = you put yourself forward and the requester chooses;
-    // anything else = first-available (accept and it's yours). Shown as a prominent pill here; the
-    // card strip + accept-button verb (owner-approved) land with the accept-behavior change.
+    // Worker-selection mode carried through (field kept for a future revisit), but NOT surfaced as a
+    // card badge: owner decided the accept flow stays as-is (no requester-picks/application step), so a
+    // "Requester picks" pill would advertise behavior that doesn't happen. The only new card signal is
+    // the honest "Accepted" state (renderJobCard).
     var wsel=String(order.workerSelection||'first');
     var requesterPicks=(wsel==='select'||wsel==='prioritize');
-    if(!order.directBooking){
-      flags.push(requesterPicks
-        ? {t:'Requester picks',k:'sel'}
-        : {t:'First available',k:'good'});
-    }
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
     if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
