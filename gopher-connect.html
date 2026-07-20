@@ -18026,9 +18026,14 @@ const PAY_BADGES = {
     // A signed-in session user's logo (uploaded image OR circle-with-initial)
     // is set by __applySessionUser and marked here — don't clobber it.
     if(slot.dataset.sessionLogo) return;
-    // Try a few selectors in case markup varies
+    // Try a few selectors in case markup varies. These MUST be specific to the
+    // Connect brand asset. A loose alt*="Gopher" match (used here until
+    // 2026-07-20) also matches alt="Gopher iQ" — and the iQ brain icon in the
+    // suggested-offer card sits earlier in the DOM than the Connect logo, so
+    // querySelector returned the iQ mark and the sidebar rendered the wrong
+    // brand. Match on the brand FILENAME instead, which can't collide.
     const existing = document.querySelector('img.connect-logo')
-                  || document.querySelector('img[alt*="Gopher" i]')
+                  || document.querySelector('img[src*="gopher-connect-logo"]')
                   || document.querySelector('.connect-logo');
     if(existing && existing.src){
       slot.innerHTML = `<img src="${existing.src}" alt="Gopher Connect">`;
