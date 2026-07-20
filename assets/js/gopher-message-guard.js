@@ -78,7 +78,13 @@
       // flag). Adjacency keeps "your order number" / "your unit number"
       // from false-positives ("your" must sit right next to the noun).
       /\b(?:your|ur)\s+(?:number|phone|cell|mobile|digits|email|whats\s?app)\b/i,
-      /\bnumber\s+to\s+(?:call|text|reach)\b/i
+      /\bnumber\s+to\s+(?:call|text|reach)\b/i,
+      // Social handles are contact-sharing too (owner 2026-07-19; mirrors the
+      // Dashboard lexicon's social_contact category) — so they connect-gate
+      // with the rest of this family. Conservative list; John curates.
+      /\b(?:insta|instagram|snap\s?chat|tele\s?gram|whats\s?app|discord)\b/i,
+      /\b(?:dm|direct\s+message)\s+(?:me|you|u)\b/i,
+      /\bmy\s+(?:handle|socials?)\b/i
     ],
     off_platform: [
       /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
@@ -113,7 +119,13 @@
      "In-App Messaging Terms" link underneath. No hard block: a real
      human reviews flags instead ("we'll always have a real human remove
      any flags that had the best intentions").
-     CONDUCT family keeps the original three escalation levels.           */
+     CONDUCT family (owner revision 2026-07-19): keeps its three
+     escalation levels of copy, but warn levels 1–2 now use the SAME
+     button pair as off-platform — "Edit message" (green, holds the
+     message) and "Send as-is" (blue pulsing, sends FLAGGED). A flagged
+     conduct message is delivered, and the RECIPIENT sees the standard
+     terms-violation note under the bubble (same format as off-platform
+     flags — nothing new invented). Level 3 stays a hard block.           */
   var COPY = {
     offplatform: {
       notConnected: {
@@ -143,13 +155,19 @@
       termsLabel: 'In-App Messaging Terms'
     },
     conduct: {
+      // Warn levels 1–2 (owner 2026-07-19): same Edit / Send-as-is pair as the
+      // off-platform alert. "Edit message" holds the text in the composer;
+      // "Send as-is" delivers it FLAGGED — the recipient sees the standard
+      // terms-violation note under the bubble. The old single-button
+      // acknowledge ("Got It" -> send unflagged) is retired.
       1: {
         verdict: 'warn',
         title: 'Keep It Respectful',
         body: 'Please keep messages professional and respectful. Abusive, ' +
               'threatening, or harassing language goes against our Community ' +
-              'Guidelines and helps no one get the job done.',
-        primary: 'Got It',
+              'Guidelines and helps no one get the job done. You can edit ' +
+              'your message, or send it as-is — sent as-is, it will be ' +
+              'delivered with a note that it may violate our terms.',
         secondary: 'View Guidelines',
         secondaryUrl: function () { return CONFIG.policyUrl; }
       },
@@ -158,8 +176,9 @@
         title: 'Conduct Warning',
         body: 'Abusive, threatening, or harassing language violates our Terms ' +
               'of Service. Continued violations may result in account ' +
-              'restrictions.',
-        primary: 'I Understand',
+              'restrictions. You can edit your message, or send it as-is — ' +
+              'sent as-is, it will be delivered with a note that it may ' +
+              'violate our terms.',
         secondary: 'View Policy',
         secondaryUrl: function () { return CONFIG.policyUrl; }
       },
@@ -170,7 +189,9 @@
               "Guidelines, so it wasn't delivered. Please revise it to continue.",
         primary: 'Edit Message',
         secondary: null
-      }
+      },
+      editLabel: 'Edit message',
+      sendLabel: 'Send as-is'
     }
   };
   // Verdict-by-level mapping (1,2 = warn; 3 = block) now lives on the conduct
@@ -191,10 +212,16 @@
     opts = opts || {};
     var hits = [];
     for (var policy in PATTERNS) {
-      // Connected relaxation (owner, 2026-07-16): once a customer and a worker
-      // are CONNECTED on a request, exchanging personal info may be part of the
-      // job (call on arrival, gate codes, etc.) — the 'contact' patterns are
-      // skipped. Payment / off-platform / conduct stay checked.
+      // Connected relaxation (owner 2026-07-16, re-confirmed with precise scope
+      // 2026-07-19): once a worker has ACCEPTED the thread's job (assigned,
+      // accepted offer/counter, in progress, or delivered), contact exchange is
+      // legitimate post-acceptance coordination — ONLY the 'contact' family
+      // (numbers, emails, asks, social handles) is skipped. Payment /
+      // off-platform stay checked (fee circumvention doesn't stop being
+      // circumvention on an accepted job), and conduct is UNCONDITIONAL
+      // ("bad language isn't allowed, period"). This mirrors the Dashboard
+      // Message Review rule `context_rules.contact_on_connected_order`
+      // (moderation_rules.json / iaContactOnConnected in app_part4.js).
       if (opts.connected && policy === 'contact') continue;
       var list = PATTERNS[policy];
       for (var i = 0; i < list.length; i++) {
@@ -241,11 +268,13 @@
        connected  -> TRUE when this thread belongs to a request the two
                      parties are already matched on. Picks the alert
                      variant AND relaxes the 'contact' patterns.
-       onAllow    -> called when the message may be sent (no hit, OR the
-                     user chose "Send as-is" — flagged — OR acknowledged
-                     a conduct warn). Wire your real send here.
+       onAllow    -> called when the message may be sent: no hit (called
+                     with no argument), OR the user chose "Send as-is" on
+                     EITHER family (called with the verdict — flagged:true;
+                     store the flag so the recipient gets the standard
+                     terms-violation note). Wire your real send here.
        onBlocked  -> called when the message is held back ("Edit message"
-                     on the transaction alert, or a conduct level-3 block). */
+                     on either alert, or a conduct level-3 block). */
   function guard(text, threadId, handlers) {
     handlers = handlers || {};
     var pass = handlers.onAllow || function () {};
@@ -260,10 +289,9 @@
       family: result.family,
       connected: result.connected,
       onPrimary: function () {
-        // Off-platform: primary = "Edit message" -> hold the message.
-        if (result.family === 'offplatform') { stop(result); return; }
-        if (result.verdict === 'block') { stop(result); }  // conduct block -> hold
-        else { pass(); }                                    // acknowledged conduct warn -> send
+        // Primary = "Edit message" on every warn (both families, owner
+        // 2026-07-19) and on the conduct level-3 block -> hold the message.
+        stop(result);
       },
       onSendAsIs: function () { pass(result); }  // flagged send — human review removes good-faith flags
     });
@@ -317,6 +345,10 @@
     var L = offp
       ? COPY.offplatform[handlers.connected ? 'connected' : 'notConnected']
       : COPY[fam][level];
+    // Every warn — off-platform AND conduct levels 1–2 — gets the same
+    // "Edit message" / "Send as-is" pair (owner 2026-07-19). Only the
+    // conduct level-3 block keeps a single Edit button.
+    var pair = offp || (fam === 'conduct' && L.verdict === 'warn');
     var lastFocus = document.activeElement;
 
     var overlay = document.createElement('div');
@@ -339,7 +371,7 @@
 
     var primary = document.createElement('button');
     primary.className = 'gmg-btn gmg-btn-primary';
-    primary.textContent = offp ? COPY.offplatform.editLabel : L.primary;
+    primary.textContent = pair ? COPY[fam].editLabel : L.primary;
 
     function close() {
       document.removeEventListener('keydown', onKey, true);
@@ -353,11 +385,12 @@
 
     actions.appendChild(primary);
 
-    if (offp) {
-      // "Send as-is" — blue with the reddish pulsing shadow. Sends flagged.
+    if (pair) {
+      // "Send as-is" — blue with the reddish pulsing shadow. Sends flagged;
+      // the recipient sees the standard terms-violation note.
       var sendAs = document.createElement('button');
       sendAs.className = 'gmg-btn gmg-btn-sendas';
-      sendAs.textContent = COPY.offplatform.sendLabel;
+      sendAs.textContent = COPY[fam].sendLabel;
       sendAs.addEventListener('click', function () {
         close();
         if (handlers.onSendAsIs) handlers.onSendAsIs();
@@ -385,6 +418,15 @@
       terms.href = CONFIG.termsUrl;
       terms.target = '_blank'; terms.rel = 'noopener';
       card.appendChild(terms);
+    } else if (pair && L.secondary) {
+      // Conduct warn — "View Guidelines"/"View Policy" sits below the pair,
+      // same underline-link slot the off-platform terms link uses.
+      var glink = document.createElement('a');
+      glink.className = 'gmg-terms';
+      glink.textContent = L.secondary;
+      glink.href = (L.secondaryUrl && L.secondaryUrl()) || CONFIG.policyUrl;
+      glink.target = '_blank'; glink.rel = 'noopener';
+      card.appendChild(glink);
     }
     overlay.appendChild(card);
     document.body.appendChild(overlay);

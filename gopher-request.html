@@ -1807,7 +1807,7 @@
      page falls back to a default mileage estimate (nothing breaks). -->
 <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnc2wRsy54nvUgrFKAPcJ5hnMhjfUVJAU&libraries=places&callback=onGopherMapsReady&loading=async"></script>
 <script src="assets/js/gopher-address-autocomplete.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/gopher-fonts.css">
 <style>
   :root {
     --green: #33d975;        /* Brand Gopher green (v62) */
@@ -4789,6 +4789,24 @@
     padding:7px 12px; margin:-12px 0 18px; line-height:1.4;
   }
   .os-modal-trip[hidden] { display:none; }
+  /* Junk volume-tier selector (owner 2026-07-19) — the three correction buttons
+     above the offer slider. iQ pre-selects one; tapping re-ranges the slider. */
+  .os-junk-tiers { display:flex; gap:7px; margin:2px 0 10px; }
+  .os-tier {
+    flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:2px;
+    padding:9px 8px; border:1.5px solid var(--line,#e1e6f0); border-radius:12px;
+    background:#fff; cursor:pointer; text-align:left; font-family:'DM Sans',sans-serif;
+    transition:border-color .12s, background .12s, box-shadow .12s;
+  }
+  .os-tier:hover { border-color:var(--green,#1CB061); }
+  .os-tier.active {
+    border-color:var(--green,#1CB061); background:var(--green-tint,#E8F5EE);
+    box-shadow:0 0 0 2px rgba(28,176,97,.18);
+  }
+  .os-tier-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; color:var(--navy,#002461); line-height:1.15; }
+  .os-tier-hint { font-size:10px; color:var(--muted,#6b7280); line-height:1.25; }
+  .os-tier:focus-visible { outline:2px solid var(--green,#1CB061); outline-offset:2px; }
+
   .os-slider-wrap {
     margin:4px 0 6px; padding:14px 6px 10px;
     background:var(--navy-light); border-radius:14px;
@@ -11162,9 +11180,55 @@
   // Shared fair-range model for the categories we price (Delivery + Ride Share).
   // Single source used by BOTH the iQ offer-suggestion modal and the low-offer
   // Continue gate, so the threshold (model.low = 75% of suggested) is consistent.
+  // Junk prices on a VOLUME tier, not item cost. The tier is iQ-detected from the
+  // description on first open and then owned by state.junkTier once the user picks a
+  // button. currentJunkTier() resolves the active tier; getCurrentJunkModel() prices it.
+  function currentJunkTier(){
+    const L = window.GopherRequestLogic;
+    if(state.junkTier && L && L.JUNK_TIERS && L.JUNK_TIERS[state.junkTier]) return state.junkTier;
+    // NOTE: the field is state.description — `describe` is only a key in the
+    // FIELD_HIDDEN_FOR visibility map, so reading state.describe always yielded
+    // undefined and the detector silently defaulted every request to the median
+    // 'half' tier ($60), regardless of what the requester wrote. Fixed 2026-07-19.
+    const det = (L && L.detectJunkVolumeTier) ? L.detectJunkVolumeTier(state.description || '') : { tier:'half' };
+    return det.tier;
+  }
+  function getCurrentJunkModel(){
+    const L = window.GopherRequestLogic;
+    if(!L || !L.suggestedJunkOffer) return null;
+    return L.suggestedJunkOffer(currentJunkTier());
+  }
+
+  // Begin the learning process: seed the forward-learning store from completed
+  // Junk jobs already in history. For each, detect the tier from the job text and
+  // record its actual worker-pay — exactly what production does on order completion.
+  // Idempotent (recordJunkOffer dedupes by id), so repeated opens never double-count.
+  let __junkLearnSeeded = false;
+  function seedJunkLearningOnce(){
+    if(__junkLearnSeeded) return;
+    __junkLearnSeeded = true;
+    const L = window.GopherRequestLogic;
+    if(!L || !L.ingestJunkCompletions || !L.detectJunkVolumeTier) return;
+    const prev = (typeof DASH_DATA !== 'undefined' && DASH_DATA.previousRequests) || [];
+    const seed = prev
+      .filter(r => /junk/i.test(r.category || '') && r.breakdown && r.breakdown.workerPay > 0)
+      .map(r => ({ id: r.id, pay: r.breakdown.workerPay,
+                   tier: L.detectJunkVolumeTier((r.details || '') + ' ' + (r.category || '')).tier }));
+    L.ingestJunkCompletions(seed);
+  }
+
+  /* The categories Gopher iQ prices. ONE list, because three things must agree:
+     the suggested-offer modal, the low-offer Continue gate, and the
+     `suggested_offer_used` telemetry on submit. Junk joined 2026-07-19
+     (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
+  const PRICED_CATEGORIES = ['delivery','ride','junk'];
+  const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
+
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
-    if(state.category !== 'delivery' && !isRide) return null;
+    const isJunk = state.category === 'junk';
+    if(!isPricedCategory()) return null;
+    if(isJunk) return getCurrentJunkModel();
     const trip = isRide ? getRideTripEstimate() : null;
     return isRide
       ? rideSuggestedOffer(trip.miles, trip.minutes, state.scheduleType !== 'now')
@@ -11180,12 +11244,9 @@
     // Build the { low, suggested, generous } model via the shared helper so the
     // iQ modal and the low-offer gate price identically.
     const isRide = state.category === 'ride';
+    const isJunk = state.category === 'junk';
+    if(isJunk) seedJunkLearningOnce();   // bootstrap the learning store from completed junk history
     const trip   = isRide ? getRideTripEstimate() : null;   // used by the trip-context pill below (was undefined -> ride threw)
-    const model  = getCurrentOfferModel() || suggestedOffer(currentItemCost(), currentRegionIsNC());
-
-    const half = Math.max(model.suggested - model.low, model.generous - model.suggested, 1) * 1.6;
-    const trackMin = Math.max(0, Math.round(model.suggested - half));
-    const trackMax = Math.round(model.suggested + half);
 
     const slider  = document.getElementById('offerSlider');
     const lowVal  = document.getElementById('osLowVal');
@@ -11194,8 +11255,23 @@
     const hint    = document.getElementById('osHint');
     const submit  = document.getElementById('offerSuggestSubmit');
 
-    lowVal.textContent = '$' + model.low;
-    genVal.textContent = '$' + model.generous;
+    // Model + track are re-applied whenever the Junk tier changes, so they're
+    // mutable and the slider math below reads them live through the closure.
+    let model, trackMin, trackMax;
+    const STANDING_HINT = 'Drag the slider either direction to find the offer that works for you';
+    const applyModel = (m) => {
+      model = m;
+      const half = Math.max(model.suggested - model.low, model.generous - model.suggested, 1) * 1.6;
+      trackMin = Math.max(0, Math.round(model.suggested - half));
+      trackMax = Math.round(model.suggested + half);
+      lowVal.textContent = '$' + model.low;
+      genVal.textContent = '$' + model.generous;
+      amtInp.value = model.suggested;
+      slider.value = offerToPct(model.suggested);
+      hint.classList.remove('warn','over');
+      hint.textContent = STANDING_HINT;
+      if(submit) submit.disabled = false;
+    };
 
     // Trip-context pill (ride only). Hidden for delivery/other categories.
     const tripCtx = document.getElementById('osTripContext');
@@ -11211,6 +11287,35 @@
       }
     }
 
+    // Junk volume-tier selector (owner 2026-07-19): iQ pre-selects the detected
+    // tier; the buttons let the requester correct it, and each re-ranges the slider.
+    const tierWrap = document.getElementById('osJunkTiers');
+    if(tierWrap){
+      const L = window.GopherRequestLogic;
+      if(isJunk && L && L.JUNK_TIER_ORDER){
+        tierWrap.hidden = false;
+        const active = currentJunkTier();
+        tierWrap.innerHTML = L.JUNK_TIER_ORDER.map(tk => {
+          const t = L.JUNK_TIERS[tk];
+          return `<button type="button" class="os-tier${tk===active?' active':''}" data-tier="${tk}" aria-pressed="${tk===active}">`
+               + `<span class="os-tier-name">${t.label}</span><span class="os-tier-hint">${t.hint}</span></button>`;
+        }).join('');
+        tierWrap.querySelectorAll('.os-tier').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const tk = btn.dataset.tier;
+            state.junkTier = tk;   // user correction now owns the tier
+            tierWrap.querySelectorAll('.os-tier').forEach(b => {
+              const on = b.dataset.tier === tk;
+              b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
+            });
+            applyModel(L.suggestedJunkOffer(tk));
+          });
+        });
+      } else {
+        tierWrap.hidden = true;
+      }
+    }
+
     const offerToPct = (v) => trackMax===trackMin ? 50 : Math.max(0, Math.min(100, Math.round((v-trackMin)/(trackMax-trackMin)*100)));
     const pctToOffer = (p) => Math.round(trackMin + (p/100)*(trackMax-trackMin));
     const updateHint = (v) => {
@@ -11220,12 +11325,8 @@
       else if(v === model.suggested){ hint.textContent = '$' + v + ' suggested (fair)'; }
       else { hint.textContent = 'Within the suggested range'; }
     };
-    const STANDING_HINT = 'Drag the slider either direction to find the offer that works for you';
-    amtInp.value = model.suggested;
-    slider.value = offerToPct(model.suggested);
-    hint.classList.remove('warn','over');
-    hint.textContent = STANDING_HINT;
-    if(submit) submit.disabled = false;
+    // Initial model: junk prices the detected/selected tier; others as before.
+    applyModel(getCurrentOfferModel() || suggestedOffer(currentItemCost(), currentRegionIsNC()));
 
     slider.oninput = () => {
       const v = pctToOffer(Number(slider.value));
@@ -11267,6 +11368,10 @@
         const val = parseFloat(r) || 0;
         state.payAmount = val ? '$' + val : '$0';
         state.suggestedOfferUsed = true;   // offer committed via the Gopher iQ modal → Y
+        // Junk: persist the resolved volume tier so completion can teach the model
+        // (recordJunkOffer at job completion — the "learning process" step). Even if
+        // the requester never tapped a tier button, lock in the iQ-detected one.
+        if(state.category === 'junk') state.junkTier = currentJunkTier();
         state.lowOfferAck = false;   // re-arm: iQ-committed amount can re-trigger the low-offer notice
         close();
         render();
@@ -11667,9 +11772,11 @@
       dealKind: state.dealKind || null,
       providerName: (state.dealProvider && state.dealProvider.name) || null,
       // Y/N — did the offer come from the Gopher iQ suggested-price modal?
-      // Only meaningful for Delivery/Ride (bids mode has no set offer → null). This is
-      // the field the real submit POST sends as `suggested_offer_used`.
-      suggestedOfferUsed: (state.payMode === 'set' && (state.category === 'delivery' || state.category === 'ride'))
+      // Only meaningful for the priced categories (bids mode has no set offer → null).
+      // This is the field the real submit POST sends as `suggested_offer_used`.
+      // Junk included since 2026-07-19 (owner) — it is the category whose per-tier
+      // curve is learned forward, so it is the one that most needs the signal.
+      suggestedOfferUsed: (state.payMode === 'set' && isPricedCategory())
         ? !!state.suggestedOfferUsed
         : null,
     });
@@ -11808,8 +11915,13 @@
     suggestedOfferUsed: false,        // Y/N signal. true once the offer is committed via the
                                       // Gopher iQ suggested-price modal (Submit); reset to false on any
                                       // manual edit of the pay field. Rides into the request record →
-                                      // orders.suggested_offer_used (Delivery/Ride only).
+                                      // orders.suggested_offer_used (priced categories only —
+                                      // PRICED_CATEGORIES: Delivery, Ride, Junk).
     dupWarnAck: false,                // "Submit anyway" acked on the duplicate-request notice
+    junkTier: null,                   // Junk only: resolved volume tier (single|half|full) for the
+                                      // suggested-pay model. Defaults to the iQ-detected tier; a tier
+                                      // button in the offer modal overrides it. Feeds recordJunkOffer
+                                      // at completion (the learning process). Owner 2026-07-19.
 
     // Page 9 — Schedule / Review
     scheduleType: 'now',              // 'now' | 'flexible' | 'scheduled'
@@ -11827,6 +11939,65 @@
     const fresh = makeInitialState();
     Object.keys(state).forEach(k => { if(!(k in fresh)) delete state[k]; });
     Object.assign(state, fresh);
+  }
+
+  /* ── Category realignment (owner 2026-07-19) ─────────────────────────────────
+     Every category gates differently: Delivery has the age-restricted + purchase
+     gates, Ride has rider/bag counts, Junk has the volume tier that prices the
+     offer, Moving has the single-location toggle + elevator access, Labor/Yard
+     have hourly pay. A category switch used to keep the PREVIOUS category's
+     answers, so the new category silently inherited gates the user had never
+     seen — e.g. a Junk volume tier (and its $40–$100 model) still showing on a
+     Delivery request. These keys are owned by the category and snap back to
+     their initial values on every switch.
+     Deliberately NOT reset: user-typed, category-agnostic input (description,
+     pics, addresses, specialInstructions), and agePurchaseDismissed, which is a
+     session-level "don't show me this again" preference. */
+  const CATEGORY_SCOPED_KEYS = [
+    // Delivery — age-restricted + purchase gates
+    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'itemsPurchased','costOfItems',
+    // Ride — rider info
+    'numRiders','numBags',
+    // Junk — volume tier that prices the offer
+    'junkTier',
+    // Moving — single-location move + access
+    'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
+    // Labor / Yard — hourly pay
+    'payByHour','numHours',
+    // Item info
+    'itemCount','multipleItems','hazardous',
+    // Worker pay — the fair-range model is per category, so the offer and every
+    // ack derived from it has to be re-earned rather than carried across.
+    'payMode','payAmount','lowOfferAck','lowAvailabilityAck','suggestedOfferUsed'
+  ];
+
+  // Snap category-owned state back to defaults. Values are read from
+  // makeInitialState() so this can never drift from the schema.
+  function realignCategoryState(){
+    const fresh = makeInitialState();
+    CATEGORY_SCOPED_KEYS.forEach(k => {
+      if(!(k in fresh)) return;      // key not in this surface's schema — skip
+      const v = fresh[k];
+      state[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+    });
+  }
+
+  /* The single entry point for a USER-DRIVEN category change. Returns false when
+     the category didn't actually change, so a re-click never wipes work.
+     Rewinds to Job details and clamps progress: the new category's gates must be
+     walked, not skipped past (a Junk request switched to Delivery at Step 5 had
+     never seen the age-restricted / purchase gates).
+     Prefill entry points (__startRequestWithCategory, __startRequestAgainFast,
+     __startDealRequest) do NOT use this — they call resetFlowState() first and
+     then intentionally set category-scoped values. */
+  function switchCategory(cat){
+    if(!cat || state.category === cat) return false;
+    state.category = cat;
+    realignCategoryState();
+    state.step = 2;              // Job details — re-walk this category's gates
+    state.maxStepReached = 2;
+    return true;
   }
 
   // Demo-only "Start over" — full reset back to Step 1 (same as the cancel path).
@@ -11943,9 +12114,14 @@
     `).join('');
     $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
       b.addEventListener('click', () => {
-        state.category = b.dataset.cat;
-        if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set'; // bids may not apply to the new category
-        if(state.step === 1) state.step = 2; // jump forward when picking from outer tabs
+        // Realign category-owned state and rewind to Job details. No-ops when the
+        // already-active tab is re-clicked (so a stray click never wipes work) —
+        // in that case Step 1 still jumps forward, as it always has.
+        const changed = switchCategory(b.dataset.cat);
+        if(!changed && state.step === 1){
+          state.step = 2;
+          if(state.maxStepReached < 2) state.maxStepReached = 2;
+        }
         render();
       });
     });
@@ -12081,7 +12257,7 @@
     destStairs:       ['delivery','home','yard','ride'],              // Moving, Labor, Junk, Other only
     multiStop:        ['delivery','moving','home','labor','junk','yard','ride','other'], // Request: single pickup + single destination only (no multi-stop)
     // ──── Step 5 Worker pay ────
-    aiPaySuggest: ['moving','home','labor','junk','yard','other'],   // Delivery + Ride only
+    aiPaySuggest: ['moving','home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
     // Bids hidden for Delivery AND Ride (shown for Moving/Hourly/Junk/Yard/Other).
     // Matches Connect — rides do not allow bids. Onboarding a new category is a
     // one-line edit here instead of an inline check.
@@ -12907,7 +13083,9 @@
               <span class="ai-text">Get a suggested offer</span>
               <span class="ai-arrow">→</span>
             </button>
-            <div class="ai-helper-caption">Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.</div>
+            <div class="ai-helper-caption">${state.category==='junk'
+              ? 'Gopher iQ reads your description to gauge the load, then suggests a fair rate from real hauling jobs — confirm the size and fine-tune with the slider.'
+              : 'Gopher uses request history logic from multiple thousands of similar requests in your DMA to suggest a fair rate.'}</div>
             ` : ''}
           </div>
         ` : ''}
@@ -13251,6 +13429,9 @@
           `Once accepted, you can <b>text or call your worker</b> directly, and <b>track route progress in real time</b> when applicable.`,
           `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
         ];
+        // Need ASAP requests expire — be explicit up front (1-hour broadcast window).
+        if(state.scheduleType==='now') wteSteps.splice(1,0,
+          `<b>Need ASAP</b> requests stay live for <b>1 hour</b> — if no worker accepts in that time, the request <b>expires</b>. You're never charged for an expired request, and you can resubmit anytime.`);
         const wteSub = bidsMode
           ? `A quick rundown of how bidding and the worker handoff work — so there are no surprises.`
           : `A quick rundown of how billing and the worker handoff work — so there are no surprises.`;
@@ -13340,7 +13521,7 @@
     const reqNum = 'GR-00001';
     // Build the expiration label from the chosen schedule mode
     const expiresStr = state.scheduleType === 'now'
-      ? 'expires in 30 min'
+      ? 'expires in 1 hour'
       : state.scheduleType === 'flexible'
         ? (state.flexibleWindow==='24hr' ? 'expires in 24 hrs'
            : state.flexibleWindow==='week' ? 'expires in 7 days'
@@ -13865,7 +14046,9 @@
       const tiles = $content.querySelectorAll('.cat-tile');
       tiles.forEach(t => {
         t.addEventListener('click', () => {
-          state.category = t.dataset.cat;
+          // Realigns category-owned state when the pick actually changes the
+          // category (e.g. stepping back to Step 1 and choosing a different one).
+          switchCategory(t.dataset.cat);
           // Reflect the selection (visible if the user steps back to Step 1).
           tiles.forEach(o => o.classList.toggle('selected', o === t));
           $catTabs.querySelectorAll('.flow-cat-tab').forEach(b => {
@@ -14622,10 +14805,11 @@
         // Route it to age-restricted Delivery. If they're in another category
         // (e.g. Other), switch to Delivery so the ID/waiver + $2.99 age flow
         // applies; then re-render Job Details in place and they tap Continue.
-        if(state.category !== 'delivery'){
-          state.category = 'delivery';
-          if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
-        }
+        // switchCategory() realigns the outgoing category's state first (so a
+        // Junk volume tier / hourly pay can't survive the route into Delivery),
+        // then the age flags below are set on the clean slate. No-op if already
+        // Delivery, which leaves an in-progress Delivery request untouched.
+        switchCategory('delivery');
         state.ageRestricted = true;
         // Mirror the smart default (toggle-click path): ~99% of
         // age-restricted deliveries need a purchase, so confirming via the
@@ -14703,9 +14887,8 @@
       const yes = ov.querySelector('#catSwitchYes'), no = ov.querySelector('#catSwitchNo');
       if(yes) yes.addEventListener('click', () => {
         L.emitCategoryCheck('accepted', r, reqId);
-        state.category = L.slugToUi(r.suggestedSlug);                      // slug -> UI key
+        switchCategory(L.slugToUi(r.suggestedSlug));                       // slug -> UI key; realigns + rewinds
         state.userAcknowledgedCategory = false;                            // fresh category
-        if(state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
         ov.remove();
         render();
         setTimeout(() => { if(window.__checkCategoryMismatch) window.__checkCategoryMismatch(); }, 0); // confirm resolution
@@ -16138,6 +16321,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <h4 id="offerSuggestTitle">Suggested offer assistance</h4>
     <p class="os-modal-sub">Based on thousands of similar requests in your area.</p>
     <p class="os-modal-trip" id="osTripContext" hidden></p>
+
+    <!-- Junk volume-tier selector (owner 2026-07-19). iQ pre-selects the detected
+         tier; tapping a button corrects it and re-ranges the slider below. Hidden
+         for every non-Junk category. Populated by __openOfferSuggest. -->
+    <div class="os-junk-tiers" id="osJunkTiers" role="group" aria-label="How much are we hauling?" hidden></div>
 
     <div class="os-slider-wrap">
       <div class="os-rail-labels">
@@ -18537,9 +18725,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="inbox-msg-time">${_recEsc(m.time)}</div>
           </div>`;
       }
+      // Flagged Send-as-is messages carry a terms-violation note to the
+      // RECIPIENT only (owner 2026-07-16; extended to conduct 2026-07-19) —
+      // same format as the Go/Request prototypes.
+      const flNote = (m.f && m.from !== 'me')
+        ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>`
+        : '';
       return `
             <div class="inbox-msg ${m.from === 'me' ? 'mine' : 'theirs'}">
-              <div class="inbox-bubble">${String(m.text).replace(/</g,'&lt;')}</div>
+              <div class="inbox-bubble">${String(m.text).replace(/</g,'&lt;')}</div>${flNote}
               <div class="inbox-msg-time">${m.time}</div>
             </div>`;
     }
@@ -18556,6 +18750,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.86 19.86 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.86 19.86 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
             <span>Call</span>
           </a>
+          <button type="button" id="rqRelFav" title="${((dashState.gopherRels||{})[t.worker.name]==='favorite')?'Remove from MY Gophers':'Add to MY Gophers'}" style="border:1.6px solid ${((dashState.gopherRels||{})[t.worker.name]==='favorite')?'#1CB061':'#d9d2c2'};background:${((dashState.gopherRels||{})[t.worker.name]==='favorite')?'#1CB061':'#fff'};color:${((dashState.gopherRels||{})[t.worker.name]==='favorite')?'#fff':'#8a94a3'};border-radius:10px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:0 0 auto;margin-left:6px;">&#9829;</button>
+          <button type="button" id="rqRelBlock" title="${((dashState.gopherRels||{})[t.worker.name]==='blocked')?'Unblock this Gopher':'Block this Gopher'}" style="border:1.6px solid ${((dashState.gopherRels||{})[t.worker.name]==='blocked')?'#C44257':'#d9d2c2'};background:${((dashState.gopherRels||{})[t.worker.name]==='blocked')?'#C44257':'#fff'};color:${((dashState.gopherRels||{})[t.worker.name]==='blocked')?'#fff':'#8a94a3'};border-radius:10px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:0 0 auto;margin-left:6px;">&#8856;</button>
         </div>
         <div class="inbox-thread" id="rqInboxThread">
           ${t.thread.length ? t.thread.map((m, mi) => renderInboxMsg(m, mi)).join('')
@@ -18625,6 +18821,27 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       });
     }
 
+    // G40-205: Favorite / Block a Gopher from the messaging thread header. Mutually
+    // exclusive (setting one clears the other — shared contract: Documentation/Jira
+    // Tickets/relationships.js, tested). One-directional + silent: the Gopher is never
+    // notified. BACKEND SEAM: production persists via the existing fav_gophers /
+    // blocked_gophers tables (modify_fav_gopher + blocked_gophers insert) and blocked
+    // Gophers drop out of MY Gopher lists + matching. Bind visuals to Figma 99-13099.
+    const relFav = document.getElementById('rqRelFav');
+    const relBlock = document.getElementById('rqRelBlock');
+    if(relFav && relBlock && t.worker && t.worker.name){
+      dashState.gopherRels = dashState.gopherRels || {};
+      const relName = t.worker.name;
+      relFav.addEventListener('click', () => {
+        dashState.gopherRels[relName] = (dashState.gopherRels[relName] === 'favorite') ? 'none' : 'favorite';
+        renderInbox();
+      });
+      relBlock.addEventListener('click', () => {
+        dashState.gopherRels[relName] = (dashState.gopherRels[relName] === 'blocked') ? 'none' : 'blocked';
+        renderInbox();
+      });
+    }
+
     // Composer — gated on non-empty text
     const input = document.getElementById('rqInboxInput');
     const sendBtn = document.getElementById('rqInboxSend');
@@ -18633,12 +18850,23 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const text = (input.value || '').trim();
         if(!text) return;
         // Route through the shared messaging guard (prototype deterrent). On the
-        // allow path the existing faked send runs UNCHANGED; on a level-3 block
-        // the text is left in the box for editing. Falls open if the module
-        // didn't load, mirroring the age-keyword backstop's fail-safe style.
+        // allow path the existing faked send runs UNCHANGED; "Edit message" and
+        // the conduct level-3 block leave the text in the box for editing. A
+        // "Send as-is" delivers FLAGGED (res.flagged) so the recipient side can
+        // show the terms-violation note. Falls open if the module didn't load,
+        // mirroring the age-keyword backstop's fail-safe style.
+        // Connected (owner 2026-07-19) = a worker ACCEPTED this thread's job:
+        // crew threads ("::name") only exist for hired crew; otherwise the
+        // request is connected once it's live or has a hired worker. Relaxes
+        // only the contact patterns — payment/conduct always checked.
+        const _sep = String(t.id).indexOf('::');
+        const _rq = (DASH_DATA.activeRequests || []).find(x => x.id === (_sep > -1 ? t.id.slice(0, _sep) : t.id));
+        const _connected = _sep > -1 || !!(_rq && (_rq.live ||
+          (_rq.interestedWorkers || []).some(w => w.status === 'hired')));
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
-            onAllow:   function(){ sendInboxMessage(t.id, text); },
+            connected: _connected,
+            onAllow:   function(res){ sendInboxMessage(t.id, text, !!(res && res.flagged)); },
             onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
           });
         } else {
@@ -18662,7 +18890,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
   // Send a message. Parses "<reqId>::<workerName>" if present (per spec §8 —
   // missing this parse is the most common bug; messages would silently vanish).
-  function sendInboxMessage(reqId, text){
+  function sendInboxMessage(reqId, text, flagged){
     const sep = String(reqId).indexOf('::');
     const baseId  = sep > -1 ? reqId.slice(0, sep) : reqId;
     const crewName = sep > -1 ? reqId.slice(sep + 2) : null;
@@ -18687,7 +18915,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
 
     const firstMessage = thread.length === 0;
-    thread.push({ from:'me', text, time });
+    // f:1 = sent via "Send as-is" on a guard hit — the RECIPIENT's app shows
+    // the terms-violation note under this bubble (our own side renders clean).
+    thread.push(flagged ? { from:'me', text, time, f:1 } : { from:'me', text, time });
     dashState.inboxThreadId = reqId;  // preserve the FULL per-worker id
     renderInbox();
     updateInboxBadge();
