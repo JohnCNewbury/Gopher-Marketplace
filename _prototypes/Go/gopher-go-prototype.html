@@ -210,6 +210,7 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
 .flag.warn{background:#fff7c2;color:var(--warning-text);}
 .flag.good{background:var(--green-light);color:var(--green-dark);}
 .flag.bad{background:#FDECE6;color:#C44257;}
+.flag.sel{background:#EAF1FC;color:#002461;border:1px solid #c7d9f2;}
 .flag.iq{background:#fff;border:1px dashed currentColor;}
 .flag.iq.neu{color:var(--navy-mid);} .flag.iq.warn{color:var(--warning-text);} .flag.iq.good{color:var(--green-dark);}
 .flag .iqm{font-size:8px;font-weight:900;color:#fff;padding:1px 4px;border-radius:4px;margin-right:5px;letter-spacing:.3px;}
@@ -2942,6 +2943,17 @@ if(PT){
       : (order.scheduled
         ? [{t:'New',k:'good'},{t:'Scheduled'+(order.when?(' · '+order.when):''),k:'neu',i:'cal'}]   // booked for later — not a time-sensitive grab
         : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}]);
+    // Worker-selection mode — the worker must be able to tell a grab-it-now job from one where the
+    // requester picks. 'select'/'prioritize' = you put yourself forward and the requester chooses;
+    // anything else = first-available (accept and it's yours). Shown as a prominent pill here; the
+    // card strip + accept-button verb (owner-approved) land with the accept-behavior change.
+    var wsel=String(order.workerSelection||'first');
+    var requesterPicks=(wsel==='select'||wsel==='prioritize');
+    if(!order.directBooking){
+      flags.push(requesterPicks
+        ? {t:'Requester picks',k:'sel'}
+        : {t:'First available',k:'good'});
+    }
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
     if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
@@ -2953,6 +2965,7 @@ if(PT){
       ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
       deal:!!order.deal, dealMerchant:order.dealMerchant||'',   // Gopher Deal request → card shows the "Gopher Deal" badge (unshaded — this Gopher is Pro)
       scheduled:!!order.scheduled,   // exact-time booking → lands in the Scheduled tab once accepted (until the worker starts it)
+      workerSelection:wsel, requesterPicks:requesterPicks,   // 'select'/'prioritize' → accepting = applying, requester approves (not auto-hire)
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };

@@ -2350,7 +2350,11 @@ return { all:all, save:save,
     workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
     ageRestricted:!!state.ageRestricted,itemsPurchased:!!state.itemsPurchased,
     deal:!!state.fromDeal,dealMerchant:(state.dealMerchant||''),   // Gopher Deal request → Go card shows the "Gopher Deal" badge
-    description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup};
+    description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup,
+    // How the worker is selected: 'first' (auto-connect on accept) vs 'select' (requester picks from
+    // workers who put themselves forward) vs 'prioritize' (MY Gophers first). Was dropped here, so Go
+    // never knew the mode and every accept auto-hired — the bug. Carried through to the Go card now.
+    workerSelection:(state.workerSelection||'first')};
 }
 // Stash the submitted request ONCE. submitRequest() and goHome()/see-workers all call this;
 // without the guard a submit-then-"Go to Home" would broadcast the SAME request twice (two order ids).
