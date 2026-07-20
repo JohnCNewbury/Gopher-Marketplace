@@ -2006,7 +2006,15 @@ function iqCoverageReply(query, audience){
   // no local Gopher yet) returns inData:false \u2014 exactly the places the under-20 share-your-QR-code
   // copy is written for. Requester tiers below are unchanged and still supply-based.
   if(worker){
-    var r=cov.requests3mo||0;
+    // A MISSING requests3mo is not zero demand — it means a stale gopher-iq-data.js (pre-43e302b,
+    // 2-value entries), which browsers happily serve from cache after a regen. `||0` would print
+    // "0 Gopher requests have been submitted", a believable and completely wrong number. Fall
+    // through to the other pill tiers instead of asserting it.
+    if(typeof cov.requests3mo!=='number'){
+      if(window.console&&console.warn) console.warn('[iQ] stale gopher-iq-data.js — no requests3mo (asOf '+((window.GopherIQData||{}).asOf||'?')+'); hard-reload to refresh.');
+      return null;
+    }
+    var r=cov.requests3mo;
     var msg='<b>'+r+'</b> Gopher request'+(r===1?' has':'s have')+' been submitted in '+pretty+' in the last 3 months.';
     if(r<20) msg+=' Please keep in mind, if you\u2019re already signed up as a worker, share your QR code. '
       +'You\u2019d be surprised how many people could use your help. Anyone who scans your QR code or receives '
