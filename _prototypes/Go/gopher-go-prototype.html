@@ -803,6 +803,10 @@ const IC={
 };
 function jcStat(x){ return '<span class="jc-stat"><span class="mi ut">'+(IC[x.i]||IC.pin)+'</span>'+x.t+(x.s?' <small>'+x.s+'</small>':'')+'</span>'; }
 function jcFlag(f){ const iq=f.iq?' iq':''; const icon=f.i?'<span class="mi ut">'+(IC[f.i]||IC.alert)+'</span>':''; const m=f.iq?'<span class="iqm">iQ</span>':''; return '<span class="flag '+(f.k||'neu')+iq+'">'+m+icon+f.t+'</span>'; }
+// A request is only ACTIVE once the requester has approved the worker — accepting is an application,
+// not a hire (owner 2026-07-20). Approval = the requester's Hire, which the bridge relays back as
+// bidAccepted/counterAccepted (or a direct approved flag). Until then the job is "Accepted · pending".
+function jobApproved(j){ return !!(j && (j.approved || j.bidAccepted || j.counterAccepted)); }
 function renderJobCard(j){
   const cat='<span class="jc-cat"><span class="mi cat">'+IC.cat+'</span>'+j.cat+'</span>';
   const src=j.lock==='connect'?'<span class="jc-source connect">Connect</span>':(j.lock==='deal'?'<span class="jc-source deal">Gopher Deal</span>':'');
@@ -822,7 +826,7 @@ function renderJobCard(j){
   // Accepted requests stay visible in the Available feed so the worker can see they've already
   // taken it (and remove it from the detail). A clean green "Accepted" pill marks the card — shown
   // until the job progresses to a later state (which brings its own badge below).
-  if(j.accepted && !j.substage && !j.cancelled) flagList.unshift({t:'Accepted',k:'good'});
+  if(j.accepted && !jobApproved(j) && !j.cancelled) flagList.unshift({t:'Accepted · pending',k:'neu'});
   if(j.accepted && j.substage==='completed' && !j.confirmed && !j.noShow) flagList.unshift({t:'Pending confirmation',k:'bad',i:'alert'});
   const flags=flagList.length?'<div class="jc-flags">'+flagList.map(jcFlag).join('')+'</div>':'';
   const inner=top+biz+pay+scope+stats+flags;
@@ -1626,8 +1630,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const base=schedMode
       ? allJobs.filter(j=>j.accepted && j.scheduled && !j.substage && !j.noShow && !j.cancelled)
       : activeMode
-      ? allJobs.filter(j=>j.accepted && !(j.scheduled && !j.substage) && !(j.substage==='completed' && j.confirmed) && !j.noShow && !j.cancelled)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.cancelled && !(j.accepted && j.substage));   // accepted-but-not-started stays in Available marked "Accepted" (worker can remove it); once started it lives only in Active
+      ? allJobs.filter(j=>j.accepted && jobApproved(j) && !(j.scheduled && !j.substage) && !(j.substage==='completed' && j.confirmed) && !j.noShow && !j.cancelled)   // ACTIVE = approved by the requester (accept alone is not active)
+      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.cancelled && !(j.accepted && jobApproved(j)));   // accepted-but-not-yet-approved stays in Available marked "Accepted · pending" (worker can remove it); once the requester approves it moves to Active
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
@@ -2202,7 +2206,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // so the worker can withdraw (owner 2026-07-20). Sits in the same spot under the pay card.
       // After the job is started (substage set), withdrawal is no longer offered here.
       let removeAction='';
-      if(j.mode!=='bid' && j.accepted && !j.substage && !j.cancelled){
+      if(j.mode!=='bid' && j.accepted && !jobApproved(j) && !j.cancelled){
         removeAction = '<button class="rq-cta js-removeaccept" style="background:#fff;color:#C44257;border:1.5px solid #e3a5ae;">Remove Accept Request</button>';
       }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
@@ -2225,12 +2229,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // A plainly-accepted job (no counter / no bid) still needs the requester's name up top — who you're
       // working with — plus the message shortcut. Countered / bid jobs already surface this via coStatus/bidStatus.
       const acceptedNote = (j.accepted && !(j.counter) && !(j.bid))
-        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>You&#8217;re hired by '+who+'</b> &mdash; addresses unlocked. Message '+String(who||'them').split(' ')[0]+' anytime.</div>'
+        ? (jobApproved(j)
+            ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>You&#8217;re hired by '+who+'</b> &mdash; addresses unlocked. Message '+String(who||'them').split(' ')[0]+' anytime.</div>'
+            : '<div class="rq-prio" style="background:#FFF4E5;border-color:#f2d9a8;color:#8a5a00;"><span class="rq-ri">'+sv(I.clock)+'</span><b>Accepted &mdash; waiting for '+who+' to approve you.</b> You&#8217;re not hired yet; '+String(who||'they').split(' ')[0]+' picks from the workers who accepted. You can remove your acceptance below anytime until then.</div>')
         : '';
 
       // Post-accept status stepper: the worker advances the job and the requester sees each step live.
       let stepper='';
-      if(j.accepted && j.mode!=='bid'){
+      if(j.accepted && jobApproved(j) && j.mode!=='bid'){   // the work stepper only appears once the requester has approved — a pending accept can't be worked yet
         const curIdx = j.substage ? STATUS_FLOW.findIndex(s=>s.key===j.substage) : -1;
         const rows = STATUS_FLOW.map((s,i)=>{ const on=i<=curIdx;
           return '<div style="display:flex;align-items:center;gap:9px;font-family:Nunito,sans-serif;font-weight:800;font-size:12.5px;color:'+(on?'#002461':'#8C8675')+';">'

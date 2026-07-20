@@ -160,26 +160,28 @@
     }catch(_){}
   }
 
-  /* ── Go → shared store → Request: when the Gopher accepts, reflect it on the left ── */
+  /* ── Go → shared store → Request: a Gopher accepting is an APPLICATION pending the requester's
+        approval — NOT an auto-hire (owner 2026-07-20: "if not approved by the requester, it is NOT
+        active"). Surface it on the request card through the SAME hire/consider/deny the bid flow uses;
+        the requester's Hire relays back (watchBidDecision → __ptBidResult) and only THEN does the job
+        go Active on both phones. Bid/counter jobs keep their own relays and are excluded here. ── */
   function watchAccept(){
     try{
       var w=R();
       if(w && w.__ptJobs){
         for(var id in w.__ptJobs){
           var job=w.__ptJobs[id];
-          if(job && job.accepted && !accepted[id]){
+          if(job && job.accepted && !job.bid && !job.counter && !job.bidAccepted && !job.counterAccepted && !job.approved && !accepted[id]){
+            var l=L(); if(!(l && l.GReq)){ continue; }
+            var r0=l.GReq.get(id); if(!r0){ continue; }   // request not ready yet — retry next tick
             accepted[id]=true;
-            var l=L();
-            if(l && l.GReq){
-              var r0=l.GReq.get(id)||{};
-              // A scheduled booking keeps its date/time on the card — the accept just adds the hire.
-              l.GReq.update(id, { stage:'active', accepted:1, hired:'Marcus K.',
-                when:(r0.scheduledForLater ? ((r0.when?r0.when+' · ':'')+'Gopher booked') : 'Accepted · on the job') });
-              try{ if(l.uiBucket!==undefined) l.uiBucket='active'; }catch(_){}
-              try{ if(l.initPending) l.initPending(); else if(l.renderPending) l.renderPending(); }catch(_){}
-            }
-            reqBanner('Your Request Was Accepted','Select here to view details');
-            status('Gopher <b>accepted</b> '+id+' → the request just moved to your <b>Active</b> list on the left. 🎉');
+            var setPay=+r0.pay||0;
+            var cand={by:'Marcus K.', cost:0, labor:setPay, amt:setPay, dist:(r0.dist||'2.4')+' mi', rating:'4.9', jobs:212, note:'', status:'new', real:true, viaAccept:true};
+            l.GReq.update(id, { bidsList:[cand], attention:{ type:'bid', label:'Marcus accepted — approve to hire', count:1 } });
+            try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}
+            try{ if(l.renderPending) l.renderPending(); }catch(_){}
+            reqBanner('A Gopher Accepted Your Request','Approve to hire — select here to view');
+            status('Gopher <b>accepted</b> '+id+' → open the request and <b>approve</b> to hire. It becomes <b>Active</b> on both phones only after you approve.');
           }
         }
       }
