@@ -3366,12 +3366,16 @@
     to { opacity:1; transform:translateY(0); }
   }
 
+  /* Flow type scale (owner deck 2026-07-20 · slide 7): header / sub / button
+     text at 2.25 / 1.5 / 1 on a 14px base = 32 / 21 / 14. Applied to every flow
+     step here (all use .mockup-content h3 + .mc-sub); button/option base is set
+     on .radio-row .rr-label below. Mirrors gopher-connect.html. */
   .mockup-content h3 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:22px;
-    color:var(--navy); margin-bottom:6px;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:32px;
+    line-height:1.1; letter-spacing:-0.3px; color:var(--navy); margin-bottom:8px;
   }
   .mockup-content .mc-sub {
-    font-size:13px; color:var(--muted); margin-bottom:24px;
+    font-size:21px; line-height:1.25; font-weight:600; color:var(--muted); margin-bottom:20px;
   }
 
   /* Step 1 — category grid */
@@ -3931,9 +3935,36 @@
     width:8px; height:8px; border-radius:50%; background:var(--green);
   }
   .radio-row .rr-label {
-    font-family:'Nunito',sans-serif; font-weight:700; font-size:12.5px;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:14px;
     color:var(--text); flex:1;
   }
+
+  /* ── Flow controls: content-sized & actionable (owner deck 2026-07-20 · slide 1)
+     ─────────────────────────────────────────────────────────────────────────
+     Option rows and toggle rows size to their CONTENT and wrap, instead of
+     stretching edge-to-edge as full-width bars with dead space on the right —
+     so they read as actionable buttons. Applies to every flow section.
+     Address inputs are capped too. Mirrors gopher-connect.html. NOT pills —
+     rounded rectangles at the iQ-button radius, per house style. */
+  .mockup-content .radio-group {
+    flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:10px;
+  }
+  .mockup-content .radio-group > .radio-row {
+    flex:0 0 auto; width:auto; order:1;
+    border-radius:12px; padding:11px 18px;
+  }
+  .mockup-content .radio-group > .radio-row .rr-label { flex:0 0 auto; }
+  /* Pay-mode's amount sub-field is the only non-radio-row child of a flow
+     radio-group; it drops to its own full-width row below the buttons. */
+  .mockup-content .radio-group > *:not(.radio-row) { flex:1 0 100%; order:2; }
+  /* Keep pay-mode selection green (the base payMode rule calms it to grey). */
+  .mockup-content .radio-group > .radio-row[data-radio="payMode"].selected {
+    border-color:var(--green); background:var(--green-light);
+  }
+  /* Toggle rows hug their content too (their label is already inline-flex). */
+  .mockup-content .toggle-row { width:fit-content; max-width:100%; }
+  /* Address inputs: cap the width so they don't stretch edge-to-edge. */
+  .mockup-content .field-input { max-width:520px; }
 
   /* Counter ( – # + ) */
   .field-counter {
@@ -5141,6 +5172,13 @@
     background:#fff5e6; border:1px solid #ffe2b0; border-radius:9px;
     padding:9px 12px; margin:12px 0 4px;
     font-family:'DM Sans',sans-serif; font-size:12px; color:#b07400; line-height:1.45;
+  }
+  /* Positive counterpart to .sse-flag: shown when the request is abundantly
+     clear (owner deck 2026-07-20 · slide 8) — acknowledge, don't inject advice. */
+  .sse-affirm {
+    background:var(--green-light); border:1px solid #cdeeda; border-radius:9px;
+    padding:11px 13px; margin:12px 0 4px;
+    font-family:'DM Sans',sans-serif; font-size:12.5px; color:#0f6e56; font-weight:600; line-height:1.45;
   }
   .sse-intro {
     font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--navy);
@@ -11139,7 +11177,7 @@
             + '<span class="sap-text"><span class="sap-label">'+s.label+'</span>'
             + '<span class="sap-addr">'+s.addr+'</span></span></button>';
         }).join('') : '<div class="sap-empty">No saved addresses yet \u2014 add them in your dashboard under \u201CSaved addresses.\u201D</div>')
-      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new address</button>';
+      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new saved address</button>';
     document.body.appendChild(box);
     var r = input.getBoundingClientRect();
     box.style.left  = Math.round(r.left) + 'px';
@@ -11150,7 +11188,9 @@
     box.addEventListener('click', function(e){
       var btn = e.target.closest('[data-sap]'); if(!btn) return;
       var v = btn.getAttribute('data-sap');
-      if(v === 'add'){ hideSavedPicker(); try{ input.focus(); }catch(_){} return; }
+      // "+ Enter a new saved address" opens the Saved Addresses manager to add one
+      // (was: just focus the field, which read as doing nothing). Owner 2026-07-20.
+      if(v === 'add'){ hideSavedPicker(); if(window.openSavedAddrModal){ window.openSavedAddrModal(); } else { try{ input.focus(); }catch(_){} } return; }
       var s = window.GopherSaved.list()[+v];
       if(s){ input.value = s.addr; if(typeof _writeStop === 'function') _writeStop(input); }
       hideSavedPicker();
@@ -11223,6 +11263,22 @@
      (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
   const PRICED_CATEGORIES = ['delivery','ride','junk'];
   const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
+
+  /* Category-aware Describe helper text (owner deck 2026-07-20 · slide 3): a
+     stronger, verb-specific prompt so requesters spell out exactly what the
+     worker will do. The Describe field is shared across categories, so the tail
+     is tailored per category. Ride has no Describe field; anything unmapped
+     falls back to state.descriptionPlaceholder. Mirrors gopher-connect.html. */
+  const DESCRIBE_HINT = {
+    delivery: 'Please be as descriptive as possible. Tell your worker exactly what needs to be delivered or purchased.',
+    moving:   'Please be as descriptive as possible. Tell your worker exactly what needs to be moved — the items, the rooms, and anything heavy or fragile.',
+    home:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done, where, and anything they should bring.',
+    labor:    'Please be as descriptive as possible. Tell your worker exactly what the job involves — the work, the site, and any equipment needed.',
+    junk:     'Please be as descriptive as possible. Tell your worker exactly what needs to be hauled away — the items and roughly how much there is.',
+    yard:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done in the yard, and any equipment needed.',
+    other:    'Please be as descriptive as possible. Tell your worker exactly what you need done.'
+  };
+  const describeHint = () => DESCRIBE_HINT[state.category] || state.descriptionPlaceholder;
 
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
@@ -12198,8 +12254,8 @@
   // ---- Step content renderers ----
   function renderStep1(){
     return `
-      <h3>What do you need today?</h3>
-      <p class="mc-sub">Pick a service category to get started. You can always change this later.</p>
+      <h3>Let's get you the help you need today!</h3>
+      <p class="mc-sub">Pick the service category you feel best represents the help you need. Gopher iQ will assist you automatically if needed.</p>
       <div class="cat-grid">
         ${Object.entries(CATEGORIES).map(([key,c]) => `
           <div class="cat-tile ${key===state.category?'selected':''}" data-cat="${key}">
@@ -12696,7 +12752,7 @@
       ${isVisible('describe') ? `
       <div class="step-section">
         <div class="step-section-title"><span class="sst-ico">✏️</span>Describe what you need</div>
-        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${state.descriptionPlaceholder}" rows="3">${state.description}</textarea>
+        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3">${state.description}</textarea>
         ${isVisible('addPic') ? (
           state.picThumbs.length === 0
             ? `<button class="field-addpic" data-action="add-pic">
@@ -12842,8 +12898,8 @@
     const myGList    = (window.__getMyGophers ? window.__getMyGophers() : []);
     const myUnlocked = myGCount > 0;   // gate is simply: at least one saved Gopher
     return `
-      <h3>Who should do the work?</h3>
-      <p class="mc-sub">Pick how you want to be matched. You can also tune crew size below for jobs that take more than one set of hands.</p>
+      <h3>How would you like us to find your worker?</h3>
+      <p class="mc-sub">Allows you to pick your involvement in the selection process.</p>
 
       <!-- Number of workers / pay-by-hour (hidden for Delivery, Home Services, Ride Sharing) -->
       ${isVisible('workerSetup') ? `
@@ -12889,7 +12945,7 @@
       <!-- How worker is selected — ONLY for Delivery/Courier, Junk Removal, Ride Sharing -->
       ${isVisible('workerSelectChoice') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">🎯</span>How is the worker selected?</div>
+        <div class="step-section-title"><span class="sst-ico">🎯</span>How is your worker selected?</div>
         <div class="radio-group">
           <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
             <span class="radio-dot"></span>
@@ -12897,12 +12953,12 @@
           </div>
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">I'll select my ${state.moreThanOneWorker ? 'workers' : 'worker'}</span>
+            <span class="rr-label">I'll select my ${state.moreThanOneWorker ? 'workers' : 'worker'} — review ratings, reviews and job history before selecting</span>
           </div>
           ${myUnlocked ? `
           <div class="radio-row ${state.workerSelection==='my'?'selected':''}" data-radio="workerSelection" data-val="my">
             <span class="radio-dot"></span>
-            <span class="rr-label">Prioritize MY Gophers</span>
+            <span class="rr-label">Prioritize MY Gophers — we'll notify your favs first</span>
           </div>
           ` : `
           <div class="radio-row locked" aria-disabled="true">
@@ -12964,7 +13020,7 @@
         ${isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'No specific pick-up location'}
+          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'Pickup location is flexible'}
             <button class="info-btn" title="${state.category === 'moving' ? 'Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.' : 'Either the worker can make the purchase anywhere that has your items OR there is not an actual pick up location for this request.'}">?</button>
           </span>
         </div>
@@ -13045,16 +13101,16 @@
       <div class="radio-group" style="margin-bottom:14px;">
         <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
           <span class="radio-dot"></span>
-          <span class="rr-label">Set your own price <span style="color:var(--muted);font-weight:500;font-size:11.5px;">(any request)</span>
-            <button class="info-btn" title="You decide the flat rate up front">?</button>
+          <span class="rr-label">Set your offer
+            <button class="info-btn" title="You decide the flat offer up front">?</button>
           </span>
         </div>
         ${state.payMode==='set' ? `
           <div class="sub-field pay-sub-field">
-            <div class="sf-label">${state.payByHour ? 'How much would you like to pay your worker(s) per hour?' : 'How much would you like to pay your worker?'}</div>
+            <div class="sf-label">${state.payByHour ? 'Your offer to the worker (per hour)' : 'Your offer to the worker'}</div>
             <div class="cost-input-box" style="margin-top:6px;">
               <span class="cib-currency">$</span>
-              <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${state.payAmount.replace(/^\$/,'')}" placeholder="0.00" aria-label="Payment to worker">
+              <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${state.payAmount.replace(/^\$/,'')}" placeholder="0.00" aria-label="Your offer to the worker">
             </div>
             <div style="font-family:'DM Sans';font-size:11.5px;color:var(--muted);margin-top:6px;">Exact amount worker(s) will receive once the job is completed — request fees calculated at review.</div>
             ${state.payByHour ? (() => {
@@ -13092,7 +13148,7 @@
         ${showBidsOption ? `
         <div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids">
           <span class="radio-dot"></span>
-          <span class="rr-label">Request bids from local workers
+          <span class="rr-label">Request bids
             <button class="info-btn" title="Workers send their offers — pick the best one">?</button>
           </span>
         </div>
@@ -13308,7 +13364,7 @@
         ${dropoffAccessRow}
         ${showCostOfItems ? `<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costItemsNum)}</span></div>` : ''}
         <div class="review-row">
-          <span class="rl">Payment to worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
+          <span class="rl">Your offer to the worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
             <span class="info-tip fee-tip" onclick="event.stopPropagation()">
               <button class="info-btn" aria-label="How payment is split across workers">?</button>
               <div class="info-popover fee-popover" role="tooltip">
@@ -13383,6 +13439,9 @@
         const sseThin = (isVisible('describe') && !state.descriptionIsPlaceholder ? state.description.trim().length < 25 : (isVisible('describe') ? true : false));
         const sseAgePurchaseMiss = (state.category === 'delivery' && state.ageRestricted && !state.itemsPurchased);
         const sseAssertive = sseThin || sseAgePurchaseMiss;
+        // Abundantly clear (owner deck 2026-07-20 · slide 8): a substantive description
+        // AND nothing iQ would flag. When true, acknowledge instead of injecting advice.
+        const sseAllClear = isVisible('describe') && !state.descriptionIsPlaceholder && state.description.trim().length >= 25 && !sseAgePurchaseMiss;
         return `
       <div class="sse-block ${state.sseOpen ? 'open' : ''}${sseAssertive ? ' attn-pulse' : ''}">
         <div class="sse-head" data-action="toggle-sse">
@@ -13390,13 +13449,14 @@
             <img src="${GOPHER_IQ_SRC}" alt="Gopher iQ">
           </span>
           <div class="sse-head-text">
-            <h4>Want a second set of eyes?</h4>
-            <p>Let Gopher review your request and suggest anything worth adding.</p>
+            <h4>${sseAllClear ? 'Gopher iQ reviewed your request 👍' : 'Want a second set of eyes?'}</h4>
+            <p>${sseAllClear ? "Everything looks good, neighbor — a worker will know exactly what you're asking for." : 'Let Gopher review your request and suggest anything worth adding.'}</p>
           </div>
           <span class="sse-chev">${state.sseOpen ? '▲' : '▼'}</span>
         </div>
         ${state.sseOpen ? `
           <div class="sse-body">
+            ${sseAllClear ? `<div class="sse-affirm">✓ Everything looks good, neighbor. Gopher iQ feels a worker would be clear on what you're asking for.</div>` : `
             ${sseThin ? `<div class="sse-flag">Your description looks a little brief — adding detail helps Gophers decide if they're the right fit.</div>` : ''}
             ${sseAgePurchaseMiss ? `<div class="sse-flag">Most age-restricted items can't be purchased in advance, so we just want to make sure you didn't miss that. If you <b>do</b> need items purchased, tap <b>Job details &amp; description</b> below and enter the cost of the items.</div>` : ''}
             <p class="sse-intro">${adv.intro}</p>
@@ -13411,6 +13471,7 @@
               <button class="sse-jump" data-jump="5">Worker pay →</button>
             </div>
             <p class="sse-fine">Gopher's suggestions are general guidance for the <b>${(CATEGORIES[state.category]||{}).name || 'selected'}</b> category — you know your job best.</p>
+          `}
           </div>
         ` : ''}
       </div>`;
@@ -13584,7 +13645,7 @@
         <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green-dark);font-weight:800;">${isServiceDeal ? '✓ Connected' : ('⏱ Submitted · ' + expiresStr)}</span></div>
         <div class="review-row"><span class="rl">Timing</span><span class="rv">${timing}</span></div>
         <div class="review-row"><span class="rl">Category</span><span class="rv">${c.name}</span></div>
-        <div class="review-row"><span class="rl">Payment to worker${s7workerCount>1?'s':''}</span><span class="rv">${s7bids?'Pending bids':fmt(s7workerPayNum)}</span></div>
+        <div class="review-row"><span class="rl">Your offer to the worker${s7workerCount>1?'s':''}</span><span class="rv">${s7bids?'Pending bids':fmt(s7workerPayNum)}</span></div>
         ${s7costItems>0?`<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(s7costItems)}</span></div>`:''}
         <div class="review-row"><span class="rl">Request Fee</span><span class="rv">${s7bids?'TBD':fmt(s7fee.requestFee)}</span></div>
         <div class="review-row total"><span class="rl">Total</span><span class="rv">${s7bids?'TBD':fmt(s7fee.gmvTotal)}</span></div>
@@ -21265,8 +21326,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const o = snap.costOfItems || 0, a = A.costOfItems || 0;
       lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
     }
-    // Payment to worker
-    lines += group('Payment to worker', fmt(snap.workerPay), fmt(A.workerPay), diff(snap.workerPay, A.workerPay));
+    // Your offer to the worker
+    lines += group('Your offer to the worker', fmt(snap.workerPay), fmt(A.workerPay), diff(snap.workerPay, A.workerPay));
     // Gopher Fee
     lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(A.fullGopherFee), diff(sf.fullGopherFee, A.fullGopherFee));
     // Age-Restricted Fee (only if non-zero on either side)
@@ -21374,8 +21435,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const o = snap.costOfItems || 0, a = C.costOfItems || 0;
       lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
     }
-    // Payment to worker
-    lines += group('Payment to worker', fmt(snap.workerPay), fmt(C.workerPay), diff(snap.workerPay, C.workerPay));
+    // Your offer to the worker
+    lines += group('Your offer to the worker', fmt(snap.workerPay), fmt(C.workerPay), diff(snap.workerPay, C.workerPay));
     // Gopher Fee
     lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(C.fullGopherFee), diff(sf.fullGopherFee, C.fullGopherFee));
     // Age-Restricted Fee (only if non-zero on either side)
@@ -21482,7 +21543,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         ${snap.description ? row('Description', snap.description) : ''}
         ${snap.worker ? row('Worker', snap.worker) : ''}
         ${showCOI ? row('Cost of items', fmt(snap.costOfItems)) : ''}
-        ${row('Payment to worker' + (wc > 1 ? 's' : ''), fmt(snap.workerPay))}
+        ${row('Your offer to the worker' + (wc > 1 ? 's' : ''), fmt(snap.workerPay))}
         ${row('Gopher Fee', fmt(gopherFee))}
         ${fee.fullAgeFee ? row('Age-Restricted Fee', fmt(fee.fullAgeFee)) : ''}
         ${row('Instant Transfer (8%)', fmt(itf))}

@@ -2126,12 +2126,16 @@
     to { opacity:1; transform:translateY(0); }
   }
 
+  /* Flow type scale (owner deck 2026-07-20 · slide 7): header / sub / button
+     text at 2.25 / 1.5 / 1 on a 14px base = 32 / 21 / 14. Applied to every flow
+     step here (all use .mockup-content h3 + .mc-sub); button/option base is set
+     on .radio-row .rr-label below. Revised down from 3.5/2/1 — that was too big. */
   .mockup-content h3 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:22px;
-    color:var(--navy); margin-bottom:6px;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:32px;
+    line-height:1.1; letter-spacing:-0.3px; color:var(--navy); margin-bottom:8px;
   }
   .mockup-content .mc-sub {
-    font-size:13px; color:var(--muted); margin-bottom:24px;
+    font-size:21px; line-height:1.25; font-weight:600; color:var(--muted); margin-bottom:20px;
   }
 
   /* Step 1 — category grid */
@@ -2544,9 +2548,40 @@
     width:8px; height:8px; border-radius:50%; background:var(--green);
   }
   .radio-row .rr-label {
-    font-family:'Nunito',sans-serif; font-weight:700; font-size:12.5px;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:14px;
     color:var(--text); flex:1;
   }
+
+  /* ── Flow controls: content-sized & actionable (owner deck 2026-07-20 · slide 1)
+     ─────────────────────────────────────────────────────────────────────────
+     Option rows and toggle rows size to their CONTENT and wrap, instead of
+     stretching edge-to-edge as full-width bars with dead space on the right —
+     so they read as actionable buttons. Applies to EVERY flow section: pay-mode,
+     worker selection, worker eligibility, labor management, and the delivery-type
+     / worker-setup toggle rows. (S7 type scale is global — see .mockup-content
+     h3 / .mc-sub / .rr-label above; S9 pay wording is inline in the render.)
+     NOT pills — rounded rectangles at the iQ-button radius, per house style. */
+  .mockup-content .radio-group {
+    flex-direction:row; flex-wrap:wrap; align-items:flex-start; gap:10px;
+  }
+  .mockup-content .radio-group > .radio-row {
+    flex:0 0 auto; width:auto; order:1;
+    border-radius:12px; padding:11px 18px;
+  }
+  .mockup-content .radio-group > .radio-row .rr-label { flex:0 0 auto; }
+  /* Pay-mode's amount sub-field is the only non-radio-row child of a flow
+     radio-group; it drops to its own full-width row below the buttons. */
+  .mockup-content .radio-group > *:not(.radio-row) { flex:1 0 100%; order:2; }
+  /* Keep pay-mode selection green (the base payMode rule calms it to grey). */
+  .mockup-content .radio-group > .radio-row[data-radio="payMode"].selected {
+    border-color:var(--green); background:var(--green-light);
+  }
+  /* Toggle rows hug their content too (their label is already inline-flex). */
+  .mockup-content .toggle-row { width:fit-content; max-width:100%; }
+  /* Address inputs: cap the width so they don't stretch edge-to-edge. Wide
+     enough for a full street address; the field scrolls for longer values.
+     (owner 2026-07-20) */
+  .mockup-content .field-input { max-width:520px; }
 
   /* Counter ( – # + ) */
   .field-counter {
@@ -3336,6 +3371,13 @@
     background:#fff5e6; border:1px solid #ffe2b0; border-radius:9px;
     padding:9px 12px; margin:12px 0 4px;
     font-family:'DM Sans',sans-serif; font-size:12px; color:#92580D; line-height:1.45;
+  }
+  /* Positive counterpart to .sse-flag: shown when the request is abundantly
+     clear (owner deck 2026-07-20 · slide 8) — acknowledge, don't inject advice. */
+  .sse-affirm {
+    background:var(--green-light); border:1px solid #cdeeda; border-radius:9px;
+    padding:11px 13px; margin:12px 0 4px;
+    font-family:'DM Sans',sans-serif; font-size:12.5px; color:#0f6e56; font-weight:600; line-height:1.45;
   }
   .sse-intro {
     font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--navy);
@@ -9641,7 +9683,7 @@ const PAY_BADGES = {
     payByHour: false,
     numHours: 1,
     workerSelection: 'first',         // 'first' | 'select'
-    eligibleWorkers: 'elite_pros',    // Connect-only backend enum: 'my_gophers' | 'elite_pros' | 'entire_workforce' (canonical D-021/D-028; matches gopher-request.html)
+    eligibleWorkers: 'entire_workforce', // Connect-only backend enum: 'my_gophers' | 'elite_pros' | 'entire_workforce'. Default = Send to all (owner 2026-07-20, matches the new left-to-right order). Canonical D-021/D-028; mirror to gopher-request.html.
     laborManagement: 'individually',  // Connect-only: 'individually' | 'one-hires'
 
     // Page 5 — Item Info
@@ -10023,8 +10065,8 @@ const PAY_BADGES = {
   // ---- Step content renderers ----
   function renderStep1(){
     return `
-      <h3>What do you need today?</h3>
-      <p class="mc-sub">Pick a service category to get started. You can always change this later.</p>
+      <h3>Let's get you the help you need today!</h3>
+      <p class="mc-sub">Pick the service category you feel best represents the help you need. Gopher iQ will assist you automatically if needed.</p>
       <div class="cat-grid">
         ${Object.entries(CATEGORIES).map(([key,c]) => `
           <div class="cat-tile ${key===state.category?'selected':''}" data-cat="${key}">
@@ -10109,7 +10151,7 @@ const PAY_BADGES = {
       ${isVisible('describe') ? `
       <div class="step-section">
         <div class="step-section-title"><span class="sst-ico">✏️</span>Describe what you need</div>
-        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${state.descriptionPlaceholder}" rows="3">${state.description}</textarea>
+        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3">${state.description}</textarea>
         ${isVisible('addPic') ? (
           state.picThumbs.length === 0
             ? `<button class="field-addpic" data-action="add-pic">
@@ -10248,8 +10290,8 @@ const PAY_BADGES = {
   // ───────────────────────────────────────────────
   function renderStep3(){
     return `
-      <h3>Who should do the work?</h3>
-      <p class="mc-sub">Standard worker controls plus Connect-only crew options.</p>
+      <h3>How would you like us to find your worker?</h3>
+      <p class="mc-sub">Allows you to pick your involvement in the selection process.</p>
 
       <!-- Number of workers slider (hidden for Delivery, Home Services, Ride Sharing) -->
       ${isVisible('workerSetup') ? `
@@ -10295,7 +10337,7 @@ const PAY_BADGES = {
       <!-- How worker is selected — ONLY for Delivery/Courier, Junk Removal, Ride Sharing -->
       ${isVisible('workerSelectChoice') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">🎯</span>How is the worker selected?</div>
+        <div class="step-section-title"><span class="sst-ico">🎯</span>How is your worker selected?</div>
         <div class="radio-group">
           <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
             <span class="radio-dot"></span>
@@ -10303,7 +10345,7 @@ const PAY_BADGES = {
           </div>
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">I'll select my ${state.moreThanOneWorker ? 'workers' : 'worker'}</span>
+            <span class="rr-label">I'll select my ${state.moreThanOneWorker ? 'workers' : 'worker'} — review ratings, reviews and job history before selecting</span>
           </div>
         </div>
       </div>
@@ -10314,6 +10356,19 @@ const PAY_BADGES = {
         <span class="connect-only-chip">Connect only</span>
         <div class="step-section-title"><span class="sst-ico">🏢</span>Choose which workers are eligible.</div>
         <div class="radio-group">
+          <!-- Order (owner 2026-07-20): Send to all → Elite & Pros → MY Gophers. -->
+          <div class="radio-row ${state.eligibleWorkers==='entire_workforce'?'selected':''}" data-radio="eligibleWorkers" data-val="entire_workforce">
+            <span class="radio-dot"></span>
+            <span class="rr-label">Send to entire Gopher Go Workforce
+              <span class="info-tip" onclick="event.stopPropagation()">
+                <button class="info-btn" aria-label="Entire workforce info">?</button>
+                <div class="info-popover" role="tooltip">
+                  <h5>Entire Gopher Go Workforce</h5>
+                  <p>Your request will be viewed by every worker in the Gopher Go network.</p>
+                </div>
+              </span>
+            </span>
+          </div>
           <div class="radio-row ${state.eligibleWorkers==='elite_pros'?'selected':''}" data-radio="eligibleWorkers" data-val="elite_pros">
             <span class="radio-dot"></span>
             <span class="rr-label">Only send to Gopher Elite and Pros
@@ -10335,18 +10390,6 @@ const PAY_BADGES = {
                   <h5>MY Gophers</h5>
                   <p>Your request will only be viewed by workers you have purchased access to or selected from previous jobs.</p>
                   <p class="emphasis">If you do not have any workers saved as MY Gophers, you can learn more in your Dashboard → MY Gophers tab.</p>
-                </div>
-              </span>
-            </span>
-          </div>
-          <div class="radio-row ${state.eligibleWorkers==='entire_workforce'?'selected':''}" data-radio="eligibleWorkers" data-val="entire_workforce">
-            <span class="radio-dot"></span>
-            <span class="rr-label">Send to entire Gopher Go Workforce
-              <span class="info-tip" onclick="event.stopPropagation()">
-                <button class="info-btn" aria-label="Entire workforce info">?</button>
-                <div class="info-popover" role="tooltip">
-                  <h5>Entire Gopher Go Workforce</h5>
-                  <p>Your request will be viewed by every worker in the Gopher Go network.</p>
                 </div>
               </span>
             </span>
@@ -10413,7 +10456,7 @@ const PAY_BADGES = {
         ${isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'No specific pick-up location'}
+          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'Pickup location is flexible'}
             <button class="info-btn" data-info="${state.category === 'moving' ? 'Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.' : 'Worker can pick up / purchase anywhere'}">?</button>
           </span>
         </div>
@@ -10487,22 +10530,23 @@ const PAY_BADGES = {
     const individuallyActive = laborMgmtActive && state.laborManagement === 'individually';
     const showBidsOption = bidsAvailable();   // category + multi-worker rules — shared with the pay gates in stepGate()
     return `
+      <div class="pay-redraft">
       <h3>How would you like to pay your worker?</h3>
       <p class="mc-sub">Set your hiring price or ask for bids with certain requests</p>
 
       <div class="radio-group" style="margin-bottom:14px;">
         <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
           <span class="radio-dot"></span>
-          <span class="rr-label">Set your own price <span style="color:var(--muted);font-weight:500;font-size:11.5px;">(any request)</span>
-            <button class="info-btn" data-info="You decide the flat rate up front">?</button>
+          <span class="rr-label">Set your offer
+            <button class="info-btn" data-info="You decide the flat offer up front">?</button>
           </span>
         </div>
         ${state.payMode==='set' ? `
           <div class="sub-field pay-sub-field">
-            <div class="sf-label">${state.payByHour ? 'How much would you like to pay your worker(s) per hour?' : 'How much would you like to pay your worker?'}</div>
+            <div class="sf-label">${state.payByHour ? 'Your offer to the worker (per hour)' : 'Your offer to the worker'}</div>
             <div class="cost-input-box" style="margin-top:6px;">
               <span class="cib-currency">$</span>
-              <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${state.payAmount.replace(/^\$/,'')}" placeholder="0.00" aria-label="Payment to worker">
+              <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${state.payAmount.replace(/^\$/,'')}" placeholder="0.00" aria-label="Your offer to the worker">
             </div>
             <div style="font-family:'DM Sans';font-size:11.5px;color:var(--muted);margin-top:6px;">Exact amount worker(s) will receive once the job is completed — request fees calculated at review.</div>
             ${state.payByHour ? (() => {
@@ -10540,7 +10584,7 @@ const PAY_BADGES = {
         ${showBidsOption ? `
         <div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids" ${individuallyActive?'style="opacity:0.5;pointer-events:none;"':''}>
           <span class="radio-dot"></span>
-          <span class="rr-label">Request bids from local workers
+          <span class="rr-label">Request bids
             <button class="info-btn" data-info="Workers send their offers — you can compare bids, worker ratings and reviews and pick the one that works for you.">?</button>
           </span>
         </div>
@@ -10550,6 +10594,7 @@ const PAY_BADGES = {
           </div>
         ` : ''}
         ` : ''}
+      </div>
       </div>
     `;
   }
@@ -10851,6 +10896,10 @@ const PAY_BADGES = {
     // age-restricted items can't be bought ahead, so flag in case they missed it.
     const sseAgePurchaseMiss = (state.category === 'delivery' && state.ageRestricted && !state.itemsPurchased);
     const sseAssertive = sseThin || sseAgePurchaseMiss;
+    // Abundantly clear (owner deck 2026-07-20 · slide 8): a substantive description
+    // AND nothing iQ would flag. When true, we acknowledge the request instead of
+    // injecting "do this and do that" — no pulse, no advice list.
+    const sseAllClear = isVisible('describe') && state.description.trim().length >= 25 && !sseAgePurchaseMiss;
 
     return `
       <h3>Let's review your request</h3>
@@ -10870,7 +10919,7 @@ const PAY_BADGES = {
         ${dropoffAccessRow}
         ${showCostOfItems ? `<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costItemsNum)}</span></div>` : ''}
         <div class="review-row">
-          <span class="rl">Payment to worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
+          <span class="rl">Your offer to the worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
             <span class="info-tip fee-tip" onclick="event.stopPropagation()">
               <button class="info-btn" aria-label="How payment is split across workers">?</button>
               <div class="info-popover fee-popover" role="tooltip">
@@ -10965,14 +11014,16 @@ const PAY_BADGES = {
         <div class="sse-head" data-action="toggle-sse">
           <span class="sse-brain"><img class="gopher-iq-inline" src="assets/img/connect-offersuggestclose.webp" alt="Gopher iQ" /></span>
           <div class="sse-head-text">
-            <h4>Want a second set of eyes?</h4>
-            <p>Let Gopher review your request and suggest anything worth adding.</p>
+            <h4>${sseAllClear ? 'Gopher iQ reviewed your request 👍' : 'Want a second set of eyes?'}</h4>
+            <p>${sseAllClear ? "Everything looks good, neighbor — a worker will know exactly what you're asking for." : 'Let Gopher review your request and suggest anything worth adding.'}</p>
           </div>
           <span class="sse-chev">${state.sseOpen ? '▲' : '▼'}</span>
         </div>
         ${state.sseOpen ? `
           <div class="sse-body">
-            ${(() => {
+            ${sseAllClear ? `
+                <div class="sse-affirm">✓ Everything looks good, neighbor. Gopher iQ feels a worker would be clear on what you're asking for.</div>
+            ` : (() => {
               const adv = REVIEW_ADVICE[state.category] || REVIEW_ADVICE.other;
               const thin = sseThin;
               return `
@@ -11154,7 +11205,7 @@ const PAY_BADGES = {
         <div class="review-row"><span class="rl">Worker info</span><span class="rv">${state.eligibleWorkers==='my_gophers'?'MY Gophers':state.eligibleWorkers==='elite_pros'?'Gopher Elite and Pros':'All workforce'}</span></div>
         ${costItemsNum > 0 ? `<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costItemsNum)}</span></div>` : ''}
         <div class="review-row">
-          <span class="rl">Payment to worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
+          <span class="rl">Your offer to the worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
             <span class="info-tip fee-tip" onclick="event.stopPropagation()">
               <button class="info-btn" aria-label="How payment is split across workers">?</button>
               <div class="info-popover fee-popover" role="tooltip">
@@ -12810,7 +12861,7 @@ const PAY_BADGES = {
             + '<span class="sap-text"><span class="sap-label">'+s.label+'</span>'
             + '<span class="sap-addr">'+s.addr+'</span></span></button>';
         }).join('') : '<div class="sap-empty">No saved addresses yet \u2014 add them in your dashboard under \u201CSaved addresses.\u201D</div>')
-      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new address</button>';
+      + '<button type="button" class="sap-add" data-sap="add">+ Enter a new saved address</button>';
     document.body.appendChild(box);
     var r = input.getBoundingClientRect();
     box.style.left  = Math.round(r.left) + 'px';
@@ -12821,7 +12872,9 @@ const PAY_BADGES = {
     box.addEventListener('click', function(e){
       var btn = e.target.closest('[data-sap]'); if(!btn) return;
       var v = btn.getAttribute('data-sap');
-      if(v === 'add'){ hideSavedPicker(); try{ input.focus(); }catch(_){} return; }
+      // "+ Enter a new saved address" opens the Saved Addresses manager to add one
+      // (was: just focus the field, which read as doing nothing). Owner 2026-07-20.
+      if(v === 'add'){ hideSavedPicker(); if(window.openSavedAddrModal){ window.openSavedAddrModal(); } else { try{ input.focus(); }catch(_){} } return; }
       var s = window.GopherSaved.list()[+v];
       if(s){ input.value = s.addr; if(typeof _writeStop === 'function') _writeStop(input); }
       hideSavedPicker();
@@ -12892,6 +12945,22 @@ const PAY_BADGES = {
      (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
   const PRICED_CATEGORIES = ['delivery','ride','junk'];
   const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
+
+  /* Category-aware Describe helper text (owner deck 2026-07-20 · slide 3): a
+     stronger, verb-specific prompt so requesters spell out exactly what the
+     worker will do. The Describe field is shared across categories, so the tail
+     is tailored per category. Ride has no Describe field; anything unmapped
+     falls back to state.descriptionPlaceholder. */
+  const DESCRIBE_HINT = {
+    delivery: 'Please be as descriptive as possible. Tell your worker exactly what needs to be delivered or purchased.',
+    moving:   'Please be as descriptive as possible. Tell your worker exactly what needs to be moved — the items, the rooms, and anything heavy or fragile.',
+    home:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done, where, and anything they should bring.',
+    labor:    'Please be as descriptive as possible. Tell your worker exactly what the job involves — the work, the site, and any equipment needed.',
+    junk:     'Please be as descriptive as possible. Tell your worker exactly what needs to be hauled away — the items and roughly how much there is.',
+    yard:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done in the yard, and any equipment needed.',
+    other:    'Please be as descriptive as possible. Tell your worker exactly what you need done.'
+  };
+  const describeHint = () => DESCRIBE_HINT[state.category] || state.descriptionPlaceholder;
 
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
@@ -16144,7 +16213,7 @@ const PAY_BADGES = {
         ${dropoffAccessRow}
         ${showCOI ? `<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(snap.costOfItems)}</span></div>` : ''}
         <div class="review-row">
-          <span class="rl">Payment to worker${wc > 1 ? 's' : ''}</span>
+          <span class="rl">Your offer to the worker${wc > 1 ? 's' : ''}</span>
           <span class="rv">${bids ? 'Pending bids' : fmt(snap.workerPay)}</span>
         </div>
         <div class="review-row">
@@ -16346,8 +16415,8 @@ const PAY_BADGES = {
       const o = snap.costOfItems || 0, a = A.costOfItems || 0;
       lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
     }
-    // Payment to worker
-    lines += group('Payment to worker', fmt(snap.workerPay), fmt(A.workerPay), diff(snap.workerPay, A.workerPay));
+    // Your offer to the worker
+    lines += group('Your offer to the worker', fmt(snap.workerPay), fmt(A.workerPay), diff(snap.workerPay, A.workerPay));
     // Gopher Fee
     lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(A.fullGopherFee), diff(sf.fullGopherFee, A.fullGopherFee));
     // Age-Restricted Fee (only if non-zero on either side)
@@ -16422,8 +16491,8 @@ const PAY_BADGES = {
       const o = snap.costOfItems || 0, a = C.costOfItems || 0;
       lines += group('Cost of items', fmt(o), fmt(a), diff(o, a));
     }
-    // Payment to worker
-    lines += group('Payment to worker', fmt(snap.workerPay), fmt(C.workerPay), diff(snap.workerPay, C.workerPay));
+    // Your offer to the worker
+    lines += group('Your offer to the worker', fmt(snap.workerPay), fmt(C.workerPay), diff(snap.workerPay, C.workerPay));
     // Gopher Fee
     lines += group('Gopher Fee', fmt(sf.fullGopherFee), fmt(C.fullGopherFee), diff(sf.fullGopherFee, C.fullGopherFee));
     // Age-Restricted Fee (only if non-zero on either side)
