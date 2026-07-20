@@ -2000,17 +2000,24 @@ function iqCoverageReply(query, audience){
   var isZip=/^\d{5}$/.test(String(cov.city||place));
   var pretty = isZip ? ('the '+esc(place)+' area') : ('<b>'+esc(cov.city)+(cov.state?(', '+cov.state):'')+'</b>');
   var w=cov.workers||0;
+  // WORKER audience answers with DEMAND (requests3mo), not supply \u2014 a worker asking about an area
+  // wants to know whether requests are coming in, not how many rivals they have. Deliberately NOT
+  // gated on inData or workers: inData is keyed to workers>0, so a demand-only area (real requests,
+  // no local Gopher yet) returns inData:false \u2014 exactly the places the under-20 share-your-QR-code
+  // copy is written for. Requester tiers below are unchanged and still supply-based.
+  if(worker){
+    var r=cov.requests3mo||0;
+    var msg='<b>'+r+'</b> Gopher request'+(r===1?' has':'s have')+' been submitted in '+pretty+' in the last 3 months.';
+    if(r<20) msg+=' Please keep in mind, if you\u2019re already signed up as a worker, share your QR code. '
+      +'You\u2019d be surprised how many people could use your help. Anyone who scans your QR code or receives '
+      +'a Refer Yourself invite can add you as a Favorite and request you by name.';
+    return msg;
+  }
   if(!cov.inData || w===0)
-    return worker
-      ? "Gopher isn\u2019t active in "+pretty+" just yet \u2014 we\u2019re growing market by market. Keep notifications on and you\u2019ll be alerted the moment requests open up near you."
-      : "We\u2019re not live in "+pretty+" just yet \u2014 but every request helps us grow there. You can post a request to gauge interest, and if we can\u2019t connect you, you don\u2019t pay a dime.";
+    return "We\u2019re not live in "+pretty+" just yet \u2014 but every request helps us grow there. You can post a request to gauge interest, and if we can\u2019t connect you, you don\u2019t pay a dime.";
   if(w<20)
-    return worker
-      ? "Gopher is just getting started in "+pretty+" \u2014 a small crew of Gophers so far. Set your Work Settings &amp; Radius to cover it and you\u2019ll see requests as they come in."
-      : "Word\u2019s just getting out in "+pretty+" \u2014 a small crew of Gophers so far. Post a request to reach them (if we can\u2019t connect you, you don\u2019t pay a dime), or use Find MY Gopher.";
-  return worker
-    ? "Yes \u2014 Gopher is active in "+pretty+", with <b>"+w+"</b> Gophers in the area. Set your Work Settings &amp; Radius to cover it and start accepting requests there."
-    : "Yes \u2014 "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I\u2019ll get you matched.";
+    return "Word\u2019s just getting out in "+pretty+" \u2014 a small crew of Gophers so far. Post a request to reach them (if we can\u2019t connect you, you don\u2019t pay a dime), or use Find MY Gopher.";
+  return "Yes \u2014 "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I\u2019ll get you matched.";
 }
 // Gopher iQ category + pricing answer \u2014 the FAQ pill's third tier (after coverage, after a
 // confident FAQ match), so "I need my couch hauled away" or "what's the fee for a move" get a
