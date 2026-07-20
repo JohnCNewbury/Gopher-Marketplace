@@ -113,9 +113,11 @@ body{
 .scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 16px 26px;}
 .scroll::-webkit-scrollbar{width:0;}
 
-/* step heading */
-.step-head h3{font-family:'Nunito';font-weight:900;font-size:22px;color:var(--navy);letter-spacing:-.5px;line-height:1.12;}
-.mc-sub{font-size:13px;color:var(--muted);margin-top:6px;margin-bottom:4px;line-height:1.45;}
+/* step heading — Flow type scale (owner deck 2026-07-20 · slide 7): header / sub /
+   button text at 2.25 / 1.5 / 1 on a 14px base = 32 / 21 / 14. Mirrors the web
+   flow (gopher-request/connect.html). Button/option base is set on .rr-label below. */
+.step-head h3{font-family:'Nunito';font-weight:900;font-size:32px;color:var(--navy);letter-spacing:-.3px;line-height:1.1;}
+.mc-sub{font-size:21px;font-weight:600;color:var(--muted);margin-top:6px;margin-bottom:4px;line-height:1.25;}
 
 .stage{animation:stageIn .32s cubic-bezier(.22,.9,.3,1) both;}
 @keyframes stageIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
@@ -287,7 +289,27 @@ body{
 .radio-dot{width:20px;height:20px;border-radius:50%;border:2px solid #c4cee0;flex:0 0 auto;margin-top:1px;position:relative;transition:border-color .15s;}
 .radio-row.selected .radio-dot{border-color:var(--green-dark);}
 .radio-row.selected .radio-dot::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--green-dark);}
-.rr-label{font-family:'Nunito';font-weight:700;font-size:13px;color:var(--navy);line-height:1.35;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.rr-label{font-family:'Nunito';font-weight:700;font-size:14px;color:var(--navy);line-height:1.35;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* ── Flow controls: content-sized & actionable (owner deck 2026-07-20 · slide 1)
+   ─────────────────────────────────────────────────────────────────────────
+   Option rows and toggle rows size to their CONTENT and wrap, instead of
+   stretching edge-to-edge as full-width bars — so they read as actionable
+   buttons. Applies to every flow section. Address inputs are capped too.
+   Scoped to #content (the flow render target = web flow's .mockup-content).
+   Mirrors gopher-request/connect.html. NOT pills — rounded rectangles. */
+#content .radio-group{flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:10px;}
+#content .radio-group > .radio-row{flex:0 0 auto;width:auto;order:1;border-radius:12px;padding:11px 18px;}
+#content .radio-group > .radio-row .rr-label{flex:0 0 auto;}
+/* Pay-mode's amount sub-field is the only non-radio-row child of a flow
+   radio-group; it drops to its own full-width row below the buttons. */
+#content .radio-group > *:not(.radio-row){flex:1 0 100%;order:2;}
+/* Keep pay-mode selection green (parity with the web override). */
+#content .radio-group > .radio-row[data-radio="payMode"].selected{border-color:var(--green);background:var(--green-light);}
+/* Toggle rows hug their content too (their label is already inline-flex). */
+#content .toggle-row{width:fit-content;max-width:100%;}
+/* Address inputs: cap the width so they don't stretch edge-to-edge. */
+#content .field-input{max-width:520px;}
 
 /* address block */
 .addr-block{position:relative;}
@@ -437,6 +459,9 @@ body{
 @keyframes sseIn{from{opacity:0;}to{opacity:1;}}
 .sse-flag{background:#fff5e6;border:1px solid #ffe2b0;border-radius:9px;padding:9px 12px;margin:12px 0 4px;font-family:'DM Sans';font-size:12px;color:#b07400;line-height:1.45;}
 .sse-flag b{font-weight:800;}
+/* Positive counterpart to .sse-flag: shown when the request is abundantly
+   clear (owner deck 2026-07-20 · slide 8) — acknowledge, don't inject advice. */
+.sse-affirm{background:var(--green-light);border:1px solid #cdeeda;border-radius:9px;padding:11px 13px;margin:12px 0 4px;font-family:'DM Sans';font-size:12.5px;color:#0f6e56;font-weight:600;line-height:1.45;}
 .sse-intro{font-family:'DM Sans';font-size:12.5px;color:var(--navy);margin:12px 0 8px;line-height:1.5;}
 .sse-points{list-style:none;display:flex;flex-direction:column;gap:7px;margin:0 0 12px;padding:0;}
 .sse-points li{position:relative;padding-left:22px;font-family:'DM Sans';font-size:12.5px;color:var(--text);line-height:1.45;}
@@ -1318,14 +1343,14 @@ function renderStep3(){
   if(isVisible('workerSelectChoice')){
     any=true;
     h+=`<div class="step-section">
-      <div class="sst"><span class="sst-ico">${svgIco('target')}</span>How is the worker selected?</div>
+      <div class="sst"><span class="sst-ico">${svgIco('target')}</span>How is your worker selected?</div>
       <div class="radio-group">
         <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
           <span class="radio-dot"></span><span class="rr-label">First available worker — fastest match</span></div>
         <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
-          <span class="radio-dot"></span><span class="rr-label">I'll select my ${state.moreThanOneWorker?'workers':'worker'}</span></div>
+          <span class="radio-dot"></span><span class="rr-label">I'll select my ${state.moreThanOneWorker?'workers':'worker'} — review ratings, reviews and job history before selecting</span></div>
         <div class="radio-row ghost" aria-disabled="true">
-          <span class="radio-dot"></span><span class="rr-label">Prioritize MY Gophers
+          <span class="radio-dot"></span><span class="rr-label">Prioritize MY Gophers — we'll notify your favs first
             <span class="rr-lock-hint">${svgIco('shield')} MY Gophers can be added from recommendations or previous completed requests.</span></span></div>
       </div>
     </div>`;
@@ -1351,7 +1376,7 @@ function renderStep4(){
       ${isVisible('noSpecificPickup') ? `
       <div class="toggle-row">
         <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-        <span class="tr-label">${state.category==='moving' ? 'Single-location move' : 'No specific pick-up location'}
+        <span class="tr-label">${state.category==='moving' ? 'Single-location move' : 'Pickup location is flexible'}
           ${state.category==='moving'
             ? infoTip('nsp','Single-location move',['Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.'])
             : infoTip('nsp','No specific pick-up',['Either the worker can purchase your items anywhere they\'re available, or there\'s no actual pick-up spot for this request.'])}
@@ -1416,14 +1441,14 @@ function renderStep5(){
     <p class="mc-sub">Set your hiring price, or ask local workers for bids.</p></div>
     <div class="radio-group">
       <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
-        <span class="radio-dot"></span><span class="rr-label">Set your own price
+        <span class="radio-dot"></span><span class="rr-label">Set your offer
           <span style="color:var(--muted);font-weight:500;font-size:11px;">(any request)</span></span></div>`;
 
   if(state.payMode==='set'){
     h+=`<div class="sub-field" style="background:#fff;border-color:#e4e8f0;">
-      <div class="sf-label">${state.payByHour?'How much per hour, per worker?':'How much would you like to pay your worker?'}</div>
+      <div class="sf-label">${state.payByHour?'Your hourly offer to the worker':'Your offer to the worker'}</div>
       <div class="cost-input-box"><span class="ci-currency">$</span>
-        <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Payment to worker"></div>
+        <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Your offer to the worker"></div>
       <div class="sf-hint">Exact amount your worker takes home — 100% of your offer. Request fees are shown at review.</div>
       ${state.payByHour ? `<div id="wageSummaryWrap">${renderWageSummary(rate)}</div>` : ''}
       ${lowOffer ? `<div class="low-offer">${svgIco('warning')}<p>That's on the low side for this kind of work. A fair offer gets accepted faster — but you can send it as-is.</p></div>
@@ -1434,7 +1459,7 @@ function renderStep5(){
 
   if(showBids){
     h+=`<div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids">
-      <span class="radio-dot"></span><span class="rr-label">Request bids from local workers
+      <span class="radio-dot"></span><span class="rr-label">Request bids
         ${infoTip('bids','Request bids',['Local workers send their offers and you pick the best one. Great when you\'re not sure of a fair price.'])}</span></div>`;
   }
   h+=`</div>`;
@@ -1590,7 +1615,7 @@ function renderStep6(){
   if(showCost) rows+=`<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costNum)}</span></div>`;
 
   // Payment to your worker(s) (single row; per-worker math lives in the info button)
-  rows+=`<div class="review-row earn"><span class="rl">${wCount===1?'Payment to your worker':'Payment to your workers'} ${workerPayTip(bids,wCount,perW,wPay)}</span>
+  rows+=`<div class="review-row earn"><span class="rl">${wCount===1?'Your offer to the worker':'Your offer to the workers'} ${workerPayTip(bids,wCount,perW,wPay)}</span>
     <span class="rv">${bids?'Pending bids':fmt(wPay)}</span></div>`;
 
   // Request fee with breakdown popover
@@ -1721,7 +1746,7 @@ function workerPayTip(bids,wCount,perW,wPay){
     : (wCount>1 ? `Each worker takes home ${fmt(perW)}. With ${wCount} workers, that's ${fmt(wPay)} total.`
                 : `Your worker takes home 100% of your ${fmt(perW)} offer.`);
   return `<span class="info-tip wpay-tip ${open?'open':''}" data-info="wpay">
-    <button class="info-btn" aria-label="Payment to your worker${wCount===1?'':'s'} breakdown">?</button>
+    <button class="info-btn" aria-label="Your offer to the worker${wCount===1?'':'s'} breakdown">?</button>
     <span class="info-popover wpay-popover"><h5>Payment breakdown</h5>
       <div class="fee-items">${body}</div>
       <p class="fee-note">${explain}</p>
