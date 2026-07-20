@@ -381,6 +381,19 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gpg-intro{padding:2px 20px 6px;font-size:12.5px;color:#6B7280;font-family:'Nunito';font-weight:600;line-height:1.45;}
 .gpg-cards{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px;}
 .gpg-card{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:15px 16px;cursor:pointer;}
+/* Contact Us page (cu-) — mirrored from the Go app's Contact Us so it renders identically. */
+.cu-ic{width:40px;height:40px;border-radius:11px;background:#E9F1FC;color:#002461;font-family:'Nunito';font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.cu-tx{flex:1;}
+.cu-n{display:block;font-family:'Nunito';font-weight:900;font-size:14.5px;color:var(--navy);}
+.cu-s{display:block;font-size:12px;color:#6B7280;margin-top:2px;font-family:'Nunito';font-weight:600;}
+.cu-cv{color:#8C8675;font-family:'Nunito';font-weight:900;font-size:18px;flex:0 0 auto;}
+.cu-sec{font-family:'Nunito';font-weight:900;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8C8675;margin:20px 20px 0;}
+.cu-form{margin:8px 20px 18px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:16px;}
+.cu-fl{display:block;font-family:'Nunito';font-weight:800;font-size:12px;color:#3A4D74;margin:2px 0 6px;}
+.cu-inp{width:100%;border:1px solid #e7e2d3;border-radius:11px;padding:11px 12px;font-family:'Nunito';font-weight:600;font-size:13px;color:var(--navy);background:var(--paper,#FBF7EF);outline:none;margin-bottom:12px;box-sizing:border-box;}
+.cu-ta{min-height:92px;resize:vertical;}
+.cu-send{width:100%;border:none;background:var(--navy,#002461);color:#fff;font-family:'Nunito';font-weight:900;font-size:14px;padding:13px;border-radius:13px;cursor:pointer;}
+.cu-note{font-size:11px;color:#8C8675;font-family:'Nunito';font-weight:600;margin-top:10px;line-height:1.4;}
 /* The .rfq-*/.riq-* blocks size themselves with `margin:… 0 0` and no horizontal padding — they
    inherited it from .gsheet's padding. .gpg-body has none (its cards pad themselves, as on Go), so
    page-hosted content that relied on the sheet gutter gets it back here. */
@@ -2142,15 +2155,31 @@ function openReqFaqs(){
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
 }
 // Contact Us \u2014 mirrors the Go app's Contact Us (email + topic/message form).
+// Contact Us \u2014 FULL PAGE, matching the Gopher Go app's Contact Us (its .cubody/.cu-method/.cu-sec/
+// .cu-form). Was a gSheet; on Go it's a real screen, so Help Center \u2192 Contact Us is page \u2192 page.
+// Back returns to Help Center (Go's BACK() pops to whatever pushed it; Help Center is the parent).
 function openReqContact(){
-  gSheet('Contact Us',
-    '<p class="gs-sub">We\u2019re here to help \u2014 reach the Gopher team however works best for you.</p>'
-    +'<div class="gs-li" style="display:flex;align-items:center;gap:13px;padding:14px 16px;" onclick="try{if(window.toast)toast(\'Opening email to support@gophergo.io \u2192\');}catch(_){}"><span style="width:38px;height:38px;border-radius:11px;background:#E9F1FC;color:#002461;font-family:Nunito;font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;">@</span><span style="flex:1;"><b>Email support</b><br><span style="color:#5b6472;">support@gophergo.io</span></span></div>'
-    +'<div class="gs-sech">Send us a message</div>'
-    +'<select class="hc-topic" style="width:100%;margin-bottom:9px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:\'DM Sans\';font-size:13px;color:var(--navy);background:#fff;"><option>A payment or receipt</option><option>A request or Gopher</option><option>My account or profile</option><option>Trust &amp; safety</option><option>Something else</option></select>'
-    +'<textarea class="hc-msg" placeholder="How can we help?" style="width:100%;min-height:76px;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:\'DM Sans\';font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>'
-    +'<button class="hc-send" style="width:100%;margin-top:11px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Send message</button>'
-    +'<p class="gs-hint" style="margin-top:10px;">We typically respond within a few hours.</p>');
+  var o=gPage('Contact Us',
+    '<p class="gpg-intro">We\u2019re here to help \u2014 reach the Gopher team however works best for you.</p>'
+    +'<div class="gpg-cards"><div class="gpg-card" data-cu-email><span class="cu-ic">@</span>'
+      +'<span class="cu-tx"><span class="cu-n">Email support</span><span class="cu-s">support@gophergo.io</span></span>'
+      +'<span class="cu-cv">\u203a</span></div></div>'
+    +'<div class="cu-sec">Send us a message</div>'
+    +'<div class="cu-form">'
+      +'<label class="cu-fl">Topic</label>'
+      +'<select class="cu-inp" data-cu-topic><option>A payment or receipt</option><option>A request or Gopher</option><option>My account or profile</option><option>Trust &amp; safety</option><option>Something else</option></select>'
+      +'<label class="cu-fl">Message</label>'
+      +'<textarea class="cu-inp cu-ta" data-cu-msg placeholder="How can we help?"></textarea>'
+      +'<button class="cu-send" data-cu-send>Send message</button>'
+      +'<p class="cu-note">Replies go to <b>'+String(PROFILE.email).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+'</b>. We typically respond within a few hours.</p>'
+    +'</div>',
+    openHelpCenter);
+  var body=o.querySelector('.gpg-body'); if(!body) return;
+  var email=body.querySelector('[data-cu-email]'), send=body.querySelector('[data-cu-send]'),
+      msg=body.querySelector('[data-cu-msg]'), topic=body.querySelector('[data-cu-topic]');
+  email.onclick=function(){ try{ if(window.toast) toast('Opening email to <b>support@gophergo.io</b> \u2192'); }catch(_){} };
+  send.onclick=function(){ if(!msg.value.trim()){ msg.focus(); try{ if(window.toast) toast('Add a short message first'); }catch(_){} return; }
+    try{ if(window.toast) toast('Message sent \u00b7 '+topic.value+' \u2014 we\u2019ll be in touch'); }catch(_){} msg.value=''; };
 }
 // Gopher Request 101 \u2014 opens the request-101 doc in an in-phone overlay (mirrors Go's open101).
 // The doc's "FAQs" links are rewired on load to close the overlay and open the in-app FAQs
