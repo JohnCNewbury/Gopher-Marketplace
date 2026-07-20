@@ -568,6 +568,13 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rq-paysub{font-size:11.5px;color:rgba(255,255,255,.8);line-height:1.45;}
   .rq-spend{display:flex;align-items:center;gap:7px;justify-content:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14);font-size:11px;color:#FFD9A6;font-family:'Nunito';font-weight:700;}
   .rq-spend svg{width:15px;height:15px;fill:none;stroke:#FFD9A6;stroke-width:1.8;}
+  /* Purchase-needed pay breakdown: earnings (profit) up top, then out-of-pocket + total deposit. */
+  .rq-ledger{margin-top:11px;padding-top:11px;border-top:1px solid rgba(255,255,255,.14);text-align:left;}
+  .rq-lrow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:rgba(255,255,255,.9);padding:2px 0;}
+  .rq-lrow .lv{font-weight:900;white-space:nowrap;color:#FFD9A6;}
+  .rq-lnote{font-size:10.5px;color:rgba(255,255,255,.6);font-family:'DM Sans',sans-serif;margin:0 0 5px;line-height:1.4;}
+  .rq-lrow.total{margin-top:5px;padding-top:8px;border-top:1px solid rgba(255,255,255,.14);font-size:13.5px;color:#fff;}
+  .rq-lrow.total .lv{color:#33D975;font-size:17px;}
   .rq-facts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
   .rq-fact{background:#fff;border:1px solid #e7e2d3;border-radius:14px;padding:11px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
   .rq-fact .rq-fi svg{width:18px;height:18px;fill:none;stroke:#1CB061;stroke-width:1.9;}
@@ -2095,11 +2102,24 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           +'<div class="rq-paysub" style="color:#ffd7de;">held while you and '+who+' resolve the reported issue</div>';
       } else {
         var costN=+j.cost||0;
-        pay='<div class="rq-payk">You&#8217;ll receive</div><div class="rq-payv">'+(j.amt||'\u2014')+'</div>'
-          +'<div class="rq-paysub">'+(j.per?(j.per+' &middot; '):'')+'paid out when the requester confirms completion</div>'
-          +(costN>0
-              ? '<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Plus <b>$'+costN+'</b> for items you buy &mdash; reimbursed in full at drop-off</div>'
-              : (purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':''));
+        var earnN=parseFloat(String(j.amt||'').replace(/[^0-9.]/g,''))||0;
+        var fmtM=function(n){ n=Number(n)||0; return '$'+(Number.isInteger(n)?n:n.toFixed(2)); };
+        // Lead with EARNINGS (profit) \u2014 workers care about what they KEEP, not the gross. For a
+        // purchase-needed job, spell out the three numbers: earn X, front Y out of pocket, and Z
+        // total lands in your account (X earnings + Y reimbursement).
+        if(costN>0){
+          pay='<div class="rq-payk">You&#8217;ll earn</div><div class="rq-payv">'+(j.amt||'\u2014')+'</div>'
+            +'<div class="rq-paysub">'+(j.per?(j.per+' &middot; '):'')+'your profit &mdash; paid out when the requester confirms completion</div>'
+            +'<div class="rq-ledger">'
+              +'<div class="rq-lrow"><span>Out of pocket for items</span><span class="lv">+'+fmtM(costN)+'</span></div>'
+              +'<div class="rq-lnote">you front this &mdash; reimbursed in full at drop-off</div>'
+              +'<div class="rq-lrow total"><span>Total deposited to you</span><span class="lv">'+fmtM(earnN+costN)+'</span></div>'
+            +'</div>';
+        } else {
+          pay='<div class="rq-payk">You&#8217;ll earn</div><div class="rq-payv">'+(j.amt||'\u2014')+'</div>'
+            +'<div class="rq-paysub">'+(j.per?(j.per+' &middot; '):'')+'paid out when the requester confirms completion</div>'
+            +(purchase?'<div class="rq-spend"><span class="rq-ri">'+sv(I.cup)+'</span>Out-of-pocket purchase &mdash; reimbursed in full at drop-off</div>':'');
+        }
       }
       // Dispute card \u2014 the requester's own comments, plus the two resolution paths: message them
       // (most disputes resolve by talking) and the cost adjustment (short/missing items \u2192 fix the
