@@ -438,6 +438,8 @@ body{
 @keyframes sseIn{from{opacity:0;}to{opacity:1;}}
 .sse-flag{background:#fff5e6;border:1px solid #ffe2b0;border-radius:9px;padding:9px 12px;margin:12px 0 4px;font-family:'DM Sans';font-size:12px;color:#b07400;line-height:1.45;}
 .sse-flag b{font-weight:800;}
+/* Positive counterpart to .sse-flag — shown when the request is abundantly clear (affirm, no advice). */
+.sse-affirm{background:var(--green-light);border:1px solid #cdeeda;border-radius:9px;padding:11px 13px;margin:12px 0 4px;font-family:'DM Sans';font-size:12.5px;color:#0f6e56;font-weight:600;line-height:1.45;}
 .sse-intro{font-family:'DM Sans';font-size:12.5px;color:var(--navy);margin:12px 0 8px;line-height:1.5;}
 .sse-points{list-style:none;display:flex;flex-direction:column;gap:7px;margin:0 0 12px;padding:0;}
 .sse-points li{position:relative;padding-left:22px;font-family:'DM Sans';font-size:12.5px;color:var(--text);line-height:1.45;}
@@ -1761,13 +1763,17 @@ function renderSSE(){
   const thin = isVisible('describe') && (state.description.trim().length<25);
   const ageMiss = state.category==='delivery' && state.ageRestricted && !state.itemsPurchased;
   const assertive = thin || ageMiss;
+  // Abundantly-clear request → AFFIRM instead of warn (owner deck 2026-07-20). Mutually exclusive
+  // with `assertive` (a >=25-char description is not thin), so the attn-pulse is already off here.
+  const allClear = isVisible('describe') && state.description.trim().length>=25 && !ageMiss;
   return `<div class="sse-block ${state.sseOpen?'open':''}${assertive?' attn-pulse':''}">
     <div class="sse-head" data-action="toggle-sse">
       <span class="sse-brain"><img src="${GOPHER_IQ_SRC}" alt="Gopher iQ"></span>
-      <div class="sse-head-text"><h4>Want a second set of eyes?</h4><p>Let Gopher review your request and suggest anything worth adding.</p></div>
+      <div class="sse-head-text"><h4>${allClear?'Gopher iQ reviewed your request 👍':'Want a second set of eyes?'}</h4><p>${allClear?"Everything looks good, neighbor — a worker will know exactly what you're asking for.":'Let Gopher review your request and suggest anything worth adding.'}</p></div>
       <span class="sse-chev">${state.sseOpen?'▲':'▼'}</span>
     </div>
     ${state.sseOpen?`<div class="sse-body">
+      ${allClear?`<div class="sse-affirm">✓ Everything looks good, neighbor. Gopher iQ feels a worker would be clear on what you're asking for.</div>`:`
       ${thin?`<div class="sse-flag">Your description looks a little brief — adding detail helps Gophers decide if they're the right fit.</div>`:''}
       ${ageMiss?`<div class="sse-flag">Most age-restricted items can't be purchased in advance. If you <b>do</b> need items purchased, jump to <b>Job details</b> and enter the cost.</div>`:''}
       <p class="sse-intro">${adv.intro}</p>
@@ -1780,6 +1786,7 @@ function renderSSE(){
         <button class="sse-jump" data-jump="5">Worker pay →</button>
       </div>
       <p class="sse-fine">Gopher's suggestions are general guidance for the <b>${(CATEGORIES[state.category]||{}).name||'selected'}</b> category — you know your job best.</p>
+      `}
     </div>`:''}
   </div>`;
 }
