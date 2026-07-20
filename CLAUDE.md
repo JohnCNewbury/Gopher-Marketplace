@@ -339,6 +339,21 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (the GDPR exposure behind the 2022 Munich ruling), and is now strictly faster — browsers
   partitioned the cross-site font cache in 2020, so hot-linking no longer buys a warm cache._
 
+- **Guarded deploy script (done 2026-07-19).** The deploy copied from the **working tree, not
+  committed state** — on 2026-07-19 that silently shipped 141 uncommitted files to production
+  alongside an unrelated feature (they happened to be finished; next time they might not be).
+  The procedure now lives in **`scripts/deploy.sh`** instead of being retyped each time.
+  **Dry run by default — it never pushes without `--push`.** Preflight *blocks* on: uncommitted
+  changes under `Final/` (override with `--allow-dirty`, which prints exactly what unversioned
+  work is shipping); a missing `assets/{css,js,img,fonts}`; root-absolute paths; and reintroduced
+  external hotlinks (`fonts.googleapis`/`gstatic`/`gophergo.io/wp-content`). It then flattens
+  `Final/` to the root of `main` via rsync, **preserving `.github`, `.nojekyll`, `README.md`**
+  (these live only on `main`; an unguarded `--delete` wipes them, and losing `.nojekyll` silently
+  404s every underscore file), and **excluding** `CLAUDE.md`, `docs`, `_backups`, `draft-content`
+  + `.DS_Store` at any depth. Post-rsync it re-asserts the exclusions held and that `.nojekyll`
+  survived before allowing a commit. Validated end-to-end: against the current clean tree it
+  reports **0 files changed vs live**, i.e. it reproduces the real deploy byte-for-byte.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
