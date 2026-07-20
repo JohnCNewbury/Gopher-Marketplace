@@ -372,6 +372,19 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gmodal{background:#fff;width:100%;max-width:300px;border-radius:20px;padding:22px;}
 .gs-h{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:18px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
 .gs-x{font-size:21px;color:var(--muted-cool);cursor:pointer;line-height:1;}
+/* Full-page screen shell (gPage) — values mirrored from the Go app's .hc-top / .hc-bk / .hc-top h1
+   so Help Center and FAQs are the same screen on both apps. */
+.gpg-top{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:10px 20px 4px;}
+.gpg-bk{width:34px;height:34px;border-radius:11px;border:1px solid #e7e2d3;background:#fff;display:flex;align-items:center;justify-content:center;color:#3A4D74;font-size:18px;cursor:pointer;flex:0 0 auto;}
+.gpg-top h1{font-family:'Nunito';font-weight:900;font-size:20px;color:var(--navy);margin:0;}
+.gpg-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;}
+.gpg-intro{padding:2px 20px 6px;font-size:12.5px;color:#6B7280;font-family:'Nunito';font-weight:600;line-height:1.45;}
+.gpg-cards{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px;}
+.gpg-card{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:15px 16px;cursor:pointer;}
+/* The .rfq-*/.riq-* blocks size themselves with `margin:… 0 0` and no horizontal padding — they
+   inherited it from .gsheet's padding. .gpg-body has none (its cards pad themselves, as on Go), so
+   page-hosted content that relied on the sheet gutter gets it back here. */
+.gpg-pad{padding:6px 20px 20px;}
 .gm-h{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:17px;margin-bottom:8px;}
 .gs-sub{font-size:13px;color:var(--body);line-height:1.5;}
 .gm-p{font-size:13px;color:var(--body);line-height:1.55;margin-bottom:14px;}
@@ -1067,6 +1080,22 @@ function gClose(){ const o=$('#phone').querySelector('.gov'); if(o) o.remove(); 
 function gModal(html){ gClose(); const o=document.createElement('div'); o.className='gov mid'; o.innerHTML='<div class="gmodal">'+html+'</div>'; o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('.gm-close')) o.remove(); }); $('#phone').appendChild(o); return o; }
 function openTrustShield(){var L=(document.querySelector('.tslogo')||{}).src||'';gSheet('Gopher TrustShield™','<div style="text-align:center;margin:2px 0 6px;"><img src="'+L+'" alt="TrustShield" style="height:78px;width:auto;display:inline-block;"><div style="font-family:Fraunces,serif;font-weight:600;font-size:19px;color:var(--navy);margin-top:6px;line-height:1.2;">Verify once. Carry your badge.</div></div><p class="gs-sub" style="text-align:center;">A free, one-time identity check — powered by iDenfy — that earns you a TrustShield™ badge every Gopher can see.</p><div class="gs-sech">Why verify</div><div class="gs-list"><div class="gs-li"><b>Two-way trust.</b> Workers know you’re a real, verified neighbor — not just the other way around.</div><div class="gs-li"><b>Save on requests.</b> $1 off every age-restricted delivery &amp; ride request, applied automatically.</div><div class="gs-li"><b>Get picked faster.</b> Verified requests get accepted sooner.</div></div><div class="gs-sech">How it works</div><p class="gs-sub">Upload your ID, take a quick selfie, and submit — most people are approved within minutes, all inside the app.</p><button data-goto="trustverify" style="width:100%;margin-top:8px;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Verify with TrustShield →</button>');}function openTrustVerify(){gModal('<h3 class="gm-h">Verify your identity — securely</h3><p class="gm-p">Powered by <b>iDenfy</b>. Your ID and selfie are encrypted, used only for verification, and never sold or shared.</p><div class="gs-list" style="margin:10px 0;"><div class="gs-li">Secure &amp; encrypted</div><div class="gs-li">Never sold or shared</div><div class="gs-li">Used only for verification</div></div><button data-goto="trustgo" style="width:100%;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Agree &amp; continue securely</button><span class="gm-link" data-goto="trustcancel" style="display:block;text-align:center;margin-top:12px;">Not now</span>');}
 function gSheet(title,html){ gClose(); const o=document.createElement('div'); o.className='gov'; o.innerHTML='<div class="gsheet"><div class="gs-h">'+title+'<span class="gs-x">\u00D7</span></div>'+html+'</div>'; o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('.gs-x')) o.remove(); }); $('#phone').appendChild(o); return o; }
+// gPage \u2014 FULL-PAGE in-phone screen, matching the Gopher Go app's page shell (its .hcbody/.hc-top/
+// .hc-bk, cream paper background, back chevron + title, scrolling body). Help Center and FAQs use
+// this instead of gSheet: on Go they are real screens, and as bottom sheets here they read as a
+// different product. Same overlay mechanics as openReq101's r101ov, so Back/nav behave as before.
+// Returns the overlay; query content out of `.gpg-body`.
+// `back` \u2014 optional opener for the PREVIOUS screen, matching Go's history stack (its back chevron
+// runs BACK(), so FAQs returns to Help Center rather than dumping you on Home). Omit for a
+// top-level screen, where back just closes.
+function gPage(title,html,back){
+  gClose(); const ph=$('#phone'); const o=document.createElement('div'); o.className='gov gpg';
+  o.setAttribute('style','position:absolute;inset:0;z-index:140;background:var(--paper,#FBF7EF);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;');
+  o.innerHTML='<div class="gpg-top"><span class="gpg-bk">\u2039</span><h1>'+title+'</h1></div>'
+    +'<div class="gpg-body">'+html+'</div>';
+  o.addEventListener('click',e=>{ if(e.target.closest('.gpg-bk')){ o.remove(); if(typeof back==='function') back(); } });
+  ph.appendChild(o); return o;
+}
 // Counter-offer review: a Gopher countered above your offer \u2014 Accept (hire at the new price) or Decline (stay open).
 function openCounterReview(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='counter') return;
@@ -1935,15 +1964,15 @@ function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
 // Identical shell/UX; the only difference is the 101 doc (Gopher REQUEST 101) and requester-facing
 // FAQ content. Cards mirror Go's .hc-card visual (icon tile + title + subtitle + chevron).
 function __hcCard(goto,ic,icBg,icCol,name,sub){
-  return '<div class="gs-li" data-goto="'+goto+'" style="display:flex;align-items:center;gap:13px;padding:15px 16px;cursor:pointer;">'
+  return '<div class="gpg-card" data-goto="'+goto+'">'
     +'<span style="width:40px;height:40px;border-radius:11px;background:'+icBg+';color:'+icCol+';font-family:Nunito;font-weight:900;font-size:'+(ic==='101'?'13px':'18px')+';letter-spacing:'+(ic==='101'?'.5px':'0')+';display:flex;align-items:center;justify-content:center;flex:0 0 auto;">'+ic+'</span>'
     +'<span style="flex:1;"><span style="display:block;font-family:Nunito;font-weight:900;font-size:15px;color:#002461;">'+name+'</span><span style="display:block;font-size:12px;color:#6B7280;margin-top:2px;font-family:Nunito;font-weight:600;">'+sub+'</span></span>'
     +'<span style="color:#8C8675;font-family:Nunito;font-weight:900;font-size:18px;flex:0 0 auto;">\u203a</span></div>';
 }
 function openHelpCenter(){
-  gSheet('Help Center',
-    '<p class="gs-sub">Quick, mobile-friendly help \u2014 tap a topic.</p>'
-    +'<div class="gs-list" style="margin-top:10px;">'
+  gPage('Help Center',
+    '<p class="gpg-intro">Quick, mobile-friendly help \u2014 tap a topic.</p>'
+    +'<div class="gpg-cards">'
       +__hcCard('hc-faqs','?','#E9F1FC','#002461','FAQs','Payments, requests, TrustShield &amp; more')
       +__hcCard('hc-101','101','#E8F5EE','#1CB061','Gopher Request 101','The basics in a 2-minute walkthrough')
       +__hcCard('hc-contact','@','#E9F1FC','#002461','Contact Us','Reach a human on the Gopher team')
@@ -2045,15 +2074,18 @@ var REQ_FAQS=[
 ];
 var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
 function openReqFaqs(){
-  var o=gSheet('FAQs',
-    '<div class="rfq-hero"><div class="rfq-eye">Help Center</div><div class="rfq-h">How can we help?</div>'
+  var o=gPage('FAQs',
+    '<div class="gpg-pad">'
+    +'<div class="rfq-hero"><div class="rfq-eye">Help Center</div><div class="rfq-h">How can we help?</div>'
       +'<div class="riq-pill"><span class="riq-badge">iQ</span><input class="riq-in" placeholder="Ask Gopher iQ a question\u2026"><span class="riq-go" data-rfq-go>\u2192</span></div>'
       +'<div class="riq-hint">Powered by Gopher iQ \u00b7 answers pulled from our FAQs</div></div>'
     +'<div class="riq-ans" hidden></div>'
     +'<div class="rfq-tabs">'+REQ_FAQ_GROUPS.map(function(g,i){ return '<button class="rfq-tab'+(i===0?' on':'')+'" data-rfq-tab="'+g+'">'+g+'</button>'; }).join('')+'</div>'
     +'<div class="rfq-list" data-rfq-list></div>'
-    +'<div class="rfq-help">Still need help? <span class="rfq-link" data-goto="hc-contact">Contact Us \u2192</span></div>');
-  var sheet=o.querySelector('.gsheet'); if(!sheet) return;
+    +'<div class="rfq-help">Still need help? <span class="rfq-link" data-goto="hc-contact">Contact Us \u2192</span></div>'
+    +'</div>',
+    openHelpCenter);
+  var sheet=o.querySelector('.gpg-body'); if(!sheet) return;
   var listEl=sheet.querySelector('[data-rfq-list]'), ansEl=sheet.querySelector('.riq-ans'), inp=sheet.querySelector('.riq-in');
   var group=REQ_FAQ_GROUPS[0];
   function renderList(){
