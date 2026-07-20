@@ -967,8 +967,14 @@ function statusText(r){
            rated:'⭐ <b>Rated</b> · thanks for your feedback' };
   if(_S[r.substage]) return _S[r.substage];
  }
- if(r.stage==='active') return '<b>Job in progress</b> · your crew is on it';
- if(r.stage==='scheduled') return 'Scheduled · '+(r.when||'booked for later');
+ if(r.stage==='active'){
+  // A scheduled / flexible request that's been approved but not yet started must keep its timing
+  // visible — otherwise the requester loses track of WHEN it's happening (r.when gets overwritten to
+  // "Accepted…" on hire; r.timingLabel survives). ASAP requests are genuinely in progress.
+  if(!r.asap && r.timingLabel && !r.substage) return '📅 <b>Scheduled</b> · '+r.timingLabel+' · '+(r.hired||'your Gopher')+' hired';
+  return '<b>Job in progress</b> · your crew is on it';
+ }
+ if(r.stage==='scheduled') return 'Scheduled · '+(r.timingLabel||r.when||'booked for later');
  if(r.stage==='accepted'){ var n=r.accepted||0; return '<b>'+n+' Gopher'+(n!==1?'s':'')+'</b> accepted — ready to review'; }
  // Submitted (broadcasting) — Need ASAP requests carry the 1-hour expiry ON the card so the
  // window is evident without opening details.

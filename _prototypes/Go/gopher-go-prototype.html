@@ -2067,9 +2067,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const picRv=!!(j.priority||j.accepted), rv=!!j.accepted;
       const lock=j.lock;
       // timing pill
-      const tFlag=flags.find(f=>/time|sensitive|asap|urgent|now/i.test(f.t||''));
-      const asap=(cal&&/now/i.test(cal.t||''))||!!tFlag;
-      const timing= asap?{c:'asap',t:'Need ASAP'} : (cal?{c:'sched',t:'Scheduled &middot; '+cal.t}:{c:'flex',t:'Flexible timing'});
+      // Timing pill reads the ACTUAL scheduled timing (the 'cal' stat = the request's `when`), NOT the
+      // "Time-sensitive" badge. The old code keyed asap off any flag matching /time|sensitive/, so every
+      // non-scheduled request — including a "Within 24 hours" flexible one — falsely showed "Need ASAP".
+      const asap=!!(cal&&/asap/i.test(cal.t||''));
+      const isWindow=!!(cal&&/within|flexible/i.test(cal.t||''));
+      const timing= asap?{c:'asap',t:'Need ASAP'}
+        : (cal?{c:'sched',t:(isWindow?cal.t:('Scheduled &middot; '+cal.t))}:{c:'flex',t:'Flexible timing'});
       // quick facts
       let facts='';
       facts+='<div class="rq-fact"><span class="rq-fi">'+sv(I.pin)+'</span><div><b>'+(pin?pin.t:'\u2014')+'</b><i>distance</i></div></div>';
@@ -2957,11 +2961,18 @@ if(PT){
     var crew=Math.max(1, +order.workers||1);   // Gopher Request = ONE broadcast; the accepter brings the whole crew
     // A directed provider-deal booking (the requester redeemed THIS Gopher's deal) is not
     // an open broadcast — badge it as a direct booking rather than a time-sensitive grab.
+    // "Time-sensitive" (= grab it now) belongs ONLY to true ASAP requests. A flexible window
+    // ("Within 24 hours"/"a week") is not urgent — it's a scheduled window (shown in the stats row),
+    // so it must not get the Time-sensitive badge (which also drove the detail's false "Need ASAP").
+    var whenTxt=String(order.when||'');
+    var isAsap=!order.scheduled && /asap|now/i.test(whenTxt);
     var flags = order.directBooking
       ? [{t:'Direct booking',k:'good'}]
       : (order.scheduled
         ? [{t:'New',k:'good'},{t:'Scheduled'+(order.when?(' · '+order.when):''),k:'neu',i:'cal'}]   // booked for later — not a time-sensitive grab
-        : [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}]);
+        : isAsap
+          ? [{t:'New',k:'good'},{t:'Time-sensitive',k:'warn',i:'alert'}]
+          : [{t:'New',k:'good'}]);   // flexible window — timing shows in the stats row; no false urgency badge
     // Worker-selection mode carried through (field kept for a future revisit), but NOT surfaced as a
     // card badge: owner decided the accept flow stays as-is (no requester-picks/application step), so a
     // "Requester picks" pill would advertise behavior that doesn't happen. The only new card signal is
