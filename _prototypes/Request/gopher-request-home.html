@@ -936,7 +936,7 @@ const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toU
 const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
-function statusBucket(r){ if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Request history
+function statusBucket(r){ if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Previous requests
   if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
@@ -1018,13 +1018,13 @@ function cardHTML(r){
   +btn+'</div>';
 }
 function renderPending(){
- try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Request history counts in sync
+ try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Previous requests counts in sync
  var slot=$('#hubSlot'); if(!slot) return;
  /* FIX: only a total of ZERO requests (across Active+Scheduled+Submitted) hides the whole
     multi-request block — no switcher, no card, no gap. A selected-but-empty bucket keeps the
     switcher (handled below). */
  // Hide the whole multi-request block when nothing is live in the three home buckets — a terminal
- // (rated / no-show) request has moved to Request history, so the home clears.
+ // (rated / no-show) request has moved to Previous requests, so the home clears.
  var _homeLive=bucketList('active').length+bucketList('scheduled').length+bucketList('submitted').length;
  if(!_homeLive){ slot.hidden=true; slot.innerHTML=''; PEND=null; try{window.__PEND=null;}catch(_){} return; }
  slot.hidden=false;
@@ -2272,7 +2272,7 @@ function openMyGophers(){ var L=myGopherRows();
     ? '<p class="gs-sub">Favorited Gophers \u2014 prioritized on new requests.</p><div class="gs-list" style="margin-top:10px;">'+L.map(g=>'<div class="gph"><span class="gph-pic">'+g[0].split(/\s+/).map(w=>w[0]).join('').slice(0,2)+'</span><div class="gph-tx"><div class="gph-nm">'+g[0]+' '+window.__tierBadge(g[1],g[2])+'</div><div class="gph-tag">'+g[3]+'</div></div><button class="gph-hire" data-goto="flow">Hire again</button></div>').join('')+'</div>'
     : '<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.55;padding:24px 12px;">No favorited Gophers yet.<br>After a completed request, add your Gopher here \u2014 they\u2019ll be prioritized on your future requests.</div>';
   gSheet('MY Gophers', body); }
-// Keep the account tool-row sub-labels (MY Gophers / Request history) in sync with session state.
+// Keep the account tool-row sub-labels (MY Gophers / Previous requests) in sync with session state.
 function updateAccountLabels(){
   try{
     var mg=isPTmode()? (SESS_MYGOPHERS||[]).length : 3;   // guard: initPending() may run before SESS_MYGOPHERS is assigned
@@ -2283,10 +2283,10 @@ function updateAccountLabels(){
     });
   }catch(_){}
 }
-// Request history (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
+// Previous requests (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
 // fulfilled it, and the rating THEY gave. Pulls live completed requests from the store first, then a few
 // representative past ones, so a job completed during the demo shows up at the top.
-/* "Request again" from a completed job in the request history.
+/* "Request again" from a completed job in Previous requests.
    NOW  → skip the review page, land on the submitted confirmation.
    edits→ land on the canonical Review (Step 6), everything prefilled.
    Either way the past job's Gopher rides along and gets first dibs. */
@@ -2310,7 +2310,7 @@ function openHistory(){
     return { title:r.title||'Request', order:r.order, cat:(CATLABEL[r.cat]||'Request'), date:'Just now',
       paid:(r.amount||money((+r.pay||0)+(+r.cost||0))), who:(r.hired||'your Gopher'), rating:(+r.rating||0), note:(r.ratingNote||''), noShow:!!r.noShow };
   });
-  // In the split/PT demo, Request history starts EMPTY and fills only from this session's completed
+  // In the split/PT demo, Previous requests starts EMPTY and fills only from this session's completed
   // requests. The standalone app keeps a few representative past requests.
   var demo=isPTmode()? [] : [
     { title:'Grocery + pharmacy run', order:'GR-00187', cat:'Delivery', date:'Mar 4', paid:'$24.91', who:'Devon M.', rating:5, note:'Fast and friendly \u2014 grabbed everything on the list.' },
