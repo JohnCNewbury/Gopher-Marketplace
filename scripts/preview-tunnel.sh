@@ -54,18 +54,36 @@ for d in Go Request; do
   done
 done
 
-DEPS=(gopher-age-keywords gopher-age-supplement gopher-category-classifier
-      gopher-iq-data gopher-message-guard gopher-request-logic)
-for d in "${DEPS[@]}"; do
-  src="Final/assets/js/$d.js"
-  [[ -f "$src" ]] || die "missing shared dependency $src"
-  cp "$src" "$STAGE/Final/assets/js/"
-done
+# Shared deps are DERIVED from what the staged prototypes actually reference, not
+# hardcoded. A hardcoded ".js only" list is how 01-delivery.webp got missed on the first
+# run — the Delivery tile rendered a broken-image icon on a live demo URL. Anything the
+# apps point at with ../../Final/... gets staged, whatever its file type.
+# NB: `mapfile` is bash 4+; macOS ships bash 3.2, so read the list the portable way.
+REFS_FILE="$STAGE/.refs"
+grep -ohE '\.\./\.\./Final/[A-Za-z0-9_./-]+' "$STAGE"/_prototypes/*.html \
+     "$STAGE"/_prototypes/*/*.html 2>/dev/null \
+  | sed 's|^\.\./\.\./||' | sort -u > "$REFS_FILE"
+[[ -s "$REFS_FILE" ]] || die "found no Final/ references — staging copied nothing?"
 
-# Hard-fail rather than silently serve a half-working iQ (see note 2 above).
-for d in "${DEPS[@]}"; do
-  [[ -s "$STAGE/Final/assets/js/$d.js" ]] || die "$d.js did not stage — iQ would answer wrongly"
+missing=0
+while IFS= read -r rel; do
+  [[ -n "$rel" ]] || continue
+  [[ "$rel" == */ ]] && continue                       # bare directory prefix, not a file
+  if [[ -f "$rel" ]]; then
+    mkdir -p "$STAGE/$(dirname "$rel")"
+    cp "$rel" "$STAGE/$rel"
+  else
+    note "referenced but not on disk: $rel"; missing=$((missing+1))
+  fi
+done < "$REFS_FILE"
+rm -f "$REFS_FILE"
+
+# Hard-fail rather than silently serve a half-working iQ (see note 2 above): these two
+# carry the coverage brain and the category model, and their absence is invisible at runtime.
+for must in Final/assets/js/gopher-iq-data.js Final/assets/js/gopher-category-classifier.js; do
+  [[ -s "$STAGE/$must" ]] || die "$must did not stage — iQ would answer wrongly"
 done
+[[ "$missing" -gt 0 ]] && note "$missing referenced file(s) absent — links to them will 404"
 
 n_files=$(find "$STAGE" -type f | wc -l | tr -d ' ')
 size=$(du -sh "$STAGE" | cut -f1)
