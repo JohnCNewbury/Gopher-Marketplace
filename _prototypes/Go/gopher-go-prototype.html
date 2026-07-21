@@ -867,6 +867,23 @@ const MODAL_CSS = `
 .modal-card .mclose{margin-top:16px;height:46px;border-radius:12px;background:#33D975;color:#002461;border:none;font-family:'Nunito';font-weight:900;font-size:14px;width:100%;cursor:pointer;}
 .modal-card .mlink{display:block;text-align:center;margin-top:10px;font-size:12px;color:#1CB061;font-weight:700;text-decoration:underline;cursor:pointer;}
 .modal-card .probadge{height:34px;display:block;margin-bottom:8px;}
+/* Gopher iQ sheet (openGopherIQ). The answer-card classes are repeated here because the
+   modal mounts inside a FRAMES shadow root, which carries the frame's CSS -- not the
+   NATIVE_CSS the Help Center screen is styled by. */
+.modal-card .iqm-pill{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #cfd9ea;border-radius:999px;padding:6px 7px;margin-top:13px;box-shadow:0 6px 16px rgba(0,36,97,.08);}
+.modal-card .iqm-b{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#33D975,#1CB061);color:#002461;font-family:'Nunito';font-weight:900;font-size:12.5px;display:flex;align-items:center;justify-content:center;letter-spacing:-.5px;}
+.modal-card .iqm-in{flex:1;min-width:0;border:none;outline:none;background:none;font-family:'Nunito';font-weight:600;font-size:13px;color:#002461;}
+.modal-card .iqm-go{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;}
+.modal-card .iqm-ans{margin-top:12px;}
+.modal-card .iq-card{background:#F2FBF6;border:1px solid #bfe6cf;border-radius:14px;padding:12px 13px;}
+.modal-card .iq-lab{font-family:'Nunito';font-weight:900;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#1CB061;margin-bottom:6px;}
+.modal-card .iq-q{font-family:'Nunito';font-weight:900;font-size:13px;color:#002461;}
+.modal-card .iq-aa{font-size:12.5px;color:#3A4D74;line-height:1.55;margin:3px 0 0;}
+.modal-card .iq-hit.more{margin-top:11px;padding-top:11px;border-top:1px solid #cfeadd;}
+.modal-card .fq-link{color:#1CB061;font-weight:800;text-decoration:underline;cursor:pointer;}
+.modal-card .iqm-ctas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px;}
+.modal-card .iqm-cta{height:40px;padding:0 6px;border-radius:11px;background:#F4F7FC;border:1px solid #dfe6f2;color:#002461;font-family:'Nunito';font-weight:800;font-size:11.5px;cursor:pointer;}
+.modal-card .iqm-hint{text-align:center;font-size:10.5px;color:#8C8675;font-family:'Nunito';font-weight:700;margin-top:11px;}
 `;
 // ── Messaging — unified UX with Gopher Request: a bottom sheet that opens over the current screen and
 //    grows with the conversation (same bubble/header/composer as the Request app; no preset chips). ──
@@ -1084,6 +1101,38 @@ function openEditProfile(){
 }
 function openTiers(){ showModal('<img class="probadge" src="'+PRO_BADGE+'" alt="Gopher Pro"><h3>Level-up &mdash; Earn more</h3><p>Below are the tiers for workers on the Gopher Marketplace.</p><div class="tier"><b style="flex:0 0 64px">Standard</b><span>Our intro tier — verified identity, SSN, phone, email and Stripe account.</span></div><div class="tier"><b style="flex:0 0 64px">Elite</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background from Yardstik.</span></div><div class="tier"><b style="flex:0 0 64px">Elite+</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background and DMV from Yardstik.</span></div><div class="tier"><b style="flex:0 0 64px">Pro</b><span>Verified identity, SSN, phone, email, Stripe account and carries professional credentials (license, bonded, insured and/or workman&#39;s comp).</span></div><p><b>Docs are reviewed for approval</b> — submit at sign-up or later in your profile.</p><span class="mlink">View full gopher-tiers page &#8594;</span><button class="mclose">Got it</button>'); }
 function openElite(){ showModal('<img class="gelogo" src="'+GE_LOGO+'" alt="Gopher Elite"><h3>Level-up &mdash; Earn more</h3><p>Below are the Elite tiers on the Gopher Marketplace.</p><div class="tier"><b style="flex:0 0 60px">elite</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background from Yardstik.</span></div><div class="tier"><b style="flex:0 0 60px">elite+</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background and DMV from Yardstik.</span></div><p><b>Invest in getting your Elite or Elite+ badge</b> and increase your earnings and volume instantly.</p><span class="mlink">View full gopher-tiers page &#8594;</span><button class="mclose">Got it</button>'); }
+/* Home "Ask Gopher anything..." pill -> data-goto="gopher-iq". There was no such screen,
+   so every tap fell through the router's unknown-key branch and toasted "gopher iq --
+   coming soon" -- while the identical pill in the Help Center answered for real. Same
+   brain (iqAnswerCard), worker scope, plus the shortcuts a Gopher actually reaches for. */
+function openGopherIQ(){
+  const ov=showModal(
+    '<h3>Gopher iQ</h3>'
+    +'<p>Ask about pay, requests, your account &mdash; or where the work is.</p>'
+    +'<div class="iqm-pill"><span class="iqm-b">iQ</span><input class="iqm-in" placeholder="Ask Gopher anything&hellip;"><span class="iqm-go">&#8594;</span></div>'
+    +'<div class="iqm-ans" hidden></div>'
+    +'<div class="iqm-ctas">'
+      +'<button class="iqm-cta" data-iqgo="jobs-list">Find work near me</button>'
+      +'<button class="iqm-cta" data-iqgo="payout">Payout Account</button>'
+      +'<button class="iqm-cta" data-iqgo="work-settings">Work Settings</button>'
+      +'<button class="iqm-cta" data-iqgo="help">Help Center</button>'
+    +'</div>'
+    +'<div class="iqm-hint">Powered by Gopher iQ &middot; answers from our FAQs</div>'
+    +'<button class="mclose">Close</button>');
+  const inp=ov.querySelector('.iqm-in'), ans=ov.querySelector('.iqm-ans');
+  function ask(){
+    const q=inp.value.trim();
+    if(!q){ ans.setAttribute('hidden',''); ans.innerHTML=''; return; }
+    ans.innerHTML=iqAnswerCard(q,'worker',{browseHint:false});
+    ans.removeAttribute('hidden');
+    const c2=ans.querySelector('.js-c2'); if(c2) c2.onclick=()=>{ ov.remove(); load('gopher-contact-us'); };
+  }
+  ov.querySelector('.iqm-go').onclick=ask;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
+  ov.querySelectorAll('[data-iqgo]').forEach(b=>b.onclick=()=>{ ov.remove(); load(b.getAttribute('data-iqgo')); });
+  setTimeout(()=>{ try{ inp.focus(); }catch(_){} },30);
+  return ov;
+}
 function renderAcct(sr){ if(!state.userId) return; const sb=sr.querySelector('.sb'); if(!sb||sr.querySelector('.acctbar')) return; const cls=state.status==='Active'?'active':(state.status==='Email verified'?'verified':'inactive'); const bar=document.createElement('div'); bar.className='acctbar'; bar.innerHTML='ID <b>'+state.userId+'</b> &middot; <span class="st '+cls+'">'+state.status+'</span> &middot; <span class="sv">Saved &#10003;</span>'; sb.insertAdjacentElement('afterend',bar); }
 function stepsMenu(){
   const grp=META.find(g=>g[0].indexOf('Sign up')===0); if(!grp) return;
@@ -1125,7 +1174,17 @@ function iqCoverageReply(query, audience){
   var zip=query.match(/\b(\d{5})\b/);
   var cue=/(are you (?:in|serving)|do you (?:serve|service|cover|have gopher)|servic(?:e|es|ing)\b|serving\b|available in|coming to|gophers? (?:in|near)|service area|coverage|operate in|live in|you (?:serve|service|cover)|near me)/.test(t);
   var m=query.match(/\b(?:in|to|near|serve|service|servicing|serving|cover|covering)\s+([a-z][a-z .'\-]{1,26}(?:,\s*[a-z]{2})?)\s*[?!.]*$/i);
-  var place = zip ? zip[1] : ((cue && m) ? m[1].trim() : ((m && /,\s*[a-z]{2}\b/i.test(m[1])) ? m[1].trim() : null));
+  // The alternation above contains VERBS ("service", "serve", "cover"), so the capture can start
+  // one word too early: "do you have service in Raleigh?" matches on `service` and captures
+  // "in Raleigh". lookup() has no row for that, so it synthesizes one (title-cased echo, all
+  // zeros) and we confidently answer "0 Gopher requests ... in In Raleigh" about a market with
+  // 232. Same shape turned "do you serve near me" into "we're not live in Near, ME".
+  // Strip leading prepositions off the capture. Articles are deliberately NOT stripped --
+  // "The Colony, TX" is a real city and lookup() indexes it under the full name.
+  var cap = m ? m[1].trim() : null;
+  if(cap){ var prev; do{ prev=cap; cap=cap.replace(/^(?:in|to|near|at|around|within)\s+/i,'').trim(); }while(cap!==prev); }
+  if(cap && !/[a-z]/i.test(cap)) cap=null;
+  var place = zip ? zip[1] : ((cue && cap) ? cap : ((cap && /,\s*[a-z]{2}\b/i.test(cap)) ? cap : null));
   if(!place) return null;
   if(!(window.GopherIQData && GopherIQData.lookup)) return null;
   var cov=GopherIQData.lookup(place); if(!cov) return null;
@@ -1170,6 +1229,65 @@ function iqCoverageReply(query, audience){
 // confident FAQ match), so "what are moving jobs" or "what's the fee" get a real answer instead
 // of the not-found fallback. Cue words mirror the Request app's home iQ classifier so the two
 // brains agree. Kept in sync with the Request app's copy; audience only changes the wording.
+/* ── Gopher iQ · shared answering brain ─────────────────────────────────────
+   ONE implementation behind both worker-facing iQ surfaces: the Help Center
+   (gopher-faqs) pill and the Home "Ask Gopher anything…" pill sheet. Answers
+   are tried in three tiers, most-specific first:
+     1. location / service-area  -> iqCoverageReply()  (real coverage numbers)
+     2. curated FAQ search       -> confident matches only
+     3. category / pricing intent-> iqTopicReply()
+   Keep it shared: the previous split let one surface answer while the other
+   was a dead end. */
+const GO_FAQS=[
+      {g:'Workers',q:'When do I receive my payout?',a:'Your first 10 payouts use Stripe\u2019s Standard speed (about 2 hours after the customer confirms). After 10 completed requests you\u2019re upgraded to Instant (1\u20132 minutes); Tiered Gophers (Elite, Elite+, Pro) start on Instant. Payout begins when you mark a request Complete and the requester confirms \u2014 or automatically after 48 hours.'},
+      {g:'Workers',q:'If I accept a request, can I cancel it?',a:'If you accept, you\u2019re expected to complete it. Cancelling before completion can incur up to a $5 fee, and repeated cancellations are the most common reason a Gopher is removed from the platform.'},
+      {g:'Workers',q:'Why do I have to pay for the items on some requests?',a:'A \u201cpurchase needed\u201d request asks you to buy items on the requester\u2019s behalf. You\u2019re repaid that amount plus your offer immediately on completion. Only accept these if you have the funds available.'},
+      {g:'Workers',q:'Why can\u2019t I see any requests?',a:'Usually one of three things: your payout account isn\u2019t set up, your Work Settings & Radius aren\u2019t saved with the categories you want, or Gopher is still new to your area.'},
+      {g:'Workers',q:'Why is my payout delayed?',a:'Almost always an invalid payout card (expired, blocked, or unsupported). Add a valid debit card and set it as default \u2014 Stripe confirms it the next business day, then pending payouts transfer to it.'},
+      {g:'Workers',q:'Do I have to pay to become a Gopher?',a:'No \u2014 standard Gophers join free. There\u2019s an optional one-time fee to become Elite or Elite+ (and a free application for Pro), which is recommended in active areas for the added perks.'},
+      {g:'Workers',q:'What does \u201cMake Me An Offer\u201d mean?',a:'It\u2019s for when a requester doesn\u2019t know a fair price. You see what\u2019s needed, accept, and enter your cost for materials (if any) plus what you want to charge. The requester can accept or decline your bid.'},
+      {g:'Support',q:'How do I cash out?',a:'It\u2019s automatic: you mark the job complete, the customer confirms, and the payout initiates. The first 10 are Standard speed; after that you\u2019re upgraded to Instant (1\u20132 minutes); Tiered Gophers (Elite, Elite+, Pro) start on Instant.'},
+      {g:'Support',q:'How do I turn on location services?',a:'iPhone: Settings \u2192 Privacy & Security \u2192 Location Services \u2192 Gopher Go \u2192 Always. Android: Settings \u2192 Location \u2192 Permissions \u2192 Gopher Go \u2192 Allow.'},
+      {g:'Support',q:'Can I share my phone number or contact info in messages?',a:'No. Sharing personal contact info through in-app messaging violates our terms. Use messaging only to get more info about a request.'},
+      {g:'Support',q:'How are you different from DoorDash, Uber, and similar apps?',a:'You can come and go without penalty, each job\u2019s earnings are 100% transparent before you accept, you\u2019re paid that exact amount, and you work directly for the requester for that job.'},
+      {g:'Support',q:'I completed a request but haven\u2019t been paid \u2014 why?',a:'Usually the requester hasn\u2019t confirmed yet. We send reminders; if they don\u2019t confirm, payout auto-releases 48 hours after you marked the request complete.'},
+      {g:'Support',q:'Why won\u2019t Stripe accept my debit card?',a:'Stripe accepts virtually all US bank debit cards for instant payouts, but cards from online or virtual banks usually don\u2019t qualify. Check Stripe\u2019s supported-banks list.'},
+      {g:'Customers',q:'What are your hours?',a:'Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'},
+      {g:'Customers',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield). Your Gopher receives 100% of your offer.'},
+      {g:'Customers',q:'Can I cancel my request after the worker has started?',a:'If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for full details.'},
+      {g:'Customers',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
+      {g:'Customers',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'}
+];
+const IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about it i\u2019m im'.split(' '));
+function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|earn)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund|charge)/.test(w))return 'charge'; if(/^(ride|driv)/.test(w))return 'ride'; return w; }
+function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2 && !IQ_STOP.has(w)).map(iqCanon); }
+function iqFaqSearch(query){
+  const qw=iqToks(query); if(!qw.length) return [];
+  return GO_FAQS.map(f=>{ const qset=new Set(iqToks(f.q)); const aset=new Set(iqToks(f.q+' '+f.a+' '+f.g)); let s=0,n=0; qw.forEach(w=>{ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; })
+    .filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
+}
+// Ready-to-insert card HTML for a query ('' when the query is blank).
+// opts.browseHint:false drops the "browse the topics below" nudge — right for the
+// sheet, which has no FAQ list under it.
+function iqAnswerCard(query, audience, opts){
+  opts=opts||{};
+  const q=String(query||'').trim(); if(!q) return '';
+  const wrap=inner=>'<div class="iq-card"><div class="iq-lab">Gopher iQ</div>'+inner+'</div>';
+  // 1) Location / service-area questions -> real coverage brain (not a stray FAQ match).
+  const cov=iqCoverageReply(q,audience);
+  if(cov) return wrap('<p class="iq-aa">'+cov+'</p>');
+  // 2) FAQ search - only surface a CONFIDENT match: a question-word hit (score >= 3) that
+  //    also covers the query. A single common word matching isn't enough unless the query
+  //    is one word.
+  const hits=iqFaqSearch(q).filter(h=>h.s>=3 && (h.n>=2 || h.qn<=1));
+  if(hits.length) return wrap(hits.map((h,idx)=>'<div class="iq-hit'+(idx?' more':'')+'"><div class="iq-q">'+h.f.q+'</div><div class="iq-aa">'+h.f.a+'</div></div>').join(''));
+  // 3) Category / pricing intent - catches what the curated FAQs don't cover.
+  const topic=iqTopicReply(q,audience);
+  const miss = opts.browseHint===false
+    ? 'I couldn\u2019t find that one. Try different words, or <span class="fq-link js-c2">contact us</span>.'
+    : 'I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="fq-link js-c2">contact us</span>.';
+  return wrap('<p class="iq-aa">'+(topic || miss)+'</p>');
+}
 function iqTopicReply(query, audience){
   var worker=(audience==='worker');
   var t=' '+String(query).toLowerCase()+' ';
@@ -1874,59 +1992,22 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
     r.querySelector('.js-contact').onclick=()=>load('gopher-contact-us');
-    const FAQS=[
-      {g:'Workers',q:'When do I receive my payout?',a:'Your first 10 payouts use Stripe\u2019s Standard speed (about 2 hours after the customer confirms). After 10 completed requests you\u2019re upgraded to Instant (1\u20132 minutes); Tiered Gophers (Elite, Elite+, Pro) start on Instant. Payout begins when you mark a request Complete and the requester confirms \u2014 or automatically after 48 hours.'},
-      {g:'Workers',q:'If I accept a request, can I cancel it?',a:'If you accept, you\u2019re expected to complete it. Cancelling before completion can incur up to a $5 fee, and repeated cancellations are the most common reason a Gopher is removed from the platform.'},
-      {g:'Workers',q:'Why do I have to pay for the items on some requests?',a:'A \u201cpurchase needed\u201d request asks you to buy items on the requester\u2019s behalf. You\u2019re repaid that amount plus your offer immediately on completion. Only accept these if you have the funds available.'},
-      {g:'Workers',q:'Why can\u2019t I see any requests?',a:'Usually one of three things: your payout account isn\u2019t set up, your Work Settings & Radius aren\u2019t saved with the categories you want, or Gopher is still new to your area.'},
-      {g:'Workers',q:'Why is my payout delayed?',a:'Almost always an invalid payout card (expired, blocked, or unsupported). Add a valid debit card and set it as default \u2014 Stripe confirms it the next business day, then pending payouts transfer to it.'},
-      {g:'Workers',q:'Do I have to pay to become a Gopher?',a:'No \u2014 standard Gophers join free. There\u2019s an optional one-time fee to become Elite or Elite+ (and a free application for Pro), which is recommended in active areas for the added perks.'},
-      {g:'Workers',q:'What does \u201cMake Me An Offer\u201d mean?',a:'It\u2019s for when a requester doesn\u2019t know a fair price. You see what\u2019s needed, accept, and enter your cost for materials (if any) plus what you want to charge. The requester can accept or decline your bid.'},
-      {g:'Support',q:'How do I cash out?',a:'It\u2019s automatic: you mark the job complete, the customer confirms, and the payout initiates. The first 10 are Standard speed; after that you\u2019re upgraded to Instant (1\u20132 minutes); Tiered Gophers (Elite, Elite+, Pro) start on Instant.'},
-      {g:'Support',q:'How do I turn on location services?',a:'iPhone: Settings \u2192 Privacy & Security \u2192 Location Services \u2192 Gopher Go \u2192 Always. Android: Settings \u2192 Location \u2192 Permissions \u2192 Gopher Go \u2192 Allow.'},
-      {g:'Support',q:'Can I share my phone number or contact info in messages?',a:'No. Sharing personal contact info through in-app messaging violates our terms. Use messaging only to get more info about a request.'},
-      {g:'Support',q:'How are you different from DoorDash, Uber, and similar apps?',a:'You can come and go without penalty, each job\u2019s earnings are 100% transparent before you accept, you\u2019re paid that exact amount, and you work directly for the requester for that job.'},
-      {g:'Support',q:'I completed a request but haven\u2019t been paid \u2014 why?',a:'Usually the requester hasn\u2019t confirmed yet. We send reminders; if they don\u2019t confirm, payout auto-releases 48 hours after you marked the request complete.'},
-      {g:'Support',q:'Why won\u2019t Stripe accept my debit card?',a:'Stripe accepts virtually all US bank debit cards for instant payouts, but cards from online or virtual banks usually don\u2019t qualify. Check Stripe\u2019s supported-banks list.'},
-      {g:'Customers',q:'What are your hours?',a:'Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'},
-      {g:'Customers',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield). Your Gopher receives 100% of your offer.'},
-      {g:'Customers',q:'Can I cancel my request after the worker has started?',a:'If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for full details.'},
-      {g:'Customers',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
-      {g:'Customers',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'}
-    ];
     let group='Workers';
     const listEl=r.querySelector('#fq-list');
     function renderList(){
-      const items=FAQS.filter(f=>f.g===group);
+      const items=GO_FAQS.filter(f=>f.g===group);
       listEl.innerHTML=items.map(f=>'<div class="fq-item"><div class="fq-q">'+f.q+'<span class="fq-cv">+</span></div><div class="fq-a" hidden>'+f.a+'</div></div>').join('');
       listEl.querySelectorAll('.fq-item').forEach(it=>{ const q=it.querySelector('.fq-q'),a=it.querySelector('.fq-a'),c=it.querySelector('.fq-cv'); q.onclick=()=>{ const open=a.hasAttribute('hidden'); a.toggleAttribute('hidden'); c.textContent=open?'\u2013':'+'; }; });
     }
     r.querySelectorAll('.fq-tab').forEach(t=>t.onclick=()=>{ group=t.getAttribute('data-g'); r.querySelectorAll('.fq-tab').forEach(x=>x.classList.toggle('on',x===t)); renderList(); });
     renderList();
-    const STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about it i\u2019m im'.split(' '));
-    function canon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|earn)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund|charge)/.test(w))return 'charge'; if(/^(ride|driv)/.test(w))return 'ride'; return w; }
-    function toks(s){ return s.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2 && !STOP.has(w)).map(canon); }
-    function search(query){
-      const qw=toks(query); if(!qw.length) return [];
-      return FAQS.map(f=>{ const qset=new Set(toks(f.q)); const aset=new Set(toks(f.q+' '+f.a+' '+f.g)); let s=0,n=0; qw.forEach(w=>{ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; }).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
-    }
+    // Answering is the SHARED brain (iqAnswerCard) — the Home iQ pill sheet calls the
+    // very same function, so the two surfaces cannot drift apart.
     const ans=r.querySelector('#iq-ans'), inp=r.querySelector('.iq-in');
     function ask(){
       const q=inp.value.trim();
       if(!q){ ans.setAttribute('hidden',''); ans.innerHTML=''; return; }
-      // 1) Location / service-area questions \u2192 real coverage brain (not a stray FAQ match).
-      const cov=iqCoverageReply(q,'worker');
-      if(cov){ ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div><p class="iq-aa">'+cov+'</p></div>'; ans.removeAttribute('hidden'); return; }
-      // 2) FAQ search \u2014 only surface a CONFIDENT match: a question-word hit (score \u2265 3) that also
-      //    covers the query. A single common word matching isn't enough unless the query is one word.
-      const hits=search(q).filter(h=>h.s>=3 && (h.n>=2 || h.qn<=1));
-      if(hits.length){ ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div>'+hits.map((h,idx)=>'<div class="iq-hit'+(idx?' more':'')+'"><div class="iq-q">'+h.f.q+'</div><div class="iq-aa">'+h.f.a+'</div></div>').join('')+'</div>'; }
-      else {
-        // 3) Category / pricing intent \u2014 catches what the curated FAQs don't cover.
-        const topic=iqTopicReply(q,'worker');
-        ans.innerHTML='<div class="iq-card"><div class="iq-lab">Gopher iQ</div><p class="iq-aa">'
-          +(topic || 'I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="fq-link js-c2">contact us</span>.')+'</p></div>';
-      }
+      ans.innerHTML=iqAnswerCard(q,'worker');
       ans.removeAttribute('hidden');
       const c2=ans.querySelector('.js-c2'); if(c2) c2.onclick=()=>load('gopher-contact-us');
     }
@@ -2859,7 +2940,7 @@ function handle(e){ /* generic handler for IMPORTED frames only */
  const dg=el.getAttribute && el.getAttribute('data-goto');
  const dtab=el.getAttribute&&el.getAttribute('data-tab');
  if(dtab&&el.classList.contains('tab')){ const fr=el.closest('.frame'); if(fr){ fr.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===el)); fr.querySelectorAll('.tabpane').forEach(pp=>{ pp.style.display=(pp.getAttribute('data-pane')===dtab)?'':'none'; }); } return; }
- if(dg){ if(dg==='gopher-tiers'){ openTiers(); return; } if(dg==='gopher-elite'){ openElite(); return; } if(dg==='gopher-rewards'){ const ov=showModal('<h3>Gopher Rewards \u2014 launching 2027</h3><p>Gopher Rewards officially launches in <b>2027</b>. The good news: <b>every referral point you earn starts accumulating right now</b> toward points for cash \u2014 so referring early pays off when the program goes live.</p><button class="mclose">Got it</button>'); return; } if(dg==='deals-handoff'){ load('deals'); return; } if(dg==='social-media'){ const root=el.getRootNode(); const ex=root.querySelector('.gosoc-ov'); if(ex){ ex.remove(); return; } const frame=(el.closest&&el.closest('.frame'))||root.querySelector('.frame'); if(frame) frame.style.position='relative'; const S=[['Facebook','/GopherMobileApp','https://www.facebook.com/GopherMobileApp','#1877F2','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.52 1.49-3.91 3.78-3.91 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>'],['Instagram','@gopherinc','https://www.instagram.com/gopherinc/','#E4405F','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="18"><rect x="2.5" y="2.5" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor" stroke="none"/></svg>'],['TikTok','@gopherinc','https://www.tiktok.com/@gopherinc','#111111','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.07-2.82h-3.1v12.6a2.59 2.59 0 1 1-2.59-2.59c.27 0 .53.04.78.12V9.96a5.7 5.7 0 0 0-.78-.05 5.69 5.69 0 1 0 5.69 5.69V9.01a7.35 7.35 0 0 0 4.29 1.37V7.28a4.28 4.28 0 0 1-3.22-1.46z"/></svg>'],['YouTube','@gopherinc','https://www.youtube.com/@gopherinc','#FF0000','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23.5 6.51a3.02 3.02 0 0 0-2.12-2.14C19.5 3.86 12 3.86 12 3.86s-7.5 0-9.38.51A3.02 3.02 0 0 0 .5 6.51 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.49 3.02 3.02 0 0 0 2.12 2.14C4.5 20.14 12 20.14 12 20.14s7.5 0 9.38-.51a3.02 3.02 0 0 0 2.12-2.14A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.49zM9.6 15.57V8.43L15.82 12 9.6 15.57z"/></svg>'],['Nextdoor','Holly Springs, NC','https://nextdoor.com/page/gopher-llc-holly-springs-nc','#8ED500','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2.5 1.6 11.2l1.3 1.6 1.6-1.3v9h6v-6h3v6h6v-9l1.6 1.3 1.3-1.6L12 2.5z"/></svg>'],['Reddit','r/GopherMobileApp','https://www.reddit.com/r/GopherMobileApp/','#FF4500','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 11.82a2.2 2.2 0 0 0-3.73-1.57 10.84 10.84 0 0 0-5.5-1.7l.94-4.4 3.07.66a1.56 1.56 0 1 0 .2-1.05l-3.43-.73a.52.52 0 0 0-.62.4l-1.05 4.94a10.9 10.9 0 0 0-5.6 1.7 2.2 2.2 0 1 0-2.42 3.62 4.3 4.3 0 0 0-.05.66c0 3.35 3.9 6.07 8.71 6.07s8.71-2.72 8.71-6.07a4.3 4.3 0 0 0-.05-.65A2.2 2.2 0 0 0 22 11.82zM7 13.4a1.56 1.56 0 1 1 3.12 0 1.56 1.56 0 0 1-3.12 0zm8.73 4.12a5.7 5.7 0 0 1-3.73 1.16 5.7 5.7 0 0 1-3.73-1.16.42.42 0 1 1 .56-.62A4.9 4.9 0 0 0 12 17.85a4.9 4.9 0 0 0 3.17-.95.42.42 0 0 1 .56.62zm-.29-2.56a1.56 1.56 0 1 1 0-3.12 1.56 1.56 0 0 1 0 3.12z"/></svg>'],['X','@GopherMobileApp','https://x.com/GopherMobileApp','#111111','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.22-6.82-5.97 6.82H1.66l7.73-8.84L1.23 2.25h6.83l4.71 6.23 5.47-6.23zm-1.16 17.52h1.83L7.01 4.13H5.04l12.04 15.64z"/></svg>'],['LinkedIn','/company/gopher-mobile-app','https://www.linkedin.com/company/gopher-mobile-app/','#0A66C2','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.66H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.74v20.51C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.75V1.74C24 .78 23.2 0 22.22 0z"/></svg>']]; const ov=document.createElement('div'); ov.className='gosoc-ov'; ov.setAttribute('style','position:absolute;inset:0;background:rgba(0,18,49,.5);display:flex;align-items:flex-end;justify-content:center;z-index:60;'); ov.innerHTML='<div style="background:#FBF7EF;width:100%;max-height:86%;overflow:auto;border-radius:22px 22px 0 0;padding:18px 20px 26px;"><div style="font-family:Nunito,sans-serif;font-weight:900;color:#002461;font-size:18px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">Follow Gopher<span class="gosoc-x" style="font-size:21px;color:#6b7280;cursor:pointer;line-height:1;">\u00D7</span></div>'+S.map(function(s){return '<a href="'+s[2]+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:11px;text-decoration:none;background:#fff;border:1px solid #EAE3D5;border-radius:12px;padding:11px 14px;font-family:Nunito,sans-serif;font-weight:800;font-size:13px;color:#002461;margin-bottom:8px;"><span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;background:'+s[3]+'">'+s[4]+'</span>'+s[0]+' \u00B7 '+s[1]+'</a>';}).join('')+'</div>'; ov.addEventListener('click',function(e){ if(e.target===ov||(e.target.closest&&e.target.closest('.gosoc-x'))) ov.remove(); }); (frame||root).appendChild(ov); return; } if(dg==='gopher-website'){ try{window.open('https://gophergo.io','_blank','noopener');}catch(_){} toast('Opening <b>gophergo.io</b> \u2192'); return; } if(dg==='gopher-blog'){ try{window.open('https://gophergo.io/blog','_blank','noopener');}catch(_){} toast('Opening <b>gophergo.io/blog</b> \u2192'); return; } if(dg==='terms-of-service'){ try{window.open('https://gophergo.io/gopher-terms-of-service.html','_blank','noopener');}catch(_){} toast('Opening <b>Terms of Service</b> \u2192'); return; } if(dg==='notif'){ showModal('<h3>Notifications</h3><p>You\u2019re all caught up \u2014 no new notifications right now.</p><button class="mclose">Got it</button>'); return; } if(dg==='blocked'){ toast('No blocked requestors yet'); return; } if(dg==='jobs-list'){ state.jobsMode=null; const c=el.getAttribute('data-cat'); if(c) state.category=c; }   /* category / View-all → the Available feed, never the Active list */ if(BYID[dg]){ if(dg===current){ toast('<b>'+((raw||'Category').replace(/^[^A-Za-z]+/,'').replace(/\s+/g,' ').trim()||'Category')+'</b> — already here'); } else load(dg); } else toast('<b>'+dg.replace(/-/g,' ')+'</b> — coming soon'); return; }
+ if(dg){ if(dg==='gopher-iq'){ openGopherIQ(); return; } if(dg==='gopher-tiers'){ openTiers(); return; } if(dg==='gopher-elite'){ openElite(); return; } if(dg==='gopher-rewards'){ const ov=showModal('<h3>Gopher Rewards \u2014 launching 2027</h3><p>Gopher Rewards officially launches in <b>2027</b>. The good news: <b>every referral point you earn starts accumulating right now</b> toward points for cash \u2014 so referring early pays off when the program goes live.</p><button class="mclose">Got it</button>'); return; } if(dg==='deals-handoff'){ load('deals'); return; } if(dg==='social-media'){ const root=el.getRootNode(); const ex=root.querySelector('.gosoc-ov'); if(ex){ ex.remove(); return; } const frame=(el.closest&&el.closest('.frame'))||root.querySelector('.frame'); if(frame) frame.style.position='relative'; const S=[['Facebook','/GopherMobileApp','https://www.facebook.com/GopherMobileApp','#1877F2','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.52 1.49-3.91 3.78-3.91 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94z"/></svg>'],['Instagram','@gopherinc','https://www.instagram.com/gopherinc/','#E4405F','<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="18"><rect x="2.5" y="2.5" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.2" fill="currentColor" stroke="none"/></svg>'],['TikTok','@gopherinc','https://www.tiktok.com/@gopherinc','#111111','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.6 5.82a4.28 4.28 0 0 1-1.07-2.82h-3.1v12.6a2.59 2.59 0 1 1-2.59-2.59c.27 0 .53.04.78.12V9.96a5.7 5.7 0 0 0-.78-.05 5.69 5.69 0 1 0 5.69 5.69V9.01a7.35 7.35 0 0 0 4.29 1.37V7.28a4.28 4.28 0 0 1-3.22-1.46z"/></svg>'],['YouTube','@gopherinc','https://www.youtube.com/@gopherinc','#FF0000','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23.5 6.51a3.02 3.02 0 0 0-2.12-2.14C19.5 3.86 12 3.86 12 3.86s-7.5 0-9.38.51A3.02 3.02 0 0 0 .5 6.51 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.49 3.02 3.02 0 0 0 2.12 2.14C4.5 20.14 12 20.14 12 20.14s7.5 0 9.38-.51a3.02 3.02 0 0 0 2.12-2.14A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.49zM9.6 15.57V8.43L15.82 12 9.6 15.57z"/></svg>'],['Nextdoor','Holly Springs, NC','https://nextdoor.com/page/gopher-llc-holly-springs-nc','#8ED500','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2.5 1.6 11.2l1.3 1.6 1.6-1.3v9h6v-6h3v6h6v-9l1.6 1.3 1.3-1.6L12 2.5z"/></svg>'],['Reddit','r/GopherMobileApp','https://www.reddit.com/r/GopherMobileApp/','#FF4500','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 11.82a2.2 2.2 0 0 0-3.73-1.57 10.84 10.84 0 0 0-5.5-1.7l.94-4.4 3.07.66a1.56 1.56 0 1 0 .2-1.05l-3.43-.73a.52.52 0 0 0-.62.4l-1.05 4.94a10.9 10.9 0 0 0-5.6 1.7 2.2 2.2 0 1 0-2.42 3.62 4.3 4.3 0 0 0-.05.66c0 3.35 3.9 6.07 8.71 6.07s8.71-2.72 8.71-6.07a4.3 4.3 0 0 0-.05-.65A2.2 2.2 0 0 0 22 11.82zM7 13.4a1.56 1.56 0 1 1 3.12 0 1.56 1.56 0 0 1-3.12 0zm8.73 4.12a5.7 5.7 0 0 1-3.73 1.16 5.7 5.7 0 0 1-3.73-1.16.42.42 0 1 1 .56-.62A4.9 4.9 0 0 0 12 17.85a4.9 4.9 0 0 0 3.17-.95.42.42 0 0 1 .56.62zm-.29-2.56a1.56 1.56 0 1 1 0-3.12 1.56 1.56 0 0 1 0 3.12z"/></svg>'],['X','@GopherMobileApp','https://x.com/GopherMobileApp','#111111','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.22-6.82-5.97 6.82H1.66l7.73-8.84L1.23 2.25h6.83l4.71 6.23 5.47-6.23zm-1.16 17.52h1.83L7.01 4.13H5.04l12.04 15.64z"/></svg>'],['LinkedIn','/company/gopher-mobile-app','https://www.linkedin.com/company/gopher-mobile-app/','#0A66C2','<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.66H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.74v20.51C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.75V1.74C24 .78 23.2 0 22.22 0z"/></svg>']]; const ov=document.createElement('div'); ov.className='gosoc-ov'; ov.setAttribute('style','position:absolute;inset:0;background:rgba(0,18,49,.5);display:flex;align-items:flex-end;justify-content:center;z-index:60;'); ov.innerHTML='<div style="background:#FBF7EF;width:100%;max-height:86%;overflow:auto;border-radius:22px 22px 0 0;padding:18px 20px 26px;"><div style="font-family:Nunito,sans-serif;font-weight:900;color:#002461;font-size:18px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">Follow Gopher<span class="gosoc-x" style="font-size:21px;color:#6b7280;cursor:pointer;line-height:1;">\u00D7</span></div>'+S.map(function(s){return '<a href="'+s[2]+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:11px;text-decoration:none;background:#fff;border:1px solid #EAE3D5;border-radius:12px;padding:11px 14px;font-family:Nunito,sans-serif;font-weight:800;font-size:13px;color:#002461;margin-bottom:8px;"><span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;background:'+s[3]+'">'+s[4]+'</span>'+s[0]+' \u00B7 '+s[1]+'</a>';}).join('')+'</div>'; ov.addEventListener('click',function(e){ if(e.target===ov||(e.target.closest&&e.target.closest('.gosoc-x'))) ov.remove(); }); (frame||root).appendChild(ov); return; } if(dg==='gopher-website'){ try{window.open('https://gophergo.io','_blank','noopener');}catch(_){} toast('Opening <b>gophergo.io</b> \u2192'); return; } if(dg==='gopher-blog'){ try{window.open('https://gophergo.io/blog','_blank','noopener');}catch(_){} toast('Opening <b>gophergo.io/blog</b> \u2192'); return; } if(dg==='terms-of-service'){ try{window.open('https://gophergo.io/gopher-terms-of-service.html','_blank','noopener');}catch(_){} toast('Opening <b>Terms of Service</b> \u2192'); return; } if(dg==='notif'){ showModal('<h3>Notifications</h3><p>You\u2019re all caught up \u2014 no new notifications right now.</p><button class="mclose">Got it</button>'); return; } if(dg==='blocked'){ toast('No blocked requestors yet'); return; } if(dg==='jobs-list'){ state.jobsMode=null; const c=el.getAttribute('data-cat'); if(c) state.category=c; }   /* category / View-all → the Available feed, never the Active list */ if(BYID[dg]){ if(dg===current){ toast('<b>'+((raw||'Category').replace(/^[^A-Za-z]+/,'').replace(/\s+/g,' ').trim()||'Category')+'</b> — already here'); } else load(dg); } else toast('<b>'+dg.replace(/-/g,' ')+'</b> — coming soon'); return; }
  const hasArrow=raw.indexOf('\u2039')>=0;
  if((el.matches&&el.matches('.bk,.back'))||hasArrow||/(^|\s)back$/.test(norm(raw))){ BACK(); return; }
  if(el.matches&&el.matches('.nv')){ const t=NAVMAP[norm(raw)]; if(t==='__101'){ open101(); return; } if(t==='__toast')toast('<b>'+raw+'</b> — frame not provided yet'); else if(t)load(t); return; }
