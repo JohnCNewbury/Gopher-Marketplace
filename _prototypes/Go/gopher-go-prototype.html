@@ -1268,8 +1268,8 @@ const GO_FAQS=[
       {g:'Customers',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
       {g:'Customers',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'}
 ];
-const IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about it i\u2019m im there their they them then than been being was were from into also just one more most but who which while because very such only even same both each every well per via any some'.split(' '));
-function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|earn)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund|charge)/.test(w))return 'charge'; if(/^(ride|driv)/.test(w))return 'ride'; return w; }
+const IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about it i\u2019m im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
+function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|earn)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund|charge)/.test(w))return 'charge'; if(/^(ride|driv)/.test(w))return 'ride'; return w; }
 function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2 && !IQ_STOP.has(w)).map(iqCanon); }
 function iqFaqSearch(query){
   const qw=iqToks(query); if(!qw.length) return [];

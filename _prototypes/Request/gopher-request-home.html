@@ -2141,6 +2141,7 @@ var REQ_FAQS=[
   {g:'Requests',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
   {g:'Requests',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'},
   {g:'Payments',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'},
+      {g:'Payments',q:'Can I pay with cash?',a:'No \u2014 cash isn\u2019t an option. We have to guarantee payment to the worker before a request can be accepted, so all payment runs through the app.'},
   {g:'Payments',q:'How do payments & receipts work?',a:'Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'},
   {g:'Payments',q:'How does pricing work?',a:'You set the payment to your Gopher; a small Gopher fee is added at review. Any item costs are reimbursed separately.'},
   {g:'Trust & Safety',q:'What is TrustShield\u2122?',a:'A free, one-time identity check. Verify once for two-way trust and $1 off every age-restricted delivery & ride request \u2014 no re-verifying each time.'},
@@ -2156,8 +2157,8 @@ var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
      3. category / pricing intent-> iqTopicReply()
    The sheet used to ignore what you typed and print a fixed string; sharing the brain
    is what stops that from happening again. Mirrors the Go app's iqAnswerCard(). */
-var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one more most but who which while because very such only even same both each every well per via any some'.split(' '));
-function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust'; return w; }
+var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
+function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust'; return w; }
 function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !IQ_STOP.has(w);}).map(iqCanon); }
 function reqFaqSearch(query){ var qw=iqToks(query); if(!qw.length) return [];
   return REQ_FAQS.map(function(f){ var qset=new Set(iqToks(f.q)); var aset=new Set(iqToks(f.q+' '+f.a+' '+f.g)); var s=0,n=0; qw.forEach(function(w){ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; })
