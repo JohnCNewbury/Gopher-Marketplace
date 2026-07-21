@@ -2022,6 +2022,9 @@ function openHelpCenter(){
 // questions HERE (real coverage brain, window.GopherIQData) instead of guessing from FAQ text.
 // Returns an answer string, or null when the query isn't a location question. Kept in sync with
 // the Go app's copy (same logic + copy) so dual users get the same behavior. audience: 'requester' | 'worker'.
+// The signed-in user's own area, for "near me"-style questions that name no place.
+// Prototype-grade: the demo profile's ZIP. Production reads real device location.
+function iqHomePlace(){ try{ return (PROFILE && (PROFILE.zip || (PROFILE.city && PROFILE.state ? PROFILE.city+', '+PROFILE.state : ''))) || null; }catch(_){ return null; } }
 function iqCoverageReply(query, audience){
   var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
   var t=' '+query.toLowerCase()+' ';
@@ -2038,7 +2041,14 @@ function iqCoverageReply(query, audience){
   var cap = m ? m[1].trim() : null;
   if(cap){ var prev; do{ prev=cap; cap=cap.replace(/^(?:in|to|near|at|around|within)\s+/i,'').trim(); }while(cap!==prev); }
   if(cap && !/[a-z]/i.test(cap)) cap=null;
+  // "near me" / "around here" capture a PRONOUN, not a place. Drop it, then fall back to
+  // the user's own area below. "Are there requests near me" is the most natural thing a
+  // worker types, and it used to return null here, drop through to FAQ keyword search, and
+  // come back with "Can I request age-restricted products?" \u2014 confident and unrelated.
+  if(cap && /^(me|us|myself|here|home|there|nearby|my area)$/i.test(cap)) cap=null;
   var place = zip ? zip[1] : ((cue && cap) ? cap : ((cap && /,\s*[a-z]{2}\b/i.test(cap)) ? cap : null));
+  if(!place && /(near ?by|near me|around here|round here|in my area|my area|close to me|by me|around me)/.test(t)
+     && typeof iqHomePlace==='function') place=iqHomePlace();
   if(!place) return null;
   if(!(window.GopherIQData && GopherIQData.lookup)) return null;
   var cov=GopherIQData.lookup(place); if(!cov) return null;
@@ -2146,7 +2156,7 @@ var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
      3. category / pricing intent-> iqTopicReply()
    The sheet used to ignore what you typed and print a fixed string; sharing the brain
    is what stops that from happening again. Mirrors the Go app's iqAnswerCard(). */
-var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im'.split(' '));
+var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one more most but who which while because very such only even same both each every well per via any some'.split(' '));
 function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|cash|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust'; return w; }
 function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !IQ_STOP.has(w);}).map(iqCanon); }
 function reqFaqSearch(query){ var qw=iqToks(query); if(!qw.length) return [];
