@@ -31,7 +31,18 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PUBLIC=0
-[[ "${1:-}" == "--public" ]] && PUBLIC=1
+RESTAGE=0
+case "${1:-}" in
+  --public)  PUBLIC=1 ;;
+  --restage) RESTAGE=1 ;;
+esac
+
+# The stage lives at a STABLE path, not mktemp -d. That is the whole point of --restage:
+# edit the prototypes, run `preview-tunnel.sh --restage`, and the already-running server and
+# tunnel serve the new files at the SAME url. Restarting to pick up a content change mints a
+# fresh *.trycloudflare.com hostname and silently 1033s whatever tab the reviewer had open —
+# which is exactly what happened four times on 2026-07-21 before this existed.
+STAGE="${TMPDIR:-/tmp}gopher-proto-stage"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -39,7 +50,11 @@ note() { printf '  \033[33m•\033[0m %s\n' "$*"; }
 die()  { printf '  \033[31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
 # ── stage: an explicit allow-list, nothing more ──────────────────────────────────
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/gopher-proto.XXXXXX")"
+# Clear the CONTENTS, never the directory itself: on --restage a server is already running
+# with $STAGE as its cwd, and `rm -rf $STAGE` would leave it holding a deleted inode — every
+# request 404s while the path still looks fine from the outside.
+mkdir -p "$STAGE"
+find "$STAGE" -mindepth 1 -delete 2>/dev/null || true
 mkdir -p "$STAGE/_prototypes/Go" "$STAGE/_prototypes/Request" "$STAGE/Final/assets/js"
 
 cd "$REPO"
@@ -117,6 +132,18 @@ HTML
 
 bold "Staged"
 ok "$n_files files, $size — allow-listed copy, not the repo"
+
+# --restage stops here: the running server + tunnel already point at $STAGE, so refreshing
+# the browser is enough. No new hostname, no broken tab.
+if [[ "$RESTAGE" -eq 1 ]]; then
+  if pgrep -f "http.server 82" >/dev/null 2>&1; then
+    ok "existing preview picks this up on refresh — same URL"
+  else
+    note "nothing is serving yet — run without --restage to start it"
+  fi
+  trap - EXIT INT TERM     # keep the refreshed stage; do NOT run cleanup
+  exit 0
+fi
 
 # ── port: verified free, then fingerprinted (see note 3 above) ───────────────────
 PORT=""
