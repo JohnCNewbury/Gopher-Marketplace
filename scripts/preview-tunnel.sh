@@ -136,7 +136,11 @@ ok "http://127.0.0.1:$PORT/  (this machine only)"
 
 # ── optional public URL ──────────────────────────────────────────────────────────
 if [[ "$PUBLIC" -eq 1 ]]; then
-  if ! command -v cloudflared >/dev/null 2>&1; then
+  # Resolved rather than assumed: cloudflared was installed to ~/bin (no Homebrew on this
+  # machine), and ~/bin is not on PATH. Looking here avoids editing the shell profile.
+  CF="$(command -v cloudflared 2>/dev/null || true)"
+  [[ -z "$CF" && -x "$HOME/bin/cloudflared" ]] && CF="$HOME/bin/cloudflared"
+  if [[ -z "$CF" ]]; then
     printf '\n'; note "cloudflared is not installed — serving locally only."
     note "Install (Apple silicon, official Cloudflare release):"
     printf '\n      curl -L -o ~/bin/cloudflared \\\n'
@@ -145,7 +149,7 @@ if [[ "$PUBLIC" -eq 1 ]]; then
     note "Then re-run with --public."
   else
     LOG="$STAGE/.cf.log"
-    cloudflared tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate >"$LOG" 2>&1 &
+    "$CF" tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate >"$LOG" 2>&1 &
     CF_PID=$!
     URL=""
     for _ in $(seq 40); do
