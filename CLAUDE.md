@@ -359,8 +359,19 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   repoint it at a committed ref.** The preflight guard already closes the hole and makes any
   dirty deploy explicit, and repointing would remove the ability to deliberately ship
   in-flight work. Settled, not an open question. Re-verified by dry run on 2026-07-20: all
-  guards pass, 0 files changed. The script has not yet been run with `--push` — expected,
-  since there has been nothing to ship.
+  guards pass, 0 files changed.
+  **First real `--push` run 2026-07-21 (`ace3647`) — the script is now the deploy procedure,
+  not a proposal.** Shipped 6 files (GO-To's in both apps + both 101 guides + the age-keyword
+  brain); preflight passed, `CLAUDE.md` stayed excluded and `.nojekyll`/`README.md` survived,
+  all verified against the live site afterwards. Two things that run taught, worth keeping:
+  (1) **the dry-run file list is a scope check, not just a diffstat** — it surfaced another
+  session's committed-but-undeployed `assets/js/gopher-age-keywords.js` riding along, which
+  changes live age-restricted detection; read that list and get an owner OK on anything
+  outside your own change before `--push`. (2) **Local `main` is not what's live** — the
+  script pushes from a throwaway worktree and never fast-forwards the local ref (it still
+  read `625b0ae` right after the deploy). Confirm with
+  `git merge-base --is-ancestor <sha> origin/main`, then curl the live URL and **grep for the
+  changed string** — a 200 only proves the file exists, not that it updated.
 
 - **Owner PII removed from the demo profile (done 2026-07-20).** Found while moving the
   research reports out of this (public) repo. The 2026-07-17 pass swapped the demo
