@@ -8355,6 +8355,9 @@
     border:1px solid #e7eaf2;
     border-radius:14px;
     overflow:hidden;
+    /* The All view carries an extra Status column + the GO To box, so let the
+       table scroll sideways on narrow screens instead of crushing Details. */
+    overflow-x:auto;
   }
   .prev-table { width:100%; border-collapse:collapse; }
   .prev-table th {
@@ -8505,6 +8508,200 @@
   .prev-detail-cta.cta-now { background:var(--green); color:var(--ink-on-green); box-shadow:0 6px 18px rgba(51,217,117,0.30); }
   .prev-detail-cta.cta-now:hover { background:var(--green-dark); }
   @media (max-width:560px){ .prev-detail-ctas { flex-direction:column; } }
+
+  /* ═══ MY GO TOS — saved one-tap re-requests ══════════════════════════════
+     A "GO To" is a user-owned COPY of a past request: same details to start,
+     no request ID (the original stays put in its own bucket, untouched),
+     editable before saving, then fired with a single green CTA. Storage and
+     rendering live in the dashboard IIFE; the CTA reuses the existing
+     __startRequestAgainNow prefill path rather than adding a second submit. */
+
+  /* The real GO mark — assets/img/go-mark.svg, extracted path-for-path from the
+     official Gopher Go lockup (gopher-go-logo.svg). Sized in em so it tracks
+     whatever text it sits in; navy plate reads fine on white, grey and green. */
+  /* Margin is left-only: the mark is always followed by the hyphen in "GO-To",
+     and a right margin would float that hyphen away from the lockup. */
+  .go-mark {
+    display:inline-block; width:auto; height:1.02em;
+    vertical-align:-0.16em; margin:0 0 0 0.08em;
+  }
+  .prev-tab .go-mark          { height:1.18em; vertical-align:-0.24em; }
+  .goto-cta .go-mark          { height:1.15em; vertical-align:-0.22em; }
+  .goto-strip-head .go-mark   { height:1.05em; vertical-align:-0.16em; }
+  .prev-table th .go-mark     { height:1.35em; vertical-align:-0.38em; }
+  .prev-detail-title .go-mark { height:1.0em;  vertical-align:-0.14em; }
+
+  /* Status pill used in the All view (compact form of .prev-detail-status) */
+  .pt-status {
+    display:inline-block; padding:3px 9px; border-radius:99px;
+    font-family:'Nunito'; font-weight:800; font-size:10px;
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .pt-status.completed { background:var(--green-light); color:var(--green-dark); }
+  .pt-status.cancelled { background:#fff0f2; color:#a83648; }
+  .pt-status.expired   { background:#fff6e6; color:#92580D; }
+
+  /* Per-row "save as a GO-To" box — sits to the right of the View button.
+     Needs an explicit width: as the last of 9 columns it collapsed to ~73px,
+     pinning both the header lockup and the box against the card edge. */
+  .prev-table th.pt-fav-h,
+  .prev-table td.pt-fav-c {
+    width:118px; text-align:center; white-space:nowrap;
+    padding-left:14px; padding-right:26px;
+  }
+  .prev-table td.pt-fav-c { overflow:visible; }
+  /* Ease the global th tracking so mark + "-To" read as one lockup */
+  .prev-table th.pt-fav-h { letter-spacing:0.3px; }
+  .pt-fav {
+    position:relative; width:22px; height:22px; padding:0;
+    border-radius:6px; border:2px solid #d4d8e3; background:#fff;
+    display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:all 0.15s;
+  }
+  .pt-fav:hover { border-color:var(--green); }
+  .pt-fav.checked { background:var(--green); border-color:var(--green); }
+  .pt-fav.checked::after {
+    content:'✓'; color:#fff; font-family:'Nunito'; font-weight:900; font-size:13px;
+  }
+  /* Count badge — a past request can seed more than one GO To */
+  /* Placeholder in the All view for rows that can't become a GO To */
+  .pt-fav-na { color:#c9cfdd; font-family:'Nunito'; font-weight:800; cursor:help; }
+  .pt-fav-n {
+    position:absolute; top:-8px; right:-10px;
+    background:var(--navy); color:#fff; border-radius:99px;
+    font-family:'Nunito'; font-weight:800; font-size:9px;
+    padding:1px 4px; line-height:1.5;
+  }
+
+  /* The strip itself — between the category pills and the search bar */
+  .goto-strip { margin-bottom:18px; }
+  .goto-strip-head { display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+  .goto-strip-head h4 {
+    font-family:'Nunito'; font-weight:900; font-size:15px; color:var(--navy); margin:0;
+  }
+  .goto-count { font-family:'DM Sans'; font-size:12px; color:var(--muted); }
+  /* Wide and short: text left, the single CTA right. The earlier stacked layout
+     ran ~7 lines tall in a 268px column, which read as a form rather than as a
+     shortcut. Every text line is one line — ellipsised, never wrapped. */
+  .goto-cards {
+    /* 620px min = one full-width card at a typical dashboard width (names stop
+       truncating), two only on genuinely wide screens. */
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(620px,1fr)); gap:12px;
+  }
+  .goto-card {
+    background:white; border:1px solid #e7eaf2; border-left:3px solid var(--green);
+    border-radius:12px; padding:13px 16px;
+    display:flex; align-items:center; gap:18px;
+  }
+  .goto-card-main { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .goto-card-side { flex:0 0 auto; display:flex; flex-direction:column; gap:6px; width:214px; }
+  .goto-card-name,
+  .goto-card-meta,
+  .goto-card-det { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .goto-card-name { font-family:'Nunito'; font-weight:900; font-size:14px; color:var(--navy); }
+  .goto-card-meta { font-family:'DM Sans'; font-size:12px; color:var(--muted); }
+  .goto-card-det  { font-family:'DM Sans'; font-size:12.5px; color:var(--navy); }
+  /* The one and only button on a saved GO-To */
+  .goto-cta {
+    width:100%; padding:10px 12px; border-radius:10px; border:none; cursor:pointer;
+    background:var(--green); color:var(--ink-on-green);
+    font-family:'Nunito'; font-weight:800; font-size:13px; white-space:nowrap;
+    box-shadow:0 5px 14px rgba(51,217,117,0.28); transition:all 0.15s;
+  }
+  .goto-cta:hover { background:var(--green-dark); }
+  /* Edit / Remove are deliberately text links, not buttons — the card keeps a
+     single button so the primary action is never in doubt. */
+  .goto-links { display:flex; gap:12px; align-items:center; justify-content:center; }
+  .goto-sends {
+    font-family:'Nunito'; font-weight:800; font-size:11px;
+    color:var(--green-dark); white-space:nowrap;
+  }
+  @media (max-width:640px){
+    .goto-cards { grid-template-columns:1fr; }
+    .goto-card { flex-direction:column; align-items:stretch; gap:10px; }
+    .goto-card-side { width:auto; }
+  }
+  .goto-link {
+    background:none; border:none; padding:0; cursor:pointer;
+    font-family:'Nunito'; font-weight:700; font-size:11.5px; color:var(--muted);
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .goto-link:hover { color:var(--navy); }
+  .goto-link.danger:hover { color:#a83648; }
+  .goto-empty {
+    padding:22px 18px; text-align:center; color:var(--muted);
+    font-family:'DM Sans'; font-size:13px; line-height:1.6;
+    background:#f7f8fc; border:1px dashed #d9deea; border-radius:12px;
+  }
+
+  /* ─── GO To editor (new copy, or editing a saved one) ─── */
+  .goto-edit-card {
+    background:white; border:1px solid #e7eaf2; border-radius:14px;
+    padding:22px 24px; max-width:760px;
+  }
+  .goto-edit-note {
+    padding:11px 13px; background:#f7f8fc; border-left:3px solid var(--green);
+    border-radius:8px; font-family:'DM Sans'; font-size:12.5px; color:var(--muted);
+    line-height:1.6; margin-bottom:18px;
+  }
+  .goto-field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .goto-field label { font-family:'Nunito'; font-weight:800; font-size:12px; color:var(--navy); }
+  .goto-field input, .goto-field select, .goto-field textarea {
+    width:100%; padding:10px 12px; border:1px solid #e7eaf2; border-radius:10px;
+    background:white; font-family:'DM Sans'; font-size:13px; color:var(--navy);
+    outline:none; transition:border-color 0.15s;
+  }
+  .goto-field textarea { min-height:78px; resize:vertical; }
+  .goto-field input:focus, .goto-field select:focus, .goto-field textarea:focus {
+    border-color:var(--green);
+  }
+  .goto-gophers { display:flex; flex-direction:column; gap:8px; }
+  .goto-gopher-row {
+    display:flex; align-items:center; gap:10px; cursor:pointer; text-align:left;
+    background:white; border:1px solid #e7eaf2; border-radius:10px; padding:9px 12px;
+    font-family:'DM Sans'; font-size:13px; color:var(--navy); transition:all 0.15s;
+  }
+  .goto-gopher-row .prev-check-box { width:19px; height:19px; }
+  .goto-gopher-row.checked { border-color:var(--green); background:var(--green-light); }
+  .goto-gopher-row.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
+  .goto-gopher-row.checked .prev-check-box::after {
+    content:'✓'; color:#fff; font-size:12px; font-weight:900; font-family:'Nunito';
+  }
+  /* First-run intro modal: the mark inline in body copy, + the dismiss row */
+  .gr-modal .go-mark { height:1.05em; vertical-align:-0.16em; }
+  .goto-intro-never {
+    margin:14px auto 0; justify-content:center;
+    font-size:12.5px; color:var(--muted);
+  }
+  .goto-intro-never .prev-check-box { width:19px; height:19px; }
+  .goto-intro-never.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
+  .goto-intro-never.checked .prev-check-box::after {
+    content:'✓'; color:#fff; font-size:12px; font-weight:900; font-family:'Nunito';
+  }
+
+  /* Small note under a field (e.g. why payment is required here) */
+  .goto-hint { font-family:'DM Sans'; font-size:11.5px; color:var(--muted); line-height:1.5; }
+  .goto-hint.warn { color:#a83648; font-weight:600; }
+
+  /* Liability waiver — pre-checked, directly above Save. A GO To sends with no
+     review step, so the waiver is accepted here instead of at send time. */
+  .goto-waiver {
+    display:flex; align-items:flex-start; gap:11px; cursor:pointer; text-align:left;
+    background:#f7f8fc; border:1px solid #e7eaf2; border-radius:10px;
+    padding:12px 13px; margin-bottom:14px;
+    font-family:'DM Sans'; font-size:12px; color:var(--muted); line-height:1.55;
+  }
+  .goto-waiver .prev-check-box { width:19px; height:19px; margin-top:1px; }
+  .goto-waiver.checked { border-color:var(--green); background:var(--green-light); }
+  .goto-waiver.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
+  .goto-waiver.checked .prev-check-box::after {
+    content:'✓'; color:#fff; font-size:12px; font-weight:900; font-family:'Nunito';
+  }
+  .prev-detail-cta[disabled] { opacity:0.45; cursor:not-allowed; box-shadow:none; }
+
+  .goto-edit-ctas { display:flex; gap:10px; margin-top:6px; }
+  .goto-edit-ctas .prev-detail-cta { flex:1 1 0; width:auto; }
+  @media (max-width:560px){ .goto-edit-ctas { flex-direction:column; } }
 
   /* ─── Info cards (Business Info, Personal info) ─── */
   .info-card {
@@ -16498,6 +16695,31 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   </div>
 </div>
 
+<!-- GO TO INTRO — shown when a GO To box is ticked, until the user dismisses it
+     for good. A GO To sends with NO review screen, so the whole point of this is
+     to get the details checked BEFORE saving rather than discovered after a send. -->
+<div class="gr-modal-overlay" id="goToIntroOverlay" hidden>
+  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="goToIntroTitle">
+    <button type="button" class="gr-modal-close" id="goToIntroClose" aria-label="Close">×</button>
+    <div class="gr-modal-icon gr-modal-icon-go">⚡</div>
+    <h4 id="goToIntroTitle">Setting up your <img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To Request</h4>
+    <p class="gr-modal-sub">
+      This feature allows you to submit a request with a single tap &mdash;
+      <b>no review screen and no confirmation, just GO!</b>
+      <br><br>
+      You&rsquo;ll review the previous request you selected, make sure everything looks good and
+      then save. That&rsquo;s it.
+      <br><br>
+      <i>You can edit or remove it any time.</i>
+    </p>
+    <button type="button" class="gr-modal-btn" id="goToIntroGo">Got it &mdash; set it up →</button>
+    <button type="button" class="prev-check-row goto-intro-never" id="goToIntroNever">
+      <span class="prev-check-box"></span>
+      <span>Do not show me this GO-To intro again</span>
+    </button>
+  </div>
+</div>
+
 <!-- COMPLETE-YOUR-PROFILE PHOTO MODAL — shown on Request login when the resolved
      Gopher profile has no photo (e.g. an account created in Connect, which doesn't
      require one). Request connects real neighbors with real local workers, so a
@@ -18347,17 +18569,30 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <!-- LIST PANEL: tabs + search + table. Hidden when a detail is open. -->
         <div id="prevListPanel">
           <div class="prev-tabs" id="prevTabs">
-            <button class="prev-tab active" data-prev-tab="completed">Completed</button>
-            <button class="prev-tab" data-prev-tab="cancelled">Cancelled</button>
+            <button class="prev-tab active" data-prev-tab="all">All</button>
+            <button class="prev-tab" data-prev-tab="gotos"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</button>
+            <button class="prev-tab" data-prev-tab="completed">Completed</button>
             <button class="prev-tab" data-prev-tab="expired">Expired</button>
+            <button class="prev-tab" data-prev-tab="cancelled">Cancelled</button>
           </div>
 
-          <div class="prev-search">
+          <!-- MY GO TOS — saved one-tap re-requests, between the category pills
+               and the search bar. Hidden until the first one is saved (always
+               shown on the GO Tos tab so the empty state can explain itself). -->
+          <div class="goto-strip" id="goToStrip" hidden>
+            <div class="goto-strip-head">
+              <h4>My <img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</h4>
+              <span class="goto-count" id="goToCount"></span>
+            </div>
+            <div class="goto-cards" id="goToCards"><!-- rendered by renderGoTos() --></div>
+          </div>
+
+          <div class="prev-search" id="prevSearchWrap">
             <span class="prev-search-ico" aria-hidden="true">🔍</span>
             <input type="text" id="prevSearch" placeholder="Search by ID, category, details, or worker">
           </div>
 
-          <div class="prev-table-wrap">
+          <div class="prev-table-wrap" id="prevTableWrap">
             <table class="prev-table">
               <thead id="prevTableHead"></thead>
               <tbody id="prevRequestsRows"><!-- filled by JS --></tbody>
@@ -18368,6 +18603,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
         <!-- DETAIL PANEL: filled and shown when View is clicked. -->
         <div id="prevDetailPanel" hidden></div>
+
+        <!-- GO TO EDITOR: filled and shown when a GO To box is ticked (new copy)
+             or when Edit is clicked on a saved card. -->
+        <div id="goToEditPanel" hidden></div>
       </section>
 
       <!-- Inbox -->
@@ -19051,6 +19290,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     //    checklist, worker-eligibility routing) goes through that API / window
     //    hooks, so adding/editing/removing flow features never touches storage. ──
     myGophers: [],
+    // ── MY GO TOS: saved one-tap re-requests. Read/written ONLY via the GoTos
+    //    API below. Each entry is a COPY of a past request, never a reference —
+    //    see the store for why the source ID is a back-pointer only. ──
+    goTos: [],
     // v75 — requester profile shown in the Personal info header. `rating` is the
     // average score workers have given this requester (#.##). `trustShield` drives
     // whether the header shows the real-logo verified badge or the "Add" tile.
@@ -19183,6 +19426,38 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // MY Gopher / Favorites / messaging surface by the read-time safety net above.
   MyGophers.add({ name:'Marcus Lane', rating:4.9, tier:'pro+', specialty:'Grocery run',
                   jobs:6, lastCategory:'Grocery run', lastDate:'5/18/26', deactivated:true });
+  // ── MY GO TOS store ──────────────────────────────────────────────────────
+  // A GO To is a user-owned COPY of a past request, taken at the moment the box
+  // is ticked. It deliberately does NOT carry the source request ID: the
+  // original stays in its own bucket and is never mutated, and a fresh ID is
+  // issued when the GO To is actually sent. `srcId` is a back-pointer ONLY —
+  // it drives the checkbox state on the history row and nothing else, so
+  // editing (or deleting) a GO To can never reach back into history.
+  // Duplicates are allowed by design: one past request can seed several GO Tos
+  // that differ in details, pay, or who they route to.
+  // HOOK POINT: swap the array for a persisted per-user collection later.
+  let goToSeq = 0;
+  const GoTos = {
+    all(){ return DASH_DATA.goTos; },
+    count(){ return DASH_DATA.goTos.length; },
+    get(gid){ return DASH_DATA.goTos.find(g => g.gid === gid) || null; },
+    forSource(id){ return DASH_DATA.goTos.filter(g => g.srcId === id); },
+    // Upsert: a record carrying a gid is edited in place, anything else is a
+    // new copy. Callers pass plain field bags; the store owns ID minting.
+    save(rec){
+      if(!rec) return null;
+      const existing = rec.gid ? GoTos.get(rec.gid) : null;
+      if(existing){ Object.assign(existing, rec); return existing; }
+      const created = Object.assign({}, rec, { gid:'GT-' + (++goToSeq) });
+      DASH_DATA.goTos.push(created);
+      return created;
+    },
+    remove(gid){
+      const i = DASH_DATA.goTos.findIndex(g => g.gid === gid);
+      if(i !== -1) DASH_DATA.goTos.splice(i, 1);
+    }
+  };
+
   // Cross-scope hooks the request flow uses (flow runs in a separate scope).
   window.__getMyGophers   = () => MyGophers.all();
   window.__myGophersCount = () => MyGophers.count();
@@ -21921,20 +22196,44 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // openPrevDetail walks all three buckets to find the id and infers status
   // from which bucket matched, so cross-bucket lookup still works.
 
-  let prevTab = 'completed';
+  let prevTab = 'all';
   let prevSearch = '';
 
   // Local currency formatter (the dashboard IIFE doesn't share the flow's fmt)
   const prevFmt = (n) => '$' + (Number(n) || 0).toFixed(2);
 
+  // GO To fields are user-typed free text (unlike the seeded history rows), so
+  // everything that reaches innerHTML from a GO To goes through this first.
+  const goEsc = (s) => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
   const PREV_TAB_DATA = {
+    // All = the three buckets interleaved, newest first. Returns the SAME record
+    // objects (not copies) so prevStatusOf can identify a row by bucket identity.
+    all: () => [].concat(
+        DASH_DATA.previousRequests, DASH_DATA.expiredRequests, DASH_DATA.cancelledRequests
+      ).sort((a, b) => parseReqDate(b.date) - parseReqDate(a.date)),
     completed: () => DASH_DATA.previousRequests,
     cancelled: () => DASH_DATA.cancelledRequests,
     expired:   () => DASH_DATA.expiredRequests,
   };
 
+  function prevStatusOf(r){
+    if(DASH_DATA.cancelledRequests.indexOf(r) !== -1) return 'cancelled';
+    if(DASH_DATA.expiredRequests.indexOf(r)   !== -1) return 'expired';
+    return 'completed';
+  }
+
+  const GO_MARK  = '<img class="go-mark" src="assets/img/go-mark.svg" alt="GO">';
+  const GOTO_COL = GO_MARK + '-To';
+
+  // Only COMPLETED requests can become a GO To, so only those two views carry the
+  // column. A GO To fires with no review step, so it has to start from a job that
+  // actually worked — and from a worker payment a worker already accepted.
   const PREV_TAB_COLS = {
-    completed: ['Date','Request ID','Category','Details','Worker','Amount','Rating',''],
+    all:       ['Date','Request ID','Category','Details','Status','Worker','Amount','', GOTO_COL],
+    completed: ['Date','Request ID','Category','Details','Worker','Amount','Rating','', GOTO_COL],
     cancelled: ['Date','Request ID','Category','Details','Status',''],
     expired:   ['Date','Request ID','Category','Details','Status',''],
   };
@@ -21944,8 +22243,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const body = document.getElementById('prevRequestsRows');
     if(!head || !body) return;
 
-    // Build the header row for the active tab
-    head.innerHTML = `<tr>${PREV_TAB_COLS[prevTab].map(c => `<th>${c}</th>`).join('')}</tr>`;
+    // The GO Tos tab is the strip on its own — no search box, no history table.
+    const searchWrap = document.getElementById('prevSearchWrap');
+    const tableWrap  = document.getElementById('prevTableWrap');
+    const onGoTos    = (prevTab === 'gotos');
+    if(searchWrap) searchWrap.hidden = onGoTos;
+    if(tableWrap)  tableWrap.hidden  = onGoTos;
+    renderGoTos();
+    if(onGoTos) return;
+
+    // Build the header row for the active tab (last col = the GO To box)
+    const cols = PREV_TAB_COLS[prevTab];
+    head.innerHTML = `<tr>${cols.map((c, i) =>
+      `<th${i === cols.length - 1 ? ' class="pt-fav-h"' : ''}>${c}</th>`).join('')}</tr>`;
 
     // Apply search across id/category/details/worker/reason (whichever exist on this row)
     const q = prevSearch.trim().toLowerCase();
@@ -21965,7 +22275,42 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       }
     } else {
       if(empty) empty.hidden = true;
+
+      // The GO To box. Checked = this past request already has at least one GO
+      // To saved from it; the badge counts them when there's more than one.
+      // Clicking always opens the editor on a NEW copy (duplicates are allowed) —
+      // removal happens from the card itself, so a stray click here is never
+      // destructive.
+      // COMPLETED ONLY: cancelled/expired rows get a dashed placeholder instead,
+      // so the column still lines up in the All view and the reason is on hover.
+      const favCell = (r) => {
+        const n = GoTos.forSource(r.id).length;
+        const tip = n ? `Saved as a GO-To (${n}) — click to save another copy`
+                      : 'Save as a GO-To';
+        return `<td class="pt-fav-c"><button class="pt-fav ${n ? 'checked' : ''}"
+          data-prev-fav="${r.id}" title="${tip}" aria-label="${tip}"
+          >${n > 1 ? `<span class="pt-fav-n">${n}</span>` : ''}</button></td>`;
+      };
+      const favCellNA = () => `<td class="pt-fav-c"><span class="pt-fav-na"
+        title="Only completed requests can be saved as a GO-To">&mdash;</span></td>`;
+      const viewCell = (r) => `<td><button class="pt-action" data-prev-view="${r.id}">View</button></td>`;
+
       body.innerHTML = rows.map(r => {
+        if(prevTab === 'all'){
+          // Mixed buckets: show the status, and dash out the completed-only
+          // columns for records that never got that far.
+          const st = prevStatusOf(r);
+          return `<tr>
+            <td>${r.date}</td>
+            <td class="pt-id">#${r.id}</td>
+            <td>${r.category}</td>
+            <td>${r.details}</td>
+            <td><span class="pt-status ${st}">${st}</span></td>
+            <td>${r.worker || '—'}</td>
+            <td class="pt-amount">${r.amount || '—'}</td>
+            ${viewCell(r)}${st === 'completed' ? favCell(r) : favCellNA()}
+          </tr>`;
+        }
         if(prevTab === 'completed'){
           return `<tr>
             <td>${r.date}</td>
@@ -21975,25 +22320,339 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <td>${r.worker}</td>
             <td class="pt-amount">${r.amount}</td>
             <td class="pt-rating">⭐ ${r.rating}</td>
-            <td><button class="pt-action" data-prev-view="${r.id}">View</button></td>
-          </tr>`;
-        } else {
-          return `<tr>
-            <td>${r.date}</td>
-            <td class="pt-id">#${r.id}</td>
-            <td>${r.category}</td>
-            <td>${r.details}</td>
-            <td style="color:var(--muted);font-size:12.5px;">${r.reason || '—'}</td>
-            <td><button class="pt-action" data-prev-view="${r.id}">View</button></td>
+            ${viewCell(r)}${favCell(r)}
           </tr>`;
         }
+        // Cancelled / expired — no GO To column at all on these two tabs.
+        return `<tr>
+          <td>${r.date}</td>
+          <td class="pt-id">#${r.id}</td>
+          <td>${r.category}</td>
+          <td>${r.details}</td>
+          <td style="color:var(--muted);font-size:12.5px;">${r.reason || '—'}</td>
+          ${viewCell(r)}
+        </tr>`;
       }).join('');
 
       // Wire View buttons every render (rows are rebuilt, so listeners must re-attach)
       body.querySelectorAll('[data-prev-view]').forEach(b => {
         b.addEventListener('click', () => openPrevDetail(b.dataset.prevView));
       });
+      body.querySelectorAll('[data-prev-fav]').forEach(b => {
+        b.addEventListener('click', () => introThenGoToEditor(b.dataset.prevFav));
+      });
     }
+  }
+
+  // ── MY GO TOS: strip, editor, and the one-tap send ───────────────────────
+
+  // First-run intro. Ticking the box opens the editor — but a GO To sends with
+  // no review step, so the first time through we say so up front. It keeps
+  // appearing until the user dismisses it for good (that's what makes the
+  // "don't show again" tick meaningful).
+  // HOOK POINT: goToIntroSeen is session-only, like the rest of the prototype's
+  // state. Persist it per user alongside the GO Tos themselves.
+  let goToIntroSeen = false;
+  let goToIntroFor  = null;
+
+  function introThenGoToEditor(srcId){
+    const ov = document.getElementById('goToIntroOverlay');
+    if(goToIntroSeen || !ov){ openGoToEditor(null, srcId); return; }
+    const never = document.getElementById('goToIntroNever');
+    if(never) never.classList.remove('checked');
+    goToIntroFor = srcId;
+    ov.hidden = false;
+  }
+
+  // proceed=false (X / backdrop) deliberately does NOT open the editor, so
+  // backing out of the intro never leaves a half-made GO To behind.
+  function closeGoToIntro(proceed){
+    const ov    = document.getElementById('goToIntroOverlay');
+    const never = document.getElementById('goToIntroNever');
+    if(never && never.classList.contains('checked')) goToIntroSeen = true;
+    if(ov) ov.hidden = true;
+    const id = goToIntroFor;
+    goToIntroFor = null;
+    if(proceed && id) openGoToEditor(null, id);
+  }
+
+  // COMPLETED bucket only — a GO To can only be built from a request that
+  // actually finished. Cancelled/expired records are deliberately not findable
+  // here, so no UI path (or stale link) can seed a GO To from one.
+  function findPrevById(id){
+    return DASH_DATA.previousRequests.find(x => x.id === id) || null;
+  }
+
+  // Categories the request flow can map back (see mapCat in __startRequestAgainFast)
+  const GOTO_CATS = ['Delivery','Ride','Moving','Junk Removal','Yard Work','Handyman','Day Labor','Other'];
+  const sameCat = (a, b) => String(a).toLowerCase() === String(b || '').toLowerCase();
+
+  // Default name for a new GO To — the first clause of the details reads better
+  // as a label than the category does ("Catering tray drop-off", not "Delivery").
+  function defaultGoToName(src){
+    const d = String(src.details || '').split(' · ')[0].trim();
+    if(!d) return String(src.category || 'Saved request');
+    return d.length > 42 ? d.slice(0, 42).trim() + '…' : d;
+  }
+
+  function renderGoTos(){
+    const strip = document.getElementById('goToStrip');
+    const cards = document.getElementById('goToCards');
+    const count = document.getElementById('goToCount');
+    if(!strip || !cards) return;
+
+    const list = GoTos.all();
+    // Always present on the GO Tos tab (so the empty state can explain itself);
+    // elsewhere it only appears once there's something to show.
+    strip.hidden = (!list.length && prevTab !== 'gotos');
+    if(count) count.textContent = list.length ? `${list.length} saved` : '';
+
+    if(!list.length){
+      cards.innerHTML = `<div class="goto-empty">
+        No ${GO_MARK}-To&rsquo;s yet — tick the ${GO_MARK}-To box on any previous request to
+        save it here as a one-tap re-request that sends immediately.
+      </div>`;
+      return;
+    }
+
+    cards.innerHTML = list.map(g => {
+      const pay = Number(g.workerPay) > 0 ? ` · ${prevFmt(g.workerPay)} to your Gopher` : '';
+      // The name defaults to the first clause of the details, so the two are
+      // usually the same string — only show details when it adds something.
+      const showDet = String(g.details || '').trim() &&
+                      String(g.details).trim() !== String(g.name || '').trim();
+      return `<div class="goto-card">
+        <div class="goto-card-main">
+          <div class="goto-card-name" title="${goEsc(g.name)}">${goEsc(g.name)}</div>
+          <div class="goto-card-meta">${goEsc(g.category)}${pay}</div>
+          ${showDet ? `<div class="goto-card-det" title="${goEsc(g.details)}">${goEsc(g.details)}</div>` : ''}
+        </div>
+        <div class="goto-card-side">
+          <button class="goto-cta" data-goto-now="${g.gid}">Request my ${GO_MARK}-To NOW ⚡️</button>
+          <div class="goto-links">
+            <button class="goto-link" data-goto-edit="${g.gid}">Edit</button>
+            <button class="goto-link danger" data-goto-del="${g.gid}">Remove</button>
+            <span class="goto-sends">Sends immediately</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    cards.querySelectorAll('[data-goto-now]').forEach(b =>
+      b.addEventListener('click', () => launchGoToNow(b.dataset.gotoNow)));
+    cards.querySelectorAll('[data-goto-edit]').forEach(b =>
+      b.addEventListener('click', () => openGoToEditor(b.dataset.gotoEdit, null)));
+    cards.querySelectorAll('[data-goto-del]').forEach(b =>
+      b.addEventListener('click', () => { GoTos.remove(b.dataset.gotoDel); renderPrevRequests(); }));
+  }
+
+  // Editor. Pass a gid to edit a saved GO To, or a srcId to start a new copy
+  // from a past request. Nothing is written to the store until Save is pressed.
+  function openGoToEditor(gid, srcId){
+    const panel     = document.getElementById('goToEditPanel');
+    const listPanel = document.getElementById('prevListPanel');
+    const detail    = document.getElementById('prevDetailPanel');
+    const title     = document.getElementById('prevSecTitle');
+    if(!panel) return;
+
+    const existing = gid ? GoTos.get(gid) : null;
+    let draft;
+    if(existing){
+      draft = Object.assign({}, existing, { gophers:(existing.gophers || []).slice() });
+    } else {
+      const src = findPrevById(srcId);
+      if(!src) return;
+      const worker = String(src.worker || '').trim();
+      draft = {
+        gid: null,
+        srcId: src.id,
+        name: defaultGoToName(src),
+        category: src.category || 'Other',
+        details: src.details || '',
+        workerPay: (src.breakdown && Number(src.breakdown.workerPay)) || '',
+        payKey: null,
+        waiver: true,
+        // Pre-check whoever did it last time, but only if they're actually saved
+        // as a MY Gopher — routing first-dibs to a worker you haven't saved isn't
+        // a thing the flow supports.
+        gophers: (worker && MyGophers.has(worker)) ? [worker] : []
+      };
+    }
+
+    const gophers = gatherMyGophers();
+
+    // Card in use — the same in-session store the checkout picker and the
+    // Payment info screen share, so changing it here is the one real write path.
+    const payMethods = (window.__getPayMethods ? window.__getPayMethods() : []);
+    const selPayKey  = draft.payKey
+      || (window.__getSelectedPayKey ? window.__getSelectedPayKey() : null)
+      || (payMethods[0] && payMethods[0].key) || '';
+    const payLabel = (m) => {
+      const nm = (window.__payDisplayName ? window.__payDisplayName(m) : m.name) || m.name;
+      return m.last4 ? `${nm} · ending ${m.last4}` : (m.sub ? `${nm} · ${m.sub}` : nm);
+    };
+    const hadPay = Number(draft.workerPay) > 0;
+    panel.innerHTML = `
+      <div class="goto-edit-card">
+        <button class="prev-detail-back" data-goto-back>← Back to history</button>
+        <!-- one span, not loose nodes: .prev-detail-status is inline-flex with a
+             6px gap, which would otherwise push "-To" off the mark -->
+        <span class="prev-detail-status completed"><span>${existing ? 'Editing' : 'New'} ${GO_MARK}-To</span></span>
+        <div class="prev-detail-title">${existing ? `Edit this ${GO_MARK}-To` : `Save as a ${GO_MARK}-To`}</div>
+        <div class="goto-edit-note">
+          This is a <b>copy you own</b> — change anything before saving.
+          It carries no request ID${draft.srcId ? `: <b>#${goEsc(draft.srcId)}</b> stays in your history exactly as it is` : ''},
+          and a fresh one is issued each time you send it.
+        </div>
+
+        <div class="goto-field">
+          <label for="gotoName">Name this GO-To</label>
+          <input type="text" id="gotoName" maxlength="60" placeholder="e.g. Friday catering run"
+                 value="${goEsc(draft.name)}">
+        </div>
+
+        <div class="goto-field">
+          <label for="gotoCat">Request type</label>
+          <select id="gotoCat">${GOTO_CATS.map(c =>
+            `<option value="${c}"${sameCat(c, draft.category) ? ' selected' : ''}>${c}</option>`).join('')}</select>
+        </div>
+
+        <div class="goto-field">
+          <label for="gotoDetails">Details</label>
+          <textarea id="gotoDetails" placeholder="What do you need done?">${goEsc(draft.details)}</textarea>
+        </div>
+
+        <div class="goto-field">
+          <label for="gotoPay">Payment to Gopher</label>
+          <input type="number" id="gotoPay" min="1" step="1" placeholder="Required — e.g. 45"
+                 value="${hadPay ? Number(draft.workerPay) : ''}">
+          <div class="goto-hint" id="gotoPayHint">${hadPay
+            ? 'This is what a Gopher already accepted for this job &mdash; your best odds of it being picked up again. Change it if you like.'
+            : 'This request has no accepted amount on record. A GO-To sends with no review step, so set one here.'
+          }</div>
+        </div>
+
+        <div class="goto-field">
+          <label for="gotoCard">Card being used</label>
+          ${payMethods.length
+            ? `<select id="gotoCard">${payMethods.map(m =>
+                `<option value="${m.key}"${m.key === selPayKey ? ' selected' : ''}>${goEsc(payLabel(m))}</option>`
+              ).join('')}</select>
+               <div class="goto-hint">Charged the moment you tap the button. Add or remove cards under Payment info.</div>`
+            : `<div class="goto-empty" style="padding:14px;">No payment method on file — add one under Payment info first.</div>`}
+        </div>
+
+        <div class="goto-field">
+          <label>Send to these MY Gophers first</label>
+          ${gophers.length ? `<div class="goto-gophers">${gophers.map(g => `
+            <button type="button" class="goto-gopher-row ${draft.gophers.indexOf(g.name) !== -1 ? 'checked' : ''}"
+                    data-goto-gopher="${goEsc(g.name)}">
+              <span class="prev-check-box"></span>
+              <span>${goEsc(g.name)}<span style="color:var(--muted);"> · last: ${goEsc(g.lastCategory || '—')}</span></span>
+            </button>`).join('')}</div>`
+          : `<div class="goto-empty" style="padding:14px;">
+               No MY Gophers saved yet — this one will open to the wider workforce.
+             </div>`}
+        </div>
+
+        <button type="button" class="goto-waiver ${draft.waiver === false ? '' : 'checked'}" data-goto-waiver>
+          <span class="prev-check-box"></span>
+          <span><b>Liability waiver &mdash; accepted for every send.</b> You agree Gopher, Inc. is
+          released from liability associated with this request, and authorise the card above to be
+          charged for the total shown. A GO-To sends immediately with no review step, so this is
+          accepted here and re-affirmed each time you tap the button.</span>
+        </button>
+
+        <div class="goto-edit-ctas">
+          <button class="prev-detail-cta cta-now" data-goto-save>${existing ? 'Save changes' : `Save ${GO_MARK}-To`}</button>
+          <button class="prev-detail-cta" data-goto-cancel>Cancel</button>
+        </div>
+      </div>`;
+
+    panel.querySelectorAll('[data-goto-gopher]').forEach(row => {
+      row.addEventListener('click', () => row.classList.toggle('checked'));
+    });
+
+    // A GO To skips Review entirely, so the two things Review would otherwise
+    // collect — a worker payment above $0 and the waiver — have to be settled
+    // here. Save stays disabled until both are.
+    const saveBtn  = panel.querySelector('[data-goto-save]');
+    const payEl    = document.getElementById('gotoPay');
+    const payHint  = document.getElementById('gotoPayHint');
+    const waiverEl = panel.querySelector('[data-goto-waiver]');
+    function refreshGoToSave(){
+      const pay = parseFloat(payEl ? payEl.value : '');
+      const payOk = !isNaN(pay) && pay > 0;
+      const waiverOk = waiverEl.classList.contains('checked');
+      saveBtn.disabled = !(payOk && waiverOk);
+      if(payHint) payHint.classList.toggle('warn', !payOk && payEl.value !== '');
+    }
+    if(payEl) payEl.addEventListener('input', refreshGoToSave);
+    waiverEl.addEventListener('click', () => { waiverEl.classList.toggle('checked'); refreshGoToSave(); });
+    refreshGoToSave();
+
+    saveBtn.addEventListener('click', () => {
+      if(saveBtn.disabled) return;
+      const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+      const pay = parseFloat(val('gotoPay'));
+      GoTos.save({
+        gid: draft.gid,
+        srcId: draft.srcId,
+        name: val('gotoName').trim() || draft.name || 'Saved request',
+        category: val('gotoCat'),
+        details: val('gotoDetails').trim(),
+        workerPay: pay,
+        payKey: val('gotoCard') || selPayKey || null,
+        waiver: waiverEl.classList.contains('checked'),
+        gophers: Array.from(panel.querySelectorAll('.goto-gopher-row.checked'))
+                      .map(el => el.dataset.gotoGopher)
+      });
+      closeGoToEditor();
+    });
+
+    panel.querySelector('[data-goto-cancel]').addEventListener('click', closeGoToEditor);
+    panel.querySelector('[data-goto-back]').addEventListener('click', closeGoToEditor);
+
+    // Swap panels (the editor can be reached from the list or from a card)
+    if(listPanel) listPanel.hidden = true;
+    if(detail)    detail.hidden    = true;
+    panel.hidden = false;
+    if(title) title.textContent = existing ? 'Edit GO-To' : 'New GO-To';
+  }
+
+  function closeGoToEditor(){
+    const panel     = document.getElementById('goToEditPanel');
+    const listPanel = document.getElementById('prevListPanel');
+    const title     = document.getElementById('prevSecTitle');
+    if(panel)     panel.hidden = true;
+    if(listPanel) listPanel.hidden = false;
+    if(title)     title.textContent = 'All previous requests';
+    renderPrevRequests();
+  }
+
+  // Request GO To NOW ⚡ — the single button on a saved card. Shapes the GO To
+  // like a history record and hands it to the SAME prefill/submit path as
+  // "Request again NOW", so every gate on the step-6 submit still runs.
+  function launchGoToNow(gid){
+    const g = GoTos.get(gid);
+    if(!g) return;
+    moveFlowToDash();
+    // Charge the card this GO To was saved with, not whatever the last request
+    // happened to leave selected.
+    if(g.payKey && typeof window.__setSelectedPayKey === 'function'){
+      window.__setSelectedPayKey(g.payKey);
+    }
+    const asPrev = {
+      category:  g.category,
+      details:   g.details,
+      breakdown: { workerPay: Number(g.workerPay) || 0 }
+    };
+    if(typeof window.__startRequestAgainNow === 'function'){
+      window.__startRequestAgainNow(asPrev, (g.gophers || []).slice());
+    }
+    showSection('new-request');
+    const dashMain = document.querySelector('.dash-main');
+    if(dashMain) dashMain.scrollTo({ top:0, behavior:'instant' });
   }
 
   function initPrevRequestsControls(){
@@ -22017,6 +22676,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(s && !s.dataset.bound){
       s.dataset.bound = '1';
       s.addEventListener('input', () => { prevSearch = s.value; renderPrevRequests(); });
+    }
+
+    // GO To intro modal — bound once, same guard as the tabs above.
+    const introOv = document.getElementById('goToIntroOverlay');
+    if(introOv && !introOv.dataset.bound){
+      introOv.dataset.bound = '1';
+      const never = document.getElementById('goToIntroNever');
+      const go    = document.getElementById('goToIntroGo');
+      const x     = document.getElementById('goToIntroClose');
+      if(never) never.addEventListener('click', () => never.classList.toggle('checked'));
+      if(go) go.addEventListener('click', () => closeGoToIntro(true));
+      if(x)  x.addEventListener('click',  () => closeGoToIntro(false));
+      introOv.addEventListener('click', (e) => { if(e.target === introOv) closeGoToIntro(false); });
     }
   }
 
@@ -22126,6 +22798,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(nowBtn) nowBtn.addEventListener('click', () => launchRaNow(r));
 
     // Swap panels
+    const editPanel = document.getElementById('goToEditPanel');
+    if(editPanel) editPanel.hidden = true;
     listPanel.hidden = true;
     panel.hidden = false;
     if(title) title.textContent = `Request #${r.id}`;
@@ -22134,8 +22808,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function closePrevDetail(){
     const panel = document.getElementById('prevDetailPanel');
     const listPanel = document.getElementById('prevListPanel');
+    const editPanel = document.getElementById('goToEditPanel');
     const title = document.getElementById('prevSecTitle');
     if(panel) panel.hidden = true;
+    if(editPanel) editPanel.hidden = true;
     if(listPanel) listPanel.hidden = false;
     if(title) title.textContent = 'All previous requests';
     renderPrevRequests();   // refresh in case toggles changed state on a record
