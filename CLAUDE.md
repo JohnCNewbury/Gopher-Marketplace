@@ -367,22 +367,78 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   account's email + phones but **left the rest of the owner's real identity in place**,
   and it was being **served live** — confirmed by fetching
   `johncnewbury.github.io/Gopher-Marketplace/gopher-request.html` and grepping the
-  response. Live at that moment: real **street address** (`405 Shorehouse Way, Holly
-  Springs, NC 27540`), **date of birth** (`02-03-1976`), **home GPS** (`35.6489,
-  -78.8231`), a **family member's name** as the referrer, and `GPH-000001-NEWBURY`.
-  Address + DOB together is identity-grade, i.e. a bigger exposure than the market data
-  that prompted the search. Now fictional and internally consistent: `100 Demo Way,
+  response. Live at that moment: the owner's real **street address**, **date of birth**,
+  **home GPS**, a **family member's name** as the referrer, and an account ID ending
+  `-NEWBURY`. _(Values redacted from this file 2026-07-20 — see the correction below.)_
+  Now fictional and internally consistent: `100 Demo Way,
   Raleigh, NC 27601` / `01-01-1990` / `35.7796, -78.6382` / `Demo Referrer` /
   `GPH-000001-DEMO`, with the profile city+ZIP fields moved to match. 34 replacements
   across 7 files (`Final/gopher-{connect,request,go,deals}.html`, 2 `_prototypes/`, 1
   handoff doc); verified 1:1 line swaps with quote/brace parity preserved. Included the
   URL-encoded (`%20`) copies inside the Google/Apple/Waze nav deep-links, which a
   plain-text grep misses — **check both encodings when scrubbing an address.**
-  **Not fixed, needs an owner decision:** `docs/G40-tickets-export.csv` (tracked, public)
-  lists `805-624-1724` as the support SMS line — same number, but presented as a business
-  contact, so it wasn't changed unilaterally.
   **Deleting these files does not unpublish them** — they were pushed to a public repo,
   so the values remain reachable by commit SHA regardless of any later fix.
+
+  **CORRECTION (owner, 2026-07-20) — this entry overstated the exposure.** The street
+  address is the **company address** and the `805-` number is the **listed support line**;
+  both have been public on gophergo.io for years, and `jnewbury@gophergo.io` is a business
+  address. None of those were ever exposures, and the `docs/G40-tickets-export.csv` phone
+  entry is therefore **correct as written** — it is a business contact, listed as one.
+  The "address + DOB is identity-grade" framing was wrong: it assumed a *residential*
+  address without checking. Removing a public company address leaves a date of birth on
+  its own, which is weak. Only the **DOB** and the **family member's name** were genuinely
+  non-public, and swapping them to demo values was still the right call.
+
+  **How this went wrong is worth more than the fix:** four sessions independently found
+  "home address + DOB", each inherited the residential assumption from the last, and the
+  repetition read as corroboration. It was one unverified premise counted four times. The
+  owner answered it in a sentence when finally asked. **Ask the owner about owner-specific
+  facts before escalating on them** — cheaper than any amount of cross-session agreement.
+
+- **App prototypes: the Gopher iQ home pill made real, in both apps (done 2026-07-21,
+  commits `3aa1223` / `bb8a3a8` / `6a09f74`).** _(Scope note: this is `_prototypes/`, the
+  Go + Request app blueprints — not the `Final/` site.)_ The "Ask Gopher anything…" pill on
+  each app's home screen was **decorative**, in two different ways: **Go** — `data-goto="gopher-iq"`
+  had no screen behind it, so every tap fell through the router's unknown-key branch and
+  toasted _"gopher iq — coming soon"_; **Request** — the sheet opened, but the send handler
+  ignored the input and printed a fixed `IQ_ANSWER` string no matter what was typed. Both
+  apps *already* had a working iQ on their Help Center screen, so the fix was **not** to
+  build a second one: the answering logic is now **hoisted to one shared function per app**
+  — `iqAnswerCard()` (Go) / `reqAnswerCard()` (Request) — that the Help Center and the pill
+  both call. Three tiers, most-specific first: **coverage brain** (`iqCoverageReply` →
+  `GopherIQData`), **curated FAQ search** (confident matches only), **category/pricing intent**
+  (`iqTopicReply`). Go gained an `openGopherIQ()` sheet on the app's own modal primitive
+  (worker-scoped: Find work near me / Payout Account / Work Settings / Help Center); Request's
+  sheet now reads `#iqAsk`, renders **bare** (its `.iq-ans` is already a card — nesting two
+  double-framed it), and supports Enter + autofocus. `IQ_ANSWER` survives as the **empty-input**
+  prompt, which is what that copy always read like.
+  - **Wrong-number bug fixed at the same time (both apps).** The place-extraction regex lists
+    **verbs** as location cues, so _"do you have service in Raleigh?"_ matched on `service` and
+    captured **"in Raleigh"**. `GopherIQData.lookup()` has no row for that, so it synthesised an
+    all-zero one and both apps answered confidently about a market with **232 requests / 188
+    Gophers**: Go _"**0** Gopher requests … in **In Raleigh**"_, Request _"We're **not live** in
+    **In Raleigh** just yet"_. Same shape turned _"do you serve near me"_ into _"we're not live
+    in **Near, ME**"_. Leading **prepositions** are now stripped from the capture; **articles
+    deliberately are not** — "The Colony, TX" is a real city `lookup()` indexes by full name.
+    **Explicitly NOT gated on `inData`** (the obvious-looking fix, and wrong): `inData` is keyed
+    to `workers>0`, so demand-only areas — real requests, no local Gopher yet — report `false`,
+    and those are exactly the places the under-20 share-your-QR copy is written for; gating would
+    also have cost every out-of-market city its _"not live yet, post anyway"_ answer, which the
+    availability training sheet requires. Confined to the two prototypes — the web engine
+    (`gopher-ai-engine.js`) uses a different, correct extractor.
+  - **"Request history" → "Previous requests" finished off.** The `META` label was **not inert**
+    as a previous session recorded — `META` builds `BYID`, which drives the left dev index nav
+    *and* the label in the router's "isn't linked yet" toasts. Also caught a stale entry hiding
+    among the comments: **`ROUTES.home` is keyed by `norm(element.textContent)` — the VISIBLE
+    label** — so its `"request history"` key died the moment the label changed and could never
+    match again. Harmless only because the tool row carries `data-goto`, which returns before
+    `ROUTES` is consulted; it would have failed silently the day that attribute came off. Plus
+    11 genuine code comments. **Left alone on purpose:** the `rh-` CSS prefix (25 classes) and
+    the `request-history` screen id / route key / `data-goto` value — identifiers, not copy.
+  - Verified: 7 inline script blocks parse clean (JXA — **no `node` on this box**), 0 console
+    errors, both pills and both Help Centers driven live through all four answer tiers, quick
+    actions, and FAQ tab switching.
 
 ### Outstanding to-do
 
