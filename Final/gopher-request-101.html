@@ -133,6 +133,16 @@ a{color:var(--navy);}
 .section > p{font-size:15.5px;color:var(--ink);max-width:760px;}
 .section h3{font-size:18px;font-weight:800;margin:26px 0 6px;}
 
+/* The real GO mark — assets/img/go-mark.svg, the same file the Request app uses.
+   "GO-To" is always branded with the logo, never typed. Sized in em so it tracks
+   whatever text it sits in; the margin is left-only because the mark is always
+   followed by the hyphen, and a right margin would float that off the lockup. */
+.go-mark{display:inline-block;width:auto;height:1.02em;vertical-align:-0.16em;margin:0 0 0 0.08em;}
+.section h2 .go-mark{height:0.88em;vertical-align:-0.08em;}
+.section h3 .go-mark{height:0.95em;vertical-align:-0.12em;}
+/* the mark + its hyphen are one lockup — never let a line break split them */
+.goto-word{white-space:nowrap;}
+
 /* generic card / grid bits */
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--card-shadow);margin-top:18px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
@@ -412,7 +422,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <span class="eyebrow"><span class="step-pill">Step 1 of 7</span> Pick a service</span>
       <h2>How to submit a request for a service</h2>
       <p>Start by tapping the service that fits best. The category you choose decides which workers see your request and what details we ask for next — so pick the closest match.</p>
-      <div class="note tip"><span class="nico">⏱️</span><div><span class="h">We'll go slow here — the real thing is fast</span>This guide walks through every option so nothing's a surprise, but actually <b>submitting a request takes less than a minute</b>. Once you've made one, the <b>1-Click</b> feature in <b>Previous Requests</b> makes it faster still.</div></div>
+      <div class="note tip"><span class="nico">⏱️</span><div><span class="h">We'll go slow here — the real thing is fast</span>This guide walks through every option so nothing's a surprise, but actually <b>submitting a request takes less than a minute</b>. Once you've made one, saving it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> under <b>Previous requests</b> gets it down to a single tap.</div></div>
       <div class="cat-grid">
         <div class="cat"><div class="thumb"><span class="badge">Errand</span><img src="assets/img/01-delivery.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Delivery / Errand</div><div class="tg">Pick-up &amp; drop-off</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Hauling</span><img src="assets/img/05-junk.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Junk Removal</div><div class="tg">Furniture &amp; debris haul-away</div></div></div>
@@ -611,8 +621,27 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <section class="section" id="history">
       <span class="eyebrow">After you submit</span>
       <h2>History &amp; request again</h2>
-      <p>Every request you've made lives under <b>Previous Requests</b> (Account → Request History) — completed, scheduled, cancelled, and expired. Open any one to see the full details.</p>
-      <div class="note tip"><span class="nico">🔁</span><div><span class="h">Re-run a request in seconds</span>Found one you want again? Tap <b>Request Again</b> and we'll take you right to the review &amp; submit page. If no changes need to be made — <b>1-click and done!</b></div></div>
+      <p>Every request you've made lives under <b>Previous requests</b> in the sidebar, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details.</p>
+
+      <h3>Two ways to run a request again</h3>
+      <ul class="brand">
+        <li><b>Request again NOW ⚡️</b> — re-sends that request exactly as it was, immediately. If the Gopher who did it is one of your MY Gophers, they get first dibs automatically.</li>
+        <li><b>Request again w/ edits</b> — prefills a new request from the old one, lets you pick which MY Gophers get first dibs, and takes you to <b>Review &amp; submit</b> so you can change anything before it goes out.</li>
+      </ul>
+
+      <h3>My <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span> — the requests you make over and over</h3>
+      <p>Got a request you make every week? Save it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> and it re-sends with a single tap — no review screen, no confirmation. Tick the checkbox on any <b>Completed</b> request to start one. The first time you do, a short intro explains the one-tap behaviour before the editor opens.</p>
+      <p style="margin-top:10px;">A <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> is a <b>copy you own</b>, so everything is editable before you save it:</p>
+      <ol class="brand">
+        <li><b>Name it</b> something you'll recognise — &ldquo;Friday grocery run.&rdquo;</li>
+        <li><b>Adjust the service type and details</b> if the job has drifted since last time.</li>
+        <li><b>Set the payment to your Gopher.</b> It arrives carrying the amount a Gopher already accepted for that job — your best odds of it being picked up again — but you can change it.</li>
+        <li><b>Choose the card</b> that gets charged, and <b>which MY Gophers</b> it goes to first.</li>
+        <li><b>Accept the liability waiver</b>, pre-ticked directly above Save.</li>
+        <li><b>Save.</b> It appears as a card at the top of Previous requests with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
+      </ol>
+      <div class="note warn"><span class="nico">⚡</span><div><span class="h">One tap means one tap</span>There's no review step and no &ldquo;are you sure&rdquo; — the button sends the request and authorises the card straight away. That's why Save won't unlock until there's a payment above $0 and the waiver is accepted, and why only <b>Completed</b> requests can be saved: a job that already worked, at an amount a Gopher already took.</div></div>
+      <div class="note info"><span class="nico">📋</span><div><span class="h">It's a copy, not a shortcut to the original</span>The request you saved it from stays in your history untouched, and every send gets a brand-new request ID. Save as many as you like from the same job — one for the small order, one for the big one — and edit or remove any of them any time.</div></div>
     </section>
 
     <!-- FEES -->

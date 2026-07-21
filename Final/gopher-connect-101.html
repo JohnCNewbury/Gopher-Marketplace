@@ -146,6 +146,16 @@ a{color:var(--green-dark);}
 .section > p{font-size:15.5px;color:var(--navy);max-width:760px;}
 .section h3{font-size:18px;font-weight:800;margin:26px 0 6px;}
 
+/* The real GO mark — assets/img/go-mark.svg, the same file the Connect app uses.
+   "GO-To" is always branded with the logo, never typed. Sized in em so it tracks
+   whatever text it sits in; the margin is left-only because the mark is always
+   followed by the hyphen, and a right margin would float that off the lockup. */
+.go-mark{display:inline-block;width:auto;height:1.02em;vertical-align:-0.16em;margin:0 0 0 0.08em;}
+.section h2 .go-mark{height:0.88em;vertical-align:-0.08em;}
+.section h3 .go-mark{height:0.95em;vertical-align:-0.12em;}
+/* the mark + its hyphen are one lockup — never let a line break split them */
+.goto-word{white-space:nowrap;}
+
 /* generic card / grid bits */
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--card-shadow);margin-top:18px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
@@ -685,7 +695,28 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <section class="section" id="history">
       <span class="eyebrow">After the job</span>
       <h2>Previous requests &amp; repeat jobs</h2>
-      <p>Every request lives under <b>Previous Requests</b>, sorted into <b>Completed</b>, <b>Cancelled</b>, and <b>Expired</b>. Open any one to see the full details, or re-run a job you liked.</p>
+      <p>Every request lives under <b>Previous Requests</b>, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details, or re-run a job you liked.</p>
+
+      <h3>Two ways to run a job again</h3>
+      <ul class="brand">
+        <li><b>Request again NOW ⚡️</b> — re-sends that request exactly as it was, immediately. If the Gopher who did it is on your MY Gophers bench, they get first dibs automatically.</li>
+        <li><b>Request again w/ edits</b> — prefills a new request from the old one, lets you pick which MY Gophers get first dibs, and drops you on <b>Review &amp; submit</b> so you can change anything before it goes out.</li>
+      </ul>
+
+      <h3>My <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span> — the jobs you run over and over</h3>
+      <p>Got a job you run every week? Save it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> and it re-sends with a single tap — no review screen, no confirmation. Tick the checkbox on any <b>Completed</b> request to start one. The first time you do, a short intro explains the one-tap behaviour before the editor opens.</p>
+      <p style="margin-top:10px;">A <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> is a <b>copy you own</b>, so everything is editable before you save it:</p>
+      <ol class="brand">
+        <li><b>Name it</b> something you'll recognise on the dashboard — &ldquo;Friday catering run.&rdquo;</li>
+        <li><b>Adjust the request type and details</b> if the job has drifted since last time.</li>
+        <li><b>Set the payment to your Gopher.</b> It arrives carrying the amount a worker already accepted for that job — your best odds of it being picked up again — but you can change it.</li>
+        <li><b>Choose the card</b> that gets charged, and <b>which MY Gophers</b> it goes to first.</li>
+        <li><b>Accept the liability waiver</b>, pre-ticked directly above Save.</li>
+        <li><b>Save.</b> It appears as a card at the top of Previous Requests with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
+      </ol>
+      <div class="note warn"><span class="nico">⚡</span><div><span class="h">One tap means one tap</span>There's no review step and no &ldquo;are you sure&rdquo; — the button sends the request and authorises the card straight away. That's why Save won't unlock until there's a payment above $0 and the waiver is accepted, and why only <b>Completed</b> requests can be saved: a job that already worked, at an amount a worker already took.</div></div>
+      <div class="note info"><span class="nico">📋</span><div><span class="h">It's a copy, not a shortcut to the original</span>The request you saved it from stays in your history untouched, and every send gets a brand-new request ID. Save as many as you like from the same job — one for the small order, one for the big one — and edit or remove any of them any time.</div></div>
+
       <div class="note tip"><span class="nico">🔁</span><div><span class="h">Cancelled isn't gone for good</span>Cancelling a live request notifies any interested workers — but you can always find it again under Previous Requests and post it back out in a few taps.</div></div>
     </section>
 
