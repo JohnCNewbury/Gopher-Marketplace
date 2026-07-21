@@ -255,14 +255,48 @@ body.uc .uc-photo h2{ color:#fff; }
   font-family:'Nunito',sans-serif; font-weight:800; font-size:11px;
   color:var(--navy); white-space:nowrap;
 }
-.uc-post .jc-source{
-  display:inline-flex; align-items:center; padding:4px 9px; border-radius:7px; flex-shrink:0;
-  font-family:'Nunito',sans-serif; font-weight:900; font-size:10px;
-  background:#badbfc; border:1px solid #9fc4f5; color:#0d3b82;
+/* ── corner rail (ported from the updated Go card, commits df70b8c / f7bfb28 /
+      f182547 / e01d44e).
+
+      An in-flow flex COLUMN, not stacked absolutes. TOP PAY and the source mark
+      used to be separately `position:absolute; top:0; right:0`, so any two of
+      them collided and the "posted" timestamp landed underneath. As a column,
+      adding a badge shifts its neighbours — overlap isn't expressible. Keep
+      that property; don't "simplify" it back to absolute positioning.
+
+      Connect renders its own requests with the SOURCE MARK ONLY and no tier
+      lock: `connect:true` labels where the request came from, `lock:'connect'`
+      gates it behind a tier. Those are separate concerns as of e01d44e. On this
+      page the audience IS the eligible cohort, so there is no lock to remove —
+      we simply never opt into one. ── */
+.uc-post .jc-corner{
+  margin-left:auto; display:inline-flex; flex-direction:column;
+  align-items:flex-end; gap:7px; flex:0 0 auto;
 }
+.uc-post .jc-badge{ display:inline-flex; align-items:center; gap:5px; border-radius:9px; }
+.uc-post .jc-badge.mark{
+  background:#fff; border:1px solid #e4e8f0; padding:4px 8px;
+  box-shadow:0 1px 3px rgba(0,36,97,.08);
+}
+.uc-post .jc-badge.mark img{ height:15px; width:auto; display:block; }
+/* the category chip yields rather than pushing the rail off the card */
+.uc-post .jc-top .jc-cat{
+  flex:0 1 auto; min-width:0; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ── footer: chips left, "posted" right.
+      `posted` is listing metadata, not a job fact like distance or schedule —
+      and down here it can't crowd the corner marks it used to sit beneath. ── */
+.uc-post .jc-foot{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-top:11px;
+}
+.uc-post .jc-foot .jc-flags{ margin-top:0; padding-top:0; flex:1 1 auto; }
 .uc-post .jc-posted{
-  margin-left:auto; font-family:'DM Sans',sans-serif; font-weight:600;
-  font-size:10.5px; color:#6b7280; white-space:nowrap;
+  margin-left:auto; flex:0 0 auto; white-space:nowrap;
+  font-family:'DM Sans',sans-serif; font-weight:600;
+  font-size:10.5px; color:#6b7280;
 }
 .uc-post .jc-pay{ display:flex; align-items:center; gap:8px; min-height:40px; padding:11px 0 5px; }
 .uc-post .jc-pay .amt{
