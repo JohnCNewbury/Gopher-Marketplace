@@ -970,8 +970,13 @@ function statusText(r){
  if(r.stage==='active'){
   // A scheduled / flexible request that's been approved but not yet started must keep its timing
   // visible — otherwise the requester loses track of WHEN it's happening (r.when gets overwritten to
-  // "Accepted…" on hire; r.timingLabel survives). ASAP requests are genuinely in progress.
-  if(!r.asap && r.timingLabel && !r.substage) return '📅 <b>Scheduled</b> · '+r.timingLabel+' · '+(r.hired||'your Gopher')+' hired';
+  // "Accepted…" on hire; r.timingLabel survives).
+  // Requires TWO positive signals, because `asap` is only set by the flow's buildPending — seeded,
+  // injected and reposted records leave it undefined, and a bare `!r.asap` was labelling genuine
+  // "Need ASAP" requests as Scheduled. The label itself must also read as a real schedule.
+  var _tl=String(r.timingLabel||'');
+  var _looksAsap=(!_tl || /asap|matching now/i.test(_tl));
+  if(!r.asap && !_looksAsap && !r.substage) return '📅 <b>Scheduled</b> · '+_tl+' · '+(r.hired||'your Gopher')+' hired';
   return '<b>Job in progress</b> · your crew is on it';
  }
  if(r.stage==='scheduled') return 'Scheduled · '+(r.timingLabel||r.when||'booked for later');
