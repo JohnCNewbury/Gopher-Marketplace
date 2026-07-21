@@ -3291,7 +3291,12 @@ if(PT){
   };
   load('home');   // boot straight to the logged-in worker home
 } else {
-  load('splash');
+  // ?screen=<id> boots straight to any registered screen (e.g. ?screen=jobs-list).
+  // The left index nav is the only other way in, and it is unusable on a phone — this
+  // exists so a review link can point at the exact screen being reviewed.
+  var _deep=''; try{ _deep=new URLSearchParams(location.search).get('screen')||''; }catch(_){}
+  if(_deep && BYID[_deep]) load(_deep);
+  else load('splash');
 }
 
 </script><script>function initDeals(R){
