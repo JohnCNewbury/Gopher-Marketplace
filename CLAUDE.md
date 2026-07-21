@@ -440,6 +440,55 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     errors, both pills and both Help Centers driven live through all four answer tiers, quick
     actions, and FAQ tab switching.
 
+- **"My GO-To's" — one-tap re-requests, in both web apps + both 101 guides (done 2026-07-21,
+  commits `ac0b18f` / `8d418fb`).** _(Scope note: this is `Final/`, the web apps — not
+  `_prototypes/`.)_ A **GO-To** is a user-owned **copy of a completed past request**, saved so
+  it can be re-sent with one tap. Built into the Previous requests page of **both**
+  `gopher-request.html` and `gopher-connect.html`, then documented in both 101 walkthroughs.
+  - **What makes it a copy, not a pointer.** It carries **no request ID** — the original stays
+    in its bucket untouched (`srcId` is a back-pointer only) and a fresh ID is minted on each
+    send. **Duplicates are allowed by design**: one past request can seed several GO-Tos (the
+    small order and the big one). Editable before saving: name, type, details, payment, card,
+    and which MY Gophers it routes to.
+  - **Completed requests only — that restriction is the load-bearing one.** A no-review send
+    needs a job that actually worked, at an amount a worker already accepted, which is also why
+    **the accepted worker payment carries over** as the default. Cancelled/expired rows get a
+    dashed placeholder (All view) or drop the column entirely.
+  - **No review screen and no confirmation — that's the whole perk**, and it's why **Save is
+    gated on the pre-checked liability waiver plus a payment above $0**: there is no Review step
+    left to collect either. A **first-run intro modal** explains the one-tap behaviour before the
+    editor opens, with "Do not show me this GO-To intro again".
+  - Pills on Previous requests reordered to **All · GO-To's · Completed · Expired · Cancelled**
+    (All is new and is the default; the All view interleaves the three buckets newest-first).
+  - **Send reuses the existing `__startRequestAgainNow` prefill/submit path** — no second submit
+    path, so every gate on the step-6 submit still runs. Nothing here touches matching, pricing,
+    or payment logic. **Connect gotcha:** `__startRequestAgainNow` takes an optional 3rd arg
+    (`payKey`) applied **after** the prefill's `resetFlowState()` and **before** the submit click
+    — setting the card before that call gets silently wiped.
+  - **Storage is in-memory only** (`DASH_DATA.goTos`, ids `GT-n`) like the rest of the dashboard
+    — saved GO-Tos do not survive a reload. Do not let UI copy imply otherwise (same trap as the
+    2026-06 `gopher-request.html` honesty fixes).
+  - **Branding: the GO is always the real logo mark, never typed** — `assets/img/go-mark.svg`,
+    extracted from the Gopher Go lockup, used inline as `<img class="go-mark">`. Written
+    **"GO-To"** / **"GO-To's"** with the hyphen; section header **"My GO-To's"**; button
+    **"Request my GO-To NOW ⚡️"**. Sized in `em` so it tracks its text, with a **left-only**
+    margin (a right margin floats the hyphen off the lockup).
+  - **101 guides (`8d418fb`).** Expanded the existing `#history` section in each — no new TOC
+    entries. Fixed what the feature made wrong *and* what was already wrong: Connect listed the
+    buckets as "Completed, Cancelled, and Expired" (wrong count **and** order); Request said
+    "(Account → **Request History**)", stale twice over — renamed to "Previous requests" back in
+    `bb8a3a8`, **and** it's a top-level sidebar item *above* the Account divider, not inside it
+    — and listed a "scheduled" bucket that doesn't exist. Also **dropped the "1-Click" label
+    from Request Again**: that path goes to Review & submit, so only a GO-To is genuinely one
+    tap. Both guides now separate **Request again NOW** (re-sends as-is) from **Request again
+    w/ edits** (prefill + MY Gophers picker → Review & submit) — both still exist in the apps.
+    Each page got its own `.go-mark` CSS plus `.goto-word{white-space:nowrap}` so the mark and
+    its hyphen never break across a line. `gopher-go-101.html` deliberately untouched — worker
+    app, no Previous-requests surface (verified, zero matches).
+  - Verified in browser: full round trip in both apps (tick → intro → editor → save → card →
+    one-tap send → Submitted) and both guides at 1280 + 375 (all marks load, no lockup splits,
+    no horizontal overflow), 0 console errors throughout.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
