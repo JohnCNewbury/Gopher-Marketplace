@@ -1997,8 +1997,9 @@ document.addEventListener('click',function(e){
 const ADDRS=[['Home','4101 NC-55, Apex, NC 27502'],['Work','120 Grand Hill Pl, Holly Springs, NC'],['Mom\u2019s','55 Pinecrest Dr, Cary, NC'],['Gym','900 Town Center Blvd, Apex, NC']];
 function openLocation(){ gSheet('Your location','<p class="gs-sub">Pick a saved address or use your current location.</p><div class="gs-list" style="margin-top:10px;">'+ADDRS.map(a=>'<div class="gs-li" data-addr="'+a[1]+'"><b>'+a[0]+'</b> \u00B7 '+a[1]+'</div>').join('')+'<div class="gs-li" data-addr="current"><b>\u2316 Use current location</b></div></div><div class="gs-hint"><span class="gs-link" data-goto="addresses">Manage saved addresses \u2192</span></div>'); }
 function openNotif(){ var dot=document.querySelector('.bell .dot'); if(dot) dot.style.display='none'; gSheet('Notifications','<div class="gs-list" style="margin-top:6px;"><div class="gs-li"><b>Devon M. accepted your request</b><br>Grocery + pharmacy run \u00B7 just now</div><div class="gs-li"><b>New deal near you</b><br>Power Washing \u2014 $30 off in Apex</div><div class="gs-li"><b>You earned 100 points</b><br>Rosa P. joined from your referral</div></div><div class="gs-hint"><span class="gs-link" data-goto="notifsettings">Notification settings \u2192</span></div>'); }
-const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Removal'],['moving','Moving'],['labor','Labor'],['yard','Yard / Outdoor'],['ride','Ride Sharing'],['other','Other']];
-function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
+// The "All services" bottom sheet (a flat text list) was retired 2026-07-21 — the link
+// goes to the flow's real Step 1 category picker instead. CATS8 / openAllServices /
+// the [data-svc] row handler existed only to serve that sheet.
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
 // Help Center \u2014 card-based, PARITY with the Gopher Go app's Help Center (FAQs / 101 / Contact Us).
 // Identical shell/UX; the only difference is the 101 doc (Gopher REQUEST 101) and requester-facing
@@ -2455,7 +2456,7 @@ document.addEventListener('click',function(e){
   var g=e.target.closest('[data-goto]'); if(g){ var k=g.dataset.goto;
     if(k==='location'){ openLocation(); return; }
     if(k==='notif'){ openNotif(); return; }
-    if(k==='allsvc'){ openAllServices(); return; }
+    if(k==='allsvc'){ gotoURL('gopher-request-flow.html?step=1'); return; }
     if(k==='featured'){ openFeatured(); return; }
     if(k==='mygophers'){ openMyGophers(); return; }
     if(k==='history'){ openHistory(); return; }
@@ -2469,7 +2470,6 @@ document.addEventListener('click',function(e){
     if(k==='signout'){ toast('Signed out (demo)'); gClose(); return; }
   }
   var ad=e.target.closest('[data-addr]'); if(ad){ var v=ad.dataset.addr; var loc=document.querySelector('.loc'); if(loc){ var t=v==='current'?'Apex, NC 27502':v.split(',').slice(-2).join(',').trim(); } gClose(); toast('Location updated'); return; }
-  var sv=e.target.closest('[data-svc]'); if(sv){ gClose(); gotoURL('gopher-request-flow.html?category='+encodeURIComponent(sv.dataset.svc)); return; }
 });
 (function(){ try{ var sp=new URLSearchParams(location.search).get('sheet'); if(sp==='account') setTimeout(openAccount,60); else if(sp==='activity') setTimeout(openActivity,60); }catch(_){} })();
 

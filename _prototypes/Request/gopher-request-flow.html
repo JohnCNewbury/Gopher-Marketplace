@@ -2391,6 +2391,10 @@ state.category='delivery';
   const q=new URLSearchParams(location.search);
   const cat=q.get('category');
   if(q.get('demo')==='1'){ state.demo=true; state.step=1; state.maxStepReached=1; render(); return; }
+  // "?step=1" — land on the real Step 1 category picker (Home's "All services").
+  // Distinct from ?demo=1, which also flips state.demo and adds the "no account needed"
+  // ribbon + demo-signup CTA — wrong for a signed-in requester browsing services.
+  if(q.get('step')==='1'){ state.step=1; state.maxStepReached=1; render(); return; }
   if(cat && CATEGORIES[cat]) state.category=cat;
   if(q.get('from')==='deal'){
     state.category = (cat && CATEGORIES[cat]) ? cat : 'delivery';

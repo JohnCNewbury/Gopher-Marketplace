@@ -450,6 +450,46 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   - Verified: 7 inline script blocks parse clean (JXA — **no `node` on this box**), 0 console
     errors, both pills and both Help Centers driven live through all four answer tiers, quick
     actions, and FAQ tab switching.
+  - **Owner-reported follow-up — "Are there requests near me" answered the wrong FAQ, confidently**
+    (commit `3df3863`). It returned _"Can I request age-restricted products?"_. **Two independent
+    defects.** (1) **Function words were scoring.** `there` wasn't a stop word, so the age FAQ took
+    **+3** for `request` in its question **plus +1 for `there` grazing "there's no refund" in its
+    ANSWER** — and that stray +1 also satisfied the `n>=2` "covers the query" gate. A pure function
+    word decided the match; **35 inert words added**. (2) **"near me" had no answer path at all** —
+    `iqCoverageReply()` needs a NAMED place, so the most natural question a worker can ask returned
+    `null` and fell through to FAQ keyword roulette; the capture was also grabbing the pronoun `me`
+    as if it were a city. Pronoun captures are discarded, and a near-me/nearby/in-my-area cue now
+    resolves to the user's own area via **`iqHomePlace()`** (`state.zip` on Go, `PROFILE.zip` on
+    Request — prototype-grade; production reads real device location).
+  - **Cash FAQ added to the Request app** (commit `4ad791e`, owner request). `REQ_FAQS` had no cash
+    entry so cash questions landed on the cost FAQ; added verbatim from the canonical corpus
+    (`Final/assets/js/gopher-ai-engine.js`, "Customers"), filed under **Payments**. **Adding it did
+    not fix it** — `iqCanon()` folded `cash` into the `pay` bucket, so _"can i pay with cash"_ and
+    _"how much does it cost"_ tokenised identically, tied, and the tie fell to array order. `cash`
+    now keeps its own token (pay/payout/payment family untouched).
+  - **Two over-reaches, both caught on the regression pass, both recorded because the pattern
+    matters:** stopping `out`/`over` regressed _"how do i cash out"_ onto the payout-timing FAQ
+    ("cash out" is topical, not grammatical) — reverted; and the first `inData` instinct above
+    would have broken demand-only areas. **`take` IS stopped** (function verb in "do you take
+    cash"). Every stop-word decision here is a per-word judgement call.
+  - **Standing caveat for the rebuild:** this matcher is **keyword scoring with hand-tuned stop
+    words and thresholds**. Every fix above is a *data-level tune, not a structural one* — a query
+    whose words happen to graze an answer can still win. The corpus is **not** provably
+    collision-free. A real retrieval layer is the production answer.
+  - Regression is now **asserted, not eyeballed**: 16 requester + 16 worker queries each checked
+    against its *expected* FAQ question — 0 failures.
+
+- **Request app: "All services" opens the real Step 1 picker (done 2026-07-21, owner request).**
+  _(Scope note: `_prototypes/Request/`.)_ The Home **"All services →"** link opened a **rolled-up
+  bottom sheet** — a flat text list of 8 category names — instead of the designed category screen.
+  It now deep-links to the flow's **Step 1 of 7, "What do you need today?"** (photo tiles, iQ
+  category tags, radio checks, Continue). New **`?step=1`** entry point in
+  `gopher-request-flow.html`: deliberately **separate from the existing `?demo=1`**, which also
+  flips `state.demo` and adds the "no account needed" ribbon + demo-signup CTA — wrong for a
+  signed-in requester browsing services. Retired the dead sheet with it (`CATS8`,
+  `openAllServices()`, and the orphaned `[data-svc]` row handler; 0 `[data-svc]` elements remain).
+  Mirrored into the gitignored `reqpkg/home.html`. Home's own two category tiles still deep-link
+  with `?category=` as before.
 
 - **"My GO-To's" — one-tap re-requests, in both web apps + both 101 guides (done 2026-07-21,
   commits `ac0b18f` / `8d418fb`).** _(Scope note: this is `Final/`, the web apps — not
