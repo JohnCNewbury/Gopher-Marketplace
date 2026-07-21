@@ -854,7 +854,11 @@ function jcCorner(j){
   // questions: how the pay compares, and where the request came from. The rail stacks
   // them vertically, TOP PAY above, so neither has to be suppressed.
   if(j.top) b.push('<span class="jc-badge top">\u2605 TOP PAY</span>');
-  const mark = (j.lock==='connect') ? ['connect', CONNECT_LOGO, 'Gopher Connect']
+  // Source mark and TIER LOCK are separate concerns. `lock:'connect'|'deal'` gates the card
+  // behind a tier (dimmed detail + Tier-up CTA); `connect:true` / `deal:true` just say where
+  // the request came from. Gopher Connect renders its own requests with connect:true — the
+  // audience there is already the eligible cohort, so a lock would be nonsense.
+  const mark = (j.lock==='connect' || j.connect) ? ['connect', CONNECT_LOGO, 'Gopher Connect']
              : ((j.deal || j.lock==='deal') ? ['deal', DEALS_LOGO, 'Gopher Deals'] : null);
   if(mark) b.push('<span class="jc-badge mark '+mark[0]+'">'
       +(j.lock?'<span class="mi lk">'+IC.lock+'</span>':'')
