@@ -883,14 +883,20 @@ function renderJobCard(j){
       +(j.posted?'<span class="jc-posted">'+j.posted+'</span>':'')
       +'</div>'
     : '';
-  const inner=top+biz+pay+scope+stats+foot;
+  // The top row (category + source mark) is deliberately NOT part of `rest`: on a locked
+  // card `rest` goes inside .lockwrap, which is opacity:.45 + grayscale(1). Dimming the
+  // source mark defeats its purpose — "this is a Connect job" is precisely what a worker
+  // needs to read at a glance, and the fine Connect wordmark disappeared entirely at 45%
+  // grey while the heavier Deals mark survived, so only one of them looked broken.
+  // The lock gates the JOB DETAIL (pay, scope, stats), not the card's identity.
+  const rest=biz+pay+scope+stats+foot;
   if(j.lock){
     const lt=j.lock==='connect'?'Connect job \u2014 for <b>Gopher Elite &amp; Pros</b>':'Gopher Deal \u2014 unlocks once <b>verified</b>';
     const cta='<div class="lock-cta">'+IC.lock+'<span class="lt">'+lt+'</span><span class="lgo js-tier">Tier up</span></div>';
-    return '<div class="job-card"><div class="lockwrap">'+inner+'</div>'+cta+'</div>'; }
+    return '<div class="job-card">'+top+'<div class="lockwrap">'+rest+'</div>'+cta+'</div>'; }
   // A Deal request the Gopher CAN take (tier'd/verified \u2014 not locked) still shows the "Gopher Deal"
   // corner ribbon in the top-right, matching the locked-card treatment minus the shading + tier-up gate.
-  return '<div class="job-card'+(j.top?' hot':'')+'">'+inner+'</div>';
+  return '<div class="job-card'+(j.top?' hot':'')+'">'+top+rest+'</div>';
 }
 function open101(){ try{ const html=decodeURIComponent(Array.prototype.map.call(atob(DOC101),c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')); showGuide(html); }catch(e){ toast('Could not open the guide'); } }
 function showGuide(html){ const host=document.querySelector('.host'); const sr=host&&host.shadowRoot; if(!sr) return; closeGuide(); const ov=document.createElement('div'); ov.id='guideOv'; ov.setAttribute('style','position:fixed;inset:0;z-index:200;background:#FBF7EF;border-radius:43px;overflow:hidden;display:flex;'); const fr=document.createElement('iframe'); fr.setAttribute('style','width:100%;height:100%;border:0;background:#fff;'); fr.srcdoc=html; ov.appendChild(fr); sr.appendChild(ov); }
