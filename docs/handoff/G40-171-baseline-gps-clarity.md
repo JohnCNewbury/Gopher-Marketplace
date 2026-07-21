@@ -58,9 +58,14 @@ isIOS
 `maps.apple.com/maps?…&dirflg=d&t=m`) rather than the newer `maps/dir/?api=1&destination=` form, to avoid
 regressing what already works. Waze is the only genuinely new target.
 
-**Secret spotted (flag, don't fix here):** `ordercard.js` embeds a hard-coded Google **Distance Matrix**
-API key (`AIzaSyB7K7kgFynhN-p5UtQiO2KfcfJ19snZXhI`, ~L864/897) in client code — belongs in the secret
-inventory / rotation work (G40-283 / SEC-1), referrer-restricted at minimum.
+**Secret spotted (flag, don't fix here):** `ordercard.js` embeds a hard-coded Google Maps Platform
+API key (`AIzaSyB7K7kg…` — **value redacted, do not re-paste it here**; ~L864/897) in client code.
+Belongs to the secret inventory / rotation work (G40-283 / SEC-1).
+
+_Redacted 2026-07-20: the literal key was published in this file while the repo was public. The full
+value, both affected apps, the four APIs in play, and why the obvious "just restrict it" fix would
+break production live in `Documentation/Security/maps-key-exposure-SEC-1.md` — kept **outside** this
+repo deliberately. Do not restore the literal here._
 
 ## Verification
 Served the file and loaded it in-browser: both baseline rows are anchors to Google Maps
