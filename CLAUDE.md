@@ -198,8 +198,17 @@ repo-root `docs/handoff/` folder, one level above this file._
   Deploy scope-checked with a full tree-vs-`origin/main` diff (88 files, 0 riders) — **the
   deploy script's diffstat display elides**; don't read it as the full list. Live-verified by
   content grep. Full trail: `Documentation/Claude Code Review:Cleanup/connect-learn-more-handoff.md`.
-  Still open there: 66 Pexels hot-links in worker-profile demo data (unproposed);
-  produced hero clips for `gopher-connect.html` itself (b-roll stand-ins playing).
+  Follow-on same day (`83d51e9`, deployed `2950b74`): **every Pexels hot-link site-wide
+  localized** — the "66 in gopher-connect" turned out to be **218 refs across 107 pages**
+  (every service-detail hero included). 160 unique image+crop combos → `assets/img/
+  px-<id>-<w>[x<h>].webp` (WebP q82, exact requested dims, 11.2→7.6 MB); both raw and
+  `&amp;`-encoded URL forms rewritten; source map in
+  `docs/handoff/final-cleanup/pexels-localization-manifest.md`. Two source photos had been
+  **deleted from Pexels** — lawn-mowing + touch-up-painting were serving broken live heroes;
+  replaced with verified equivalents. **Zero external images remain in the render path
+  site-wide** (gophergo.io URLs in og:/twitter:/JSON-LD metadata are intentional absolute
+  URLs, not hot-links — don't "fix" them). Still open: produced hero clips for
+  `gopher-connect.html` (BLOCKED on video production; b-roll stand-ins playing).
 
 ### Asset packs at repo root — spare/upgrade assets, NOT live-site dependencies
 
