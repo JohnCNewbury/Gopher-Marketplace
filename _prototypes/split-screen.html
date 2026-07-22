@@ -176,6 +176,33 @@
             var r0=l.GReq.get(id); if(!r0){ continue; }   // request not ready yet — retry next tick
             accepted[id]=true;
             var setPay=+r0.pay||0;
+            // Which mode was the request submitted under? The Go app already derives this
+            // (requesterPicks, gopher-go-prototype.html) — the harness was ignoring it and putting
+            // EVERY acceptance through the approval queue, so "First available — fastest match"
+            // behaved exactly like "I'll select my worker".
+            var wsel=String(r0.workerSelection||'first');
+            var requesterPicks=(wsel==='select'||wsel==='prioritize');
+
+            if(!requesterPicks){
+              /* FIRST AVAILABLE — the first accept IS the hire. No bidsList, no attention, no
+                 ACTION NEEDED: the job goes Active on both phones immediately. Same store shape a
+                 Hire produces in bidAction('hire'), minus bidDecision (that relay speaks in bid
+                 language — "hired you at your $X bid" — which is wrong for a set-price accept). */
+              var okd=false; try{ okd=!!w.__ptApprove(id); }catch(_){}
+              if(!okd){ accepted[id]=false; continue; }   // Go not ready — retry next tick
+              l.GReq.update(id, { stage:'active', accepted:1, hired:'Marcus K.',
+                                  attention:null, bidsList:null,
+                                  when:'Accepted \u00b7 on the job' });
+              try{ if(l.uiBucket!==undefined){ l.uiBucket='active'; l.uiIdx=0; } }catch(_){}
+              try{ if(l.renderPending) l.renderPending(); }catch(_){}
+              reqBanner('Your Gopher Is On The Job','Marcus K. accepted — select here to view');
+              status('Gopher <b>accepted</b> '+id+' \u2014 <b>first available</b>, so Marcus is hired on the spot. <b>Active</b> on both phones.');
+              continue;
+            }
+
+            /* I'LL SELECT MY WORKER / PRIORITIZE MY GOPHERS — accepting is an APPLICATION pending
+               the requester's approval (owner 2026-07-20: "if not approved by the requester, it is
+               NOT active"). Surfaced through the same hire/consider/deny the bid flow uses. */
             var cand={by:'Marcus K.', cost:0, labor:setPay, amt:setPay, dist:(r0.dist||'2.4')+' mi', rating:'4.9', jobs:212, note:'', status:'new', real:true, viaAccept:true};
             l.GReq.update(id, { bidsList:[cand], attention:{ type:'bid', label:'Marcus accepted — approve to hire', count:1 } });
             try{ if(l.uiBucket!==undefined){ l.uiBucket='submitted'; l.uiIdx=0; } }catch(_){}

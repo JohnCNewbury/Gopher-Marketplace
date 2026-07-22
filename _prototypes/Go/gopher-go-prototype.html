@@ -3217,6 +3217,22 @@ if(PT){
     try{ if(current==='job-detail' && state.job===job) load('job-detail'); }catch(_){}
   };
   // (h2) requester's verdict on the worker's bid (open-to-bids job), relayed by the harness
+  /* FIRST AVAILABLE auto-hire. "First available worker — fastest match" means the first accept
+     IS the hire; there is no approval step and no application queue. The owner's 2026-07-20 rule
+     ("if not approved by the requester, it is NOT active") governs 'select' / 'prioritize', where
+     the requester is genuinely choosing between workers — it was being applied to all three modes,
+     so First Available behaved identically to I'll-select. Owner confirmed 2026-07-21.
+     Lives here, next to __ptBidResult, so the harness never has to know how Go re-renders. */
+  window.__ptApprove=function(id){
+    var job=window.__ptJobs[id]; if(!job) return false;
+    job.accepted=true; job.approved=true;      // jobApproved() → "You're hired", addresses unlocked
+    function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
+    toast('\uD83C\uDF89 '+(job.who||'The requester')+' \u2014 first available, you\u2019re hired');
+    if(window.GopherBanner) GopherBanner.show({app:'go',title:'You\u2019re Hired \u2014 Request #'+String(id).slice(-5),sub:'Select here to view',onTap:openJob});
+    try{ if(current==='job-detail' && state.job===job) load('job-detail');
+         else if(current==='jobs-list') load('jobs-list'); }catch(_){}
+    return true;
+  };
   window.__ptBidResult=function(id,decision,amt){
     var job=window.__ptJobs[id]; if(!job) return;
     function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }

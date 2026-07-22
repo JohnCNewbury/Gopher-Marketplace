@@ -120,6 +120,8 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gph-hire{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--navy);background:var(--green-bright);border:none;padding:7px 14px;border-radius:99px;cursor:pointer;flex:0 0 auto;}
 .rc-choose{width:100%;margin-top:12px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:11px;border-radius:12px;cursor:pointer;}
 .rc-view{width:100%;margin-top:13px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:12px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.rc-alt{margin-top:8px;background:#fff;border:1.5px solid var(--line);color:var(--navy);}
+.rc-alt:hover{background:#f7f9fc;}
 .rc-view:active{transform:scale(.99);}
 .rc-view.urgent{background:#C44257;box-shadow:0 8px 20px -8px rgba(196,66,87,.65);}
 .rc-view.rate{background:#1CB061;animation:ratePulse 1.5s ease-in-out infinite;}
@@ -1022,7 +1024,15 @@ function cardHTML(r){
   +'<div class="rc-tx"><div class="rc-title">'+r.title+'</div><div class="rc-sub">#'+r.order+' &middot; '+cat+'</div></div>'
   +(r.amount?'<span class="rc-amt">'+r.amount+'</span>':'')+'</div>'
   +'<div class="rc-status"><span class="rc-pulse'+(attn?' red':'')+'"></span><span class="rc-status-tx">'+statusText(r)+'</span></div>'
-  +btn+'</div>';
+  +btn
+  /* An attention CTA REPLACED "View details", and the cancel/edit affordance lives inside that
+     sheet — so once a Gopher accepted, the requester's only moves were Hire / Considering / Deny.
+     No way back, no way out. Owner 2026-07-21: "we have them trapped ... MAJOR regression".
+     The urgent CTA stays primary; this restores the route to details (and therefore to Cancel
+     request) beside it. Nothing about cancellation POLICY changes — __reqCancelAffordance already
+     allowed it in this state; it had simply become unreachable. */
+  +(attn ? '<button class="rc-view rc-alt" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>View details &amp; options \u2192</button>' : '')
+  +'</div>';
 }
 function renderPending(){
  try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Previous requests counts in sync
