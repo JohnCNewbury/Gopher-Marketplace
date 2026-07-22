@@ -178,6 +178,29 @@ repo-root `docs/handoff/` folder, one level above this file._
   a 256px WebP + a 150px PNG); Blind Pelican → swapped the `LOGO_PELICAN` constant in `gopher-deals.html`
   from a 365px **no-alpha** PNG to a 336px **transparent** WebP with corrected pelican-in-circle art.
 
+- **Connect "Learn more" pages — built, wired, and LIVE (done 2026-07-22, deploy `9634bb8`).**
+  Six business-voiced use-case pages (`connect-{skilled-trades,courier-delivery,
+  workforce-support,commercial-cleaning,event-staffing,warehouse-fulfillment}.html`) are now
+  public, indexable, linked from the Connect use-case grid, and in `sitemap.xml` (127→133).
+  This session closed out the full handoff list: `id="use-cases"` anchor (`9e2fb1a`); card
+  copy rewrite + "Bulk Labor"→"Workforce Support" + cards became real `<a>` links with
+  per-card `aria-label` (they had been inert `<div>`s with `cursor:pointer`) + `.uc-*` ink
+  contrast fixes (`851574e`); `?need=<slug>` deep-link receiving end — slugs live in
+  `<option value=>`, never labels, so copy renames can't break links — plus 3 grid Pexels
+  hot-links localized (`e286ed4`); owner approval → `noindex` off + sitemap (`58c010a`);
+  **category-matched photography** — every page's rotating backdrop shows the work its own
+  six job cards describe (36 frames, one per card, in card order) and every hero is its
+  category's most iconic frame (`339916e`/`b459d0f`/`4acea28`). All frames Pexels at w=1600,
+  **each visually verified before conversion** (rejects: 2 secretly-grayscale, 1 hazmat suit,
+  2 legible company logos — alt text flags none of these); WebP q82 1400px, sources in
+  `assets/img/originals/`. 6-frame pages use `class="uc-photo-bg six"` → `ucCycle6` 30s in
+  `gopher-connect-uc.css` (the 9-frame `ucCycle` still exists; both cycles coexist).
+  Deploy scope-checked with a full tree-vs-`origin/main` diff (88 files, 0 riders) — **the
+  deploy script's diffstat display elides**; don't read it as the full list. Live-verified by
+  content grep. Full trail: `Documentation/Claude Code Review:Cleanup/connect-learn-more-handoff.md`.
+  Still open there: 66 Pexels hot-links in worker-profile demo data (unproposed);
+  produced hero clips for `gopher-connect.html` itself (b-roll stand-ins playing).
+
 ### Asset packs at repo root — spare/upgrade assets, NOT live-site dependencies
 
 `source-images/`, `source-assets/`, and six Deals merchant-logo folders (`Age-Restricted/`,
