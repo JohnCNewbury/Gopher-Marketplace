@@ -16,8 +16,9 @@
      · NO cream pillow cards            · NO glow shadows
 
    Each page sets its own accent to match its card in the Connect use-cases
-   grid, via `<body class="uc uc-skilled">` etc. Accent values are copied from
-   .use-card.uc-* in gopher-connect.html — keep them in sync.
+   grid, via `<body class="uc uc-skilled">` etc. The vivid --accent values are
+   copied from .use-card.uc-* in gopher-connect.html — keep those in sync. The
+   text shades are NOT a straight copy; see the accent block below for why.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root{
@@ -31,13 +32,30 @@
   --shadow-2:0 6px 22px rgba(26,42,94,0.09);
 }
 
-/* per-page accent — mirrors .use-card.uc-* in gopher-connect.html */
-body.uc-logistics  { --accent:#2f6df0; --accent-ink:#1f54c4; --accent-soft:rgba(47,109,240,0.12); }
-body.uc-onsite     { --accent:#f5a524; --accent-ink:#b9760a; --accent-soft:rgba(245,165,36,0.14); }
-body.uc-facilities { --accent:#14b8a6; --accent-ink:#0d8276; --accent-soft:rgba(20,184,166,0.13); }
-body.uc-skilled    { --accent:#f06a3a; --accent-ink:#c8491d; --accent-soft:rgba(240,106,58,0.13); }
-body.uc-events     { --accent:#8b5cf6; --accent-ink:#6d3fd1; --accent-soft:rgba(139,92,246,0.13); }
-body.uc-warehouse  { --accent:#33D975; --accent-ink:#1CB061; --accent-soft:rgba(51,217,117,0.13); }
+/* per-page accent — mirrors .use-card.uc-* in gopher-connect.html
+   THREE values per category, and they are not interchangeable:
+     --accent      the vivid mark. Graphics only (squares, rules, plates).
+     --accent-ink  darkened for TEXT ON WHITE (eyebrows, ticket keys). Four of
+                   the six are darker here than the matching .use-card value in
+                   gopher-connect.html — the card's inks measure 2.48:1
+                   (warehouse) to 4.17:1 (skilled) against the #eef0f8 step
+                   section, so they were copied over and then taken down to a
+                   pass. Hue and saturation are unchanged, so the category still
+                   reads as itself. The grid card has the same shortfall and is
+                   worth fixing there too.
+     --accent-lt   for TEXT ON THE NAVY SLABS. --accent-ink on navy measures
+                   2.19:1 (logistics) to 3.11:1 (skilled) — all below the 4.5:1
+                   AA floor for 10.5px type, and the photo section puts it over
+                   photography as well. Equal to --accent where that already
+                   clears 4.5:1; lightened for logistics and events, which do
+                   not. Measured against navy #002461, the lighter of the two
+                   dark backdrops (the photo scrim is darker still). */
+body.uc-logistics  { --accent:#2f6df0; --accent-ink:#1f54c4; --accent-lt:#7aa2f5; --accent-soft:rgba(47,109,240,0.12); }
+body.uc-onsite     { --accent:#f5a524; --accent-ink:#955f08; --accent-lt:#f5a524; --accent-soft:rgba(245,165,36,0.14); }
+body.uc-facilities { --accent:#14b8a6; --accent-ink:#0c786d; --accent-lt:#14b8a6; --accent-soft:rgba(20,184,166,0.13); }
+body.uc-skilled    { --accent:#f06a3a; --accent-ink:#b9441b; --accent-lt:#f06a3a; --accent-soft:rgba(240,106,58,0.13); }
+body.uc-events     { --accent:#8b5cf6; --accent-ink:#6d3fd1; --accent-lt:#b090f9; --accent-soft:rgba(139,92,246,0.13); }
+body.uc-warehouse  { --accent:#33D975; --accent-ink:#137a43; --accent-lt:#33D975; --accent-soft:rgba(51,217,117,0.13); }
 
 *,*::before,*::after{ box-sizing:border-box; }
 body.uc{
@@ -64,7 +82,14 @@ body.uc img{ max-width:100%; display:block; }
 .uc-eyebrow::before{
   content:''; width:7px; height:7px; border-radius:2px; background:var(--accent);
 }
-.uc-slab .uc-eyebrow{ color:var(--accent); }
+/* Every eyebrow that sits on a navy surface. There is no `.uc-slab` element —
+   that selector was the intent, but the class never landed on any markup, so
+   the eyebrows on the hero, the photo section, the credential slab, and the
+   closing CTA were all still rendering in --accent-ink at 2.19-3.11:1. */
+.uc-hero .uc-eyebrow,
+.uc-photo .uc-eyebrow,
+.uc-section.dark .uc-eyebrow,
+.uc-close .uc-eyebrow{ color:var(--accent-lt); }
 
 /* ── breadcrumb ── */
 .uc-crumbs{
@@ -72,7 +97,7 @@ body.uc img{ max-width:100%; display:block; }
   margin-bottom:16px; letter-spacing:0.2px;
 }
 .uc-crumbs a{ color:rgba(255,255,255,0.82); text-decoration:none; }
-.uc-crumbs a:hover{ color:var(--accent); }
+.uc-crumbs a:hover{ color:var(--accent-lt); }
 .uc-crumbs .sep{ margin:0 8px; opacity:0.45; }
 
 /* ══ HERO — navy slab, spec split ══ */
@@ -129,7 +154,7 @@ body.uc .uc-hero h1{
 .uc-btn-primary{ background:var(--green); color:var(--ink-on-green); }
 .uc-btn-primary:hover{ background:var(--green-dark); transform:translateY(-1px); }
 .uc-btn-ghost{ background:transparent; color:#fff; border-color:rgba(255,255,255,0.30); }
-.uc-btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+.uc-btn-ghost:hover{ border-color:var(--accent-lt); color:var(--accent-lt); }
 .uc-btn-dark{ background:var(--navy); color:#fff; }
 .uc-btn-dark:hover{ background:var(--navy-mid); }
 
