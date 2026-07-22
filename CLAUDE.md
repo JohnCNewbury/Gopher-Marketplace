@@ -577,4 +577,21 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
   (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
   meanwhile (see 2026-07-15 entry); swap the `<source>`s back when production clips exist.
+- **deals@ email wiring (Apps Script) — tabled by owner 2026-07-22.** Two pieces, both via
+  the existing Deals registration Apps Script endpoint (`GOPHER_FORM_ENDPOINT` in
+  `gopher-deals.html`): (1) welcome email sent **from deals@gophergo.io** on merchant
+  registration (the script's account needs deals@ as a Gmail send-as alias; replies then
+  return to deals@ automatically); (2) merchant-portal Inbox composer POSTs the message to
+  the same script, which emails it to deals@ with **Reply-To = the merchant's email**.
+  Script-side edits are owner-actions (no-live-changes rule); front-end wiring + the exact
+  Apps Script snippet are ready to build on request.
+- **`gopher-deals-101.html` — queued after the Apps Script work (owner 2026-07-22).**
+  Merchant walkthrough in the style of the existing 101 guides. Flagged complex: touches
+  the canonical shared header/footer (`gopher-header.js` nav / Tutorials dropdown),
+  `sitemap.xml`, the per-page SEO block, and cross-links from the other 101 pages.
+- **gopher-go worker-dashboard bid board (NOT BUILT YET, owner 2026-07-22).** The
+  featured-placement auction UI is coming to the worker dashboard. It MUST render from the
+  shared brain **`assets/js/gopher-bid-brain.js`** (same standings, badge rules, and
+  own-category lock as the Deals "Feature my business" board) — never re-implement the
+  auction logic inline.
 - ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).

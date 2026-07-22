@@ -2195,10 +2195,15 @@
   .bid-step span { width:22px; height:22px; border-radius:50%; background:var(--deals); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; }
   .bid-note { font-size:12.5px; color:var(--muted); margin:2px 0 24px; line-height:1.5; }
   .bid-month { font-size:11.5px; font-weight:800; color:var(--deals-dk); background:var(--deals-soft); border-radius:20px; padding:3px 10px; margin-left:8px; vertical-align:middle; }
-  .bid-board { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-content:start; }
-  .bid-card { position:relative; border:1px solid var(--line); border-radius:13px; padding:14px 15px; background:#fff; display:flex; flex-direction:column; gap:7px; }
-  .bid-card.leading { border-color:var(--green); background:var(--green-light); }
-  .bid-card.featured { position:relative; border-color:var(--green); background:var(--green-light); box-shadow:0 0 0 1px var(--green), 0 12px 30px rgba(51,217,117,.32); }
+  .bid-board { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-content:start; }
+  .bid-card { position:relative; border:1px solid #eef1f7; border-radius:16px; padding:16px 17px; background:#fff; display:flex; flex-direction:column; gap:7px;
+    box-shadow:0 10px 24px rgba(0,18,48,.08), 0 2px 6px rgba(0,18,48,.05);
+    transition:transform .16s ease, box-shadow .16s ease; }
+  .bid-card:hover { transform:translateY(-3px); box-shadow:0 16px 34px rgba(0,18,48,.12), 0 3px 8px rgba(0,18,48,.06); }
+  .bid-card.leading { border-color:var(--green); background:var(--green-light); box-shadow:0 10px 24px rgba(51,217,117,.22), 0 2px 6px rgba(0,18,48,.05); }
+  .bid-card.leading:hover { box-shadow:0 16px 34px rgba(51,217,117,.30), 0 3px 8px rgba(0,18,48,.06); }
+  .bid-card.featured { position:relative; border-color:var(--green); background:var(--green-light); box-shadow:0 0 0 1px var(--green), 0 14px 32px rgba(51,217,117,.34); }
+  .bid-card.featured:hover { transform:translateY(-3px); box-shadow:0 0 0 1px var(--green), 0 20px 42px rgba(51,217,117,.40); }
   .bid-feat-pill { display:inline-block; align-self:flex-start; font-size:9.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:#fff; background:var(--green-dark); border-radius:20px; padding:3px 10px; margin-bottom:1px; }
   .bid-sun { position:absolute; top:-10px; right:-9px; width:72px; height:72px; transform:rotate(13deg); background:url(assets/img/deals-img-3.svg) center/contain no-repeat; display:flex; align-items:center; justify-content:center; text-align:center; filter:drop-shadow(0 3px 5px rgba(0,0,0,.20)); z-index:3; pointer-events:none; }
   .bid-sun b { font-family:'Nunito',sans-serif; font-weight:900; font-size:10px; line-height:1.05; letter-spacing:.2px; text-transform:uppercase; color:#5b4300; }
@@ -2208,6 +2213,9 @@
   .bid-lead-pill { font-size:9.5px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--green-dark); background:#fff; border:1px solid var(--green); border-radius:20px; padding:2px 8px; white-space:nowrap; }
   .bid-amt { font-size:22px; font-weight:800; color:var(--deals-dk); line-height:1.1; }
   .bid-amt small { font-size:11px; font-weight:700; color:var(--muted); }
+  .bid-holder { font-size:11.5px; font-weight:600; color:var(--muted); }
+  .bid-holder.mine { color:var(--green-dark); font-weight:800; }
+  .bid-cat-lock { margin-top:3px; align-self:flex-start; font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--muted); background:#f1f3f8; border-radius:9px; padding:7px 12px; cursor:default; }
   .bid-holder { font-size:11.5px; color:var(--muted); }
   .bid-card .bid-btn { margin-top:3px; align-self:flex-start; background:var(--deals); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; cursor:pointer; }
   /* Advertise-on-Home hero + Deals Home Page preview */
@@ -4949,7 +4957,7 @@
                 <h3>Current bids for featured placement <span class="bid-month" id="bidMonth"></span></h3>
                 <button class="view-all" id="bidStart">Place a bid &rarr;</button>
               </div>
-              <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal.</p>
+              <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal. Every business bids on its own category card &mdash; yours is <b>Restaurants and Food Trucks</b>.</p>
               <div class="bid-board" id="bidBoard"></div>
             </div>
             <div class="bid-rotation">
@@ -5006,6 +5014,9 @@
 
 <div class="toast" id="toast">Deal published 🎉</div>
 
+<!-- Shared featured-placement auction brain — gopher-go's worker dashboard
+     (planned) must render its bidding board from this same module. -->
+<script src="assets/js/gopher-bid-brain.js"></script>
 
 <script>
 
@@ -5662,26 +5673,11 @@ var PAY_BADGES = {
     });
   })();
 
-  /* ---- Category-card bidding (front-end demo) ---- */
-  /* Ongoing top bid per category, shown openly so bidding is never blind. Demo seed values. */
-  var CATS = ['Service Providers','Restaurants and Food Trucks','Local Favorites','Convenience Stores','Age-Restricted'];
-  /* Live placements for this month's auction. One entry per bid; the category holding the top
-     overall bid also appears as its own category card (its 2nd-highest), so one category shows twice. */
-  var PLACEMENTS = [
-    { category:'Restaurants and Food Trucks', amount:500, holder:'Boundary Street Diner', mine:false },
-    { category:'Service Providers',           amount:410, holder:'A nearby merchant', mine:false },
-    { category:'Local Favorites',             amount:300, holder:'A nearby merchant', mine:false },
-    { category:'Convenience Stores',          amount:225, holder:'You \u00B7 My Way Tavern', mine:true },
-    { category:'Restaurants and Food Trucks', amount:180, holder:'A nearby merchant', mine:false },
-    { category:'Age-Restricted',              amount:125, holder:'A nearby merchant', mine:false }
-  ];
-  var CATEGORY_BIDS = {};
-  function recomputeCatTops(){
-    CATS.forEach(function(c){ CATEGORY_BIDS[c]={amount:0,holder:'No bids yet',mine:false}; });
-    PLACEMENTS.forEach(function(p){ if(p.amount > CATEGORY_BIDS[p.category].amount) CATEGORY_BIDS[p.category]={amount:p.amount,holder:p.holder,mine:p.mine}; });
-  }
-  recomputeCatTops();
-  var BID_CAT_ORDER = CATS.slice();
+  /* ---- Category-card bidding (front-end demo) ----
+     Standings math, badge rules and the own-category lock live in the shared
+     brain (assets/js/gopher-bid-brain.js) \u2014 gopher-go's worker dashboard is
+     expected to render from the same module. This block is view-only. */
+  var BID_VIEWER = { name:'My Way Tavern', category:'Restaurants and Food Trucks' };
   var MY_DEALS = [
     { id:'d1', title:'10% off your online order',         category:'Restaurants and Food Trucks', status:'Live' },
     { id:'d2', title:'Free appetizer with 2 entr\u00E9es', category:'Restaurants and Food Trucks', status:'Live' },
@@ -5694,22 +5690,23 @@ var PAY_BADGES = {
       bidDeal=$('bidDeal'), bidDealHint=$('bidDealHint'), bidCat=$('bidCat'),
       bidTop=$('bidTop'), bidAmount=$('bidAmount'), bidAmountHint=$('bidAmountHint');
 
-  if(bidMonthEl){ bidMonthEl.textContent = 'Bidding closes June 20th, 2026'; }
+  if(bidMonthEl){ bidMonthEl.textContent = GopherBidBrain.closeLabel(); }
 
   function renderBidBoard(){
     if(!bidBoard) return;
     bidBoard.innerHTML='';
-    var list = PLACEMENTS.slice().sort(function(a,b){ return b.amount-a.amount; });
-    list.forEach(function(p, i){
-      var featured = (i===0);
+    GopherBidBrain.board(BID_VIEWER).forEach(function(c){
       var card=document.createElement('div');
-      card.className='bid-card'+(featured?' featured':(p.mine?' leading':''))+(p.mine&&!featured?' has-sticker':'');
+      card.className='bid-card'+(c.featured?' featured':(c.leading?' leading':''))+(c.leading?' has-sticker':'');
       card.innerHTML=
-        (featured?'<span class="bid-feat-pill">Projected featured deal</span>':'')+
-        (p.mine&&!featured?'<span class="bid-sun"><b>You\u2019re<br>leading!</b></span>':'')+
-        '<div class="bid-card-top"><span class="bid-cat-name">'+esc(p.category)+'</span></div>'+
-        '<div class="bid-amt">'+money(p.amount)+' <small>top bid</small></div>'+
-        '<button class="bid-btn" data-cat="'+esc(p.category)+'">Bid here</button>';
+        (c.featured?'<span class="bid-feat-pill">Projected featured deal</span>':'')+
+        (c.leading?'<span class="bid-sun"><b>You\u2019re<br>leading!</b></span>':'')+
+        '<div class="bid-card-top"><span class="bid-cat-name">'+esc(c.category)+'</span></div>'+
+        '<div class="bid-amt">'+money(c.amount)+' <small>top bid</small></div>'+
+        '<div class="bid-holder'+(c.mine?' mine':'')+'">'+(c.mine?'You hold this spot':'Held by '+esc(c.holder))+'</div>'+
+        (c.canBid
+          ? '<button class="bid-btn" data-cat="'+esc(c.category)+'">'+(c.mine?'Raise your bid':'Bid here')+'</button>'
+          : '<span class="bid-cat-lock" title="Businesses bid in their own category \u2014 yours is '+esc(BID_VIEWER.category)+'">Not your category</span>');
       bidBoard.appendChild(card);
     });
   }
@@ -5723,7 +5720,7 @@ var PAY_BADGES = {
   }
   function syncBidForm(){
     var d=dealById(bidDeal.value); if(!d) return;
-    var b=CATEGORY_BIDS[d.category]||{amount:0,holder:'\u2014'};
+    var b=GopherBidBrain.catTop(d.category)||{amount:0,holder:'No bids yet'};
     bidCat.value=d.category;
     bidTop.value=money(b.amount)+'  \u00B7  leading: '+(b.holder||'\u2014');
     bidDealHint.textContent = d.status==='Live'
@@ -5740,8 +5737,6 @@ var PAY_BADGES = {
     bidForm.hidden=false;
     bidForm.scrollIntoView({behavior:'smooth', block:'start'});
   }
-  function topPlacementIdx(cat){ var idx=-1, mx=-1; for(var i=0;i<PLACEMENTS.length;i++){ if(PLACEMENTS[i].category===cat && PLACEMENTS[i].amount>mx){ mx=PLACEMENTS[i].amount; idx=i; } } return idx; }
-
   if(bidBoard){
     renderBidBoard();
     bidBoard.addEventListener('click', function(e){ var btn=e.target.closest('.bid-btn[data-cat]'); if(btn) openBidForm(btn.dataset.cat); });
@@ -5752,14 +5747,11 @@ var PAY_BADGES = {
       var d=dealById(bidDeal.value); if(!d){ alert('Pick a deal to feature.'); return; }
       var amt=parseInt(bidAmount.value,10);
       if(!amt || amt<1){ alert('Enter a bid amount.'); return; }
-      var b=CATEGORY_BIDS[d.category]||{amount:0};
-      var beatsTop = amt > b.amount;
-      // TODO: POST the bid { dealId, category, amount, month } to your backend; settle the monthly auction server-side.
-      if(beatsTop){
-        var idx=topPlacementIdx(d.category);
-        if(idx>=0){ PLACEMENTS[idx]={ category:d.category, amount:amt, holder:'You \u00B7 My Way Tavern', mine:true }; }
-        else { PLACEMENTS.push({ category:d.category, amount:amt, holder:'You \u00B7 My Way Tavern', mine:true }); }
-        recomputeCatTops();
+      /* Deals are always the merchant's own category, so the brain's category
+         lock only rejects here if that invariant ever breaks. */
+      var res = GopherBidBrain.placeBid(BID_VIEWER, d.category, amt);
+      if(!res.ok){ alert('You can only bid on your own category \u2014 '+BID_VIEWER.category+'.'); return; }
+      if(res.beatsTop){
         toast.textContent='Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6';
       } else {
         toast.textContent='Bid placed \u2014 '+money(amt)+'. Featured win locked in this month \u2705';
