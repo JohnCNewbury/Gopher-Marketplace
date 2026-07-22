@@ -319,8 +319,17 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
    ════════════════════════════════════════════════════════════════════════ */
 (function initG40RecoveryMobile(){
   window.GReq = window.GReq || (function(){
-var KEY='gopher_requests';
-function seed(){ return [
+// Store is NAMESPACED BY MODE. Previously both modes shared 'gopher_requests', and all()
+// returns a cached array without ever consulting ptEmpty() \u2014 the PT gate only guarded
+// seed(), the fallback. So a standalone visit cached the demo seed, and the split screen
+// loaded in the SAME TAB (sessionStorage is per-tab, and the iframes share the parent's)
+// re-served it: the requester showed Active(2)+Scheduled(1) while Go showed 0/0/0 with
+// 'No local jobs yet'. One shared store, two phones disagreeing \u2014 impossible by design,
+// reachable in two clicks. Separate keys make the contamination unexpressible, both ways.
+function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
+var KEY = ptEmpty() ? 'gopher_requests_pt' : 'gopher_requests';
+function seed(){ if(ptEmpty()) return [];   // PT (split) starts empty, same as the other pages
+ return [
  {order:'GR-00127',cat:'delivery',title:'Grocery run — Harris Teeter',amount:'$69.11',hired:'Marcus B.',stage:'active',accepted:3,scheduledForLater:false,cost:35,pay:15,pickup:'Harris Teeter',dropoff:'412 Oakwood Ave',when:'ETA 14 min · Today, 2:30 PM'},
  {order:'GR-00128',cat:'home',title:'Hardware run — drill bits + anchors',amount:'$76.67',hired:'Priya N.',stage:'active',accepted:2,scheduledForLater:false,cost:52,pay:18,pickup:'Ace Hardware',dropoff:'88 Maple Court',when:'ETA 19 min · Today, 3:05 PM'},
  {order:'GR-00124',cat:'home',title:'Ceiling fan install — conference room',amount:'$145.00',hired:'Rosa P.',stage:'scheduled',scheduledForLater:true,accepted:0,cost:0,pay:120,pickup:'',dropoff:'88 Maple Court',when:'Tomorrow, 9:00 AM'}

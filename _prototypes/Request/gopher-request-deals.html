@@ -673,7 +673,14 @@ function openDetail(id){ var ph=document.getElementById('phone'); if(ph) ph.scro
    use. The split-screen harness relays any record with stage:'searching' to the Go
    phone, so redeeming a service deal here can broadcast a real job. */
 window.GReq = window.GReq || (function(){
-var KEY='gopher_requests';
+// Store is NAMESPACED BY MODE. Previously both modes shared 'gopher_requests', and all()
+// returns a cached array without ever consulting ptEmpty() \u2014 the PT gate only guarded
+// seed(), the fallback. So a standalone visit cached the demo seed, and the split screen
+// loaded in the SAME TAB (sessionStorage is per-tab, and the iframes share the parent's)
+// re-served it: the requester showed Active(2)+Scheduled(1) while Go showed 0/0/0 with
+// 'No local jobs yet'. One shared store, two phones disagreeing \u2014 impossible by design,
+// reachable in two clicks. Separate keys make the contamination unexpressible, both ways.
+var KEY = ptEmpty() ? 'gopher_requests_pt' : 'gopher_requests';
 // PT (split-screen) mode: start with NO pending requests. Sticky via sessionStorage so it
 // survives home↔flow navigation. Standalone default (no ?pt) keeps the demo seed.
 function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
