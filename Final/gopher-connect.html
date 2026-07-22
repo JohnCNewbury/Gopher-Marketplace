@@ -1789,15 +1789,20 @@
   .use-cases-grid {
     display:grid; grid-template-columns:repeat(2,1fr); gap:20px;
   }
+  /* .use-card is an <a>. It carried cursor:pointer while the CTAs were inert
+     <span>s, so the whole grid invited a click and swallowed it. */
   .use-card {
-    --accent:var(--green); --accent-ink:var(--green-dark);
+    --accent:var(--green); --accent-ink:#137a43;
     --accent-soft:rgba(51,217,117,0.12);
     position:relative; border-radius:16px; overflow:hidden;
     background:white; border:1px solid #e9edf5;
     box-shadow:0 2px 12px rgba(26,42,94,0.05);
     transition:transform 0.3s cubic-bezier(.2,.7,.3,1), box-shadow 0.3s, border-color 0.3s;
-    cursor:pointer;
+    cursor:pointer; text-decoration:none; color:inherit;
     display:grid; grid-template-columns:152px 1fr; align-items:stretch;
+  }
+  .use-card:focus-visible {
+    outline:3px solid var(--accent); outline-offset:3px;
   }
   /* left accent rail draws in on hover */
   .use-card::before {
@@ -1854,13 +1859,19 @@
   .use-cta .use-cta-arrow { transition:transform 0.25s; }
   .use-card:hover .use-cta .use-cta-arrow { transform:translateX(4px); }
 
-  /* per-category accent palette — adds variety vs. the uniform demo tiles */
+  /* per-category accent palette — adds variety vs. the uniform demo tiles.
+     --accent-ink is TEXT ON WHITE here (.use-eyebrow2 at 10.5px, .use-cta at
+     12.5px) so it must clear 4.5:1. Two of these used to fail — onsite at 3.71
+     and warehouse at 2.83 (--green-dark is a fill shade, not an ink). Values
+     below match gopher-connect-uc.css exactly, so a card and the Learn-more
+     page it opens share one palette. --accent is untouched: the rail and the
+     eyebrow dot keep the vivid category colour. */
   .use-card.uc-logistics  { --accent:#2f6df0; --accent-ink:#1f54c4; --accent-soft:rgba(47,109,240,0.12); }
-  .use-card.uc-onsite     { --accent:#f5a524; --accent-ink:#b9760a; --accent-soft:rgba(245,165,36,0.14); }
-  .use-card.uc-facilities { --accent:#14b8a6; --accent-ink:#0d8276; --accent-soft:rgba(20,184,166,0.13); }
-  .use-card.uc-skilled    { --accent:#f06a3a; --accent-ink:#c8491d; --accent-soft:rgba(240,106,58,0.13); }
+  .use-card.uc-onsite     { --accent:#f5a524; --accent-ink:#955f08; --accent-soft:rgba(245,165,36,0.14); }
+  .use-card.uc-facilities { --accent:#14b8a6; --accent-ink:#0c786d; --accent-soft:rgba(20,184,166,0.13); }
+  .use-card.uc-skilled    { --accent:#f06a3a; --accent-ink:#b9441b; --accent-soft:rgba(240,106,58,0.13); }
   .use-card.uc-events     { --accent:#8b5cf6; --accent-ink:#6d3fd1; --accent-soft:rgba(139,92,246,0.13); }
-  .use-card.uc-warehouse  { --accent:var(--green); --accent-ink:var(--green-dark); --accent-soft:rgba(51,217,117,0.13); }
+  .use-card.uc-warehouse  { --accent:var(--green); --accent-ink:#137a43; --accent-soft:rgba(51,217,117,0.13); }
 
   /* ════════════════════════════════════════════════════════════════
      INTERACTIVE REQUEST FLOW DEMO (replaces old static timeline)
@@ -8080,72 +8091,75 @@
     </div>
 
     <div class="use-cases-grid">
-      <div class="use-card uc-logistics">
+      <!-- Each card is an <a> to its Learn-more page. The <h3> here is the naming
+           source of truth for the page title, the breadcrumb, and the "Primary
+           Workforce Need" <select> below — rename in all of them or they desync. -->
+      <a class="use-card uc-logistics" href="connect-courier-delivery.html" aria-label="Courier &amp; Delivery — learn more">
         <div class="use-img">
           <img src="https://images.pexels.com/photos/4391478/pexels-photo-4391478.jpeg?auto=compress&cs=tinysrgb&w=600&h=700&fit=crop" alt="Courier moving parcels on a hand truck" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">Logistics</span>
           <h3>Courier & Delivery</h3>
-          <p>Same-day couriers for documents, catering, retail drops, and B2B logistics across town.</p>
-          <span class="use-cta">Find couriers <span class="use-cta-arrow">→</span></span>
+          <p>A contract needs a wet signature this afternoon. Post the pickup, the drop, and the window.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
-      <div class="use-card uc-onsite">
+      </a>
+      <a class="use-card uc-onsite" href="connect-workforce-support.html" aria-label="Workforce Support — learn more">
         <div class="use-img">
           <img src="assets/img/connect-use-cta-2.webp" alt="Crew installing fixtures and lighting on-site" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">On-site</span>
-          <h3>Bulk Labor</h3>
-          <p>Surge crews for warehouse moves, inventory shifts, loading docks, and heavy lifting.</p>
-          <span class="use-cta">Book a crew <span class="use-cta-arrow">→</span></span>
+          <h3>Workforce Support</h3>
+          <p>The shipment landed two pallets bigger than planned. Name the headcount and the hours.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
-      <div class="use-card uc-facilities">
+      </a>
+      <a class="use-card uc-facilities" href="connect-commercial-cleaning.html" aria-label="Office &amp; Commercial Cleaning — learn more">
         <div class="use-img">
           <img src="assets/img/connect-use-cta-3.webp" alt="Cleaning crew wiping surfaces and mopping a living space" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">Facilities</span>
           <h3>Office & Commercial Cleaning</h3>
-          <p>Recurring or one-off cleans for offices, retail, and post-event spaces. Vetted teams.</p>
-          <span class="use-cta">Schedule a clean <span class="use-cta-arrow">→</span></span>
+          <p>The suite has to be turned before a walkthrough. After hours, one-off or recurring — no annual contract.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
-      <div class="use-card uc-skilled">
+      </a>
+      <a class="use-card uc-skilled" href="connect-skilled-trades.html" aria-label="Skilled Trades &amp; Handymen — learn more">
         <div class="use-img">
           <img src="assets/img/connect-use-cta.webp" alt="Handyman repairing plumbing under a sink" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">Skilled</span>
           <h3>Skilled Trades & Handymen</h3>
-          <p>Licensed pros for installs, repairs, assembly, and on-site facility maintenance.</p>
-          <span class="use-cta">Hire a pro <span class="use-cta-arrow">→</span></span>
+          <p>A fixture is down an hour before opening. Say what the job involves and the qualifications it calls for.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
-      <div class="use-card uc-events">
+      </a>
+      <a class="use-card uc-events" href="connect-event-staffing.html" aria-label="Event Staffing &amp; Setup — learn more">
         <div class="use-img">
           <img src="https://images.pexels.com/photos/2306281/pexels-photo-2306281.jpeg?auto=compress&cs=tinysrgb&w=600&h=700&fit=crop" alt="Event staff setting up a venue" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">Events</span>
           <h3>Event Staffing & Setup</h3>
-          <p>Day-of crews for setup, teardown, hospitality support, and venue logistics.</p>
-          <span class="use-cta">Staff an event <span class="use-cta-arrow">→</span></span>
+          <p>Load-in is four hours and the venue gave you two. Name the call time and the headcount.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
-      <div class="use-card uc-warehouse">
+      </a>
+      <a class="use-card uc-warehouse" href="connect-warehouse-fulfillment.html" aria-label="Warehouse &amp; Fulfillment — learn more">
         <div class="use-img">
           <img src="https://images.pexels.com/photos/4481325/pexels-photo-4481325.jpeg?auto=compress&cs=tinysrgb&w=600&h=700&fit=crop" alt="Warehouse fulfillment worker" loading="lazy">
         </div>
         <div class="use-body">
           <span class="use-eyebrow2">Warehouse</span>
           <h3>Warehouse & Fulfillment</h3>
-          <p>Pickers, packers, and forklift-certified workers for fulfillment surges and peak periods.</p>
-          <span class="use-cta">Scale fulfillment <span class="use-cta-arrow">→</span></span>
+          <p>Orders tripled and the pick line is the bottleneck. Name the hours and the certification the shift calls for.</p>
+          <span class="use-cta">Learn more <span class="use-cta-arrow">→</span></span>
         </div>
-      </div>
+      </a>
     </div>
   </div>
 </section>
@@ -8456,8 +8470,9 @@
           <label>Primary Workforce Need *</label>
           <select>
             <option value="">What do you need most?</option>
+            <!-- Mirrors the use-case card <h3>s verbatim. Rename in both. -->
             <option>Courier & Delivery</option>
-            <option>Bulk Labor</option>
+            <option>Workforce Support</option>
             <option>Office & Commercial Cleaning</option>
             <option>Skilled Trades & Handymen</option>
             <option>Event Staffing & Setup</option>
