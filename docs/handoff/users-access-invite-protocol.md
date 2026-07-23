@@ -1,7 +1,8 @@
 # Users & Access — Invite Protocol (Connect + Deals shared)
 
-**Status:** Owner-directed spec, 2026-07-22. Decisions below are made, not open —
-veto items are listed at the end. Governs the **Gopher Connect** business dashboard
+**Status:** Owner-APPROVED 2026-07-22 ("proceed with best practices standards
+recommendation") — every decision below is LOCKED, including the five former
+veto items at the end. Do not re-open with the dev. Governs the **Gopher Connect** business dashboard
 and the **Gopher Deals** merchant portal (which carries a 1:1 port of the section,
 owner spec 2026-07-22). One protocol, two org types.
 
@@ -198,12 +199,17 @@ audit events from §4-D accumulate the evidence for it).
 
 ---
 
-### Owner veto list (decisions made here that John should eyeball once)
+### Decisions LOCKED (owner approval 2026-07-22, best-practices standard)
 
-1. **7-day expiry** on invites (industry range is 3–30; 7 chosen).
-2. **Resend invalidates the old link** (vs. keeping both live).
-3. **Admins may grant Admin** (current modal behavior — Stripe-style; Slack is
-   stricter). Flip to owner-only-grants-admin if preferred.
-4. **Decline is silent** in v1 (no notification to the inviter).
-5. **Near-miss audit events** on fuzzy matches (§4-D) — recommended but
-   optional; pure backend, invisible to users.
+1. **7-day expiry** on invites — LOCKED (industry range is 3–30; 7 is the
+   Slack/Workspace-zone default).
+2. **Resend invalidates the old link** — LOCKED (single-active-token; the safer
+   standard everywhere).
+3. **Admins may grant Admin** — LOCKED, Stripe/Linear-style. The stricter
+   Slack variant (owner-only grants Admin) was considered and rejected: for
+   the 5–50-person businesses Connect targets, requiring the Owner for every
+   admin grant adds friction without meaningful risk reduction — the Owner
+   still solely controls ownership, billing, and can demote any Admin.
+4. **Decline is silent** in v1 — LOCKED.
+5. **Near-miss audit events** on fuzzy matches (§4-D) — LOCKED, build them
+   (pure backend, invisible to users; feeds future support-side merge tooling).
