@@ -712,6 +712,23 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   All four portals JXA-parse clean; verified in browser end-to-end (sidebar
   orders, hire-again photo grid, referral gap=10px, scroll lock on/off,
   Go eligibility both states, feedback modal, biz toggle) with 0 console errors.
+  **Follow-on corrections (owner, same day):** (a) **iQ branding corrected on
+  all 4 platforms** — my first read was wrong: the STYLE GUIDE forbids touching
+  the iQ pill itself; the pill is reverted to stock, and instead the PLATFORM
+  logo above it is replaced by the iQ lockup (Connect+Request: static
+  `shared-scribble.webp` in `#aiLogoSlot`, the JS nav-logo copy removed; Go's
+  Ask pane got the lockup; Deals already had it). Rule recorded in the brand
+  memory. (b) **Referral links now WORK on Request and Go** — they were inert
+  (toast-only on Go, nothing on Request). Connect's refer/recommend modal
+  system ported 1:1: Request gets both modals (recommend reads
+  `window.__getMyGophers()`; referrals file into its TRACK.pending),
+  Go gets the refer modal minus recommend AND minus the "Refer Yourself" tile
+  (owner-removed), submissions land in REFER.pending. Per-portal Gopher IDs
+  (614072 / 820083). CSS ported collision-checked (request kept its own
+  rc-copy/rf-done-ico/rf-sub; Go already had the gc-modal system).
+  (c) **Go got "← Back to main page" above Sign out** (leaves the dashboard,
+  keeps the session — mirrors Connect). (d) Age-restricted category card's
+  toggle upsized to match the others (`sm` class dropped).
 
 ### Outstanding to-do
 

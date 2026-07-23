@@ -2196,8 +2196,59 @@
   .dash-offer-btn.is-locked { background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.5); box-shadow:none; }
   .dash-offer-btn.is-locked .dob-arrow { display:none; }
   .dash-offer-btn.is-locked .dob-lock { display:inline; }
+  .rf-modal { max-width:380px; padding:26px 26px 22px; text-align:center; }
+  .rf-view { display:flex; flex-direction:column; }
+  .rf-brandwrap { margin-bottom:6px; }
+  .rf-brand { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:var(--navy); }
+  .rf-sub { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
+  .rf-qr {
+    width:150px; height:150px; margin:4px auto 16px; border-radius:14px;
+    background:
+      linear-gradient(90deg, transparent 0, transparent 100%),
+      conic-gradient(from 0deg, #002461 25%, #fff 0 50%, #002461 0 75%, #fff 0);
+    background-size:100% 100%, 14px 14px;
+    border:6px solid var(--navy); position:relative; overflow:hidden;
+  }
+  .rf-qr::after {
+    content:''; position:absolute; inset:38%; background:var(--green); border-radius:6px;
+    box-shadow:0 0 0 6px #fff;
+  }
+  .rf-id-label { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .rf-id { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; color:var(--navy); letter-spacing:0.04em; margin-bottom:16px; }
+  .rf-btn-navy { background:var(--navy) !important; color:#fff !important; box-shadow:0 6px 18px rgba(26,42,94,0.25) !important; }
+  .rf-btn-navy:hover { background:var(--navy-mid) !important; }
+  .rf-btn-navy + .rf-btn-navy { margin-top:10px; }
+  .rf-back { align-self:flex-start; background:none; border:none; cursor:pointer; color:var(--muted); font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; margin-bottom:8px; }
+  .rf-back:hover { color:var(--navy); }
+  .rf-field-label { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+  .rf-input {
+    width:100%; border:2px solid #e7eaf2; border-radius:11px; padding:11px 14px;
+    font-family:'DM Sans',sans-serif; font-size:14px; color:var(--navy); outline:none; margin-bottom:12px;
+  }
+  .rf-input:focus { border-color:var(--green); }
+  .rf-add-contact {
+    background:var(--green); color:var(--ink-on-green); border:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+    padding:11px; border-radius:11px; margin-bottom:14px; box-shadow:0 6px 18px rgba(51,217,117,0.3);
+  }
+  .rf-add-contact:hover { background:var(--green-dark); }
+  .rf-chiplist { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .rf-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#eef0f8; color:var(--navy); border-radius:99px; padding:5px 10px;
+    font-family:'DM Sans',sans-serif; font-size:12px;
+  }
+  .rf-chip button { background:none; border:none; cursor:pointer; color:var(--muted); font-size:14px; line-height:1; }
+  .rf-done-ico {
+    width:54px; height:54px; margin:2px auto 14px; border-radius:50%;
+    background:var(--green-light); color:var(--green-dark);
+    display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:900;
+  }
+  .rf-btn-navy + .rf-btn-navy { margin-top:10px; }
   .dash-demo-toggle { width:100%; background:transparent; border:1px dashed rgba(255,255,255,0.2); color:rgba(255,255,255,0.45); cursor:pointer; font-family:'Nunito',sans-serif; font-weight:700; font-size:10.5px; letter-spacing:0.3px; padding:5px 8px; border-radius:8px; margin:0 0 8px; transition:border-color 0.15s; }
   .dash-demo-toggle:hover { border-color:rgba(255,255,255,0.4); }
+  .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
+  .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
   .dash-demo-toggle b { color:rgba(255,255,255,0.72); }
   /* Offer my service — in-app deal form (DLP) */
   .osf { text-align:left; margin-top:4px; }
@@ -2511,7 +2562,10 @@
       <a class="dash-nav-item dash-nav-link" href="gopher-go.html"><span class="dni-ico">&#127968;</span><span class="dni-label">Visit Gopher Go site</span><span class="dni-ext" aria-hidden="true">&#8599;</span></a>
       <button class="dash-nav-item" id="goSendFeedback"><span class="dni-ico">&#9997;&#65039;</span><span class="dni-label">Send feedback</span></button>
     </div>
-    <div class="dash-sidebar-footer"><button class="dash-signout" id="dashSignOut">&larr; Sign out</button></div>
+    <div class="dash-sidebar-footer">
+      <button class="dash-signout dash-backmain" id="dashBackMain">&larr; Back to main page</button>
+      <button class="dash-signout" id="dashSignOut">&larr; Sign out</button>
+    </div>
   </aside>
 
   <div class="dash-backdrop" id="dashBackdrop"></div>
@@ -2645,7 +2699,7 @@
                  no longer a sub-row under Delivery. Mirror in the Go app
                  prototype (App Prototypes session pinged). -->
             <div class="cat-row" data-cat="Delivery — Age-Restricted">
-              <div class="crow"><span class="cl">Delivery — Age-Restricted <span style="color:var(--muted)">(ID required)</span></span><span class="sw sm js-sub on"></span></div>
+              <div class="crow"><span class="cl">Delivery — Age-Restricted <span style="color:var(--muted)">(ID required)</span></span><span class="sw js-sub on"></span></div>
             </div>
             <div class="cat-row" data-cat="Ride Sharing">
               <div class="crow"><span class="cl">Ride Sharing</span><span class="sw js-cat"></span></div>
@@ -2754,7 +2808,6 @@
             <button class="rc-copy" id="referCopy">Copy code</button>
           </div>
           <div class="refer-grid">
-            <button class="refer-tile" data-rk="self"><span class="rt-ico">&#11088;</span><span class="rt-ttl">Refer Yourself</span><span class="rt-desc">Share your code so new customers add you as their saved Gopher.</span></button>
             <button class="refer-tile" data-rk="go"><span class="rt-ico">&#128663;</span><span class="rt-ttl">Refer Gopher Go</span><span class="rt-desc">Invite a trusted local worker to start earning on Gopher Go.</span></button>
             <button class="refer-tile" data-rk="request"><span class="rt-ico">&#128230;</span><span class="rt-ttl">Refer Gopher Request</span><span class="rt-desc">Invite someone to post requests and hire Gophers.</span></button>
             <button class="refer-tile" data-rk="connect"><span class="rt-ico">&#127970;</span><span class="rt-ttl">Refer Gopher Connect</span><span class="rt-desc">Invite a business to manage their workforce.</span></button>
@@ -2778,6 +2831,7 @@
       <section class="dash-section" data-dash-section="help">
         <div class="panel">
           <div class="panel-head"><h2>Ask Gopher iQ</h2></div>
+          <img src="assets/img/shared-scribble.webp" alt="Gopher iQ" style="height:32px;width:auto;display:block;margin:2px 0 10px">
           <p class="panel-desc">Quick, mobile-friendly help — tap a topic.</p>
           <a class="help-card" href="gopher-faqs.html"><span class="hc-ico">?</span><span class="hc-tx"><span class="hc-ttl">FAQs</span><span class="hc-sub">Payments, jobs, tiers &amp; more</span></span><span class="hc-arr">&#8250;</span></a>
           <a class="help-card" href="gopher-go.html"><span class="hc-ico hc-101">101</span><span class="hc-tx"><span class="hc-ttl">Gopher Go 101</span><span class="hc-sub">The basics in a 2-minute walkthrough</span></span><span class="hc-arr">&#8250;</span></a>
@@ -2791,6 +2845,48 @@
 
 <!-- Request-history detail modal -->
 <div class="rhm-overlay" id="rhmOverlay" hidden><div class="rhm-card" id="rhmCard" role="dialog" aria-modal="true"></div></div>
+
+<!-- REFER MODAL — ported 1:1 from gopher-connect (owner, 2026-07-23:
+     "gopher-go identical to both as well, minus the recommend MY Gopher /
+     Refer yourself") -->
+<div class="gc-modal-overlay" id="referOverlay" hidden>
+  <div class="gc-modal rf-modal" role="dialog" aria-modal="true" aria-labelledby="referTitle">
+    <button type="button" class="gc-modal-close" id="referClose" aria-label="Close">×</button>
+
+    <!-- View 1: referral home (QR + ID + share buttons) -->
+    <div class="rf-view" id="rfViewHome">
+      <div class="rf-brandwrap"><span class="rf-brand" id="referBrand">Gopher</span></div>
+      <h4 id="referTitle">Refer Gopher Connect</h4>
+      <p class="rf-sub" id="referSub">Invite a business to Gopher Connect — you both earn rewards when they join.</p>
+      <div class="rf-qr" id="referQr" aria-hidden="true"></div>
+      <div class="rf-id-label">Your Gopher ID</div>
+      <div class="rf-id" id="referId">820083</div>
+      <button class="gc-modal-btn rf-btn-navy" data-refer-share="sms">Refer via SMS</button>
+      <button class="gc-modal-btn rf-btn-navy" data-refer-share="email">Refer via email</button>
+      <button class="gc-modal-btn-text" id="referTrackLink">View track referral history</button>
+    </div>
+
+    <!-- View 2: enter SMS / Email -->
+    <div class="rf-view" id="rfViewEntry" hidden>
+      <button class="rf-back" data-refer-back="home">‹ Back</button>
+      <h4 id="rfEntryTitle">Refer via SMS</h4>
+      <label class="rf-field-label" id="rfEntryLabel">Add number</label>
+      <input type="text" class="rf-input" id="rfEntryInput" placeholder="555-555-5555">
+      <button class="rf-add-contact" id="rfAddContact">+ Access your contacts</button>
+      <div class="rf-chiplist" id="rfChips"></div>
+      <button class="gc-modal-btn" id="rfEntrySubmit">Submit</button>
+    </div>
+
+    <!-- View 3: submitted confirmation -->
+    <div class="rf-view" id="rfViewDone" hidden>
+      <div class="rf-done-ico">✓</div>
+      <h4>Referral submitted</h4>
+      <p class="rf-sub" id="rfDoneMsg">Some of your referrals may already be on the Gopher network. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
+      <button class="gc-modal-btn" id="rfDoneTrack">View referral history</button>
+      <button class="gc-modal-btn-text" data-refer-back="home">Refer someone else</button>
+    </div>
+  </div>
+</div>
 
 <!-- ░░ Send feedback (owner sidebar spec 2026-07-23 — mirrors Connect's) ░░ -->
 <div class="gc-modal-overlay" id="goFeedbackOverlay" hidden>
@@ -3086,6 +3182,14 @@
     navItems.forEach(b => b.addEventListener('click', () => show(b.dataset.dashSection)));
     if(burger) burger.addEventListener('click', () => dash.classList.toggle('sidebar-open'));
     if(backdrop) backdrop.addEventListener('click', () => dash.classList.remove('sidebar-open'));
+    // Back to main page: leave the dashboard without ending the session
+    // (mirrors Connect/Request — owner, 2026-07-23).
+    const backMain = document.getElementById('dashBackMain');
+    if(backMain) backMain.addEventListener('click', () => {
+      dash.classList.remove('active');
+      document.body.classList.remove('go-dash-active');
+      window.scrollTo(0,0);
+    });
     document.getElementById('dashSignOut').addEventListener('click', () => {
       dash.classList.remove('active');
       document.body.classList.remove('go-dash-active');
@@ -3695,10 +3799,75 @@
         setTimeout(() => copy.textContent = 'Copy code', 1600);
         showToast('Referral code copied.');
       });
-      document.querySelectorAll('.refer-tile').forEach(t => t.addEventListener('click', () => {
-        const map = { self:'your self-referral link', go:'a Gopher Go invite', request:'a Gopher Request invite', connect:'a Gopher Connect invite' };
-        showToast('Sharing ' + (map[t.dataset.rk]||'your invite') + '\u2026');
-      }));
+      /* Referral modal — ported from gopher-connect (owner, 2026-07-23) */
+      const REFER_COPY = {
+        connect: { brand:'Gopher Connect', title:'Refer Gopher Connect',
+          sub:'Invite a business to manage their workforce on Gopher Connect — you both earn rewards when they join.' },
+        request: { brand:'Gopher', title:'Refer Gopher Request',
+          sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.' },
+        go: { brand:'Gopher Go', title:'Refer Gopher Go',
+          sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.' }
+      };
+      let referChannel='sms', referKind='go';
+      const referContacts=[];
+      const showReferView = v => {
+        document.getElementById('rfViewHome').hidden  = v!=='home';
+        document.getElementById('rfViewEntry').hidden = v!=='entry';
+        document.getElementById('rfViewDone').hidden  = v!=='done';
+      };
+      const jumpToTrack = () => {
+        const tabs=document.querySelector('.rs-tabs');
+        if(tabs){ tabs.scrollIntoView({behavior:'smooth', block:'center'});
+          const p=tabs.querySelector('[data-tab="pending"]'); if(p) p.click(); }
+      };
+      const openReferModal = kind => {
+        referKind=kind; referContacts.length=0;
+        const c=REFER_COPY[kind]||REFER_COPY.go;
+        document.getElementById('referBrand').textContent=c.brand;
+        document.getElementById('referTitle').textContent=c.title;
+        document.getElementById('referSub').textContent=c.sub;
+        showReferView('home');
+        document.getElementById('referOverlay').hidden=false;
+      };
+      const renderReferChips = () => {
+        const wrap=document.getElementById('rfChips');
+        wrap.innerHTML=referContacts.map((c,i)=>'<span class="rf-chip">'+c+'<button data-chip="'+i+'" aria-label="Remove">×</button></span>').join('');
+        wrap.querySelectorAll('[data-chip]').forEach(b=>b.addEventListener('click',()=>{ referContacts.splice(parseInt(b.dataset.chip,10),1); renderReferChips(); }));
+      };
+      document.querySelectorAll('.refer-tile').forEach(t => t.addEventListener('click', () => openReferModal(t.dataset.rk)));
+      (function initReferModal(){
+        const overlay=document.getElementById('referOverlay'); if(!overlay) return;
+        const close=()=>{ overlay.hidden=true; };
+        document.getElementById('referClose').addEventListener('click', close);
+        overlay.querySelectorAll('[data-refer-share]').forEach(b=>b.addEventListener('click',()=>{
+          referChannel=b.dataset.referShare;
+          const c=REFER_COPY[referKind]||REFER_COPY.go;
+          document.getElementById('rfEntryTitle').textContent=c.title+' via '+(referChannel==='sms'?'SMS':'Email');
+          document.getElementById('rfEntryLabel').textContent=referChannel==='sms'?'Add number':'Add email';
+          const inp=document.getElementById('rfEntryInput');
+          inp.placeholder=referChannel==='sms'?'555-555-5555':'name@email.com'; inp.value='';
+          referContacts.length=0; renderReferChips();
+          showReferView('entry');
+        }));
+        overlay.querySelectorAll('[data-refer-back]').forEach(b=>b.addEventListener('click',()=>showReferView(b.dataset.referBack)));
+        document.getElementById('rfAddContact').addEventListener('click',()=>{
+          const inp=document.getElementById('rfEntryInput'); const v=inp.value.trim();
+          if(v){ referContacts.push(v); inp.value=''; renderReferChips(); }
+        });
+        document.getElementById('rfEntryInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('rfAddContact').click(); });
+        document.getElementById('rfEntrySubmit').addEventListener('click',()=>{
+          const inp=document.getElementById('rfEntryInput');
+          if(inp.value.trim()){ referContacts.push(inp.value.trim()); inp.value=''; }
+          if(!referContacts.length) return;
+          const t=new Date(), ds=(t.getMonth()+1)+'.'+t.getDate()+'.'+String(t.getFullYear()).slice(2);
+          referContacts.forEach(c => REFER.pending.unshift([ds, c, referChannel==='sms'?'SMS':'Email']));
+          renderTrack('pending');
+          document.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('on', x.dataset.tab==='pending'));
+          showReferView('done');
+        });
+        document.getElementById('referTrackLink').addEventListener('click',()=>{ close(); jumpToTrack(); });
+        document.getElementById('rfDoneTrack').addEventListener('click',()=>{ close(); jumpToTrack(); });
+      })();
       const REFER = {
         pending:[['3.12.26','919-555-0177','SMS'],['2.2.26','john.demo@gophergo.io','Email'],['1.1.26','919-555-0188','SMS']],
         added:[['3.12.26','John Newbury','Gopher'],['2.2.26','Dave Kreeger','Requester'],['1.1.26','Tom Livolsi','Gopher']],
