@@ -676,8 +676,16 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   corrections: Go's blocked list is **"Block Requesters"** (spelling canon:
   "Requester" always ends in -er, never "requestor") and sits top-level
   directly under Request history; visible "requestor" copy swept in Go+Request
-  UI chrome (the iQ FAQ corpus still has 23 instances ×7 copies — needs its
-  sync procedure, flagged as follow-up).
+  UI chrome. **Follow-on (same day, owner-approved): the FAQ-corpus sweep ran**
+  — all 23 corpus instances fixed across ALL 7 inline copies (engine js, index,
+  request, services, faqs, 2-engine-block, sandbox; all in q/a text, zero in kw
+  fields so iQ matching is unaffected) plus gopher-faqs.html's 13 static
+  rendered duplicates. verify-faqs-integrity.py green (184/copy, new common
+  hash 68f9929b02, request DRIFT-OK), all copies JXA-parse clean, browser check
+  confirms rendered "Requester" + working iQ answers. Identifiers
+  (favoritedByRequestor etc.) and code comments deliberately untouched.
+  **Standing owner directive recorded to memory: proactively police
+  typos/terminology in all user-visible copy — iQ corpus above all.**
   **Uniform sizing**: brand cards min-height 122px, CTAs min-height 50px + navy
   text on all 4 (Request's CTA was white — hardcoded #002461; note Request's
   `--ink-on-green` is still #fff globally). (7) **Go CTA = "+ Service Provider
