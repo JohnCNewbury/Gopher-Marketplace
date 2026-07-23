@@ -572,6 +572,23 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     one-tap send → Submitted) and both guides at 1280 + 375 (all marks load, no lockup splits,
     no horizontal overflow), 0 console errors throughout.
 
+- **`gopher-deals-101.html` — built and fully wired (done 2026-07-22).** Merchant-led
+  tutorial (Service-Provider callout included), sibling to the other three 101 guides
+  (same shell/CSS/scroll-spy, `logo:'merchantDeals'` header, standard footer, SEO block,
+  canonical). Owner-directed scope: Deals home audience map ("neighbor eyes") →
+  registration → portal tour → featured bidding. **Screenshot-first**: 7 real portal
+  captures as `assets/img/deals101-*.webp` (audience map, register modal, dashboard,
+  submit-deal w/ live preview, my-deals, inbox w/ new character avatar, bid board) —
+  captured via headless Chrome against a scratch serve copy patched with `#shot-<section>`
+  / `#mapshot` hooks (hooks were **never committed**; Maps captures need port **8123**,
+  the key's localhost allowlist). Placement strip reuses the 4 `deals-bidrot` images —
+  their **captions follow the carousel alt sequence, not the filenames** (filenames are
+  offset by one; don't "fix" them to match). Wired everywhere the other 101s are:
+  `gopher-header.js` Tutorials menu, `gopher-footer.js`, 19 inline-footer pages,
+  `gopher-go.html` bespoke menu, `sitemap.xml` (134 URLs), plus a "Deals 101 guide" link
+  in the merchant-portal Resources sidebar. Verified: fresh-profile DOM renders the link
+  via both shared components, 0 broken images, 0 console errors, no mobile overflow at 375.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
@@ -585,10 +602,11 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   the same script, which emails it to deals@ with **Reply-To = the merchant's email**.
   Script-side edits are owner-actions (no-live-changes rule); front-end wiring + the exact
   Apps Script snippet are ready to build on request.
-- **`gopher-deals-101.html` — queued after the Apps Script work (owner 2026-07-22).**
-  Merchant walkthrough in the style of the existing 101 guides. Flagged complex: touches
-  the canonical shared header/footer (`gopher-header.js` nav / Tutorials dropdown),
-  `sitemap.xml`, the per-page SEO block, and cross-links from the other 101 pages.
+- ~~`gopher-deals-101.html`~~ — **DONE 2026-07-22** (see the entry below).
+- **Deals portal "Users & access" section (owner 2026-07-22).** Currently a Coming-soon
+  placeholder card (`data-pane="users"` in `gopher-deals.html`). Build it out: invite
+  teammates + set who can publish/edit deals (role-based access), prototype-grade like the
+  rest of the portal.
 - **gopher-go worker-dashboard bid board (NOT BUILT YET, owner 2026-07-22).** The
   featured-placement auction UI is coming to the worker dashboard. It MUST render from the
   shared brain **`assets/js/gopher-bid-brain.js`** (same standings, badge rules, and

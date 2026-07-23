@@ -27,7 +27,8 @@
     blog:            'gopher-blog.html',
     tutorialRequest: 'gopher-request-101.html',
     tutorialConnect: 'gopher-connect-101.html',
-    tutorialGo:      'gopher-go-101.html'
+    tutorialGo:      'gopher-go-101.html',
+    tutorialDeals:   'gopher-deals-101.html'
   }, CFG.links || {});
 
   // Optional anchor appended to each LOGIN link so it jumps to the sign-in SECTION
@@ -178,6 +179,7 @@
     +     '<a class="gh-pop-mlink" href="'+LINKS.tutorialRequest+'">Gopher Request 101</a>'
     +     '<a class="gh-pop-mlink" href="'+LINKS.tutorialConnect+'">Gopher Connect 101</a>'
     +     '<a class="gh-pop-mlink" href="'+LINKS.tutorialGo+'">Gopher Go 101</a>'
+    +     '<a class="gh-pop-mlink" href="'+LINKS.tutorialDeals+'">Gopher Deals 101</a>'
     +   '</div>'
     +   '<a class="gh-pop-mlink" href="'+LINKS.ourStory+'">Our Story</a>'
     +   '<a class="gh-pop-mlink" href="'+LINKS.blog+'">Gopher Blog</a>'
