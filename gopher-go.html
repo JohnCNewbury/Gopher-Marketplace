@@ -2409,6 +2409,10 @@
   .idstat.needed { background:#fff5e6; color:var(--warning-text); }
   .idl-shield { height:20px; width:auto; vertical-align:-6px; margin-right:3px; }
   .pro-badge-sm { height:20px; width:auto; vertical-align:-5px; margin-right:5px; }
+  .showas-card { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1.5px solid #e3e8f2; border-radius:12px; padding:13px 15px; background:#fafbff; margin-top:4px; }
+  .showas-main { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .showas-ttl { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
+  .showas-sub { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
 
   /* vehicle photos on file / needs-update */
   .vphoto .vp-state { display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:var(--green-dark); margin-top:4px; }
@@ -2552,6 +2556,7 @@
       <button class="dash-nav-item" data-dash-section="blocked"><span class="dni-ico">&#128683;</span><span class="dni-label">Block Requesters</span></button>
       <div class="dash-nav-divider">Account</div>
       <button class="dash-nav-item" data-dash-section="business"><span class="dni-ico">&#127970;</span><span class="dni-label">Business info</span></button>
+      <button class="dash-nav-item" data-dash-section="pro"><span class="dni-ico"><img src="assets/img/tier-pro.svg" alt="Pro" style="height:13px;width:auto;background:#fff;border-radius:5px;padding:2px 3px;display:block"></span><span class="dni-label">Become a Pro</span></button>
       <button class="dash-nav-item" data-dash-section="personal"><span class="dni-ico">&#128221;</span><span class="dni-label">Personal info</span></button>
       <button class="dash-nav-item" data-dash-section="work"><span class="dni-ico">&#128205;</span><span class="dni-label">Work settings &amp; ratings</span></button>
       <button class="dash-nav-item" data-dash-section="payout"><span class="dni-ico">&#128179;</span><span class="dni-label">Payment info</span></button>
@@ -2661,17 +2666,31 @@
           <div class="field full"><label>Business name</label><input type="text" id="bizName" data-field value="Hale Services LLC"></div>
           <div class="field full"><label>Title</label><input type="text" id="bizTitle" data-field value="Owner"></div>
           <div class="field full"><label>Business address</label><input type="text" id="bizAddr" data-field value="412 Maple Ave, Fuquay-Varina, NC 27526"></div>
+          <!-- Business vs individual: single activate/deactivate switch
+               (owner, 2026-07-23 — replaced the clunky two-button segment) -->
           <div class="field full"><label>How you appear to requesters</label>
-            <div class="seg" id="bizShowAsSeg" style="margin-top:4px">
-              <button type="button" data-showas="business" class="on">Show me as a business</button>
-              <button type="button" data-showas="individual">Show me as an individual</button>
+            <div class="showas-card">
+              <div class="showas-main">
+                <span class="showas-ttl" id="bizShowAsTtl">Showing as a business</span>
+                <span class="showas-sub" id="bizShowAsSub">Requesters see <b>Hale Services LLC</b></span>
+              </div>
+              <span class="sw on" id="bizShowAsSw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
             </div>
             <input type="hidden" id="bizShowAs" data-field value="business">
           </div>
           <div class="up2">
             <div class="cred uptile" data-cred="Business logo"><div class="up-ico">&#128247;</div><span>Business logo</span><input type="hidden" data-field value="0"></div>
           </div>
-          <div class="sec-h">Become a Pro <span class="tier-badge-pro" style="display:inline-flex;align-items:center;background:var(--navy,#002461);color:#fff;font-family:Nunito;font-weight:900;font-size:11px;border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:middle">pro</span></div>
+          <div class="save-row"><button class="btn-save" disabled>Save changes</button><span class="save-note">No changes yet.</span></div>
+        </div>
+      </section>
+
+      <!-- ░░ BECOME A PRO (owner, 2026-07-23: its own section under Business
+           info; credentials moved here from Business info; real Pro logo) ░░ -->
+      <section class="dash-section" data-dash-section="pro">
+        <div class="panel">
+          <div class="panel-head"><h2>Become a Pro</h2><img src="assets/img/tier-pro.svg" alt="Gopher Pro" style="height:26px;width:auto"></div>
+          <p class="panel-desc">The Pro badge tells requesters you're insured, bonded, and licensed — a credential that stacks with any tier and wins more work.</p>
           <div class="procallout"><span class="pc-ico">&#11088;</span><div>These docs determine your <b>Gopher Pro</b> eligibility and are reviewed for approval. Uploading a new document <b>replaces the previous one</b> — newest overrides oldest.</div></div>
           <div class="up2">
             <div class="cred uptile" data-cred="Proof of insurance"><div class="up-ico">&#128196;</div><span>Proof of insurance</span><input type="hidden" data-field value="0"></div>
@@ -3432,12 +3451,15 @@
     /* ── BUSINESS ── Name locked; Title/Address editable; credentials replace
        (newest overrides). Uploading bumps a hidden version so Save is required. */
     const business = wire('business');
-    if(business){
+    const proPane = wire('pro');   // Become a Pro — its own pane (owner, 2026-07-23)
+    if(business || proPane){
       const credFile = document.createElement('input');
       credFile.type='file'; credFile.accept='image/*,application/pdf'; credFile.style.display='none';
       document.body.appendChild(credFile);
       let credTarget=null;
-      business.querySelectorAll('.cred').forEach(tile => tile.addEventListener('click', () => { credTarget=tile; credFile.value=''; credFile.click(); }));
+      // Upload tiles live in BOTH panes now (logo in Business, docs in Pro).
+      document.querySelectorAll('.dash-section[data-dash-section="business"] .cred, .dash-section[data-dash-section="pro"] .cred')
+        .forEach(tile => tile.addEventListener('click', () => { credTarget=tile; credFile.value=''; credFile.click(); }));
       credFile.addEventListener('change', () => {
         if(!credTarget) return;
         const v = credTarget.querySelector('input[data-field]'); if(v) v.value = String(Date.now());
@@ -3445,7 +3467,7 @@
         let st = credTarget.querySelector('.cred-status');
         if(!st){ st=document.createElement('span'); st.className='cred-status'; credTarget.appendChild(st); }
         st.textContent = '\u2713 New file ready — replaces previous';
-        business.dispatchEvent(new Event('input', {bubbles:true}));
+        credTarget.closest('.dash-section').dispatchEvent(new Event('input', {bubbles:true}));
         credTarget=null;
       });
     }
@@ -3949,8 +3971,6 @@
   [inelOv, svcOv].forEach(function(o){ if(o) o.addEventListener('click', function(e){ if(e.target===o) closeOv(o); }); });
   render();
 
-  // "Show me as a business / individual" (owner, 2026-07-23). Writes the hidden
-  // data-field input and fires 'input' so the panel's save-dirty tracking sees it.
   // Send feedback (minimal — mirrors Connect's; prototype: no real dispatch)
   var fbOv = document.getElementById('goFeedbackOverlay');
   var fbBtn = document.getElementById('goSendFeedback');
@@ -3971,17 +3991,31 @@
     fbOv.addEventListener('click', function(e){ if(e.target===fbOv) closeOv(fbOv); });
   }
 
-  var seg = document.getElementById('bizShowAsSeg');
-  if(seg){
-    seg.addEventListener('click', function(e){
-      var b = e.target.closest('[data-showas]'); if(!b) return;
-      seg.querySelectorAll('[data-showas]').forEach(function(x){ x.classList.toggle('on', x === b); });
-      var hid = document.getElementById('bizShowAs');
-      if(hid && hid.value !== b.dataset.showas){
-        hid.value = b.dataset.showas;
-        hid.dispatchEvent(new Event('input', { bubbles:true }));
-      }
+  // "Show me as a business" activate/deactivate switch (owner, 2026-07-23).
+  // ON = business (requesters see the business name); OFF = individual
+  // (requesters see the worker's own name). Writes the hidden data-field and
+  // fires 'input' so the panel's save-dirty tracking sees it.
+  var showSw = document.getElementById('bizShowAsSw');
+  if(showSw){
+    var showTtl = document.getElementById('bizShowAsTtl');
+    var showSub = document.getElementById('bizShowAsSub');
+    var showHid = document.getElementById('bizShowAs');
+    var paintShowAs = function(){
+      var on = showSw.classList.contains('on');
+      var biz = (document.getElementById('bizName')||{}).value || 'your business';
+      showTtl.textContent = on ? 'Showing as a business' : 'Showing as an individual';
+      showSub.innerHTML = 'Requesters see <b>' + (on ? biz : 'Marcus Hale') + '</b>';
+      showSw.setAttribute('aria-checked', String(on));
+    };
+    showSw.addEventListener('click', function(){
+      showSw.classList.toggle('on');
+      showHid.value = showSw.classList.contains('on') ? 'business' : 'individual';
+      showHid.dispatchEvent(new Event('input', { bubbles:true }));
+      paintShowAs();
     });
+    var bn = document.getElementById('bizName');
+    if(bn) bn.addEventListener('input', paintShowAs);
+    paintShowAs();
   }
 })();
 </script>
