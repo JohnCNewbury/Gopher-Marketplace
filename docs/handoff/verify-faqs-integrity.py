@@ -11,7 +11,7 @@ page whose search throws. This guard makes that failure loud instead of silent.
 For each inlined copy it checks:
   1. exactly one `const FAQS = [ ... ];` declaration is present,
   2. the array is valid JSON,
-  3. it holds the expected number of entries (default 183),
+  3. it holds the expected number of entries (default 184),
   4. it round-trips (json.dumps(arr) == the source literal) — i.e. no mangling,
   5. all copies agree except an allow-listed drift set (gopher-request.html carries 5
      intentionally-different entries — same questions, Request-specific answers).
@@ -19,7 +19,7 @@ For each inlined copy it checks:
 Exit non-zero (blocking a deploy) if any check fails.
 
 Usage:
-  python3 verify-faqs-integrity.py [--root Final] [--expect 183]
+  python3 verify-faqs-integrity.py [--root Final] [--expect 184]
 """
 import argparse, json, re, sys, hashlib
 from pathlib import Path
@@ -48,7 +48,7 @@ def load(path: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="Final")
-    ap.add_argument("--expect", type=int, default=183)
+    ap.add_argument("--expect", type=int, default=184)
     args = ap.parse_args()
     root = Path(args.root)
 
