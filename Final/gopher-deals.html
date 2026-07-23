@@ -2100,6 +2100,75 @@
   .placeholder-card h3 { margin:12px 0 6px; font-size:18px; }
   .placeholder-card p { font-size:13.5px; max-width:420px; margin:0 auto; line-height:1.55; }
 
+  /* ─── Users & access — ported 1:1 from gopher-connect (owner spec 2026-07-22) ─── */
+  .role-info-banner {
+    background:rgba(26,42,94,0.04);
+    border:1px solid #e7eaf2;
+    border-left:3px solid var(--navy);
+    border-radius:10px;
+    padding:14px 18px;
+    margin-bottom:18px;
+    font-family:'DM Sans'; font-size:12.5px;
+    color:var(--text); line-height:1.6;
+  }
+  .role-info-banner b { color:var(--navy); }
+  .prev-table-wrap { background:white; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; overflow-x:auto; }
+  .prev-table { width:100%; border-collapse:collapse; }
+  .prev-table th { background:#f7f9fc; text-align:left; padding:13px 18px; font-family:'Nunito'; font-weight:800; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; border-bottom:1px solid #e7eaf2; }
+  .prev-table td { padding:14px 18px; border-bottom:1px solid #f0f2f7; font-family:'DM Sans'; font-size:13px; color:var(--text); }
+  .prev-table tr:last-child td { border-bottom:none; }
+  .prev-table tr:hover td { background:#fafbfd; }
+  .prev-table .pt-action { background:transparent; border:1px solid #d4d8e3; color:var(--navy); border-radius:6px; padding:5px 12px; font-family:'Nunito'; font-weight:700; font-size:11px; cursor:pointer; }
+  .prev-table .pt-action:hover { border-color:var(--green); color:var(--green-dark); }
+  .users-table .pt-avatar { display:flex; align-items:center; gap:10px; }
+  .users-table .pt-avatar-circle { width:32px; height:32px; border-radius:50%; background:var(--navy); color:white; display:inline-flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:800; font-size:11px; flex-shrink:0; }
+  .users-table .pt-avatar-circle.owner { background:var(--green); }
+  .users-table .pt-avatar-circle.admin { background:var(--navy); }
+  .users-table .pt-avatar-circle.user  { background:#5a7184; }
+  .role-pill { display:inline-block; padding:3px 10px; border-radius:11px; font-family:'Nunito'; font-weight:800; font-size:10.5px; letter-spacing:0.5px; text-transform:uppercase; }
+  .role-pill.owner { background:rgba(51,217,117,0.14); color:var(--green-dark); }
+  .role-pill.admin { background:rgba(26,42,94,0.10); color:var(--navy); }
+  .role-pill.user  { background:rgba(90,113,132,0.14); color:#5a7184; }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; font-family:'Nunito'; font-weight:700; font-size:11.5px; }
+  .status-pill::before { content:''; width:7px; height:7px; border-radius:50%; }
+  .status-pill.active::before { background:var(--green); }
+  .status-pill.pending::before { background:#FFDE00; }
+  .invite-btn { background:var(--green); color:var(--ink-on-green); border:none; border-radius:8px; padding:9px 16px; font-family:'Nunito'; font-weight:800; font-size:12px; cursor:pointer; box-shadow:0 3px 8px rgba(51,217,117,0.25); }
+  .invite-btn:hover { background:var(--green-dark); }
+
+  /* modal primitives for the invite flow (same classes as Connect) */
+  .gc-modal-overlay { position:fixed; inset:0; z-index:9500; background:rgba(13,26,62,0.55); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .gc-modal-overlay[hidden] { display:none; }
+  .gc-modal { background:white; border-radius:18px; padding:28px 26px 24px; width:100%; max-width:380px; position:relative; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,0.35); }
+  .gc-modal-close { position:absolute; top:12px; right:15px; background:none; border:none; font-size:23px; line-height:1; color:var(--muted); cursor:pointer; }
+  .gc-modal-close:hover { color:var(--navy); }
+  .gc-modal-icon { width:54px; height:54px; margin:2px auto 14px; display:flex; align-items:center; justify-content:center; font-size:26px; background:#fff5e6; border-radius:50%; }
+  .gc-modal h4 { font-family:'Nunito'; font-weight:900; font-size:19px; color:var(--navy); margin-bottom:8px; }
+  .gc-modal-sub { font-family:'DM Sans'; font-size:13.5px; color:var(--muted); line-height:1.55; margin-bottom:20px; }
+  .gc-modal-btn { width:100%; padding:13px; border:none; border-radius:11px; cursor:pointer; background:var(--green); color:var(--ink-on-green); font-family:'Nunito'; font-weight:800; font-size:14px; box-shadow:0 6px 18px rgba(51,217,117,0.3); transition:background 0.2s; }
+  .gc-modal-btn:hover { background:var(--green-dark); }
+  .gc-modal-btn-text { width:100%; margin-top:10px; padding:6px; background:none; border:none; cursor:pointer; font-family:'Nunito'; font-weight:700; font-size:12.5px; color:var(--muted); }
+  .gc-modal-btn-text:hover { color:var(--navy); text-decoration:underline; }
+  .invite-modal { max-width:420px; text-align:left; }
+  .invite-modal h4, .invite-modal .gc-modal-sub { text-align:left; }
+  .iv-field { margin-bottom:14px; }
+  .iv-label { display:block; font-family:'Nunito',sans-serif; font-weight:700; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+  .iv-input { width:100%; padding:11px 13px; border:1.5px solid #e4e8f0; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--navy); box-sizing:border-box; }
+  .iv-input:focus { outline:none; border-color:var(--green); }
+  .iv-seg { display:flex; gap:8px; }
+  .iv-seg-btn { flex:1; padding:9px; border:1.5px solid #e4e8f0; border-radius:9px; background:white; font-family:'Nunito',sans-serif; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; transition:all 0.15s; }
+  .iv-seg-btn.selected { border-color:var(--green); background:var(--green-light); color:var(--green-dark); }
+  .iv-roles { display:flex; flex-direction:column; gap:8px; }
+  .iv-role { display:flex; align-items:flex-start; gap:10px; padding:11px 13px; border:1.5px solid #e4e8f0; border-radius:10px; cursor:pointer; transition:all 0.15s; }
+  .iv-role.selected { border-color:var(--green); background:var(--green-light); }
+  .iv-role input { margin-top:3px; flex-shrink:0; }
+  .iv-role span { display:flex; flex-direction:column; }
+  .iv-role b { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
+  .iv-role small { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .iv-error { background:rgba(196,66,87,0.08); color:#C44257; font-family:'Nunito',sans-serif; font-weight:600; font-size:12.5px; padding:9px 12px; border-radius:8px; margin-bottom:12px; }
+  .iv-done-check { width:54px; height:54px; margin:6px auto 14px; display:flex; align-items:center; justify-content:center; font-size:28px; background:var(--green-light); color:var(--green-dark); border-radius:50%; font-weight:800; }
+  .iv-done-msg { font-family:'DM Sans',sans-serif; font-size:14px; color:var(--navy); text-align:center; line-height:1.5; margin-bottom:18px; }
+
   .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--navy); color:#fff; font-family:'Nunito'; font-weight:800; font-size:14px; padding:13px 22px; border-radius:12px; box-shadow:0 12px 30px rgba(0,18,48,.4); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -4943,7 +5012,58 @@
         <div id="payMethodsList"><!-- filled by JS --></div>
         <button class="add-pay-btn" id="addPayBtn" type="button">+ Add payment method</button>
       </section>
-      <section class="dash-section" data-pane="users"><div class="placeholder-card"><div class="pc-ico">👥</div><h3>Users &amp; access</h3><p>Invite teammates and set who can publish or edit deals. Coming soon.</p></div></section>
+      <!-- ░░ Section: Users & Access — ported 1:1 from gopher-connect (owner spec) ░░ -->
+      <section class="dash-section" data-pane="users">
+        <div class="dash-block">
+          <div class="dash-block-head">
+            <h3>Users &amp; access</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button type="button" id="usersRemoveSelected" data-remove-selected-users hidden style="font-family:'Nunito';font-weight:800;font-size:12px;border-radius:8px;padding:9px 16px;background:#fff;color:#C44257;border:1.5px solid #C44257;cursor:pointer">Remove selected</button>
+              <button class="invite-btn">+ Invite user</button>
+            </div>
+          </div>
+          <div class="role-info-banner">
+            <b>Roles:</b> &nbsp;
+            <b>Owner</b> — full access, billing, and ownership transfer. &nbsp;·&nbsp;
+            <b>Admin</b> — manage users, deals, and payment info. &nbsp;·&nbsp;
+            <b>User</b> — submit deals and view their performance.
+          </div>
+          <!-- DEMO-ONLY control. The real page renders exactly one of these views,
+               derived from the signed-in account's role — there is no toggle in
+               production. Visibility matrix it demonstrates:
+                 Owner  → manages everyone incl. ownership transfer
+                 Admin  → invites; manages Users and pending invites;
+                          CANNOT manage the Owner or other Admins
+                 User   → read-only roster; no invite, no checkboxes, no Manage -->
+          <div id="usersViewAs" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;font-size:12.5px;color:#667">
+            <span style="font-family:'Nunito';font-weight:800;color:var(--navy)">Preview this page as:</span>
+            <span style="display:inline-flex;border:1.5px solid #d9deea;border-radius:9px;overflow:hidden">
+              <button type="button" data-viewas="owner" class="selected" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:var(--navy);color:#fff">Owner</button>
+              <button type="button" data-viewas="admin" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:#fff;color:var(--navy)">Admin</button>
+              <button type="button" data-viewas="user" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:#fff;color:var(--navy)">User</button>
+            </span>
+            <span id="usersViewAsNote"></span>
+          </div>
+          <div class="prev-table-wrap">
+            <table class="prev-table users-table">
+              <thead>
+                <tr>
+                  <th style="width:34px"></th>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Last Active</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="usersTableRows">
+                <!-- Filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
       <section class="dash-section" data-pane="advertise">
         <div class="dash-block bid-intro">
           <div class="bid-intro-head">
@@ -5025,6 +5145,52 @@
 
 <div class="toast" id="toast">Deal published 🎉</div>
 
+<!-- INVITE USER MODAL (Users & Access) — ported 1:1 from gopher-connect -->
+<div class="gc-modal-overlay" id="inviteUserOverlay" hidden>
+  <div class="gc-modal invite-modal" role="dialog" aria-modal="true" aria-labelledby="inviteUserTitle">
+    <button type="button" class="gc-modal-close" id="inviteUserClose" aria-label="Close">&times;</button>
+    <div class="gc-modal-icon">✉️</div>
+    <h4 id="inviteUserTitle">Invite a user</h4>
+    <p class="gc-modal-sub">They'll get an invite to join your business on Gopher Deals. You choose their access level.</p>
+    <div id="inviteFormView">
+      <div class="iv-field">
+        <label class="iv-label" for="ivName">Full name</label>
+        <input type="text" id="ivName" class="iv-input" placeholder="e.g. Jamie Rivera">
+      </div>
+      <div class="iv-field">
+        <label class="iv-label">Send invite via</label>
+        <div class="iv-seg" id="ivChannelSeg">
+          <button type="button" class="iv-seg-btn selected" data-ch="email">Email</button>
+          <button type="button" class="iv-seg-btn" data-ch="sms">Text (SMS)</button>
+        </div>
+      </div>
+      <div class="iv-field" id="ivEmailField">
+        <label class="iv-label" for="ivEmail">Email address</label>
+        <input type="email" id="ivEmail" class="iv-input" placeholder="name@company.com">
+      </div>
+      <div class="iv-field" id="ivPhoneField" hidden>
+        <label class="iv-label" for="ivPhone">Mobile number</label>
+        <input type="tel" id="ivPhone" class="iv-input" placeholder="(555) 123-4567">
+      </div>
+      <div class="iv-field">
+        <label class="iv-label">Role</label>
+        <div class="iv-roles">
+          <label class="iv-role"><input type="radio" name="ivRole" value="admin"><span><b>Admin</b><small>Manage users, deals, and payment info.</small></span></label>
+          <label class="iv-role selected"><input type="radio" name="ivRole" value="user" checked><span><b>User</b><small>Submit deals and view their performance.</small></span></label>
+        </div>
+      </div>
+      <div class="iv-error" id="ivError" hidden></div>
+      <button type="button" class="gc-modal-btn" id="ivSend">Send invite</button>
+      <button type="button" class="gc-modal-btn-text" id="ivCancel">Cancel</button>
+    </div>
+    <div id="inviteDoneView" hidden>
+      <div class="iv-done-check">✓</div>
+      <p class="iv-done-msg" id="ivDoneMsg"></p>
+      <button type="button" class="gc-modal-btn" id="ivDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Shared featured-placement auction brain — gopher-go's worker dashboard
      (planned) must render its bidding board from this same module. -->
 <script src="assets/js/gopher-bid-brain.js"></script>
@@ -5050,6 +5216,16 @@
     $('bizPlan').textContent = (role === 'provider' ? 'Service Provider' : 'Merchant') + ' · Active';
     if(opts.biz){ $('bizName').textContent = opts.biz; }
     if(opts.name){ $('greeting').textContent = 'Welcome back, ' + opts.name.split(' ')[0] + ' \uD83D\uDC4B'; }
+    // Users & access: the signed-in account IS the Owner row (mirrors Connect).
+    if(opts.name && typeof USERS !== 'undefined'){
+      var ow = USERS.find(function(u){ return u.role === 'owner'; });
+      if(ow){
+        ow.name = opts.name;
+        ow.initials = opts.name.split(/\s+/).map(function(w){ return w[0] || ''; }).slice(0,2).join('').toUpperCase();
+        ow.lastActive = 'Active now';
+        if(typeof renderUsers === 'function') renderUsers();
+      }
+    }
     window.scrollTo(0,0);
   }
 
@@ -5771,6 +5947,278 @@ var PAY_BADGES = {
       renderBidBoard(); syncBidForm(); bidAmount.value=''; bidForm.hidden=true;
     });
   }
+
+  /* ---- Users & access — ported 1:1 from gopher-connect (owner spec 2026-07-22).
+     Same engine as the tested Connect implementation: Owner is protected (never
+     selectable/removable), removal requires confirmation, roles Owner/Admin/User,
+     ownership transfer to an ACTIVE teammate only. Demo-grade in-memory state;
+     persistence + real invite delivery are the backend seam. ---- */
+  var USERS = [
+    { initials:'MD', name:'Marcus Delgado', email:'marcus.demo@gophergo.io', role:'owner', roleLabel:'Owner', status:'active',  statusLabel:'Active',  lastActive:'Active now' },
+    { initials:'DW', name:'Dana Whitfield', email:'dana@mywaytavern.com',    role:'admin', roleLabel:'Admin', status:'active',  statusLabel:'Active',  lastActive:'2 hours ago' },
+    { initials:'AK', name:'Aisha Khan',     email:'aisha@mywaytavern.com',   role:'admin', roleLabel:'Admin', status:'active',  statusLabel:'Active',  lastActive:'Yesterday' },
+    { initials:'LO', name:'Luis Ortega',    email:'luis@mywaytavern.com',    role:'user',  roleLabel:'User',  status:'active',  statusLabel:'Active',  lastActive:'3 days ago' },
+    { initials:'KB', name:'Kayla Bennett',  email:'kayla@mywaytavern.com',   role:'user',  roleLabel:'User',  status:'pending', statusLabel:'Pending', lastActive:'Invite sent 7/18' }
+  ];
+  var usersViewAs = 'owner';
+
+  function renderUsers(){
+    var rowsEl = document.getElementById('usersTableRows'); if(!rowsEl) return;
+    // Who is looking decides what renders. Demo: the "Preview this page as"
+    // toggle; production derives this from the signed-in account and renders
+    // exactly one view.
+    //   owner → manage every row (owner row = ownership transfer)
+    //   admin → manage Users + pending invites; never the Owner or other Admins
+    //   user  → read-only roster
+    var va = usersViewAs || 'owner';
+    function canManage(u){
+      return va === 'owner' ? true :
+             va === 'admin' ? (u.status === 'pending' || u.role === 'user') : false;
+    }
+    rowsEl.innerHTML = USERS.map(function(u){
+      return '<tr>'
+        + '<td>' + (u.role==='owner'
+            ? '<span title="Owner — protected" style="color:#b9c0d0;font-size:13px">🔒</span>'
+            : (va !== 'user' && canManage(u)
+                ? '<input type="checkbox" class="user-rm-chk" data-uid="'+esc(u.email)+'" aria-label="Select '+esc(u.name)+'">'
+                : '')) + '</td>'
+        + '<td><div class="pt-avatar"><span class="pt-avatar-circle '+u.role+'">'+esc(u.initials)+'</span>'
+        +   '<span style="font-family:Nunito;font-weight:700;color:var(--navy);">'+esc(u.name)+'</span></div></td>'
+        + '<td>'+esc(u.email)+'</td>'
+        + '<td><span class="role-pill '+u.role+'">'+esc(u.roleLabel)+'</span></td>'
+        + '<td><span class="status-pill '+u.status+'">'+esc(u.statusLabel)+'</span></td>'
+        + '<td>'+esc(u.lastActive)+'</td>'
+        + '<td>' + (canManage(u)
+            ? '<button class="pt-action" data-manage-user="'+esc(u.email)+'">Manage</button>'
+            : '<span style="color:#b9c0d0">&mdash;</span>') + '</td>'
+        + '</tr>';
+    }).join('');
+    // Section chrome follows the same matrix: Users never see invite/remove.
+    var inviteBtn = document.querySelector('[data-pane="users"] .invite-btn');
+    if(inviteBtn) inviteBtn.style.display = va === 'user' ? 'none' : '';
+    var rmBtn = document.getElementById('usersRemoveSelected');
+    if(rmBtn && va === 'user') rmBtn.hidden = true;
+    var note = document.getElementById('usersViewAsNote');
+    if(note) note.textContent =
+      va === 'user'  ? 'Users see the roster read-only — only Owners and Admins manage the team.' :
+      va === 'admin' ? 'Admins manage Users and pending invites — not the Owner or other Admins.' : '';
+  }
+
+  // Invite user flow — collects name, channel (email/SMS), and role, then
+  // "sends" the invite (adds a Pending row). Real dispatch is a backend step.
+  (function initInviteUser(){
+    var overlay = document.getElementById('inviteUserOverlay');
+    if(!overlay) return;
+    var formView = document.getElementById('inviteFormView');
+    var doneView = document.getElementById('inviteDoneView');
+    var nameI = document.getElementById('ivName');
+    var emailF = document.getElementById('ivEmailField');
+    var phoneF = document.getElementById('ivPhoneField');
+    var emailI = document.getElementById('ivEmail');
+    var phoneI = document.getElementById('ivPhone');
+    var err = document.getElementById('ivError');
+    var doneMsg = document.getElementById('ivDoneMsg');
+    var channel = 'email';
+    function showErr(m){ err.textContent = m; err.hidden = false; }
+    function clearErr(){ err.hidden = true; }
+    function isEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim()); }
+    function digitsOf(s){ return (String(s||'').match(/\d/g) || []).join(''); }
+    function reset(){
+      formView.hidden = false; doneView.hidden = true; clearErr();
+      nameI.value = ''; emailI.value = ''; phoneI.value = '';
+      channel = 'email';
+      overlay.querySelectorAll('.iv-seg-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.ch === 'email'); });
+      emailF.hidden = false; phoneF.hidden = true;
+      overlay.querySelectorAll('input[name="ivRole"]').forEach(function(r){ r.checked = (r.value === 'user'); });
+      overlay.querySelectorAll('.iv-role').forEach(function(r){ r.classList.toggle('selected', r.querySelector('input').checked); });
+    }
+    function open(){ reset(); overlay.hidden = false; }
+    function close(){ overlay.hidden = true; }
+    document.querySelectorAll('.invite-btn').forEach(function(b){ b.addEventListener('click', open); });
+    document.getElementById('inviteUserClose').addEventListener('click', close);
+    document.getElementById('ivCancel').addEventListener('click', close);
+    document.getElementById('ivDone').addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if(e.target === overlay) close(); });
+    overlay.querySelectorAll('.iv-seg-btn').forEach(function(b){ b.addEventListener('click', function(){
+      channel = b.dataset.ch;
+      overlay.querySelectorAll('.iv-seg-btn').forEach(function(x){ x.classList.toggle('selected', x === b); });
+      emailF.hidden = (channel !== 'email');
+      phoneF.hidden = (channel !== 'sms');
+      clearErr();
+    }); });
+    overlay.querySelectorAll('.iv-role').forEach(function(r){ r.addEventListener('click', function(){
+      r.querySelector('input').checked = true;
+      overlay.querySelectorAll('.iv-role').forEach(function(x){ x.classList.toggle('selected', x === r); });
+    }); });
+    document.getElementById('ivSend').addEventListener('click', function(){
+      clearErr();
+      var name = nameI.value.trim();
+      if(!name){ showErr("Please enter the person's name."); return; }
+      var contact = '';
+      if(channel === 'email'){
+        if(!isEmail(emailI.value)){ showErr('Please enter a valid email address.'); return; }
+        contact = emailI.value.trim();
+      } else {
+        if(digitsOf(phoneI.value).length < 10){ showErr('Please enter a valid mobile number.'); return; }
+        contact = phoneI.value.trim();
+      }
+      var roleEl = overlay.querySelector('input[name="ivRole"]:checked');
+      var role = roleEl ? roleEl.value : 'user';
+      var roleLabel = role === 'admin' ? 'Admin' : 'User';
+      var inits = name.split(/\s+/).map(function(w){ return w[0] || ''; }).slice(0,2).join('').toUpperCase();
+      var today = new Date();
+      USERS.push({
+        initials: inits, name: name,
+        email: channel === 'email' ? contact : contact + ' (SMS)',
+        role: role, roleLabel: roleLabel, status:'pending', statusLabel:'Pending',
+        lastActive: 'Invite sent ' + (today.getMonth()+1) + '/' + today.getDate()
+      });
+      renderUsers();
+      doneMsg.innerHTML = 'Invite sent to <b>'+esc(name)+'</b> via '+(channel === 'email' ? 'email' : 'text')+' as <b>'+roleLabel+'</b>.<br>They’ll show as <b>Pending</b> until they accept.';
+      formView.hidden = true; doneView.hidden = false;
+    });
+  })();
+
+  // Account management: remove users (checkbox + confirm), per-row Manage
+  // (role change, invite resend/cancel, single remove, ownership transfer).
+  // Mirrors gopher-connect's tested engine: Owner is protected.
+  (function initDealsAccountMgmt(){
+    function modal(inner, wide){
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,10,40,.42);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px';
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#fff;border-radius:18px;max-width:'+(wide?'460px':'380px')+';width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:22px;box-sizing:border-box';
+      card.innerHTML = inner; ov.appendChild(card);
+      function close(){ if(ov.parentNode) document.body.removeChild(ov); }
+      ov.addEventListener('click', function(e){ if(e.target===ov) close(); });
+      document.body.appendChild(ov);
+      return { ov:ov, card:card, close:close };
+    }
+    function btnRow(saveId,saveLabel,cancelId){ return '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px"><button id="'+cancelId+'" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:#fff;border:1.5px solid #d9deea;color:var(--navy);cursor:pointer">Cancel</button><button id="'+saveId+'" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:var(--green);border:none;color:var(--ink-on-green);cursor:pointer">'+saveLabel+'</button></div>'; }
+    function confirmModal(title, body, onOk, okLabel){
+      var c = modal('<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 10px">'+title+'</h3><div style="font-size:13px;color:#555;margin:0 0 16px">'+body+'</div><div style="display:flex;gap:10px;justify-content:flex-end"><button id="cx" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:#fff;border:1.5px solid #d9deea;color:var(--navy);cursor:pointer">Cancel</button><button id="ok" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:#C44257;border:none;color:#fff;cursor:pointer">'+(okLabel||'Remove')+'</button></div>');
+      c.card.querySelector('#cx').onclick = c.close;
+      c.card.querySelector('#ok').onclick = function(){ c.close(); onOk(); };
+    }
+
+    // ---- remove users via checkbox + confirmation (owner protected) ----
+    function selectedEmails(){ return Array.prototype.map.call(document.querySelectorAll('.user-rm-chk:checked'), function(c){ return c.dataset.uid; }); }
+    function refreshRemoveBtn(){ var b=document.getElementById('usersRemoveSelected'); if(b) b.hidden = selectedEmails().length===0; }
+    document.addEventListener('change', function(e){ if(e.target.classList && e.target.classList.contains('user-rm-chk')) refreshRemoveBtn(); });
+    document.addEventListener('click', function(e){
+      if(!e.target.closest('[data-remove-selected-users]')) return;
+      var emails = selectedEmails(); if(!emails.length) return;
+      var names = USERS.filter(function(u){ return emails.indexOf(u.email)>-1; }).map(function(u){ return u.name; });
+      confirmModal('Remove '+names.length+' user'+(names.length>1?'s':'')+'?',
+        'This revokes account access for:<ul style="margin:8px 0 0;padding-left:18px;color:var(--navy)">'+names.map(function(n){ return '<li>'+esc(n)+'</li>'; }).join('')+'</ul>',
+        function(){ USERS = USERS.filter(function(u){ return !(emails.indexOf(u.email)>-1 && u.role!=='owner'); }); renderUsers(); refreshRemoveBtn(); });
+    });
+
+    // ---- per-row Manage — role change, invite resend/cancel, single remove,
+    // ownership transfer. Completes the promise the role banner makes. ----
+    function rolePick(sel){
+      return '<label style="display:block;font-family:Nunito;font-weight:800;font-size:12px;color:var(--navy);margin:0 0 6px">Role</label>'+
+        ['admin','user'].map(function(r){
+          return '<label style="display:flex;gap:9px;align-items:flex-start;border:1.5px solid '+(sel===r?'var(--green)':'#d9deea')+';border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer">'+
+          '<input type="radio" name="muRole" value="'+r+'"'+(sel===r?' checked':'')+' style="margin-top:2px">'+
+          '<span style="font-size:13px;color:var(--navy)"><b style="font-family:Nunito">'+(r==='admin'?'Admin':'User')+'</b><br><small style="color:#667">'+
+          (r==='admin'?'Manage users, deals, and payment info.':'Submit deals and view their performance.')+'</small></span></label>';
+        }).join('');
+    }
+    function mgrBtn(id,label,danger){
+      return '<button id="'+id+'" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;width:100%;margin:0 0 8px;cursor:pointer;'+
+      (danger?'background:#fff;border:1.5px solid #C44257;color:#C44257':'background:#fff;border:1.5px solid #d9deea;color:var(--navy)')+'">'+label+'</button>';
+    }
+
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-manage-user]'); if(!btn) return;
+      var u = USERS.find(function(x){ return x.email === btn.dataset.manageUser; }); if(!u) return;
+      openManageUser(u);
+    });
+
+    // Demo-only "Preview this page as" toggle — see the comment in the markup.
+    document.addEventListener('click', function(e){
+      var b = e.target.closest('#usersViewAs [data-viewas]'); if(!b) return;
+      usersViewAs = b.dataset.viewas;
+      document.querySelectorAll('#usersViewAs [data-viewas]').forEach(function(x){
+        var on = x === b;
+        x.classList.toggle('selected', on);
+        x.style.background = on ? 'var(--navy)' : '#fff';
+        x.style.color = on ? '#fff' : 'var(--navy)';
+      });
+      renderUsers(); refreshRemoveBtn();
+    });
+
+    function openManageUser(u){
+      var head =
+        '<div style="display:flex;gap:12px;align-items:center;margin:0 0 4px">'+
+        '<span class="pt-avatar-circle '+u.role+'" style="width:40px;height:40px;font-size:14px">'+esc(u.initials)+'</span>'+
+        '<div><div style="font-family:Nunito;font-weight:900;color:var(--navy)">'+esc(u.name)+'</div>'+
+        '<div style="font-size:12.5px;color:#667">'+esc(u.email)+'</div></div></div>'+
+        '<div style="margin:0 0 14px"><span class="role-pill '+u.role+'">'+esc(u.roleLabel)+'</span> '+
+        '<span class="status-pill '+u.status+'">'+esc(u.statusLabel)+'</span></div>';
+
+      if(u.role === 'owner'){
+        // Owner: the only management verb is transferring ownership.
+        var candidates = USERS.filter(function(x){ return x.role!=='owner' && x.status==='active'; });
+        var m = modal(head+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">The Owner has full access, billing, and is the only role that can transfer ownership. To change owners, pick an <b>active</b> teammate below &mdash; you’ll become an Admin.</div>'+
+          (candidates.length
+            ? candidates.map(function(c,i){ return '<label style="display:flex;gap:9px;align-items:center;border:1.5px solid #d9deea;border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer"><input type="radio" name="toOwner" value="'+esc(c.email)+'"'+(i===0?' checked':'')+'><span style="font-size:13px;color:var(--navy)"><b style="font-family:Nunito">'+esc(c.name)+'</b> <small style="color:#667">'+esc(c.email)+'</small></span></label>'; }).join('')
+            : '<div style="font-size:13px;color:#667;border:1.5px dashed #d9deea;border-radius:10px;padding:12px">No eligible teammates yet &mdash; ownership can only transfer to an <b>active</b> user, and invites still pending don’t qualify.</div>')+
+          btnRow('muXfer', 'Transfer ownership', 'muCancel'));
+        m.card.querySelector('#muCancel').onclick = m.close;
+        var x = m.card.querySelector('#muXfer');
+        if(!candidates.length){ x.disabled = true; x.style.opacity = .45; x.style.cursor = 'default'; }
+        else x.onclick = function(){
+          var sel = m.card.querySelector('input[name="toOwner"]:checked'); if(!sel) return;
+          var t = USERS.find(function(z){ return z.email === sel.value; }); if(!t) return;
+          m.close();
+          confirmModal('Make '+esc(t.name)+' the Owner?',
+            'They get full access, billing, and ownership transfer. <b>'+esc(u.name)+'</b> becomes an Admin. There is exactly one Owner at a time.',
+            function(){ t.role='owner'; t.roleLabel='Owner'; u.role='admin'; u.roleLabel='Admin'; renderUsers(); refreshRemoveBtn(); },
+            'Transfer');
+        };
+        return;
+      }
+
+      // Admin / User rows: change role; pending invites can be re-sent or
+      // cancelled; active users can be removed singly.
+      var pending = u.status === 'pending';
+      var m2 = modal(head + rolePick(u.role) + '<div style="height:6px"></div>' +
+        (pending ? mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
+                 : mgrBtn('muRemove','Remove user',true)) +
+        btnRow('muSave','Save role','muCancel'));
+      m2.card.querySelector('#muCancel').onclick = m2.close;
+      m2.card.querySelector('#muSave').onclick = function(){
+        var r = m2.card.querySelector('input[name="muRole"]:checked');
+        if(r && r.value !== u.role){ u.role = r.value; u.roleLabel = r.value==='admin' ? 'Admin' : 'User'; }
+        m2.close(); renderUsers(); refreshRemoveBtn();
+      };
+      if(pending){
+        m2.card.querySelector('#muResend').onclick = function(){
+          var d = new Date(); u.lastActive = 'Invite re-sent '+(d.getMonth()+1)+'/'+d.getDate();
+          m2.close(); renderUsers();
+        };
+        m2.card.querySelector('#muRevoke').onclick = function(){
+          m2.close();
+          confirmModal('Cancel the invite to '+esc(u.name)+'?',
+            'Their invite link stops working and the row is removed. You can always re-invite them later.',
+            function(){ USERS = USERS.filter(function(z){ return z.email !== u.email; }); renderUsers(); refreshRemoveBtn(); },
+            'Cancel invite');
+        };
+      } else {
+        m2.card.querySelector('#muRemove').onclick = function(){
+          m2.close();
+          confirmModal('Remove '+esc(u.name)+'?',
+            'This revokes their access to your business on Gopher Deals. The deals they submitted stay in your account.',
+            function(){ USERS = USERS.filter(function(z){ return z.email !== u.email; }); renderUsers(); refreshRemoveBtn(); });
+        };
+      }
+    }
+  })();
+
+  renderUsers();
 
     /* ---- merged-page integration ---- */
   function openPortal(){ var saved=getRemembered(); if(saved){ role = saved.role || role; enterDashboard({ name: saved.name }); return; } showView('signinView'); var rmRole=document.querySelector('#signinView .portal-role[data-role="merchant"]'); if(rmRole) rmRole.click(); var sp=$('signupPaths'); if(sp) sp.hidden=true; var nt=$('newToggle'); if(nt) nt.setAttribute('aria-expanded','false'); $('loginScreen').classList.remove('hidden'); window.scrollTo(0,0); }

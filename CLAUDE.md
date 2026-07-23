@@ -603,10 +603,13 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   Script-side edits are owner-actions (no-live-changes rule); front-end wiring + the exact
   Apps Script snippet are ready to build on request.
 - ~~`gopher-deals-101.html`~~ — **DONE 2026-07-22** (see the entry below).
-- **Deals portal "Users & access" section (owner 2026-07-22).** Currently a Coming-soon
-  placeholder card (`data-pane="users"` in `gopher-deals.html`). Build it out: invite
-  teammates + set who can publish/edit deals (role-based access), prototype-grade like the
-  rest of the portal.
+- ~~Deals portal "Users & access" section~~ — **DONE 2026-07-22** (owner spec: "exactly
+  like gopher-connect", and it is — same table/role matrix/view-as toggle/invite modal/
+  manage modals ported 1:1 onto Deals tokens; role verbs adapted to deals; Owner
+  protected; ownership transfer to ACTIVE teammates only; signed-in account syncs into
+  the Owner row via `enterDashboard`. In-memory demo state like the rest of the portal;
+  persistence + real invite delivery = backend seam. `gc-modal*`/`iv-*`/`prev-table`
+  CSS primitives now exist in gopher-deals.html — reuse them for future portal modals.)
 - **gopher-go worker-dashboard bid board (NOT BUILT YET, owner 2026-07-22).** The
   featured-placement auction UI is coming to the worker dashboard. It MUST render from the
   shared brain **`assets/js/gopher-bid-brain.js`** (same standings, badge rules, and
