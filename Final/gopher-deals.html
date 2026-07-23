@@ -2444,6 +2444,7 @@
   window.GopherHeader = { logo: 'merchantDeals' };
 </script>
 <script src="assets/js/gopher-header.js" defer></script>
+<script src="assets/js/gopher-phone-input.js" defer></script>
 
 <!-- HERO -->
 <section class="hero">
@@ -2939,7 +2940,7 @@
               <span class="info-btn" tabindex="0">i<span class="info-tip">Your phone number is how you sign in, as well as how you communicate with your Gopher through the app.</span></span>
             </div>
             <div class="otp-row">
-              <input type="tel" name="owner_phone" placeholder="(555) 555-5555" oninput="resetOtp(this)">
+              <input type="tel" name="owner_phone" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555" oninput="resetOtp(this)">
               <button type="button" class="btn-verify otp-send-btn" onclick="sendOtp(this)">Verify</button>
             </div>
             <!-- OTP is a front-end affordance only. Wire sendOtp()/checkOtp() to an SMS provider
@@ -3202,7 +3203,7 @@
         </div>
         <div class="field">
           <label>Mobile (SMS)</label>
-          <input type="tel" name="sms" placeholder="(555) 555-5555">
+          <input type="tel" name="sms" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555">
         </div>
         <div class="field">
           <label>Email</label>
@@ -5153,10 +5154,9 @@
     <h4 id="inviteUserTitle">Invite a user</h4>
     <p class="gc-modal-sub">They'll get an invite to join your business on Gopher Deals. You choose their access level.</p>
     <div id="inviteFormView">
-      <div class="iv-field">
-        <label class="iv-label" for="ivName">Full name</label>
-        <input type="text" id="ivName" class="iv-input" placeholder="e.g. Jamie Rivera">
-      </div>
+      <!-- No name field by design (owner, 2026-07-23): the inviter may not have
+           the correct spelling — the invitee's name comes from their own
+           account / signup, never from the invite. -->
       <div class="iv-field">
         <label class="iv-label">Send invite via</label>
         <div class="iv-seg" id="ivChannelSeg">
@@ -5170,7 +5170,7 @@
       </div>
       <div class="iv-field" id="ivPhoneField" hidden>
         <label class="iv-label" for="ivPhone">Mobile number</label>
-        <input type="tel" id="ivPhone" class="iv-input" placeholder="(555) 123-4567">
+        <input type="tel" id="ivPhone" class="iv-input" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555">
       </div>
       <div class="iv-field">
         <label class="iv-label">Role</label>
@@ -5983,7 +5983,10 @@ var PAY_BADGES = {
                 ? '<input type="checkbox" class="user-rm-chk" data-uid="'+esc(u.email)+'" aria-label="Select '+esc(u.name)+'">'
                 : '')) + '</td>'
         + '<td><div class="pt-avatar"><span class="pt-avatar-circle '+u.role+'">'+esc(u.initials)+'</span>'
-        +   '<span style="font-family:Nunito;font-weight:700;color:var(--navy);">'+esc(u.name)+'</span></div></td>'
+        +   (u.namePending
+              ? '<span style="font-style:italic;color:#8a93a8;font-size:13px">Name pending — added at their signup</span>'
+              : '<span style="font-family:Nunito;font-weight:700;color:var(--navy);">'+esc(u.name)+'</span>')
+        + '</div></td>'
         + '<td>'+esc(u.email)+'</td>'
         + '<td><span class="role-pill '+u.role+'">'+esc(u.roleLabel)+'</span></td>'
         + '<td><span class="status-pill '+u.status+'">'+esc(u.statusLabel)+'</span></td>'
@@ -6011,7 +6014,6 @@ var PAY_BADGES = {
     if(!overlay) return;
     var formView = document.getElementById('inviteFormView');
     var doneView = document.getElementById('inviteDoneView');
-    var nameI = document.getElementById('ivName');
     var emailF = document.getElementById('ivEmailField');
     var phoneF = document.getElementById('ivPhoneField');
     var emailI = document.getElementById('ivEmail');
@@ -6025,7 +6027,7 @@ var PAY_BADGES = {
     function digitsOf(s){ return (String(s||'').match(/\d/g) || []).join(''); }
     function reset(){
       formView.hidden = false; doneView.hidden = true; clearErr();
-      nameI.value = ''; emailI.value = ''; phoneI.value = '';
+      emailI.value = ''; phoneI.value = '';
       channel = 'email';
       overlay.querySelectorAll('.iv-seg-btn').forEach(function(b){ b.classList.toggle('selected', b.dataset.ch === 'email'); });
       emailF.hidden = false; phoneF.hidden = true;
@@ -6052,29 +6054,34 @@ var PAY_BADGES = {
     }); });
     document.getElementById('ivSend').addEventListener('click', function(){
       clearErr();
-      var name = nameI.value.trim();
-      if(!name){ showErr("Please enter the person's name."); return; }
+      // No name on the invite (owner, 2026-07-23): the contact IS the
+      // identity until the invitee signs in/up and their own name arrives.
       var contact = '';
       if(channel === 'email'){
         if(!isEmail(emailI.value)){ showErr('Please enter a valid email address.'); return; }
         contact = emailI.value.trim();
       } else {
-        if(digitsOf(phoneI.value).length < 10){ showErr('Please enter a valid mobile number.'); return; }
+        if(digitsOf(phoneI.value).length !== 10){ showErr('Please enter a valid 10-digit mobile number.'); return; }
         contact = phoneI.value.trim();
       }
       var roleEl = overlay.querySelector('input[name="ivRole"]:checked');
       var role = roleEl ? roleEl.value : 'user';
       var roleLabel = role === 'admin' ? 'Admin' : 'User';
-      var inits = name.split(/\s+/).map(function(w){ return w[0] || ''; }).slice(0,2).join('').toUpperCase();
+      var inits = channel === 'email' ? (contact.match(/[a-z0-9]/gi)||['@']).slice(0,2).join('').toUpperCase() : '#';
       var today = new Date();
       USERS.push({
-        initials: inits, name: name,
+        initials: inits, name: contact, namePending: true,
         email: channel === 'email' ? contact : contact + ' (SMS)',
         role: role, roleLabel: roleLabel, status:'pending', statusLabel:'Pending',
         lastActive: 'Invite sent ' + (today.getMonth()+1) + '/' + today.getDate()
       });
       renderUsers();
-      doneMsg.innerHTML = 'Invite sent to <b>'+esc(name)+'</b> via '+(channel === 'email' ? 'email' : 'text')+' as <b>'+roleLabel+'</b>.<br>They’ll show as <b>Pending</b> until they accept.';
+      // Hand the invite context to the acceptance-preview simulator
+      // (defined in initDealsAccountMgmt — cross-closure via window).
+      window.__lastInvite = { contact: contact, channel: channel, role: role, roleLabel: roleLabel,
+        email: channel === 'email' ? contact : contact + ' (SMS)' };
+      doneMsg.innerHTML = 'Invite sent via '+(channel === 'email' ? 'email' : 'text')+' to <b>'+esc(contact)+'</b> as <b>'+roleLabel+'</b>.<br>They’ll show as <b>Pending</b> — their name fills in when they accept and sign in or sign up.<br>'+
+        '<button type="button" id="ivPreviewAccept" style="margin-top:14px;font-family:\'Nunito\';font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:#fff;border:1.5px solid var(--green);color:var(--green-dark);cursor:pointer">Preview what they\'ll see &rarr;</button>';
       formView.hidden = true; doneView.hidden = false;
     });
   })();
@@ -6149,6 +6156,181 @@ var PAY_BADGES = {
       renderUsers(); refreshRemoveBtn();
     });
 
+    // ═════ Invite ACCEPTANCE preview (demo-only walkthrough) ═════
+    // 1:1 port of gopher-connect's simulator per the invite protocol in
+    // docs/handoff/users-access-invite-protocol.md §4 as amended by the
+    // owner 2026-07-23 (see the Connect copy for the full rationale):
+    //   • The route is automatic — the system knows whether the contact
+    //     belongs to a Gopher account. The picker is demo chrome only.
+    //   • Every route ends on ONE screen: personal info ABOVE the Accept
+    //     button, editable per the canonical rules; Accept = save/submit.
+    //   • The invite carries NO name; SMS invites open on the text example.
+    const simBar = who =>
+      '<div style="background:var(--navy);color:#fff;border-radius:9px;padding:7px 12px;margin:0 0 14px;font-family:Nunito;font-weight:800;font-size:11.5px;letter-spacing:.4px">📱 '+esc(who)+' — their screen · demo preview</div>';
+    const simBtn = (id,label,ghost) =>
+      '<button id="'+id+'" style="display:block;width:100%;font-family:Nunito;font-weight:800;font-size:13.5px;border-radius:10px;padding:12px 16px;margin:0 0 9px;cursor:pointer;'+
+      (ghost?'background:#fff;border:1.5px solid #d9deea;color:var(--navy)':'background:var(--green);border:none;color:var(--ink-on-green,#04230f)')+'">'+label+'</button>';
+    const merchName = () => (document.getElementById('bizName')||{}).textContent || 'your business';
+    const simLbl = t => '<label style="display:block;font-family:Nunito;font-weight:800;font-size:12px;color:var(--navy);margin:0 0 6px">'+t+'</label>';
+    const simNote = t => '<div style="font-size:11.5px;color:#8a93a8;margin:0 0 12px;line-height:1.5">'+t+'</div>';
+    const SIM_ACCOUNT = { first:'Jamie', last:'Rivera', dob:'03/14/1992',
+      phone:'(919) 555-0187', email:'jamie.riv@gmail.com',
+      address:'412 Oakwood Ave, Raleigh, NC 27601' };
+
+    document.addEventListener('click', e => {
+      if(e.target.closest('#ivPreviewAccept')){
+        const ov = document.getElementById('inviteUserOverlay'); if(ov) ov.hidden = true;
+        if(window.__lastInvite) openAcceptPreview(window.__lastInvite);
+      }
+    });
+
+    function openAcceptPreview(inv){
+      const m = modal('', true);
+      const paint = html => { m.card.innerHTML = html; };
+      const sim = { name:'' };  // name captured during the walkthrough — never from the invite
+      const roleDesc = inv.role==='admin' ? 'manage users, deals, and payment info.' : 'submit deals and view their performance.';
+
+      const doneScreen = () => {
+        const row = USERS.find(x => x.email === inv.email && x.status === 'pending');
+        paint(simBar(inv.contact)+
+          '<div style="font-size:40px;text-align:center;margin:6px 0 10px">🎉</div>'+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px;text-align:center">'+esc(sim.name || inv.contact)+' is in</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 16px;text-align:center">They land in the portal as <b>'+esc(inv.roleLabel)+'</b>'+(sim.name?' &mdash; and the roster learns their name from their own account, not the invite.':'.')+'</div>'+
+          (row ? simBtn('simApply','Mark them Active on the roster')+simBtn('simLeave','Leave as Pending',true)
+               : simBtn('simLeave','Close',true)));
+        const ap = m.card.querySelector('#simApply');
+        if(ap) ap.onclick = () => {
+          row.status='active'; row.statusLabel='Active'; row.lastActive='Active now';
+          if(sim.name){
+            row.name = sim.name; row.namePending = false;
+            row.initials = sim.name.split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase();
+          }
+          renderUsers(); refreshRemoveBtn(); m.close();
+        };
+        m.card.querySelector('#simLeave').onclick = m.close;
+      };
+
+      const otpScreen = (title, sub, next) => {
+        paint(simBar(inv.contact)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">'+title+'</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">'+sub+'</div>'+
+          '<input id="simOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="width:100%;box-sizing:border-box;border:1.5px solid #d9deea;border-radius:10px;padding:12px;font-size:18px;letter-spacing:6px;text-align:center;font-family:Nunito;font-weight:800;margin:0 0 12px">'+
+          simBtn('simVerify','Verify'));
+        m.card.querySelector('#simVerify').onclick = () => {
+          const v = m.card.querySelector('#simOtp').value.replace(/\D/g,'');
+          if(v.length < 6){ m.card.querySelector('#simOtp').focus(); return; }
+          next();
+        };
+      };
+
+      // THE accept screen — every route ends here: personal info ABOVE the
+      // Accept button; "Accept invite" IS the save/submit (owner, 2026-07-23).
+      const infoAccept = (opts) => {
+        opts = opts || {};
+        const ex = !!opts.existing;
+        const a = SIM_ACCOUNT;
+        const lockFld = (label,val) =>
+          simLbl(label+' <span style="color:#98a1b5;font-weight:700;font-size:10.5px">🔒 set at signup</span>')+
+          '<input value="'+esc(val)+'" disabled style="width:100%;box-sizing:border-box;border:1.5px solid #e3e7f0;border-radius:10px;padding:11px 12px;font-size:14px;margin:0 0 12px;background:#f6f8fb;color:#667">';
+        const openFld = (label,id,val,ph,type) =>
+          simLbl(label)+
+          '<input id="'+id+'" type="'+(type||'text')+'"'+(type==='tel'?' inputmode="numeric" maxlength="14"':'')+' value="'+esc(val||'')+'" placeholder="'+esc(ph||'')+'" style="width:100%;box-sizing:border-box;border:1.5px solid #d9deea;border-radius:10px;padding:11px 12px;font-size:14px;margin:0 0 12px">';
+        const verFld = (label,val) =>
+          simLbl(label)+
+          '<div style="border:1.5px solid #d9deea;border-radius:10px;padding:11px 12px;font-size:14px;margin:0 0 12px;background:#f6f8fb;color:var(--navy)">'+esc(val)+' <span style="color:#1cb061;font-weight:700;font-size:12px">✓ verified</span></div>';
+        paint(simBar(inv.contact)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 6px">Join '+esc(merchName())+' on Gopher Deals</h3>'+
+          (opts.status?'<div style="font-size:12.5px;color:#1cb061;font-weight:700;margin:0 0 8px">'+opts.status+'</div>':'')+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">You\'ve been invited as <b>'+esc(inv.roleLabel)+'</b> &mdash; '+roleDesc+'</div>'+
+          '<div style="font-family:Nunito;font-weight:800;font-size:11px;color:#98a1b5;letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px">'+(ex?'Your info on file &mdash; edit what\'s editable, then accept':'Your info &mdash; fill in to create your account')+'</div>'+
+          (ex ? lockFld('First name',a.first)+lockFld('Last name',a.last)+lockFld('Date of birth',a.dob)
+              : openFld('First name','simFirst','','Your first name')+openFld('Last name','simLast','','Your last name')+openFld('Date of birth','simDob','','MM/DD/YYYY'))+
+          verFld(inv.channel==='email'?'Invited email':'Invited mobile', inv.contact)+
+          (inv.channel==='sms'
+            ? openFld('Email','simEmail', ex?a.email:'', 'name@email.com','email')
+            : openFld('Mobile number','simPhone', ex?a.phone:'', '(555) 555-5555','tel'))+
+          openFld('Home address','simAddr', ex?a.address:'', 'Street, city, state ZIP')+
+          simNote('<b>Accept invite</b> is the save &amp; submit for this screen &mdash; any edits above are saved to your '+(ex?'existing':'new')+' account when you accept.')+
+          simBtn('simAccept','Accept invite')+simBtn('simDecline','Decline',true));
+        // Collision arm (owner's caveat, 2026-07-23): invited at an
+        // UNRECOGNIZED contact, but during registration they enter one that
+        // IS recognized → popup + OTP → existing info populates this screen.
+        if(opts.collision){
+          const tgt = m.card.querySelector(inv.channel==='email' ? '#simPhone' : '#simEmail');
+          if(tgt){
+            const hit = () => {
+              const v = tgt.value||'';
+              if(inv.channel==='email'){
+                const d = v.replace(/\D/g,'');
+                if(d.length>=10) collisionPopup('('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6,10));
+              } else if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) collisionPopup(v.trim());
+            };
+            tgt.addEventListener('input', hit); tgt.addEventListener('blur', hit);
+          }
+        }
+        m.card.querySelector('#simAccept').onclick = () => {
+          if(ex){ sim.name = a.first+' '+a.last; }
+          else {
+            const fEl = m.card.querySelector('#simFirst'), lEl = m.card.querySelector('#simLast');
+            const fv=(fEl.value||'').trim(), lv=(lEl.value||'').trim();
+            if(!fv||!lv){ (fv?lEl:fEl).focus(); return; }
+            sim.name = fv+' '+lv;
+          }
+          doneScreen();
+        };
+        m.card.querySelector('#simDecline').onclick = m.close;
+      };
+
+      // The claim popup — nothing about the account is revealed before the OTP.
+      const collisionPopup = (entered) => {
+        paint(simBar(inv.contact)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">'+esc(entered)+' already has a Gopher account</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">If that\'s you, verify a code and we\'ll continue with that account &mdash; your info fills in for review, nothing to re-type. <i>(demo: any '+(inv.channel==='email'?'complete number':'valid email')+' triggers the match)</i></div>'+
+          simBtn('simDCode','Send me a code')+
+          simBtn('simDOther','Use a different '+(inv.channel==='email'?'number':'email'),true));
+        m.card.querySelector('#simDCode').onclick = () =>
+          otpScreen('Verify it\'s you','Code sent to <b>'+esc(entered)+'</b>. Until it\'s entered, nothing about the account is revealed. <i>(demo: any 6 digits)</i>',
+            () => infoAccept({ existing:true, status:'Verified &mdash; continuing with your existing account. Your info on file is below &mdash; review or edit, then accept.' }));
+        m.card.querySelector('#simDOther').onclick = () =>
+          infoAccept({ status:'Continuing as a new signup with a different contact.' });
+      };
+
+      // SMS invites open on the text itself — how it arrives, where the link goes.
+      const smsArrival = (next) => {
+        const inviter = ((USERS.find(u=>u.role==='owner')||{}).name||'The owner').split(' ')[0];
+        paint(simBar(inv.contact)+
+          '<div style="font-family:Nunito;font-weight:800;font-size:11px;color:#98a1b5;letter-spacing:.05em;text-transform:uppercase;margin:0 0 8px">Their Messages app</div>'+
+          '<div style="background:#f2f4f9;border-radius:14px;padding:14px;margin:0 0 10px">'+
+            '<div style="text-align:center;font-size:11px;color:#8a93a8;margin:0 0 10px">Text Message &middot; Today 9:41 AM<br>From <b>886-46</b> (GOPHER)</div>'+
+            '<div style="background:#e9ebf0;color:#16233f;border-radius:16px 16px 16px 4px;padding:11px 13px;font-size:13.5px;line-height:1.5;max-width:94%">'+
+              esc(inviter)+' invited you to join '+esc(merchName())+' on Gopher Deals as '+esc(inv.roleLabel)+'. Accept: <span style="color:#0b57d0;text-decoration:underline">gphr.io/i/x7Kq2N</span> (code 481-263, expires in 7 days)'+
+            '</div>'+
+          '</div>'+
+          simNote('The link is single-use and tied to this number. Tapping it opens the invite in the browser or app and <b>routes automatically</b> by whether the number already belongs to a Gopher account &mdash; the recipient never has to pick. The 6-digit code is the fallback for accepting on a different device.')+
+          simBtn('simTapLink','Tap the link &rarr;'));
+        m.card.querySelector('#simTapLink').onclick = next;
+      };
+
+      // Demo route picker. PRODUCTION HAS NO PICKER — the send-time lookup
+      // already decided the route (owner, 2026-07-23); this is demo chrome.
+      const picker = () => {
+        paint(
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 6px">Preview: what they\'ll see</h3>'+
+          '<div style="font-size:12.5px;color:#667;margin:0 0 14px">Invite sent via '+(inv.channel==='email'?'email':'text')+' to <b>'+esc(inv.contact)+'</b>. In production there\'s no choice here &mdash; Gopher already knows whether this contact belongs to an account, and that decides the route. Pick a situation to demo:</div>'+
+          simBtn('simKnown','Contact recognized &mdash; already a Gopher user',true)+
+          simBtn('simNew','Contact not recognized &mdash; new to Gopher',true)+
+          simBtn('simCollide','Invited at an unrecognized '+(inv.channel==='email'?'email':'number')+' &mdash; but their '+(inv.channel==='email'?'mobile number':'email')+' is on an existing account',true));
+        m.card.querySelector('#simKnown').onclick = () =>
+          otpScreen('Sign in to Gopher','This '+(inv.channel==='email'?'email':'number')+' belongs to a Gopher account, so the link signs them in: code sent to <b>'+esc(inv.contact)+'</b>. <i>(Already signed in on this device? This step is skipped.)</i> <i>(demo: any 6 digits)</i>',
+            () => infoAccept({ existing:true, status:'Verified &mdash; continuing with your existing account.' }));
+        m.card.querySelector('#simNew').onclick = () => infoAccept({});
+        m.card.querySelector('#simCollide').onclick = () => infoAccept({ collision:true,
+          status:'This '+(inv.channel==='email'?'email':'number')+' isn\'t on a Gopher account &mdash; continuing as a new signup. <span style="color:#667;font-weight:400">(Watch the '+(inv.channel==='email'?'mobile number':'email')+' field below.)</span>' });
+      };
+
+      if(inv.channel === 'sms') smsArrival(picker); else picker();
+    }
+
     function openManageUser(u){
       var head =
         '<div style="display:flex;gap:12px;align-items:center;margin:0 0 4px">'+
@@ -6186,7 +6368,7 @@ var PAY_BADGES = {
       // cancelled; active users can be removed singly.
       var pending = u.status === 'pending';
       var m2 = modal(head + rolePick(u.role) + '<div style="height:6px"></div>' +
-        (pending ? mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
+        (pending ? mgrBtn('muPreview','Preview what they\'ll see') + mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
                  : mgrBtn('muRemove','Remove user',true)) +
         btnRow('muSave','Save role','muCancel'));
       m2.card.querySelector('#muCancel').onclick = m2.close;
@@ -6196,6 +6378,12 @@ var PAY_BADGES = {
         m2.close(); renderUsers(); refreshRemoveBtn();
       };
       if(pending){
+        m2.card.querySelector('#muPreview').onclick = function(){
+          m2.close();
+          var sms = / \(SMS\)$/.test(u.email);
+          openAcceptPreview({ contact: u.email.replace(/ \(SMS\)$/,''), channel: sms ? 'sms' : 'email',
+            role: u.role, roleLabel: u.roleLabel, email: u.email });
+        };
         m2.card.querySelector('#muResend').onclick = function(){
           var d = new Date(); u.lastActive = 'Invite re-sent '+(d.getMonth()+1)+'/'+d.getDate();
           m2.close(); renderUsers();

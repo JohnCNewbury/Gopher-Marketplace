@@ -589,6 +589,38 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   in the merchant-portal Resources sidebar. Verified: fresh-profile DOM renders the link
   via both shared components, 0 broken images, 0 console errors, no mobile overflow at 375.
 
+- **Invite protocol: owner amendments applied (done 2026-07-23).** Five directives
+  from the owner's screenshot review, applied to BOTH portals (gopher-connect +
+  gopher-deals) and folded into `docs/handoff/users-access-invite-protocol.md`
+  (changelog at the end; the LOCKED decisions are untouched):
+  (1) **No name on the invite** — Full-name field removed from the invite modal;
+  pending rows show "Name pending — added at their signup" (`namePending` flag) and
+  the name+initials fill in from the invitee's own signup/account when marked Active.
+  (2) **Site-wide numeric phone standard** — new shared
+  **`assets/js/gopher-phone-input.js`** (delegated `focusin`/`input` on every
+  `input[type=tel]`: numeric keypad, letters dropped, 10-digit cap, live
+  `(XXX) XXX-XXXX`), loaded on the 5 pages with tel fields (connect, deals, go,
+  request, tiers) + missing `inputmode`/`maxlength` attrs added to stragglers.
+  **Deploy must include it.** Dynamically-created fields (modals/previews) inherit
+  automatically — don't add per-field formatters.
+  (3) **No route chooser** — the acceptance preview's 4-option picker collapsed to
+  3 demo scenarios, labeled demo chrome: production routes automatically off the
+  send-time contact lookup (signed-in vs signed-out = one route + session check).
+  (4) **Info above Accept** — every route ends on personal info rendered above the
+  Accept button (existing account → populated, First/Last/DOB locked "set at
+  signup"; new → blank + name typed by the invitee); **Accept invite = the
+  save/submit**. The collision (owner's caveat) now triggers DURING registration:
+  entering a recognized mobile/email pops "already has a Gopher account" → OTP →
+  info populated for review — continue-as, never copy-into, nothing revealed
+  pre-OTP.
+  (5) **SMS example** — SMS-invite previews open on the message itself (sender
+  886-46, exact §3 copy, single-use link + fallback code) before the routed flow.
+  The **acceptance-preview simulator is now IN gopher-deals.html too** (1:1 port
+  onto USERS/`bizName`/deals role verbs; Manage→"Preview what they'll see" added).
+  Verified in browser end-to-end in both portals (all 3 routes, collision popup +
+  formatted number, name flow to roster, 0 console errors); all script blocks
+  JXA-parse clean.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`

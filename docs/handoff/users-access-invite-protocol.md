@@ -5,18 +5,21 @@ recommendation") — every decision below is LOCKED, including the five former
 veto items at the end. Do not re-open with the dev. Governs the **Gopher Connect** business dashboard
 and the **Gopher Deals** merchant portal (which carries a 1:1 port of the section,
 owner spec 2026-07-22). One protocol, two org types.
+**Amended by the owner 2026-07-23** — five directives, all applied to both
+prototypes and folded into the sections below; see the changelog at the end.
 
 **What exists today:** the prototypes demonstrate the send side (invite modal:
-name + email-or-SMS + role), the roster lifecycle (pending → active, resend,
-cancel, role change, single/bulk remove, ownership transfer), and the
-role-visibility matrix (Owner / Admin / User). The **acceptance side is now
-demoed too**: an "invite acceptance preview" simulator (entry points: the
-invite-sent confirmation and Manage on any pending row) walks all four §4
-branches with the exact copy of this spec — including the Branch-D claim
-screen and its verify-then-continue-as OTP — and can optionally flip the
-pending row to Active on completion. Persistence, real message delivery, and
-OTP issuance remain the backend seam; the simulator is reference behavior,
-not logic to port.
+email-or-SMS + role — **no name field**, see §3), the roster lifecycle
+(pending → active, resend, cancel, role change, single/bulk remove, ownership
+transfer), and the role-visibility matrix (Owner / Admin / User). The
+**acceptance side is demoed too**, in BOTH portals: an "invite acceptance
+preview" simulator (entry points: the invite-sent confirmation and Manage on
+any pending row) walks the §4 routes with the exact copy of this spec —
+including the SMS-arrival example, the registration-time collision popup with
+its verify-then-continue-as OTP, and the info-above-Accept screen — and can
+optionally flip the pending row to Active on completion. Persistence, real
+message delivery, and OTP issuance remain the backend seam; the simulator is
+reference behavior, not logic to port.
 
 ---
 
@@ -49,9 +52,22 @@ not logic to port.
 
 ## 3 · The invite: channel, format, lifetime
 
+- **The invite carries NO name (owner, 2026-07-23).** The Full-name field was
+  removed from the modal: the inviter may not have the correct spelling, and
+  the name must come from the invitee's own account or signup — never from the
+  invite. Until acceptance the roster row shows the contact plus a "Name
+  pending — added at their signup" marker; the name (and avatar initials)
+  fill in from the account that accepts.
 - **Channel is the sender's option: email or text (SMS).** Already built into
   the modal. Rationale: office staff live in email; field staff live in texts.
   One channel per invite — re-invite to switch.
+- **Phone entry is digits-only, standard format (owner, 2026-07-23).** Every
+  `<input type="tel">` site-wide gets a numeric keypad on mobile
+  (`inputmode="numeric"`), silently drops letters, caps at 10 digits, and
+  live-formats `(XXX) XXX-XXXX` — enforced by the shared
+  `assets/js/gopher-phone-input.js` (delegated listeners, so dynamically
+  created fields inherit it). This is the standard on ALL Gopher SMS sign-in
+  portals, not just the invite modal.
 - **Format: a magic link + a 6-digit fallback code.** The link opens the accept
   flow directly; the code exists for the person who can't tap the link where it
   landed (e.g. SMS received on a phone, accepting on a laptop). Both are the
@@ -85,28 +101,41 @@ Deals swaps the product name; everything else is identical.
 ## 4 · Acceptance — the decision tree (the core of this spec)
 
 The invited person taps the link (or enters the code). The system looks up the
-**invited contact** against existing accounts. Four branches:
+**invited contact** against existing accounts — **and that lookup alone decides
+the route (owner, 2026-07-23). The invitee is never asked which situation
+they're in;** there is no chooser screen. (The prototypes' preview picker is
+demo chrome so each route can be shown — production has no picker.)
+
+**Every route ends on the same screen (owner, 2026-07-23):** the person's
+personal info rendered **above** the Accept button — populated from their
+account when one exists, blank when they're new — **editable per the canonical
+personal-info rules** (First/Last/DOB locked once set at signup; contact and
+address fields open), with **"Accept invite" acting as the save/submit** for
+the screen. There is no separate save, review, or confirmation step.
 
 **A · Contact matches an account, and they're signed in to it.**
-One screen: business name, role, inviter → **Accept** / Decline. One tap. Their
-existing profile is untouched; the org sees name + contact + role + activity,
-never DOB/address/payment data (see §7).
+Straight to the accept screen: business name, role, their info on file above
+**Accept** / Decline. Their existing profile is otherwise untouched; the org
+sees name + contact + role + activity, never DOB/address/payment data (§7).
 
 **B · Contact matches an account, signed out.**
-Standard OTP sign-in to that account (the platform's existing primitive), then
-Branch A's accept screen. **No signup is offered** — the account exists; we
-never let a matched contact create a duplicate.
+Identical to A with one step in front: standard OTP sign-in to that account
+(the platform's existing primitive). **No signup is offered** — the account
+exists; we never let a matched contact create a duplicate. (A and B are one
+route with a session check — the demo shows them as one.)
 
 **C · No match — genuinely new person.**
-Minimal signup, in the invite's context: name prefilled from the invite,
-**the invited contact is verified by OTP as part of signup** (it's already
-proven reachable — the invite arrived there), then the remaining canonical
-profile fields. Account created → membership active → lands in the dashboard.
+Minimal signup, in the invite's context: **the invited contact is verified by
+OTP as part of signup** (it's already proven reachable — the invite arrived
+there), and they type their own name and the remaining canonical profile
+fields — the name is theirs to enter, never the inviter's spelling. Accept =
+account created → membership active → lands in the dashboard.
 
 **D · Claims new, but enters a contact that matches an existing account.**
-This is the owner's scenario: everyone fills in the same personal info
-everywhere, and people forget they have accounts. During Branch-C signup they
-type an email or phone that's already registered. The system responds:
+This is the owner's scenario: the invite went to an **unrecognized** contact
+(typically a company email), and during the Branch-C personal-info
+registration they type an email or phone that's already registered — e.g.
+their personal mobile. The system responds immediately with a popup:
 
 > **"⟨contact⟩ already has a Gopher account."**
 > **[Send me a code]** — verify it's you and continue with that account
@@ -114,10 +143,11 @@ type an email or phone that's already registered. The system responds:
 
 - **Verify-then-continue, never copy.** The OTP goes to the matched contact.
   Passing it doesn't "populate their info into a new account" — it **signs them
-  into the account that already owns that info**, which then accepts the invite
-  as Branch A. One person, one account, zero duplication. This is the answer to
-  "do we give them a way to enter an OTP to populate the existing info" — yes,
-  and the mechanism is continue-as, not copy-into.
+  into the account that already owns that info**, and the accept screen then
+  renders **populated from that account** ("the existing account info is
+  populated for submission" — owner, 2026-07-23): locked fields locked,
+  editable fields open, Accept = save/submit. One person, one account, zero
+  duplication. The mechanism is continue-as, not copy-into.
 - **Fail or abandon the OTP → nothing is revealed.** No name, no partial
   profile, no hint of what the account is. They may use a different contact
   (which, being unique-key-clean, proceeds as Branch C). Disclosure that *an
@@ -218,3 +248,30 @@ audit events from §4-D accumulate the evidence for it).
 4. **Decline is silent** in v1 — LOCKED.
 5. **Near-miss audit events** on fuzzy matches (§4-D) — LOCKED, build them
    (pure backend, invisible to users; feeds future support-side merge tooling).
+
+---
+
+### Changelog
+
+**2026-07-23 — owner amendments (screenshot review of the live demo), all
+applied to both prototypes the same day:**
+
+1. **No name on the invite.** Full-name field removed from the modal (§3);
+   roster shows "Name pending" until acceptance; the name arrives from the
+   invitee's account/signup.
+2. **Phone entry standard.** Digits-only, numeric keypad, 10-digit cap,
+   `(XXX) XXX-XXXX` live format — on every tel field across all Gopher
+   sign-in portals via shared `assets/js/gopher-phone-input.js` (§3).
+3. **No route chooser.** The send-time contact lookup decides the route;
+   the demo's four-option picker was collapsed to three demo scenarios and
+   labeled as demo chrome (§4). A/B presented as one route + session check.
+4. **Info above Accept.** Every route ends with personal info rendered above
+   the Accept button, editable per canonical personal-info rules; **Accept
+   invite = save/submit** (§4).
+5. **SMS example demoed.** SMS-invite previews open on the message itself —
+   sender, exact copy per §3, single-use link — and state that the link
+   routes automatically. (Answers "share an example of how the SMS would
+   arrive and where the link takes them.")
+
+None of these touch the LOCKED decisions above; §8's security invariants are
+unchanged (the D-route popup still reveals nothing before the OTP).
