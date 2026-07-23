@@ -4717,7 +4717,6 @@
     font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--navy); padding:8px 0;
   }
   .ai-pill-input::placeholder { color:#9aa3b5; }
-  .ai-pill-iq { height:22px; width:auto; flex:none; margin-left:6px; }
   .ai-pill-send {
     width:34px; height:34px; flex-shrink:0; cursor:pointer;
     background:var(--green); color:var(--ink-on-green); border:none; border-radius:50%;
@@ -17039,10 +17038,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     </div>
 
     <!-- Logo slot above the input — real Request logo dropped in by JS -->
-    <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"></div>
+    <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"><img src="assets/img/shared-scribble.webp" alt="Gopher iQ"></div>
 
     <form class="ai-pill-bar" id="aiAssistForm" autocomplete="off">
-      <img class="ai-pill-iq" src="assets/img/shared-scribble.webp" alt="Gopher iQ">
       <input type="text" id="aiAssistInput" class="ai-pill-input" placeholder="Ask Gopher anything…" aria-label="Ask Gopher anything">
       <button type="submit" class="ai-pill-send" id="aiAssistSend" aria-label="Send" disabled>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-5 14-3-7-6-0z"/></svg>
@@ -23419,16 +23417,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(!overlay) return;
     const open = () => {
       overlay.hidden = false;
-      // Drop the real site logo into the slot (one-time copy from marketing nav)
-      const slot = document.getElementById('aiLogoSlot');
-      if(slot && !slot.querySelector('img')){
-        const navImg = document.querySelector('nav a.logo img') ||
-                       document.querySelector('header img[alt*="Gopher" i]') ||
-                       document.querySelector('img[alt*="Request" i]');
-        if(navImg && navImg.src){
-          slot.innerHTML = `<img src="${navImg.src}" alt="Gopher Request">`;
-        }
-      }
+      // Logo slot is the static Gopher iQ lockup (owner, 2026-07-23) — the
+      // platform logo is NOT copied in; the pill itself is never modified.
       // Restore default view in case last close left contact drawer open
       document.getElementById('aiAssistTranscript').hidden = false;
       document.getElementById('aiAssistForm').hidden = false;
@@ -25739,6 +25729,217 @@ function initPersonalEdit(){
   window.openSavedAddrModal=openM;
 })();
 </script>
+<!-- REFER + RECOMMEND MODALS — ported 1:1 from gopher-connect (owner, 2026-07-23:
+     "referral links… should be virtually identical to gopher-connect") -->
+<style>
+/* Ported Connect modal + referral styles (collision-checked: rc-copy /
+   rf-done-ico / rf-sub already exist here and are compatible — not re-declared) */
+  .gc-modal-overlay {
+    position:fixed; inset:0; z-index:9500;
+    background:rgba(13,26,62,0.55);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .gc-modal-overlay[hidden] { display:none; }
+  .gc-modal {
+    background:white; border-radius:18px; padding:28px 26px 24px;
+    width:100%; max-width:380px; position:relative; text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,0.35);
+  }
+  .gc-modal-close {
+    position:absolute; top:12px; right:15px;
+    background:none; border:none; font-size:23px; line-height:1;
+    color:var(--muted); cursor:pointer;
+  }
+  .gc-modal-close:hover { color:var(--navy); }
+  .gc-modal-icon {
+    width:54px; height:54px; margin:2px auto 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px; background:#fff5e6; border-radius:50%;
+  }
+  .gc-modal h4 {
+    font-family:'Nunito'; font-weight:900; font-size:19px; color:var(--navy);
+    margin-bottom:8px;
+  }
+  .gc-modal-sub {
+    font-family:'DM Sans'; font-size:13.5px; color:var(--muted);
+    line-height:1.55; margin-bottom:20px;
+  }
+  .gc-modal-btn {
+    width:100%; padding:13px; border:none; border-radius:11px; cursor:pointer;
+    background:var(--green); color:var(--ink-on-green);
+    font-family:'Nunito'; font-weight:800; font-size:14px;
+    box-shadow:0 6px 18px rgba(51,217,117,0.3); transition:background 0.2s;
+  }
+  .gc-modal-btn:hover { background:var(--green-dark); }
+  .gc-modal-btn-secondary {
+    background:transparent; color:var(--navy);
+    border:1.5px solid #dfe3ec; box-shadow:none; margin-top:2px;
+  }
+  .gc-modal-btn-secondary:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+  .gc-modal-btn:disabled {
+    background:#d8dee6; color:#9aa6b4; cursor:not-allowed;
+    box-shadow:none; opacity:1;
+  }
+  .gc-modal-btn:disabled:hover { background:#d8dee6; }
+  .gc-modal-btn-danger {
+    background:#C44257; color:#ffffff;
+    box-shadow:0 6px 18px rgba(196,66,87,0.3);
+  }
+  .gc-modal-btn-danger:hover { background:#a83648; }
+  .gc-modal-btn-text.ec-danger { color:#C44257; font-weight:800; }
+  .gc-modal-btn-text.ec-danger:hover { color:#a83648; }
+  .gc-modal.pe-modal { max-width:600px; text-align:left; padding:26px 26px 22px; max-height:90vh; overflow-y:auto; }
+  .gc-modal.age-kw-modal {
+    max-width:404px; border:1.5px solid rgba(196,66,87,0.55);
+    animation:redGlowPulseModal 2s ease-in-out infinite;
+  }
+  .rf-modal { max-width:380px; padding:26px 26px 22px; text-align:center; }
+  .rf-view { display:flex; flex-direction:column; }
+  .rf-brandwrap { margin-bottom:6px; }
+  .rf-brand { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:var(--navy); }
+  .rf-qr {
+    width:150px; height:150px; margin:4px auto 16px; border-radius:14px;
+    background:
+      linear-gradient(90deg, transparent 0, transparent 100%),
+      conic-gradient(from 0deg, #002461 25%, #fff 0 50%, #002461 0 75%, #fff 0);
+    background-size:100% 100%, 14px 14px;
+    border:6px solid var(--navy); position:relative; overflow:hidden;
+  }
+  .rf-qr::after {
+    content:''; position:absolute; inset:38%; background:var(--green); border-radius:6px;
+    box-shadow:0 0 0 6px #fff;
+  }
+  .rf-id-label { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .rf-id { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; color:var(--navy); letter-spacing:0.04em; margin-bottom:16px; }
+  .rf-btn-navy { background:var(--navy) !important; color:#fff !important; box-shadow:0 6px 18px rgba(26,42,94,0.25) !important; }
+  .rf-btn-navy:hover { background:var(--navy-mid) !important; }
+  .rf-btn-navy + .rf-btn-navy { margin-top:10px; }
+  .rf-back { align-self:flex-start; background:none; border:none; cursor:pointer; color:var(--muted); font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; margin-bottom:8px; }
+  .rf-back:hover { color:var(--navy); }
+  .rf-field-label { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+  .rf-input {
+    width:100%; border:2px solid #e7eaf2; border-radius:11px; padding:11px 14px;
+    font-family:'DM Sans',sans-serif; font-size:14px; color:var(--navy); outline:none; margin-bottom:12px;
+  }
+  .rf-input:focus { border-color:var(--green); }
+  .rf-add-contact {
+    background:var(--green); color:var(--ink-on-green); border:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+    padding:11px; border-radius:11px; margin-bottom:14px; box-shadow:0 6px 18px rgba(51,217,117,0.3);
+  }
+  .rf-add-contact:hover { background:var(--green-dark); }
+  .rf-chiplist { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .rf-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#eef0f8; color:var(--navy); border-radius:99px; padding:5px 10px;
+    font-family:'DM Sans',sans-serif; font-size:12px;
+  }
+  .rf-chip button { background:none; border:none; cursor:pointer; color:var(--muted); font-size:14px; line-height:1; }
+  .rc-selectall {
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--muted);
+    margin-bottom:8px; cursor:pointer;
+  }
+  .rc-list { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; max-height:240px; overflow-y:auto; }
+  .rc-row {
+    display:flex; align-items:center; gap:11px; cursor:pointer;
+    padding:9px 11px; border:2px solid #e7eaf2; border-radius:11px; background:white;
+    transition:all 0.15s; text-align:left;
+  }
+  .rc-row:hover { border-color:#c9d2e3; }
+  .rc-row.selected { border-color:var(--green); background:var(--green-light); }
+  .rc-photo { width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#eef2f9; }
+  .rc-photo img { width:100%; height:100%; object-fit:cover; }
+  .rc-main { flex:1; }
+  .rc-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
+  .rc-spec { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); }
+  .rc-check { width:22px; height:22px; border-radius:6px; border:2px solid #d4d8e3; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .rc-row.selected .rc-check { background:var(--green); border-color:var(--green); }
+  .rc-row.selected .rc-check::after { content:'✓'; color:var(--ink-on-green); font-size:12px; font-weight:900; font-family:'Nunito',sans-serif; }
+  .rc-or { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); margin:6px 0; }
+  .gc-modal.gc-modal-wide { max-width:460px; }
+  .gc-modal-icon-go { background:var(--green-light); }
+  .gc-modal-btn-text {
+    width:100%; margin-top:10px; padding:6px;
+    background:none; border:none; cursor:pointer;
+    font-family:'Nunito'; font-weight:700; font-size:12.5px; color:var(--muted);
+  }
+  .gc-modal-btn-text:hover { color:var(--navy); text-decoration:underline; }
+  .gc-modal .go-mark          { height:1.05em; vertical-align:-0.16em; }
+  .rf-btn-navy + .rf-btn-navy { margin-top:10px; }
+</style>
+<div class="gc-modal-overlay" id="referOverlay" hidden>
+  <div class="gc-modal rf-modal" role="dialog" aria-modal="true" aria-labelledby="referTitle">
+    <button type="button" class="gc-modal-close" id="referClose" aria-label="Close">×</button>
+
+    <!-- View 1: referral home (QR + ID + share buttons) -->
+    <div class="rf-view" id="rfViewHome">
+      <div class="rf-brandwrap"><span class="rf-brand" id="referBrand">Gopher</span></div>
+      <h4 id="referTitle">Refer Gopher Connect</h4>
+      <p class="rf-sub" id="referSub">Invite a business to Gopher Connect — you both earn rewards when they join.</p>
+      <div class="rf-qr" id="referQr" aria-hidden="true"></div>
+      <div class="rf-id-label">Your Gopher ID</div>
+      <div class="rf-id" id="referId">614072</div>
+      <button class="gc-modal-btn rf-btn-navy" data-refer-share="sms">Refer via SMS</button>
+      <button class="gc-modal-btn rf-btn-navy" data-refer-share="email">Refer via email</button>
+      <button class="gc-modal-btn-text" id="referTrackLink">View track referral history</button>
+    </div>
+
+    <!-- View 2: enter SMS / Email -->
+    <div class="rf-view" id="rfViewEntry" hidden>
+      <button class="rf-back" data-refer-back="home">‹ Back</button>
+      <h4 id="rfEntryTitle">Refer via SMS</h4>
+      <label class="rf-field-label" id="rfEntryLabel">Add number</label>
+      <input type="text" class="rf-input" id="rfEntryInput" placeholder="555-555-5555">
+      <button class="rf-add-contact" id="rfAddContact">+ Access your contacts</button>
+      <div class="rf-chiplist" id="rfChips"></div>
+      <button class="gc-modal-btn" id="rfEntrySubmit">Submit</button>
+    </div>
+
+    <!-- View 3: submitted confirmation -->
+    <div class="rf-view" id="rfViewDone" hidden>
+      <div class="rf-done-ico">✓</div>
+      <h4>Referral submitted</h4>
+      <p class="rf-sub" id="rfDoneMsg">Some of your referrals may already be on the Gopher network. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
+      <button class="gc-modal-btn" id="rfDoneTrack">View referral history</button>
+      <button class="gc-modal-btn-text" data-refer-back="home">Refer someone else</button>
+    </div>
+  </div>
+</div>
+
+<div class="gc-modal-overlay" id="recommendOverlay" hidden>
+  <div class="gc-modal rf-modal" role="dialog" aria-modal="true" aria-labelledby="recommendTitle">
+    <button type="button" class="gc-modal-close" id="recommendClose" aria-label="Close">×</button>
+
+    <!-- View 1: pick gophers -->
+    <div class="rf-view" id="rcViewPick">
+      <h4 id="recommendTitle">Recommend MY Gophers</h4>
+      <p class="rf-sub">Recommend trusted workers you've hired so other Gopher users can find them. Pick who to recommend.</p>
+      <label class="rc-selectall"><span>Select all</span><input type="checkbox" id="rcSelectAll"></label>
+      <div class="rc-list" id="rcList"></div>
+      <button class="gc-modal-btn" id="rcContinue" disabled>Refer MY Gophers</button>
+    </div>
+
+    <!-- View 2: SMS or Email -->
+    <div class="rf-view" id="rcViewChannel" hidden>
+      <button class="rf-back" data-rc-back="pick">‹ Back</button>
+      <h4>Enter SMS or email</h4>
+      <p class="rf-sub">How should we send your recommendation?</p>
+      <button class="gc-modal-btn rf-btn-navy" data-rc-channel="sms">Enter SMS</button>
+      <div class="rc-or">or</div>
+      <button class="gc-modal-btn rf-btn-navy" data-rc-channel="email">Enter email</button>
+    </div>
+
+    <!-- View 3: submitted -->
+    <div class="rf-view" id="rcViewDone" hidden>
+      <div class="rf-done-ico">✓</div>
+      <h4>MY Gophers submitted</h4>
+      <p class="rf-sub">Some of your recommendations may already have been submitted by other users on the Gopher Marketplace. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
+      <button class="gc-modal-btn" id="rcDoneTrack">View referral history</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* Refer & Earn — copy code + referral tracking (canonical parity with Gopher Go) */
 (function(){
@@ -25772,6 +25973,154 @@ function initPersonalEdit(){
     });
   });
   if(head) render('pending');
+
+  /* ── Referral + Recommend modals — ported 1:1 from gopher-connect (owner,
+     2026-07-23). Same views, same flow; referrals file into TRACK.pending. ── */
+  var REFER_COPY = {
+    connect: { brand:'Gopher Connect', title:'Refer Gopher Connect',
+      sub:'Invite a business to manage their workforce on Gopher Connect — you both earn rewards when they join.' },
+    request: { brand:'Gopher', title:'Refer Gopher Request',
+      sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.' },
+    go: { brand:'Gopher Go', title:'Refer Gopher Go',
+      sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.' }
+  };
+  var referChannel='sms', referKind='request', referContacts=[];
+  function showReferView(v){
+    document.getElementById('rfViewHome').hidden  = v!=='home';
+    document.getElementById('rfViewEntry').hidden = v!=='entry';
+    document.getElementById('rfViewDone').hidden  = v!=='done';
+  }
+  function jumpToTrack(){
+    var tabs=document.getElementById('referTrackTabs');
+    if(tabs){ tabs.scrollIntoView({behavior:'smooth', block:'center'});
+      var p=tabs.querySelector('[data-track-tab="pending"]'); if(p) p.click(); }
+  }
+  function openReferModal(kind){
+    referKind=kind; referContacts.length=0;
+    var c=REFER_COPY[kind]||REFER_COPY.request;
+    document.getElementById('referBrand').textContent=c.brand;
+    document.getElementById('referTitle').textContent=c.title;
+    document.getElementById('referSub').textContent=c.sub;
+    showReferView('home');
+    document.getElementById('referOverlay').hidden=false;
+  }
+  function renderReferChips(){
+    var wrap=document.getElementById('rfChips');
+    wrap.innerHTML=referContacts.map(function(c,i){ return '<span class="rf-chip">'+c+'<button data-chip="'+i+'" aria-label="Remove">×</button></span>'; }).join('');
+    Array.prototype.forEach.call(wrap.querySelectorAll('[data-chip]'), function(b){
+      b.addEventListener('click', function(){ referContacts.splice(parseInt(b.dataset.chip,10),1); renderReferChips(); });
+    });
+  }
+  (function initReferModal(){
+    var overlay=document.getElementById('referOverlay'); if(!overlay) return;
+    function close(){ overlay.hidden=true; }
+    document.getElementById('referClose').addEventListener('click', close);
+    Array.prototype.forEach.call(overlay.querySelectorAll('[data-refer-share]'), function(b){
+      b.addEventListener('click', function(){
+        referChannel=b.dataset.referShare;
+        var c=REFER_COPY[referKind]||REFER_COPY.request;
+        document.getElementById('rfEntryTitle').textContent=c.title+' via '+(referChannel==='sms'?'SMS':'Email');
+        document.getElementById('rfEntryLabel').textContent=referChannel==='sms'?'Add number':'Add email';
+        var inp=document.getElementById('rfEntryInput');
+        inp.placeholder=referChannel==='sms'?'555-555-5555':'name@email.com'; inp.value='';
+        referContacts.length=0; renderReferChips();
+        showReferView('entry');
+      });
+    });
+    Array.prototype.forEach.call(overlay.querySelectorAll('[data-refer-back]'), function(b){
+      b.addEventListener('click', function(){ showReferView(b.dataset.referBack); });
+    });
+    document.getElementById('rfAddContact').addEventListener('click', function(){
+      var inp=document.getElementById('rfEntryInput'); var v=inp.value.trim();
+      if(v){ referContacts.push(v); inp.value=''; renderReferChips(); }
+    });
+    document.getElementById('rfEntryInput').addEventListener('keydown', function(e){
+      if(e.key==='Enter'){ document.getElementById('rfAddContact').click(); }
+    });
+    document.getElementById('rfEntrySubmit').addEventListener('click', function(){
+      var inp=document.getElementById('rfEntryInput');
+      if(inp.value.trim()){ referContacts.push(inp.value.trim()); inp.value=''; }
+      if(!referContacts.length) return;
+      var t=new Date(), ds=(t.getMonth()+1)+'.'+t.getDate()+'.'+String(t.getFullYear()).slice(2);
+      referContacts.forEach(function(c){ TRACK.pending.unshift([ds, c, referChannel==='sms'?'SMS':'Email']); });
+      render('pending');
+      showReferView('done');
+    });
+    document.getElementById('referTrackLink').addEventListener('click', function(){ close(); jumpToTrack(); });
+    document.getElementById('rfDoneTrack').addEventListener('click', function(){ close(); jumpToTrack(); });
+  })();
+  /* Recommend MY Gophers — reads the canonical store via window.__getMyGophers */
+  var recommendSel={};
+  function openRecommendModal(){
+    recommendSel={};
+    var list=(window.__getMyGophers?window.__getMyGophers():[]);
+    var el=document.getElementById('rcList');
+    el.innerHTML=list.length?list.map(function(g,i){
+      var inits=(g.initials)||String(g.name||'?').split(/\s+/).map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
+      var av=g.photo?'<img src="'+g.photo+'" alt="">':'<span class="gsc-initials">'+inits+'</span>';
+      return '<div class="rc-row" data-rc-i="'+i+'"><div class="rc-photo">'+av+'</div><div class="rc-main"><div class="rc-name">'+g.name+'</div><div class="rc-spec">'+(g.specialty||g.lastCategory||'')+'</div></div><div class="rc-check"></div></div>';
+    }).join(''):'<div class="refer-track-empty">No MY Gophers yet — favorite a Gopher after a completed job first.</div>';
+    Array.prototype.forEach.call(el.querySelectorAll('.rc-row'), function(r){
+      r.addEventListener('click', function(){
+        var i=r.dataset.rcI;
+        if(recommendSel[i]){ delete recommendSel[i]; r.classList.remove('selected'); }
+        else { recommendSel[i]=1; r.classList.add('selected'); }
+        syncRc();
+      });
+    });
+    var all=document.getElementById('rcSelectAll');
+    if(all){ all.checked=false; all.onchange=function(){
+      Array.prototype.forEach.call(el.querySelectorAll('.rc-row'), function(r){
+        var i=r.dataset.rcI;
+        if(all.checked){ recommendSel[i]=1; r.classList.add('selected'); }
+        else { delete recommendSel[i]; r.classList.remove('selected'); }
+      });
+      syncRc();
+    }; }
+    function syncRc(){ document.getElementById('rcContinue').disabled = !Object.keys(recommendSel).length; }
+    syncRc();
+    document.getElementById('rcViewPick').hidden=false;
+    document.getElementById('rcViewChannel').hidden=true;
+    document.getElementById('rcViewDone').hidden=true;
+    document.getElementById('recommendOverlay').hidden=false;
+  }
+  (function initRecommendModal(){
+    var ov=document.getElementById('recommendOverlay'); if(!ov) return;
+    function close(){ ov.hidden=true; }
+    document.getElementById('recommendClose').addEventListener('click', close);
+    document.getElementById('rcContinue').addEventListener('click', function(){
+      document.getElementById('rcViewPick').hidden=true;
+      document.getElementById('rcViewChannel').hidden=false;
+    });
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-rc-back]'), function(b){
+      b.addEventListener('click', function(){
+        document.getElementById('rcViewChannel').hidden=true;
+        document.getElementById('rcViewPick').hidden=false;
+      });
+    });
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-rc-channel]'), function(b){
+      b.addEventListener('click', function(){
+        var t=new Date(), ds=(t.getMonth()+1)+'.'+t.getDate()+'.'+String(t.getFullYear()).slice(2);
+        var list=(window.__getMyGophers?window.__getMyGophers():[]);
+        Object.keys(recommendSel).forEach(function(i){
+          var g=list[parseInt(i,10)];
+          if(g) TRACK.pending.unshift([ds, g.name+' (MY Gopher)', b.dataset.rcChannel==='sms'?'SMS':'Email']);
+        });
+        render('pending');
+        document.getElementById('rcViewChannel').hidden=true;
+        document.getElementById('rcViewDone').hidden=false;
+      });
+    });
+    document.getElementById('rcDoneTrack').addEventListener('click', function(){ close(); jumpToTrack(); });
+  })();
+  /* Wire the four option cards (previously inert) */
+  Array.prototype.forEach.call(document.querySelectorAll('.refer-card[data-refer]'), function(c){
+    c.addEventListener('click', function(){
+      var kind=c.dataset.refer;
+      if(kind==='recommend') openRecommendModal();
+      else openReferModal(kind);
+    });
+  });
 })();
 </script>
 <script>

@@ -1385,7 +1385,6 @@
     padding:8px 0;
   }
   .ai-pill-input::placeholder { color:#9aa3b5; }
-  .ai-pill-iq { height:22px; width:auto; flex:none; margin-left:6px; }
   .ai-pill-send {
     width:34px; height:34px; flex-shrink:0; cursor:pointer;
     background:var(--green); color:var(--ink-on-green); border:none; border-radius:50%;
@@ -7785,10 +7784,9 @@
     </div>
 
     <!-- Logo slot above the input — real Connect logo dropped in by JS -->
-    <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"></div>
+    <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"><img src="assets/img/shared-scribble.webp" alt="Gopher iQ"></div>
 
     <form class="ai-pill-bar" id="aiAssistForm" autocomplete="off">
-      <img class="ai-pill-iq" src="assets/img/shared-scribble.webp" alt="Gopher iQ">
       <input type="text" id="aiAssistInput" class="ai-pill-input" placeholder="Ask Gopher anything…" aria-label="Ask Gopher anything">
       <button type="submit" class="ai-pill-send" id="aiAssistSend" aria-label="Send" disabled>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-5 14-3-7-6-0z"/></svg>
@@ -19620,16 +19618,8 @@ const PAY_BADGES = {
     if(!overlay) return;
     const open = () => {
       overlay.hidden = false;
-      // Drop the real Connect logo into the slot (one-time copy from marketing nav)
-      const slot = document.getElementById('aiLogoSlot');
-      if(slot && !slot.querySelector('img')){
-        const navImg = document.querySelector('nav a.logo img') ||
-                       document.querySelector('header img[alt*="Gopher" i]') ||
-                       document.querySelector('img[alt*="Connect" i]');
-        if(navImg && navImg.src){
-          slot.innerHTML = `<img src="${navImg.src}" alt="Gopher Connect">`;
-        }
-      }
+      // Logo slot is the static Gopher iQ lockup (owner, 2026-07-23) — the
+      // platform logo is NOT copied in; the pill itself is never modified.
       // restore default view in case last close left contact drawer open
       document.getElementById('aiAssistTranscript').hidden = false;
       document.getElementById('aiAssistForm').hidden = false;
