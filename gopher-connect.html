@@ -8628,6 +8628,7 @@
               <li><a href="gopher-request-101.html">Gopher Request 101</a></li>
               <li><a href="gopher-connect-101.html">Gopher Connect 101</a></li>
               <li><a href="gopher-go-101.html">Gopher Go 101</a></li>
+              <li><a href="gopher-deals-101.html">Gopher Deals 101</a></li>
             </ul>
           </details>
         </li>
@@ -9036,6 +9037,22 @@
           <b>Owner</b> — full access, billing, and ownership transfer. &nbsp;·&nbsp;
           <b>Admin</b> — manage users, requests, and payment methods. &nbsp;·&nbsp;
           <b>User</b> — submit and view their own requests.
+        </div>
+        <!-- DEMO-ONLY control. The real page renders exactly one of these views,
+             derived from the signed-in account's role — there is no toggle in
+             production. Visibility matrix it demonstrates:
+               Owner  → manages everyone incl. ownership transfer
+               Admin  → invites; manages Users and pending invites;
+                        CANNOT manage the Owner or other Admins
+               User   → read-only roster; no invite, no checkboxes, no Manage -->
+        <div id="usersViewAs" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;font-size:12.5px;color:#667">
+          <span style="font-family:'Nunito';font-weight:800;color:var(--navy)">Preview this page as:</span>
+          <span style="display:inline-flex;border:1.5px solid #d9deea;border-radius:9px;overflow:hidden">
+            <button type="button" data-viewas="owner" class="selected" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:var(--navy);color:#fff">Owner</button>
+            <button type="button" data-viewas="admin" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:#fff;color:var(--navy)">Admin</button>
+            <button type="button" data-viewas="user" style="font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 14px;border:none;cursor:pointer;background:#fff;color:var(--navy)">User</button>
+          </span>
+          <span id="usersViewAsNote"></span>
         </div>
         <div class="prev-table-wrap">
           <table class="prev-table users-table">
@@ -18200,11 +18217,23 @@ const PAY_BADGES = {
   })();
 
   function renderUsers(){
+    // Who is looking decides what renders. Demo: DASH_DATA.usersViewAs (the
+    // "Preview this page as" toggle); production derives this from the
+    // signed-in account and renders exactly one view.
+    //   owner → manage every row (owner row = ownership transfer)
+    //   admin → manage Users + pending invites; never the Owner or other Admins
+    //   user  → read-only roster
+    const va = DASH_DATA.usersViewAs || 'owner';
+    const canManage = u =>
+      va === 'owner' ? true :
+      va === 'admin' ? (u.status === 'pending' || u.role === 'user') : false;
     const html = DASH_DATA.users.map(u => `
       <tr>
         <td>${u.role==='owner'
           ? '<span title="Owner — protected" style="color:#b9c0d0;font-size:13px">🔒</span>'
-          : `<input type="checkbox" class="user-rm-chk" data-uid="${u.email}" aria-label="Select ${u.name}">`}</td>
+          : (va !== 'user' && canManage(u)
+              ? `<input type="checkbox" class="user-rm-chk" data-uid="${u.email}" aria-label="Select ${u.name}">`
+              : '')}</td>
         <td>
           <div class="pt-avatar">
             <span class="pt-avatar-circle ${u.role}">${u.initials}</span>
@@ -18215,10 +18244,21 @@ const PAY_BADGES = {
         <td><span class="role-pill ${u.role}">${u.roleLabel}</span></td>
         <td><span class="status-pill ${u.status}">${u.statusLabel}</span></td>
         <td>${u.lastActive}</td>
-        <td><button class="pt-action">Manage</button></td>
+        <td>${canManage(u)
+          ? `<button class="pt-action" data-manage-user="${u.email}">Manage</button>`
+          : '<span style="color:#b9c0d0">&mdash;</span>'}</td>
       </tr>
     `).join('');
     document.getElementById('usersTableRows').innerHTML = html;
+    // Section chrome follows the same matrix: Users never see invite/remove.
+    const inviteBtn = document.querySelector('[data-section="users"] .invite-btn');
+    if(inviteBtn) inviteBtn.style.display = va === 'user' ? 'none' : '';
+    const rmBtn = document.getElementById('usersRemoveSelected');
+    if(rmBtn && va === 'user') rmBtn.hidden = true;
+    const note = document.getElementById('usersViewAsNote');
+    if(note) note.textContent =
+      va === 'user'  ? 'Users see the roster read-only — only Owners and Admins manage the team.' :
+      va === 'admin' ? 'Admins manage Users and pending invites — not the Owner or other Admins.' : '';
   }
 
   // Business logo editor on the Business info page — upload/replace; keeps the
@@ -18579,6 +18619,109 @@ const PAY_BADGES = {
         'This revokes account access for:<ul style="margin:8px 0 0;padding-left:18px;color:var(--navy)">'+names.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul>',
         () => { DASH_DATA.users = DASH_DATA.users.filter(u => !(emails.includes(u.email) && u.role!=='owner')); renderUsers(); refreshRemoveBtn(); });
     });
+
+    // ---- AC5b: per-row Manage — role change, invite resend/cancel, single
+    // remove, ownership transfer. Completes the promise the role banner makes
+    // ("Owner — ... and ownership transfer"). Same demo-grade in-memory state
+    // as the rest of the dashboard; persistence is the backend seam. ----
+    const rolePick = (sel) =>
+      '<label style="display:block;font-family:Nunito;font-weight:800;font-size:12px;color:var(--navy);margin:0 0 6px">Role</label>'+
+      ['admin','user'].map(r =>
+        '<label style="display:flex;gap:9px;align-items:flex-start;border:1.5px solid '+(sel===r?'var(--green)':'#d9deea')+';border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer">'+
+        '<input type="radio" name="muRole" value="'+r+'"'+(sel===r?' checked':'')+' style="margin-top:2px">'+
+        '<span style="font-size:13px;color:var(--navy)"><b style="font-family:Nunito">'+(r==='admin'?'Admin':'User')+'</b><br><small style="color:#667">'+
+        (r==='admin'?'Manage users, requests, and payment methods.':'Submit and view their own requests.')+'</small></span></label>'
+      ).join('');
+    const mgrBtn = (id,label,danger) =>
+      '<button id="'+id+'" style="font-family:Nunito;font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;width:100%;margin:0 0 8px;cursor:pointer;'+
+      (danger?'background:#fff;border:1.5px solid #C44257;color:#C44257':'background:#fff;border:1.5px solid #d9deea;color:var(--navy)')+'">'+label+'</button>';
+
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-manage-user]'); if(!btn) return;
+      const u = DASH_DATA.users.find(x => x.email === btn.dataset.manageUser); if(!u) return;
+      openManageUser(u);
+    });
+
+    // Demo-only "Preview this page as" toggle — see the comment in the markup.
+    document.addEventListener('click', e => {
+      const b = e.target.closest('#usersViewAs [data-viewas]'); if(!b) return;
+      DASH_DATA.usersViewAs = b.dataset.viewas;
+      document.querySelectorAll('#usersViewAs [data-viewas]').forEach(x => {
+        const on = x === b;
+        x.classList.toggle('selected', on);
+        x.style.background = on ? 'var(--navy)' : '#fff';
+        x.style.color = on ? '#fff' : 'var(--navy)';
+      });
+      renderUsers(); refreshRemoveBtn();
+    });
+
+    function openManageUser(u){
+      const head =
+        '<div style="display:flex;gap:12px;align-items:center;margin:0 0 4px">'+
+        '<span class="pt-avatar-circle '+u.role+'" style="width:40px;height:40px;font-size:14px">'+esc(u.initials)+'</span>'+
+        '<div><div style="font-family:Nunito;font-weight:900;color:var(--navy)">'+esc(u.name)+'</div>'+
+        '<div style="font-size:12.5px;color:#667">'+esc(u.email)+'</div></div></div>'+
+        '<div style="margin:0 0 14px"><span class="role-pill '+u.role+'">'+esc(u.roleLabel)+'</span> '+
+        '<span class="status-pill '+u.status+'">'+esc(u.statusLabel)+'</span></div>';
+
+      if(u.role === 'owner'){
+        // Owner: the only management verb is transferring ownership.
+        const candidates = DASH_DATA.users.filter(x => x.role!=='owner' && x.status==='active');
+        const m = modal(head+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">The Owner has full access, billing, and is the only role that can transfer ownership. To change owners, pick an <b>active</b> teammate below &mdash; you\'ll become an Admin.</div>'+
+          (candidates.length
+            ? candidates.map((c,i)=>'<label style="display:flex;gap:9px;align-items:center;border:1.5px solid #d9deea;border-radius:10px;padding:10px 12px;margin:0 0 8px;cursor:pointer"><input type="radio" name="toOwner" value="'+esc(c.email)+'"'+(i===0?' checked':'')+'><span style="font-size:13px;color:var(--navy)"><b style="font-family:Nunito">'+esc(c.name)+'</b> <small style="color:#667">'+esc(c.email)+'</small></span></label>').join('')
+            : '<div style="font-size:13px;color:#667;border:1.5px dashed #d9deea;border-radius:10px;padding:12px">No eligible teammates yet &mdash; ownership can only transfer to an <b>active</b> user, and invites still pending don\'t qualify.</div>')+
+          btnRow('muXfer', 'Transfer ownership', 'muCancel'));
+        m.card.querySelector('#muCancel').onclick = m.close;
+        const x = m.card.querySelector('#muXfer');
+        if(!candidates.length){ x.disabled = true; x.style.opacity = .45; x.style.cursor = 'default'; }
+        else x.onclick = () => {
+          const sel = m.card.querySelector('input[name="toOwner"]:checked'); if(!sel) return;
+          const t = DASH_DATA.users.find(z => z.email === sel.value); if(!t) return;
+          m.close();
+          confirmModal('Make '+esc(t.name)+' the Owner?',
+            'They get full access, billing, and ownership transfer. <b>'+esc(u.name)+'</b> becomes an Admin. There is exactly one Owner at a time.',
+            () => { t.role='owner'; t.roleLabel='Owner'; u.role='admin'; u.roleLabel='Admin'; renderUsers(); refreshRemoveBtn(); },
+            'Transfer');
+        };
+        return;
+      }
+
+      // Admin / User rows: change role; pending invites can be re-sent or
+      // cancelled; active users can be removed singly.
+      const pending = u.status === 'pending';
+      const m = modal(head + rolePick(u.role) + '<div style="height:6px"></div>' +
+        (pending ? mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
+                 : mgrBtn('muRemove','Remove user',true)) +
+        btnRow('muSave','Save role','muCancel'));
+      m.card.querySelector('#muCancel').onclick = m.close;
+      m.card.querySelector('#muSave').onclick = () => {
+        const r = m.card.querySelector('input[name="muRole"]:checked');
+        if(r && r.value !== u.role){ u.role = r.value; u.roleLabel = r.value==='admin' ? 'Admin' : 'User'; }
+        m.close(); renderUsers(); refreshRemoveBtn();
+      };
+      if(pending){
+        m.card.querySelector('#muResend').onclick = () => {
+          const d = new Date(); u.lastActive = 'Invite re-sent '+(d.getMonth()+1)+'/'+d.getDate();
+          m.close(); renderUsers();
+        };
+        m.card.querySelector('#muRevoke').onclick = () => {
+          m.close();
+          confirmModal('Cancel the invite to '+esc(u.name)+'?',
+            'Their invite link stops working and the row is removed. You can always re-invite them later.',
+            () => { DASH_DATA.users = DASH_DATA.users.filter(z => z.email !== u.email); renderUsers(); refreshRemoveBtn(); },
+            'Cancel invite');
+        };
+      } else {
+        m.card.querySelector('#muRemove').onclick = () => {
+          m.close();
+          confirmModal('Remove '+esc(u.name)+'?',
+            'This revokes their access to your business on Gopher Connect. Their past requests stay in your history.',
+            () => { DASH_DATA.users = DASH_DATA.users.filter(z => z.email !== u.email); renderUsers(); refreshRemoveBtn(); });
+        };
+      }
+    }
 
     // ---- AC6: add a MY Gopher ----
     document.addEventListener('click', e => {
