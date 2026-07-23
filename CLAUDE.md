@@ -670,8 +670,14 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   Users & access (C+D), Blocked requestors (Go); NEW "Rewards" divider = Refer
   Gopher (Deals: Feature my business — judgment call); Resources = Ask Gopher iQ
   (renamed everywhere), Visit site, Send feedback (built new for Go: minimal
-  gc-modal). **Saved addresses nav entries removed from Connect+Request**
-  (absent from the owner's list — panes/data/quick-pick remain in code).
+  gc-modal). ~~Saved addresses nav entries removed from Connect+Request~~
+  **CORRECTED same day — owner: "a complete oversight on my part… a VERY
+  important feature"; both entries RESTORED below Personal info.** Also owner
+  corrections: Go's blocked list is **"Block Requesters"** (spelling canon:
+  "Requester" always ends in -er, never "requestor") and sits top-level
+  directly under Request history; visible "requestor" copy swept in Go+Request
+  UI chrome (the iQ FAQ corpus still has 23 instances ×7 copies — needs its
+  sync procedure, flagged as follow-up).
   **Uniform sizing**: brand cards min-height 122px, CTAs min-height 50px + navy
   text on all 4 (Request's CTA was white — hardcoded #002461; note Request's
   `--ink-on-green` is still #fff globally). (7) **Go CTA = "+ Service Provider
