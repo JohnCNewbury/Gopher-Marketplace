@@ -729,6 +729,18 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (c) **Go got "← Back to main page" above Sign out** (leaves the dashboard,
   keeps the session — mirrors Connect). (d) Age-restricted category card's
   toggle upsized to match the others (`sm` class dropped).
+  (e) **Go Business info cleaned up (owner, same day):** the two-button
+  business/individual segment (owner: "done poorly") became a single
+  activate/deactivate SWITCH — "Showing as a business" card with a live
+  "Requesters see ⟨business name | Marcus Hale⟩" sub-line, standard `.sw`
+  primitive, feeds the pane's save-dirty tracking. **"Become a Pro" is its own
+  pane + sidebar item directly under Business info**, titled with the REAL
+  navy/white Pro lockup (`assets/img/tier-pro.svg`; also the nav icon on a
+  white chip); the insurance/bonded/license upload tiles moved there with
+  their own save-row (`wire('pro')`); Business info keeps name/title/address/
+  show-as/logo. Cred-upload wiring now spans both panes (dispatches input on
+  the tile's own section). App Prototypes session pinged with all three
+  refinements.
 
 ### Outstanding to-do
 
