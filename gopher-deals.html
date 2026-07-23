@@ -1776,7 +1776,7 @@
   .dashboard.open { display:grid; }
 
   .dash-sidebar { background:linear-gradient(180deg,#002461 0%,#0f1a3d 100%); color:#fff; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto; }
-  .dash-sidebar-head { background:#fff; border-radius:18px; padding:16px 18px 14px; margin-bottom:16px; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+  .dash-sidebar-head { background:#fff; border-radius:18px; padding:16px 18px 14px; margin-bottom:16px; box-shadow:0 4px 14px rgba(0,0,0,0.18); min-height:122px; box-sizing:border-box; /* uniform platform card (owner, 2026-07-23) */ }
   .dash-logo-text { display:flex; align-items:center; gap:9px; }
   .dlt-mark { width:34px; height:34px; border-radius:9px; background:var(--green); display:flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:900; font-size:19px; color:#fff; box-shadow:0 2px 6px rgba(51,217,117,.3); flex-shrink:0; }
   .dlt-words { display:flex; flex-direction:column; line-height:1; }
@@ -1786,7 +1786,7 @@
   .dash-business-name { font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--navy); line-height:1.2; }
   .dash-business-plan { font-family:'DM Sans'; font-size:11px; font-weight:500; color:rgba(26,42,94,.7); margin-top:3px; }
 
-  .dash-sidebar-newreq { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin:0 0 16px; padding:14px 16px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; font-family:'Nunito'; font-weight:900; font-size:14.5px; cursor:pointer; box-shadow:0 6px 18px rgba(51,217,117,.4); transition:transform .15s, box-shadow .15s, background .15s; }
+  .dash-sidebar-newreq { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; margin:0 0 16px; min-height:50px; box-sizing:border-box; /* uniform CTA size (owner, 2026-07-23) */ padding:14px 16px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; font-family:'Nunito'; font-weight:900; font-size:14.5px; cursor:pointer; box-shadow:0 6px 18px rgba(51,217,117,.4); transition:transform .15s, box-shadow .15s, background .15s; }
   .dash-sidebar-newreq:hover { background:var(--green-dark); transform:translateY(-1px); box-shadow:0 8px 22px rgba(51,217,117,.5); }
   .dash-sidebar-newreq .dsnr-ico { font-size:19px; font-weight:900; line-height:1; }
 
@@ -4661,10 +4661,12 @@
       <button class="dash-nav-item" data-section="personal"><span class="dni-ico">👤</span><span class="dni-label">Personal info</span></button>
       <button class="dash-nav-item" data-section="payment"><span class="dni-ico">💳</span><span class="dni-label">Payment info</span></button>
       <button class="dash-nav-item" data-section="users"><span class="dni-ico">👥</span><span class="dni-label">Users &amp; access</span></button>
+
+      <div class="dash-nav-divider">Rewards</div>
       <button class="dash-nav-item" data-section="advertise"><span class="dni-ico">📣</span><span class="dni-label">Feature my business</span></button>
 
       <div class="dash-nav-divider">Resources</div>
-      <button class="dash-nav-item" data-section="ask"><span class="dni-ico">💡</span><span class="dni-label">Ask Gopher</span></button>
+      <button class="dash-nav-item" data-section="ask"><span class="dni-ico">💡</span><span class="dni-label">Ask Gopher iQ</span></button>
       <a class="dash-nav-item" href="gopher-deals-101.html" target="_blank"><span class="dni-ico">🎓</span><span class="dni-label">Deals 101 guide</span><span class="dni-ext">↗</span></a>
       <a class="dash-nav-item" href="#" target="_blank"><span class="dni-ico">🌐</span><span class="dni-label">Visit Deals site</span><span class="dni-ext">↗</span></a>
       <button class="dash-nav-item" data-section="feedback"><span class="dni-ico">✍️</span><span class="dni-label">Send feedback</span></button>
@@ -5137,7 +5139,7 @@
           </div>
         </div>
       </section>
-      <section class="dash-section" data-pane="ask"><div class="placeholder-card"><div class="pc-ico">💡</div><h3>Ask Gopher</h3><p>Help center and quick answers. Coming soon.</p></div></section>
+      <section class="dash-section" data-pane="ask"><div class="placeholder-card"><img src="assets/img/shared-scribble.webp" alt="Gopher iQ" style="height:34px;width:auto;margin:0 auto 10px;display:block"><h3>Ask Gopher iQ</h3><p>Help center and quick answers. Coming soon.</p></div></section>
       <section class="dash-section" data-pane="feedback"><div class="placeholder-card"><div class="pc-ico">✍️</div><h3>Send feedback</h3><p>Tell us what to build next. Coming soon.</p></div></section>
 
     </div>
@@ -5213,6 +5215,10 @@
     opts = opts || {};
     $('loginScreen').classList.add('hidden');
     $('dashboard').classList.add('open');
+    // The dashboard is position:fixed over the (very tall) landing page; without
+    // this, wheel/scrollbar input scrolls the page BEHIND it and the screen
+    // appears frozen (owner bug report 2026-07-23).
+    document.body.style.overflow = 'hidden';
     $('bizPlan').textContent = (role === 'provider' ? 'Service Provider' : 'Merchant') + ' · Active';
     if(opts.biz){ $('bizName').textContent = opts.biz; }
     if(opts.name){ $('greeting').textContent = 'Welcome back, ' + opts.name.split(' ')[0] + ' \uD83D\uDC4B'; }
@@ -5411,7 +5417,7 @@
   var titles = {
     home:'Dashboard Overview', newdeal:'Submit a New Deal', mydeals:'My Deals',
     inbox:'Inbox', business:'Business Info', personal:'Personal Info', payment:'Payment Info',
-    users:'Users & Access', advertise:'Feature My Business', ask:'Ask Gopher', feedback:'Send Feedback'
+    users:'Users & Access', advertise:'Feature My Business', ask:'Ask Gopher iQ', feedback:'Send Feedback'
   };
   var navItems = document.querySelectorAll('.dash-nav-item[data-section]');
   function showSection(key){
@@ -6419,10 +6425,10 @@ var PAY_BADGES = {
   window.addEventListener('hashchange', maybeOpenFromHash);
   if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', maybeOpenFromHash); } else { maybeOpenFromHash(); }
   // Remember me ends at Sign out — the next login asks for credentials again.
-  $('signOut').addEventListener('click', function(){ clearRemembered(); $('dashboard').classList.remove('open'); });
+  $('signOut').addEventListener('click', function(){ clearRemembered(); $('dashboard').classList.remove('open'); document.body.style.overflow=''; });
   // Back to main page — lightweight exit: keeps the signed-in session, so the
   // next login drops the user straight back into the dashboard via Remember me.
-  $('backMain').addEventListener('click', function(){ $('dashboard').classList.remove('open'); window.scrollTo(0,0); });
+  $('backMain').addEventListener('click', function(){ $('dashboard').classList.remove('open'); document.body.style.overflow=''; window.scrollTo(0,0); });
   $('loginScreen').addEventListener('click', function(e){ if(e.target===$('loginScreen')) closePortal(); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ if(!$('otpOverlay').hidden){ closeOtp(); } else if(!$('loginScreen').classList.contains('hidden')){ closePortal(); } } });
   /* Hook the shared Gopher header: clicking "Gopher Deals" in Login/Sign-Up opens this portal in-place */

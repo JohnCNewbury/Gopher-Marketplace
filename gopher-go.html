@@ -2010,7 +2010,7 @@
   .dashboard.active { display:flex; }
   .dash-sidebar { width:264px; flex-shrink:0; background:var(--navy); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
   .dash-sidebar-head { padding:16px 16px 14px; border-bottom:1px solid rgba(255,255,255,0.08); }
-  .dash-acct { background:#fff; border-radius:14px; padding:14px 15px; }
+  .dash-acct { background:#fff; border-radius:14px; padding:14px 15px; min-height:122px; box-sizing:border-box; /* uniform platform card (owner, 2026-07-23) */ }
   .dash-acct-logo { margin-bottom:9px; }
   .dash-acct-logo svg { height:22px; width:auto; display:block; }
   .dash-worker-name { font-family:'Nunito',sans-serif; font-weight:600; font-size:15px; color:var(--navy); }
@@ -2183,12 +2183,16 @@
   .dash-nav-divider { font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:1.4px; text-transform:uppercase; color:rgba(255,255,255,0.4); padding:14px 10px 7px; }
   .dash-nav-item { width:100%; display:flex; align-items:center; gap:11px; background:transparent; border:none; cursor:pointer; text-align:left; padding:11px 12px; border-radius:10px; margin-bottom:2px; transition:background 0.15s; }
   /* Offer my service — provider-deal CTA (DLP) */
-  .dash-offer-btn { width:100%; display:flex; align-items:center; gap:10px; background:var(--green); color:var(--ink-on-green); border:none; cursor:pointer; text-align:left; padding:13px 14px; border-radius:11px; margin:2px 0 6px; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; box-shadow:0 6px 16px rgba(51,217,117,0.34); transition:filter 0.15s, transform 0.1s; }
+  .dash-offer-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; min-height:50px; box-sizing:border-box; /* uniform CTA size + navy words (owner, 2026-07-23) */ background:var(--green); color:var(--ink-on-green); border:none; cursor:pointer; text-align:left; padding:13px 14px; border-radius:11px; margin:2px 0 6px; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; box-shadow:0 6px 16px rgba(51,217,117,0.34); transition:filter 0.15s, transform 0.1s; }
   .dash-offer-btn:hover { filter:brightness(0.97); }
   .dash-offer-btn:active { transform:translateY(1px); }
-  .dash-offer-btn .dob-ico { font-size:16px; line-height:1; }
+  .dash-offer-btn .dob-plus { font-size:18px; font-weight:900; line-height:1; }
+  .dash-offer-btn.is-locked .dob-plus { opacity:0.5; }
+  .dash-offer-learn { width:100%; background:transparent; border:none; color:rgba(255,255,255,0.65); cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px; text-decoration:underline; text-underline-offset:2px; padding:0 0 6px; margin:-2px 0 2px; }
+  .dash-offer-learn:hover { color:#fff; }
   .dash-offer-btn .dob-arrow { margin-left:auto; font-weight:900; }
   .dash-offer-btn .dob-lock { margin-left:auto; display:none; }
+  .dash-offer-btn.is-locked { cursor:default; }
   .dash-offer-btn.is-locked { background:rgba(255,255,255,0.09); color:rgba(255,255,255,0.5); box-shadow:none; }
   .dash-offer-btn.is-locked .dob-arrow { display:none; }
   .dash-offer-btn.is-locked .dob-lock { display:inline; }
@@ -2482,26 +2486,30 @@
            jobs — Delivery/Ride Sharing/Other excluded from both the count and the rating window);
            otherwise it's
            locked and taps redirect to the eligibility terms in Gopher Go 101. -->
+      <!-- Owner 2026-07-23: titled "+ Service Provider Deal", NO emoji; the
+           button is deactivated (not just locked) when not auto-eligible, and
+           "Learn more" opens the eligibility pop-up for everyone. -->
       <button class="dash-offer-btn" id="offerServiceBtn" type="button">
-        <span class="dob-ico" aria-hidden="true">&#127991;&#65039;</span>
-        <span class="dob-label">Offer my service</span>
-        <span class="dob-arrow" aria-hidden="true">&rarr;</span>
+        <span class="dob-plus" aria-hidden="true">+</span>
+        <span class="dob-label">Service Provider Deal</span>
         <span class="dob-lock" aria-hidden="true">&#128274;</span>
       </button>
+      <button class="dash-offer-learn" id="offerLearnMore" type="button">Learn more</button>
       <button class="dash-demo-toggle" id="offerDemoToggle" type="button" title="Prototype demo only — production reads eligibility from the worker's tier automatically">&#128295; Demo: eligible <b id="offerDemoState">ON</b></button>
-      <div class="dash-nav-divider">Account</div>
       <button class="dash-nav-item active" data-dash-section="profile"><span class="dni-ico">&#128100;</span><span class="dni-label">Profile</span></button>
-      <button class="dash-nav-item" data-dash-section="personal"><span class="dni-ico">&#128221;</span><span class="dni-label">Personal info</span></button>
-      <button class="dash-nav-item" data-dash-section="business"><span class="dni-ico">&#127970;</span><span class="dni-label">Business info</span></button>
-      <button class="dash-nav-item" data-dash-section="work"><span class="dni-ico">&#128205;</span><span class="dni-label">Work settings &amp; radius</span></button>
-      <button class="dash-nav-item" data-dash-section="payout"><span class="dni-ico">&#128179;</span><span class="dni-label">Payout info</span></button>
-      <div class="dash-nav-divider">Activity</div>
       <button class="dash-nav-item" data-dash-section="history"><span class="dni-ico">&#128218;</span><span class="dni-label">Request history</span></button>
-      <button class="dash-nav-item" data-dash-section="refer"><span class="dni-ico">&#127873;</span><span class="dni-label">Refer &amp; earn</span></button>
+      <div class="dash-nav-divider">Account</div>
+      <button class="dash-nav-item" data-dash-section="business"><span class="dni-ico">&#127970;</span><span class="dni-label">Business info</span></button>
+      <button class="dash-nav-item" data-dash-section="personal"><span class="dni-ico">&#128221;</span><span class="dni-label">Personal info</span></button>
+      <button class="dash-nav-item" data-dash-section="work"><span class="dni-ico">&#128205;</span><span class="dni-label">Work settings &amp; ratings</span></button>
+      <button class="dash-nav-item" data-dash-section="payout"><span class="dni-ico">&#128179;</span><span class="dni-label">Payment info</span></button>
       <button class="dash-nav-item" data-dash-section="blocked"><span class="dni-ico">&#128683;</span><span class="dni-label">Blocked requestors</span></button>
+      <div class="dash-nav-divider">Rewards</div>
+      <button class="dash-nav-item" data-dash-section="refer"><span class="dni-ico">&#127873;</span><span class="dni-label">Refer Gopher</span></button>
       <div class="dash-nav-divider">Resources</div>
-      <button class="dash-nav-item" data-dash-section="help"><span class="dni-ico">&#10067;</span><span class="dni-label">Help center</span></button>
+      <button class="dash-nav-item" data-dash-section="help"><span class="dni-ico">&#128161;</span><span class="dni-label">Ask Gopher iQ</span></button>
       <a class="dash-nav-item dash-nav-link" href="gopher-go.html"><span class="dni-ico">&#127968;</span><span class="dni-label">Visit Gopher Go site</span><span class="dni-ext" aria-hidden="true">&#8599;</span></a>
+      <button class="dash-nav-item" id="goSendFeedback"><span class="dni-ico">&#9997;&#65039;</span><span class="dni-label">Send feedback</span></button>
     </div>
     <div class="dash-sidebar-footer"><button class="dash-signout" id="dashSignOut">&larr; Sign out</button></div>
   </aside>
@@ -2594,17 +2602,28 @@
         <div class="panel">
           <div class="panel-head"><h2>Business info</h2><span class="eyebrow">Optional</span></div>
           <p class="panel-desc">Work as an individual? You can leave this blank. Adding business details &amp; documents determines your <b>Gopher Pro</b> eligibility.</p>
-          <div class="field full locked"><label>Business name</label><input type="text" id="bizName" value="Hale Services LLC" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
+          <!-- Owner 2026-07-23: business name is EDITABLE (was locked); worker
+               chooses how they present; logo lives with the business fields. -->
+          <div class="field full"><label>Business name</label><input type="text" id="bizName" data-field value="Hale Services LLC"></div>
           <div class="field full"><label>Title</label><input type="text" id="bizTitle" data-field value="Owner"></div>
           <div class="field full"><label>Business address</label><input type="text" id="bizAddr" data-field value="412 Maple Ave, Fuquay-Varina, NC 27526"></div>
-          <div class="sec-h">Credentials</div>
-          <div class="procallout"><span class="pc-ico">&#11088;</span><div>These docs determine your <b>Gopher Pro</b> eligibility and are reviewed for approval. Uploading a new document <b>replaces the previous one</b> — newest overrides oldest.</div></div>
-          <div class="up2">
-            <div class="cred uptile" data-cred="Business logo"><div class="up-ico">&#128247;</div><span>Business logo</span><input type="hidden" data-field value="0"></div>
-            <div class="cred uptile" data-cred="Proof of insurance"><div class="up-ico">&#128196;</div><span>Proof of insurance</span><input type="hidden" data-field value="0"></div>
+          <div class="field full"><label>How you appear to requestors</label>
+            <div class="seg" id="bizShowAsSeg" style="margin-top:4px">
+              <button type="button" data-showas="business" class="on">Show me as a business</button>
+              <button type="button" data-showas="individual">Show me as an individual</button>
+            </div>
+            <input type="hidden" id="bizShowAs" data-field value="business">
           </div>
           <div class="up2">
+            <div class="cred uptile" data-cred="Business logo"><div class="up-ico">&#128247;</div><span>Business logo</span><input type="hidden" data-field value="0"></div>
+          </div>
+          <div class="sec-h">Become a Pro <span class="tier-badge-pro" style="display:inline-flex;align-items:center;background:var(--navy,#002461);color:#fff;font-family:Nunito;font-weight:900;font-size:11px;border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:middle">pro</span></div>
+          <div class="procallout"><span class="pc-ico">&#11088;</span><div>These docs determine your <b>Gopher Pro</b> eligibility and are reviewed for approval. Uploading a new document <b>replaces the previous one</b> — newest overrides oldest.</div></div>
+          <div class="up2">
+            <div class="cred uptile" data-cred="Proof of insurance"><div class="up-ico">&#128196;</div><span>Proof of insurance</span><input type="hidden" data-field value="0"></div>
             <div class="cred uptile" data-cred="Proof of bonded"><div class="up-ico">&#128196;</div><span>Proof of bonded</span><input type="hidden" data-field value="0"></div>
+          </div>
+          <div class="up2">
             <div class="cred uptile" data-cred="Proof of license"><div class="up-ico">&#128196;</div><span>Proof of license</span><input type="hidden" data-field value="0"></div>
           </div>
           <div class="save-row"><button class="btn-save" disabled>Save changes</button><span class="save-note">No changes yet.</span></div>
@@ -2614,14 +2633,19 @@
       <!-- ░░ WORK SETTINGS & RADIUS ░░ -->
       <section class="dash-section" data-dash-section="work">
         <div class="panel">
-          <div class="panel-head"><h2>Work settings &amp; radius</h2></div>
+          <div class="panel-head"><h2>Work settings &amp; ratings</h2></div>
           <p class="panel-desc">Pick the categories you'll take, then set how far you'll travel.</p>
 
           <div class="sec-h">Categories</div>
           <div class="cat-list">
             <div class="cat-row" data-cat="Delivery / Errand">
               <div class="crow"><span class="cl">Delivery / Errand</span><span class="sw js-cat on"></span></div>
-              <div class="sub2 js-subwrap"><span class="sl">Delivery — Age-Restricted <span style="color:var(--muted)">(ID required)</span></span><span class="sw sm js-sub"></span></div>
+            </div>
+            <!-- Age-restricted delivery is its OWN card (owner, 2026-07-23) —
+                 no longer a sub-row under Delivery. Mirror in the Go app
+                 prototype (App Prototypes session pinged). -->
+            <div class="cat-row" data-cat="Delivery — Age-Restricted">
+              <div class="crow"><span class="cl">Delivery — Age-Restricted <span style="color:var(--muted)">(ID required)</span></span><span class="sw sm js-sub on"></span></div>
             </div>
             <div class="cat-row" data-cat="Ride Sharing">
               <div class="crow"><span class="cl">Ride Sharing</span><span class="sw js-cat"></span></div>
@@ -2678,7 +2702,7 @@
       <!-- ░░ PAYOUT INFO ░░ -->
       <section class="dash-section" data-dash-section="payout">
         <div class="panel">
-          <div class="panel-head"><h2>Payout info</h2></div>
+          <div class="panel-head"><h2>Payment info</h2></div>
           <p class="panel-desc">Your identity is already verified through Stripe. Manage the card(s) we pay out to here.</p>
 
           <div class="sec-h">Debit card (instant payouts)</div>
@@ -2716,7 +2740,7 @@
       <!-- ░░ REFER & EARN ░░ -->
       <section class="dash-section" data-dash-section="refer">
         <div class="panel">
-          <div class="panel-head"><h2>Refer &amp; earn</h2></div>
+          <div class="panel-head"><h2>Refer Gopher</h2></div>
           <p class="panel-desc">Invite people to the Gopher network and earn rewards when they join. When someone joins through your referral, you both earn Gopher Rewards credit.</p>
           <div class="qr-card">
             <div class="qr-ttl">Your unique QR</div>
@@ -2753,7 +2777,7 @@
       <!-- ░░ HELP CENTER ░░ -->
       <section class="dash-section" data-dash-section="help">
         <div class="panel">
-          <div class="panel-head"><h2>Help center</h2></div>
+          <div class="panel-head"><h2>Ask Gopher iQ</h2></div>
           <p class="panel-desc">Quick, mobile-friendly help — tap a topic.</p>
           <a class="help-card" href="gopher-faqs.html"><span class="hc-ico">?</span><span class="hc-tx"><span class="hc-ttl">FAQs</span><span class="hc-sub">Payments, jobs, tiers &amp; more</span></span><span class="hc-arr">&#8250;</span></a>
           <a class="help-card" href="gopher-go.html"><span class="hc-ico hc-101">101</span><span class="hc-tx"><span class="hc-ttl">Gopher Go 101</span><span class="hc-sub">The basics in a 2-minute walkthrough</span></span><span class="hc-arr">&#8250;</span></a>
@@ -2768,13 +2792,32 @@
 <!-- Request-history detail modal -->
 <div class="rhm-overlay" id="rhmOverlay" hidden><div class="rhm-card" id="rhmCard" role="dialog" aria-modal="true"></div></div>
 
+<!-- ░░ Send feedback (owner sidebar spec 2026-07-23 — mirrors Connect's) ░░ -->
+<div class="gc-modal-overlay" id="goFeedbackOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="goFbTitle">
+    <button type="button" class="gc-modal-close" id="goFbClose" aria-label="Close">&times;</button>
+    <div class="gc-modal-icon" style="background:#e2f3e9">&#9997;&#65039;</div>
+    <div id="goFbFormWrap">
+      <h4 id="goFbTitle">Send feedback</h4>
+      <p class="gc-modal-sub">Tell us what's working and what isn't &mdash; it goes straight to the Gopher team.</p>
+      <textarea id="goFbText" rows="5" placeholder="Your feedback&hellip;" style="width:100%;box-sizing:border-box;border:1.5px solid #dfe3ec;border-radius:11px;padding:12px;font-family:'DM Sans',sans-serif;font-size:13.5px;resize:vertical;margin:0 0 12px"></textarea>
+      <button type="button" class="gc-modal-btn" id="goFbSubmit" disabled>Send feedback</button>
+    </div>
+    <div id="goFbDoneWrap" hidden>
+      <h4>Thanks &mdash; got it!</h4>
+      <p class="gc-modal-sub">Your feedback helps us make Gopher Go better for every worker.</p>
+      <button type="button" class="gc-modal-btn" id="goFbDone">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ░░ Offer My Service — INELIGIBLE gate (DLP) — redirects to the eligibility terms in GG101 ░░ -->
 <div class="gc-modal-overlay" id="offerIneligibleOverlay" hidden>
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="offerInelTitle">
     <button type="button" class="gc-modal-close" id="offerInelClose" aria-label="Close">&times;</button>
     <div class="gc-modal-icon" style="background:#fff7d6">&#128274;</div>
-    <h4 id="offerInelTitle">Not eligible to offer a deal yet</h4>
-    <p class="gc-modal-sub">Service-Provider Deals unlock <b>automatically</b> once you're a verified tier (Elite, Elite+, or Pro) with <b>20+ completed service jobs</b> and a <b>4.75&#9733; average over your last 20 service jobs</b> (Delivery, Ride Sharing, and Other don&rsquo;t count toward either). Keep completing jobs and keeping your rating high &mdash; you&rsquo;ll be there before you know it.</p>
+    <h4 id="offerInelTitle">Service Provider Deals — your work, your offer</h4>
+    <p class="gc-modal-sub">Put your own deal in front of every Gopher user nearby and turn great work into repeat customers. It unlocks <b>automatically</b> — no application — the moment you hit three marks: a verified tier (<b>Elite, Elite+, or Pro</b>), <b>20+ completed service jobs</b>, and a <b>4.75&#9733; average over your last 20 service jobs</b> (Delivery, Ride Sharing, and Other don&rsquo;t count toward either). Every job you finish and every 5&#9733; review is a step closer &mdash; keep going, you&rsquo;ll be there before you know it.</p>
     <a class="gc-modal-btn" href="gopher-go-101.html#offer-deals" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">See the eligibility terms &rarr;</a>
     <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="offerInelClose2" style="background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;margin-top:8px;">Got it</button>
   </div>
@@ -3726,12 +3769,51 @@
     btn.setAttribute('aria-disabled', String(!ELIGIBLE));
     if(demoState) demoState.textContent = ELIGIBLE ? 'ON' : 'OFF';
   }
-  if(btn) btn.addEventListener('click', function(){ openOv(ELIGIBLE ? svcOv : inelOv); });
+  // Deactivated when not auto-eligible (owner, 2026-07-23): a locked tap does
+  // nothing — "Learn more" below is the path to the eligibility pop-up.
+  if(btn) btn.addEventListener('click', function(){ if(ELIGIBLE) openOv(svcOv); });
+  var learn = document.getElementById('offerLearnMore');
+  if(learn) learn.addEventListener('click', function(){ openOv(inelOv); });
   if(demoToggle) demoToggle.addEventListener('click', function(){ ELIGIBLE = !ELIGIBLE; render(); });
   ['offerInelClose','offerInelClose2'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(inelOv); }); });
   ['offerSvcClose','offerSvcClose2'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(svcOv); }); });
   [inelOv, svcOv].forEach(function(o){ if(o) o.addEventListener('click', function(e){ if(e.target===o) closeOv(o); }); });
   render();
+
+  // "Show me as a business / individual" (owner, 2026-07-23). Writes the hidden
+  // data-field input and fires 'input' so the panel's save-dirty tracking sees it.
+  // Send feedback (minimal — mirrors Connect's; prototype: no real dispatch)
+  var fbOv = document.getElementById('goFeedbackOverlay');
+  var fbBtn = document.getElementById('goSendFeedback');
+  if(fbBtn && fbOv){
+    var fbText = document.getElementById('goFbText'), fbSubmit = document.getElementById('goFbSubmit');
+    fbBtn.addEventListener('click', function(){
+      document.getElementById('goFbFormWrap').hidden = false;
+      document.getElementById('goFbDoneWrap').hidden = true;
+      if(fbText){ fbText.value=''; } if(fbSubmit){ fbSubmit.disabled = true; }
+      openOv(fbOv);
+    });
+    if(fbText) fbText.addEventListener('input', function(){ if(fbSubmit) fbSubmit.disabled = !fbText.value.trim(); });
+    if(fbSubmit) fbSubmit.addEventListener('click', function(){
+      document.getElementById('goFbFormWrap').hidden = true;
+      document.getElementById('goFbDoneWrap').hidden = false;
+    });
+    ['goFbClose','goFbDone'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(fbOv); }); });
+    fbOv.addEventListener('click', function(e){ if(e.target===fbOv) closeOv(fbOv); });
+  }
+
+  var seg = document.getElementById('bizShowAsSeg');
+  if(seg){
+    seg.addEventListener('click', function(e){
+      var b = e.target.closest('[data-showas]'); if(!b) return;
+      seg.querySelectorAll('[data-showas]').forEach(function(x){ x.classList.toggle('on', x === b); });
+      var hid = document.getElementById('bizShowAs');
+      if(hid && hid.value !== b.dataset.showas){
+        hid.value = b.dataset.showas;
+        hid.dispatchEvent(new Event('input', { bubbles:true }));
+      }
+    });
+  }
 })();
 </script>
 
