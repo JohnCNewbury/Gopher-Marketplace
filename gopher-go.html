@@ -2478,7 +2478,9 @@
     </div>
     <div class="dash-nav" role="navigation" aria-label="Dashboard sections">
       <!-- Offer My Service (DLP) — provider-deal entry, above Profile. Active only when
-           the worker is eligible (Elite/Elite+/Pro · 20+ jobs · 4.75★/last-20); otherwise it's
+           the worker is eligible (Elite/Elite+/Pro · 20+ SERVICE jobs · 4.75★ over last 20 SERVICE
+           jobs — Delivery/Ride Sharing/Other excluded from both the count and the rating window);
+           otherwise it's
            locked and taps redirect to the eligibility terms in Gopher Go 101. -->
       <button class="dash-offer-btn" id="offerServiceBtn" type="button">
         <span class="dob-ico" aria-hidden="true">&#127991;&#65039;</span>
@@ -2772,7 +2774,7 @@
     <button type="button" class="gc-modal-close" id="offerInelClose" aria-label="Close">&times;</button>
     <div class="gc-modal-icon" style="background:#fff7d6">&#128274;</div>
     <h4 id="offerInelTitle">Not eligible to offer a deal yet</h4>
-    <p class="gc-modal-sub">Service-Provider Deals unlock <b>automatically</b> once you're a verified tier (Elite, Elite+, or Pro) with <b>20+ completed jobs</b> and a <b>4.75&#9733; average over your last 20</b>. Keep completing jobs and keeping your rating high &mdash; you&rsquo;ll be there before you know it.</p>
+    <p class="gc-modal-sub">Service-Provider Deals unlock <b>automatically</b> once you're a verified tier (Elite, Elite+, or Pro) with <b>20+ completed service jobs</b> and a <b>4.75&#9733; average over your last 20 service jobs</b> (Delivery, Ride Sharing, and Other don&rsquo;t count toward either). Keep completing jobs and keeping your rating high &mdash; you&rsquo;ll be there before you know it.</p>
     <a class="gc-modal-btn" href="gopher-go-101.html#offer-deals" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">See the eligibility terms &rarr;</a>
     <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="offerInelClose2" style="background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;margin-top:8px;">Got it</button>
   </div>
@@ -3705,10 +3707,12 @@
 
 <!-- Offer My Service — eligibility gate (DLP). Prototype simulates eligibility; a demo
      toggle flips it so both paths are viewable. Production computes ELIGIBLE from the worker's
-     tier + completed jobs + last-20 rating (Elite/Elite+/Pro · 20+ jobs · 4.75★/last-20). -->
+     tier + completed SERVICE jobs + last-20-service-jobs rating (Elite/Elite+/Pro · 20+ service
+     jobs · 4.75★ over last 20 service jobs — Delivery/Ride Sharing/Other excluded from both the
+     count and the rating window). -->
 <script>
 (function(){
-  var ELIGIBLE = true; // Marcus Hale · Pro · 86 jobs · 4.9★ → eligible
+  var ELIGIBLE = true; // Marcus Hale · Pro · 86 service jobs · 4.9★ → eligible
   var btn        = document.getElementById('offerServiceBtn');
   var demoToggle = document.getElementById('offerDemoToggle');
   var demoState  = document.getElementById('offerDemoState');
