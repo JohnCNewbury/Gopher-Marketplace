@@ -639,6 +639,13 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   the 3 eligibility pages, no riders). Bonus find while re-syncing the canonical: the
   master was MISSING the owner's 2026-07-15 §9.8 no-show/ID revisions (they lived only in the
   `_prototypes/Go/` copy) — merged back into the master, both now identical.
+  **HQ Dashboard eligibility logic built to match (Dashboard repo `11c50c0`, owner request):**
+  new `regen_sp_eligibility.py` + `sp-eligibility.js` render an SP auto-eligibility section in
+  Platforms → Gopher Deal (KPIs, eligible table, near-miss, filtered-by-amendment list) from
+  Orders+Users+Ratings under the amended bar. Real-data validation of the amendment: **13**
+  auto-eligible on service work vs **88** under the old all-jobs bar — the 75 filtered are
+  high-delivery-volume workers. Ratings.csv (rated_id=gopher) is the rating authority, not the
+  Orders `GOPHER RATING` column (~25% disagreement, 0 = unrated).
 
 ### Outstanding to-do
 
