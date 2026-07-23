@@ -9,9 +9,14 @@ owner spec 2026-07-22). One protocol, two org types.
 **What exists today:** the prototypes demonstrate the send side (invite modal:
 name + email-or-SMS + role), the roster lifecycle (pending → active, resend,
 cancel, role change, single/bulk remove, ownership transfer), and the
-role-visibility matrix (Owner / Admin / User). The **acceptance side** — what the
-invited person experiences — is specified here for the production rebuild.
-Persistence, real message delivery, and OTP issuance are the backend seam.
+role-visibility matrix (Owner / Admin / User). The **acceptance side is now
+demoed too**: an "invite acceptance preview" simulator (entry points: the
+invite-sent confirmation and Manage on any pending row) walks all four §4
+branches with the exact copy of this spec — including the Branch-D claim
+screen and its verify-then-continue-as OTP — and can optionally flip the
+pending row to Active on completion. Persistence, real message delivery, and
+OTP issuance remain the backend seam; the simulator is reference behavior,
+not logic to port.
 
 ---
 
