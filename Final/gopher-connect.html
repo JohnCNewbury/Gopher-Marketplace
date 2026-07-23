@@ -1385,6 +1385,7 @@
     padding:8px 0;
   }
   .ai-pill-input::placeholder { color:#9aa3b5; }
+  .ai-pill-iq { height:22px; width:auto; flex:none; margin-left:6px; }
   .ai-pill-send {
     width:34px; height:34px; flex-shrink:0; cursor:pointer;
     background:var(--green); color:var(--ink-on-green); border:none; border-radius:50%;
@@ -1483,6 +1484,8 @@
   .rf-id { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; color:var(--navy); letter-spacing:0.04em; margin-bottom:16px; }
   .rf-btn-navy { background:var(--navy) !important; color:#fff !important; box-shadow:0 6px 18px rgba(26,42,94,0.25) !important; }
   .rf-btn-navy:hover { background:var(--navy-mid) !important; }
+  /* Stacked share buttons need air between them (owner, 2026-07-23) */
+  .rf-btn-navy + .rf-btn-navy { margin-top:10px; }
   .rf-back { align-self:flex-start; background:none; border:none; cursor:pointer; color:var(--muted); font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; margin-bottom:8px; }
   .rf-back:hover { color:var(--navy); }
   .rf-field-label { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
@@ -1537,14 +1540,18 @@
   .hire-again-cats { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:4px 0 14px; }
   .ra-fast-all { background:none; border:none; font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--green-dark); cursor:pointer; padding:0; margin:0 0 10px; text-decoration:underline; align-self:flex-start; }
   .hac-chip {
-    display:flex; align-items:center; gap:8px; cursor:pointer;
-    padding:11px 12px; border:2px solid #e7eaf2; border-radius:11px; background:white;
+    display:flex; flex-direction:column; align-items:stretch; cursor:pointer;
+    padding:0; overflow:hidden; border:2px solid #e7eaf2; border-radius:12px; background:white;
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; color:var(--navy);
     text-align:left; transition:all 0.15s;
   }
   .hac-chip:hover { border-color:#c9d2e3; }
   .hac-chip.selected { border-color:var(--green); background:var(--green-light); }
-  .hac-chip .hac-emoji { font-size:17px; }
+  .hac-chip .hac-photo { display:block; width:100%; height:64px; }
+  .hac-chip .hac-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .hac-chip .hac-name { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; }
+  .hac-chip .hac-check { width:15px; height:15px; border-radius:50%; border:2px solid #d5dbe8; flex:none; box-sizing:border-box; }
+  .hac-chip.selected .hac-check { border-color:var(--green); background:var(--green); box-shadow:inset 0 0 0 3px #fff; }
   .hire-again-note {
     display:flex; gap:9px; align-items:flex-start; text-align:left;
     background:rgba(186,219,252,0.22); border:1px solid rgba(26,42,94,0.12);
@@ -4472,6 +4479,8 @@
     overflow-y:auto;
   }
   .dash-sidebar-head {
+    /* uniform platform card across all portals (owner, 2026-07-23) */
+    min-height:122px; box-sizing:border-box;
     display:flex; flex-direction:column; align-items:flex-start; gap:12px;
     background:#ffffff;
     border-radius:18px;
@@ -4542,6 +4551,7 @@
   .dash-sidebar-newreq {
     display:flex; align-items:center; justify-content:center; gap:9px;
     width:100%; margin:0 0 16px;
+    min-height:50px; box-sizing:border-box; /* uniform CTA size (owner, 2026-07-23) */
     padding:14px 16px;
     background:var(--green); color:var(--ink-on-green);
     border:none; border-radius:12px;
@@ -7245,7 +7255,6 @@
           </div>
           <p class="signup-fine">Both have been emailed to you and added to your account profile.</p>
         </div>
-        <button type="button" class="portal-submit" id="snStep3AddGophers" style="background:#fff;color:var(--navy);border:1.5px solid var(--navy-light);margin-bottom:10px">＋ Add MY Gophers now</button>
         <button type="button" class="portal-submit" id="snStep3Enter">Enter Dashboard →</button>
       </div>
     </div>
@@ -7687,8 +7696,8 @@
       <h4 id="referTitle">Refer Gopher Connect</h4>
       <p class="rf-sub" id="referSub">Invite a business to Gopher Connect — you both earn rewards when they join.</p>
       <div class="rf-qr" id="referQr" aria-hidden="true"></div>
-      <div class="rf-id-label">Your referral ID</div>
-      <div class="rf-id" id="referId">15544</div>
+      <div class="rf-id-label">Your Gopher ID</div>
+      <div class="rf-id" id="referId">738105</div>
       <button class="gc-modal-btn rf-btn-navy" data-refer-share="sms">Refer via SMS</button>
       <button class="gc-modal-btn rf-btn-navy" data-refer-share="email">Refer via email</button>
       <button class="gc-modal-btn-text" id="referTrackLink">View track referral history</button>
@@ -7744,7 +7753,7 @@
     <div class="rf-view" id="rcViewDone" hidden>
       <div class="rf-done-ico">✓</div>
       <h4>MY Gophers submitted</h4>
-      <p class="rf-sub">Some of your referrals may already have been submitted by other users on the Gopher Marketplace. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
+      <p class="rf-sub">Some of your recommendations may already have been submitted by other users on the Gopher Marketplace. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
       <button class="gc-modal-btn" id="rcDoneTrack">View referral history</button>
     </div>
   </div>
@@ -7779,6 +7788,7 @@
     <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"></div>
 
     <form class="ai-pill-bar" id="aiAssistForm" autocomplete="off">
+      <img class="ai-pill-iq" src="assets/img/shared-scribble.webp" alt="Gopher iQ">
       <input type="text" id="aiAssistInput" class="ai-pill-input" placeholder="Ask Gopher anything…" aria-label="Ask Gopher anything">
       <button type="submit" class="ai-pill-send" id="aiAssistSend" aria-label="Send" disabled>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-5 14-3-7-6-0z"/></svg>
@@ -8730,6 +8740,9 @@
       <button class="dash-nav-item" data-dash-section="previous">
         <span class="dni-ico">📚</span><span class="dni-label">Previous requests</span>
       </button>
+      <button class="dash-nav-item" data-dash-section="gophers">
+        <span class="dni-ico">⭐</span><span class="dni-label">MY Gophers</span>
+      </button>
       <button class="dash-nav-item" data-dash-section="inbox">
         <span class="dni-ico">💬</span><span class="dni-label">Inbox</span>
         <span class="dni-badge" id="inboxBadge">1</span>
@@ -8743,25 +8756,22 @@
       <button class="dash-nav-item" data-dash-section="personal">
         <span class="dni-ico">👤</span><span class="dni-label">Personal info</span>
       </button>
-      <button class="dash-nav-item" id="gcDashSavedAddr">
-        <span class="dni-ico">📍</span><span class="dni-label">Saved addresses</span>
-      </button>
+      <!-- Saved addresses nav entry removed (owner sidebar spec 2026-07-23) —
+           the pane + data remain; addresses are reached via Personal info flows. -->
       <button class="dash-nav-item" data-dash-section="payment">
         <span class="dni-ico">💳</span><span class="dni-label">Payment info</span>
       </button>
       <button class="dash-nav-item" data-dash-section="users">
         <span class="dni-ico">👥</span><span class="dni-label">Users &amp; access</span>
       </button>
-      <button class="dash-nav-item" data-dash-section="gophers">
-        <span class="dni-ico">⭐</span><span class="dni-label">MY Gophers</span>
-      </button>
+      <div class="dash-nav-divider">Rewards</div>
       <button class="dash-nav-item" data-dash-section="refer">
         <span class="dni-ico">🎁</span><span class="dni-label">Refer Gopher</span>
       </button>
 
       <div class="dash-nav-divider">Resources</div>
       <button class="dash-nav-item dash-nav-link" id="navAskGopher">
-        <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher</span>
+        <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher iQ</span>
       </button>
       <a class="dash-nav-item dash-nav-link" href="#top" id="navAbout">
         <span class="dni-ico">🏠</span><span class="dni-label">Visit Connect site</span>
@@ -9083,7 +9093,9 @@
       <section class="dash-section" data-section="gophers">
         <div class="dash-block-head">
           <h3>MY Gophers · your preferred workers</h3>
-          <button type="button" data-add-gopher style="font-family:'Nunito';font-weight:800;font-size:12px;border-radius:8px;padding:9px 16px;background:var(--green);color:var(--ink-on-green,#04230f);border:none;cursor:pointer">+ Add MY Gopher</button>
+          <!-- Manual "+ Add MY Gopher" removed (owner, 2026-07-23): MY Gophers
+               are earned from completed jobs (the ≥4-star rating flow), never
+               typed in by hand. -->
         </div>
         <div class="role-info-banner">
           Workers you've saved from previous jobs OR access exclusively granted with your Business Plan. When you submit a new request, you can choose "MY Gophers only" to send the job to just this group first.
@@ -9111,7 +9123,7 @@
           <div class="qr-ttl">Your unique QR</div>
           <div class="qr-sub">They scan &mdash; you benefit.</div>
           <div class="qr-box"><svg class="qr-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><path stroke="#002461" d="M2 2.5h7m4 0h1m1 0h1m2 0h1m3 0h1m1 0h7m-29 1h1m5 0h1m2 0h1m1 0h1m1 0h1m1 0h2m1 0h3m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h4m2 0h1m2 0h1m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h2m2 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h2m1 0h1m3 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h1m1 0h1m2 0h7m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-18 1h1m1 0h1m3 0h4m-20 1h1m2 0h1m1 0h1m1 0h2m1 0h1m2 0h3m1 0h1m2 0h1m1 0h2m1 0h1m-27 1h1m4 0h1m1 0h2m4 0h2m1 0h3m1 0h3m1 0h2m1 0h2m-27 1h1m2 0h2m4 0h2m2 0h1m1 0h1m3 0h1m2 0h2m2 0h1m-25 1h1m2 0h1m2 0h4m1 0h1m1 0h1m3 0h1m2 0h2m1 0h2m-28 1h1m1 0h2m1 0h2m1 0h1m2 0h3m1 0h2m1 0h2m2 0h1m1 0h1m2 0h1m-28 1h3m3 0h1m1 0h1m2 0h1m2 0h2m1 0h1m3 0h1m1 0h1m1 0h1m1 0h1m-29 1h1m2 0h5m1 0h1m2 0h3m1 0h2m2 0h2m2 0h1m3 0h1m-27 1h2m1 0h1m2 0h6m3 0h1m1 0h5m1 0h1m1 0h1m-28 1h4m1 0h2m1 0h2m2 0h2m4 0h2m7 0h2m-29 1h3m1 0h2m3 0h3m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m3 0h1m-26 1h2m1 0h1m3 0h2m4 0h3m4 0h4m1 0h1m-26 1h1m1 0h1m2 0h1m2 0h1m2 0h1m2 0h2m4 0h1m3 0h2m-29 1h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m1 0h7m1 0h2m-21 1h3m1 0h1m2 0h3m1 0h2m3 0h1m1 0h1m1 0h1m-29 1h7m3 0h3m2 0h1m2 0h3m1 0h1m1 0h1m2 0h2m-29 1h1m5 0h1m3 0h2m1 0h1m5 0h2m3 0h2m-26 1h1m1 0h3m1 0h1m1 0h3m5 0h1m2 0h6m2 0h2m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m4 0h1m4 0h1m3 0h1m-28 1h1m1 0h3m1 0h1m2 0h2m1 0h4m3 0h3m3 0h4m-29 1h1m5 0h1m1 0h1m3 0h2m1 0h3m1 0h5m1 0h1m1 0h2m-29 1h7m4 0h3m3 0h1m1 0h2m1 0h1m1 0h1m2 0h1"/></svg></div>
-          <div class="qr-idlbl">Your referral ID</div>
+          <div class="qr-idlbl">Your Gopher ID</div>
           <div class="qr-id" id="referIdBig">738105</div>
         </div>
         <div class="refer-code">
@@ -18929,20 +18941,8 @@ const PAY_BADGES = {
       }
     }
 
-    // ---- AC6: add a MY Gopher ----
-    document.addEventListener('click', e => {
-      if(!e.target.closest('[data-add-gopher]')) return;
-      const m = modal('<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 12px">Add a MY Gopher</h3>'+
-        fld('Name','agName','e.g. Jordan P.')+fld('Specialty','agSpec','e.g. Delivery · Courier')+
-        '<label style="display:block;font-family:Nunito;font-weight:800;font-size:12px;color:var(--navy);margin:0 0 6px">Tier</label><select id="agTier" style="width:100%;box-sizing:border-box;border:1.5px solid #d9deea;border-radius:10px;padding:11px 12px;font-size:14px;margin:0 0 16px"><option value="">—</option><option value="pro">Pro</option><option value="elite">Elite</option><option value="elite+">Elite+</option></select>'+
-        btnRow('agSave','Add Gopher','agCancel'));
-      m.card.querySelector('#agCancel').onclick = m.close;
-      m.card.querySelector('#agSave').onclick = () => {
-        const name=(m.card.querySelector('#agName').value||'').trim(); if(!name){ m.card.querySelector('#agName').focus(); return; }
-        DASH_DATA.myGophers.push({ name, tier:(m.card.querySelector('#agTier').value||''), specialty:(m.card.querySelector('#agSpec').value||'').trim()||'—', jobs:0, lastUsed:'—', photo:'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name='+encodeURIComponent(name) });
-        m.close(); renderGophers();
-      };
-    });
+    // (Manual add-a-MY-Gopher modal removed — owner, 2026-07-23. MY Gophers
+    // enter the list only via the post-job rating flow.)
 
     // ---- AC6 update + AC7 job history: MY Gopher profile modal ----
     document.addEventListener('click', e => {
@@ -18974,11 +18974,17 @@ const PAY_BADGES = {
   // ═══════════════════════════════════════════════════════════
   // HIRE AGAIN — MY Gopher first-right-of-refusal flow
   // ═══════════════════════════════════════════════════════════
+  // Real Step-1 category tiles (owner, 2026-07-23) — same photos as the
+  // request flow's "Pick a service" cards, not emoji chips.
   const HIRE_AGAIN_CATS = [
-    ['delivery','📦','Delivery / Courier'], ['moving','🚚','Moving'],
-    ['home','🏠','Home / Office'], ['labor','🛠','Day Labor'],
-    ['junk','🗑','Junk Removal'], ['yard','🌳','Yard / Outdoor'],
-    ['ride','🚗','Ride Sharing'], ['other','✨','Other / Custom'],
+    ['delivery','Delivery / Courier','assets/img/px-5025668-400x300.webp'],
+    ['moving','Moving','assets/img/px-7464687-400x300.webp'],
+    ['home','Home / Office','assets/img/px-8005368-400x300.webp'],
+    ['labor','Day Labor','assets/img/connect-img.webp'],
+    ['junk','Junk Removal','assets/img/connect-junk-removal.webp'],
+    ['yard','Yard / Outdoor','assets/img/connect-img-2.webp'],
+    ['ride','Ride Sharing','assets/img/connect-img-3.webp'],
+    ['other','Other / Custom','assets/img/px-3184418-400x300.webp'],
   ];
   const hireAgainState = { gopher:null, category:null, extraGophers:[] };
 
@@ -18988,8 +18994,11 @@ const PAY_BADGES = {
     hireAgainState.extraGophers = [];
     document.getElementById('hireAgainName').textContent = gopherName;
     // Build category chips
-    document.getElementById('hireAgainCats').innerHTML = HIRE_AGAIN_CATS.map(([k,e,n]) =>
-      `<button class="hac-chip" data-hac="${k}"><span class="hac-emoji">${e}</span>${n}</button>`).join('');
+    document.getElementById('hireAgainCats').innerHTML = HIRE_AGAIN_CATS.map(([k,n,photo]) =>
+      `<button class="hac-chip" data-hac="${k}">
+        <span class="hac-photo"><img src="${photo}" alt="" loading="lazy"></span>
+        <span class="hac-name">${n}<span class="hac-check" aria-hidden="true"></span></span>
+      </button>`).join('');
     const cont = document.getElementById('hireAgainContinue');
     cont.disabled = true;
     document.querySelectorAll('#hireAgainCats .hac-chip').forEach(chip => {
@@ -21600,19 +21609,8 @@ const PAY_BADGES = {
         if(window.__openDashboard) window.__openDashboard();
       });
     }
-    // welcome-step "Add MY Gophers now": same entry as above, but lands on
-    // the MY Gophers section so the new user can set up preferred workers immediately.
-    const step3AddG = f('snStep3AddGophers');
-    if(step3AddG){
-      step3AddG.addEventListener('click', () => {
-        closeSigninModal();
-        if(window.__pendingDashboardPrefill && window.__applyDashboardPrefill){
-          window.__applyDashboardPrefill(window.__pendingDashboardPrefill);
-        }
-        if(window.__openDashboardGophers) window.__openDashboardGophers();
-        else if(window.__openDashboard) window.__openDashboard();
-      });
-    }
+    // (welcome-step "Add MY Gophers now" removed with the manual add — owner,
+    // 2026-07-23; new users meet MY Gophers through their first completed jobs.)
   })();
 
   // ─── DOB calendar: custom date picker with tappable month & year ───
@@ -22057,9 +22055,6 @@ const PAY_BADGES = {
 
   window.__openDashboard  = openDashboard;
   window.__closeDashboard = closeDashboard;
-  // open the dashboard straight to the MY Gophers section (the signup
-  // welcome step's "Add MY Gophers" option, so a new Connect user can set up their
-  // preferred workers immediately rather than hunting for it later).
   window.__openDashboardGophers = () => { openDashboard(); showSection('gophers'); };
 
   // ════════════════════════════════════════════════════════════════════════

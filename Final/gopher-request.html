@@ -4717,6 +4717,7 @@
     font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--navy); padding:8px 0;
   }
   .ai-pill-input::placeholder { color:#9aa3b5; }
+  .ai-pill-iq { height:22px; width:auto; flex:none; margin-left:6px; }
   .ai-pill-send {
     width:34px; height:34px; flex-shrink:0; cursor:pointer;
     background:var(--green); color:var(--ink-on-green); border:none; border-radius:50%;
@@ -6767,6 +6768,8 @@
     overflow-y:auto;
   }
   .dash-sidebar-head {
+    /* uniform platform card across all portals (owner, 2026-07-23) */
+    min-height:122px; box-sizing:border-box;
     display:flex; flex-direction:column; align-items:flex-start; gap:12px;
     background:#ffffff;
     border-radius:18px;
@@ -6844,8 +6847,9 @@
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%;
     margin:0 0 18px;
+    min-height:50px; box-sizing:border-box; /* uniform CTA size (owner, 2026-07-23) */
     padding:15px 18px;
-    background:var(--green); color:#fff;
+    background:var(--green); color:#002461; /* navy words on all portal CTAs (owner, 2026-07-23) */
     border:none; border-radius:14px;
     font-family:'Nunito',sans-serif; font-weight:900; font-size:15.5px;
     letter-spacing:0.2px;
@@ -17038,6 +17042,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"></div>
 
     <form class="ai-pill-bar" id="aiAssistForm" autocomplete="off">
+      <img class="ai-pill-iq" src="assets/img/shared-scribble.webp" alt="Gopher iQ">
       <input type="text" id="aiAssistInput" class="ai-pill-input" placeholder="Ask Gopher anything…" aria-label="Ask Gopher anything">
       <button type="submit" class="ai-pill-send" id="aiAssistSend" aria-label="Send" disabled>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-5 14-3-7-6-0z"/></svg>
@@ -18443,12 +18448,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <button class="dash-nav-item" data-rqsection="personal">
         <span class="dni-ico">👤</span><span class="dni-label">Personal info</span>
       </button>
-      <button class="dash-nav-item" id="rqDashSavedAddr">
-        <span class="dni-ico">📍</span><span class="dni-label">Saved addresses</span>
-      </button>
+      <!-- Saved addresses nav entry removed (owner sidebar spec 2026-07-23) —
+           the pane + data remain; addresses are reached via the flow's saved-
+           address quick-pick and Personal info. -->
       <button class="dash-nav-item" data-rqsection="payment">
         <span class="dni-ico">💳</span><span class="dni-label">Payment info</span>
       </button>
+      <div class="dash-nav-divider">Rewards</div>
       <button class="dash-nav-item" data-rqsection="refer">
         <span class="dni-ico">🎁</span><span class="dni-label">Refer Gopher</span>
       </button>
@@ -18456,7 +18462,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <div class="dash-nav-divider">Resources</div>
 
       <button class="dash-nav-item dash-nav-link" id="navAskGopher">
-        <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher</span>
+        <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher iQ</span>
       </button>
       <a class="dash-nav-item dash-nav-link" href="#top" id="navAbout">
         <span class="dni-ico">🏠</span><span class="dni-label">Visit Request site</span>
@@ -18551,7 +18557,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <!-- MY Gophers -->
       <section class="dash-section" data-rqsec="gophers">
         <div class="dash-block-head">
-          <h3>MY Gophers</h3>
+          <h3>MY Gophers · your preferred workers</h3>
         </div>
         <div class="gophers-banner" id="gophersBanner">
           Workers you&rsquo;ve saved from previous jobs. When you submit a request, choose
@@ -18678,7 +18684,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="qr-ttl">Your unique QR</div>
           <div class="qr-sub">They scan &mdash; you benefit.</div>
           <div class="qr-box"><svg class="qr-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><path stroke="#002461" d="M2 2.5h7m4 0h1m1 0h1m2 0h1m3 0h1m1 0h7m-29 1h1m5 0h1m2 0h1m1 0h1m1 0h1m1 0h2m1 0h3m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h4m2 0h1m2 0h1m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m2 0h2m1 0h2m2 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h2m1 0h1m3 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h1m1 0h1m2 0h7m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-18 1h1m1 0h1m3 0h4m-20 1h1m2 0h1m1 0h1m1 0h2m1 0h1m2 0h3m1 0h1m2 0h1m1 0h2m1 0h1m-27 1h1m4 0h1m1 0h2m4 0h2m1 0h3m1 0h3m1 0h2m1 0h2m-27 1h1m2 0h2m4 0h2m2 0h1m1 0h1m3 0h1m2 0h2m2 0h1m-25 1h1m2 0h1m2 0h4m1 0h1m1 0h1m3 0h1m2 0h2m1 0h2m-28 1h1m1 0h2m1 0h2m1 0h1m2 0h3m1 0h2m1 0h2m2 0h1m1 0h1m2 0h1m-28 1h3m3 0h1m1 0h1m2 0h1m2 0h2m1 0h1m3 0h1m1 0h1m1 0h1m1 0h1m-29 1h1m2 0h5m1 0h1m2 0h3m1 0h2m2 0h2m2 0h1m3 0h1m-27 1h2m1 0h1m2 0h6m3 0h1m1 0h5m1 0h1m1 0h1m-28 1h4m1 0h2m1 0h2m2 0h2m4 0h2m7 0h2m-29 1h3m1 0h2m3 0h3m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m3 0h1m-26 1h2m1 0h1m3 0h2m4 0h3m4 0h4m1 0h1m-26 1h1m1 0h1m2 0h1m2 0h1m2 0h1m2 0h2m4 0h1m3 0h2m-29 1h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m1 0h7m1 0h2m-21 1h3m1 0h1m2 0h3m1 0h2m3 0h1m1 0h1m1 0h1m-29 1h7m3 0h3m2 0h1m2 0h3m1 0h1m1 0h1m2 0h2m-29 1h1m5 0h1m3 0h2m1 0h1m5 0h2m3 0h2m-26 1h1m1 0h3m1 0h1m1 0h3m5 0h1m2 0h6m2 0h2m-29 1h1m1 0h3m1 0h1m3 0h2m1 0h1m4 0h1m4 0h1m3 0h1m-28 1h1m1 0h3m1 0h1m2 0h2m1 0h4m3 0h3m3 0h4m-29 1h1m5 0h1m1 0h1m3 0h2m1 0h3m1 0h5m1 0h1m1 0h2m-29 1h7m4 0h3m3 0h1m1 0h2m1 0h1m1 0h1m2 0h1"/></svg></div>
-          <div class="qr-idlbl">Your referral ID</div>
+          <div class="qr-idlbl">Your Gopher ID</div>
           <div class="qr-id" id="referIdBig">614072</div>
         </div>
         <div class="refer-code">
@@ -22987,15 +22993,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const jobsStr = jobsN != null ? `<span>${jobsN} job${jobsN === 1 ? '' : 's'} hired</span>` : '';
       const last = g.lastUsed || g.lastDate || '';
       const lastStr = last ? `<span>Last: ${esc(last)}</span>` : '';
-      const ratingStr = (g.rating != null && !isNaN(g.rating))
-        ? `<span>⭐ ${Number(g.rating).toFixed(2)}</span>` : '';
+      // (rating dropped from the card meta — Connect's card is canonical,
+      // owner 2026-07-23; rating still shows on the Profile modal)
       return `
         <div class="gopher-saved-card">
           <span class="gsc-photo">${photo}</span>
           <span class="gsc-info">
             <span class="gsc-name">${esc(g.name)}${tierBadge}</span>
             ${specialty ? `<span class="gsc-specialty">${specialty}</span>` : ''}
-            <span class="gsc-meta">${jobsStr}${lastStr}${ratingStr}</span>
+            <span class="gsc-meta">${jobsStr}${lastStr}</span>
           </span>
           <span class="gsc-actions">
             <button class="gsc-cta" data-gopher-hire="${esc(g.name)}">Hire again</button>

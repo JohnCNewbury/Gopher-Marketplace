@@ -647,6 +647,58 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   high-delivery-volume workers. Ratings.csv (rated_id=gopher) is the rating authority, not the
   Orders `GOPHER RATING` column (~25% disagreement, 0 = unrated).
 
+- **"Gopher Marketplace Updates" pptx — 11 owner directives across all 4 portals
+  (done 2026-07-23).** Source deck on the owner's Desktop; all applied same day:
+  (1) **Manual "+ Add MY Gopher" REMOVED** from Connect (button, add-modal handler,
+  and the signup welcome-step "Add MY Gophers now" entry + its listener +
+  `__openDashboardGophers` no longer has a caller from signup). The ≥4-star
+  post-job rating flow remains the ONLY way a MY Gopher is created — don't
+  rebuild a manual add. (2) **Request MY Gophers = Connect format** (canonical):
+  section title matched, rating dropped from the card meta line (rating still on
+  the Profile modal). Card CSS was already identical (v106). (3) **Connect
+  hire-again modal uses the real Step-1 photo tiles** (CAT_PHOTOS assets baked
+  into HIRE_AGAIN_CATS; `.hac-chip` restyled photo-card; selection logic
+  unchanged). Request's hire-again is deliberately minimal (v107 Decision A) and
+  has no category modal — untouched. (4) **Referral modals: 10px gap** between
+  stacked share buttons (`.rf-btn-navy + .rf-btn-navy`); **referral ID unified to
+  the "Gopher ID"** (owner: assigned at personal-info creation) — one value
+  (738105) page + modal, labels now "Your Gopher ID". (5) **Recommend-MY-Gophers
+  done-copy**: "recommendations" per owner's exact wording. (6) **Sidebar
+  restructure, all portals** (Connect/Request/Deals/Go): top-level Dashboard,
+  Previous requests, MY Gophers, Inbox (portal equivalents); Account = Business
+  info (C+D+Go), Personal info, Work settings & ratings (Go), Payment info,
+  Users & access (C+D), Blocked requestors (Go); NEW "Rewards" divider = Refer
+  Gopher (Deals: Feature my business — judgment call); Resources = Ask Gopher iQ
+  (renamed everywhere), Visit site, Send feedback (built new for Go: minimal
+  gc-modal). **Saved addresses nav entries removed from Connect+Request**
+  (absent from the owner's list — panes/data/quick-pick remain in code).
+  **Uniform sizing**: brand cards min-height 122px, CTAs min-height 50px + navy
+  text on all 4 (Request's CTA was white — hardcoded #002461; note Request's
+  `--ink-on-green` is still #fff globally). (7) **Go CTA = "+ Service Provider
+  Deal"** (no emoji), DEACTIVATED (no modal) when not auto-eligible, new "Learn
+  more" link → the eligibility popup retitled motivating ("Service Provider
+  Deals — your work, your offer"; criteria unchanged: Elite/Elite+/Pro · 20+
+  service jobs · 4.75★ last-20, Delivery/Ride/Other excluded). (8) **Go Business
+  info**: business name EDITABLE (lock removed, joins save-dirty tracking);
+  "Show me as a business / individual" segmented toggle (hidden data-field,
+  fires input for dirty tracking); Business-logo tile moved out of the docs grid
+  up to the Business fields; "Credentials" → **"Become a Pro"** with the pro
+  pill. (9) **Age-restricted delivery = its own category card** in Go work
+  settings (kept `js-sub` class so existing toggle JS works; `js-subwrap` gone
+  for Delivery — the null-guard in syncPanels covers it). App Prototypes session
+  pinged to mirror (owner-directed cross-session handoff). (10) **Deals
+  dashboard scroll bug FIXED**: the fixed-position dashboard sat over the tall
+  landing page and wheel/scrollbar input scrolled the page BEHIND it; body
+  scroll now locks on enterDashboard and restores on sign-out/back.
+  (11) **Ask Gopher iQ branding**: sidebar items renamed on all portals; the
+  assistant pill in Connect+Request carries the Gopher iQ logo
+  (`assets/img/shared-scribble.webp` — that file IS the iQ lockup); Deals' Ask
+  pane (placeholder) got logo+title; Go's help pane retitled (no pill exists
+  there — the app-prototype pills are the App Prototypes session's mirror).
+  All four portals JXA-parse clean; verified in browser end-to-end (sidebar
+  orders, hire-again photo grid, referral gap=10px, scroll lock on/off,
+  Go eligibility both states, feedback modal, biz toggle) with 0 console errors.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
