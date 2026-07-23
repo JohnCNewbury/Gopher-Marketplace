@@ -214,7 +214,7 @@ Rebuilt via `python3 build.py` → `output/Gopher_HQ_Dashboard.html` (78 MB, 202
 **Verification checklist:**
 
 - SQL: `Σ legacy = Σ canonical` row counts; `legacy_rows_remaining = 0`; spot-check known Pro/Pro+ workers now show Elite/Elite+ everywhere (app profile, admin, order emails).
-- Service-Provider eligibility (D-020: Elite/Elite+/Pro · 20+ service jobs — Delivery/Ride Sharing/Other excluded from the count, founder amendment 2026-07-23 · 4.75★/last-20 rating floor) computes identically pre/post.
+- Service-Provider eligibility (D-020: Elite/Elite+/Pro · 20+ service jobs · 4.75★ over last 20 service jobs — Delivery/Ride Sharing/Other excluded from both the count and the rating window, founder amendment 2026-07-23) computes identically pre/post.
 - Broadcast cadence (G40-44) Tier-2 unchanged (it's id-based).
 - `rg -n "Gopher Pro\b|Pro\+|Pro Plus"` over each repo returns only new-Pro copy and intentional migration notes (use §2's false-positive list).
 - Emails 15/16 render Elite/Elite+ names + new badge art; signup-confirmation links resolve to the live tiers page.

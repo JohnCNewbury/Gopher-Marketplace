@@ -282,9 +282,9 @@ parlay + provider-directed).
 7. **Live audience data** — swap the baked `gopher-deals-audience.js` for a live query.
 8. **Provider eligibility + two-entry flow (DLP)** — Service Provider is **not a separate role**;
    it's an eligibility tier of Worker. Auto-eligible when a Gopher is **Elite / Elite+ / Pro · 20+
-   completed SERVICE jobs · 4.75★ over the last 20 completed** (admin manual-override allowed;
-   **Delivery, Ride Sharing, and Other jobs do NOT count toward the 20** — founder amendment
-   2026-07-23, service categories piloted first); each posted
+   completed SERVICE jobs · 4.75★ over the last 20 completed SERVICE jobs** (admin manual-override
+   allowed; **Delivery, Ride Sharing, and Other jobs count toward NEITHER the 20 NOR the rating
+   window** — founder amendment 2026-07-23, service categories piloted first); each posted
    deal is **manually reviewed** before going live. The dev wires: the **Gopher-ID → eligibility
    lookup** behind the public funnel, the real **email + Gopher Go inbox** notification, and the real
    **eligibility gate** on the in-app "Offer My Service" button (simulated by the `ELIGIBLE` demo

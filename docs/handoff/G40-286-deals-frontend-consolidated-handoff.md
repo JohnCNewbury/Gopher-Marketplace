@@ -97,11 +97,12 @@ currently `return true` (TEMP, open to all) at `gopher-request.html:21843`.
 
 **Eligibility (matrix rows 49–54, note 80) — two gates:**
 1. **Eligibility is AUTOMATIC** when a Gopher meets the bar: **Elite, Elite+, or Pro · 20+ completed
-   SERVICE jobs · 4.75★ over the last 20 completed requests** (founder ruling 2026-07-06, lowered from
-   5.0★; plus an **admin manual override** to grant any worker). Meeting the bar = *eligible, not
+   SERVICE jobs · 4.75★ over the last 20 completed SERVICE jobs** (founder ruling 2026-07-06, lowered
+   from 5.0★; plus an **admin manual override** to grant any worker). Meeting the bar = *eligible, not
    approved.* **Service jobs only (founder amendment 2026-07-23): Delivery, Ride Sharing, and Other
-   jobs do NOT count toward the 20** — service categories are being piloted first, and counting
-   delivery/ride volume would flood the manual review queue with meaningless provider deals.
+   jobs count toward NEITHER the 20-job bar NOR the last-20 rating window** — service categories are
+   being piloted first, and counting delivery/ride volume would flood the manual review queue with
+   meaningless provider deals.
 2. **Each posted deal is reviewed MANUALLY** initially ("nothing crazy") before it goes live.
 
 **Home surface = Gopher Go.** Eligible providers manage deals + their worker account via the
