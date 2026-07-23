@@ -621,6 +621,23 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   formatted number, name flow to roster, 0 console errors); all script blocks
   JXA-parse clean.
 
+- **SP-Deals eligibility amended: 20+ SERVICE jobs only (owner, 2026-07-23, commit `391822d`).**
+  The 20-completed-jobs bar for Service-Provider Deals eligibility now counts **service-category
+  jobs only** — **Delivery / Errand, Ride Sharing, and Other are EXCLUDED from the count**
+  (service categories piloted first; counting delivery/ride volume would flood the manual
+  deal-review queue). Tier bar (Elite/Elite+/Pro) and rating bar (4.75★/last-20, **window still
+  all job types** — owner has not scoped the rating window to service jobs) unchanged. Updated
+  everywhere: `gopher-deals.html` FAQ, `gopher-go.html` DLP gate comment + ineligible modal,
+  `gopher-go-101.html` eligibility table/caption, 4 handoff docs (2 also corrected from stale
+  5.0★), and OUTSIDE the repo: `Canonical Go Flow - Master/gopher-go-canonical.html` (D-022
+  amended; copy re-synced to `_prototypes/Go/` — gitignored, disk-only),
+  `Gopher-Roles-Capability-Matrix.xlsx` (source of truth, 5 cells + dated A2 note) + both md
+  mirrors, GOPHER-INC.html/.md, Gopher-Intended.md, Session-Handoff, both Build-Spec copies,
+  Legacy-Naming work order. **Site copy committed but NOT deployed** — the live Deals FAQ still
+  shows the old wording until the next deploy. Bonus find while re-syncing the canonical: the
+  master was MISSING the owner's 2026-07-15 §9.8 no-show/ID revisions (they lived only in the
+  `_prototypes/Go/` copy) — merged back into the master, both now identical.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
