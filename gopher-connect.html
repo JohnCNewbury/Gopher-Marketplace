@@ -18546,7 +18546,12 @@ const PAY_BADGES = {
         });
         if(typeof renderUsers === 'function') renderUsers();
       }
-      doneMsg.innerHTML = `Invite sent to <b>${name}</b> via ${channel === 'email' ? 'email' : 'text'} as <b>${roleLabel}</b>.<br>They'll show as <b>Pending</b> until they accept.`;
+      // Hand the invite context to the acceptance-preview simulator (defined
+      // in initConnectAccountMgmt — cross-closure via window by design).
+      window.__lastInvite = { name, contact, channel, role, roleLabel,
+        email: channel === 'email' ? contact : `${contact} (SMS)` };
+      doneMsg.innerHTML = `Invite sent to <b>${name}</b> via ${channel === 'email' ? 'email' : 'text'} as <b>${roleLabel}</b>.<br>They'll show as <b>Pending</b> until they accept.<br>
+        <button type="button" id="ivPreviewAccept" style="margin-top:14px;font-family:'Nunito';font-weight:800;font-size:13px;border-radius:9px;padding:10px 16px;background:#fff;border:1.5px solid var(--green);color:var(--green-dark);cursor:pointer">Preview what ${name.split(' ')[0]} will see &rarr;</button>`;
       formView.hidden = true; doneView.hidden = false;
     });
   }
@@ -18655,6 +18660,106 @@ const PAY_BADGES = {
       renderUsers(); refreshRemoveBtn();
     });
 
+    // ═════ Invite ACCEPTANCE preview (demo-only walkthrough) ═════
+    // Simulates what the invited person experiences, per the locked protocol
+    // in docs/handoff/users-access-invite-protocol.md §4 — four branches:
+    //   A already signed in · B has account, signed out · C new person ·
+    //   D "thinks they're new" contact collision → verify-then-CONTINUE-AS
+    //     (the OTP signs them into the account that owns the contact; it
+    //     never copies data into a new one, and nothing is revealed first).
+    // Entry points: the invite-sent confirmation, and Manage on a pending row.
+    const simBar = who =>
+      '<div style="background:var(--navy);color:#fff;border-radius:9px;padding:7px 12px;margin:0 0 14px;font-family:Nunito;font-weight:800;font-size:11.5px;letter-spacing:.4px">📱 '+esc(who)+"'S SCREEN — demo preview</div>";
+    const simBtn = (id,label,ghost) =>
+      '<button id="'+id+'" style="display:block;width:100%;font-family:Nunito;font-weight:800;font-size:13.5px;border-radius:10px;padding:12px 16px;margin:0 0 9px;cursor:pointer;'+
+      (ghost?'background:#fff;border:1.5px solid #d9deea;color:var(--navy)':'background:var(--green);border:none;color:var(--ink-on-green,#04230f)')+'">'+label+'</button>';
+    const bizName = () => (document.getElementById('biz-name')||{}).textContent || 'your business';
+
+    document.addEventListener('click', e => {
+      if(e.target.closest('#ivPreviewAccept')){
+        const ov = document.getElementById('inviteUserOverlay'); if(ov) ov.hidden = true;
+        if(window.__lastInvite) openAcceptPreview(window.__lastInvite);
+      }
+    });
+
+    function openAcceptPreview(inv){
+      const first = esc(inv.name.split(' ')[0]);
+      const m = modal('', true);
+      const paint = html => { m.card.innerHTML = html; };
+      const acceptScreen = (sub) => {
+        paint(simBar(inv.name)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">Join '+esc(bizName())+' on Gopher Connect</h3>'+
+          (sub?'<div style="font-size:12.5px;color:#1cb061;font-weight:700;margin:0 0 8px">'+sub+'</div>':'')+
+          '<div style="font-size:13.5px;color:#555;margin:0 0 16px">You\'ve been invited as <b>'+esc(inv.roleLabel)+'</b> &mdash; '+(inv.role==='admin'?'manage users, requests, and payment methods.':'submit and view your own requests.')+'</div>'+
+          simBtn('simAccept','Accept invite')+simBtn('simDecline','Decline',true));
+        m.card.querySelector('#simAccept').onclick = doneScreen;
+        m.card.querySelector('#simDecline').onclick = m.close;
+      };
+      const doneScreen = () => {
+        const row = DASH_DATA.users.find(x => x.email === inv.email && x.status === 'pending');
+        paint(simBar(inv.name)+
+          '<div style="font-size:40px;text-align:center;margin:6px 0 10px">🎉</div>'+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px;text-align:center">'+first+' is in</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 16px;text-align:center">They land in the dashboard as <b>'+esc(inv.roleLabel)+'</b>.</div>'+
+          (row ? simBtn('simApply','Mark '+first+' Active on the roster')+simBtn('simLeave','Leave as Pending',true)
+               : simBtn('simLeave','Close',true)));
+        const ap = m.card.querySelector('#simApply');
+        if(ap) ap.onclick = () => { row.status='active'; row.statusLabel='Active'; row.lastActive='Active now'; renderUsers(); refreshRemoveBtn(); m.close(); };
+        m.card.querySelector('#simLeave').onclick = m.close;
+      };
+      const otpScreen = (title, sub, next) => {
+        paint(simBar(inv.name)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">'+title+'</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">'+sub+'</div>'+
+          '<input id="simOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code" style="width:100%;box-sizing:border-box;border:1.5px solid #d9deea;border-radius:10px;padding:12px;font-size:18px;letter-spacing:6px;text-align:center;font-family:Nunito;font-weight:800;margin:0 0 12px">'+
+          simBtn('simVerify','Verify'));
+        m.card.querySelector('#simVerify').onclick = () => {
+          const v = m.card.querySelector('#simOtp').value.replace(/\D/g,'');
+          if(v.length < 6){ m.card.querySelector('#simOtp').focus(); return; }
+          next();
+        };
+      };
+
+      // Scenario picker
+      paint(
+        '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 6px">Preview: what '+first+' will see</h3>'+
+        '<div style="font-size:12.5px;color:#667;margin:0 0 14px">Demo walkthrough of the invite they\'ll receive via '+(inv.channel==='email'?'email':'text')+'. Pick their situation:</div>'+
+        simBtn('simA','Already signed in to their Gopher account',true)+
+        simBtn('simB','Has a Gopher account &mdash; signed out',true)+
+        simBtn('simC','New to Gopher',true)+
+        simBtn('simD','Thinks they\'re new &mdash; but their contact already has an account',true));
+      m.card.querySelector('#simA').onclick = () => { acceptScreen('Signed in as '+esc(inv.contact)); };
+      m.card.querySelector('#simB').onclick = () =>
+        otpScreen('Sign in to Gopher','We sent a 6-digit code to <b>'+esc(inv.contact)+'</b>. <i>(demo: any 6 digits work)</i>',
+          () => acceptScreen('Welcome back &mdash; signed in'));
+      const branchC = (note) => {
+        paint(simBar(inv.name)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">Create your Gopher account</h3>'+
+          '<div style="font-size:12.5px;color:#667;margin:0 0 12px">'+(note||'Name and contact come from the invite; the contact is already verified &mdash; the invite reached it.')+'</div>'+
+          fldv('Full name','simName',inv.name)+
+          '<label style="display:block;font-family:Nunito;font-weight:800;font-size:12px;color:var(--navy);margin:0 0 6px">'+(inv.channel==='email'?'Email':'Mobile number')+'</label>'+
+          '<div style="border:1.5px solid #d9deea;border-radius:10px;padding:11px 12px;font-size:14px;margin:0 0 14px;background:#f6f8fb;color:var(--navy)">'+esc(inv.contact)+' <span style="color:#1cb061;font-weight:700;font-size:12px">✓ verified</span></div>'+
+          simBtn('simCreate','Create account &amp; continue'));
+        m.card.querySelector('#simCreate').onclick = () => acceptScreen('Account created');
+      };
+      m.card.querySelector('#simC').onclick = () => branchC();
+      m.card.querySelector('#simD').onclick = () => {
+        // The claim screen — spec §4-D. Nothing about the account is shown
+        // until the code is passed; "use a different contact" falls back to a
+        // clean Branch-C signup, exactly as the locked protocol requires.
+        paint(simBar(inv.name)+
+          '<h3 style="font-family:Nunito;font-weight:900;color:var(--navy);margin:0 0 8px">'+esc(inv.contact)+' already has a Gopher account</h3>'+
+          '<div style="font-size:13px;color:#555;margin:0 0 14px">If that\'s you, verify a code and continue with that account &mdash; your info is already there, nothing to re-enter.</div>'+
+          simBtn('simDCode','Send me a code')+
+          simBtn('simDOther','Use a different '+(inv.channel==='email'?'email':'number'),true));
+        m.card.querySelector('#simDCode').onclick = () =>
+          otpScreen('Verify it\'s you','Code sent to <b>'+esc(inv.contact)+'</b>. Until it\'s entered, nothing about the account is revealed. <i>(demo: any 6 digits)</i>',
+            () => acceptScreen('Verified &mdash; continuing with your existing account'));
+        m.card.querySelector('#simDOther').onclick = () =>
+          branchC('With a different '+(inv.channel==='email'?'email':'number')+', this becomes a normal new-account signup. <i>(demo shows the invited contact for simplicity)</i>');
+      };
+    }
+
     function openManageUser(u){
       const head =
         '<div style="display:flex;gap:12px;align-items:center;margin:0 0 4px">'+
@@ -18692,7 +18797,7 @@ const PAY_BADGES = {
       // cancelled; active users can be removed singly.
       const pending = u.status === 'pending';
       const m = modal(head + rolePick(u.role) + '<div style="height:6px"></div>' +
-        (pending ? mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
+        (pending ? mgrBtn('muPreview','Preview what they\'ll see') + mgrBtn('muResend','Resend invite') + mgrBtn('muRevoke','Cancel invite',true)
                  : mgrBtn('muRemove','Remove user',true)) +
         btnRow('muSave','Save role','muCancel'));
       m.card.querySelector('#muCancel').onclick = m.close;
@@ -18702,6 +18807,12 @@ const PAY_BADGES = {
         m.close(); renderUsers(); refreshRemoveBtn();
       };
       if(pending){
+        m.card.querySelector('#muPreview').onclick = () => {
+          m.close();
+          const sms = /\(SMS\)$/.test(u.email);
+          openAcceptPreview({ name:u.name, contact:u.email.replace(/ \(SMS\)$/,''),
+            channel: sms ? 'sms' : 'email', role:u.role, roleLabel:u.roleLabel, email:u.email });
+        };
         m.card.querySelector('#muResend').onclick = () => {
           const d = new Date(); u.lastActive = 'Invite re-sent '+(d.getMonth()+1)+'/'+d.getDate();
           m.close(); renderUsers();
