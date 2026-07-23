@@ -625,16 +625,18 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   The 20-completed-jobs bar for Service-Provider Deals eligibility now counts **service-category
   jobs only** — **Delivery / Errand, Ride Sharing, and Other are EXCLUDED from the count**
   (service categories piloted first; counting delivery/ride volume would flood the manual
-  deal-review queue). Tier bar (Elite/Elite+/Pro) and rating bar (4.75★/last-20, **window still
-  all job types** — owner has not scoped the rating window to service jobs) unchanged. Updated
+  deal-review queue). **Owner follow-up same day (commit `bda46ae`): the 4.75★ rating window is
+  ALSO service-scoped — measured over the last 20 completed SERVICE jobs**, so Delivery/Ride
+  Sharing/Other are excluded from BOTH the 20-job count and the rating window. Tier bar
+  (Elite/Elite+/Pro) unchanged. Updated
   everywhere: `gopher-deals.html` FAQ, `gopher-go.html` DLP gate comment + ineligible modal,
   `gopher-go-101.html` eligibility table/caption, 4 handoff docs (2 also corrected from stale
   5.0★), and OUTSIDE the repo: `Canonical Go Flow - Master/gopher-go-canonical.html` (D-022
   amended; copy re-synced to `_prototypes/Go/` — gitignored, disk-only),
   `Gopher-Roles-Capability-Matrix.xlsx` (source of truth, 5 cells + dated A2 note) + both md
   mirrors, GOPHER-INC.html/.md, Gopher-Intended.md, Session-Handoff, both Build-Spec copies,
-  Legacy-Naming work order. **Site copy committed but NOT deployed** — the live Deals FAQ still
-  shows the old wording until the next deploy. Bonus find while re-syncing the canonical: the
+  Legacy-Naming work order. **Deployed live same day** (deploy `c118c81`, scope-checked: exactly
+  the 3 eligibility pages, no riders). Bonus find while re-syncing the canonical: the
   master was MISSING the owner's 2026-07-15 §9.8 no-show/ID revisions (they lived only in the
   `_prototypes/Go/` copy) — merged back into the master, both now identical.
 
