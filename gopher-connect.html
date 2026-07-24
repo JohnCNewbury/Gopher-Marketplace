@@ -1536,7 +1536,16 @@
 
   /* ─── Hire again modals ─── */
   .gc-modal.gc-modal-wide { max-width:460px; }
+  /* Category-pick modal: wider than tall (owner 7/24) — 8 cards flow 4-across,
+     left to right. gc-modal-wide stays 460px for the other two modals. */
+  .gc-modal.gc-modal-hac { max-width:780px; max-height:calc(100vh - 48px); overflow-y:auto; }
   .hire-again-cats { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin:4px 0 14px; }
+  .gc-modal-hac .hire-again-cats { grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:700px){
+    .gc-modal.gc-modal-hac { max-width:460px; padding:22px 16px 18px; }
+    .gc-modal-hac .hire-again-cats { grid-template-columns:repeat(2,1fr); gap:8px; }
+    .gc-modal-hac .hac-chip .hac-photo { aspect-ratio:16/9; }
+  }
   .ra-fast-all { background:none; border:none; font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--green-dark); cursor:pointer; padding:0; margin:0 0 10px; text-decoration:underline; align-self:flex-start; }
   .hac-chip {
     display:flex; flex-direction:column; align-items:stretch; cursor:pointer;
@@ -1546,7 +1555,7 @@
   }
   .hac-chip:hover { border-color:#c9d2e3; }
   .hac-chip.selected { border-color:var(--green); background:var(--green-light); }
-  .hac-chip .hac-photo { display:block; width:100%; height:64px; }
+  .hac-chip .hac-photo { display:block; width:100%; aspect-ratio:4/3; min-height:0; overflow:hidden; height:auto; }
   .hac-chip .hac-photo img { width:100%; height:100%; object-fit:cover; display:block; }
   .hac-chip .hac-name { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; }
   .hac-chip .hac-check { width:15px; height:15px; border-radius:50%; border:2px solid #d5dbe8; flex:none; box-sizing:border-box; }
@@ -7841,7 +7850,7 @@
 
 <!-- HIRE AGAIN — STEP 1: category select -->
 <div class="gc-modal-overlay" id="hireAgainOverlay" hidden>
-  <div class="gc-modal gc-modal-wide" role="dialog" aria-modal="true" aria-labelledby="hireAgainTitle">
+  <div class="gc-modal gc-modal-wide gc-modal-hac" role="dialog" aria-modal="true" aria-labelledby="hireAgainTitle">
     <button type="button" class="gc-modal-close" id="hireAgainClose" aria-label="Close">×</button>
     <div class="gc-modal-icon gc-modal-icon-go">⭐</div>
     <h4 id="hireAgainTitle">Hire <span id="hireAgainName">your Gopher</span> again</h4>

@@ -16290,8 +16290,26 @@ const TYPO_MAP={
   ride:'ride', rde:'ride', rdie:'ride',
   mover:'mover', moveing:'moving', haulin:'hauling',
   electritian:'electrician', electrican:'electrician', plummer:'plumber',
-  cigaret:'cigarette', cigarets:'cigarettes', tabacco:'tobacco', tobaco:'tobacco',budwiser:'budweiser',michelobb:'michelob',corrona:'corona',modello:'modelo',hineken:'heineken',yuenglin:'yuengling',chardonay:'chardonnay',moscoto:'moscato',proseco:'prosecco',smirnof:'smirnoff',absoloute:'absolut',casamigo:'casamigos',jager:'jagermeister'};
+  cigaret:'cigarette', cigarets:'cigarettes', tabacco:'tobacco', tobaco:'tobacco',budwiser:'budweiser',michelobb:'michelob',corrona:'corona',modello:'modelo',hineken:'heineken',yuenglin:'yuengling',chardonay:'chardonnay',moscoto:'moscato',proseco:'prosecco',smirnof:'smirnoff',absoloute:'absolut',casamigo:'casamigos',jager:'jagermeister',
+  // Contractions: expand so the contracted token doesn't become an unmatchable
+  // content word that drops the right FAQ ("Where's my order?" returned nothing
+  // while "Where is my order?" scored a perfect match). Straight + smart-quote
+  // (iOS) apostrophes plus the bare no-apostrophe typings. Bare "its" is
+  // deliberately NOT mapped — it's a real possessive, not always a contraction.
+  "where's":'where is', "where’s":'where is', wheres:'where is',
+  "what's":'what is',   "what’s":'what is',   whats:'what is',
+  "when's":'when is',   "when’s":'when is',   whens:'when is',
+  "how's":'how is',     "how’s":'how is',     hows:'how is',
+  "who's":'who is',     "who’s":'who is',     whos:'who is',
+  "there's":'there is', "there’s":'there is', theres:'there is',
+  "that's":'that is',   "that’s":'that is',   thats:'that is',
+  "it's":'it is',       "it’s":'it is',
+  "i'm":'i am',         "i’m":'i am',         im:'i am'};
 function correctTypos(text){
+  // Trailing sentence punctuation rides on the last token ("charged?") and makes
+  // that word unmatchable in scoreRec's whitespace tokenizer — "Why was I charged?"
+  // matched nothing while "why was i charged" scored a perfect 0. Strip it up front.
+  text = text.replace(/[?!.]+\s*$/, '');
   return text.split(/(\s+)/).map(tok=>{
     if(/^\s+$/.test(tok)||!tok) return tok;
     const low=tok.toLowerCase();
