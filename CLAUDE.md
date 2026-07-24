@@ -763,7 +763,20 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   flagged to owner for the successor session (label renames there interact with the
   `ROUTES`-keyed-by-visible-label trap documented 2026-07-21).
 
-### Outstanding to-do
+- **Connect Hire-again modal: 4-across grid, uncropped photos, mobile-safe (owner
+  screenshot, 2026-07-24).** The category picker was 2-across in a 460px modal with
+  photos hard-cropped to a 64px strip. Now: new `gc-modal-hac` class on the hire-again
+  dialog only (`gc-modal-wide` still 460px — it's shared by the add-Gophers and
+  ra-fast modals, don't widen it) → 780px max-width, 8 cards flow **4-across × 2 rows
+  left-to-right**, wider than tall; photos at `aspect-ratio:4/3` (matches the source
+  images — zero crop). **Gotcha that cost a round-trip:** `.hac-photo` is a flex item,
+  so its automatic `min-height` floors at the image's natural height and silently
+  beats `aspect-ratio` — `min-height:0` is REQUIRED on the span or the aspect rule
+  is decorative. Mobile (≤700px): back to 2-across at 460px, photos 16:9 (all 8 cards
+  + note fit one screen), modal `max-height:calc(100vh-48px)` + `overflow-y:auto` so
+  it can never trap content off-screen. Connect-only by owner instruction (Request's
+  hire-again deliberately has no category modal — v107 Decision A). Verified at
+  desktop + 375: grid, selection→Continue enable, 0 console errors.
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
   (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
