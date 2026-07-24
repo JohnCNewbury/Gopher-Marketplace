@@ -80,19 +80,31 @@ verification of the submitter against the bar.
   (bid-board logic in `assets/js/gopher-bid-brain.js`; the worker-side bid board in
   Go is still unbuilt and MUST render from that shared brain).
 
-## 6. The deals@ mailbox plumbing
+## 6. The deals@ mailbox + the Apps Script's TEMPORARY role (owner, 2026-07-24)
 
-`deals@gophergo.io` is the sender/receiver identity for steps 2, 3, and 5. The
-send-capability wiring (Gmail send-as alias on the Apps Script account + the
-script-side email snippets) is the item tabled by the owner 2026-07-22 — steps 2/3
-above now depend on it, so it un-tables when this pipeline is built. Script-side
-edits are owner-actions (no-live-changes rule); front-end wiring + exact Apps Script
-snippets are ready to build on request.
+**The Google Apps Script is a temporary pre-registration play only. Once the platform
+is live there is NO Apps Script anywhere in this pipeline** — registration and deal
+submissions go **straight to the HQ Dashboard** for review/approval, and all emails
+(the deals@ eligibility congratulations, the deals@ form notifications, the
+inbox-on-live messages) are sent by the **platform's own email dispatcher**
+(`sendEmail.js` / G40-305 program), not by a script. Do not build production
+integrations against `GOPHER_FORM_ENDPOINT`.
 
-## Public interest funnel (unchanged, for completeness)
+`deals@gophergo.io` is the sender/receiver identity for steps 2, 3, and 5 regardless
+of era. Pre-launch, the tabled 7/22 Apps Script wiring (deals@ send-as alias + script
+snippets) is the interim way to send from it; at go-live that entire mechanism is
+retired in favor of the dispatcher.
+
+**The email itself is drafted:** `Documentation/SMS:Emails/gopher-email-sp-deals-eligible.html`
+(built 2026-07-24 from the tier-grant template family; tokens `{{firstName}}`,
+`{{OFFER_DEAL_URL}}`, `{{DEALS_101_URL}}`, `{{currentYear}}`; registered in the
+Recap + Tracker docs as a **NEW** dispatcher type, sender deals@).
+
+## Public interest funnel (pre-registration era only)
 
 The Deals site's "I'm a service provider" form (name/mobile/email/Gopher ID →
-`GOPHER_FORM_ENDPOINT` Apps Script → owner's Sheet, localStorage backup) remains the
-public entry for not-yet-eligible workers: backend verifies the Gopher ID against the
-bar, then replies with eligibility terms by email + Go inbox message. The deal itself
-is only ever submitted in-app by eligible workers.
+`GOPHER_FORM_ENDPOINT` Apps Script → owner's Sheet, localStorage backup) is the
+**pre-registration** entry for not-yet-eligible workers: backend verifies the Gopher
+ID against the bar, then replies with eligibility terms by email + Go inbox message.
+At go-live this funnel either retires or repoints to the Dashboard like everything
+else — the deal itself is only ever submitted in-app by eligible workers.
