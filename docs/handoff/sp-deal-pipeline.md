@@ -38,9 +38,11 @@ The moment a worker crosses the bar:
    assets, `sendEmail.js` dispatcher) — do not write a new template from scratch.
 2. **The "+ Service Provider Deal" CTA activates** in the Go web dashboard
    (already built — the gate just needs the real `ELIGIBLE` feed), **and** the Go
-   app's equivalent entry activates — owner has directed the App Prototypes session
-   to add that component to the **Perks section of the app Home screen** (in flight
-   2026-07-24).
+   app's equivalent entry activates — **BUILT 2026-07-24** (commit `96100dc`):
+   third tile in the app Home's **Perks** section, dim+lock when ineligible →
+   motivating criteria popup; eligible → the "Offer your service" form ported 1:1
+   from the web portal; in-memory `SPDEAL` state with an "SP eligible" demo chip.
+   Production only needs to feed the real eligibility flag to both surfaces.
 
 ## 3. Deal submission (in-app form → Dashboard + email)
 
