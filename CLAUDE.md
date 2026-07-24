@@ -761,7 +761,40 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   still carries a visible `'Request history'` label in a nav-row array, and the Go
   `-figma` screens + `gopher-go-help-figma.html` FAQ copy still say "Request History" —
   flagged to owner for the successor session (label renames there interact with the
-  `ROUTES`-keyed-by-visible-label trap documented 2026-07-21).
+  `ROUTES`-keyed-by-visible-label trap documented 2026-07-21). **CLOSED same day — see
+  the next entry.**
+
+- **App Prototypes successor (2026-07-24): prototype-side "Previous requests" rename +
+  the SP-Deal Perks component (owner-approved).**
+  (1) **Rename DONE** — the 7 relayed surfaces plus 3 unlisted variant twins (the same
+  `ACCT_ROWS` label in `gopher-request-prototype`/`FOOTER-FIXED`/`sim_base.upload`), 11
+  edits, one count-asserted script. Casing per surrounding style: sentence case in the
+  Request app array, title case in the Go `-figma` screens; `gopher-go-help-figma` also
+  got the stale "Account →" path fix. **The ROUTES trap does NOT exist in
+  `gopher-request-app.html`** — no `ROUTES` object; the label lives in `ACCT_ROWS`
+  whose handler only toasts. **Git nuance: 9 of the 10 files are gitignored by design**
+  (figma screens + Request variants are disk-only) — commit `08f95c7` carries only the
+  tracked `gopher-request-prototype.html`; the rest are disk edits. Identifiers,
+  filenames, header comments, internal spec docs, `_stale_pre_upload/` untouched.
+  (2) **"+ Service Provider Deal" built into the Go app prototype's home Perks zone**
+  (owner directive 7/24 item-2 parenthetical; commits `96100dc` + `1e77f09`; owner
+  visually approved 7/24). Third tile after Gopher Rewards/Refer App: ineligible →
+  dim + lock, tap opens the motivating criteria popup (Elite/Elite+/Pro · 20+ service
+  jobs · 4.75★ last-20, Delivery/Ride/Other excluded) with a demo progress line;
+  eligible → **"Offer your service" form ported 1:1 from `Final/gopher-go.html`
+  `offerServiceOverlay`** (≤3 keyword chips, pay = earn × 1.10 Deal Boost, 1–50 mi
+  reach, same validation order + copy). In-memory `SPDEAL` state; "SP eligible on/off"
+  demo chip in the Perks eyebrow; wired via the router's special-case chain (like
+  `gopher-iq`) + a `renderSPTile(sr)` hook in `load()`'s home stamp. **Production seams
+  commented, not built:** server-side eligibility (Dashboard `regen_sp_eligibility.py`
+  = reference impl), eligibility email drafted at
+  `Documentation/SMS:Emails/gopher-email-sp-deals-eligible.html` sent via the platform
+  dispatcher (`sendEmail.js`/G40-305 — production has **NO Apps Script**, owner 7/24),
+  submissions → HQ Dashboard Deals review queue + deals@ email, web-live-on-approval /
+  app-on-store-release. Pipeline doc `docs/handoff/sp-deal-pipeline.md` updated to
+  BUILT. Verified via JXA (all script blocks parse; money math/dedup/gate smoke-tested)
+  — the browser pane cannot render this 2.8 MB file; owner's tunnel eyeball was the
+  visual check.
 
 - **Connect Hire-again modal: 4-across grid, uncropped photos, mobile-safe (owner
   screenshot, 2026-07-24).** The category picker was 2-across in a 460px modal with
