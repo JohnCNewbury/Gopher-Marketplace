@@ -778,6 +778,25 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   hire-again deliberately has no category modal — v107 Decision A). Verified at
   desktop + 375: grid, selection→Continue enable, 0 console errors.
 
+- **SP-Deal pipeline: owner decisions recorded + 101 synced (2026-07-24).** Deep-dive
+  traced the 7-step Service-Provider-Deal process through the code; owner answered the
+  gap list, now spec'd in **`docs/handoff/sp-deal-pipeline.md`** (production build spec):
+  eligibility computed in backend (Dashboard `regen_sp_eligibility.py` = reference impl);
+  **eligibility notification is automatic — congratulations email from deals@gophergo.io
+  built from the existing G40-305 email templates**, CTA + app Perks-section entry
+  activate (App Prototypes session adding the app component); in-app deal submission
+  lands in **HQ Dashboard → Deals for approval + emails deals@ on every form**; review
+  reuses the **existing merchant review process** (no separate SP queue); approval →
+  **web goes live immediately** (no store regulation assumed), **apps queue for the next
+  store release** and catch up. The deals@ send-wiring (tabled 7/22, below) is now a
+  dependency of this pipeline. `gopher-go-101.html` #offer-deals synced to the built UI:
+  stale **"Offer My Service →" → "+ Service Provider Deal"** (renamed 7/23 but the 101
+  was missed), top-of-sidebar placement, deactivated + "Learn more" framing, plus the
+  owner-decided notification promises (deals@ email, app Perks entry, inbox message on
+  live).
+
+### Outstanding to-do
+
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
   (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
   meanwhile (see 2026-07-15 entry); swap the `<source>`s back when production clips exist.
