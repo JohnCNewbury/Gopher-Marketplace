@@ -331,6 +331,16 @@ body{
 .os-panel-head span{font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);}
 .os-trip{font-family:'Nunito';font-weight:700;font-size:11.5px;color:var(--navy);background:var(--green-light);border-radius:8px;padding:7px 11px;margin-bottom:12px;line-height:1.4;}
 .os-trip-est{font-weight:600;color:var(--muted);}
+/* Junk volume-tier selector — visual parity with the web apps' .os-tier (owner 2026-07-19) */
+.os-junk-tiers{display:flex;gap:7px;margin:2px 0 10px;}
+.os-tier{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px;padding:9px 8px;
+  border:1.5px solid #e4e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:left;
+  font-family:'DM Sans',sans-serif;transition:border-color .12s, background .12s, box-shadow .12s;}
+.os-tier:hover{border-color:var(--green-dark);}
+.os-tier.active{border-color:var(--green-dark);background:var(--green-light);box-shadow:0 0 0 2px rgba(28,176,97,.18);}
+.os-tier-name{font-family:'Nunito';font-weight:800;font-size:12.5px;color:var(--navy);line-height:1.15;}
+.os-tier-hint{font-size:10px;color:var(--muted);line-height:1.25;}
+.os-tier:focus-visible{outline:2px solid var(--green-dark);outline-offset:2px;}
 .os-slider-wrap{margin:2px 0 4px;padding:12px 6px 8px;background:var(--navy-light);border-radius:13px;}
 .os-rail-labels,.os-rail-vals{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;font-family:'Nunito';padding:0 4px;}
 .os-rail-labels{font-size:10.5px;font-weight:800;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;}
@@ -930,7 +940,7 @@ const FIELD_HIDDEN_FOR = {
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
   serviceElevator:['delivery','home','labor','junk','yard','ride','other'],
   destStairs:['delivery','home','yard','ride'],
-  aiPaySuggest:['junk','moving','home','labor','yard','other'],
+  aiPaySuggest:['moving','home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
   bidsOption:['delivery','ride']
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
@@ -984,9 +994,25 @@ function rideSuggestedOffer(miles, minutes, scheduled){
   const calc=(mult)=>{ let base=Math.max(r.fee+variable*mult, r.minRide); if(scheduled) base*=(1+r.schedUplift); return base*(1+r.itf); };
   return { low:Math.round(calc(1-r.band)), suggested:Math.round(calc(1)), generous:Math.round(calc(1+r.band)), miles, minutes };
 }
+// Junk prices on a VOLUME tier, not item cost (owner 2026-07-19). The tier is
+// iQ-detected from the description on first open and then owned by state.junkTier
+// once the user taps a tier button in the offer modal. Tiers, keyword detector and
+// the forward-learning blend all live in the SHARED module
+// (Final/assets/js/gopher-request-logic.js) — parity with the Request/Connect web apps.
+// No completed-junk history exists in this flow prototype to seed the learning store
+// from (the web surfaces seed via seedJunkLearningOnce()); production records
+// completions through the same recordJunkOffer() seam.
+function currentJunkTier(){
+  const L=window.GopherRequestLogic;
+  if(state.junkTier && L && L.JUNK_TIERS && L.JUNK_TIERS[state.junkTier]) return state.junkTier;
+  const det=(L && L.detectJunkVolumeTier) ? L.detectJunkVolumeTier(state.description||'') : { tier:'half' };
+  return det.tier;
+}
 function getCurrentOfferModel(){
   const isRide = state.category==='ride';
-  if(state.category!=='delivery' && !isRide) return null;
+  const isJunk = state.category==='junk';
+  if(state.category!=='delivery' && !isRide && !isJunk) return null;
+  if(isJunk){ const L=window.GopherRequestLogic; return (L && L.suggestedJunkOffer) ? L.suggestedJunkOffer(currentJunkTier()) : null; }
   if(isRide){ const t=getRideTripEstimate(); return rideSuggestedOffer(t.miles, t.minutes, state.scheduleType!=='now'); }
   return suggestedOffer(currentItemCost(), currentRegionIsNC());
 }
@@ -1010,6 +1036,10 @@ function makeInitialState(){
     idRequiredAtCompletion:false, agePurchaseAck:false, agePurchaseDismissed:false,
     // schedule + offer-telemetry contract fields (parity with web)
     scheduleConfirmed:false, selectedDate:null, suggestedOfferUsed:false,
+    // Junk only: resolved volume tier (single|half|full). iQ-detected from the
+    // description; a tier-button tap in the offer modal overrides it. Locked in on
+    // "Use this offer" so completion can teach the model (recordJunkOffer seam).
+    junkTier:null,
     // rider info
     numRiders:'2', numBags:'1', specialInstructions:'',
     // item info
@@ -1068,10 +1098,10 @@ function workerPayTotal(){ return perWorkerPay()*workerCount(); }
 // matrix) and, for Labor/Yard, when paying by the hour. NOTE: NOT gated by moreThanOneWorker.
 function bidsAllowed(){ return isVisible('bidsOption') && !(state.payByHour && (state.category==='labor'||state.category==='yard')); }
 // "Low offer" floor — only meaningful where Gopher iQ pricing exists
-// (Delivery + Ride). Other categories have no suggested-pricing model, so we
-// never show a low-offer caution for them.
+// (Delivery + Ride + Junk volume tiers). Other categories have no
+// suggested-pricing model, so we never show a low-offer caution for them.
 function offerLowThreshold(){
-  if(state.category==='delivery' || state.category==='ride'){ const m=getCurrentOfferModel(); return m ? m.low : 0; }
+  if(state.category==='delivery' || state.category==='ride' || state.category==='junk'){ const m=getCurrentOfferModel(); return m ? m.low : 0; }
   return 0;
 }
 function cogOfferNow(){
@@ -1467,10 +1497,18 @@ function offerModalHTML(){
   const trackMax = Math.round(model.suggested+half);
   const offerToPct=(v)=> trackMax===trackMin?50:Math.max(0,Math.min(100,Math.round((v-trackMin)/(trackMax-trackMin)*100)));
   const tripPill = (isRide && model.miles!=null) ? `<div class="os-trip">Estimated trip: ~${Math.round(model.miles*10)/10} mi · ~${Math.round(model.minutes)} min <span class="os-trip-est">(estimate — live distance once your maps are connected)</span></div>` : '';
+  // Junk volume-tier selector (owner 2026-07-19): iQ pre-selects the detected tier;
+  // tapping a button corrects it, and the modal re-renders with the slider re-ranged
+  // to that tier's band (this file's re-render = the web's applyModel(m) refactor).
+  const L=window.GopherRequestLogic;
+  const tierRow = (state.category==='junk' && L && L.JUNK_TIER_ORDER) ? `<div class="os-junk-tiers" role="group" aria-label="How much are we hauling?">`
+      + L.JUNK_TIER_ORDER.map(tk=>{ const t=L.JUNK_TIERS[tk], on=tk===currentJunkTier();
+        return `<button type="button" class="os-tier${on?' active':''}" data-action="junk-tier" data-tier="${tk}" aria-pressed="${on}"><span class="os-tier-name">${t.label}</span><span class="os-tier-hint">${t.hint}</span></button>`; }).join('')
+      + `</div>` : '';
   return `<div class="offer-backdrop" data-action="ai-pay-cancel"></div>
     <div class="offer-card" role="dialog" aria-modal="true" data-tmin="${trackMin}" data-tmax="${trackMax}" data-low="${model.low}" data-sug="${model.suggested}" data-gen="${model.generous}">
       <div class="os-panel-head"><img class="os-logo" src="${GOPHER_IQ_SRC}" alt="Gopher iQ"><span>Suggested fair offer</span></div>
-      ${tripPill}
+      ${tripPill}${tierRow}
       <div class="os-slider-wrap">
         <div class="os-rail-labels"><span class="os-lab-low">Low</span><span class="os-lab-fair">Fair</span><span class="os-lab-gen">Generous</span></div>
         <input type="range" class="os-slider" id="offerSlider" min="0" max="100" value="${offerToPct(model.suggested)}" aria-label="Offer amount">
@@ -2264,7 +2302,13 @@ document.addEventListener('click',(e)=>{
       render(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
-    case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.lowOfferAck=false; } state.osOpen=false; render(); } break;
+    case 'junk-tier': state.junkTier=act.dataset.tier; render(); break;   // user correction now owns the tier; re-render re-ranges the slider
+    case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.suggestedOfferUsed=true;
+      // Junk: lock in the resolved volume tier so completion can teach the model
+      // (recordJunkOffer — the learning seam). Even if no tier button was tapped,
+      // this persists the iQ-detected one. Parity with the web's iQ submit.
+      if(state.category==='junk') state.junkTier=currentJunkTier();
+      state.lowOfferAck=false; } state.osOpen=false; render(); } break;
     case 'ack-low': state.lowOfferAck=true; render(); break;
     case 'toggle-sse': state.sseOpen=!state.sseOpen; render(); break;
     case 'toggle-wte': state.wteOpen=!state.wteOpen; render(); break;
