@@ -742,6 +742,27 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   the tile's own section). App Prototypes session pinged with all three
   refinements.
 
+- **"Request history" → "Previous requests", all customer-facing copy (owner, 2026-07-24).**
+  Owner directive from a Go-sidebar screenshot: no customer-facing surface may say
+  "Request history" anywhere. Swept `Final/`: Go portal sidebar label + history-panel
+  `<h2>` (the last portal still using the old name — Connect/Request/Deals were already
+  renamed); **9 FAQ-corpus answers × all 7 synchronized copies** (all in q/a text, zero
+  in `kw` fields — iQ matching unaffected, verified by driving "How can I see my previous
+  orders?" live); the 4 static rendered duplicates in `gopher-faqs.html`; 1 sentence in
+  `gopher-trustshield.html`; and the iQ pricing-explainer string in request+connect
+  ("request history logic" → "historical data"). **The stale "Account →" path was fixed
+  in the same stroke** — corpus answers said "Account → Request History" but Previous
+  requests is a top-level sidebar item, not under Account (same staleness the 101-guide
+  fix corrected). verify-faqs-integrity green (184/copy, new common hash 6f37ef9058,
+  request DRIFT-OK); all inline scripts JXA-parse clean; 0 rendered stale refs site-wide.
+  **Left alone on purpose:** `rh-` CSS classes, `data-dash-section="history"`, JS/HTML
+  comments — identifiers and non-rendered text. **Prototype side NOT touched** (App
+  Prototypes turf, session retired): `_prototypes/Request/gopher-request-app.html:280`
+  still carries a visible `'Request history'` label in a nav-row array, and the Go
+  `-figma` screens + `gopher-go-help-figma.html` FAQ copy still say "Request History" —
+  flagged to owner for the successor session (label renames there interact with the
+  `ROUTES`-keyed-by-visible-label trap documented 2026-07-21).
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
