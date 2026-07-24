@@ -841,9 +841,10 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   .xlsx` (Decisions A14/B14 + dated Matrix A2 note) + both md mirrors (the Dev-Handoff
   mirror had never received the Jul 6 edit — now standardized to the Jul 24 canon).
   Older prototype-side docs (logic-spec, CARRYOVER, decisions-note) already said
-  ≤150%-of-offer — left as-is, now correct. App Prototypes pinged to implement the
-  ceiling in `gopher-go-prototype.html` (client currently enforces only "> offer"; the
-  capnote copy there also needs the fix). **Bonus find while verifying the live code:
+  ≤150%-of-offer — left as-is, now correct. App Prototypes implemented the prototype
+  side same day (commit `b0c67e9`, verified by diff): capnote copy fixed + Standard
+  ceiling enforced client-side (`Math.max(20, offer*1.5)`, stepper clamp, red rule line
+  on overshoot, `coTiered` seam for the uncapped tiers). **Bonus find while verifying the live code:
   the OLD worker app's client-side `counterOfferMaxCheck` computes the limit off
   `cost_of_goods`, not the offer** — disagrees with its own backend both directions
   (claims $20 max on no-items jobs; over-permits on high-item-cost jobs). Legacy-only
