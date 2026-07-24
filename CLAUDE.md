@@ -828,6 +828,28 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   owner-decided notification promises (deals@ email, app Perks entry, inbox message on
   live).
 
+- **Counter-offer cap base corrected: 150% of the OFFER only (owner, 2026-07-24).** The
+  D-026 Standard cap base is the **offer alone — Cost of Items is NOT part of the base**;
+  the Jul 6 "grand-total (offer + item cost)" correction is REVERSED (everything else
+  stands: $20 floor, 5/month resetting the 1st, must beat the offer, Elite/Elite+/Pro
+  unlimited & uncapped, server-side enforcement). With this, the 4.0 cap base now matches
+  the live backend (`isCounterOfferValid` = `max($20, 1.5 × order.offer)`, verified in the
+  GitLab export). Synced everywhere it was stated: `Canonical Go Flow - Master/
+  gopher-go-canonical.html` (5 sites: §9.3 box, live-comparison note, §3 crosswalk row,
+  D-026 decisions row ×2 clauses) + the byte-identical `_prototypes/Go/` copy (SHA
+  `908551a9…`), `Final/gopher-go-101.html` #counter tip, `Gopher-Roles-Capability-Matrix
+  .xlsx` (Decisions A14/B14 + dated Matrix A2 note) + both md mirrors (the Dev-Handoff
+  mirror had never received the Jul 6 edit — now standardized to the Jul 24 canon).
+  Older prototype-side docs (logic-spec, CARRYOVER, decisions-note) already said
+  ≤150%-of-offer — left as-is, now correct. App Prototypes pinged to implement the
+  ceiling in `gopher-go-prototype.html` (client currently enforces only "> offer"; the
+  capnote copy there also needs the fix). **Bonus find while verifying the live code:
+  the OLD worker app's client-side `counterOfferMaxCheck` computes the limit off
+  `cost_of_goods`, not the offer** — disagrees with its own backend both directions
+  (claims $20 max on no-items jobs; over-permits on high-item-cost jobs). Legacy-only
+  bug, superseded by the rebuild — recorded in memory, not ticketed.
+  **`Final/gopher-go-101.html` needs a deploy to go live.**
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
