@@ -851,6 +851,24 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   bug, superseded by the rebuild — recorded in memory, not ticketed.
   **`Final/gopher-go-101.html` needs a deploy to go live.**
 
+- **Board Member Demo — Gopher iQ, 6 examples with real screenshots (done 2026-07-24).**
+  Mobile-friendly one-page HTML deck showing what iQ does today: market-coverage answers
+  (+ the ambiguous-city clarifier), description-driven junk pricing, live Distance-Matrix
+  ride pricing, the age-restricted slang gate, a plain-English audience query, and FAQ
+  support deflection. Framing per owner: half the screens inset in the site's laptop art
+  (`services-laptop.webp` + the exact `.lh-screen` inset percentages from
+  gopher-services.html), half in the site's titanium `.phone-case` CSS (the ON-THE-GO
+  pattern). All screens are REAL captures of the live prototype (CDP-driven headless
+  Chrome at 375×812 / 1480×853 against a scratch serve on port 8123 — the Maps-allowlisted
+  port, which is what made the ride example's live routing call work); the audience example
+  is real computed numbers in a clearly-labeled HQ-concept frame (the dashboard's ask box
+  doesn't run demographic queries yet). **Lives OUTSIDE this repo on purpose** —
+  `Documentation/Board Member Demo/` (self-contained folder incl. fonts + regeneration
+  sources in `_source/`) — because the audience example carries platform business
+  analytics and this repo is public (same rule that moved the research reports to the
+  private Dashboard repo on 7/20). Nothing in `Final/` changed; the capture hooks were
+  scratch-copy-only and never committed.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
