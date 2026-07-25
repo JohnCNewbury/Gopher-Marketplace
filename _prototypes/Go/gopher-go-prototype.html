@@ -1488,7 +1488,14 @@ const GO_FAQS=[
       {g:'Customers',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield). Your Gopher receives 100% of your offer.'},
       {g:'Customers',q:'Can I cancel my request after the worker has started?',a:'If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for full details.'},
       {g:'Customers',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
-      {g:'Customers',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'}
+      {g:'Customers',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'},
+      // Verbatim from the canonical corpus (Final/assets/js/gopher-ai-engine.js, audience "any" \u2014
+      // it answers the worker's "can I take cash as payment?" as squarely as the requester's "can I
+      // pay with cash?"). Without it the worker corpus had no cash-policy entry at all, so cash
+      // questions scored onto "How do I cash out?" (payout timing) and answered confidently wrong.
+      // "cash" deliberately keeps its own token in iqCanon \u2014 do not fold it into the pay/payout
+      // family, or this entry and the cash-out entry tokenise identically and tie.
+      {g:'Support',q:'Can I pay with cash?',a:'No \u2014 cash isn\u2019t an option. We have to guarantee payment to the worker before a request can be accepted, so all payment runs through the app.'}
 ];
 const IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about it i\u2019m im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
 function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|earn)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund|charge)/.test(w))return 'charge'; if(/^(ride|driv)/.test(w))return 'ride'; return w; }
@@ -3182,6 +3189,14 @@ META.forEach(g=>{
 function toast(m){const t=document.getElementById('toast');t.innerHTML=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800);}
 
 function handle(e){ /* generic handler for IMPORTED frames only */
+ // Modals are app chrome, NOT imported frame content: showModal() wires the backdrop and
+ // .mclose, and every modal wires its own controls. Without this guard the generic router
+ // still saw the click, and `.modal-card` matches SEL's [class*="card"] — so ANY click
+ // inside a modal resolved to ROUTES[current]['#card'] and navigated away. That is why the
+ // iQ send arrow appeared dead: it DID answer, then the app jumped to worker-flow and tore
+ // the modal down before you could read it. (Verified: 0 of 24 showModal bodies use
+ // data-goto, so nothing in a modal depends on this handler.)
+ if(e.target.closest && e.target.closest('.modal-overlay')) return;
  const el=e.target.closest && e.target.closest(SEL); if(!el)return;
  const raw=(el.textContent||'').replace(/\s+/g,' ').trim();
  const dg=el.getAttribute && el.getAttribute('data-goto');
