@@ -880,8 +880,9 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   the repo left as archives). Also per owner: **all 3 tiers** now list "Instant payout from
   day 1" (tiers cards + a new go-101 table row; replaces Elite+'s "Stripe Instant Payouts")
   and "Eligible to offer a Gopher Deal"; "Unlimited counter offers" → **"Unlimited counter
-  offers w/o cap"** (Elite + Elite+ cards — Pro's card never listed it, though go-101 step-5
-  already says verified-tier counters are "unlimited and uncapped" incl. Pro); Elite+ lede →
+  offers w/o cap"** (Elite + Elite+ cards; owner follow-up same day added the line to the
+  Pro card too — all 3 cards now carry it, matching go-101 step-5's "unlimited and
+  uncapped" incl. Pro); Elite+ lede →
   **"Everything in Elite, plus priority Ride Sharing benefits."** (go-101's "Ride Sharing
   isn't a tier unlock" caption still stands — priority ≠ unlock); Pro copy opened up so **any
   verifiable professional credential provides eligibility** (card lede, section intro,
