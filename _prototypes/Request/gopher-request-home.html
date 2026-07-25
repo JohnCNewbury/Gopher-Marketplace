@@ -2179,6 +2179,15 @@ var REQ_FAQS=[
   {g:'Requests',q:'How do I place a request?',a:'Tap a category on Home, add the details and your offer, then submit \u2014 nearby Gophers can accept it right away.'},
   {g:'Requests',q:'Can I cancel my request after the worker has started?',a:'Before a Gopher is matched it\u2019s free. If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for details.'},
   {g:'Requests',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
+  // Tracking / order-status entries, verbatim from the canonical corpus
+  // (Final/assets/js/gopher-ai-engine.js, group "Customers"). Without them the corpus had NO
+  // status answer at all, so "where is my order" scored onto "How can I see my previous
+  // orders?" — a history-page answer — and iqTopicReply's track branch never got a turn
+  // because a confident FAQ hit returns first. "where" is deliberately NOT a stop word (see
+  // the stop list): it is the interrogative that separates tracking from history here.
+  {g:'Requests',q:'Where is my order?',a:'There are usually only a couple reasons a request isn\u2019t accepted: We may not have enough Gophers in your area yet. Anytime a request is submitted in a new area, we get to work recruiting available Gophers there. The offer may have been deemed too low for the Gophers in your area. Gopher is NOT an auto-fulfillment service \u2014 the offer you make is 100% of what your worker earns. They work for you, not Gopher, Inc. If your offer is below the typical accepted offer, you\u2019ll see a pop-up sharing the average offer for that category. You can still offer whatever amount you want.'},
+  {g:'Requests',q:'Can I track my delivery?',a:'Yes. Once your Gopher is on the way, you can track the order throughout the process.'},
+  {g:'Requests',q:'Am I able to see when my Gopher will arrive?',a:'Yes. For requests involving a pick-up and drop-off, once your Gopher selects \u201Cin-progress,\u201D your request screen shows a map of the Gopher\u2019s location relative to the destination(s). If you ever see the driver \u201Cstuck,\u201D check in via text or call \u2014 some areas have poor connection, but calls and texts typically get through better than location services.'},
   {g:'Requests',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'},
   {g:'Payments',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'},
       {g:'Payments',q:'Can I pay with cash?',a:'No \u2014 cash isn\u2019t an option. We have to guarantee payment to the worker before a request can be accepted, so all payment runs through the app.'},
@@ -2197,8 +2206,18 @@ var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
      3. category / pricing intent-> iqTopicReply()
    The sheet used to ignore what you typed and print a fixed string; sharing the brain
    is what stops that from happening again. Mirrors the Go app's iqAnswerCard(). */
-var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when where why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
-function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust'; return w; }
+/* "where" is deliberately NOT stopped (owner 7/25). On a delivery marketplace it is the word
+   that separates "where is my order" (tracking) from "see my orders" (history) — stopping it
+   left "order" as the only token, which tied and fell to array order. Safe because no other
+   REQ_FAQS question or answer contains "where", so it can only score the tracking entry. Same
+   judgement as leaving "out" un-stopped for "cash out": topical, not grammatical. */
+var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
+function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust';
+  // "past" -> the stem "previous" reduces to, so "see my past requests" / "my past orders"
+  // reach the previous-orders FAQ. Without it "past" scored nothing, the query tied on
+  // "request" alone, and the tie fell to array order — landing on the CANCELLATION FAQ.
+  if(/^past$/.test(w))return 'previou';
+  return w; }
 function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !IQ_STOP.has(w);}).map(iqCanon); }
 function reqFaqSearch(query){ var qw=iqToks(query); if(!qw.length) return [];
   return REQ_FAQS.map(function(f){ var qset=new Set(iqToks(f.q)); var aset=new Set(iqToks(f.q+' '+f.a+' '+f.g)); var s=0,n=0; qw.forEach(function(w){ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; })
