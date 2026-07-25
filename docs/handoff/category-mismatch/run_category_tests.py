@@ -24,6 +24,8 @@ CLASSIFIER = os.path.join(ROOT, "Final/assets/js/gopher-category-classifier.js")
 ENGINE = os.path.join(ROOT, "Final/assets/js/gopher-ai-engine.js")
 
 MATRIX = [
+    # Owner repro 2026-07-25 — filed under Home/Office Services, clearly moving/labor work
+    ("home_services", "I need someone to help me offload a container truck.", "moving"),
     ("moving", "I need to remove unwanted items", "junk_removal"),
     ("delivery", "need a ride to the airport", "ride_sharing"),
     ("other", "need my lawn mowed", "yard_work_outdoor_projects"),
@@ -90,6 +92,42 @@ def run(deps, label):
     return passed, len(rows)
 
 
+def check_page_wiring():
+    """Path C — the surfaces must actually PROVIDE a classifier at runtime.
+
+    Found broken 2026-07-25 (owner repro): gopher-request.html inlines the
+    engine INSIDE AN IIFE, so scoreCategories/catWords are NOT globals there —
+    the resolver's global-lexical fallback found nothing, detection fail-safed
+    to null, and the nudge silently never fired on the page while paths A/B
+    (which test the standalone files) stayed green. The page must export
+    window.GopherCategoryClassifier from inside that IIFE; Connect and the
+    prototype flow must load gopher-category-classifier.js via <script src>.
+    """
+    checks = [
+        (os.path.join(ROOT, "Final/gopher-request.html"),
+         "window.GopherCategoryClassifier = { scoreCategories",
+         "inline-engine IIFE no longer exports window.GopherCategoryClassifier"),
+        (os.path.join(ROOT, "Final/gopher-connect.html"),
+         "gopher-category-classifier.js",
+         "no longer loads gopher-category-classifier.js"),
+        (os.path.join(ROOT, "_prototypes/Request/gopher-request-flow.html"),
+         "gopher-category-classifier.js",
+         "no longer loads gopher-category-classifier.js"),
+    ]
+    ok = True
+    print("-- path C: per-surface classifier wiring --")
+    for path, needle, why in checks:
+        if not os.path.exists(path):
+            print("  [SKIP] %s (file not present)" % os.path.basename(path))
+            continue
+        good = needle in open(path, encoding="utf-8").read()
+        print("  [%s] %s" % ("PASS" if good else "FAIL", os.path.basename(path)))
+        if not good:
+            print("         %s — the category-mismatch nudge will silently no-op there." % why)
+            ok = False
+    return ok
+
+
 def main():
     a = run(open(CLASSIFIER, encoding="utf-8").read(), "A: shared classifier file")
     eng = open(ENGINE, encoding="utf-8").read()
@@ -98,9 +136,10 @@ def main():
     for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
         deps.append(_fn(eng, f))
     b = run("\n".join(deps), "B: inlined-engine globals")
+    wiring_ok = check_page_wiring()
     total_ok, total = a[0] + b[0], a[1] + b[1]
-    print("\n%d/%d passed" % (total_ok, total))
-    sys.exit(0 if total_ok == total else 1)
+    print("\n%d/%d passed%s" % (total_ok, total, "" if wiring_ok else " — WIRING FAILURES above"))
+    sys.exit(0 if (total_ok == total and wiring_ok) else 1)
 
 
 if __name__ == "__main__":

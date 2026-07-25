@@ -15555,6 +15555,12 @@ function scoreCategories(query){
 const CAT_THRESH = 4;          // min score to show a service card
 const CAT_RELATED = 2;         // softer bar for "next best" related suggestions
 const CAT_HIGH = 8;            // top score at/above this (and clearly ahead) = very confident
+// This page's engine copy runs inside an IIFE, so these are NOT globals —
+// GopherRequestLogic (category-mismatch nudge) can't see them lexically. Export
+// the classifier the same way gopher-category-classifier.js does for Connect and
+// the app prototype; the shared module checks window.GopherCategoryClassifier first.
+window.GopherCategoryClassifier = { scoreCategories: scoreCategories, catWords: catWords,
+  CATEGORIES: CATEGORIES, CAT_THRESH: CAT_THRESH, CAT_HIGH: CAT_HIGH };
 function classifyIntent(query){
   const scored=scoreCategories(query);
   if(!scored.length || scored[0].score < CAT_THRESH) return [];   // not a service request
