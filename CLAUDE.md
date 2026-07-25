@@ -890,6 +890,28 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   checkbox in the application form — no JS reads `credType`, so it's inert-safe). Deployed
   same day, scope-checked (exactly the 2 pages), live-verified by content grep.
 
+- **Category-mismatch nudge was DEAD on gopher-request.html — fixed (owner repro
+  2026-07-25, commit `518c92c`, deploy `6b24b2c`, live-verified at runtime).** Owner filed
+  "I need someone to help me offload a container truck." under Home/Office Services and got
+  no reroute suggestion — on ANY wrong-category example. The decision logic
+  (`GopherRequestLogic.detectCategoryMismatch`) was fine — it fires Moving (6 vs 0) on that
+  exact sentence — and the page wiring (blur + Continue gates) was fine. **Root cause: the
+  request page's inlined iQ engine runs inside an IIFE** (added with its diagnostic-error
+  wrapper), so `scoreCategories`/`catWords`/`CAT_THRESH` are IIFE-scoped, NOT globals;
+  the module's `resolveClassifier()` global-lexical fallback found nothing and detection
+  fail-safed to null — silently, by design. **Fix: the engine IIFE now exports
+  `window.GopherCategoryClassifier`** (same shape as `gopher-category-classifier.js`,
+  which Connect + the prototype flow load via `<script src>` — both were verified working).
+  **Why the harness missed it:** `run_category_tests.py` paths A/B test the standalone
+  files, where the functions ARE top-level — the page's IIFE copy was never executed by a
+  test. The harness now has **path C** (per-surface wiring assert: request exports the
+  classifier, connect + prototype-flow load the file) plus the owner's repro in the matrix
+  — 40/40 green. Verified in-browser end-to-end (modal fires on blur, "Switch to Moving"
+  rewinds to a moving flow, no repeat modal, guard cases like "moving labor" stay silent)
+  and on the LIVE site via console probe. **Trap for engine resyncs:** the export lives
+  INSIDE the page's inline engine block — a wholesale resync from `gopher-ai-engine.js`
+  would wipe it and path C will catch that; re-add the export after any resync.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
