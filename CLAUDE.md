@@ -869,6 +869,26 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   private Dashboard repo on 7/20). Nothing in `Final/` changed; the capture hooks were
   scratch-copy-only and never committed.
 
+- **Tier info corrections — MVR canon fixed (owner, 2026-07-24, commit `ab7322b`, deploy `cd45ce2`).**
+  Owner screenshot review of `gopher-tiers.html` + `gopher-go-101.html`. **Canon: MVR (Motor
+  Vehicle Record) belongs to Elite+, NOT Elite** — the original AI-generated tiers card had
+  listed it under Elite (present as far back as the retired 6/26 site snapshot), and
+  `Documentation/Gopher — Intended/Gopher-Deals-Build-Spec.md` D-015 inherited the error
+  verbatim while citing the page as its source; the tier-grant emails (Elite = clean criminal
+  screen; Elite+ = Elite + clean DMV record) were always correct. Fixed on the tiers page AND
+  in the Build-Spec (dated correction note added; the two retired website snapshots outside
+  the repo left as archives). Also per owner: **all 3 tiers** now list "Instant payout from
+  day 1" (tiers cards + a new go-101 table row; replaces Elite+'s "Stripe Instant Payouts")
+  and "Eligible to offer a Gopher Deal"; "Unlimited counter offers" → **"Unlimited counter
+  offers w/o cap"** (Elite + Elite+ cards — Pro's card never listed it, though go-101 step-5
+  already says verified-tier counters are "unlimited and uncapped" incl. Pro); Elite+ lede →
+  **"Everything in Elite, plus priority Ride Sharing benefits."** (go-101's "Ride Sharing
+  isn't a tier unlock" caption still stands — priority ≠ unlock); Pro copy opened up so **any
+  verifiable professional credential provides eligibility** (card lede, section intro,
+  pro-apply blurb, go-101 card sub-line + table row, and a 4th "Other verifiable credential"
+  checkbox in the application form — no JS reads `credType`, so it's inert-safe). Deployed
+  same day, scope-checked (exactly the 2 pages), live-verified by content grep.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
