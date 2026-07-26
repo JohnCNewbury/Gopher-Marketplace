@@ -43,8 +43,23 @@ jobs:
           protocol: ftps
           local-dir: ./
           server-dir: preview/
+          # NOTE: `exclude:` below is a YAML literal block — every line in it is a
+          # glob pattern, NOT a comment. Do not put `#` lines inside it.
+          #
+          # .nojekyll is excluded because it is 0 bytes, and FTP-Deploy-Action
+          # aborts the entire upload on empty files with an opaque OpenSSL error
+          # that looks like a TLS fault but is not
+          # (SamKirkland/FTP-Deploy-Action#520):
+          #     tlsv1 alert decode error ... SSL alert number 50
+          # That one file failed every run from 2026-07-23 to 2026-07-26. It is a
+          # GitHub-Pages-only marker, inert on Tiger Tech's Apache, and must STAY
+          # on main for Pages — so exclude it here rather than delete it.
+          # If this error ever returns, look for a NEW 0-byte file first:
+          #     git ls-tree -r -l origin/main | awk '$4=="0"'
           exclude: |
             **/.git*
             **/.git*/**
             .github/**
             README.md
+            **/.nojekyll
+            .nojekyll
