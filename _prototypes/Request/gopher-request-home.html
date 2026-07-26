@@ -385,6 +385,14 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gpg-intro{padding:2px 20px 6px;font-size:12.5px;color:#6B7280;font-family:'Nunito';font-weight:600;line-height:1.45;}
 .gpg-cards{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px;}
 .gpg-card{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:15px 16px;cursor:pointer;}
+/* 101-guide Back pill — values copied from the Go app's injected #appBack so both 101 guides carry
+   the same floating control. `absolute` (not Go's `fixed`): this lives in the .r101ov overlay, which
+   is already inset:0 of #phone, and fixed would resolve against the viewport in the split-screen. */
+.r101-bk{position:absolute;left:16px;bottom:22px;z-index:60;display:inline-flex;align-items:center;gap:4px;
+  height:44px;padding:0 18px 0 13px;border:none;border-radius:999px;background:#2a3654;color:#fff;
+  font-family:'Nunito',-apple-system,sans-serif;font-weight:800;font-size:14px;cursor:pointer;
+  box-shadow:0 8px 24px rgba(0,36,97,.4);}
+.r101-bk:active{transform:scale(.96);}
 /* Contact Us page (cu-) — mirrored from the Go app's Contact Us so it renders identically. */
 .cu-ic{width:40px;height:40px;border-radius:11px;background:#E9F1FC;color:#002461;font-family:'Nunito';font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
 .cu-tx{flex:1;}
@@ -1132,7 +1140,13 @@ function gSheet(title,html){ gClose(); const o=document.createElement('div'); o.
 // top-level screen, where back just closes.
 function gPage(title,html,back){
   gClose(); const ph=$('#phone'); const o=document.createElement('div'); o.className='gov gpg';
-  o.setAttribute('style','position:absolute;inset:0;z-index:140;background:var(--paper,#FBF7EF);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;');
+  // Anchor BELOW the phone's status bar, never over it. On Go these are real screens built as
+  // `<div class="frame">${SBAR}<div class="hcbody">…`, so the clock/battery row stays visible and
+  // the back chevron clears the notch. An `inset:0` overlay covered the status bar and pushed the
+  // chevron + title to the very top of the phone — the reported mismatch. Measured, not hardcoded,
+  // so it tracks .status-bar's height.
+  const _sb=ph&&ph.querySelector('.status-bar'); const _top=_sb?_sb.offsetHeight:34;
+  o.setAttribute('style','position:absolute;left:0;right:0;bottom:0;top:'+_top+'px;z-index:140;background:var(--paper,#FBF7EF);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;');
   o.innerHTML='<div class="gpg-top"><span class="gpg-bk">\u2039</span><h1>'+title+'</h1></div>'
     +'<div class="gpg-body">'+html+'</div>';
   o.addEventListener('click',e=>{ if(e.target.closest('.gpg-bk')){ o.remove(); if(typeof back==='function') back(); } });
@@ -2314,15 +2328,26 @@ function openReq101(){
   var ph=$('#phone'); if(!ph) return;
   var ov=document.createElement('div'); ov.className='r101ov';
   ov.style.cssText='position:absolute;inset:0;z-index:140;background:#FBF7EF;display:flex;flex-direction:column;';
-  ov.innerHTML='<div style="flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:9px 12px;background:rgba(0,36,97,.94);">'
-    +'<button class="r101-bk" style="cursor:pointer;color:#fff;font-family:Nunito;font-weight:800;font-size:13px;background:rgba(255,255,255,.16);border:0;padding:6px 13px;border-radius:99px;">\u2039 Back</button>'
-    +'<span style="color:#fff;font-family:Nunito;font-weight:800;font-size:13px;">Gopher Request 101</span></div>'
-    +'<iframe class="r101-fr" style="flex:1;width:100%;border:0;background:#fff;"></iframe>';
+  // Full-bleed guide with NO top bar, matching Go's showGuide(): the doc's own web header is the
+  // only chrome, and Back is a floating pill in the bottom-left (Go injects #appBack there). The
+  // navy "\u2039 Back  Gopher Request 101" strip this used to draw exists on neither app.
+  ov.innerHTML='<iframe class="r101-fr" style="flex:1;width:100%;border:0;background:#fff;"></iframe>'
+    +'<button class="r101-bk" aria-label="Back">\u2039 Back</button>';
   ph.appendChild(ov);
   ov.querySelector('.r101-bk').onclick=function(){ ov.remove(); };
   var fr=ov.querySelector('.r101-fr');
   fr.src='../../Final/gopher-request-101.html';
   fr.onload=function(){ try{ var d=fr.contentDocument; if(!d) return;
+    // The doc ships its Sections FAB bottom-LEFT, which is where the Back pill now lives. Go's
+    // embedded copy patches the same two rules (.sections-fab -> right, .totop -> bottom:78px);
+    // we inject them instead of forking the doc, so Final/ stays the single source. Kept inside
+    // the doc's own max-width:980px media query, and later in source order, so it wins.
+    // The Back pill is owned by the OVERLAY, not injected here \u2014 if this cross-document access
+    // ever fails, Back still works and only the FAB placement degrades.
+    var st=d.createElement('style');
+    st.textContent='@media (max-width:980px){.page-sections-fab{left:auto !important;right:18px !important;}}'
+      +'.totop{bottom:78px !important;}';
+    (d.head||d.documentElement).appendChild(st);
     // Rewire the dead "gopher-faqs.html" links to the in-app FAQ sheet.
     d.querySelectorAll('a[href$="gopher-faqs.html"]').forEach(function(a){
       a.addEventListener('click',function(e){ e.preventDefault(); ov.remove(); openReqFaqs(); });
