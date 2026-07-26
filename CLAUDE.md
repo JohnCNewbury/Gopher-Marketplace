@@ -986,6 +986,50 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     free number in both**, so it means the same decision in both — but the earlier overlap is
     unreconciled and will bite anyone citing a mid-20s D-number without saying which ledger.
 
+- **App prototypes are now SERVED from the live site (owner 7/26, deploy `c989c66`).** The deploy
+  used to ship `Final/` only, so the prototypes lived on tunnel links that churn. They now have a
+  permanent URL: **`/Gopher-Marketplace/_prototypes/split-screen.html`** (plus
+  `_prototypes/Go/gopher-go-prototype.html`, `_prototypes/Request/gopher-request-flow.html?step=1`).
+  Two things about how, both load-bearing:
+  (1) **`scripts/deploy.sh` ships an ALLOWLIST (`PROTO[]`, 11 files), never the folder.**
+  `_prototypes/` is 186 files / 34 MB and mostly **internal** — the canonical flow doc (business
+  decisions, fee tables, the unreleased D-034 spec), build briefs, session handoffs, backend wiring
+  checklists, Stripe payout guardrails. `rsync _prototypes/` would undo the 2026-07-17 internal-docs
+  removal in one command. The list came from crawling the 4 entry points for href/src **and JS string
+  literals** — 4 screens (deals/inbox/inprogress/refer) are reachable only from JS and a static crawl
+  misses them. A post-stage check aborts if anything unlisted reaches the worktree; verified live that
+  the canonical doc, build briefs and handoffs all **404**.
+  (2) **The `../../Final/` layout trap.** In the repo `_prototypes/` and `Final/` are siblings, so the
+  phones load shared modules as `../../Final/assets/js/…`. The deploy **flattens** `Final/` to the site
+  root, so no `Final/` dir exists on `main` and every one of those 404s — and `gopher-iq-data.js` fails
+  **silently**, degrading coverage/FAQ answers with nothing on screen. Shipped copies are rewritten
+  `../../Final/` → `../../`; **the source keeps its repo-layout paths**, which is what the local serve
+  and the tunnel need — do not "fix" them in the source. The leftover-reference guard matches
+  attribute values and quoted literals only, because these files also *discuss* `Final/…` paths in
+  comments (a substring grep flagged 5 files of pure prose).
+  `noindex` is a **meta tag, not robots.txt** — robots.txt is only honoured at the DOMAIN root and this
+  site is served from `/Gopher-Marketplace/`, so the existing one is inert here. Prototypes stay out of
+  `sitemap.xml`. Live-verified: iQ brain loads through the rewritten path (`lookup('Raleigh')` → 188
+  workers), noindex present, 0 console errors.
+
+- **Request app: Help Center + 101 guide matched to the Go format (owner screenshots 7/26, `9ec098e`).**
+  Both were **structural**, not styling — the Request shell CSS already matched Go's values exactly.
+  (1) `gPage()` mounted at `inset:0` on `#phone`, **covering the 34px `.status-bar`**, so the back
+  chevron and title rendered at the top of the device and collided with the notch. Go builds these as
+  real screens (`<div class="frame">${SBAR}<div class="hcbody">`) with the status bar visible. `gPage`
+  now anchors below `.status-bar`, measured from the element — fixes **all three** shell screens
+  (Help Center, FAQs, Contact Us). (2) The 101 overlay drew a navy `‹ Back  Gopher Request 101` top
+  bar **that exists on neither app**. Go's `showGuide()` is a full-bleed iframe whose embedded doc
+  injects a floating `#appBack` pill bottom-left plus two repositions so the pill owns that corner
+  (`.sections-fab` → right, `.totop` → `bottom:78px`). Request now renders identically, but the Back
+  pill is owned by the **overlay** (`absolute`, not Go's `fixed` — the overlay is already `inset:0` of
+  `#phone`, and `fixed` resolves against the viewport inside the split-screen); only the FAB reposition
+  is injected into the doc, so if that cross-document access ever fails Back still works. Injected
+  rather than forking the doc, so `Final/gopher-request-101.html` stays the single source.
+  **Deliberately NOT copied: Go's red "NEW" corner ribbon** (`.rib`) — prototype-status dev chrome
+  marking newly-designed screens, not product UI. No variant twins carry this code
+  (`reqpkg/home.html` is still the stale pre-shared-brain bundle — left alone).
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
