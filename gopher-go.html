@@ -3474,7 +3474,45 @@
 
     /* ── WORK SETTINGS ── category toggles, ride panel + sliders, and a
        tier-DRIVEN radius (no manual toggle). Standard sees a "tier up" link. */
-    const work = wire('work');
+    /* Ride Sharing photo gate (owner, 2026-07-26). When Ride Sharing is ON, BOTH
+       vehicle photos — front head-on and rear with the plate visible — must be
+       submitted before the work-settings save is allowed. The check deliberately
+       runs in resolveVerify, i.e. BEFORE openConfirm requests a code, so a worker
+       is never sent an OTP for a save that cannot complete. Reads the tiles' own
+       hidden data-field, which is the same value the save serializes:
+         onfile | updated -> satisfied     need (or anything else) -> blocks
+       Ride Sharing OFF is always satisfied — there is no vehicle to evidence. */
+    function ridePhotoGate(section){
+      const row = section && section.querySelector('.cat-row[data-cat="Ride Sharing"]');
+      if(!row) return {ok:true, missing:[]};
+      if(!row.querySelector('.crow .js-cat.on')) return {ok:true, missing:[]};
+      const tiles = Array.from(row.querySelectorAll('.vphoto'));
+      const missing = tiles.filter(t => {
+        const hid = t.querySelector('input[data-field]');
+        const v = hid ? hid.value : '';
+        return v !== 'onfile' && v !== 'updated';
+      });
+      return {ok: missing.length === 0, missing, tiles, row};
+    }
+
+    const work = wire('work', {
+      resolveVerify(commit){
+        const section = document.querySelector('.dash-section[data-dash-section="work"]');
+        const gate = ridePhotoGate(section);
+        if(!gate.ok){
+          const note = gate.row.querySelector('.js-vpnote');
+          if(note){
+            note.classList.add('warn');
+            note.innerHTML = 'Both vehicle photos are required before these changes can be saved &mdash; front (head-on) and rear (plate visible).';
+          }
+          gate.missing.forEach(t => t.classList.add('needupdate'));
+          (gate.missing[0] || gate.row).scrollIntoView({behavior:'smooth', block:'center'});
+          showToast('Add both vehicle photos to save.');
+          return;                       // ← returns WITHOUT requesting a code
+        }
+        openConfirm(commit);
+      }
+    });
     if(work){
       const refresh = () => work.__refresh && work.__refresh();
       const syncPanels = (sw) => {
@@ -3526,6 +3564,19 @@
           vphTarget=null;
         });
       }
+
+      /* Surface the photo gate in the save row BEFORE the worker clicks Save.
+         This listener is registered after wire()'s own refresh handler, so it
+         overwrites the generic "you'll confirm with a code" note whenever a
+         photo is outstanding — the hard block still lives in resolveVerify. */
+      work.addEventListener('input', () => {
+        const saveBtn = work.querySelector('.btn-save');
+        const note = work.querySelector('.save-note');
+        if(!saveBtn || !note || saveBtn.disabled) return;
+        if(!ridePhotoGate(work).ok){
+          note.innerHTML = 'Both vehicle photos are required before these changes can be saved.';
+        }
+      });
 
       // tier-driven radius display — the demo toggle lets you preview both;
       // it does NOT count as an edit (excluded from the dirty check).
