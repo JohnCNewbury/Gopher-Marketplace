@@ -1084,7 +1084,11 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   which runs **`ridePhotoGate()`** first and **returns without calling `openConfirm`** when a
   photo is outstanding. The gate reads each tile's own hidden `data-field` — the same value
   the save serializes — so it can't drift from what gets submitted: `onfile`/`updated` =
-  satisfied, `need` (or anything else) blocks. **Ride Sharing OFF is always satisfied** — no
+  satisfied, `need` (or anything else) blocks. **Owner-confirmed 7/26: "On file" counts as
+  satisfied — settled, don't tighten it.** A Gopher whose photos are on file and whose
+  vehicle details are unchanged saves without re-uploading; the block fires when a vehicle
+  detail changes (tiles flip to "Update needed") or a photo was never submitted. Requiring
+  fresh photos on every Ride Sharing enable was explicitly considered and declined. **Ride Sharing OFF is always satisfied** — no
   vehicle to evidence, so unrelated category/radius edits are never held up by a stale photo
   flag. The requirement is also surfaced in the save row *before* the click, since a blocked
   Save with no forewarning reads as a broken button. Verified in-browser on all three paths
