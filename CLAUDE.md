@@ -1030,6 +1030,29 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   marking newly-designed screens, not product UI. No variant twins carry this code
   (`reqpkg/home.html` is still the stale pre-shared-brain bundle — left alone).
 
+- **Spelling canon finished off in the legal pages (owner 7/26, commit `501deac`, deploy
+  `2364e5d`, live-verified).** The 7/23 "Requestor"→"Requester" sweep had covered the FAQ
+  corpus + UI chrome but **never reached the legal documents**. 57 occurrences fixed across
+  `gopher-terms-of-service.html` (**55** — including the defining clause `("Requestors")` →
+  `("Requesters")`), `gopher-merchant-agreement.html` (1, the definitions clause), and
+  `gopher-trustshield.html` (1, body prose). **All 57 were the capitalized `Requestor`** — a
+  single variant, so both contracts are internally consistent with no mixed usage left.
+  Change is **orthographic only**: same word, same defined party, no change to meaning,
+  rights, or obligations — which is why it was safe to do without counsel review.
+  **Method worth reusing:** before rewriting, every occurrence was position-checked against
+  masked regions (HTML tags / HTML comments) to prove all 57 were rendered prose — 0 in
+  markup. The follow-up site-wide sweep needs `<script>` and `<style>` **contents** masked
+  too, not just tags: a first pass without that flagged 25 false positives (JS `//` comments
+  plus the `favoritedByRequestor` identifier in request/connect/go). Correctly masked, **0
+  rendered `requestor` remains in `Final/`**. Identifiers and comments stay untouched by
+  standing rule. Also fixed 2 prose instances in the staged
+  `Documentation/Gopher Rewards/gopher-rewards-terms-of-service.html` (disk-only, outside
+  any repo — not yet shipped, so this prevents the violation going live). **NOT fixed:**
+  `Dashboard/regen_user_trends.py:325` emits a `<th>Requestor</th>` header into the research
+  page — internal HQ analytics in a private repo, so **not customer-facing** and outside the
+  owner's stated condition; the fix belongs in the generator (the pipeline overwrites the
+  HTML), and it's flagged for the Dashboard session rather than done here.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
