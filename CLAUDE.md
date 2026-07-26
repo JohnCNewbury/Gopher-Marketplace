@@ -1053,6 +1053,46 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   owner's stated condition; the fix belongs in the generator (the pipeline overwrites the
   HTML), and it's flagged for the Dashboard session rather than done here.
 
+- **TigerTech FTPS deploy FIXED (owner-authorized 7/26, commit `3c2e9d2`).** `.nojekyll`
+  (+ `**/.nojekyll`) added to the action's `exclude:` in
+  `.github/workflows/deploy-tigertech.yml` on `main`. The action had gone green exactly
+  **twice** (both 07-23) out of 40 runs and failed all 8 since — so TigerTech had received
+  nothing since 07-23 while Pages kept updating. Cause was the already-diagnosed one:
+  `.nojekyll` is 0 bytes, FTP-Deploy-Action aborts the whole upload on empty files with an
+  opaque `tlsv1 alert decode error … SSL alert number 50`, and `**/.git*` never matched it.
+  It must STAY on `main` (Pages' Jekyll silently 404s underscore files without it) and is
+  inert on Apache, hence exclude-not-delete. Test push went green: **1362 files, 0 errors**,
+  clearing the whole backlog; confirmed on the server that the 7/24 tier fixes, the 7/26
+  Requester rename, and the 7/25 classifier export are all present. **A push to `main` now
+  really does publish to TigerTech** — re-verified on the very next deploy (`725b456`).
+  **Where it lands:** `server-dir: preview/` = **`https://gophergo.io.customers.tigertech.net/preview/`**.
+  It is **NOT** at `https://gophergo.io/preview/` (that 200s but WordPress redirects to the
+  homepage), so the FTPS deploy does **not** touch the public gophergo.io docroot. **Trap:**
+  `exclude:` is a YAML **literal block scalar** — every line is a glob pattern, NOT a comment;
+  `#` lines inside it silently become junk patterns, so explanatory comments go ABOVE the key.
+  If `SSL alert number 50` returns, look for a NEW 0-byte file:
+  `git ls-tree -r -l origin/main | awk '$4=="0"'`. **Consequence: every `main` push now
+  publishes to two places — scope-check the deploy accordingly.**
+
+- **Go work settings: vehicle photos gate the save BEFORE the OTP (owner 7/26, commit
+  `f3e0554`, deploy `725b456`, live-verified).** Owner rule: when a Gopher turns **Ride
+  Sharing** on in *Work settings & radius*, the **front (head-on) and rear (plate visible)**
+  photos must be submitted to save — and the check must run **before a code is requested**.
+  It didn't: `wire('work')` had **no `resolveVerify`**, so Save went straight to
+  `openConfirm()` and a worker could sit on two "Update needed" tiles, receive an OTP, verify
+  it, and only then find the save incomplete. Now `wire('work')` supplies `resolveVerify`,
+  which runs **`ridePhotoGate()`** first and **returns without calling `openConfirm`** when a
+  photo is outstanding. The gate reads each tile's own hidden `data-field` — the same value
+  the save serializes — so it can't drift from what gets submitted: `onfile`/`updated` =
+  satisfied, `need` (or anything else) blocks. **Ride Sharing OFF is always satisfied** — no
+  vehicle to evidence, so unrelated category/radius edits are never held up by a stale photo
+  flag. The requirement is also surfaced in the save row *before* the click, since a blocked
+  Save with no forewarning reads as a broken button. Verified in-browser on all three paths
+  (ride ON + outstanding → 0 modals/no code/stays unsaved; ride ON + submitted → "Confirm
+  it's you" opens; ride OFF + outstanding → not gated), 0 console errors, all 7 inline
+  scripts JXA-parse clean. **`_prototypes/Go/gopher-go-prototype.html` carries the same UI
+  and was NOT touched** — App Prototypes turf, flagged for that session.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
