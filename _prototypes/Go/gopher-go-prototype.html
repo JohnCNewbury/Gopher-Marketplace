@@ -3527,6 +3527,19 @@ if(PT){
 }
 
 </script><script>function initDeals(R){
+// DEEPLINK SEAM (G40-327) — do NOT "fix" the gopher-request-*.html paths below.
+// This Deals surface was ported from the Request app, so its handoffs still name Request
+// pages ('gopher-request-home.html', 'gopher-request-flow.html?…' with the prefilled deal
+// query). Those strings are TARGETS FOR A CROSS-APP DEEPLINK, not same-origin URLs: owner
+// decision (G40-327) is that a worker reaches Deals by deeplinking Go -> the Request app
+// (canonical route https://gophergo.io/deals[/{dealId}]?src=go, scheme fallback
+// gopherrequest://deals), because redemption is a customer-side transaction and workers
+// already hold canonical Request accounts. Rebuilding browse inside Go was explicitly
+// rejected. NOT BUILT YET — until it is, this hook swallows the URL and returns the worker
+// to Go home, which is why nothing 404s despite the paths resolving to _prototypes/Go/.
+// Rewriting them to ../Request/… would make them look live while still being swallowed,
+// and would send a WORKER into the REQUESTER app the day the hook honours its argument.
+// Replace this hook with the real launcher when G40-327 lands; leave the paths alone.
 window.__navHook=function(u){try{load('home');}catch(e){}};
 window.__openTrustShieldModal=window.__openTrustShieldModal||function(){};
 
