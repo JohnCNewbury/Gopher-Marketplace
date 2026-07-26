@@ -912,6 +912,80 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   INSIDE the page's inline engine block — a wholesale resync from `gopher-ai-engine.js`
   would wipe it and path C will catch that; re-add the export after any resync.
 
+- **iQ "Counter potential" — board section 8 shipped, feature spec'd platform-wide (2026-07-26,
+  `G40-336` / **D-034**).** _(Scope note: docs + canonical only — **no prototype code changed.**
+  The computation is backend/pricing logic, fenced from AI edits.)_ The first **supply-side** iQ
+  signal: when a requester's offer is materially below **that requester's own** average accepted
+  amount, the worker's available-request card carries one pill (`iQ · Counter potential`) and job
+  detail carries the read + a suggested counter. Owner decisions this session: **band, never an
+  exact average or job count**; suggestion **clamps silently** to the D-026 cap and the cap is
+  **never named in the UI** (naming it makes the pill a tier upsell); repeat-customer stays a quiet
+  stats-line mark, not a badge.
+  - **Board deck: section 8 built into `Documentation/Board Member Demo/gopher-iq-board-demo.html`.**
+    That file is the **source of truth** — the 1 MB `-single.html` is **generated** by
+    `_source/build.py`; edit the source and rebuild, never hand-patch the single file. Both phone
+    screens are **live HTML, not screenshots** (the mock was already pure HTML/CSS), so all CSS is
+    scoped under a `.s8` class that exists on that one section — `--green-dark` is declared **on
+    `.s8`, not `:root`**, and `.s8 .phone-case` / `.s8 .phone-cap` override the deck's shared
+    values on specificity. Verified: sections 1–7 unchanged (deck phones still 250 px, `:root`
+    `--green-dark` unset), 0 horizontal overflow at 375. Section 8 uses the deck's **72vw** factor,
+    not the mock's 84vw — 84vw overflows the `.ex` padding at 375. It is the deck's only
+    non-screenshot section and carries a `CONCEPT` ribbon saying so; the closing card gained a
+    two-sided-marketplace clause. Also fixed a latent bug in `build.py`: the `--review` stamp
+    replacement was pinned to `07/24/2026` and had been silently no-op'ing — now a dated regex that
+    **hard-fails** if it can't match.
+  - **⚠️ Three figures in the 7/25 draft did not survive verification** and were corrected in the
+    deck, the mock, and the ticket. Recomputed from `Dashboard/data/master/Orders.csv` (62,528
+    orders, 2018-10-16 → 2026-07-25): completed = **20,366** (`AASM='delivered'`), *not* 15,330
+    (which reconciles to nothing, even excluding the owner's own accounts: 17,293 / 17,017);
+    requesters with 3+ prior completed = **70.8%**, not 82%; fire rate = **1 in 31**, not 1 in 13.
+    The 1-in-13 came from averaging a requester's **whole history including orders placed after the
+    one being scored** — reproducing that leaky method gives ~1 in 18, and **it cannot be
+    implemented at all**, because at runtime the future does not exist. Verified unchanged: **6,020
+    counters = 9.6%** of all orders. Median gap **$3.75**. **Lesson: a stat that survived a session
+    handoff is not a verified stat — recompute before it enters a canonical doc or a board deck.**
+  - **Two hazards found while spec'ing, both real, neither obvious.** (1) **`TOP PAY` already
+    exists on the same card** and fires off `offerBand === 'generous'` against the **platform**
+    suggested-offer model, while Counter potential scores against **this requester's own** history —
+    so the two can disagree on one card, and a card claiming both "pays unusually well" and "money
+    left on the table" destroys trust in both. **Mutually exclusive; TOP PAY wins.** (2) **The
+    baseline feeds on its own output** — it averages *accepted* amounts, and a successful counter
+    raises the accepted amount, so every counter the feature causes widens the next gap. Already
+    measurable: countered completed orders settle at **$20.00 median / $27.29 mean** vs **$15.00 /
+    $24.69**. Fix is free (`COUNTER INVOLVED='Y'` already exists as a flag): exclude counter-driven
+    accepts; fire rate moves 1 in 31 → 1 in 34.
+  - **Blocker for the segmented baseline: the order has no category field.** The spec wants a
+    per-category norm (a junk-removal average must not set the bar for a handyman job), but `TITLE`
+    is a canned category string on delivery orders and **free text** on service ones (3,589 distinct
+    values across 9,451 orders). Per-category baselines **cannot be computed from the current
+    export**, so every figure above is unsegmented. Production needs a real `category_id`. **The one
+    open item that would make the feature wrong rather than merely coarse.**
+  - **New invariant `INV-CPRIVACY`** — a worker never sees a requester's precise payment history;
+    band only, from ≥3 completed jobs, never a job count, and **the band must not be invertible**
+    (band + sample size leaks the mean). Same principle as `INV-RATING`, different field. This is a
+    **counterparty** read, which did not fit the existing iQ rungs (Rung 2 is scoped to "the user's
+    **own** data") — so `Gopher-iQ-Scoping.md` gained **Rung 2b — counterparty aggregate**, and any
+    future feature that shows one user something computed from another user's behaviour inherits it.
+  - **Documented in:** `docs/handoff/G40-336-counter-potential-worker-signal.md` (the spec — trigger
+    math, cold start, precompute/fail-silent build shape, 10 acceptance tests); **Go canonical**
+    §2 / §9.2 / §9.3 / §11 (D-034) / §13, with the byte-identical `_prototypes/Go/` copy re-synced
+    (was `908551a9…`, the SHA CLAUDE.md recorded 7/24 — confirmed in sync before editing);
+    **Request canonical** `connect-flows-granular.html` **v3.10** (both byte-identical copies);
+    `Gopher-iQ-Scoping.md`; `Gopher-Worker-Flow-Build-Spec.md` §4.1 + §4.2; the **capability matrix
+    workbook** (Decisions & Gaps A23/B23 + dated Matrix A2 note, `.bak-20260726` written first) and
+    **both** md mirrors. `Documentation/Board Member Demo/iq-worker-card-mock.html`'s three "YOUR
+    CALL" rows became `DECIDED 7/26` + a `CORRECTED 7/26` row.
+  - **Deliberately NOT documented in two places, both judgement calls.** (a) **The RFP** — this would
+    price under SOW **bucket B (Worker flow)**, but the bid documents are out with vendors and adding
+    a feature changes what they're pricing; flagged for the owner instead. (b) **`gopher-go-101.html`**
+    — the 101 guides describe what the app *does*, and this does not exist yet; documenting an
+    unbuilt feature in a user-facing guide would be a false promise. Add it the day it ships.
+  - **Numbering wart found, not fixed:** the capability-matrix decision ledger and the Go canonical's
+    have **diverged** (matrix D-029 = age-restricted quick-signup identity, Go D-029 = Deals fee
+    logic; matrix D-033 = ITF/discounts, Go D-033 = TrustShield Request-side). **D-034 was the next
+    free number in both**, so it means the same decision in both — but the earlier overlap is
+    unreconciled and will bite anyone citing a mid-20s D-number without saying which ledger.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
