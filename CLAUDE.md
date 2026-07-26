@@ -1092,6 +1092,17 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   it's you" opens; ride OFF + outstanding → not gated), 0 console errors, all 7 inline
   scripts JXA-parse clean. **`_prototypes/Go/gopher-go-prototype.html` carries the same UI
   and was NOT touched** — App Prototypes turf, flagged for that session.
+  **RESOLVED same day (App Prototypes): no mirror needed, and do NOT port this fix.** The
+  prototype's work-settings save **requests no OTP at all** (zero `otp`/`Send code` markers in
+  that screen; `save.onclick` persists and goes straight to `payout`), so the ordering defect
+  cannot exist there — there is no `openConfirm` to run late. Its gate is also **stricter than
+  the web's**: `rideComplete()` requires `fields && ph && dc` — both photos **plus** registration
+  + insurance **plus** every vehicle field — and `curCats()` additionally drops Ride Sharing from
+  the saved categories unless it passes, with a second gate at accept time. Porting
+  `resolveVerify`/`openConfirm` here would **import an OTP step this flow doesn't have**.
+  ⚠️ The live gap runs the other way: **the web checks the two photo tiles only**, so documents
+  and vehicle fields do not block its save. If they should, that is a `Final/gopher-go.html`
+  change and is unowned — App Prototypes did not touch the web build.
 
 ### Outstanding to-do
 
