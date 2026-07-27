@@ -1101,8 +1101,27 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   Save with no forewarning reads as a broken button. Verified in-browser on all three paths
   (ride ON + outstanding → 0 modals/no code/stays unsaved; ride ON + submitted → "Confirm
   it's you" opens; ride OFF + outstanding → not gated), 0 console errors, all 7 inline
-  scripts JXA-parse clean. **`_prototypes/Go/gopher-go-prototype.html` carries the same UI
-  and was NOT touched** — App Prototypes turf, flagged for that session.
+  scripts JXA-parse clean.
+  **NO PROTOTYPE MIRROR — verified by App Prototypes 7/26 (`a79440e`), do not build one.**
+  I flagged this for mirroring on a hedged premise ("same shape likely exists there"); the
+  premise was wrong and the defect is **structurally impossible** in
+  `_prototypes/Go/gopher-go-prototype.html`: that screen's work-settings save **requests no
+  OTP at all** (`save.onclick` persists then `GO('payout')` — zero otp/"Send code" markers),
+  so there is no late `openConfirm` to reorder. Porting `resolveVerify`/`openConfirm` would
+  **import an OTP step the flow doesn't have**. Its gate is also already *stricter* —
+  `rideComplete()` requires both photos **plus registration + insurance + every vehicle
+  field**, `curCats()` drops Ride Sharing from saved categories unless it passes, and a
+  second gate blocks at accept time. The "On file counts" clause has no equivalent either:
+  the prototype has no `onfile`/`updated`/`need` tri-state, just in-memory
+  `state.ridePhotos={front:false,rear:false}`.
+  **↔ REVERSE GAP, on the WEB side, still open:** `ridePhotoGate()` checks the two `.vphoto`
+  tiles **only**, so registration, insurance, and the vehicle text fields do **not** block
+  the web save. Confirmed at source: the "Submit registration" / "Submit insurance" tiles
+  (`gopher-go.html:2738-2739`) carry **no `data-cred`, no `data-field`, no hidden input** —
+  unlike the Business-info credential tiles — so they are **inert decorations** that hold no
+  state and cannot be gated on without first being wired up. Vehicle fields serialize but
+  have no empty/required check. This matches the owner's stated rule exactly ("front and
+  back of the car"), so widening it is an **owner decision, not a bug** — raised 7/26.
   **RESOLVED same day (App Prototypes): no mirror needed, and do NOT port this fix.** The
   prototype's work-settings save **requests no OTP at all** (zero `otp`/`Send code` markers in
   that screen; `save.onclick` persists and goes straight to `payout`), so the ordering defect
