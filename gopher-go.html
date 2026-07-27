@@ -2004,6 +2004,15 @@
   .gc-modal-btn:hover { background:var(--green-dark); }
   .gc-modal-btn-secondary { background:transparent; color:var(--navy); border:1.5px solid #dfe3ec; box-shadow:none; margin-bottom:0; }
   .gc-modal-btn-secondary:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+  /* Ported from gopher-connect/gopher-request — the 7/23 refer-modal port brought the
+     markup but not this rule, so both .gc-modal-btn-text buttons in the refer modal
+     rendered as raw browser buttons (grey bar with a border). */
+  .gc-modal-btn-text {
+    width:100%; margin-top:10px; padding:6px;
+    background:none; border:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:12.5px; color:var(--muted);
+  }
+  .gc-modal-btn-text:hover { color:var(--navy); text-decoration:underline; }
 
   /* ═══ Dashboard shell ═══ */
   .dashboard { display:none; min-height:100vh; }
@@ -2198,6 +2207,10 @@
   .dash-offer-btn.is-locked .dob-lock { display:inline; }
   .rf-modal { max-width:380px; padding:26px 26px 22px; text-align:center; }
   .rf-view { display:flex; flex-direction:column; }
+  /* display:flex above beats the browser's default [hidden] rule, so without this the
+     three refer views (home/entry/done) all render stacked at once. gopher-connect.html
+     escapes this only because it carries a global [hidden]{display:none!important}. */
+  .rf-view[hidden] { display:none; }
   .rf-brandwrap { margin-bottom:6px; }
   .rf-brand { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:var(--navy); }
   .rf-sub { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--muted); line-height:1.5; margin-bottom:16px; }
