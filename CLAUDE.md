@@ -723,7 +723,9 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   system ported 1:1: Request gets both modals (recommend reads
   `window.__getMyGophers()`; referrals file into its TRACK.pending),
   Go gets the refer modal minus recommend AND minus the "Refer Yourself" tile
-  (owner-removed), submissions land in REFER.pending. Per-portal Gopher IDs
+  (owner-removed) — **⚠️ the Refer Yourself removal was REVERSED by the owner
+  2026-07-27; the tile is back and must stay, see the entry below**;
+  submissions land in REFER.pending. Per-portal Gopher IDs
   (614072 / 820083). CSS ported collision-checked (request kept its own
   rc-copy/rf-done-ico/rf-sub; Go already had the gc-modal system).
   (c) **Go got "← Back to main page" above Sign out** (leaves the dashboard,
@@ -1149,6 +1151,32 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   ⚠️ The live gap runs the other way: **the web checks the two photo tiles only**, so documents
   and vehicle fields do not block its save. If they should, that is a `Final/gopher-go.html`
   change and is unowned — App Prototypes did not touch the web build.
+
+- **"Refer Yourself" restored to `gopher-go.html` — the 7/23 removal is REVERSED (owner
+  7/27, commit `f6c8730`, deploy `6ab8ef0`, live on Pages + TigerTech).** Owner reported the
+  tile missing from the Refer Gopher pane. It had been deleted in `978b897` (7/23) and
+  recorded here as "(owner-removed)" — that note is now wrong and has been marked at its
+  source, because **it is canonical Go functionality, not a nice-to-have**: `refer-self` /
+  **G40-135** in the Go canonical doc, built in the Go app prototype
+  (`rs-tile data-rk="self"`), and wired through `_prototypes/split-screen.html`, where a
+  Refer-Yourself referral stamps `__ptReferral` and lands in the **requester's inbox** with an
+  "★ Add ⟨Gopher⟩ to MY Gophers" option. **Do not remove it again.**
+  - Tile restored **first** in `.refer-grid` with the exact copy/icon `978b897` deleted
+    (⭐ "Refer Yourself" / "Share your code so new customers add you as their saved Gopher.").
+    Four tiles now form a clean **2×2** — the grid was already `1fr 1fr` (single column
+    ≤700px), so **no CSS change was needed**.
+  - **`REFER_COPY.self` added.** Without it `openReferModal` falls back to `REFER_COPY.go`
+    (`const c = REFER_COPY[kind] || REFER_COPY.go`) — the tile would have opened silently
+    branded "Refer Gopher Go", which looks like it works. Any new `data-rk` needs a matching
+    `REFER_COPY` key or it fails this way rather than erroring.
+  - **The distinction the copy has to carry:** the other three tiles invite someone to a
+    *platform*; this one shares the Gopher's **own** code so a customer saves them as a MY
+    Gopher. Sub-copy follows the prototype's wording.
+  - Verified in browser: 2×2 grid, modal copy per kind, full SMS round trip (share → add
+    contact → submit) filing into Referral tracking, other three tiles unchanged, 0 console
+    errors; all 7 inline scripts JXA-parse clean. **Two pane traps hit again, both documented:**
+    `resize_window` first (viewport reported 86px-wide and the grid read as single-column), and
+    `.dash-section` activates on **`.active`**, not `.on`.
 
 ### Outstanding to-do
 
