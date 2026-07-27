@@ -2414,13 +2414,15 @@
   .showas-ttl { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
   .showas-sub { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
 
-  /* vehicle photos on file / needs-update */
-  .vphoto .vp-state { display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:var(--green-dark); margin-top:4px; }
-  .vphoto.needupdate { border-style:solid; border-color:var(--warning); background:#fffdf2; cursor:pointer; }
-  .vphoto.needupdate .vp-state { color:var(--warning-text); }
-  .vphoto.updated { border-style:solid; border-color:var(--green); background:var(--green-light); }
+  /* vehicle photos AND ride documents (registration/insurance): on file / needs-update */
+  .vphoto .vp-state, .vdoc .vp-state { display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:var(--green-dark); margin-top:4px; }
+  .vphoto.needupdate, .vdoc.needupdate { border-style:solid; border-color:var(--warning); background:#fffdf2; cursor:pointer; }
+  .vphoto.needupdate .vp-state, .vdoc.needupdate .vp-state { color:var(--warning-text); }
+  .vphoto.updated, .vdoc.updated { border-style:solid; border-color:var(--green); background:var(--green-light); }
   .vpnote { font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.5; }
   .vpnote.warn { color:var(--warning-text); font-weight:600; }
+  /* a vehicle detail left blank when Ride Sharing is on */
+  .field input.field-missing { border-color:var(--warning); background:#fffdf2; }
 
   .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--navy); color:#fff; padding:13px 22px; border-radius:12px; font-family:'Nunito',sans-serif; font-weight:700; font-size:13.5px; box-shadow:0 16px 40px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition:opacity 0.25s, transform 0.25s; z-index:9800; display:flex; align-items:center; gap:9px; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
@@ -2735,15 +2737,15 @@
                   <div class="field"><label>Issuing state</label><input type="text" data-field value="NC"></div>
                 </div>
                 <div class="up2" style="margin-top:12px">
-                  <div class="uptile"><div class="up-ico">&#128196;</div><span>Submit registration</span></div>
-                  <div class="uptile"><div class="up-ico">&#128196;</div><span>Submit insurance</span></div>
+                  <div class="uptile vdoc" data-vdoc="registration"><div class="up-ico">&#128196;</div><span>Submit registration</span><span class="vp-state">On file &#10003;</span><input type="hidden" data-field value="onfile"></div>
+                  <div class="uptile vdoc" data-vdoc="insurance"><div class="up-ico">&#128196;</div><span>Submit insurance</span><span class="vp-state">On file &#10003;</span><input type="hidden" data-field value="onfile"></div>
                 </div>
                 <div class="rp-h" style="margin:14px 0 8px">&#128247; Vehicle photos <span style="color:var(--muted);font-weight:600">— shown below; update if your vehicle changes</span></div>
                 <div class="up2">
                   <div class="uptile vphoto" data-vphoto="front"><div class="up-ico">&#128247;</div><span>Front &middot; head-on</span><span class="vp-state">On file &#10003;</span><input type="hidden" data-field value="onfile"></div>
                   <div class="uptile vphoto" data-vphoto="rear"><div class="up-ico">&#128247;</div><span>Rear &middot; plate visible</span><span class="vp-state">On file &#10003;</span><input type="hidden" data-field value="onfile"></div>
                 </div>
-                <p class="vpnote js-vpnote">Both photos are on file. If you change any vehicle detail above, new photos are required.</p>
+                <p class="vpnote js-vpnote">Registration, insurance and both photos are on file. If you change any vehicle detail above, new documents and photos are required.</p>
               </div>
             </div>
             <div class="cat-row" data-cat="Home / Office Services"><div class="crow"><span class="cl">Home / Office Services</span><span class="sw js-cat on"></span></div></div>
@@ -3484,15 +3486,35 @@
        Ride Sharing OFF is always satisfied — there is no vehicle to evidence. */
     function ridePhotoGate(section){
       const row = section && section.querySelector('.cat-row[data-cat="Ride Sharing"]');
-      if(!row) return {ok:true, missing:[]};
-      if(!row.querySelector('.crow .js-cat.on')) return {ok:true, missing:[]};
-      const tiles = Array.from(row.querySelectorAll('.vphoto'));
+      if(!row) return {ok:true, missing:[], blankFields:[]};
+      if(!row.querySelector('.crow .js-cat.on')) return {ok:true, missing:[], blankFields:[]};
+      // Every upload tile in the ride panel — both vehicle photos AND the
+      // registration/insurance documents. Same hidden data-field contract.
+      const tiles = Array.from(row.querySelectorAll('.vphoto, .vdoc'));
       const missing = tiles.filter(t => {
         const hid = t.querySelector('input[data-field]');
         const v = hid ? hid.value : '';
         return v !== 'onfile' && v !== 'updated';
       });
-      return {ok: missing.length === 0, missing, tiles, row};
+      // …and every vehicle detail must actually be filled in.
+      const blankFields = Array.from(row.querySelectorAll('.field input'))
+        .filter(i => !(i.value || '').trim());
+      return {ok: missing.length === 0 && blankFields.length === 0, missing, blankFields, tiles, row};
+    }
+
+    // One message for whatever is actually outstanding, so the worker is told
+    // the specific thing to fix rather than a generic "incomplete".
+    function rideGateMsg(gate){
+      const parts = [];
+      if(gate.blankFields.length) parts.push('every vehicle detail');
+      const docs = gate.missing.filter(t => t.classList.contains('vdoc')).length;
+      const pics = gate.missing.filter(t => t.classList.contains('vphoto')).length;
+      if(docs) parts.push('your registration and insurance');
+      if(pics) parts.push('both vehicle photos (front head-on and rear plate visible)');
+      const list = parts.length > 1
+        ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1]
+        : (parts[0] || 'your ride sharing info');
+      return 'Ride Sharing needs ' + list + ' before these changes can be saved.';
     }
 
     const work = wire('work', {
@@ -3501,13 +3523,11 @@
         const gate = ridePhotoGate(section);
         if(!gate.ok){
           const note = gate.row.querySelector('.js-vpnote');
-          if(note){
-            note.classList.add('warn');
-            note.innerHTML = 'Both vehicle photos are required before these changes can be saved &mdash; front (head-on) and rear (plate visible).';
-          }
+          if(note){ note.classList.add('warn'); note.textContent = rideGateMsg(gate); }
           gate.missing.forEach(t => t.classList.add('needupdate'));
-          (gate.missing[0] || gate.row).scrollIntoView({behavior:'smooth', block:'center'});
-          showToast('Add both vehicle photos to save.');
+          gate.blankFields.forEach(i => i.classList.add('field-missing'));
+          (gate.blankFields[0] || gate.missing[0] || gate.row).scrollIntoView({behavior:'smooth', block:'center'});
+          showToast('Complete your Ride Sharing info to save.');
           return;                       // ← returns WITHOUT requesting a code
         }
         openConfirm(commit);
@@ -3532,6 +3552,10 @@
         const vehInputs = Array.from(ridewrap.querySelectorAll('.field input'));
         const vehBase = vehInputs.map(i => i.value);
         const photos = Array.from(ridewrap.querySelectorAll('.vphoto'));
+        // Registration + insurance are per-VEHICLE documents, so they follow the
+        // same lifecycle as the photos: change the car, resubmit the paperwork.
+        const docs = Array.from(ridewrap.querySelectorAll('.vdoc'));
+        const uploads = photos.concat(docs);
         const vpnote = ridewrap.querySelector('.js-vpnote');
         const setPhoto = (tile, state) => {
           const lbl = tile.querySelector('.vp-state'), hid = tile.querySelector('input[data-field]');
@@ -3542,23 +3566,31 @@
         };
         const carChanged = () => vehInputs.some((i,idx) => i.value !== vehBase[idx]);
         ridewrap.addEventListener('input', (e) => {
-          if(e.target.closest('.vphoto')) return;            // ignore the hidden photo fields
+          if(e.target.closest('.vphoto, .vdoc')) return;     // ignore the hidden tile fields
+          if(e.target.matches('.field input')) e.target.classList.remove('field-missing');
           if(carChanged()){
-            photos.forEach(t => { if(!t.classList.contains('updated')) setPhoto(t,'need'); });
-            vpnote.classList.add('warn'); vpnote.innerHTML = 'Vehicle details changed — please re-upload both photos so they match your current vehicle.';
+            uploads.forEach(t => { if(!t.classList.contains('updated')) setPhoto(t,'need'); });
+            vpnote.classList.add('warn'); vpnote.textContent = 'Vehicle details changed — please re-submit your registration, insurance and both photos so they match your current vehicle.';
           } else {
-            photos.forEach(t => setPhoto(t,'onfile'));
-            vpnote.classList.remove('warn'); vpnote.innerHTML = 'Both photos are on file. If you change any vehicle detail above, new photos are required.';
+            uploads.forEach(t => setPhoto(t,'onfile'));
+            vpnote.classList.remove('warn'); vpnote.textContent = 'Registration, insurance and both photos are on file. If you change any vehicle detail above, new documents and photos are required.';
           }
         });
-        const vphFile = document.createElement('input'); vphFile.type='file'; vphFile.accept='image/*'; vphFile.style.display='none'; document.body.appendChild(vphFile);
+        // Photos take images; the two documents also accept a PDF scan.
+        const vphFile = document.createElement('input'); vphFile.type='file'; vphFile.style.display='none'; document.body.appendChild(vphFile);
         let vphTarget=null;
-        photos.forEach(t => t.addEventListener('click', () => { vphTarget=t; vphFile.value=''; vphFile.click(); }));
+        uploads.forEach(t => t.addEventListener('click', () => {
+          vphTarget=t;
+          vphFile.accept = t.classList.contains('vdoc') ? 'image/*,application/pdf' : 'image/*';
+          vphFile.value='';
+          vphFile.click();
+        }));
         vphFile.addEventListener('change', () => {
           if(!vphTarget) return;
           setPhoto(vphTarget,'updated');
-          if(photos.every(t => t.classList.contains('updated') || !t.classList.contains('needupdate'))){
-            if(!photos.some(t => t.classList.contains('needupdate'))){ vpnote.classList.remove('warn'); vpnote.innerHTML='Photos updated. They\u2019ll save with your other changes.'; }
+          if(!uploads.some(t => t.classList.contains('needupdate'))){
+            vpnote.classList.remove('warn');
+            vpnote.textContent='Ride sharing info updated. It\u2019ll save with your other changes.';
           }
           work.dispatchEvent(new Event('input',{bubbles:true}));
           vphTarget=null;
@@ -3573,8 +3605,9 @@
         const saveBtn = work.querySelector('.btn-save');
         const note = work.querySelector('.save-note');
         if(!saveBtn || !note || saveBtn.disabled) return;
-        if(!ridePhotoGate(work).ok){
-          note.innerHTML = 'Both vehicle photos are required before these changes can be saved.';
+        const g = ridePhotoGate(work);
+        if(!g.ok){
+          note.textContent = rideGateMsg(g);
         }
       });
 
