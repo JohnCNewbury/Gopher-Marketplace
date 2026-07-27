@@ -2829,6 +2829,7 @@
             <button class="rc-copy" id="referCopy">Copy code</button>
           </div>
           <div class="refer-grid">
+            <button class="refer-tile" data-rk="self"><span class="rt-ico">&#11088;</span><span class="rt-ttl">Refer Yourself</span><span class="rt-desc">Share your code so new customers add you as their saved Gopher.</span></button>
             <button class="refer-tile" data-rk="go"><span class="rt-ico">&#128663;</span><span class="rt-ttl">Refer Gopher Go</span><span class="rt-desc">Invite a trusted local worker to start earning on Gopher Go.</span></button>
             <button class="refer-tile" data-rk="request"><span class="rt-ico">&#128230;</span><span class="rt-ttl">Refer Gopher Request</span><span class="rt-desc">Invite someone to post requests and hire Gophers.</span></button>
             <button class="refer-tile" data-rk="connect"><span class="rt-ico">&#127970;</span><span class="rt-ttl">Refer Gopher Connect</span><span class="rt-desc">Invite a business to manage their workforce.</span></button>
@@ -2867,9 +2868,10 @@
 <!-- Request-history detail modal -->
 <div class="rhm-overlay" id="rhmOverlay" hidden><div class="rhm-card" id="rhmCard" role="dialog" aria-modal="true"></div></div>
 
-<!-- REFER MODAL — ported 1:1 from gopher-connect (owner, 2026-07-23:
-     "gopher-go identical to both as well, minus the recommend MY Gopher /
-     Refer yourself") -->
+<!-- REFER MODAL — ported 1:1 from gopher-connect (owner, 2026-07-23), minus the
+     recommend-MY-Gopher card. Refer Yourself was dropped in that same pass but the
+     owner restored it 2026-07-27 — it is canonical Go functionality (refer-self /
+     G40-135), so do not remove it again. -->
 <div class="gc-modal-overlay" id="referOverlay" hidden>
   <div class="gc-modal rf-modal" role="dialog" aria-modal="true" aria-labelledby="referTitle">
     <button type="button" class="gc-modal-close" id="referClose" aria-label="Close">×</button>
@@ -3907,6 +3909,10 @@
       });
       /* Referral modal — ported from gopher-connect (owner, 2026-07-23) */
       const REFER_COPY = {
+        /* Refer Yourself (refer-self / G40-135) — the Gopher shares their OWN code so a
+           customer saves them as a MY Gopher. Not a platform invite like the other three. */
+        self: { brand:'Gopher Go', title:'Refer Yourself',
+          sub:'Share your code so new customers add you as their saved Gopher — you earn referral credit on every active sign-up.' },
         connect: { brand:'Gopher Connect', title:'Refer Gopher Connect',
           sub:'Invite a business to manage their workforce on Gopher Connect — you both earn rewards when they join.' },
         request: { brand:'Gopher', title:'Refer Gopher Request',
