@@ -795,6 +795,13 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   BUILT. Verified via JXA (all script blocks parse; money math/dedup/gate smoke-tested)
   — the browser pane cannot render this 2.8 MB file; owner's tunnel eyeball was the
   visual check.
+  **CORRECTION (2026-07-26): the browser pane RENDERS `gopher-go-prototype.html` fine.**
+  Driven repeatedly since — `load('deals')`, clicking `[data-goto2]`, reading the
+  shadow root, measuring layout. Two real constraints got mistaken for "can't render":
+  serve a **copy** (TCC blocks the pane from reading the Desktop tree) and **cache-bust
+  with `?v=N`** after every edit, or you test stale bytes and chase ghosts. It can also
+  report viewport `0x0` — call `resize_window` before measuring anything. Don't skip
+  browser verification on this file; JXA parse-checks syntax, not behaviour.
 
 - **Connect Hire-again modal: 4-across grid, uncropped photos, mobile-safe (owner
   screenshot, 2026-07-24).** The category picker was 2-across in a 460px modal with
