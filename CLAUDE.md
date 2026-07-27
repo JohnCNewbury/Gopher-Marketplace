@@ -1178,6 +1178,52 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     `resize_window` first (viewport reported 86px-wide and the grid read as single-column), and
     `.dash-section` activates on **`.active`**, not `.on`.
 
+- **Referral engines audited across all four portals (owner 7/27, commits `e7fb372` + `61ca239`,
+  deploys `9331fdd` + `5995288`, live on Pages + TigerTech).** Triggered by the Refer Yourself
+  restore; the two rendering bugs found were **pre-existing from the 7/23 1:1 modal port**, not
+  caused by it.
+  - **⚠️ `[hidden]` IS NOT SAFE ON THESE PAGES.** `.rf-view` sets `display:flex`, which beats the
+    browser's default `[hidden]` rule — so all three refer views (home/entry/done) rendered
+    **stacked at once** on Go and Request. **`gopher-connect.html` is the only portal carrying a
+    global `[hidden]{display:none!important}`** (line ~83), which is why Connect looked fine and
+    the other two didn't. Fixed with a targeted `.rf-view[hidden]{display:none}` on each rather
+    than importing the global rule — a runtime audit found `.rf-view` was the *only* affected
+    selector on Go (27 hidden els, 2 broken). **Any new `display:`-styled element that also uses
+    the `hidden` attribute needs its own `[hidden]` guard on Go/Request/Deals.**
+  - **`.gc-modal-btn-text` was entirely absent from `gopher-go.html`** — the 7/23 port brought the
+    markup but not the rule, so both text buttons in Go's refer modal rendered as raw browser
+    buttons (grey bordered bars). Ported the base rule + `:hover` from Connect; skipped the
+    `.ec-danger`/`.pe-modal` variants (Go has neither).
+  - **Copy parity fixes:** Go's pending header `Referred Info` → **`Referral Info`** (Connect and
+    Request both used the latter); Request's Refer-Gopher-Connect CTA `Share the app →` →
+    **`Refer a business →`** (matching Connect, which is canonical for the shared component).
+  - **Verified clean:** every tile/card on all three engines opens with its own brand/title/sub —
+    **no silent `REFER_COPY` fallback** (the lookup is `REFER_COPY[kind] || REFER_COPY.go`, so a
+    missing key mis-brands rather than erroring — add a key for any new `data-rk`); Gopher ID
+    consistent page vs modal per portal (Connect **738105** / Request **614072** / Go **820083**);
+    full share→entry→submit→tracking round trip on all three; tab labels and added/pending column
+    sets match. **Deals has no refer engine by design** (Rewards = "Feature my business"); its
+    `820083` is a deliberate worked example in a tooltip pointing merchants at their ID in the Go
+    app — not a stray, don't "fix" it.
+  - **Left as owner decisions, not silently changed:** Go's active-table header **"App Used"** vs
+    "Type" elsewhere (Go's data genuinely holds app names, so its header is the *more* accurate
+    one); **date format differs across portals** (Connect `7/27/26`, Request+Go `7.27.26`) but each
+    is internally consistent including seed rows; Go's tiles carry no CTA line because they are a
+    different component (`.refer-tile` vs `.refer-card`).
+  - **⚠️ Adjacent finding, OUT of scope and still open — 4 broken `[hidden]` elements on
+    `gopher-request.html` outside the referral engine:** `#osJunkTiers` (masked by
+    `offerSuggestOverlay`), `#idSubFrontThumb` / `#idSubSelfieThumb` (masked by `idSubStepA`/`B`)
+    — all three **latent**, i.e. they will appear when their parent modal opens — plus
+    **`#progressCat`, which is leaking visibly right now** (20×8px). Same bug family as `.rf-view`.
+    Not fixed: they sit in the offer-suggest and ID-submission flows, and correctly hiding them
+    changes what those flows render.
+  - **Method note:** two verification passes in a row measured the wrong thing — first asserting
+    `el.hidden` (the DOM property, correct all along) instead of `getComputedStyle().display`, then
+    "testing" Connect's cards without noticing the overlay never opened because its handlers attach
+    only inside `openDashboard()`. **For modal work, assert computed style AND that the overlay
+    actually opened.** Connect/Request dashboards must be entered via `__openDashboardGophers()` /
+    `openRequestDashboard()`; Go's handlers bind at load.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
