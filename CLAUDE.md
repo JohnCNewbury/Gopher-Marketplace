@@ -1120,8 +1120,24 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (`gopher-go.html:2738-2739`) carry **no `data-cred`, no `data-field`, no hidden input** —
   unlike the Business-info credential tiles — so they are **inert decorations** that hold no
   state and cannot be gated on without first being wired up. Vehicle fields serialize but
-  have no empty/required check. This matches the owner's stated rule exactly ("front and
-  back of the car"), so widening it is an **owner decision, not a bug** — raised 7/26.
+  have no empty/required check. This matched the owner's original rule exactly ("front and
+  back of the car"), so widening it was an **owner decision, not a bug** — raised 7/26.
+  **→ OWNER RULED 7/26: "all ride fields need to be submitted to pass." CLOSED** (commit
+  `335bf2e`, deploy `f3424c1`, live on Pages + TigerTech). The web now matches the
+  prototype's stricter bar. **The two doc tiles had to be BUILT before they could be
+  required** — they were inert markup, so they now carry `.vdoc` + `data-vdoc` + a
+  `.vp-state` label + the hidden `data-field`, i.e. the same `onfile|updated|need`
+  contract as the photos, plus the same click-to-upload (docs also accept
+  `application/pdf`). Registration/insurance are **per-vehicle**, so a change to any
+  vehicle detail flips them to "Update needed" alongside the photos. `ridePhotoGate()`
+  now requires **all four tiles satisfied AND every vehicle field non-blank**;
+  `rideGateMsg()` names what's actually outstanding rather than a generic "incomplete";
+  blank fields get `.field-missing` (amber); tile CSS is now shared by `.vphoto, .vdoc`
+  instead of duplicated. Ride Sharing OFF still passes trivially, the gate still runs in
+  `resolveVerify` **before** `openConfirm`, and **"On file" still counts as satisfied**.
+  Verified in-browser on 4 cases (detail changed → all 4 tiles need + no code; tiles OK +
+  blank field → blocked + field highlighted; all satisfied → verify modal opens; ride OFF
+  + everything outstanding → not gated), 0 console errors.
   **RESOLVED same day (App Prototypes): no mirror needed, and do NOT port this fix.** The
   prototype's work-settings save **requests no OTP at all** (zero `otp`/`Send code` markers in
   that screen; `save.onclick` persists and goes straight to `payout`), so the ordering defect
