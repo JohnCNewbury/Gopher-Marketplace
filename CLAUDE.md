@@ -1210,13 +1210,22 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     one); **date format differs across portals** (Connect `7/27/26`, Request+Go `7.27.26`) but each
     is internally consistent including seed rows; Go's tiles carry no CTA line because they are a
     different component (`.refer-tile` vs `.refer-card`).
-  - **⚠️ Adjacent finding, OUT of scope and still open — 4 broken `[hidden]` elements on
-    `gopher-request.html` outside the referral engine:** `#osJunkTiers` (masked by
-    `offerSuggestOverlay`), `#idSubFrontThumb` / `#idSubSelfieThumb` (masked by `idSubStepA`/`B`)
-    — all three **latent**, i.e. they will appear when their parent modal opens — plus
-    **`#progressCat`, which is leaking visibly right now** (20×8px). Same bug family as `.rf-view`.
-    Not fixed: they sit in the offer-suggest and ID-submission flows, and correctly hiding them
-    changes what those flows render.
+  - **Adjacent finding — 4 more broken `[hidden]` elements on `gopher-request.html` outside the
+    referral engine. CLOSED same day** (owner approved, commit `68fbde9`, deploy `2a6a66d`, live
+    on Pages + TigerTech). `#osJunkTiers` (junk volume-tier selector, would render for non-junk
+    categories), `#idSubFrontThumb` + `#idSubSelfieThumb` (ID capture previews, would render empty
+    before capture) — those three **latent**, inside closed modals — plus **`#progressCat`, the
+    only one leaking visibly** (an empty green pill, 20×8px at load). Three guards added
+    (`.os-junk-tiers[hidden]`, `.idsub-thumb[hidden]`, `.progress-meta-cat[hidden]`). **Safe
+    because all four toggle the `hidden` ATTRIBUTE only** (`el.hidden = true/false`, both
+    branches, no inline `style.display`) — verified **both directions** per element (hidden →
+    `none`, `hidden=false` → `flex`), so nothing that should appear is now suppressed.
+    ⚠️ **Not exercised end-to-end:** the multi-step paths that actually reveal the junk tiers and
+    the ID previews — the guard only affects the hidden state and the show path is `hidden=false`,
+    which was tested directly.
+  - **Whole-site `[hidden]` sweep now clean at load:** connect 89 / request 73 / go 26 / deals 40
+    hidden elements, **0 broken on each**. Audit is of the **loaded state** — elements built later
+    or only in other states aren't covered, so re-run the audit after adding modal markup.
   - **Method note:** two verification passes in a row measured the wrong thing — first asserting
     `el.hidden` (the DOM property, correct all along) instead of `getComputedStyle().display`, then
     "testing" Connect's cards without noticing the overlay never opened because its handlers attach
