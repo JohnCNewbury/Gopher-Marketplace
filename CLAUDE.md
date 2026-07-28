@@ -1235,9 +1235,21 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
 
 ### Outstanding to-do
 
-- **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
-  (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
-  meanwhile (see 2026-07-15 entry); swap the `<source>`s back when production clips exist.
+- **4 produced hero clips** still wanted for `gopher-connect.html`. **Full production brief:
+  `docs/handoff/connect-hero-video-brief.md`** (written 7/27 from the code — subjects, the
+  6s-visible/8s-minimum/seamless-loop timing, the ~600 KB budget, and the two framing rules
+  that follow from the CSS: don't bake in a zoom, and shoot bright because the overlay is
+  86%-opacity navy). **⚠️ The old line here said "the hero plays services b-roll stand-ins
+  meanwhile" — that was STALE.** The stand-ins were **removed 2026-07-17** (any clip that
+  loads hides the photo cycle by design, so they put Go footage on the Connect hero). The
+  hero is **photos-only** today: 9 stills, which are also the `prefers-reduced-motion`
+  experience, so they stay regardless. There are **no `.hero-clip` elements in the markup**,
+  so nothing 404s. The player wiring + CSS + photo→video handoff are **built and dormant** —
+  landing the files is ~10 lines of markup. One open owner decision in the brief: clip 4 is
+  warehouse (matches the stills) vs skilled trades (matches the hero copy's "skilled
+  professionals"); recommendation is trades. Note `Final/hero-media/` exists but is **empty**
+  and predates the asset reorg — the brief recommends `assets/video/connect-hero-1..4.mp4`
+  to match the site-wide convention.
 - **deals@ email wiring (Apps Script) — tabled by owner 2026-07-22.** Two pieces, both via
   the existing Deals registration Apps Script endpoint (`GOPHER_FORM_ENDPOINT` in
   `gopher-deals.html`): (1) welcome email sent **from deals@gophergo.io** on merchant
