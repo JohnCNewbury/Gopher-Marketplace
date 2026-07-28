@@ -7623,17 +7623,35 @@
   .inbox-rec-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .inbox-rec-badge { font-family:'Nunito'; font-weight:900; font-size:11px; color:var(--green-dark); background:#e2f0e2; border-radius:99px; padding:3px 9px; white-space:nowrap; }
   .inbox-rec-title { font-family:'DM Sans'; font-size:12.5px; color:var(--navy); font-weight:600; }
-  /* Scrollable list so every recommended Gopher is reachable on iOS + Android (Bug 3). */
-  .inbox-rec-list { display:flex; flex-direction:column; gap:8px; max-height:172px; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-right:2px; }
-  .inbox-rec-row { display:flex; align-items:center; gap:11px; width:100%; text-align:left; background:#fff; border:1px solid #e6ece6; border-radius:12px; padding:8px 10px; cursor:pointer; font-family:inherit; transition:border-color .12s, background .12s, transform .1s; }
+  /* Owner 2026-07-28: on the dashboard there is real estate to spare, and a 172px
+     cap was clipping recommendations out of sight (a referral you never see is a
+     referral you never act on). The list now grows to fit; the cap returns only on
+     the narrow breakpoint, where the original iOS/Android scroll fix (Bug 3) still
+     applies and every row stays reachable. */
+  .inbox-rec-list { display:flex; flex-direction:column; gap:8px; padding-right:2px; }
+  .inbox-rec-row { display:flex; align-items:center; gap:11px; width:100%; text-align:left; background:#fff; border:1px solid #e6ece6; border-radius:12px; padding:8px 10px; font-family:inherit; transition:border-color .12s, background .12s; }
   .inbox-rec-row:hover { border-color:var(--green); background:#fbfefb; }
-  .inbox-rec-row:active { transform:scale(0.99); }
+  .inbox-rec-row.is-added { background:#f7fbf7; border-color:#dcebdc; }
+  /* Checkbox — the requester decides who is added. */
+  .inbox-rec-pick { display:flex; align-items:center; flex-shrink:0; cursor:pointer; padding:2px; }
+  .inbox-rec-cb { width:18px; height:18px; accent-color:var(--green-dark); cursor:pointer; margin:0; }
+  .inbox-rec-cb:disabled { cursor:default; }
+  .inbox-rec-added { flex-shrink:0; font-family:'DM Sans'; font-weight:700; font-size:11.5px; color:var(--green-dark); white-space:nowrap; }
+  .inbox-rec-view { flex-shrink:0; background:none; border:none; padding:4px 2px; cursor:pointer; font-family:'DM Sans'; font-weight:700; font-size:12px; color:var(--green-dark); white-space:nowrap; }
+  .inbox-rec-view:hover { text-decoration:underline; }
+  .inbox-rec-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:11px; padding-top:10px; border-top:1px solid #dcebdc; }
+  .inbox-rec-all { display:flex; align-items:center; gap:7px; font-family:'DM Sans'; font-size:12px; color:var(--navy); cursor:pointer; }
+  .inbox-rec-all input { width:16px; height:16px; accent-color:var(--green-dark); cursor:pointer; margin:0; }
+  .inbox-rec-alladded { font-family:'DM Sans'; font-size:12px; color:var(--green-dark); font-weight:600; }
+  .inbox-rec-add { border:none; border-radius:99px; padding:9px 16px; background:var(--green); color:var(--ink-on-green); font-family:'Nunito'; font-weight:800; font-size:12.5px; cursor:pointer; transition:background .15s, opacity .15s; }
+  .inbox-rec-add:hover:not(:disabled) { background:var(--green-dark); }
+  .inbox-rec-add:disabled { opacity:.45; cursor:default; }
+  @media (max-width:720px){ .inbox-rec-list { max-height:172px; overflow-y:auto; -webkit-overflow-scrolling:touch; } }
   .inbox-rec-photo { width:40px; height:40px; flex-shrink:0; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:900; font-size:14px; overflow:hidden; }
   .inbox-rec-photo img { width:100%; height:100%; object-fit:cover; }
   .inbox-rec-info { flex:1; display:flex; flex-direction:column; min-width:0; }
   .inbox-rec-name { font-family:'Nunito'; font-weight:800; font-size:13.5px; color:var(--navy); }
   .inbox-rec-sub { font-family:'DM Sans'; font-size:11.5px; color:var(--muted); }
-  .inbox-rec-view { flex-shrink:0; font-family:'DM Sans'; font-weight:700; font-size:12px; color:var(--green-dark); white-space:nowrap; }
   .inbox-composer-readonly { padding:12px 16px; border-top:1px solid #eef0f5; text-align:center; font-family:'DM Sans'; font-size:12px; color:var(--muted); background:#fafbfd; }
   .inbox-composer { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
   .inbox-composer-input {
@@ -19061,19 +19079,38 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const gophers = Array.isArray(m.gophers) ? m.gophers : [];
         const n = gophers.length;
         const who = m.friend ? _recEsc(m.friend) : 'A friend';
+        // Owner 2026-07-28: the requester decides WHO gets added — each recommendation
+        // carries its own checkbox, and adding runs through the same
+        // dashState.gopherRels[name]='favorite' path the profile modal's
+        // "Add to MY Gophers" control already uses (one add path, not two).
+        const _rels = (typeof dashState === 'object' && dashState) ? (dashState.gopherRels || {}) : {};
+        let _pending = 0;
         const rows = gophers.map((g, gi) => {
           const rating = (g.rating != null && !isNaN(g.rating)) ? ` · ⭐ ${Number(g.rating).toFixed(1)}` : '';
           const photo = g.photo ? `<img src="${_recEsc(g.photo)}" alt="">` : _recInitials(g.name);
+          const added = _rels[g.name] === 'favorite';
+          if(!added) _pending++;
           return `
-              <button type="button" class="inbox-rec-row" data-rec-msg="${mi}" data-rec-idx="${gi}">
+              <div class="inbox-rec-row${added ? ' is-added' : ''}">
+                <label class="inbox-rec-pick" title="${added ? 'Already in MY Gophers' : 'Select to add to MY Gophers'}">
+                  <input type="checkbox" class="inbox-rec-cb" data-rec-msg="${mi}" data-rec-idx="${gi}"
+                         ${added ? 'checked disabled' : ''} aria-label="Add ${_recEsc(g.name)} to MY Gophers">
+                </label>
                 <span class="inbox-rec-photo">${photo}</span>
                 <span class="inbox-rec-info">
                   <span class="inbox-rec-name">${_recEsc(g.name)}</span>
                   <span class="inbox-rec-sub">${_recEsc(g.tier || 'Gopher')}${rating}</span>
                 </span>
-                <span class="inbox-rec-view">View Profile ›</span>
-              </button>`;
+                ${added ? '<span class="inbox-rec-added">✓ In MY Gophers</span>' : ''}
+                <button type="button" class="inbox-rec-view" data-rec-msg="${mi}" data-rec-idx="${gi}">View Profile ›</button>
+              </div>`;
         }).join('');
+        const actions = _pending ? `
+              <div class="inbox-rec-actions">
+                <label class="inbox-rec-all"><input type="checkbox" class="inbox-rec-cb-all" data-rec-msg="${mi}"> Select all</label>
+                <button type="button" class="inbox-rec-add" data-rec-add="${mi}" disabled>Add to MY Gophers</button>
+              </div>` : `
+              <div class="inbox-rec-actions"><span class="inbox-rec-alladded">All ${n} recommendation${n===1?'':'s'} added to MY Gophers.</span></div>`;
         return `
           <div class="inbox-msg theirs inbox-msg-rec">
             <div class="inbox-rec">
@@ -19082,6 +19119,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <span class="inbox-rec-title">${who} recommended ${n} Gopher${n === 1 ? '' : 's'} for you</span>
               </div>
               <div class="inbox-rec-list">${rows}</div>
+              ${actions}
             </div>
             <div class="inbox-msg-time">${_recEsc(m.time)}</div>
           </div>`;
@@ -19133,10 +19171,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Bug 1: tapping a recommended Gopher (anywhere from the photo
     // through the "View Profile" label) opens the standard Gopher profile modal —
     // the same one used for bids, interested Gophers, and counter offers.
-    body.querySelectorAll('.inbox-rec-row').forEach(row => {
-      row.addEventListener('click', () => {
-        const mi = Number(row.getAttribute('data-rec-msg'));
-        const gi = Number(row.getAttribute('data-rec-idx'));
+    // The row is no longer one big tap target — it now carries a checkbox, so the
+    // profile opens from the explicit "View Profile" control instead (a checkbox
+    // nested inside a <button> is invalid and swallows its own clicks).
+    body.querySelectorAll('.inbox-rec-view').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mi = Number(btn.getAttribute('data-rec-msg'));
+        const gi = Number(btn.getAttribute('data-rec-idx'));
         const msg = t.thread && t.thread[mi];
         const g = (msg && Array.isArray(msg.gophers)) ? msg.gophers[gi] : null;
         if(g && typeof openGopherProfileModal === 'function'){
@@ -19147,6 +19188,41 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           });
         }
       });
+    });
+
+    // Owner 2026-07-28 — pick who gets added. Selection is local to the card; the
+    // add itself reuses dashState.gopherRels[name]='favorite', the same store the
+    // profile modal's favourite toggle writes, so MY Gophers has ONE add path.
+    body.querySelectorAll('.inbox-rec').forEach(card => {
+      const boxes  = Array.from(card.querySelectorAll('.inbox-rec-cb:not(:disabled)'));
+      const all    = card.querySelector('.inbox-rec-cb-all');
+      const addBtn = card.querySelector('.inbox-rec-add');
+      if(!addBtn) return;                       // every recommendation already added
+      const sync = () => {
+        const n = boxes.filter(b => b.checked).length;
+        addBtn.disabled = !n;
+        addBtn.textContent = n ? ('Add ' + n + ' to MY Gophers') : 'Add to MY Gophers';
+        if(all) all.checked = n === boxes.length && n > 0;
+      };
+      boxes.forEach(b => b.addEventListener('change', sync));
+      if(all) all.addEventListener('change', () => { boxes.forEach(b => { b.checked = all.checked; }); sync(); });
+      addBtn.addEventListener('click', () => {
+        const mi = Number(addBtn.getAttribute('data-rec-add'));
+        const msg = t.thread && t.thread[mi];
+        const list = (msg && Array.isArray(msg.gophers)) ? msg.gophers : [];
+        const picked = boxes.filter(b => b.checked)
+          .map(b => list[Number(b.getAttribute('data-rec-idx'))])
+          .filter(Boolean);
+        if(!picked.length) return;
+        dashState.gopherRels = dashState.gopherRels || {};
+        picked.forEach(g => { dashState.gopherRels[g.name] = 'favorite'; });
+        const names = picked.map(g => g.name);
+        const said = names.length === 1 ? (names[0] + ' added to MY Gophers.')
+                   : (names.length + ' Gophers added to MY Gophers.');
+        if(typeof toast === 'function') toast(said);
+        renderInbox();                          // repaint: added rows lock to "✓ In MY Gophers"
+      });
+      sync();
     });
 
     // Conversation list rows → switch active thread
