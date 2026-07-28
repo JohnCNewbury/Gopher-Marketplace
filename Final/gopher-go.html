@@ -2307,6 +2307,60 @@
   .dash-content { padding:30px; max-width:860px; width:100%; }
   .dash-section { display:none; }
   .dash-section.active { display:block; animation:fadeIn 0.25s ease; }
+
+  /* ░░ INBOX (built 2026-07-28, owner: "Gopher-go dashboard needs a functional
+     inbox built"). Structure + styling follow the Gopher Request inbox so the two
+     read as one product; the DATA model is worker-side (threads are the requesters
+     whose jobs this Gopher is on), because Request's thread synthesis is built on
+     ITS request objects and does not transfer. Photo attachment is included per
+     G40-216 — that ticket's whole point is that Go lacks it. ░░ */
+  .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
+  .inbox-list { background:#fff; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; }
+  .inbox-list-head { font-family:'Nunito',sans-serif; font-weight:900; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding:14px 16px 8px; }
+  .inbox-row { width:100%; display:flex; gap:11px; padding:12px 14px; border:none; background:none; cursor:pointer; text-align:left; border-top:1px solid #f0f2f7; transition:background .12s; align-items:center; }
+  .inbox-row:hover { background:#f7f9fc; }
+  .inbox-row.active { background:var(--green-light); }
+  .inbox-row-photo { width:42px; height:42px; border-radius:50%; flex-shrink:0; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; }
+  .inbox-row-main { flex:1; min-width:0; }
+  .inbox-row-top { display:flex; justify-content:space-between; gap:8px; }
+  .inbox-row-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
+  .inbox-row-time { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); flex-shrink:0; }
+  .inbox-row-sub { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:1px 0; }
+  .inbox-row-last { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .inbox-unread { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-left:6px; vertical-align:middle; }
+  .inbox-convo { background:#fff; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+  .inbox-convo-head { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid #eef0f5; }
+  .inbox-convo-photo { width:44px; height:44px; border-radius:50%; background:var(--green); color:var(--ink-on-green); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; }
+  .inbox-convo-meta { flex:1; min-width:0; }
+  .inbox-convo-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; color:var(--navy); }
+  .inbox-convo-req { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .inbox-thread { padding:18px 16px; display:flex; flex-direction:column; gap:12px; max-height:420px; overflow-y:auto; }
+  .inbox-msg { display:flex; flex-direction:column; max-width:75%; }
+  .inbox-msg.theirs { align-self:flex-start; align-items:flex-start; }
+  .inbox-msg.mine { align-self:flex-end; align-items:flex-end; }
+  .inbox-bubble { font-family:'DM Sans',sans-serif; font-size:13.5px; line-height:1.45; padding:10px 14px; border-radius:16px; }
+  .inbox-msg.theirs .inbox-bubble { background:#eef2f8; color:var(--navy); border-bottom-left-radius:5px; }
+  .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
+  .inbox-msg-time { font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
+  /* Photo attachment (G40-216) */
+  .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
+  .inbox-msg.mine .inbox-photo { border-color:transparent; }
+  .inbox-composer { display:flex; gap:8px; align-items:center; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
+  .inbox-attach { width:40px; height:40px; flex-shrink:0; border:1.5px solid #d4d8e3; border-radius:50%; background:#fff; cursor:pointer; font-size:17px; line-height:1; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; }
+  .inbox-attach:hover:not(:disabled) { border-color:var(--green); background:var(--green-light); }
+  .inbox-attach:disabled { opacity:.45; cursor:not-allowed; }
+  .inbox-composer-input { flex:1; padding:10px 14px; border:1.5px solid #d4d8e3; border-radius:99px; font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--navy); outline:none; transition:border-color .15s; }
+  .inbox-composer-input::placeholder { color:#aab2c4; }
+  .inbox-composer-input:focus { border-color:var(--green); }
+  .inbox-composer-send { width:42px; height:42px; flex-shrink:0; border:none; border-radius:50%; background:var(--green); color:var(--ink-on-green); cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:background .15s, opacity .15s; }
+  .inbox-composer-send:hover:not(:disabled) { background:var(--green-dark); }
+  .inbox-composer-send:disabled { opacity:.45; cursor:not-allowed; }
+  .inbox-composer-locked { padding:12px 16px; border-top:1px solid #eef0f5; text-align:center; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); background:#fafbfd; }
+  .inbox-pending { display:flex; align-items:center; gap:9px; margin:0 14px 10px; padding:8px 11px; border:1px solid #dcebdc; background:#f4f8f4; border-radius:12px; }
+  .inbox-pending img { width:42px; height:42px; object-fit:cover; border-radius:8px; }
+  .inbox-pending-x { margin-left:auto; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; }
+  .inbox-empty { padding:40px; text-align:center; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13.5px; }
+  @media (max-width:720px){ .inbox-grid { grid-template-columns:1fr; } }
   @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to { opacity:1; transform:none; } }
 
   .panel { background:#fff; border-radius:16px; box-shadow:var(--card-shadow); padding:26px 28px; margin-bottom:20px; }
@@ -2568,6 +2622,7 @@
       <button class="dash-demo-toggle" id="offerDemoToggle" type="button" title="Prototype demo only — production reads eligibility from the worker's tier automatically">&#128295; Demo: eligible <b id="offerDemoState">ON</b></button>
       <button class="dash-nav-item active" data-dash-section="profile"><span class="dni-ico">&#128100;</span><span class="dni-label">Profile</span></button>
       <button class="dash-nav-item" data-dash-section="history"><span class="dni-ico">&#128218;</span><span class="dni-label">Previous requests</span></button>
+      <button class="dash-nav-item" data-dash-section="inbox"><span class="dni-ico">&#128172;</span><span class="dni-label">Inbox</span><span class="dni-badge" id="goInboxBadge" hidden>0</span></button>
       <button class="dash-nav-item" data-dash-section="blocked"><span class="dni-ico">&#128683;</span><span class="dni-label">Block Requesters</span></button>
       <div class="dash-nav-divider">Account</div>
       <button class="dash-nav-item" data-dash-section="business"><span class="dni-ico">&#127970;</span><span class="dni-label">Business info</span></button>
@@ -2822,6 +2877,17 @@
           <div class="rh-tabs"><button class="rh-tab on" data-st="completed">Completed</button><button class="rh-tab" data-st="failed">Payout issue</button><button class="rh-tab" data-st="cancelled">Cancelled</button></div>
           <div class="rh-search"><span class="rh-sico">&#128269;</span><input id="rhSearch" placeholder="Search your history"></div>
           <div class="rh-list" id="rhList"></div>
+        </div>
+      </section>
+
+      <!-- ░░ INBOX ░░ (built 2026-07-28 — owner: "Gopher-go dashboard needs a
+           functional inbox built". Threads are worker-side: the requesters whose
+           jobs this Gopher is on. Photo attach per G40-216.) -->
+      <section class="dash-section" data-dash-section="inbox">
+        <div class="panel">
+          <div class="panel-head"><h2>Inbox</h2></div>
+          <p class="panel-desc">Messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
+          <div id="goInboxBody" class="inbox-grid"><!-- filled by renderGoInbox() --></div>
         </div>
       </section>
 
@@ -3214,8 +3280,146 @@
       // __maybeReviewPrompt; in production the real trigger fires post-completion
       // when that velocity threshold is hit (see the handoff).
       if(name==='history' && window.__maybeReviewPrompt) setTimeout(() => window.__maybeReviewPrompt('go'), 350);
+      if(name==='inbox' && typeof renderGoInbox === 'function') renderGoInbox();
     }
     navItems.forEach(b => b.addEventListener('click', () => show(b.dataset.dashSection)));
+
+    /* ░░ INBOX ░░ Built 2026-07-28 (owner: "Gopher-go dashboard needs a functional
+       inbox built"). Worker-side threads: the requesters whose jobs this Gopher is on.
+
+       PHOTO GATE (G40-216) — attachments are enabled only while the Gopher is
+       ACCEPTED onto the request AND the request is still active. Completed/cancelled
+       threads keep their history but can no longer send. That gate is the ONLY
+       Go-specific rule in the ticket; everything else mirrors the Requestor flow.
+       This is prototype state (in-memory, like the rest of this dashboard) — the
+       production gate must ALSO be enforced server-side before the message is
+       persisted, per the ticket's business rules. */
+    const GO_INBOX = [
+      { id:'gi-1', name:'Dana Whitfield', init:'DW', req:'Junk removal — garage cleanout', reqId:'#GR-00641',
+        state:'active', accepted:true, unread:1, time:'9:12 AM', msgs:[
+        { from:'them', text:"Hi! The garage is unlocked — everything on the left wall goes.", time:'9:04 AM' },
+        { from:'them', text:"There's a dresser too, is that ok?", time:'9:12 AM' } ] },
+      { id:'gi-2', name:'Marcus Bell', init:'MB', req:'Grocery run — Harris Teeter', reqId:'#GR-00627',
+        state:'active', accepted:true, unread:0, time:'Yesterday', msgs:[
+        { from:'them', text:'Running about 10 min behind, no rush.', time:'4:31 PM' },
+        { from:'mine', text:"No problem — I'll wait at the pickup door.", time:'4:33 PM' } ] },
+      // Pre-acceptance thread — bid placed, not yet accepted. Demonstrates the
+      // G40-216 gate: no composer, no attach, until the requester accepts.
+      { id:'gi-4', name:'Terrence ODell', init:'TO', req:'Yard cleanup — bid submitted', reqId:'#GR-00655',
+        state:'active', accepted:false, unread:0, time:'8:40 AM', msgs:[
+        { from:'them', text:'Thanks for the bid — reviewing a couple today.', time:'8:40 AM' } ] },
+      { id:'gi-3', name:'Priya Raman', init:'PR', req:'Furniture move — 2 flights', reqId:'#GR-00588',
+        state:'completed', accepted:true, unread:0, time:'Jul 24', msgs:[
+        { from:'them', text:'Thanks again — you made that look easy.', time:'2:10 PM' },
+        { from:'mine', text:'Anytime! Rate when you get a sec 🙏', time:'2:12 PM' } ] },
+    ];
+    let goInboxActive = GO_INBOX[0].id;
+    let goInboxPending = null;          // staged photo (data URL) awaiting send
+
+    const goEsc = v => String(v == null ? '' : v).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+    function goInboxBadge(){
+      const b = document.getElementById('goInboxBadge'); if(!b) return;
+      const n = GO_INBOX.reduce((a,t) => a + (t.unread || 0), 0);
+      b.textContent = n; b.hidden = !n;
+    }
+
+    function renderGoInbox(){
+      const body = document.getElementById('goInboxBody'); if(!body) return;
+      const t = GO_INBOX.find(x => x.id === goInboxActive) || GO_INBOX[0];
+      const rows = GO_INBOX.map(x => `
+        <button type="button" class="inbox-row${x.id===t.id?' active':''}" data-go-thread="${x.id}">
+          <span class="inbox-row-photo">${goEsc(x.init)}</span>
+          <span class="inbox-row-main">
+            <span class="inbox-row-top">
+              <span class="inbox-row-name">${goEsc(x.name)}${x.unread?'<span class="inbox-unread"></span>':''}</span>
+              <span class="inbox-row-time">${goEsc(x.time)}</span>
+            </span>
+            <span class="inbox-row-sub">${goEsc(x.req)}</span>
+            <span class="inbox-row-last">${goEsc((x.msgs[x.msgs.length-1]||{}).text || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
+          </span>
+        </button>`).join('');
+
+      const msgs = t.msgs.map(m => `
+        <div class="inbox-msg ${m.from==='mine'?'mine':'theirs'}">
+          ${m.photo ? `<img class="inbox-photo" src="${goEsc(m.photo)}" alt="Photo attachment">`
+                    : `<div class="inbox-bubble">${goEsc(m.text)}</div>`}
+          <div class="inbox-msg-time">${goEsc(m.time)}</div>
+        </div>`).join('');
+
+      // The gate: accepted AND still active.
+      const canSend = !!t.accepted && t.state === 'active';
+      const composer = canSend ? `
+          ${goInboxPending ? `<div class="inbox-pending"><img src="${goEsc(goInboxPending)}" alt="Photo ready to send"><span style="font-family:'DM Sans';font-size:12px;color:var(--muted)">Photo ready to send</span><button type="button" class="inbox-pending-x" id="goInboxDropPhoto" aria-label="Remove photo">&times;</button></div>` : ''}
+          <div class="inbox-composer">
+            <button type="button" class="inbox-attach" id="goInboxAttach" title="Attach a photo" aria-label="Attach a photo">&#128247;</button>
+            <input type="file" accept="image/*" id="goInboxFile" hidden>
+            <input type="text" class="inbox-composer-input" id="goInboxInput" placeholder="Message ${goEsc(t.name.split(' ')[0])}\u2026">
+            <button type="button" class="inbox-composer-send" id="goInboxSend" aria-label="Send">&#10148;</button>
+          </div>`
+        : `<div class="inbox-composer-locked">${t.state==='active'
+              ? 'You can message and send photos once you\u2019ve been accepted onto this request.'
+              : 'This request is ' + goEsc(t.state) + ' \u2014 messages stay here, but you can no longer send new ones.'}</div>`;
+
+      body.innerHTML = `
+        <div class="inbox-list">
+          <div class="inbox-list-head">Conversations</div>
+          ${rows}
+        </div>
+        <div class="inbox-convo">
+          <div class="inbox-convo-head">
+            <span class="inbox-convo-photo">${goEsc(t.init)}</span>
+            <span class="inbox-convo-meta">
+              <div class="inbox-convo-name">${goEsc(t.name)}</div>
+              <div class="inbox-convo-req">${goEsc(t.req)} &middot; ${goEsc(t.reqId)}</div>
+            </span>
+          </div>
+          <div class="inbox-thread" id="goInboxThread">${msgs || '<div class="inbox-empty">No messages yet.</div>'}</div>
+          ${composer}
+        </div>`;
+
+      // thread switching
+      body.querySelectorAll('[data-go-thread]').forEach(btn => btn.addEventListener('click', () => {
+        goInboxActive = btn.getAttribute('data-go-thread');
+        goInboxPending = null;
+        const th = GO_INBOX.find(x => x.id === goInboxActive); if(th) th.unread = 0;
+        renderGoInbox(); goInboxBadge();
+      }));
+
+      const thread = document.getElementById('goInboxThread');
+      if(thread) thread.scrollTop = thread.scrollHeight;
+
+      if(canSend){
+        const input = document.getElementById('goInboxInput');
+        const send  = document.getElementById('goInboxSend');
+        const att   = document.getElementById('goInboxAttach');
+        const file  = document.getElementById('goInboxFile');
+        const drop  = document.getElementById('goInboxDropPhoto');
+        const doSend = () => {
+          const text = (input.value || '').trim();
+          if(!text && !goInboxPending) return;              // nothing to send
+          const stamp = new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+          if(goInboxPending){ t.msgs.push({ from:'mine', photo:goInboxPending, time:stamp }); goInboxPending = null; }
+          if(text){ t.msgs.push({ from:'mine', text, time:stamp }); }
+          t.time = stamp;
+          renderGoInbox();
+        };
+        send.addEventListener('click', doSend);
+        input.addEventListener('keydown', e => { if(e.key === 'Enter') doSend(); });
+        if(att && file){
+          att.addEventListener('click', () => file.click());
+          file.addEventListener('change', () => {
+            const fl = file.files && file.files[0]; if(!fl) return;
+            const rd = new FileReader();
+            rd.onload = () => { goInboxPending = rd.result; renderGoInbox(); };
+            rd.readAsDataURL(fl);                            // prototype: inline preview
+          });
+        }
+        if(drop) drop.addEventListener('click', () => { goInboxPending = null; renderGoInbox(); });
+        input.focus();
+      }
+    }
+    goInboxBadge();
     if(burger) burger.addEventListener('click', () => dash.classList.toggle('sidebar-open'));
     if(backdrop) backdrop.addEventListener('click', () => dash.classList.remove('sidebar-open'));
     // Back to main page: leave the dashboard without ending the session
