@@ -2898,7 +2898,12 @@ document.addEventListener('click',function(e){
       +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 lead worker on the job \u00b7 crew of '+REQUESTED+'</div>'
       +'<div class="rd-prog"><div class="rd-prog-bar"><i style="width:'+pct+'%"></i></div><span>'+pct+'%</span></div></div>';
     html+='<button class="rd-live" data-rd="live">\uD83D\uDCE1 View Live Activity</button>';
-    html+='<div class="rd-sec">Your Lead Worker <span class="rd-count">crew of '+REQUESTED+'</span></div>';
+    /* Owner 7/28: keep the original "Your Crew" heading. The COUNT that used to sit
+   here was hired.length, which under the one-lead-worker rule would always read 1
+   and looked like a bug on a multi-worker job — so it goes, but the heading itself
+   stays as it was. Crew size is still shown twice in this panel (the summary line
+   and the payment row), so nothing is lost by dropping it here. */
+html+='<div class="rd-sec">Your Crew</div>';
     hired.forEach(function(w){
       var st=LIVE_STAGES[w.stage||0];
       html+='<div class="rd-card"><div class="rd-row"><span class="rd-av">'+inits(w.name)+'</span>'
