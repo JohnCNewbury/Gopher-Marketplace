@@ -57,7 +57,14 @@
       /\bcash\s?app\b/i, /\bvenmo\b/i, /\bzelle\b/i, /\bpay\s?pal\b/i,
       /\bapple\s?pay\b/i, /\bgoogle\s?pay\b/i, /\bg-?pay\b/i,
       /\bwire\s?transfer\b/i, /\b(bit\s?coin|btc|crypto)\b/i,
-      /\bpay(?:ing)?\s+(?:you|me|in)\s+cash\b/i, /\bcash\s+only\b/i,
+      // The alternation used to take exactly ONE token — (?:you|me|in) — so
+      // "pay in cash" and "pay me cash" matched but "pay me in cash" and
+      // "paying you in cash" did NOT, i.e. the two most natural phrasings of
+      // the thing we're trying to catch walked straight through. Both parts are
+      // now independently optional. Still deliberately does NOT fire on past-
+      // tense narration ("the last customer paid me in cash") — that is "paid",
+      // which never enters this branch. (Fixed 2026-07-28.)
+      /\bpay(?:ing)?\s+(?:(?:you|me)\s+)?(?:in\s+)?cash\b/i, /\bcash\s+only\b/i,
       /\bpay\s+(?:me|you)?\s*direct(?:ly)?\b/i, /\bpay\s+outside\b/i,
       // A bare dollar figure is the precursor to CashApp circumvention
       // (John, 2026-07-02). Price is shown transparently in-app, so there's
