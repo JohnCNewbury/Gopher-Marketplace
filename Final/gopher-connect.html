@@ -17157,7 +17157,20 @@ const PAY_BADGES = {
 
   function renderInbox(){
     const body = document.getElementById('inboxBody');
-    const threads = getThreads();
+    const allThreads = getThreads();
+    /* G40-100 — threads are DERIVED from requests, so deletion is recorded against
+       the thread id and filtered on read; the 90-day purge is evaluated here too. */
+    const D = window.GopherInboxDelete;
+    dashState.inboxDeleted = dashState.inboxDeleted || {};
+    dashState.inboxPurged  = dashState.inboxPurged  || {};
+    dashState.inboxTab     = dashState.inboxTab     || 'inbox';
+    if(D) Object.keys(dashState.inboxDeleted).forEach(id => {
+      if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
+    });
+    const visible     = allThreads.filter(x => !dashState.inboxPurged[x.id]);
+    const liveThreads = visible.filter(x => !dashState.inboxDeleted[x.id]);
+    const delThreads  = visible.filter(x =>  dashState.inboxDeleted[x.id]);
+    const threads     = dashState.inboxTab === 'deleted' ? delThreads : liveThreads;
 
     // The active thread may be a user-started request with NO messages yet
     // (opened via its Message button). It shows in the conversation pane but
@@ -17191,14 +17204,23 @@ const PAY_BADGES = {
     }
 
     if(!threads.length && !activeThread){
-      body.innerHTML = '<div class="inbox-empty">No conversations yet. Messages with your Gophers will appear here.</div>';
+      // Keep the tabs on the empty state — deleting your only conversation must not
+      // strand the user with no way back to Deleted.
+      body.innerHTML = '<div class="inbox-list">' + (D ? D.tabsHTML(dashState.inboxTab, liveThreads.length, delThreads.length) : '')
+        + '<div class="ibx-empty">' + (dashState.inboxTab === 'deleted'
+            ? 'Nothing deleted.<br>Swipe a message left &mdash; or use &times; &mdash; to move it here.'
+            : 'No conversations yet. Messages with your Gophers will appear here.') + '</div></div>'
+        + '<div class="inbox-convo"><div class="ibx-empty">Select a message to read it.</div></div>';
+      if(D) D.bind({ root: body, onTab: n => { dashState.inboxTab = n; dashState.inboxThreadId = null; renderInbox(); } });
       return;
     }
 
     const list = `
       <div class="inbox-list">
-        <div class="inbox-list-head">Conversations</div>
-        ${threads.length ? threads.map(t => `
+        ${D ? D.tabsHTML(dashState.inboxTab, liveThreads.length, delThreads.length) : '<div class="inbox-list-head">Conversations</div>'}
+        ${(dashState.inboxTab === 'deleted' && delThreads.length && D)
+          ? `<div class="ibx-purge-note">Deleted messages are permanently removed after ${D.PURGE_DAYS} days. Deleting from here is immediate and cannot be undone.</div>` : ''}
+        ${threads.length ? threads.map(t => (D ? D.wrapRow(`
           <button class="inbox-row ${t.id===activeId?'active':''}" data-thread="${t.id}">
             <div class="inbox-row-photo">${t.worker.photo?`<img src="${t.worker.photo}" alt="">`:'💬'}</div>
             <div class="inbox-row-main">
@@ -17206,7 +17228,10 @@ const PAY_BADGES = {
               <div class="inbox-row-sub">${t.title}</div>
               <div class="inbox-row-last">${t.last.from==='me'?'You: ':''}${t.last.text || '\u{1F4F7} Photo'}</div>
             </div>
-          </button>`).join('') : '<div class="inbox-list-empty">No conversations yet</div>'}
+          </button>`, t.id, dashState.inboxTab === 'deleted') : '')).join('')
+          : (dashState.inboxTab === 'deleted'
+              ? '<div class="ibx-empty">Nothing deleted.<br>Swipe a message left &mdash; or use &times; &mdash; to move it here.</div>'
+              : '<div class="inbox-list-empty">No conversations yet</div>')}
       </div>
     `;
 
@@ -17254,6 +17279,19 @@ const PAY_BADGES = {
     `;
 
     body.innerHTML = `<div class="inbox-grid">${list}${convo}</div>`;
+
+    // G40-100 wiring — identical semantics to the other three portals.
+    if(D) D.bind({
+      root: body,
+      onTab:   n  => { dashState.inboxTab = n; dashState.inboxThreadId = null; renderInbox(); },
+      onTrash: id => { dashState.inboxDeleted[id] = new Date().toISOString();
+                       if(dashState.inboxThreadId === id) dashState.inboxThreadId = null;
+                       renderInbox(); updateInboxBadge(); },
+      onPurge: id => { delete dashState.inboxDeleted[id];
+                       dashState.inboxPurged[id] = true;   // terminal
+                       if(dashState.inboxThreadId === id) dashState.inboxThreadId = null;
+                       renderInbox(); updateInboxBadge(); }
+    });
 
     body.querySelectorAll('[data-thread]').forEach(b => {
       b.addEventListener('click', () => { dashState.inboxThreadId = b.dataset.thread; renderInbox(); });
