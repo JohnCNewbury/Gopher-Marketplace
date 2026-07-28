@@ -1233,6 +1233,46 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     actually opened.** Connect/Request dashboards must be entered via `__openDashboardGophers()` /
     `openRequestDashboard()`; Go's handlers bind at load.
 
+- **Request hires ONE worker, always — multi-individual is CONNECT-ONLY (owner 7/27, commit
+  `0dbdf41`).** Owner found `Final/gopher-request.html` letting a requester **individually hire
+  >1 worker**. Canon: a Request job needing a crew means selecting **ONE lead worker who is
+  responsible for bringing/paying the rest**. **Matches live production — the live app was NOT
+  changed.**
+  - **Root cause:** Connect has the `laborManagement` radio (`individually` | `one-hires`,
+    default `individually`, 7 refs). **Request has ZERO refs** — yet it set
+    `multiIndividual: needed > 1` unconditionally, so Request silently behaved as Connect's
+    `individually` default whenever >1 worker was requested ("Hire Approved 0 of 3" + a cap that
+    allowed 3 hires).
+  - **Fix:** `multiIndividual` permanently `false` (incl. the seeded 3-worker demo request, which
+    was demonstrating the wrong behavior); **all five** hire-count comparisons (hire-cap,
+    `fullyHired`/section counts, both start-encourage paths, incomplete-crew) now use `1`.
+    **⚠️ `r.workersNeeded` is UNCHANGED and must stay so — it is the CREW SIZE and still drives
+    pricing/totals/labels, not the hire count.** That separation is documented in-code once as
+    **`REQUEST HIRE RULE`**. Step-3 copy de-pluralized; new lead-worker note under "# of workers
+    needed"; hire-cap modal rewritten (it read "you've already approved all 1 worker this request
+    needs" — nonsense on a 3-worker job).
+  - **Canon was NOT clear — corrected in both places** (owner suspected this and was right). The
+    flow doc documented the Connect-only radio but **never stated what Request does** when >1
+    worker, and "default `individually`" invites the wrong reading. Only the *Bids when >1 worker*
+    row implied it ("a single hire responsible for paying the whole crew").
+    **`connect-flows-granular.html`** gained a divergence row **"Individually hiring >1 worker"**
+    (Connect yes / Request never) and the `laborManagement` glossary row now says Request has **no**
+    equivalent and is always `one-hires` — *do not read Request as inheriting the `individually`
+    default*. Both byte-identical copies updated (Master + `Dev-Handoff-FeeModel`), `.bak-20260727`
+    saved. **Capability matrix B14/D14**: "Labor management / multi-worker | —" was ambiguous
+    (readable as "Request can't have multi-worker jobs at all", which is **wrong** — Request CAN set
+    a crew size) → **"Labor management — individually hire >1 worker"** with Customer
+    **"— one lead worker"**; xlsx + both md mirrors + dated A2 note.
+  - Verified in browser: the 3-worker request renders the single-hire path, first hire lands as
+    "Hired 1", second is blocked by the corrected modal, Step 3 stays singular at 1 and 3 workers
+    while the note pluralizes. **`gopher-connect.html` untouched**, still carries `laborManagement`
+    + `multiIndividual`. 17 scripts parse clean, 0 console errors.
+  - **⏳ DEPLOY HELD** at time of writing: `scripts/deploy.sh` preflight blocked on an uncommitted
+    **allowlisted** prototype file (`_prototypes/Request/gopher-request-flow.html`) — the App
+    Prototypes session mirroring this same rule. Not committed by this session and **not** forced
+    with `--allow-dirty` (that is the 2026-07-19 incident the guard exists to prevent). Owner
+    authorized shipping as soon as they commit.
+
 ### Outstanding to-do
 
 - **4 produced hero clips** still wanted for `gopher-connect.html`. **Full production brief:
