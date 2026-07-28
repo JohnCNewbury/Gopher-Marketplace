@@ -2814,7 +2814,9 @@ document.addEventListener('click',function(e){
 
   function renderPending(){
     var hired=by('hired'), interested=sortInterested(by('interested')), considered=by('considered');
-    var perWorker = TOTAL/REQUESTED, adj = perWorker*hired.length;
+    // Canon (connect-flows-granular, "Bids when >1 worker"): the single hire is responsible
+    // for PAYING THE WHOLE CREW, so one payment covers every worker. No pro-rating.
+    var adj = TOTAL;
     var html='';
     // summary
     html+='<div class="rd-sum"><span class="rd-pending">PENDING</span>'
@@ -2823,11 +2825,11 @@ document.addEventListener('click',function(e){
       +'<div class="rd-sum-w">'+(interested.length+considered.length)+' worker'+((interested.length+considered.length)!==1?'s':'')+' interested</div></div>';
     // hire approved
     if(hired.length){
-      html+='<div class="rd-sec">Hire Approved <span class="rd-count">'+hired.length+' of '+REQUESTED+'</span></div>';
+      html+='<div class="rd-sec">Hire Approved <span class="rd-count">Lead worker</span></div>';
       hired.forEach(function(w){ html+=workerRow(w,'hired'); });
-      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">'+hired.length+' worker'+(hired.length!==1?'s':'')+' hired \u00b7 '+REQUESTED+' requested</div>'
-        +'<div class="rd-bank-amt">'+money(adj)+(hired.length<REQUESTED?'<s>'+money(TOTAL)+'</s>':'')+'</div>'
-        +'<div class="rd-bank-sub">Adjusted for '+hired.length+' of '+REQUESTED+' \u2014 you only pay for who you start.</div></div>'
+      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">Lead worker hired \u00b7 crew of '+REQUESTED+'</div>'
+        +'<div class="rd-bank-amt">'+money(adj)+'</div>'
+        +'<div class="rd-bank-sub">You pay your lead worker the full amount \u2014 they bring and pay the rest of the crew.</div></div>'
         +'<button class="rd-start" data-rd="start">Start Job \u2192</button></div>';
     }
     // workers interested
@@ -2863,14 +2865,15 @@ document.addEventListener('click',function(e){
   function allDone(){ var h=by('hired'); return h.length>0 && h.every(function(w){return (w.stage||0)>=LIVE_STAGES.length-1;}); }
 
   function renderActive(){
-    var hired=by('hired'), perWorker=TOTAL/REQUESTED, paid=perWorker*hired.length, done=allDone(), pct=overallPct();
+    // Full amount to the lead — no pro-rating (see REQUEST HIRE RULE in renderPending).
+    var hired=by('hired'), paid=TOTAL, done=allDone(), pct=overallPct();
     var html='<div class="rd-sum">'
       +'<span class="rd-statuspill'+(done?' done':'')+'">'+(done?'COMPLETED':'IN PROGRESS')+'</span>'
       +'<div class="rd-sum-t">'+REQ.icon+' '+REQ.title+' \u00b7 '+REQ.note+'</div>'
-      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 '+hired.length+' Gopher'+(hired.length!==1?'s':'')+' on the job</div>'
+      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 lead worker on the job \u00b7 crew of '+REQUESTED+'</div>'
       +'<div class="rd-prog"><div class="rd-prog-bar"><i style="width:'+pct+'%"></i></div><span>'+pct+'%</span></div></div>';
     html+='<button class="rd-live" data-rd="live">\uD83D\uDCE1 View Live Activity</button>';
-    html+='<div class="rd-sec">Your Crew <span class="rd-count">'+hired.length+'</span></div>';
+    html+='<div class="rd-sec">Your Lead Worker <span class="rd-count">crew of '+REQUESTED+'</span></div>';
     hired.forEach(function(w){
       var st=LIVE_STAGES[w.stage||0];
       html+='<div class="rd-card"><div class="rd-row"><span class="rd-av">'+inits(w.name)+'</span>'
@@ -2998,7 +3001,11 @@ document.addEventListener('click',function(e){
     if(act==='advanceto'){ var aw=workers.find(function(x){return x.id===id;}); var si=parseInt(el.dataset.si,10); if(aw && si>(aw.stage||0)){ aw.stage=si; render(); } return; }
     if(!w){ if(act==='profile') toast('Opening profile\u2026'); else if(act==='text') toast('Opening chat\u2026'); return; }
     if(act==='hire'){
-      if(by('hired').length>=REQUESTED){ toast('You\u2019ve hired all '+REQUESTED+' \u2014 remove one to swap.'); return; }
+      // REQUEST HIRE RULE (owner 7/27): Request hires exactly ONE worker no matter what
+      // REQUESTED says. The hire is the LEAD, responsible for bringing AND paying the rest.
+      // Individually hiring >1 is CONNECT-only (laborManagement 'individually'). REQUESTED
+      // stays as crew size and drives labels/pricing only.
+      if(by('hired').length>=1){ toast('You hire one worker \u2014 remove them to pick someone else.'); return; }
       w.state='hired'; w.just=false; toast('Hired '+w.name);
     }
     else if(act==='consider'){ w.state='considered'; w.just=false; toast('Moved '+w.name+' to Considered'); }
@@ -3010,24 +3017,19 @@ document.addEventListener('click',function(e){
   });
   // ---- Start-Job confirmation modals (mirror web pop-ups, fitted to phone) ----
   function closeModal(){ modal.classList.remove('open'); modal.innerHTML=''; }
-  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast('Job started with '+n+' Gopher'+(n!==1?'s':'')+' \u2014 great pick!'); }
-  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="#E0A100" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.7 20h18.6L12 4z"/><line x1="12" y1="10" x2="12" y2="14.2"/><circle cx="12" cy="17.4" r=".5" fill="#E0A100" stroke="none"/></svg>';
+  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast(n?'Job started with your lead worker \u2014 great pick!':'Job started'); }
   function showStartConfirm(){
-    var hired=by('hired').length;
-    if(hired>=REQUESTED){
-      modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
-        +'<div class="rdm-ic go">\uD83D\uDE80</div>'
-        +'<h3 class="rdm-h">All workers needed have been selected!</h3>'
-        +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your workers and track the progress by tapping View Live Activity in the Request Details section.</p>'
-        +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Start Job</button></div></div>';
-    } else {
-      modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
-        +'<div class="rdm-ic warn">'+WARN_SVG+'</div>'
-        +'<h3 class="rdm-h">Heads up \u2014 your crew isn\u2019t full</h3>'
-        +'<p class="rdm-p">You\u2019ve hired <b>'+hired+' of '+REQUESTED+'</b> requested workers. You can absolutely start now if you\u2019re on a timeline, but <b>any workers you haven\u2019t hired yet will be lost</b> once you start \u2014 including any communication with them.</p>'
-        +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Yes, start anyway</button>'
-        +'<button class="rdm-btn ghost" data-rdm="close">\u2190 Go back</button></div></div>';
-    }
+    // REQUEST HIRE RULE (owner 7/28): "1 worker accepted on ALL requests is max with every
+    // request" — so starting early is MOOT in Request. There is no partial-crew state to warn
+    // about: the Start Job button only renders inside `if(hired.length)`, so this can never be
+    // reached with nobody hired. The old two-branch modal (full crew vs "your crew isn't full,
+    // start anyway and lose the others") was Connect's model; that second branch is now
+    // unreachable and is deleted rather than reworded.
+    modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
+      +'<div class="rdm-ic go">\uD83D\uDE80</div>'
+      +'<h3 class="rdm-h">Your lead worker is selected!</h3>'
+      +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your lead worker and track the progress by tapping View Live Activity in the Request Details section.</p>'
+      +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Start Job</button></div></div>';
     modal.classList.add('open');
   }
   modal.addEventListener('click',function(e){
