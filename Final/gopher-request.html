@@ -3730,6 +3730,13 @@
     color:var(--green-dark); text-transform:uppercase; letter-spacing:0.6px;
     margin-bottom:4px;
   }
+  /* Lead-worker note under "# of workers needed" — Request hires ONE worker who brings
+     the rest (individually selecting >1 is Connect-only). See REQUEST HIRE RULE. */
+  .sub-field .sf-note {
+    font-family:'DM Sans',sans-serif; font-size:11.5px; line-height:1.45;
+    color:var(--muted); margin-top:8px;
+  }
+  .sub-field .sf-note b { color:var(--navy); font-weight:700; }
   .sub-field .sf-value {
     font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text);
   }
@@ -13131,6 +13138,7 @@
               </div>
               <span style="font-family:'DM Sans';font-size:12px;color:var(--muted);">workers</span>
             </div>
+             <div class="sf-note">You&rsquo;ll select <b>one</b> worker &mdash; they&rsquo;re responsible for bringing the additional worker${state.numWorkers>2?'s':''}.</div>
           </div>
         ` : ''}
         <div class="toggle-row">
@@ -13164,7 +13172,7 @@
           </div>
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">I'll select my ${state.moreThanOneWorker ? 'workers' : 'worker'} — review ratings, reviews and job history before selecting</span>
+            <span class="rr-label">I'll select my worker — review ratings, reviews and job history before selecting</span>
           </div>
           ${myUnlocked ? `
           <div class="radio-row ${state.workerSelection==='my'?'selected':''}" data-radio="workerSelection" data-val="my">
@@ -16655,8 +16663,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="hireCapTitle">
     <button type="button" class="gr-modal-close" id="hireCapClose" aria-label="Close">×</button>
     <div class="gr-modal-icon">⚠️</div>
-    <h4 id="hireCapTitle">All worker slots are filled</h4>
-    <p class="gr-modal-sub" id="hireCapBody">You've already approved the number of workers this request needs. To hire someone else, remove a hired Gopher first to free up a slot.</p>
+    <h4 id="hireCapTitle">You've already selected your worker</h4>
+    <p class="gr-modal-sub" id="hireCapBody">You hire one worker per request. If your job needs a crew, the worker you select is responsible for bringing the additional workers. To choose someone else, remove your selected Gopher first.</p>
     <button type="button" class="gr-modal-btn" id="hireCapOk">Got it</button>
   </div>
 </div>
@@ -19518,7 +19526,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       {
         id:'GR-00123', icon:'👷', title:'Crew of 3 to unload pavers — 2 hrs',
         status:'pending', statusLabel:'Pending', needsAttention:true, userCreated:false,
-        scheduledForLater:false, workersNeeded:3, perWorkerCost:120, multiIndividual:true,
+        scheduledForLater:false, workersNeeded:3, perWorkerCost:120, multiIndividual:false,
         worker:'6 workers interested', amount:'$360.00 total',
         when:'Today, 2:00 PM · awaiting your selection',
         interestedWorkers:[
@@ -19908,7 +19916,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       serviceElevatorDest: !!data.serviceElevatorDest,
       workersNeeded: needed,
       perWorkerCost: data.perWorkerCost || 0,
-      multiIndividual: needed > 1,
+      multiIndividual: false,   // ALWAYS false in Request — see REQUEST HIRE RULE (Connect-only feature)
       worker: `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
       amount: data.amountLabel || '',  // "$<total> total"
       when: data.when || 'Just now · awaiting your selection',
@@ -19963,9 +19971,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // ── Hire-cap modal (can't hire more than the request needs) ──
   function showHireCapModal(needed){
     const overlay = document.getElementById('hireCapOverlay');
-    const body    = document.getElementById('hireCapBody');
     if(!overlay) return;
-    if(body) body.textContent = `You've already approved all ${needed} worker${needed!==1?'s':''} this request needs. To hire someone else, remove a hired Gopher first to free up a slot.`;
+    // Copy is static in the markup — REQUEST HIRE RULE means this is always "one worker",
+    // so there is no count to interpolate. `needed` is kept for signature compatibility.
     overlay.hidden = false;
   }
   (function initHireCapModal(){
@@ -20913,7 +20921,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const interested = r.interestedWorkers.filter(w => w.status === 'interested' || !w.status);
       const hired      = r.interestedWorkers.filter(w => w.status === 'hired');
       const considered = r.interestedWorkers.filter(w => w.status === 'considered');
-      const needed     = r.workersNeeded || 1;
+      /* REQUEST HIRE RULE — Request hires exactly ONE worker, always. Individually selecting >1 worker is a CONNECT-ONLY capability (Connect's laborManagement radio: 'individually' | 'one-hires'). In Request the requester picks ONE lead worker who is responsible for bringing the rest. r.workersNeeded stays the CREW SIZE and still drives pricing/labels. Canon: owner 2026-07-27; matches live production. */
+      const needed     = 1;
 
       const section = (title, count, items, extraClass='') => items.length ? `
         <div class="wsection ${extraClass}">
@@ -21248,7 +21257,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           if(isNaN(i) || !list || !list[i]) return;
           if(act === 'hire' || act === 'approve'){
             const hiredCount = list.filter(w => w.status === 'hired').length;
-            const needed = r.workersNeeded || 1;
+            const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
             if(hiredCount >= needed){ showHireCapModal(needed); return; }
           }
           if(act === 'hire')          { list[i].status = 'hired'; list[i].justAccepted = false; }
@@ -21270,7 +21279,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           renderRequestDetail();
           renderActiveRequests();
           if(act === 'hire' || act === 'approve'){
-            const needed = r.workersNeeded || 1;
+            const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
             const hiredNow = list.filter(w => w.status === 'hired').length;
             if(hiredNow === needed){ showStartEncourageModal(r, needed); }
           }
@@ -21365,7 +21374,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         if(startBtn){
           const r = getR();
           if(!r) return;
-          const needed = r.workersNeeded || 1;
+          const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
           const hiredCount = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
           if(hiredCount === 0) return;
           if(hiredCount < needed){
@@ -21818,7 +21827,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     renderActiveRequests();          // dashboard summary card reflects the counter price
     renderRequestDetail();
     // Same post-hire behavior as the Hire button: encourage Start once the crew is full.
-    const needed = r.workersNeeded || 1;
+    const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
     const hiredNow = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
     if(hiredNow >= needed && typeof showStartEncourageModal === 'function'){ showStartEncourageModal(r, needed); }
   }
