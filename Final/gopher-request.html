@@ -5,6 +5,20 @@
   Canonical file: gopher-request_LATEST.html  (always overwrite this one)
 ------------------------------------------------------------------------------
   CHANGELOG (newest first)
+  v122 2026-07-27  REQUEST HIRE RULE — Request hires exactly ONE worker, always.
+                   Individually hiring >1 is CONNECT-ONLY (Connect's
+                   laborManagement 'individually'|'one-hires'); here the requester
+                   picks one LEAD worker who brings and is paid for the rest.
+                   multiIndividual forced false (incl. the seeded 3-worker demo);
+                   all five hire-count comparisons use 1, NOT workersNeeded —
+                   workersNeeded stays the CREW SIZE and still drives pricing and
+                   labels; step-3 copy de-pluralized + lead-worker note added;
+                   hire-cap modal rewritten. Owner 7/27, matches live production.
+                   ⟳ 7/28: the §8c incomplete-crew modal (v107) was DELETED, not
+                   just left unreachable — owner: "Hiring early is moot on request.
+                   1 worker accepted on ALL requests is max." The v107/v106 entries
+                   below are kept as history; the feature is gone. Mirrors the same
+                   removal in _prototypes/Request/gopher-request-home.html.
   v121 2026-07-18  Step-1 category tiles — removed the uppercase pill tag
                    (.ct-tag, e.g. ERRAND/HAULING) overlaying each photo: owner
                    call, redundant with the category name in the tile footer.
@@ -20027,58 +20041,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
   })();
 
-  // ── Incomplete-crew modal (Post-Submitted spec §8c) ─────────────────────
-  // Fires when the user taps Start job before the requested headcount is full.
-  // Verbatim copy from the master spec:
-  //   Title:     "Heads up — your crew isn't full"
-  //   Body:      "You've hired N of M requested workers. You can absolutely
-  //               start now if you're on a timeline, but any workers you
-  //               haven't hired yet will be lost once you start — including
-  //               any communication with them."
-  //   Primary:   "Yes, start anyway" → calls startJob(r)
-  //   Secondary: "← Go back" → closes modal, no state change
-  let _incompleteCrewReq = null;
-  function showIncompleteCrewModal(r, hiredCount, needed){
-    let overlay = document.getElementById('incCrewOverlay');
-    if(!overlay){
-      // Build the modal markup lazily on first use; reuses .gr-modal styling.
-      const wrap = document.createElement('div');
-      wrap.innerHTML = `
-        <div class="gr-modal-overlay" id="incCrewOverlay" hidden>
-          <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="incCrewTitle">
-            <button class="gr-modal-close" id="incCrewClose" aria-label="Close">&times;</button>
-            <div class="gr-modal-icon">⚠️</div>
-            <h4 id="incCrewTitle">Heads up &mdash; your crew isn't full</h4>
-            <p class="gr-modal-sub" id="incCrewBody">You've hired <b id="incCrewN">0</b> of <b id="incCrewM">0</b> requested workers. You can absolutely start now if you're on a timeline, but <b>any workers you haven't hired yet will be lost</b> once you start &mdash; including any communication with them.</p>
-            <div class="gr-modal-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button type="button" class="gr-modal-btn" id="incCrewStart" style="flex:1;">Yes, start anyway</button>
-              <button type="button" class="gr-modal-btn-secondary" id="incCrewBack" style="flex:1;background:transparent;border:1.5px solid #d4d8e3;color:var(--navy);">&larr; Go back</button>
-            </div>
-          </div>
-        </div>`;
-      document.body.appendChild(wrap.firstElementChild);
-      overlay = document.getElementById('incCrewOverlay');
-      const close = () => { overlay.hidden = true; _incompleteCrewReq = null; };
-      const x     = document.getElementById('incCrewClose');
-      const back  = document.getElementById('incCrewBack');
-      const start = document.getElementById('incCrewStart');
-      if(x)    x.addEventListener('click', close);
-      if(back) back.addEventListener('click', close);
-      if(start) start.addEventListener('click', () => {
-        const req = _incompleteCrewReq;
-        close();
-        if(req) startJob(req);
-      });
-      overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
-      document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
-    }
-    _incompleteCrewReq = r;
-    const nEl = document.getElementById('incCrewN');
-    const mEl = document.getElementById('incCrewM');
-    if(nEl) nEl.textContent = String(hiredCount);
-    if(mEl) mEl.textContent = String(needed);
-    overlay.hidden = false;
-  }
+  // ── Incomplete-crew modal (Post-Submitted spec §8c) — REMOVED 2026-07-28 ──────
+  // Retired by owner ruling: "Hiring early is moot on request. 1 worker accepted on
+  // ALL requests is max with every request." With REQUEST HIRE RULE (one lead worker)
+  // the "crew isn't full" state cannot occur, so showIncompleteCrewModal and its
+  // lazily-built #incCrewOverlay markup were deleted rather than left unreachable —
+  // stale scaffolding in a handoff blueprint is what produced the multiIndividual bug.
+  // Matches _prototypes/Request/gopher-request-home.html (ca76e7d).
 
   // ── "Cancel this request?" confirmation modal ──
   // Two open modes (overloaded per Post-Submitted spec §4):
@@ -21374,14 +21343,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         if(startBtn){
           const r = getR();
           if(!r) return;
-          const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
+          // REQUEST HIRE RULE: one lead worker is the max, so there is no "crew isn't
+          // full" state to warn about — hired at all means ready to start.
           const hiredCount = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
           if(hiredCount === 0) return;
-          if(hiredCount < needed){
-            showIncompleteCrewModal(r, hiredCount, needed);
-          } else {
-            startJob(r);
-          }
+          startJob(r);
           return;
         }
       });
