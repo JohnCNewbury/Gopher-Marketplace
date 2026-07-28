@@ -5450,6 +5450,9 @@
   var GOPHER_CONTACT = { name:'Gopher, Inc.', sub:'Official Gopher Support \u00b7 typically replies within 1 business day' };
   var INBOX_THREAD = null;        // lazily seeded on first open (needs OWNER/ACCOUNT)
   var inboxPendingPhoto = null;   // staged photo awaiting send (G40-216)
+  var inboxTab = 'inbox';         // 'inbox' | 'deleted'  (G40-100)
+  var inboxDeletedAt = null;      // the support thread's deletedAt stamp, if trashed
+  var inboxPurged = false;        // permanently deleted — the row must NOT come back
   var inboxAutoAcked = false;
   function inboxNow(){ return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
   function seedInbox(){
@@ -5465,16 +5468,25 @@
   function renderDealsInbox(){
     seedInbox();
     var body = $('inboxBody'); if(!body) return;
-    var last = INBOX_THREAD[INBOX_THREAD.length-1];
+    // After a permanent delete the thread is empty. seedInbox() early-returns on a
+    // truthy [], so `last` would be undefined and every read below it would throw —
+    // freezing the re-render on stale DOM (the same failure the photo preview had).
+    var last = INBOX_THREAD[INBOX_THREAD.length-1] || { from:'them', text:'', time:'' };
     // A photo message has no .text — reading it unguarded threw here and froze the
     // whole re-render (the push had already happened, so the thread silently fell
     // one message behind the DOM). Photo rows preview as a label instead.
     var lastPrev = (last.from==='me'?'You: ':'') + (last.text
       ? last.text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()
       : '\uD83D\uDCF7 Photo');
-    var list = ''
-      + '<div class="inbox-list">'
-      +   '<div class="inbox-list-head">Messages</div>'
+    /* G40-100 — this portal has ONE canonical support thread rather than a list, so
+       the deletable unit is that row. Purge is evaluated on read, same as elsewhere. */
+    var D = window.GopherInboxDelete;
+    if(D && inboxDeletedAt && D.isPurged(inboxDeletedAt)) inboxDeletedAt = null;   // 90 days up
+    var isDeleted = !!inboxDeletedAt;
+    // Purged is terminal: clearing deletedAt alone would hand the row back to the
+    // Inbox, which is the opposite of a permanent delete.
+    var showRow   = inboxPurged ? false : ((inboxTab === 'deleted') ? isDeleted : !isDeleted);
+    var rowHTML = ''
       +   '<button class="inbox-row active" type="button">'
       +     inboxAvatar('row-photo')
       +     '<div class="inbox-row-main">'
@@ -5482,7 +5494,17 @@
       +       '<div class="inbox-row-sub">Gopher Support</div>'
       +       '<div class="inbox-row-last">'+lastPrev+'</div>'
       +     '</div>'
-      +   '</button>'
+      +   '</button>';
+    var list = ''
+      + '<div class="inbox-list">'
+      +   (D ? D.tabsHTML(inboxTab, (inboxPurged||isDeleted)?0:1, (!inboxPurged&&isDeleted)?1:0) : '<div class="inbox-list-head">Messages</div>')
+      +   ((inboxTab==='deleted' && isDeleted && D)
+            ? '<div class="ibx-purge-note">Deleted messages are permanently removed after '+D.PURGE_DAYS+' days. Deleting from here is immediate and cannot be undone.</div>' : '')
+      +   (showRow
+            ? (D ? D.wrapRow(rowHTML, 'deals-support', inboxTab==='deleted') : rowHTML)
+            : (inboxTab==='deleted'
+                ? '<div class="ibx-empty">Nothing deleted.<br>Swipe the message left &mdash; or use &times; &mdash; to move it here.</div>'
+                : '<div class="ibx-empty">Your inbox is empty.</div>'))
       + '</div>';
     var thread = INBOX_THREAD.map(function(m){
       return '<div class="inbox-msg '+(m.from==='me'?'mine':'theirs')+'">'
@@ -5509,7 +5531,15 @@
       +     '<button class="inbox-composer-send" id="inboxComposerSend" aria-label="Send message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
       +   '</div>'
       + '</div>';
-    body.innerHTML = '<div class="inbox-grid">'+list+convo+'</div>';
+    // Viewing Deleted shows the thread read-only — there is no replying to a
+    // message you have thrown away, and no restore affordance exists by design.
+    body.innerHTML = '<div class="inbox-grid">'+list+(inboxTab==='deleted' ? '<div class="inbox-convo"><div class="ibx-empty">This message is in Deleted.<br>Deleting it here is permanent.</div></div>' : convo)+'</div>';
+    if(D) D.bind({
+      root: body,
+      onTab:   function(n){ inboxTab = n; renderDealsInbox(); },
+      onTrash: function(){ inboxDeletedAt = new Date().toISOString(); renderDealsInbox(); },
+      onPurge: function(){ INBOX_THREAD = []; inboxDeletedAt = null; inboxPurged = true; inboxTab = 'inbox'; inboxAutoAcked = true; renderDealsInbox(); }
+    });
     var badge = document.querySelector('.dash-nav-item[data-section="inbox"] .dni-badge');
     if(badge) badge.style.display='none';
     var input=$('inboxComposerInput'), sendBtn=$('inboxComposerSend');
