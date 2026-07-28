@@ -19,6 +19,7 @@
   <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
 
 <link rel="stylesheet" href="assets/css/gopher-fonts.css">
+<link rel="stylesheet" href="assets/css/gopher-inbox-delete.css">
 <!-- Gopher Banner Notification template: branded push banners.
      Gopher Go banners carry the "GO" mark. Component API: window.GopherBanner.
      Trigger-wiring is left to the production rebuild (see Final/CLAUDE.md). -->
@@ -3325,20 +3326,30 @@
     ];
     let goInboxActive = GO_INBOX[0].id;
     let goInboxPending = null;          // staged photo (data URL) awaiting send
+    let goInboxTab = 'inbox';           // 'inbox' | 'deleted'  (G40-100)
 
     const goEsc = v => String(v == null ? '' : v).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
     function goInboxBadge(){
       const b = document.getElementById('goInboxBadge'); if(!b) return;
-      const n = GO_INBOX.reduce((a,t) => a + (t.unread || 0), 0);
+      const n = GO_INBOX.reduce((a,t) => a + (t.deletedAt ? 0 : (t.unread || 0)), 0);
       b.textContent = n; b.hidden = !n;
     }
 
     function renderGoInbox(){
       const body = document.getElementById('goInboxBody'); if(!body) return;
-      const t = GO_INBOX.find(x => x.id === goInboxActive) || GO_INBOX[0];
-      const rows = GO_INBOX.map(x => `
-        <button type="button" class="inbox-row${x.id===t.id?' active':''}" data-go-thread="${x.id}">
+      const D = window.GopherInboxDelete;
+      // G40-100 read-time rules: admin-expiry auto-move first, then drop anything
+      // that has sat in Deleted past the 90-day purge. Both are evaluated here
+      // because a prototype has no job runner — production moves them server-side.
+      if(D){ GO_INBOX.forEach(x => D.applyAdminExpiry(x)); }
+      const live    = GO_INBOX.filter(x => !x.deletedAt);
+      const deleted = D ? GO_INBOX.filter(x => x.deletedAt && !D.isPurged(x.deletedAt)) : [];
+      const shown   = goInboxTab === 'deleted' ? deleted : live;
+      if(!shown.some(x => x.id === goInboxActive)) goInboxActive = shown.length ? shown[0].id : null;
+      const t = shown.find(x => x.id === goInboxActive) || shown[0] || null;
+      const rows = shown.map(x => (D ? D.wrapRow(`
+        <button type="button" class="inbox-row${t&&x.id===t.id?' active':''}" data-go-thread="${x.id}">
           <span class="inbox-row-photo">${goEsc(x.init)}</span>
           <span class="inbox-row-main">
             <span class="inbox-row-top">
@@ -3348,9 +3359,9 @@
             <span class="inbox-row-sub">${goEsc(x.req)}</span>
             <span class="inbox-row-last">${goEsc((x.msgs[x.msgs.length-1]||{}).text || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
           </span>
-        </button>`).join('');
+        </button>`, x.id, goInboxTab === 'deleted') : '')).join('');
 
-      const msgs = t.msgs.map(m => `
+      const msgs = (t ? t.msgs : []).map(m => `
         <div class="inbox-msg ${m.from==='mine'?'mine':'theirs'}">
           ${m.photo ? `<img class="inbox-photo" src="${goEsc(m.photo)}" alt="Photo attachment">`
                     : `<div class="inbox-bubble">${goEsc(m.text)}</div>`}
@@ -3358,7 +3369,7 @@
         </div>`).join('');
 
       // The gate: accepted AND still active.
-      const canSend = !!t.accepted && t.state === 'active';
+      const canSend = !!t && !!t.accepted && t.state === 'active' && goInboxTab !== 'deleted';
       const composer = canSend ? `
           ${goInboxPending ? `<div class="inbox-pending"><img src="${goEsc(goInboxPending)}" alt="Photo ready to send"><span style="font-family:'DM Sans';font-size:12px;color:var(--muted)">Photo ready to send</span><button type="button" class="inbox-pending-x" id="goInboxDropPhoto" aria-label="Remove photo">&times;</button></div>` : ''}
           <div class="inbox-composer">
@@ -3367,16 +3378,24 @@
             <input type="text" class="inbox-composer-input" id="goInboxInput" placeholder="Message ${goEsc(t.name.split(' ')[0])}\u2026">
             <button type="button" class="inbox-composer-send" id="goInboxSend" aria-label="Send">&#10148;</button>
           </div>`
-        : `<div class="inbox-composer-locked">${t.state==='active'
+        : `<div class="inbox-composer-locked">${!t ? '' : t.state==='active'
               ? 'You can message and send photos once you\u2019ve been accepted onto this request.'
               : 'This request is ' + goEsc(t.state) + ' \u2014 messages stay here, but you can no longer send new ones.'}</div>`;
 
+      const purgeNote = (goInboxTab === 'deleted' && deleted.length)
+        ? `<div class="ibx-purge-note">Deleted messages are permanently removed after ${D ? D.PURGE_DAYS : 90} days. Deleting from here is immediate and cannot be undone.</div>` : '';
+      const listEmpty = goInboxTab === 'deleted'
+        ? '<div class="ibx-empty">Nothing deleted.<br>Swipe a message left &mdash; or use &times; &mdash; to move it here.</div>'
+        : '<div class="ibx-empty">Your inbox is empty.</div>';
+
       body.innerHTML = `
         <div class="inbox-list">
-          <div class="inbox-list-head">Conversations</div>
-          ${rows}
+          ${D ? D.tabsHTML(goInboxTab, live.length, deleted.length) : '<div class="inbox-list-head">Conversations</div>'}
+          ${purgeNote}
+          ${rows || listEmpty}
         </div>
         <div class="inbox-convo">
+          ${t ? `
           <div class="inbox-convo-head">
             <span class="inbox-convo-photo">${goEsc(t.init)}</span>
             <span class="inbox-convo-meta">
@@ -3385,8 +3404,18 @@
             </span>
           </div>
           <div class="inbox-thread" id="goInboxThread">${msgs || '<div class="inbox-empty">No messages yet.</div>'}</div>
-          ${composer}
+          ${composer}` : '<div class="inbox-empty">Select a message to read it.</div>'}
         </div>`;
+
+      // G40-100 wiring. Trash = Inbox -> Deleted (stamp deletedAt, which starts the
+      // 90-day clock). Purge = permanent, and only ever reached through the shared
+      // confirm, so the copy is identical on all four portals.
+      if(D) D.bind({
+        root: body,
+        onTab:   name => { goInboxTab = name; renderGoInbox(); },
+        onTrash: id => { const x = GO_INBOX.find(g => g.id === id); if(x){ x.deletedAt = new Date().toISOString(); x.unread = 0; } renderGoInbox(); goInboxBadge(); },
+        onPurge: id => { const i = GO_INBOX.findIndex(g => g.id === id); if(i > -1) GO_INBOX.splice(i, 1); renderGoInbox(); goInboxBadge(); }
+      });
 
       // thread switching
       body.querySelectorAll('[data-go-thread]').forEach(btn => btn.addEventListener('click', () => {
@@ -4407,5 +4436,6 @@
 })();
 </script>
 
+<script src="assets/js/gopher-inbox-delete.js"></script>
 </body>
 </html>

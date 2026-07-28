@@ -370,6 +370,13 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rh-tabs{margin:0 20px 12px;display:flex;background:#fff;border:1px solid #e7e2d3;border-radius:13px;padding:4px;gap:4px;}
   .rh-tab{flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#6B7280;cursor:pointer;}
   .rh-tab.on{background:#03143A;color:#fff;}
+  /* Owner 2026-07-28: Completed and Cancelled are two OUTCOMES of a job; a payout
+     issue is a money problem that cuts across them. The gap is the point. The tabs
+     are flex:1 in a 390px frame, so the gap is taken out of the shared width rather
+     than widening the row (the web build widens .rh-tabs 320->370 because it is not
+     frame-bound); font-size drops a touch so three labels still fit unwrapped. */
+  .rh-tab-sep{margin-left:14px;}
+  .rh-tabs.three .rh-tab{font-size:11.5px;padding:9px 2px;}
   .rh-search{margin:0 20px 14px;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e7e2d3;border-radius:12px;padding:0 13px;color:#6B7280;}
   .rh-search svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
   .rh-search input{flex:1;border:none;outline:none;background:none;padding:11px 0;font-size:12.5px;font-family:'Nunito';font-weight:600;color:#002461;}
@@ -382,6 +389,13 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rh-chip{font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.2px;padding:4px 9px;border-radius:99px;white-space:nowrap;background:#E8F5EE;color:#1CB061;border:1px solid #bfe6cf;}
   .rh-chip.cancel{background:#FBE7E7;color:#C44257;border-color:#F0C9C9;}
   .rh-chip.exp{background:#EFEDE6;color:#8C8675;border-color:#E2DDCF;}
+  /* Payout issue reads as "money held", not "job failed" — amber, not the cancel red. */
+  .rh-chip.payout{background:#FDF3E0;color:#9A6B00;border-color:#F2DFB8;}
+  /* The lump-sum note. Renders on the Payout issue tab only, above the rows. */
+  .rh-lump{display:flex;gap:10px;align-items:flex-start;background:#FDF3E0;border:1px solid #F2DFB8;border-radius:14px;padding:12px 13px;margin-bottom:13px;}
+  .rh-lump-ic{flex:0 0 auto;font-size:15px;line-height:1.2;}
+  .rh-lump-tx{font-family:'Nunito';font-weight:600;font-size:11.5px;line-height:1.45;color:#6B4E00;}
+  .rh-lump-tx b{font-weight:900;color:#5A4200;}
   .rh-meta{font-family:'Nunito';font-weight:700;font-size:11px;color:#6B7280;margin-top:8px;}
   .rh-meta b{color:#3A4D74;}
   .rh-jsub{font-size:12px;color:#6B7280;margin-top:5px;line-height:1.4;}
@@ -2068,7 +2082,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 "request-history":{ html:`<div class="frame">${SBAR}<div class="rhr">
   <div class="rh-top"><span class="rh-bk js-back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></span><h1>Previous requests</h1></div>
   <div class="rh-summ">Your finished &amp; past jobs &middot; paid out to your account</div>
-  <div class="rh-tabs"><div class="rh-tab on" data-st="completed">Completed</div><div class="rh-tab" data-st="cancelled">Cancelled</div></div>
+  <div class="rh-tabs three"><div class="rh-tab on" data-st="completed">Completed</div><div class="rh-tab" data-st="cancelled">Cancelled</div><div class="rh-tab rh-tab-sep" data-st="payout">Payout issue</div></div>
   <div class="rh-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input class="rh-qin" placeholder="Search your history"></div>
   <div class="rh-list" id="rh-list"></div>
 </div></div>`,
@@ -2129,10 +2143,31 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         {t:'11:47 AM', e:'Payout completed \u00b7 $65.00'}
       ]},
       {st:'cancelled',ic:'junk',cat:'Junk removal', id:'#20761', date:'Feb 27', who:'M. Ortiz', sub:'Cancelled by requester before you started', none:'No earnings', resolve:'Cancelled before work began \u2014 no impact to your rating or standing.', cta:'View details'},
-      {st:'cancelled',ic:'errand',cat:'Multi-stop errand', id:'#20640', date:'Feb 12', who:'D. Wells', sub:'You cancelled \u2014 schedule conflict', none:'No earnings', resolve:'Cancelled within the grace window \u2014 no fee applied.', cta:'View details'}
+      {st:'cancelled',ic:'errand',cat:'Multi-stop errand', id:'#20640', date:'Feb 12', who:'D. Wells', sub:'You cancelled \u2014 schedule conflict', none:'No earnings', resolve:'Cancelled within the grace window \u2014 no fee applied.', cta:'View details'},
+      /* Payout issue \u2014 THREE rows on purpose. One row cannot show the thing the
+         owner wanted a worker to understand: that several stuck jobs share ONE
+         cause and settle as ONE deposit. These are COMPLETED jobs that earned
+         money; the work is fine, the money is held. Same cause across all three. */
+      {st:'payout',ic:'box',   cat:'Grocery delivery',  id:'#21440', date:'Mar 9', who:'K. Alvarez', sub:'Completed \u00b7 payout could not be deposited', pay:'$38.50',  split:'Set pay \u00b7 earned, awaiting deposit', resolve:'Your payout account needs attention \u2014 update it and this pays out with the others.', cta:'Fix payout account'},
+      {st:'payout',ic:'errand',cat:'Pharmacy pickup',   id:'#21402', date:'Mar 8', who:'R. Nguyen',  sub:'Completed \u00b7 payout could not be deposited', pay:'$22.00',  split:'Set pay \u00b7 earned, awaiting deposit', resolve:'Same payout issue as the others \u2014 one fix clears them all.', cta:'Fix payout account'},
+      {st:'payout',ic:'junk',  cat:'Garage cleanout',   id:'#21365', date:'Mar 6', who:'T. Boyd',    sub:'Completed \u00b7 payout could not be deposited', pay:'$140.00', split:'Bid accepted \u00b7 earned, awaiting deposit', resolve:'Same payout issue as the others \u2014 one fix clears them all.', cta:'Fix payout account'}
     ]);
     let tab='completed', q='';
-    const CHIP={completed:['','Completed'],cancelled:['cancel','Cancelled']};
+    const CHIP={completed:['','Completed'],cancelled:['cancel','Cancelled'],payout:['payout','Payout issue']};
+    /* ── The lump-sum truth (owner 2026-07-28) ──────────────────────────────────
+       A worker looking at several failed rows assumes several separate fixes AND
+       several separate deposits. Both are wrong: one fix clears them all and they
+       pay out TOGETHER as a single deposit.
+       SOURCE OF TRUTH, recorded so nobody later "corrects" this as an over-promise:
+       that is how Stripe behaves — it retries payouts daily for every job carrying
+       a balance. Stripe is deliberately NOT named in worker-facing copy; the worker
+       needs the behaviour, not the processor.
+       NO PAYOUT LOGIC LIVES HERE — this is an explanation of how payouts already
+       behave. Payments stay fenced. ── */
+    const LUMP_NOTE='<div class="rh-lump"><span class="rh-lump-ic">💰</span><span class="rh-lump-tx">'
+      +'<b>One fix pays all of these.</b> Every request below is waiting on the same payout issue. '
+      +'Once it’s resolved they pay out together as a <b>single deposit</b> — not one at a time. '
+      +'We retry payouts daily for any job still carrying a balance.</span></div>';
     function row(j,idx){
       const c=CHIP[j.st];
       const who=(j.who==='Offer')?'Offer':'Requester <b>'+j.who+'</b>';
@@ -2150,7 +2185,10 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const ql=q.trim().toLowerCase();
       const rows=HISTORY.map((j,i)=>[j,i]).filter(([j])=>j.st===tab && (!ql || (j.cat+' '+j.who+' '+j.sub+' '+j.id).toLowerCase().indexOf(ql)>=0));
       const list=r.querySelector('#rh-list');
-      list.innerHTML = rows.length ? rows.map(([j,i])=>row(j,i)).join('')
+      // The lump-sum note leads the Payout issue tab, and only when there is
+      // something for it to explain \u2014 on an empty tab it would be noise.
+      const lump=(tab==='payout' && rows.length) ? LUMP_NOTE : '';
+      list.innerHTML = rows.length ? lump+rows.map(([j,i])=>row(j,i)).join('')
         : '<div class="rh-empty">No '+CHIP[tab][1].toLowerCase()+' requests'+(ql?' match \u201c'+q.trim()+'\u201d':' yet')+'.</div>';
       list.querySelectorAll('.rh-ghost').forEach(g=>g.onclick=()=>{
         const j=HISTORY[+g.getAttribute('data-i')];
