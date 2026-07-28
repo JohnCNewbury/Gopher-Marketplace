@@ -992,7 +992,11 @@ function openGoMsgSheet(c){
   var bub=function(side,txt,fl){ return '<div style="display:flex;flex-direction:column;align-items:'+(side==='me'?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(side==='me'?'#002461':'#eef1f5')+';color:'+(side==='me'?'#fff':'#1b2a44')+';">'+esc(txt)+'</div>'+((fl&&side!=='me')?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>'; };
   var initials=(c.name.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('')||'G').toUpperCase();
   var sysline='<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:10px 0 6px;">This is the start of your conversation with '+esc(c.name)+' — keep messages on-platform.</div>';
-  var bubbles=(c.msgs||[]).map(function(m){return bub(m.s,m.t,m.f);}).join('');
+  // Photo attachment (G40-216, owner 2026-07-28: "All inboxes need the capability to add pics").
+  // A photo message carries `p` (a data URL) instead of `t`; everything else about the
+  // message shape is unchanged, so existing text messages render exactly as before.
+  var pic=function(side,src){ return '<div style="display:flex;flex-direction:column;align-items:'+(side==='me'?'flex-end':'flex-start')+';margin:5px 0;"><img src="'+esc(src)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e7e2d3;"></div>'; };
+  var bubbles=(c.msgs||[]).map(function(m){return m.p?pic(m.s,m.p):bub(m.s,m.t,m.f);}).join('');
   var ov=document.createElement('div'); ov.className='gomsg-ov';
   ov.setAttribute('style','position:absolute;left:0;right:0;background:rgba(0,18,49,.5);display:flex;align-items:flex-end;justify-content:center;z-index:70;');
   ov.style.top=host.scrollTop+'px'; ov.style.height=host.clientHeight+'px';
@@ -1004,12 +1008,40 @@ function openGoMsgSheet(c){
     +'</div>'
     +'<div style="align-self:flex-start;background:#eef1f5;color:#5b6472;font-family:\'DM Sans\',sans-serif;font-size:11px;font-weight:700;border-radius:8px;padding:4px 9px;margin-bottom:6px;">Re: '+esc(c.ctx||'Request')+'</div>'
     +'<div class="gomsg-scroll" style="flex:1 1 auto;overflow-y:auto;max-height:46vh;min-height:64px;padding:2px;">'+sysline+bubbles+'</div>'
-    +'<div style="display:flex;gap:8px;margin-top:8px;"><input class="gomsg-in" placeholder="Message '+esc(c.name)+'…" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="gomsg-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>'
+    +'<div class="gomsg-pending" style="display:none;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img class="gomsg-pending-img" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="gomsg-pending-x" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">×</button></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center;"><button class="gomsg-attach" title="Attach a photo" aria-label="Attach a photo" style="flex:0 0 auto;width:40px;height:40px;border:1.5px solid #e3ddcd;border-radius:50%;background:#fff;font-size:15px;line-height:1;cursor:pointer;">📷</button><input class="gomsg-file" type="file" accept="image/*" hidden><input class="gomsg-in" placeholder="Message '+esc(c.name)+'…" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="gomsg-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>'
   +'</div>';
   frame.appendChild(ov);
   var scroll=ov.querySelector('.gomsg-scroll'), inp=ov.querySelector('.gomsg-in');
   function down(){ scroll.scrollTop=scroll.scrollHeight; }
   function add(side,txt,fl){ var d=document.createElement('div'); d.innerHTML=bub(side,txt,fl); scroll.appendChild(d.firstChild); c.msgs.push({s:side,t:txt,f:fl?1:0}); c.time='now'; down(); }
+  function addPhoto(side,src){ var d=document.createElement('div'); d.innerHTML=pic(side,src); scroll.appendChild(d.firstChild); c.msgs.push({s:side,p:src}); c.time='now'; down(); }
+  /* ── Photo attachment (G40-216) ────────────────────────────────────────────────
+     Connected = this thread's request is already matched (accepted). Per the
+     ticket the attach control is gated on that, so a Gopher cannot send photos
+     into a request they haven't been accepted onto. Text messaging is NOT gated
+     here — it already runs through GopherMessageGuard, which applies its own
+     pre-acceptance contact rules via the `connected` flag.
+     PROTOTYPE ONLY: the photo is read to a data URL and held in memory, exactly
+     like the rest of this demo's state. Production uploads to the messaging
+     service and must re-check acceptance SERVER-side before persisting, and must
+     moderate the IMAGE — GopherMessageGuard scans text only, so a photo-only
+     send has nothing for it to read (see send() below). ── */
+  function connected(){ return (c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true; }
+  var pendingPhoto=null;
+  var pendWrap=ov.querySelector('.gomsg-pending'), pendImg=ov.querySelector('.gomsg-pending-img'),
+      attachBtn=ov.querySelector('.gomsg-attach'), fileInp=ov.querySelector('.gomsg-file');
+  function clearPending(){ pendingPhoto=null; if(pendWrap) pendWrap.style.display='none'; if(fileInp) fileInp.value=''; }
+  if(attachBtn && !connected()){
+    attachBtn.disabled=true; attachBtn.style.opacity='.45'; attachBtn.style.cursor='not-allowed';
+    attachBtn.title='You can send photos once you’ve been accepted onto this request';
+  }
+  if(attachBtn && fileInp){
+    attachBtn.onclick=function(){ if(!attachBtn.disabled) fileInp.click(); };
+    fileInp.addEventListener('change',function(){ var f=fileInp.files&&fileInp.files[0]; if(!f) return;
+      var rd=new FileReader(); rd.onload=function(){ pendingPhoto=rd.result; if(pendImg) pendImg.src=pendingPhoto; if(pendWrap) pendWrap.style.display='flex'; down(); }; rd.readAsDataURL(f); });
+  }
+  var pendX=ov.querySelector('.gomsg-pending-x'); if(pendX) pendX.onclick=clearPending;
   function reply(q){ var x=(q||'').toLowerCase(); var a;
     if(/pick|where/.test(x)) a='Pickup is the catering kitchen on Hillsborough St — I’ll share the exact suite once you accept.';
     else if(/park/.test(x)) a='There’s a loading zone out front you can use for about 10 minutes.';
@@ -1018,12 +1050,26 @@ function openGoMsgSheet(c){
     else a='Thanks for reaching out! That works — let me know if you have any other questions.';
     setTimeout(function(){ if(ov.parentNode) add('them',a); }, 650);
   }
-  function send(t){ t=(t||'').trim(); if(!t) return; var deliver=function(res){ var _fl=!!(res&&res.flagged); add('me',t); inp.value='';
-      if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t, _fl); }        // sync to the requester (flag rides along)
-      if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // canned reply only outside the split
+  function send(t){ t=(t||'').trim(); if(!t && !pendingPhoto) return; var deliver=function(res){ var _fl=!!(res&&res.flagged);
+      // A staged photo sends first, so it reads above its caption in the thread.
+      if(pendingPhoto){ addPhoto('me', pendingPhoto);
+        // Cross-app relay carries TEXT only (__ptSendMsg -> job.msgs[].text), so the
+        // requester gets a "Photo" marker rather than silence. Relaying the image
+        // itself is a harness change, not an app one — production sends a real
+        // attachment reference through the messaging service.
+        if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, '📷 Photo', 0); }
+        clearPending(); }
+      if(t){ add('me',t); inp.value='';
+        if(c.__order && window.__ptSendMsg){ window.__ptSendMsg(c.__order, t, _fl); }      // sync to the requester (flag rides along)
+        if(!(c.__order && typeof PT!=='undefined' && PT)) reply(t);                       // canned reply only outside the split
+      }
     };
+    // Photo with no caption: GopherMessageGuard scans TEXT, so there is nothing for it
+    // to read. Deliver directly rather than handing it an empty string (which the guard
+    // would evaluate as a benign message anyway). Image moderation is server-side.
+    if(!t){ deliver(); return; }
     // Connected = this thread's request is already matched (accepted). Baked demo convos simulate mid-job threads.
-    var _conn=(c.__order && window.__ptJobs && window.__ptJobs[c.__order]) ? !!window.__ptJobs[c.__order].accepted : true;
+    var _conn=connected();
     if(window.GopherMessageGuard){ window.GopherMessageGuard.guard(t,'go-prototype',{ connected:_conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){ } } }); } else { deliver(); } }
   c.__appendIncoming=function(txt,fl){ if(ov.parentNode) add('them', txt, fl); };            // harness delivers requester replies here (flag rides along)
   function close(){ c.__appendIncoming=null; ov.remove(); }
