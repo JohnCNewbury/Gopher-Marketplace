@@ -5398,7 +5398,16 @@
   .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
   .inbox-msg-time { font-family:'DM Sans'; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
   .inbox-composer-readonly { padding:12px 16px; border-top:1px solid #eef0f5; text-align:center; font-family:'DM Sans'; font-size:12px; color:var(--muted); background:#fafbfd; }
-  .inbox-composer { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
+  /* Photo attachment (G40-216, 2026-07-28) */
+  .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
+  .inbox-msg.mine .inbox-photo { border-color:transparent; }
+  .inbox-attach { width:40px; height:40px; flex-shrink:0; border:1.5px solid #d4d8e3; border-radius:50%; background:#fff; cursor:pointer; font-size:17px; line-height:1; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; }
+  .inbox-attach:hover { border-color:var(--green); background:var(--green-light); }
+  .inbox-pending { display:flex; align-items:center; gap:9px; margin:0 14px 0; padding:8px 11px; border:1px solid #dcebdc; background:#f4f8f4; border-radius:12px; }
+  .inbox-pending img { width:42px; height:42px; object-fit:cover; border-radius:8px; }
+  .inbox-pending-lbl { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .inbox-pending-x { margin-left:auto; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; }
+  .inbox-composer { display:flex; gap:8px; align-items:center; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
   .inbox-composer-input {
     flex:1; padding:10px 14px; border:1.5px solid #d4d8e3; border-radius:99px;
     font-family:'DM Sans'; font-size:13.5px; color:var(--navy); outline:none;
@@ -17187,7 +17196,7 @@ const PAY_BADGES = {
             <div class="inbox-row-main">
               <div class="inbox-row-top"><span class="inbox-row-name">${t.worker.name}</span><span class="inbox-row-time">${t.last.time}</span></div>
               <div class="inbox-row-sub">${t.title}</div>
-              <div class="inbox-row-last">${t.last.from==='me'?'You: ':''}${t.last.text}</div>
+              <div class="inbox-row-last">${t.last.from==='me'?'You: ':''}${t.last.text || '\u{1F4F7} Photo'}</div>
             </div>
           </button>`).join('') : '<div class="inbox-list-empty">No conversations yet</div>'}
       </div>
@@ -17214,12 +17223,15 @@ const PAY_BADGES = {
         <div class="inbox-thread" id="inboxThreadScroll">
           ${t.thread.length ? t.thread.map(m => `
             <div class="inbox-msg ${m.from==='me'?'mine':'theirs'}">
-              <div class="inbox-bubble">${m.text}</div>${(m.f && m.from!=='me') ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>` : ''}
+              ${m.photo ? `<img class="inbox-photo" src="${m.photo}" alt="Photo attachment">` : `<div class="inbox-bubble">${m.text}</div>`}${(m.f && m.from!=='me') ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>` : ''}
               <div class="inbox-msg-time">${m.time}</div>
             </div>`).join('') : `<div class="inbox-thread-empty">Start the conversation with ${t.worker.name.split(' ')[0]} — send your first message below.</div>`}
         </div>
         ${t.typeable ? `
+        ${_cxPendingPhoto ? `<div class="inbox-pending"><img src="${_cxPendingPhoto}" alt="Photo ready to send"><span class="inbox-pending-lbl">Photo ready to send</span><button type="button" class="inbox-pending-x" id="inboxPhotoDrop" aria-label="Remove photo">&times;</button></div>` : ''}
         <div class="inbox-composer">
+          <button type="button" class="inbox-attach" id="inboxComposerAttach" title="Attach a photo" aria-label="Attach a photo">&#128247;</button>
+          <input type="file" accept="image/*" id="inboxComposerFile" hidden>
           <input type="text" class="inbox-composer-input" id="inboxComposerInput" placeholder="Message ${t.worker.name.split(' ')[0]}…" autocomplete="off">
           <button class="inbox-composer-send" id="inboxComposerSend" aria-label="Send message">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -17266,9 +17278,27 @@ const PAY_BADGES = {
     // Composer send (user-started threads only)
     const input = document.getElementById('inboxComposerInput');
     const sendBtn = document.getElementById('inboxComposerSend');
+    // Photo attachment (G40-216). The staged photo lives outside the guard: the
+    // moderation guard scans TEXT, and an image has none — production image
+    // moderation is G40-35's concern, not this deterrent. Any typed text still
+    // goes through the guard exactly as before.
+    const attachBtn = document.getElementById('inboxComposerAttach');
+    const fileInput = document.getElementById('inboxComposerFile');
+    const dropBtn   = document.getElementById('inboxPhotoDrop');
+    if(attachBtn && fileInput){
+      attachBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        const fl = fileInput.files && fileInput.files[0]; if(!fl) return;
+        const rd = new FileReader();
+        rd.onload = () => { _cxPendingPhoto = rd.result; renderInbox(); };
+        rd.readAsDataURL(fl);
+      });
+    }
+    if(dropBtn) dropBtn.addEventListener('click', () => { _cxPendingPhoto = null; renderInbox(); });
     if(input && sendBtn){
       const doSend = () => {
         const text = input.value.trim();
+        if(!text && _cxPendingPhoto){ sendInboxPhoto(t.id, _cxPendingPhoto); return; }
         if(!text) return;
         // Route through the shared messaging guard (prototype deterrent). Allow
         // path runs the existing faked send UNCHANGED; "Edit message" and the
@@ -17286,10 +17316,11 @@ const PAY_BADGES = {
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
             connected: _connected,
-            onAllow:   function(res){ sendInboxMessage(t.id, text, !!(res && res.flagged)); },
+            onAllow:   function(res){ if(_cxPendingPhoto) sendInboxPhoto(t.id, _cxPendingPhoto, true); sendInboxMessage(t.id, text, !!(res && res.flagged)); },
             onBlocked: function(){ input.focus(); /* held back — leave text to edit */ }
           });
         } else {
+          if(_cxPendingPhoto) sendInboxPhoto(t.id, _cxPendingPhoto, true);
           sendInboxMessage(t.id, text);
         }
       };
@@ -17306,6 +17337,34 @@ const PAY_BADGES = {
   // one-time demo auto-reply from the worker.
   // Thread IDs may be in the per-worker format "<requestId>::<workerName>" for
   // crews with more than one hired worker — strip the suffix to find the request.
+  // Staged (not yet sent) photo for the open thread — cleared on send/remove.
+  let _cxPendingPhoto = null;
+
+  // Photo message (G40-216). Mirrors sendInboxMessage's thread resolution so
+  // crew threads ("id::worker") behave identically. `quiet` suppresses the
+  // re-render when a text message is about to render anyway.
+  function sendInboxPhoto(reqId, photo, quiet){
+    const sep = String(reqId).indexOf('::');
+    const baseId = sep > -1 ? reqId.slice(0, sep) : reqId;
+    const crewName = sep > -1 ? reqId.slice(sep + 2) : null;
+    const r = DASH_DATA.activeRequests.find(x => x.id === baseId);
+    if(!r) return;
+    const time = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    let thread;
+    if(crewName){
+      if(!r.threads) r.threads = {};
+      if(!r.threads[crewName]) r.threads[crewName] = [];
+      thread = r.threads[crewName];
+    } else {
+      if(!r.thread) r.thread = [];
+      thread = r.thread;
+    }
+    thread.push({ from:'me', photo, time });
+    _cxPendingPhoto = null;
+    dashState.inboxThreadId = reqId;
+    if(!quiet){ renderInbox(); updateInboxBadge(); }
+  }
+
   function sendInboxMessage(reqId, text, flagged){
     const sep = String(reqId).indexOf('::');
     const baseId = sep > -1 ? reqId.slice(0, sep) : reqId;

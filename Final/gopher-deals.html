@@ -1855,7 +1855,16 @@
   .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
   .inbox-bubble b { font-weight:800; }
   .inbox-msg-time { font-family:'DM Sans'; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
-  .inbox-composer { display:flex; gap:8px; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
+  /* Photo attachment (G40-216, 2026-07-28) */
+  .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
+  .inbox-msg.mine .inbox-photo { border-color:transparent; }
+  .inbox-attach { width:40px; height:40px; flex-shrink:0; border:1.5px solid #d4d8e3; border-radius:50%; background:#fff; cursor:pointer; font-size:17px; line-height:1; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; }
+  .inbox-attach:hover { border-color:var(--green); background:var(--green-light); }
+  .inbox-pending { display:flex; align-items:center; gap:9px; margin:0 14px; padding:8px 11px; border:1px solid #dcebdc; background:#f4f8f4; border-radius:12px; }
+  .inbox-pending img { width:42px; height:42px; object-fit:cover; border-radius:8px; }
+  .inbox-pending-lbl { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .inbox-pending-x { margin-left:auto; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; }
+  .inbox-composer { display:flex; gap:8px; align-items:center; padding:12px 14px; border-top:1px solid #eef0f5; background:#fafbfd; }
   .inbox-composer-input { flex:1; padding:10px 14px; border:1.5px solid #d4d8e3; border-radius:99px; font-family:'DM Sans'; font-size:13.5px; color:var(--navy); outline:none; transition:border-color .15s; }
   .inbox-composer-input::placeholder { color:#aab2c4; }
   .inbox-composer-input:focus { border-color:var(--green); }
@@ -5439,6 +5448,7 @@
      admin message API (persistence, unread sync, real team replies). */
   var GOPHER_CONTACT = { name:'Gopher, Inc.', sub:'Official Gopher Support \u00b7 typically replies within 1 business day' };
   var INBOX_THREAD = null;        // lazily seeded on first open (needs OWNER/ACCOUNT)
+  var inboxPendingPhoto = null;   // staged photo awaiting send (G40-216)
   var inboxAutoAcked = false;
   function inboxNow(){ return new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
   function seedInbox(){
@@ -5455,7 +5465,12 @@
     seedInbox();
     var body = $('inboxBody'); if(!body) return;
     var last = INBOX_THREAD[INBOX_THREAD.length-1];
-    var lastPrev = (last.from==='me'?'You: ':'') + last.text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    // A photo message has no .text — reading it unguarded threw here and froze the
+    // whole re-render (the push had already happened, so the thread silently fell
+    // one message behind the DOM). Photo rows preview as a label instead.
+    var lastPrev = (last.from==='me'?'You: ':'') + (last.text
+      ? last.text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()
+      : '\uD83D\uDCF7 Photo');
     var list = ''
       + '<div class="inbox-list">'
       +   '<div class="inbox-list-head">Messages</div>'
@@ -5470,7 +5485,8 @@
       + '</div>';
     var thread = INBOX_THREAD.map(function(m){
       return '<div class="inbox-msg '+(m.from==='me'?'mine':'theirs')+'">'
-           +   '<div class="inbox-bubble">'+m.text+'</div>'
+           +   (m.photo ? '<img class="inbox-photo" src="'+m.photo+'" alt="Photo attachment">'
+                        : '<div class="inbox-bubble">'+m.text+'</div>')
            +   '<div class="inbox-msg-time">'+esc(m.time)+'</div>'
            + '</div>';
     }).join('');
@@ -5484,7 +5500,10 @@
       +     '</div>'
       +   '</div>'
       +   '<div class="inbox-thread" id="inboxThreadScroll">'+thread+'</div>'
+      +   (inboxPendingPhoto ? '<div class="inbox-pending"><img src="'+inboxPendingPhoto+'" alt="Photo ready to send"><span class="inbox-pending-lbl">Photo ready to send</span><button type="button" class="inbox-pending-x" id="inboxPhotoDrop" aria-label="Remove photo">&times;</button></div>' : '')
       +   '<div class="inbox-composer">'
+      +     '<button type="button" class="inbox-attach" id="inboxComposerAttach" title="Attach a photo" aria-label="Attach a photo">&#128247;</button>'
+      +     '<input type="file" accept="image/*" id="inboxComposerFile" hidden>'
       +     '<input type="text" class="inbox-composer-input" id="inboxComposerInput" placeholder="Message the Gopher team\u2026" autocomplete="off">'
       +     '<button class="inbox-composer-send" id="inboxComposerSend" aria-label="Send message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>'
       +   '</div>'
@@ -5494,8 +5513,13 @@
     if(badge) badge.style.display='none';
     var input=$('inboxComposerInput'), sendBtn=$('inboxComposerSend');
     function doSend(){
-      var t=input.value.trim(); if(!t) return;
-      INBOX_THREAD.push({ from:'me', text:esc(t), time:inboxNow() });
+      var t=input.value.trim();
+      if(!t && !inboxPendingPhoto) return;              // nothing to send
+      if(inboxPendingPhoto){
+        INBOX_THREAD.push({ from:'me', photo:inboxPendingPhoto, time:inboxNow() });
+        inboxPendingPhoto = null;
+      }
+      if(t) INBOX_THREAD.push({ from:'me', text:esc(t), time:inboxNow() });
       renderDealsInbox();
       var ni=$('inboxComposerInput'); if(ni) ni.focus();
       if(!inboxAutoAcked){
@@ -5511,6 +5535,21 @@
     }
     if(sendBtn) sendBtn.addEventListener('click', doSend);
     if(input) input.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); doSend(); } });
+    /* Photo attachment (G40-216, 2026-07-28). This is the merchant <-> Gopher-team
+       channel, so there is no accepted-onto-a-request gate to apply — the worker-side
+       gate in the ticket does not map here. Deals-side gating remains an owner
+       decision; flagged on G40-216 rather than inferred. */
+    var attachBtn=$('inboxComposerAttach'), fileInput=$('inboxComposerFile'), dropBtn=$('inboxPhotoDrop');
+    if(attachBtn && fileInput){
+      attachBtn.addEventListener('click', function(){ fileInput.click(); });
+      fileInput.addEventListener('change', function(){
+        var fl = fileInput.files && fileInput.files[0]; if(!fl) return;
+        var rd = new FileReader();
+        rd.onload = function(){ inboxPendingPhoto = rd.result; renderDealsInbox(); };
+        rd.readAsDataURL(fl);
+      });
+    }
+    if(dropBtn) dropBtn.addEventListener('click', function(){ inboxPendingPhoto=null; renderDealsInbox(); });
     var sc=$('inboxThreadScroll'); if(sc) sc.scrollTop=sc.scrollHeight;
   }
   /* ---- Payment methods (ported verbatim from the canonical Gopher dashboard).
