@@ -65,7 +65,7 @@
       // tense narration ("the last customer paid me in cash") — that is "paid",
       // which never enters this branch. (Fixed 2026-07-28.)
       /\bpay(?:ing)?\s+(?:(?:you|me)\s+)?(?:in\s+)?cash\b/i, /\bcash\s+only\b/i,
-      /\bpay\s+(?:me|you)?\s*direct(?:ly)?\b/i, /\bpay\s+outside\b/i,
+      /\bpay\s+(?:me|you)?\s*direct(?:ly)?\b/i, /\bpay\s+(?:me|you)?\s*outside\b/i,
       // A bare dollar figure is the precursor to CashApp circumvention
       // (John, 2026-07-02). Price is shown transparently in-app, so there's
       // no legitimate reason to type an amount in chat — flag it.
@@ -94,7 +94,12 @@
       /\bmy\s+(?:handle|socials?)\b/i
     ],
     off_platform: [
-      /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
+      // "outside" previously required the literal "gopher", so "pay me outside
+      // the app" matched NEITHER this nor `off\s+(?:the\s+)?(?:app|platform)`
+      // (that one needs "off") — it fell between the two lists. Now covers
+      // gopher / the app / the platform alike. (Owner 2026-07-28.)
+      /\boutside\s+(?:of\s+)?(?:the\s+)?(?:gopher|app|platform)\b/i,
+      /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
       /\bcancel\s+(?:the\s+)?(?:request|order|job)\b/i,
       /\bcancel\s+and\s+pay\b/i, /\bmeet\s+up\s+and\s+pay\b/i,
       /\bdeal\s+outside\b/i, /\bpay\s+in\s+person\b/i
