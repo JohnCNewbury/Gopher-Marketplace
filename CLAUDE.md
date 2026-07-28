@@ -1275,6 +1275,17 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
 
 ### Outstanding to-do
 
+- **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
+  **keeping it current is LOW priority; do not flag its drift.** Its job is **fielding merchant
+  registration leads**, and that path is buttoned up — the `GOPHER_FORM_ENDPOINT` Apps Script URL,
+  the fallback logic and the form fields on the live Netlify build are **byte-identical to
+  `Final/`** (verified 7/28), so copy/feature deploys to Pages + TigerTech leave its actual
+  function untouched. **Only changes that touch the merchant registration flow itself** (the form,
+  its validation, `GOPHER_FORM_ENDPOINT`, `_redirects`, or the Maps key it geocodes with) warrant
+  raising a redeploy. It is also **owner-action only** — no Netlify CLI, token or `netlify.toml`
+  exists on this machine, and the redeploy is a manual drag of `Final/` onto the gopher-deals
+  project's Deploys page. Past sessions have repeatedly re-raised this as stale; it isn't a defect.
+
 - **4 produced hero clips** still wanted for `gopher-connect.html`. **Full production brief:
   `docs/handoff/connect-hero-video-brief.md`** (written 7/27 from the code — subjects, the
   6s-visible/8s-minimum/seamless-loop timing, the ~600 KB budget, and the two framing rules
