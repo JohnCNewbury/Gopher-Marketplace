@@ -18998,7 +18998,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function renderInbox(){
     const body = document.getElementById('rqInboxBody');
     if(!body) return;
-    const threads = getThreads();
+    const allThreads = getThreads();
+    /* G40-100 — threads here are DERIVED from requests, so a delete cannot splice
+       an array; it records the thread id against a deletedAt stamp and the list is
+       filtered on read. Purge (90 days) is evaluated at the same moment. */
+    const D = window.GopherInboxDelete;
+    dashState.inboxDeleted = dashState.inboxDeleted || {};
+    dashState.inboxTab = dashState.inboxTab || 'inbox';
+    if(D){
+      Object.keys(dashState.inboxDeleted).forEach(id => {
+        if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
+      });
+    }
+    dashState.inboxPurged = dashState.inboxPurged || {};
+    const isDel  = id => !!dashState.inboxDeleted[id];
+    const purged = id => !!dashState.inboxPurged[id];
+    const visible = allThreads.filter(x => !purged(x.id));
+    const liveThreads = visible.filter(x => !isDel(x.id));
+    const delThreads  = visible.filter(x =>  isDel(x.id));
+    const threads = dashState.inboxTab === 'deleted' ? delThreads : liveThreads;
 
     // Determine active thread (defaults to most recent if not set).
     let activeId = dashState.inboxThreadId || (threads[0] && threads[0].id);
@@ -19033,7 +19051,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
 
     if(!threads.length && !activeThread){
-      body.innerHTML = `<div class="inbox-empty">No conversations yet. Messages with your Gophers will appear here once you start a request.</div>`;
+      // G40-100: still render the tabs. Deleting your only conversation must not
+      // strand you — without this the Deleted tab becomes unreachable exactly when
+      // it is the only place your messages still exist.
+      const emptyCopy = dashState.inboxTab === 'deleted'
+        ? 'Nothing deleted.<br>Swipe a message left &mdash; or use &times; &mdash; to move it here.'
+        : 'No conversations yet. Messages with your Gophers will appear here once you start a request.';
+      body.innerHTML = `<div class="inbox-list">${D ? D.tabsHTML(dashState.inboxTab, liveThreads.length, delThreads.length) : ''}<div class="ibx-empty">${emptyCopy}</div></div>`
+        + `<div class="inbox-convo"><div class="ibx-empty">Select a message to read it.</div></div>`;
+      if(D) D.bind({ root: body, onTab: name => { dashState.inboxTab = name; dashState.inboxThreadId = null; renderInbox(); } });
       updateInboxBadge();
       return;
     }
@@ -19046,9 +19072,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Left column — conversation list
     const listHtml = `
       <div class="inbox-list">
-        <div class="inbox-list-head">Conversations</div>
-        ${threads.length ? threads.map(th => `
-          <button class="inbox-row ${th.id === t.id ? 'active' : ''}" data-thread="${th.id}">
+        ${D ? D.tabsHTML(dashState.inboxTab, liveThreads.length, delThreads.length) : '<div class="inbox-list-head">Conversations</div>'}
+        ${(dashState.inboxTab === 'deleted' && delThreads.length && D)
+          ? `<div class="ibx-purge-note">Deleted messages are permanently removed after ${D.PURGE_DAYS} days. Deleting from here is immediate and cannot be undone.</div>` : ''}
+        ${threads.length ? threads.map(th => (D ? D.wrapRow(`
+          <button class="inbox-row ${t && th.id === t.id ? 'active' : ''}" data-thread="${th.id}">
             <div class="inbox-row-photo">${th.worker.photo ? `<img src="${th.worker.photo}" alt="">` : '💬'}</div>
             <div class="inbox-row-main">
               <div class="inbox-row-top">
@@ -19058,7 +19086,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               <div class="inbox-row-sub">${th.title || ''}</div>
               <div class="inbox-row-last">${th.last ? (th.last.from === 'me' ? 'You: ' : '') + th.last.text : ''}</div>
             </div>
-          </button>`).join('') : '<div class="inbox-list-empty">No conversations yet</div>'}
+          </button>`, th.id, dashState.inboxTab === 'deleted') : '')).join('')
+          : (dashState.inboxTab === 'deleted'
+              ? '<div class="ibx-empty">Nothing deleted.<br>Swipe a message left &mdash; or use &times; &mdash; to move it here.</div>'
+              : '<div class="inbox-list-empty">No conversations yet</div>')}
       </div>`;
 
     // Right column — active conversation
@@ -19168,6 +19199,22 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       </div>`;
 
     body.innerHTML = listHtml + convoHtml;
+
+    // G40-100 wiring. Trash stamps deletedAt (starting the 90-day clock) and drops
+    // the thread out of the Inbox list; purge is permanent and always routed
+    // through the shared confirm, so the copy is identical on all four portals.
+    if(D) D.bind({
+      root: body,
+      onTab:   name => { dashState.inboxTab = name; dashState.inboxThreadId = null; renderInbox(); },
+      onTrash: id => { dashState.inboxDeleted[id] = new Date().toISOString();
+                       if(dashState.inboxThreadId === id) dashState.inboxThreadId = null;
+                       renderInbox(); updateInboxBadge && updateInboxBadge(); },
+      onPurge: id => { delete dashState.inboxDeleted[id];
+                       dashState.inboxPurged = dashState.inboxPurged || {};
+                       dashState.inboxPurged[id] = true;   // terminal — must not return to Inbox
+                       if(dashState.inboxThreadId === id) dashState.inboxThreadId = null;
+                       renderInbox(); updateInboxBadge && updateInboxBadge(); }
+    });
 
     // Bug 1: tapping a recommended Gopher (anywhere from the photo
     // through the "View Profile" label) opens the standard Gopher profile modal —
