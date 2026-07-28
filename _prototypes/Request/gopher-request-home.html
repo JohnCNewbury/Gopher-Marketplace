@@ -1834,25 +1834,50 @@ function openInboxThread(order){
   var who=r.hired||'Your Gopher';
   GReq.update(order,{unread:0}); refreshInboxBadge();
   var o=gSheet(who, '<div id="itBody"></div>');
+  // Staged photo lives OUTSIDE renderT — renderT rebuilds the whole thread from GReq
+  // state on every send, so anything held inside it would be wiped mid-compose.
+  var itPendingPhoto=null;
   function renderT(){
     var rr=GReq.get(order); var msgs=rr.messages||[];
     var body=o.querySelector('#itBody'); if(!body) return;
     var bubbles=msgs.map(function(m){ var me=(m.from==='req');
       // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; reciprocal in Go).
-      return '<div style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>'+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>';
+      // A photo message carries `photo` (a data URL) instead of `text` — G40-216,
+      // owner 2026-07-28: "All inboxes need the capability to add pics."
+      return '<div style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>';
     }).join('')||'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>';
     body.innerHTML='<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
-      +'<div style="display:flex;gap:8px;margin-top:8px;"><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
+      +(itPendingPhoto?'<div style="display:flex;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img src="'+esc(itPendingPhoto)+'" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="it-drop" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">&times;</button></div>':'')
+      +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center;"><button class="it-attach" title="Attach a photo" aria-label="Attach a photo" style="flex:0 0 auto;width:40px;height:40px;border:1.5px solid #e3ddcd;border-radius:50%;background:#fff;font-size:15px;line-height:1;cursor:pointer;">&#128247;</button><input class="it-file" type="file" accept="image/*" hidden><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
     var inp=body.querySelector('.it-in'), snd=body.querySelector('.it-send');
     var sc=body.querySelector('.it-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;   // grow with the convo, keep newest in view
-    function doSend(){ var t=(inp.value||'').trim(); if(!t) return;
-      var deliver=function(res){ var _fl=!!(res&&res.flagged); var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t,flagged:_fl?1:0}); GReq.update(order,{messages:mm}); renderT(); };
+    function doSend(){ var t=(inp.value||'').trim(); if(!t && !itPendingPhoto) return;
+      var deliver=function(res){ var _fl=!!(res&&res.flagged); var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice();
+        // The staged photo sends first, so it reads above its caption in the thread.
+        if(itPendingPhoto){ mm.push({from:'req',photo:itPendingPhoto}); itPendingPhoto=null; }
+        if(t){ mm.push({from:'req',text:t,flagged:_fl?1:0}); }
+        GReq.update(order,{messages:mm}); renderT(); };
+      // Photo with no caption: GopherMessageGuard scans TEXT, so there is nothing for it
+      // to read. Deliver directly. Image moderation is a server-side production concern
+      // (G40-35 covers the text channel only).
+      if(!t){ deliver(); return; }
       // G40-35 messaging guard — connected = a Gopher is already matched on this request
       // (relaxed contact rules + the connected variant of the transaction alert).
       var rr1=GReq.get(order); var conn=!!(rr1 && (rr1.accepted || rr1.hired));
       if(window.GopherMessageGuard){ GopherMessageGuard.guard(t,'request-home',{ connected:conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){} } }); } else { deliver(); } }
     if(snd) snd.onclick=doSend;
     if(inp){ inp.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); }); inp.focus(); }
+    /* Photo attachment (G40-216). PROTOTYPE ONLY: the file is read to a data URL and held
+       in memory like the rest of this demo's state. Production uploads to the messaging
+       service. Unlike the Go side there is no acceptance gate here — that gate is the
+       worker-side rule in the ticket; a requester owns the request and can always attach. */
+    var att=body.querySelector('.it-attach'), fil=body.querySelector('.it-file'), drp=body.querySelector('.it-drop');
+    if(att && fil){
+      att.onclick=function(){ fil.click(); };
+      fil.addEventListener('change',function(){ var f=fil.files&&fil.files[0]; if(!f) return;
+        var rd=new FileReader(); rd.onload=function(){ itPendingPhoto=rd.result; renderT(); }; rd.readAsDataURL(f); });
+    }
+    if(drp) drp.onclick=function(){ itPendingPhoto=null; renderT(); };
   }
   renderT();
 }
