@@ -8,6 +8,14 @@
      stays in the shipped site, so reach it via ../Final/assets/js/ (case-exact).
      Spec: docs/handoff/messaging-precheck.md -->
 <script src="../../assets/js/gopher-message-guard.js"></script>
+<!-- Inbox delete (Jira G40-100) — the SAME shared module the four web portals use,
+     so swipe/✕/Deleted-tab/permanent-confirm/90-day-purge behave identically here.
+     The stylesheet is loaded TWICE on purpose: this document-level link styles the
+     confirm overlay (confirmPermanent appends it to document.body), and the inbox
+     screen links it again INSIDE its shadow root, which document styles cannot
+     cross. Same file both times — no duplicated rules to drift. -->
+<link rel="stylesheet" href="../../assets/css/gopher-inbox-delete.css">
+<script src="../../assets/js/gopher-inbox-delete.js"></script>
 <!-- Gopher Banner Notification template (Jira G40-306): branded push banners.
      Go banners carry the "GO" mark. See docs/handoff/G40-306-banner-notifications.html -->
 <script src="gopher-banner.js"></script>
@@ -3165,7 +3173,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     draw();
   } },
 
-"inbox":{ html:`<div class="frame mi-frame">${SBAR}<div class="mibody"></div></div>`,
+"inbox":{ html:`<link rel="stylesheet" href="../../assets/css/gopher-inbox-delete.css"><div class="frame mi-frame">${SBAR}<div class="mibody"></div></div>`,
   init(r){
     // G40 inbox — standard multi-chat messaging (conversation LIST -> THREAD -> back).
     // BACKEND SEAM: conversations + unread state are seeded in-memory here; production
@@ -3179,17 +3187,48 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 
     var convos=goEnsureConvos();
     state.inboxOpen=null;   // footer inbox shows the conversation LIST; tapping a row opens the message sheet
+    var mailTab='inbox';    // G40-100 — 'inbox' | 'deleted'; resets per visit, like the rest of this demo's state
 
     function renderList(){
-      var rows=convos.map(function(c){ var last=c.msgs[c.msgs.length-1]||{};
-        return '<div class="mi-row'+(c.unread?' unread':'')+'" data-cid="'+c.id+'">'+ava(c.verified)
+      /* ── Inbox delete (G40-100) ────────────────────────────────────────────
+         Behaviour comes from the SHARED module the four web portals use
+         (Final/assets/js/gopher-inbox-delete.js) — swipe-left / ✕ moves a
+         conversation to Deleted, deleting FROM Deleted is permanent and
+         confirmed, 90-day purge and admin-expiry are evaluated on read. This
+         screen supplies only the adapter: where its rows live and what to do
+         on trash/purge/tab. Re-implementing it here would drift within a week.
+         PROTOTYPE BOUNDARY: deletion is in-memory like the rest of this demo —
+         it does not survive a reload. Production needs a real deleted_at, the
+         purge job, and server-side admin expiry. ── */
+      var D=window.GopherInboxDelete;
+      if(D){ convos.forEach(function(c){ D.applyAdminExpiry(c); }); }
+      var live=D ? convos.filter(function(c){ return !(c.deletedAt && D.isPurged(c.deletedAt)); }) : convos;
+      var inbox=live.filter(function(c){ return !c.deletedAt; });
+      var trash=live.filter(function(c){ return !!c.deletedAt; });
+      var shown=(mailTab==='deleted')?trash:inbox;
+      var rows=shown.map(function(c){ var last=c.msgs[c.msgs.length-1]||{};
+        var left=(mailTab==='deleted' && D) ? ('<div class="mi-rprev" style="color:#8C8675">Deleted · purges in '+D.daysLeft(c.deletedAt)+' days</div>') : '';
+        var inner='<div class="mi-row'+(c.unread?' unread':'')+'" data-cid="'+c.id+'">'+ava(c.verified)
           +'<div class="mi-rmain"><div class="mi-rtop"><span class="mi-rnm">'+c.name+'</span><span class="mi-rtime">'+c.time+'</span></div>'
-          +'<div class="mi-rprev">'+(last.s==='me'?'You: ':'')+(last.p?'📷 Photo':(last.t||''))+'</div></div>'
+          +'<div class="mi-rprev">'+(last.s==='me'?'You: ':'')+(last.p?'📷 Photo':(last.t||''))+'</div>'+left+'</div>'
           +(c.unread?'<span class="mi-udot"></span>':'')+'</div>';
-      }).join('');
+        return D ? D.wrapRow(inner, c.id, mailTab==='deleted') : inner;
+      }).join('') || '<div class="ibx-empty">'+(mailTab==='deleted'?'Nothing deleted.':'No messages yet.')+'</div>';
+      if(D) rows=D.tabsHTML(mailTab, inbox.length, trash.length)+rows;
       body.innerHTML='<div class="mi-listtop"><button class="mi-bk js-back">'+sv(BK)+'</button><div class="mi-listhd">Inbox</div></div><div class="mi-list">'+rows+'</div>'+'<div class="nav">'+'<div class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</div>'+'<div class="nv g40nv" data-gnav="inbox" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</div>'+'<div class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</div>'+'<div class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</div>'+'<div class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</div>'+'</div>';
       body.querySelector('.js-back').onclick=function(){ BACK(); };
-      body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){ var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ openGoMsgSheet(c); renderList(); } }; });
+      body.querySelectorAll('.mi-row').forEach(function(row){ row.onclick=function(){
+        // A deleted conversation is readable but not re-openable into the live
+        // thread — opening it would silently resurrect it in the Inbox tab.
+        if(mailTab==='deleted'){ toast('This conversation is deleted'); return; }
+        var c=convos.filter(function(x){return x.id===row.getAttribute('data-cid');})[0]; if(c){ openGoMsgSheet(c); renderList(); } }; });
+      var byId=function(id){ return convos.filter(function(x){return x.id===id;})[0]; };
+      if(D) D.bind({
+        root: body,
+        onTab:   function(t){ mailTab=t; renderList(); },
+        onTrash: function(id){ var c=byId(id); if(!c) return; c.deletedAt=new Date().toISOString(); c.unread=0; renderList(); },
+        onPurge: function(id){ var i=convos.map(function(x){return x.id;}).indexOf(id); if(i>=0) convos.splice(i,1); renderList(); }
+      });
     }
 
     function renderThread(c){ var who=c.name;

@@ -16,6 +16,25 @@
 <!-- G40-35 shared in-app messaging guard — same module as the Go prototype + site surfaces,
      so the moderation lexicon + the transaction-protection alert are tuned in ONE file. -->
 <script src="../../assets/js/gopher-message-guard.js"></script>
+<!-- Inbox delete (Jira G40-100). This app has NO conversation list — tapping Inbox
+     opens a single thread — so the web portals' row-level swipe has nothing to bind
+     to. Owner 7/28 ruled delete works on the MESSAGE here, "typical mobile text
+     style". We still load the shared module for confirmPermanent(), so the
+     destructive wording is byte-identical to the four web portals and cannot drift;
+     the stylesheet comes with it for that overlay. -->
+<link rel="stylesheet" href="../../assets/css/gopher-inbox-delete.css">
+<script src="../../assets/js/gopher-inbox-delete.js"></script>
+<style>
+/* Message-level swipe-to-delete. The bubble slides left to reveal Delete; only one
+   message stays open at a time, matching the shared module's row behaviour. */
+.itmsg{position:relative;overflow:hidden;}
+.itmsg-slide{transition:transform .16s ease;}
+.itmsg.itmsg-open .itmsg-slide{transform:translateX(-76px);}
+.itmsg-del{position:absolute;top:0;right:0;height:100%;width:72px;border:0;border-radius:12px;
+  background:#C44257;color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:12px;
+  cursor:pointer;opacity:0;pointer-events:none;transition:opacity .16s ease;}
+.itmsg.itmsg-open .itmsg-del{opacity:1;pointer-events:auto;}
+</style>
 <style>
 :root{
   --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9; --green-tint:#E8F5EE;
@@ -1840,11 +1859,13 @@ function openInboxThread(order){
   function renderT(){
     var rr=GReq.get(order); var msgs=rr.messages||[];
     var body=o.querySelector('#itBody'); if(!body) return;
-    var bubbles=msgs.map(function(m){ var me=(m.from==='req');
+    var bubbles=msgs.map(function(m,mi){ var me=(m.from==='req');
       // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; reciprocal in Go).
       // A photo message carries `photo` (a data URL) instead of `text` — G40-216,
       // owner 2026-07-28: "All inboxes need the capability to add pics."
-      return '<div style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>';
+      // G40-100: each message is individually deletable here (no conversation list
+      // to delete from), so the bubble sits in a swipeable wrapper.
+      return '<div class="itmsg" data-mi="'+mi+'"><div class="itmsg-slide" style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div><button type="button" class="itmsg-del" data-del="'+mi+'" aria-label="Delete this message">Delete</button></div>';
     }).join('')||'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>';
     body.innerHTML='<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
       +(itPendingPhoto?'<div style="display:flex;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img src="'+esc(itPendingPhoto)+'" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="it-drop" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">&times;</button></div>':'')
@@ -1878,6 +1899,41 @@ function openInboxThread(order){
         var rd=new FileReader(); rd.onload=function(){ itPendingPhoto=rd.result; renderT(); }; rd.readAsDataURL(f); });
     }
     if(drp) drp.onclick=function(){ itPendingPhoto=null; renderT(); };
+    /* ── Message delete (G40-100) ──────────────────────────────────────────────
+       Swipe the bubble left to reveal Delete; swipe right (or open another) to
+       close. Only one message stays open at a time — the same rule the shared
+       module applies to rows, so the two surfaces feel like one product.
+       Deletion here is PERMANENT and confirmed, because there is no Deleted tab
+       to stage it in: this app has no conversation list, so the web's two-stage
+       Inbox→Deleted→permanent flow has nowhere to live. The confirm itself is
+       the SHARED one (GopherInboxDelete.confirmPermanent), so "Delete
+       permanently? / This cannot be undone." is byte-identical across all six
+       surfaces and cannot drift.
+       PROTOTYPE BOUNDARY: in-memory like the rest of this demo — a reload
+       restores the thread. Production needs a real deleted_at + purge. ── */
+    var closeAllMsgs=function(){ body.querySelectorAll('.itmsg.itmsg-open').forEach(function(x){ x.classList.remove('itmsg-open'); }); };
+    body.querySelectorAll('.itmsg').forEach(function(el){
+      var x0=null;
+      el.addEventListener('touchstart',function(e){ x0=e.touches[0].clientX; },{passive:true});
+      el.addEventListener('touchmove',function(e){
+        if(x0===null) return;
+        var dx=e.touches[0].clientX-x0;
+        if(dx<-34){ closeAllMsgs(); el.classList.add('itmsg-open'); x0=null; }
+        else if(dx>34){ el.classList.remove('itmsg-open'); x0=null; }
+      },{passive:true});
+      el.addEventListener('touchend',function(){ x0=null; },{passive:true});
+    });
+    body.querySelectorAll('.itmsg-del').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        var mi=+b.getAttribute('data-del');
+        var go=function(){
+          var rr=GReq.get(order); var mm=(rr.messages||[]).slice();
+          mm.splice(mi,1); GReq.update(order,{messages:mm}); renderT();
+        };
+        if(window.GopherInboxDelete) GopherInboxDelete.confirmPermanent(go); else go();
+      };
+    });
   }
   renderT();
 }
