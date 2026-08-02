@@ -37,7 +37,12 @@ except ImportError:
 
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PORT = 9333
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screen-spec")
+# Tooling lives in scripts/, the DELIVERABLE lives in docs/ — the dev partner reads the
+# latter. Resolved from the repo root, not from this file's neighbours, so moving the
+# script cannot silently strand the output in a second location. (Two copies of the spec
+# is the exact drift this whole system exists to prevent.)
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+OUT = os.path.join(REPO, "docs", "screen-spec")
 BASE = "http://localhost:8141/_prototypes"
 GO_URL = f"{BASE}/Go/gopher-go-prototype.html"
 DEVICE_W, DEVICE_H = 1280, 950

@@ -45,7 +45,7 @@ source.
 | Thing | Where |
 |---|---|
 | Quarantine + README explaining each stale file | `_prototypes/Go/_day1-figma-archive/` |
-| Spec generator (renders each screen, captures PNG, extracts component tree + painted tokens) | `scripts/screen-spec/gen-screen-spec.py` |
+| Spec generator (renders each screen, captures PNG, extracts component tree + painted tokens) | `scripts/screen-spec/gen-screen-spec.py` → writes to `docs/screen-spec/` |
 | Spec site renderer (JSON + PNG → browsable HTML) | `scripts/screen-spec/render-spec-site.py` |
 | Working sample: `job-detail`, `work-settings`, `home` | run the two scripts |
 

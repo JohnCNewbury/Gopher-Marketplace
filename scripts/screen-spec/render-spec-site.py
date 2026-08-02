@@ -11,7 +11,9 @@ if it does not the page says so out loud rather than looking complete.
 import json, os, glob, html
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "screen-spec")
+# Must match gen-screen-spec.py — the deliverable lives in docs/, the tooling in scripts/.
+REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
+OUT = os.path.join(REPO, "docs", "screen-spec")
 NOTES = os.path.join(OUT, "notes")
 
 CSS = """
