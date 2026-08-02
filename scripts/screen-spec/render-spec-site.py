@@ -27,7 +27,7 @@ a{color:#185fa5}
 .card img{width:100%;border-radius:6px;border:1px solid #eceff3;display:block;margin-bottom:8px}
 .card b{font-size:13px}
 .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:2px 7px;margin-left:6px}
-.b-native{background:#e1f5ee;color:#0f6e56}.b-frames{background:#faeeda;color:#854f0b}
+.b-native{background:#e1f5ee;color:#0f6e56}.b-frames{background:#faeeda;color:#854f0b}.b-request{background:#e3ecfa;color:#1d4f9c}
 .cols{display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start}
 @media(max-width:900px){.cols{grid-template-columns:1fr}}
 .shot{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:10px;position:sticky;top:16px}
@@ -48,6 +48,10 @@ padding:10px 13px;font-size:12.5px;color:#6b4e16;margin:0 0 14px}
 .kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#5b6472;margin:0 0 12px}
 .kpi b{color:#1d2433;font-size:15px;display:block}
 """
+
+
+def badge(served):
+    return {"NATIVE": "b-native", "FRAMES": "b-frames"}.get(served, "b-request")
 
 
 def esc(s):
@@ -93,14 +97,21 @@ def main():
     idx = json.load(open(os.path.join(OUT, "_index.json")))
     os.makedirs(NOTES, exist_ok=True)
 
-    cards = []
-    for e in sorted(idx, key=lambda x: x["id"]):
-        b = "b-native" if e["servedBy"] == "NATIVE" else "b-frames"
-        cards.append(
-            f'<a class="card" href="{esc(e["id"])}.html">'
-            f'<img src="img/{esc(e["id"])}.png" alt="">'
-            f'<b>{esc(e["id"])}</b><span class="badge {b}">{esc(e["servedBy"])}</span>'
-            f'<div style="font-size:11.5px;color:#8a93a3">{e["nodes"]} nodes</div></a>')
+    def cards_for(pred):
+        cards = []
+        for e in sorted(idx, key=lambda x: x["id"]):
+            if not pred(e):
+                continue
+            fr = e.get("frame") or {}
+            dims = f' · {fr["w"]}×{fr["h"]}' if fr else ""
+            cards.append(
+                f'<a class="card" href="{esc(e["id"])}.html">'
+                f'<img src="img/{esc(e["id"])}.png" alt="">'
+                f'<b>{esc(e["id"])}</b><span class="badge {badge(e["servedBy"])}">{esc(e["servedBy"])}</span>'
+                f'<div style="font-size:11.5px;color:#8a93a3">{e["nodes"]} nodes{dims}</div></a>')
+        return cards
+    go_cards = cards_for(lambda e: e["servedBy"] != "REQUEST")
+    rq_cards = cards_for(lambda e: e["servedBy"] == "REQUEST")
 
     open(os.path.join(OUT, "index.html"), "w").write(f"""<!doctype html><meta charset="utf-8">
 <title>Gopher — Screen Spec (generated)</title><style>{CSS}</style><div class="wrap">
@@ -110,7 +121,8 @@ so it cannot go stale, and a screen that does not render cannot appear here.
 Regenerate with <code>gen-screen-spec.py</code> then <code>render-spec-site.py</code>.</p>
 <div class="warn"><b>Do not implement from <code>_prototypes/Go/_day1-figma-archive/</code>.</b>
 Those 24 files are the day-1 Figma import, partially updated, and are not the build target.</div>
-<h2>{len(idx)} screens</h2><div class="grid">{''.join(cards)}</div></div>""")
+<h2>Gopher Go — {len(go_cards)} screens</h2><div class="grid">{''.join(go_cards)}</div>
+<h2>Gopher Request — {len(rq_cards)} screens</h2><div class="grid">{''.join(rq_cards)}</div></div>""")
 
     for e in idx:
         d = json.load(open(os.path.join(OUT, f"{e['id']}.json")))
@@ -129,7 +141,7 @@ Those 24 files are the day-1 Figma import, partially updated, and are not the bu
         open(os.path.join(OUT, f"{e['id']}.html"), "w").write(f"""<!doctype html><meta charset="utf-8">
 <title>{esc(e['id'])} — screen spec</title><style>{CSS}</style><div class="wrap">
 <p class="meta"><a href="index.html">← all screens</a></p>
-<h1>{esc(e['id'])}<span class="badge {'b-native' if e['servedBy']=='NATIVE' else 'b-frames'}">{esc(e['servedBy'])}</span></h1>
+<h1>{esc(e['id'])}<span class="badge {badge(e['servedBy'])}">{esc(e['servedBy'])}</span></h1>
 <p class="meta">Served by the <b>{esc(e['servedBy'])}</b> registry · {d['nodes']} rendered nodes ·
 {named}/{tot} painted values map to a named token</p>
 <div class="cols"><div class="shot"><img src="img/{esc(e['id'])}.png" alt=""></div><div>

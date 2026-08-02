@@ -1,0 +1,153 @@
+<!doctype html><meta charset="utf-8">
+<title>req-flow-step-1 — screen spec</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+color:#1d2433;background:#f6f7f9;line-height:1.45}
+.wrap{max-width:1400px;margin:0 auto;padding:22px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#5b6472;margin:22px 0 9px}
+.meta{color:#5b6472;font-size:13px;margin:0 0 16px}
+a{color:#185fa5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:#fff;border:1px solid #e0e4ea;border-radius:10px;padding:11px;text-decoration:none;color:inherit;display:block}
+.card:hover{border-color:#9aa4b2;box-shadow:0 2px 10px rgba(20,30,50,.08)}
+.card img{width:100%;border-radius:6px;border:1px solid #eceff3;display:block;margin-bottom:8px}
+.card b{font-size:13px}
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:2px 7px;margin-left:6px}
+.b-native{background:#e1f5ee;color:#0f6e56}.b-frames{background:#faeeda;color:#854f0b}.b-request{background:#e3ecfa;color:#1d4f9c}
+.cols{display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.shot{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:10px;position:sticky;top:16px}
+.shot img{width:100%;border-radius:8px;display:block}
+.panel{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:16px 18px;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border:1px solid #eceff3;padding:5px 8px;text-align:left}
+th{background:#f7f8fa;color:#5b6472;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+td.v{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.sw{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-2px;margin-right:6px}
+.tok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#0f6e56;font-weight:700}
+.untok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a33107}
+.tree{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.75;white-space:pre;overflow-x:auto;
+background:#f4f6f8;border:1px solid #e4e7ec;border-radius:8px;padding:11px 13px}
+.tree .i{color:#185fa5;font-weight:700}.tree .t{color:#0f6e56}.tree .d{color:#8a93a3}
+.warn{background:#fff8e1;border:1px solid #f3d98a;border-left:4px solid #e8a93b;border-radius:0 8px 8px 0;
+padding:10px 13px;font-size:12.5px;color:#6b4e16;margin:0 0 14px}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#5b6472;margin:0 0 12px}
+.kpi b{color:#1d2433;font-size:15px;display:block}
+</style><div class="wrap">
+<p class="meta"><a href="index.html">← all screens</a></p>
+<h1>req-flow-step-1<span class="badge b-request">REQUEST</span></h1>
+<p class="meta">Served by the <b>REQUEST</b> registry · 121 rendered nodes ·
+15/42 painted values map to a named token</p>
+<div class="cols"><div class="shot"><img src="img/req-flow-step-1.png" alt=""></div><div>
+<div class="panel"><h2 style="margin-top:0">Behaviour · endpoints · reuse verdict</h2><pre style='white-space:pre-wrap;font-size:13px'>VERDICT: ADAPT — the flow REPLACES the live JSON-driven form engine with a real UI;
+fee/money mechanics underneath carry.
+
+BEHAVIOUR
+- Step 1 of 7 &quot;What do you need today?&quot;: photo category tiles + iQ category tags +
+  radio checks; Continue gated on a selection.
+- Entry points: ?step=1 (signed-in browse, from Home&#x27;s &quot;All services&quot;), ?category=
+  (Home tile), ?demo=1 (adds &quot;no account needed&quot; ribbon — demo only), ?from=deal
+  (merchant deal → lands prefilled on Step 6), ?from=again (re-request).
+
+ENDPOINTS / BACKEND SEAMS
+- Live taxonomy trap: the live app&#x27;s screen flow is JSON-driven (request.json →
+  sub-menu JSONs); getCategoryTypeSelectionList.json is STALE with zero references —
+  do not port it.
+</pre></div>
+<div class="panel"><h2 style="margin-top:0">Component tree</h2>
+<div class="tree"><span class="i">div.phone</span><span class="d"> 390×1021</span>
+  <span class="i">div.statusbar</span><span class="d"> 390×30</span>
+    <span class="i">span</span><span class="d"> 26×19</span><span class="t">  "9:41"</span>
+    <span class="i">span.sb-r</span><span class="d"> 70×12</span>
+  <span class="i">div.topbar</span><span class="d"> 390×61</span>
+    <span class="i">div.topbar-titles</span><span class="d"> 223×34</span>
+      <span class="i">div.eyebrow</span><span class="d"> 223×15</span><span class="t">  "Need it now? Gopher it!"</span>
+      <span class="i">h1</span><span class="d"> 223×18</span><span class="t">  "New request"</span>
+    <span class="i">span.step-pill</span><span class="d"> 79×29</span><span class="t">  "Step 1 of 7"</span>
+  <span class="i">div.progress</span><span class="d"> 390×32</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg.current</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+    <span class="i">button.seg-btn</span><span class="d"> 48×19</span><span class="d"> [interactive]</span>
+      <span class="i">span.seg</span><span class="d"> 48×5</span>
+  <span class="i">div.scroll</span><span class="d"> 390×821</span>
+    <span class="i">div.stage</span><span class="d"> 358×777</span>
+      <span class="i">div.step-head</span><span class="d"> 358×49</span>
+        <span class="i">h3</span><span class="d"> 358×25</span><span class="t">  "What do you need today?"</span>
+        <span class="i">p.mc-sub</span><span class="d"> 358×19</span><span class="t">  "Pick a service and we&#x27;ll match you with a nearby Gopher."</span>
+      <span class="i">div.cat-grid</span><span class="d"> 358×711</span>
+        <span class="i">div.cat-tile.selected</span><span class="d"> 174×165</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 86×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×45</span>
+            <span class="i">span.cat-name</span><span class="d"> 108×16</span><span class="t">  "Delivery / Errand"</span>
+            <span class="i">span.cat-check.on</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×165</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 90×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×45</span>
+            <span class="i">span.cat-name</span><span class="d"> 87×16</span><span class="t">  "Junk Removal"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×174</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 110×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×45</span>
+            <span class="i">span.cat-name</span><span class="d"> 46×16</span><span class="t">  "Moving"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×174</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 93×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×54</span>
+            <span class="i">span.cat-name</span><span class="d"> 116×31</span><span class="t">  "Home / Office Services"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×174</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 77×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×54</span>
+            <span class="i">span.cat-name</span><span class="d"> 116×31</span><span class="t">  "Hourly / Day Labor"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×174</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 96×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×54</span>
+            <span class="i">span.cat-name</span><span class="d"> 116×31</span><span class="t">  "Yard / Outdoor Projects"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×165</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 66×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×45</span>
+            <span class="i">span.cat-name</span><span class="d"> 82×16</span><span class="t">  "Ride Sharing"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+        <span class="i">div.cat-tile</span><span class="d"> 174×165</span>
+          <span class="i">div.cat-photo</span><span class="d"> 170×116</span>
+            <span class="i">button.cat-iq-tag</span><span class="d"> 86×24</span><span class="d"> [interactive]</span>
+            <span class="i">img.cat-img</span><span class="d"> 170×116</span>
+          <span class="i">div.cat-body</span><span class="d"> 170×45</span>
+            <span class="i">span.cat-name</span><span class="d"> 37×16</span><span class="t">  "Other"</span>
+            <span class="i">span.cat-check</span><span class="d"> 22×22</span>
+  <span class="i">div.foot</span><span class="d"> 390×77</span>
+    <span class="i">button.btn.btn-primary</span><span class="d"> 358×50</span><span class="d"> [interactive]</span><span class="t">  "Continue"</span>
+  <span class="i">div.su-back</span><span class="d"> 390×1021</span>
+  <span class="i">div.su-sheet</span><span class="d"> 390×50</span>
+    <span class="i">div.su-grip</span><span class="d"> 38×4</span>
+    <span class="i">div.su-body</span><span class="d"> 354×0</span></div></div>
+<div class="panel"><h2 style="margin-top:0">Tokens actually painted</h2>
+<p style="font-size:12.5px;color:#5b6472;margin:0 0 10px">Values marked
+<span class="untok">literal</span> are hardcoded in the prototype and need a token before a
+dev can implement them consistently.</p><h2>color</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(66, 66, 66)"></span>rgb(66, 66, 66)</td><td>54</td><td><span class="tok">--text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(0, 36, 97)"></span>rgb(0, 36, 97)</td><td>34</td><td><span class="tok">--ink · --ink-on-green · --navy</span></td></tr><tr><td class='v'><span class="sw" style="background:rgba(16, 16, 16, 0.3)"></span>rgba(16, 16, 16, 0.3)</td><td>14</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(0, 0, 0)"></span>rgb(0, 0, 0)</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>8</td><td><span class="tok">--card · --white</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(28, 176, 97)"></span>rgb(28, 176, 97)</td><td>2</td><td><span class="tok">--green · --green-dark</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(107, 114, 128)"></span>rgb(107, 114, 128)</td><td>1</td><td><span class="tok">--muted-cool</span></td></tr></table><h2>backgroundColor</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>21</td><td><span class="tok">--card · --white</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(238, 240, 248)"></span>rgb(238, 240, 248)</td><td>8</td><td><span class="tok">--navy-light</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(231, 236, 243)"></span>rgb(231, 236, 243)</td><td>7</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(238, 242, 247)"></span>rgb(238, 242, 247)</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(226, 243, 233)"></span>rgb(226, 243, 233)</td><td>1</td><td><span class="tok">--green-light</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(51, 217, 117)"></span>rgb(51, 217, 117)</td><td>1</td><td><span class="tok">--green-bright</span></td></tr><tr><td class='v'><span class="sw" style="background:rgba(0, 16, 42, 0.46)"></span>rgba(0, 16, 42, 0.46)</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(234, 227, 213)"></span>rgb(234, 227, 213)</td><td>1</td><td><span class="tok">--line</span></td></tr></table><h2>fontSize</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>16px</td><td>54</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>13.3333px</td><td>22</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>10px</td><td>16</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>12.5px</td><td>15</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>13.5px</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>15px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>16.5px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>11px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>22px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>13px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>14.5px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>fontWeight</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>400</td><td>77</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>900</td><td>27</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>800</td><td>16</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>700</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>borderRadius</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>99px</td><td>17</td><td><span class="tok">--radius-pill</span></td></tr><tr><td class='v'>18px</td><td>8</td><td><span class="tok">--radius</span></td></tr><tr><td class='v'>15px 15px 0px 0px</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>7px</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>50%</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>42px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>14px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>22px 22px 0px 0px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table></div>
+</div></div></div>

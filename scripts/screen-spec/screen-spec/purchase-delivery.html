@@ -1,0 +1,101 @@
+<!doctype html><meta charset="utf-8">
+<title>purchase-delivery — screen spec</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+color:#1d2433;background:#f6f7f9;line-height:1.45}
+.wrap{max-width:1400px;margin:0 auto;padding:22px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#5b6472;margin:22px 0 9px}
+.meta{color:#5b6472;font-size:13px;margin:0 0 16px}
+a{color:#185fa5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:#fff;border:1px solid #e0e4ea;border-radius:10px;padding:11px;text-decoration:none;color:inherit;display:block}
+.card:hover{border-color:#9aa4b2;box-shadow:0 2px 10px rgba(20,30,50,.08)}
+.card img{width:100%;border-radius:6px;border:1px solid #eceff3;display:block;margin-bottom:8px}
+.card b{font-size:13px}
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:2px 7px;margin-left:6px}
+.b-native{background:#e1f5ee;color:#0f6e56}.b-frames{background:#faeeda;color:#854f0b}.b-request{background:#e3ecfa;color:#1d4f9c}
+.cols{display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.shot{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:10px;position:sticky;top:16px}
+.shot img{width:100%;border-radius:8px;display:block}
+.panel{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:16px 18px;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border:1px solid #eceff3;padding:5px 8px;text-align:left}
+th{background:#f7f8fa;color:#5b6472;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+td.v{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.sw{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-2px;margin-right:6px}
+.tok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#0f6e56;font-weight:700}
+.untok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a33107}
+.tree{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.75;white-space:pre;overflow-x:auto;
+background:#f4f6f8;border:1px solid #e4e7ec;border-radius:8px;padding:11px 13px}
+.tree .i{color:#185fa5;font-weight:700}.tree .t{color:#0f6e56}.tree .d{color:#8a93a3}
+.warn{background:#fff8e1;border:1px solid #f3d98a;border-left:4px solid #e8a93b;border-radius:0 8px 8px 0;
+padding:10px 13px;font-size:12.5px;color:#6b4e16;margin:0 0 14px}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#5b6472;margin:0 0 12px}
+.kpi b{color:#1d2433;font-size:15px;display:block}
+</style><div class="wrap">
+<p class="meta"><a href="index.html">← all screens</a></p>
+<h1>purchase-delivery<span class="badge b-frames">FRAMES</span></h1>
+<p class="meta">Served by the <b>FRAMES</b> registry · 54 rendered nodes ·
+12/30 painted values map to a named token</p>
+<div class="cols"><div class="shot"><img src="img/purchase-delivery.png" alt=""></div><div>
+<div class="panel"><h2 style="margin-top:0">Behaviour · endpoints · reuse verdict</h2><pre style='white-space:pre-wrap;font-size:13px'>VERDICT: ADAPT — purchase-delivery specifics layered on the standard in-job flow.
+
+BEHAVIOUR
+- Storyboard for a purchase delivery: claim → shop (receipt/photo evidence) →
+  deliver → complete. Age-restricted variants add ID confirm at drop-off (G40-116).
+- No-show completion path (G40-192): requester not present → items not released,
+  completed-as-no-show record.
+
+ENDPOINTS / BACKEND SEAMS
+- Completion evidence upload; ARD image records (party = requester); payout release
+  after requester confirm (G40-65 confirm/dispute window).
+</pre></div>
+<div class="panel"><h2 style="margin-top:0">Component tree</h2>
+<div class="tree"><span class="i">div.frame</span><span class="d"> 372×486</span>
+  <span class="i">div.topbar</span><span class="d"> 372×65</span>
+    <span class="i">div.back-btn</span><span class="d"> 34×34</span><span class="t">  "‹"</span>
+    <span class="i">h3</span><span class="d"> 144×20</span><span class="t">  "Active"</span>
+    <span class="i">span.pill.pend</span><span class="d"> 138×25</span><span class="t">  "● Confirmation pending"</span>
+  <span class="i">div.pay-hero</span><span class="d"> 372×118</span>
+    <span class="i">div.tlab</span><span class="d"> 336×15</span><span class="t">  "You earn"</span>
+    <span class="i">div.tot.earn</span><span class="d"> 336×40</span><span class="t">  "$10.00"</span>
+    <span class="i">div.dep</span><span class="d"> 336×15</span><span class="t">  "Total Deposit · Spend $10.00 reimbursed at completion"</span>
+      <span class="i">b</span><span class="d"> 36×13</span><span class="t">  "$20.00"</span>
+  <span class="i">div.body</span><span class="d"> 372×219</span>
+    <span class="i">div.block</span><span class="d"> 372×219</span>
+      <span class="i">div</span><span class="d"> 342×19</span><span class="t">  "Delivery — Convenience Store"</span>
+      <span class="i">div.kv</span><span class="d"> 342×32</span>
+        <span class="i">span.k</span><span class="d"> 44×17</span><span class="t">  "Pick up"</span>
+        <span class="i">span.v</span><span class="d"> 93×17</span><span class="t">  "Gopher’s choice"</span>
+      <span class="i">div.kv</span><span class="d"> 342×32</span>
+        <span class="i">span.k</span><span class="d"> 49×17</span><span class="t">  "Drop off"</span>
+        <span class="i">span.v</span><span class="d"> 142×17</span><span class="t">  "100 Demo Way, Raleigh"</span>
+      <span class="i">div.kv</span><span class="d"> 342×32</span>
+        <span class="i">span.k</span><span class="d"> 42×17</span><span class="t">  "Details"</span>
+        <span class="i">span.v</span><span class="d"> 165×17</span><span class="t">  "Need a 6-pack of Dr Pepper"</span>
+      <span class="i">div.iconrow</span><span class="d"> 342×62</span>
+        <span class="i">div.ic</span><span class="d"> 68×49</span>
+          <span class="i">div.e</span><span class="d"> 68×24</span>
+          <span class="i">div.l</span><span class="d"> 68×22</span><span class="t">  "First available"</span>
+        <span class="i">div.ic</span><span class="d"> 68×49</span>
+          <span class="i">div.e</span><span class="d"> 68×24</span>
+          <span class="i">div.l</span><span class="d"> 68×22</span><span class="t">  "Purchase needed"</span>
+        <span class="i">div.ic</span><span class="d"> 68×49</span>
+          <span class="i">div.e</span><span class="d"> 68×24</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">div.l</span><span class="d"> 68×22</span><span class="t">  "Age restricted"</span>
+        <span class="i">div.ic</span><span class="d"> 68×49</span>
+          <span class="i">div.e</span><span class="d"> 68×24</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">div.l</span><span class="d"> 68×11</span><span class="t">  "45m"</span>
+        <span class="i">div.ic</span><span class="d"> 68×49</span>
+          <span class="i">div.e</span><span class="d"> 68×24</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">div.l</span><span class="d"> 68×11</span><span class="t">  "10.4 mi"</span>
+  <span class="i">div.foot</span><span class="d"> 372×73</span>
+    <span class="i">span.btn.btn-go</span><span class="d"> 336×49</span><span class="t">  "Tap to view &amp; update"</span></div></div>
+<div class="panel"><h2 style="margin-top:0">Tokens actually painted</h2>
+<p style="font-size:12.5px;color:#5b6472;margin:0 0 10px">Values marked
+<span class="untok">literal</span> are hardcoded in the prototype and need a token before a
+dev can implement them consistently.</p><h2>color</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(66, 66, 66)"></span>rgb(66, 66, 66)</td><td>30</td><td><span class="tok">--text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(0, 36, 97)"></span>rgb(0, 36, 97)</td><td>13</td><td><span class="tok">--ink · --navy · --ink-on-green</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>3</td><td><span class="tok">--card</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(107, 114, 128)"></span>rgb(107, 114, 128)</td><td>3</td><td><span class="tok">--muted-cool</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(159, 178, 214)"></span>rgb(159, 178, 214)</td><td>2</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(146, 88, 13)"></span>rgb(146, 88, 13)</td><td>2</td><td><span class="tok">--warning-text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(51, 217, 117)"></span>rgb(51, 217, 117)</td><td>1</td><td><span class="tok">--green-bright</span></td></tr></table><h2>backgroundColor</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>4</td><td><span class="tok">--card</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(217, 119, 87)"></span>rgb(217, 119, 87)</td><td>1</td><td><span class="tok">--terracotta</span></td></tr></table><h2>fontSize</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>18px</td><td>16</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>16px</td><td>12</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>12.5px</td><td>9</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>9px</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>10.5px</td><td>4</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>14px</td><td>2</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>17px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>15px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>40px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>fontWeight</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>400</td><td>33</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>700</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>800</td><td>6</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>900</td><td>4</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>600</td><td>3</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>borderRadius</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>26px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>10px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>99px</td><td>1</td><td><span class="tok">--radius-pill</span></td></tr><tr><td class='v'>16px</td><td>1</td><td><span class="tok">--radius-card</span></td></tr><tr><td class='v'>14px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table></div>
+</div></div></div>

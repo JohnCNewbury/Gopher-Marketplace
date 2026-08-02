@@ -1,0 +1,189 @@
+<!doctype html><meta charset="utf-8">
+<title>job-card-states — screen spec</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+color:#1d2433;background:#f6f7f9;line-height:1.45}
+.wrap{max-width:1400px;margin:0 auto;padding:22px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:#5b6472;margin:22px 0 9px}
+.meta{color:#5b6472;font-size:13px;margin:0 0 16px}
+a{color:#185fa5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:#fff;border:1px solid #e0e4ea;border-radius:10px;padding:11px;text-decoration:none;color:inherit;display:block}
+.card:hover{border-color:#9aa4b2;box-shadow:0 2px 10px rgba(20,30,50,.08)}
+.card img{width:100%;border-radius:6px;border:1px solid #eceff3;display:block;margin-bottom:8px}
+.card b{font-size:13px}
+.badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:2px 7px;margin-left:6px}
+.b-native{background:#e1f5ee;color:#0f6e56}.b-frames{background:#faeeda;color:#854f0b}.b-request{background:#e3ecfa;color:#1d4f9c}
+.cols{display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.shot{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:10px;position:sticky;top:16px}
+.shot img{width:100%;border-radius:8px;display:block}
+.panel{background:#fff;border:1px solid #e0e4ea;border-radius:12px;padding:16px 18px;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border:1px solid #eceff3;padding:5px 8px;text-align:left}
+th{background:#f7f8fa;color:#5b6472;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+td.v{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.sw{display:inline-block;width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.15);vertical-align:-2px;margin-right:6px}
+.tok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#0f6e56;font-weight:700}
+.untok{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#a33107}
+.tree{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.75;white-space:pre;overflow-x:auto;
+background:#f4f6f8;border:1px solid #e4e7ec;border-radius:8px;padding:11px 13px}
+.tree .i{color:#185fa5;font-weight:700}.tree .t{color:#0f6e56}.tree .d{color:#8a93a3}
+.warn{background:#fff8e1;border:1px solid #f3d98a;border-left:4px solid #e8a93b;border-radius:0 8px 8px 0;
+padding:10px 13px;font-size:12.5px;color:#6b4e16;margin:0 0 14px}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#5b6472;margin:0 0 12px}
+.kpi b{color:#1d2433;font-size:15px;display:block}
+</style><div class="wrap">
+<p class="meta"><a href="index.html">← all screens</a></p>
+<h1>job-card-states<span class="badge b-frames">FRAMES</span></h1>
+<p class="meta">Served by the <b>FRAMES</b> registry · 167 rendered nodes ·
+21/51 painted values map to a named token</p>
+<div class="cols"><div class="shot"><img src="img/job-card-states.png" alt=""></div><div>
+<div class="panel"><h2 style="margin-top:0">Behaviour · endpoints · reuse verdict</h2><pre style='white-space:pre-wrap;font-size:13px'>VERDICT: COMPONENT SPEC — build one JobCard component with variants, not a screen.
+
+BEHAVIOUR
+- One frame per card state, flattened: Set Pay + TOP PAY · Bids (&quot;Submit a Bid&quot;,
+  no $/hr, no Top Pay) · iQ flags (input-solid vs iQ-soft + marker chips) ·
+  Locked-Connect (Elite &amp; Pros + Tier up) · Locked-Gopher-Deal (unlocks once
+  verified).
+- Component model: Pay-mode × State variants; flags carry an Input vs iQ source prop.
+- Locked cards keep full content visible but muted, with the lock ribbon + CTA.
+
+ENDPOINTS / BACKEND SEAMS
+- None — this is the component library contract for jobs-list/job-detail cards.
+</pre></div>
+<div class="panel"><h2 style="margin-top:0">Component tree</h2>
+<div class="tree"><span class="i">div.host</span><span class="d"> 416×1767</span>
+  <span class="i">div</span><span class="d"> 390×42</span>
+    <span class="i">div</span><span class="d"> 63×28</span><span class="t">  "‹ Back"</span>
+    <span class="i">div</span><span class="d"> 74×28</span><span class="t">  "⌂ Home"</span>
+  <span class="i">div.head</span><span class="d"> 390×118</span>
+    <span class="i">h1</span><span class="d"> 390×62</span><span class="t">  "Gopher Go — Job Card · component states"</span>
+    <span class="i">p</span><span class="d"> 390×51</span><span class="t">  "One of each, flattened for Figma import. Build as a component with Pay-mode × State varian"</span>
+  <span class="i">div.board</span><span class="d"> 390×1555</span>
+    <span class="i">div.col</span><span class="d"> 336×265</span>
+      <span class="i">div.cap</span><span class="d"> 336×16</span><span class="t">  "Set pay + Top Pay"</span>
+      <span class="i">div.sub</span><span class="d"> 336×14</span><span class="t">  "$ amount · $/hr · Top Pay (Delivery/Ride)"</span>
+      <span class="i">div.job-card.hot</span><span class="d"> 336×219</span>
+        <span class="i">span.topmatch</span><span class="d"> 82×21</span><span class="t">  "★ TOP PAY"</span>
+        <span class="i">div.jc-top</span><span class="d"> 306×25</span>
+          <span class="i">span.jc-cat</span><span class="d"> 133×25</span><span class="t">  "Delivery / Errand"</span>
+            <span class="i">span.mi.cat</span><span class="d"> 15×15</span>
+          <span class="i">span.jc-posted</span><span class="d"> 48×13</span><span class="t">  "2 min ago"</span>
+        <span class="i">div.jc-pay</span><span class="d"> 306×40</span>
+          <span class="i">span.amt</span><span class="d"> 51×30</span><span class="t">  "$52"</span>
+          <span class="i">span.per</span><span class="d"> 64×24</span><span class="t">  "~$35/hr"</span>
+        <span class="i">div.jc-scope</span><span class="d"> 306×36</span><span class="t">  "Pick up 4 catering trays + drinks, deliver across town."</span>
+        <span class="i">div.jc-stats</span><span class="d"> 306×27</span>
+          <span class="i">span.jc-stat</span><span class="d"> 82×16</span><span class="t">  "3.2 mi"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+            <span class="i">small</span><span class="d"> 23×13</span><span class="t">  "away"</span>
+          <span class="i">span.jc-stat</span><span class="d"> 59×16</span><span class="t">  "~1.5 hr"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">span.jc-stat</span><span class="d"> 46×16</span><span class="t">  "Now"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+        <span class="i">div.jc-flags</span><span class="d"> 306×22</span>
+          <span class="i">span.flag.warn</span><span class="d"> 102×22</span><span class="t">  "Time-sensitive"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">span.flag.good</span><span class="d"> 77×22</span><span class="t">  "No heavy lift"</span>
+    <span class="i">div.col</span><span class="d"> 336×249</span>
+      <span class="i">div.cap</span><span class="d"> 336×16</span><span class="t">  "Bids"</span>
+      <span class="i">div.sub</span><span class="d"> 336×14</span><span class="t">  "“Submit a Bid” · no $/hr, no Top Pay"</span>
+      <span class="i">div.job-card</span><span class="d"> 336×203</span>
+        <span class="i">div.jc-top</span><span class="d"> 306×25</span>
+          <span class="i">span.jc-cat</span><span class="d"> 82×25</span><span class="t">  "Moving"</span>
+            <span class="i">span.mi.cat</span><span class="d"> 15×15</span>
+          <span class="i">span.jc-posted</span><span class="d"> 52×13</span><span class="t">  "15 min ago"</span>
+        <span class="i">div.jc-pay</span><span class="d"> 306×42</span>
+          <span class="i">span.bid-cta</span><span class="d"> 140×42</span><span class="t">  "Submit a Bid"</span>
+        <span class="i">div.jc-scope</span><span class="d"> 306×18</span><span class="t">  "2-BR move, Raleigh → Durham. Stairs at pickup."</span>
+        <span class="i">div.jc-stats</span><span class="d"> 306×27</span>
+          <span class="i">span.jc-stat</span><span class="d"> 82×16</span><span class="t">  "5.4 mi"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+            <span class="i">small</span><span class="d"> 23×13</span><span class="t">  "away"</span>
+          <span class="i">span.jc-stat</span><span class="d"> 49×16</span><span class="t">  "~5 hr"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">span.jc-stat</span><span class="d"> 71×16</span><span class="t">  "Sat 9 AM"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+        <span class="i">div.jc-flags</span><span class="d"> 306×22</span>
+          <span class="i">span.flag.neu</span><span class="d"> 67×22</span><span class="t">  "You staff 3"</span>
+          <span class="i">span.flag.warn</span><span class="d"> 106×22</span><span class="t">  "Stairs at pickup"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">span.flag.good</span><span class="d"> 117×22</span><span class="t">  "Service elevator avail"</span>
+    <span class="i">div.col</span><span class="d"> 336×297</span>
+      <span class="i">div.cap</span><span class="d"> 336×16</span><span class="t">  "iQ flags"</span>
+      <span class="i">div.sub</span><span class="d"> 336×14</span><span class="t">  "Input (solid) + iQ (soft + marker) mixed"</span>
+      <span class="i">div.job-card</span><span class="d"> 336×251</span>
+        <span class="i">div.jc-top</span><span class="d"> 306×25</span>
+          <span class="i">span.jc-cat</span><span class="d"> 116×25</span><span class="t">  "Junk Removal"</span>
+            <span class="i">span.mi.cat</span><span class="d"> 15×15</span>
+          <span class="i">span.jc-posted</span><span class="d"> 54×13</span><span class="t">  "22 min ago"</span>
+        <span class="i">div.jc-pay</span><span class="d"> 306×40</span>
+          <span class="i">span.amt</span><span class="d"> 68×30</span><span class="t">  "$210"</span>
+          <span class="i">span.per</span><span class="d"> 71×24</span><span class="t">  "~$105/hr"</span>
+        <span class="i">div.jc-scope</span><span class="d"> 306×36</span><span class="t">  "½ truck: office furniture, monitors, a couch and a safe."</span>
+        <span class="i">div.jc-stats</span><span class="d"> 306×27</span>
+          <span class="i">span.jc-stat</span><span class="d"> 82×16</span><span class="t">  "6.1 mi"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+            <span class="i">small</span><span class="d"> 23×13</span><span class="t">  "away"</span>
+          <span class="i">span.jc-stat</span><span class="d"> 49×16</span><span class="t">  "~2 hr"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+        <span class="i">div.jc-flags</span><span class="d"> 306×54</span>
+          <span class="i">span.flag.neu</span><span class="d"> 53×24</span><span class="t">  "½ truck"</span>
+          <span class="i">span.flag.warn</span><span class="d"> 71×24</span><span class="t">  "E-waste"</span>
+            <span class="i">span.mi.ut</span><span class="d"> 12×12</span>
+          <span class="i">span.flag.iq.warn</span><span class="d"> 94×24</span><span class="t">  "Heavy item"</span>
+            <span class="i">span.iqm</span><span class="d"> 17×13</span><span class="t">  "iQ"</span>
+          <span class="i">span.flag.iq.neu</span><span class="d"> 91×24</span><span class="t">  "Long carry"</span>
+            <span class="i">span.iqm</span><span class="d"> 17×13</span><span class="t">  "iQ"</span>
+    <span class="i">div.col</span><span class="d"> 336×332</span>
+      <span class="i">div.cap</span><span class="d"> 336×16</span><span class="t">  "Locked · Connect"</span>
+      <span class="i">div.sub</span><span class="d"> 336×14</span><span class="t">  "Standard Gopher · this job is for Gopher Elite &amp; Pros"</span>
+      <span class="i">div.job-card</span><span class="d"> 336×286</span>
+        <span class="i">span.lock-ribbon</span><span class="d"> 84×24</span><span class="t">  "Connect"</span>
+        <span class="i">div.lockwrap</span><span class="d"> 306×195</span>
+          <span class="i">div.jc-top</span><span class="d"> 306×25</span>
+            <span class="i">span.jc-cat</span><span class="d"> 143×25</span><span class="t">  "Hourly / Day Labor"</span>
+            <span class="i">span.jc-source.connect</span><span class="d"> 66×21</span>
+            <span class="i">span.jc-posted</span><span class="d"> 49×13</span><span class="t">  "8 min ago"</span>
+          <span class="i">div.jc-biz</span><span class="d"> 306×18</span>
+            <span class="i">span.biz-nm</span><span class="d"> 124×16</span><span class="t">  "Piedmont Logistics Co."</span>
+            <span class="i">span.vbiz-chip</span><span class="d"> 111×18</span><span class="t">  "Verified Business"</span>
+          <span class="i">div.jc-pay</span><span class="d"> 306×40</span>
+            <span class="i">span.amt</span><span class="d"> 68×30</span><span class="t">  "$280"</span>
+            <span class="i">span.per</span><span class="d"> 64×24</span><span class="t">  "~$70/hr"</span>
+          <span class="i">div.jc-scope</span><span class="d"> 306×18</span><span class="t">  "Loading crew, 4-hr block."</span>
+          <span class="i">div.jc-stats</span><span class="d"> 306×27</span>
+            <span class="i">span.jc-stat</span><span class="d"> 54×16</span><span class="t">  "4.0 mi"</span>
+            <span class="i">span.jc-stat</span><span class="d"> 49×16</span><span class="t">  "~4 hr"</span>
+          <span class="i">div.jc-flags</span><span class="d"> 306×22</span>
+            <span class="i">span.flag.neu</span><span class="d"> 69×22</span><span class="t">  "1 of 3 crew"</span>
+        <span class="i">div.lock-cta</span><span class="d"> 306×50</span>
+          <span class="i">span.lt</span><span class="d"> 195×32</span><span class="t">  "Connect job — for"</span>
+            <span class="i">b</span><span class="d"> 183×32</span><span class="t">  "Gopher Elite &amp; Pros"</span>
+          <span class="i">span.lgo</span><span class="d"> 60×27</span><span class="t">  "Tier up"</span>
+    <span class="i">div.col</span><span class="d"> 336×275</span>
+      <span class="i">div.cap</span><span class="d"> 336×16</span><span class="t">  "Locked · Gopher Deal"</span>
+      <span class="i">div.sub</span><span class="d"> 336×14</span><span class="t">  "Standard Gopher · unlocks once verified"</span>
+      <span class="i">div.job-card</span><span class="d"> 336×229</span>
+        <span class="i">span.lock-ribbon</span><span class="d"> 105×24</span><span class="t">  "Gopher Deal"</span>
+        <span class="i">div.lockwrap</span><span class="d"> 306×138</span>
+          <span class="i">div.jc-top</span><span class="d"> 306×25</span>
+            <span class="i">span.jc-cat</span><span class="d"> 133×25</span><span class="t">  "Delivery / Errand"</span>
+            <span class="i">span.jc-source.deal</span><span class="d"> 53×21</span>
+            <span class="i">span.jc-posted</span><span class="d"> 38×13</span><span class="t">  "1 hr ago"</span>
+          <span class="i">div.jc-pay</span><span class="d"> 306×40</span>
+            <span class="i">span.amt</span><span class="d"> 51×30</span><span class="t">  "$41"</span>
+            <span class="i">span.per</span><span class="d"> 64×24</span><span class="t">  "~$41/hr"</span>
+          <span class="i">div.jc-scope</span><span class="d"> 306×18</span><span class="t">  "Age-restricted delivery — ID at drop-off."</span>
+          <span class="i">div.jc-stats</span><span class="d"> 306×27</span>
+            <span class="i">span.jc-stat</span><span class="d"> 54×16</span><span class="t">  "5.0 mi"</span>
+            <span class="i">span.jc-stat</span><span class="d"> 49×16</span><span class="t">  "~1 hr"</span>
+        <span class="i">div.lock-cta</span><span class="d"> 306×50</span>
+          <span class="i">span.lt</span><span class="d"> 195×32</span><span class="t">  "Gopher Deal — unlocks once"</span>
+            <span class="i">b</span><span class="d"> 42×16</span><span class="t">  "verified"</span>
+          <span class="i">span.lgo</span><span class="d"> 60×27</span><span class="t">  "Tier up"</span></div></div>
+<div class="panel"><h2 style="margin-top:0">Tokens actually painted</h2>
+<p style="font-size:12.5px;color:#5b6472;margin:0 0 10px">Values marked
+<span class="untok">literal</span> are hardcoded in the prototype and need a token before a
+dev can implement them consistently.</p><h2>color</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(0, 36, 97)"></span>rgb(0, 36, 97)</td><td>59</td><td><span class="tok">--ink · --navy</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(66, 66, 66)"></span>rgb(66, 66, 66)</td><td>51</td><td><span class="tok">--text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>15</td><td><span class="tok">--card</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(107, 114, 128)"></span>rgb(107, 114, 128)</td><td>14</td><td><span class="tok">--muted-cool</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(28, 176, 97)"></span>rgb(28, 176, 97)</td><td>12</td><td><span class="tok">--green · --green-dark</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(146, 88, 13)"></span>rgb(146, 88, 13)</td><td>12</td><td><span class="tok">--warning-text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(26, 58, 122)"></span>rgb(26, 58, 122)</td><td>4</td><td><span class="tok">--navy-mid</span></td></tr></table><h2>backgroundColor</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 255, 255)"></span>rgb(255, 255, 255)</td><td>7</td><td><span class="tok">--card</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(226, 243, 233)"></span>rgb(226, 243, 233)</td><td>7</td><td><span class="tok">--green-light</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(242, 244, 249)"></span>rgb(242, 244, 249)</td><td>5</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(255, 247, 194)"></span>rgb(255, 247, 194)</td><td>3</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(238, 241, 247)"></span>rgb(238, 241, 247)</td><td>3</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(0, 36, 97)"></span>rgb(0, 36, 97)</td><td>2</td><td><span class="tok">--ink · --navy</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(238, 240, 248)"></span>rgb(238, 240, 248)</td><td>2</td><td><span class="tok">--navy-light</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(28, 176, 97)"></span>rgb(28, 176, 97)</td><td>2</td><td><span class="tok">--green · --green-dark</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(251, 247, 239)"></span>rgb(251, 247, 239)</td><td>1</td><td><span class="tok">--paper</span></td></tr><tr><td class='v'><span class="sw" style="background:rgba(0, 36, 97, 0.93)"></span>rgba(0, 36, 97, 0.93)</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgba(255, 255, 255, 0.16)"></span>rgba(255, 255, 255, 0.16)</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(51, 217, 117)"></span>rgb(51, 217, 117)</td><td>1</td><td><span class="tok">--green-bright</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(146, 88, 13)"></span>rgb(146, 88, 13)</td><td>1</td><td><span class="tok">--warning-text</span></td></tr><tr><td class='v'><span class="sw" style="background:rgb(26, 58, 122)"></span>rgb(26, 58, 122)</td><td>1</td><td><span class="tok">--navy-mid</span></td></tr></table><h2>fontSize</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>16px</td><td>47</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>11.5px</td><td>42</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>11px</td><td>20</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>10px</td><td>18</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>9.5px</td><td>13</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>13px</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>10.5px</td><td>5</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>30px</td><td>4</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>12px</td><td>4</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>9.58333px</td><td>3</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>8px</td><td>2</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>23px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>fontWeight</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>400</td><td>52</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>800</td><td>36</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>900</td><td>34</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>700</td><td>32</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>600</td><td>8</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>500</td><td>5</td><td><span class="untok">— literal, needs a token</span></td></tr></table><h2>borderRadius</h2><table><tr><th>painted value</th><th>uses</th><th>token</th></tr><tr><td class='v'>99px</td><td>14</td><td><span class="tok">--radius-pill</span></td></tr><tr><td class='v'>7px</td><td>12</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>18px</td><td>5</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>0px 0px 0px 12px</td><td>3</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>4px</td><td>2</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>11px</td><td>2</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>56px</td><td>1</td><td><span class="untok">— literal, needs a token</span></td></tr><tr><td class='v'>12px</td><td>1</td><td><span class="tok">--radius-md</span></td></tr></table></div>
+</div></div></div>
