@@ -1,5 +1,10 @@
 # Screen Spec ("Truth file") — session brief
 
+> **Audience: a Claude Code session — NOT the dev partner.** This is a work order. It talks
+> about Chrome flags, scratchpads and browser-pane quirks, none of which are dev-partner
+> concerns. The artifact the dev partner reads is the **generated spec site** this brief
+> produces, not this file. Dev-facing documentation lives in `docs/handoff/`.
+
 **Owner-approved 2026-08-02.** This is the brief for a **dedicated, autonomous session**. There
 is no production risk in this work and the owner does not want to be pulled into it. Run the
 loop, self-verify against the pass criteria below, report once at the end.
