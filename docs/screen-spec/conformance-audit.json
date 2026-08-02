@@ -1,0 +1,111 @@
+{
+ "runs": 3,
+ "stable": true,
+ "results": [
+  {
+   "id": "D-026-CAP",
+   "canon": "cap = max($20, 1.5 x offer), OFFER ONLY",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "coCap base='amtNum' tierEscape='j.mode==='bid'||coTiered'"
+  },
+  {
+   "id": "D-026-BEAT",
+   "canon": "counter must beat the offer",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "blocks coVal<=offer"
+  },
+  {
+   "id": "D-026-5MO",
+   "canon": "Standard = 5 counters/month, resets the 1st",
+   "method": "STATIC+ADVERSARIAL",
+   "verdict": "DECORATIVE",
+   "evidence": "copy=yes (3 of 5</b> monthly counter-o) \u00b7 backing state=NONE \u2014 the number is hardcoded"
+  },
+  {
+   "id": "D-026-TIER",
+   "canon": "Elite/Elite+/Pro unlimited & uncapped",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "coTiered seam present, hardcoded false (never exercised)"
+  },
+  {
+   "id": "D-026-ENFORCE",
+   "canon": "cap ENFORCED both ends (over-cap AND at/below offer)",
+   "method": "ADVERSARIAL",
+   "verdict": "PASS",
+   "evidence": "over-cap blocked=True (Standard cap \u2014 your counter can\u2019t exceed $78 () \u00b7 at-or-below blocked=True (Enter more than $52 \u2014 you can\u2019t counter at or )"
+  },
+  {
+   "id": "INV-RATING",
+   "canon": "ratings never surfaced to the other party",
+   "method": "RUNTIME",
+   "verdict": "PASS",
+   "evidence": "{'found': False, 'sample': None}"
+  },
+  {
+   "id": "INV-PAYOUT",
+   "canon": "worker sees Offer + Cost of Items only; zero fees",
+   "method": "RUNTIME",
+   "verdict": "PASS",
+   "evidence": "{'feeWordShown': False, 'earnShown': True}"
+  },
+  {
+   "id": "G40-91",
+   "canon": "requester anonymous / address masked until hired",
+   "method": "RUNTIME",
+   "verdict": "PASS",
+   "evidence": "{'maskNoted': True, 'streetVisible': False}"
+  },
+  {
+   "id": "RIDE-GATE",
+   "canon": "Ride Sharing needs photos + docs + vehicle fields",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "const w=r.querySelector('.js-ridewrap'); if(!w) return true; const fields=[...w.querySelectorAll('.field input')].every(i=>(i.value||'').tri"
+  },
+  {
+   "id": "D-015-TIERS",
+   "canon": "Standard / Elite / Elite+ / Pro-as-credential",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "'Elite+'=12  legacy 'Pro+'=0"
+  },
+  {
+   "id": "REQ-ONE-HIRE-STATE",
+   "canon": "one hire \u2014 `hired` holds a single worker, not a list",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "hired := b.by (scalar) \u00b7 list-form found=False"
+  },
+  {
+   "id": "REQ-ONE-HIRE-ENFORCE",
+   "canon": "a SECOND hire is refused",
+   "method": "ADVERSARIAL",
+   "verdict": "PASS",
+   "evidence": "{'reachable': True, 'hiredAfterFirst': 1, 'hiredAfterSecond': 1, 'secondHireRefused': True, 'toast': 'You hire one worker \u2014 remove them to pick someone else.'}"
+  },
+  {
+   "id": "REQ-SELECT",
+   "canon": "modes incl. 'Prioritize MY Gophers'",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "'Prioritize MY Gophers' present=True"
+  },
+  {
+   "id": "AR-KEYWORDS",
+   "canon": "iQ age-keyword scan on the description (step 2)",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "gopher-age-keywords"
+  },
+  {
+   "id": "REQ-FEES",
+   "canon": "Request schedule $0.99-$4.99 + A/R $1.99",
+   "method": "STATIC",
+   "verdict": "PASS",
+   "evidence": "{'0.99': True, '1.99': True, '2.99': True, '3.99': True, '4.99': True}"
+  }
+ ]
+}
