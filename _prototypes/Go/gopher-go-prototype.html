@@ -3351,9 +3351,17 @@ function load(id,isBack){
  current=id; stage.innerHTML=''; stage.scrollTop=0;
  const host=document.createElement('div'); host.className='host'; stage.appendChild(host);
  const sr=host.attachShadow({mode:'open'});sr.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-gnav]');if(!t)return;var M={home:'home',inbox:'inbox',go:'jobs-list',refer:'refer-self',help:'help'};var dest=M[t.getAttribute('data-gnav')];if(dest&&typeof GO==='function'){try{GO(dest);}catch(_){}}});
- if(NATIVE[id]){ sr.innerHTML='<style>'+NATIVE_CSS+'</style>'+NATIVE[id].html; NATIVE[id].init(sr); renderAcct(sr); decorateNav(sr,id); if(id!=='onboarding') bindPersist(sr,id); }
+ /* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+    Measured 2026-08-02 across all 44 rendered screens: every single element painting a
+    non-brand font was either a form control (160) or a descendant of one (150) — zero
+    other causes. So one rule at the point every shadow root is built fixes all of them,
+    rather than 36 per-component selectors that the next new button would miss.
+    Deliberately NOT resetting font-weight: buttons that look bold declare their own,
+    and `font:inherit` would flatten them. See docs/screen-spec/TYPE-AND-SHAPE-SCALE.md. */
+ const FORM_FONT_RESET='button,input,select,textarea{font-family:inherit;font-size:inherit;}';
+ if(NATIVE[id]){ sr.innerHTML='<style>'+FORM_FONT_RESET+NATIVE_CSS+'</style>'+NATIVE[id].html; NATIVE[id].init(sr); renderAcct(sr); decorateNav(sr,id); if(id!=='onboarding') bindPersist(sr,id); }
  else { const f=FRAMES[id]||{css:'',html:'<div style="padding:40px;font-family:sans-serif">Screen not provided.</div>'};
-        sr.innerHTML='<style>'+f.css+'</style>'+f.html; sr.addEventListener('click',handle); decorateImported(sr,id); if(id==='deals'&&window.initDeals){try{window.initDeals(sr);}catch(e){}} if(id==='home'){try{renderSPTile(sr);}catch(_){}}
+        sr.innerHTML='<style>'+FORM_FONT_RESET+f.css+'</style>'+f.html; sr.addEventListener('click',handle); decorateImported(sr,id); if(id==='deals'&&window.initDeals){try{window.initDeals(sr);}catch(e){}} if(id==='home'){try{renderSPTile(sr);}catch(_){}}
  if(id==='home'){try{const _ws=sr.querySelector('.wsr .wt .s'); if(_ws&&state.work){const n=state.work.cats.length,t=state.work.tier,rr=state.work.radii||[];const rad=t==='elite'?((rr[0]||0)+' mi delivery \u00b7 '+((rr[1]||rr[0])||0)+' mi labor'):((rr[0]||0)+' mi radius');_ws.textContent=n+(n===1?' category':' categories')+' \u00b7 '+rad;}}catch(e){}} }
  {var _g40fs=document.createElement('style');_g40fs.textContent=G40_FOOTER_CSS;sr.appendChild(_g40fs);}
  // Deals launch gate: outside the Raleigh DMA the home Deals section (ad inventory) is removed

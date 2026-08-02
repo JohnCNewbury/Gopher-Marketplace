@@ -62,6 +62,13 @@
   --over-sh:0 18px 48px rgba(0,36,97,.22);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+   Measured 2026-08-02 across all 44 rendered screens: every element painting a non-brand
+   font was a form control or a descendant of one. One rule fixes all of them; 36 per-
+   component selectors would miss the next new button. font-weight deliberately NOT reset
+   — buttons that look bold declare their own, and `font:inherit` would flatten them. */
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+
 html,body{height:100%;}
 body{
   font-family:'DM Sans',sans-serif;color:var(--text);line-height:1.5;

@@ -14,6 +14,12 @@
   --card-sh:0 1px 2px rgba(0,36,97,.05),0 6px 16px rgba(0,36,97,.08);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+   Measured 2026-08-02: every element painting a non-brand font was a form control or a
+   descendant of one. font-weight deliberately NOT reset — buttons that look bold declare
+   their own, and `font:inherit` would flatten them. docs/screen-spec/TYPE-AND-SHAPE-SCALE.md */
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+
 html,body{height:100%;}
 body{font-family:'DM Sans',sans-serif;color:var(--ink);background:#d7deea;
   background-image:radial-gradient(circle at 20% 10%,#e4eaf4,transparent 40%),radial-gradient(circle at 85% 90%,#dbe7df,transparent 45%);

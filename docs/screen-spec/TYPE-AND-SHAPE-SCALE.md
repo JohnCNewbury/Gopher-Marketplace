@@ -11,26 +11,49 @@ open-ended gap. Measuring it turns it into a short list of decisions.
 
 ---
 
-## 1. Fix this before tokenising anything — 288 elements are not painting a brand font
+## 1. ✅ FIXED 2026-08-02 — the unstyled form controls
 
-| Painted | Count | What it is |
+**Was:** 373 elements painted `Arial`, 351 of them at `13.3333px` — Chrome's user-agent default
+for an unstyled form control, and the 4th most common font size in the product. Any token scale
+built on top of that would have enshrined an accident.
+
+**Root cause, proven rather than assumed.** Every single non-brand element was either a form
+control (160) or a descendant of one (150) — **zero other causes**. Form controls do not inherit
+`font`; the UA stylesheet pins them. An earlier hypothesis — that screen roots were missing a
+`font-family` — was **wrong** and was discarded after measuring: every root already declared
+DM Sans, including screens with 69 Arial elements *and* screens with none.
+
+**Fix:** one rule, applied where every screen's CSS is assembled rather than to 36 per-component
+selectors that the next new button would have missed:
+
+```css
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+```
+
+`font-weight` is deliberately **not** reset — buttons that look bold declare their own weight,
+and `font: inherit` would flatten them.
+
+**Result, measured across all 44 rendered screens:**
+
+| | Before | After |
 |---|---|---|
-| `Arial` @ `13.3333px` | **288** | Chrome's default for an **unstyled form control**. 158 are `<button>`. |
-| `Arial` @ other sizes | 22 | Elements that set a size but **no font-family**, so they fall back — includes real body copy (e.g. `.rs-tdesc`, "Share your code so new customers…") |
+| `Arial` | 373 | **0** |
+| `13.3333px` (UA default) | 351 | **0** |
+| Brand-face coverage | 92.5% | **99.98%** |
+| Screens whose height or node count changed | — | **0 of 44** |
 
-`13.3333px` is not a design decision — it is the user-agent default leaking through, and it is
-**the 4th most common font size in the product** (7.1% of all painted text). Any token scale
-built without fixing this would enshrine an accident.
+Zero layout movement, so this is safe to carry into the reskin as-is.
 
-**Recommendation:** give buttons and inputs an explicit brand family + size first. Then re-run
-the generator — the scale below will get materially cleaner on its own.
+**One stray remains, deliberately not chased:** `work-settings` → `<button class="vp-i js-vpinfo">`,
+the 10px "i" info affordance, paints Georgia — a single element, and the only non-brand text left
+in the product.
 
 ---
 
-## 2. Font size — 35 distinct values, but only ~8 real steps
+## 2. Font size — 34 distinct values, but only ~8 real steps
 
-`16px` (39%) is overwhelmingly the **inherited default on layout containers**, not a text step.
-Excluding it and the UA default, the real ladder is:
+`16px` (now 46% — it absorbed the controls that used to paint 13.3333px) is overwhelmingly the
+**inherited default on layout containers**, not a text step. Excluding it, the real ladder is:
 
 | Painted | Uses | Reading |
 |---|---|---|
@@ -71,11 +94,11 @@ and 600 → 700.
 
 | Family | Uses | Share |
 |---|---|---|
-| DM Sans | 2,481 | 50.0% — body |
+| DM Sans | 2,854 | 57.5% — body |
 | Nunito | 2,098 | 42.3% — headings / emphasis |
-| Arial | 373 | 7.5% — **not intended; see §1** |
+| Arial | **0** | eliminated — see §1 |
 
-Two brand faces, cleanly split. Fixing §1 should take Arial to ~0.
+Two brand faces, cleanly split, plus Caveat (10 uses, the script accent). §1 took Arial to 0.
 
 ---
 
