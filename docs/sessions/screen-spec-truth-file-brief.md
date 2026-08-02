@@ -121,3 +121,36 @@ is worth shipping, the regeneration is one command and the diff shows exactly wh
 
 `docs/` is excluded from the deploy (`EXCLUDE` in `scripts/deploy.sh`), so this brief and any
 generated spec placed under `docs/` are **not published** to the live site.
+
+---
+
+## ✅ COMPLETED 2026-08-02 (commit `34a519f`)
+
+All pass criteria verified:
+
+1. **Coverage** — 44/44: Go 21 NATIVE + 11 FRAMES (the dead `request-history` FRAMES
+   entry is deleted, so 32 unique) + Request 12 (7 flow steps + home, deals, inbox,
+   in-progress, refer).
+2. **No quarantined references** — the only `_day1-figma-archive` mention in the spec
+   is the deliberate "do not implement from" warning box.
+3. **Token resolution** — vocabulary unified across BOTH apps (`--aquamarine`→`--aqua`
+   was the visible tip; the real fix was two whole dialects: old `--green`=#33D975 /
+   `--muted`=#6b7280 in Go NATIVE + 3 FRAMES entries + the Request flow, renamed
+   use-by-use onto the canonical names, plus `--green-deep` split off for the #178A4E
+   clash). Every screen scope now declares the full canonical set (+ `--z-*` zones,
+   radii, fonts). job-detail top-20: 3→7 named; the remainder are fontSize/fontWeight
+   literals — no type-scale tokens exist in any canon source, so they are correctly
+   listed as "literal, needs a token".
+4. **Idempotent** — two consecutive full runs produce byte-identical JSON and
+   pixel-identical PNGs (animations/SMIL frozen, Math.random seeded, flow typewriter
+   timers cleared synchronously).
+5. **Completeness** — every page: PNG (full-scroll, paint-verified) · component tree ·
+   token table · authored note with behaviour, endpoints and REUSE/ADAPT/NET-NEW.
+
+Three latent prototype bugs were fixed by the token work (pixel-diff-verified as the
+only render changes): the Go NATIVE footer GO-button gradient (invalid var → was
+rendering transparent), the FRAMES home "View all local Deals" link color, and two
+author-intended greens in the Request flow.
+
+**Maintenance:** after any screen change, `python3 scripts/screen-spec/gen-screen-spec.py`
+then `render-spec-site.py` (serve a repo copy on :8141 first). The diff IS the review.
