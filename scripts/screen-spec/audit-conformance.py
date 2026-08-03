@@ -263,6 +263,7 @@ def run_once(n):
 
 
 def main():
+    require_destination()   # fail loudly if the private handoff repo isn't there
     runs = 3
     if "--runs" in sys.argv:
         runs = int(sys.argv[sys.argv.index("--runs") + 1])
@@ -294,7 +295,7 @@ def main():
             print(f"\n  [{r['verdict']}] {r['id']} — {r['canon']}")
             print(f"       method: {r['method']}")
             print(f"       evidence: {r['evidence']}")
-    out = os.path.join(REPO, "docs", "screen-spec", "conformance-audit.json")
+    out = os.path.join(SPEC_OUT, "conformance-audit.json")
     json.dump({"runs": runs, "stable": stable, "results": base}, open(out, "w"), indent=1)
     print(f"\nwrote {out}")
 

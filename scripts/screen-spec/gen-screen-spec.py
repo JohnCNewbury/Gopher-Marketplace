@@ -41,8 +41,7 @@ PORT = 9333
 # latter. Resolved from the repo root, not from this file's neighbours, so moving the
 # script cannot silently strand the output in a second location. (Two copies of the spec
 # is the exact drift this whole system exists to prevent.)
-REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-OUT = os.path.join(REPO, "docs", "screen-spec")
+from spec_paths import REPO, OUT, require_destination   # one definition, three scripts
 BASE = "http://localhost:8141/_prototypes"
 GO_URL = f"{BASE}/Go/gopher-go-prototype.html"
 DEVICE_W, DEVICE_H = 1280, 950
@@ -448,6 +447,7 @@ def capture(c, sid, served_by, data, index):
 
 
 def main():
+    require_destination()   # fail loudly if the private handoff repo isn't there
     want = sys.argv[1:]
     os.makedirs(os.path.join(OUT, "img"), exist_ok=True)
     proc = launch_chrome()

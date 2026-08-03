@@ -11,10 +11,7 @@ if it does not the page says so out loud rather than looking complete.
 import json, os, glob, html
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Must match gen-screen-spec.py — the deliverable lives in docs/, the tooling in scripts/.
-REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
-OUT = os.path.join(REPO, "docs", "screen-spec")
-NOTES = os.path.join(OUT, "notes")
+from spec_paths import REPO, OUT, NOTES, require_destination   # one definition, three scripts
 
 CSS = """
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
@@ -96,6 +93,7 @@ def token_table(rows, kind):
 
 
 def main():
+    require_destination()   # fail loudly if the private handoff repo isn't there
     idx = json.load(open(os.path.join(OUT, "_index.json")))
     os.makedirs(NOTES, exist_ok=True)
 
