@@ -230,6 +230,89 @@ def main():
             WARNS.append("%s has undocumented NEW state fields: %s — reconcile into the schema doc"
                          % (name, ", ".join(sorted(new))))
 
+    print("== 6. DRAFT — the cross-device contract holds ==")
+    # The draft kernel is what makes "start on the web, finish in the app" possible.
+    # Two things have to stay true as surfaces change:
+    #   a) every field the kernel promises to carry actually EXISTS in each surface,
+    #      or a resumed request silently drops data;
+    #   b) nothing sensitive or transient can reach a draft — that one is a privacy
+    #      guarantee, so it is asserted against the kernel's real output, not by
+    #      reading the source.
+    draft_js = os.path.join(ROOT, "Final/assets/js/gopher-request-draft.js")
+    if not os.path.exists(draft_js):
+        check(False, "draft kernel present", draft_js)
+    else:
+        probe = r"""
+          var K = require(%s);
+          var state = {};
+          K.CONTRACT_FIELDS.forEach(function(f){ state[f] = 'x'; });
+          // a state that carries everything a real one would, including what must NOT travel
+          state.idVerification = {idFrontSrc:'data:image/jpeg;base64,SECRET', selfieSrc:'data:image/jpeg;base64,S'};
+          state.picThumbs = [{id:1, src:'data:image/jpeg;base64,AAAA'}];
+          K.TRANSIENT_FIELDS.forEach(function(f){ state[f] = 'x'; });
+          var d = K.toDraft(state, {rev:0});
+          var json = JSON.stringify(d);
+          var leaked = K.SENSITIVE_FIELDS.filter(function(f){ return f in d.data; })
+            .concat(K.TRANSIENT_FIELDS.filter(function(f){ return f in d.data; }));
+          console.log(JSON.stringify({
+            contract: K.CONTRACT_FIELDS,
+            leaked: leaked,
+            imageData: json.indexOf('data:image') !== -1,
+            validates: K.validate(d).ok,
+            reconsent: K.RECONSENT_FIELDS
+          }));
+        """ % json.dumps(draft_js)
+        try:
+            out = subprocess.run(["node", "-e", probe], capture_output=True, text=True,
+                                 timeout=60, cwd=ROOT)
+            info = json.loads(out.stdout.strip().splitlines()[-1])
+        except Exception as e:
+            info = None
+            check(False, "draft kernel runs", str(e)[:120])
+
+        if info:
+            check(not info["leaked"], "no sensitive or transient field can reach a draft",
+                  ", ".join(info["leaked"]))
+            check(not info["imageData"], "no image data can reach a draft")
+            check(info["validates"], "kernel validates its own output")
+
+            # Every carried field must exist in every surface's makeInitialState(),
+            # otherwise a resumed request silently drops data. Two exemptions:
+            #
+            #   derived  — computed BY the kernel/map, never read from surface state.
+            #   optional — schema doc §3c "platform-specific": genuinely part of the
+            #              contract, legitimately absent until that platform gains the
+            #              feature (Connect/prototype have no Deals surface yet). These
+            #              WARN rather than fail: a known, documented gap that fails the
+            #              build teaches people to ignore the build.
+            derived = {"picCount", "categoryRaw", "subCategoryRaw", "hasPic"}
+            optional = {"fromDeal", "dealKind", "dealBoost", "hireAgainGophers"}
+            for name, rel in SURFACES.items():
+                src = read(rel)
+                i = src.index("function makeInitialState")
+                k = src.index("{", src.index("return", i)); d = 0; j = k
+                while j < len(src):
+                    if src[j] == "{": d += 1
+                    elif src[j] == "}":
+                        d -= 1
+                        if d == 0: break
+                    j += 1
+                body = re.sub(r"//[^\n]*", "", src[k:j + 1])
+                fields = set(re.findall(r"([A-Za-z_]\w*)\s*:", body))
+                absent = (set(info["contract"]) - derived) - fields
+                soft = absent & optional
+                hard = absent - optional
+                check(not hard, "%s has every field the draft carries" % name,
+                      ("absent: " + ", ".join(sorted(hard))) if hard else "")
+                if soft:
+                    WARNS.append("%s lacks platform-specific contract fields: %s — a draft "
+                                 "resumed here loses them (schema doc §3c)"
+                                 % (name, ", ".join(sorted(soft))))
+
+            # Consent must be re-taken on the receiving device, never inherited.
+            check(set(info["reconsent"]) >= {"waiverChecked"},
+                  "liability waiver is re-consented on resume, not carried")
+
     print()
     for w in WARNS:
         print("  [WARN] " + w)
