@@ -1273,6 +1273,89 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     with `--allow-dirty` (that is the 2026-07-19 incident the guard exists to prevent). Owner
     authorized shipping as soon as they commit.
 
+- **Flow-comparison doc set for the incoming dev partner (done 2026-08-01).** _(Scope note:
+  all three files live OUTSIDE this repo in `Documentation/Canonical Request Flow - Master /`
+  — note the trailing space in the folder name.)_ Owner asked for a documented comparison of
+  the new canonical request flow vs the LIVE production app flow. Built two new docs alongside
+  the canonical:
+  (1) **`production-request-flow-granular.html`** — the "complete and complex" as-built doc,
+  reusing the canonical doc's exact interactive shell (category tabs → step cards → clickable
+  logic boxes) so they read as siblings, plus a **⚙ Server lifecycle** tab and 14 reference
+  sections (fees, Stripe money flow, states, matching, counters, cancellation, favorites,
+  quirks, provenance). Traced from **clean `origin/production` worktrees** (requester-web-app
+  `e0a56bb3b`, gopher-api `e9fda50f`) — never from `main`/work branches; worktrees removed
+  after. Every load-bearing constant was re-verified verbatim in source.
+  (2) **`flow-comparison.html`** — the high-level side-by-side (grouped table + "eight things
+  that most change the ground under the rebuild" strip), linking both granular docs.
+  **Owner directive same day: a leftmost REUSE/ADAPT/NEW verdict column** was added to every
+  row so the dev knows where live code carries — headline example **"Stripe is NOT being
+  reintegrated"** (the PI auth/capture/transfer/payout chain, connected accounts, re-auth
+  crons and payout-speed rule carry as-is). Verdict census: 10 REUSE / 5 ADAPT / 4 NET-NEW;
+  the legend restates the standing rule (live logic that works carries; prototype≠live ⇒ the
+  prototype is the bug). Other REUSE anchors: `cal_amounts` + fee constants (= the Request
+  schedule), `isCounterOfferValid`, the claim/approval endpoints + processing lock, iDenfy,
+  the scheduling/expiry/re-auth crons, and the post-submit states (formalize, don't rename).
+  **Same-day follow-ons (owner directives):**
+  (a) **The GO (worker) doc pair** — `Canonical Go Flow - Master/production-go-flow-granular.html`
+  + `go-flow-comparison.html` (6 REUSE / 9 ADAPT / 3 NET-NEW), traced from gopher-web-app
+  `origin/production` `381c37e55` (worktree removed after). Worker-side as-built headlines,
+  all line-verified: **the order screen exists TWICE** (`RequestDetailPullOver.js` 13k lines
+  for Pro vs `ordercard.js` 12k for non-Pro — a diverged fork; its counter-cap math
+  double-divides by 100 so its threshold is ≈always $20); **two client counter caps disagree**
+  (one advisory off cost_of_goods with copy claiming "Gopher Earnings", one blocking off
+  offer that matches the server); **pre-acceptance privacy is client-side only** (street
+  number + requester name stripped in render — the API returns them; G40-91 needs server
+  enforcement); **live-tracking root cause confirmed at line level** (truthy redux
+  placeholder → `initialize()` TypeError; `emitLocation()` computes and returns — never
+  emits); **no notification tap-through exists** (empty push handlers, `AppUrlListener`
+  never mounted); sort/offer-limit filters orphaned (UI removed, localStorage keys still
+  read); the worker sees the requester's live rating on every card (INV-RATING violation
+  to fix in rebuild); a raw Maps key is hardcoded in `ordercard.js` (SEC-1 adjunct).
+  (b) **Total-Gopher-Deployment-Priorities.html → v0.2** — new group-3 row for the doc set.
+  (c) **New PRIVATE org repo `The-Gopher-Marketplace/gopher-dev-handoff`** (AbsolutOD
+  engagement; created via API — no `gh` on this box, token from git credential store).
+  Local clone ready at **`All New Gopher/Dev/gopher-dev-handoff`** with all 7 files
+  (README + both canonicals + both as-built + both comparisons) in 2 commits. In-session
+  `git push` was permission-blocked; **owner pushed it themselves same day — REMOTE VERIFIED
+  via API** (main = `f62cdf3`, all 7 files present). The Dev/ clone is the working copy for
+  future doc updates: commit there, push goes to the org repo.
+  **Key as-built facts now on record** (with file:line refs in the doc): live backend is
+  **Node/Express + Sequelize — the Rails app is dead** (`ruby.old.README.md`); NO state
+  machine (`aasm_state` is a plain string, ad-hoc updates), NO DB transactions in the order
+  flow, broadcast timers are in-process `setTimeout`s; **the live fee schedule IS the
+  canonical Request schedule** ($0.99–$4.99 flat + 8% + $1.99 A/R −$1 TrustShield) — full
+  continuity, Connect plans are net-new; worker gets 100% of offer+COGS; Stripe = 120%-auth /
+  confirm-on-claim / partial-capture; counter cap `max($20, 1.5×offer)` matches D-026's
+  formula but has **no tier exemptions/monthly limit live**, bids uncapped, `allow_counter`
+  always true (`|| true` bug); **no automatic $5 cancellation fee exists live** (manual admin
+  flag only), requester hard-locked after accept; First Available only exists for
+  Delivery/Ride/Other; favorites get a 1-second broadcast head start + approval bypass while
+  the in-app copy promises "5 minutes"; A/R gating is menu-level + title `indexOf` — **no
+  keyword scanning exists live**; missing `appversion` header ⇒ $0 service fee. The requester
+  app is one JSON-driven form engine (screen id = JSON filename; schemas contain executable
+  expressions); stale-taxonomy trap: `getCategoryTypeSelectionList.json` has zero references,
+  the live taxonomy is `request.json` → sub-menu JSONs; the below-average-offer nudge is
+  **iOS-only**. Both docs browser-verified (all 9 tabs, click-through panels, 0 console
+  errors, no mobile overflow at 375; comparison table wrapped in `.mx-scroll`).
+  **Drift + correction pass 2026-08-02** (prompted by an App Prototypes relay; both claims
+  re-verified here rather than taken on faith, and both docs carry dated notes now —
+  **edit the generators in the session scratchpad, not the HTML**, or a rebuild wipes them):
+  (i) **Backend pin is stale, app pins are not.** `gopher-api` `origin/production` is now
+  **`98ce5744`** (2026-08-02) vs the `e9fda50f` traced; both app pins (`e0a56bb3b`,
+  `381c37e55`) are **still current heads**. Server-side sections are accurate-as-of
+  `e9fda50f` and were NOT re-traced — the docs now say exactly that.
+  (ii) **Live-tracking mechanism refined — the relay's line cite was real but not the
+  operative one.** The unguarded `this.currentOrder.requestor.id` appears **twice** in
+  `initialize()`: L31 (inside the `setConfig` argument) and L81 (inside `ready()`).
+  **Only L81 fires:** `isInitialized` isn't set true until **L108**, *after* `ready()`, so
+  the L81 throw prevents L108 from ever running, `isInitialized` stays `false` forever, and
+  the L31 branch is **unreachable while the bug is live**. L31 is a genuine latent defect to
+  fix alongside, not the cause. Conclusion unchanged (one throw kills the native autoSync
+  transport too, since `ready()` never hands the plugin its `url`/`params`), and
+  `emitLocation()` L150-159 confirmed verbatim as a compute-and-return no-op.
+  _(Method note: settled by reading the file and tracing assignment order — the same
+  "don't reason from shape" rule that produced the original `initialize()` correction.)_
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
