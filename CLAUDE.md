@@ -84,6 +84,27 @@ do not assume they indicate deeper problems.
 - Keep changes scoped to cleanup, documentation, and reference correctness.
 - Do not introduce backend behavior, real data flows, or security/auth/payment code.
 
+## Standing rules (owner directives — apply to every session)
+
+- **A user-facing change is not done until its 101 guide is updated (owner, 2026-08-05).** Every
+  surface has a tutorial that real users read — `gopher-deals-101.html`, `gopher-go-101.html`,
+  `gopher-request-101.html`, `gopher-connect-101.html`. When you change behaviour or copy on a
+  surface, **review its guide, don't just string-match it.** A minimal find-and-replace is what
+  *created* the problem this rule came from: the Deals taxonomy rename swapped one word in the
+  Deals 101 and left the guide claiming the portal Inbox was "the fastest path to the Deals team"
+  (it transmits nothing) and describing the service-provider path as "the same as a merchant's,
+  just two differences" (it is neither — different entry point, different app, and a hard
+  eligibility bar the guide never mentioned). Both were caught only because the owner pushed back.
+  Same honesty standard as the June `gopher-request.html` copy fixes: **the guide describes what
+  the product does, not what it will do.**
+- **Deals activation SLA is ≤5 business days — never 1 (owner ruling, 2026-08-05).** "Within 1
+  business day" had propagated into the Deals 101 hero, its what-happens-next note, and the Deals
+  portal inbox copy, **contradicting the Merchant Agreement and the Terms of Service, which both
+  say "five (5) business days."** Corrected site-wide. ⚠️ **Do not blanket-replace "1 business
+  day"** — that string is also the legitimate **support-reply** SLA on Connect, Request and the
+  deals@ line, which stays. Activation ≠ support reply; classify before editing. The iQ FAQ
+  corpus already said 5 days and was correct.
+
 ## Session progress (cleanup work done so far)
 
 _Paths below are relative to the site root (`Final/`); handoff docs live in the
