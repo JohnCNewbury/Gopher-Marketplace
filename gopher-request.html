@@ -1815,6 +1815,12 @@
      truth across Request web / Connect / the Request App prototype — the parity
      harness asserts no surface re-implements it locally. -->
 <script src="assets/js/gopher-request-logic.js"></script>
+<!-- Cross-device request drafts. The kernel defines the contract (what travels, what
+     never does, how two devices reconcile); the store owns where it lives and when it
+     moves. Kernel first — the store reads it. Both are UMD, so the same files are what
+     a React/Capacitor build imports. -->
+<script src="assets/js/gopher-request-draft.js"></script>
+<script src="assets/js/gopher-request-draft-store.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -15330,6 +15336,199 @@
       overlay.hidden = false;
       return true;
     };
+  })();
+
+  /* ── Cross-device draft sync ───────────────────────────────────────────────
+     Autosaves the in-progress request and offers to pick it back up. All the
+     judgement lives in the shared kernel (assets/js/gopher-request-draft.js): what
+     travels, what never does (ID captures and photo bytes never leave the device),
+     what must be re-derived on arrival, and how two devices reconcile. This block is
+     only the wiring — when to save, where the banner goes, and what it says.
+
+     REMOTE SYNC IS OFF UNTIL AN API IS WIRED. With no base URL and no token this
+     resumes on THIS DEVICE only, and the copy says exactly that. Same honesty rule
+     that removed the false "your information is saved automatically" claims from this
+     page in June: the UI must never imply persistence the build cannot deliver.
+     Defining window.GOPHER_API_BASE + window.__gopherAuthToken() turns on the server
+     tier and switches the copy to cross-device, with no other change here. */
+  (function initDraftSync(){
+    const K = window.GopherRequestDraft, S = window.GopherRequestDraftStore;
+    if(!K || !S) return;               // modules absent → the flow behaves exactly as before
+
+    // Stable per-device id, so a draft can say which device last touched it.
+    let deviceId = null;
+    try{
+      deviceId = localStorage.getItem('gopher.request.deviceId');
+      if(!deviceId){
+        deviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                                                        : 'web-' + Math.random().toString(36).slice(2);
+        localStorage.setItem('gopher.request.deviceId', deviceId);
+      }
+    }catch(_e){}
+
+    const apiBase = window.GOPHER_API_BASE || null;
+    const tokenFn = typeof window.__gopherAuthToken === 'function' ? window.__gopherAuthToken : null;
+    const crossDevice = !!(apiBase && tokenFn && tokenFn());
+
+    let adapter = S.webLocalAdapter({});
+    if(crossDevice){
+      adapter = S.tieredAdapter(adapter, S.remoteAdapter({
+        baseUrl: apiBase,
+        getHeaders: function(){ return { 'access-token': tokenFn() }; }
+      }));
+    }
+
+    const store = S.createStore({
+      adapter: adapter, origin: 'web', clientId: deviceId,
+      onConflict: function(_local, remoteDraft){ showBanner(remoteDraft, true); }
+    });
+
+    /* ARMING. The first render() runs synchronously at init, long before load()
+       resolves — so an unguarded autosave would overwrite the very draft we are about
+       to offer, and an unguarded discard would delete it. Nothing is written or
+       cleared until the resume question has been answered one way or the other. */
+    let armed = false, lastStep = null;
+
+    const _render = render;
+    render = function(){
+      _render.apply(this, arguments);
+      if(!armed) return;
+      if(state.step === 7){ store.discard(); return; }   // submitted — nothing left to resume
+      if(state.step !== lastStep){ lastStep = state.step; store.flush(state); }  // step change: save now
+      else store.touch(state);                                                   // typing: debounced
+    };
+
+    /* Typing is NOT covered by the render hook. Free-text fields deliberately do not
+       re-render on every keystroke (re-rendering a textarea would move the caret), so
+       hooking render() alone silently misses the description — the single most
+       valuable thing to autosave. This listener closes that gap.
+       BUBBLE phase on purpose: the flow's own input handlers must run first and update
+       `state`, otherwise we would save the value from before the keystroke. */
+    document.addEventListener('input', function(e){
+      if(!armed || state.step === 7) return;
+      if(e.target && e.target.closest && e.target.closest('.flow-mockup')) store.touch(state);
+    });
+
+    /* A fresh start must not leave the previous draft resumable. */
+    const _reset = resetFlowState;
+    resetFlowState = function(){ _reset.apply(this, arguments); if(armed) store.discard(); };
+
+    // Leaving the page mid-request is exactly when the save matters most.
+    const flush = function(){ if(armed && state.step !== 7) store.flush(state); };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', function(){ if(document.hidden) flush(); });
+
+    /* ── the banner ────────────────────────────────────────────────────────── */
+    function styles(){
+      if(document.getElementById('rqDraftCss')) return;
+      const el = document.createElement('style');
+      el.id = 'rqDraftCss';
+      el.textContent =
+        '.rq-draft{display:flex;gap:12px;align-items:flex-start;margin:0 0 12px;padding:12px 14px;' +
+        'border:1px solid #cfe0d3;border-left:4px solid var(--green,#1CB061);border-radius:10px;' +
+        'background:#f4fbf6;font-family:\'DM Sans\',sans-serif;}' +
+        '.rq-draft-b{flex:1;min-width:0;}' +
+        '.rq-draft-t{font-family:\'Nunito\',sans-serif;font-weight:800;font-size:13.5px;color:var(--ink,#002461);}' +
+        '.rq-draft-s{font-size:12.5px;color:#4a5568;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+        '.rq-draft-n{font-size:11.5px;color:#6b7280;margin-top:5px;}' +
+        '.rq-draft-a{display:flex;gap:8px;flex-shrink:0;align-items:center;}' +
+        '.rq-draft-a button{font-family:\'Nunito\',sans-serif;font-weight:800;font-size:12.5px;' +
+        'border-radius:8px;padding:7px 13px;cursor:pointer;border:1px solid transparent;}' +
+        '.rq-draft-go{background:var(--green,#1CB061);color:#fff;}' +
+        '.rq-draft-no{background:#fff;border-color:#d5dbe3;color:#4a5568;}' +
+        '@media(max-width:640px){.rq-draft{flex-direction:column;}.rq-draft-s{white-space:normal;}}';
+      document.head.appendChild(el);
+    }
+
+    function ago(iso){
+      if(!iso) return '';
+      try{
+        const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+        if(mins < 1)  return 'just now';
+        if(mins < 60) return mins + ' min ago';
+        const h = Math.round(mins / 60);
+        if(h < 24)    return h + (h === 1 ? ' hour ago' : ' hours ago');
+        return new Date(iso).toLocaleDateString();
+      }catch(_e){ return ''; }
+    }
+
+    function showBanner(draft, isConflict){
+      const host = document.querySelector('.flow-mockup');
+      if(!host || !draft) { armed = true; return; }
+      styles();
+      document.getElementById('rqDraftBanner')?.remove();
+
+      const sum = K.summarize(draft);
+      const when = ago(sum.updatedAt);
+      /* Only claim another device when we can actually know it — the local-only build
+         cannot, and saying so would be the exact overclaim this page has been burned by. */
+      const elsewhere = crossDevice && sum.origin && sum.origin !== 'web';
+      const title = isConflict ? 'This request was also edited somewhere else'
+                   : elsewhere ? 'You started this in the Gopher app'
+                   : 'You have an unfinished request';
+      const sub = (sum.description || (sum.category ? sum.category + ' request' : 'Saved progress'))
+                + (when ? ' · ' + when : '');
+
+      const el = document.createElement('div');
+      el.className = 'rq-draft';
+      el.id = 'rqDraftBanner';
+      el.innerHTML =
+        '<div class="rq-draft-b"><div class="rq-draft-t"></div><div class="rq-draft-s"></div>' +
+        '<div class="rq-draft-n" hidden></div></div>' +
+        '<div class="rq-draft-a">' +
+        '<button type="button" class="rq-draft-go">' + (isConflict ? 'Use that one' : 'Pick up where I left off') + '</button>' +
+        '<button type="button" class="rq-draft-no">' + (isConflict ? 'Keep this' : 'Start fresh') + '</button>' +
+        '</div>';
+      el.querySelector('.rq-draft-t').textContent = title;   // textContent — never inject user text as HTML
+      el.querySelector('.rq-draft-s').textContent = sub;
+
+      const progress = host.querySelector('.mockup-progress');
+      if(progress) progress.parentNode.insertBefore(el, progress);
+      else host.insertBefore(el, host.firstChild);
+
+      el.querySelector('.rq-draft-go').addEventListener('click', function(){
+        const r = store.resumeInto(draft, makeInitialState());
+        Object.keys(state).forEach(k => { if(!(k in r.state)) delete state[k]; });
+        Object.assign(state, r.state);
+        armed = true; lastStep = state.step;
+        el.remove();
+        render();
+        /* Say plainly what did NOT come across, rather than letting the user discover
+           it at submit. Photos and identity verification are per-device by design. */
+        const notes = [];
+        if(sum.picCount > 0) notes.push(sum.picCount + (sum.picCount === 1 ? ' photo needs' : ' photos need') + ' re-attaching');
+        if(r.notes.indexOf('scheduleExpired') !== -1) notes.push('your scheduled time has passed — pick a new one');
+        if(r.notes.indexOf('promoRevalidate') !== -1) notes.push('re-apply your promo code');
+        if(notes.length){
+          styles();
+          const n = document.createElement('div');
+          n.className = 'rq-draft';
+          n.style.borderLeftColor = '#e8a93b';
+          n.style.background = '#fff8e1';
+          n.innerHTML = '<div class="rq-draft-b"><div class="rq-draft-t">Picked up where you left off</div>' +
+                        '<div class="rq-draft-s"></div></div>';
+          // Count-agnostic on purpose — the list is 1–3 items depending on the draft.
+          n.querySelector('.rq-draft-s').textContent = 'Before you submit: ' + notes.join(', ') + '.';
+          const p = host.querySelector('.mockup-progress');
+          if(p) p.parentNode.insertBefore(n, p); else host.insertBefore(n, host.firstChild);
+          setTimeout(function(){ n.remove(); }, 12000);
+        }
+      });
+
+      el.querySelector('.rq-draft-no').addEventListener('click', function(){
+        el.remove();
+        armed = true; lastStep = state.step;
+        if(!isConflict) store.discard();     // on conflict "Keep this" keeps the local edits
+        else store.flush(state);
+      });
+    }
+
+    store.load().then(function(found){
+      if(found) showBanner(found.draft, false);
+      else { armed = true; lastStep = state.step; }
+    }).catch(function(){ armed = true; });
+
+    window.__requestDraft = store;   // console/e2e handle
   })();
 
   // ---- Init ----
