@@ -1356,6 +1356,38 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   _(Method note: settled by reading the file and tracing assignment order — the same
   "don't reason from shape" rule that produced the original `initialize()` correction.)_
 
+- **Deals registration → publication config spec (done 2026-08-05, G40-351).** _(Docs only — no
+  prototype or Dashboard code changed.)_ One configuration/data-flow spec reconciling the eight
+  existing Deals sources into the end-to-end path: DLM/DLP registration → transport → `deals` record
+  → HQ Dashboard review queue → publication on every consumer surface → redemption seed.
+  **`docs/handoff/deals-registration-to-publication-config.md`**; every rule cites its source doc +
+  section, nothing re-invented. Four drifts found by reading the code against the docs:
+  (1) **⛔ the category taxonomy has five different vocabularies across five surfaces** — registration
+  offers *Retail Merchants* (no consumer rail can show it), the browse rails + bid board carry
+  *Convenience Stores* (unregisterable), and the overlapping names differ by string (`&` vs `and`,
+  three spellings of Age-Restricted). Category is the join key, so this **blocks the feed**;
+  (2) **`advertiserDeals.js` is NOT in the HQ Dashboard** — the orientation doc and the G40-286
+  handoff both name it as the seam to extend and call it "In Progress in the HQ Dashboard"; it
+  actually lives in `Documentation/Jira Tickets/` (44-line build-console scaffold), while the wired
+  module is `deals-merchants.js` with a **different status vocabulary**, and **neither can represent
+  a DLP deal** (no reach/keywords/price fields);
+  (3) **Request and Connect have drifted on real deal data** — `r-buoy` (Buoy Bowls) carries a
+  different **address** and tagline in each, and for a fixed-location merchant the address auto-fills
+  the last-mile parlay pickup, so the same deal sends a Gopher to two different addresses depending
+  on the app. Demo data today; the shared feed is what kills this class of bug;
+  (4) **`gopher-customer-deals.html` is a marketing page, not a browse surface** (zero deal
+  machinery; CTAs point at merchant registration) — the orientation doc's "customer-facing deals
+  browse" is wrong, the Build Spec's "marketing/value-prop page" is right.
+  Confirmed settled and restated, not re-decided: the Apps Script is **deleted, not migrated**, at
+  go-live (`sp-deal-pipeline.md` §6 — do not build production integrations against
+  `GOPHER_FORM_ENDPOINT`); SP eligibility = Elite/Elite+/Pro · 20+ **service** jobs · 4.75★ last-20
+  **service**; approval is always a human act with one shared queue for merchants and providers;
+  activation SLA **≤5 business days**; `earnAmount` must never reach a customer payload. **6 open
+  rulings** collected at the end of the doc (canonical categories · is customer-deals a browse
+  surface · refresh cadence · do apps still wait for a store release now that deals are API data ·
+  which Buoy Bowls address is real · confirm the Gopher ID format to close pathway seam #9), each
+  with a recommendation.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
