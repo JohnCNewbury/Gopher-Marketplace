@@ -7886,7 +7886,12 @@
     <div class="hire-again-cats" id="hireAgainCats"><!-- category chips injected by JS --></div>
     <div class="hire-again-note">
       <span class="han-ico">ℹ️</span>
-      <span>To make sure your job gets done on time, your request will also be opened to other available workers after <b>5 minutes</b>. Any worker outside of MY Gophers will need your approval before they're hired.</span>
+      <!-- 60 seconds is the real number, verified at origin/production: MY Gophers are
+           alerted at 1s and the next wave (Pros) at 60s — constants/index.js:216
+           ORDER_DELAY_NOTIF_FAV_GOPHER, fired in controllers/order/notification.js:346.
+           G40-44's canonical cadence puts MY Gophers at 0-60s too, so live and canon
+           agree here. This previously said "5 minutes", which matched neither. -->
+      <span>To make sure your job gets done on time, your request will also be opened to other available workers after <b>60 seconds</b>. Any worker outside of MY Gophers will need your approval before they're hired.</span>
     </div>
     <button type="button" class="gc-modal-btn" id="hireAgainContinue" disabled>Continue →</button>
   </div>
