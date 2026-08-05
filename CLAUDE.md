@@ -1369,7 +1369,15 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   exists on this machine, and the redeploy is a manual drag of `Final/` onto the gopher-deals
   project's Deploys page. Past sessions have repeatedly re-raised this as stale; it isn't a defect.
 
-- **4 produced hero clips** still wanted for `gopher-connect.html`. **Full production brief:
+- ~~4 produced hero clips for `gopher-connect.html`~~ — **CLOSED with owner-approved stock
+  stand-ins 2026-08-05** (commit `4510598`). Four Pexels clips (courier / movers / cleaning /
+  **skilled trades** — clip 4 per the brief's recommendation, owner ruled) are live at
+  `assets/video/connect-hero-1..4.mp4`, each visually verified frame-by-frame, crossfade-looped
+  (seam ≈ 2 frames of normal motion), ≤600 KB each. **Produced clips can replace them at the
+  SAME filenames with zero code change** — that is the remaining (optional) production task.
+  Reduced-motion verified safe at source: the guard strips autoplay and returns before goLive
+  attaches, so the static-photo path can't be hijacked.
+  _Superseded detail (kept for history):_ the old entry read: **4 produced hero clips** still wanted for `gopher-connect.html`. **Full production brief:
   `docs/handoff/connect-hero-video-brief.md`** (written 7/27 from the code — subjects, the
   6s-visible/8s-minimum/seamless-loop timing, the ~600 KB budget, and the two framing rules
   that follow from the CSS: don't bake in a zoom, and shoot bright because the overlay is
@@ -1384,7 +1392,14 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   professionals"); recommendation is trades. Note `Final/hero-media/` exists but is **empty**
   and predates the asset reorg — the brief recommends `assets/video/connect-hero-1..4.mp4`
   to match the site-wide convention.
-- **deals@ email wiring (Apps Script) — tabled by owner 2026-07-22.** Two pieces, both via
+- **deals@ email wiring — front end DONE 2026-08-05 (commit `5a41322`); ONE owner paste
+  remains.** The Inbox composer now POSTs every message to the registration Apps Script as
+  `submission_type:'inbox_message'` (merchant name/email/business + text; photos not relayed —
+  data-URI size). The exact paste-ready script snippet (inbox→deals@ relay with
+  Reply-To=merchant, PLUS the registration welcome email, which needed no front-end change at
+  all) + the send-as-alias checklist: **`docs/handoff/deals-email-wiring.md`**. Until pasted,
+  the POSTs land harmlessly in the lead sheet as inbox_message rows.
+  _Original entry:_ tabled by owner 2026-07-22. Two pieces, both via
   the existing Deals registration Apps Script endpoint (`GOPHER_FORM_ENDPOINT` in
   `gopher-deals.html`): (1) welcome email sent **from deals@gophergo.io** on merchant
   registration (the script's account needs deals@ as a Gmail send-as alias; replies then
@@ -1400,9 +1415,12 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   the Owner row via `enterDashboard`. In-memory demo state like the rest of the portal;
   persistence + real invite delivery = backend seam. `gc-modal*`/`iv-*`/`prev-table`
   CSS primitives now exist in gopher-deals.html — reuse them for future portal modals.)
-- **gopher-go worker-dashboard bid board (NOT BUILT YET, owner 2026-07-22).** The
-  featured-placement auction UI is coming to the worker dashboard. It MUST render from the
-  shared brain **`assets/js/gopher-bid-brain.js`** (same standings, badge rules, and
-  own-category lock as the Deals "Feature my business" board) — never re-implement the
-  auction logic inline.
+- ~~gopher-go worker-dashboard bid board~~ — **BUILT 2026-08-05** (commit `a98682f`).
+  "Feature my deal" sidebar item under the Rewards divider; renders 100% from
+  **`assets/js/gopher-bid-brain.js`** (board/catTop/topOverall/isLeading/placeBid/closeLabel) —
+  zero auction logic inline, per the standing rule, which still applies to future edits.
+  View-layer note: the brain's `mine` flag is seeded for the Deals demo viewer, so you-ness is
+  gated on `mine && own` and the seed's "You · " holder prefix is stripped on non-own cards
+  (production keys placements by merchantId — the brain documents this). CSS is `gbb-`-prefixed
+  (`.bid-cta` already means something else on this page).
 - ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).
