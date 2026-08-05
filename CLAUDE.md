@@ -401,9 +401,18 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   changes live age-restricted detection; read that list and get an owner OK on anything
   outside your own change before `--push`. (2) **Local `main` is not what's live** — the
   script pushes from a throwaway worktree and never fast-forwards the local ref (it still
-  read `625b0ae` right after the deploy). Confirm with
-  `git merge-base --is-ancestor <sha> origin/main`, then curl the live URL and **grep for the
-  changed string** — a 200 only proves the file exists, not that it updated.
+  read `625b0ae` right after the deploy). Verify by **content**: compare
+  `git show origin/main:<file>` against the working/`HEAD:Final/` file, then curl the live URL
+  and **grep for the changed string** — a 200 only proves the file exists, not that it updated.
+  ⚠️ **`git merge-base --is-ancestor <sha> origin/main` is valid ONLY for a DEPLOY sha (a commit
+  that lives on `main`). It is INVALID — always false — for a source/feature commit** (corrected
+  2026-08-05; the older text here recommended it without that distinction). `main` is a flattened
+  rsync lineage sharing no history with the dev branches, so a feature commit is *never* its
+  ancestor **no matter how completely its content is live**; asked that way it reports NOT
+  DEPLOYED for every change ever shipped. It produced a false "deploy gap", then a false
+  *retraction* of a finding that had actually been correct. Also **never suppress the fetch**
+  (`git fetch origin main -q 2>/dev/null` hides failures and leaves you reading a stale
+  `origin/main` as current) — re-fetch, unsuppressed, immediately before any "is it live?" claim.
 
 - **Owner PII removed from the demo profile (done 2026-07-20).** Found while moving the
   research reports out of this (public) repo. The 2026-07-17 pass swapped the demo
@@ -1387,6 +1396,37 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   surface · refresh cadence · do apps still wait for a store release now that deals are API data ·
   which Buoy Bowls address is real · confirm the Gopher ID format to close pathway seam #9), each
   with a recommendation.
+
+- **Deals category taxonomy settled — the rail is "Retail Merchants" (owner 2026-08-05, G40-351
+  Ruling 1; commit `df40c61`, Dashboard `44ffca9`).** The spec's blocking finding (five surfaces,
+  five vocabularies) turned out to be a **naming collision, not a category conflict**: *Retail
+  Merchants* (registerable, no rail) and *Convenience Stores* (a rail, unregisterable) were **one
+  bucket with a different name on each side of the funnel**. Owner reconfirmed the June 7 four
+  from the live form — **merchant registration is unchanged** — and ruled the **rail renamed to
+  Retail Merchants** (key `convenience` → `retail`, incl. the `data-cat` CSS hooks) in both
+  consumer editions, the shared bid brain, and `gopher-deals-101.html`. BUILD-SPEC §3 therefore
+  carries a **dated reconfirmation, not a supersede**.
+  - **Registration list ≠ publication list** — 4 merchant categories; publication carries a 5th,
+    **Service Providers**, never registerable there because DLP submits in the Go app. Canonical
+    keys: `restaurants` · `favorites` · `age` · `retail` (+ `providers` on publication).
+  - **⚠️ `Restaurants and Food Trucks` → `&` was NOT cosmetic.** `canBid()` is string equality, so
+    `gopher-deals.html`'s `BID_VIEWER` **and its three `MY_DEALS` records** had to move with the
+    brain or a merchant silently loses the ability to bid on their own category. Caught only by
+    checking the brain's consumers after editing it — **any edit to a `gopher-bid-brain.js`
+    category string must sweep both bid boards for viewer/deal strings.**
+  - **The June 7 lock's own follow-up is finally done:** it said "the FAQ should be updated to
+    match" and never was — the iQ corpus served merchants the **superseded six** for fourteen
+    months. Fixed in all 7 inlined copies (integrity green, 184 entries, new common hash
+    `2c16c52bd4`, request DRIFT-OK); it now also points Service Providers at the Go app.
+    _(Trap hit and fixed: writing `—` as an escape into the corpus fails the round-trip
+    check — `json.dumps(ensure_ascii=False)` emits the literal character. Write real em-dashes.)_
+  - **Deliberately NOT done:** both category `<select>`s still submit **display text**, because
+    that same string is rendered back to the merchant *and* is the bid join key — adding `value=`
+    keys without a label↔key map would break the portal. Key/label separation is a
+    production-schema requirement (spec §4.1 / acceptance criterion 5), not a prototype patch.
+  - Verified in browser (Request rail + renamed CSS hook, Age-Restricted still age-gated, Connect
+    matches, `canBid` own=true/other=false, registration options unchanged, 0 console errors).
+    **Five rulings still open** in `deals-registration-to-publication-config.md` §10.
 
 ### Outstanding to-do
 
