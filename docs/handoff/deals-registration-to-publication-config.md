@@ -444,7 +444,30 @@ and is a **separate money flow from the customer-side spine payments**. Keep the
 Every item below is a **real disagreement between existing artefacts**, found by reading the code and
 the docs against each other. None is resolved here unless the resolution is already on the record.
 
-### 9.1 Category taxonomy — five vocabularies, no two identical ⛔ **blocking**
+### 9.1 Category taxonomy — five vocabularies, no two identical ✅ **RESOLVED (owner, 2026-08-05)**
+
+> **Ruling applied.** Merchant registration stays at the **four** locked June 7 (Restaurant, Food Trucks
+> & Grocery · Local Favorites · Age-Restricted Shops · **Retail Merchants**) — reconfirmed by the owner
+> from the live form. The consumer **"Convenience Stores" rail was the same bucket under a second name**
+> and is **renamed to Retail Merchants** (key `retail`). Publication carries a fifth category,
+> **Service Providers**, which is never registerable here because DLP submits in-app — so the
+> *registration list and the publication list are deliberately different lists.*
+>
+> Applied to: both consumer editions (key + label + the `data-cat` CSS hooks), the shared bid brain
+> (which also had `Restaurants **and** Food Trucks` — now `&`, matching every other surface), the Deals
+> 101 guide, and the Dashboard coverage tracker (`local` → `favorites`, label `Retail` → `Retail
+> Merchants`, and convenience-store words now resolve into the `retail` bucket). The iQ FAQ corpus,
+> which had served the superseded six for fourteen months, was corrected in all 7 inlined copies —
+> `verify-faqs-integrity.py` green, 184 entries, common hash `2c16c52bd4`.
+>
+> ⚠️ **One piece deliberately not applied:** both category `<select>`s still submit **display text**
+> rather than a key, because that same string is rendered back to the merchant *and* used as the
+> bid-board join key — adding `value=` keys without a label↔key map would break the portal. The
+> key/label separation is a production-schema requirement (§4.1), not a prototype patch.
+>
+> The original finding is preserved below as the rationale.
+
+
 
 This is the most consequential finding in the document. A merchant's category is set at
 registration, and it is the key that the browse rails, the bid board, and the coverage tracker all
@@ -560,11 +583,22 @@ only to get it explicitly retired.
 
 ## 10. Open — needs John's ruling
 
-Six items. Each has a recommendation; none has been applied.
+Six items. **Ruling 1 is decided and applied (2026-08-05); five remain open.**
 
 ---
 
-### Ruling 1 — What is the canonical category list? ⛔ *blocks the feed*
+### ~~Ruling 1 — What is the canonical category list?~~ ✅ **DECIDED 2026-08-05 — applied, see §9.1**
+
+**Owner ruling:** merchant registration stays at the four locked June 7 — **Retail Merchants is kept**,
+Grocery stays folded into the Restaurant bucket, and Convenience is not a registration category. The
+consumer *Convenience Stores* rail was the same bucket under a second name and **has been renamed to
+Retail Merchants**. Publication additionally carries **Service Providers** (DLP, in-app only), so the
+registration list and the publication list are different lists by design.
+
+*The recommendation below was NOT taken — it proposed adopting the customer-facing five and retiring
+Retail Merchants. Kept for the record.*
+
+<details><summary>Original recommendation (superseded)</summary>
 
 **The problem:** five surfaces use five different category vocabularies (§9.1). Registration cannot
 produce a value that the browse rails, the bid board and the coverage tracker can all key on. Two
@@ -590,6 +624,14 @@ consumer surface and has no logo folder, and "Local Favorites" absorbs it); and 
 **This supersedes BUILD-SPEC §3's "locked at four" (June 7).** That lock predates Convenience Stores
 and the Service Providers rail, both of which now exist in shipped code. Needs your explicit
 sign-off because it overrides a locked decision.
+
+</details>
+
+**Why the ruling went the other way:** the lock did not need overriding. "Retail Merchants" and
+"Convenience Stores" were never two categories competing for one slot — they were one bucket that had
+acquired two names, one on each side of the funnel. Renaming the rail reconciles every surface without
+touching the merchant's four choices, and BUILD-SPEC §3 stands as written (now carrying a dated
+reconfirmation rather than a supersede).
 
 ---
 

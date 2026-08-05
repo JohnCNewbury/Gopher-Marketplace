@@ -12,7 +12,7 @@
        when the viewer actually holds that category's top bid. The featured
        card never doubles up with the sticker — featured already implies it.
      • A business can only bid in its own category (a restaurant cannot bid
-       on Convenience Stores). canBid()/placeBid() enforce this; UIs must not
+       on Retail Merchants). canBid()/placeBid() enforce this; UIs must not
        offer a bid control where canBid() is false.
      • The category holding the top overall bid also appears as its own card
        showing its second-highest bid, so that category shows twice.
@@ -25,17 +25,17 @@
 (function(){
   'use strict';
 
-  var CATS = ['Service Providers','Restaurants and Food Trucks','Local Favorites','Convenience Stores','Age-Restricted'];
+  var CATS = ['Service Providers','Restaurants & Food Trucks','Local Favorites','Retail Merchants','Age-Restricted'];
 
-  /* Demo seed — viewer is My Way Tavern (Restaurants and Food Trucks).
+  /* Demo seed — viewer is My Way Tavern (Restaurants & Food Trucks).
      Service Providers holds the top overall bid (featured) so its card
      appears twice per the board rule; the viewer leads their own category. */
   var placements = [
     { category:'Service Providers',           amount:500, holder:'Carolina Green Lawns',     mine:false },
-    { category:'Restaurants and Food Trucks', amount:410, holder:'You · My Way Tavern', mine:true  },
+    { category:'Restaurants & Food Trucks', amount:410, holder:'You · My Way Tavern', mine:true  },
     { category:'Local Favorites',             amount:300, holder:'A nearby merchant',        mine:false },
     { category:'Service Providers',           amount:260, holder:'A nearby merchant',        mine:false },
-    { category:'Convenience Stores',          amount:225, holder:'A nearby merchant',        mine:false },
+    { category:'Retail Merchants',          amount:225, holder:'A nearby merchant',        mine:false },
     { category:'Age-Restricted',              amount:125, holder:'A nearby merchant',        mine:false }
   ];
 
