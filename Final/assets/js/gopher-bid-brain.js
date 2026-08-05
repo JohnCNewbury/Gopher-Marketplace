@@ -1,9 +1,10 @@
 /* ─── Gopher featured-placement bidding brain (shared) ───────────────────────
-   One auction, two windows onto it:
+   One auction, two windows onto it — both LIVE and rendering from here:
      • gopher-deals.html — merchant portal, "Feature my business" board
-     • gopher-go.html    — worker dashboard (planned; not wired yet)
+     • gopher-go.html    — worker dashboard, "Feature my deal" (wired 2026-08-05)
    Both pages must render from THIS module so the standings, badge rules and
-   category lock never drift apart.
+   category lock never drift apart. Neither carries auction logic of its own;
+   keep it that way. Spec: Gopher-Deals-Build-Spec §6.1.
 
    Rules encoded here (owner spec, 2026-07-22):
      • "Projected Featured Deal" is always badged on the single highest bid
