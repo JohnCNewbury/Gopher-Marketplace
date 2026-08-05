@@ -71,6 +71,14 @@ AGE_CASES = [  # (text, expected hit? True/False/None=only cross-surface equalit
     ("move a couch to the dump", False),
     ("pick up my prescription", None),
     ("grab me a lighter and some rolling papers", None),
+    # SMART PUNCTUATION (owner repro 2026-08-05). Phones autocorrect ' -> \u2019, and
+    # the brain stores straight ASCII, so every possessive brand was undetectable
+    # on mobile - 41 of 1,658 keywords. These four must stay green or the age
+    # gate silently reopens for exactly the customers most likely to hit it.
+    ("I need some Tito\u2019s", True),          # the exact text that failed
+    ("grab a bottle of Jack Daniel\u2019s", True),
+    ("Maker\u2019s Mark please", True),
+    ("deliver a titanium bolt", False),      # 'tito' substring must NOT fire
 ]
 # Canonical persisted+shared core — must exist in EVERY surface (see schema doc §2).
 # Grew 42 -> 50 with the 2026-07-14 reconciliation: canonical location ARRAYS
