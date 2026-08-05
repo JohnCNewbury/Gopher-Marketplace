@@ -209,7 +209,26 @@
       maxRetries: opts.maxRetries != null ? opts.maxRetries : DEFAULTS.maxRetries,
       retryBaseMs: opts.retryBaseMs != null ? opts.retryBaseMs : DEFAULTS.retryBaseMs
     };
-    var clientId = opts.clientId || null;
+    /* clientId may be a VALUE or a FUNCTION, and is resolved only when a draft is
+       actually written — never on load, never on a read, never on a touch that turns
+       out not to be worth saving.
+
+       Why the contract allows a function: the identifier is per-device and therefore
+       has to be minted and stored somewhere. Minting it when the store is constructed
+       means every visitor who merely opens the page is given a persistent id, whether
+       or not they ever start a request. Deferring it to the first real write means the
+       id exists only for people who actually have a draft to carry between devices.
+       Today it never leaves the browser, but this module is the reference the rebuild
+       will copy and the remote tier is one config line away — at which point the id
+       would travel with every sync. Passing a value still works unchanged. */
+    var clientIdOpt = Object.prototype.hasOwnProperty.call(opts, 'clientId') ? opts.clientId : null;
+    var clientIdResolved;          // stays undefined until the first persisted write
+    function resolveClientId() {
+      if (clientIdResolved === undefined) {
+        clientIdResolved = (typeof clientIdOpt === 'function' ? clientIdOpt() : clientIdOpt) || null;
+      }
+      return clientIdResolved;
+    }
     var origin = opts.origin || null;
     var onStatus = opts.onStatus || noop;        // 'idle'|'pending'|'saving'|'saved'|'offline'|'conflict'
     var onConflict = opts.onConflict || null;    // (localDraft, remoteDraft) -> void
@@ -228,8 +247,11 @@
 
     function status(s, extra) { try { onStatus(s, extra || null); } catch (e) {} }
 
+    /* Built WITHOUT a clientId: this draft may still be discarded as unmeaningful,
+       unchanged or invalid below, and none of those are writes. The id is stamped on
+       only once the save is certain. */
     function build(state) {
-      return K.toDraft(state, { rev: rev, clientId: clientId, origin: origin });
+      return K.toDraft(state, { rev: rev, clientId: null, origin: origin });
     }
 
     function writeNow() {
@@ -246,6 +268,11 @@
          worse than losing the autosave. */
       var v = K.validate(draft);
       if (!v.ok) { status('idle', { blocked: v.errors }); return Promise.resolve(null); }
+
+      /* Past every gate — this IS a write, so now the device may be identified.
+         `data` is already serialized above, and clientId lives on the envelope rather
+         than inside it, so stamping here cannot affect the dedupe comparison. */
+      draft.clientId = resolveClientId();
 
       status('saving');
       lastSaveAt = clock();

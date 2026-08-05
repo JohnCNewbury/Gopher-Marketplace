@@ -115,7 +115,11 @@ Load the three modules after the existing shared ones, then:
 var Store = GopherRequestDraftStore;
 var store = Store.createStore({
   origin: 'web',
-  clientId: <stable per-device id>,
+  // A FUNCTION, not a value. The store calls it only when it is about to persist a
+  // draft, so a visitor who never starts a request is never given a device id. Minting
+  // it eagerly means every page load stamps a permanent identifier — inert while it
+  // stays local, but it would travel to the server the day the remote tier is enabled.
+  clientId: getDeviceId,
   adapter: Store.tieredAdapter(
     Store.webLocalAdapter({}),                       // offline + signed-out resume
     Store.remoteAdapter({                            // cross-device — omit if signed out

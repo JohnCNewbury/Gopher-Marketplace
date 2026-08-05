@@ -237,6 +237,64 @@ section('5. Store — refuses to write junk or unsafe payloads');
   });
 }).then(function () {
 
+/* ═══ 5b. STORE: the device id is minted only by a real write ═════════════════
+   Regression guard. The web wiring originally created and persisted a per-device id
+   at init, so anyone who merely LOADED the page was given a permanent identifier
+   whether or not they ever started a request. Harmless while the id stays in the
+   browser — but this module is the reference the rebuild copies, and the remote tier
+   is one config line from active, at which point that id travels with every sync.
+   `clientId` therefore accepts a function and is resolved only once a save is certain:
+   not on construction, not on load(), and not on a touch that is discarded as
+   unmeaningful, unchanged or invalid. */
+section('5b. Store — clientId is resolved lazily, only when a draft is really written');
+  var env5 = fakeEnv(), mints = 0, saved5 = [];
+  var probe5 = { name: 'p', load: function () { return Promise.resolve(null); },
+                 save: function (d) { saved5.push(d); return Promise.resolve(Object.assign({}, d, { rev: 1 })); },
+                 clear: function () { return Promise.resolve(); } };
+  var lazyStore = S.createStore({
+    adapter: probe5, kernel: K, origin: 'web',
+    clientId: function () { mints++; return 'device-' + mints; },
+    now: env5.now, setTimeout: env5.setTimeout, clearTimeout: env5.clearTimeout
+  });
+  ok(mints === 0, 'constructing the store does not mint an id');
+
+  return lazyStore.load().then(function () {
+    ok(mints === 0, 'load() does not mint an id (a fresh visitor has no draft to find)');
+
+    lazyStore.touch({ category: 'delivery' });      // not meaningful → not a write
+    env5.advance(10000);
+    return flushMicro();
+  }).then(function () {
+    ok(mints === 0, 'a touch that is not worth saving does not mint an id');
+    ok(saved5.length === 0, 'and nothing was written');
+
+    lazyStore.touch(midRequestState());             // a real edit
+    env5.advance(10000);
+    return flushMicro();
+  }).then(function () {
+    ok(mints === 1, 'the first real write mints exactly one id');
+    ok(saved5.length === 1 && saved5[0].clientId === 'device-1', 'and stamps it on the envelope');
+
+    var st5 = midRequestState(); st5.description = 'changed once more';
+    return lazyStore.flush(st5);
+  }).then(function () {
+    ok(mints === 1, 'later writes reuse it — the id is minted once, not per save');
+    ok(saved5[1].clientId === 'device-1', 'same id on the second envelope');
+
+    /* A plain string must still work — the contract widened, it did not change. */
+    var envA = fakeEnv(), got = [];
+    var plain = S.createStore({
+      adapter: { name: 'p', load: function () { return Promise.resolve(null); },
+                 save: function (d) { got.push(d); return Promise.resolve(d); },
+                 clear: function () { return Promise.resolve(); } },
+      kernel: K, clientId: 'literal-id', now: envA.now,
+      setTimeout: envA.setTimeout, clearTimeout: envA.clearTimeout
+    });
+    return plain.flush(midRequestState()).then(function () {
+      ok(got.length === 1 && got[0].clientId === 'literal-id', 'a literal clientId still works unchanged');
+    });
+  }).then(function () {
+
 /* ═══ 6. STORE: conflict + offline ════════════════════════════════════════════ */
 section('6. Store — 409 conflict and offline retry');
   var env = fakeEnv(), conflicts = [], statuses = [];
@@ -350,6 +408,7 @@ section('8. End-to-end — the scenario this feature exists for');
       });
     });
   });
+});   // closes the 5b lazy-clientId wrapper, which sections 6-8 run inside
 }).then(function () {
   console.log('\n' + (fail === 0 ? 'PASS' : 'FAIL') + ' — ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail === 0 ? 0 : 1);
