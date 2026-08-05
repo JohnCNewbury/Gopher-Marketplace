@@ -19,17 +19,23 @@
 <!-- Inbox delete (Jira G40-100). This app has NO conversation list — tapping Inbox
      opens a single thread — so the web portals' row-level swipe has nothing to bind
      to. Owner 7/28 ruled delete works on the MESSAGE here, "typical mobile text
-     style". We still load the shared module for confirmPermanent(), so the
-     destructive wording is byte-identical to the four web portals and cannot drift;
-     the stylesheet comes with it for that overlay. -->
+     style". Owner 8/5 ruled the flow is the SAME TWO-STAGE MODEL as the web
+     portals (the prototype mirrors how the shipping apps will behave): swipe-delete
+     SOFT-deletes the message into a Deleted segment of the thread (90-day purge
+     note), and only a delete from THERE is permanent + confirmed. The shared module
+     supplies confirmPermanent() / PURGE_DAYS / isPurged, so the destructive wording
+     and the purge window are byte-identical to the four web portals and cannot
+     drift; the stylesheet comes with it for that overlay + the tab/note chrome. -->
 <link rel="stylesheet" href="../../assets/css/gopher-inbox-delete.css">
 <script src="../../assets/js/gopher-inbox-delete.js"></script>
 <style>
 /* Message-level swipe-to-delete. The bubble slides left to reveal Delete; only one
-   message stays open at a time, matching the shared module's row behaviour. */
+   message stays open at a time, matching the shared module's row behaviour.
+   .itmsg-deleted dims a soft-deleted bubble in the Deleted segment. */
 .itmsg{position:relative;overflow:hidden;}
 .itmsg-slide{transition:transform .16s ease;}
 .itmsg.itmsg-open .itmsg-slide{transform:translateX(-76px);}
+.itmsg.itmsg-deleted .itmsg-slide{opacity:.55;}
 .itmsg-del{position:absolute;top:0;right:0;height:100%;width:72px;border:0;border-radius:12px;
   background:#C44257;color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:12px;
   cursor:pointer;opacity:0;pointer-events:none;transition:opacity .16s ease;}
@@ -1863,20 +1869,49 @@ function openInboxThread(order){
   // Staged photo lives OUTSIDE renderT — renderT rebuilds the whole thread from GReq
   // state on every send, so anything held inside it would be wiped mid-compose.
   var itPendingPhoto=null;
+  // G40-100 two-stage (owner 8/5): which segment of the thread is showing. There is
+  // only ONE thread in this app, so "Deleted" is a segment of the thread screen, not
+  // a separate tab bar — the lightest structure that still shows the full model.
+  var itView='inbox';
   function renderT(){
     var rr=GReq.get(order); var msgs=rr.messages||[];
     var body=o.querySelector('#itBody'); if(!body) return;
+    var D=window.GopherInboxDelete||null;
+    var isDel=function(m){ return !!(m&&m.deletedAt); };
+    // The 90-day purge is a CHECK-ON-READ against deletedAt, same as the shared
+    // module: a purged message simply never renders again. No job runner here.
+    var isPurgedM=function(m){ return !!(D&&m&&m.deletedAt&&D.isPurged(m.deletedAt)); };
+    var live=msgs.filter(function(m){ return !isDel(m); });
+    var dele=msgs.filter(function(m){ return isDel(m)&&!isPurgedM(m); });
+    var inDeleted=(itView==='deleted');
     var bubbles=msgs.map(function(m,mi){ var me=(m.from==='req');
+      if(isPurgedM(m)) return '';                 // purged for good (ticket Scenario 4)
+      if(inDeleted!==isDel(m)) return '';         // segment filter; data-mi stays the REAL array index
       // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; reciprocal in Go).
       // A photo message carries `photo` (a data URL) instead of `text` — G40-216,
       // owner 2026-07-28: "All inboxes need the capability to add pics."
       // G40-100: each message is individually deletable here (no conversation list
-      // to delete from), so the bubble sits in a swipeable wrapper.
-      return '<div class="itmsg" data-mi="'+mi+'"><div class="itmsg-slide" style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div><button type="button" class="itmsg-del" data-del="'+mi+'" aria-label="Delete this message">Delete</button></div>';
-    }).join('')||'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>';
-    body.innerHTML='<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
-      +(itPendingPhoto?'<div style="display:flex;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img src="'+esc(itPendingPhoto)+'" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="it-drop" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">&times;</button></div>':'')
-      +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center;"><button class="it-attach" title="Attach a photo" aria-label="Attach a photo" style="flex:0 0 auto;width:40px;height:40px;border:1.5px solid #e3ddcd;border-radius:50%;background:#fff;font-size:15px;line-height:1;cursor:pointer;">&#128247;</button><input class="it-file" type="file" accept="image/*" hidden><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
+      // to delete from), so the bubble sits in a swipeable wrapper. In the thread the
+      // revealed Delete SOFT-deletes (stage 1); in the Deleted segment it is the
+      // permanent path (stage 2, confirmed).
+      return '<div class="itmsg'+(inDeleted?' itmsg-deleted':'')+'" data-mi="'+mi+'"><div class="itmsg-slide" style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div><button type="button" class="itmsg-del" data-del="'+mi+'" data-act="'+(inDeleted?'purge':'trash')+'" aria-label="'+(inDeleted?'Delete permanently':'Move to Deleted')+'">Delete</button></div>';
+    }).join('')||(inDeleted
+      ?'<div class="ibx-empty">Nothing deleted.<br>Swipe a message left to move it here.</div>'
+      :(dele.length
+        ?'<div class="ibx-empty">All messages here were moved to Deleted.</div>'
+        :'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>'));
+    // Segment pills reuse the shared .ibx-tabs chrome so the two surfaces read as one
+    // product; first label is "Messages" (not "Inbox") because this IS the thread.
+    var cnt=function(n){ return n?'<span class="ibx-count">'+n+'</span>':''; };
+    var tabs='<div class="ibx-tabs" style="padding:0 0 6px;">'
+      +'<button type="button" class="ibx-tab'+(inDeleted?'':' on')+'" data-itview="inbox">Messages'+cnt(live.length)+'</button>'
+      +'<button type="button" class="ibx-tab'+(inDeleted?' on':'')+'" data-itview="deleted">Deleted'+cnt(dele.length)+'</button>'
+      +'</div>';
+    body.innerHTML=tabs
+      +((inDeleted&&dele.length)?'<div class="ibx-purge-note" style="margin:0 0 8px;">Deleted messages are permanently removed after '+(D?D.PURGE_DAYS:90)+' days. Deleting from here is immediate and cannot be undone.</div>':'')
+      +'<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
+      +(inDeleted?'':(itPendingPhoto?'<div style="display:flex;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img src="'+esc(itPendingPhoto)+'" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="it-drop" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">&times;</button></div>':'')
+      +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center;"><button class="it-attach" title="Attach a photo" aria-label="Attach a photo" style="flex:0 0 auto;width:40px;height:40px;border:1.5px solid #e3ddcd;border-radius:50%;background:#fff;font-size:15px;line-height:1;cursor:pointer;">&#128247;</button><input class="it-file" type="file" accept="image/*" hidden><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>');
     var inp=body.querySelector('.it-in'), snd=body.querySelector('.it-send');
     var sc=body.querySelector('.it-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;   // grow with the convo, keep newest in view
     function doSend(){ var t=(inp.value||'').trim(); if(!t && !itPendingPhoto) return;
@@ -1906,18 +1941,20 @@ function openInboxThread(order){
         var rd=new FileReader(); rd.onload=function(){ itPendingPhoto=rd.result; renderT(); }; rd.readAsDataURL(f); });
     }
     if(drp) drp.onclick=function(){ itPendingPhoto=null; renderT(); };
-    /* ── Message delete (G40-100) ──────────────────────────────────────────────
+    /* ── Message delete (G40-100, TWO-STAGE — owner 8/5) ──────────────────────
        Swipe the bubble left to reveal Delete; swipe right (or open another) to
        close. Only one message stays open at a time — the same rule the shared
        module applies to rows, so the two surfaces feel like one product.
-       Deletion here is PERMANENT and confirmed, because there is no Deleted tab
-       to stage it in: this app has no conversation list, so the web's two-stage
-       Inbox→Deleted→permanent flow has nowhere to live. The confirm itself is
-       the SHARED one (GopherInboxDelete.confirmPermanent), so "Delete
-       permanently? / This cannot be undone." is byte-identical across all six
-       surfaces and cannot drift.
+       Stage 1 (Messages segment): Delete SOFT-deletes — the message is stamped
+       deletedAt and moves to the Deleted segment, silently recoverable-by-eye
+       there for PURGE_DAYS (90). No confirm, matching the web trash stage.
+       Stage 2 (Deleted segment): Delete is PERMANENT and always routes through
+       the SHARED GopherInboxDelete.confirmPermanent(), so "Delete permanently?
+       / This cannot be undone." is byte-identical across all six surfaces and
+       cannot drift.
        PROTOTYPE BOUNDARY: in-memory like the rest of this demo — a reload
-       restores the thread. Production needs a real deleted_at + purge. ── */
+       restores the thread. The 90-day purge is check-on-read via the shared
+       isPurged(). Production needs a real deleted_at + the purge job. ── */
     var closeAllMsgs=function(){ body.querySelectorAll('.itmsg.itmsg-open').forEach(function(x){ x.classList.remove('itmsg-open'); }); };
     body.querySelectorAll('.itmsg').forEach(function(el){
       var x0=null;
@@ -1930,15 +1967,29 @@ function openInboxThread(order){
       },{passive:true});
       el.addEventListener('touchend',function(){ x0=null; },{passive:true});
     });
+    body.querySelectorAll('[data-itview]').forEach(function(b){
+      b.onclick=function(){ itView=b.getAttribute('data-itview'); renderT(); };
+    });
     body.querySelectorAll('.itmsg-del').forEach(function(b){
       b.onclick=function(e){
         e.stopPropagation();
         var mi=+b.getAttribute('data-del');
-        var go=function(){
+        if(b.getAttribute('data-act')==='purge'){
+          // Stage 2 — permanent, from the Deleted segment only.
+          var go=function(){
+            var rr=GReq.get(order); var mm=(rr.messages||[]).slice();
+            mm.splice(mi,1); GReq.update(order,{messages:mm}); renderT();
+          };
+          if(window.GopherInboxDelete) GopherInboxDelete.confirmPermanent(go); else go();
+        } else {
+          // Stage 1 — soft delete: stamp deletedAt, message moves to Deleted. The
+          // toast is the mobile substitute for watching the row slide between tabs.
           var rr=GReq.get(order); var mm=(rr.messages||[]).slice();
-          mm.splice(mi,1); GReq.update(order,{messages:mm}); renderT();
-        };
-        if(window.GopherInboxDelete) GopherInboxDelete.confirmPermanent(go); else go();
+          mm[mi]=Object.assign({},mm[mi],{deletedAt:new Date().toISOString()});
+          GReq.update(order,{messages:mm});
+          if(typeof toast==='function') toast('Moved to Deleted');
+          renderT();
+        }
       };
     });
   }

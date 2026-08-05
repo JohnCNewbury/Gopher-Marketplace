@@ -5551,6 +5551,32 @@
         inboxPendingPhoto = null;
       }
       if(t) INBOX_THREAD.push({ from:'me', text:esc(t), time:inboxNow() });
+      /* deals@ wiring (owner-tabled 7/22, built 8/5): every composer message is also
+         POSTed to the registration Apps Script, which relays it as an email to
+         deals@gophergo.io with Reply-To set to the merchant — so a team member can
+         reply from Gmail and the reply lands with the merchant directly. Same
+         text/plain trick as submitForm (Apps Script can't answer a CORS preflight).
+         Fire-and-forget: the demo thread never blocks on the network, and a failure
+         only means no email — the in-portal thread is unaffected. Photos are NOT
+         relayed (data-URIs blow past Apps Script's POST limits); text only.
+         The script side is the owner-pasted snippet in
+         docs/handoff/deals-email-wiring.md — until it's deployed, the POST lands in
+         the lead sheet as an inbox_message row, which is still a usable signal. */
+      if(t && typeof GOPHER_FORM_ENDPOINT === 'string' && GOPHER_FORM_ENDPOINT){
+        try{
+          var mb = document.getElementById('bizName');
+          fetch(GOPHER_FORM_ENDPOINT, { method:'POST',
+            headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              submission_type:'inbox_message',
+              business:(mb && mb.textContent) || '',
+              merchant_name:(OWNER && OWNER.name) || '',
+              merchant_email:(OWNER && OWNER.email) || '',
+              message:t,
+              sent_at:new Date().toISOString()
+            }) }).catch(function(){ /* email relay only; thread unaffected */ });
+        }catch(_e){}
+      }
       renderDealsInbox();
       var ni=$('inboxComposerInput'); if(ni) ni.focus();
       if(!inboxAutoAcked){

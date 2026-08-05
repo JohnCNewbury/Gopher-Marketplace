@@ -2499,6 +2499,37 @@
   /* a vehicle detail left blank when Ride Sharing is on */
   .field input.field-missing { border-color:var(--warning); background:#fffdf2; }
 
+  /* ── Feature my deal — featured-placement bid board (gbb-) ──
+     Visual styling only. Standings, badge rules and the own-category lock all
+     come from the shared brain (assets/js/gopher-bid-brain.js) — same module
+     the Deals portal renders from. NOTE: gopher-go already has its own
+     unrelated .bid-cta (job cards), so everything here is gbb- prefixed. */
+  .gbb-you { border:1.5px solid #e4e8f0; border-radius:14px; padding:14px 16px; margin-bottom:4px; display:flex; align-items:center; gap:12px; background:var(--gray); }
+  .gbb-you.lead { border-color:var(--green); background:var(--green-light); }
+  .gbb-you-ico { font-size:20px; }
+  .gbb-you-txt { font-size:13px; color:var(--text); line-height:1.55; }
+  .gbb-you-txt b { color:var(--navy); }
+  .gbb-note { font-size:12.5px; color:var(--muted); line-height:1.6; margin:-4px 0 14px; }
+  .gbb-board { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+  .gbb-card { position:relative; border:1px solid #e4e8f0; border-radius:14px; padding:15px 16px; background:#fff; display:flex; flex-direction:column; gap:7px; }
+  .gbb-card.leading { border-color:var(--green); background:var(--green-light); }
+  .gbb-card.featured { border-color:var(--green); background:var(--green-light); box-shadow:0 0 0 1px var(--green), 0 10px 26px rgba(51,217,117,0.28); }
+  .gbb-feat-pill { display:inline-block; align-self:flex-start; font-family:'Nunito',sans-serif; font-size:9.5px; font-weight:800; letter-spacing:0.4px; text-transform:uppercase; color:#fff; background:var(--green-dark); border-radius:20px; padding:3px 10px; }
+  .gbb-sun { position:absolute; top:-10px; right:-9px; width:66px; height:66px; transform:rotate(13deg); background:url(assets/img/deals-img-3.svg) center/contain no-repeat; display:flex; align-items:center; justify-content:center; text-align:center; filter:drop-shadow(0 3px 5px rgba(0,0,0,0.20)); z-index:3; pointer-events:none; }
+  .gbb-sun b { font-family:'Nunito',sans-serif; font-weight:900; font-size:9.5px; line-height:1.05; letter-spacing:0.2px; text-transform:uppercase; color:#5b4300; }
+  .gbb-card.has-sticker .gbb-cat, .gbb-card.has-sticker .gbb-amt { padding-right:52px; }
+  .gbb-cat { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy); }
+  .gbb-amt { font-family:'Nunito',sans-serif; font-size:21px; font-weight:800; color:var(--navy); line-height:1.1; }
+  .gbb-amt small { font-size:11px; font-weight:700; color:var(--muted); }
+  .gbb-holder { font-size:11.5px; font-weight:600; color:var(--muted); }
+  .gbb-holder.mine { color:var(--green-dark); font-weight:800; }
+  .gbb-bid-btn { margin-top:3px; align-self:flex-start; background:var(--navy); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; cursor:pointer; transition:background 0.15s; }
+  .gbb-bid-btn:hover { background:var(--navy-mid); }
+  .gbb-lock { margin-top:3px; align-self:flex-start; font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--muted); background:#f1f3f8; border-radius:9px; padding:7px 12px; cursor:default; }
+  .gbb-cta { margin-top:18px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; padding:13px 22px; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; min-height:50px; box-shadow:0 6px 18px rgba(51,217,117,0.3); transition:background 0.2s; }
+  .gbb-cta:hover { background:var(--green-dark); }
+  .gbb-demo-note { font-size:11.5px; color:var(--muted); margin-top:10px; }
+
   .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--navy); color:#fff; padding:13px 22px; border-radius:12px; font-family:'Nunito',sans-serif; font-weight:700; font-size:13.5px; box-shadow:0 16px 40px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition:opacity 0.25s, transform 0.25s; z-index:9800; display:flex; align-items:center; gap:9px; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   .toast .t-check { color:var(--green); font-size:16px; }
@@ -2640,6 +2671,7 @@
       <button class="dash-nav-item" data-dash-section="payout"><span class="dni-ico">&#128179;</span><span class="dni-label">Payment info</span></button>
       <div class="dash-nav-divider">Rewards</div>
       <button class="dash-nav-item" data-dash-section="refer"><span class="dni-ico">&#127873;</span><span class="dni-label">Refer Gopher</span></button>
+      <button class="dash-nav-item" data-dash-section="bidboard"><span class="dni-ico">&#128227;</span><span class="dni-label">Feature my deal</span></button>
       <div class="dash-nav-divider">Resources</div>
       <button class="dash-nav-item" data-dash-section="help"><span class="dni-ico">&#128161;</span><span class="dni-label">Ask Gopher iQ</span></button>
       <a class="dash-nav-item dash-nav-link" href="gopher-go.html"><span class="dni-ico">&#127968;</span><span class="dni-label">Visit Gopher Go site</span><span class="dni-ext" aria-hidden="true">&#8599;</span></a>
@@ -2930,6 +2962,26 @@
         </div>
       </section>
 
+      <!-- ░░ FEATURE MY DEAL — featured-placement bid board ░░
+           Renders ENTIRELY from the shared auction brain
+           (assets/js/gopher-bid-brain.js) — the SAME standings math, badge
+           rules ("Projected featured deal" / "You're leading!") and
+           own-category lock as the Deals portal's "Feature my business"
+           board. ZERO auction logic lives on this page; the inline script at
+           the bottom (marked GBB) is view-only wiring. -->
+      <section class="dash-section" data-dash-section="bidboard">
+        <div class="panel">
+          <div class="panel-head"><h2>Feature my Service Provider Deal</h2><span class="eyebrow" id="gbbMonth"></span></div>
+          <p class="panel-desc">Bid to put your Service Provider Deal on the <b>Service Providers</b> category card across the entire Gopher Marketplace for the month. Bidding closes on the 20<sup>th</sup> of each month; the top bidder goes live on the 1<sup>st</sup>. Any bid still earns you a guaranteed featured win during the month.</p>
+          <div class="gbb-you" id="gbbYou"><!-- your bid status — filled from GopherBidBrain --></div>
+          <div class="sec-h">Live standings &mdash; every category card</div>
+          <p class="gbb-note">The leading bid for each category is shown openly. You bid on <b>your own category only</b> &mdash; as a Service Provider that&rsquo;s the <b>Service Providers</b> card. The single highest bid across all categories headlines as the Featured Deal.</p>
+          <div class="gbb-board" id="gbbBoard"><!-- rendered from GopherBidBrain.board() --></div>
+          <button class="gbb-cta" id="gbbStart" type="button">Place a bid &rarr;</button>
+          <p class="gbb-demo-note">Prototype demo &mdash; standings and bids live in this page&rsquo;s memory only and reset when you leave. Production settles the monthly auction server-side.</p>
+        </div>
+      </section>
+
       <!-- ░░ BLOCKED REQUESTORS ░░ -->
       <section class="dash-section" data-dash-section="blocked">
         <div class="panel">
@@ -3098,6 +3150,42 @@
       <button type="button" class="gc-modal-btn" id="osfDone">Done</button>
     </div>
 
+  </div>
+</div>
+
+<!-- ░░ Feature my deal — place-a-bid modal (GBB). View-only wiring: the
+     category lock, standings and bid acceptance are enforced by the shared
+     brain (assets/js/gopher-bid-brain.js), never re-implemented here. ░░ -->
+<div class="gc-modal-overlay" id="gbbOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="gbbTitle" style="max-width:520px;max-height:88vh;overflow-y:auto">
+    <button type="button" class="gc-modal-close" id="gbbClose" aria-label="Close">&times;</button>
+    <div class="gc-modal-icon" style="background:#e2f3e9">&#128227;</div>
+    <h4 id="gbbTitle">Place your bid</h4>
+    <p class="gc-modal-sub">Feature your Service Provider Deal on the <b>Service Providers</b> category card. Top this month&rsquo;s leading bid to headline &mdash; any bid still earns a featured win during the month.</p>
+    <div class="osf">
+      <div class="osf-asline"><span>&#128100;</span><div>Bidding as <b>Hale Services LLC</b> &middot; Service Providers</div></div>
+      <div class="osf-field">
+        <label for="gbbDeal">Which deal do you want to feature?</label>
+        <select class="osf-input" id="gbbDeal"></select>
+        <p class="osf-hint" id="gbbDealHint"></p>
+      </div>
+      <div class="osf-field">
+        <label for="gbbCat">Category card <span class="osf-opt">(set by your deal)</span></label>
+        <input type="text" class="osf-input osf-readonly" id="gbbCat" readonly>
+      </div>
+      <div class="osf-field">
+        <label for="gbbTop">Current top bid <span class="osf-opt">(shown openly)</span></label>
+        <input type="text" class="osf-input osf-readonly" id="gbbTop" readonly>
+      </div>
+      <div class="osf-field">
+        <label for="gbbAmount">Your monthly bid</label>
+        <input type="text" class="osf-input" id="gbbAmount" inputmode="numeric" placeholder="$0" autocomplete="off">
+        <p class="osf-hint" id="gbbAmountHint"></p>
+      </div>
+      <p class="osf-err" id="gbbErr" hidden></p>
+      <button type="button" class="gc-modal-btn" id="gbbPlace">Place bid &rarr;</button>
+      <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="gbbCancel">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -4433,6 +4521,170 @@
   if(done) done.addEventListener('click', function(){ svcOv.hidden=true; document.body.style.overflow=''; reset(); });
   ['offerSvcClose','offerSvcClose2'].forEach(function(id){ var e2=document.getElementById(id); if(e2) e2.addEventListener('click', reset); });
   renderChips();
+})();
+</script>
+
+<!-- ░░ GBB — Feature my deal: featured-placement bid board ░░
+     The shared auction brain is the ONLY source of standings, badge rules
+     ("Projected featured deal" / "You're leading!") and the own-category lock —
+     the same module the Deals portal's "Feature my business" board renders
+     from, so the two windows onto the auction can never drift. The block below
+     is view-only wiring: it calls the brain and paints the result. -->
+<script src="assets/js/gopher-bid-brain.js"></script>
+<script>
+(function(){
+  'use strict';
+  var BB = window.GopherBidBrain;
+  var board = document.getElementById('gbbBoard');
+  if(!BB || !board) return;
+
+  /* The signed-in demo worker. Marcus shows as his business (Business info →
+     "Showing as a business"), and a worker's Service Provider Deal always
+     competes on the Service Providers card — so the viewer category is fixed
+     there. The brain's canBid() enforces the lock; this page only surfaces it. */
+  var VIEWER = { name:'Hale Services LLC', category:'Service Providers' };
+
+  /* Viewer data, not auction logic (the Deals board keeps its MY_DEALS list
+     the same way): the worker's own submitted SP deals to pick from. */
+  var MY_SP_DEALS = [
+    { id:'sp1', title:'Power washing — whole home $150', status:'Live' },
+    { id:'sp2', title:'Gutter cleaning + haul-away $95',      status:'In review' }
+  ];
+
+  var youEl = document.getElementById('gbbYou'),
+      monthEl = document.getElementById('gbbMonth'),
+      overlay = document.getElementById('gbbOverlay'),
+      dealSel = document.getElementById('gbbDeal'),
+      dealHint = document.getElementById('gbbDealHint'),
+      catField = document.getElementById('gbbCat'),
+      topField = document.getElementById('gbbTop'),
+      amtField = document.getElementById('gbbAmount'),
+      amtHint = document.getElementById('gbbAmountHint'),
+      errEl = document.getElementById('gbbErr');
+
+  function esc(v){ return String(v==null?'':v).replace(/[<>&"]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }); }
+  function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
+  function gbbToast(msg){
+    var t=document.getElementById('toast'), m=document.getElementById('toastMsg');
+    if(!t||!m) return;
+    m.textContent=msg;
+    t.classList.add('show'); clearTimeout(window.__toastTimer);
+    window.__toastTimer=setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+  function openOv(){ overlay.hidden=false; document.body.style.overflow='hidden'; }
+  function closeOv(){ overlay.hidden=true; document.body.style.overflow=''; errEl.hidden=true; amtField.value=''; }
+
+  if(monthEl) monthEl.textContent = BB.closeLabel();
+
+  /* Standings board — same card semantics as the Deals portal, restyled onto
+     gopher-go's tokens. Every badge/lock decision comes off the brain's card. */
+  function renderBoard(){
+    board.innerHTML='';
+    BB.board(VIEWER).forEach(function(c){
+      /* `mine` is the brain's single-viewer DEMO flag (its seed belongs to the
+         Deals-portal viewer). On this page an entry only reads as "you" inside
+         the worker's own category — presentation guard, not auction logic. */
+      var viewerMine = c.mine && c.own;
+      var holderName = String(c.holder).replace(/^You\s*·\s*/,'');
+      var card=document.createElement('div');
+      card.className='gbb-card'+(c.featured?' featured':(c.leading?' leading':''))+(c.leading?' has-sticker':'');
+      card.innerHTML=
+        (c.featured?'<span class="gbb-feat-pill">Projected featured deal</span>':'')+
+        (c.leading?'<span class="gbb-sun"><b>You’re<br>leading!</b></span>':'')+
+        '<span class="gbb-cat">'+esc(c.category)+'</span>'+
+        '<div class="gbb-amt">'+money(c.amount)+' <small>top bid</small></div>'+
+        '<div class="gbb-holder'+(viewerMine?' mine':'')+'">'+(viewerMine?'You hold this spot':'Held by '+esc(holderName))+'</div>'+
+        (c.canBid
+          ? '<button type="button" class="gbb-bid-btn" data-cat="'+esc(c.category)+'">'+(viewerMine?'Raise your bid':'Bid here')+'</button>'
+          : '<span class="gbb-lock" title="Workers bid in their own category — yours is '+esc(VIEWER.category)+'">Not your category</span>');
+      board.appendChild(card);
+    });
+  }
+
+  /* "You" strip — the worker's own status, read straight off the brain. */
+  function renderYou(){
+    if(!youEl) return;
+    var top = BB.catTop(VIEWER.category);
+    var overall = BB.topOverall();
+    var leading = BB.isLeading(VIEWER);
+    /* same single-viewer demo-flag guard as the board: `mine` only means "you"
+       inside the worker's own category */
+    var featured = !!(overall && overall.mine && overall.category===VIEWER.category);
+    youEl.classList.toggle('lead', leading || featured);
+    var ico, txt;
+    if(featured){
+      ico='🏆';
+      txt='Your <b>'+money(overall.amount)+'</b> bid is the highest across <b>all categories</b> — projected to headline as the <b>Featured Deal</b> on the 1st.';
+    } else if(leading){
+      ico='☀️';
+      txt='You hold the top <b>'+esc(VIEWER.category)+'</b> bid at <b>'+money(top.amount)+'</b> — your deal is set to feature on the category card.';
+    } else if(top){
+      ico='📣';
+      txt='No bid from you yet this month. The <b>'+esc(VIEWER.category)+'</b> card currently goes to <b>'+esc(top.holder)+'</b> at <b>'+money(top.amount)+'</b>.';
+    } else {
+      ico='📣';
+      txt='No bids on the <b>'+esc(VIEWER.category)+'</b> card yet this month — any bid takes the lead.';
+    }
+    youEl.innerHTML='<span class="gbb-you-ico">'+ico+'</span><div class="gbb-you-txt">'+txt+'</div>';
+  }
+
+  /* ---- bid modal ---- */
+  function dealById(id){ for(var i=0;i<MY_SP_DEALS.length;i++){ if(MY_SP_DEALS[i].id===id) return MY_SP_DEALS[i]; } return null; }
+  function populateDeals(){
+    dealSel.innerHTML='';
+    MY_SP_DEALS.forEach(function(d){
+      var o=document.createElement('option'); o.value=d.id;
+      o.textContent=d.title+(d.status==='Live'?'':' ('+d.status+')');
+      dealSel.appendChild(o);
+    });
+  }
+  function syncForm(){
+    var d=dealById(dealSel.value); if(!d) return;
+    var b=BB.catTop(VIEWER.category)||{amount:0,holder:'No bids yet'};
+    catField.value=VIEWER.category;
+    topField.value=money(b.amount)+'  ·  leading: '+(b.holder||'—');
+    dealHint.textContent = d.status==='Live'
+      ? 'This deal is live and ready to feature on the '+VIEWER.category+' card.'
+      : 'This deal is still in review — it can hold the spot and go live once approved.';
+    amtHint.textContent = 'Top this month’s '+money(b.amount)+' to headline the '+VIEWER.category
+      +' card. Any bid still earns you a guaranteed featured win this month.';
+  }
+  function openForm(){ populateDeals(); syncForm(); openOv(); amtField.focus(); }
+
+  function showErr(m){ errEl.textContent=m; errEl.hidden=false; }
+  function placeBid(){
+    errEl.hidden=true;
+    var d=dealById(dealSel.value);
+    if(!d){ showErr('Pick a deal to feature.'); return; }
+    var amt=parseInt(String(amtField.value).replace(/[^0-9]/g,''),10);
+    /* The brain owns acceptance: category lock + amount validation. */
+    var res=BB.placeBid(VIEWER, VIEWER.category, amt);
+    if(!res.ok){
+      showErr(res.reason==='category-locked'
+        ? 'You can only bid on your own category — '+VIEWER.category+'.'
+        : 'Enter a bid amount.');
+      return;
+    }
+    gbbToast(res.beatsTop
+      ? 'Top bid on the '+VIEWER.category+' card — '+money(amt)+' 🏆'
+      : 'Bid placed — '+money(amt)+'. Featured win locked in this month ✅');
+    renderBoard(); renderYou();
+    closeOv();
+  }
+
+  board.addEventListener('click', function(e){
+    var btn=e.target.closest('.gbb-bid-btn[data-cat]');
+    if(btn) openForm();
+  });
+  var start=document.getElementById('gbbStart');
+  if(start) start.addEventListener('click', openForm);
+  dealSel.addEventListener('change', syncForm);
+  document.getElementById('gbbPlace').addEventListener('click', placeBid);
+  ['gbbClose','gbbCancel'].forEach(function(id){ var el=document.getElementById(id); if(el) el.addEventListener('click', closeOv); });
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) closeOv(); });
+  amtField.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); placeBid(); } });
+
+  renderBoard(); renderYou();
 })();
 </script>
 
