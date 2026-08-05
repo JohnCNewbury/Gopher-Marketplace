@@ -5551,32 +5551,14 @@
         inboxPendingPhoto = null;
       }
       if(t) INBOX_THREAD.push({ from:'me', text:esc(t), time:inboxNow() });
-      /* deals@ wiring (owner-tabled 7/22, built 8/5): every composer message is also
-         POSTed to the registration Apps Script, which relays it as an email to
-         deals@gophergo.io with Reply-To set to the merchant — so a team member can
-         reply from Gmail and the reply lands with the merchant directly. Same
-         text/plain trick as submitForm (Apps Script can't answer a CORS preflight).
-         Fire-and-forget: the demo thread never blocks on the network, and a failure
-         only means no email — the in-portal thread is unaffected. Photos are NOT
-         relayed (data-URIs blow past Apps Script's POST limits); text only.
-         The script side is the owner-pasted snippet in
-         docs/handoff/deals-email-wiring.md — until it's deployed, the POST lands in
-         the lead sheet as an inbox_message row, which is still a usable signal. */
-      if(t && typeof GOPHER_FORM_ENDPOINT === 'string' && GOPHER_FORM_ENDPOINT){
-        try{
-          var mb = document.getElementById('bizName');
-          fetch(GOPHER_FORM_ENDPOINT, { method:'POST',
-            headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-              submission_type:'inbox_message',
-              business:(mb && mb.textContent) || '',
-              merchant_name:(OWNER && OWNER.name) || '',
-              merchant_email:(OWNER && OWNER.email) || '',
-              message:t,
-              sent_at:new Date().toISOString()
-            }) }).catch(function(){ /* email relay only; thread unaffected */ });
-        }catch(_e){}
-      }
+      /* deals@ relay REMOVED 2026-08-05 (owner ruling). This composer used to POST
+         every message to GOPHER_FORM_ENDPOINT as submission_type:'inbox_message'.
+         That endpoint is the LIVE merchant-lead capture sheet, so each demo message
+         mutated the Leads header and appended a junk row — and the relay half was
+         never deployed script-side, so it bought nothing in exchange. The portal
+         Inbox is a demo surface with no support flow behind it.
+         Rebuild on the G40-305 dispatcher (sendEmail.js) — NOT on Apps Script and
+         NOT against the lead-capture endpoint. Track: G40-351 / deals@ email. */
       renderDealsInbox();
       var ni=$('inboxComposerInput'); if(ni) ni.focus();
       if(!inboxAutoAcked){
