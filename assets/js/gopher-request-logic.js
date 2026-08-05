@@ -110,17 +110,41 @@
      hand-maintained supplement (gopher-age-supplement.js: THC/lottery vocabulary,
      intent phrases, brands, misspellings). Whole-word/phrase match, case-
      insensitive, whitespace-flexible. Returns the matched term or null. */
+  /* SMART PUNCTUATION HAS TO BE FOLDED FIRST, or 41 of the 1,658 keywords are
+     dead on a phone. iOS and Android autocorrect a typed ' into a curly ’
+     (U+2019), and the brain stores straight ASCII — so "I need some Tito's",
+     typed on an iPhone, arrives as "Tito’s" and matches NEITHER "tito's"
+     (different character) NOR "titos" (the ’ sits between the o and the s).
+     Owner reproduced this live on 2026-08-05: the age-restricted toggle simply
+     never fired. Every possessive brand was affected — Jack Daniel's, Maker's
+     Mark, Mike's Hard, Bell's, Blanton's, Gordon's, Angel's Envy.
+
+     Folded on BOTH sides, and the map is strictly 1 char -> 1 char so string
+     offsets are preserved; that lets us match on the folded copy but slice the
+     RETURN value out of the untouched original, so the operator still sees what
+     the customer actually typed rather than a normalised rewrite.
+
+     Dashes are folded for the same reason (keywords like "e-cig",
+     "tobacco-free nicotine pouch"); an en dash never reaches them otherwise. */
+  var SMART_PUNCT = /[‘’ʼʹ′´`]/g;   // -> '
+  var SMART_DASH  = /[‐‑‒–—−]/g;         // -> -
+  function foldPunct(s){
+    return String(s).replace(SMART_PUNCT, "'").replace(SMART_DASH, '-');
+  }
+
   function findAgeRestrictedKeyword(text){
     var orig = String(text || '');
     if(!orig.trim()) return null;
+    var hay = foldPunct(orig);
     var lists = [ (window.GopherAgeKeywords || []), (window.GopherAgeSupplement || []) ];
     for(var li = 0; li < lists.length; li++){
       var list = lists[li];
       for(var i = 0; i < list.length; i++){
-        var esc = String(list[i]).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
+        var esc = foldPunct(list[i]).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
         var re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','i');
-        var m = orig.match(re);
-        if(m) return m[1];
+        var m = hay.match(re);
+        /* Offsets survive the fold, so report the customer's own characters. */
+        if(m) return orig.substr(m.index + m[0].indexOf(m[1]), m[1].length);
       }
     }
     return null;
