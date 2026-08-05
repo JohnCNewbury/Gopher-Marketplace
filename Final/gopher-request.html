@@ -7004,6 +7004,14 @@
   .dash-backmain { margin-bottom:8px; border-color:rgba(51,217,117,.45); color:#7dedaa; }
   .dash-backmain:hover { border-color:#33d975; background:rgba(51,217,117,.08); }
 
+  /* Mobile nav drawer. The dashboard sidebar is the ONLY route to Saved
+     addresses, Payment info, Back to main page and Sign out — hiding it on a
+     phone with nothing in its place left the user with no way out of the
+     dashboard at all. Mirrors gopher-connect's drawer exactly. */
+  .dash-burger{ display:none; align-items:center; justify-content:center; width:40px; height:40px; margin-right:12px; flex:0 0 auto; background:var(--navy); color:#fff; border:none; border-radius:10px; font-size:18px; line-height:1; cursor:pointer; }
+  .dash-topbar-left{ display:flex; align-items:center; min-width:0; }
+  .dash-backdrop{ display:none; }
+
   /* ─── Main area ─── */
   .dash-main {
     overflow-y:auto;
@@ -9258,7 +9266,12 @@
   /* ─── Mobile/narrow viewport — collapse sidebar to top bar ─── */
   @media (max-width:900px){
     .dashboard { grid-template-columns:1fr; }
-    .dash-sidebar { display:none; }
+    .dash-sidebar{ position:fixed; top:0; left:0; bottom:0; width:84%; max-width:300px; transform:translateX(-100%); transition:transform .28s ease; z-index:9300; box-shadow:0 0 50px rgba(0,0,0,0.35); overflow-y:auto; }
+    .dashboard.sidebar-open .dash-sidebar{ transform:translateX(0); }
+    .dash-backdrop{ display:block; position:fixed; inset:0; background:rgba(0,18,49,0.5); opacity:0; visibility:hidden; transition:opacity .28s ease; z-index:9200; }
+    .dashboard.sidebar-open .dash-backdrop{ opacity:1; visibility:visible; }
+    .dash-burger{ display:inline-flex; }
+    .dash-avatar{ cursor:pointer; }
     .kpi-grid { grid-template-columns:repeat(2, 1fr); }
     .gophers-grid { grid-template-columns:1fr; }
     .dash-content { padding:18px; }
@@ -11767,7 +11780,7 @@
       ],
       estimate:'$285 – $410',
       etaText:'2-hour arrival window',
-      worker:{ initials:'AT', name:'Aaron T.', badge:'elite+', photo:'assets/img/px-2182970-400x400.webp', tagline:'Strong crew lead — your move done right the first time.', verified:'Verified', reviews:140, rating:4.92, stats:['⭐ 4.92 (140 moves)','5 mi away','Available 9am'] },
+      worker:{ initials:'AT', name:'Aaron T.', badge:'elite+', photo:'assets/img/px-3932291-400x400.webp', tagline:'Strong crew lead — your move done right the first time.', verified:'Verified', reviews:140, rating:4.92, stats:['⭐ 4.92 (140 moves)','5 mi away','Available 9am'] },
       worker2:{ initials:'JB', name:'James B.', badge:'pro+', photo:'assets/img/px-220453-400x400.webp', tagline:'Careful with your stuff — moved 200+ homes.', verified:'Verified', reviews:88, rating:4.86, stats:['⭐ 4.86 (88 moves)','7 mi away','Available 11am'] }
     },
 
@@ -11969,7 +11982,7 @@
   // Extra "already interested" workers, combined with each category's 2 samples
   // to populate the Step 7 interested pool (2 samples + 6 extras = 8 total).
   const EXTRA_INTERESTED = [
-    { initials:'AW', name:'Andre W.',  badge:'elite+', photo:'assets/img/px-2182970-400x400.webp', tagline:'Shows up early, works hard, gets it done.', verified:'Verified', reviews:203, rating:4.96, stats:['⭐ 4.96 (203 jobs)','3 mi away','Available now'] },
+    { initials:'AW', name:'Andre W.',  badge:'elite+', photo:'assets/img/px-3932291-400x400.webp', tagline:'Shows up early, works hard, gets it done.', verified:'Verified', reviews:203, rating:4.96, stats:['⭐ 4.96 (203 jobs)','3 mi away','Available now'] },
     { initials:'PN', name:'Priya N.',  badge:'pro+',   photo:'assets/img/px-3763188-400x400.webp', tagline:'Friendly, reliable, and detail-oriented.', verified:'Verified', reviews:118, rating:4.90, stats:['⭐ 4.90 (118 jobs)','4 mi away','Available 1pm'] },
     { initials:'MT', name:'Marcus T.', badge:'pro+',   photo:'assets/img/px-1681010-400x400.webp', tagline:'Strong, dependable, and ready to roll.', verified:'Verified', reviews:91, rating:4.87, stats:['⭐ 4.87 (91 jobs)','6 mi away','Available now'] },
     { initials:'ER', name:'Elena R.',  badge:'elite+', photo:'assets/img/px-1130626-400x400.webp', tagline:'5-star track record — your job in safe hands.', verified:'Verified', reviews:412, rating:4.99, stats:['⭐ 4.99 (412 jobs)','2 mi away','Available 2pm'] },
@@ -18749,12 +18762,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     </div>
   </aside>
 
+  <div class="dash-backdrop" id="rqDashBackdrop"></div>
+
   <!-- Main -->
   <main class="dash-main">
     <div class="dash-topbar">
-      <div>
-        <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
-        <div class="dash-section-title" id="rqDashSectionTitle">Dashboard overview</div>
+      <div class="dash-topbar-left">
+        <button class="dash-burger" id="rqDashBurger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+        <div>
+          <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
+          <div class="dash-section-title" id="rqDashSectionTitle">Dashboard overview</div>
+        </div>
       </div>
       <div class="dash-topbar-right">
         <div class="dash-avatar" id="rqDashAvatar">JL</div>
@@ -23860,7 +23878,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       { id:'lp-power',  name:'Power Washing',   pro:'John Newbury',       tier:'Gopher Elite+', price:150, normalRate:225, offer:'Full exterior house & driveway wash',
         kind:'service', reqCategory:'home', reviews:312, rating:4.9, verified:true, testimonial:'Driveways and siding like new.',
         dealSpecifics:"I will power wash any residential home under 2000 sq ft for $150 flat rate. My normal rate is $225. I use a special solution that will kill mold for up to 1 year.",
-        photo:'assets/img/px-2182970-240x240.webp' },
+        photo:'assets/img/px-3932291-240x240.webp' },
       { id:'lp-junk',   name:'Junk Removal',    pro:"Dan's Disposal",     tier:'Gopher Elite+', price:50,  normalRate:90, offer:'Full truckload hauled away',
         kind:'service', reqCategory:'junk', reviews:524, rating:5.0, verified:true, testimonial:'You make the mess, we do the rest.',
         dealSpecifics:"Full truckload haul-away for a flat $50 (normally $90). I handle all the loading, sweep up after, and dispose responsibly. Hazardous materials excluded.",
@@ -26467,5 +26485,30 @@ function initPersonalEdit(){
 })();
 </script>
 <script src="assets/js/gopher-inbox-delete.js"></script>
+
+<script>
+/* Mobile nav drawer controller (mirrors gopher-connect). Delegated from
+   document so it keeps working across dashboard re-renders. Tapping a nav
+   item closes the drawer — otherwise the panel stays over the very section
+   the user just chose, which reads as the tap having done nothing. */
+(function(){
+  document.addEventListener("click", function(e){
+    var d = document.getElementById("rqDashboard") || document.querySelector(".dashboard");
+    if(!d) return;
+    if(e.target.closest("#rqDashBurger") || e.target.closest("#rqDashAvatar")){
+      var open = d.classList.toggle("sidebar-open");
+      var b = document.getElementById("rqDashBurger");
+      if(b){ b.setAttribute("aria-expanded", open ? "true" : "false"); }
+      return;
+    }
+    if(e.target.closest("#rqDashBackdrop")){ d.classList.remove("sidebar-open"); return; }
+    if(e.target.closest(".dash-sidebar .dash-nav-item, .dash-sidebar-newreq, .dash-signout")){
+      d.classList.remove("sidebar-open");
+      var b2 = document.getElementById("rqDashBurger");
+      if(b2){ b2.setAttribute("aria-expanded","false"); }
+    }
+  });
+})();
+</script>
 </body>
 </html>
