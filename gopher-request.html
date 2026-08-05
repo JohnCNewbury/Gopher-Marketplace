@@ -15368,16 +15368,26 @@
     const K = window.GopherRequestDraft, S = window.GopherRequestDraftStore;
     if(!K || !S) return;               // modules absent → the flow behaves exactly as before
 
-    // Stable per-device id, so a draft can say which device last touched it.
+    /* Stable per-device id, so a draft can say which device last touched it.
+       CREATED LAZILY — on the first write that actually persists a draft, never at
+       init. Someone who merely opens this page and starts nothing is never given a
+       persistent identifier. (It stays in this browser today, but the remote tier
+       below is one config line from active, and this file is the reference the rebuild
+       will copy — so the on-load version would have become production behaviour.)
+       The store accepts a function here and calls it only when it is about to save. */
     let deviceId = null;
-    try{
-      deviceId = localStorage.getItem('gopher.request.deviceId');
-      if(!deviceId){
-        deviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
-                                                        : 'web-' + Math.random().toString(36).slice(2);
-        localStorage.setItem('gopher.request.deviceId', deviceId);
-      }
-    }catch(_e){}
+    function getDeviceId(){
+      if(deviceId) return deviceId;
+      try{
+        deviceId = localStorage.getItem('gopher.request.deviceId');
+        if(!deviceId){
+          deviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                                                          : 'web-' + Math.random().toString(36).slice(2);
+          localStorage.setItem('gopher.request.deviceId', deviceId);
+        }
+      }catch(_e){}
+      return deviceId;
+    }
 
     const apiBase = window.GOPHER_API_BASE || null;
     const tokenFn = typeof window.__gopherAuthToken === 'function' ? window.__gopherAuthToken : null;
@@ -15392,7 +15402,7 @@
     }
 
     const store = S.createStore({
-      adapter: adapter, origin: 'web', clientId: deviceId,
+      adapter: adapter, origin: 'web', clientId: getDeviceId,   // resolved at first save, not now
       onConflict: function(_local, remoteDraft){ showBanner(remoteDraft, true); }
     });
 
