@@ -1464,13 +1464,31 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   professionals"); recommendation is trades. Note `Final/hero-media/` exists but is **empty**
   and predates the asset reorg — the brief recommends `assets/video/connect-hero-1..4.mp4`
   to match the site-wide convention.
-- **deals@ email wiring — front end DONE 2026-08-05 (commit `5a41322`); ONE owner paste
-  remains.** The Inbox composer now POSTs every message to the registration Apps Script as
-  `submission_type:'inbox_message'` (merchant name/email/business + text; photos not relayed —
-  data-URI size). The exact paste-ready script snippet (inbox→deals@ relay with
-  Reply-To=merchant, PLUS the registration welcome email, which needed no front-end change at
-  all) + the send-as-alias checklist: **`docs/handoff/deals-email-wiring.md`**. Until pasted,
-  the POSTs land harmlessly in the lead sheet as inbox_message rows.
+- **deals@ email wiring — NOT started. The 8/5 "front end DONE" claim was wrong and has been
+  reverted (owner, 2026-08-05; backout `40fc4eb`).** ⚠️ **Correcting the record**, because the
+  previous wording here overstated it in a way that mattered: `5a41322` wired the merchant-portal
+  Inbox composer to POST every message to the registration Apps Script as
+  `submission_type:'inbox_message'`, and this entry claimed the POSTs "land harmlessly in the lead
+  sheet." **They did not land harmlessly.** That endpoint is the LIVE merchant-lead capture sheet,
+  so each demo message mutated the Leads header with 5 new columns, appended a junk row, and fired
+  a pre-registration alert. The relay half was **never written script-side**, so the feature was
+  never functional end to end — it was pure cost. It shipped in `f18cacb` and ran live until the
+  backout. The composer now sends nothing (verified: 0 fetch calls on send).
+  **Rebuild target: the G40-305 dispatcher (`sendEmail.js`) — NOT Apps Script, and NOT against the
+  lead-capture endpoint.** A tombstone comment at `gopher-deals.html:5554` records this so nobody
+  re-adds it from the old handoff doc.
+  ⚠️ **`docs/handoff/deals-email-wiring.md` is FROZEN and must not be followed as written** — its
+  paste-ready snippet keys on `data.email`, but the **merchant** form's field is `owner_email`
+  (only the worker/SP form uses `email`), so the merchant welcome email would silently never fire.
+  Left unfixed on purpose while the Apps Script freeze decision is open.
+  **Open owner ruling — freeze the Apps Script?** Recommendation (from Website Updates, carried
+  forward): freeze it at exactly today's behaviour (lead capture + notify deals@). Grounds: SOW
+  Bucket F already scopes and prices "two registration paths; full account creation" so anything
+  built here is paid for twice; the owner already ruled 7/24 that production has no Apps Script;
+  and **the welcome email would open a relay hole** — the endpoint is `Who has access: Anyone` and
+  today only mails a fixed address, so it can't be abused, but mailing whatever address is in the
+  POST body turns a URL that sits in public page source into an open relay from your domain, with
+  no rate limiting, suppression or bounce handling.
   _Original entry:_ tabled by owner 2026-07-22. Two pieces, both via
   the existing Deals registration Apps Script endpoint (`GOPHER_FORM_ENDPOINT` in
   `gopher-deals.html`): (1) welcome email sent **from deals@gophergo.io** on merchant
