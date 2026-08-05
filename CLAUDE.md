@@ -86,6 +86,24 @@ do not assume they indicate deeper problems.
 
 ## Standing rules (owner directives — apply to every session)
 
+- **A Jira ticket is NEVER the source of truth — a document is, and the ticket references the doc
+  (owner, reaffirmed 2026-08-05).** Tickets are *meant* to die; truths have to outlive them. When a
+  ticket completes, the doc is updated and the ticket dies — and a ticket **is not Done until its
+  doc row is written**, or the ticket dies and the doc never learned.
+  **Direction matters: doc ← ticket, never doc → ticket.** Never cite a ticket as the authority for
+  behaviour; cite the doc, and if the doc is silent *that is the bug to fix*.
+  **Why it keeps biting:** a truth buried in a **closed** ticket becomes a fossil — the product moves
+  on, the truth evolves, and the closed ticket still reads as authoritative to whoever finds it next.
+  G40-44 is the recorded case study (its Done state contradicted production, and it was re-raised
+  three times in one day across sessions). It happened again on 2026-08-05: the G40-351 ground-truth
+  findings were first written **into a ticket comment**, then moved into
+  `deals-registration-to-publication-config.md` §9.9–9.16 / Rulings 7–8, with the comment rewritten
+  as a pointer.
+  **What belongs where:** the *doc* carries the canonical rule, the deployment reality (flags off,
+  branches unmerged), and the dated owner decision. The *ticket* carries only what should die with
+  the fix — the repro, the acceptance criteria, the assignee. See memory
+  `docs-are-truth-not-tickets`.
+
 - **A user-facing change is not done until its 101 guide is updated (owner, 2026-08-05).** Every
   surface has a tutorial that real users read — `gopher-deals-101.html`, `gopher-go-101.html`,
   `gopher-request-101.html`, `gopher-connect-101.html`. When you change behaviour or copy on a

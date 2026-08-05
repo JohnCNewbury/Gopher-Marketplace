@@ -581,6 +581,86 @@ only to get it explicitly retired.
 
 ---
 
+### 9.9 BUILD-SPEC §6 is materially thinner than the auction that exists
+
+**BUILD-SPEC** §6 specifies the placement auction as: opt-in, monthly, transparent standings,
+merchant picks the deal, billed via Payment Info, organic listings not pay-to-play. All correct.
+
+It does **not** contain: the **20th close / 1st go-live** dates, the **own-category lock**, the
+**two-tier prize** (top-in-category wins that card; top-overall additionally headlines), the
+**every-bid-wins guarantee**, or the **50%-off-delivery perk**. All five are implemented and/or
+promised in shipped copy. A developer pricing and building from §6 alone produces a plain
+highest-bidder auction and silently drops half the rules. **Fix: fold the five into §6.**
+
+### 9.10 "Every bid wins a featured month" — promised in the UI, unrepresentable in the model ⛔
+
+Stated in `gopher-deals-101.html`, three places in `gopher-go.html`, and the merchant portal's bid
+hint. `placeBid()` honours it — it returns `ok:true` for a bid that does **not** beat the category
+top — and its own comment concedes the limitation: *"the demo board only tracks category tops, so
+nothing to move."*
+
+**Nothing records who is owed a featured month, how many such slots exist per category per month,
+or in what order they run.** This is a commercial promise with no data structure behind it and no
+mention in either build doc. It cannot be implemented as written. → **Ruling 7.**
+
+### 9.11 The 50%-off-delivery perk exists only as copy ⛔
+
+*"When you're featured, your customers get 50% off delivery if they need last-mile help"* —
+`gopher-deals-101.html` and `gopher-deals.html`. Implemented by **zero** code; absent from
+**BUILD-SPEC** entirely, including §6, which otherwise enumerates exactly how Deals monetizes and
+states the customer pays only standard request fees. It is a customer-facing discount that lands in
+the fee engine. → **Ruling 8.**
+
+### 9.12 The Go app transmits nothing — "submitted for review" is a UI state change ⛔
+
+`Final/gopher-go.html` contains **zero `fetch` calls of any kind.** The SP deal submit handler
+validates (deal text, ≥1 keyword, earn, normal price), then sets `formWrap.hidden=true;
+success.hidden=false;` and renders *"Deal submitted for review — we'll give it a quick review and
+message your Gopher Go inbox the moment it's live."*
+
+Nothing leaves the browser. The worker is told their deal is in review when no submission occurred.
+Same honesty class as the merchant logo being required and then discarded (**BUILD-SPEC** §4.1a) and
+the June 2026 `gopher-request.html` "saved automatically" copy. The success copy must not claim a
+submission until one exists.
+
+### 9.13 The two Service-Provider surfaces produce no linked record
+
+The public funnel (`gopher-deals.html`, `submitForm('worker')`) writes a `worker` row to the Apps
+Script lead sheet carrying **`gopher_id`**. The in-app submission (`gopher-go.html`) writes nowhere
+(§9.12). So a provider who completes both leaves two unconnected traces, and **`gopher_id` — the
+obvious join key, collected precisely so the backend can verify tier/jobs/rating — is consumed by
+nothing.** The union record in §4.1 is where these must converge.
+
+### 9.14 SP eligibility is promised publicly and enforced nowhere
+
+The public funnel promises *"we'll email you with eligibility terms and next steps"*, implying a
+tier/jobs/rating lookup. No lookup exists. The in-app gate that would enforce it is a hardcoded
+`var ELIGIBLE = true;` with a demo toggle (`gopher-go.html:4397`).
+
+The **only** real implementation of the amended bar is `regen_sp_eligibility.py` in the HQ Dashboard
+— correct, and validated on live data (13 auto-eligible), but it lives in the analytics tool, not in
+the path a worker walks. Production computes this server-side and both surfaces read it.
+
+### 9.15 The featured-placement bid board is not gated on eligibility ⛔ → **G40-355**
+
+`ELIGIBLE` gates only the "+ Service Provider Deal" button. The `bidboard` nav item
+(`gopher-go.html:2674`) and section (`:2972`) carry **no eligibility condition**, so a worker who
+cannot submit an SP deal can still reach the bidding surface and win a featured slot — verified live
+by placing a $999 winning bid with eligibility toggled off.
+
+**Requirement:** eligibility gates the bid board as well as the offer button, is computed
+server-side, and is re-checked **at settlement**, not only at render — a worker can qualify at page
+load and lapse before the 20th. Placements key on a stable account id, never a display name. Repro,
+root cause and acceptance criteria: **G40-355**.
+
+### 9.16 Minor: the shared brain's header is stale
+
+`gopher-bid-brain.js` still describes the Go dashboard as *"planned; not wired yet."* It was wired
+2026-08-05 and renders. Stale in the one file both this spec and **G40-286** point at as the
+authority for auction rules.
+
+---
+
 ## 10. Open — needs John's ruling
 
 Six items. **Ruling 1 is decided and applied (2026-08-05); five remain open.**
@@ -712,6 +792,42 @@ ruled this on 2026-07-23 when the referral ID and the Gopher ID were unified pla
 built surface is numeric. Confirming it here lets seam #9 be marked closed rather than carried into
 dev handoff as an open item — which the standing rule against leaving open questions for the dev
 requires (memory `handoff-no-open-questions`).
+
+---
+
+### Ruling 7 — What does a "guaranteed featured win" actually buy? ⛔ *blocks the auction build*
+
+**The problem (§9.10):** four surfaces promise that **any** bid, at any amount, earns a featured
+month. `placeBid()` honours it by returning success for a losing bid. But nothing in the model
+records who is owed a slot, how many slots exist per category per month, or in what order they run —
+so the promise **cannot be implemented as written**, and a developer will either drop it silently or
+invent the rules.
+
+**Recommendation — make it a defined, bounded inventory rather than an open promise:** the
+**category-top bid wins the card for the whole month**; every other bidder in that category is
+queued by amount and each receives a **featured day** (or a defined block) during the month, capped
+at the number of days available. If bidders exceed capacity, the lowest bids are refunded rather
+than under-served, and the copy changes from "any bid earns a featured month" to "every bid earns
+featured time."
+
+This keeps the promise honest, makes it schedulable, and preserves the incentive to bid high.
+**Needs your ruling because it defines what a merchant is actually buying**, and the current copy —
+already live on four surfaces — over-promises against any bounded implementation.
+
+---
+
+### Ruling 8 — Is the 50%-off-delivery perk real? ⛔ *touches the fee engine*
+
+**The problem (§9.11):** *"When you're featured, your customers get 50% off delivery"* is live copy
+on two surfaces, implemented nowhere, and absent from **BUILD-SPEC** — including §6, which states
+the customer pays only standard request fees.
+
+**Recommendation: decide, then make the docs and the copy agree — either way.** If it's real, it
+belongs in **BUILD-SPEC** §6 as a third line item in how Deals affects money (alongside the Deal
+Boost and the auction), with the discount's payer identified: Gopher absorbing it is a marketing
+cost per featured merchant per month, which needs a cap. If it isn't real, the copy comes off both
+surfaces. **The one unacceptable outcome is the current one** — a live discount promise to customers
+that no system can honour and no spec acknowledges.
 
 ---
 
