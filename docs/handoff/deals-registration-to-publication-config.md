@@ -944,11 +944,11 @@ is **auto-applied and bound to the order**, there is **no code to issue and ther
 uniqueness is satisfied structurally. Build it as an automatic order-level discount; issue a code only
 if a customer ever has to carry it somewhere else, which this flow does not require.
 
-**⚠️ One scope point left ambiguous — written here as WINNERS ONLY, correct if wrong.** The ruling
-says *"bidding merchants"*, which could mean every merchant who bids or only those who win the slot.
-It is recorded as **featured winners**, because the live copy reads *"when you're featured"* and
-Ruling 7 establishes that only winners are featured. **This materially changes cost** — all-bidders
-would extend an uncapped discount to merchants who lost the auction.
+**Scope: WINNERS ONLY — confirmed by the owner 2026-08-05.** *"Winners only, that's correct (it was
+meant to mean the highest bid, no matter what the amount)."* So the perk attaches to the merchant
+holding a category card for that month, not to everyone who bid. The phrase "bidding merchants" in
+the original ruling meant *the merchant whose bid won* — the amount is irrelevant, the rank is what
+matters.
 
 **Exposure characteristic, recorded not re-litigated:** unlike an issued promo code, this auto-applies
 to *every* delivery from a featured merchant for a whole month, so the cost scales with that
