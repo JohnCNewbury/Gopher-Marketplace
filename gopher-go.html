@@ -3121,7 +3121,7 @@
         <div class="osf-field">
           <label for="osfNormal">What would you normally charge?</label>
           <input type="text" class="osf-input" id="osfNormal" inputmode="decimal" placeholder="$140.00" autocomplete="off">
-          <p class="osf-hint" id="osfNormalHint">Shown struck-through on your card at 10% above this &mdash; so your deal looks like the standout it is.</p>
+          <p class="osf-hint" id="osfNormalHint">Shown struck-through on your card exactly as you enter it. Set it above what your customer pays &mdash; that gap is the saving they see.</p>
         </div>
         <div class="osf-field">
           <label for="osfPay">Customer will pay</label>
@@ -4511,6 +4511,13 @@
     if(keywords.length<1)       return showErr('Add at least one searchable keyword.');
     if(!money(earn.value))       return showErr('Enter what you want to earn.');
     if(!money(normal.value))     return showErr('Enter your normal price.');
+    /* The normal price is the struck-through comparison the customer sees, and the
+       Deal Boost sits ON TOP of the earn — so it must clear what the CUSTOMER pays
+       (earn x 1.10), not merely the earn. At or below that, the "deal" is a markup
+       wearing a discount label, and the card's strike-through wouldn't render at all
+       (it's gated on normalRate > price). Owner ruling 2026-08-05. */
+    var _earn=money(earn.value), _norm=money(normal.value), _pays=_earn*1.10;
+    if(_norm<=_pays) return showErr('Your normal price needs to be more than the $'+_pays.toFixed(2)+' your customer pays — otherwise the deal shows no saving.');
     formWrap.hidden=true; success.hidden=false; svcOv.scrollTop=0;
   });
   function reset(){
