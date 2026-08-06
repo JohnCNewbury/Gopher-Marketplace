@@ -420,6 +420,38 @@ Fully specified in `Final/assets/js/gopher-bid-brain.js` (owner spec 2026-07-22)
 Consumers today: `gopher-deals.html:5208` (merchant portal) and `gopher-go.html:4533` (worker
 dashboard, built 2026-08-05). Both load the module; neither carries auction logic.
 
+### 8.1 The auction model — SETTLED (owner, 2026-08-05, Ruling 7)
+
+**Who wins.** One winner per category, plus one exception: **the top overall bid across all
+categories is its own category** ("Featured Deal"). Exactly one category therefore appears **twice** —
+once as the overall Featured Deal, once as its own card held by that category's **next-highest**
+bidder. Winners own that placement on **app and web for the entire following month**.
+
+**Money.**
+
+| Stage | Rule |
+|---|---|
+| Placing a bid | **No charge.** The bid is recorded and confirmed as a **commitment**. |
+| Winning | The merchant is **obligated to pay**. |
+| Capture | **On the cutoff day**, from winners only. |
+| Failed capture | Winner has **24 hours** to fix it; then the **runner-up is promoted**. |
+
+**Do not authorize at bid time.** Card authorizations expire in ~7 days while bidding runs across a
+month — an early bid cannot hold an authorization to capture. Use a stored payment method plus terms
+accepted at bid time.
+
+**⛔ There is no "every bid wins" guarantee.** Copy currently claiming one is **false and must be
+removed** (four surfaces — see Ruling 7), and `placeBid()` must stop returning success for a losing
+bid.
+
+### 8.2 The featured-merchant delivery perk — SETTLED (Ruling 8)
+
+A **featured merchant's** customers get **50% off the last-mile delivery**, **auto-applied**, for the
+month they hold the placement. **Merchants only — not Service Providers.** Gopher absorbs it on the
+same footing as a 50%-off promo code, reusing the existing discount machinery and the canonical
+Discount Sheet ordering (**D-033**). **No code is issued** — binding the discount to the order makes
+it structurally uncopyable, which is what the "unique per transaction" requirement was asking for.
+
 **Publication interaction:** a deal already holding a won featured spot **activates that placement on
 approval** (**SP-PIPE** §5). So the bid and the deal have independent lifecycles — a merchant can win
 a slot for a deal still in review, and the slot lights up when the deal does.
@@ -661,9 +693,12 @@ authority for auction rules.
 
 ---
 
-## 10. Open — needs John's ruling
+## 10. Rulings — ALL SETTLED (owner, 2026-08-05)
 
-Six items. **Ruling 1 is decided and applied (2026-08-05); five remain open.**
+**All eight decided.** Rulings 1–6 and 8 are applied or applicable as written; **Ruling 7 changes
+behaviour that is currently shipped** and carries a follow-up ticket. Each heading below records the
+decision; the original problem statement and recommendation are kept beneath it for the reasoning
+trail.
 
 ---
 
@@ -715,7 +750,12 @@ reconfirmation rather than a supersede).
 
 ---
 
-### Ruling 2 — Should `gopher-customer-deals.html` become a real browse surface?
+### ~~Ruling 2 — customer-deals browse surface?~~ ✅ **DECIDED — no, it stays marketing**
+
+**Owner:** *"gopher-customer-deals.html is a marketing site, intended to CTA to the request app to
+take advantage of a deal."* Confirms the recommendation. It is **not** a publication surface; the feed
+does not wire into it. **ORIENT**'s "customer-facing deals browse" description is wrong and
+**BUILD-SPEC** §0 is right. No change to the page.
 
 **The problem:** it is a marketing page with no deal machinery (§9.4), but the docs and the task brief
 both list it as a consumer publication surface.
@@ -728,7 +768,16 @@ be its own ticket, not a line item in the feed wiring.
 
 ---
 
-### Ruling 3 — Publication refresh cadence
+### ~~Ruling 3 — publication refresh cadence~~ ✅ **DECIDED — as recommended, with the two-clock split**
+
+**Owner: "ok"** — with the Ruling 4 clarification folded in. There are **two different clocks**, and
+conflating them is a spec bug:
+
+| | Cadence |
+|---|---|
+| **Regular deals** | publish **as fast as approval allows**; 60-second client cache on web and apps |
+| **Featured placement** | a **calendar** — cached to the next monthly cutoff, since it only changes on the 1st |
+| Coverage tracker (Dashboard) | daily, on the existing `regen_*` pipeline |
 
 **The problem:** no document specifies how quickly an approved deal must appear, or how long a client
 may cache the feed (§7.4).
@@ -748,7 +797,18 @@ Rationale: the merchant has been promised an activation *date* (≤5 business da
 
 ---
 
-### Ruling 4 — Do the apps still wait for a store release?
+### ~~Ruling 4 — do apps wait for a store release?~~ ✅ **DECIDED — no. Apps publish as fast as web**
+
+**Owner: "ok"**, on the finding that **app-store review is not a gate for deal data.** Review gates
+the **binary**, not the content the binary fetches — deals delivered as API data appear the moment
+they are approved, exactly like web. Review applies only when *code* ships.
+
+*Caveat to build against:* a new deal **type** or a new field may need a release; a new deal
+**instance** never does. The stack is Capacitor/Appflow, which also supports Live Updates for
+OTA web-layer changes if the display layer ever needs to move without a store cycle.
+
+**The "web immediately, apps next release" rule in SP-PIPE §5 is retired.** Its own conditional
+said as much — it was scoped to the bundled-content architecture, which this spec replaces.
 
 **The problem:** the "web immediately, apps next release" rule (**SP-PIPE** §5) is explicitly
 conditioned on the *current bundled-content architecture*, and the note attached to it says that if
@@ -767,7 +827,12 @@ users.
 
 ---
 
-### Ruling 5 — Which Buoy Bowls address is correct?
+### ~~Ruling 5 — which Buoy Bowls address is correct?~~ ✅ **MOOT — demo data**
+
+**Owner:** *"all of these merchants are demos for now, added is irrelevant until live."* No action.
+The structural point stands and is what §4.1 fixes: the same deal resolving to two addresses across
+editions is the class of bug the **shared feed** eliminates. Real merchant data enters via
+registration, not via an inline array.
 
 **The problem:** Request and Connect carry different addresses and taglines for the same demo
 merchant (§9.5), and for a fixed-location merchant the address auto-fills the last-mile pickup.
@@ -782,7 +847,24 @@ feed exists to eliminate, and it should be corrected before either array is used
 
 ---
 
-### Ruling 6 — Confirm the Gopher ID format, and retire the question
+### ~~Ruling 6 — Gopher ID format~~ ✅ **DECIDED — opaque, variable-length. NOT fixed at 6 digits**
+
+**Owner pushed back on the 6-digit recommendation — correctly, and the live data proves it.**
+Measured against the production `Users.csv` (139,272 users):
+
+| | |
+|---|---|
+| ID range | **1 → 141,303** |
+| 6-digit IDs | 41,295 (**30%**) |
+| **1–5 digit IDs** | **97,977 (70%)** |
+
+A fixed-6-digit format is **already wrong for 70% of existing accounts**, and the range is
+approaching 7 digits on the current trajectory.
+
+**Canonical: the Gopher ID is an opaque numeric identifier — variable length, never validated on
+length, never zero-padded in storage, displayed as-is. The only rule is uniqueness.** Any
+length-based validation is a defect that would reject the majority of real accounts. Closes
+**PATHWAY** seam #9. *(The earlier "numeric, 6 digits" recommendation in this document was wrong.)*
 
 **The problem:** **PATHWAY** seam #9 still records the Gopher ID format as an open design question
 (figma `MARCUS-4F9` vs built `820083`), and the DLP eligibility funnel keys on it.
@@ -795,7 +877,32 @@ requires (memory `handoff-no-open-questions`).
 
 ---
 
-### Ruling 7 — What does a "guaranteed featured win" actually buy? ⛔ *blocks the auction build*
+### ~~Ruling 7 — what does a "guaranteed featured win" buy?~~ ✅ **DECIDED — nothing. Only winners are featured**
+
+**Owner ruling — the auction is winner-take-the-slot:**
+
+- **One winner per category.** Highest bid in a category at cutoff owns that category card for the
+  **entire following month**, on **app and web**.
+- **One exception — the top overall bid across all categories is its own category** ("Featured
+  Deal"). So exactly one category shows **twice**: once as the overall Featured Deal, and once as its
+  own card held by that category's **next-highest** bidder.
+- **Bids are a commitment, not a charge.** Nobody is charged for bidding. A bid is recorded and
+  confirmed; if it wins, the merchant is **obligated to pay**.
+- **Payment is captured on the final day** (the cutoff), from winners only.
+- **Failed capture → the winner gets 24 hours to fix it, then the runner-up is promoted.**
+
+**⛔ This retires the "every bid wins a featured month" promise, which is currently LIVE on four
+surfaces and must be removed:** `gopher-deals-101.html`, three places in `gopher-go.html`, and the
+merchant-portal bid hint in `gopher-deals.html`. `placeBid()` must also stop returning success for a
+losing bid. **Follow-up ticket raised** — this is a live false promise to merchants and providers,
+not a documentation gap.
+
+**Rejected on the owner's behalf: authorize-at-bid-time with release-on-outbid.** It cannot work on
+this calendar — card authorizations expire in roughly **7 days** (less on some networks) while
+bidding runs across a month to a cutoff on the 20th. A bid placed early could not hold an
+authorization to capture, which would break it for exactly the merchants you most want bidding.
+Protection against a reneging winner comes from a **payment method on file plus terms accepted at bid
+time**, not a live hold.
 
 **The problem (§9.10):** four surfaces promise that **any** bid, at any amount, earns a featured
 month. `placeBid()` honours it by returning success for a losing bid. But nothing in the model
@@ -816,7 +923,37 @@ already live on four surfaces — over-promises against any bounded implementati
 
 ---
 
-### Ruling 8 — Is the 50%-off-delivery perk real? ⛔ *touches the fee engine*
+### ~~Ruling 8 — is the 50%-off-delivery perk real?~~ ✅ **DECIDED — yes. Build it**
+
+**Owner ruling:**
+
+- **Real, and if it isn't documented and built, it needs to be.**
+- **Merchants only — not Service Providers.** (Coherent: an SP deal spawns a request directed at that
+  provider, not a merchant last-mile delivery, so there is no delivery leg to discount.)
+- **Auto-redeemed** for customers who request delivery from those merchants — the customer does
+  nothing.
+- **Gopher absorbs it, exactly as a 50%-off promo code does today.** So it is **not** new fee-engine
+  logic: it reuses the existing discount machinery and follows the canonical Discount Sheet ordering
+  (**D-033**, as corrected 2026-06-21 — discounts come off the **total**, a % promo includes the ITF,
+  TrustShield's flat $1 applies last). The dev should confirm the exact stacking position against
+  that sheet rather than re-deriving it.
+
+**Simplification carried from the review, and it removes a requirement:** the owner asked for a code
+*"unique to that transaction so it cannot be copied by another user and used again."* If the discount
+is **auto-applied and bound to the order**, there is **no code to issue and therefore none to copy** —
+uniqueness is satisfied structurally. Build it as an automatic order-level discount; issue a code only
+if a customer ever has to carry it somewhere else, which this flow does not require.
+
+**⚠️ One scope point left ambiguous — written here as WINNERS ONLY, correct if wrong.** The ruling
+says *"bidding merchants"*, which could mean every merchant who bids or only those who win the slot.
+It is recorded as **featured winners**, because the live copy reads *"when you're featured"* and
+Ruling 7 establishes that only winners are featured. **This materially changes cost** — all-bidders
+would extend an uncapped discount to merchants who lost the auction.
+
+**Exposure characteristic, recorded not re-litigated:** unlike an issued promo code, this auto-applies
+to *every* delivery from a featured merchant for a whole month, so the cost scales with that
+merchant's delivery volume, which Gopher does not control. The owner has ruled it is absorbed on the
+same footing as any promo. Finance should see the monthly figure once live.
 
 **The problem (§9.11):** *"When you're featured, your customers get 50% off delivery"* is live copy
 on two surfaces, implemented nowhere, and absent from **BUILD-SPEC** — including §6, which states
