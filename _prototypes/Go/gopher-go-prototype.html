@@ -90,7 +90,14 @@ const NAVMAP = {"account": "home", "requests": "requests", "rewards": "tracker",
 const META   = [["Sign up (canonical)", [["splash", "Splash", "new"], ["signin", "Sign in (phone)", "new"], ["phone-otp", "Phone OTP", "new"], ["onboarding", "Personal info", "new"], ["email-otp", "Email OTP", "new"], ["business", "Register as Business (opt)", "new"], ["work-settings", "Work Settings & Radius", "new"], ["payout", "Payout setup", "new"], ["best-practices", "Best Practices", "new"]]], ["Browse & accept", [["home", "Home", ""], ["jobs-list", "Available Jobs (by category)", "new"], ["job-detail", "Job Detail", "new"], ["inbox", "Inbox", "new"], ["requests", "Requests", ""], ["worker-flow", "Available Jobs / Detail", "flow"], ["counter-offer", "Job Detail / Counter-Offer", "flow"], ["purchase-disclaimer", "Purchase Disclaimer", ""], ["purchase-delivery", "Purchase / Delivery", "flow"], ["completion-flow", "Job Completion / Rating", "flow"]]], ["After / other", [["request-history", "Previous requests", ""], ["tracker", "Points & Activity", ""], ["account", "Account", ""], ["job-card-states", "Job-Card States", "flow"], ["refer-signup-flow", "Refer to Signup (customer)", "flow"], ["refer-self", "Refer Yourself", "new"], ["profile", "My Profile", ""], ["help", "Help Center", ""], ["blocked", "Block Requesters", ""], ["gopher-contact-us", "Contact Us", ""], ["gopher-faqs", "FAQs", ""]]]];
 
 /* ===== shared state (carries across the canonical sign-up) ===== */
-const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false, viewed101:false, blocked:[{name:'R. Daughtry', date:'Feb 18', reason:'Repeated no-shows at pickup'}], work:{cats:["Delivery / Errand","Delivery — Age-Restricted","Ride Sharing","Home / Office Services","Junk Removal","Moving","Hourly / Day Labor","Yard / Outdoor","Other"],tier:"elite",radii:[25,50]}, ridePhotos:{front:false,rear:false}, fields:{} };
+const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false,
+  /* D-036(b) SEAM. In production this is set from Stripe's account status
+     (individual.verification.status === "verified" / payouts_enabled), and it is the
+     ONLY thing that freezes the legal name — email verification no longer does.
+     Hardcoded false here because the prototype has no Stripe: the locked state is
+     real and reachable via the "Stripe verified" demo chip on the payout screen.
+     Same convention as coTiered. */
+  stripeVerified:false, viewed101:false, blocked:[{name:'R. Daughtry', date:'Feb 18', reason:'Repeated no-shows at pickup'}], work:{cats:["Delivery / Errand","Delivery — Age-Restricted","Ride Sharing","Home / Office Services","Junk Removal","Moving","Hourly / Day Labor","Yard / Outdoor","Other"],tier:"elite",radii:[25,50]}, ridePhotos:{front:false,rear:false}, fields:{} };
 
 /* ===== native screen styling (shadow-isolated) ===== */
 const NATIVE_CSS = `
@@ -1925,6 +1932,11 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   <div class="pad"><div class="top"><div class="back js-back">&#8249;</div><div style="font-family:'Nunito';font-weight:900;font-size:13px;color:#8C8675">Required before jobs</div></div>
    <h1 id="po-h1">Set up payout</h1>
+   <!-- D-036(b) demo affordance. state.stripeVerified is a production SEAM (set from
+        Stripe's account status); the prototype has no Stripe, so this chip is the only
+        way to see the locked state the decision creates. Same convention as the
+        "SP eligible on/off" chip. Dev chrome, not product UI. -->
+   <button class="js-demoverify" style="font-family:'Nunito';font-weight:900;font-size:10px;letter-spacing:.6px;text-transform:uppercase;border:1px dashed #b9c2d4;background:#f6f8fc;color:#5a6577;border-radius:99px;padding:4px 10px;margin:2px 0 8px;cursor:pointer">demo: Stripe verified <b class="js-demoverify-state">off</b></button>
    <p class="sub" id="po-sub">Stripe verifies your identity first. Once you are verified, you will set up your payout account — both are required before you can accept a request.</p>
 
    <div id="po-idstep">
@@ -2020,6 +2032,11 @@ payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
        verification, not registration — editable until Stripe returns verified, frozen
        after (changing identity post-KYC is the real fraud vector).
        D-036(c) echoes the exact string being submitted; (d) flags what cannot match an ID. */
+    const demoV=r.querySelector('.js-demoverify'), demoVS=r.querySelector('.js-demoverify-state');
+    if(demoV){
+      demoVS.textContent = state.stripeVerified ? 'on' : 'off';
+      demoV.onclick=()=>{ state.stripeVerified=!state.stripeVerified; load('payout'); };
+    }
     const lname=r.querySelector('#po-legalname'), echo=r.querySelector('#po-nameecho'),
           nchk=r.querySelector('#po-namecheck');
     if(lname){
@@ -2043,10 +2060,16 @@ payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(echo) echo.textContent=v||'\u2014';
         const vd=nameVerdict(v);
         if(nchk){
-          nchk.classList.toggle('bad', !!vd.bad); nchk.classList.toggle('soft', !!vd.soft);
-          nchk.innerHTML=(vd.bad||vd.soft)
+          const locked = !!state.stripeVerified;
+          nchk.classList.toggle('bad', !!vd.bad && !locked);
+          nchk.classList.toggle('soft', !!vd.soft && !locked);
+          nchk.innerHTML=((vd.bad||vd.soft) && !locked)
             ? (vd.bad?'\u26D4 ':'\u26A0\uFE0F ')+vd.msg
-            : '\u26A0\uFE0F We\u2019ll verify you as <b>'+(v||'\u2014')+'</b> \u2014 this must match your government ID <b>exactly</b>. Editable until Stripe verifies you.';
+            : (state.stripeVerified
+                /* Locked state must NOT say "editable" — the field is readOnly here.
+                   Caught by App Prototypes on 9dff0f0's review. */
+                ? '&#128274; Verified by Stripe as <b>'+(v||'\u2014')+'</b>. Your legal name is locked \u2014 contact support to change it.'
+                : '\u26A0\uFE0F We\u2019ll verify you as <b>'+(v||'\u2014')+'</b> \u2014 this must match your government ID <b>exactly</b>. Editable until Stripe verifies you.');
         }
         return vd;
       };
