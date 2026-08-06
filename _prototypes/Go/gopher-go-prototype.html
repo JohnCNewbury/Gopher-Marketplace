@@ -1806,12 +1806,22 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     /* conditional referred-by / other */
     function sync(){ refwrap.style.display=(sel.value==='Referral')?'':'none'; othwrap.style.display=(sel.value==='Other')?'':'none'; }
     sel.value=state.sourcing; sync(); sel.onchange=()=>{ state.sourcing=sel.value; sync(); };
-    /* locks after email verification (phone already locks at Sign in) */
+    /* D-036(b) COMPLETION — this screen was missed by b955b02, which moved the lock on
+       the PAYOUT screen only. The legal NAME must stay editable until STRIPE verifies
+       it. Locking it at email verification IS the original trap: email verification has
+       nothing to do with identity integrity, and it fires three steps before payout
+       submits the name — so the worker met an un-editable field on the very screen that
+       tells them to "use your legal name exactly as it appears on your ID", and the
+       advice arrived after the ability to act on it was removed.
+       DOB still locks at email verification: it is outside D-036's scope, which is the
+       name Stripe matches against the ID. */
+    if(state.stripeVerified){
+      lockField(fn,'Legal name is locked because Stripe has verified your identity. Contact support to change it.');
+      lockField(ln,'Legal name is locked because Stripe has verified your identity. Contact support to change it.');
+    }
     if(state.emailVerified){
-      lockField(fn,'Legal name is locked after email verification.');
-      lockField(ln,'Legal name is locked after email verification.');
       lockField(dob,'Date of birth is locked after email verification.');
-      const note=r.querySelector('.note'); if(note) note.innerHTML='<span>&#128274;</span><div><b>Name &amp; birthday are locked.</b> Changing your <b>email</b> or <b>address</b> requires a one-time code sent via the other channel.</div>';
+      const note=r.querySelector('.note'); if(note) note.innerHTML='<span>&#128274;</span><div><b>'+(state.stripeVerified?'Name &amp; birthday are locked.':'Your birthday is locked &mdash; your legal name stays editable until Stripe verifies it.')+'</b> Changing your <b>email</b> or <b>address</b> requires a one-time code sent via the other channel.</div>';
       const cont=r.querySelector('.js-cont'); if(cont) cont.innerHTML='Save changes &#8594;';
     }
     r.querySelector('.js-cont').onclick=()=>{
