@@ -2749,8 +2749,16 @@
           <div class="panel-head"><h2>Personal info</h2></div>
           <p class="panel-desc">Your canonical Gopher profile — it carries across Request, Connect, Go &amp; Deals.</p>
           <div class="field-grid">
-            <div class="field locked"><label>Legal first name</label><input type="text" id="piFirst" value="Marcus" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
-            <div class="field locked"><label>Legal last name</label><input type="text" id="piLast" value="Hale" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
+            <!-- D-036 (owner, 2026-08-06). Gopher Go WEB IS THE EDIT SURFACE — sign-up happens
+               in the app — so locking the legal name here removed the only self-service way to
+               fix it. These were `readonly` behind "Locked after sign-up", which is exactly the
+               trap: payment.stripe.js submits first_name/last_name verbatim to a type:'custom'
+               Connect account, so a worker who signed up as "C"/"B" fails identity verification
+               permanently and had nowhere to correct it. Editable until Stripe verifies; locked
+               after (changing identity post-KYC is the real fraud vector). A change here is
+               identity-grade, so it routes through the same OTP confirm as email/phone. -->
+          <div class="field" id="piFirstField"><label>Legal first name</label><input type="text" id="piFirst" data-field value="Marcus"><span class="lock-note" id="piFirstNote">Must match your government ID &mdash; Stripe checks it before you can be paid.</span></div>
+          <div class="field" id="piLastField"><label>Legal last name</label><input type="text" id="piLast" data-field value="Hale"><span class="lock-note" id="piLastNote">Customers only ever see your first name and last initial.</span></div>
             <div class="field"><label>Email</label><input type="email" id="piEmail" data-field value="marcus@email.com"><span class="lock-note">&#128241; Changing your email requires an SMS code</span></div>
             <div class="field locked"><label>Date of birth</label><input type="text" id="piDob" value="04 / 12 / 1991" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
             <div class="field full"><label>Mobile number</label><input type="tel" id="piPhone" data-field value="(919) 555-0142" inputmode="numeric" maxlength="14"><span class="lock-note">&#9993;&#65039; Changing your number requires an email code</span></div>
@@ -3673,7 +3681,17 @@
      and only commits once verified. Personal info overrides this with
      channel-specific rules (email change → SMS code; mobile change → email code). */
   (function initEditableSections(){
-    const ACCOUNT = { phone: '(919) 555-0142', email: 'marcus@email.com' };
+    const ACCOUNT = { phone: '(919) 555-0142', email: 'marcus@email.com',
+      firstName: 'Marcus', lastName: 'Hale',
+      /* D-036 seam — in production this comes from the Stripe Connect account
+         (individual.verification.status / payouts_enabled). It is the ONLY thing
+         that freezes the legal name; sign-up no longer does. */
+      stripeVerified: false };
+    /* Demo/test seam for D-036's locked state. ACCOUNT is IIFE-scoped, so without this
+       the post-verification lock is unreachable and nobody can see the behaviour that
+       was built — the same gap App Prototypes flagged in the Go app prototype. Follows
+       the page's existing window.__* convention (__openVerifyModal, __TIER_LOGOS). */
+    window.__setStripeVerified = (v) => { ACCOUNT.stripeVerified = !!v; return ACCOUNT.stripeVerified; };
     const WORKER  = { tier: 'Pro' };   // Standard | Elite | Elite+ | Pro — drives the radius UI
     window.__WORKER_TIER = WORKER.tier;
     const digits = (s) => (s.match(/\d/g)||[]).join('');
@@ -3739,10 +3757,45 @@
        both → SMS then email (chained); anything else → worker's choice. */
     const personal = wire('personal', {
       resolveVerify(commit){
+        /* D-036: a legal-name change is identity-grade — it is the string submitted to
+           Stripe for KYC — so it always requires an OTP confirm, and it is BLOCKED once
+           Stripe has verified the worker (support-assisted only from then on, same rule
+           as the app prototype). ACCOUNT.stripeVerified is the production seam: set it
+           from the Connect account's individual.verification.status / payouts_enabled. */
+        const fEl = document.getElementById('piFirst'), lEl = document.getElementById('piLast');
+        const nameChanged = ((fEl.value||'').trim() !== ACCOUNT.firstName)
+                         || ((lEl.value||'').trim() !== ACCOUNT.lastName);
+        if(nameChanged){
+          if(ACCOUNT.stripeVerified){
+            alert('Your legal name is locked because Stripe has verified your identity. Contact support to change it.');
+            fEl.value = ACCOUNT.firstName; lEl.value = ACCOUNT.lastName;
+            return;
+          }
+          const parts = ((fEl.value||'').trim()+' '+(lEl.value||'').trim()).split(/\s+/).filter(Boolean);
+          if(parts.length < 2 || /\d/.test(parts.join(' '))){
+            alert('Enter both a legal first and last name, exactly as they appear on your government ID. Stripe matches this against your ID before you can be paid.');
+            return;
+          }
+        }
+
         const emailEl = document.getElementById('piEmail');
         const phoneEl = document.getElementById('piPhone');
         const emailChanged = (emailEl.value||'').trim() !== ACCOUNT.email;
         const phoneChanged = digits(phoneEl.value) !== digits(ACCOUNT.phone);
+        /* D-036: a legal-name change is identity-grade, so it must not ride the
+           address-style "your choice" confirm. It requires an SMS code, and it chains
+           ahead of any email/phone verification rather than replacing it. */
+        if(nameChanged){
+          window.__openVerifyModal('phone', maskPhone(ACCOUNT.phone), () => {
+            if(emailChanged && phoneChanged){
+              window.__openVerifyModal('email', maskEmail(ACCOUNT.email), commit);
+            } else if(emailChanged || phoneChanged){
+              window.__openVerifyModal(emailChanged ? 'phone' : 'email',
+                emailChanged ? maskPhone(ACCOUNT.phone) : maskEmail(ACCOUNT.email), commit);
+            } else { commit(); }
+          });
+          return;
+        }
         if(emailChanged && phoneChanged){
           window.__openVerifyModal('phone', maskPhone(ACCOUNT.phone), () => {
             window.__openVerifyModal('email', maskEmail(ACCOUNT.email), commit);
@@ -3758,6 +3811,7 @@
       onCommit(){
         const first = (document.getElementById('piFirst').value||'').trim();
         const last  = (document.getElementById('piLast').value||'').trim();
+        ACCOUNT.firstName = first || ACCOUNT.firstName; ACCOUNT.lastName = last || ACCOUNT.lastName;   /* D-036: persist the corrected legal name */
         ACCOUNT.email = (document.getElementById('piEmail').value||'').trim() || ACCOUNT.email;
         ACCOUNT.phone = document.getElementById('piPhone').value || ACCOUNT.phone;
         document.getElementById('dashGreeting').innerHTML = 'Welcome back, ' + (first||'there') + ' \uD83D\uDC4B';
