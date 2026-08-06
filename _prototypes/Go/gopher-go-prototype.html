@@ -35,6 +35,12 @@
  aside a .fl.flow{color:#7E8EB0;background:#0a1c40;border:1px solid #1c365e;}
  aside a .fl.new{color:#fff;background:var(--terra);}
  aside .note{font-size:10px;color:#9fb0d2;padding:12px 18px;line-height:1.5;border-top:1px solid #1c365e;margin-top:10px;}
+/* D-036(c) — the pre-submit name check on the payout screen. Neutral by default;
+   amber when the name merely LOOKS wrong (initials — never blocked, real short
+   names exist); red when it cannot possibly match an ID. */
+.po-namecheck{margin-top:7px;font-size:11.5px;line-height:1.45;color:#4a5568;background:#f4f7fb;border:1px solid #dde3ec;border-radius:9px;padding:7px 9px;}
+.po-namecheck.soft{color:#7a5200;background:#fff6e5;border-color:#f0dcae;}
+.po-namecheck.bad{color:#8a1c1c;background:#fdeaea;border-color:#f2c2c2;}
  main{flex:1;display:flex;flex-direction:column;height:100vh;}
  .bar{flex:0 0 auto;background:var(--sand);border-bottom:1px solid var(--line);padding:9px 18px;display:flex;align-items:center;gap:12px;}
  .bar .ttl{font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;}
@@ -1775,7 +1781,7 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
      <select id="ob-src"><option>Referral</option><option>Facebook</option><option>Instagram</option><option>X - Grok</option><option>Apple App Store</option><option>Google Play Store</option><option>Web/Internet/Google search</option><option>YouTube</option><option>Reddit</option><option>Nextdoor</option><option>Indeed</option><option>AI Search (i.e. ChatGPT)</option><option>Other</option></select></div>
    <div class="field" id="ob-refwrap"><label>Referred by</label><input id="ob-ref" value="Joe Jones"></div>
    <div class="field" id="ob-otherwrap"><label>Tell us where (max 15 characters)</label><input id="ob-other" maxlength="15" placeholder="e.g. Billboard"></div>
-   <div class="note"><span>&#10003;</span><div><b>Legal first &amp; last are separate fields</b> and auto-trim &mdash; no trailing spaces. Name must match your payout account; name, birthday &amp; phone lock once your email is verified.</div></div>
+   <div class="note"><span>&#10003;</span><div><b>Use your legal name exactly as it appears on your ID.</b> Stripe checks it against your ID before you can be paid &mdash; <b>customers only ever see your first name and last initial</b>. Legal first &amp; last are separate fields and auto-trim &mdash; no trailing spaces. Birthday &amp; phone lock once your email is verified; your <b>name stays editable until Stripe verifies you</b> (D-036).</div></div>
    <div class="act js-cont">Continue &#8594;</div>
    <p class="fine">Next: verify your email to finalize your Gopher account.</p></div></div>`,
   init(r){
@@ -1913,7 +1919,12 @@ payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 
    <div id="po-idstep">
    <div class="sec">Identity verification (Stripe)</div>
-   <div class="field"><label>Legal name</label><input id="po-legalname" value="Marcus Hale"></div>
+   <div class="field"><label>Legal name</label><input id="po-legalname" value="Marcus Hale">
+     <!-- D-036(c): the exact string submitted to Stripe, shown before the call with an edit
+          affordance. Only meaningful because D-036(b) moved the lock to Stripe-verified —
+          before that the name froze at email-otp, three steps upstream, so this panel would
+          have shown a problem the worker could no longer fix. -->
+     <div class="po-namecheck" id="po-namecheck">&#9888;&#65039; We'll verify you as <b id="po-nameecho">Marcus Hale</b> &mdash; this must match your government ID <b>exactly</b>. Editable until Stripe verifies you.</div></div>
    <div class="field"><label>SSN</label><input id="po-ssn" inputmode="numeric" placeholder="###-##-####" value="•••-••-1991"></div>
    <div class="field"><label>ID type</label><select id="po-idtype"></select></div>
    <div class="up2"><div class="uptile js-up">${CAM}<span>Add ID pic (front)</span></div><div class="uptile js-up">${CAM}<span>Add ID pic (back)</span></div></div>
@@ -1991,7 +2002,51 @@ payout:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       setTimeout(()=>{ numI.focus(); },300);
     }
     renderHero();
-    const lname=r.querySelector('#po-legalname'); if(lname){ lname.value=((state.fn||'Marcus')+' '+(state.ln||'Hale')).trim(); lockField(lname,'Your legal name is carried over from registration and cannot be changed here.'); }
+    /* D-036(b) — THE LOAD-BEARING CHANGE. This field used to be lockField()'d with
+       "carried over from registration and cannot be changed here", which is exactly the
+       trap: the name froze at email-otp, three steps upstream, so a worker who signed up
+       as "C B" met an un-editable field at the one moment the consequence became visible,
+       and failed Stripe identity verification permanently. The lock now belongs to STRIPE
+       verification, not registration — editable until Stripe returns verified, frozen
+       after (changing identity post-KYC is the real fraud vector).
+       D-036(c) echoes the exact string being submitted; (d) flags what cannot match an ID. */
+    const lname=r.querySelector('#po-legalname'), echo=r.querySelector('#po-nameecho'),
+          nchk=r.querySelector('#po-namecheck');
+    if(lname){
+      if(state.fn||state.ln) lname.value=((state.fn||'Marcus')+' '+(state.ln||'Hale')).trim();
+      if(state.stripeVerified){
+        lockField(lname,'Your legal name is locked because Stripe has verified your identity. Contact support to change it.');
+      }
+      const nameVerdict=function(v){
+        const parts=String(v||'').trim().split(/\s+/).filter(Boolean);
+        if(parts.length<2) return {bad:true, msg:'Enter BOTH a legal first and last name \u2014 Stripe matches the full name on your ID.'};
+        if(/\d/.test(v)) return {bad:true, msg:'A legal name cannot contain numbers.'};
+        if(/^(test|asdf|qwerty|none|n\/?a|null|unknown)$/i.test(parts[0])) return {bad:true, msg:'That looks like placeholder text, not a legal name.'};
+        /* SOFT only. "Li", "Vy", "Bo" are real names and single-letter legal names exist,
+           so this warns and never blocks. Nothing here can catch a plausible-but-false
+           name \u2014 TrustShield is not a worker feature, so copy is the only other lever. */
+        if(parts.some(p=>p.replace(/\.$/,'').length<2)) return {soft:true, msg:'Initials will NOT match your ID. Use your full legal name unless that really is your legal name.'};
+        return {};
+      };
+      const syncName=function(){
+        const v=(lname.value||'').trim();
+        if(echo) echo.textContent=v||'\u2014';
+        const vd=nameVerdict(v);
+        if(nchk){
+          nchk.classList.toggle('bad', !!vd.bad); nchk.classList.toggle('soft', !!vd.soft);
+          nchk.innerHTML=(vd.bad||vd.soft)
+            ? (vd.bad?'\u26D4 ':'\u26A0\uFE0F ')+vd.msg
+            : '\u26A0\uFE0F We\u2019ll verify you as <b>'+(v||'\u2014')+'</b> \u2014 this must match your government ID <b>exactly</b>. Editable until Stripe verifies you.';
+        }
+        return vd;
+      };
+      lname.oninput=function(){
+        syncName();
+        const p=(lname.value||'').trim().split(/\s+/);
+        state.fn=p[0]||''; state.ln=p.slice(1).join(' ');
+      };
+      syncName();
+    }
     const idsubmit=r.querySelector('.js-idsubmit'), idstep=r.querySelector('#po-idstep'), paystep=r.querySelector('#po-paystep');
     function ne(sel){ const e=r.querySelector(sel); return !!(e&&(e.value||'').trim()); }
     function validateId(){ const ok=terms.classList.contains('on')&&ne('#po-ssn')&&ne('#po-addr')&&ne('#po-city')&&ne('#po-state')&&ne('#po-zip'); idsubmit.classList.toggle('disabled',!ok); }
