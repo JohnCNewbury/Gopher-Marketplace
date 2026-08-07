@@ -3076,7 +3076,12 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         const ov=showModal(
           '<h3>Age-Restricted ID Confirmation</h3>'
           +'<div style="display:inline-flex;align-items:center;gap:6px;margin:2px 0 10px;padding:5px 10px;border-radius:99px;background:#e7f7ec;border:1px solid #bfe6cd;font-family:Nunito;font-weight:900;font-size:11.5px;color:#0a7d44;">&#128737;&#65039; TrustShield&#8482; verified &middot; 21+ &middot; on file</div>'
-          +'<p>Nothing to submit — <b>'+who+'</b> is pre-verified. Check the photos below against the person in front of you, then choose an outcome.</p>'
+          /* Deliberately ONE line. The three-line version that used to sit here repeated the
+             instruction now printed beside the selfie, and the ~40px it cost pushed both
+             exception actions below the fold — which defeats the point of keeping them
+             visible-but-quiet. This keeps only what the selfie row doesn't say: who, and
+             that there is nothing to upload. */
+          +'<p style="margin:0 0 2px;"><b>'+who+'</b> is pre-verified — nothing to submit.</p>'
           /* Box shapes are the REAL iDenfy asset ratios, so live media drops in without
              reflowing the screen: selfie 768x1080 = 0.71:1, licence 784x546 = 1.44:1.
              Production consumes exactly TWO of the vendor's images — ordercard.js and
@@ -3084,31 +3089,96 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
              data?.FRONT -> trustShieldDocURL, and neither reads data?.BACK. Do not add a
              BACK slot here; the worker never sees it. Swapping in real media = replacing
              each inner placeholder with <img style="width:100%;height:100%;object-fit:cover">. */
-          +'<div style="display:flex;gap:9px;margin:11px 0 8px;align-items:flex-end;">'
-            +'<div style="flex:0 0 78px;"><div style="'+lbl+'">Selfie</div>'
-              +'<div style="'+idFrame+'height:110px;display:flex;align-items:flex-end;justify-content:center;">'
-              +'<div style="width:44px;height:52px;border-radius:50% 50% 42% 42%;background:#d8d2c4;margin-bottom:-6px;"></div></div></div>'
-            +'<div style="flex:0 0 158px;"><div style="'+lbl+'">Verified ID (front)</div>'
-              +'<div style="'+idFrame+'height:110px;padding:10px;display:flex;gap:9px;box-sizing:border-box;">'
-                +'<div style="width:38px;height:48px;border-radius:5px;background:#d8d2c4;flex:0 0 auto;"></div>'
-                +'<div style="flex:1;display:flex;flex-direction:column;gap:6px;">'
-                  +'<div style="height:7px;width:82%;border-radius:4px;background:#e2dccd;"></div>'
-                  +'<div style="height:7px;width:58%;border-radius:4px;background:#e2dccd;"></div>'
-                  +'<div style="height:7px;width:70%;border-radius:4px;background:#e2dccd;"></div>'
-                  +'<span style="margin-top:auto;font-family:Nunito;font-weight:900;font-size:9.5px;color:#0a7d44;background:#e7f7ec;border-radius:5px;padding:2px 6px;align-self:flex-start;">DOB 01/01/1990 &middot; 21+</span>'
-                +'</div></div></div>'
+          /* The licence is the thing being READ — name, DOB, expiry — so it takes every
+             pixel available. It BLEEDS past the card's 22px padding to the full 330px card
+             width (calc(100% + 44px)); the inner content box is only 286px, so bleeding
+             buys ~15% more width, and at 1.44:1 that is a 330x229 licence instead of the
+             158x110 postage stamp this replaced. The selfie is a face-to-face match with
+             no text to read, so it stays small and shares its row with the instruction. */
+          +'<div style="display:flex;gap:11px;align-items:center;margin:12px 0 9px;">'
+            +'<div style="flex:0 0 76px;"><div style="'+lbl+'">Selfie</div>'
+              +'<div class="js-selfiezoom" style="'+idFrame+'height:107px;display:flex;align-items:flex-end;justify-content:center;cursor:zoom-in;">'
+              +'<div style="width:42px;height:50px;border-radius:50% 50% 42% 42%;background:#d8d2c4;margin-bottom:-6px;"></div></div></div>'
+            +'<div style="flex:1;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#6B7280;line-height:1.45;">Match the <b style="color:#002461;">face</b> to the selfie, then read the <b style="color:#002461;">name and DOB</b> on the licence below.<br><span style="font-size:10.5px;">Tap either image to enlarge.</span></div>'
           +'</div>'
+          +'<div style="'+lbl+'">Verified ID (front)</div>'
+          +'<div class="js-idzoom" style="width:calc(100% + 44px);margin:0 -22px 10px;aspect-ratio:1.44/1;border-top:1.5px solid #e3ddcd;border-bottom:1.5px solid #e3ddcd;background:#F7F5EF;padding:14px 18px;display:flex;gap:14px;box-sizing:border-box;cursor:zoom-in;">'
+            +'<div style="flex:0 0 30%;border-radius:7px;background:#d8d2c4;"></div>'
+            +'<div style="flex:1;display:flex;flex-direction:column;gap:10px;padding-top:4px;">'
+              +'<div style="height:11px;width:86%;border-radius:5px;background:#ded7c6;"></div>'
+              +'<div style="height:9px;width:62%;border-radius:5px;background:#e6e0d1;"></div>'
+              +'<div style="height:9px;width:74%;border-radius:5px;background:#e6e0d1;"></div>'
+              +'<div style="height:9px;width:48%;border-radius:5px;background:#e6e0d1;"></div>'
+              +'<span style="margin-top:auto;font-family:Nunito;font-weight:900;font-size:12.5px;color:#0a7d44;background:#e7f7ec;border-radius:6px;padding:4px 9px;align-self:flex-start;">DOB 01/01/1990 &middot; 21+</span>'
+            +'</div></div>'
           +'<span class="mlink js-idstale" style="margin:0 0 12px;">Tap here if the ID on file needs to be updated</span>'
-          +'<button class="js-idok" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">ID and Identity Confirmed</button>'
-          +'<button class="js-idnopresent" style="width:100%;margin-top:9px;border:1.5px solid #002461;background:#fff;color:#002461;border-radius:12px;padding:10px 12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;line-height:1.25;">Customer not present<br><small style="font-family:\'DM Sans\',sans-serif;font-weight:400;font-size:10.5px;color:#6B7280;">Texts them &amp; starts a 10-minute timer</small></button>'
-          +'<button class="js-idfail" style="width:100%;margin-top:9px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;padding:10px 12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;line-height:1.25;">ID and Identity NOT Confirmed<br><small style="font-family:\'DM Sans\',sans-serif;font-weight:400;font-size:10.5px;color:#6B7280;">Items are not released &middot; logged for Trust &amp; Safety</small></button>'
-          +'<span class="mlink js-idcancel" style="margin-top:10px;">Not yet</span>');
+          /* ONE dominant action. Both alternatives are roughly 1-in-100 outcomes, so they
+             are deliberately NOT buttons — a heavy outlined button competes with the 99%
+             path and invites mis-taps on choices that move money and withhold goods. They
+             read as evident, labelled text actions under a divider: discoverable when you
+             need them, ignorable when you don't. Colour still separates them — navy for the
+             procedural one, terracotta for the one that withholds the items. */
+          /* The action group is PINNED (sticky) to the bottom of the scrolling card. Giving
+             the licence its full 330x229 pushes total content to ~794px inside a ~589px card
+             on a real 375x812 phone, which put even the 99% action below the fold — the
+             worker had to scroll to confirm an ID. Pinning keeps every outcome reachable
+             without shrinking the licence, and the images scroll behind it. bottom:-22px and
+             the negative side margins cancel the card's own 22px padding so the bar sits
+             flush to the edges. */
+          +'<div style="position:sticky;bottom:-22px;background:#fff;margin:16px -22px -22px;padding:13px 22px 18px;border-top:1px solid #ece7db;box-shadow:0 -10px 14px -8px rgba(0,36,97,.10);">'
+            +'<button class="js-idok" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">ID and Identity Confirmed</button>'
+            +'<div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">'
+              +'<button class="js-idnopresent" style="width:100%;border:0;background:none;padding:0;text-align:left;cursor:pointer;line-height:1.3;"><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#002461;text-decoration:underline;text-underline-offset:2px;">Customer not present</span><br><small style="font-family:\'DM Sans\',sans-serif;font-size:10.5px;color:#6B7280;">Texts them &amp; starts a 10-minute timer</small></button>'
+              +'<button class="js-idfail" style="width:100%;border:0;background:none;padding:0;text-align:left;cursor:pointer;line-height:1.3;"><span style="font-family:Nunito;font-weight:800;font-size:12.5px;color:#C44257;text-decoration:underline;text-underline-offset:2px;">ID and Identity NOT Confirmed</span><br><small style="font-family:\'DM Sans\',sans-serif;font-size:10.5px;color:#6B7280;">Items are not released &middot; logged for Trust &amp; Safety</small></button>'
+            +'</div>'
+            +'<span class="mlink js-idcancel" style="margin-top:12px;">Not yet</span>'
+          +'</div>');
         ov.querySelector('.js-idok').onclick=()=>{ ov.remove(); done('trustshield'); };
         ov.querySelector('.js-idnopresent').onclick=()=>{ ov.remove(); openNoShowTimer(); };
         ov.querySelector('.js-idfail').onclick=()=>{ ov.remove();
           if(window.G40_GO && window.G40_GO.idNotConfirmed){ window.G40_GO.idNotConfirmed(); }   // canonical reason capture (production: idNotConfirmedReason)
           else { toast('ID didn&#8217;t match / expired — items not released. Flagged for review.'); } };
         ov.querySelector('.js-idstale').onclick=()=>{ ov.remove(); toast('Flagged: ID on file needs updating. Trust &amp; Safety will follow up.'); };
+        /* Tap-to-enlarge — real magnification, NOT rotation.
+           A first attempt rotated the licence 90deg to borrow the frame's long axis. That
+           was wrong: rotating the element rotates its CONTENT, so the name and DOB ended up
+           sideways and you had to tilt your head to read them. Smaller-but-upright beats
+           bigger-but-sideways on a screen the worker cannot turn.
+           So the licence renders UPRIGHT at 2x its inline width (660px) inside a
+           horizontally scrollable strip — genuine magnification, readable text, pan to see
+           the rest. It gets an explicit Close button because tap-anywhere would fight the
+           pan gesture. The selfie needs no panning and keeps tap-anywhere.
+           Positioning MUST match .modal-overlay (fixed / inset:0) and outrank its z-index of
+           80; an absolute/z-60 version rendered behind the modal and centred itself in the
+           1270px .frame rather than the ~690px visible area. */
+        function enlarge(inner, pan, label){
+          const frame = ov.parentElement; if(!frame) return;
+          const z = document.createElement('div');
+          z.style.cssText = 'position:fixed;inset:0;z-index:90;background:rgba(0,10,28,.94);overflow:hidden;';
+          z.innerHTML =
+            '<div style="position:absolute;top:22px;left:0;right:0;text-align:center;font-family:Nunito;font-weight:900;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#fff;">'+label+'</div>'
+            +(pan
+              ? '<div class="js-zpan" style="position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);overflow-x:auto;overflow-y:hidden;padding:0 14px;-webkit-overflow-scrolling:touch;">'
+                  +'<div style="width:660px;aspect-ratio:1.44/1;background:#F7F5EF;border-radius:12px;padding:30px;box-sizing:border-box;display:flex;gap:28px;">'+inner+'</div>'
+                +'</div>'
+              : '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:236px;height:332px;background:#F7F5EF;border-radius:12px;padding:24px;box-sizing:border-box;display:flex;gap:22px;">'+inner+'</div>')
+            +'<div style="position:absolute;bottom:70px;left:0;right:0;text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11px;color:#9fb0cc;">'+(pan?'Swipe sideways to pan':'Tap anywhere to close')+'</div>'
+            +(pan?'<button class="js-zclose" style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);border:1.5px solid rgba(255,255,255,.35);background:none;color:#fff;border-radius:11px;padding:9px 22px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Close</button>':'');
+          if(pan){ z.querySelector('.js-zclose').onclick = () => z.remove(); }
+          else { z.style.cursor='zoom-out'; z.onclick = () => z.remove(); }
+          frame.appendChild(z);
+        }
+        const bar = (w,h) => '<div style="height:'+h+'px;width:'+w+';border-radius:6px;background:#e0d9c8;"></div>';
+        ov.querySelector('.js-idzoom').onclick = () => enlarge(
+          '<div style="flex:0 0 30%;border-radius:9px;background:#d8d2c4;"></div>'
+          +'<div style="flex:1;display:flex;flex-direction:column;gap:20px;padding-top:8px;">'
+          +bar('86%',22)+bar('62%',17)+bar('74%',17)+bar('48%',17)
+          +'<span style="margin-top:auto;font-family:Nunito;font-weight:900;font-size:24px;color:#0a7d44;background:#e7f7ec;border-radius:9px;padding:8px 16px;align-self:flex-start;">DOB 01/01/1990 &middot; 21+</span>'
+          +'</div>', true, 'Verified ID &middot; front');
+        ov.querySelector('.js-selfiezoom').onclick = () => enlarge(
+          '<div style="flex:1;display:flex;align-items:flex-end;justify-content:center;">'
+          +'<div style="width:132px;height:158px;border-radius:50% 50% 42% 42%;background:#d8d2c4;margin-bottom:-24px;"></div></div>',
+          false, 'Selfie on file');
         ov.querySelector('.js-idcancel').onclick=()=>ov.remove();
       } else {
         let captured=false;
