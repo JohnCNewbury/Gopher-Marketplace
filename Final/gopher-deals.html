@@ -2828,7 +2828,7 @@
           </div>
           <label class="logo-upload">
             <span class="logo-ico">🖼️</span>
-            <span class="logo-txt"><strong>Upload your logo</strong>Square PNG (transparent) works best &mdash; 512&nbsp;px or larger</span>
+            <span class="logo-txt"><strong>Your logo</strong>Square PNG (transparent), 512&nbsp;px or larger works best &mdash; we&rsquo;ll collect the file itself when we set up your listing</span>
             <input type="file" name="logo" accept="image/*" onchange="showLogoName(this)">
           </label>
         </div>
@@ -3645,7 +3645,7 @@
   function showLogoName(input) {
     var txt = input.closest('.logo-upload').querySelector('.logo-txt');
     if (input.files && input.files[0]) {
-      txt.innerHTML = '<strong>' + input.files[0].name + '</strong>Click to choose a different file';
+      txt.innerHTML = '<strong>' + input.files[0].name + '</strong>Noted \u2014 we\u2019ll ask you for this file when we set up your listing. Click to choose a different one.';
     }
   }
   document.addEventListener('DOMContentLoaded', function(){ renderKeywords('merchant'); });
@@ -4015,13 +4015,16 @@
       need('input[name="business_name"]', 'Business name is required.');
       need('input[name="tagline"]', 'Tagline is required — no formal tagline? Enter any sub-header you like under your business name.');
       var logo = modal.querySelector('input[name="logo"]');
+      /* The logo is NOT required to submit, deliberately (2026-08-06). This form can
+         only transmit the FILE NAME — see the file branch in submitForm() — so making
+         it mandatory blocked registration on a file that is then discarded, while the
+         success screen implied it had been received. Production DOES require it, with
+         magic-byte type validation, SVG sanitisation, a 256px floor and a 5MB cap:
+         Gopher-Deals-Build-Spec §4.1a. Restore the gate when a real upload exists. */
       if (logo){
         var lf = logo.closest('.field') || logo.parentNode.parentNode;
         var lerr = lf.querySelector('.field-err');
-        if (!(logo.files && logo.files.length)){
-          if (!lerr){ lerr = document.createElement('div'); lerr.className='field-err'; lf.appendChild(lerr); }
-          lerr.textContent = 'Please upload your logo.'; if (!firstBad) firstBad = logo;
-        } else if (lerr) lerr.remove();
+        if (lerr) lerr.remove();
       }
       var mobile = modal.querySelector('#regAddrMobile');
       if (!(mobile && mobile.checked)) need('input[name="address"]', 'Business address is required (or check "address is mobile").');
@@ -4151,6 +4154,13 @@
     modal.querySelectorAll('input, select, textarea').forEach(function(el) {
       if (!el.name) return;
       if (el.type === 'checkbox') { data[el.name] = el.checked; return; }
+      /* ⚠️ FILE FIELDS TRANSMIT THEIR NAME ONLY — the file itself is discarded here.
+         This is a limitation of the Apps Script demo backend (it cannot receive a
+         multipart upload), NOT a product decision. Do NOT reproduce this in the
+         rebuild: Gopher-Deals-Build-Spec §4.1a requires a real upload with
+         magic-byte type validation, SVG sanitisation before storage or render,
+         a 256px shortest-side floor and a 5MB cap. The merchant-facing copy was
+         corrected 2026-08-06 to stop implying the file had been received. */
       if (el.type === 'file') { data[el.name] = el.value ? el.value.split('\\').pop() : ''; return; }
       data[el.name] = el.value;
     });
