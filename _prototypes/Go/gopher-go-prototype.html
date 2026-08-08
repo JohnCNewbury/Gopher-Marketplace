@@ -3071,8 +3071,19 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
            path offered only "Confirmed", which meant a TrustShield no-show could never
            start the 10-minute timer. Images are CSS placeholders — real ID media is a
            backend seam (iDenfy), never bundled into the prototype. */
-        const idFrame='border:1.5px solid #e3ddcd;border-radius:11px;background:#F7F5EF;overflow:hidden;';
-        const lbl='font-family:Nunito;font-weight:800;font-size:10.5px;color:#8C8675;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;';
+        /* Real TrustShield media for the demo holder (user 1), owner-authorised. Sourced from
+           iDenfy, converted to WebP q82 per G40-314: 1.48 MB of PNG -> 102 KB. Paths use the
+           ../../Final/ form the rest of this file uses; scripts/deploy.sh rewrites that to
+           ../../ when it flattens Final/ to the site root.
+           Only FRONT and FACE exist here on purpose — production reads data?.FRONT and
+           data?.FACE and never data?.BACK, so a back-of-licence asset would show the worker
+           something the live app never fetches.
+           In production these two srcs become trustShieldDocURL and trustShieldFaceURL.
+           object-fit:cover is safe rather than distorting because each box is already cut to
+           its asset's exact ratio (1.44:1 licence, 0.71:1 selfie). */
+        const TS_ID='../../Final/assets/img/trustshield-id-front.webp';
+        const TS_FACE='../../Final/assets/img/trustshield-selfie.webp';
+        const fill='width:100%;height:100%;object-fit:cover;display:block;';
         const ov=showModal(
           '<h3>Age-Restricted ID Confirmation</h3>'
           +'<div style="display:inline-flex;align-items:center;gap:6px;margin:2px 0 10px;padding:5px 10px;border-radius:99px;background:#e7f7ec;border:1px solid #bfe6cd;font-family:Nunito;font-weight:900;font-size:11.5px;color:#0a7d44;">&#128737;&#65039; TrustShield&#8482; verified &middot; 21+ &middot; on file</div>'
@@ -3095,22 +3106,24 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
              buys ~15% more width, and at 1.44:1 that is a 330x229 licence instead of the
              158x110 postage stamp this replaced. The selfie is a face-to-face match with
              no text to read, so it stays small and shares its row with the instruction. */
-          +'<div style="display:flex;gap:11px;align-items:center;margin:12px 0 9px;">'
-            +'<div style="flex:0 0 76px;"><div style="'+lbl+'">Selfie</div>'
-              +'<div class="js-selfiezoom" style="'+idFrame+'height:107px;display:flex;align-items:flex-end;justify-content:center;cursor:zoom-in;">'
-              +'<div style="width:42px;height:50px;border-radius:50% 50% 42% 42%;background:#d8d2c4;margin-bottom:-6px;"></div></div></div>'
-            +'<div style="flex:1;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#6B7280;line-height:1.45;">Match the <b style="color:#002461;">face</b> to the selfie, then read the <b style="color:#002461;">name and DOB</b> on the licence below.<br><span style="font-size:10.5px;">Tap either image to enlarge.</span></div>'
+          /* The selfie is INSET on the licence rather than sitting in its own row above it.
+             Two reasons, one cosmetic and one structural. Structurally, a separate selfie row
+             cost ~120px of height, and with the action bar pinned that pushed most of the
+             330x227 licence behind the bar at rest — the hero image was occluded by the very
+             fix that made the actions reachable. Cosmetically it is also the better read: the
+             worker's job is a face-to-document comparison, and putting the two a few pixels
+             apart beats making the eye travel between separate panels.
+             The inset sits INSIDE .js-idzoom, so its own click handler must stopPropagation or
+             tapping the selfie would open the licence zoom instead. */
+          +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#6B7280;line-height:1.45;margin:10px 0 8px;">Match the <b style="color:#002461;">face</b> to the selfie inset, then read the <b style="color:#002461;">name and DOB</b> on the licence. <span style="white-space:nowrap;">Tap either to enlarge.</span></div>'
+          /* No synthetic "DOB … · 21+" chip any more. The real licence has the holder's actual
+             date of birth printed on it, so a fabricated one sitting beside it would flatly
+             contradict the document the worker is being asked to read. The 21+ assurance is
+             already carried by the TrustShield chip at the top of the screen. */
+          +'<div class="js-idzoom" style="position:relative;width:calc(100% + 44px);margin:0 -22px 10px;aspect-ratio:1.44/1;border-top:1.5px solid #e3ddcd;border-bottom:1.5px solid #e3ddcd;background:#F7F5EF;overflow:hidden;cursor:zoom-in;">'
+            +'<img src="'+TS_ID+'" alt="Verified ID, front" style="'+fill+'">'
+            +'<img class="js-selfiezoom" src="'+TS_FACE+'" alt="Selfie on file" style="position:absolute;top:9px;right:9px;width:60px;height:84px;object-fit:cover;border-radius:8px;border:2px solid #fff;box-shadow:0 3px 10px rgba(0,20,50,.30);cursor:zoom-in;">'
           +'</div>'
-          +'<div style="'+lbl+'">Verified ID (front)</div>'
-          +'<div class="js-idzoom" style="width:calc(100% + 44px);margin:0 -22px 10px;aspect-ratio:1.44/1;border-top:1.5px solid #e3ddcd;border-bottom:1.5px solid #e3ddcd;background:#F7F5EF;padding:14px 18px;display:flex;gap:14px;box-sizing:border-box;cursor:zoom-in;">'
-            +'<div style="flex:0 0 30%;border-radius:7px;background:#d8d2c4;"></div>'
-            +'<div style="flex:1;display:flex;flex-direction:column;gap:10px;padding-top:4px;">'
-              +'<div style="height:11px;width:86%;border-radius:5px;background:#ded7c6;"></div>'
-              +'<div style="height:9px;width:62%;border-radius:5px;background:#e6e0d1;"></div>'
-              +'<div style="height:9px;width:74%;border-radius:5px;background:#e6e0d1;"></div>'
-              +'<div style="height:9px;width:48%;border-radius:5px;background:#e6e0d1;"></div>'
-              +'<span style="margin-top:auto;font-family:Nunito;font-weight:900;font-size:12.5px;color:#0a7d44;background:#e7f7ec;border-radius:6px;padding:4px 9px;align-self:flex-start;">DOB 01/01/1990 &middot; 21+</span>'
-            +'</div></div>'
           +'<span class="mlink js-idstale" style="margin:0 0 12px;">Tap here if the ID on file needs to be updated</span>'
           /* ONE dominant action. Both alternatives are roughly 1-in-100 outcomes, so they
              are deliberately NOT buttons — a heavy outlined button competes with the 99%
@@ -3159,26 +3172,19 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
             '<div style="position:absolute;top:22px;left:0;right:0;text-align:center;font-family:Nunito;font-weight:900;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#fff;">'+label+'</div>'
             +(pan
               ? '<div class="js-zpan" style="position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);overflow-x:auto;overflow-y:hidden;padding:0 14px;-webkit-overflow-scrolling:touch;">'
-                  +'<div style="width:660px;aspect-ratio:1.44/1;background:#F7F5EF;border-radius:12px;padding:30px;box-sizing:border-box;display:flex;gap:28px;">'+inner+'</div>'
+                  +'<div style="width:660px;aspect-ratio:1.44/1;background:#F7F5EF;border-radius:12px;overflow:hidden;">'+inner+'</div>'
                 +'</div>'
-              : '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:236px;height:332px;background:#F7F5EF;border-radius:12px;padding:24px;box-sizing:border-box;display:flex;gap:22px;">'+inner+'</div>')
+              : '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:236px;height:332px;background:#F7F5EF;border-radius:12px;overflow:hidden;">'+inner+'</div>')
             +'<div style="position:absolute;bottom:70px;left:0;right:0;text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11px;color:#9fb0cc;">'+(pan?'Swipe sideways to pan':'Tap anywhere to close')+'</div>'
             +(pan?'<button class="js-zclose" style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);border:1.5px solid rgba(255,255,255,.35);background:none;color:#fff;border-radius:11px;padding:9px 22px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Close</button>':'');
           if(pan){ z.querySelector('.js-zclose').onclick = () => z.remove(); }
           else { z.style.cursor='zoom-out'; z.onclick = () => z.remove(); }
           frame.appendChild(z);
         }
-        const bar = (w,h) => '<div style="height:'+h+'px;width:'+w+';border-radius:6px;background:#e0d9c8;"></div>';
         ov.querySelector('.js-idzoom').onclick = () => enlarge(
-          '<div style="flex:0 0 30%;border-radius:9px;background:#d8d2c4;"></div>'
-          +'<div style="flex:1;display:flex;flex-direction:column;gap:20px;padding-top:8px;">'
-          +bar('86%',22)+bar('62%',17)+bar('74%',17)+bar('48%',17)
-          +'<span style="margin-top:auto;font-family:Nunito;font-weight:900;font-size:24px;color:#0a7d44;background:#e7f7ec;border-radius:9px;padding:8px 16px;align-self:flex-start;">DOB 01/01/1990 &middot; 21+</span>'
-          +'</div>', true, 'Verified ID &middot; front');
-        ov.querySelector('.js-selfiezoom').onclick = () => enlarge(
-          '<div style="flex:1;display:flex;align-items:flex-end;justify-content:center;">'
-          +'<div style="width:132px;height:158px;border-radius:50% 50% 42% 42%;background:#d8d2c4;margin-bottom:-24px;"></div></div>',
-          false, 'Selfie on file');
+          '<img src="'+TS_ID+'" alt="Verified ID, front, enlarged" style="'+fill+'">', true, 'Verified ID &middot; front');
+        ov.querySelector('.js-selfiezoom').onclick = (e) => { e.stopPropagation();   // inset lives inside .js-idzoom
+          enlarge('<img src="'+TS_FACE+'" alt="Selfie on file, enlarged" style="'+fill+'">', false, 'Selfie on file'); };
         ov.querySelector('.js-idcancel').onclick=()=>ov.remove();
       } else {
         let captured=false;
