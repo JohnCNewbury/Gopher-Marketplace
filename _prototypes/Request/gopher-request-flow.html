@@ -1039,7 +1039,15 @@ function makeInitialState(){
     // ID verification — canonical capture fields (same shape as the Request web app;
     // see docs/handoff/request-app-parity/canonical-request-state-schema.md §3a).
     // "verified" is DERIVED: savedOnFile || (idFrontCaptured && selfieCaptured).
-    idFrontCaptured:false, idFrontSrc:'', selfieCaptured:false, selfieSrc:'', savedOnFile:false,
+    // DEMO DEFAULT: the requester is TrustShield-verified with ID on file. trustShield was
+    // never declared here at all, so it read undefined -> falsy, and orderFromReq() relayed
+    // trustShield:false to the Go app. The Gopher's card then said "TrustShield Verified"
+    // (it rendered unconditionally) while the hand-off ran the non-TrustShield physical-ID
+    // capture — the TrustShield process was unreachable in the demo. Flip these four to
+    // false to demo the non-TrustShield path; the "TrustShield ON/OFF" chip (act 'demo-ts')
+    // still toggles it at runtime either way.
+    trustShield:true,
+    idFrontCaptured:true, idFrontSrc:'', selfieCaptured:true, selfieSrc:'', savedOnFile:true,
     // age-compliance contract fields (parity with web)
     idRequiredAtCompletion:false, agePurchaseAck:false, agePurchaseDismissed:false,
     // schedule + offer-telemetry contract fields (parity with web)

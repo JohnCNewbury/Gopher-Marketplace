@@ -2521,7 +2521,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 
 "job-detail":{ html:`<div class="frame">${SBAR}<div class="rqbody"></div></div>`,
   init(r){
-    const j=state.job||{cat:'Delivery / Errand',mode:'pay',amt:'$52',per:'~$35/hr',who:'John N.',scope:'Pick up 4 catering trays + drinks, deliver across town.',stats:[{i:'pin',t:'3.2 mi'},{i:'clock',t:'~1.5 hr'},{i:'cal',t:'Now'}],flags:[{t:'Time-sensitive',k:'warn'},{t:'No heavy lift',k:'good'}]};
+    /* trustShield/ageRestricted on the STANDALONE fallback job so the TrustShield hand-off is
+       reachable without the split-screen relay. Relayed jobs carry their own flags from the
+       requester (orderFromReq -> trustShield:!!r.trustShield), which is the path the demo
+       normally uses; this only covers opening job-detail directly. */
+    const j=state.job||{cat:'Delivery / Errand',mode:'pay',amt:'$52',per:'~$35/hr',who:'John N.',trustShield:true,ageRestricted:true,scope:'Pick up 4 catering trays + drinks, deliver across town.',stats:[{i:'pin',t:'3.2 mi'},{i:'clock',t:'~1.5 hr'},{i:'cal',t:'Now'}],flags:[{t:'Time-sensitive',k:'warn'},{t:'No heavy lift',k:'good'}]};
     const stats=j.stats||[], flags=j.flags||[];
     const fs=k=>stats.find(s=>s.i===k);
     const pin=fs('pin'), clock=fs('clock'), cal=fs('cal');
@@ -2798,7 +2802,15 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       return '<div class="rq-top"><button class="rq-bk js-back">'+sv('<path d="M15 5l-7 7 7 7"/>')+'</button><h1>Request Details</h1><button class="rq-flag js-rep"'+(j.flagReport?' style="color:#C44257;border-color:#e3a5ae;background:#FDECE6;"':'')+'>'+sv('<path d="M5 3v18M5 4h13l-2.5 4 2.5 4H5"/>')+'</button></div>'
         +'<div class="rq-card rq-head">'
           +avatar()
-          +'<div class="rq-id"><div class="rq-nm">'+who+'</div><div class="rq-badge">'+sv(I.shield,'sh')+'TrustShield Verified</div><div class="rq-rate">'+sv(I.star,'st')+'4.9 &middot; 212 requests</div></div>'
+          +/* Real TrustShield mark, and the badge is now CONDITIONAL on j.trustShield.
+                 It used to render unconditionally with a generic shield glyph, so the card
+                 claimed "TrustShield Verified" for every requester while openAgeIdConfirm()
+                 read j.trustShield — which no job set — and therefore always ran the
+                 non-TrustShield physical-capture path. The card promised one thing and the
+                 hand-off did another. Both now read the same flag, so they cannot disagree. */
+                '<div class="rq-id"><div class="rq-nm">'+who+'</div>'
+                +(j.trustShield?'<div class="rq-badge"><img src="../../assets/img/trustshield-logo.svg" alt="TrustShield" style="height:14px;width:auto;display:block;flex:0 0 auto;">TrustShield Verified</div>':'')
+                +'<div class="rq-rate">'+sv(I.star,'st')+'4.9 &middot; 212 requests</div></div>'
           +'<span class="rq-pill '+timing.c+'">'+timing.t+'</span>'
         +'</div>'
         +(rv?'':'<div class="rq-hint">'+sv(I.lock)+(picRv?'Exact addresses unlock when you accept':'Requester photo &amp; exact addresses unlock when you accept'+(j.priority?'':' &mdash; or when they Prioritize you'))+'</div>')
