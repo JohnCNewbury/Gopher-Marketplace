@@ -84,6 +84,25 @@ do not assume they indicate deeper problems.
 - Keep changes scoped to cleanup, documentation, and reference correctness.
 - Do not introduce backend behavior, real data flows, or security/auth/payment code.
 
+### Tooling — verify before you route around it
+
+**`node` IS installed: v24.18.0 at `~/bin/node`, on PATH** (since the 2026-07-28 toolchain
+setup). Older notes in this file and in memory said "no `node` on this box" — **true when
+written in July, false since.** Anything in the session log dated before 2026-07-28 that
+reasons from node's absence was correct at the time; don't inherit the premise.
+
+- **Use `node`** for anything that *executes* module code (running a shared module,
+  exercising a function against real inputs, a test harness).
+- **JXA is still correct** for a pure syntax parse-check — `new Function(src)` per inline
+  `<script>` block. It needs no `window`/`module` shims there and node buys nothing.
+- **Don't hand-roll a JXA shim harness for JS node can run.** That's a workaround with no
+  blocker behind it, and the shims themselves can produce a confident wrong result.
+
+**The general rule this is an instance of:** a documented constraint is a point-in-time
+observation, not live state. Before routing around a blocker this file names, spend the one
+command to check it still exists. See the owner's standing pause-and-wait directive — when
+something genuinely *is* blocked, stop and ask rather than take the lesser route.
+
 ## Standing rules (owner directives — apply to every session)
 
 - **A Jira ticket is NEVER the source of truth — a document is, and the ticket references the doc
@@ -540,7 +559,12 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     `ROUTES` is consulted; it would have failed silently the day that attribute came off. Plus
     11 genuine code comments. **Left alone on purpose:** the `rh-` CSS prefix (25 classes) and
     the `request-history` screen id / route key / `data-goto` value — identifiers, not copy.
-  - Verified: 7 inline script blocks parse clean (JXA — **no `node` on this box**), 0 console
+  - Verified: 7 inline script blocks parse clean (JXA — ⚠️ the parenthetical here originally
+    read "**no `node` on this box**", true on 2026-07-21 and **STALE since 2026-07-28**:
+    Node **v24.18.0** is installed at `~/bin/node` and on PATH. Don't build a JXA shim
+    harness for JS that node can run — that's a workaround with no blocker behind it. JXA
+    is still the right tool for a pure syntax parse-check, `new Function(src)` per inline
+    `<script>` block, where it needs no `window`/`module` shims and node buys nothing), 0 console
     errors, both pills and both Help Centers driven live through all four answer tiers, quick
     actions, and FAQ tab switching.
   - **Owner-reported follow-up — "Are there requests near me" answered the wrong FAQ, confidently**
