@@ -1,5 +1,39 @@
 # G40-13 — Stripe payout: stop mis-classifying gig workers as businesses
 
+> ## ⚠️ CLOSED 2026-08-03 — do not implement the fix below without re-reading this
+>
+> **Owner decision: closed as accepted risk. Revisit only on a new occurrence.**
+>
+> **The frequency estimate this ticket was built on was wrong.** It assumed
+> "a few %" of Gophers. The real figure is **2 cases** against a Gopher
+> population over 44,000 — roughly **0.004%**.
+>
+> **What was actually done, twice, and worked both times:** the affected user was
+> deleted and asked to register a new account. Neither had any further payout
+> problem. That is the remediation — it is cheap, proven, and needs no code.
+>
+> **Stripe was appealed and refused.** The owner investigated thoroughly and
+> demonstrated to Stripe that their classification was wrong for these edge
+> cases. Stripe denied the appeal. Do not spend more time on that route.
+>
+> **Why the fix below was NOT implemented — this is a decision, not an
+> oversight.** Removing `card_payments` and `business_profile` changes account
+> creation for **100% of new workers** to prevent something hitting 0.004%. It is
+> also unverified whether `card_payments` can be dropped without breaking instant
+> payouts to debit cards; that needs a Stripe test-mode experiment before anyone
+> touches it. The risk exceeds the benefit at this frequency.
+>
+> **If it recurs (case #3):** apply the delete-and-recreate workaround first to
+> unblock the person, then reopen. Before implementing the change below, run a
+> test-mode probe to confirm a `transfers`-only account can still attach a debit
+> card and reach `payouts_enabled: true`.
+>
+> **Separately, and still true:** the dominant payout lockout was never this. It
+> was `create_payout` accepting a missing `external_account_token`, which minted
+> Connect accounts with no payout method — ~44,662 workers. Fixed 2026-08-03 in
+> MRs !209 (remediation) and !210 (prevention).
+
+
 **Jira:** G40-13 (Bug, Low) · Component **Gopher Go App** · Label `pay` · Fix version *Phase 1 — Bug Fixes & Polish*
 **Assignee:** John Newbury
 **Surface:** worker app payout setup — legacy backend `gopher-backend-api`; new UX reference `Final/gopher-go.html` (Payout Info)

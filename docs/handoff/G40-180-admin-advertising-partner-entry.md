@@ -1,6 +1,25 @@
 # G40-180 — Admin Panel: Advertising Partner Entry
 
 **Status:** Built + verified (HQ Dashboard = Admin Panel replacement)
+
+> ⚠️ **VERIFICATION 2026-08-06 — this "Built + verified" status does not match the HQ Dashboard as it
+> stands today.** Checked five ways while correcting the `advertiserDeals.js` references in the Deals
+> handoff docs, and the Advertising section described below could not be found:
+>
+> | Check | Result |
+> |---|---|
+> | `id:'advertising'` nav entry in `app_part*.js` | absent |
+> | `VIEWS.advertising` | absent |
+> | `isDealLive` / `liveHomeDeals` / `trackClick` in any Dashboard `.js` | absent |
+> | "Advertising" in the built `output/Gopher_HQ_Dashboard.html` | only expense-category strings ("Advertising & Promotion", QuickBooks data) — no section |
+> | `git log --all -S"id:'advertising'"` | no commit ever added it |
+>
+> **I am not rewriting the status, because I cannot distinguish "never built" from "built and later
+> removed"** — and this repo's history showing nothing is suggestive but not conclusive. Flagged for
+> the owner / HQ Dashboard session to resolve. **Until it is: do not treat this document as evidence
+> that admin deal-review, click tracking or CSV export exist.** The wired Deals module is
+> `deals-merchants.js`, which has none of them. See
+> `deals-registration-to-publication-config.md` §9.2.
 **Jira:** G40-180 · Story · Medium · `spine` · Scaffold: `wave2/g40-180/advertiserDeals.js` (model + `isDealLive` + `liveHomeDeals` + click tracking + `toCsv`, tested)
 
 ## Goal

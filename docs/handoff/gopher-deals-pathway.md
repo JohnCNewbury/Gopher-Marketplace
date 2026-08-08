@@ -192,9 +192,14 @@ phone that mirrors how the deal will appear in the customer apps.
 > Dashboard** to refresh the Raleigh DMA merchant-coverage map (`deals-coverage.js` manual upload)
 > until the real backend/DB connection automates it.
 
-**Admin side (Gopher HQ):** deal lifecycle state, click tracking, and CSV export also exist in the
-HQ Dashboard's `advertiserDeals.js` (the G40-180 admin tool) — the manual "review before it goes
-live" step happens there.
+**Admin side (Gopher HQ):** the manual "review before it goes live" step happens in the HQ Dashboard.
+⚠️ **CORRECTED 2026-08-06** — this previously said deal lifecycle state, click tracking and CSV export
+*"also exist in the HQ Dashboard's `advertiserDeals.js` (the G40-180 admin tool)."* **They do not.**
+`advertiserDeals.js` is a 44-line scaffold at `Documentation/Jira Tickets/advertiserDeals.js`, and
+none of `isDealLive` / `liveHomeDeals` / `trackClick` / `toCsv` appear anywhere in the Dashboard. The
+wired module is **`deals-merchants.js`** (review/reject/contact modals, `localStorage` action store),
+which has a different status vocabulary and no DLP fields. Build to
+`deals-registration-to-publication-config.md` §4.1 / §5.1 / §7.
 
 ---
 

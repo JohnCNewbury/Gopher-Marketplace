@@ -596,8 +596,10 @@ expired/rejected` vs `active/paused`).
 The parallel logic the orientation doc warned against **already exists**. Neither module carries
 `reachMiles`, `keywords`, `earnAmount`/`customerPrice`, or a provider reference — so **neither can
 represent a DLP deal at all**. Resolved by §4.1 + §5.1 (union record, Dashboard vocabulary, plus
-`paused` from `advertiserDeals.js`); recorded here because the two handoff docs point the dev at the
-wrong file, and should be corrected when this spec is accepted.
+`paused` from `advertiserDeals.js`); recorded here because the handoff docs point the dev at the
+wrong file. **CORRECTED 2026-08-06** — and it was **three** docs, not two: `G40-deals-initiative-orientation.md` (×2), `G40-286-deals-frontend-consolidated-handoff.md` (×2), and `gopher-deals-pathway.md` + its `.html` twin, which this finding originally missed. All now carry a dated correction pointing at `deals-merchants.js` and §4.1/§5.1/§7.
+
+**A fourth doc turned out to be a bigger problem.** `G40-180-admin-advertising-partner-entry.md` is marked **"Built + verified"** and describes an **Advertising** section in the HQ Dashboard — nav entry, routing, compiled output, click tracking, CSV export. **It could not be found**, by five checks: no `id:'advertising'` in `app_part*.js`, no `VIEWS.advertising`, no `isDealLive`/`liveHomeDeals`/`trackClick` in any Dashboard `.js`, no such section in the built `output/Gopher_HQ_Dashboard.html` (its only "Advertising" strings are QuickBooks expense categories), and no commit in that repo's history ever adding it. The status was **left intact and annotated** rather than rewritten, because "never built" cannot be distinguished from "built and later removed" from here — **owner / HQ Dashboard session to resolve.** Until then that document is not evidence that admin deal-review, click tracking or CSV export exist anywhere.
 
 ### 9.3 Merchant deal actions are display-only
 

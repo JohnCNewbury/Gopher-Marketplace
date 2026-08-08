@@ -1,5 +1,10 @@
 # G40-271 — Both Apps: Sign-Up regressions for existing users (March-2026 deploy)
 
+> ⚠️ **CORRECTION 28 Jul 2026 — `signupFlow.js` does not exist.** It was never written; there is
+> no `wave-bugs/` directory in any repository. Every "already scaffolded" claim below is a
+> **specification, not code** — build it fresh. Also: **there is no AWS Cognito in this system**;
+> email verification is Devise "confirmable" on the `users` table. The current source of truth
+> is the rewritten Jira ticket for G40-271 plus `D-037 (was D-035 — renumbered 7 Aug 2026, collided with the Go canonical's D-035) / INV-EMAILAUTH`.
 **Type:** Bug · **Priority:** Highest · **Status:** groomed dev-ready — 2026-07-03.
 **Regression owner:** the March-2026 sign-up enhancement (**G40-7** FE / **G40-242** BE). This ticket
 captures the regressions that shipped with it. **All three reviewed together** (ticket's own note).
@@ -10,12 +15,12 @@ The four reported sub-issues split cleanly:
 
 | # | Sub-issue | Layer | Where the fix lives |
 |---|---|---|---|
-| 1 | Existing unconfirmed user forced into **new account creation** | FE routing | **Already scaffolded** — `signupFlow.js` `routeUserOnLogin` + `shouldCreateNewAccount` (shared w/ G40-7) |
-| 4 | **Back arrow** on email-OTP screen refreshes; no way to fix email / resend | FE nav | **Already scaffolded** — `signupFlow.js` `otpBackTarget` → Confirmation/Profile-Info |
+| 1 | Existing unconfirmed user forced into **new account creation** | FE routing | **NOT built — spec only** — `signupFlow.js` ⚠️(NOT BUILT — spec only) `routeUserOnLogin` + `shouldCreateNewAccount` (shared w/ G40-7) |
+| 4 | **Back arrow** on email-OTP screen refreshes; no way to fix email / resend | FE nav | **NOT built — spec only** — `signupFlow.js` ⚠️(NOT BUILT — spec only) `otpBackTarget` → Confirmation/Profile-Info |
 | 3 | **Send Confirmation Email** button broken | Backend + admin | Rooted below — `admin.controller.js:234` |
 | 2 | Admin email update **not recognized by app** ("new AWS category not linked") | Backend | Rooted below — `admin/user.js` update_* |
 
-Sub-issues **1 & 4** are covered by the shared `signupFlow.js` module (`routeUserOnLogin`,
+Sub-issues **1 & 4** are covered by the shared `signupFlow.js` ⚠️(NOT BUILT — spec only) module (`routeUserOnLogin`,
 `otpBackTarget`, `canEnterHome`, `shouldCreateNewAccount`) already built + regression-tested per
 `G40-Build-Recap.md` and the **G40-7 handoff** (`docs/handoff/G40-7-simplify-signup.md`). Wire the
 FE to those; don't re-derive. This doc roots the **backend** half (2 & 3), verified in the
@@ -66,7 +71,7 @@ Unchanged from the ticket (Scenarios 1–7). Note Scenarios 5 ("AWS category lin
 re-read as **"email-verification state is managed by the admin panel"** given the correction above.
 
 ## Related
-- **G40-7** (FE umbrella, absorbed **G40-242** BE) — intended behavior + the shared `signupFlow.js`.
+- **G40-7** (FE umbrella, absorbed **G40-242** BE) — intended behavior + the shared `signupFlow.js` ⚠️(NOT BUILT — spec only).
   Link as *Relates*; implement together.
 - **G40-157** `signupValidation.js`; **G40-170** Incomplete-status; **G40-272** admin Email-OTP report.
 
@@ -75,5 +80,5 @@ re-read as **"email-verification state is managed by the admin panel"** given th
 - `controllers/user/emails.js` (`send_confirmation_email` L20, `verify_email` L74)
 - `controllers/admin/user.js` (`update_admin_user`, `update_requester_user`, `update_gopher_user`)
 - `models/users.model.js` (confirmable columns)
-- FE: bind to `signupFlow.js` (`routeUserOnLogin`, `otpBackTarget`, `canEnterHome`,
+- FE: bind to `signupFlow.js` ⚠️(NOT BUILT — spec only) (`routeUserOnLogin`, `otpBackTarget`, `canEnterHome`,
   `shouldCreateNewAccount`) per the G40-7 handoff.

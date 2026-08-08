@@ -74,8 +74,11 @@ address**. Keyword search matches the **keywords set at registration** (the up-t
 *(Note: an older `gopher-request.html` changelog entry (v99) describes a "coming soon" placeholder —
 that has since been superseded by the shipped browse; do not treat the v99 note as current.)*
 
-**Backend seams:** real deals feed behind the `advertiserDeals.js` seam (G40-180); real device
-geolocation; persistence.
+**Backend seams:** a real deals feed; real device geolocation; persistence. ⚠️ **CORRECTED
+2026-08-06** — this previously read *"behind the `advertiserDeals.js` seam (G40-180)"*. That file is
+a 44-line scaffold in `Documentation/Jira Tickets/`, **not** in the HQ Dashboard; the wired module is
+`deals-merchants.js`. Build to the feed contract in
+`deals-registration-to-publication-config.md` §7, not to that file.
 
 ## DLM-7 — View merchant deal + order on merchant site (G40-291)
 
@@ -141,9 +144,14 @@ simulated connect); the flexible-scheduling handoff.
   gates portal login + Users & Access roles. Provider identity = an eligibility tier on the existing
   worker account.
 - **Deals data model** — a real `deals` store (merchant/provider id, category, location(s),
-  price/defined-price, radius, window, status, click counters) behind the **`advertiserDeals.js`**
-  (G40-180) admin seam, which already provides `isDealLive` / `liveHomeDeals` / `trackClick` /
-  `toCsv`.
+  price/defined-price, radius, window, status, click counters). ⚠️ **CORRECTED 2026-08-06:** this
+  previously placed the store *"behind the `advertiserDeals.js` (G40-180) admin seam, which already
+  provides `isDealLive` / `liveHomeDeals` / `trackClick` / `toCsv`."* **`advertiserDeals.js` is not
+  in the HQ Dashboard** — it is a 44-line scaffold at `Documentation/Jira Tickets/advertiserDeals.js`,
+  so those helpers are an intended shape rather than existing code to extend. The wired Dashboard
+  module is **`deals-merchants.js`**, with a different status vocabulary and **no fields for a DLP
+  deal**. Build the **union record** in `deals-registration-to-publication-config.md` §4.1 with the
+  status vocabulary in §5.1, and keep **exactly one** `isDealLive(deal, now)` predicate (§7.1).
 - **Order bridge** — `controllers/order/create.js` is where a merchant order (DLM-8) or a provider
   redemption (DLP-4) spawns the actual Gopher request.
 - **B2B portal shell** — merchant/provider portal reuses G40-160 / Epic G40-2 rather than a
