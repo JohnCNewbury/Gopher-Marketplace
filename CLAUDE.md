@@ -104,6 +104,19 @@ do not assume they indicate deeper problems.
   the fix — the repro, the acceptance criteria, the assignee. See memory
   `docs-are-truth-not-tickets`.
 
+- **Every merge hand-off states three things, in plain words (owner, 2026-08-06):** **target
+  branch** · **squash yes/no** · **delete source branch yes/no**. Never leave them to the MR
+  defaults — the owner is the one clicking Merge, so an unstated option becomes a guess.
+  **Two reasons this is more than tidiness here:** *squashing rewrites the SHA*, and this project
+  verifies deployment **by SHA** in several places (G40-334's commit pins, the canonical and
+  as-built flow docs, and `gopher-dev-handoff/FIELD-NOTES.md`, which tells the incoming dev to
+  verify that way) — a squash silently invalidates all of them; and *deleting the source branch
+  removes the only copy of an unmerged fix* if the merge has to be reverted.
+  ⚠️ **Does not apply to THIS repo's deploy:** `scripts/deploy.sh` flattens `Final/` onto `main`
+  via rsync in a throwaway worktree and `main` shares no history with the feature branches — there
+  is no MR and nothing to squash. It applies to the **Dashboard**, **gopher-dev-handoff**, and the
+  **backend/app repos**, where an MR merge is the real mechanism.
+
 - **A user-facing change is not done until its 101 guide is updated (owner, 2026-08-05).** Every
   surface has a tutorial that real users read — `gopher-deals-101.html`, `gopher-go-101.html`,
   `gopher-request-101.html`, `gopher-connect-101.html`. When you change behaviour or copy on a
