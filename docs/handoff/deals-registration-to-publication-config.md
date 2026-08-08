@@ -188,8 +188,17 @@ fielding merchant and service provider deals as intended. This needs to be butto
 launch."*
 
 **Frozen means frozen at exactly today's behaviour** — lead capture plus a notification to
-`deals@gophergo.io` (the script already holds `NOTIFY_EMAIL`, so registration alerts reach deals@
-today). **Nothing new is added to it, and specifically not the welcome email.** The security reason
+`deals@gophergo.io`.
+
+> ⚠️ **Provenance, per the pause-and-wait directive (2026-08-06).** The claims in this paragraph
+> about **what the Apps Script does internally** — that it holds `NOTIFY_EMAIL = deals@gophergo.io`,
+> that its access is published `Who has access: Anyone`, and that its Sheet has grown a manual
+> Status-dropdown review workflow — are **inherited from the Website Updates session, not verified
+> by me.** I have never opened the script project or the Sheet; both need owner login at
+> `script.google.com`. What **is** first-hand here is the deployment reality below: I fetched all
+> three live hosts and confirmed the endpoint and both submit paths on each. The ruling holds either
+> way — freeze-then-retire does not depend on the script's internals — but **the drain step does**,
+> and it cannot be sized without Sheet access. **Nothing new is added to it, and specifically not the welcome email.** The security reason
 is concrete, not theoretical: the endpoint is published `Who has access: Anyone` and its URL sits in
 public page source. Today it can only ever mail **one fixed address**, so it cannot be abused.
 Mailing whatever address arrives in the POST body would turn it into an **open relay from the

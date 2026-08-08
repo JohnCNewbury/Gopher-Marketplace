@@ -123,6 +123,22 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
   the fix — the repro, the acceptance criteria, the assignee. See memory
   `docs-are-truth-not-tickets`.
 
+- **⛔ PAUSE AND WAIT when access is the blocker — never take the less optimal route (owner,
+  2026-08-06).** Verbatim: *"NO SESSION is to take the less optimal route, EVER. It is a pause and
+  wait for my attention to log in to whatever platform is the block, to create a token, or share my
+  credentials… With no dev support on my end, this cannot ever happen again."*
+  **What triggered it:** a session without **Sentry** access proceeded on a workaround; **MR !222 was
+  merged prematurely and incorrectly into production.** Once asked, a token existed **in five
+  minutes**. The danger isn't that a workaround fails — it's that it yields a **confident wrong
+  answer**, which is worse than none because it gets acted on.
+  **The rule:** stop, state what's blocked / what unlocks it / what it enables, then wait. Do
+  genuinely independent work meanwhile, but **never let a workaround feed a merge, a deploy, a ticket
+  closure, a doc row, or a recommendation.** Covers Sentry · AWS · GitLab/GitHub tokens · Play & App
+  Store · Appflow · Stripe · Netlify · Twilio · SendGrid · Firebase · iDenfy · the production DB.
+  **Second-hand facts count as workarounds** — a behaviour another session described, written into a
+  doc row without inspecting it yourself, is the same failure wearing a friendlier face. Mark
+  inherited claims as inherited. See memory `pause-and-wait-never-work-around-access`.
+
 - **Every merge hand-off states three things, in plain words (owner, 2026-08-06):** **target
   branch** · **squash yes/no** · **delete source branch yes/no**. Never leave them to the MR
   defaults — the owner is the one clicking Merge, so an unstated option becomes a guess.
