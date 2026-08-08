@@ -172,10 +172,53 @@ So the production transport is: **form → `POST /api/v1/deals` (authenticated) 
 Dashboard review queue.** `submitForm` is the seam to repoint; its serialisation and its localStorage
 fallback are worth keeping as an offline-resilience pattern, its endpoint is not.
 
-**Consequence for the tabled deals@ wiring:** the Apps Script snippets in
-`docs/handoff/deals-email-wiring.md` are the **interim** way to send from `deals@gophergo.io`
-pre-launch. They are correct for now and dead at go-live. `deals@gophergo.io` remains the
-sender/receiver identity in both eras (**SP-PIPE** §6).
+**Consequence for the tabled deals@ wiring — SUPERSEDED, see §3.3.** *(The original text read: the
+Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way to send from
+`deals@gophergo.io` pre-launch, correct for now and dead at go-live. That is no longer the plan —
+the doc is frozen and must not be followed. `deals@gophergo.io` does remain the sender/receiver
+identity in both eras, **SP-PIPE** §6.)*
+
+### 3.3 RULING — HQ Dashboard takes registration ownership; the Apps Script goes (owner, 2026-08-06)
+
+**Canonical rule.** The **HQ Dashboard is built to the SOW and takes ownership of fielding merchant
+registrations and Service-Provider deals.** The Google Apps Script is **frozen now and retired at
+cutover** — not extended, not migrated. Owner, verbatim: *"I want the app scripts issue resolved with
+Deal session and want the HQ Dashboard to be built to the SOW to take the registration ownership for
+fielding merchant and service provider deals as intended. This needs to be buttoned up before
+launch."*
+
+**Frozen means frozen at exactly today's behaviour** — lead capture plus a notification to
+`deals@gophergo.io` (the script already holds `NOTIFY_EMAIL`, so registration alerts reach deals@
+today). **Nothing new is added to it, and specifically not the welcome email.** The security reason
+is concrete, not theoretical: the endpoint is published `Who has access: Anyone` and its URL sits in
+public page source. Today it can only ever mail **one fixed address**, so it cannot be abused.
+Mailing whatever address arrives in the POST body would turn it into an **open relay from the
+gophergo.io domain**, with no rate limiting, suppression or bounce handling. `docs/handoff/
+deals-email-wiring.md` stays **FROZEN and must not be followed as written** — its snippet keys on
+`data.email` while the merchant form's field is `owner_email`, so the merchant welcome email would
+silently never fire.
+
+**Deployment reality — the part that makes this a sequence, not a switch.** `GOPHER_FORM_ENDPOINT` is
+live on **three** hosts, and every one of them carries **both** submit paths
+(`submitForm('merchant')` and `submitForm('worker')`), verified 2026-08-06:
+
+| Host | Endpoint live | Who can update it |
+|---|---|---|
+| GitHub Pages | ✅ | `scripts/deploy.sh` |
+| TigerTech | ✅ | same push (FTPS action) |
+| **Netlify mirror** | ✅ | ⚠️ **owner-action only** — manual drag of `Final/`; no CLI, token or `netlify.toml` on this machine |
+
+So the cutover is **four steps, one of which only the owner can perform**: (1) HQ can receive;
+(2) repoint all three surfaces; (3) drain — leads in flight must land somewhere; (4) delete the
+script. Retiring the script before step 2 completes on **all three** silently drops real merchant
+leads, and the Netlify mirror's entire stated job is fielding them.
+
+**Owner decision + date.** Direction ruled **2026-08-06** (relayed via Total SOW Priorities); the
+"no Apps Script in production" rule it completes was ruled **2026-07-24** (**SP-PIPE** §6). Build
+half dispatched to the HQ Dashboard session the same day. **SOW Bucket F already scopes and prices
+"two registration paths; full account creation"** — so anything built into the Apps Script now is
+paid for twice and diverges from what the vendor builds, which is the commercial reason freezing
+beats extending.
 
 ---
 
