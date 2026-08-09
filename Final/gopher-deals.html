@@ -4160,7 +4160,11 @@
     _submitInFlight[type] = true;
     try {
       var _m = document.getElementById('modal-' + type);
-      if (_m) _m.querySelectorAll('.modal-submit').forEach(function (b) {
+      /* Both triggers, not just one: the WORKER form submits from `.modal-submit`, the MERCHANT
+         form submits from `#dp-next` in the deal preview (`dpSubmit`). The merchant path is the one
+         that most needs it — it waits on a geocode (up to 1.6s) before the request even leaves, so
+         it presents the longest "nothing is happening" window. */
+      if (_m) _m.querySelectorAll('.modal-submit, .dp-btn-next').forEach(function (b) {
         b.disabled = true; b.setAttribute('aria-busy', 'true');
       });
     } catch (e) { /* non-blocking */ }
