@@ -47,7 +47,7 @@ only a short **eligibility funnel** (the deal is created later, in the Gopher Go
 | **Searchable Keywords** | up to 3 chips | **These become the customer keyword-search index** (Stage 5) |
 | Owner **Personal Info** (First, Last, DOB, Phone, Email, Address) | `owner_first_name` `owner_last_name` `owner_dob` `owner_phone` `owner_email` `owner_address` | **2026-07-14: exact parity with standard-signup Personal Info** (seam #10 front-end DONE). Photo excluded — prompted at first sign-in to any Gopher platform |
 | Source — How did you discover Gopher? | `discovery_source` | Canonical signup list + **"Gopher Deals"** added platform-wide. (`source` was taken by channel attribution) |
-| Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; 6-digit ID; skippable |
+| Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; skippable. ⚠️ **NOT 6-digit — corrected 2026-08-09.** The Gopher ID is **opaque and variable-length**; **70% of production accounts (97,977 of 139,272) are 1–5 digits** and IDs run 1 → 141,303. A 6-digit validation rejects most real users. Never length-validate it. See `deals-registration-to-publication-config.md` Ruling 6. |
 | **Phone verified** | `phone_verified` (hidden) | OTP affordance — **currently simulated**, see backend seams |
 
 
@@ -302,7 +302,7 @@ parlay + provider-directed).
 10. **Owner Personal-Info parity — FRONT-END DONE 2026-07-14** (ruling 2026-07-12; validated
     against John's signup screenshots). The merchant form's Business Owner Verification now
     collects the exact standard-signup set (First/Last/DOB/Phone/Email/Address/Source + the
-    Referral→6-digit-ID pattern). Remaining for the dev: provision the owner's Gopher account
+    Referral→Gopher-ID pattern — **variable length, never length-validated**, see Ruling 6). Remaining for the dev: provision the owner's Gopher account
     from these fields, and the **first-sign-in photo prompt** (Deals dashboard or any platform).
     Original ruling:
     Per the standard Gopher process, every sign-up provisions a Gopher Request account — the canonical
