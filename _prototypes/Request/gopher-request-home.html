@@ -211,19 +211,19 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 
 /* ── Deals (Go-modeled: deals wordmark + Sponsored + Caveat tagline + Featured) ── */
 .deals-head{position:relative;margin-bottom:14px;}
-/* Matched to the WEB Deals-home button for cross-surface continuity (owner, 2026-08-09):
-   `.dh-viewall-link` in Final/gopher-connect.html + Final/gopher-request.html — pale-green
-   pill (#eafaf0 on #cdeeda), green ink #1a9d4b, Nunito 800 13.5px, chevron SVG, radius 999px.
-   `width:100%` is dropped with it: a <button> sizes to its content when width is auto even as
-   a block-level flex container, so the pill is now content-width and left-aligned — the same
-   shape the web pill has, and the same shape the Go app's copy of this button already had
-   (measured 175px there vs 328px here before this change). A full-width stadium carrying pill
-   colours read as a third variant rather than continuity. Vertical padding stays at 12px, not
-   the web's 8px, so the tap target survives the shrink: 45px tall. */
-.deals-viewall{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:11px;padding:12px 16px;border:1px solid #cdeeda;background:#eafaf0;color:#1a9d4b;border-radius:999px;font-family:'Nunito';font-weight:800;font-size:13.5px;cursor:pointer;transition:background .15s ease, transform .15s ease;}
-.deals-viewall:hover{background:#dff6e8;}
+/* EXACT replica of the web Deals button (owner, 2026-08-09).
+   The live element carries TWO classes — `dh-viewall-link dh-viewall-hero` — and an earlier pass
+   styled from the BASE class only, producing a pale-green PILL. Wrong twice over: the `-hero`
+   override is what actually renders, and pill shapes are not used for buttons on this brand.
+   The rule below is `.dh-viewall-link` + `.dh-viewall-hero` composed, copied from
+   Final/gopher-connect.html (byte-identical in Final/gopher-request.html): cream 160deg gradient,
+   #EAD9B6 hairline, 14px radius, the `0 12px 26px rgba(0,36,97,.10)` lift — the "shadow of
+   variance" — green #1a9d4b ink, Nunito 800 15px, 12px/34px padding, 16px chevron.
+   Only the outer margin is local, positioning it under the rail on a phone. */
+.deals-viewall{display:inline-flex;align-items:center;gap:8px;margin-top:11px;padding:12px 34px;border:1px solid #EAD9B6;border-radius:14px;background:linear-gradient(160deg,#FFFDF8 0%, #FBF3E4 58%, #F6E9D0 100%);box-shadow:0 12px 26px rgba(0,36,97,.10);color:#1a9d4b;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .15s ease, transform .15s ease;}
+.deals-viewall:hover{background:linear-gradient(160deg,#FBF3E4 0%, #F6E9D0 100%);border-color:#1CB061;transform:translateY(-1px);}
 .deals-viewall:active{transform:scale(.99);}
-.deals-viewall svg{width:15px;height:15px;flex:0 0 auto;}
+.deals-viewall svg{width:16px;height:16px;flex:0 0 auto;}
 .deals-logo{display:flex;align-items:center;gap:4px;font-family:'Nunito';font-weight:900;font-size:22px;color:var(--green-dark);letter-spacing:-.5px;}
 .deals-logo-img{height:26px;width:auto;display:block;}
 .deals-logo .leaf{width:22px;height:22px;}
