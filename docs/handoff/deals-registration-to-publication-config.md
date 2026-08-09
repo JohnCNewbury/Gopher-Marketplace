@@ -303,11 +303,77 @@ blocked on that outcome.**
    with one intent. Fixed in the prototype 2026-08-06 (module-scoped in-flight guard + button
    disable, set only after validation passes). **A public intake endpoint with no client-side
    debounce collects duplicate registrations** — and unlike the Sheet, duplicates in a `deals` table
-   have downstream cost. Server-side idempotency on top is cheap insurance.
+   have downstream cost. ⚠️ **Amended 2026-08-09 — this line previously read "server-side
+   idempotency on top is cheap insurance."** It is not, on `POST /api/v1/users`: that is live
+   signup for both mobile apps, and it already refuses a known phone with a 422. **Where the guard
+   belongs is settled in §3.2c** — client-side, moved to the account-creation boundary; deal
+   retries are deduped server-side on content.
 2. **Reject unknown fields; do not absorb them.** The Apps Script appends a new column for any key it
    has not seen (`Object.keys(data).filter(k => headers.indexOf(k) === -1)`), which is how one
    stray caller permanently widened the Leads header by five columns. **The `deals` record must have
    a fixed, validated schema** — an unrecognised field is a rejected request, not a schema change.
+
+### 3.2c The real intake call shape (backend built 2026-08-09, `feat/deals-schema`)
+
+Intake stops being one POST. The merchant form makes **three calls**: create the account
+(`POST /api/v1/users`), verify the phone, then submit the deal (`POST /api/v1/users/deals`).
+Everything below was verified at source on `origin/production` / the built branch — record it here
+rather than in the session thread, because a finding that lives only in a message is the fossil this
+document exists to prevent.
+
+**⚠️ Correction to a claim this session made to the owner.** I reported that a double-click at the
+new boundary would **manufacture duplicate Gopher accounts**, adding to the 775 in §3.2b. **That was
+overstated.** `auth.create` (`controllers/user/auth.js:157-176`) does `findOne({where:{telephone}})`
+and returns **422 "Phone number already registered. Please login using OTP."** before inserting, and
+the same for email. A sequential double-click — 100–300 ms apart — is caught: click 1 creates,
+click 2 gets the 422. The realistic human failure mode is **defended**.
+
+**What is genuinely exposed** is narrower and harder to notice: that check is a **check-then-insert
+with no transaction** (zero `transaction` references in `exports.create`), so two *concurrent*
+requests — a retry-on-timeout, a client resend — can both pass `findOne` before either inserts.
+
+**And there is no database backstop, despite what the model file says.** This is a trap worth
+naming, because the model is the natural place to check:
+
+> `models/users.model.js` declares `{ unique: true, fields: ['telephone'] }`. **The database does
+> not enforce it** — 775 duplicate numbers exist in production, which is proof. The tell is that
+> **`telephone` is the only unique index in that block with no `name:`**; every sibling carries a
+> Rails-era `index_users_on_*` name from a real migration (`email`, `confirmation_token`,
+> `reset_password_token`, `uid+provider`). The named ones exist; the unnamed one was added to the
+> Sequelize model by hand and never materialised. **Reading the model and concluding "telephone is
+> unique" is wrong** — that is exactly how email came to be enforced and phone did not.
+>
+> **Why it can never have landed, and what this means for the fix.** Schema is applied by
+> `config/db.config.js` on boot as idempotent **`CREATE TABLE IF NOT EXISTS`**; there is no
+> `migrations/` dir and no sequelize-cli. Against an already-existing `users` table that statement
+> is a **no-op**, so an index added to a model file is never applied. ⚠️ **Consequence for the
+> owner's phone-uniqueness ticket: adding `unique: true` in the model changes nothing** — it
+> already says that. The constraint is a deliberate DDL act against the database, taken *after*
+> the 775 are cleaned (a `CREATE UNIQUE INDEX` fails outright while duplicates exist). Anyone who
+> "fixes" this in the model file will ship a silent no-op and believe it is done.
+
+**Decisions that follow, and who owns them:**
+
+| | |
+|---|---|
+| Client guard moves to the **account-creation** boundary | **Form (this repo).** Cheapest fix — prevents the second request existing. Today's guard sits inside `submitForm()`, which the new shape no longer reaches first. |
+| **No** idempotency added to `POST /api/v1/users` | **Backend, declined deliberately.** That is live signup for both mobile apps; the existing check covers the realistic case, and the correct backstop is the UNIQUE constraint. Sequencing is fixed: stop new duplicates in code → clean the 775 → then constrain. |
+| **Do not send an `idempotency_key`** | The field was allowlisted and never implemented; it has been **removed** rather than left accepting-and-ignoring, which would read as protection that isn't there. |
+
+**Resume path when the account is created but the deal submit fails: it already exists, and it is
+Path A.** The merchant returns, ticks **"I'm already a Gopher user"**, verifies phone, submits the
+deal against the account they now have. **It does not touch the collision branch**, so it is *not*
+blocked on §3.2b. The blocked branch is only reached if they return and **don't** tick the box —
+making this a **form-affordance problem, not a backend gap**. The 422 above is the hook: it means
+"this phone already has an account", which is precisely when the form should say *"you already have
+an account — verify your phone to finish your deal"* rather than surfacing a registration error.
+
+**Retrying the same deal is safe (server-side, content-based).** Same owner + same `deal_text` +
+still `pending` returns the **original** row with **200** and `duplicate: true` — success to the
+merchant, distinguishable to the caller. A *different* deal from the same merchant is a normal 201.
+A resubmit **after rejection** is deliberately a fresh 201, because editing and resending a rejected
+deal is the documented flow (§5.2) and collapsing it onto the reviewed row would discard a real
+submission. A 422 writes nothing, so retry after a validation failure is always safe.
 
 **Consequence for the tabled deals@ wiring — SUPERSEDED, see §3.3.** *(The original text read: the
 Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way to send from
