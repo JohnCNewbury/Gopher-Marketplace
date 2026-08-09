@@ -168,9 +168,35 @@ the coverage map (**PATHWAY** §Stage 4, owner note 2026-07-12).
 > dispatcher** (`sendEmail.js` / G40-305), not by a script. **Do not build production integrations
 > against `GOPHER_FORM_ENDPOINT`.**
 
-So the production transport is: **form → `POST /api/v1/deals` (authenticated) → `deals` table →
-Dashboard review queue.** `submitForm` is the seam to repoint; its serialisation and its localStorage
-fallback are worth keeping as an offline-resilience pattern, its endpoint is not.
+**⟳ CORRECTED 2026-08-06 (owner ruling, via the HQ Dashboard session).** This section previously
+read *"form → `POST /api/v1/deals` (authenticated) → `deals` table → Dashboard review queue."*
+**The authenticated contract covers the wrong half of the flow:** a DLM merchant filling in the
+public form is *unregistered* — no account, no token — so an authenticated endpoint cannot receive
+them.
+
+**The production transport is:**
+
+```
+public form → backend API (PUBLIC, rate-limited) → deals record (pending)
+                                                        ↓
+                     HQ Dashboard: review queue → approve / reject → publish
+```
+
+**Why intake is not simply POSTed to the Dashboard**, which is what "HQ takes registration
+ownership" might suggest: the **HQ Dashboard is entirely auth-gated** — every route behind
+`requireAuth`, on a single EC2 box with a **5-connection Sequelize pool**. Making an internal
+dashboard internet-facing is a security and availability decision, not an implementation detail. The
+backend API already has public routes, rate limiting, and the `deals` record. The owner's
+requirement is satisfied **operationally** — HQ owns review, approval and publication — without the
+dashboard becoming a public endpoint.
+
+**Abuse controls belong on the public intake route.** The platform's only rate limit today is
+**30 req/s per IP**, which the HQ session observed producing a dead-end *"Failed to load
+configuration"* screen on a real device — so the limit needs to be intake-appropriate and to fail
+with a usable message, not a wall.
+
+`submitForm` is the seam to repoint; its serialisation and its localStorage fallback are worth
+keeping as an offline-resilience pattern, its endpoint is not.
 
 **Consequence for the tabled deals@ wiring — SUPERSEDED, see §3.3.** *(The original text read: the
 Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way to send from
@@ -190,22 +216,39 @@ launch."*
 **Frozen means frozen at exactly today's behaviour** — lead capture plus a notification to
 `deals@gophergo.io`.
 
-> ⚠️ **Provenance, per the pause-and-wait directive (2026-08-06).** The claims in this paragraph
-> about **what the Apps Script does internally** — that it holds `NOTIFY_EMAIL = deals@gophergo.io`,
-> that its access is published `Who has access: Anyone`, and that its Sheet has grown a manual
-> Status-dropdown review workflow — are **inherited from the Website Updates session, not verified
-> by me.** I have never opened the script project or the Sheet; both need owner login at
-> `script.google.com`. What **is** first-hand here is the deployment reality below: I fetched all
-> three live hosts and confirmed the endpoint and both submit paths on each. The ruling holds either
-> way — freeze-then-retire does not depend on the script's internals — but **the drain step does**,
-> and it cannot be sized without Sheet access. **Nothing new is added to it, and specifically not the welcome email.** The security reason
-is concrete, not theoretical: the endpoint is published `Who has access: Anyone` and its URL sits in
-public page source. Today it can only ever mail **one fixed address**, so it cannot be abused.
-Mailing whatever address arrives in the POST body would turn it into an **open relay from the
-gophergo.io domain**, with no rate limiting, suppression or bounce handling. `docs/handoff/
-deals-email-wiring.md` stays **FROZEN and must not be followed as written** — its snippet keys on
-`data.email` while the merchant form's field is `owner_email`, so the merchant welcome email would
-silently never fire.
+> ✅ **VERIFIED 2026-08-06 — no longer inherited.** The owner opened the Apps Script project and
+> exported the Sheet; the HQ Dashboard session confirmed the following at source, replacing the
+> second-hand claims this section previously carried:
+>
+> - `NOTIFY_EMAIL = "deals@gophergo.io"` ✅ — **but it is the RECIPIENT.** The project is owned by
+>   **`johnCnewbury@gmail.com`** with `Execute as: Me`, so every alert sends **from a personal
+>   Gmail**, not from the brand. That is an additional, independent reason the welcome email must
+>   never live here.
+> - `doGet` returns a liveness string only ✅ — no data exposure.
+> - `MailApp.sendEmail(NOTIFY_EMAIL, …)` targets a **fixed** address ✅ — confirming it cannot be
+>   abused today, and confirming that mailing `data.email` would turn a public URL into an open relay.
+> - ⚠️ **The Sheet header auto-widens from whatever JSON arrives** —
+>   `Object.keys(data).filter(k => headers.indexOf(k) === -1)` appends new columns. That is exactly
+>   how the inbox-composer POST added five, and **those columns are permanent** — still in row 1
+>   after `40fc4eb` stopped the POSTs. Any field name a caller invents becomes schema.
+>
+> ⛔ **CORRECTION — the Status review queue described here does NOT exist.** The exported header has
+> **no `Status` column**. `cleanupAndPrepSheet()`, which would create Status / Batch-date and the
+> New/Approved/Rejected dropdown, exists in the project but was **never run against this sheet**.
+> Treat it as **aspirational, not operational** — there is no manual review queue in the Sheet today.
+
+**✅ The drain step is a NO-OP — verified 2026-08-06.** The owner exported the Leads sheet: **five
+rows, all his own tests** — one merchant (keyboard-mash business name, 07-31) and four identical
+worker submissions within 2.5 seconds (08-05). **Zero real merchant leads. Zero real SP leads.**
+Nobody is waiting on a reply, and there is nothing to migrate. The Apps Script can be deleted with no
+data migration once the three hosts are repointed.
+
+⚠️ **Do not read zero registrations as a delivery fault.** The Deals page is **live but not
+promoted** — no campaign, no traffic driven to it. Zero is the system working as configured.
+
+*(This removes the only genuinely dangerous part of the cutover. The three-host repoint below still
+stands, because leads arriving **after** a partial repoint would still be lost — but there is no
+backlog to preserve.)*
 
 **Deployment reality — the part that makes this a sequence, not a switch.** `GOPHER_FORM_ENDPOINT` is
 live on **three** hosts, and every one of them carries **both** submit paths
