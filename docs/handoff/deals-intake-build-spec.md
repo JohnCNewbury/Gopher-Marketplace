@@ -69,11 +69,29 @@ Collects the standard Personal Info set: first name, last name, DOB, phone, emai
 and `discover_gopher` ("How did you discover Gopher?").
 
 1. **Phone OTP** — exists today; the form already sets `phone_verified`.
-2. **Email OTP** — ⚠️ **does not exist today. This is the gap.** Owner: it is
-   *"the piece missing before the registration process continues to actually reviewing the screens
-   we've made."*
-3. On both verifying: **create a real Gopher user, Requester role (3)**, in the ordinary signup
-   state. Not a special Deals user — an ordinary Requester who happens to have arrived this way.
+2. **Create a real Gopher user, Requester role (3)**, in the ordinary signup state — *unverified
+   email*. Not a special Deals user; an ordinary Requester who happens to have arrived this way.
+3. **Email OTP**, run **as that user**, against the existing endpoints.
+
+> ⚠️ **ORDER CORRECTED 2026-08-09 (owner ruling). This previously read phone OTP → email OTP →
+> create user, and that ordering is not buildable.**
+>
+> The email-OTP endpoints (`POST /users/email_otp/{send,verify,resend}`) all carry
+> **`middleware.user_auth`** on `origin/production` — verified at source, `controllers/user/index.js`
+> :322–339. They were built for onboarding an account that already exists but is not yet verified
+> (they also carry `require_email_verified({ allowUnverified: true })`). **An unregistered merchant
+> on a public form has no token**, so email cannot be verified before the user exists — which made
+> the old step 2/3 order mutually exclusive with §7's "do not build a second email-OTP mechanism."
+>
+> This is contract §3.2a **Option 1**, ruled by the owner 2026-08-09. Two consequences to build to:
+>
+> - The OTP core must be **extracted into a service function** that both the HTTP controller and
+>   intake call. Intake must not re-implement code generation, the `email_otps` write, the 10-minute
+>   expiry or the 60-second resend cooldown — that would be the second mechanism §7 forbids, wearing
+>   a different name.
+> - **An abandoned intake now leaves a real, unverified account.** That is already the ordinary
+>   signup state, not a new concession — but on a *public, unauthenticated* endpoint it is also an
+>   account-creation vector, so it is a rate-limiting and sweep concern (§8), not a free lunch.
 
 ### Path B, collision branch
 
@@ -175,7 +193,7 @@ then constrain.
 | Need | Use |
 |---|---|
 | Phone OTP send/verify | The existing SMS OTP path |
-| Email OTP send/verify | `POST /users/email_otp/send` and `/verify` — **the endpoints fixed on 2026-08-08** (`796f0e8e`), which now let a confirmed account re-request a code. Do not build a second email-OTP mechanism. |
+| Email OTP send/verify | `POST /users/email_otp/send` and `/verify` — **the endpoints fixed on 2026-08-08** (`796f0e8e`), which now let a confirmed account re-request a code. Do not build a second email-OTP mechanism. ⚠️ **Both are behind `middleware.user_auth`**, so intake reaches them only *after* the user exists (§2, order corrected 2026-08-09). Extract the OTP core into a service function and call that — do not mint a throwaway token to call your own HTTP route, and do not copy the logic. |
 | User creation | The existing signup path, so a Deals user is indistinguishable from any other Requester |
 | Eligibility | One backend endpoint returning **the verdict *and its inputs*** — tier, service-job count, last-20 service rating. Not a boolean: HQ renders near-miss (10–19 jobs) and the filtered-by-amendment view, and if it only receives a boolean it must re-derive the counts, which means re-implementing the bar. Needs **both** a single-worker check (the submit gate) and a bulk read (the nightly bake over ~2,042 workers). |
 

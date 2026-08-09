@@ -107,8 +107,24 @@ save. Three paths:
 | Path | Trigger | Behaviour |
 |---|---|---|
 | **A — existing Gopher** | *"I'm already a Gopher user"* ticked | Phone only → **phone OTP** → details populate from the account. **Links; creates nothing.** No collision possible by design. |
-| **B — new user** | unticked, no match | Full personal info → **phone OTP** → **email OTP** → creates a real Gopher user, **Requester role**, ordinary signup state |
+| **B — new user** | unticked, no match | Full personal info → **phone OTP** → **creates a real Gopher user, Requester role**, ordinary signup state (email unverified) → **email OTP as that user**. ⟳ **Order corrected 2026-08-09** — see the note below the table. |
 | **B-collision** | unticked, but phone and/or email already matches | *"Is this you?"* → confirm → OTP → existing details populate → **becomes Path A**. Never creates a second account. |
+
+> ⟳ **ORDER CORRECTED 2026-08-09 — owner ruling, closing the update §3.2a asked for.**
+>
+> Path B previously read *phone OTP → email OTP → create user*. **That ordering is not buildable**,
+> and §3.2a diagnosed why on 2026-08-06 without the table ever being updated to match — so the stale
+> order was inherited straight into `deals-intake-build-spec.md` §2 and would have been built.
+>
+> The email-OTP endpoints are behind **`middleware.user_auth`** (verified at source,
+> `controllers/user/index.js`:322–339 on `origin/production`). An unregistered merchant has no token,
+> so **the user must exist before email can be verified.** Owner ruled **Option 1** on 2026-08-09:
+> create the account after phone OTP, unverified, then run email OTP as that user.
+>
+> **Build consequence:** the OTP core is extracted into a service function that both the HTTP
+> controller and public intake call — reusing the mechanism, not duplicating it. **Operational
+> consequence:** an abandoned intake leaves a real unverified account, which on a public endpoint is
+> an account-creation vector and belongs with the §3.2b abuse controls.
 
 **Service Providers never create a user.** They are already Gophers with a worker role, submitting
 from the Go app (§2.2). Link only.
@@ -259,6 +275,15 @@ onboarding by an account that already exists but is not yet verified.**
 adding a second public mail-sending surface. The order stated in the Path B table (§2.1) assumes
 email OTP precedes account creation; **if option 1 is taken, that ordering changes and §2.1 must be
 updated to match.**
+
+> ✅ **RULED 2026-08-09 — Option 1. §2.1 has been updated; this item is closed.**
+>
+> Recorded because of how it nearly went wrong: this section was correct on 2026-08-06 and named the
+> exact follow-up needed, but **the follow-up was never done, so §2.1 continued to state the
+> unbuildable order for three days** and `deals-intake-build-spec.md` inherited it verbatim into its
+> §2 *and* contradicted it in its own §7. A correction that lands only in the section that discovered
+> the problem, and not in the section people actually read, is not a correction. **When a finding
+> invalidates a rule stated elsewhere, fix the other place in the same edit.**
 
 ### 3.2b Dependency — one phone must resolve to one account
 
