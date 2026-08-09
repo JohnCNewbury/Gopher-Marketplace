@@ -109,7 +109,7 @@ save. Three paths:
 |---|---|---|
 | **A — existing Gopher** | *"I'm already a Gopher user"* ticked | Phone only → **phone OTP** → details populate from the account. **Links; creates nothing.** No collision possible by design. |
 | **B — new user** | unticked, no match | Full personal info → **phone OTP** → **creates a real Gopher user, Requester role**, ordinary signup state (email unverified) → **email OTP as that user**. ⟳ **Order corrected 2026-08-09** — see the note below the table. |
-| **B-collision** | unticked, but phone and/or email already matches | *"Is this you?"* → confirm → OTP → existing details populate → **becomes Path A**. Never creates a second account. |
+| **B-collision** | unticked, but phone and/or email already matches | *"Is this you?"* → confirm → OTP → existing details populate → **becomes Path A**. Never creates a second account. ⟳ **Unblocked 2026-08-09** — buildable now, but it must resolve by **account id / email, never a phone lookup**, and treat a phone hit as *one or more* rows. See §3.2b. |
 
 > ⟳ **ORDER CORRECTED 2026-08-09 — owner ruling, closing the update §3.2a asked for.**
 >
@@ -292,8 +292,39 @@ Path B's collision branch assumes a phone identifies at most one account. **It d
 775 numbers map to more than one, and 6 have a live account shadowed by a dead one.** The owner has
 taken this as a **separate ticket** and wants it corrected *before* anything ships that could disrupt
 a user caught in a collision. New standing rule (owner, 2026-08-06): **no duplicate phone numbers,
-ever, including admin-created accounts.** The intake build may proceed; **its collision branch is
-blocked on that outcome.**
+ever, including admin-created accounts.**
+
+> ⛔ **SUPERSEDED 2026-08-09 — owner decision. This section previously ended: *"The intake build may
+> proceed; its collision branch is blocked on that outcome."* THAT IS NO LONGER TRUE, and leaving it
+> would hold work that is now released.**
+>
+> The uniqueness rule is **DEFERRED to Phase II → G40-359** — it carries more risk than it retires
+> for a ~95%-disengaged population, and **must not be re-raised as urgent.** Root cause is a closed
+> 2018 wound (email-only signup; 99.6% of duplicates created 2018–2021, only 6 since 2022, all
+> contractor/test/disposable). Public signup already blocks duplicate phones. Two code fixes were
+> **not** deferred: deterministic phone resolution, and a phone check on the admin create-user path.
+>
+> **Deals merchant intake is UNBLOCKED, with three binding conditions:**
+>
+> 1. **Resolve the merchant by account id or email — NEVER by phone lookup.**
+> 2. **Treat a phone hit as *one or more* rows**, never as one. An un-ordered
+>    `findOne({where:{telephone}})` is the live lockout bug; at that same call site a miss *creates
+>    a new account*, so a format mismatch mints a duplicate silently.
+> 3. The collision branch may be built, but must not assume a phone identifies exactly one account.
+>
+> **Also correcting the model-file claim in §3.2c** — that finding was already on record before this
+> session found it, with a detail neither reader had: Sequelize's model-level `unique` performs **no
+> pre-insert check at all** (it relies on the DB to raise), so the declaration is inert twice over,
+> not merely unmaterialised. The same file declares `allowNull:false` on a column the DB leaves
+> nullable — identical fiction, same place.
+>
+> **And a raw normalisation is not enough.** Exact-string collisions are 775; **normalised they are
+> 807** — 36 pairs stored in different formats (`+18005551234` vs `8005551234`). Stripping
+> non-digits alone does **not** fold the leading `1`, so it recovers only a handful of those 36. The
+> constraint has to be on **`RIGHT(REGEXP_REPLACE(telephone,'[^0-9]','','g'),10)`**, and **partial**,
+> excluding the 3,386 rows holding unusable or short phone values. Full inventory and proposed
+> patch: `Documentation/Security/phone-uniqueness-discovery-2026-08-09.md` — **contains real
+> customer PII; keep it out of this public repo.**
 
 **Two intake requirements that come from defects observed in the current system — build both:**
 
