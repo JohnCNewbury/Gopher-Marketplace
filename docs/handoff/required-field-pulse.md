@@ -99,8 +99,9 @@ the clear-listener attachment by one tick** (`setTimeout(…, 0)`) in `pulseCard
 
 Connect's **sign-up / create-account modal** gates (`validateStep1` / `validateStep2`
 / `flashSignupField`) are **intentionally left on the old field-flash pattern**.
-Authentication/accounts are reserved for the human developer (CLAUDE.md); these gates
-should be standardized **when auth is rebuilt**, not patched here. This is a chosen
+These gates should be standardized **when auth is rebuilt**, not patched here — a sequencing
+call, not a permissions one (⚠️ the *reserved for the human developer* reason originally given
+here was superseded 2026-08-09; see CLAUDE.md → *Scope of AI work*). This is a chosen
 boundary, not a missed surface.
 
 ## Verification

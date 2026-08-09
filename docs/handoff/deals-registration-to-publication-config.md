@@ -24,8 +24,9 @@ does three things and nothing else:
 3. **Collects what genuinely has no answer** into **§10 Open — needs John's ruling**, each with a
    recommendation. Nothing is invented inline.
 
-**It is not an implementation.** No production code was written. Payments, auth, persistence,
-matching and security remain human-dev-only per `CLAUDE.md` → *Scope of AI work*.
+**It is not an implementation.** No production code was written *for this document* — it is a spec.
+
+> ⚠️ **Superseded 2026-08-09** — CLAUDE.md's *Scope of AI work* no longer reserves these for a human developer (there is no dev partner, and sessions have been shipping auth/authz/DB work to `production`). **The gate is now the owner's informed consent before production:** what it solves, the risk, the reward — then his decision. Build status below is still accurate; the *who may build it* framing is not.
 
 ### How to read the citations
 

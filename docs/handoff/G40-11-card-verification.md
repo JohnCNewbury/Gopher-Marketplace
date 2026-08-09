@@ -2,7 +2,7 @@
 
 **Type:** Task (child of Epic G40-1 "Bug Fixes & Polish") · **Priority:** Medium · **Assignee:** John Newbury
 **Status set:** groomed to dev-ready (unparked) — 2026-07-02
-**Owner of build:** human developer (payments + security are fenced off from AI work per `Final/CLAUDE.md`).
+**Owner of build:** unassigned. ⚠️ *Superseded 2026-08-09* — this read *"human developer (payments + security are fenced off from AI work per CLAUDE.md)"*. That fence is retired; the gate is now owner consent before production. Card verification still touches payments and real user data, so it wants a stated risk/reward and a verification plan before it ships — but it is no longer waiting on a person who does not exist.
 
 This doc is the authoritative, no-open-questions spec. Where it conflicts with the
 original 2024 ticket body, **this doc wins.** Product decisions below were confirmed

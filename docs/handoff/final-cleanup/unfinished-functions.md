@@ -13,8 +13,9 @@ or shows a simulated success, then is lost on reload. There is exactly **one** r
 network submission in the whole site (see "The one thing that actually submits").
 
 > Per CLAUDE.md, this is expected — it's an AI-generated static blueprint. Nothing here
-> is a "bug to fix" in the prototype; it's a scope map for the rebuild. Payments, auth,
-> database, matching, and security are explicitly reserved for the human developer.
+> is a "bug to fix" in the prototype; it's a scope map for the rebuild.
+>
+> ⚠️ **Superseded 2026-08-09** — CLAUDE.md's *Scope of AI work* no longer reserves these for a human developer (there is no dev partner, and sessions have been shipping auth/authz/DB work to `production`). **The gate is now the owner's informed consent before production:** what it solves, the risk, the reward — then his decision. Build status below is still accurate; the *who may build it* framing is not.
 
 ---
 

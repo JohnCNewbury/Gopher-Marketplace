@@ -157,7 +157,9 @@ simulated connect); the flexible-scheduling handoff.
 - **B2B portal shell** — merchant/provider portal reuses G40-160 / Epic G40-2 rather than a
   standalone auth.
 
-## What is explicitly NOT built (human-dev only, per CLAUDE.md)
+## What is explicitly NOT built
+
+> ⚠️ **Superseded 2026-08-09** — CLAUDE.md's *Scope of AI work* no longer reserves these for a human developer (there is no dev partner, and sessions have been shipping auth/authz/DB work to `production`). **The gate is now the owner's informed consent before production:** what it solves, the risk, the reward — then his decision. Build status below is still accurate; the *who may build it* framing is not.
 
 Persistence/DB, authentication/accounts, matching/routing (directed-request, eligibility
 computation), payments. The prototype is the **UX + data-shape blueprint**; it is not wired to a
