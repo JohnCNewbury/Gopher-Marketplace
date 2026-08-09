@@ -42,7 +42,9 @@ Owner, 2026-08-09:
 - Approval-time tagging and the two export columns
 
 **Out of scope, deliberately**
-- Publication, the bid board, redemption
+- Publication, the bid board, redemption — **not part of THIS build, not cancelled.** The bid
+  board is settled (companion spec §8, Ruling 7) and has live tickets G40-355 and G40-357. Owner
+  confirmed 2026-08-09 that "out of scope" here means sequencing only.
 - The `gopher-deals.html` repoint and the three-host cutover — owned by the Gopher Deals session
 - Deleting the Apps Script — last step of the cutover, after leads are confirmed arriving
 - Any change to how phone uniqueness is enforced — **separate ticket, owned personally by John**
@@ -101,7 +103,7 @@ are recorded in `config/db.config.js`:
 | **Reject unknown fields** | The Apps Script absorbed whatever it was sent and permanently grew five junk columns. An allowlist, and a 4xx on anything outside it. Do not absorb. |
 | `keywords` ≤ 3 | It is the customer search index (§4.1). Must not become "whatever the client sent". |
 | `category` ∈ the four registerable values | `restaurants`, `favorites`, `age`, `retail`. `providers` is publication-only — never registerable here (§9.1). |
-| **`normal_price` > `customer_price`** (DLP) | Owner ruling 2026-08-05. The Deal Boost sits *on top of* the earn while the customer compares against the *boosted* price, so `earn 100 / normal 100 / customer pays 110` passes a naive check and ships a markup wearing a discount label — and it fails **silently**, because the card's strike-through only renders when `normalRate > price`. |
+| **`normal_price` >= `customer_price`** (DLP) | Owner ruling 2026-08-05, **clarified 2026-08-09: equal to OR greater than** the boosted price the customer is shown — not strictly greater. The Deal Boost sits *on top of* the earn while the customer compares against the *boosted* price, so `earn 100 / normal 100 / customer pays 110` passes a naive check and ships a markup wearing a discount label. At equality the card's strike-through correctly does not render — there is no saving to show. |
 | `age` is never accepted as an input | It derives from `category`. A second source of truth on whether a 21+ ID check is required fails silently: the check simply does not happen. |
 
 ---
@@ -156,6 +158,10 @@ be NO duplicates"* — explicitly including admin-created accounts.
 **John owns this personally, as its own ticket and session, and wants it decided and corrected
 before anything ships that could disrupt a user caught in a collision.**
 
+**Gate (owner, 2026-08-09): confirm with the Total SOW Priorities session before green-lighting
+the collision branch.** It is not enough that the cleanup ticket has closed — that session tracks
+platform-wide identity work and must sign off.
+
 So: the intake build proceeds, and **the collision branch is written but must not go live ahead of
 that outcome.** Sequencing there cannot be reordered — stop new duplicates in code → clean the 775 →
 then constrain.
@@ -192,9 +198,21 @@ together.
 - **No enumeration.** Reveal nothing about a matched account before its OTP succeeds.
 - **`submitted_ip` is retained 90 days, then nulled.** It is personal data. The purge job does not
   exist yet and needs writing.
-- **No email is sent by this endpoint.** Merchant welcome mail belongs to the G40-305 dispatcher
-  (`sendEmail.js`), not here — and never to the Apps Script, which runs as a personal Gmail account
-  and would make a public URL an open relay if it mailed whatever address arrived in the POST body.
+- **Email is sent via the G40-305 dispatcher (`sendEmail.js`), never by this endpoint directly and
+  never by the Apps Script** — which runs as a personal Gmail account and would make a public URL an
+  open relay if it mailed whatever address arrived in the POST body.
+
+### 8.1 The three emails (owner, 2026-08-09)
+
+| When | Email |
+|---|---|
+| New user **fully verified** (phone + email OTP both passed) | Standard **welcome to Gopher Request** — the same one any new Requester gets |
+| **Deal submitted** | **Pending deal** — confirms it is in review. Must state the **5 business day** activation SLA, never 1 |
+| **Deal approved** in HQ | **Your deal is live** |
+
+The first fires on the *user* becoming real, the other two on the *deal* changing state — which is
+the same user/deal independence as everywhere else. A Path A merchant (existing user) gets only the
+second and third; they are already a Requester and have had their welcome long ago.
 
 ---
 
@@ -210,6 +228,24 @@ together.
 
 Steps 2 and 3 together are what let a real merchant register without touching Google. Step 7 is what
 lets the Apps Script be deleted, and it is owned by the Gopher Deals session.
+
+### 9.1 The deal image (owner, 2026-08-09)
+
+**The Apps Script never carried a picture. This intake does, and it is a UX risk, not a plumbing
+detail.** A merchant uploads whatever their phone produces — a 12 MP portrait, a screenshot, a logo
+with transparency — and it lands on a card with a fixed aspect ratio on every consumer surface.
+
+Handled at intake, not at render, so a bad asset never reaches production:
+
+- **Normalise on upload** — resize to the card's dimensions, convert to WebP, cap file size. The
+  same treatment the site's other imagery already gets.
+- **Reject what cannot be made to work** — wrong aspect beyond a sane crop, unreadable format, or
+  an image so small it will pixelate. Tell the merchant at submit, while they can fix it.
+- **The review surface must show the deal image as the customer will see it**, cropped to the real
+  card, not as a thumbnail. Approving an image you have only seen small is how a broken card ships.
+
+`deal_img` and `id_img` already exist on the schema; what does not exist is the pipeline behind
+them.
 
 ---
 
