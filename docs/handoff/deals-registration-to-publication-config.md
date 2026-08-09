@@ -198,6 +198,20 @@ with a usable message, not a wall.
 `submitForm` is the seam to repoint; its serialisation and its localStorage fallback are worth
 keeping as an offline-resilience pattern, its endpoint is not.
 
+**Two intake requirements that come from defects observed in the current system — build both:**
+
+1. **One click = one lead.** The prototype's `submitForm()` guarded only the geocode-callback race
+   *within a single invocation*; a second **click** started a second submission. Real consequence,
+   found in the exported Leads sheet: **four identical worker rows 2.5 seconds apart** from one user
+   with one intent. Fixed in the prototype 2026-08-06 (module-scoped in-flight guard + button
+   disable, set only after validation passes). **A public intake endpoint with no client-side
+   debounce collects duplicate registrations** — and unlike the Sheet, duplicates in a `deals` table
+   have downstream cost. Server-side idempotency on top is cheap insurance.
+2. **Reject unknown fields; do not absorb them.** The Apps Script appends a new column for any key it
+   has not seen (`Object.keys(data).filter(k => headers.indexOf(k) === -1)`), which is how one
+   stray caller permanently widened the Leads header by five columns. **The `deals` record must have
+   a fixed, validated schema** — an unrecognised field is a rejected request, not a schema change.
+
 **Consequence for the tabled deals@ wiring — SUPERSEDED, see §3.3.** *(The original text read: the
 Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way to send from
 `deals@gophergo.io` pre-launch, correct for now and dead at go-live. That is no longer the plan —
