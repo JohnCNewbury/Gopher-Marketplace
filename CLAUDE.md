@@ -2,12 +2,24 @@
 
 ## What this is
 
-This repository is an **AI-generated static HTML prototype** for "Gopher Marketplace."
-It is a **visual blueprint, not production code.** Do not treat it as a real, working
-platform. It exists to be handed off to a human developer who will perform a
-production rebuild.
+This repository began as an **AI-generated static HTML prototype** for "Gopher Marketplace" — a
+visual blueprint for a production rebuild. Most of it still is: self-contained static HTML, no build
+step, no framework.
 
-Every page is self-contained static HTML (no build step, no framework, no backend).
+> ⚠️ **But it is no longer entirely a blueprint, and the difference is where the real harm lives
+> (corrected 2026-08-09).** The old wording — *"not production code… do not treat it as a real,
+> working platform… no backend"* — is stale in the dangerous direction: it invites treating live
+> surfaces as a sandbox. In fact:
+>
+> - **`gopher-deals.html`'s merchant registration POSTs to a live Google Apps Script** that writes a
+>   real Sheet and emails the owner. That is a backend, and it is the **real merchant-intake path**.
+> - The site is **live on three hosts** — GitHub Pages, TigerTech, and the Netlify mirror — indexed,
+>   with a sitemap.
+> - The **101 guides are public** and read by real merchants and workers.
+>
+> Two of the worst defects found on 2026-08-06 — a logo **required and then discarded**, and one
+> click producing **four registration leads** — mattered precisely *because* a real merchant can hit
+> them. Treat anything reachable from those three hosts as live.
 
 ## Repository layout
 
@@ -19,20 +31,49 @@ each other and their assets relative to `Final/`). It contains ~132 HTML pages p
 `Final.zip` is the original archive `Final/` was extracted from; it is kept only as a
 backup and is not part of the served site.
 
-## Scope of AI work (important)
+## Scope of AI work — REWRITTEN 2026-08-09 (owner)
 
-Limit all AI work to **cleanup, documentation, and front-end reference fixes.**
+> ⚠️ **The old rule is retired. It read:** *"Limit all AI work to cleanup, documentation and
+> front-end reference fixes. Do NOT implement or modify … **they are reserved for a human
+> developer**: Payments/billing · Authentication/accounts · Database/persistence · Matching logic ·
+> Security logic."*
+>
+> **Why it went:** its load-bearing clause was *"reserved for a human developer"* — and there is no
+> dev partner. Work reserved for someone who does not exist is work that never happens. It had also
+> stopped describing reality: on **2026-08-08/09 alone**, sessions merged **authorization**
+> (`851fb717` — require the caller to be the requester before declining a cost adjustment),
+> **authentication/session** (`18bbda6d` — repeat sign-ins; `1d133fe3` — email-OTP loop),
+> **authorization** (`d265bf69`), and **database config** (`373a887d`) straight to
+> `gopher-backend-api` **`production`**. The rule wasn't gating that work; it was only tripping
+> whichever session happened to read it literally — as it tripped this one on the Deals intake
+> endpoint, which was then simply reassigned to another Claude session. That is routing by accident,
+> not a safety boundary. Same failure shape as the stale "no `node` on this box" note below: a
+> point-in-time observation left standing until it started steering people wrong.
 
-**Do NOT implement or modify any of the following — they are reserved for a human
-developer:**
+**The gate is not the topic. The gate is the owner's informed consent before anything reaches
+production.** Owner, 2026-08-09:
 
-- Payments / billing
-- Authentication / accounts
-- Database / persistence
-- Matching logic (connecting requesters and "Gophers")
-- Security logic
+> *"Nothing is ever to be pushed to production without verification that I fully understand the
+> risk/rewards and what the work is solving for."*
 
-If a task seems to require any of the above, stop and flag it rather than building it.
+**So, in practice:**
+
+- **Build what the work requires** — including payments, auth, persistence, matching and security —
+  in whatever repo the task lives in. Being AI-authored is not itself a reason to stop.
+- **Before anything reaches production, put three things in front of the owner in plain words:**
+  **what it solves**, **the risk**, and **the reward** — including what happens if it is wrong and
+  how quickly it can be undone. Then wait for a decision. *He is the one clicking the button; an
+  unstated risk becomes a guess.*
+- **Verification is the price of a bigger scope, not an optional extra.** Read the live code, drive
+  the real path, and say plainly which claims are **verified** versus **inherited**. The more
+  consequential the surface, the more of the diagnosis has to be first-hand.
+- **Prototype ≠ production, and the difference is how much proof is owed** — not whether the work is
+  allowed. A copy fix in `Final/` and an authz change on `production` are both in scope; only one of
+  them can quietly cost real money or lock real users out.
+- **Still stop and ask when access is the blocker** — the pause-and-wait directive is unchanged and
+  is the one rule that has *not* relaxed.
+- **Still flag rather than assume** when a task looks like it belongs to another session's surface,
+  or when the scope of a request is genuinely ambiguous.
 
 ## Deployment constraints (these cause real bugs)
 
