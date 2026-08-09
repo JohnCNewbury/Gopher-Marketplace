@@ -599,7 +599,23 @@ represent a DLP deal at all**. Resolved by §4.1 + §5.1 (union record, Dashboar
 `paused` from `advertiserDeals.js`); recorded here because the handoff docs point the dev at the
 wrong file. **CORRECTED 2026-08-06** — and it was **three** docs, not two: `G40-deals-initiative-orientation.md` (×2), `G40-286-deals-frontend-consolidated-handoff.md` (×2), and `gopher-deals-pathway.md` + its `.html` twin, which this finding originally missed. All now carry a dated correction pointing at `deals-merchants.js` and §4.1/§5.1/§7.
 
-**A fourth doc turned out to be a bigger problem.** `G40-180-admin-advertising-partner-entry.md` is marked **"Built + verified"** and describes an **Advertising** section in the HQ Dashboard — nav entry, routing, compiled output, click tracking, CSV export. **It could not be found**, by five checks: no `id:'advertising'` in `app_part*.js`, no `VIEWS.advertising`, no `isDealLive`/`liveHomeDeals`/`trackClick` in any Dashboard `.js`, no such section in the built `output/Gopher_HQ_Dashboard.html` (its only "Advertising" strings are QuickBooks expense categories), and no commit in that repo's history ever adding it. The status was **left intact and annotated** rather than rewritten, because "never built" cannot be distinguished from "built and later removed" from here — **owner / HQ Dashboard session to resolve.** Until then that document is not evidence that admin deal-review, click tracking or CSV export exist anywhere.
+**A fourth doc — RESOLVED 2026-08-06 (owner).** `G40-180-admin-advertising-partner-entry.md` is
+marked **"Built + verified"** and describes an **Advertising** section in the HQ Dashboard (nav entry,
+routing, compiled output, click tracking, CSV export). The owner confirms the work *"has been
+started"* — and the ambiguity turned out to be **in the document, not the history**:
+
+- Its **"Scaffold: `advertiserDeals.js` … tested"** line is **accurate.** The file exists at
+  `Documentation/Jira Tickets/advertiserDeals.js` — 44 lines, `createAdDeal` / `isDealLive` /
+  `liveHomeDeals` / `trackClick` / `toCsv`, `AD_STATUS {active,paused}`, `CSV_COLUMNS`. **That is the
+  started work.**
+- Its **"Status: Built + verified"** and the **"What was built — Gopher HQ Dashboard"** section are
+  **not.** Absent from `app_part*.js`, from `VIEWS`, from every Dashboard `.js`, from the built
+  `output/Gopher_HQ_Dashboard.html`, from all Dashboard branches, and from that repo's history.
+
+**So the engine is written and tested; the Dashboard surface that would use it is not built.** That
+doc now carries the split, and everything below its "What was built" heading is marked **intended
+design, not shipped code**. It remains no evidence that admin deal-review, click tracking or CSV
+export exist today — the wired module is `deals-merchants.js`, which has none of them.
 
 ### 9.3 Merchant deal actions are display-only
 
