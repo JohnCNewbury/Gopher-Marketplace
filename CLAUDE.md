@@ -1520,6 +1520,61 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     matches, `canBid` own=true/other=false, registration options unchanged, 0 console errors).
     **Five rulings still open** in `deals-registration-to-publication-config.md` §10.
 
+- **App prototypes: button weight follows impact, + the Deals pill matched to web (owner deck
+  "App Prototype Update", done 2026-08-09; commits `5030a7e` + `6b91c71`, deploys by the Deals
+  session and `55b38be`, live-verified on BOTH Pages and TigerTech).** _(Scope: `_prototypes/`.)_
+  Owner directive, verbatim: *"Button size and UX style should be proportionate to it's impact."*
+  Both job-action modals in `gopher-go-prototype.html` had it **inverted**, and the numbers are the
+  point — measure before restyling:
+  - **Update request** — the primary sat INSIDE the padded Next-step box, so *Start the job*
+    rendered **260×43** while *Cost Adjustment* (**286×45**) and *Cancel this request* (**286×43**)
+    each ran the full modal width as heavy outlined buttons: the two rarer actions were the largest
+    things on the card. Now the primary is a flush green foot on that box at **284×54 / 16px**, Cost
+    Adjustment is a lighter secondary (**286×39 / 12.5px**), and Cancel drops to the labelled-text
+    pattern already used for the 1-in-100 outcomes in `openAgeIdConfirm`. **Cancel's full warning
+    (fee up to $5, reliability score, required reason) still lives in `openCancelRequest`, which the
+    tap still opens — prominence changed, disclosure did not.** That distinction is the rule to
+    reuse: demote the affordance, never the disclosure.
+  - **Confirm ID and Identity, NON-TrustShield branch** — capture is the one control nothing else
+    can proceed without, yet it was a dashed grey placeholder in `#8C8675` (weakest element on the
+    card) while the two exceptions were full-width outlined buttons and the disabled confirm was
+    pale-green-on-pale-green, which reads as *broken* rather than *not yet*. Capture is now the loud
+    green tile and **the loudness HANDS OFF to the confirm button on capture** — exactly one
+    dominant action at any moment, always the step the worker owes next; the tile stays tappable to
+    retake. The branch also gained the **"Not yet"** dismiss its TrustShield twin already had.
+    Labels are unchanged throughout, so **no 101-guide edit was owed** (checked against the standing
+    rule, not assumed).
+  - **"View all local Deals" → the web pill.** Source of truth is `.dh-viewall-link` in
+    `Final/gopher-connect.html` + `Final/gopher-request.html`: `#eafaf0` fill, `#cdeeda` border,
+    `#1a9d4b` ink, Nunito 800 13.5px, radius 999px, `DEALS_GO_SVG` chevron. The two apps had also
+    drifted **from each other** — Go's copy was content-width (175px) while Request's carried
+    `width:100%` (328px) — so Request dropped `width:100%` (a `<button>` sizes to content when width
+    is auto even as a block-level flex container). Both now **183×45**, identical. Vertical padding
+    stays **12px**, not the web's 8px, so the tap target survives the shrink. Dead `.dva-arrow` rule
+    removed from both.
+  - **Deck slides 3–5 were already closed and were RECONFIRMED rather than assumed** — `trustShield`
+    on the shared record (slide 3, `238205c`), the real `trustshield-logo.svg` loading in the badge
+    (slide 4, `91b89a7`), and the existing `DEMO · TrustShield ON/off` chip as the prototype's
+    TrustShield-vs-regular control point (slide 5), verified to toggle both ways **and** to gate
+    step 2's Continue. The badge was also watched appear/disappear as the flag flipped.
+  - **Three traps, all worth keeping.** (1) **`preview_list` cwd lies about the serve root** — `psrv`
+    reports the repo as its cwd but serves a **scratch copy** under `scratchpad/psrv`, so the first
+    round of "verification" measured the PRE-EDIT file. That accident was useful (it captured the
+    before-numbers above) but the lesson is: `curl` the served URL and grep for a string you just
+    wrote before trusting any browser measurement. (2) **Go's `.deals-viewall` CSS lives inside a
+    double-quoted JS string** (`FRAMES["deals"].css`), where a literal newline is a syntax error —
+    the first explanatory comment introduced one and broke the whole script block; CSS line breaks
+    there must be `\n` escapes. Caught by the parse check, invisible to the eye. (3) **Not every Go
+    screen uses a `.frame` wrapper** — probing for one made the Deals screen look empty when it was
+    rendering 527 KB of content. Two near-misreports, both caught by checking instead of concluding.
+  - Verified end-to-end in the split-screen harness on a real submitted request (age-restricted +
+    purchase): geometry measured before/after, the capture→confirm handoff driven live, clicks driven
+    **from the SVG itself** to prove `closest()` still resolves, TrustShield branch intact with both
+    ID images loading **unaltered** at full resolution, all inline scripts parse clean, 0 failed
+    images. **Harness note for next time:** `?pt=1` seeds no jobs, the Go side is populated by
+    `ptSyncHome()`, and `window.__ptApprove(id)` is the purpose-built hook for the hired state —
+    `.js-update` only exists once `j.accepted && jobApproved(j)`.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
