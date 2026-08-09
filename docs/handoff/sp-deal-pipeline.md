@@ -24,9 +24,30 @@ Admin may also grant eligibility case-by-case. Rating authority = Ratings.csv-eq
 
 Production computes `ELIGIBLE` per worker from live tier/jobs/ratings data.
 **Reference implementation: HQ Dashboard repo → `regen_sp_eligibility.py`** (runs the
-amended bar against Orders + Users + Ratings; validated 2026-07-23: 13 auto-eligible
-vs 88 under the old all-jobs bar). The web prototype hardcodes `ELIGIBLE` with a demo
-toggle (`Final/gopher-go.html`, "DLP" gate) — presentation only.
+amended bar against Orders + Users + Ratings). The web prototype hardcodes `ELIGIBLE`
+with a demo toggle (`Final/gopher-go.html`, "DLP" gate) — presentation only.
+
+> ⚠️ **The category derivation in that reference was wrong until 2026-08-09 — do not
+> port the old version, and the figure it produced was a floor.** `cat_of()` read only
+> the head of a `' - '` split, so `'Hourly / Day Labor'` counted while
+> `'Other - Hourly / Day Labor'` scored `Other`, which this bar **excludes** — the same
+> job, discarded on a prefix. Free-text service titles (`Dump Run`, `TV mounting`,
+> `U-Haul unload help`) had no vocabulary at all. **13.2% of all completed service work
+> was invisible to a 20-job bar**, so the previously published **13 auto-eligible was an
+> undercount; it is now 14**, with two workers sitting at **19** service jobs. The error
+> direction was **under-granting** — safe for the review queue, wrong for the worker.
+>
+> **Build the production check against the orders table's real `category_type` column,
+> not a title heuristic.** Titles are a canned category string on delivery orders and
+> free text on service ones, which is what made the heuristic fail. Use the heuristic
+> only as a fallback for the ~15% of rows where `category_type` is null — and take the
+> **fixed** version, or the fallback re-imports the same hole.
+>
+> ⚠️ **`regen_ou.py` still carries the unfixed copy** (they were identical until now).
+> It is deliberately unsynced: syncing shifts category numbers across every other bake
+> and the hourly refresh would apply it unwatched. Treat the eligibility copy as the
+> correct one. **The bar itself is unchanged** — this was a measurement defect, not a
+> rule change, so D-022 and the capability matrix need no amendment.
 
 ## 2. Eligibility notification (owner decision — AUTOMATIC)
 

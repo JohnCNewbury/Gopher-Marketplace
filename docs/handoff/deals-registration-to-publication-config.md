@@ -999,8 +999,13 @@ tier/jobs/rating lookup. No lookup exists. The in-app gate that would enforce it
 `var ELIGIBLE = true;` with a demo toggle (`gopher-go.html:4397`).
 
 The **only** real implementation of the amended bar is `regen_sp_eligibility.py` in the HQ Dashboard
-— correct, and validated on live data (13 auto-eligible), but it lives in the analytics tool, not in
-the path a worker walks. Production computes this server-side and both surfaces read it.
+— but it lives in the analytics tool, not in the path a worker walks. Production computes this
+server-side and both surfaces read it. ⚠️ **Amended 2026-08-09 — this line previously called that
+implementation "correct, and validated on live data (13 auto-eligible)."** Its category derivation
+discarded **13.2% of completed service work** (a `' - '` head-split dropped `Other - <real
+category>`, and free-text service titles had no vocabulary), so **13 was a floor; it is now 14**.
+Fixed and re-baked; build production against the orders table's real `category_type` column rather
+than any title heuristic. Detail: `sp-deal-pipeline.md` §1.
 
 ### 9.15 The featured-placement bid board is not gated on eligibility ⛔ → **G40-355**
 
