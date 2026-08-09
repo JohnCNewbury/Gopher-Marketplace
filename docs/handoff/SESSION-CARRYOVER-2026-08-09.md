@@ -38,7 +38,7 @@ Netlify · Twilio · SendGrid · Firebase · iDenfy · the production DB · `git
 |---|---|---|
 | **Sentry** | ✅ working | `~/.sentry-token`, format `SENTRY_AUTH_TOKEN=sntryu_…` — **strip the prefix**, `cat` alone sends it and 401s. Org `gophergo`, projects `gopher-backend-api` and `gopher-mobile-capacitorjs` |
 | **AWS / CloudWatch** | ✅ working | `~/bin/aws`. If expired: `BROWSER="open -a 'Google Chrome' %s" ~/bin/aws login` — **ask him, don't work around** |
-| **Production DB (read-only)** | ✅ | Aurora reader via the HQ shim's creds on EC2 `18.205.226.141`, key `~/.ssh/gopher-hq2.pem`, run as `sudo -u gopher-hq` |
+| **Production DB (read-only)** | ✅ | Aurora reader via the HQ shim's creds on the HQ EC2 host — host, key path and run-as user are in the private ops notes, not here |
 | **GitLab API** | ✅ | token from `git credential fill` — used to poll pipelines |
 | **`git push`** | ⛔ **DENIED** | `.claude/settings.local.json` has `deny: ["Bash(git push*)"]`. **John pushes.** He chose to keep this — it caught two mistakes. Give him the command; don't try to route around it |
 
@@ -132,9 +132,9 @@ green-lighting**, not merely the ticket closing.
 
 ## 5. Open verification loops — do these FIRST, they take minutes
 
-1. **Matt O'Donnell (#141240)** — ask John to have him open the app and tap **Resend**. A second
+1. **User #141240** — ask John to have him open the app and tap **Resend**. A second
    `email_otps` row (he has one, from 08-05) proves `796f0e8e`. Currently unproven.
-2. **Denis Leite (#74373)** — his session gap. 36h and counting at handoff vs 94 prior intervals at
+2. **User #74373** — his session gap. 36h and counting at handoff vs 94 prior intervals at
    ~12h. Another day makes the session fix conclusive.
 3. **Sentry `5768381649`** — is it firing on current releases now ingestion is restored? **Jira owns
    this**; coordinate, don't duplicate.
@@ -225,11 +225,10 @@ Two specific habits that would have prevented all four:
 
 ## 9. Unrelated but open
 
-- **Angela Green (#74542)** — told the app was broken; the truth is 3 orders/month near Powder
-  Springs, GA and 2 pending platform-wide. She was given the honest answer. **Not an app bug.**
-- **Yonathan Melaku (#140798)** — 3 duplicate orders, all cancelled/expired with zero bids. Whether
+- **User #74542** — told the app was broken; the truth is 3 orders/month in their area and 2 pending platform-wide. She was given the honest answer. **Not an app bug.**
+- **User #140798** — 3 duplicate orders, all cancelled/expired with zero bids. Whether
   a requester can *see* their own submitted requests was never answered.
-- **Task #12** — Kristin Nerton's email, user 119530.
+- **Task #12** — the email for user 119530.
 - **`submitted_ip` purge job** — 90-day retention is documented in the schema; nothing deletes it.
 - **~60 unpushed/unmerged branches** in gopher-backend-api. Release notes built from merged MRs will
   be wrong.
