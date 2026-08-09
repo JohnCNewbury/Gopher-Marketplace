@@ -2,25 +2,26 @@
 
 **Status:** Built + verified (HQ Dashboard = Admin Panel replacement)
 
-> ⚠️ **VERIFICATION 2026-08-06 — this "Built + verified" status does not match the HQ Dashboard as it
-> stands today.** Checked five ways while correcting the `advertiserDeals.js` references in the Deals
-> handoff docs, and the Advertising section described below could not be found:
+> ⚠️ **STATUS CORRECTED 2026-08-06 (owner-confirmed): STARTED, not built.**
 >
-> | Check | Result |
+> The owner confirms this work *"has been started."* Verified what that means, because the document
+> conflates two different things:
+>
+> | Claim in this doc | Reality |
 > |---|---|
-> | `id:'advertising'` nav entry in `app_part*.js` | absent |
-> | `VIEWS.advertising` | absent |
-> | `isDealLive` / `liveHomeDeals` / `trackClick` in any Dashboard `.js` | absent |
-> | "Advertising" in the built `output/Gopher_HQ_Dashboard.html` | only expense-category strings ("Advertising & Promotion", QuickBooks data) — no section |
-> | `git log --all -S"id:'advertising'"` | no commit ever added it |
+> | *"Scaffold: `wave2/g40-180/advertiserDeals.js` (model + `isDealLive` + `liveHomeDeals` + click tracking + `toCsv`, tested)"* | ✅ **Accurate.** It exists at `Documentation/Jira Tickets/advertiserDeals.js` — 44 lines, `createAdDeal` / `isDealLive` / `liveHomeDeals` / `trackClick` / `toCsv`, `AD_STATUS {active,paused}`, `CSV_COLUMNS`. Pure and testable, as described. **This is the started work.** |
+> | *"Status: Built + verified"* + the **"What was built — Gopher HQ Dashboard"** section below (nav entry, routing, compiled section) | ❌ **Not in the Dashboard.** No `id:'advertising'` in `app_part*.js`, no `VIEWS.advertising`, none of `isDealLive`/`liveHomeDeals`/`trackClick` in any Dashboard `.js`, no such section in the built `output/Gopher_HQ_Dashboard.html` (its only "Advertising" strings are QuickBooks expense categories), nothing on any Dashboard branch, and no commit ever adding it. |
 >
-> **I am not rewriting the status, because I cannot distinguish "never built" from "built and later
-> removed"** — and this repo's history showing nothing is suggestive but not conclusive. Flagged for
-> the owner / HQ Dashboard session to resolve. **Until it is: do not treat this document as evidence
-> that admin deal-review, click tracking or CSV export exist.** The wired Deals module is
-> `deals-merchants.js`, which has none of them. See
-> `deals-registration-to-publication-config.md` §9.2.
-**Jira:** G40-180 · Story · Medium · `spine` · Scaffold: `wave2/g40-180/advertiserDeals.js` (model + `isDealLive` + `liveHomeDeals` + click tracking + `toCsv`, tested)
+> **So: the engine is written and tested; the Dashboard surface that would use it is not built.**
+> Read everything below the "What was built" heading as the **intended design**, not as shipped code.
+>
+> ⚠️ **Do not treat this document as evidence that admin deal-review, click tracking or CSV export
+> exist today.** The module actually wired into the Dashboard's Deals view is **`deals-merchants.js`**,
+> which has none of them, a different status vocabulary, and no fields for a DLP (service-provider)
+> deal. When this surface is built, build it to the union record in
+> `deals-registration-to-publication-config.md` §4.1 with the status vocabulary in §5.1 — the
+> scaffold's `{active, paused}` maps on as `active → live`, and `paused` is the one state it
+> contributes that the Dashboard vocabulary lacks (spec §5.1).
 
 ## Goal
 A central admin portal to **add / activate / pause / remove advertisers** whose deals populate the **Gopher
