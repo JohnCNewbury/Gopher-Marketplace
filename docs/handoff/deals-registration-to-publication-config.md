@@ -91,9 +91,33 @@ on the existing worker account.
 - **The promo code is not a Gopher coupon.** It is display text belonging to the merchant, redeemed
   on the merchant's own site. Gopher does not issue, validate or process it (**BUILD-SPEC** §4.1,
   locked June 7). Do not build coupon infrastructure for it.
-- **Owner personal info provisions a real Gopher Request account.** One human, one account, several
-  roles (**BUILD-SPEC** §5.3 / **D-016**). The merchant's "Personal Info" tab *is* their Request
-  profile. This is a SPINE-1 dependency, not a Deals-local table.
+- **⭐ Merchant registration IS user intake. It creates or links a real Gopher account — this is the
+  single most misread thing in this document.** One human, one account, several roles
+  (**BUILD-SPEC** §5.3 / **D-016**). The merchant's "Personal Info" tab *is* their Request profile,
+  and the form says so on screen: *"This is the standard Personal Info for every Gopher account — it
+  sets up your owner login."* This is a SPINE-1 dependency, not a Deals-local table.
+
+  *(Emphasised 2026-08-06: the HQ session read this section and still described intake as "writes a
+  deals record, creates no account." If a careful reader misses it, the wording was too quiet — so it
+  is now stated as a heading-level rule rather than a bullet.)*
+
+**The account is created at SUBMIT, not at approval** (owner, 2026-08-06). "Review my deal" *is* the
+save. Three paths:
+
+| Path | Trigger | Behaviour |
+|---|---|---|
+| **A — existing Gopher** | *"I'm already a Gopher user"* ticked | Phone only → **phone OTP** → details populate from the account. **Links; creates nothing.** No collision possible by design. |
+| **B — new user** | unticked, no match | Full personal info → **phone OTP** → **email OTP** → creates a real Gopher user, **Requester role**, ordinary signup state |
+| **B-collision** | unticked, but phone and/or email already matches | *"Is this you?"* → confirm → OTP → existing details populate → **becomes Path A**. Never creates a second account. |
+
+**Service Providers never create a user.** They are already Gophers with a worker role, submitting
+from the Go app (§2.2). Link only.
+
+**Why the deal and the user are independent — and why this is lead intake, not a form.** A
+**rejected** deal still leaves a real, marketable Requester who enters the Request pipeline. The user
+outlives the deal. **Tagging happens on approval, not submit:** the account is a plain Requester
+until HQ approves, and only then does it carry `Deals` (Merchant / Service Provider) and
+`Deal status` (active / inactive). That is the reason intake cannot be a standalone table write.
 
 ### 2.2 DLP — service provider (two-entry, and only one entry carries a deal)
 
@@ -197,6 +221,53 @@ with a usable message, not a wall.
 
 `submitForm` is the seam to repoint; its serialisation and its localStorage fallback are worth
 keeping as an offline-resilience pattern, its endpoint is not.
+
+**⚠️ Intake creates or links a real Gopher user — it does not only write a deal row.** See §2.1 for
+the three paths. The endpoint therefore touches identity, not just Deals, and the `deals` record and
+the `users` record have **independent lifecycles**: a rejected deal leaves a live Requester behind.
+
+### 3.2a Email OTP — built, routed, and blocked by its own middleware (verified 2026-08-06)
+
+The Path B gap was reported as *"email OTP is missing today."* **It is not missing — it is
+unreachable from public intake**, which is a materially smaller and differently-shaped problem.
+
+Verified at source on `gopher-backend-api` `origin/production`:
+
+| | |
+|---|---|
+| `controllers/user/emails.js` | `send_email_otp` (:206), `verify_email_otp` (:309), `resend_email_otp` (:483) — complete, with `email_otps` capture, 10-min expiry, 60s resend cooldown |
+| `controllers/user/index.js` | routed: `POST /email_otp/send`, `/email_otp/verify`, `/email_otp/resend` |
+| ⛔ **every one** | behind **`middleware.user_auth`** |
+
+**So the blocker is a sequencing decision, not a build.** `user_auth` requires a token, and an
+unregistered merchant on a public form has none — the *same* mismatch as the authenticated
+`POST /api/v1/deals` this section already corrects. Note the routes also carry
+`require_email_verified({ allowUnverified: true })`, i.e. they were **designed to be called during
+onboarding by an account that already exists but is not yet verified.**
+
+**Two ways to resolve it, and the cheaper one may need no backend work at all:**
+
+1. **Create the account after phone OTP, then verify email with the existing endpoints.** Order:
+   personal info → phone OTP → **create user (unverified)** → `POST /email_otp/send` + `/verify` as
+   that user. This fits what the endpoints were built for and needs **no new route**. It does mean an
+   account exists before email is verified — which is already the ordinary signup state, not a new
+   concession.
+2. **Verify email before creating anything** — requires a **new public, unauthenticated** email-OTP
+   variant, with its own abuse controls on an endpoint that sends mail to arbitrary addresses.
+
+**Option 1 unless there is a reason to prefer 2** — it reuses shipped, exercised code and avoids
+adding a second public mail-sending surface. The order stated in the Path B table (§2.1) assumes
+email OTP precedes account creation; **if option 1 is taken, that ordering changes and §2.1 must be
+updated to match.**
+
+### 3.2b Dependency — one phone must resolve to one account
+
+Path B's collision branch assumes a phone identifies at most one account. **It does not today:
+775 numbers map to more than one, and 6 have a live account shadowed by a dead one.** The owner has
+taken this as a **separate ticket** and wants it corrected *before* anything ships that could disrupt
+a user caught in a collision. New standing rule (owner, 2026-08-06): **no duplicate phone numbers,
+ever, including admin-created accounts.** The intake build may proceed; **its collision branch is
+blocked on that outcome.**
 
 **Two intake requirements that come from defects observed in the current system — build both:**
 
