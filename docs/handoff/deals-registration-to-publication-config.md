@@ -313,7 +313,7 @@ Nothing here is new invention; each field is traced to the rule that needs it.
 
 | Field | Source of the requirement |
 |---|---|
-| `id` | **DASH** `deals-merchants.js` Deal ID (`DL-nnnn`); admin actions key on it |
+| `id` (surrogate) + `dealCode` (`DL-nnnn`, unique) | **DASH** `deals-merchants.js` Deal ID; admin actions key on `DL-nnnn`. ⟳ **Clarified 2026-08-06:** this row previously implied `DL-nnnn` *is* the primary key. **Keep them separate** — `DL-nnnn` is a human-facing business key that appears in review UI and support conversations; foreign keys (`placementBidId`, order links) should reference a surrogate. A varchar business key as PK propagates a format decision into every referencing table. |
 | `track` — `dlm` \| `dlp` | **PATHWAY** opening table; drives redemption behaviour end to end |
 | `ownerUserId` | **BUILD-SPEC** §5.3 / **D-016** — one Gopher account underlies every role |
 | `businessId`, `locationId` | **PATHWAY** §Stage 2 — *deals are location-bound*, owner-confirmed |
@@ -323,7 +323,7 @@ Nothing here is new invention; each field is traced to the rule that needs it.
 | `keywords[]` (≤3) | **PATHWAY** §Stage 1 + §Stage 5 — *these become the customer search index* |
 | `orderUrl`, `noOnlineOrdering` | **PATHWAY** §Stage 1 (`website`, `no_online_ordering`) |
 | `mobileAddress` | **PATHWAY** §Stage 2 + seam #3 (`TODO(backend)`, `gopher-deals.html:5042`) |
-| `earnAmount`, `customerPrice`, `normalPrice` | **BUILD-SPEC** §6.1 — DLP only; `customerPrice = earn × 1.10` |
+| `earnAmount`, `customerPrice`, `normalPrice` | **BUILD-SPEC** §6.1 — DLP only; `customerPrice = earn × 1.10`. ⚠️ **`normalPrice` MUST be greater than `customerPrice`** — owner ruling 2026-08-05, enforced in the Go form and **missing from this table until 2026-08-06**. Below that, the "deal" is a markup wearing a discount label: the customer pays more than the provider's stated normal rate, and the card's strike-through does not render at all (it is gated on `normalPrice > price`). Enforce at intake, not only in the client. |
 | `reachMiles` | DLP 1–50 (**PATHWAY** §Stage 1 Entry B); DLM 25 (**§7.2** below) |
 | `status` | §5 below — **one vocabulary, currently three, see §9.2** |
 | `startAt`, `endAt` | `advertiserDeals.js` `isDealLive`; **DASH** `start`/`end` |
@@ -338,6 +338,14 @@ flag on a deal (**BUILD-SPEC** §3 note; §8 *Age-Restricted deals still route t
 age-restriction compliance*). **DASH** `deals-merchants.js` carries `age:true` alongside
 `cat:'Age-Restricted'` on `DL-2044`, which is redundant, and redundancy here is a compliance
 hazard — two sources of truth for whether a deal needs an ID check.
+
+> ⛔ **ANTI-REQUIREMENT — do not add an `age` column, boolean, or flag to the deal record.**
+> Age-restriction is a **function of `category`**, evaluated wherever it is needed. The sample data in
+> `deals-merchants.js` will tempt exactly this during porting — it already carries the redundant flag.
+> A deal whose `category` says Age-Restricted while its `age` flag says false is a **compliance
+> failure that looks like a data bug**, and the failure mode is silent: the ID check simply doesn't
+> happen. Same class as *reject unknown fields* (§3.2) — both are about refusing a second source of
+> truth.
 
 ---
 
