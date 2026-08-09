@@ -4143,8 +4143,27 @@
   // "Effective Date"). Bump this whenever the agreement's effective date changes so acceptances stay auditable.
   var MERCHANT_AGREEMENT_VERSION = "2026-07-10";
 
+  /* One click = one lead. `sent` below is scoped PER INVOCATION, so it only ever guarded the
+     geocode-callback-vs-timeout race inside a single call — it never stopped a second CLICK from
+     starting a second submission. Evidence this was real: the exported Leads sheet held four
+     identical worker rows 2.5 seconds apart, one user, one intent. The worker form is the sharper
+     case because it has no address to geocode, so send() fires immediately with no 1.6s window to
+     absorb the repeat. This guard is module-scoped and survives across calls. It is set only AFTER
+     validation passes, so a failed validation never locks the form. It is never cleared: both the
+     success and failure paths end at showThanks(), which replaces the form — there is no state in
+     which the user should submit this modal twice. ⚠️ Carry this into the rebuilt intake; a public
+     endpoint with no client-side debounce collects duplicate registrations. */
+  var _submitInFlight = {};
   function submitForm(type) {
     if (!dcValidateAll('modal-' + type)) return;
+    if (_submitInFlight[type]) return;
+    _submitInFlight[type] = true;
+    try {
+      var _m = document.getElementById('modal-' + type);
+      if (_m) _m.querySelectorAll('.modal-submit').forEach(function (b) {
+        b.disabled = true; b.setAttribute('aria-busy', 'true');
+      });
+    } catch (e) { /* non-blocking */ }
     // Collect every named field in this modal into one object.
     var modal = document.getElementById('modal-' + type);
     var data = { submission_type: type, submitted_at: new Date().toISOString() };

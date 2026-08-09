@@ -2425,7 +2425,17 @@ return { all:all, save:save,
     scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
     // richer detail carried for the crew pill + full "View details" summary
     workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
-    ageRestricted:!!state.ageRestricted,itemsPurchased:!!state.itemsPurchased,
+    // trustShield travels WITH ageRestricted and must never be separated from it: it is
+    // only consulted on an age-restricted hand-off, and the Go app's openAgeIdConfirm()
+    // branches on exactly this flag to decide whether the worker sees the customer's ID
+    // and selfie on file (TrustShield) or has to photograph a physical ID.
+    // It was MISSING from this record, which is why the Go phone always showed the
+    // physical-capture screen even for a TrustShield requester: the requester's own
+    // state was correct, the Go card even rendered "TrustShield Verified", but the flag
+    // never crossed into GReq, so orderFromReq()'s `trustShield:!!r.trustShield` read
+    // undefined. Identical in shape to the workerSelection bug documented below — a
+    // field dropped here, so Go never knew.
+    ageRestricted:!!state.ageRestricted,trustShield:!!state.trustShield,itemsPurchased:!!state.itemsPurchased,
     deal:!!state.fromDeal,dealMerchant:(state.dealMerchant||''),   // Gopher Deal request → Go card shows the "Gopher Deal" badge
     description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup,
     // How the worker is selected: 'first' (auto-connect on accept) vs 'select' (requester picks from
