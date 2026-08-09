@@ -1544,14 +1544,54 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     retake. The branch also gained the **"Not yet"** dismiss its TrustShield twin already had.
     Labels are unchanged throughout, so **no 101-guide edit was owed** (checked against the standing
     rule, not assumed).
-  - **"View all local Deals" → the web pill.** Source of truth is `.dh-viewall-link` in
-    `Final/gopher-connect.html` + `Final/gopher-request.html`: `#eafaf0` fill, `#cdeeda` border,
-    `#1a9d4b` ink, Nunito 800 13.5px, radius 999px, `DEALS_GO_SVG` chevron. The two apps had also
-    drifted **from each other** — Go's copy was content-width (175px) while Request's carried
-    `width:100%` (328px) — so Request dropped `width:100%` (a `<button>` sizes to content when width
-    is auto even as a block-level flex container). Both now **183×45**, identical. Vertical padding
-    stays **12px**, not the web's 8px, so the tap target survives the shrink. Dead `.dva-arrow` rule
-    removed from both.
+  - **"View all local Deals" → the web Deals button.** The two apps had also drifted **from each
+    other** — Go's copy was content-width (175px) while Request's carried `width:100%` (328px) — so
+    Request dropped `width:100%` (a `<button>` sizes to content when width is auto even as a
+    block-level flex container). Dead `.dva-arrow` rule removed from both.
+    ⚠️ **CORRECTED, owner 2026-08-09 (commit `b3a787f`, deploy `c285a9d`) — the first attempt styled
+    the WRONG RULE and shipped a pale-green PILL. Do not reinstate it.** The live web control carries
+    **two** classes — `dh-viewall-link` **and** `dh-viewall-hero` — and the first pass read only the
+    base class, whose `#eafaf0` / `radius:999px` **never render**. The `-hero` override is the button:
+    cream 160deg gradient (`#FFFDF8` → `#FBF3E4` 58% → `#F6E9D0`), `#EAD9B6` hairline, **14px**
+    radius, `0 12px 26px rgba(0,36,97,.10)` lift (the owner's "shadow of variance"), `#1a9d4b` ink,
+    Nunito 800 **15px**, `12px 34px` padding, 16px chevron. **Pill shapes are NOT used for buttons on
+    this brand** — owner, stated as a general rule, not a one-off.
+    **Lesson, and it generalises past CSS:** when an element carries more than one class, reading one
+    rule is reading a fragment. Compose the cascade before claiming a match. The replica is now
+    *proven* — a script parses both rules, applies `-hero` over the base, and diffs the property set
+    against `.deals-viewall`: **15/15 identical**, only the positioning margin local. That check also
+    caught its own bug first (it swallowed the declaration following an inline CSS comment and
+    reported a false `background` mismatch) — fix the comparator, not the CSS.
+  - **Follow-up corrections, owner review 2026-08-09 (commit `b3a787f`, deploy `c285a9d`, live on
+    both hosts).** Two more things the first pass got wrong, both about *reading as* rather than
+    *measuring as*:
+    (a) **The flush-foot advance button did not read as a button** — square corners running edge to
+    edge inside the tinted box looked like a status banner, even though it measured as the biggest
+    control on the card. Size dominance is not the same as affordance. It now sits **outside** the box
+    as its own raised control (full modal width, 13px radius, `0 10px 22px rgba(28,176,97,.28)`),
+    286×54 at 16px vs Cost Adjustment's 286×42 at 13px; Cost Adjustment also gained a small lift
+    because a 1px hairline on white was reading as a **text field**.
+    ⚠️ **Load-bearing:** `adjOnly` hid the primary via `advB.parentElement`, which *was* the tinted
+    box. With the button reparented to the modal card, that one line would have **blanked the entire
+    modal** in cost-adjust-only mode. It hides button and box individually now; the dispute path
+    (`.js-dispadjust` → `openUpdateSheet('completed', true)`) was driven to prove it.
+    **Whenever you move an element out of its parent, grep for `parentElement` before shipping.**
+    (b) **Step names are INSTRUCTIONS with an explanation line** — "Items Picked Up" →
+    **"Purchase the items"** when the worker fronts money, **"Pick-up the items"** when they don't;
+    "Completed" → **"Complete the delivery"**. `cta` stays a past-tense confirmation: heading says
+    what to do, button confirms it — don't collapse them. `label` is read in **two** places (the
+    Next-step heading *and* the numbered progress stepper), so these are the step names everywhere.
+    `explain` is Next-step-box only and each line restates an existing commitment (out-of-pocket
+    reimbursement, pending-confirmation payout) rather than inventing a promise. **Scoped beyond the
+    literal ask for accuracy:** "Complete the delivery" applies to delivery/errand only — on
+    labor/yard there is no delivery, so a job-shaped variant is used; raised, not silently
+    generalised. **"In progress" was deliberately left** as the one step name that is still a state.
+    Both wordings driven live on two real submitted requests ($24 → purchase, $0 → pick-up).
+    **Method note:** mutating `__ptJobs[id].cost` and re-calling `load('job-detail')` does **not**
+    re-derive these labels (the screen doesn't re-read the job that way) — an attempt to shortcut the
+    check produced three identical readings and proved nothing. Exercising a per-job branch needs a
+    genuinely new submitted request; `__ptJobs` is also **stale after a re-submit** unless the Go
+    frame reloads, and injection only fires on a live submit event, not on a store re-read.
   - **Deck slides 3–5 were already closed and were RECONFIRMED rather than assumed** — `trustShield`
     on the shared record (slide 3, `238205c`), the real `trustshield-logo.svg` loading in the badge
     (slide 4, `91b89a7`), and the existing `DEMO · TrustShield ON/off` chip as the prototype's
