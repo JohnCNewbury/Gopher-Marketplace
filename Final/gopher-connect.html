@@ -13432,8 +13432,12 @@ const PAY_BADGES = {
     const isRide = state.category === 'ride';
     const isJunk = state.category === 'junk';
     if(isJunk) seedJunkLearningOnce();
-    const isMoving = state.category === 'moving';
-    if(isMoving) seedMovingLearningOnce();
+    /* 🔴 D9 (owner, 2026-08-09): the seedMovingLearningOnce() call is DELETED, not
+       gated. Forward learning for Moving is frozen — seeding from completed
+       history would blend accepted prices back into the anchors and move 'few'
+       +33% ($75 -> $100), undoing the fix that took the couch from $115 to $75.
+       The function is kept below as the documented re-enable seam; restore this
+       call only against POST-D8 completions. */
     const trip  = isRide ? getRideTripEstimate() : null;
 
     const slider  = document.getElementById('offerSlider');

@@ -255,13 +255,45 @@
   // always passed real completed-request text and tiered correctly, but stores written
   // during manual testing could be 'half'-skewed — and a skewed baseline is worse than
   // no history. Bumping the key orphans old data silently; learning restarts clean.
-  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v2';
+  /* ── D10 (owner, 2026-08-09): BLEND TOWARD THE MEDIAN, NOT THE MEAN ──────────
+     Right-skewed pay makes the mean the wrong statistic. Moving 'few' is mean
+     $104 vs median $88 (60% of accepted offers are round numbers, with a tail to
+     $390); Junk is worse — p50 $40, p90 $125, max $1000. One high outlier drags
+     a mean and cannot drag a median. Both the seed workbook (§12 "prefer median
+     over mean for skewed job prices") and junk-suggested-pricing.md already said
+     this; the code simply never did it.
+     ⚠️ THIS IS A STORE-SHAPE CHANGE, NOT A ONE-LINE SWAP. A median cannot be
+     derived from {sum, n} — the bucket has to keep the VALUES. Shape is now
+     { vals: [], ids: {} } with n = vals.length. vals is CAPPED at the most
+     recent LEARN_CAP entries per tier so localStorage cannot grow without
+     bound on a busy account. */
+  var LEARN_CAP = 200;
+  function learnMedian(vals){
+    if(!vals || !vals.length) return null;
+    var a = vals.slice().sort(function(x,y){ return x - y; });
+    var m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : (a[m-1] + a[m]) / 2;
+  }
+  function learnPush(bucket, pay){
+    bucket.vals.push(pay);
+    if(bucket.vals.length > LEARN_CAP) bucket.vals = bucket.vals.slice(-LEARN_CAP);
+  }
+
+  /* v3 (2026-08-09, D10): key bumped because the bucket shape changed from
+     {sum,n,ids} to {vals,ids} — an old store cannot yield a median, and reading
+     one would silently fall back to the baseline forever. Same precedent as the
+     v1->v2 bump: a skewed baseline is worse than no history.
+     ⚠️ JUNK IS LIVE ON ALL THREE HOSTS — this orphans whatever real users have
+     learned in their own browsers. Owner-accepted (per-browser localStorage,
+     seeded only from demo dashboard data), but it is a live-surface change and
+     must be called out at deploy rather than riding along inside a Moving one. */
+  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v3';
   function junkLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(JUNK_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
   }
   function junkSaveLearn(o){ try { window.localStorage.setItem(JUNK_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
-  function junkTierBucket(store, tier){ if(!store[tier]) store[tier] = { sum:0, n:0, ids:{} }; return store[tier]; }
+  function junkTierBucket(store, tier){ if(!store[tier] || !store[tier].vals) store[tier] = { vals:[], ids:{} }; return store[tier]; }
 
   /* Record one completed Junk job's accepted worker-pay against its tier. id (an
      order id) dedupes; pass a stable id for real completions, omit for anonymous
@@ -270,9 +302,9 @@
     if(JUNK_TIERS[tier] == null) return 0;
     var p = Number(pay); if(!(p > 0)) return 0;
     var store = junkLoadLearn(), b = junkTierBucket(store, tier);
-    if(id != null){ if(b.ids[id]) return b.n; b.ids[id] = 1; }
-    b.sum += p; b.n += 1; junkSaveLearn(store);
-    return b.n;
+    if(id != null){ if(b.ids[id]) return b.vals.length; b.ids[id] = 1; }
+    learnPush(b, p); junkSaveLearn(store);
+    return b.vals.length;
   }
   /* Seed the learning store from a surface's existing completed-request history.
      Each item: { id, tier, pay }.  Idempotent (by id). This is how a real completed
@@ -291,10 +323,11 @@
     var base = JUNK_TIERS[tier] || JUNK_TIERS.half;
     var suggested = base.suggested, learnedN = 0;
     var b = junkLoadLearn()[tier];
-    if(b && b.n > 0){
-      var learnedMean = b.sum / b.n, K = 8, w = b.n / (b.n + K);
-      suggested = Math.round((base.suggested*(1-w) + learnedMean*w) / 5) * 5;   // round to $5
-      learnedN = b.n;
+    var n = (b && b.vals) ? b.vals.length : 0;
+    if(n > 0){
+      var learnedMid = learnMedian(b.vals), K = 8, w = n / (n + K);   // D10: MEDIAN
+      suggested = Math.round((base.suggested*(1-w) + learnedMid*w) / 5) * 5;
+      learnedN = n;
     }
     var r5 = function(x){ return Math.round(x/5)*5; };
     return {
@@ -416,29 +449,25 @@
 
   /* Forward-learning store — same shape/seam as Junk, separate key so the two
      categories never cross-contaminate. */
-  /* v2 (2026-08-09, D7): key bumped for TWO reasons. (1) The 'home' tier split
-     into home_small/home_large, so any 'home' bucket is orphaned and would price
-     a tier that no longer exists. (2) More importantly, every anchor moved (up
-     to 2.5x) because the old ones tracked our own ACCEPTED prices — the ~40%-of-
-     market data D7 exists to correct. Blending pre-D7 learned means against
-     post-D7 baselines would drag the new anchors straight back down. Same
-     reasoning as JUNK_LEARN_KEY v2: a skewed baseline is worse than no history.
-     v3 (D8): anchors moved again (retail -> labor), same argument applies. */
-  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v3';   // v3: D8 re-anchored again
+  /* v4 (2026-08-09, D10): shape changed to {vals, ids} for the median blend, and
+     the anchors have now moved three times (D6 -> D7 -> D8), so any older store
+     is doubly invalid. Same precedent as JUNK v1->v2: a skewed baseline is worse
+     than no history. */
+  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v4';   // v3: D8 re-anchored again
   function movingLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(MOVING_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
   }
   function movingSaveLearn(o){ try { window.localStorage.setItem(MOVING_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
-  function movingTierBucket(store, tier){ if(!store[tier]) store[tier] = { sum:0, n:0, ids:{} }; return store[tier]; }
+  function movingTierBucket(store, tier){ if(!store[tier] || !store[tier].vals) store[tier] = { vals:[], ids:{} }; return store[tier]; }
 
   function recordMovingOffer(tier, pay, id){
     if(MOVING_TIERS[tier] == null) return 0;
     var p = Number(pay); if(!(p > 0)) return 0;
     var store = movingLoadLearn(), b = movingTierBucket(store, tier);
-    if(id != null){ if(b.ids[id]) return b.n; b.ids[id] = 1; }
-    b.sum += p; b.n += 1; movingSaveLearn(store);
-    return b.n;
+    if(id != null){ if(b.ids[id]) return b.vals.length; b.ids[id] = 1; }
+    learnPush(b, p); movingSaveLearn(store);
+    return b.vals.length;
   }
   function ingestMovingCompletions(list){
     (list || []).forEach(function(r){
@@ -464,13 +493,22 @@
   function suggestedMovingOffer(tier, opts){
     opts = opts || {};
     var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
+    /* 🔴 D9 (owner, 2026-08-09): FORWARD LEARNING IS FROZEN FOR MOVING. w = 0 —
+       the anchors are authoritative and the store is not read.
+       WHY, measured against real completed history rather than assumed: blending
+       would move 'few' from $75 to $100, +33%, undoing D8's headline fix. 'few'
+       was set deliberately BELOW its historical mean ($104) on labor-model
+       grounds — that is exactly what took the couch from $115 to $75 — so
+       learning from accepted prices walks the owner's correction straight back.
+       ⚠️ NOTE WHICH TIERS ARE AT RISK, because the intuition is backwards:
+       shrinkage PROTECTS the thin cells (home_large, n=1, moves 5%); it is the
+       WELL-POWERED tiers that get pulled hardest, since w = n/(n+8) is largest
+       where n is largest. few (n=61, w=.88) and truck (n=52, w=.87).
+       recordMovingOffer / ingestMovingCompletions stay exported and callable —
+       they simply have no consumer while frozen, and the store they write is
+       already median-shaped for when this is re-enabled against POST-D8
+       completions only. To re-enable: restore the blend below. */
     var suggested = base.suggested, learnedN = 0;
-    var b = movingLoadLearn()[tier];
-    if(b && b.n > 0){                          // same shrinkage as Junk: K=8
-      var learnedMean = b.sum / b.n, K = 8, w = b.n / (b.n + K);
-      suggested = base.suggested * (1 - w) + learnedMean * w;
-      learnedN = b.n;
-    }
     /* Route A (single location) has no pickup end, so the caller gates
        pickupStairs on !noSpecificPickup — mirrored here defensively. */
     var r5 = function(x){ return Math.round(x / 5) * 5; };
