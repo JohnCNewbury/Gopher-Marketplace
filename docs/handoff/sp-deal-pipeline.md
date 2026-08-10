@@ -34,7 +34,12 @@ with a demo toggle (`Final/gopher-go.html`, "DLP" gate) — presentation only.
 > job, discarded on a prefix. Free-text service titles (`Dump Run`, `TV mounting`,
 > `U-Haul unload help`) had no vocabulary at all. **13.2% of all completed service work
 > was invisible to a 20-job bar**, so the previously published **13 auto-eligible was an
-> undercount; it is now 14**, with two workers sitting at **19** service jobs. The error
+> undercount; it is now 14**, with two workers sitting at **19** service jobs. A second hole
+> of the same shape was found and closed the same day: base `cat_of` matched only `moving`
+> or a head of exactly `move`, discarding every bare imperative (`Move Couch`, `Sofa move`,
+> `Trash removal`). **Service jobs 1,075 → 1,236 across both fixes.** These stems must be
+> **word-boundary regexes** — `move` is a substring of `remove`, so a containment test files
+> `Need carpet/rug removed` as a Moving job. The error
 > direction was **under-granting** — safe for the review queue, wrong for the worker.
 >
 > **Build the production check against the orders table's real `category_type` column,
