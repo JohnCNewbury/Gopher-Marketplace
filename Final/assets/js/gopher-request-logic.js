@@ -304,6 +304,124 @@
       learnedSamples: learnedN, baseline: base.suggested
     };
   }
+  /* ── Moving suggested pricing (owner 2026-07-28, D1-D5) ─────────────────────
+     Ladder is ITEMS/TRUCK, not home size: home size appears in 2% of real
+     descriptions, named items in 47%, a vehicle in 38%. Anchors are evidenced
+     against 215 completed Moving orders keyed on GOPHER OFFER (worker pay —
+     never GOPHER EARNINGS, which is platform take):
+       p10 $25 · p50 $90 · p80 $150 · p90 $200 · max $500
+     Per-tier observed medians $72 / $100 / $228 are MONOTONIC — the test Junk's
+     text back-fit failed, which is why Junk anchors to the distribution and
+     Moving can corroborate with the ladder. T3 is n=6, directional only.
+     Full calibration: docs/handoff/moving-suggested-pricing-discovery.md §4-§6.
+
+     ROUTE (D2/D4): the single- vs two-location route (state.noSpecificPickup)
+     does NOT change the anchor — it gates which QUESTIONS are asked. Trip
+     distance is context only and must never enter the arithmetic: same-ZIP
+     moves run a median $115 vs $100 for different-ZIP, i.e. flat-to-inverted,
+     so the ride-pricing model is the wrong template here despite being the
+     obvious one.
+
+     ⚠️ NO CREW-SIZE MODIFIER. Descriptions naming 2+ people show +88%, the
+     largest effect measured — but the flow already collects workersNeeded as
+     CREW SIZE and that field already drives pricing and totals (it is NOT the
+     hire count; Request hires one lead worker who pays the crew). An iQ crew
+     multiplier would pay for the same labour twice. Confirm where workersNeeded
+     enters the total before revisiting. */
+  var MOVING_TIERS = {
+    few:   { label: 'A few items',   suggested: 60,
+             hint: 'a couple of pieces \u2014 no truck needed' },
+    truck: { label: 'A truck-load',  suggested: 100,
+             hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
+    home:  { label: 'A full home',   suggested: 200,
+             hint: 'a whole house, apartment or office' }
+  };
+  var MOVING_TIER_ORDER = ['few','truck','home'];
+
+  /* Priority home > truck > few. Falls back to the median tier so the slider
+     still opens somewhere sensible and the requester can re-pick in one tap —
+     that correction is what teaches the model.
+     ⚠️ 28% of real descriptions carry no scope signal; their observed median is
+     $75, nearer 'few' ($72) than 'truck' ($100). Defaulting to 'truck' is the
+     consistent-with-Junk choice and errs away from under-suggesting. Flagged as
+     a one-line change in the build spec §5 — owner has not ruled. */
+  function detectMovingTier(text){
+    var t = ' ' + String(text || '').toLowerCase() + ' ';
+    if(/\b(whole (house|home|apartment)|entire (house|home|apartment)|\d ?(bed|br|bedroom)s?|residential relocation|move (my|our) (house|home|apartment)|house to house|apartment to apartment|move (in)?to (a )?(new )?(house|home|apartment)|move out of (my |the )?(house|home|apartment)|office move|relocate office|move cubicles|moving across town|full (house|home) move)\b/.test(t))
+      return { tier: 'home', confidence: 'high' };
+    if(/\b(u-?haul|uhaul|box truck|moving truck|trailer|pod|storage unit|storage|load(ing)?|unload(ing)?|need (a )?truck|truck required|will need (a )?truck|dorm|college move|student move|piano|appliances?|bedroom furniture|labor only)\b/.test(t))
+      return { tier: 'truck', confidence: 'high' };
+    if(/\b(couch|sofa|loveseat|mattress|dresser|desk|table|nightstand|chair|headboard|bookcase|tv|boxes?|rearrange|pack(ing)?|unpack|wrap furniture|small move|a few (items|things|pieces))\b/.test(t))
+      return { tier: 'few', confidence: 'high' };
+    return { tier: 'truck', confidence: 'low' };   // median tier
+  }
+
+  /* Forward-learning store — same shape/seam as Junk, separate key so the two
+     categories never cross-contaminate. */
+  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v1';
+  function movingLoadLearn(){
+    try { var o = JSON.parse((window.localStorage||{}).getItem(MOVING_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
+    catch(_){ return {}; }
+  }
+  function movingSaveLearn(o){ try { window.localStorage.setItem(MOVING_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
+  function movingTierBucket(store, tier){ if(!store[tier]) store[tier] = { sum:0, n:0, ids:{} }; return store[tier]; }
+
+  function recordMovingOffer(tier, pay, id){
+    if(MOVING_TIERS[tier] == null) return 0;
+    var p = Number(pay); if(!(p > 0)) return 0;
+    var store = movingLoadLearn(), b = movingTierBucket(store, tier);
+    if(id != null){ if(b.ids[id]) return b.n; b.ids[id] = 1; }
+    b.sum += p; b.n += 1; movingSaveLearn(store);
+    return b.n;
+  }
+  function ingestMovingCompletions(list){
+    (list || []).forEach(function(r){
+      if(r && r.tier && r.pay != null) recordMovingOffer(r.tier, r.pay, r.id);
+    });
+  }
+
+  /* Stairs modifier, sized against real pay: 'few' +11% (n=24), 'truck' +36%
+     (n=16), +25% overall (n=57 vs 158) — consistent in direction and growing
+     with tier, so one end +15%, both ends +25%.
+     ⚠️ SERVICE ELEVATOR IS COLLECTED BUT NOT PRICED — n=2 in the historical
+     data. Leave those fields alone until the volume exists. */
+  function suggestedMovingOffer(tier, opts){
+    opts = opts || {};
+    var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
+    var suggested = base.suggested, learnedN = 0;
+    var b = movingLoadLearn()[tier];
+    if(b && b.n > 0){                          // same shrinkage as Junk: K=8
+      var learnedMean = b.sum / b.n, K = 8, w = b.n / (b.n + K);
+      suggested = base.suggested * (1 - w) + learnedMean * w;
+      learnedN = b.n;
+    }
+    /* Route A (single location) has no pickup end, so the caller gates
+       pickupStairs on !noSpecificPickup — mirrored here defensively. */
+    var ends = (opts.pickupStairs ? 1 : 0) + (opts.destStairs ? 1 : 0);
+    if(ends === 1) suggested *= 1.15;
+    else if(ends >= 2) suggested *= 1.25;
+    var r5 = function(x){ return Math.round(x / 5) * 5; };
+    suggested = r5(suggested);
+    return {
+      tier: (MOVING_TIERS[tier] ? tier : 'truck'),
+      label: base.label, hint: base.hint,
+      low: r5(suggested * 0.75), suggested: suggested, generous: r5(suggested * 1.25),
+      learnedSamples: learnedN, baseline: base.suggested, stairsEnds: ends
+    };
+  }
+
+  /* Item-count promotion (D3): structured item count may promote few -> truck,
+     but the DESCRIPTION drives the base tier.
+     ⚠️ THE THRESHOLD OF 8 IS AN UNVALIDATED DEFAULT — item count appears in only
+     12% of historical descriptions, so there was nothing to calibrate against.
+     Tune after ~20 real completions and record the change in the discovery doc. */
+  var MOVING_ITEM_PROMOTE_AT = 8;
+  function promoteMovingTierForItems(tier, itemCount){
+    var n = Number(itemCount);
+    if(tier === 'few' && n >= MOVING_ITEM_PROMOTE_AT) return 'truck';
+    return tier;
+  }
+
   function regionStateFromAddress(addr){
     if(!addr) return '';
     var m = String(addr).toUpperCase().match(/\b([A-Z]{2})\b(?:\s+\d{5})?\s*$/);
@@ -327,6 +445,15 @@
     detectJunkVolumeTier: detectJunkVolumeTier,
     suggestedJunkOffer: suggestedJunkOffer,
     recordJunkOffer: recordJunkOffer,
-    ingestJunkCompletions: ingestJunkCompletions
+    ingestJunkCompletions: ingestJunkCompletions,
+    // Moving suggested pricing + the same forward-learning seam (owner 2026-07-28)
+    MOVING_TIERS: MOVING_TIERS,
+    MOVING_TIER_ORDER: MOVING_TIER_ORDER,
+    MOVING_ITEM_PROMOTE_AT: MOVING_ITEM_PROMOTE_AT,
+    detectMovingTier: detectMovingTier,
+    suggestedMovingOffer: suggestedMovingOffer,
+    promoteMovingTierForItems: promoteMovingTierForItems,
+    recordMovingOffer: recordMovingOffer,
+    ingestMovingCompletions: ingestMovingCompletions
   };
 })();
