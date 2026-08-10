@@ -18,7 +18,9 @@ matching, payout, or persistence changes.** Nothing here touches live production
 | D5 | Anchors are **owner-set** |
 | D6 | ~~`few` holds at $60~~ — **superseded by D7** |
 | D7 | ~~Market-benchmarked $100/$250/$325/$475~~ — **superseded by D8** (agency retail ≠ gig worker pay) |
-| D8 | **CURRENT:** `few $75` · `truck $110` · `home_small $225` · `home_large $375`, from crew × hours × $30/labor-hour. **Flat tiers. No stairs modifier.** |
+| D9 | **Learning FROZEN for Moving**: `w = 0`, no seeding. Seeding would pull `few` $75 → $100 (+33%). |
+| D10 | **Blend uses the MEDIAN, not the mean** — Moving *and* live Junk. Needs a store-shape change. |
+| D8 | **Anchors:** `few $75` · `truck $110` · `home_small $225` · `home_large $375`, from crew × hours × $30/labor-hour. **Flat tiers. No stairs modifier.** |
 
 > # ✅ D8 — LABOR-MODEL ANCHORS (2026-08-09, owner-ruled). THIS IS THE CURRENT LADDER.
 >
@@ -174,6 +176,54 @@ Junk functions with the store key **`gopher_moving_pay_learn_v1`**. Export all f
 `truck` before pricing. ⚠️ **The threshold of 8 is an unvalidated default** — item count appears in
 only 12% of historical descriptions, so there was nothing to calibrate against. Tune it after ~20
 real completions and record the change in the discovery doc.
+
+
+---
+
+## 2b. D9 + D10 — the learning loop (owner-ruled 2026-08-09)
+
+### D9 · Freeze forward learning for Moving
+
+`suggestedMovingOffer()` must **ignore the learning store**: `w = 0`, anchors are authoritative.
+**`seedMovingLearningOnce()` must not run at all** — deleting the call is cleaner than gating it.
+
+Why, measured against real completed history:
+
+| Tier | n | learned mean | w = n/(n+8) | Anchor | Blended | Drift |
+|---|---|---|---|---|---|---|
+| `few` | 61 | $104 | 0.88 | **$75** | **$100** | **+33%** |
+| `truck` | 52 | $111 | 0.87 | $110 | $110 | 0% |
+| `home_small` | 3 | $183 | 0.27 | $225 | $215 | −4% |
+| `home_large` | 1 | $200 | 0.11 | $375 | $355 | −5% |
+
+**The loop would undo D8's headline fix.** `few` was deliberately set *below* its historical mean on
+labor-model grounds — that is what took the couch from $115 to $75 — and learning pulls it straight
+back to $100. Note this also refutes the earlier worry that thin cells were at risk: shrinkage
+protects them (`home_large` moves 5%); it is the **well-powered** tiers that get pulled hardest,
+because `w` is largest there.
+
+Keep `recordMovingOffer` / `ingestMovingCompletions` exported and callable — they just have no
+consumer while frozen. Re-enable against **post-D8 completions only**.
+
+### D10 · Blend toward the median, not the mean — Moving *and live Junk*
+
+Right-skewed pay makes the mean the wrong statistic: Moving `few` is mean **$104** vs median **$88**
+(60% of accepted offers are round numbers, tail to $390). Junk's own envelope is worse — p50 $40,
+p90 $125, max $1000. Both the seed workbook (§12 *"prefer median over mean for skewed job prices"*)
+and `junk-suggested-pricing.md` already say this; the code does not do it.
+
+> ⚠️ **This is a store-shape change, not a one-line swap.** The bucket is `{ sum, n, ids{} }` and a
+> median cannot be derived from a sum and a count. The store must keep the **values**:
+> `{ vals: [], ids: {} }` (with `n = vals.length`). Bound the array — cap at the most recent ~200 per
+> tier — so localStorage can't grow without limit.
+>
+> Both keys must bump: **`gopher_junk_pay_learn_v2` → `v3`** and **`gopher_moving_pay_learn_v3` → `v4`**.
+> Same precedent and same reasoning as the earlier Junk v1 → v2 bump: *a skewed baseline is worse
+> than no history.*
+>
+> **Junk is LIVE on all three hosts.** Bumping its key orphans whatever real users have learned
+> locally. That is acceptable — the store is per-browser localStorage seeded only from demo
+> dashboard data — but it is a live-surface change and should be called out at deploy, not slipped in.
 
 ---
 

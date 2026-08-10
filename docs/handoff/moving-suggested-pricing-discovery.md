@@ -18,7 +18,9 @@ the customer's description and the price offered**, not a sub-category field.
 | **D5** | **Anchors are owner-set.** |
 | **D6** | ~~The `few` anchor holds at $60~~ — **SUPERSEDED by D7.** |
 | **D7** | ~~Option B: market-benchmarked anchors $100/$250/$325/$475~~ — **SUPERSEDED by D8.** Priced worker pay against *agency retail*; Gopher is gig and takes only ~8%. |
-| **D8** | **CURRENT (2026-08-09):** anchors = **crew × hours × $30/labor-hour**, cross-checked against Gopher history — `few $75` · `truck $110` · `home_small $225` · `home_large $375`. **Flat tiers** this release; the hours engine is the destination. **Stairs modifier removed** — it scales with trips, not as a flat %. |
+| **D9** | **Forward learning is FROZEN for Moving** (owner 2026-08-09): `w = 0`, and `seedMovingLearningOnce()` does not run. Measured: seeding would pull `few` from **$75 → $100 (+33%)** — undoing the exact correction D8 was made for. Re-enable only against **post-D8** completions. |
+| **D10** | **The learned blend uses the MEDIAN, not the mean** (owner 2026-08-09), for Moving **and live Junk**. Moving `few`: mean $104 vs median $88 on right-skewed pay (60% round numbers, tail to $390). The seed workbook §12 and the Junk doc both already say prefer median. ⚠️ Requires a **store-shape change** — a median cannot be derived from `{sum, n}`. |
+| **D8** | **(2026-08-09):** anchors = **crew × hours × $30/labor-hour**, cross-checked against Gopher history — `few $75` · `truck $110` · `home_small $225` · `home_large $375`. **Flat tiers** this release; the hours engine is the destination. **Stairs modifier removed** — it scales with trips, not as a flat %. |
 
 > # ✅ D8 — LABOR-MODEL ANCHORS (2026-08-09, owner-ruled). THIS IS THE CURRENT LADDER.
 >
