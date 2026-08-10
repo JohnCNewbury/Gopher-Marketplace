@@ -536,11 +536,36 @@ formatter over them, so the format can never drift from its validator again.
 email and DOB → autofilled, no email step; new number → `141568` created → details saved → code
 delivered to the real address → verified and promoted → **deal 4 filed**.
 
-**⚠️ Inherited, NOT verified here — flagged for the server side.** On the new-user path `auth.create`
-reportedly checks only that an OTP row **exists** for the number, not that the digits **match**, so a
-wrong-but-well-formed code still creates the account. Pre-existing behaviour, recorded rather than
-papered over; the fix belongs server-side. Whoever owns the backend should confirm this first-hand
-before relying on either reading.
+**✅ RESOLVED 2026-08-10 — and it is NOT a Deals defect. Do not send anyone here to fix it.**
+
+*(Superseded text: "⚠️ Inherited, NOT verified here — on the new-user path `auth.create` reportedly
+checks only that an OTP row exists, not that the digits match, so a wrong-but-well-formed code still
+creates the account." Also **`36ff358`'s commit message, which says the same thing, is superseded** —
+it was true when written and stopped being true about four hours later, when the flow was simplified.)*
+
+**The weakness is real, is worse than first described, and lives somewhere else.** Confirmed by the
+HQ Dashboard session **by execution, not code-reading**: `POST /api/v1/users` was called with **no
+`code` field at all** and returned **200**, creating user `141557`. `controllers/user/auth.js` (~L120)
+only does `db.otps.findOne({ where: { telephone } })` and returns 401 when absent — **`code` is never
+compared.** Since `POST /otp/get` is public and unauthenticated, a caller can manufacture the row for
+any number first. Stated properly:
+
+> **An unauthenticated caller can create an account on any phone number that does not already have
+> one**, by calling `otp/get` and then `POST /users`. Numbers that already exist are protected —
+> `auth.create` 422s on a known phone.
+
+⛔ **But the merchant intake does not use that endpoint, and never did after the simplification.**
+`sign_in` is the account-creation mechanism now, and it calls `verify_otp`, which **does** compare the
+digits, honours the lockout counter, and marks the code used. **Verified independently here** against
+the deployed page: the only `/users` calls in `gopher-deals.html` are `/users/sign_in` (`:3983`), a
+**PUT** to `/users` for profile details (`:4085`), and the two email-OTP routes. There is **no
+`POST /users` with a body anywhere in the merchant path.**
+
+**Where it actually belongs: the signup endpoint used by the MOBILE APPS**, and it is **G40-359**
+territory — an account created on a number nobody proved they control, on a `telephone` column with no
+UNIQUE constraint (775 duplicates live). **File it as a signup-endpoint authentication weakness, not a
+Deals one.** Filing it against merchant intake would send someone to code that no longer has the
+problem — precisely the fossil this document keeps having to dig out.
 
 **⚠️ Design note, reachable in production.** The account is created at the **phone** step, before the
 Merchant Agreement is accepted at the final step. Abandonment between those points leaves a real
