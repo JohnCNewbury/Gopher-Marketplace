@@ -2970,7 +2970,18 @@
             <label>Email</label>
             <span class="info-btn" tabindex="0">i<span class="info-tip">Your email address is how you&rsquo;ll receive request confirmations, completed-request receipts, and app update info.</span></span>
           </div>
-          <input type="email" name="owner_email" placeholder="you@email.com">
+          <div class="otp-row" style="display:flex;gap:8px;align-items:flex-start;">
+            <input type="email" name="owner_email" placeholder="you@email.com" style="flex:1;">
+            <button type="button" class="btn-verify eml-send-btn" onclick="sendEmailOtp(this)">Verify</button>
+          </div>
+          <div class="otp-confirm eml-confirm">
+            <p class="field-hint">Enter the 6-digit code we emailed you.</p>
+            <div class="otp-code-row">
+              <input type="text" class="otp-code eml-code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" name="otp_code_email">
+              <button type="button" class="btn-verify" onclick="checkEmailOtp(this)">Confirm</button>
+            </div>
+          </div>
+          <span class="otp-verified eml-verified">&check; Email verified</span>
         </div>
         <div class="field">
           <div class="label-with-info">
@@ -3786,144 +3797,25 @@
         localStorage.setItem('gopherDealDraft', JSON.stringify(draft));
       } catch (e) { /* private mode — non-blocking, never hold the merchant up for storage */ }
     }
-    /* ── PATH B: create the account, then verify the email ──────────────────────────
-       This is the account-creation boundary. Path A already holds a token from
-       sign_in and skips all of it. Path B has to become a real Gopher user here,
-       because POST /users/deals sits behind require_email_verified({}) — allowUnverified
-       is FALSE — so an unverified account cannot submit a deal at all. The email step
-       is mandatory, not a nicety.
+    /* Both factors are proven before the preview renders. The account itself was
+       created at phone-verify (sign_in), and the email was verified in the field
+       below it — so there is nothing left to do here but show the deal.
 
-       The preview does not render until this settles: showing a merchant their deal
-       preview and only then discovering their account could not be made is the wrong
-       order to fail in. */
-    if (type === 'merchant' && !_isExistingGopher() && !_authToken) {
-      _acctInFlight = true;
-      _dpBusy(true);
-      var f = _merchantFields();
-      apiCall('/users', { body: {
-        role: 'requestor',
-        telephone: f.phone,
-        first_name: f.first,
-        last_name: f.last,
-        email: f.email,
-        date_of_birth: f.dob,
-        address: f.address,
-        discover_gopher: f.discovery || 'Other',
-        requesting_primarly: 'personal',
-        provider: 'phone'
-      }})
-      .then(function (r) {
-        _acctInFlight = false;
-        if (!r.ok) {
-          /* 422 "Phone number already registered" is NOT an error to show raw — it is
-             the resume path. A merchant who half-registered earlier, or who simply has
-             a Gopher account, must be pointed at Path A rather than left staring at a
-             failure. Getting this wrong is what pushes them into re-registering, which
-             is the collision branch nobody wants. */
-          if (/already registered/i.test(apiMessage(r))) {
-            _dpBusy(false);
-            alert('It looks like you already have a Gopher account.\n\nTick "I\'m already a Gopher user" above, then verify your phone number to finish your deal.');
-            var cb = document.getElementById('regExistingGopher');
-            if (cb && !cb.checked) { cb.checked = true; try { eguToggle(cb); } catch (e) {} }
-            try { cb.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-            return;
-          }
-          _dpBusy(false); alert(apiMessage(r)); return;
-        }
-        _authToken = r.token || null;
-        try { _apiUserId = r.body.data && r.body.data.id; } catch (e) {}
-        _acctCreated = true;
-        if (!_authToken) { _dpBusy(false); alert('Your account was created but we could not sign you in. Please tick "I\'m already a Gopher user" and verify your phone.'); return; }
-        return apiCall('/users/email_otp/send', { body: {} }).then(function (er) {
-          _dpBusy(false);
-          if (!er.ok) { alert(apiMessage(er)); return; }
-          _showEmailStep(f.email);
-        });
-      })
-      .catch(function () { _acctInFlight = false; _dpBusy(false); alert('Could not reach the server. Your details are saved on this device — please try again.'); });
+       Guarded anyway: POST /users/deals sits behind require_email_verified, so an
+       unverified merchant would reach the preview, tap submit, and only then be
+       refused. Failing here is the kinder order. */
+    if (type === 'merchant' && !_emailVerified) {
+      alert('Please verify your email address before reviewing your deal.');
+      var eb = document.querySelector('#modal-merchant .eml-send-btn');
+      if (eb) { try { eb.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
       return;
     }
 
     _renderPreview(type);
   }
 
-  /* Reads the merchant form once, so the payload and the account creation can never
-     disagree about what the merchant typed. */
-  function _merchantFields() {
-    var m = document.getElementById('modal-merchant');
-    var g = function (n) { var el = m && m.querySelector('[name="' + n + '"]'); return el ? (el.value || '').trim() : ''; };
-    return {
-      first: g('owner_first_name'), last: g('owner_last_name'),
-      email: g('owner_email'), dob: g('owner_dob'),
-      address: g('owner_address') || g('address'),
-      discovery: g('discovery_source'),
-      phone: (g('owner_phone') || '').replace(/\D/g, '')
-    };
-  }
 
-  function _dpBusy(on) {
-    var b = document.getElementById('dc-review-merchant') || document.querySelector('#modal-merchant .dc-review');
-    if (!b) return;
-    b.disabled = !!on;
-    b.setAttribute('aria-busy', on ? 'true' : 'false');
-    if (on) { b._was = b.textContent; b.textContent = 'Setting up your account…'; }
-    else if (b._was) { b.textContent = b._was; }
-  }
 
-  /* The email-verification step. Built from the same primitives the phone step uses
-     (.otp-confirm / .otp-code / .btn-verify) so it reads as one flow rather than a
-     bolted-on dialog. Rendered inline above the form, not as a second modal — a
-     merchant mid-registration should never lose sight of what they were doing. */
-  function _showEmailStep(email) {
-    var host = document.getElementById('form-wrap-merchant');
-    if (!host) { _renderPreview('merchant'); return; }
-    var old = document.getElementById('dc-email-step'); if (old) old.remove();
-    var box = document.createElement('div');
-    box.id = 'dc-email-step';
-    box.className = 'field';
-    box.style.cssText = 'border:2px solid #33D975;border-radius:12px;padding:16px;margin:0 0 18px;background:#f4fdf7;';
-    box.innerHTML =
-      '<div style="font-weight:800;color:#002461;margin-bottom:4px;">One more step — verify your email</div>' +
-      '<div style="font-size:14px;color:#41506b;margin-bottom:10px;">We sent a 6-digit code to <strong>' +
-        String(email).replace(/[<>&]/g, '') + '</strong>. Enter it to finish your deal.</div>' +
-      '<div class="otp-code-row" style="display:flex;gap:8px;">' +
-        '<input class="otp-code dc-email-code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="one-time-code" name="otp_code_email" style="flex:1;letter-spacing:5px;text-align:center;">' +
-        '<button type="button" class="btn-verify dc-email-confirm">Confirm</button>' +
-      '</div>' +
-      '<button type="button" class="dc-email-resend" style="margin-top:10px;background:none;border:none;color:#1a9d4b;font-weight:700;cursor:pointer;padding:0;">Resend code</button>';
-    host.insertBefore(box, host.firstChild);
-    try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
-    box.querySelector('.dc-email-code').focus();
-
-    box.querySelector('.dc-email-confirm').addEventListener('click', function () {
-      var btn = this;
-      var code = (box.querySelector('.dc-email-code').value || '').trim();
-      if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code we emailed you.'); return; }
-      if (btn.dataset.busy === '1') return;
-      btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = 'Checking…';
-      apiCall('/users/email_otp/verify', { body: { code: code } })
-        .then(function (r) {
-          if (!r.ok) { alert(apiMessage(r)); btn.textContent = 'Confirm'; return; }
-          _emailVerified = true;
-          box.remove();
-          _renderPreview('merchant');
-          /* Deliberately NOT auto-submitting. The merchant lands back on their deal
-             preview and taps submit themselves — an automatic send after an error
-             would file a deal they never confirmed. */
-        })
-        .catch(function () { alert('Could not verify the code. Please try again.'); btn.textContent = 'Confirm'; })
-        .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
-    });
-
-    box.querySelector('.dc-email-resend').addEventListener('click', function () {
-      var lnk = this; if (lnk.dataset.busy === '1') return;
-      lnk.dataset.busy = '1'; lnk.textContent = 'Sending…';
-      apiCall('/users/email_otp/resend', { body: {} })
-        .then(function (r) { lnk.textContent = r.ok ? 'Code re-sent' : 'Resend code'; if (!r.ok) alert(apiMessage(r)); })
-        .catch(function () { lnk.textContent = 'Resend code'; })
-        .then(function () { setTimeout(function () { lnk.dataset.busy = ''; }, 1200); });
-    });
-  }
 
   /* Return from the preview to the form. Needed when a submit is refused for a reason
      the merchant must act on — the email step lives above the form, and leaving them on
@@ -4066,63 +3958,146 @@
     var code = (field.querySelector('.otp-code').value || '').trim();
     if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code.'); return; }
     var digits = (field.querySelector('input[type=tel]').value || '').replace(/\D/g, '');
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Checking…'; btn.disabled = true;
 
-    /* ⚠️ TWO PATHS, AND CONFLATING THEM BREAKS ONE OF THEM.
+    /* ONE CALL DECIDES EVERYTHING, and it does not consult the checkbox.
 
-       EXISTING user ("I'm already a Gopher user" ticked): sign_in genuinely
-       validates the code AND returns the token we need to submit the deal, so it
-       is both the verification and the authentication. No account is created —
-       one already exists.
+       sign_in validates the code and returns the account. On a number it does not
+       recognise it CREATES the account (auth.js user_login) and returns a token —
+       which is exactly what a new merchant needs, so what used to be a trap is now
+       the mechanism. That means:
 
-       NEW user: sign_in must NOT be called. On a number it does not recognise it
-       CREATES a minimal account (auth.js user_login), after which POST /users
-       returns 422 "already registered" and the merchant can never finish. So the
-       code is accepted here and the real gate is POST /users, which requires a
-       live OTP row for the number.
+         known number   -> token + real profile  -> autofill, email already verified
+         unknown number -> token + placeholder   -> they fill their details in
 
-       ⚠️ KNOWN GAP, deliberately not papered over: on the NEW-user path
-       auth.create only checks that an OTP row EXISTS for the number, not that the
-       digits match. So a wrong-but-well-formed code still creates the account.
-       That is existing backend behaviour, not something introduced here. Raised
-       2026-08-10; the fix belongs server-side, not in this form. */
-    if (_isExistingGopher()) {
-      if (btn.dataset.busy === '1') return;
-      btn.dataset.busy = '1';
-      var was = btn.textContent; btn.textContent = 'Checking…'; btn.disabled = true;
-      apiCall('/users/sign_in', { body: { telephone: digits, code: code, apptype: 'requester' } })
-        .then(function(r){
-          if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
-          _authToken = r.token || null;
-          var prof = (r.body && r.body.data) || {};
-          try { _apiUserId = prof.id; } catch (e) {}
-          try { _emailVerified = !!prof.confirmed_at; } catch (e) { _emailVerified = false; }
+       Because recognition comes from the server, "I'm already a Gopher user" stops
+       being load-bearing: an existing merchant who forgets to tick it is recognised
+       anyway and auto-filled, which is the behaviour the owner asked for. */
+    apiCall('/users/sign_in', { body: { telephone: digits, code: code, apptype: 'requester' } })
+      .then(function (r) {
+        if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+        _authToken = r.token || null;
+        var prof = (r.body && r.body.data) || {};
+        _apiUserId = prof.id || null;
+        var isNew = /@placeholder\.gophergo\.io$/i.test(prof.email || '');
+        _otpAccept(field);
 
-          /* ⚠️ sign_in CREATES AN ACCOUNT ON AN UNKNOWN NUMBER (auth.js user_login:
-             lookup miss -> create minimal user with a placeholder email). So ticking
-             "I'm already a Gopher user" for a number that has NO account does not
-             fail — it silently mints one that cannot receive email, and every later
-             step then refuses with "Email verification required".
+        if (isNew) {
+          /* Brand-new account. They verify their email next, in the field below —
+             same shape as the phone step rather than a separate stage. */
+          _emailVerified = false;
+          _emailStepEnable(true);
+          return;
+        }
 
-             There is no verify-only endpoint to avoid this, so detect it after the
-             fact: a placeholder address means this account did not exist a moment
-             ago and the merchant is not, in fact, an existing user. Say so plainly
-             and put them on the right path rather than leaving them stuck behind a
-             403 they cannot act on. */
-          if (/@placeholder\.gophergo\.io$/i.test(prof.email || '')) {
-            _authToken = null; _apiUserId = null; _emailVerified = false;
-            alert('We could not find a Gopher account on that number.\n\nUntick "I\'m already a Gopher user" and fill in your details — we\'ll set the account up as part of your registration.');
-            var cbx = document.getElementById('regExistingGopher');
-            if (cbx && cbx.checked) { cbx.checked = false; try { eguToggle(cbx); } catch (e) {} }
-            btn.textContent = was;
-            return;
-          }
-          _otpAccept(field);
-        })
-        .catch(function(){ alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
-        .then(function(){ btn.dataset.busy = ''; btn.disabled = false; });
-      return;
+        /* EXISTING user. Their email was verified when they became a user, so asking
+           again is a step that buys nothing — owner ruling 2026-08-10. Auto-fill and
+           mark it done. */
+        _emailVerified = true;
+        _fillFromAccount(prof);
+        _emailStepEnable(false);
+        var cb = document.getElementById('regExistingGopher');
+        if (cb && !cb.checked) { cb.checked = true; try { eguToggle(cb); } catch (e) {} }
+      })
+      .catch(function () { alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
+  }
+
+  /* Fill the owner section from the account we just signed into. */
+  function _fillFromAccount(prof) {
+    var m = document.getElementById('modal-merchant'); if (!m) return;
+    var set = function (n, v) {
+      var el = m.querySelector('[name="' + n + '"]');
+      if (el && v) { el.value = v; el.classList.add('egu-filled'); }
+    };
+    set('owner_first_name', prof.firstName);
+    set('owner_last_name',  prof.lastName);
+    set('owner_email',      prof.email);
+    if (prof.dateOfBirth) {
+      var d = String(prof.dateOfBirth).slice(0, 10).split('-');
+      if (d.length === 3) set('owner_dob', d[1] + '/' + d[2] + '/' + d[0]);
     }
-    _otpAccept(field);
+    try {
+      var a = (prof.addresses || [])[0];
+      if (a && (a.line1 || a.city)) set('owner_address', [a.line1, a.city, a.state, a.zipCode].filter(Boolean).join(', '));
+    } catch (e) {}
+  }
+
+  /* Show or retire the email verification affordance. An existing user sees
+     "✓ Email verified" rather than a Verify button they do not need. */
+  function _emailStepEnable(needed) {
+    var m = document.getElementById('modal-merchant'); if (!m) return;
+    var btn = m.querySelector('.eml-send-btn');
+    var ok  = m.querySelector('.eml-verified');
+    var box = m.querySelector('.eml-confirm');
+    if (box) box.classList.remove('show');
+    if (needed) {
+      if (btn) { btn.style.display = ''; btn.textContent = 'Verify'; btn.disabled = false; }
+      if (ok) ok.classList.remove('show');
+    } else {
+      if (btn) btn.style.display = 'none';
+      if (ok) ok.classList.add('show');
+    }
+  }
+
+  /* EMAIL OTP — the account already exists by now (sign_in made it), so the real
+     details are saved first with PUT /users, which is allowed on an unverified
+     account, and the code goes to the address they just typed. */
+  function sendEmailOtp(btn) {
+    var m = document.getElementById('modal-merchant');
+    var email = (m.querySelector('[name="owner_email"]').value || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('Enter your email address first.'); return; }
+    if (!_authToken) { alert('Please verify your phone number first.'); return; }
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Sending…'; btn.disabled = true;
+    var g = function (n) { var el = m.querySelector('[name="' + n + '"]'); return el ? (el.value || '').trim() : ''; };
+    var dob = g('owner_dob');
+    var body = { email: email, first_name: g('owner_first_name'), last_name: g('owner_last_name') };
+    if (g('discovery_source')) body.discover_gopher = g('discovery_source');
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) { var d = dob.split('/'); body.date_of_birth = d[2] + '-' + d[0] + '-' + d[1]; }
+    /* `address` is deliberately omitted: update_user expects an object carrying an id,
+       and this form holds a free-text string. Sending a string throws server-side. */
+    apiCall('/users', { method: 'PUT', body: body })
+      .then(function (r) {
+        if (!r.ok) {
+          /* The email belongs to another Gopher account. Say so and let them use a
+             different one — owner ruling 2026-08-10, case C. */
+          if (/email/i.test(apiMessage(r)) && /(exist|registered|use)/i.test(apiMessage(r))) {
+            alert('That email is already on another Gopher account.\n\nPlease enter a different email address and tap Verify again.');
+          } else { alert(apiMessage(r)); }
+          btn.textContent = was; return;
+        }
+        return apiCall('/users/email_otp/send', { body: {} }).then(function (er) {
+          if (!er.ok) { alert(apiMessage(er)); btn.textContent = was; return; }
+          var box = m.querySelector('.eml-confirm');
+          if (box) { box.classList.add('show'); box.querySelector('.eml-code').focus(); }
+          btn.textContent = 'Resend';
+        });
+      })
+      .catch(function () { alert('Could not send the code. Please try again.'); btn.textContent = was; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
+  }
+
+  function checkEmailOtp(btn) {
+    var m = document.getElementById('modal-merchant');
+    var code = (m.querySelector('.eml-code').value || '').trim();
+    if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code we emailed you.'); return; }
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1'; btn.disabled = true;
+    var was = btn.textContent; btn.textContent = 'Checking…';
+    apiCall('/users/email_otp/verify', { body: { code: code } })
+      .then(function (r) {
+        if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+        _emailVerified = true;
+        m.querySelector('.eml-confirm').classList.remove('show');
+        m.querySelector('.eml-verified').classList.add('show');
+        var sb = m.querySelector('.eml-send-btn'); if (sb) { sb.textContent = 'Verified'; sb.disabled = true; }
+      })
+      .catch(function () { alert('Could not verify the code. Please try again.'); btn.textContent = was; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
   }
 
   /* The shared UI transition, so both branches end in exactly the same state. */
@@ -4632,12 +4607,20 @@
                show the same step Path B uses, instead of stranding the merchant on an
                error they cannot act on. */
             if (r.status === 403 && r.body && r.body.requiresEmailVerification) {
-              var addr = (function(){ var e = document.querySelector('#modal-merchant [name="owner_email"]'); return e ? e.value : ''; })();
+              /* A recognised account whose email was never confirmed — rare, but the
+                 client cannot predict it because sign_in's response does not carry
+                 confirmed_at. Send them back to the email field with the code already
+                 on its way, rather than stranding them on an error they cannot act
+                 on. Belt and braces behind the openPreview check. */
+              _emailVerified = false;
+              _renderForm('merchant');
+              _emailStepEnable(true);
               apiCall('/users/email_otp/send', { body: {} }).then(function (er) {
                 if (!er.ok) { alert(apiMessage(er)); return; }
-                _renderForm('merchant');
-                _showEmailStep(addr);
-              }).catch(function(){ alert('Could not send the verification code. Please try again.'); });
+                var box = document.querySelector('#modal-merchant .eml-confirm');
+                if (box) { box.classList.add('show'); try { box.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){} box.querySelector('.eml-code').focus(); }
+                var sb = document.querySelector('#modal-merchant .eml-send-btn'); if (sb) sb.textContent = 'Resend';
+              }).catch(function(){ alert('Please verify your email address, then submit again.'); });
               return;
             }
             alert(apiMessage(r));
