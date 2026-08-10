@@ -3643,7 +3643,12 @@
     if (store.list.length >= MAX_KEYWORDS) return;
     var input = document.getElementById(store.prefix + '-input');
     var val = (input.value || '').trim();
-    if (val && store.list.indexOf(val) === -1) { store.list.push(val); renderKeywords(which); }
+    /* Case-insensitive duplicate check. A merchant gets THREE keywords; letting
+       "Delivery" and "delivery" both land spends one of them on nothing, and the
+       merchant cannot see why their search reach is worse than they think. */
+    var dupe = store.list.some(function (k) { return k.toLowerCase() === val.toLowerCase(); });
+    if (val && !dupe) { store.list.push(val); renderKeywords(which); }
+    else if (val && dupe) { input.classList.add('field-invalid'); setTimeout(function(){ input.classList.remove('field-invalid'); }, 900); }
     input.value = '';
     if (store.list.length < MAX_KEYWORDS) input.focus();
   }

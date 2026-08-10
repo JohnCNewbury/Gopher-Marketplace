@@ -1792,7 +1792,7 @@
       <p class="gl-hint" id="glSmsOk" hidden>&#10003; Verified — you're ready to continue.</p>
     </div>
     <button type="button" class="gl-submit" id="glSignIn" disabled>Sign in &rarr;</button>
-    <div class="gl-meta"><label class="gl-check"><input type="checkbox"> Remember me</label></div>
+    <div class="gl-meta"><label class="gl-check"><input type="checkbox" id="glRememberMe" checked> Remember me</label></div>
     <button type="button" class="gl-toggle" id="glNewToggle" aria-expanded="false">New to Gopher? <span class="gl-chev">&#9662;</span></button>
     <div class="gl-app" id="glAppNote" hidden>
       <p>Gopher Go worker accounts are created in the app. Download it to set up your profile, then come back here to manage everything.</p>
@@ -1813,6 +1813,76 @@
     <p class="gl-otp-resend">Didn't get it? <a id="glOtpResend">Resend code</a></p>
   </div>
 </div>
+
+<!-- ░░ GoSession — the dashboard session, and the ONE place it is entered/left ░░
+
+     Before this existed the Go dashboard stored NOTHING — no localStorage, no
+     sessionStorage, no cookie (the only portal of the four with zero storage).
+     "Signed in" was three DOM toggles held in memory, so every reload and every
+     navigation away and back dumped the worker on the sign-in screen. The
+     "Remember me" checkbox was decorative: it had no id and nothing read it.
+
+     Key name matches the sibling portal (gopher-deals.html uses
+     'gopherRemember.deals'), and like Deals the box is CHECKED by default.
+
+     ⚠️ SEAM FOR THE REAL SIGN-IN. save() deliberately takes an OBJECT, not a
+     boolean, so that when the Go dashboard is wired to the live API this holds
+     { token, userId } — the `access-token` arrives in the RESPONSE HEADER, not
+     the body. Nothing here should assume the demo shape. -->
+<script>
+window.GoSession = (function(){
+  var KEY = 'gopherRemember.go';
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY) || 'null'); }catch(e){ return null; } }
+  function save(data){ try{ localStorage.setItem(KEY, JSON.stringify(data || {})); }catch(e){} }
+  function clear(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+  /* Every dashboard entry point funnels through here so the three of them
+     (overlay sign-in, full-screen sign-in, #app hash) can never drift. */
+  function enterDash(){
+    var s = document.getElementById('signinScreen'); if(s) s.hidden = true;
+    var d = document.getElementById('dashboard');    if(d) d.classList.add('active');
+    document.body.classList.add('go-dash-active');
+    document.body.style.overflow = '';
+    window.scrollTo(0,0);
+  }
+  function exitToSignIn(){
+    var d = document.getElementById('dashboard');    if(d) d.classList.remove('active');
+    document.body.classList.remove('go-dash-active');
+    var s = document.getElementById('signinScreen'); if(s) s.hidden = false;
+    window.scrollTo(0,0);
+  }
+  /* ⚠️ The caller names its OWN "Remember me" box. BOTH sign-in surfaces exist
+     in the DOM at once (overlay #glRememberMe, full screen #goRememberMe), so
+     anything that reads "a" checkbox — or worse, ORs them together — lets the
+     untouched surface override the box the worker actually just unticked.
+     Absent/unknown box = remember, matching the Deals default. */
+  function wanted(boxId){
+    var b = boxId && document.getElementById(boxId);
+    return b ? !!b.checked : true;
+  }
+  function signIn(boxId, extra){
+    if(wanted(boxId)) save(extra || { signedIn: true }); else clear();
+    /* The full-screen surface is reached at #login, and that hash SURVIVES a
+       successful sign-in. Left alone, the next reload reads it as "show me the
+       sign-in screen" and dumps a remembered worker straight back out — the
+       exact bug this module exists to fix, wearing a different hat.
+       replaceState, so no hashchange fires and no history entry is added. */
+    if(location.hash === '#login'){
+      try{ history.replaceState(null, '', location.pathname + location.search + '#app'); }
+      catch(e){ /* file:// and old browsers — the session still works, the hash just lingers */ }
+    }
+    enterDash();
+  }
+  function signOut(){ clear(); exitToSignIn(); }
+  /* Restore before paint where possible, so a remembered worker never sees the
+     sign-in screen flash. The markup starts hidden, so this only ever adds.
+     #login is an explicit request FOR the sign-in screen, so it wins over a
+     remembered session — otherwise that entry point could never be reached. */
+  function restore(){ if(location.hash !== '#login' && load()) enterDash(); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore);
+  else restore();
+  return { load:load, save:save, clear:clear, enterDash:enterDash, exitToSignIn:exitToSignIn, signIn:signIn, signOut:signOut };
+})();
+</script>
 
 <script>
 (function initGoLoginOverlay(){
@@ -1901,7 +1971,7 @@
   });
 
   // Sign in → enter the dashboard (already authenticated)
-  signIn.addEventListener('click', () => { if(signIn.disabled) return; var s=document.getElementById('signinScreen'); if(s) s.hidden=true; var d=document.getElementById('dashboard'); if(d) d.classList.add('active'); document.body.classList.add('go-dash-active'); document.body.style.overflow=''; window.scrollTo(0,0); close(); });
+  signIn.addEventListener('click', () => { if(signIn.disabled) return; GoSession.signIn('glRememberMe'); close(); });
 
   // New to Gopher? → app-only note + store badges (cloned from the page)
   let badgesLoaded = false;
@@ -2580,6 +2650,7 @@
         <p class="portal-sms-hint" id="smsVerified" hidden>&#10003; Phone verified — you're ready to sign in.</p>
       </div>
       <button class="portal-submit" id="signInBtn" disabled>Sign in &rarr;</button>
+      <div class="gl-meta"><label class="gl-check"><input type="checkbox" id="goRememberMe" checked> Remember me</label></div>
       <div class="portal-divider">No account yet?</div>
       <div class="app-only">
         <b>Accounts are created in the Gopher Go app</b>
@@ -3145,16 +3216,19 @@
 
         <p class="osf-err" id="osfErr" hidden></p>
         <button type="button" class="gc-modal-btn" id="osfSubmit">Submit my deal &rarr;</button>
-        <p class="osf-review">Each deal is reviewed before it goes live.</p>
+        <!-- Honesty: this form does not transmit yet (spec §9.12). Say so BEFORE the
+             worker composes a deal, not only after. Remove both this line and the
+             "not sent" success view in the same commit that adds the deal POST. -->
+        <p class="osf-review">Deal submissions aren&rsquo;t switched on yet &mdash; nothing you enter here is sent. Once they open, each deal is reviewed before it goes live.</p>
         <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="offerSvcClose2">Cancel</button>
       </div>
     </div>
 
     <!-- SUCCESS VIEW -->
     <div id="osfSuccess" hidden>
-      <div class="gc-modal-icon" style="background:#e2f3e9">&#10003;</div>
-      <h4>Deal submitted for review</h4>
-      <p class="gc-modal-sub">Nice &mdash; we&rsquo;ll give it a quick review and message your Gopher Go inbox the moment it&rsquo;s live. You can manage it from your dashboard anytime.</p>
+      <div class="gc-modal-icon" style="background:#fff7d6">&#8505;&#65039;</div>
+      <h4>Nothing was submitted</h4>
+      <p class="gc-modal-sub">Your deal checks out, but deal submissions aren&rsquo;t switched on yet &mdash; this hasn&rsquo;t been sent anywhere and isn&rsquo;t in review. Once they open, you&rsquo;ll submit from right here and we&rsquo;ll message your Gopher Go inbox the moment your deal is live.</p>
       <button type="button" class="gc-modal-btn" id="osfDone">Done</button>
     </div>
 
@@ -3344,25 +3418,17 @@
     const signInBtn = document.getElementById('signInBtn');
     signInBtn.addEventListener('click', (e) => {
       e.preventDefault(); if(signInBtn.disabled) return;
-      document.getElementById('signinScreen').hidden = true;
-      document.getElementById('dashboard').classList.add('active');
-      document.body.classList.add('go-dash-active');
-      document.body.style.overflow = '';
-      window.scrollTo(0,0);
+      GoSession.signIn('goRememberMe');
     });
   })();
 
   /* ════ #login entry point ════ */
   (function initLoginHash(){
     function apply(){ if(location.hash === '#login'){
-      const d=document.getElementById('dashboard'); if(d) d.classList.remove('active');
-      const s=document.getElementById('signinScreen'); if(s) s.hidden=false;
-      const e=document.getElementById('signinEmail'); if(e) setTimeout(()=>e.focus(),60); window.scrollTo(0,0);
+      GoSession.exitToSignIn();
+      const e=document.getElementById('signinEmail'); if(e) setTimeout(()=>e.focus(),60);
     } else if(location.hash === '#app'){
-      const s=document.getElementById('signinScreen'); if(s) s.hidden=true;
-      const d=document.getElementById('dashboard'); if(d) d.classList.add('active');
-      document.body.classList.add('go-dash-active');
-      window.scrollTo(0,0);
+      GoSession.enterDash();
     } }
     apply(); window.addEventListener('hashchange', apply);
   })();
@@ -3566,12 +3632,13 @@
       window.scrollTo(0,0);
     });
     document.getElementById('dashSignOut').addEventListener('click', () => {
-      dash.classList.remove('active');
-      document.body.classList.remove('go-dash-active');
+      /* Sign out ENDS the session — it must clear the remembered one, or the
+         next load silently signs the worker back in. (Back to main page above
+         deliberately does not, per the owner's 2026-07-23 split.) */
+      GoSession.signOut();
       const e=document.getElementById('emailVerified'); if(e) e.hidden=true;
       const s=document.getElementById('smsVerified'); if(s) s.hidden=true;
       const b=document.getElementById('signInBtn'); if(b) b.disabled=true;
-      window.scrollTo(0,0);
     });
   })();
 
