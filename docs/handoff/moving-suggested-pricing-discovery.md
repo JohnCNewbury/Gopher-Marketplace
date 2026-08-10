@@ -68,6 +68,35 @@ the customer's description and the price offered**, not a sub-category field.
 
 ---
 
+## 0. The failure mode this dataset invites — read this first
+
+Every wrong number in this workstream came from the same mistake, four times in one day:
+**a figure that measures something adjacent to what you think it measures.** Not arithmetic errors —
+each one was internally consistent, monotonic, and passed its tests.
+
+| # | The number used | What it actually measures | Consequence |
+|---|---|---|---|
+| 1 | *accepted* prices | what cleared, on a marketplace where **only 47–50% of Moving requests ever match** — the too-cheap jobs are absent by construction | anchors far too **low** ($60/$100/$200) |
+| 2 | agency retail (HireAHelper, U-Haul) | a price carrying dispatch, insurance, trucks, overhead and margin — **not** what a gig worker is paid, when Gopher takes ~8% | anchors far too **high** ($100/$250/$325/$475); a single couch priced at $115 |
+| 3 | same-ZIP vs **all** different-ZIP | lumps a next-suburb move in with a cross-metro one, so a real effect cancels out | **F4/D4** concluded distance doesn't matter; splitting at the metro boundary shows **+25%** |
+| 4 | the **mean** of accepted pay | a right-skewed distribution's mean (60% round numbers, tail to $390) — `few` mean $104 vs median $88 | the learning blend inflates; fixed by **D10** |
+
+A fifth of the same shape, caught before it shipped: a **flat percentage** stairs modifier measures
+"jobs with stairs cost more" when the real quantity is **cost per trip up the stairs** — which is why
+it was too big for one couch and too small for a house, and why the signal flipped sign depending on
+the tier regex.
+
+**What actually caught each one, in order:** re-deriving a figure instead of inheriting it; the owner
+looking at a single rendered screen; splitting a comparison at a boundary that matters; and measuring
+a feedback loop rather than predicting it. **Two confident predictions about that loop — one in this
+doc's own earlier drafts, one from the implementing session — were both backwards.**
+
+**The working rule:** before any number here becomes an anchor, say out loud what it measures and what
+it excludes. If those two sentences don't match the decision being made, it is the wrong number, no
+matter how clean it looks.
+
+---
+
 ## 1. The new flow already captures both routes
 
 `gopher-request.html` → `FIELD_HIDDEN_FOR`. Moving is one of eight flat categories
