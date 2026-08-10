@@ -1,13 +1,43 @@
 # Moving — Suggested Pricing: BUILD SPEC
 
 **For:** Website Updates session.
-**From:** Gopher iQ session, 2026-07-28. Discovery + calibration: `docs/handoff/moving-suggested-pricing-discovery.md`
+**From:** Gopher iQ session, 2026-08-09. Discovery + calibration: `docs/handoff/moving-suggested-pricing-discovery.md`
 (read §4–§6 before changing any number — the anchors are evidenced, not guessed).
 **Pattern being mirrored:** `docs/handoff/junk-suggested-pricing.md` and the live Junk implementation.
 **Nature:** front-end prototype work in the shared logic module + both Final apps. **No fee-engine,
 matching, payout, or persistence changes.** Nothing here touches live production behaviour.
 
-**Owner decisions (2026-07-28) — locked, do not re-litigate:**
+> # ✅ RECALIBRATED AGAINST MARKET DATA — 2026-08-09 (D7)
+>
+> The original internal anchors ($60/$100/$200) are **withdrawn**. Owner ruled **option B**: reprice
+> *and* split the top tier, per the taxonomy in `Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx`.
+>
+> | Tier | Key | **Anchor** | Market benchmark it tracks |
+> |---|---|---|---|
+> | A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254); a one-worker, 1–2 hour job |
+> | A truck-load | `truck` | **$250** | **U-Haul Moving Help NC average $254** (2 movers, 2 hrs) |
+> | 1–2 bedroom home | `home_small` | **$325** | HireAHelper Raleigh: 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
+> | 3+ bedroom home | `home_large` | **$475** | HireAHelper Raleigh: 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
+>
+> Monotonic: **$100 < $250 < $325 < $475**. Sources now filed at
+> `Dashboard/Gopher iQ/Suggested Pricing/`.
+>
+> **Why they moved:** the internal corpus is *accepted* prices only. Just 47–50% of Moving requests
+> ever match and unmatched jobs sit 43–60% below matched ones, so "median accepted" was the price at
+> which a coin flip clears. Compounding it, the **lead worker is paid the offer and pays the crew** —
+> $100 for a 2-person 2-hour job is $25/labor-hour split two ways against a ~$63 market. Gopher was
+> sitting at **~40% of market**.
+>
+> **D1 is amended by this ruling:** the two upper tiers use **bedroom** language, because that is how
+> the market prices and how the seed data is shaped. The two lower tiers keep item/truck language.
+>
+> ⚠️ **Two follow-ons NOT yet ruled — see §6 and §7-D4.** The market data also says stairs add
+> **+1 hr per flight** (vs my +15%/+25%, measured on the thin internal corpus) and that drive distance
+> adds **+0.5–3 hrs**, which directly contradicts **D4** ("never price on distance"). D4 rested on F4,
+> which was measured on the same under-priced accepted-price data that produced the bad anchors — so
+> it is suspect for exactly the same reason. **Recommend revisiting both.**
+
+**Owner decisions (2026-08-09) — locked, do not re-litigate:**
 
 | | Decision |
 |---|---|
@@ -27,7 +57,7 @@ with the shared logic in **`Final/assets/js/gopher-request-logic.js`**. Moving m
 same way. Both apps already expose the Moving route toggle (`noSpecificPickup` visible for
 `['delivery','moving']` in both), so there is no per-app divergence to design around.
 
-**Line numbers below are as of 2026-07-28 — locate by symbol, not by line.**
+**Line numbers below are as of 2026-08-09 — locate by symbol, not by line.**
 
 ---
 
@@ -55,35 +85,46 @@ same way. Both apps already expose the Moving route toggle (`noSpecificPickup` v
 Add alongside the Junk block. Reference implementation:
 
 ```js
-/* ── Moving suggested pricing (owner 2026-07-28) ────────────────────────────
+/* ── Moving suggested pricing (owner 2026-08-09) ────────────────────────────
    Ladder is items/truck, NOT home size: home size appears in 2% of real
    descriptions, named items in 47%, a vehicle in 38%. Calibration + the
    monotonicity result: docs/handoff/moving-suggested-pricing-discovery.md   */
 var MOVING_TIERS = {
-  few:   { label: 'A few items',   suggested: 60,
-           hint: 'a couple of pieces — no truck needed' },
-  truck: { label: 'A truck-load',  suggested: 100,
-           hint: 'a U-Haul, trailer or pod — or enough to need one' },
-  home:  { label: 'A full home',   suggested: 200,
-           hint: 'a whole house, apartment or office' }
+  few:        { label: 'A few items',      suggested: 100,
+                hint: 'a couple of pieces \u2014 no truck needed' },
+  truck:      { label: 'A truck-load',     suggested: 250,
+                hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
+  home_small: { label: '1\u20132 bedroom home', suggested: 325,
+                hint: 'studio, apartment, condo or small house' },
+  home_large: { label: '3+ bedroom home',  suggested: 475,
+                hint: 'a larger house, or an office move' }
 };
-var MOVING_TIER_ORDER = ['few','truck','home'];
+var MOVING_TIER_ORDER = ['few','truck','home_small','home_large'];
 
-/* Priority home > truck > few. Falls back to the median tier so the slider
-   still opens somewhere sensible and the requester can re-pick. */
+/* Priority home_large > home_small > truck > few. Falls back to 'truck' (the
+   median tier) so the slider still opens somewhere sensible and the requester
+   can re-pick in one tap.
+   Bare "house" resolves LARGE and bare "apartment" resolves SMALL: houses skew
+   bigger in the market data (Raleigh 2BR house $390 vs 2BR apt $331), and
+   erring low is the failure mode this recalibration exists to fix. */
 function detectMovingTier(text){
   var t = ' ' + String(text || '').toLowerCase() + ' ';
-  if(/\b(whole (house|home|apartment)|entire (house|home|apartment)|\d ?(bed|br|bedroom)s?|residential relocation|move (my|our) (house|home|apartment)|house to house|apartment to apartment|move (in)?to (a )?(new )?(house|home|apartment)|move out of (my |the )?(house|home|apartment)|office move|relocate office|move cubicles|moving across town|full (house|home) move)\b/.test(t))
-    return { tier: 'home', confidence: 'high' };
+  if(/\b([3-9]|1[0-9])\s*(bed|br|bedroom)s?\b|\b(three|four|five)[- ]bedroom\b|\b(whole|entire|full)\s+(house|home)\b|\bresidential relocation\b|\b(large|big)\s+(house|home|move)\b|\boffice move\b|\brelocate office\b|\bmove cubicles\b|\bmove (my|our) (house|home)\b|\bhouse to house\b/.test(t))
+    return { tier: 'home_large', confidence: 'high' };
+  if(/\b(studio|efficiency)\b|\b([12])\s*(bed|br|bedroom)s?\b|\b(one|two)[- ]bedroom\b|\b(whole|entire)\s+apartment\b|\bapartment to apartment\b|\bmove (my|our) (apartment|condo)\b|\bmove (in)?to (a |an )?(new )?(apartment|condo)\b|\bmove out of (my |the )?apartment\b|\bmoving across town\b/.test(t))
+    return { tier: 'home_small', confidence: 'high' };
   if(/\b(u-?haul|uhaul|box truck|moving truck|trailer|pod|storage unit|storage|load(ing)?|unload(ing)?|need (a )?truck|truck required|will need (a )?truck|dorm|college move|student move|piano|appliances?|bedroom furniture|labor only)\b/.test(t))
     return { tier: 'truck', confidence: 'high' };
   if(/\b(couch|sofa|loveseat|mattress|dresser|desk|table|nightstand|chair|headboard|bookcase|tv|boxes?|rearrange|pack(ing)?|unpack|wrap furniture|small move|a few (items|things|pieces))\b/.test(t))
     return { tier: 'few', confidence: 'high' };
-  return { tier: 'truck', confidence: 'low' };   // median tier — see §5
+  return { tier: 'truck', confidence: 'low' };   // median-ish tier — see §5
 }
 
-/* Stairs modifier (evidenced): +11% on 'few', +36% on 'truck', +25% overall.
-   One end +15%, both ends +25%. Elevator is NOT priced — n=2 in the data. */
+/* Stairs. ⚠️ RECOMMENDED CHANGE, NOT YET RULED — see the banner. Shipped value
+   is +15% one end / +25% both, measured on the (thin, under-priced) internal
+   corpus. The market seed data says a flight of stairs adds +1 HOUR per flight
+   (U-Haul), which on a 2-crew-hour job implies far more than 15%. Recommend
+   +20% one end / +35% both as a grounded middle, pending an owner ruling. */
 function suggestedMovingOffer(tier, opts){
   opts = opts || {};
   var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
@@ -123,9 +164,10 @@ real completions and record the change in the discovery doc.
 
 | Tier | Key | Anchor | Derivation |
 |---|---|---|---|
-| A few items — no truck | `few` | **$60** | clean-corpus **p25 is exactly $60**. The detected-tier median is $80; **owner ruled hold $60** (D6) — the band already reaches $75, and under-anchoring the cheapest tier is the safer error while learning is thin |
-| A truck-load | `truck` | **$100** | quantile method and observed median **agree exactly**; the strongest cell |
-| A full home | `home` | **$200** | p90 **and** the clean detected-tier median, which agree at $200 (cell is thin — directional) |
+| A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254); sized for a one-worker 1–2 hour job |
+| A truck-load | `truck` | **$250** | **U-Haul Moving Help NC average $254**, 2 movers / 2 hrs — the same job unit |
+| 1–2 bedroom home | `home_small` | **$325** | HireAHelper Raleigh 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
+| 3+ bedroom home | `home_large` | **$475** | HireAHelper Raleigh 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
 
 Band is ±25% of the (possibly learned) suggested, rounded to $5 — identical to Junk, so the two
 categories behave the same way.
@@ -136,7 +178,7 @@ categories behave the same way.
 p25 $60 · median $100 · p60 $100 · p75 $150 · p90 $200 · max $390
 ```
 
-> ⚠️ **Corpus corrected 2026-07-28, after the first draft.** The original selector
+> ⚠️ **Corpus corrected 2026-08-09, after the first draft.** The original selector
 > (`TITLE startswith "moving"`, N=215) swept in 38 legacy `Moving / Junk Removal - Junk Removal` rows
 > (median $40 — Junk jobs) and 22 `Store Pick Up & Delivery` rows. **The anchors did not move:** the
 > clean data hits $100 and $200 exactly, and clean p25 lands exactly on the $60 T1 anchor. Full
@@ -203,7 +245,7 @@ detector coverage above today's 72%.
 - **28% of real descriptions carry no scope signal.** The detector falls back to the **median tier
   (`truck`, $100)**, matching Junk's behaviour, and the requester corrects it in one tap — that
   correction is what teaches the model.
-- ✅ **Resolved 2026-07-28.** The first draft flagged this as an unconfirmed assumption, because
+- ✅ **Resolved 2026-08-09.** The first draft flagged this as an unconfirmed assumption, because
   no-signal descriptions looked like they sat at **$75** (nearer `few`). That was an artefact of the
   contaminated corpus. On the **clean corpus** no-signal descriptions sit at **$100 (n=36)** —
   exactly the median tier. **Defaulting to `truck` is empirically correct**, not just
@@ -215,24 +257,27 @@ detector coverage above today's 72%.
 
 ## 6. Acceptance tests
 
-1. `detectMovingTier('move my 3 bedroom house')` → `home`. `('load my u-haul')` → `truck`.
-   `('move a couch to the curb')` → `few`.
-2. **Priority holds:** `('move a couch out of my whole house')` → `home` (home beats few).
-3. **Monotonicity:** `suggestedMovingOffer('few').suggested < suggestedMovingOffer('truck').suggested
-   < suggestedMovingOffer('home').suggested`, with an empty learning store **and** after seeding.
-4. Empty/garbage description → `truck` (median), no throw.
-5. **The `state.description` trap:** set a description that should tier `home`, open the sheet, and
-   assert the suggestion is **not** the median default. A test that only checks "a number appeared"
-   passes while the detector is dead.
-6. Stairs: one end → +15% vs no stairs; both ends → +25%. Route A (`noSpecificPickup === true`) must
-   ignore `pickupStairs`.
-7. `PRICED_CATEGORIES` includes `'moving'` → the low-offer Continue gate fires on a lowball Moving
+1. `detectMovingTier('move my 3 bedroom house')` → **`home_large`**.
+   `('moving out of my 1 bedroom apartment')` → **`home_small`**.
+   `('load my u-haul')` → `truck`. `('move a couch to the curb')` → `few`.
+2. **Priority holds:** `('move a couch out of my whole house')` → `home_large` (large beats few);
+   `('2 bedroom apartment, need a u-haul loaded')` → `home_small` (small beats truck).
+3. **Bare-noun defaults:** `('move my house')` → `home_large`; `('move my apartment')` → `home_small`.
+4. **Monotonicity across all four:** `few < truck < home_small < home_large`
+   (**$100 < $250 < $325 < $475**), with an empty learning store **and** after seeding.
+5. Empty/garbage description → `truck`, no throw.
+6. **The `state.description` trap:** set a description that should tier `home_large`, open the sheet,
+   and assert the suggestion is **$475, not the `truck` default**. A test that only checks "a number
+   appeared" passes while the detector is dead.
+7. Stairs: one end → +15% vs no stairs; both ends → +25% (**or the recommended +20%/+35% if the owner
+   rules on it** — see the banner). Route A (`noSpecificPickup === true`) must ignore `pickupStairs`.
+8. `PRICED_CATEGORIES` includes `'moving'` → the low-offer Continue gate fires on a lowball Moving
    offer, and `suggested_offer_used` is emitted on submit.
-8. Trip context on Route B changes **no** suggested value (assert the number is identical with and
+9. Trip context on Route B changes **no** suggested value (assert the number is identical with and
    without a destination address).
-9. Requester taps a different tier → slider re-ranges and `state.movingTier` owns the tier from then
+10. Requester taps a different tier → slider re-ranges and `state.movingTier` owns the tier from then
    on (the detector must not overwrite the correction).
-10. Both apps behave identically on the same inputs.
+11. Both apps behave identically on the same inputs.
 
 ---
 

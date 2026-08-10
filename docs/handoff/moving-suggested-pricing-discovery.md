@@ -1,13 +1,43 @@
 # Moving — Suggested Pricing: DISCOVERY (complete)
 
 **Status:** discovery complete. **No code written.** Ready to become a build spec for Website Updates.
-**Owner ask (2026-07-28):** extend Gopher iQ suggested pricing to **Moving**, Junk-style scope tiers,
+**Owner ask (2026-08-09):** extend Gopher iQ suggested pricing to **Moving**, Junk-style scope tiers,
 two routes — single location vs between two locations. Goal: help requesters who don't know the rate.
 **Owner scoping:** scope to the **new flow**; **one Moving category**, no sub-categories; **iQ reads
 the customer's description and the price offered**, not a sub-category field.
 **Sibling doc (pattern being mirrored):** `docs/handoff/junk-suggested-pricing.md`.
 
-**Decisions locked (owner, 2026-07-28):**
+> # ✅ ANCHORS RECALIBRATED AGAINST MARKET DATA — 2026-08-09 (D7)
+>
+> The internal anchors derived below ($60/$100/$200) are **withdrawn**. Owner ruled **option B** —
+> reprice *and* split the top tier:
+>
+> | Tier | Key | **Anchor** | Market benchmark |
+> |---|---|---|---|
+> | A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254) |
+> | A truck-load | `truck` | **$250** | U-Haul Moving Help **NC average $254** (2 movers, 2 hrs) |
+> | 1–2 bedroom home | `home_small` | **$325** | Raleigh 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
+> | 3+ bedroom home | `home_large` | **$475** | Raleigh 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
+>
+> **Everything below remains valid as method, structure and detector design — only the dollar values
+> are superseded.** The two findings that caused the error are worth keeping in view:
+> **(1) selection bias** — the corpus is *accepted* prices, only 47–50% of Moving requests ever match,
+> and unmatched jobs sit 43–60% below matched ones; **(2) a semantic error** — the lead worker is paid
+> the offer and pays the crew, so $100 for a 2-person 2-hour job is $25/labor-hour split two ways
+> against a ~$63 market. Gopher was at **~40% of market**.
+>
+> **D1 amended:** the two upper tiers use bedroom language (the market prices that way); the lower two
+> keep item/truck language. **D6 (`few` holds at $60) is superseded by D7.**
+>
+> ⚠️ **F4/D4 are now suspect.** The seed data says drive distance adds **+0.5–3 hrs** and stairs add
+> **+1 hr per flight**. F4 concluded distance doesn't drive Moving pay — but it measured the same
+> under-priced accepted-price data that produced the bad anchors, so it fails for the same reason.
+> **Recommend revisiting D4 and the stairs modifier.** Not yet ruled.
+>
+> Sources: `Dashboard/Gopher iQ/Suggested Pricing/Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx`
+> and `…/Gopher_iQ_Moving_Pricing_Seed_Data.xlsx`.
+
+**Decisions locked (owner, 2026-08-09):**
 
 | | Decision |
 |---|---|
@@ -16,7 +46,8 @@ the customer's description and the price offered**, not a sub-category field.
 | **D3** | iQ may use the **structured fields already collected** — stairs, service elevator, item count — as **modifiers**; the **description drives the base tier**. |
 | **D4** | Trip distance on the two-location route: **show as context, never price on it.** |
 | **D5** | **Anchors are owner-set**, informed by the envelope in §5. |
-| **D6** | The `few` anchor **holds at $60** after the corpus correction (§4b · Q7). Settled. |
+| **D6** | ~~The `few` anchor holds at $60~~ — **SUPERSEDED by D7.** |
+| **D7** | **Option B (2026-08-09):** reprice against market **and split the top tier** — `few $100` · `truck $250` · `home_small $325` · `home_large $475`. Amends D1 for the upper tiers. |
 
 ---
 
@@ -50,14 +81,20 @@ Remove `'moving'`, add the tier model behind it. That is the whole surface chang
 
 ## 2. Findings
 
-**F1 · Descriptions carry real scope signal — 72%.** Of 215 completed Moving orders, **155 (72%)**
-contain at least one scope-bearing phrase; 28% contain none.
+**F1 · Descriptions carry real scope signal — 79%.** On the **clean corpus (N=155, §4b)**, **122 (79%)**
+contain at least one scope-bearing phrase; 21% contain none.
 
 | Signal | Coverage | | Signal | Coverage |
 |---|---|---|---|---|
-| named items | **47%** | | duration | 7% |
-| vehicle needed | **38%** | | crew size | 6% |
-| item count | 12% | | home size | **2%** |
+| named items | **50%** | | duration | 10% |
+| vehicle needed | **43%** | | crew size | 8% |
+| item count | 13% | | home size | **1%** |
+
+> **Two different "no signal" numbers, both correct — don't conflate them.** A *broad* scan finds some
+> scope phrase in 79% (21% none). The **tier detector itself** — which needs a phrase it can map to a
+> tier — fails to tier **23% (36/155)**. The detector's 23% is the operationally relevant one and is
+> what the shipped code cites. *(Superseded: the first pass reported 72% / 28% on the contaminated
+> 215-row corpus.)*
 
 **This is what validates the description-first approach.** Junk's doc records the opposite — 467/715
 orders had *no* parseable volume phrase, forcing pure owner-anchors. Moving descriptions are rich:
@@ -136,7 +173,7 @@ quartiles even though the medians separate. Treat this as *corroboration* of the
 
 ---
 
-## 4b. ⚠️ Corpus correction (2026-07-28, after §4 was written)
+## 4b. ⚠️ Corpus correction (2026-08-09, after §4 was written)
 
 Building the calibration workbook surfaced a contamination in the corpus used for §4 and §5. The
 selector was `TITLE startswith "moving"`, which silently swept in **38 legacy
@@ -169,7 +206,7 @@ Junk model — plus **22 `Store Pick Up & Delivery`** rows that §7-Q6 had alrea
 Percentages elsewhere in §2 and §6 (signal coverage, stairs lift) were computed on the wider 215-row
 set and are **directional, not restated** — they concern which words appear, not what things cost.
 
-**Q7 · Should the `few` anchor move up from $60? — ✅ RULED: HOLD $60 (owner, 2026-07-28).**
+**Q7 · Should the `few` anchor move up from $60? — ✅ RULED: HOLD $60 (owner, 2026-08-09).**
 Clean p25 is $60 and the detected-tier median is $80, so the question was real. Held at **$60**
 because the T1 band already reaches $75, and under-anchoring the cheapest tier is the safer error
 while forward learning is thin. **D6.** Settled — do not re-raise; if forward learning moves it, that
@@ -220,12 +257,14 @@ crew multiplier, the same labour gets paid for twice in the suggestion. **Confir
 
 ## 7. Cold start and defaults
 
-- **28% of descriptions carry no scope signal** (70 orders). Their observed median is **$75** — nearer
-  T1 ($72) than T2 ($100).
-- Junk defaults to the **median tier** and lets the requester re-pick with one tap. Recommendation:
-  **do the same (default T2)** for consistency and because under-suggesting is the failure mode F3
-  identifies — but note the empirical median argues for T1. It is a one-tap correction either way, and
-  the correction is what teaches the model. **Worth an explicit owner call.**
+- ✅ **RESOLVED — default to the median tier (`truck`). No owner call needed.** The detector fails to
+  tier **23% of descriptions (36/155)** on the clean corpus, and their observed median is **$100** —
+  *exactly* the median tier. Falling back to `truck` is therefore **empirically correct**, not merely
+  consistent-with-Junk, and the requester still re-picks in one tap (that correction is what teaches
+  the model).
+  ⚠️ *Superseded, do not re-derive from it:* the first pass reported "28% / median $75, nearer T1" and
+  called it an open owner question. The $75 was an artefact of the 38 legacy Junk rows swept into the
+  corpus (§4b). Both the build spec §5 and the shipped code now say RESOLVED.
 - Fallback ladder: unknown tier → route median → category median. **A pricing hint must never fail
   loud.**
 - Forward learning: reuse Junk's `recordX / ingest / suggest` seam and its `w = n/(n+8)` blend, so the
