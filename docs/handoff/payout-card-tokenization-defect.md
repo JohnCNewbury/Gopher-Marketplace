@@ -1,11 +1,16 @@
 # Payout setup is unreachable — the debit card is never tokenized
 
+**Jira:** [G40-360](https://gopherapp.atlassian.net/browse/G40-360) (Bug, High) · Component **Gopher Go App** · Label `pay` · Assignee John Newbury · *relates to* G40-19
 **Written:** 2026-08-09, from a live support case.
 **Surface:** worker app (`gopher-mobile-gopher`) — Payout Account → Debit Card screen.
 **Backend:** `gopher-backend-api` (correct as-is; see §5 — do not "fix" the backend).
 **Scope:** DIAGNOSIS ONLY. No code written. Payments/billing is reserved for the human dev per
 `CLAUDE.md` → *Scope of AI work*.
 
+> **This document is the source of truth, not the ticket.** G40-360 carries the repro and the
+> acceptance criteria and dies with the fix; the reasoning, the ruled-out theories and the scale
+> caveat live here and outlive it.
+>
 > **No customer details appear in this document.** The repo is public. The defect is universal —
 > it does not depend on the user, their card, or their bank — so the repro below needs no real
 > account to reproduce.
