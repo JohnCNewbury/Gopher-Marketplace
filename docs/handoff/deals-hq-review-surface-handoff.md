@@ -28,16 +28,15 @@ real browser against production — **not asserted from a spec**.
 | Save real details (new users) | `PUT /api/v1/users` | live |
 | Email OTP | `POST /users/email_otp/send` + `/verify` | live |
 | File the deal | `POST /api/v1/users/deals` | live |
-| **Review queue** | `GET /api/v1/admin/deals/queue` | ⚠️ **written, NOT merged** — MR !254 open |
+| **Review queue** | `GET /api/v1/admin/deals/queue` | ✅ **live** — MR !254 merged, deploy `b93d5231` |
 
 **Five real deals exist** (ids 1–5), three categories, four owners. They are test
 data but they are *real rows* — build the queue against them rather than mocks.
 
-### ⚠️ The queue moved to the ADMIN router — resolved 2026-08-10
+### ⚠️ The queue moved to the ADMIN router — CLOSED 2026-08-10, live-verified
 
-The `!254` row above resolved: the MR is **open**, not merged. `production` is at
-`54acb023`, an *earlier* merge of the same branch, which is why it carries
-`submit_deal` and `get_sp_eligibility` but no queue.
+`!254` merged squashed; `production` deploy commit **`b93d5231`**. Cite that SHA,
+not the source commits — they were squashed away and no longer exist.
 
 **The path changed before merge.** It shipped for review as
 `GET /api/v1/users/deals/queue` behind `middleware.user_auth` — a guard that
@@ -62,9 +61,25 @@ now pins the placement, the `verify_auth` mount, the `earn_amount` exclusion and
 the oldest-first ordering, mutation-tested four ways. **The general hole remains:
 nothing detects an admin-only surface mounted on the user router.**
 
-⚠️ **Do not cite a commit SHA for this MR.** It is being merged **squashed**, so
-both `cfd4f6e7` and the fix commit `c8bee471` cease to exist on `production`.
-Verify by content — the route table and `controllers/admin/deals.js` — not by SHA.
+**Live-verified against production 2026-08-10 19:32 EDT**, by request rather than
+by reading the merge:
+
+| Check | Result | Proves |
+|---|---|---|
+| `GET /api/v1/admin/deals/queue`, no token | **401** | mounted, and the gate holds |
+| `GET /api/v1/users/deals/queue` | **404** | the exposure is *gone*, not merely duplicated |
+| Admin path, bogus token | **401** | rejects cleanly — no 500 leaking a stack |
+| `admin/orders`, `admin/coupons` | 401 / 401 | no collateral damage to siblings |
+
+⚠️ **It read 404 for the first ~3 minutes after the merge.** That is the deploy
+lag, not a mount failure — `admin/orders` returned 401 throughout, which is the
+one-curl way to tell the two apart. Do not diagnose a fresh 404 as broken code
+until a sibling admin route disagrees.
+
+⚠️ **The merged commit message still carries "NOT verified by boot."** True when
+written, discharged by the table above. Squashing froze the pre-deploy wording
+into `production` history — a reminder that a commit message is a snapshot, not a
+record that keeps up.
 
 ### The flow, as the owner ruled it 2026-08-10
 
