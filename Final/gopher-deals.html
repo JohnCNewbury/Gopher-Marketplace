@@ -2958,7 +2958,7 @@
             <div class="otp-confirm">
               <p class="field-hint">Enter the 6-digit code we texted you.</p>
               <div class="otp-code-row">
-                <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="••••••">
+                <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" name="otp_code_sms">
                 <button type="button" class="btn-verify" onclick="checkOtp(this)">Confirm</button>
               </div>
             </div>
@@ -3887,7 +3887,7 @@
       '<div style="font-size:14px;color:#41506b;margin-bottom:10px;">We sent a 6-digit code to <strong>' +
         String(email).replace(/[<>&]/g, '') + '</strong>. Enter it to finish your deal.</div>' +
       '<div class="otp-code-row" style="display:flex;gap:8px;">' +
-        '<input class="otp-code dc-email-code" inputmode="numeric" maxlength="6" placeholder="······" style="flex:1;letter-spacing:5px;text-align:center;">' +
+        '<input class="otp-code dc-email-code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="one-time-code" name="otp_code_email" style="flex:1;letter-spacing:5px;text-align:center;">' +
         '<button type="button" class="btn-verify dc-email-confirm">Confirm</button>' +
       '</div>' +
       '<button type="button" class="dc-email-resend" style="margin-top:10px;background:none;border:none;color:#1a9d4b;font-weight:700;cursor:pointer;padding:0;">Resend code</button>';
@@ -4479,6 +4479,10 @@
     try { data.source = new URLSearchParams(location.search).get('src') || 'direct'; } catch (e) { data.source = 'direct'; }
     modal.querySelectorAll('input, select, textarea').forEach(function(el) {
       if (!el.name) return;
+      /* One-time codes are never part of a submission — they are proof, already spent
+         by the time we get here. The names exist purely so the browser stops
+         autofilling the phone number into them. */
+      if (el.name === 'otp_code_sms' || el.name === 'otp_code_email') return;
       if (el.type === 'checkbox') { data[el.name] = el.checked; return; }
       /* ⚠️ FILE FIELDS TRANSMIT THEIR NAME ONLY — the file itself is discarded here.
          This is a limitation of the Apps Script demo backend (it cannot receive a
