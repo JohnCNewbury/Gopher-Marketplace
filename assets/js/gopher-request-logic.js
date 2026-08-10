@@ -255,13 +255,45 @@
   // always passed real completed-request text and tiered correctly, but stores written
   // during manual testing could be 'half'-skewed — and a skewed baseline is worse than
   // no history. Bumping the key orphans old data silently; learning restarts clean.
-  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v2';
+  /* ── D10 (owner, 2026-08-09): BLEND TOWARD THE MEDIAN, NOT THE MEAN ──────────
+     Right-skewed pay makes the mean the wrong statistic. Moving 'few' is mean
+     $104 vs median $88 (60% of accepted offers are round numbers, with a tail to
+     $390); Junk is worse — p50 $40, p90 $125, max $1000. One high outlier drags
+     a mean and cannot drag a median. Both the seed workbook (§12 "prefer median
+     over mean for skewed job prices") and junk-suggested-pricing.md already said
+     this; the code simply never did it.
+     ⚠️ THIS IS A STORE-SHAPE CHANGE, NOT A ONE-LINE SWAP. A median cannot be
+     derived from {sum, n} — the bucket has to keep the VALUES. Shape is now
+     { vals: [], ids: {} } with n = vals.length. vals is CAPPED at the most
+     recent LEARN_CAP entries per tier so localStorage cannot grow without
+     bound on a busy account. */
+  var LEARN_CAP = 200;
+  function learnMedian(vals){
+    if(!vals || !vals.length) return null;
+    var a = vals.slice().sort(function(x,y){ return x - y; });
+    var m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : (a[m-1] + a[m]) / 2;
+  }
+  function learnPush(bucket, pay){
+    bucket.vals.push(pay);
+    if(bucket.vals.length > LEARN_CAP) bucket.vals = bucket.vals.slice(-LEARN_CAP);
+  }
+
+  /* v3 (2026-08-09, D10): key bumped because the bucket shape changed from
+     {sum,n,ids} to {vals,ids} — an old store cannot yield a median, and reading
+     one would silently fall back to the baseline forever. Same precedent as the
+     v1->v2 bump: a skewed baseline is worse than no history.
+     ⚠️ JUNK IS LIVE ON ALL THREE HOSTS — this orphans whatever real users have
+     learned in their own browsers. Owner-accepted (per-browser localStorage,
+     seeded only from demo dashboard data), but it is a live-surface change and
+     must be called out at deploy rather than riding along inside a Moving one. */
+  var JUNK_LEARN_KEY = 'gopher_junk_pay_learn_v3';
   function junkLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(JUNK_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
   }
   function junkSaveLearn(o){ try { window.localStorage.setItem(JUNK_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
-  function junkTierBucket(store, tier){ if(!store[tier]) store[tier] = { sum:0, n:0, ids:{} }; return store[tier]; }
+  function junkTierBucket(store, tier){ if(!store[tier] || !store[tier].vals) store[tier] = { vals:[], ids:{} }; return store[tier]; }
 
   /* Record one completed Junk job's accepted worker-pay against its tier. id (an
      order id) dedupes; pass a stable id for real completions, omit for anonymous
@@ -270,9 +302,9 @@
     if(JUNK_TIERS[tier] == null) return 0;
     var p = Number(pay); if(!(p > 0)) return 0;
     var store = junkLoadLearn(), b = junkTierBucket(store, tier);
-    if(id != null){ if(b.ids[id]) return b.n; b.ids[id] = 1; }
-    b.sum += p; b.n += 1; junkSaveLearn(store);
-    return b.n;
+    if(id != null){ if(b.ids[id]) return b.vals.length; b.ids[id] = 1; }
+    learnPush(b, p); junkSaveLearn(store);
+    return b.vals.length;
   }
   /* Seed the learning store from a surface's existing completed-request history.
      Each item: { id, tier, pay }.  Idempotent (by id). This is how a real completed
@@ -291,10 +323,11 @@
     var base = JUNK_TIERS[tier] || JUNK_TIERS.half;
     var suggested = base.suggested, learnedN = 0;
     var b = junkLoadLearn()[tier];
-    if(b && b.n > 0){
-      var learnedMean = b.sum / b.n, K = 8, w = b.n / (b.n + K);
-      suggested = Math.round((base.suggested*(1-w) + learnedMean*w) / 5) * 5;   // round to $5
-      learnedN = b.n;
+    var n = (b && b.vals) ? b.vals.length : 0;
+    if(n > 0){
+      var learnedMid = learnMedian(b.vals), K = 8, w = n / (n + K);   // D10: MEDIAN
+      suggested = Math.round((base.suggested*(1-w) + learnedMid*w) / 5) * 5;
+      learnedN = n;
     }
     var r5 = function(x){ return Math.round(x/5)*5; };
     return {
@@ -304,6 +337,202 @@
       learnedSamples: learnedN, baseline: base.suggested
     };
   }
+  /* ── Moving suggested pricing (owner 2026-07-28, D1-D5) ─────────────────────
+     Ladder is ITEMS/TRUCK, not home size: home size appears in 2% of real
+     descriptions, named items in 47%, a vehicle in 38%. Anchors are evidenced
+     against completed Moving orders keyed on GOPHER OFFER (worker pay — never
+     GOPHER EARNINGS, which is platform take).
+     ⚠️ CORPUS CORRECTED 2026-07-28 (discovery §4b): the original selector was
+     TITLE startswith "moving", which swept in 38 legacy
+     "Moving / Junk Removal - Junk Removal" rows (median $40 — those are JUNK
+     jobs) and 22 "Store Pick Up & Delivery" rows. Clean corpus = 155, not 215.
+       clean envelope: p25 $60 · median $100 · p90 $200
+       clean tier medians: $80 / $100 / $200  (was $72 / $100 / $228)
+     THE ANCHORS BELOW ARE UNCHANGED BY THAT CORRECTION — the clean data hits
+     $100 and $200 exactly, and clean p25 lands exactly on $60. Still monotonic.
+
+     ⛔ 'home' ($200) IS NOT SHIPPABLE AS CALIBRATED — DO NOT DEPLOY IT. Owner,
+     2026-07-28: "There is no way a worker would take [a full house move] on for
+     that low." He is right, and the evidence agrees: the ENTIRE platform history
+     holds 6 whole-home Moving requests (4 completed). That is an anecdote, not a
+     calibration — whole-home moves barely exist on Gopher today, so internal
+     accepted-price data CANNOT price this tier at all. Revised anchors are
+     coming from an external pricing-intelligence blueprint.
+     ⚠️ AND A LIMIT ON ALL THREE: anchoring to accepted prices targets a ~50%
+     MATCH RATE, not a fair price. Only 47-50% of Moving requests ever match, and
+     the unmatched ones are the cheap ones — matched jobs clear 43-60% ABOVE
+     unmatched. So 'few' $60 and 'truck' $100 are "what currently clears on
+     Gopher", NOT "what the work is worth". They rest on 122 and 116 real
+     requests and are defensible as the former; do not present them as the
+     latter. Changing all of this is a one-table edit right here.
+     Full calibration + audit trail: docs/handoff/moving-suggested-pricing-discovery.md
+     §4b, and the workbook "Suggested Pricing Data - Moving.xlsx" (disk-only),
+     whose "In Corpus" flag makes the exclusions auditable rather than invisible.
+
+     ROUTE (D2/D4): the single- vs two-location route (state.noSpecificPickup)
+     does NOT change the anchor — it gates which QUESTIONS are asked. Trip
+     distance is context only and must never enter the arithmetic: same-ZIP
+     moves run a median $115 vs $100 for different-ZIP, i.e. flat-to-inverted,
+     so the ride-pricing model is the wrong template here despite being the
+     obvious one.
+
+     ⚠️ NO CREW-SIZE MODIFIER. Descriptions naming 2+ people show +88%, the
+     largest effect measured — but the flow already collects workersNeeded as
+     CREW SIZE and that field already drives pricing and totals (it is NOT the
+     hire count; Request hires one lead worker who pays the crew). An iQ crew
+     multiplier would pay for the same labour twice. Confirm where workersNeeded
+     enters the total before revisiting. */
+  /* ⚠️ D8 (owner, 2026-08-09) — REPRICED AGAIN, AND THE STAIRS MODIFIER REMOVED.
+     SUPERSEDES D7 ($100/$250/$325/$475) and D6 ($60). Neither should reappear
+     from an older copy — they are struck through in the ledger, not stacked.
+
+     D7 WAS WRONG IN THE OPPOSITE DIRECTION TO THE ORIGINAL, and the shape of the
+     error is the thing to remember: it anchored Gopher's WORKER PAY to AGENCY
+     RETAIL. HireAHelper/U-Haul prices carry dispatch, insurance, trucks,
+     overhead and margin; Gopher is gig and takes ~8% for the connection, so the
+     offer is labor + materials. Pricing at retail made Gopher DEARER than the
+     thing it replaces. Same class of mistake as the first round — comparing two
+     numbers that don't measure the same thing. Caught by the owner on a live
+     demo: "single couch moved to the 3rd floor" priced $115 when three methods
+     put it near $75.
+
+     These anchors are crew x hours x $30/labor-hour, cross-checked against
+     Gopher's own completed history:
+       few        $75   model 2 x 1.0hr = $60    history n=26, med $88
+       truck      $110  model 2 x 2.0hr = $120   history n=52, med $100
+       home_small $225  model 4.5 crew-hr = $270 history n=3,  med $200
+       home_large $375  model 3 x 5hr = $450     history n=1
+     The two well-powered tiers have model and history agreeing closely; the
+     upper two are model-led because the history is n=3 and n=1.
+     Owner ruled FLAT TIERS for this release. The full crew x hours engine —
+     hours from item count, home size, truck, stairs x trips, one vs two
+     locations — is the destination, not this build. */
+  var MOVING_TIERS = {
+    few:        { label: 'A few items',      suggested: 75,
+                  hint: 'a couple of pieces \u2014 no truck needed' },
+    truck:      { label: 'A truck-load',     suggested: 110,
+                  hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
+    home_small: { label: '1\u20132 bedroom home', suggested: 225,
+                  hint: 'studio, apartment, condo or small house' },
+    home_large: { label: '3+ bedroom home',  suggested: 375,
+                  hint: 'a larger house, or an office move' }
+  };
+  var MOVING_TIER_ORDER = ['few','truck','home_small','home_large'];
+
+  /* Priority home_large > home_small > truck > few. Falls back to 'truck' so the slider
+     still opens somewhere sensible and the requester can re-pick in one tap —
+     that correction is what teaches the model.
+     23% of real descriptions carry no scope signal (36 of the clean 155; the
+     28% figure predates the corpus fix). ✅ RESOLVED 2026-07-28: the
+     first draft flagged this default as an unconfirmed assumption because those
+     descriptions looked like they sat at $75, nearer 'few' — but that $75 was
+     purely the contaminated junk-side rows (§4b). On the CLEAN corpus they sit
+     at $100 (n=36), exactly the median tier, so defaulting to 'truck' is
+     empirically correct and not merely consistent-with-Junk. Do not "fix" it
+     to 'few'.
+     BARE-NOUN RULE (deliberate): bare "house" resolves LARGE and bare
+     "apartment" resolves SMALL. Houses skew bigger in the market data (Raleigh
+     2BR house $390 vs 2BR apt $331), and erring LOW is the exact failure this
+     recalibration exists to fix. Do not "balance" these to the same tier. */
+  function detectMovingTier(text){
+    var t = ' ' + String(text || '').toLowerCase() + ' ';
+    if(/\b([3-9]|1[0-9])\s*(bed|br|bedroom)s?\b|\b(three|four|five)[- ]bedroom\b|\b(whole|entire|full)\s+(house|home)\b|\bresidential relocation\b|\b(large|big)\s+(house|home|move)\b|\boffice move\b|\brelocate office\b|\bmove cubicles\b|\bmove (my|our) (house|home)\b|\bhouse to house\b/.test(t))
+      return { tier: 'home_large', confidence: 'high' };
+    if(/\b(studio|efficiency)\b|\b([12])\s*(bed|br|bedroom)s?\b|\b(one|two)[- ]bedroom\b|\b(whole|entire)\s+apartment\b|\bapartment to apartment\b|\bmove (my|our) (apartment|condo)\b|\bmove (in)?to (a |an )?(new )?(apartment|condo)\b|\bmove out of (my |the )?apartment\b|\bmoving across town\b/.test(t))
+      return { tier: 'home_small', confidence: 'high' };
+    if(/\b(u-?haul|uhaul|box truck|moving truck|trailer|pod|storage unit|storage|load(ing)?|unload(ing)?|need (a )?truck|truck required|will need (a )?truck|dorm|college move|student move|piano|appliances?|bedroom furniture|labor only)\b/.test(t))
+      return { tier: 'truck', confidence: 'high' };
+    if(/\b(couch|sofa|loveseat|mattress|dresser|desk|table|nightstand|chair|headboard|bookcase|tv|boxes?|rearrange|pack(ing)?|unpack|wrap furniture|small move|a few (items|things|pieces))\b/.test(t))
+      return { tier: 'few', confidence: 'high' };
+    return { tier: 'truck', confidence: 'low' };   // median-ish tier
+  }
+
+  /* Forward-learning store — same shape/seam as Junk, separate key so the two
+     categories never cross-contaminate. */
+  /* v4 (2026-08-09, D10): shape changed to {vals, ids} for the median blend, and
+     the anchors have now moved three times (D6 -> D7 -> D8), so any older store
+     is doubly invalid. Same precedent as JUNK v1->v2: a skewed baseline is worse
+     than no history. */
+  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v4';   // v3: D8 re-anchored again
+  function movingLoadLearn(){
+    try { var o = JSON.parse((window.localStorage||{}).getItem(MOVING_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
+    catch(_){ return {}; }
+  }
+  function movingSaveLearn(o){ try { window.localStorage.setItem(MOVING_LEARN_KEY, JSON.stringify(o)); } catch(_){} }
+  function movingTierBucket(store, tier){ if(!store[tier] || !store[tier].vals) store[tier] = { vals:[], ids:{} }; return store[tier]; }
+
+  function recordMovingOffer(tier, pay, id){
+    if(MOVING_TIERS[tier] == null) return 0;
+    var p = Number(pay); if(!(p > 0)) return 0;
+    var store = movingLoadLearn(), b = movingTierBucket(store, tier);
+    if(id != null){ if(b.ids[id]) return b.vals.length; b.ids[id] = 1; }
+    learnPush(b, p); movingSaveLearn(store);
+    return b.vals.length;
+  }
+  function ingestMovingCompletions(list){
+    (list || []).forEach(function(r){
+      if(r && r.tier && r.pay != null) recordMovingOffer(r.tier, r.pay, r.id);
+    });
+  }
+
+  /* 🔴 NO STAIRS/ELEVATOR MULTIPLIER — D8 REMOVED IT. Do not "retune" it back in.
+     The signal does not survive its own tier definition: `truck`, the
+     best-powered cell, shows +0% (n=15 vs 37); `few` shows +43% under one
+     reasonable tier regex and -22% under another; the upper tiers are n=1-2.
+     The structural reason is that STAIRS SCALE WITH THE NUMBER OF TRIPS — one
+     couch up one flight is one trip, a 3-bedroom house is dozens. U-Haul's
+     "+1 hour per flight" is a whole-home figure, so a flat percentage is wrong
+     at both ends, and it was inflating exactly the small job that drew the
+     complaint ($100 -> $115 on a single couch).
+     pickupStairs/destStairs are still COLLECTED and still passed in by both
+     apps; `opts` stays in the signature so the call sites don't churn when the
+     crew x hours model lands. They simply do not price today.
+     ⚠️ Acceptance test 7 is INVERTED because of this: it now asserts the
+     suggestion is IDENTICAL with and without stairs. A regression there
+     reintroduces the $115 bug. */
+  function suggestedMovingOffer(tier, opts){
+    opts = opts || {};
+    var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
+    /* 🔴 D9 (owner, 2026-08-09): FORWARD LEARNING IS FROZEN FOR MOVING. w = 0 —
+       the anchors are authoritative and the store is not read.
+       WHY, measured against real completed history rather than assumed: blending
+       would move 'few' from $75 to $100, +33%, undoing D8's headline fix. 'few'
+       was set deliberately BELOW its historical mean ($104) on labor-model
+       grounds — that is exactly what took the couch from $115 to $75 — so
+       learning from accepted prices walks the owner's correction straight back.
+       ⚠️ NOTE WHICH TIERS ARE AT RISK, because the intuition is backwards:
+       shrinkage PROTECTS the thin cells (home_large, n=1, moves 5%); it is the
+       WELL-POWERED tiers that get pulled hardest, since w = n/(n+8) is largest
+       where n is largest. few (n=61, w=.88) and truck (n=52, w=.87).
+       recordMovingOffer / ingestMovingCompletions stay exported and callable —
+       they simply have no consumer while frozen, and the store they write is
+       already median-shaped for when this is re-enabled against POST-D8
+       completions only. To re-enable: restore the blend below. */
+    var suggested = base.suggested, learnedN = 0;
+    /* Route A (single location) has no pickup end, so the caller gates
+       pickupStairs on !noSpecificPickup — mirrored here defensively. */
+    var r5 = function(x){ return Math.round(x / 5) * 5; };
+    suggested = r5(suggested);
+    return {
+      tier: (MOVING_TIERS[tier] ? tier : 'truck'),
+      label: base.label, hint: base.hint,
+      low: r5(suggested * 0.75), suggested: suggested, generous: r5(suggested * 1.25),
+      learnedSamples: learnedN, baseline: base.suggested
+    };
+  }
+
+  /* Item-count promotion (D3): structured item count may promote few -> truck,
+     but the DESCRIPTION drives the base tier.
+     ⚠️ THE THRESHOLD OF 8 IS AN UNVALIDATED DEFAULT — item count appears in only
+     12% of historical descriptions, so there was nothing to calibrate against.
+     Tune after ~20 real completions and record the change in the discovery doc. */
+  var MOVING_ITEM_PROMOTE_AT = 8;
+  function promoteMovingTierForItems(tier, itemCount){
+    var n = Number(itemCount);
+    if(tier === 'few' && n >= MOVING_ITEM_PROMOTE_AT) return 'truck';
+    return tier;
+  }
+
   function regionStateFromAddress(addr){
     if(!addr) return '';
     var m = String(addr).toUpperCase().match(/\b([A-Z]{2})\b(?:\s+\d{5})?\s*$/);
@@ -327,6 +556,15 @@
     detectJunkVolumeTier: detectJunkVolumeTier,
     suggestedJunkOffer: suggestedJunkOffer,
     recordJunkOffer: recordJunkOffer,
-    ingestJunkCompletions: ingestJunkCompletions
+    ingestJunkCompletions: ingestJunkCompletions,
+    // Moving suggested pricing + the same forward-learning seam (owner 2026-07-28)
+    MOVING_TIERS: MOVING_TIERS,
+    MOVING_TIER_ORDER: MOVING_TIER_ORDER,
+    MOVING_ITEM_PROMOTE_AT: MOVING_ITEM_PROMOTE_AT,
+    detectMovingTier: detectMovingTier,
+    suggestedMovingOffer: suggestedMovingOffer,
+    promoteMovingTierForItems: promoteMovingTierForItems,
+    recordMovingOffer: recordMovingOffer,
+    ingestMovingCompletions: ingestMovingCompletions
   };
 })();

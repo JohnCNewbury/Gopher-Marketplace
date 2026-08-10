@@ -2963,7 +2963,6 @@
               </div>
             </div>
             <span class="otp-verified">&check; Phone verified</span>
-            <input type="hidden" name="phone_verified" value="false">
           </div>
         </div>
         <div class="field">
@@ -3746,8 +3745,47 @@
     }
   }
   (function(){ var fr=document.getElementById('rpFrame'); if(fr) fr.addEventListener('load', function(){ rpLiveLoaded=true; rpSetFb('hide'); }); })();
+  /* ── The account-creation boundary ──────────────────────────────────────────────
+     Under the rebuilt intake, "Review my deal" is no longer a pure UI step: it is where
+     POST /api/v1/users fires. That moves the consequential write EARLIER than submitForm(),
+     whose guard therefore no longer covers it.
+
+     Two distinct states, because they need opposite behaviour:
+       _acctInFlight — a double-tap must not start a second request. Cleared when the call
+                       settles, unlike submitForm's guard.
+       _acctCreated  — the user CAN legitimately come back here ("← Edit my info" → dpEdit
+                       → Review again). That must NOT mint a second account. A permanent
+                       lock would break editing; no lock at all would create duplicates.
+
+     Why it matters more than it looks: a duplicate submission used to mean a duplicate row
+     in a spreadsheet. Here it means a duplicate Gopher ACCOUNT. auth.create does refuse a
+     known phone with a 422, so the sequential case is defended server-side — but the
+     telephone column carries no UNIQUE constraint (775 duplicates live), so the client
+     guard is what stops the second request existing at all. See
+     docs/handoff/deals-registration-to-publication-config.md §3.2c. */
+  var _acctInFlight = false;
+  var _acctCreated  = false;
+
   function openPreview(type) {
     if (!dcValidateAll('modal-' + type)) return;
+    if (type === 'merchant') {
+      if (_acctInFlight) return;
+      /* Persist BEFORE any network/OTP round trip. This used to be written at the very end
+         of submitForm(), so a refresh mid-verification lost the entire deal — with a real
+         merchant on the phone that is the failure that costs the test. */
+      try {
+        var draft = {};
+        document.querySelectorAll('#modal-merchant input, #modal-merchant select, #modal-merchant textarea')
+          .forEach(function (el) {
+            if (!el.name || el.type === 'file') return;
+            draft[el.name] = (el.type === 'checkbox') ? el.checked : el.value;
+          });
+        try { if (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list)
+                draft.keywords = keywordStore.merchant.list.slice(0, 3); } catch (e) {}
+        draft._saved_at = new Date().toISOString();
+        localStorage.setItem('gopherDealDraft', JSON.stringify(draft));
+      } catch (e) { /* private mode — non-blocking, never hold the merchant up for storage */ }
+    }
     document.getElementById('form-wrap-' + type).style.display = 'none';
     document.getElementById('preview-' + type).classList.add('show');
     var modalCard = document.querySelector('#modal-' + type + ' .modal');
@@ -3872,7 +3910,7 @@
     field.querySelector('.otp-confirm').classList.remove('show');
     field.querySelector('.otp-verified').classList.add('show');
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verified'; sb.disabled = true;
-    var hv = field.querySelector('input[name="phone_verified"]'); if (hv) hv.value = 'true';
+    _phoneVerified = true;
     // Existing-Gopher fast path: with the number now verified, look up the account and
     // auto-fill the owner's Personal Info (no-op unless "I'm already a Gopher user" is checked).
     if (field.querySelector('input[name="owner_phone"]') && typeof eguFill === 'function'){
@@ -3889,7 +3927,7 @@
     field.querySelector('.otp-confirm').classList.remove('show');
     field.querySelector('.otp-verified').classList.remove('show');
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verify'; sb.disabled = false;
-    var hv = field.querySelector('input[name="phone_verified"]'); if (hv) hv.value = 'false';
+    _phoneVerified = false;
   }
   // --- Existing-Gopher fast path (owner section). The owner declares an account,
   //     verifies the phone by SMS, and the rest of the Personal Info auto-fills.
@@ -3918,11 +3956,11 @@
     var hint = document.getElementById('regExistingHint'); if (hint) hint.hidden = !cb.checked;
     var modal = document.getElementById('modal-merchant'); if (!modal) return;
     var phone = modal.querySelector('input[name="owner_phone"]');
-    var hv = modal.querySelector('input[name="phone_verified"]');
+
     if (!cb.checked){
       var hid = modal.querySelector('input[name="existing_gopher_user_id"]'); if (hid) hid.value = '';
     }
-    if (cb.checked && hv && hv.value === 'true' && phone){
+    if (cb.checked && _phoneVerified && phone){
       // Phone was already verified before they checked the box — fill straight away.
       eguFill((phone.value || '').replace(/\D/g, ''));
       return;
@@ -4153,6 +4191,28 @@
      success and failure paths end at showThanks(), which replaces the form — there is no state in
      which the user should submit this modal twice. ⚠️ Carry this into the rebuilt intake; a public
      endpoint with no client-side debounce collects duplicate registrations. */
+  /* Phone-verified is CLIENT STATE, not a transmitted field. The hidden input that used to
+     carry it was removed 2026-08-09: the rebuilt intake rejects unknown fields, and a client
+     asserting its own verification is not something a server can trust anyway — the real
+     signal is the OTP round trip. eguToggle() still needs to know locally whether the phone
+     was verified BEFORE the "I'm already a Gopher user" box was ticked, so that read moves
+     here rather than disappearing. */
+  var _phoneVerified = false;
+
+  /* Display label -> canonical key, applied ONLY when building an API payload.
+     ⚠️ Do NOT put these on the <option value=> attributes. The display string is also
+     rendered back to the merchant AND is the bid-board join key (`canBid()` is string
+     equality against gopher-bid-brain.js CATS), so keying the options without a full
+     label<->key map through the portal would silently break a merchant's ability to bid
+     on their own category. Settled 2026-08-05, Ruling 1. Key/label separation is a
+     production-schema change, not a prototype patch. */
+  var CATEGORY_KEY = {
+    'Restaurant, Food Trucks & Grocery': 'restaurants',
+    'Local Favorites':                   'favorites',
+    'Age-Restricted Shops':              'age',
+    'Retail Merchants':                  'retail'
+  };
+
   var _submitInFlight = {};
   function submitForm(type) {
     if (!dcValidateAll('modal-' + type)) return;

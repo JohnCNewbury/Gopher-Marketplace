@@ -10095,6 +10095,8 @@ const PAY_BADGES = {
     multipleItems: false,
     hazardous: false,
     junkTier: null,                   // Junk only: resolved volume tier (single|half|full) for the
+    movingTier: null,                 // Moving only: resolved scope tier (few|truck|home). iQ-detected
+                                      // from the description, then owned by the requester's correction.
                                       // suggested-pay model; iQ-detected default, tier button overrides. Owner 2026-07-19.
     serviceElevatorPickup: false, // Moving only — Step 4 Locations (pickup)
     serviceElevatorDest:   false, // Moving only — Step 4 Locations (destination)
@@ -10169,6 +10171,7 @@ const PAY_BADGES = {
     'numRiders','numBags',
     // Junk — volume tier that prices the offer
     'junkTier',
+    'movingTier',
     // Moving — single-location move + access
     'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
     // Labor / Yard — hourly pay
@@ -10522,7 +10525,7 @@ const PAY_BADGES = {
     serviceElevator:  ['delivery','home','labor','junk','yard','ride','other'], // Moving only
     multiStop:        ['moving','home','labor','junk','yard','other'], // Delivery + Ride
     // ──── Step 5 Worker pay ────
-    aiPaySuggest: ['moving','home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
+    aiPaySuggest: ['home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
     // "Request bids from local workers" pay option — hidden for Delivery + Ride
     // (those are set-price-only for customer/worker simplicity). Centralized here
     // so onboarding a new category is a single-table edit, like every other field.
@@ -13347,11 +13350,51 @@ const PAY_BADGES = {
     L.ingestJunkCompletions(seed);
   }
 
+  /* Moving prices on a SCOPE tier (few|truck|home), same shape as Junk. The tier
+     is iQ-detected from the description on first open, then owned by
+     state.movingTier once the requester corrects it.
+     🚨 state.description, NOT state.describe — `describe` is only a key in the
+     FIELD_HIDDEN_FOR map, so reading it yields undefined and the detector
+     silently defaults EVERY request to the median tier while nothing looks
+     broken. That is the exact bug that made every Junk request price at $60
+     regardless of input (fixed 2026-07-19). If the Moving suggestion ever looks
+     suspiciously constant at $100, check this line first. */
+  function currentMovingTier(){
+    const L = window.GopherRequestLogic;
+    if(state.movingTier && L && L.MOVING_TIERS && L.MOVING_TIERS[state.movingTier]) return state.movingTier;
+    const det = (L && L.detectMovingTier) ? L.detectMovingTier(state.description || '') : { tier:'truck' };
+    return det.tier;
+  }
+  function getCurrentMovingModel(){
+    const L = window.GopherRequestLogic;
+    if(!L || !L.suggestedMovingOffer) return null;
+    /* Route A (single location, noSpecificPickup) has no pickup end, so its
+       stairs field is meaningless — gate it exactly as the flow already
+       suppresses that question. D4: trip distance is NEVER an input here. */
+    return L.suggestedMovingOffer(currentMovingTier(), {
+      pickupStairs: !state.noSpecificPickup && !!state.pickupStairs,
+      destStairs:   !!state.destStairs
+    });
+  }
+  let __movingLearnSeeded = false;
+  function seedMovingLearningOnce(){
+    if(__movingLearnSeeded) return;
+    __movingLearnSeeded = true;
+    const L = window.GopherRequestLogic;
+    if(!L || !L.ingestMovingCompletions || !L.detectMovingTier) return;
+    const prev = (typeof DASH_DATA !== 'undefined' && DASH_DATA.previousRequests) || [];
+    const seed = prev
+      .filter(r => /moving/i.test(r.category || '') && r.breakdown && r.breakdown.workerPay > 0)
+      .map(r => ({ id: r.id, pay: r.breakdown.workerPay,
+                   tier: L.detectMovingTier((r.details || '') + ' ' + (r.category || '')).tier }));
+    L.ingestMovingCompletions(seed);
+  }
+
   /* The categories Gopher iQ prices. ONE list, because three things must agree:
      the suggested-offer modal, the low-offer Continue gate, and the
      `suggested_offer_used` telemetry on submit. Junk joined 2026-07-19
      (INV-JUNK-TIER) and the telemetry was missed — hence the single source. */
-  const PRICED_CATEGORIES = ['delivery','ride','junk'];
+  const PRICED_CATEGORIES = ['delivery','ride','junk','moving'];   // moving joined 2026-08-08 (D1-D5)
   const isPricedCategory = () => PRICED_CATEGORIES.indexOf(state.category) !== -1;
 
   /* Category-aware Describe helper text (owner deck 2026-07-20 · slide 3): a
@@ -13361,7 +13404,7 @@ const PAY_BADGES = {
      falls back to state.descriptionPlaceholder. */
   const DESCRIBE_HINT = {
     delivery: 'Please be as descriptive as possible. Tell your worker exactly what needs to be delivered or purchased.',
-    moving:   'Please be as descriptive as possible. Tell your worker exactly what needs to be moved — the items, the rooms, and anything heavy or fragile.',
+    moving:   'Please be as descriptive as possible. Tell your worker exactly what needs to be moved — the items, the rooms, anything heavy or fragile, and whether a truck is needed.',
     home:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done, where, and anything they should bring.',
     labor:    'Please be as descriptive as possible. Tell your worker exactly what the job involves — the work, the site, and any equipment needed.',
     junk:     'Please be as descriptive as possible. Tell your worker exactly what needs to be hauled away — the items and roughly how much there is.',
@@ -13375,6 +13418,7 @@ const PAY_BADGES = {
     const isJunk = state.category === 'junk';
     if(!isPricedCategory()) return null;
     if(isJunk) return getCurrentJunkModel();
+    if(state.category === 'moving') return getCurrentMovingModel();
     const trip = isRide ? getRideTripEstimate() : null;
     return isRide
       ? rideSuggestedOffer(trip.miles, trip.minutes, state.scheduleType !== 'now')
@@ -13388,6 +13432,12 @@ const PAY_BADGES = {
     const isRide = state.category === 'ride';
     const isJunk = state.category === 'junk';
     if(isJunk) seedJunkLearningOnce();
+    /* 🔴 D9 (owner, 2026-08-09): the seedMovingLearningOnce() call is DELETED, not
+       gated. Forward learning for Moving is frozen — seeding from completed
+       history would blend accepted prices back into the anchors and move 'few'
+       +33% ($75 -> $100), undoing the fix that took the couch from $115 to $75.
+       The function is kept below as the documented re-enable seam; restore this
+       call only against POST-D8 completions. */
     const trip  = isRide ? getRideTripEstimate() : null;
 
     const slider  = document.getElementById('offerSlider');
@@ -13437,26 +13487,47 @@ const PAY_BADGES = {
 
     // Junk volume-tier selector (owner 2026-07-19): iQ pre-selects the detected
     // tier; the buttons let the requester correct it, and each re-ranges the slider.
+    /* Tier selector — GENERALISED 2026-08-08 to serve Junk (volume) and Moving
+       (scope) from one block rather than duplicating it. Each category supplies
+       its tier table, the active tier, the state field the correction owns, and
+       its own pricing call + aria-label. Adding a third tiered category means
+       adding a row here, not another render block. */
     const tierWrap = document.getElementById('osJunkTiers');
     if(tierWrap){
       const L = window.GopherRequestLogic;
-      if(isJunk && L && L.JUNK_TIER_ORDER){
+      const TIER_UI = (isJunk && L && L.JUNK_TIER_ORDER) ? {
+        order: L.JUNK_TIER_ORDER, table: L.JUNK_TIERS,
+        active: currentJunkTier(), label: 'How much are we hauling?',
+        set: (tk) => { state.junkTier = tk; },
+        price: (tk) => L.suggestedJunkOffer(tk)
+      } : (state.category === 'moving' && L && L.MOVING_TIER_ORDER) ? {
+        order: L.MOVING_TIER_ORDER, table: L.MOVING_TIERS,
+        active: currentMovingTier(), label: 'How much are we moving?',
+        set: (tk) => { state.movingTier = tk; },
+        /* Re-price through getCurrentMovingModel() rather than
+           suggestedMovingOffer(tk) directly, so the stairs modifier and the
+           Route A gate stay applied when the requester corrects the tier. */
+        price: (tk) => { state.movingTier = tk; return getCurrentMovingModel(); }
+      } : null;
+
+      if(TIER_UI){
         tierWrap.hidden = false;
-        const active = currentJunkTier();
-        tierWrap.innerHTML = L.JUNK_TIER_ORDER.map(tk => {
-          const t = L.JUNK_TIERS[tk];
+        tierWrap.setAttribute('aria-label', TIER_UI.label);
+        const active = TIER_UI.active;
+        tierWrap.innerHTML = TIER_UI.order.map(tk => {
+          const t = TIER_UI.table[tk];
           return `<button type="button" class="os-tier${tk===active?' active':''}" data-tier="${tk}" aria-pressed="${tk===active}">`
                + `<span class="os-tier-name">${t.label}</span><span class="os-tier-hint">${t.hint}</span></button>`;
         }).join('');
         tierWrap.querySelectorAll('.os-tier').forEach(btn => {
           btn.addEventListener('click', () => {
             const tk = btn.dataset.tier;
-            state.junkTier = tk;   // user correction now owns the tier
+            TIER_UI.set(tk);   // user correction now owns the tier
             tierWrap.querySelectorAll('.os-tier').forEach(b => {
               const on = b.dataset.tier === tk;
               b.classList.toggle('active', on); b.setAttribute('aria-pressed', on);
             });
-            applyModel(L.suggestedJunkOffer(tk));
+            applyModel(TIER_UI.price(tk));
           });
         });
       } else {
