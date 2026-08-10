@@ -182,7 +182,18 @@ both Go surfaces; the web prototype's `ELIGIBLE` flag (`gopher-go.html:3705`) is
 
 ### 3.1 Today (pre-registration era)
 
-`submitForm(type)` at `gopher-deals.html:4147` (endpoint constant at `:4138`) does three things, in
+> ⛔ **SUPERSEDED FOR THE MERCHANT PATH — 2026-08-10. The cutover happened; this is no longer
+> "today".** `submitForm('merchant')` **no longer touches the Apps Script on any host.** It files
+> the deal against the real API, and all three public hosts serve that build — verified by
+> content, not by branch state. See **§3.2e** for the shipped contract and the corrected
+> deployment table below.
+>
+> **Still accurate as written:** the **worker / service-provider** path (`submitForm('worker')`),
+> which deliberately stays on `GOPHER_FORM_ENDPOINT`. SP deals are submitted in the Go app; this
+> public funnel is pre-registration scaffolding (**SP-PIPE** §*Public interest funnel*), and
+> repointing it would imply a capability that does not exist.
+
+`submitForm(type)` at `gopher-deals.html:4488` (endpoint constant at `:4450`) does three things, in
 this order (**PATHWAY** §*Where the information goes (today)*):
 
 1. Serialises every named field in the modal to a `data` object.
@@ -192,8 +203,13 @@ this order (**PATHWAY** §*Where the information goes (today)*):
    `text/plain;charset=utf-8`, deliberately, so it is a CORS-simple request and needs no preflight
    from any origin. The script appends a row to the backing Sheet.
 
-The same plumbing now also carries the **merchant Inbox composer** as
-`submission_type:'inbox_message'` (`gopher-deals.html:5565`–`5571`, built 2026-08-05, **LOG**).
+⟳ **CORRECTED 2026-08-10 — the Inbox-composer claim here was stale and is now removed.** *(It read:
+"The same plumbing now also carries the merchant Inbox composer as `submission_type:'inbox_message'`,
+built 2026-08-05.")* That relay was **backed out the same day it shipped** (`40fc4eb`, owner ruling)
+because it wrote junk rows into the live Leads sheet and the script-side half was never built. **The
+composer sends nothing today** — verified at source: the tombstone comment sits at
+`gopher-deals.html:6011`–`6018` where the POST used to be. Rebuild belongs on the **G40-305
+dispatcher (`sendEmail.js`)**, not on Apps Script and **not** against the lead-capture endpoint.
 
 Today, **the Sheet is the deals database**, and it is manually uploaded into the Dashboard to refresh
 the coverage map (**PATHWAY** §Stage 4, owner note 2026-07-12).
@@ -401,6 +417,11 @@ an account — verify your phone to finish your deal"* rather than surfacing a r
 
 ### 3.2d ✅ THE VERIFIED CONTRACT — driven end-to-end against production 2026-08-10
 
+> ⚠️ **Read §3.2e before building against this.** The **server** contract below still stands
+> (endpoints, payload allowlist, duplicate semantics). The **client sequence** it implies was
+> simplified by owner ruling later the same day — `POST /users` is no longer called at all, and
+> `sign_in` is what creates a new merchant's account. §3.2e is what shipped.
+
 **Not a spec. Every response below was copied from a real run** by the HQ Dashboard session
 against `https://api.gophergo.io`, creating user **141557** (`+1 805-555-0173`) and **deal row
 id 1**. If the form sees anything different, that is a real difference — report it, do not
@@ -465,6 +486,74 @@ Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way
 the doc is frozen and must not be followed. `deals@gophergo.io` does remain the sender/receiver
 identity in both eras, **SP-PIPE** §6.)*
 
+### 3.2e ✅ SHIPPED — the finalized merchant intake, live on all three hosts (owner ruling, 2026-08-10)
+
+**This supersedes the two-stage arrangement described in §3.2c–§3.2d for the front end.** §3.2d's
+*server* contract still holds — the endpoints, the payload allowlist, the duplicate semantics. What
+changed is which calls the form makes and in what order. Owner ruling after the first live test:
+the flow was **over-built**.
+
+**The shape: one SMS recognises; email only if new.**
+
+| | Known number | Unknown number |
+|---|---|---|
+| `POST /users/sign_in` | returns token + **real profile** | **creates** the account, returns token + `@placeholder.gophergo.io` |
+| Owner fields | **auto-filled** from the account | merchant types them |
+| Email step | **retired** — shows `✓ Email verified` | **required** — Verify button under the email field |
+| Codes the merchant enters | **one** (SMS) | **two** (SMS, then email) |
+
+**Four things here are load-bearing, and each one replaced a defect:**
+
+1. **⭐ Recognition is the server's job, not the checkbox's.** `sign_in` validates the code *and*
+   returns the account, creating one when the number is unknown. So a merchant who forgets to tick
+   *"I'm already a Gopher user"* is recognised anyway and auto-filled; the checkbox is ticked **as a
+   consequence**, never as the cause. **What used to be the trap is now the mechanism** — the
+   handoff's warning that `sign_in` mints accounts for unknown numbers is still true, and is now
+   exactly the intended account-creation path. `POST /users` is **gone from the flow entirely**,
+   and the 422 "already registered" collision handling went with it.
+2. **The new-user branch is distinguished by the placeholder email**, `@placeholder.gophergo.io` —
+   not by a flag the client sets. That is the only signal the response carries.
+3. **`PUT /users` saves the real details before the code is sent**, which is permitted on an
+   unverified account. The code goes to the address the merchant just typed (it lands in
+   `unconfirmed_email` and promotes to `users.email` with `confirmed_at` on verify) — **not** to the
+   placeholder. ⚠️ **`address` is deliberately omitted from that PUT:** `update_user` expects an
+   object carrying an `id` and this form holds free text, so sending a string **throws server-side**.
+4. **An email already on another account is refused** — *"use a different address"* — rather than
+   silently merging accounts.
+
+**Submission is gated on `_emailVerified`**, so an unverified new account cannot reach
+`POST /users/deals` (which sits behind `require_email_verified()` with `allowUnverified` false and
+would 403 anyway). The gate exists so the merchant is stopped **at the field**, not at the last click
+after filling in everything.
+
+**⚠️ Autofill trap, fixed and worth not re-introducing.** Do **not** hand-format the date of birth.
+`dcIsDob` requires **spaces** around the slashes (`/^\d{2} \/ \d{2} \/ \d{4}$/`), which `dcFormatDob`
+produces as the merchant types. Writing `08/10/2000` directly is a **correct date the validator
+rejects** — the first autofill did exactly that. Write raw `MMDDYYYY` digits and run the page's own
+formatter over them, so the format can never drift from its validator again.
+
+**Verified end to end against production, not asserted:** known number → `141554` returned with name,
+email and DOB → autofilled, no email step; new number → `141568` created → details saved → code
+delivered to the real address → verified and promoted → **deal 4 filed**.
+
+**⚠️ Inherited, NOT verified here — flagged for the server side.** On the new-user path `auth.create`
+reportedly checks only that an OTP row **exists** for the number, not that the digits **match**, so a
+wrong-but-well-formed code still creates the account. Pre-existing behaviour, recorded rather than
+papered over; the fix belongs server-side. Whoever owns the backend should confirm this first-hand
+before relying on either reading.
+
+**⚠️ Design note, reachable in production.** The account is created at the **phone** step, before the
+Merchant Agreement is accepted at the final step. Abandonment between those points leaves a real
+account — verified email and all — with **no accepted agreement and no deal**. Worth watching with
+the first real merchant. `telephone` still has no UNIQUE constraint (775 duplicates live, **G40-359**,
+deferred to Phase II).
+
+**⚠️ `gopher-deals-101.html` now under-describes this flow and is LIVE on all three hosts.** It still
+says both codes are collected and that the email code arrives when the merchant taps *"Review my
+deal"*, and it tells existing users to tick the checkbox to be recognised. All three are now wrong.
+Raised with the owner 2026-08-10 — see the standing rule that a user-facing change is not done until
+its 101 guide is **reviewed**, not string-replaced.
+
 ### 3.3 RULING — HQ Dashboard takes registration ownership; the Apps Script goes (owner, 2026-08-06)
 
 **Canonical rule.** The **HQ Dashboard is built to the SOW and takes ownership of fielding merchant
@@ -511,20 +600,34 @@ promoted** — no campaign, no traffic driven to it. Zero is the system working 
 stands, because leads arriving **after** a partial repoint would still be lost — but there is no
 backlog to preserve.)*
 
-**Deployment reality — the part that makes this a sequence, not a switch.** `GOPHER_FORM_ENDPOINT` is
-live on **three** hosts, and every one of them carries **both** submit paths
-(`submitForm('merchant')` and `submitForm('worker')`), verified 2026-08-06:
+**Deployment reality — ✅ STEP 2 IS COMPLETE (2026-08-10). All three hosts are repointed.**
 
-| Host | Endpoint live | Who can update it |
-|---|---|---|
-| GitHub Pages | ✅ | `scripts/deploy.sh` |
-| TigerTech | ✅ | same push (FTPS action) |
-| **Netlify mirror** | ✅ | ⚠️ **owner-action only** — manual drag of `Final/`; no CLI, token or `netlify.toml` on this machine |
+*(Superseded text, 2026-08-06: "`GOPHER_FORM_ENDPOINT` is live on three hosts, and every one of them
+carries both submit paths." That was true when written and is now wrong for the merchant path on
+every host — the correction that prompted this rewrite.)*
 
-So the cutover is **four steps, one of which only the owner can perform**: (1) HQ can receive;
-(2) repoint all three surfaces; (3) drain — leads in flight must land somewhere; (4) delete the
-script. Retiring the script before step 2 completes on **all three** silently drops real merchant
-leads, and the Netlify mirror's entire stated job is fielding them.
+**Current state — each host checked by fetching the served HTML and grepping it, 2026-08-10.** A 200
+proves the file exists, not that it updated; branch state proves less still.
+
+| Host | Merchant path | Worker/SP path | Who can update it |
+|---|---|---|---|
+| GitHub Pages | ✅ **real API** | Apps Script *(by design)* | `scripts/deploy.sh --push` |
+| TigerTech | ✅ **real API** | Apps Script *(by design)* | same push (FTPS action) |
+| **Netlify mirror** | ✅ **real API** | Apps Script *(by design)* | ⚠️ **owner-action only** — manual drag of `Final/`; no CLI, token or `netlify.toml` on this machine. **Redeployed by the owner 2026-08-10**, confirmed by content. |
+
+⚠️ **Netlify is the one that can silently fall behind, and it is the one that matters most.** Its
+entire stated job is fielding merchant registration. Between the Pages/TigerTech push and the owner's
+manual drag, the mirror served the **old Apps Script merchant path** — a merchant landing there
+completed the whole form and got **no account and no deal row**, only a lead. That window is closed,
+but it reopens on every future change to this form. **Standing exception to the "don't flag Netlify
+drift" rule (LOG, 2026-07-28): any change touching merchant registration must be raised with the
+owner for a mirror redeploy.**
+
+Remaining cutover steps: (1) HQ can receive — **not** the merchant path's blocker any more, it now
+writes to the real API directly; (3) **drain is a verified no-op** (§ above: five rows, all owner
+tests, zero real leads); (4) **delete the script** — still blocked, because the **worker/SP form
+deliberately still posts to it**. The Apps Script cannot be deleted until that funnel is retired or
+repointed, which is a separate decision (**SP-PIPE**), not an oversight.
 
 **Owner decision + date.** Direction ruled **2026-08-06** (relayed via Total SOW Priorities); the
 "no Apps Script in production" rule it completes was ruled **2026-07-24** (**SP-PIPE** §6). Build
@@ -1361,8 +1464,10 @@ Derived from the dependency chain above, not newly proposed:
 
 1. **Category taxonomy (Ruling 1)** — everything joins on it.
 2. **The `deals` table + the §4.1 record** — gated on **SPINE-1 (G40-296)** for `ownerUserId`.
-3. **Registration transport** — repoint `submitForm` at the real endpoint; delete the Apps Script
-   path (**SP-PIPE** §6). Keep the localStorage fallback.
+3. ✅ **Registration transport — DONE 2026-08-10 for the merchant path** (§3.2e), live on all three
+   hosts, localStorage fallback kept. **Still open:** the **worker/SP** form remains on the Apps
+   Script by design, so the script **cannot yet be deleted** (**SP-PIPE** §6). Deleting it is gated
+   on retiring or repointing that funnel — a separate decision, not a leftover task.
 4. **Dashboard feed** — swap `MERCHANTS[]` for the live query; drop the sample banner
    (`app_part4.js:256`); point `deals-coverage.js` "current signed" at the same source.
 5. **Review queue actions** — Approve / Reject / Request-better-image write to the API instead of
