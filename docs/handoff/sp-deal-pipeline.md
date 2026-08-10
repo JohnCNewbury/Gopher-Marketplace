@@ -20,10 +20,36 @@ Automatic — no application. All three required:
 Admin may also grant eligibility case-by-case. Rating authority = Ratings.csv-equivalent
 (rated_id = gopher), **not** the Orders `GOPHER RATING` column (~25% disagreement, 0 = unrated).
 
-### 0.1 ⚖️ OPEN OWNER RULING — does a requester's `Other` choice bind, when the job is plainly service work?
+### 0.1 ✅ SETTLED — `Other` does NOT bind when the job is plainly service work (owner, 2026-08-09)
 
-Raised 2026-08-09 by two implementations disagreeing. **Nothing is blocked on it and no
-worker's status changes either way — settle it for correctness, not urgency.**
+**Owner ruling: COUNT THE WORK.** A requester's `Other` menu selection does not, by itself,
+disqualify a job from the service count. Raised by two implementations disagreeing; the
+rationale and the rejected alternative are kept below because the reasoning is the reusable
+part.
+
+> ### ⚠️ The guardrail that travels with this ruling
+>
+> **`Other` is the ONLY excluded category that gets re-read. Delivery / Errand and Ride
+> Sharing remain terminal — never re-read them, no matter what the description says.**
+>
+> A delivery job titled *"move boxes to my car"* stays excluded. This is the whole basis of
+> the amendment (16,596 delivery + 459 ride orders is exactly the volume that would flood
+> the manual review queue), and it is also the structural safety property both
+> implementations were built around: the service rescue runs **only after** delivery and ride
+> have already claimed a job. Over-applying this ruling to those two categories would undo
+> D-022 entirely.
+>
+> **So the precedence is:**
+>
+> | `category_type` | Verdict |
+> |---|---|
+> | Delivery / Errand · Ride Sharing | **Excluded — terminal, never re-read** |
+> | a service category | Counted |
+> | **`Other`** | **Not terminal** — re-read the description; count it if it describes service work |
+> | null (~15% of rows) | Title heuristic, as before |
+>
+> The prototype classifier (`regen_sp_eligibility.py`) already implements this and needs no
+> change. The production build applies it to **`category_type`**, not to titles.
 
 `Other` is a **real menu category the requester selects**, not a fallback label, and D-022
 excludes it by name alongside Delivery and Ride Sharing. But some of those orders describe
@@ -45,17 +71,19 @@ service work unmistakably — and in three cases the requester picked `Other` an
 14 either way, and the 15–19 near-miss group is identical under both. The denominator moves
 1,243 → 1,214.
 
-**Recommendation: count the work.** The amendment's stated purpose is to stop *delivery and
+**Why (the accepted reasoning).** The amendment's stated purpose is to stop *delivery and
 ride volume* flooding the manual review queue — 16,596 and 459 orders respectively. Counting
 29 rows that describe service work does not implicate that purpose, while excluding them
 means telling a worker their jobs did not count because their customer chose the wrong menu
 item. That is not a defensible answer to a disputed verdict, and the eligibility endpoint is
 being built to make verdicts answerable.
 
-**Counter-argument that must be weighed:** a stored field is auditable and stable; a
-re-read is a heuristic, and heuristics are what produced the four defects fixed on
-2026-08-09. If the owner rules **respect the field**, the fix is one line — never re-read
-a head of exactly `other` — and the honest denominator becomes 1,214.
+**The rejected alternative, recorded because it was strong:** a stored field is auditable
+and stable; a re-read is a heuristic, and heuristics produced the four defects fixed on
+2026-08-09. It was rejected because `Other` is the one excluded value carrying no
+information about the work — unlike Delivery and Ride Sharing, which name it — so respecting
+it protects auditability at the cost of the thing being measured. **The denominator stands
+at 1,243, not 1,214.**
 
 **Whichever way it goes, the production build must apply it to `category_type`, not to
 titles**, and the real remedy is taxonomy: `Other` collecting recycling removal and
