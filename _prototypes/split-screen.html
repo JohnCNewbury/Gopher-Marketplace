@@ -93,6 +93,8 @@
   var decided={};    // GReq order id -> true  (requester's Accept/Decline already relayed to Go)
   var statusSeen={}; // GReq order id -> last post-accept substage relayed to Request
   var ratingSeen={}; // GReq order id -> true  (requester's star rating already relayed to Go)
+  var confirmSeen={};// GReq order id -> true  (requester's COMPLETION CONFIRM already relayed — tracked
+                     // separately from ratingSeen because rating is optional and must not gate confirm)
   var bidSeen={};    // GReq order id -> true  (worker's bid already surfaced on Request)
   var bidDecided={}; // GReq order id -> true  (requester's bid Accept/Decline already relayed to Go)
   var goMsgSeen={};  // GReq order id -> count of Gopher messages already relayed to Request
@@ -531,11 +533,23 @@
         var list=l.GReq.all()||[];
         for(var i=0;i<list.length;i++){
           var r=list[i];
+          /* CONFIRM relays on its OWN, before and independently of any rating (owner, 2026-08-09).
+             This loop used to fire only on `r.rating`, so a requester who tapped CONFIRM COMPLETED
+             and then skipped the rating — which is optional — never had their confirmation reach the
+             worker: the Go app sat on "Pending confirmation" forever. Live splits these into
+             /confirm_payout/:id and /ratings, and /ratings changes no order state, so the relay is
+             split to match. Separate seen-map, so a rating arriving later still relays too. */
+          if(r && r.confirmed && !confirmSeen[r.order]){
+            if(!(w && w.__ptConfirmed && w.__ptJobs && w.__ptJobs[r.order])){ continue; }   // Go not ready — retry next tick
+            try{ w.__ptConfirmed(r.order); }catch(_){ continue; }
+            confirmSeen[r.order]=true;
+            status('You confirmed <b>'+r.order+'</b> — payout released and their app updated immediately. Rating is optional and changes nothing about the payout. ✅');
+          }
           if(r && r.rating && !ratingSeen[r.order]){
             if(!(w && w.__ptRated && w.__ptJobs && w.__ptJobs[r.order])){ continue; }   // Go not ready — retry next tick
             try{ w.__ptRated(r.order, r.rating, !!r.myGopher); }catch(_){ continue; }   // 3rd arg: favorited → Go's congrats modal
             ratingSeen[r.order]=true;
-            status('You confirmed <b>'+r.order+'</b> and rated your Gopher — payout released, and their app returned home. Ratings stay private to each side. ✅');
+            status('You rated your Gopher on <b>'+r.order+'</b> — their app returned home. Ratings stay private to each side. ✅');
           }
         }
       }
