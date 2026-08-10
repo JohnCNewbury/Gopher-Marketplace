@@ -349,21 +349,34 @@
      hire count; Request hires one lead worker who pays the crew). An iQ crew
      multiplier would pay for the same labour twice. Confirm where workersNeeded
      enters the total before revisiting. */
-  /* D6 (owner, 2026-07-28): the 'few' anchor HOLDS AT $60 after the corpus
-     correction, even though that tier's clean detected median is $80 — the T1
-     band already reaches $75, and under-anchoring the cheapest tier is the
-     safer error while learning is thin. Settled; do not raise it to $80. */
-  var MOVING_TIERS = {
-    few:   { label: 'A few items',   suggested: 60,
-             hint: 'a couple of pieces \u2014 no truck needed' },
-    truck: { label: 'A truck-load',  suggested: 100,
-             hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
-    home:  { label: 'A full home',   suggested: 200,
-             hint: 'a whole house, apartment or office' }
-  };
-  var MOVING_TIER_ORDER = ['few','truck','home'];
+  /* ⚠️ D7 (owner, 2026-08-09) — REPRICED AND THE TOP TIER SPLIT. This SUPERSEDES
+     D6 ("few holds at $60") entirely; D6 is dead, do not restore it.
 
-  /* Priority home > truck > few. Falls back to the median tier so the slider
+     WHY THE NUMBERS MOVED, because the reasoning matters more than the values:
+     the internal corpus was ACCEPTED prices only. Just 47-50% of Moving requests
+     ever match, and unmatched jobs sit 43-60% BELOW matched ones — so "median
+     accepted" was the price at which a coin flip clears, not a fair price.
+     Compounding it, the lead worker is paid the offer and PAYS THE CREW, so the
+     old $100 truck anchor was $25/labor-hour split two ways against a ~$63
+     market. Gopher was sitting at roughly 40% OF MARKET.
+
+     These anchors are benchmarked to EXTERNAL market data (U-Haul Moving Help
+     NC average $254 for 2 movers/2hrs; HireAHelper Raleigh by home size), NOT to
+     our own accepted prices. Sources: Dashboard/Gopher iQ/Suggested Pricing/
+     Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx + _Seed_Data.xlsx. */
+  var MOVING_TIERS = {
+    few:        { label: 'A few items',      suggested: 100,
+                  hint: 'a couple of pieces \u2014 no truck needed' },
+    truck:      { label: 'A truck-load',     suggested: 250,
+                  hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
+    home_small: { label: '1\u20132 bedroom home', suggested: 325,
+                  hint: 'studio, apartment, condo or small house' },
+    home_large: { label: '3+ bedroom home',  suggested: 475,
+                  hint: 'a larger house, or an office move' }
+  };
+  var MOVING_TIER_ORDER = ['few','truck','home_small','home_large'];
+
+  /* Priority home_large > home_small > truck > few. Falls back to 'truck' so the slider
      still opens somewhere sensible and the requester can re-pick in one tap —
      that correction is what teaches the model.
      23% of real descriptions carry no scope signal (36 of the clean 155; the
@@ -373,21 +386,34 @@
      purely the contaminated junk-side rows (§4b). On the CLEAN corpus they sit
      at $100 (n=36), exactly the median tier, so defaulting to 'truck' is
      empirically correct and not merely consistent-with-Junk. Do not "fix" it
-     to 'few'. */
+     to 'few'.
+     BARE-NOUN RULE (deliberate): bare "house" resolves LARGE and bare
+     "apartment" resolves SMALL. Houses skew bigger in the market data (Raleigh
+     2BR house $390 vs 2BR apt $331), and erring LOW is the exact failure this
+     recalibration exists to fix. Do not "balance" these to the same tier. */
   function detectMovingTier(text){
     var t = ' ' + String(text || '').toLowerCase() + ' ';
-    if(/\b(whole (house|home|apartment)|entire (house|home|apartment)|\d ?(bed|br|bedroom)s?|residential relocation|move (my|our) (house|home|apartment)|house to house|apartment to apartment|move (in)?to (a )?(new )?(house|home|apartment)|move out of (my |the )?(house|home|apartment)|office move|relocate office|move cubicles|moving across town|full (house|home) move)\b/.test(t))
-      return { tier: 'home', confidence: 'high' };
+    if(/\b([3-9]|1[0-9])\s*(bed|br|bedroom)s?\b|\b(three|four|five)[- ]bedroom\b|\b(whole|entire|full)\s+(house|home)\b|\bresidential relocation\b|\b(large|big)\s+(house|home|move)\b|\boffice move\b|\brelocate office\b|\bmove cubicles\b|\bmove (my|our) (house|home)\b|\bhouse to house\b/.test(t))
+      return { tier: 'home_large', confidence: 'high' };
+    if(/\b(studio|efficiency)\b|\b([12])\s*(bed|br|bedroom)s?\b|\b(one|two)[- ]bedroom\b|\b(whole|entire)\s+apartment\b|\bapartment to apartment\b|\bmove (my|our) (apartment|condo)\b|\bmove (in)?to (a |an )?(new )?(apartment|condo)\b|\bmove out of (my |the )?apartment\b|\bmoving across town\b/.test(t))
+      return { tier: 'home_small', confidence: 'high' };
     if(/\b(u-?haul|uhaul|box truck|moving truck|trailer|pod|storage unit|storage|load(ing)?|unload(ing)?|need (a )?truck|truck required|will need (a )?truck|dorm|college move|student move|piano|appliances?|bedroom furniture|labor only)\b/.test(t))
       return { tier: 'truck', confidence: 'high' };
     if(/\b(couch|sofa|loveseat|mattress|dresser|desk|table|nightstand|chair|headboard|bookcase|tv|boxes?|rearrange|pack(ing)?|unpack|wrap furniture|small move|a few (items|things|pieces))\b/.test(t))
       return { tier: 'few', confidence: 'high' };
-    return { tier: 'truck', confidence: 'low' };   // median tier
+    return { tier: 'truck', confidence: 'low' };   // median-ish tier
   }
 
   /* Forward-learning store — same shape/seam as Junk, separate key so the two
      categories never cross-contaminate. */
-  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v1';
+  /* v2 (2026-08-09, D7): key bumped for TWO reasons. (1) The 'home' tier split
+     into home_small/home_large, so any 'home' bucket is orphaned and would price
+     a tier that no longer exists. (2) More importantly, every anchor moved (up
+     to 2.5x) because the old ones tracked our own ACCEPTED prices — the ~40%-of-
+     market data D7 exists to correct. Blending pre-D7 learned means against
+     post-D7 baselines would drag the new anchors straight back down. Same
+     reasoning as JUNK_LEARN_KEY v2: a skewed baseline is worse than no history. */
+  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v2';
   function movingLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(MOVING_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
