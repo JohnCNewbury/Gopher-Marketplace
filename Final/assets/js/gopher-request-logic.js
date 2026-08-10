@@ -307,13 +307,19 @@
   /* ── Moving suggested pricing (owner 2026-07-28, D1-D5) ─────────────────────
      Ladder is ITEMS/TRUCK, not home size: home size appears in 2% of real
      descriptions, named items in 47%, a vehicle in 38%. Anchors are evidenced
-     against 215 completed Moving orders keyed on GOPHER OFFER (worker pay —
-     never GOPHER EARNINGS, which is platform take):
-       p10 $25 · p50 $90 · p80 $150 · p90 $200 · max $500
-     Per-tier observed medians $72 / $100 / $228 are MONOTONIC — the test Junk's
-     text back-fit failed, which is why Junk anchors to the distribution and
-     Moving can corroborate with the ladder. T3 is n=6, directional only.
-     Full calibration: docs/handoff/moving-suggested-pricing-discovery.md §4-§6.
+     against completed Moving orders keyed on GOPHER OFFER (worker pay — never
+     GOPHER EARNINGS, which is platform take).
+     ⚠️ CORPUS CORRECTED 2026-07-28 (discovery §4b): the original selector was
+     TITLE startswith "moving", which swept in 38 legacy
+     "Moving / Junk Removal - Junk Removal" rows (median $40 — those are JUNK
+     jobs) and 22 "Store Pick Up & Delivery" rows. Clean corpus = 155, not 215.
+       clean envelope: p25 $60 · median $100 · p90 $200
+       clean tier medians: $80 / $100 / $200  (was $72 / $100 / $228)
+     THE ANCHORS BELOW ARE UNCHANGED BY THAT CORRECTION — the clean data hits
+     $100 and $200 exactly, and clean p25 lands exactly on $60. Still monotonic.
+     Full calibration + audit trail: docs/handoff/moving-suggested-pricing-discovery.md
+     §4b, and the workbook "Suggested Pricing Data - Moving.xlsx" (disk-only),
+     whose "In Corpus" flag makes the exclusions auditable rather than invisible.
 
      ROUTE (D2/D4): the single- vs two-location route (state.noSpecificPickup)
      does NOT change the anchor — it gates which QUESTIONS are asked. Trip
@@ -328,6 +334,10 @@
      hire count; Request hires one lead worker who pays the crew). An iQ crew
      multiplier would pay for the same labour twice. Confirm where workersNeeded
      enters the total before revisiting. */
+  /* D6 (owner, 2026-07-28): the 'few' anchor HOLDS AT $60 after the corpus
+     correction, even though that tier's clean detected median is $80 — the T1
+     band already reaches $75, and under-anchoring the cheapest tier is the
+     safer error while learning is thin. Settled; do not raise it to $80. */
   var MOVING_TIERS = {
     few:   { label: 'A few items',   suggested: 60,
              hint: 'a couple of pieces \u2014 no truck needed' },
@@ -341,10 +351,13 @@
   /* Priority home > truck > few. Falls back to the median tier so the slider
      still opens somewhere sensible and the requester can re-pick in one tap —
      that correction is what teaches the model.
-     ⚠️ 28% of real descriptions carry no scope signal; their observed median is
-     $75, nearer 'few' ($72) than 'truck' ($100). Defaulting to 'truck' is the
-     consistent-with-Junk choice and errs away from under-suggesting. Flagged as
-     a one-line change in the build spec §5 — owner has not ruled. */
+     28% of real descriptions carry no scope signal. ✅ RESOLVED 2026-07-28: the
+     first draft flagged this default as an unconfirmed assumption because those
+     descriptions looked like they sat at $75, nearer 'few' — but that $75 was
+     purely the contaminated junk-side rows (§4b). On the CLEAN corpus they sit
+     at $100 (n=36), exactly the median tier, so defaulting to 'truck' is
+     empirically correct and not merely consistent-with-Junk. Do not "fix" it
+     to 'few'. */
   function detectMovingTier(text){
     var t = ' ' + String(text || '').toLowerCase() + ' ';
     if(/\b(whole (house|home|apartment)|entire (house|home|apartment)|\d ?(bed|br|bedroom)s?|residential relocation|move (my|our) (house|home|apartment)|house to house|apartment to apartment|move (in)?to (a )?(new )?(house|home|apartment)|move out of (my |the )?(house|home|apartment)|office move|relocate office|move cubicles|moving across town|full (house|home) move)\b/.test(t))
