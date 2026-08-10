@@ -3786,6 +3786,145 @@
         localStorage.setItem('gopherDealDraft', JSON.stringify(draft));
       } catch (e) { /* private mode — non-blocking, never hold the merchant up for storage */ }
     }
+    /* ── PATH B: create the account, then verify the email ──────────────────────────
+       This is the account-creation boundary. Path A already holds a token from
+       sign_in and skips all of it. Path B has to become a real Gopher user here,
+       because POST /users/deals sits behind require_email_verified({}) — allowUnverified
+       is FALSE — so an unverified account cannot submit a deal at all. The email step
+       is mandatory, not a nicety.
+
+       The preview does not render until this settles: showing a merchant their deal
+       preview and only then discovering their account could not be made is the wrong
+       order to fail in. */
+    if (type === 'merchant' && !_isExistingGopher() && !_authToken) {
+      _acctInFlight = true;
+      _dpBusy(true);
+      var f = _merchantFields();
+      apiCall('/users', { body: {
+        role: 'requestor',
+        telephone: f.phone,
+        first_name: f.first,
+        last_name: f.last,
+        email: f.email,
+        date_of_birth: f.dob,
+        address: f.address,
+        discover_gopher: f.discovery || 'Other',
+        requesting_primarly: 'personal',
+        provider: 'phone'
+      }})
+      .then(function (r) {
+        _acctInFlight = false;
+        if (!r.ok) {
+          /* 422 "Phone number already registered" is NOT an error to show raw — it is
+             the resume path. A merchant who half-registered earlier, or who simply has
+             a Gopher account, must be pointed at Path A rather than left staring at a
+             failure. Getting this wrong is what pushes them into re-registering, which
+             is the collision branch nobody wants. */
+          if (/already registered/i.test(apiMessage(r))) {
+            _dpBusy(false);
+            alert('It looks like you already have a Gopher account.\n\nTick "I\'m already a Gopher user" above, then verify your phone number to finish your deal.');
+            var cb = document.getElementById('regExistingGopher');
+            if (cb && !cb.checked) { cb.checked = true; try { eguToggle(cb); } catch (e) {} }
+            try { cb.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            return;
+          }
+          _dpBusy(false); alert(apiMessage(r)); return;
+        }
+        _authToken = r.token || null;
+        try { _apiUserId = r.body.data && r.body.data.id; } catch (e) {}
+        _acctCreated = true;
+        if (!_authToken) { _dpBusy(false); alert('Your account was created but we could not sign you in. Please tick "I\'m already a Gopher user" and verify your phone.'); return; }
+        return apiCall('/users/email_otp/send', { body: {} }).then(function (er) {
+          _dpBusy(false);
+          if (!er.ok) { alert(apiMessage(er)); return; }
+          _showEmailStep(f.email);
+        });
+      })
+      .catch(function () { _acctInFlight = false; _dpBusy(false); alert('Could not reach the server. Your details are saved on this device — please try again.'); });
+      return;
+    }
+
+    _renderPreview(type);
+  }
+
+  /* Reads the merchant form once, so the payload and the account creation can never
+     disagree about what the merchant typed. */
+  function _merchantFields() {
+    var m = document.getElementById('modal-merchant');
+    var g = function (n) { var el = m && m.querySelector('[name="' + n + '"]'); return el ? (el.value || '').trim() : ''; };
+    return {
+      first: g('owner_first_name'), last: g('owner_last_name'),
+      email: g('owner_email'), dob: g('owner_dob'),
+      address: g('owner_address') || g('address'),
+      discovery: g('discovery_source'),
+      phone: (g('owner_phone') || '').replace(/\D/g, '')
+    };
+  }
+
+  function _dpBusy(on) {
+    var b = document.getElementById('dc-review-merchant') || document.querySelector('#modal-merchant .dc-review');
+    if (!b) return;
+    b.disabled = !!on;
+    b.setAttribute('aria-busy', on ? 'true' : 'false');
+    if (on) { b._was = b.textContent; b.textContent = 'Setting up your account…'; }
+    else if (b._was) { b.textContent = b._was; }
+  }
+
+  /* The email-verification step. Built from the same primitives the phone step uses
+     (.otp-confirm / .otp-code / .btn-verify) so it reads as one flow rather than a
+     bolted-on dialog. Rendered inline above the form, not as a second modal — a
+     merchant mid-registration should never lose sight of what they were doing. */
+  function _showEmailStep(email) {
+    var host = document.getElementById('form-wrap-merchant');
+    if (!host) { _renderPreview('merchant'); return; }
+    var old = document.getElementById('dc-email-step'); if (old) old.remove();
+    var box = document.createElement('div');
+    box.id = 'dc-email-step';
+    box.className = 'field';
+    box.style.cssText = 'border:2px solid #33D975;border-radius:12px;padding:16px;margin:0 0 18px;background:#f4fdf7;';
+    box.innerHTML =
+      '<div style="font-weight:800;color:#002461;margin-bottom:4px;">One more step — verify your email</div>' +
+      '<div style="font-size:14px;color:#41506b;margin-bottom:10px;">We sent a 6-digit code to <strong>' +
+        String(email).replace(/[<>&]/g, '') + '</strong>. Enter it to finish your deal.</div>' +
+      '<div class="otp-code-row" style="display:flex;gap:8px;">' +
+        '<input class="otp-code dc-email-code" inputmode="numeric" maxlength="6" placeholder="······" style="flex:1;letter-spacing:5px;text-align:center;">' +
+        '<button type="button" class="btn-verify dc-email-confirm">Confirm</button>' +
+      '</div>' +
+      '<button type="button" class="dc-email-resend" style="margin-top:10px;background:none;border:none;color:#1a9d4b;font-weight:700;cursor:pointer;padding:0;">Resend code</button>';
+    host.insertBefore(box, host.firstChild);
+    try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    box.querySelector('.dc-email-code').focus();
+
+    box.querySelector('.dc-email-confirm').addEventListener('click', function () {
+      var btn = this;
+      var code = (box.querySelector('.dc-email-code').value || '').trim();
+      if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code we emailed you.'); return; }
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1'; btn.disabled = true; btn.textContent = 'Checking…';
+      apiCall('/users/email_otp/verify', { body: { code: code } })
+        .then(function (r) {
+          if (!r.ok) { alert(apiMessage(r)); btn.textContent = 'Confirm'; return; }
+          _emailVerified = true;
+          box.remove();
+          _renderPreview('merchant');
+        })
+        .catch(function () { alert('Could not verify the code. Please try again.'); btn.textContent = 'Confirm'; })
+        .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
+    });
+
+    box.querySelector('.dc-email-resend').addEventListener('click', function () {
+      var lnk = this; if (lnk.dataset.busy === '1') return;
+      lnk.dataset.busy = '1'; lnk.textContent = 'Sending…';
+      apiCall('/users/email_otp/resend', { body: {} })
+        .then(function (r) { lnk.textContent = r.ok ? 'Code re-sent' : 'Resend code'; if (!r.ok) alert(apiMessage(r)); })
+        .catch(function () { lnk.textContent = 'Resend code'; })
+        .then(function () { setTimeout(function () { lnk.dataset.busy = ''; }, 1200); });
+    });
+  }
+
+  /* The original preview render, unchanged — extracted so the Path B flow can defer it
+     until the account exists and the email is verified. */
+  function _renderPreview(type) {
     document.getElementById('form-wrap-' + type).style.display = 'none';
     document.getElementById('preview-' + type).classList.add('show');
     var modalCard = document.querySelector('#modal-' + type + ' .modal');
