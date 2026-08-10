@@ -28,10 +28,43 @@ real browser against production — **not asserted from a spec**.
 | Save real details (new users) | `PUT /api/v1/users` | live |
 | Email OTP | `POST /users/email_otp/send` + `/verify` | live |
 | File the deal | `POST /api/v1/users/deals` | live |
-| **Review queue** | `GET /api/v1/users/deals/queue` | ⚠️ **merged? check** — MR !254 |
+| **Review queue** | `GET /api/v1/admin/deals/queue` | ⚠️ **written, NOT merged** — MR !254 open |
 
 **Five real deals exist** (ids 1–5), three categories, four owners. They are test
 data but they are *real rows* — build the queue against them rather than mocks.
+
+### ⚠️ The queue moved to the ADMIN router — resolved 2026-08-10
+
+The `!254` row above resolved: the MR is **open**, not merged. `production` is at
+`54acb023`, an *earlier* merge of the same branch, which is why it carries
+`submit_deal` and `get_sp_eligibility` but no queue.
+
+**The path changed before merge.** It shipped for review as
+`GET /api/v1/users/deals/queue` behind `middleware.user_auth` — a guard that
+authenticates a caller but does not *distinguish* one: it resolves `role_id` 2
+(gopher) or 3 (requester) and has no admin concept. Any signed-in, email-verified
+end user could have read the whole queue: name, email and telephone for every
+pending merchant, plus deal terms not yet public. It is now
+**`GET /api/v1/admin/deals/queue`** in `controllers/admin/deals.js`, behind the
+admin router's `verify_auth` (ADMIN_SECRET token · `userType ADMIN` · active
+`role_id 1`).
+
+**Build the Dashboard against the admin path, and against the admin session it
+already has** — `gopher_pull.py` authenticates with `POST /api/v1/admin/auth/login`
+and sends the token as `Authorization`. The MR's original note that "the Dashboard
+calls it as a signed-in user" was wrong.
+
+⛔ **CI could not have caught this, and still cannot.** `scripts/check-admin-auth.js`
+asks whether every route *under* `/api/v1/admin` is authenticated — a route on the
+**user** router is outside its question. The suite was green before the fix and
+green after; no test touched the endpoint. `test/g40-351-deals-queue-authz.test.js`
+now pins the placement, the `verify_auth` mount, the `earn_amount` exclusion and
+the oldest-first ordering, mutation-tested four ways. **The general hole remains:
+nothing detects an admin-only surface mounted on the user router.**
+
+⚠️ **Do not cite a commit SHA for this MR.** It is being merged **squashed**, so
+both `cfd4f6e7` and the fix commit `c8bee471` cease to exist on `production`.
+Verify by content — the route table and `controllers/admin/deals.js` — not by SHA.
 
 ### The flow, as the owner ruled it 2026-08-10
 
@@ -48,8 +81,10 @@ data but they are *real rows* — build the queue against them rather than mocks
 
 ## 2. The job
 
-1. **Dashboard Deals view reads `/deals/queue`** instead of `MERCHANTS[]` in
-   `deals-merchants.js`.
+1. **Dashboard Deals view reads `GET /api/v1/admin/deals/queue`** instead of
+   `MERCHANTS[]` in `deals-merchants.js`. Admin-gated — reuse the login the
+   Dashboard already performs (`gopher_pull.py`), do not invent a second session.
+   ⚠️ Blocked until MR !254 merges **and deploys**.
 2. **Remove the sample-data banner** (`app_part4.js:256`) — owner directive, now
    that real submissions land.
 3. **Remove the fake deals.**
