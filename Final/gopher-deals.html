@@ -3907,6 +3907,9 @@
           _emailVerified = true;
           box.remove();
           _renderPreview('merchant');
+          /* Deliberately NOT auto-submitting. The merchant lands back on their deal
+             preview and taps submit themselves — an automatic send after an error
+             would file a deal they never confirmed. */
         })
         .catch(function () { alert('Could not verify the code. Please try again.'); btn.textContent = 'Confirm'; })
         .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
@@ -3920,6 +3923,15 @@
         .catch(function () { lnk.textContent = 'Resend code'; })
         .then(function () { setTimeout(function () { lnk.dataset.busy = ''; }, 1200); });
     });
+  }
+
+  /* Return from the preview to the form. Needed when a submit is refused for a reason
+     the merchant must act on — the email step lives above the form, and leaving them on
+     the preview would hide the very thing they need to do. */
+  function _renderForm(type) {
+    var pv = document.getElementById('preview-' + type); if (pv) pv.classList.remove('show');
+    var fw = document.getElementById('form-wrap-' + type); if (fw) fw.style.display = '';
+    var card = document.querySelector('#modal-' + type + ' .modal'); if (card) card.classList.remove('dp-wide');
   }
 
   /* The original preview render, unchanged — extracted so the Path B flow can defer it
@@ -4081,10 +4093,29 @@
         .then(function(r){
           if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
           _authToken = r.token || null;
-          try { _apiUserId = r.body.data && r.body.data.id; } catch (e) {}
-          /* An existing account may already be email-confirmed, in which case the
-             email step is a genuine no-op rather than something we skipped. */
-          try { _emailVerified = !!(r.body.data && r.body.data.confirmed_at); } catch (e) { _emailVerified = false; }
+          var prof = (r.body && r.body.data) || {};
+          try { _apiUserId = prof.id; } catch (e) {}
+          try { _emailVerified = !!prof.confirmed_at; } catch (e) { _emailVerified = false; }
+
+          /* ⚠️ sign_in CREATES AN ACCOUNT ON AN UNKNOWN NUMBER (auth.js user_login:
+             lookup miss -> create minimal user with a placeholder email). So ticking
+             "I'm already a Gopher user" for a number that has NO account does not
+             fail — it silently mints one that cannot receive email, and every later
+             step then refuses with "Email verification required".
+
+             There is no verify-only endpoint to avoid this, so detect it after the
+             fact: a placeholder address means this account did not exist a moment
+             ago and the merchant is not, in fact, an existing user. Say so plainly
+             and put them on the right path rather than leaving them stuck behind a
+             403 they cannot act on. */
+          if (/@placeholder\.gophergo\.io$/i.test(prof.email || '')) {
+            _authToken = null; _apiUserId = null; _emailVerified = false;
+            alert('We could not find a Gopher account on that number.\n\nUntick "I\'m already a Gopher user" and fill in your details — we\'ll set the account up as part of your registration.');
+            var cbx = document.getElementById('regExistingGopher');
+            if (cbx && cbx.checked) { cbx.checked = false; try { eguToggle(cbx); } catch (e) {} }
+            btn.textContent = was;
+            return;
+          }
           _otpAccept(field);
         })
         .catch(function(){ alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
@@ -4590,9 +4621,26 @@
               showThanks();
               return;
             }
-            alert(apiMessage(r));
             _submitInFlight[type] = false;
             try { modal.querySelectorAll('.modal-submit, .dp-btn-next').forEach(function(b){ b.disabled=false; b.removeAttribute('aria-busy'); }); } catch(e){}
+
+            /* The server is the authority on whether this account may file a deal.
+               A 403 requiresEmailVerification means the email step is owed — that
+               happens on an EXISTING account whose address was never confirmed, which
+               the client cannot reliably predict (sign_in's response does not carry
+               confirmed_at). React to the answer rather than guess: send the code and
+               show the same step Path B uses, instead of stranding the merchant on an
+               error they cannot act on. */
+            if (r.status === 403 && r.body && r.body.requiresEmailVerification) {
+              var addr = (function(){ var e = document.querySelector('#modal-merchant [name="owner_email"]'); return e ? e.value : ''; })();
+              apiCall('/users/email_otp/send', { body: {} }).then(function (er) {
+                if (!er.ok) { alert(apiMessage(er)); return; }
+                _renderForm('merchant');
+                _showEmailStep(addr);
+              }).catch(function(){ alert('Could not send the verification code. Please try again.'); });
+              return;
+            }
+            alert(apiMessage(r));
           })
           .catch(function(err){
             console.error('Deal submission failed:', err);
