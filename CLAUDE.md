@@ -1701,6 +1701,35 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
 
 ### Outstanding to-do
 
+- **⚠️ iQ CALIBRATION — "work" is scored as a content word, and the two STOP sets have drifted
+  (owner screenshot, 2026-08-09). NOT FIXED — captured for the next calibration pass.**
+  Repro on the live pill: **"Can you help me with electrical work"** → closest match
+  **Hourly / Day Labor**, a delivery FAQ as the related answer, and **Ride Sharing** offered as a
+  suggestion. Three defects, all reproduced against `assets/js/gopher-category-classifier.js`:
+
+  1. **`work` outweighs the subject noun.** Measured scores:
+     `electrical` alone → **home_services 9.5** (correct). `work` alone → **hourly_day_labor 7.5**,
+     ride_sharing 3.5, home 1. Together → **labor 7.5 ▸ home 4.5** — the trade noun loses.
+     The control shows how close this runs: *"plumbing work"* → home 8.5 ▸ labor 7.5, surviving by
+     one point. **Every `<trade> work` phrasing is one point from misrouting to day labor.**
+     ⚠️ **`work` is NOT a plain stop word** — "yard work" and "day labor" are legitimately topical,
+     the same nuance that made stopping `out` regress "cash out" (2026-07-21). The fix is to treat
+     `<trade> work` as a bigram owned by the trade, not to blanket-stop the token.
+  2. **Ride Sharing scores 3.5 on the bare word `work`** — almost certainly a "ride to work" keyword
+     that should be a bigram. It is why an electrical query offers a ride.
+  3. **The FAQ matcher's STOP set has drifted from the classifier's.** Ten function words are
+     stopped in one and not the other: `at, does, help, me, need, someone, this, we, with, you`.
+     That is why the related answer was *"How does delivery work **with** Gopher?"* — the screenshot
+     shows `with` and `help` highlighted as the matched terms. **Pure function words carried the
+     match**, the identical class of bug fixed in the app prototypes on 2026-07-21 (`there` scoring
+     +1 off an answer body and satisfying the coverage gate). The web engine never got that fix.
+     Both sets live in `gopher-ai-engine.js` — FAQ at ~L169, classifier at ~L197.
+
+  **Do not fix these piecemeal.** Every stop-word decision here is a per-word judgement call, and
+  this corpus is **not** provably collision-free — the standing caveat is that a real retrieval
+  layer is the production answer. Fix them together with a regression matrix, the way the 7/21 pass
+  did (32 queries, each asserted against its expected answer).
+
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
   **keeping it current is LOW priority; do not flag its drift.** Its job is **fielding merchant
   registration leads**, and that path is buttoned up — the `GOPHER_FORM_ENDPOINT` Apps Script URL,
