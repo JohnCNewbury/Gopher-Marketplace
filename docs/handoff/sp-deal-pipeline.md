@@ -89,7 +89,31 @@ at 1,243, not 1,214.**
 remedy is upstream: `Other` collecting recycling removal and day-labor jobs is a menu
 problem, not a counting problem — fixing the taxonomy would retire §0.1 entirely.
 
-## 1. Eligibility computation (backend)
+## 1. Eligibility computation (backend) — ✅ **BUILT AND LIVE (verified 2026-08-10)**
+
+> ## ⚠️ This section was written as a build instruction. The backend half is DONE — do not rebuild it.
+>
+> **Verified first-hand against production 2026-08-10:**
+>
+> | What | Evidence |
+> |---|---|
+> | `GET /api/v1/users/deals/eligibility` is live | Returns **440** on `api.gophergo.io`; a bogus sibling returns **404**, so 440 = route exists, auth required |
+> | Enforced at submit, not advisory | `controllers/user/deals.js` computes it live for `track:'dlp'` and refuses the write on failure |
+> | Verdict is auditable after the fact | Snapshotted to `eligibility_tier` / `_service_jobs` / `_service_rating` / `_checked_at` on the deal row |
+> | The rule is in the worker's path | `helpers/sp_eligibility.js` — `regen_sp_eligibility.py` is no longer the only implementation |
+>
+> **Not verified:** I did not authenticate and read a verdict body. Route existence and enforcement
+> come from the live 440/404 pair plus source on `origin/production`.
+>
+> **What is still open is the FRONT END, and it is bigger than it looks.** `Final/gopher-go.html`
+> hardcodes `var ELIGIBLE = true;` and makes **zero `fetch` calls**. It cannot call this endpoint
+> because **the Go dashboard has no authentication at all** — its sign-in/OTP screens are a
+> complete interface wired to nothing. Real sign-in has to be built before the eligibility read.
+> The token arrives in the **`access-token` response HEADER, not the body**.
+>
+> The paragraph and the ⚠️ block below remain correct as the *specification* of the rule and as
+> the record of the 2026-08-09 measurement defect. Read them as history and as the contract the
+> live implementation meets — not as work outstanding.
 
 Production computes `ELIGIBLE` per worker from live tier/jobs/ratings data.
 **Reference implementation: HQ Dashboard repo → `regen_sp_eligibility.py`** (runs the

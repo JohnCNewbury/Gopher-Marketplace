@@ -1140,6 +1140,17 @@ Same honesty class as the merchant logo being required and then discarded (**BUI
 the June 2026 `gopher-request.html` "saved automatically" copy. The success copy must not claim a
 submission until one exists.
 
+> **✅ The false claim is FIXED (2026-08-10, commit `1476b15`); the transport is still absent.**
+> The form now says submissions aren't switched on yet — **before** the worker composes the deal
+> as well as after — and `gopher-go-101.html` #offer-deals carries a matching note, since it
+> described the same flow as working. **The underlying defect stands: `gopher-go.html` still makes
+> zero `fetch` calls.** This was an interim honesty fix, not the wiring.
+>
+> ⚠️ **All three strings are marked in-code for REMOVAL by the commit that adds the deal POST.**
+> Leaving them in place would make the product and its guide wrong in the other direction — a
+> live feature advertised as switched off. Grep `switched on yet` across `Final/` before closing
+> the wiring work.
+
 ### 9.13 The two Service-Provider surfaces produce no linked record
 
 The public funnel (`gopher-deals.html`, `submitForm('worker')`) writes a `worker` row to the Apps
@@ -1148,11 +1159,39 @@ Script lead sheet carrying **`gopher_id`**. The in-app submission (`gopher-go.ht
 obvious join key, collected precisely so the backend can verify tier/jobs/rating — is consumed by
 nothing.** The union record in §4.1 is where these must converge.
 
-### 9.14 SP eligibility is promised publicly and enforced nowhere
+### 9.14 SP eligibility — ✅ **BACKEND RESOLVED 2026-08-10.** The front end still doesn't read it
+
+> ## ⚠️ CORRECTED 2026-08-10 — the heading below said "enforced nowhere". That is no longer true, and leaving it would have someone rebuild what exists.
+>
+> **Verified first-hand against production today**, not inherited:
+>
+> - **`GET /api/v1/users/deals/eligibility` is LIVE.** It returns **440** on
+>   `https://api.gophergo.io`, while a bogus sibling (`/api/v1/users/deals/nonexistent-xyz`)
+>   returns **404** — so 440 means *the route exists and wants auth*, not *no such route*.
+>   Registered at `controllers/user/index.js:487`.
+> - **Eligibility is enforced at submit, server-side.** `controllers/user/deals.js` computes it
+>   live for `track:'dlp'` and refuses the write when it fails — it is not advisory.
+> - **The verdict is snapshotted onto the row** (`eligibility_tier`, `eligibility_service_jobs`,
+>   `eligibility_service_rating`, `eligibility_checked_at`), so a disputed verdict is answerable
+>   after the fact rather than recomputed against changed data.
+> - **The rule lives in `helpers/sp_eligibility.js`**, in the path a worker actually walks —
+>   `regen_sp_eligibility.py` is no longer the only implementation.
+>
+> **What is NOT verified:** I did not authenticate and read a verdict body. Route existence and
+> enforcement were confirmed from the live 440/404 pair plus source on `origin/production`.
+>
+> **What remains true, and is now the whole of this drift:** the front end does not read any of
+> it. `Final/gopher-go.html` still hardcodes `var ELIGIBLE = true;` with a demo toggle and makes
+> **zero `fetch` calls of any kind** — so the gate on screen is still presentation. ⛔ **The
+> blocker is not the eligibility feed; it is that the Go dashboard has no authentication at
+> all.** Its sign-in and OTP screens are a complete interface that calls nothing, and both deals
+> endpoints require an `access-token` — which arrives in the **response HEADER, not the body**
+> (§3.2d). Anyone scoping this as "wire two fetches" is wrong: real sign-in comes first.
 
 The public funnel promises *"we'll email you with eligibility terms and next steps"*, implying a
-tier/jobs/rating lookup. No lookup exists. The in-app gate that would enforce it is a hardcoded
-`var ELIGIBLE = true;` with a demo toggle (`gopher-go.html:4397`).
+tier/jobs/rating lookup. ~~No lookup exists.~~ **A lookup now exists server-side (see the box
+above); the funnel is still not wired to it.** The in-app gate that would enforce it is a hardcoded
+`var ELIGIBLE = true;` with a demo toggle (`gopher-go.html`).
 
 The **only** real implementation of the amended bar is `regen_sp_eligibility.py` in the HQ Dashboard
 — but it lives in the analytics tool, not in the path a worker walks. Production computes this
