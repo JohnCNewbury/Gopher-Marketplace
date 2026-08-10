@@ -1,187 +1,261 @@
-# Moving — Suggested Pricing: DISCOVERY
+# Moving — Suggested Pricing: DISCOVERY (complete)
 
-**Status:** discovery only. **No code written, nothing built, no decisions locked.**
-**Owner ask (2026-07-28):** extend Gopher iQ suggested pricing to **Moving**, using the Junk Removal
-scope-tier pattern, with **two routes** — a move at a *single location* and a move *between two
-locations*. Goal: help requesters who don't know the going rate.
-**Build handoff:** Website Updates session, once the open questions in §7 are answered.
-**Sibling doc (the pattern being mirrored):** `docs/handoff/junk-suggested-pricing.md`.
+**Status:** discovery complete. **No code written.** Ready to become a build spec for Website Updates.
+**Owner ask (2026-07-28):** extend Gopher iQ suggested pricing to **Moving**, Junk-style scope tiers,
+two routes — single location vs between two locations. Goal: help requesters who don't know the rate.
+**Owner scoping:** scope to the **new flow**; **one Moving category**, no sub-categories; **iQ reads
+the customer's description and the price offered**, not a sub-category field.
+**Sibling doc (pattern being mirrored):** `docs/handoff/junk-suggested-pricing.md`.
 
----
+**Decisions locked (owner, 2026-07-28):**
 
-## 1. What already exists (so we build on it, not beside it)
-
-| Piece | Where | Reusable for Moving? |
-|---|---|---|
-| Scope-tier model — 3 tiers, keyword detector, `$` anchor per tier | `assets/js/gopher-request-logic.js` → `JUNK_TIERS`, `detectJunkVolumeTier`, `suggestedJunkOffer` | **Yes — directly.** Same shape. |
-| Tier selector UI (buttons that re-range the offer slider) | `gopher-request.html` `#osJunkTiers` / `.os-tier` | **Yes.** Renders from the tier table, so a Moving table drops in. |
-| Forward-learning store + shrinkage blend (`w = n/(n+8)`) | `recordJunkOffer` / `ingestJunkCompletions` | **Yes.** Backend seam already documented. |
-| Trip-distance pill (miles + minutes, Distance Matrix) | `gopher-request.html` `#osTripContext`, ride-only | **Partly — see §4, F5.** |
-| Moving pricing of any kind | — | **None exists today.** Greenfield. |
-
-Moving would be the **first category needing both** the Junk-style tier selector *and* the
-ride-style trip context in the same sheet. Both primitives already exist; nothing new is invented.
+| | Decision |
+|---|---|
+| **D1** | **Three tiers**, named in **item / truck** language (not home size). |
+| **D2** | **One shared ladder** across both routes; the routes differ in *questions asked*, not in anchors. |
+| **D3** | iQ may use the **structured fields already collected** — stairs, service elevator, item count — as **modifiers**; the **description drives the base tier**. |
+| **D4** | Trip distance on the two-location route: **show as context, never price on it.** |
+| **D5** | **Anchors are owner-set**, informed by the envelope in §5. |
+| **D6** | The `few` anchor **holds at $60** after the corpus correction (§4b · Q7). Settled. |
 
 ---
 
-## 2. The corpus we actually have
+## 1. The new flow already captures both routes
 
-**Intent phrases — 1,120**, in `Dashboard/Gopher iQ/Category Info For AI/moving_production_intent_library.csv`,
-already carrying a `subcategory` label (all at confidence 0.97):
+`gopher-request.html` → `FIELD_HIDDEN_FOR`. Moving is one of eight flat categories
+(`UI_TO_SLUG.moving = 'moving'`), and the route is a toggle the requester already sets — literally
+labelled **"Single-location move"**, help text *"Your worker helps at ONE address only — loading,
+unloading, or rearranging items on site. This is not a two-location move."*
 
-| subcategory | phrases | | subcategory | phrases |
+| Route | `state.noSpecificPickup` |
+|---|---|
+| **A — single location** | `true` |
+| **B — two locations** | `false` |
+
+Already serialised. Nothing to infer, nothing to build.
+
+**Moving-only structured fields the flow already collects:** `pickupStairs` / `destStairs`,
+`serviceElevatorPickup` / `serviceElevatorDest`, item count + "Multiple items" (`itemInfo`), and
+`describe` — iQ's primary input.
+
+**The integration point is one line.** Moving is currently excluded from the pay-suggestion matrix:
+
+```
+aiPaySuggest: ['moving','home','labor','yard','other'],   // Delivery + Ride + Junk only
+```
+
+Remove `'moving'`, add the tier model behind it. That is the whole surface change.
+
+---
+
+## 2. Findings
+
+**F1 · Descriptions carry real scope signal — 72%.** Of 215 completed Moving orders, **155 (72%)**
+contain at least one scope-bearing phrase; 28% contain none.
+
+| Signal | Coverage | | Signal | Coverage |
 |---|---|---|---|---|
-| furniture | 150 | | office | 120 |
-| apartment_move | 120 | | dorm | 120 |
-| house_move | 120 | | packing | 120 |
-| storage | 120 | | loading | 120 |
-| unloading | 120 | | general | 10 |
+| named items | **47%** | | duration | 7% |
+| vehicle needed | **38%** | | crew size | 6% |
+| item count | 12% | | home size | **2%** |
 
-These are **phrasings, not priced jobs** — useful for the *detector*, useless for the *dollar anchor*.
+**This is what validates the description-first approach.** Junk's doc records the opposite — 467/715
+orders had *no* parseable volume phrase, forcing pure owner-anchors. Moving descriptions are rich:
+*"move headboard mattress and two nightstands into upstairs bedroom. bedroom is on 2nd floor. will
+need 4 people"* · *"move couch and staging from uhaul to home. maybe 2 hours."*
 
-**Real orders — 572 Moving-prefixed, 214 completed with a worker offer** (`Orders.csv`, keyed on
-`GOPHER OFFER` = worker pay, never `GOPHER EARNINGS`). For scale: Junk calibrated on **715**. Moving
-has **less than a third** of that, which pushes weight onto forward learning (§4, F7).
+**F2 · The ladder is items-and-truck, not home size** — home size appears in 2% of descriptions,
+named items in 47%, a vehicle in 38%. "Will need a truck" is the sharpest discriminator: it separates
+*two people carry it* from *a vehicle is required*.
 
----
+**F3 · Moving requesters demonstrably don't know the rate.** Counter-offer rate **20%** on both legacy
+routes (57/283, 25/128) vs **9.6%** platform-wide — roughly double. The justification number.
 
-## 3. The finding that reframes the ask: **the two routes already exist in production**
+**F4 · Distance does not drive Moving pay.** Two-location moves with both ZIPs (n=56, full coverage):
+same-ZIP median **$115**, different-ZIP **$100**. Flat-to-inverted → D4.
 
-`TITLE` on a modern Moving order is structured `Moving - <subtype>`. The subtypes *are* the routes:
+**F5 · Not priced hourly** — 7% mention hours; 6% mention crew. Flat per-job matches behaviour.
 
-| Production subtype | All | Completed | Median | q25 – q75 | Both addresses present |
-|---|---|---|---|---|---|
-| `Moving - Location Move` | 283 | 46 | **$100** | $75 – $180 | 55% |
-| `Moving - Same Location Move` | 128 | 39 | **$100** | $60 – $150 | **0%** |
-| `Moving - Store Pick Up & Delivery` | 67 | 18 | $82 | $55 – $200 | **100%** |
-| `Moving - Other` | 34 | 12 | $80 | $50 – $100 | — |
+**F6 · Historical pay is anchored, not measured** — 60% of accepted offers are multiples of $25, 48%
+of $50, **15% exactly $100**. A usable envelope; not a market rate.
 
-The address coverage is the proof, and it is clean: **Same Location Move never has two addresses;
-Store Pick Up & Delivery always does.** The taxonomy already encodes exactly the split being asked
-for — we are surfacing an existing field, not inventing a classification.
+**F7 · Route does not separate price — scope does.** Legacy `Location Move` and `Same Location Move`
+both sit at a **$100 median**. A single-location job can be a whole-house reshuffle; a two-location
+job can be one nightstand. This is why D2 (one shared ladder) is right.
 
-Two wrinkles:
-
-- **There is a third route in the data.** `Store Pick Up & Delivery` is a retail-pickup→home move
-  (100% two-address, the widest pay spread of any subtype, max $500). It is neither of the owner's
-  two routes. **Open question §7-Q2.**
-- **A legacy combined category exists:** `Moving / Junk Removal - <same subtypes>`, 153 orders, using
-  the identical subtype vocabulary — the two categories were once merged and later split. Its
-  `Location Move` rows (median $125) look like Moving; its `Junk Removal` rows (median $40) look like
-  Junk. **Open question §7-Q3.**
+**F8 · Small corpus** — 215 priced jobs. Junk had 715. Anchors carry the model for months.
 
 ---
 
-## 4. Seven findings that shape the model
+## 3. The intent library, mapped
 
-**F1 · Route is data-derivable today; scope is not.** Route is a structured production field with
-clean history. Scope (how big the job is) exists nowhere as a field — only in free text. So the two
-axes need *different* treatments, and that asymmetry is the core design fact.
+⚠️ **The library is a templated expansion, not 1,120 independent use cases.** 1,120 phrases reduce to
+**121 distinct objects** and roughly **41 real concepts** — the same carrier sentences ("Need someone
+to X", "Can someone X", "X near me") wrapped around one object each, plus `help` / `service` suffix
+variants. Excellent as *detector vocabulary*; it teaches nothing about price.
 
-**F2 · The historical pay data is anchored, not measured.** Of 214 completed Moving offers, **60% are
-multiples of $25**, 48% of $50, and **15% are exactly $100**. Requesters are picking round numbers.
-The history records *guesses that happened to get accepted* — it is a reasonable envelope, but it is
-not a market rate, and it should not be presented internally as one.
+**Route mapping** (the library leans into the split without ever naming it):
 
-**F3 · Scope language barely separates pay — a text back-fit will fail.** Splitting completed orders
-by description language: single-item **median $88** (n=24) vs whole-home/truck **median $100**
-(n=16), with heavily overlapping quartiles ($60–150 vs $80–200). A $12 gap on samples that small is
-noise. **This is the same wall Junk hit** — its doc records that 467/715 orders had no parseable
-volume phrase and a back-fit priced "full load" *below* "single item." Do not repeat the attempt:
-set anchors from the pay distribution, capture tier as a structured field, learn forward.
+| Route | Subcategories | Objects |
+|---|---|---|
+| **A — single location** | `loading`, `unloading`, `packing` (+ `rearrange furniture`) | load/unload U-Haul · moving truck · pod · trailer · packing assistance · unpack boxes · wrap furniture · rearrange furniture |
+| **B — two locations** | `apartment_move`, `house_move`, `dorm`, `office`, `storage`, most `furniture` | move my apartment · house to house · residential relocation · dorm/college/student move · office move · move cubicles · to/from storage · move a couch/piano/appliances |
+| **Ambiguous** | `general` | "move", "need movers", "small move", "local move" — no route cue; fall back to the toggle |
 
-**F4 · Moving requesters demonstrably don't know the rate — this is the justification.** Counter-offer
-rate is **20% on both routes** (57/283 and 25/128) against a **platform-wide 9.6%**. Moving requests
-get countered at **roughly twice the platform rate**. That is the strongest available evidence that
-the offer-setting problem is real and concentrated here, and it is the number to lead with.
+Route A is **~32%** of the library by phrase count (360/1,120), which is a reasonable prior for how
+often the single-location toggle should be expected.
 
-**F5 · Distance does NOT drive Moving pay — do not copy the ride model.** Among completed
-`Location Move` orders with both ZIPs (n=56, full coverage): **same-ZIP median $115**, different-ZIP
-median **$100**. Distance is flat-to-inverted. Local moving is priced by effort and volume, not
-mileage — unlike Ride Sharing, where distance *is* the price. Trip context may still be worth showing
-as *context* on the two-location route, but it should not be a multiplier without new evidence.
+**Tier mapping** (D1 vocabulary):
 
-**F6 · Moving is not priced hourly in practice.** Only **7%** of completed Moving orders mention
-hours or an hourly rate (16/214); crew size appears in 19. Both cluster at a $100 median. A flat
-per-job suggestion matches how the marketplace already behaves.
-
-**F7 · Small corpus ⇒ forward learning carries more weight than it did for Junk.** 214 priced jobs
-across 3–4 routes and (say) 3 scope tiers means some cells would start with **single-digit samples**.
-The Junk blend (`w = n/(n+8)`, baseline holds until ~8 completions) is the right mechanism, but the
-per-cell cold start is much longer here. Expect anchors to do the work for months.
+| Tier | Name | Library objects that map here |
+|---|---|---|
+| **T1** | *A few items — no truck needed* | move a couch · rearrange furniture · packing assistance · unpack boxes · wrap furniture · small move |
+| **T2** | *A truck-load* | load/unload U-Haul · moving truck · trailer · pod · storage unit move · dorm / college / student move · move a piano · move appliances · move bedroom furniture · labor only with my truck |
+| **T3** | *A full home* | move my house · whole house move · house to house · residential relocation · move my apartment · apartment to apartment · move into/out of apartment · office move · relocate office · move cubicles · moving across town |
 
 ---
 
-## 5. The shape this suggests (for discussion — not a decision)
+## 4. The ladder is monotonic on real pay — the test Junk failed
 
-A **route × scope grid**, not two separate models:
+Applying the T3 > T2 > T1 priority detector to the 215 completed orders:
 
-- **Route** — from the existing structured subtype. Changes *what is asked and shown*, not the
-  arithmetic: the two-location route additionally collects a second address and can show trip
-  context; the single-location route asks about floors/stairs instead.
-- **Scope tier** — a small ordered set, mirroring Junk's `single / half / full`, pre-selected by a
-  keyword detector and correctable by the requester (the correction is what teaches the model).
-- **Anchors** — owner-set per cell, informed by the pay envelope in §3, monotonic by construction.
-- **Learning** — same `recordX/ingest/suggest` seam as Junk, so the backend swap is identical.
+| Tier | n | Median | Mean | q25 – q75 |
+|---|---|---|---|---|
+| **T1** a few items / no truck | 74 | **$72** | $99 | $50 – $150 |
+| **T2** truck-load | 65 | **$100** | $115 | $60 – $150 |
+| **T3** full home | 6 | **$228** | $236 | $100 – $260 |
+| *no signal (default)* | 70 | $75 | $87 | $30 – $125 |
 
-Scope-tier vocabulary is genuinely open. The intent library's 10 subcategories are *job types*
-(packing, loading, dorm), not sizes — they'd need mapping onto a size ladder, and several
-(`packing`, `loading`, `unloading`) are really **single-location** work regardless of size. That
-mapping is the main piece of discovery still outstanding (§8).
+**Monotonic: $72 < $100 < $228.** Junk's first pass priced "full load" *below* "single item" and had
+to abandon text back-fit entirely. Moving passes cleanly — the items/truck ladder is real signal, not
+an artefact.
 
----
-
-## 6. What would need to be true for this not to break at scale
-
-- The scope tier must be captured as a **structured field on the order**, or the learning loop has
-  nothing clean to learn from and we are back to F3 forever.
-- Anchors must be **monotonic within a route** — a bigger tier must never suggest less.
-- The suggestion must degrade to the route-level median when a cell has no samples, and to the
-  category median when the route is unknown. **Never fail loud** on a pricing hint.
-- `Store Pick Up & Delivery` has a **$55–$200 interquartile spread** — the widest here. If it is
-  folded into a route rather than kept separate, it will drag that route's anchor and make the
-  suggestion worse for everyone in it.
+**Honest caveats:** T3 is **n=6**, so $228 is directional only. T1 and T2 overlap heavily in the
+quartiles even though the medians separate. Treat this as *corroboration* of the anchor ordering,
+**not** as the price source (F6).
 
 ---
 
-## 7. Open questions — owner
+## 4b. ⚠️ Corpus correction (2026-07-28, after §4 was written)
 
-**Q1 · How many scope tiers, and in what language?** Junk used 3 (`single item` / `half-truck` /
-`full truck`). Moving's natural ladder might be *a few items → a room → a full home*, but "3 bedroom
-house" and "studio apartment" are the phrases requesters actually use. Recommendation: **3 tiers**,
-named in home-size language, since that is how people describe a move.
+Building the calibration workbook surfaced a contamination in the corpus used for §4 and §5. The
+selector was `TITLE startswith "moving"`, which silently swept in **38 legacy
+`Moving / Junk Removal - Junk Removal` rows (median $40)** — those are Junk jobs and belong to the
+Junk model — plus **22 `Store Pick Up & Delivery`** rows that §7-Q6 had already recommended excluding.
 
-**Q2 · Is `Store Pick Up & Delivery` in scope?** It is a real, live third route (67 orders, always
-two-address, widest spread). Options: treat as a third route, fold into the two-location route, or
-leave out of the Moving model entirely. Recommendation: **keep it separate or leave it out** — folding
-it in degrades the two-location anchor (§6).
+**Clean corpus = 155** completed Moving orders (was 215). Revised figures:
 
-**Q3 · What happens to the legacy `Moving / Junk Removal` orders (153)?** Include their Moving-side
-subtypes in the calibration corpus, or exclude the whole legacy category? Recommendation: **include
-the `Location Move` / `Same Location Move` rows, exclude its `Junk Removal` rows**, which belong to
-the Junk model.
+| | As first published (N=215) | **Clean (N=155)** |
+|---|---|---|
+| p25 | $50 | **$60** |
+| median | $90 | **$100** |
+| p90 | $200 | **$200** |
+| tier medians (few / truck / home) | $72 / $100 / $228 | **$80 / $100 / $200** |
+| no-signal descriptions | $75 (n=70) | **$100 (n=36)** |
 
-**Q4 · Do you want trip distance shown on the two-location route?** F5 says it should not change the
-price. It may still be worth showing as context. Recommendation: **show it, don't price on it.**
+**What this changes:**
 
-**Q5 · Are the anchors yours to set, as with Junk?** The Junk values ($40/$60/$100) were owner-set
-and informed by the distribution. Recommendation: **same here** — I bring the envelope, you set the
-numbers.
+- **The anchors survive.** T2 ($100) and T3 ($200) are now hit *exactly* by the clean data. T1's
+  detected median rises $72 → $80, so the $60 anchor now sits below it rather than between the
+  quantile and the median — **worth an owner look, see §7-Q7.**
+- **Monotonicity holds** and is cleaner: **$80 < $100 < $200**.
+- **The no-signal default question is resolved in favour of `truck`.** The $75 figure that argued for
+  defaulting to `few` was an artefact of the cheap junk-side rows; on the clean corpus no-signal
+  descriptions sit at **$100**, exactly the median tier. The build spec's choice was right for a
+  reason it did not yet have.
+- **F7 is reinforced, hard:** Route A median **$100** (n=52) vs Route B median **$100** (n=55).
+  Identical. One shared ladder is correct.
+
+Percentages elsewhere in §2 and §6 (signal coverage, stairs lift) were computed on the wider 215-row
+set and are **directional, not restated** — they concern which words appear, not what things cost.
+
+**Q7 · Should the `few` anchor move up from $60? — ✅ RULED: HOLD $60 (owner, 2026-07-28).**
+Clean p25 is $60 and the detected-tier median is $80, so the question was real. Held at **$60**
+because the T1 band already reaches $75, and under-anchoring the cheapest tier is the safer error
+while forward learning is thin. **D6.** Settled — do not re-raise; if forward learning moves it, that
+is the learning loop doing its job, not a reason to re-open the anchor.
+
+## 5. Pay envelope and proposed anchors
+
+Whole-corpus envelope, completed Moving orders, keyed on `GOPHER OFFER` (worker pay — never
+`GOPHER EARNINGS`), **N = 215**:
+
+```
+p10 $25 · p20 $50 · p30 $50 · p40 $70 · p50 $90 · p60 $100 · p70 $125 · p80 $150 · p90 $200 · max $500
+```
+
+Junk set its tiers at q(.30) / q(.55) / q(.82). Applied here that gives **$50 / $100 / $150**. Blended
+against the observed tier medians ($72 / $100 / $228):
+
+| Tier | Quantile method | Observed median | **Proposed anchor** |
+|---|---|---|---|
+| T1 — a few items, no truck | $50 | $72 | **$60** |
+| T2 — a truck-load | $100 | $100 | **$100** |
+| T3 — a full home | $150 | $228 (n=6) | **$200** |
+
+Both methods **agree exactly at T2 ($100)**, which is the strongest cell (n=65) and a good sign. T1 is
+set between the two; T3 follows the p90 rather than the thin n=6 median. Monotonic by construction,
+round numbers, ±25% derived low/generous as Junk does. **These are proposals — D5 says the final
+numbers are yours.**
 
 ---
 
-## 8. Discovery still to do (once Q1–Q3 are answered)
+## 6. Modifiers (D3) — sized against real pay, not invented
 
-1. **Map the 1,120 intent phrases onto the route × scope grid** — this is the real "hundreds of use
-   cases" pass, and it produces the keyword detector's word lists. Cannot start before Q1 fixes the
-   tier vocabulary.
-2. **Build the pay envelope per candidate cell** (percentiles, as Junk did) so the anchors are set
-   against real distribution rather than intuition.
-3. **Hand-label a sample of the 214 completed orders** against the chosen tiers, to measure detector
-   accuracy — *as a test set only*, never as the price source (F3).
-4. **Decide the cold-start fallback ladder** and confirm cell-level sample counts are survivable (F7).
+| Modifier | Evidence | Recommendation |
+|---|---|---|
+| **Stairs** | T1 **+11%** (n=24), T2 **+36%** (n=16), overall **+25%** (n=57 vs 158) | **+15%** when stairs at either end; direction is consistent and grows with tier |
+| **Stairs both ends** | not separable in text data | **+25%**, by extension — flag for forward learning |
+| **Service elevator** | **n=2.** Unusable. | **Collect, don't price.** Revisit once the field has real volume |
+| **Item count** | 12% of descriptions | Use to *promote* T1 → T2 above a threshold, not as a % |
 
-## 9. Explicitly out of scope for this document
+⚠️ **Crew size is a double-count risk — do not add it as a modifier.** Descriptions mentioning ≥2
+people show a **+88% lift** (n=13), the largest effect measured. But the flow already collects
+**`workersNeeded` as crew size, and that field already drives pricing and totals** (it is *not* the
+hire count — Request hires one lead worker who is responsible for the crew). If iQ also applies a
+crew multiplier, the same labour gets paid for twice in the suggestion. **Confirm where
+`workersNeeded` enters the total before touching this**, and let the flow own it.
 
-No code, no `gopher-request-logic.js` changes, no flow changes. Fee logic, matching, and payout are
-untouched and remain developer-only. Nothing here changes what any live surface does today.
+---
+
+## 7. Cold start and defaults
+
+- **28% of descriptions carry no scope signal** (70 orders). Their observed median is **$75** — nearer
+  T1 ($72) than T2 ($100).
+- Junk defaults to the **median tier** and lets the requester re-pick with one tap. Recommendation:
+  **do the same (default T2)** for consistency and because under-suggesting is the failure mode F3
+  identifies — but note the empirical median argues for T1. It is a one-tap correction either way, and
+  the correction is what teaches the model. **Worth an explicit owner call.**
+- Fallback ladder: unknown tier → route median → category median. **A pricing hint must never fail
+  loud.**
+- Forward learning: reuse Junk's `recordX / ingest / suggest` seam and its `w = n/(n+8)` blend, so the
+  production backend swap is identical and already documented.
+
+---
+
+## 8. What must be true for this not to break at scale
+
+- The chosen tier must land on the order as a **structured field**, or every future recalibration is
+  back to parsing prose.
+- Anchors must stay **monotonic** — a bigger tier must never suggest less.
+- **The offered price must not feed the tier estimate.** If the offer informs the scope read and the
+  scope read then judges the offer, the advice is self-confirming — a low offer implies a small job
+  implies the low offer was right. Use the offer as the thing being judged: *"your $60 is below the
+  $90–$140 range for a job like this."* (Same failure class as the self-feeding baseline in G40-336.)
+- Don't let `workersNeeded` be counted twice (§6).
+
+---
+
+## 9. Ready for build spec — what Website Updates would need
+
+1. `MOVING_TIERS` table (3 rows: key, label, hint, anchor) — same shape as `JUNK_TIERS`.
+2. `detectMovingTier(text)` — T3 > T2 > T1 priority regex, word lists from §3.
+3. `suggestedMovingOffer(tier, {stairs, route})` — anchor blend + stairs modifier, ±25% band.
+4. Remove `'moving'` from `aiPaySuggest`; render the `.os-tier` buttons from `MOVING_TIERS`.
+5. Route-specific question set (Route B may show trip context — D4, context only).
+6. Record/ingest wiring for forward learning, mirroring the Junk functions.
+
+## 10. Out of scope
+
+No code. No `gopher-request-logic.js` or flow changes. Fee logic, matching, and payout untouched and
+developer-only. Nothing here changes what any live surface does today.
