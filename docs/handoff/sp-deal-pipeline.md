@@ -14,7 +14,7 @@ Automatic — no application. All three required:
 | Bar | Meaning |
 |---|---|
 | Verified tier | Elite, Elite+, or Pro |
-| 20+ completed **service** jobs | All-time; **Delivery / Ride Sharing / Other excluded** |
+| 20+ completed **service** jobs | All-time; **Delivery / Ride Sharing excluded (terminal); `Other` excluded UNLESS the description is plainly service work — see §0.1** |
 | 4.75★ over last 20 **service** jobs | Same category exclusions as the 20-count |
 
 Admin may also grant eligibility case-by-case. Rating authority = Ratings.csv-equivalent
@@ -67,9 +67,9 @@ service work unmistakably — and in three cases the requester picked `Other` an
 | **Respect the field** (HQ Dashboard) | `Other` is the requester's deliberate choice; exclude | D-022 names `Other` explicitly, beside two categories nobody calls a misclassification |
 | **Count the work** (this repo today) | Re-read the description; count demonstrable service work | The bar measures the **worker's** experience, and the worker does not control which menu item the customer picked |
 
-**Measured impact: 29 order rows. Workers whose eligibility depends on the ruling: 0** —
-14 either way, and the 15–19 near-miss group is identical under both. The denominator moves
-1,243 → 1,214.
+**Measured impact when it was decided: 29 order rows; workers whose eligibility depended on
+it: 0** — 14 either way, and the 15–19 near-miss group identical under both. It was settled
+for correctness, not because anything was blocked.
 
 **Why (the accepted reasoning).** The amendment's stated purpose is to stop *delivery and
 ride volume* flooding the manual review queue — 16,596 and 459 orders respectively. Counting
@@ -85,9 +85,9 @@ information about the work — unlike Delivery and Ride Sharing, which name it �
 it protects auditability at the cost of the thing being measured. **The denominator stands
 at 1,243, not 1,214.**
 
-**Whichever way it goes, the production build must apply it to `category_type`, not to
-titles**, and the real remedy is taxonomy: `Other` collecting recycling removal and
-day-labor jobs is a menu problem upstream of this bar.
+**The production build applies this to `category_type`, not to titles.** And the real
+remedy is upstream: `Other` collecting recycling removal and day-labor jobs is a menu
+problem, not a counting problem — fixing the taxonomy would retire §0.1 entirely.
 
 ## 1. Eligibility computation (backend)
 
