@@ -1,5 +1,21 @@
 # CLAUDE.md — Gopher Marketplace
 
+> ## ⛔ READ FIRST — this file can be out of date. The live rules are elsewhere.
+>
+> **The authoritative, current owner directives live in
+> `Dev/gopher-dev-handoff/STANDING-RULES.md`.** Read that file before acting on anything below,
+> and re-read it after any context carryover.
+>
+> **Why this warning exists.** `CLAUDE.md` is *inside* this repo, so **every git worktree freezes
+> its own copy at the moment the worktree was created.** Rules the owner set afterwards are
+> invisible to any session working there — silently, with nothing to signal the gap. On
+> 2026-08-10 three worktree copies were found still enforcing a scope rule the owner had
+> **retired on 2026-08-09**, and two live sessions had been blocking themselves on it for days.
+>
+> `STANDING-RULES.md` lives in a **different repository**, so a worktree cannot freeze it. It is
+> always live for every session, whenever that session's tree was made. **Where the two disagree,
+> `STANDING-RULES.md` wins.**
+
 ## What this is
 
 This repository began as an **AI-generated static HTML prototype** for "Gopher Marketplace" — a
