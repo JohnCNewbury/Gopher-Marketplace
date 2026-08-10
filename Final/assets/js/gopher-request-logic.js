@@ -349,29 +349,39 @@
      hire count; Request hires one lead worker who pays the crew). An iQ crew
      multiplier would pay for the same labour twice. Confirm where workersNeeded
      enters the total before revisiting. */
-  /* ⚠️ D7 (owner, 2026-08-09) — REPRICED AND THE TOP TIER SPLIT. This SUPERSEDES
-     D6 ("few holds at $60") entirely; D6 is dead, do not restore it.
+  /* ⚠️ D8 (owner, 2026-08-09) — REPRICED AGAIN, AND THE STAIRS MODIFIER REMOVED.
+     SUPERSEDES D7 ($100/$250/$325/$475) and D6 ($60). Neither should reappear
+     from an older copy — they are struck through in the ledger, not stacked.
 
-     WHY THE NUMBERS MOVED, because the reasoning matters more than the values:
-     the internal corpus was ACCEPTED prices only. Just 47-50% of Moving requests
-     ever match, and unmatched jobs sit 43-60% BELOW matched ones — so "median
-     accepted" was the price at which a coin flip clears, not a fair price.
-     Compounding it, the lead worker is paid the offer and PAYS THE CREW, so the
-     old $100 truck anchor was $25/labor-hour split two ways against a ~$63
-     market. Gopher was sitting at roughly 40% OF MARKET.
+     D7 WAS WRONG IN THE OPPOSITE DIRECTION TO THE ORIGINAL, and the shape of the
+     error is the thing to remember: it anchored Gopher's WORKER PAY to AGENCY
+     RETAIL. HireAHelper/U-Haul prices carry dispatch, insurance, trucks,
+     overhead and margin; Gopher is gig and takes ~8% for the connection, so the
+     offer is labor + materials. Pricing at retail made Gopher DEARER than the
+     thing it replaces. Same class of mistake as the first round — comparing two
+     numbers that don't measure the same thing. Caught by the owner on a live
+     demo: "single couch moved to the 3rd floor" priced $115 when three methods
+     put it near $75.
 
-     These anchors are benchmarked to EXTERNAL market data (U-Haul Moving Help
-     NC average $254 for 2 movers/2hrs; HireAHelper Raleigh by home size), NOT to
-     our own accepted prices. Sources: Dashboard/Gopher iQ/Suggested Pricing/
-     Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx + _Seed_Data.xlsx. */
+     These anchors are crew x hours x $30/labor-hour, cross-checked against
+     Gopher's own completed history:
+       few        $75   model 2 x 1.0hr = $60    history n=26, med $88
+       truck      $110  model 2 x 2.0hr = $120   history n=52, med $100
+       home_small $225  model 4.5 crew-hr = $270 history n=3,  med $200
+       home_large $375  model 3 x 5hr = $450     history n=1
+     The two well-powered tiers have model and history agreeing closely; the
+     upper two are model-led because the history is n=3 and n=1.
+     Owner ruled FLAT TIERS for this release. The full crew x hours engine —
+     hours from item count, home size, truck, stairs x trips, one vs two
+     locations — is the destination, not this build. */
   var MOVING_TIERS = {
-    few:        { label: 'A few items',      suggested: 100,
+    few:        { label: 'A few items',      suggested: 75,
                   hint: 'a couple of pieces \u2014 no truck needed' },
-    truck:      { label: 'A truck-load',     suggested: 250,
+    truck:      { label: 'A truck-load',     suggested: 110,
                   hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
-    home_small: { label: '1\u20132 bedroom home', suggested: 325,
+    home_small: { label: '1\u20132 bedroom home', suggested: 225,
                   hint: 'studio, apartment, condo or small house' },
-    home_large: { label: '3+ bedroom home',  suggested: 475,
+    home_large: { label: '3+ bedroom home',  suggested: 375,
                   hint: 'a larger house, or an office move' }
   };
   var MOVING_TIER_ORDER = ['few','truck','home_small','home_large'];
@@ -412,8 +422,9 @@
      to 2.5x) because the old ones tracked our own ACCEPTED prices — the ~40%-of-
      market data D7 exists to correct. Blending pre-D7 learned means against
      post-D7 baselines would drag the new anchors straight back down. Same
-     reasoning as JUNK_LEARN_KEY v2: a skewed baseline is worse than no history. */
-  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v2';
+     reasoning as JUNK_LEARN_KEY v2: a skewed baseline is worse than no history.
+     v3 (D8): anchors moved again (retail -> labor), same argument applies. */
+  var MOVING_LEARN_KEY = 'gopher_moving_pay_learn_v3';   // v3: D8 re-anchored again
   function movingLoadLearn(){
     try { var o = JSON.parse((window.localStorage||{}).getItem(MOVING_LEARN_KEY) || '{}'); return (o && typeof o==='object') ? o : {}; }
     catch(_){ return {}; }
@@ -435,11 +446,21 @@
     });
   }
 
-  /* Stairs modifier, sized against real pay: 'few' +11% (n=24), 'truck' +36%
-     (n=16), +25% overall (n=57 vs 158) — consistent in direction and growing
-     with tier, so one end +15%, both ends +25%.
-     ⚠️ SERVICE ELEVATOR IS COLLECTED BUT NOT PRICED — n=2 in the historical
-     data. Leave those fields alone until the volume exists. */
+  /* 🔴 NO STAIRS/ELEVATOR MULTIPLIER — D8 REMOVED IT. Do not "retune" it back in.
+     The signal does not survive its own tier definition: `truck`, the
+     best-powered cell, shows +0% (n=15 vs 37); `few` shows +43% under one
+     reasonable tier regex and -22% under another; the upper tiers are n=1-2.
+     The structural reason is that STAIRS SCALE WITH THE NUMBER OF TRIPS — one
+     couch up one flight is one trip, a 3-bedroom house is dozens. U-Haul's
+     "+1 hour per flight" is a whole-home figure, so a flat percentage is wrong
+     at both ends, and it was inflating exactly the small job that drew the
+     complaint ($100 -> $115 on a single couch).
+     pickupStairs/destStairs are still COLLECTED and still passed in by both
+     apps; `opts` stays in the signature so the call sites don't churn when the
+     crew x hours model lands. They simply do not price today.
+     ⚠️ Acceptance test 7 is INVERTED because of this: it now asserts the
+     suggestion is IDENTICAL with and without stairs. A regression there
+     reintroduces the $115 bug. */
   function suggestedMovingOffer(tier, opts){
     opts = opts || {};
     var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
@@ -452,16 +473,13 @@
     }
     /* Route A (single location) has no pickup end, so the caller gates
        pickupStairs on !noSpecificPickup — mirrored here defensively. */
-    var ends = (opts.pickupStairs ? 1 : 0) + (opts.destStairs ? 1 : 0);
-    if(ends === 1) suggested *= 1.15;
-    else if(ends >= 2) suggested *= 1.25;
     var r5 = function(x){ return Math.round(x / 5) * 5; };
     suggested = r5(suggested);
     return {
       tier: (MOVING_TIERS[tier] ? tier : 'truck'),
       label: base.label, hint: base.hint,
       low: r5(suggested * 0.75), suggested: suggested, generous: r5(suggested * 1.25),
-      learnedSamples: learnedN, baseline: base.suggested, stairsEnds: ends
+      learnedSamples: learnedN, baseline: base.suggested
     };
   }
 
