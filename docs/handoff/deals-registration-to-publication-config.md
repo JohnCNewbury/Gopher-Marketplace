@@ -399,6 +399,59 @@ making this a **form-affordance problem, not a backend gap**. The 422 above is t
 "this phone already has an account", which is precisely when the form should say *"you already have
 an account — verify your phone to finish your deal"* rather than surfacing a registration error.
 
+### 3.2d ✅ THE VERIFIED CONTRACT — driven end-to-end against production 2026-08-10
+
+**Not a spec. Every response below was copied from a real run** by the HQ Dashboard session
+against `https://api.gophergo.io`, creating user **141557** (`+1 805-555-0173`) and **deal row
+id 1**. If the form sees anything different, that is a real difference — report it, do not
+work around it.
+
+| # | Call | Auth | Result |
+|---|---|---|---|
+| 1 | `POST /api/v1/otp/get` `{telephone}` | public | `200 {status:true}` |
+| 2 | `POST /api/v1/users` (role `requestor`, `provider:"phone"`) | public | `200`, body has `data.id` |
+| 3 | `POST /api/v1/users/email_otp/send` `{}` then `/verify` `{code}` | `access-token` | `200` each |
+| 4 | `POST /api/v1/users/deals` | `access-token` | `201 {deal:{id,status:"pending",track:"dlm"}}` |
+
+**⚠️ Two things that will each cost a build cycle if missed:**
+
+1. **The token is returned in the `access-token` RESPONSE HEADER, not in the body.** Both
+   `/users` and `/users/sign_in` behave this way (`access-control-expose-headers:
+   access-token,refresh-token`). Nothing in the JSON carries it.
+2. **The phone OTP SURVIVES signup — do not request a second one.** `auth.create` checks that
+   a code exists but does not consume it; the same code works for signup *and* a following
+   sign-in. Re-requesting mid-flow creates the "user holds two texts, enters the first"
+   failure for no benefit.
+
+**Field rules (tested, not assumed):** `category` must be the **key** — `restaurants` ·
+`favorites` · `age` · `retail` (the form's `CATEGORY_KEY` map at payload-build is correct;
+do **not** key the `<option value=>` — see §9.14 / Ruling 1). `keywords` ≤ 3, as an **array**.
+**Never send** `customer_price`, `age`, `phone_verified`, or `owner_user_id` — each is
+rejected by name, and `owner_user_id` is taken from the token, so a body-supplied one is
+refused before the write. Validation returns **all** errors at once in `errors[]`, with a
+`suggestion` field on an email typo.
+
+**Status semantics:** `201` created · `200` + `duplicate:true` and the **same id** on an
+identical resubmit (no second row, safe to retry) · `422` writes nothing, so retry after a
+validation failure is always safe · **`440`** — not 401, not 500 — when unauthenticated ·
+`422 "Phone number already registered. Please login using OTP."` on a duplicate phone at
+step 2, which is the **collision hook** for the Path A resume affordance (§3.2c).
+
+> **Two process findings from that run, both worth more than the contract itself.**
+>
+> **A unit test of a controller cannot see what its middleware does to the request.** The
+> first live call failed `422 "Unrecognised field(s): app_type, fetched_user"` —
+> `middleware.user_auth` injects **three** fields into `req.body` (`decoded`, `app_type`,
+> `fetched_user`) and only the first was being stripped, so **every authenticated request
+> failed** while the suite stayed green, because the tests call the controller directly and
+> never run the middleware. Fixed and deployed (`19639902`).
+>
+> **Merged ≠ live, and the failure can be silent.** Production could not deploy from
+> **2026-08-08 21:51**: Elastic Beanstalk sat at **1000/1000** application versions with
+> pruning disabled, and CodePipeline's deploy stage failed while GitLab showed green —
+> **four consecutive merges vanished.** Cleared by deleting 645 pre-2026 dev versions.
+> Confirm any deploy **by content**, never by branch state or a 200 on the host.
+
 **Retrying the same deal is safe (server-side, content-based).** Same owner + same `deal_text` +
 still `pending` returns the **original** row with **200** and `duplicate: true` — success to the
 merchant, distinguishable to the caller. A *different* deal from the same merchant is a normal 201.
