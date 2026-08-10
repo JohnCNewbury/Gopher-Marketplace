@@ -1656,6 +1656,49 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     `ptSyncHome()`, and `window.__ptApprove(id)` is the purpose-built hook for the hired state —
     `.js-update` only exists once `j.accepted && jobApproved(j)`.
 
+- **Confirmation is INDEPENDENT of the rating — prototype corrected to match live (owner
+  2026-08-09; commit `cc4493c`, deploy `41ae476`, live-verified).** _(Scope: `_prototypes/`. No live
+  app, backend, or payment code touched — `confirm_payout` is payment logic and fenced.)_
+  Owner: *"Once the Requester confirms the order, that should immediately update the Gopher's side.
+  The rating is optional so we're creating a potential issue if the requester doesn't rate."*
+  **Live is right and stays the reference** (traced on `origin/production`): `POST /confirm_payout/:id`
+  captures, transfers, updates order status and notifies; `POST /ratings`
+  (`controllers/common/ratings.js`) writes the rating row and `users_roles` and **never touches
+  `aasm_state`**. Two endpoints, two effects. Also live: `PATCH /:id/complete` confirms payout
+  automatically, `PATCH /:id/complete/v2` completes *without* confirming — worth knowing before
+  anyone "simplifies" the completion path in the rebuild.
+  **The prototype had them fused in TWO places, which is why it looked like one bug and wasn't:**
+  (1) Go — `job.confirmed=true` was set *inside* `window.__ptRated`, so nothing else on earth could
+  confirm a job; (2) the harness — `watchRating()` only relayed when `r.rating` existed, so a confirm
+  with no rating was never carried across at all. **The requester side was already correct**:
+  `openConfirmCompletion` writes `confirmed:1` on CONFIRM COMPLETED. Nothing consumed it. So a
+  requester who confirmed and closed the (optional) rating modal left the worker reading
+  *"Pending confirmation — {who} controls the payout until they confirm"* **forever**, payout
+  apparently unreleased. **Half-fixing either side leaves the bug intact — check both.**
+  **Now:** `window.__ptConfirmed(id)` is the only thing that flips `job.confirmed` (idempotent,
+  clears any open dispute, re-renders); `__ptRated` records rating + favourite and **deliberately
+  does not confirm**, so a rating can never be what releases the payout on screen. The harness
+  relays confirm on its own `confirmSeen` map, ahead of and independent of `ratingSeen`. The shared
+  re-render moved to `_ptSettleRender()` so both paths keep the two guards that were already there:
+  never `load()` over an open modal (it rebuilds the shadow root and eats the worker's modal
+  mid-tap), and never auto-return home until the worker has rated on *their* timing.
+  Verified on a clean run: confirm with **no** rating → *"Confirmed by Jamie L. — $95 paid out"*,
+  `confirmed` true / `rated` unset; then rating → `rated` 5, `confirmed` still true.
+  ⚠️ **Harness testing trap, cost me a false alarm:** an intermediate run looked like the rating had
+  stopped relaying. It hadn't — the order id **`GR-00128` is reused every run**, and the harness's
+  `statusSeen` / `ratingSeen` / `confirmSeen` maps live in page scope, so a warm harness silently
+  suppresses relays for an id it has already seen. **Reload `split-screen.html` between scenarios,
+  or you will diagnose the harness instead of the product.** Injection also only fires for a record
+  in stage `searching`.
+  Also fixed here: the completion explanation said *"Hand off the items"* on a TV-mounting job — it
+  now follows the same delivery/service split as the step label.
+  **Deploy note (owner-directed):** the iQ session's Moving-pricing commit `f8b1953` was in the tree
+  and the owner said ship mine only. Done by running `scripts/deploy.sh` from a **worktree pinned at
+  `cc4493c`** rather than reverting anything in the shared clone. ⚠️ **A pinned worktree is missing
+  the disk-only allowlisted prototype files** (`Go/gopher-banner.js`, `Request/gopher-banner.js` are
+  gitignored) and the deploy aborts on them — copy them in from the clone first. That is the
+  repeatable way to ship one session's work while another's sits uncommitted-to-live beside it.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
