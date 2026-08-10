@@ -2594,8 +2594,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const STATUS_FLOW=[{key:'inprogress', label:'In progress', cta:'Start the job',
         explain:'The requester sees that you&#8217;re on the job.'}]
       .concat(_hasItems ? [{key:'items', label:_itemsLabel, cta:((+j.cost>0)?'Items purchased':'Items picked up'), explain:_itemsExplain}] : [])
+      /* The explanation follows the same delivery/service split as the label — caught on a
+         TV-mounting job, where "Hand off the items" was simply describing the wrong work. */
       .concat([{key:'completed', label:(_isDelivery?'Complete the delivery':'Complete the job'), cta:'Mark job complete',
-        explain:'Hand off the items &mdash; the requester then confirms and your payout is released.'}]);
+        explain:(_isDelivery?'Hand off the items':'Finish the work')
+                +' &mdash; the requester then confirms and your payout is released.'}]);
 
     function body(){
       const picRv=!!(j.priority||j.accepted), rv=!!j.accepted;
@@ -3911,18 +3914,20 @@ if(PT){
       else if(current==='jobs-list'){ load('jobs-list'); }
     }catch(_){}
   };
-  window.__ptRated=function(id,stars,fav){
-    var job=window.__ptJobs[id]; if(!job) return;
-    job.rated=stars;                 // stored for the system only — never displayed
-    job.confirmed=true; job.substage='completed';
-    job.disputed=0; job.disputeNote=null;   // confirming completion resolves any open dispute
-    job.favorited=!!fav;             // requester's MY-Gophers state at confirm — drives the congrats modal
-    // Safeguard only: the rate button is gated on confirmed, so reqRated can't normally exist
-    // before this relay lands. Kept in case an older session left a pre-gate rating behind.
-    try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}
+  /* CONFIRMATION AND RATING ARE SEPARATE EVENTS — matching live (owner, 2026-08-09).
+     Live has two endpoints and they do different things: POST /confirm_payout/:id captures,
+     transfers, updates order status and notifies; POST /ratings writes the rating row and
+     never touches aasm_state (verified in controllers/common/ratings.js on origin/production).
+     This prototype had them fused: `job.confirmed` was set inside __ptRated, so confirmation
+     could only reach the worker if the requester also rated. Rating is OPTIONAL, so a requester
+     who tapped CONFIRM COMPLETED and closed the rating modal left the worker stranded on
+     "Pending confirmation — {who} controls the payout until they confirm" permanently, with the
+     payout reading as unreleased. The requester side was already correct: openConfirmCompletion
+     writes `confirmed:1` at CONFIRM COMPLETED. Nothing carried it across. */
+  function _ptSettleRender(job){
     // Never yank the screen out from under the worker: load() rebuilds the shadow root, which
-    // destroys any open modal — if the confirm relay lands while the rate-requester modal is up,
-    // the worker loses it mid-tap. And never auto-return home until the worker has actually rated;
+    // destroys any open modal — if a relay lands while the rate-requester modal is up, the
+    // worker loses it mid-tap. And never auto-return home until the worker has actually rated;
     // their rating happens on THEIR timing, not the requester's.
     try{ if(current==='job-detail' && state.job===job){
       var _host=stage.querySelector('.host'), _sr=_host&&_host.shadowRoot;
@@ -3932,6 +3937,26 @@ if(PT){
         if(job.reqRated) setTimeout(function(){ if(current==='job-detail' && state.job===job) load('home'); }, 2200);
       }
     } }catch(_){}
+  }
+  /* The requester confirmed completion. This is the ONLY thing that flips job.confirmed, and it
+     is independent of whether a rating ever arrives — the worker sees "Confirmed · paid out" the
+     moment the requester confirms, which is the whole point of the fix. */
+  window.__ptConfirmed=function(id){
+    var job=window.__ptJobs[id]; if(!job) return;
+    if(job.confirmed) return;                // idempotent: the harness may relay more than once
+    job.confirmed=true; job.substage='completed';
+    job.disputed=0; job.disputeNote=null;    // confirming completion resolves any open dispute
+    _ptSettleRender(job);
+  };
+  window.__ptRated=function(id,stars,fav){
+    var job=window.__ptJobs[id]; if(!job) return;
+    job.rated=stars;                 // stored for the system only — never displayed
+    job.favorited=!!fav;             // requester's MY-Gophers state — drives the congrats modal
+    /* Deliberately does NOT set job.confirmed. In live, a rating writes no order state, so a
+       rating must never be what releases the payout on screen. If a rating somehow arrives for an
+       unconfirmed job, the job correctly stays unconfirmed — same as live. */
+    try{ if(job.favorited && job.reqRated && !job.favCongrats){ job.favCongrats=1; window.__goFavCongrats(job.who); } }catch(_){}
+    _ptSettleRender(job);
   };
   load('home');   // boot straight to the logged-in worker home
 } else {
