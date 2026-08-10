@@ -20,6 +20,47 @@ Automatic — no application. All three required:
 Admin may also grant eligibility case-by-case. Rating authority = Ratings.csv-equivalent
 (rated_id = gopher), **not** the Orders `GOPHER RATING` column (~25% disagreement, 0 = unrated).
 
+### 0.1 ⚖️ OPEN OWNER RULING — does a requester's `Other` choice bind, when the job is plainly service work?
+
+Raised 2026-08-09 by two implementations disagreeing. **Nothing is blocked on it and no
+worker's status changes either way — settle it for correctness, not urgency.**
+
+`Other` is a **real menu category the requester selects**, not a fallback label, and D-022
+excludes it by name alongside Delivery and Ride Sharing. But some of those orders describe
+service work unmistakably — and in three cases the requester picked `Other` and then typed a
+**service category name** into the free text:
+
+```
+18  Other - Remove recycling          1  Other - Junk Removal
+ 2  Other - Hourly / Day Labor        1  Other - Yard work
+ 1  Other - Trash removal             1  Other - Removal Of Plastic Signs
+```
+
+| Reading | Rule | Basis |
+|---|---|---|
+| **Respect the field** (HQ Dashboard) | `Other` is the requester's deliberate choice; exclude | D-022 names `Other` explicitly, beside two categories nobody calls a misclassification |
+| **Count the work** (this repo today) | Re-read the description; count demonstrable service work | The bar measures the **worker's** experience, and the worker does not control which menu item the customer picked |
+
+**Measured impact: 29 order rows. Workers whose eligibility depends on the ruling: 0** —
+14 either way, and the 15–19 near-miss group is identical under both. The denominator moves
+1,243 → 1,214.
+
+**Recommendation: count the work.** The amendment's stated purpose is to stop *delivery and
+ride volume* flooding the manual review queue — 16,596 and 459 orders respectively. Counting
+29 rows that describe service work does not implicate that purpose, while excluding them
+means telling a worker their jobs did not count because their customer chose the wrong menu
+item. That is not a defensible answer to a disputed verdict, and the eligibility endpoint is
+being built to make verdicts answerable.
+
+**Counter-argument that must be weighed:** a stored field is auditable and stable; a
+re-read is a heuristic, and heuristics are what produced the four defects fixed on
+2026-08-09. If the owner rules **respect the field**, the fix is one line — never re-read
+a head of exactly `other` — and the honest denominator becomes 1,214.
+
+**Whichever way it goes, the production build must apply it to `category_type`, not to
+titles**, and the real remedy is taxonomy: `Other` collecting recycling removal and
+day-labor jobs is a menu problem upstream of this bar.
+
 ## 1. Eligibility computation (backend)
 
 Production computes `ELIGIBLE` per worker from live tier/jobs/ratings data.
