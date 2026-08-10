@@ -3897,16 +3897,66 @@
     var field = btn.closest('.field');
     var digits = (field.querySelector('input[type=tel]').value || '').replace(/\D/g, '');
     if (digits.length !== 10) { alert('Please enter a 10-digit phone number first.'); return; }
-    // TODO: call your backend to send a real one-time code (e.g. Twilio Verify).
-    field.querySelector('.otp-confirm').classList.add('show');
-    btn.textContent = 'Resend';
-    field.querySelector('.otp-code').focus();
+    if (btn.dataset.busy === '1') return;            // double-tap guard: one text, not two
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Sending…'; btn.disabled = true;
+    apiCall('/otp/get', { body: { telephone: digits } })
+      .then(function(r){
+        if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+        field.querySelector('.otp-confirm').classList.add('show');
+        btn.textContent = 'Resend';
+        field.querySelector('.otp-code').focus();
+      })
+      .catch(function(){ alert('Could not send the code. Check your connection and try again.'); btn.textContent = was; })
+      .then(function(){ btn.dataset.busy = ''; btn.disabled = false; });
   }
   function checkOtp(btn) {
     var field = btn.closest('.field');
     var code = (field.querySelector('.otp-code').value || '').trim();
-    // TODO: validate the code against your backend. Demo accepts any 6 digits.
     if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code.'); return; }
+    var digits = (field.querySelector('input[type=tel]').value || '').replace(/\D/g, '');
+
+    /* ⚠️ TWO PATHS, AND CONFLATING THEM BREAKS ONE OF THEM.
+
+       EXISTING user ("I'm already a Gopher user" ticked): sign_in genuinely
+       validates the code AND returns the token we need to submit the deal, so it
+       is both the verification and the authentication. No account is created —
+       one already exists.
+
+       NEW user: sign_in must NOT be called. On a number it does not recognise it
+       CREATES a minimal account (auth.js user_login), after which POST /users
+       returns 422 "already registered" and the merchant can never finish. So the
+       code is accepted here and the real gate is POST /users, which requires a
+       live OTP row for the number.
+
+       ⚠️ KNOWN GAP, deliberately not papered over: on the NEW-user path
+       auth.create only checks that an OTP row EXISTS for the number, not that the
+       digits match. So a wrong-but-well-formed code still creates the account.
+       That is existing backend behaviour, not something introduced here. Raised
+       2026-08-10; the fix belongs server-side, not in this form. */
+    if (_isExistingGopher()) {
+      if (btn.dataset.busy === '1') return;
+      btn.dataset.busy = '1';
+      var was = btn.textContent; btn.textContent = 'Checking…'; btn.disabled = true;
+      apiCall('/users/sign_in', { body: { telephone: digits, code: code, apptype: 'requester' } })
+        .then(function(r){
+          if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+          _authToken = r.token || null;
+          try { _apiUserId = r.body.data && r.body.data.id; } catch (e) {}
+          /* An existing account may already be email-confirmed, in which case the
+             email step is a genuine no-op rather than something we skipped. */
+          try { _emailVerified = !!(r.body.data && r.body.data.confirmed_at); } catch (e) { _emailVerified = false; }
+          _otpAccept(field);
+        })
+        .catch(function(){ alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
+        .then(function(){ btn.dataset.busy = ''; btn.disabled = false; });
+      return;
+    }
+    _otpAccept(field);
+  }
+
+  /* The shared UI transition, so both branches end in exactly the same state. */
+  function _otpAccept(field) {
     field.querySelector('.otp-confirm').classList.remove('show');
     field.querySelector('.otp-verified').classList.add('show');
     var sb = field.querySelector('.otp-send-btn'); sb.textContent = 'Verified'; sb.disabled = true;
@@ -4176,6 +4226,60 @@
        (keep the same URL so you don't have to re-paste it here).
   ============================================================ */
   var GOPHER_BACKEND = "sheets";
+  /* ── THE REAL INTAKE API ────────────────────────────────────────────────────────
+     Contract verified end-to-end against production 2026-08-10 (deal id 1, user
+     141557). Every shape below was driven by hand, not read off a spec.
+
+     ⚠️ THE TOKEN COMES BACK IN THE `access-token` RESPONSE HEADER, NOT THE BODY.
+     Both POST /users and POST /users/sign_in return it that way, exposed via
+     access-control-expose-headers. Nothing in the JSON carries it.
+
+     ⚠️ POST /users/sign_in CREATES AN ACCOUNT when the number is not found
+     (auth.js user_login: lookup miss -> create minimal user). So it must NEVER be
+     used to "just verify a code" for a new merchant — it would mint the account,
+     and the subsequent POST /users would then 422 "already registered", breaking
+     Path B entirely. That is why checkOtp branches on the existing-user checkbox
+     rather than always calling sign_in. */
+  var GOPHER_API = 'https://api.gophergo.io/api/v1';
+  var _authToken   = null;   // access-token, from the response HEADER
+  var _apiUserId   = null;   // the account this session is acting as
+  var _emailVerified = false;
+
+  function _isExistingGopher(){
+    var cb = document.getElementById('regExistingGopher');
+    return !!(cb && cb.checked);
+  }
+
+  /* Returns { ok, status, body, token }. Never throws on an HTTP error — callers
+     branch on status, because 422/403/440 all carry a message worth showing. */
+  function apiCall(path, opts){
+    opts = opts || {};
+    var headers = { 'Content-Type': 'application/json' };
+    if (_authToken) headers['access-token'] = _authToken;
+    return fetch(GOPHER_API + path, {
+      method: opts.method || 'POST',
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function(res){
+      var tok = res.headers.get('access-token');
+      return res.json().catch(function(){ return {}; }).then(function(body){
+        return { ok: res.ok, status: res.status, body: body, token: tok };
+      });
+    });
+  }
+
+  /* The endpoint returns every validation failure at once in errors[]; show them
+     all rather than the first, so a merchant fixes the form in one pass. */
+  function apiMessage(r){
+    var b = r && r.body || {};
+    if (Array.isArray(b.errors) && b.errors.length) return b.errors.join('\n');
+    if (b.error) return b.error;
+    if (b.message) return b.message;
+    if (b.meta && b.meta.message) return b.meta.message;
+    try { var e = b.errors && b.errors.errors && b.errors.errors.user; if (e) return [].concat(e).join('\n'); } catch (x) {}
+    return 'Something went wrong (HTTP ' + (r && r.status) + '). Please try again.';
+  }
+
   var GOPHER_FORM_ENDPOINT = "https://script.google.com/macros/s/AKfycbxSIbfXelHFBd1RcF3H50v_QLorKskgj5LRNgDTQbV79mHEXerC_lOwnNueRjnITAEAjg/exec";
   // Version stamp recorded with each merchant's Merchant Agreement acceptance (see gopher-merchant-agreement.html
   // "Effective Date"). Bump this whenever the agreement's effective date changes so acceptances stay auditable.
@@ -4291,6 +4395,70 @@
         backup.push(data);
         localStorage.setItem('gopherLeads', JSON.stringify(backup));
       } catch (e) { /* private mode etc. */ }
+
+      /* ── MERCHANT DEALS NOW GO TO THE REAL API, NOT THE APPS SCRIPT ──────────────
+         Verified against production 2026-08-10. The worker/service-provider form is
+         deliberately left on the old path: SP deals are submitted in the Go app, and
+         this public funnel is pre-registration scaffolding (SP-PIPE §"Public interest
+         funnel"). Repointing it here would imply a capability that does not exist.
+
+         Requires a token. Path A has one from sign_in; Path B gets one from the
+         account created at "Review my deal". No token means the merchant never
+         completed verification, which is a bug in the flow, not a case to absorb. */
+      if (type === 'merchant') {
+        if (!_authToken) {
+          alert('Please verify your phone number before submitting.');
+          _submitInFlight[type] = false;
+          try { modal.querySelectorAll('.modal-submit, .dp-btn-next').forEach(function(b){ b.disabled=false; b.removeAttribute('aria-busy'); }); } catch(e){}
+          return;
+        }
+        /* Only the allowlisted fields — the endpoint rejects unknown keys BY NAME and
+           returns 422. Built by picking, never by forwarding `data`, which carries
+           submission_type/source/file-name keys the intake has never heard of. */
+        var payload = {
+          business_name:   data.business_name,
+          tagline:         data.tagline,
+          address:         data.address,
+          category:        (CATEGORY_KEY[data.category] || data.category),
+          deal:            data.deal,
+          promo:           data.promo,
+          website:         data.website,
+          owner_first_name: data.owner_first_name,
+          owner_last_name:  data.owner_last_name,
+          owner_email:      data.owner_email,
+          owner_phone:      (data.owner_phone || '').replace(/\D/g, ''),
+          telephone:        (data.owner_phone || '').replace(/\D/g, ''),
+          discovery_source: data.discovery_source
+        };
+        try {
+          if (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list)
+            payload.keywords = keywordStore.merchant.list.slice(0, 3);
+        } catch (e) {}
+        Object.keys(payload).forEach(function(k){
+          if (payload[k] === undefined || payload[k] === '') delete payload[k];
+        });
+
+        apiCall('/users/deals', { body: payload })
+          .then(function(r){
+            /* 201 = created. 200 + duplicate = the same deal resubmitted; the merchant
+               should see success either way, because from their side it IS submitted. */
+            if (r.ok) {
+              try { localStorage.removeItem('gopherDealDraft'); } catch (e) {}
+              showThanks();
+              return;
+            }
+            alert(apiMessage(r));
+            _submitInFlight[type] = false;
+            try { modal.querySelectorAll('.modal-submit, .dp-btn-next').forEach(function(b){ b.disabled=false; b.removeAttribute('aria-busy'); }); } catch(e){}
+          })
+          .catch(function(err){
+            console.error('Deal submission failed:', err);
+            alert('Could not reach the server. Your details are saved on this device — please try again.');
+            _submitInFlight[type] = false;
+            try { modal.querySelectorAll('.modal-submit, .dp-btn-next').forEach(function(b){ b.disabled=false; b.removeAttribute('aria-busy'); }); } catch(e){}
+          });
+        return;
+      }
 
       if (!GOPHER_FORM_ENDPOINT) { console.log('Stored locally (no endpoint):', data); showThanks(); return; }
 
