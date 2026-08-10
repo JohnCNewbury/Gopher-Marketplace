@@ -1,7 +1,15 @@
 # Deals — HQ review surface: handoff
 
 **Written:** 2026-08-10, end of the session that shipped merchant intake.
+**Written by session** `local_3174f1ac-f379-4fd9-9fdd-6c1c613c8fae` (Gopher HQ Dashboard).
 **For:** the session that builds step 5. Read this before touching the Dashboard.
+
+> ⚠️ **Two live sessions shared the name "Gopher HQ Dashboard" on 2026-08-10** —
+> this one and `local_5cb2ce3d`, retired 8/9 1:16pm. The Total SOW session sent a
+> full day of messages to the retired one, and this work was nearly attributed to
+> it. Only commit timestamps caught it. **Stamp your session id into anything that
+> outlives you**, and prefer renaming a retired session over adding a suffix — a
+> suffix still matches a title search.
 
 > **State in one line:** merchant registration works end to end in production; the
 > submissions have nowhere to be *seen* yet. That is the whole remaining job.
@@ -157,10 +165,12 @@ the 775 duplicates in G40-359 (deferred to Phase II).
 
 ## 7. Still open elsewhere
 
-- **`gopher-deals-101.html`** documents the *morning's* flow — an email step after
-  "Review my deal". That is no longer true, and it does not mention that existing
-  users skip email entirely. **A user-facing change is not done until its 101 is
-  reviewed** (owner rule).
+- ~~**`gopher-deals-101.html`**~~ — ✅ **rewritten by the Deals session (`be8bcd4`)**
+  to the finalized flow: "start with your mobile", the email step at the Verify
+  button beside the field, recognition described as automatic with the checkbox as
+  a shortcut. Labels checked against the markup, 0 overflow at 375 and 1280.
+  ⚠️ **COMMITTED, NOT DEPLOYED** — the live guide still serves the superseded
+  version. Ships with the next `scripts/deploy.sh --push`.
 - ~~**Netlify**~~ — ✅ **updated by the owner 2026-08-10.** All three hosts now
   carry the wired form, so there is no longer a split where some merchants
   register for real and others post to the dead Sheet.
@@ -184,7 +194,34 @@ the 775 duplicates in G40-359 (deferred to Phase II).
 
 ---
 
-## 8. The lesson this session paid for twice
+## 8. ⚠️ A verified authentication weakness — ticket it against SIGNUP, not Deals
+
+`POST /api/v1/users` (`auth.create`) checks only that an OTP row EXISTS for the
+number, never that the submitted digits match. **Verified by execution, not
+inference:** a call carrying no code field at all returned 200 and created user
+141557. `POST /otp/get` is public, so a caller can manufacture that row for any
+number themselves.
+
+**So: an unauthenticated caller can create an account on any phone number that
+does not already have one.** Numbers with an existing account are protected —
+`auth.create` 422s on a known phone.
+
+⛔ **Do NOT file this against merchant intake.** The live merchant path no longer
+touches `POST /users`: since the owner's 2026-08-10 simplification, `sign_in`
+creates the account, and `sign_in` calls `verify_otp`, which genuinely compares
+the digits, honours the lockout counter and marks the code used. Filing it against
+Deals sends someone to code that no longer has the problem.
+
+It belongs to **signup**, is the endpoint the **mobile apps** use, and is adjacent
+to G40-359 — an account created on a number nobody proved they control, on a
+`telephone` column with no UNIQUE constraint.
+
+⚠️ Commit `36ff358`'s message describes this as a Deals new-user-path gap. That
+was true when written and stopped being true four hours later. **Superseded.**
+
+---
+
+## 9. The lesson this session paid for twice
 
 **Green tests and a green pipeline prove neither correctness nor deployment.**
 
