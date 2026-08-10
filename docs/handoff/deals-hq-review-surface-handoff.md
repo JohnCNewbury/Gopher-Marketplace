@@ -102,9 +102,8 @@ was let in.
 **Still to build:** the pre-launch list view and a button to email eligible +
 near-eligible providers.
 
-**⚠️ OPEN — needs the owner:** near-miss was specified as "5-10" while the
-pre-launch bar is 15, which leaves **11–14 unclassified** (2 workers).
-Recommendation: 5–14 so nobody falls through. **Not decided.**
+**✅ DECIDED (owner, 2026-08-10): near-miss is 5–14.** Everything below the
+pre-launch bar of 15, so the 2 workers at 11–14 do not fall through a gap.
 
 **⚠️ Copy warning for the email:** 13 of the 15 near-miss providers sit at 5–9
 service jobs — a long way from 20. "You're close" would be untrue and they will
@@ -162,16 +161,22 @@ the 775 duplicates in G40-359 (deferred to Phase II).
   "Review my deal". That is no longer true, and it does not mention that existing
   users skip email entirely. **A user-facing change is not done until its 101 is
   reviewed** (owner rule).
-- **Netlify** carries the same merchant form and is **owner-action only** (manual
-  drag of `Final/`). Normally its drift is explicitly not worth flagging — **this
-  is the stated exception**, because fielding merchant registration is its entire
-  job. Until it is dragged, merchants arriving there still post to the dead Apps
-  Script Sheet while everyone else gets a real account.
-- **Elastic Beanstalk pruning is still disabled.** The account hit 1000/1000
-  application versions on 2026-08-08 and **all production deploys failed silently
-  for two days** while GitLab showed green. Cleared to 355/1000 by deleting 645
-  pre-2026 DevGopher versions. `MaxCountRule` is configured at 200 and **switched
-  off** — enable it or this recurs, and the symptom is invisible.
+- ~~**Netlify**~~ — ✅ **updated by the owner 2026-08-10.** All three hosts now
+  carry the wired form, so there is no longer a split where some merchants
+  register for real and others post to the dead Sheet.
+- ~~**Elastic Beanstalk pruning**~~ — ✅ **CLOSED 2026-08-10.** The account hit
+  1000/1000 application versions on 08-08 and **every production deploy failed
+  silently for two days** while GitLab showed green — four merges, including a
+  fix for 13 typos returning 500s to real users. Cleared to 355/1000 by deleting
+  645 pre-2026 DevGopher versions (S3 bundles preserved, production and stage
+  untouched), then `MaxCountRule` enabled at 200 on all three applications.
+  Nothing was deleted by enabling it — every app is under the cap — so it is
+  purely preventive.
+
+  ⚠️ **The lesson outlives the fix:** the failure mode was *invisible*. Merges
+  looked successful, MRs closed, pipelines were green, and nothing shipped.
+  If a change seems not to be live, check the CodePipeline **Deploy** stage
+  before re-reading the code.
 - **G40-360** — payout setup is unreachable; the debit card is never tokenized.
   App fix plus a store release.
 - **`submitted_ip` 90-day purge job** does not exist. The retention is documented
