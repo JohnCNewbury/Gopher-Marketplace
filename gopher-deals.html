@@ -4015,9 +4015,26 @@
     set('owner_first_name', prof.firstName);
     set('owner_last_name',  prof.lastName);
     set('owner_email',      prof.email);
+    /* ⚠️ DO NOT HAND-FORMAT THE DATE. The field is validated by dcIsDob, which
+       requires SPACES around the slashes — /^\d{2} \/ \d{2} \/ \d{4}$/ — and
+       dcFormatDob is what produces that shape as the merchant types. Writing
+       "08/10/2000" directly is a correct date the validator rejects, which is what
+       the first autofill did.
+
+       So write the raw digits and run the page's own formatter over them. The
+       formatter stays the single source of truth for the format, and this can
+       never drift from it again. */
     if (prof.dateOfBirth) {
-      var d = String(prof.dateOfBirth).slice(0, 10).split('-');
-      if (d.length === 3) set('owner_dob', d[1] + '/' + d[2] + '/' + d[0]);
+      var iso = String(prof.dateOfBirth).slice(0, 10).split('-');   // YYYY-MM-DD
+      if (iso.length === 3) {
+        var el = m.querySelector('[name="owner_dob"]');
+        if (el) {
+          el.value = iso[1] + iso[2] + iso[0];                       // MMDDYYYY, digits only
+          if (typeof dcFormatDob === 'function') dcFormatDob(el);
+          if (typeof dcClear === 'function') dcClear(el);
+          el.classList.add('egu-filled');
+        }
+      }
     }
     try {
       var a = (prof.addresses || [])[0];
