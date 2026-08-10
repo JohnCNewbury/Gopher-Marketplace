@@ -317,6 +317,21 @@
        clean tier medians: $80 / $100 / $200  (was $72 / $100 / $228)
      THE ANCHORS BELOW ARE UNCHANGED BY THAT CORRECTION — the clean data hits
      $100 and $200 exactly, and clean p25 lands exactly on $60. Still monotonic.
+
+     ⛔ 'home' ($200) IS NOT SHIPPABLE AS CALIBRATED — DO NOT DEPLOY IT. Owner,
+     2026-07-28: "There is no way a worker would take [a full house move] on for
+     that low." He is right, and the evidence agrees: the ENTIRE platform history
+     holds 6 whole-home Moving requests (4 completed). That is an anecdote, not a
+     calibration — whole-home moves barely exist on Gopher today, so internal
+     accepted-price data CANNOT price this tier at all. Revised anchors are
+     coming from an external pricing-intelligence blueprint.
+     ⚠️ AND A LIMIT ON ALL THREE: anchoring to accepted prices targets a ~50%
+     MATCH RATE, not a fair price. Only 47-50% of Moving requests ever match, and
+     the unmatched ones are the cheap ones — matched jobs clear 43-60% ABOVE
+     unmatched. So 'few' $60 and 'truck' $100 are "what currently clears on
+     Gopher", NOT "what the work is worth". They rest on 122 and 116 real
+     requests and are defensible as the former; do not present them as the
+     latter. Changing all of this is a one-table edit right here.
      Full calibration + audit trail: docs/handoff/moving-suggested-pricing-discovery.md
      §4b, and the workbook "Suggested Pricing Data - Moving.xlsx" (disk-only),
      whose "In Corpus" flag makes the exclusions auditable rather than invisible.
@@ -351,7 +366,8 @@
   /* Priority home > truck > few. Falls back to the median tier so the slider
      still opens somewhere sensible and the requester can re-pick in one tap —
      that correction is what teaches the model.
-     28% of real descriptions carry no scope signal. ✅ RESOLVED 2026-07-28: the
+     23% of real descriptions carry no scope signal (36 of the clean 155; the
+     28% figure predates the corpus fix). ✅ RESOLVED 2026-07-28: the
      first draft flagged this default as an unconfirmed assumption because those
      descriptions looked like they sat at $75, nearer 'few' — but that $75 was
      purely the contaminated junk-side rows (§4b). On the CLEAN corpus they sit
