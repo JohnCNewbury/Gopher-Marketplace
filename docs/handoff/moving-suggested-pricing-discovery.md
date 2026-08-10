@@ -7,47 +7,62 @@ two routes — single location vs between two locations. Goal: help requesters w
 the customer's description and the price offered**, not a sub-category field.
 **Sibling doc (pattern being mirrored):** `docs/handoff/junk-suggested-pricing.md`.
 
-> # ✅ ANCHORS RECALIBRATED AGAINST MARKET DATA — 2026-08-09 (D7)
->
-> The internal anchors derived below ($60/$100/$200) are **withdrawn**. Owner ruled **option B** —
-> reprice *and* split the top tier:
->
-> | Tier | Key | **Anchor** | Market benchmark |
-> |---|---|---|---|
-> | A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254) |
-> | A truck-load | `truck` | **$250** | U-Haul Moving Help **NC average $254** (2 movers, 2 hrs) |
-> | 1–2 bedroom home | `home_small` | **$325** | Raleigh 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
-> | 3+ bedroom home | `home_large` | **$475** | Raleigh 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
->
-> **Everything below remains valid as method, structure and detector design — only the dollar values
-> are superseded.** The two findings that caused the error are worth keeping in view:
-> **(1) selection bias** — the corpus is *accepted* prices, only 47–50% of Moving requests ever match,
-> and unmatched jobs sit 43–60% below matched ones; **(2) a semantic error** — the lead worker is paid
-> the offer and pays the crew, so $100 for a 2-person 2-hour job is $25/labor-hour split two ways
-> against a ~$63 market. Gopher was at **~40% of market**.
->
-> **D1 amended:** the two upper tiers use bedroom language (the market prices that way); the lower two
-> keep item/truck language. **D6 (`few` holds at $60) is superseded by D7.**
->
-> ⚠️ **F4/D4 are now suspect.** The seed data says drive distance adds **+0.5–3 hrs** and stairs add
-> **+1 hr per flight**. F4 concluded distance doesn't drive Moving pay — but it measured the same
-> under-priced accepted-price data that produced the bad anchors, so it fails for the same reason.
-> **Recommend revisiting D4 and the stairs modifier.** Not yet ruled.
->
-> Sources: `Dashboard/Gopher iQ/Suggested Pricing/Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx`
-> and `…/Gopher_iQ_Moving_Pricing_Seed_Data.xlsx`.
-
 **Decisions locked (owner, 2026-08-09):**
 
 | | Decision |
 |---|---|
-| **D1** | **Three tiers**, named in **item / truck** language (not home size). |
+| **D1** | **Three tiers**, named in **item / truck** language (not home size). *Amended by D7: the two upper tiers use bedroom language.* |
 | **D2** | **One shared ladder** across both routes; the routes differ in *questions asked*, not in anchors. |
-| **D3** | iQ may use the **structured fields already collected** — stairs, service elevator, item count — as **modifiers**; the **description drives the base tier**. |
-| **D4** | Trip distance on the two-location route: **show as context, never price on it.** |
-| **D5** | **Anchors are owner-set**, informed by the envelope in §5. |
+| **D3** | iQ may use the **structured fields already collected** — stairs, service elevator, item count — as **modifiers**; the **description drives the base tier**. *Narrowed by D8: stairs is collected but NOT priced.* |
+| **D4** | Trip distance on the two-location route: **show as context, never price on it.** ⚠️ Rests on F4, which was measured on under-priced accepted-price data — flagged as suspect, not yet re-ruled. |
+| **D5** | **Anchors are owner-set.** |
 | **D6** | ~~The `few` anchor holds at $60~~ — **SUPERSEDED by D7.** |
-| **D7** | **Option B (2026-08-09):** reprice against market **and split the top tier** — `few $100` · `truck $250` · `home_small $325` · `home_large $475`. Amends D1 for the upper tiers. |
+| **D7** | ~~Option B: market-benchmarked anchors $100/$250/$325/$475~~ — **SUPERSEDED by D8.** Priced worker pay against *agency retail*; Gopher is gig and takes only ~8%. |
+| **D8** | **CURRENT (2026-08-09):** anchors = **crew × hours × $30/labor-hour**, cross-checked against Gopher history — `few $75` · `truck $110` · `home_small $225` · `home_large $375`. **Flat tiers** this release; the hours engine is the destination. **Stairs modifier removed** — it scales with trips, not as a flat %. |
+
+> # ✅ D8 — LABOR-MODEL ANCHORS (2026-08-09, owner-ruled). THIS IS THE CURRENT LADDER.
+>
+> **D7's market-benchmarked anchors are withdrawn.** They priced Gopher's *worker pay* against
+> *agency retail* (HireAHelper, U-Haul Moving Help, 1-800-GOT-JUNK). Those prices carry dispatch,
+> insurance, trucks, overhead and margin. **Gopher is gig: Gopher Inc takes ~8% for the connection
+> and the rest is the worker's.** Pricing the offer at agency retail makes Gopher dearer than the
+> thing it replaces — the opposite of the value proposition.
+>
+> **The trigger:** a real request — *"single couch moved to the 3rd floor"*, one flight — priced at
+> **$115**. Owner: *"that customer would NOT go with our suggestion, and might not use Gopher after
+> that screen."* Three methods put it near **$75**.
+>
+> **Model: `crew × hours × $30 per labor-hour`** (owner-set midpoint of a $20–$50 gig labor range),
+> cross-checked against Gopher's own completed history.
+>
+> | Tier | Labor assumption | Model @ $30 | Gopher history | **Anchor** | Band |
+> |---|---|---|---|---|---|
+> | A few items | 2 × 1.0 hr | $60 | n=26, med $88 | **$75** | $55–$95 |
+> | A truck-load | 2 × 2.0 hr, one location | $120 | n=52, med $100 | **$110** | $80–$140 |
+> | 1–2 bedroom home | load 2h + drive .5h + unload 2h | $270 | n=3, med $200 | **$225** | $170–$280 |
+> | 3+ bedroom home | 3 crew × 5 hr | $450 | n=1 | **$375** | $280–$470 |
+>
+> The two well-powered tiers (`few` n=26, `truck` n=52) have the labor model and the order history
+> agreeing closely. The upper two lean on the model — the history is n=3 and n=1.
+>
+> **Owner ruled FLAT tiers for now** — ship these four values. The full `crew × hours` engine (hours
+> derived from item count, home size, truck, stairs × trips, one vs two locations) is the intended
+> destination, not this release.
+>
+> ### ⚠️ The stairs modifier is REMOVED, not retuned
+>
+> It does not survive its own definition. Measured on the clean corpus:
+> `truck` — the best-powered cell — shows **+0%** (n=15 vs 37). `few` shows **+43%** under one
+> reasonable tier regex and **−22%** under another (single-item with stairs med $78 vs $100 without).
+> The upper tiers are n=1–2.
+>
+> The reason is structural: **stairs cost scales with the number of trips**, so one couch up one
+> flight is one trip and barely moves the price, while a 3-bedroom house is dozens. U-Haul's
+> "+1 hr per flight" is a whole-home figure. A flat percentage is wrong at both ends — it was
+> inflating exactly the small job that produced the $115 complaint.
+>
+> **Keep collecting stairs; do not price on it** until the hours model can scale it by trips.
+
 
 ---
 

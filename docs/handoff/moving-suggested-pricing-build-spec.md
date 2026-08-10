@@ -7,46 +7,62 @@
 **Nature:** front-end prototype work in the shared logic module + both Final apps. **No fee-engine,
 matching, payout, or persistence changes.** Nothing here touches live production behaviour.
 
-> # ✅ RECALIBRATED AGAINST MARKET DATA — 2026-08-09 (D7)
->
-> The original internal anchors ($60/$100/$200) are **withdrawn**. Owner ruled **option B**: reprice
-> *and* split the top tier, per the taxonomy in `Gopher_iQ_Moving_Price_Intelligence_Blueprint.docx`.
->
-> | Tier | Key | **Anchor** | Market benchmark it tracks |
-> |---|---|---|---|
-> | A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254); a one-worker, 1–2 hour job |
-> | A truck-load | `truck` | **$250** | **U-Haul Moving Help NC average $254** (2 movers, 2 hrs) |
-> | 1–2 bedroom home | `home_small` | **$325** | HireAHelper Raleigh: 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
-> | 3+ bedroom home | `home_large` | **$475** | HireAHelper Raleigh: 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
->
-> Monotonic: **$100 < $250 < $325 < $475**. Sources now filed at
-> `Dashboard/Gopher iQ/Suggested Pricing/`.
->
-> **Why they moved:** the internal corpus is *accepted* prices only. Just 47–50% of Moving requests
-> ever match and unmatched jobs sit 43–60% below matched ones, so "median accepted" was the price at
-> which a coin flip clears. Compounding it, the **lead worker is paid the offer and pays the crew** —
-> $100 for a 2-person 2-hour job is $25/labor-hour split two ways against a ~$63 market. Gopher was
-> sitting at **~40% of market**.
->
-> **D1 is amended by this ruling:** the two upper tiers use **bedroom** language, because that is how
-> the market prices and how the seed data is shaped. The two lower tiers keep item/truck language.
->
-> ⚠️ **Two follow-ons NOT yet ruled — see §6 and §7-D4.** The market data also says stairs add
-> **+1 hr per flight** (vs my +15%/+25%, measured on the thin internal corpus) and that drive distance
-> adds **+0.5–3 hrs**, which directly contradicts **D4** ("never price on distance"). D4 rested on F4,
-> which was measured on the same under-priced accepted-price data that produced the bad anchors — so
-> it is suspect for exactly the same reason. **Recommend revisiting both.**
-
-**Owner decisions (2026-08-09) — locked, do not re-litigate:**
+**Owner decisions — locked, do not re-litigate:**
 
 | | Decision |
 |---|---|
-| D1 | **Three tiers**, named in **item / truck** language (not home size) |
+| D1 | **Three tiers** in item/truck language *(amended by D7 — upper two use bedroom language)* |
 | D2 | **One shared ladder** for both routes — routes differ in *questions asked*, not anchors |
-| D3 | Structured fields (stairs, elevator, item count) may act as **modifiers**; the **description drives the base tier** |
-| D4 | Trip distance on the two-location route: **show as context, never price on it** |
-| D5 | Anchors are **owner-set** — the values in §3 are the approved proposals |
-| D6 | The `few` anchor **holds at $60** after the corpus correction — settled, build to $60 |
+| D3 | Structured fields may act as modifiers; the **description drives the base tier** *(narrowed by D8 — stairs collected, not priced)* |
+| D4 | Trip distance: **show as context, never price on it** ⚠️ flagged suspect, not re-ruled |
+| D5 | Anchors are **owner-set** |
+| D6 | ~~`few` holds at $60~~ — **superseded by D7** |
+| D7 | ~~Market-benchmarked $100/$250/$325/$475~~ — **superseded by D8** (agency retail ≠ gig worker pay) |
+| D8 | **CURRENT:** `few $75` · `truck $110` · `home_small $225` · `home_large $375`, from crew × hours × $30/labor-hour. **Flat tiers. No stairs modifier.** |
+
+> # ✅ D8 — LABOR-MODEL ANCHORS (2026-08-09, owner-ruled). THIS IS THE CURRENT LADDER.
+>
+> **D7's market-benchmarked anchors are withdrawn.** They priced Gopher's *worker pay* against
+> *agency retail* (HireAHelper, U-Haul Moving Help, 1-800-GOT-JUNK). Those prices carry dispatch,
+> insurance, trucks, overhead and margin. **Gopher is gig: Gopher Inc takes ~8% for the connection
+> and the rest is the worker's.** Pricing the offer at agency retail makes Gopher dearer than the
+> thing it replaces — the opposite of the value proposition.
+>
+> **The trigger:** a real request — *"single couch moved to the 3rd floor"*, one flight — priced at
+> **$115**. Owner: *"that customer would NOT go with our suggestion, and might not use Gopher after
+> that screen."* Three methods put it near **$75**.
+>
+> **Model: `crew × hours × $30 per labor-hour`** (owner-set midpoint of a $20–$50 gig labor range),
+> cross-checked against Gopher's own completed history.
+>
+> | Tier | Labor assumption | Model @ $30 | Gopher history | **Anchor** | Band |
+> |---|---|---|---|---|---|
+> | A few items | 2 × 1.0 hr | $60 | n=26, med $88 | **$75** | $55–$95 |
+> | A truck-load | 2 × 2.0 hr, one location | $120 | n=52, med $100 | **$110** | $80–$140 |
+> | 1–2 bedroom home | load 2h + drive .5h + unload 2h | $270 | n=3, med $200 | **$225** | $170–$280 |
+> | 3+ bedroom home | 3 crew × 5 hr | $450 | n=1 | **$375** | $280–$470 |
+>
+> The two well-powered tiers (`few` n=26, `truck` n=52) have the labor model and the order history
+> agreeing closely. The upper two lean on the model — the history is n=3 and n=1.
+>
+> **Owner ruled FLAT tiers for now** — ship these four values. The full `crew × hours` engine (hours
+> derived from item count, home size, truck, stairs × trips, one vs two locations) is the intended
+> destination, not this release.
+>
+> ### ⚠️ The stairs modifier is REMOVED, not retuned
+>
+> It does not survive its own definition. Measured on the clean corpus:
+> `truck` — the best-powered cell — shows **+0%** (n=15 vs 37). `few` shows **+43%** under one
+> reasonable tier regex and **−22%** under another (single-item with stairs med $78 vs $100 without).
+> The upper tiers are n=1–2.
+>
+> The reason is structural: **stairs cost scales with the number of trips**, so one couch up one
+> flight is one trip and barely moves the price, while a 3-bedroom house is dozens. U-Haul's
+> "+1 hr per flight" is a whole-home figure. A flat percentage is wrong at both ends — it was
+> inflating exactly the small job that produced the $115 complaint.
+>
+> **Keep collecting stairs; do not price on it** until the hours model can scale it by trips.
+
 
 ---
 
@@ -85,18 +101,25 @@ same way. Both apps already expose the Moving route toggle (`noSpecificPickup` v
 Add alongside the Junk block. Reference implementation:
 
 ```js
-/* ── Moving suggested pricing (owner 2026-08-09) ────────────────────────────
-   Ladder is items/truck, NOT home size: home size appears in 2% of real
-   descriptions, named items in 47%, a vehicle in 38%. Calibration + the
-   monotonicity result: docs/handoff/moving-suggested-pricing-discovery.md   */
+/* ── Moving suggested pricing (D8, owner 2026-08-09) ────────────────────────
+   Anchors = crew x hours x $30/labor-hour, cross-checked against Gopher's own
+   completed history. NOT agency retail: HireAHelper/U-Haul prices carry
+   dispatch, insurance, trucks and margin, and Gopher takes only ~8% for the
+   connection — anchoring worker pay to agency retail made Gopher dearer than
+   the thing it replaces (that produced a $115 suggestion for one couch up one
+   flight, which is ~50% high).
+   NO STAIRS MODIFIER: the signal does not survive its own tier definition
+   (truck +0% on the best-powered cell; few flips sign with the regex), because
+   stairs scale with TRIPS, not as a flat %. Collect it, don't price on it.
+   Full working: docs/handoff/moving-suggested-pricing-discovery.md            */
 var MOVING_TIERS = {
-  few:        { label: 'A few items',      suggested: 100,
+  few:        { label: 'A few items',      suggested: 75,
                 hint: 'a couple of pieces \u2014 no truck needed' },
-  truck:      { label: 'A truck-load',     suggested: 250,
+  truck:      { label: 'A truck-load',     suggested: 110,
                 hint: 'a U-Haul, trailer or pod \u2014 or enough to need one' },
-  home_small: { label: '1\u20132 bedroom home', suggested: 325,
+  home_small: { label: '1\u20132 bedroom home', suggested: 225,
                 hint: 'studio, apartment, condo or small house' },
-  home_large: { label: '3+ bedroom home',  suggested: 475,
+  home_large: { label: '3+ bedroom home',  suggested: 375,
                 hint: 'a larger house, or an office move' }
 };
 var MOVING_TIER_ORDER = ['few','truck','home_small','home_large'];
@@ -120,11 +143,6 @@ function detectMovingTier(text){
   return { tier: 'truck', confidence: 'low' };   // median-ish tier — see §5
 }
 
-/* Stairs. ⚠️ RECOMMENDED CHANGE, NOT YET RULED — see the banner. Shipped value
-   is +15% one end / +25% both, measured on the (thin, under-priced) internal
-   corpus. The market seed data says a flight of stairs adds +1 HOUR per flight
-   (U-Haul), which on a 2-crew-hour job implies far more than 15%. Recommend
-   +20% one end / +35% both as a grounded middle, pending an owner ruling. */
 function suggestedMovingOffer(tier, opts){
   opts = opts || {};
   var base = MOVING_TIERS[tier] || MOVING_TIERS.truck;
@@ -135,16 +153,15 @@ function suggestedMovingOffer(tier, opts){
     suggested = base.suggested * (1 - w) + learnedMean * w;
     learnedN = b.n;
   }
-  var ends = (opts.pickupStairs ? 1 : 0) + (opts.destStairs ? 1 : 0);
-  if(ends === 1) suggested *= 1.15;
-  else if(ends >= 2) suggested *= 1.25;
+  // NO stairs/elevator multiplier — see the D8 banner. opts is accepted so the
+  // call sites don't change when the hours model lands.
   var r5 = function(x){ return Math.round(x / 5) * 5; };
   suggested = r5(suggested);
   return {
     tier: (MOVING_TIERS[tier] ? tier : 'truck'),
     label: base.label, hint: base.hint,
     low: r5(suggested * 0.75), suggested: suggested, generous: r5(suggested * 1.25),
-    learnedSamples: learnedN, baseline: base.suggested, stairsEnds: ends
+    learnedSamples: learnedN, baseline: base.suggested
   };
 }
 ```
@@ -162,12 +179,12 @@ real completions and record the change in the discovery doc.
 
 ## 3. The numbers (owner-approved, D5)
 
-| Tier | Key | Anchor | Derivation |
+| Tier | Key | Anchor | Derivation (crew × hours × $30/labor-hour, vs Gopher history) |
 |---|---|---|---|
-| A few items — no truck | `few` | **$100** | below the 2-mover/2-hour market minimum ($254); sized for a one-worker 1–2 hour job |
-| A truck-load | `truck` | **$250** | **U-Haul Moving Help NC average $254**, 2 movers / 2 hrs — the same job unit |
-| 1–2 bedroom home | `home_small` | **$325** | HireAHelper Raleigh 1BR apt $287 · 2BR apt $331 · 2BR house $390 |
-| 3+ bedroom home | `home_large` | **$475** | HireAHelper Raleigh 3BR apt $386 · 3BR house $455 · 4BR $545 · 5BR $645 |
+| A few items | `few` | **$75** | 2 × 1.0 hr = $60 model · history n=26 med $88 |
+| A truck-load | `truck` | **$110** | 2 × 2.0 hr one location = $120 model · history n=52 med $100 |
+| 1–2 bedroom home | `home_small` | **$225** | load 2h + drive .5h + unload 2h = $270 model · history n=3 med $200 |
+| 3+ bedroom home | `home_large` | **$375** | 3 crew × 5 hr = $450 model · history n=1 |
 
 Band is ±25% of the (possibly learned) suggested, rounded to $5 — identical to Junk, so the two
 categories behave the same way.
@@ -264,13 +281,13 @@ detector coverage above today's 72%.
    `('2 bedroom apartment, need a u-haul loaded')` → `home_small` (small beats truck).
 3. **Bare-noun defaults:** `('move my house')` → `home_large`; `('move my apartment')` → `home_small`.
 4. **Monotonicity across all four:** `few < truck < home_small < home_large`
-   (**$100 < $250 < $325 < $475**), with an empty learning store **and** after seeding.
+   (**$75 < $110 < $225 < $375**), with an empty learning store **and** after seeding.
 5. Empty/garbage description → `truck`, no throw.
 6. **The `state.description` trap:** set a description that should tier `home_large`, open the sheet,
-   and assert the suggestion is **$475, not the `truck` default**. A test that only checks "a number
+   and assert the suggestion is **$375, not the `truck` default**. A test that only checks "a number
    appeared" passes while the detector is dead.
-7. Stairs: one end → +15% vs no stairs; both ends → +25% (**or the recommended +20%/+35% if the owner
-   rules on it** — see the banner). Route A (`noSpecificPickup === true`) must ignore `pickupStairs`.
+7. **No stairs modifier (D8):** the suggestion for a given tier must be **identical** with and
+   without `pickupStairs`/`destStairs` set. A regression here reintroduces the $115 bug.
 8. `PRICED_CATEGORIES` includes `'moving'` → the low-offer Continue gate fires on a lowball Moving
    offer, and `suggested_offer_used` is emitted on submit.
 9. Trip context on Route B changes **no** suggested value (assert the number is identical with and
