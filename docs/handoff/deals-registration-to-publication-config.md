@@ -697,7 +697,7 @@ Nothing here is new invention; each field is traced to the rule that needs it.
 | `promoCode` | **BUILD-SPEC** §4.1 — display text only, never validated by Gopher |
 | `keywords[]` (≤3) | **PATHWAY** §Stage 1 + §Stage 5 — *these become the customer search index* |
 | `orderUrl`, `noOnlineOrdering` | **PATHWAY** §Stage 1 (`website`, `no_online_ordering`) |
-| `mobileAddress` | **PATHWAY** §Stage 2 + seam #3 (`TODO(backend)`, `gopher-deals.html:5042`) |
+| `mobileAddress` | **PATHWAY** §Stage 2 + seam #3 (`TODO(backend)`, `gopher-deals.html:5042`). ⚠️ **The consumer surfaces already carry this field under a DIFFERENT NAME — `mobile` — and the feed must reconcile the two. See §9.17.** |
 | `earnAmount`, `customerPrice`, `normalPrice` | **BUILD-SPEC** §6.1 — DLP only; `customerPrice = earn × 1.10`. ⚠️ **`normalPrice` MUST be greater than `customerPrice`** — owner ruling 2026-08-05, enforced in the Go form and **missing from this table until 2026-08-06**. Below that, the "deal" is a markup wearing a discount label: the customer pays more than the provider's stated normal rate, and the card's strike-through does not render at all (it is gated on `normalPrice > price`). Enforce at intake, not only in the client. |
 | `reachMiles` | DLP 1–50 (**PATHWAY** §Stage 1 Entry B); DLM 25 (**§7.2** below) |
 | `status` | §5 below — **one vocabulary, currently three, see §9.2** |
@@ -1244,6 +1244,47 @@ root cause and acceptance criteria: **G40-355**.
 `gopher-bid-brain.js` still describes the Go dashboard as *"planned; not wired yet."* It was wired
 2026-08-05 and renders. Stale in the one file both this spec and **G40-286** point at as the
 authority for auction rules.
+
+### 9.17 The mobile-pickup flag is named differently either side of the seam — and it made a built feature look missing
+
+**The flag itself is not drifted. The NAME is, and that is enough to cause a false negative that
+nearly produced a re-implementation of working code.**
+
+| Side | Field | Shape |
+|---|---|---|
+| Merchant portal | `r.loc.mobileAddress` | per **location**, hydrated `gopher-deals.html:6168`, written back by `applyMobileAddr()` |
+| Consumer surfaces | `m.mobile` | per **deal record** in `DEALS_DATA`, `gopher-request.html` + `gopher-connect.html` |
+
+**⭐ The behaviour it gates is BUILT, in both consumer apps, and was built before this was written.**
+Verified 2026-08-10:
+
+- `gopher-request.html:24800` — `pickF.hidden = !(!isService && m.mobile)`; `:24801` clears the field
+  on every open so it cannot be pre-populated; `:24879` —
+  `const pick = m.mobile ? [customer-entered] : (m.address || '')`.
+- `gopher-connect.html:15098` / `:15325` — **identical logic**, so the mirror rule was already honoured.
+- The requirement is stated in a comment above the data at `gopher-request.html:23954`: *"`mobile:true`
+  merchants (food trucks) have no fixed pickup, so the instant popup asks for a pickup address; fixed
+  merchants auto-fill it from `address`."*
+- Demo records with `mobile:true` carry **`address: null`**, so there is no merchant address available
+  to leak into the pickup even by accident.
+
+So the merchant-facing promise at `gopher-deals.html:2851` / `:5255` — *"we won't pre-fill this address
+as the pickup"* — **is true today on both consumer surfaces.**
+
+**⚠️ What IS unbuilt is the plumbing, not the branch.** The two sides sit on unconnected hardcoded
+arrays; nothing carries `mobileAddress` from the location record into `mobile` on a deal. That is the
+shared-feed seam (**§7.2**, **G40-286**), and **reconciling these two names is a concrete requirement
+of it** — a feed that emits `mobileAddress` to a consumer reading `mobile` produces a silent
+`undefined`, which is falsy, which means **every food truck would be treated as fixed** and Gophers
+dispatched to an address the truck is not at. It fails in the dangerous direction.
+
+**⛔ The method lesson, which cost time twice in one day.** G40-292 was reopened on the finding that
+`gopher-request.html` had *"zero references to a mobile address — no branch to take."* That was a
+**grep for the portal's field name against the consumer's code.** The same shape produced a false
+"not deployed" reading against `origin/main` earlier the same day. **This codebase deliberately uses
+different names either side of a seam, so absence of a term is not absence of the behaviour.** Search
+for the behaviour — the field the consumer reads, the element it toggles — before concluding something
+is unbuilt, and say which term you searched when reporting a negative.
 
 ---
 
