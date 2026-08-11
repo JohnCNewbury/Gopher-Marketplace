@@ -558,6 +558,19 @@ var SCREENS={
     if(key==='signin'){ goSignin(); return; }
     if(key==='signin-otp'){ goSignin(); var f=$('siId'); if(f){ f.value='(919) 555-0123'; } requestCode(); return; }
     if(key==='signin-personal'){ goSignin(); suStep(siPersonalStep); setWhere('Sign in'); return; }
+    /* ── G40-271 does NOT apply to this screen, and the distinction is the point (STANDING RULE 12,
+       recorded 2026-08-11). This is the SIGN-IN email OTP: it sits behind goSignin() and reads
+       `siEmail` — an existing user proving an address they already have. G40-271 is about ONBOARDING
+       re-entry: `get_onboarding_progress` suppressing `confirmation_complete` while
+       `confirmed_at IS NULL`, so an unconfirmed user lands on the review/Confirmation screen with an
+       editable email behind the history-based back arrow instead of on a dead-end verify screen
+       (49,500 accounts stuck from 2026-03-24; live 2026-08-11, backend only).
+       This prototype models no onboarding email-confirmation step, so that contract has nowhere to
+       live here yet — the Go prototype carries it at its "email-otp" screen definition. If an
+       onboarding email step is added HERE, that is where it goes.
+       ⛔ And note this app expects the step string `image_uploaded_complete`, NOT Go's
+       `image_upload_complete`. The backend translates per app; unifying them breaks Go for 21,381
+       accounts. Detail: gopher-dev-handoff/UNVERIFIED-EMAIL-LOCKOUT.md ── */
     if(key==='signin-email-otp'){ goSignin(); var e=$('siEmail'); if(e){ $('siEmailTo').textContent=(e.value||'').trim()||'your email'; } suStep(siEmailOtpStep); setWhere('Sign in'); return; }
     if(key==='demo'){ goSignin(); navTo('gopher-request-flow.html?demo=1'); return; }
     if(key==='account'){ ensureSignedIn(); navTo(HOME); openOverlay('account'); return; }

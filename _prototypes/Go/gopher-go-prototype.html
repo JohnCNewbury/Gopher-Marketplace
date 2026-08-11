@@ -1847,6 +1847,36 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     };
   } },
 
+/* ── G40-271 · onboarding re-entry contract (live on production 2026-08-11 21:01:48 UTC,
+   fix 8c51e172 / merge 1f3b1e78, MR !268 — backend only, no store release). Recorded here
+   under STANDING RULE 12 because this prototype cannot SHOW the behaviour, and silence is
+   indistinguishable from "nothing changed".
+
+   THE CONTRACT: an unconfirmed user is NEVER routed straight to this screen.
+   `get_onboarding_progress` suppresses `confirmation_complete` while `confirmed_at IS NULL`
+   and reports the image-upload step instead, so the user re-enters at the review/Confirmation
+   screen and the history-based back arrow has an EDITABLE EMAIL ADDRESS behind it.
+   Before the fix a fresh sign-in landed here directly with only sign-in + phone-OTP in
+   history: the back arrow walked out of the flow entirely, and a wrong address could be
+   neither corrected nor bypassed. 49,500 accounts were stuck on a blank "Create Your Profile"
+   form from 2026-03-24 until the fix. That is the ticket's AC #10.
+
+   WHY THIS PROTOTYPE IS SILENT rather than wrong: BACK() above is history-based
+   (`load(hist.pop())`), which faithfully mirrors the real app's `navigate(-1)` in
+   verifyEmail.js:256 — the mechanism is modelled correctly. But SIGNUP_IDS is LINEAR, so
+   'email-otp' is only ever reached THROUGH 'onboarding'; history always exists and back always
+   works. The prototype therefore demonstrates neither the bug nor the fix. Modelling the
+   resume case would mean entering this screen with an empty history stack.
+
+   ⛔ DO NOT normalise the onboarding step strings if you ever add them here. The two apps
+   deliberately spell the same step differently and the backend translates per app:
+   Go expects `image_upload_complete`, the Request app expects `image_uploaded_complete`.
+   Collapsing them fixes Request and breaks Go — Go's table has no `image_uploaded_complete`
+   key and falls back to INITIAL, i.e. a blank personal-details form, for 21,381 accounts.
+   (Verified: none of those strings appear anywhere in _prototypes/ today, so there is nothing
+   to tidy yet — this is a warning for whoever adds them.)
+   Canonical detail: gopher-dev-handoff/UNVERIFIED-EMAIL-LOCKOUT.md · re-runnable proof:
+   gopher-dev-handoff/evidence/g40-271-step-contract/ ── */
 "email-otp":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   <div class="pad"><div class="top"><div class="back js-back">&#8249;</div></div>
    <h1>Verify your email</h1>
