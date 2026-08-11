@@ -219,8 +219,9 @@ the 775 duplicates in G40-359 (deferred to Phase II).
   to the finalized flow: "start with your mobile", the email step at the Verify
   button beside the field, recognition described as automatic with the checkbox as
   a shortcut. Labels checked against the markup, 0 overflow at 375 and 1280.
-  ⚠️ **COMMITTED, NOT DEPLOYED** — the live guide still serves the superseded
-  version. Ships with the next `scripts/deploy.sh --push`.
+  ✅ **DEPLOYED — verified live 2026-08-11** by content grep ("start with your
+  mobile") on BOTH hosts, Pages and TigerTech; a deploy after this handoff was
+  written carried it. Deploy dry-run reports 0 files changed vs `main`.
 - ~~**Netlify**~~ — ✅ **updated by the owner 2026-08-10.** All three hosts now
   carry the wired form, so there is no longer a split where some merchants
   register for real and others post to the dead Sheet.
