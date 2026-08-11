@@ -1973,18 +1973,32 @@ window.GoAuth = (function(){
   }
 
   /* Was this account just minted by our own sign_in call?
-     The freshly-created row is unmistakable: INCOMPLETE state, no first name,
-     never signed in before, and an onboarding placeholder email. Any ONE of
-     these on its own could be a legitimately sparse old account, so require the
-     state marker AND a corroborating blank — a real worker with a completed
-     profile can never satisfy both. */
+     ⚠️ FIELD NAMES VERIFIED LIVE 2026-08-11, after the first version of this
+     check FAILED against production and let a minted account (141564) into the
+     dashboard. The sign_in response body is NOT the users row: the state field
+     is `user_status` (not `aasm_state`), the name is `firstName` (camelCase),
+     and `sign_in_count` is not in the body at all (auth.js:894-914). The
+     model-column names all read as undefined, so the check silently never
+     fired — the exact "compare against what the value ought to be" failure
+     from the 2026-08-10 admin lockout, in the other direction.
+
+     Do NOT use the tempting top-level `onboardingRequired` flag instead: the
+     existing-user branch sets it for any gopher needing email verification OR
+     payout setup (auth.js:1479), so it would bounce a real established worker
+     to the app store.
+
+     The bar: INCOMPLETE state AND a corroborating mint signal — a blank first
+     name, or the `@placeholder.gophergo.io` email that onboardingPlaceholderEmail()
+     generates ONLY at mint time. A real worker with a completed profile can
+     never satisfy both halves. Old snake_case names kept as fallbacks in case
+     another endpoint ever hands this a raw users row. */
   function looksNewlyCreated(u){
     if (!u) return false;
-    var st = String(u.aasm_state || '').toLowerCase();
+    var st = String(u.user_status || u.aasm_state || '').toLowerCase();
     var incomplete = st === 'incomplete';
-    var noName  = !String(u.first_name || '').trim();
-    var neverIn = Number(u.sign_in_count || 0) === 0;
-    return incomplete && (noName || neverIn);
+    var noName = !String((u.firstName != null ? u.firstName : u.first_name) || '').trim();
+    var placeholderEmail = /@placeholder\.gophergo\.io$/i.test(String(u.email || ''));
+    return incomplete && (noName || placeholderEmail);
   }
 
   /* Step 2 — verify the code and sign in.
@@ -2040,7 +2054,11 @@ window.GoAuth = (function(){
     return apiCall('/users/deals', {
       body: {
         track: 'dlp',
-        deal_text: d.dealText,
+        /* ⚠️ The intake FIELD is `deal`; `deal_text` is the DATABASE COLUMN
+           (deals.model.js) and is rejected by name. Caught live 2026-08-11 —
+           422 "Unrecognised field(s): deal_text." Allowlist: DLP_FIELDS in
+           helpers/deals_intake_validation.js. */
+        deal: d.dealText,
         keywords: (d.keywords || []).slice(0, 3),
         earn_amount: Math.round(Number(d.earn) * 100),
         normal_price: Math.round(Number(d.normal) * 100),
@@ -3771,7 +3789,7 @@ window.showNoAccount = function(){
         GoSession.signIn('goRememberMe', {
           signedIn: true, token: r.token,
           userId: (r.user && r.user.id) || null,
-          name: [r.user && r.user.first_name, r.user && r.user.last_name].filter(Boolean).join(' ') || null
+          name: [r.user && (r.user.firstName || r.user.first_name), r.user && (r.user.lastName || r.user.last_name)].filter(Boolean).join(' ') || null
         });
         if(window.GoDeals && GoDeals.refreshEligibility) GoDeals.refreshEligibility();
       });
