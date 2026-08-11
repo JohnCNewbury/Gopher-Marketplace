@@ -1,8 +1,26 @@
 # G40-199 — Gopher Worker-Tier Rename: Developer Conversion Guide
 
+> ## ⛔ SUPERSEDED — do not execute from this document (2026-08-10)
+>
+> **Canonical doc: [G40-199-tier-conversion-canonical.md](G40-199-tier-conversion-canonical.md).** Start there.
+>
+> Two things in here are actively wrong, and both would cause real damage:
+>
+> 1. **The `gopher_type_id = 3` model was OVERRULED by the owner on 2026-07-12.** The new Pro
+>    tier is a **stacking credential** — a worker can be Elite *and* Pro — implemented as a
+>    separate rolify role or flag, **never** a value in the tier enum. Every `id = 3` section
+>    below is void.
+> 2. **"Status: ready to execute" is wrong.** The rename is **launch-gated** (owner,
+>    2026-07-30): *"Pro is STILL in play. We have not launched yet."* Live production copy
+>    stays Pro/Pro+ until the marketplace launches. Renaming live copy from this document
+>    would describe a tier that does not yet exist to people signing up today — which already
+>    happened once (`43f4e8d0`, reverted).
+>
+> Its per-file line numbers are also stale. Kept for its discovery history only.
+
 **Canonical ticket:** G40-199 — "GOPHER Pro/Pro+ Rebranding To Gopher Elite"
 **Author of this handoff:** prepared for the incoming production developer
-**Status:** ready to execute. One product decision is still open (see [§9](#9-open-decisions)).
+**Status:** ~~ready to execute~~ — **superseded, see the banner above.**
 
 > **Read this first.** This is a **rename + one-new-tier** change, not a data migration.
 > The tier is stored everywhere as an **integer** (`gopher_type_id`); every "Gopher Pro"
