@@ -1801,6 +1801,21 @@
   </div>
 </div>
 
+<!-- ░░ "Let's get you set up" — shown when sign-in finds no Gopher Go account ░░
+     Owner ruling 2026-08-10: friendly, and deep-link to the RIGHT store for the
+     device. Reuses the .gl-otp-* card so it inherits the sign-in styling.
+     Populated by showNoAccount() — the badge shown is chosen at runtime. -->
+<div class="gl-otp-overlay" id="goNoAcctOverlay" hidden>
+  <div class="gl-otp-card" role="dialog" aria-modal="true" aria-labelledby="goNoAcctTitle">
+    <button type="button" class="gl-otp-close" id="goNoAcctClose" aria-label="Close">&times;</button>
+    <div style="font-size:34px;line-height:1;margin-bottom:10px">&#128075;</div>
+    <h4 id="goNoAcctTitle">Let&rsquo;s get you set up</h4>
+    <p class="gl-otp-sub" id="goNoAcctSub">We couldn&rsquo;t find a Gopher Go account for that number &mdash; no problem, it only takes a minute. Grab the app to finish signing up, then come back here and your dashboard will be waiting.</p>
+    <div id="goNoAcctStores" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:4px 0 14px"></div>
+    <button type="button" class="gl-otpbtn" id="goNoAcctDone" style="background:transparent;color:var(--muted)">Back to sign in</button>
+  </div>
+</div>
+
 <div class="gl-otp-overlay" id="goOtpOverlay" hidden>
   <div class="gl-otp-card" role="dialog" aria-modal="true">
     <button type="button" class="gl-otp-close" id="glOtpClose" aria-label="Close">&times;</button>
@@ -1873,6 +1888,12 @@ window.GoSession = (function(){
     enterDash();
   }
   function signOut(){ clear(); exitToSignIn(); }
+  /* The live access-token. Kept in the same store as the session so a remembered
+     worker stays authenticated across a reload — without it, GoSession would
+     restore the DASHBOARD but not the credential, and every call behind it would
+     440 while the UI insisted they were signed in. */
+  function token(){ var s = load(); return s && s.token || null; }
+  function userId(){ var s = load(); return s && s.userId || null; }
   /* Restore before paint where possible, so a remembered worker never sees the
      sign-in screen flash. The markup starts hidden, so this only ever adds.
      #login is an explicit request FOR the sign-in screen, so it wins over a
@@ -1880,7 +1901,240 @@ window.GoSession = (function(){
   function restore(){ if(location.hash !== '#login' && load()) enterDash(); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore);
   else restore();
-  return { load:load, save:save, clear:clear, enterDash:enterDash, exitToSignIn:exitToSignIn, signIn:signIn, signOut:signOut };
+  return { load:load, save:save, clear:clear, enterDash:enterDash, exitToSignIn:exitToSignIn,
+           signIn:signIn, signOut:signOut, token:token, userId:userId, wanted:wanted };
+})();
+</script>
+
+<!-- ░░ GoAuth — the live worker sign-in, eligibility read, and SP deal submit ░░
+
+     Contract source: docs/handoff/deals-registration-to-publication-config.md
+     §3.2d — driven end-to-end against production 2026-08-10 by the merchant leg.
+     The helpers below deliberately mirror gopher-deals.html's apiCall/apiMessage
+     rather than inventing a second client; if one is fixed, fix the other.
+
+     ⚠️ THE TOKEN ARRIVES IN THE `access-token` RESPONSE HEADER, NOT THE BODY.
+     Exposed via access-control-expose-headers. Nothing in the JSON carries it.
+
+     ⚠️ POST /users/sign_in CREATES AN ACCOUNT ON A LOOKUP MISS.
+     Verified at source, controllers/user/auth.js:808 — it writes users +
+     users_roles + users_info with aasm_state INCOMPLETE and returns tokens.
+     With apptype 'gopher' that is a role-2 WORKER account. There is NO
+     read-only existence check anywhere on the user controller, so this cannot
+     be avoided client-side; it can only be DETECTED after the fact.
+     Owner ruling 2026-08-10: detect it and send them to the app with a
+     device-correct store link, rather than opening a dashboard onto an empty
+     account. Note a typo cannot trigger this — the OTP has to be received
+     first, so the number is always one the person controls. -->
+<script>
+window.GoAuth = (function(){
+  var API = 'https://api.gophergo.io/api/v1';
+
+  /* Never throws on an HTTP error — callers branch on status, because
+     422 / 403 / 440 each carry a message worth showing the worker. */
+  function apiCall(path, opts){
+    opts = opts || {};
+    var headers = { 'Content-Type': 'application/json' };
+    var tok = opts.token || GoSession.token();
+    if (tok) headers['access-token'] = tok;
+    return fetch(API + path, {
+      method: opts.method || 'POST',
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function(res){
+      var hdr = res.headers.get('access-token');
+      return res.json().catch(function(){ return {}; }).then(function(body){
+        return { ok: res.ok, status: res.status, body: body, token: hdr };
+      });
+    }).catch(function(e){
+      /* A network failure is not an API response. Give it a shape callers can
+         branch on rather than letting a rejected promise surface as silence. */
+      return { ok:false, status:0, body:{}, token:null, networkError:String(e&&e.message||e) };
+    });
+  }
+
+  /* The endpoint returns every validation failure at once in errors[]; show them
+     all, so a worker fixes the form in one pass rather than one field per try. */
+  function apiMessage(r){
+    var b = (r && r.body) || {};
+    if (r && r.status === 0) return 'Couldn’t reach Gopher. Check your connection and try again.';
+    if (Array.isArray(b.errors) && b.errors.length) return b.errors.join('\n');
+    if (b.error) return b.error;
+    if (b.message) return b.message;
+    if (b.meta && b.meta.message) return b.meta.message;
+    return 'Something went wrong (HTTP ' + (r && r.status) + '). Please try again.';
+  }
+
+  var digits = function(s){ return (String(s||'').match(/\d/g)||[]).join(''); };
+
+  /* Step 1 — real SMS. */
+  function sendCode(phone){
+    return apiCall('/otp/get', { body: { telephone: digits(phone) } });
+  }
+
+  /* Was this account just minted by our own sign_in call?
+     ⚠️ FIELD NAMES VERIFIED LIVE 2026-08-11, after the first version of this
+     check FAILED against production and let a minted account (141564) into the
+     dashboard. The sign_in response body is NOT the users row: the state field
+     is `user_status` (not `aasm_state`), the name is `firstName` (camelCase),
+     and `sign_in_count` is not in the body at all (auth.js:894-914). The
+     model-column names all read as undefined, so the check silently never
+     fired — the exact "compare against what the value ought to be" failure
+     from the 2026-08-10 admin lockout, in the other direction.
+
+     Do NOT use the tempting top-level `onboardingRequired` flag instead: the
+     existing-user branch sets it for any gopher needing email verification OR
+     payout setup (auth.js:1479), so it would bounce a real established worker
+     to the app store.
+
+     The bar: INCOMPLETE state AND a corroborating mint signal — a blank first
+     name, or the `@placeholder.gophergo.io` email that onboardingPlaceholderEmail()
+     generates ONLY at mint time. A real worker with a completed profile can
+     never satisfy both halves. Old snake_case names kept as fallbacks in case
+     another endpoint ever hands this a raw users row. */
+  function looksNewlyCreated(u){
+    if (!u) return false;
+    var st = String(u.user_status || u.aasm_state || '').toLowerCase();
+    var incomplete = st === 'incomplete';
+    var noName = !String((u.firstName != null ? u.firstName : u.first_name) || '').trim();
+    var placeholderEmail = /@placeholder\.gophergo\.io$/i.test(String(u.email || ''));
+    return incomplete && (noName || placeholderEmail);
+  }
+
+  /* Step 2 — verify the code and sign in.
+     Resolves { ok, newAccount, user, token, message }. `newAccount:true` means
+     the caller must NOT enter the dashboard (owner ruling above). */
+  function verifyAndSignIn(phone, code){
+    return apiCall('/users/sign_in', {
+      body: { telephone: digits(phone), code: String(code||'').trim(), apptype: 'gopher' }
+    }).then(function(r){
+      if (!r.ok) return { ok:false, message: apiMessage(r), status:r.status };
+      var u = (r.body && (r.body.data || r.body.user)) || r.body || {};
+      if (!r.token) {
+        /* Signed in but no credential to keep. Entering the dashboard here would
+           produce a session that 440s on every call while claiming to work. */
+        return { ok:false, message:'Signed in, but no access token was returned. Please try again.' };
+      }
+      return { ok:true, newAccount: looksNewlyCreated(u), user:u, token:r.token };
+    });
+  }
+
+  /* Step 3 — the real eligibility verdict, replacing the hardcoded flag.
+     Fails CLOSED: an unreachable endpoint must not present the deal form as
+     open, because the submit behind it would be refused server-side anyway and
+     the worker would have composed a deal for nothing. */
+  function fetchEligibility(){
+    return apiCall('/users/deals/eligibility', { method:'GET' }).then(function(r){
+      /* ⚠️ Both deals routes carry require_email_verified() (user/index.js:478,
+         494) — an unverified account 403s with requiresEmailVerification:true.
+         Surface that flag distinctly: those workers are gated on verifying
+         their email (the post-auth /users/email_otp flow), NOT on the tier/
+         jobs/rating bar, and telling them the wrong reason sends them chasing
+         the wrong fix. The identity-gate lockout of 2026-08-10 was this exact
+         failure shape — comparing against what a value ought to be. */
+      if (!r.ok) return { ok:false, eligible:false, message:apiMessage(r), status:r.status,
+                          needsEmailVerification: !!(r.body && r.body.requiresEmailVerification) };
+      var d = (r.body && (r.body.data || r.body.eligibility)) || r.body || {};
+      return {
+        ok: true,
+        eligible: !!(d.eligible === true || d.eligible === 'true'),
+        tier: d.tier || null,
+        serviceJobs: (d.service_jobs != null ? d.service_jobs : d.serviceJobs) || 0,
+        serviceRating: (d.service_rating != null ? d.service_rating : d.serviceRating) || null,
+        raw: d
+      };
+    });
+  }
+
+  /* Step 4 — submit the deal. Money in CENTS, matching orders.
+     ⚠️ NEVER send customer_price / age / phone_verified / owner_user_id — each
+     is rejected by name (§3.2d); customer_price is computed server-side as
+     earn x 1.10 and owner_user_id is taken from the token. */
+  function submitDeal(d){
+    return apiCall('/users/deals', {
+      body: {
+        track: 'dlp',
+        /* ⚠️ The intake FIELD is `deal`; `deal_text` is the DATABASE COLUMN
+           (deals.model.js) and is rejected by name. Caught live 2026-08-11 —
+           422 "Unrecognised field(s): deal_text." Allowlist: DLP_FIELDS in
+           helpers/deals_intake_validation.js. */
+        deal: d.dealText,
+        keywords: (d.keywords || []).slice(0, 3),
+        earn_amount: Math.round(Number(d.earn) * 100),
+        normal_price: Math.round(Number(d.normal) * 100),
+        reach_miles: Number(d.reachMiles)
+      }
+    }).then(function(r){
+      if (r.status === 201 || (r.ok && r.body && r.body.deal)) {
+        var deal = (r.body && r.body.deal) || {};
+        return { ok:true, id:deal.id, status:deal.status, duplicate: !!(r.body && r.body.duplicate) };
+      }
+      return { ok:false, message:apiMessage(r), status:r.status, eligibility:(r.body||{}).eligibility,
+               needsEmailVerification: !!(r.body && r.body.requiresEmailVerification) };
+    });
+  }
+
+  /* Device-correct store link for the "no account yet" hand-off (owner, 2026-08-10).
+     Deliberately NOT a UA-version check — just the platform, because the only
+     decision here is which store to open. iPadOS 13+ reports as a Mac with touch
+     points, which is why maxTouchPoints is consulted. */
+  var STORE = {
+    ios:     'https://apps.apple.com/us/app/gopher-go/id1438128905',
+    android: 'https://play.google.com/store/apps/details?id=io.gophergoapp.go'
+  };
+  function platform(){
+    var ua = navigator.userAgent || '';
+    if (/android/i.test(ua)) return 'android';
+    if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
+    if (/Macintosh/.test(ua) && Number(navigator.maxTouchPoints || 0) > 1) return 'ios'; // iPadOS 13+
+    return 'other';
+  }
+
+  return {
+    apiCall: apiCall, apiMessage: apiMessage,
+    sendCode: sendCode, verifyAndSignIn: verifyAndSignIn,
+    fetchEligibility: fetchEligibility, submitDeal: submitDeal,
+    platform: platform, STORE: STORE, looksNewlyCreated: looksNewlyCreated
+  };
+})();
+</script>
+
+<script>
+/* Populates and shows the "no account yet" card. The store row is built at
+   runtime: on a phone we show only that phone's store (one obvious tap), on
+   anything else we show both, because guessing wrong sends someone to a store
+   they can't install from. */
+window.showNoAccount = function(){
+  var ov = document.getElementById('goNoAcctOverlay');
+  var row = document.getElementById('goNoAcctStores');
+  if(!ov || !row) return;
+  var p = GoAuth.platform();
+  var badges = [
+    { key:'ios',     href: GoAuth.STORE.ios,     img:'assets/img/go-app-row-label.webp',            alt:'Download on the App Store' },
+    { key:'android', href: GoAuth.STORE.android, img:'assets/img/go-download-on-the-app-store.webp', alt:'Get it on Google Play' }
+  ].filter(function(b){ return p === 'other' ? true : b.key === p; });
+  row.innerHTML = '';
+  badges.forEach(function(b){
+    var a = document.createElement('a');
+    a.href = b.href; a.target = '_blank'; a.rel = 'noopener';
+    var img = document.createElement('img');
+    img.src = b.img; img.alt = b.alt; img.style.height = '42px'; img.style.width = 'auto';
+    a.appendChild(img); row.appendChild(a);
+  });
+  ov.hidden = false;
+};
+(function initNoAcctCard(){
+  function close(){
+    var ov = document.getElementById('goNoAcctOverlay'); if(ov) ov.hidden = true;
+    /* Land them back on the sign-in screen, not on a half-open dashboard —
+       nothing was signed in, so there is nothing to return to. */
+    if(window.GoSession) GoSession.exitToSignIn();
+  }
+  ['goNoAcctClose','goNoAcctDone'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.addEventListener('click', close);
+  });
+  var ov = document.getElementById('goNoAcctOverlay');
+  if(ov) ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
 })();
 </script>
 
@@ -1947,8 +2201,34 @@ window.GoSession = (function(){
     otpInputs.forEach(i => i.value=''); otpVerify.disabled = true;
     otpOverlay.hidden = false; setTimeout(()=>otpInputs[0].focus(),60);
   }
-  sendEmail.addEventListener('click', () => { if(!sendEmail.disabled) openOtp('email', emailIn.value.trim()); });
-  sendSms.addEventListener('click', () => { if(!sendSms.disabled) openOtp('sms', phoneIn.value.trim()); });
+  /* Email cannot sign anyone in (the account is keyed to the phone and the
+     email-OTP endpoint needs a token you only get by signing in first), so this
+     switches to the method that works instead of sending a code that can't. */
+  sendEmail.addEventListener('click', () => {
+    const smsBtn = document.querySelector('.gl-method[data-method="sms"]');
+    if(smsBtn) smsBtn.click();
+    if(phoneIn) phoneIn.focus();
+  });
+  sendSms.addEventListener('click', () => {
+    if(sendSms.disabled) return;
+    const label = sendSms.textContent;
+    sendSms.disabled = true; sendSms.textContent = 'Sending…';
+    GoAuth.sendCode(phoneIn.value).then((r) => {
+      sendSms.textContent = label;
+      if(!r.ok){ sendSms.disabled = false; glErr(GoAuth.apiMessage(r)); return; }
+      openOtp('sms', phoneIn.value.trim());
+    });
+  });
+  function glErr(msg){
+    let box = document.getElementById('glSignInErr');
+    if(!box){
+      box = document.createElement('p');
+      box.id = 'glSignInErr'; box.className = 'gl-hint';
+      box.style.cssText = 'color:#c44257;margin-top:8px';
+      signIn.parentNode.insertBefore(box, signIn);
+    }
+    box.textContent = msg; box.hidden = false;
+  }
   document.getElementById('glOtpClose').addEventListener('click', () => otpOverlay.hidden = true);
   otpOverlay.addEventListener('click', e => { if(e.target===otpOverlay) otpOverlay.hidden = true; });
   document.getElementById('glOtpResend').addEventListener('click', () => { otpInputs.forEach(i=>i.value=''); otpInputs[0].focus(); otpVerify.disabled=true; });
@@ -1962,16 +2242,44 @@ window.GoSession = (function(){
   });
   otpVerify.addEventListener('click', () => {
     if(otpVerify.disabled) return;
-    if(otpPurpose==='email'){ emailVerified = true; emailOk.hidden = false; }
-    else { smsVerified = true; smsOk.hidden = false; }
-    otpOverlay.hidden = true; gate();
-    // Verifying the OTP signs the user straight in — no redundant second
-    // "Sign In" tap. Fire the existing sign-in handler to enter the dashboard.
-    signIn.click();
+    const code = otpInputs.map(i => i.value).join('');
+    const label = otpVerify.textContent;
+    otpVerify.disabled = true; otpVerify.textContent = 'Verifying…';
+    GoAuth.verifyAndSignIn(phoneIn.value, code).then((r) => {
+      otpVerify.textContent = label; otpVerify.disabled = false;
+      if(!r.ok){ glOtpErr(r.message); return; }
+      otpOverlay.hidden = true;
+      if(r.newAccount){ close(); showNoAccount(); return; }
+      smsVerified = true; smsOk.hidden = false; gate();
+      // Verifying the OTP signs the user straight in — no redundant second tap.
+      GoSession.signIn('glRememberMe', {
+        signedIn: true, token: r.token,
+        userId: (r.user && r.user.id) || null,
+        name: [r.user && r.user.first_name, r.user && r.user.last_name].filter(Boolean).join(' ') || null
+      });
+      close();
+      if(window.GoDeals && GoDeals.refreshEligibility) GoDeals.refreshEligibility();
+    });
   });
+  function glOtpErr(msg){
+    let box = document.getElementById('glOtpErr');
+    if(!box){
+      box = document.createElement('p');
+      box.id = 'glOtpErr'; box.className = 'gl-otp-resend';
+      box.style.cssText = 'color:#c44257';
+      otpVerify.parentNode.insertBefore(box, otpVerify.nextSibling);
+    }
+    box.textContent = msg; box.hidden = false;
+  }
 
   // Sign in → enter the dashboard (already authenticated)
-  signIn.addEventListener('click', () => { if(signIn.disabled) return; GoSession.signIn('glRememberMe'); close(); });
+  /* The OTP verify handler above signs in and stores the token. This stays as
+     the manual tap, and must never mint a tokenless session (see initSignIn). */
+  signIn.addEventListener('click', () => {
+    if(signIn.disabled) return;
+    if(!GoSession.token()){ glErr('Verify the code we texted you first.'); return; }
+    GoSession.enterDash(); close();
+  });
 
   // New to Gopher? → app-only note + store badges (cloned from the page)
   let badgesLoaded = false;
@@ -3216,19 +3524,19 @@ window.GoSession = (function(){
 
         <p class="osf-err" id="osfErr" hidden></p>
         <button type="button" class="gc-modal-btn" id="osfSubmit">Submit my deal &rarr;</button>
-        <!-- Honesty: this form does not transmit yet (spec §9.12). Say so BEFORE the
-             worker composes a deal, not only after. Remove both this line and the
-             "not sent" success view in the same commit that adds the deal POST. -->
-        <p class="osf-review">Deal submissions aren&rsquo;t switched on yet &mdash; nothing you enter here is sent. Once they open, each deal is reviewed before it goes live.</p>
+        <p class="osf-review">Each deal is reviewed before it goes live.</p>
         <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="offerSvcClose2">Cancel</button>
       </div>
     </div>
 
     <!-- SUCCESS VIEW -->
     <div id="osfSuccess" hidden>
-      <div class="gc-modal-icon" style="background:#fff7d6">&#8505;&#65039;</div>
-      <h4>Nothing was submitted</h4>
-      <p class="gc-modal-sub">Your deal checks out, but deal submissions aren&rsquo;t switched on yet &mdash; this hasn&rsquo;t been sent anywhere and isn&rsquo;t in review. Once they open, you&rsquo;ll submit from right here and we&rsquo;ll message your Gopher Go inbox the moment your deal is live.</p>
+      <!-- Heading/body/icon are rewritten at runtime by the submit handler, which
+           distinguishes a new submission from a duplicate resubmit. These are the
+           new-submission defaults. -->
+      <div class="gc-modal-icon" style="background:#e2f3e9">&#10003;</div>
+      <h4>Deal submitted for review</h4>
+      <p class="gc-modal-sub">Nice &mdash; we&rsquo;ll give it a quick review and message your Gopher Go inbox the moment it&rsquo;s live.</p>
       <button type="button" class="gc-modal-btn" id="osfDone">Done</button>
     </div>
 
@@ -3364,6 +3672,26 @@ window.GoSession = (function(){
       methodBtns.forEach(b => { const on = b.dataset.method === method; b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false'); });
       if(method === 'email'){ emailPane.hidden = false; smsPane.hidden = true; signInBtn.disabled = !emailVerifiedState; }
       else { emailPane.hidden = true; smsPane.hidden = false; signInBtn.disabled = !phoneVerified; }
+      /* ⚠️ Email cannot sign anyone in: the account is keyed to the phone, and
+         the email-OTP endpoint needs a token you only get by signing in first.
+         The tab stays (removing it is a product decision, not a wiring one) but
+         it tells the truth and offers the one tap that works. */
+      if(method === 'email') showEmailUnavailable();
+    }
+    function showEmailUnavailable(){
+      let n = document.getElementById('goEmailUnavailable');
+      if(!n){
+        n = document.createElement('p');
+        n.id = 'goEmailUnavailable';
+        n.className = 'portal-sms-hint';
+        n.style.cssText = 'display:block;margin-top:10px;color:var(--muted)';
+        n.innerHTML = 'Signing in uses the <b>mobile number</b> on your Gopher account. ' +
+                      '<a href="#" id="goUseSmsInstead" style="color:var(--navy);font-weight:800">Use my mobile instead &rarr;</a>';
+        emailPane.appendChild(n);
+        n.querySelector('#goUseSmsInstead').addEventListener('click', (e) => { e.preventDefault(); applyMethod('sms'); });
+      }
+      n.hidden = false;
+      if(sendEmailOtpBtn) sendEmailOtpBtn.hidden = true;
     }
     methodBtns.forEach(b => b.addEventListener('click', () => applyMethod(b.dataset.method)));
     if(emailInput){ emailInput.addEventListener('input', () => { sendEmailOtpBtn.disabled = !isEmail(emailInput.value); if(emailVerifiedState){ emailVerifiedState=false; emailVerified.hidden=true; signInBtn.disabled=true; } }); }
@@ -3384,8 +3712,43 @@ window.GoSession = (function(){
     }
     function closeOtp(){ overlay.hidden=true; document.removeEventListener('keydown', escClose); }
     function escClose(e){ if(e.key==='Escape') closeOtp(); }
-    if(sendOtpBtn) sendOtpBtn.addEventListener('click', () => { if(!sendOtpBtn.disabled) openOtp('sms'); });
-    if(sendEmailOtpBtn) sendEmailOtpBtn.addEventListener('click', () => { if(!sendEmailOtpBtn.disabled) openOtp('email'); });
+    /* SMS is the ONLY real sign-in channel. The account is keyed to the phone,
+       and POST /users/email_otp/send requires an access-token — it verifies the
+       email of an already-authenticated user, so it cannot sign anyone in. The
+       email tab therefore says so rather than pretending (see applyMethod). */
+    if(sendOtpBtn) sendOtpBtn.addEventListener('click', () => {
+      if(sendOtpBtn.disabled) return;
+      const label = sendOtpBtn.textContent;
+      sendOtpBtn.disabled = true; sendOtpBtn.textContent = 'Sending…';
+      GoAuth.sendCode(phoneInput.value).then((r) => {
+        sendOtpBtn.textContent = label;
+        if(!r.ok){ sendOtpBtn.disabled = false; signInError(GoAuth.apiMessage(r)); return; }
+        /* Leave the button disabled — the code is out; Resend is the way to get
+           another, so a second tap here would only spend a second SMS. */
+        openOtp('sms');
+      });
+    });
+    if(sendEmailOtpBtn) sendEmailOtpBtn.addEventListener('click', () => {
+      if(!sendEmailOtpBtn.disabled) applyMethod('sms');
+    });
+
+    /* One place to surface a sign-in failure, above the button that caused it. */
+    function signInError(msg){
+      let box = document.getElementById('goSignInErr');
+      if(!box){
+        box = document.createElement('p');
+        box.id = 'goSignInErr';
+        box.className = 'osf-err';
+        box.style.cssText = 'margin:10px 0 0;text-align:left';
+        signInBtn.parentNode.insertBefore(box, signInBtn);
+      }
+      box.textContent = msg; box.hidden = false;
+    }
+    function clearSignInError(){ const b=document.getElementById('goSignInErr'); if(b) b.hidden = true; }
+    /* Shared with initSignIn below, which lives in its own IIFE. Without this the
+       tokenless guard there blocks entry but renders nothing — a dead button,
+       which is worse than the bug it prevents. */
+    window.__goSignInError = signInError;
     if(otpClose) otpClose.addEventListener('click', () => { window.__pendingOtpCallback=null; closeOtp(); });
     if(overlay) overlay.addEventListener('click', (e) => { if(e.target===overlay){ window.__pendingOtpCallback=null; closeOtp(); } });
     if(otpResend) otpResend.addEventListener('click', (e) => { e.preventDefault(); otpInputs.forEach(i=>i.value=''); otpInputs[0].focus(); otpVerifyBtn.disabled=true; });
@@ -3398,11 +3761,51 @@ window.GoSession = (function(){
     });
     if(otpVerifyBtn){ otpVerifyBtn.addEventListener('click', () => {
       if(otpVerifyBtn.disabled) return;
+      /* __openVerifyModal borrows this same modal for in-dashboard field
+         verification. That path owns its own callback and must keep the old
+         demo behaviour — do NOT route it through sign_in. */
       const ext = window.__pendingOtpCallback;
       if(typeof ext === 'function'){ window.__pendingOtpCallback=null; closeOtp(); ext(); return; }
-      if(otpFor==='email'){ emailVerifiedState=true; emailVerified.hidden=false; } else { phoneVerified=true; smsVerified.hidden=false; }
-      signInBtn.disabled=false; closeOtp(); signInBtn.click();
+
+      const code = otpInputs.map(i => i.value).join('');
+      const label = otpVerifyBtn.textContent;
+      otpVerifyBtn.disabled = true; otpVerifyBtn.textContent = 'Verifying…';
+      GoAuth.verifyAndSignIn(phoneInput.value, code).then((r) => {
+        otpVerifyBtn.textContent = label; otpVerifyBtn.disabled = false;
+        if(!r.ok){ otpError(r.message); return; }
+        closeOtp();
+        if(r.newAccount){
+          /* Owner ruling 2026-08-10 — do not open a dashboard onto an account
+             that has no profile behind it. sign_in already wrote the row (there
+             is no read-only existence check to have avoided it); this is the
+             honest hand-off, not a claim that nothing happened. */
+          showNoAccount();
+          return;
+        }
+        phoneVerified = true; smsVerified.hidden = false; signInBtn.disabled = false;
+        clearSignInError();
+        /* Persist the CREDENTIAL with the session, not just "signed in" — see
+           GoSession.token(). Respects the Remember me box on this surface. */
+        GoSession.signIn('goRememberMe', {
+          signedIn: true, token: r.token,
+          userId: (r.user && r.user.id) || null,
+          name: [r.user && (r.user.firstName || r.user.first_name), r.user && (r.user.lastName || r.user.last_name)].filter(Boolean).join(' ') || null
+        });
+        if(window.GoDeals && GoDeals.refreshEligibility) GoDeals.refreshEligibility();
+      });
     }); }
+    /* Errors belong inside the code modal while it is open — putting them behind
+       it on the sign-in card means the worker never sees why the code failed. */
+    function otpError(msg){
+      let box = document.getElementById('goOtpErr');
+      if(!box){
+        box = document.createElement('p');
+        box.id = 'goOtpErr'; box.className = 'osf-err';
+        box.style.cssText = 'margin:8px 0 0;text-align:center';
+        otpVerifyBtn.parentNode.insertBefore(box, otpVerifyBtn.nextSibling);
+      }
+      box.textContent = msg; box.hidden = false;
+    }
     window.__openVerifyModal = (channel, displayValue, onVerified) => {
       window.__pendingOtpCallback = onVerified;
       otpFor = channel==='phone' ? 'sms' : 'email';
@@ -3410,7 +3813,9 @@ window.GoSession = (function(){
       otpInputs.forEach(i=>i.value=''); otpVerifyBtn.disabled=true; otpVerifyBtn.textContent='Verify & Save';
       overlay.hidden=false; setTimeout(()=>otpInputs[0]&&otpInputs[0].focus(),50); document.addEventListener('keydown', escClose);
     };
-    applyMethod('email');
+    /* SMS is the default because it is the only method that can actually sign
+       someone in. This was 'email', which opened the dashboard on a dead tab. */
+    applyMethod('sms');
   })();
 
   /* ════ Sign-in success → dashboard ════ */
@@ -3418,7 +3823,16 @@ window.GoSession = (function(){
     const signInBtn = document.getElementById('signInBtn');
     signInBtn.addEventListener('click', (e) => {
       e.preventDefault(); if(signInBtn.disabled) return;
-      GoSession.signIn('goRememberMe');
+      /* The OTP verify handler is what actually signs in and stores the token.
+         This button is now only the no-JS-fallback / manual tap AFTER that has
+         happened, so it must never mint a tokenless session — that would restore
+         a dashboard whose every API call 440s while the UI says "signed in".
+         Enter only if a real credential exists. */
+      if(!GoSession.token()){
+        if(window.__goSignInError) window.__goSignInError('Verify the code we texted you first.');
+        return;
+      }
+      GoSession.enterDash();
     });
   })();
 
@@ -4515,7 +4929,15 @@ window.GoSession = (function(){
      count and the rating window). -->
 <script>
 (function(){
-  var ELIGIBLE = true; // Marcus Hale · Pro · 86 service jobs · 4.9★ → eligible
+  /* ELIGIBLE is now the REAL server verdict, read from
+     GET /api/v1/users/deals/eligibility once a worker is signed in.
+     It starts FALSE and fails CLOSED: presenting the deal form as open when we
+     could not confirm eligibility means the worker composes a whole deal only
+     for the submit to be refused server-side, which re-checks it anyway.
+     The demo toggle still flips it locally so both states stay viewable without
+     an account — it can only ever be more permissive than the server, never
+     less, because the submit is gated independently. */
+  var ELIGIBLE = false;
   var btn        = document.getElementById('offerServiceBtn');
   var demoToggle = document.getElementById('offerDemoToggle');
   var demoState  = document.getElementById('offerDemoState');
@@ -4535,6 +4957,24 @@ window.GoSession = (function(){
   var learn = document.getElementById('offerLearnMore');
   if(learn) learn.addEventListener('click', function(){ openOv(inelOv); });
   if(demoToggle) demoToggle.addEventListener('click', function(){ ELIGIBLE = !ELIGIBLE; render(); });
+
+  /* Read the live verdict. Called after a real sign-in and on restore, so a
+     remembered worker doesn't have to sign in again to see the gate resolve. */
+  function refreshEligibility(){
+    if(!window.GoAuth || !GoSession.token()) return Promise.resolve(null);
+    return GoAuth.fetchEligibility().then(function(e){
+      ELIGIBLE = !!(e && e.ok && e.eligible);
+      render();
+      return e;
+    });
+  }
+  window.GoDeals = window.GoDeals || {};
+  window.GoDeals.refreshEligibility = refreshEligibility;
+  window.GoDeals.isEligible = function(){ return ELIGIBLE; };
+  /* A remembered session restores the dashboard before this block runs, so ask
+     once at load too — otherwise the button sits locked for a worker who is
+     signed in and genuinely eligible. */
+  refreshEligibility();
   ['offerInelClose','offerInelClose2'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(inelOv); }); });
   ['offerSvcClose','offerSvcClose2'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(svcOv); }); });
   [inelOv, svcOv].forEach(function(o){ if(o) o.addEventListener('click', function(e){ if(e.target===o) closeOv(o); }); });
@@ -4639,7 +5079,37 @@ window.GoSession = (function(){
        (it's gated on normalRate > price). Owner ruling 2026-08-05. */
     var _earn=money(earn.value), _norm=money(normal.value), _pays=_earn*1.10;
     if(_norm<=_pays) return showErr('Your normal price needs to be more than the $'+_pays.toFixed(2)+' your customer pays — otherwise the deal shows no saving.');
-    formWrap.hidden=true; success.hidden=false; svcOv.scrollTop=0;
+
+    /* Real submission — POST /api/v1/users/deals, track dlp. The server
+       re-checks eligibility, recomputes customer_price as earn x 1.10, and
+       refuses anything that fails; this client-side check exists to catch it
+       before the round trip, not instead of it. */
+    var label = submit.textContent;
+    submit.disabled = true; submit.textContent = 'Submitting…';
+    GoAuth.submitDeal({
+      dealText: (deal.value||'').trim(),
+      keywords: keywords,
+      earn: _earn, normal: _norm,
+      reachMiles: parseInt(reach.value, 10)
+    }).then(function(r){
+      submit.disabled = false; submit.textContent = label;
+      if(!r.ok){
+        /* 403 carries the eligibility verdict — say which bar was missed rather
+           than a bare "not eligible", which a worker cannot act on. */
+        showErr(r.message || 'We couldn’t submit that deal. Please try again.');
+        return;
+      }
+      /* Only NOW is "submitted for review" a true statement. */
+      var h = success.querySelector('h4');
+      var p = success.querySelector('.gc-modal-sub');
+      var ico = success.querySelector('.gc-modal-icon');
+      if(ico){ ico.style.background = '#e2f3e9'; ico.innerHTML = '&#10003;'; }
+      if(h) h.textContent = r.duplicate ? 'Already submitted' : 'Deal submitted for review';
+      if(p) p.textContent = r.duplicate
+        ? 'You’ve already sent us this deal — it’s in the review queue, so there’s nothing more to do.'
+        : 'Nice — we’ll give it a quick review and message your Gopher Go inbox the moment it’s live.';
+      formWrap.hidden=true; success.hidden=false; svcOv.scrollTop=0;
+    });
   });
   function reset(){
     deal.value=''; earn.value=''; normal.value=''; pay.value='';
