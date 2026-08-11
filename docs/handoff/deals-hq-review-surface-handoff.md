@@ -58,8 +58,14 @@ asks whether every route *under* `/api/v1/admin` is authenticated — a route on
 **user** router is outside its question. The suite was green before the fix and
 green after; no test touched the endpoint. `test/g40-351-deals-queue-authz.test.js`
 now pins the placement, the `verify_auth` mount, the `earn_amount` exclusion and
-the oldest-first ordering, mutation-tested four ways. **The general hole remains:
-nothing detects an admin-only surface mounted on the user router.**
+the oldest-first ordering, mutation-tested four ways. ~~The general hole remains~~
+**CLOSED 2026-08-11 — a fourth CI guard** (`scripts/check-user-router-privacy.js`,
+branch `feat/ci-user-router-privacy-guard`, pending merge): every `user_auth`
+route on the user-facing routers, all verbs, whose SQL reads contact columns off
+the `users` table must reference `decoded`. Validated against the actual pre-fix
+commit — it flags `GET '/deals/queue'` at its shipped line — and passes the
+current tree at 106 routes / 0 exceptions. Smoke alarm, not inspection: it
+catches the absence-of-caller shape that shipped, not every conceivable leak.
 
 **Live-verified against production 2026-08-10 19:32 EDT**, by request rather than
 by reading the merge:
