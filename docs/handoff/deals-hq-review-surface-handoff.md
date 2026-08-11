@@ -126,7 +126,7 @@ record that keeps up.
    and a truncation bug — see the MR). Verify post-deploy:
    `SELECT id, deal_code FROM deals ORDER BY id;`
 7. ⏳ **SP section** — see §4. List view + email button still to build; near-miss
-   email copy with the owner (adapting the eligible template himself).
+   email copy APPROVED and baked 2026-08-11: gopher-email-sp-deals-prelaunch.html ("you're right there" — 15-19 band ONLY, tier line + inclusive rating corrected) and gopher-email-sp-deals-nearmiss.html (neutral, 5-14). Band-scoping is what keeps the first one honest. Send = deals@ dispatcher; grant endpoint assigned to the Go session.
 
 ---
 
@@ -221,7 +221,7 @@ None have real orders. Clean up before launch.
 | 141554 | 805-555-1234 | usable, confirmed — **owner's Path A test, filed deal 5** |
 | 141557 | 805-555-0173 | deal 1 |
 | 141561 | 805-555-0198 | deal 3 |
-| **141564** | 919-555-0142 | **junk — placeholder email, delete** |
+| ~~141564~~ | 919-555-0142 | ~~junk~~ ✅ **deleted by owner 2026-08-11** (admin API); number should be creatable again |
 | 141568 | 805-555-0211 | deal 4 |
 
 Spare verified-clean numbers: **919-555-0173**, **805-555-0244**.
