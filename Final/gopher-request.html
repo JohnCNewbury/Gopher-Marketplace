@@ -9436,6 +9436,7 @@
 </script>
 <script src="assets/js/gopher-header.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
+<script src="assets/js/gopher-deals-feed.js"></script>
 
 <!-- HERO -->
 <section class="hero">
@@ -24070,6 +24071,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     'lp-pest': 'assets/img/shared-img-7.webp',
     'r-buoy': 'assets/img/shared-hatch-coffee.webp',
   };
+
+  /* Real deals from the publication feed join their rail ahead of the demo
+     content (shared module assets/js/gopher-deals-feed.js — same one Connect
+     uses, so the two pages can never drift apart again). Silent on failure by
+     design: no feed just means the showroom content stands alone. */
+  if(window.GopherDealsFeed) GopherDealsFeed.merge(DEALS_DATA);
 
   function findDealMerchant(id){
     for(const c of DEALS_DATA){ const m = c.merchants.find(x => x.id === id); if(m) return m; }

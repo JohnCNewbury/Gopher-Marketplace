@@ -6936,6 +6936,7 @@
 </script>
 <script src="assets/js/gopher-header.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
+<script src="assets/js/gopher-deals-feed.js"></script>
 <script>
 /* Phones: show a soft LIGHT field behind the open Login / hamburger panel so
    the card sits on a clean light surface (matches the standalone header on a
@@ -14363,6 +14364,12 @@ const PAY_BADGES = {
         kind:'merchant', category:'delivery', address:'8450 Honeycutt Rd, Raleigh, NC 27615', mobile:false, pay:12, ageRestricted:true, portalUrl:'embercigar.com', portalTag:'Premium cigars & lounge' },
     ]},
   ];
+
+  /* Real deals from the publication feed join their rail ahead of the demo
+     content (shared module assets/js/gopher-deals-feed.js — same one Request
+     uses, so the two pages can never drift apart again). Silent on failure by
+     design: no feed just means the showroom content stands alone. */
+  if(window.GopherDealsFeed) GopherDealsFeed.merge(DEALS_DATA);
 
   function findDealMerchant(id){
     for(const c of DEALS_DATA){ const m = c.merchants.find(x => x.id === id); if(m) return m; }
