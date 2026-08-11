@@ -2011,7 +2011,15 @@ window.GoAuth = (function(){
      the worker would have composed a deal for nothing. */
   function fetchEligibility(){
     return apiCall('/users/deals/eligibility', { method:'GET' }).then(function(r){
-      if (!r.ok) return { ok:false, eligible:false, message:apiMessage(r), status:r.status };
+      /* ⚠️ Both deals routes carry require_email_verified() (user/index.js:478,
+         494) — an unverified account 403s with requiresEmailVerification:true.
+         Surface that flag distinctly: those workers are gated on verifying
+         their email (the post-auth /users/email_otp flow), NOT on the tier/
+         jobs/rating bar, and telling them the wrong reason sends them chasing
+         the wrong fix. The identity-gate lockout of 2026-08-10 was this exact
+         failure shape — comparing against what a value ought to be. */
+      if (!r.ok) return { ok:false, eligible:false, message:apiMessage(r), status:r.status,
+                          needsEmailVerification: !!(r.body && r.body.requiresEmailVerification) };
       var d = (r.body && (r.body.data || r.body.eligibility)) || r.body || {};
       return {
         ok: true,
@@ -2043,7 +2051,8 @@ window.GoAuth = (function(){
         var deal = (r.body && r.body.deal) || {};
         return { ok:true, id:deal.id, status:deal.status, duplicate: !!(r.body && r.body.duplicate) };
       }
-      return { ok:false, message:apiMessage(r), status:r.status, eligibility:(r.body||{}).eligibility };
+      return { ok:false, message:apiMessage(r), status:r.status, eligibility:(r.body||{}).eligibility,
+               needsEmailVerification: !!(r.body && r.body.requiresEmailVerification) };
     });
   }
 
