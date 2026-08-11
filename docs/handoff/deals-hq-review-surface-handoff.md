@@ -125,7 +125,13 @@ record that keeps up.
    derives from the row's own id (the `MAX(id)+1` prediction was a race, a drift,
    and a truncation bug — see the MR). Verify post-deploy:
    `SELECT id, deal_code FROM deals ORDER BY id;`
-7. ⏳ **SP section** — see §4. List view + email button still to build; near-miss
+7. ✅/⏳ **SP section** — list view BUILT (Dashboard `5e92df5`: ruled bands
+   15+/5–14, override-not-lowered-bar framing, grants-not-in-snapshot caveat)
+   and the outreach copy-button BUILT (`76231eb`: active accounts only per
+   owner ruling 8/11 — deleted/deactivated never included, owner stays in;
+   31 band-labelled addresses, nothing sends from the page). Still open: the
+   actual SEND via deals@ dispatcher, and the admin GRANT endpoint (spec'd,
+   unwired — assigned to the Go session by owner 8/11). Near-miss
    email copy APPROVED and baked 2026-08-11: gopher-email-sp-deals-prelaunch.html ("you're right there" — 15-19 band ONLY, tier line + inclusive rating corrected) and gopher-email-sp-deals-nearmiss.html (neutral, 5-14). Band-scoping is what keeps the first one honest. Send = deals@ dispatcher; grant endpoint assigned to the Go session.
 
 ---
