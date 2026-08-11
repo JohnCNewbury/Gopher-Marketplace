@@ -60,7 +60,7 @@ green after; no test touched the endpoint. `test/g40-351-deals-queue-authz.test.
 now pins the placement, the `verify_auth` mount, the `earn_amount` exclusion and
 the oldest-first ordering, mutation-tested four ways. ~~The general hole remains~~
 **CLOSED 2026-08-11 — a fourth CI guard** (`scripts/check-user-router-privacy.js`,
-branch `feat/ci-user-router-privacy-guard`, pending merge): every `user_auth`
+**merged to `production` `e01cafa1`**, content-verified): every `user_auth`
 route on the user-facing routers, all verbs, whose SQL reads contact columns off
 the `users` table must reference `decoded`. Validated against the actual pre-fix
 commit — it flags `GET '/deals/queue'` at its shipped line — and passes the
@@ -100,20 +100,33 @@ record that keeps up.
 
 ---
 
-## 2. The job
+## 2. The job — status as of 2026-08-11
 
-1. **Dashboard Deals view reads `GET /api/v1/admin/deals/queue`** instead of
-   `MERCHANTS[]` in `deals-merchants.js`. Admin-gated — reuse the login the
-   Dashboard already performs (`gopher_pull.py`), do not invent a second session.
-   ⚠️ Blocked until MR !254 merges **and deploys**.
-2. **Remove the sample-data banner** (`app_part4.js:256`) — owner directive, now
-   that real submissions land.
-3. **Remove the fake deals.**
-4. **Map shows only real** live / pending / considering rows.
-5. **Approve / reject writes through the API**, not `localStorage['gopher_deals_admin']`.
-6. **Backfill `deal_code`** for deals 1–5 — they predate the DL-nnnn assignment
-   and are currently unnameable.
-7. **SP section** — see §4.
+1. ✅ **Dashboard reads `GET /api/v1/admin/deals/queue`** (Dashboard `49d7d6b`,
+   pushed). Considered section renders live rows when `MSG_CONFIG` is connected;
+   three labelled states (live / offline-samples / failed-shows-error-never-samples).
+   ⚠️ The API↔Dashboard status vocabulary COLLIDES: API `pending` (just filed)
+   maps to Dashboard `considered` (review queue), NOT Dashboard `pending`
+   (= approved, awaiting release). `API_TO_VIEW_STATUS` in `deals-merchants.js`
+   is the one translation point.
+2. ⏳ **Sample-data banner stays for now** — deliberately. It also covers coverage
+   counts, map pins and the recruiting worklist, all still placeholders; removing
+   it when one section is live would claim the whole page is. Comes off with #3/#4.
+3. ⏳ **Fake deals removal** — pending (the non-queue sections still render them).
+4. ⏳ **Map filtered to real rows** — pending.
+5. ✅ **Approve/reject write through the API** — backend `b95bcf19` (PATCH
+   `/admin/deals/:id/approve|reject`; approve publishes + tags the owner's role
+   row atomically in a real transaction; reject requires the reason). Dashboard
+   wiring `b425f6d` (confirm modal states both effects; blank reason blocks;
+   errors render in-modal). ⚠️ One end-to-end approve from the served dashboard
+   still owed — the endpoints were verified by stub, not against live Postgres.
+6. ✅ **`deal_code` backfill** — rides the generator fix (`d2ebdf4e`): boot-time
+   idempotent UPDATE names deals 1–5 `DL-0001..0005`; the generator itself now
+   derives from the row's own id (the `MAX(id)+1` prediction was a race, a drift,
+   and a truncation bug — see the MR). Verify post-deploy:
+   `SELECT id, deal_code FROM deals ORDER BY id;`
+7. ⏳ **SP section** — see §4. List view + email button still to build; near-miss
+   email copy with the owner (adapting the eligible template himself).
 
 ---
 
