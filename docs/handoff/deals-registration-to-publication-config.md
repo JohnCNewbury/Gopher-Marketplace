@@ -870,7 +870,19 @@ is the rule the Go worker bid board was built to in 2026-08-05 (**LOG**).
 
 ### 7.2 The feed
 
-One authenticated read endpoint serves every surface:
+~~One authenticated read endpoint~~ **One PUBLIC read endpoint** serves every surface.
+
+> **OWNER RULING 2026-08-11 — the feed is public, unauthenticated. Built and live (MR !266).**
+> "Authenticated" below was written when the consuming surface was assumed to be the apps,
+> where a token always exists. The deals rail renders on public WEB pages for visitors who
+> have not signed up — the browse-before-joining funnel — and a web visitor has no token to
+> present; a shared "public token" in page source would be authentication theater. What the
+> endpoint serves is only what an admin explicitly approved for publication, and the
+> sensitive exclusions below are enforced by a source-pin TEST in the feed controller
+> (never touches `users`/`users_roles`, never names a contact column), not by promise.
+> Owner, verbatim: *"Not worried about the public abuse risks yet. We can harden security
+> later."* Hardening path if abuse appears: one auth-middleware line + LB rate limiting.
+> **Do not "fix" the endpoint back to authenticated from this doc's old wording.**
 
 ```
 GET /api/v1/deals?lat=&lng=&radius=&category=&q=
