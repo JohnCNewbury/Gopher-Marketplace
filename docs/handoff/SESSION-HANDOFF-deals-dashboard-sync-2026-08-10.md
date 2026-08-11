@@ -100,7 +100,15 @@ the final step — so abandonment between those points is a real, reachable stat
 ## 5. Test state
 
 - **Use:** `805-555-0173` — the proven account (`141557`, `deals.test.0173@gophergo.io`).
-  Spares, verified clean (no account, no OTP history): `805-555-0198`, `919-555-0142`.
+  ~~Spares, verified clean (no account, no OTP history): `805-555-0198`, `919-555-0142`.~~
+  ⚠️ **STALE as of 2026-08-11 — neither spare is clean.** Both were consumed on 2026-08-10
+  after this file was written, then driven again by the Go sign-in live run:
+  `805-555-0198` → user **141561** (established, real-style email, enters a dashboard);
+  `919-555-0142` → user **141564** (**INCOMPLETE mint**, `onboarding-…@placeholder.gophergo.io`
+  — the live specimen of the mint shape). Both need **G40-359** tagging. Full dlp contract
+  facts from that run: config spec **§3.2d-DLP addendum** (field is `deal` not `deal_text`;
+  eligibility keys snake_case; `otp/get` invalidates prior codes, caps at 3 consecutive,
+  and the admin `/otp/csv` export lists **newest first** — don't tail it).
 - **Avoid:** `805-555-0142` — no account but *has* OTP history.
 - **Burned, need tagging for G40-359 cleanup:** `141548` (8055557547), `141554` (8055551234).
 - ⚠️ **Signing in on an unknown number CREATES an account** (OTP login: lookup miss → create).

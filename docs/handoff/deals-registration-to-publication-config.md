@@ -480,6 +480,41 @@ A resubmit **after rejection** is deliberately a fresh 201, because editing and 
 deal is the documented flow (§5.2) and collapsing it onto the reviewed row would discard a real
 submission. A 422 writes nothing, so retry after a validation failure is always safe.
 
+> ### 3.2d-DLP addendum ✅ — the WORKER (dlp) side of the same contract, driven against production 2026-08-11
+>
+> The Go dashboard sign-in build (commits `a547e54`..`1b931cd`) drove the dlp track live with the
+> authorized test numbers. Same rule as above: every fact here was copied from a real response.
+>
+> - **The intake field is `deal`, NOT `deal_text` — on both tracks.** `deal_text` is the database
+>   COLUMN (`deals.model.js`) and is rejected by name (`422 Unrecognised field(s): deal_text`,
+>   caught live). The allowlists are `DLM_FIELDS`/`DLP_FIELDS` in
+>   `helpers/deals_intake_validation.js`. ⚠️ This section's own duplicate-retry paragraph above
+>   says "same `deal_text`" — read that as the column the dedupe compares, not the field you send.
+> - **DLP submit enforcement works:** an ineligible account's submit (valid fields) is refused
+>   `403 "Not currently eligible to post a Service Provider deal."` and writes nothing.
+> - **`GET /users/deals/eligibility` verdict shape (real body):** snake_case — `service_jobs`,
+>   `service_rating`, plus `eligible`, `tier` (e.g. `"Standard"`), `tier_id`, `reasons
+>   {jobs,rating,tier}`, `near_miss`, `bar {jobs,stars,window}`, `classification`, `grant`/`granted`.
+> - **`POST /users/sign_in` body is NOT the users row** (`auth.js:894-914`): state is
+>   **`user_status`** (not `aasm_state`), name is **`firstName`** (camelCase), `sign_in_count` is
+>   absent. A freshly minted account additionally carries the
+>   **`onboarding-<phone>@placeholder.gophergo.io`** email — the reliable mint marker. ⚠️ Do not
+>   detect "new account" via top-level `onboardingRequired`: the existing-user branch sets it for
+>   any gopher needing email verification OR payout setup (`auth.js:1479`).
+> - **`otp/get` invalidates all prior unused codes first** (`otps.update({used:true})` before the
+>   Twilio send), caps at **3 consecutive generations** (`OTP_GENERATE_MAX`, 429 + `blocked_until`
+>   beyond it), and writes the row only inside Twilio's `.then()`. **The admin `/otp/csv` export is
+>   newest-FIRST** — tail-reading it shows you stale rows while fresh ones sit at the top; that
+>   cost this run twenty minutes.
+> - **Test-state consequence:** `805-555-0198` → user **141561** (established,
+>   `deals.test.0173`-style real email, enters the dashboard); `919-555-0142` → user **141564**
+>   (INCOMPLETE mint, placeholder email — the live specimen of the mint shape). **Neither spare is
+>   clean**; both had already been consumed 2026-08-10 after the handoff called them clean. Both
+>   accounts need G40-359 tagging.
+> - **Not proven live:** an eligible **201** dlp submit — no test account can meet the 20-service-
+>   job bar. Field validation through to the eligibility gate is proven; the final insert is
+>   inherited from the dlm 201 above.
+
 **Consequence for the tabled deals@ wiring — SUPERSEDED, see §3.3.** *(The original text read: the
 Apps Script snippets in `docs/handoff/deals-email-wiring.md` are the interim way to send from
 `deals@gophergo.io` pre-launch, correct for now and dead at go-live. That is no longer the plan —
