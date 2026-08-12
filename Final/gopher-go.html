@@ -1930,6 +1930,55 @@ window.GoSession = (function(){
 window.GoAuth = (function(){
   var API = 'https://api.gophergo.io/api/v1';
 
+  /* ── CLOSED PILOT GATE ──────────────────────────────────────────────────
+     ⚠️ THIS IS NOT A SECURITY BOUNDARY, and must never be described as one.
+     This page is static and public on three hosts; anyone with devtools can
+     step past this check. It is a "closed testing" sign on an unfinished
+     surface, and the real protection is elsewhere and unaffected by it: every
+     API call is authorised per-token by the backend, so a caller only ever
+     reaches their OWN account's data whatever this file says.
+
+     What it genuinely buys, and why it runs BEFORE otp/get (owner, 2026-08-12):
+       • no SMS is sent to a number that could not use the dashboard anyway —
+         Twilio is billed per segment;
+       • no ACCOUNT IS MINTED. POST /users/sign_in creates an INCOMPLETE user
+         on a lookup miss, so an open sign-in on a public page is an account
+         generator. Stopping before the code is requested closes that.
+
+     Numbers are stored as SHA-256 of the 10 digits, not in the clear: the
+     source is public and a plaintext list would be a phone book. Honest limit —
+     hashing stops harvesting, it does not stop a determined brute force of a
+     10-digit space. Do not treat these digests as secret.
+
+     To add a tester: sha256 of their 10 digits, no punctuation. */
+  var PILOT_ALLOW = [
+    '6876878151ca45a8c128c7e0ce261a20d7194a91dce6ba6de75769edbca1b0ae' // owner
+  ];
+  var PILOT_ON = true;
+
+  function sha256Hex(str){
+    if(!(window.crypto && window.crypto.subtle)) return Promise.resolve(null);
+    var bytes = new TextEncoder().encode(str);
+    return window.crypto.subtle.digest('SHA-256', bytes).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){
+        return ('00' + b.toString(16)).slice(-2);
+      }).join('');
+    });
+  }
+
+  /* Resolves true when the number may proceed. FAILS CLOSED on any environment
+     where we cannot hash (no SubtleCrypto, or a non-secure origin): a gate that
+     silently opens when its mechanism is missing is worse than no gate, because
+     it is trusted. */
+  function pilotAllows(phone){
+    if(!PILOT_ON) return Promise.resolve(true);
+    var digits = (String(phone||'').match(/\d/g)||[]).join('').slice(-10);
+    if(digits.length !== 10) return Promise.resolve(false);
+    return sha256Hex(digits).then(function(h){
+      return !!h && PILOT_ALLOW.indexOf(h) !== -1;
+    }).catch(function(){ return false; });
+  }
+
   /* Never throws on an HTTP error — callers branch on status, because
      422 / 403 / 440 each carry a message worth showing the worker. */
   function apiCall(path, opts){
@@ -1957,6 +2006,9 @@ window.GoAuth = (function(){
      all, so a worker fixes the form in one pass rather than one field per try. */
   function apiMessage(r){
     var b = (r && r.body) || {};
+    /* The pilot gate carries its own copy — it is not an API failure and must
+       not be reported as one. */
+    if (r && r.pilotBlocked && r.message) return r.message;
     if (r && r.status === 0) return 'Couldn’t reach Gopher. Check your connection and try again.';
     if (Array.isArray(b.errors) && b.errors.length) return b.errors.join('\n');
     if (b.error) return b.error;
@@ -1968,8 +2020,18 @@ window.GoAuth = (function(){
   var digits = function(s){ return (String(s||'').match(/\d/g)||[]).join(''); };
 
   /* Step 1 — real SMS. */
+  /* The pilot check runs FIRST, so a number outside the pilot never reaches
+     otp/get: no SMS billed, and — the one that matters — no account minted by
+     a sign-in that would otherwise create one. Shaped like an apiCall result so
+     every caller's existing error handling renders it with no special case. */
   function sendCode(phone){
-    return apiCall('/otp/get', { body: { telephone: digits(phone) } });
+    return pilotAllows(phone).then(function(ok){
+      if(!ok){
+        return { ok:false, status:403, pilotBlocked:true, body:{},
+                 message:'The web dashboard is in closed testing right now — the Gopher Go app has everything you need.' };
+      }
+      return apiCall('/otp/get', { body: { telephone: digits(phone) } });
+    });
   }
 
   /* Was this account just minted by our own sign_in call?
@@ -2092,7 +2154,7 @@ window.GoAuth = (function(){
 
   return {
     apiCall: apiCall, apiMessage: apiMessage,
-    sendCode: sendCode, verifyAndSignIn: verifyAndSignIn,
+    sendCode: sendCode, verifyAndSignIn: verifyAndSignIn, pilotAllows: pilotAllows,
     fetchEligibility: fetchEligibility, submitDeal: submitDeal,
     platform: platform, STORE: STORE, looksNewlyCreated: looksNewlyCreated
   };
