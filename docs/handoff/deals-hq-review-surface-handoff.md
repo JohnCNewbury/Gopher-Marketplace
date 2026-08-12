@@ -134,7 +134,23 @@ record that keeps up.
    derives from the row's own id (the `MAX(id)+1` prediction was a race, a drift,
    and a truncation bug — see the MR). Verify post-deploy:
    `SELECT id, deal_code FROM deals ORDER BY id;`
-7. ✅/⏳ **SP section** — list view BUILT (Dashboard `5e92df5`: ruled bands
+7. ✅/⏳ **SP section** — ⚠️ **GRANTS ARE DONE: 18 workers granted 2026-08-12** by owner
+   decision ("Granting all of them initially. Not ideal but start ups flex"), run by the
+   Go session, all 18 re-confirmed against production. **The cohort is 18, not 19** — that
+   number should stop circulating: prelaunch 5 + near-miss 16 = 21, minus 7867 (Deleted),
+   61730 (deactivated) and 31677 (Gopher Inc, a platform account) = 18. Independently
+   reconciled against `sp-eligibility-data.js`. Includes id 14, the owner's own account
+   (prelaunch band, 16 jobs) at his instruction — he intends to post the first deal.
+   ⛔ **THE COHORT SPANS 5 TO 19 SERVICE JOBS AGAINST A BAR OF 20**, so neither nudge
+   template may be sent to it — `gopher-email-sp-deals-eligible.html` opens "you've hit the
+   bar", false for 16 of 18. Use **`gopher-email-sp-deals-launch-cohort.html`**: states the
+   standard is unchanged, says plainly they may not have hit it, and explains they were
+   switched on early to seed launch supply. The prelaunch/near-miss templates remain correct
+   for their own bands, which are now a DIFFERENT population than the granted 18.
+   ⚠️ **No admin READ of grant state exists** — only PATCH grant/revoke, so "who is granted?"
+   currently requires a mutation probe (409 = already granted) or a DB query, and the
+   Dashboard's `grantsInSnapshot:false` cannot be filled until one exists. The Go session
+   owns building `GET /admin/workers/:id/sp-grant`. — list view BUILT (Dashboard `5e92df5`: ruled bands
    15+/5–14, override-not-lowered-bar framing, grants-not-in-snapshot caveat)
    and the outreach copy-button BUILT (`76231eb`: active accounts only per
    owner ruling 8/11 — deleted/deactivated never included, owner stays in;
