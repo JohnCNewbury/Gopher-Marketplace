@@ -1773,6 +1773,60 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     long before the FAQ pipeline — and category routing for location queries is unchanged. Checked
     rather than assumed, because the regression matrix flagged it as a loss.
 
+- **Split-screen harness: "⟳ Reset demo" now clears EVERY seen-map — the second demo run was
+  broken (2026-08-11/12, commit `505ac28`, deploy `3a31b0b`, live on Pages + TigerTech).**
+  _(Scope: `_prototypes/split-screen.html` + one new test + one doc correction. No app, backend,
+  or payment code.)_ **The regression was self-inflicted by the 2026-08-09 confirm/rating
+  decoupling** (`cc4493c`): that change added a `confirmSeen` map and **never added it to the
+  Reset-demo clearing line**, where all 18 of its siblings already were.
+  - **Why that is worse than it sounds.** Reset reboots both iframes but does **not** reload
+    `split-screen.html`, so the seen-maps live on in page scope — and **order ids are reused every
+    run (`GR-00128` each time)**. So after one Reset the stale `confirmSeen['GR-00128']` suppressed
+    the confirm relay and the worker sat on *"Pending confirmation — {who} controls the payout until
+    they confirm"* **forever** — reproducing the exact bug `cc4493c` had just fixed, gated behind one
+    button. Reset's only purpose is re-running the demo without a reload, so the button was **worse
+    than absent**: it silently poisoned the next run.
+  - **Auditing the class rather than the instance found two more, both pre-existing and both the
+    subtler seq-keyed variant:** `navSeen` and `flagSeen` compare against `job.<x>.seq`, built as
+    `seq:((j.x&&j.x.seq)||0)+1`, which **restarts at 1 on a rebooted frame** — so a stale `1` equals
+    the fresh `1` and swallows the **first** turn-by-turn narration and the **first**
+    Report-A-Request after a Reset. **A boolean map fails on any re-run; a seq-keyed map fails only
+    on the first event after a Reset — precisely when someone is demoing.** All three added.
+  - **New `docs/handoff/category-mismatch/run_splitscreen_reset_test.py`** asserts every *mutated*
+    relay-state var appears in the Reset line, and guards the reverse (a cleared name no longer
+    declared). **Proven to FAIL on the pre-fix file with exactly those three names before being
+    accepted** — same standing rule as the 2026-08-12 iQ harnesses: a green test that cannot fail
+    proves nothing.
+  - **`docs/handoff/rating-gate-on-requester-confirm.md` was stale in a load-bearing direction and
+    is corrected.** It told the production dev that **`__ptRated` sets `confirmed`** — i.e. the
+    fused behaviour the owner ruled wrong on 8/09. Now names `__ptConfirmed`, records the live
+    parity (`/confirm_payout/:id` vs `/ratings`, which writes no order state; plus
+    `PATCH /:id/complete` confirms automatically while `/complete/v2` does not), and adds a
+    checklist item to audit clients for the same fusion. **It also records what the decoupling
+    un-broke and nobody had noticed:** because `confirmed` only ever arrived *with* a rating, the
+    Gopher's own "Rate {requester} →" button **could never appear for a requester who declined to
+    rate** — the gate that doc specifies was *unreachable on the most common path*.
+  - **Verified behaviourally, on the live URL, not just by matching bytes:** shared iQ brain loads
+    through the deploy's `../../Final/` → `../../` rewrite (`lookup('Raleigh').workers` = 188);
+    run 1 confirm with **no rating** → confirmed; **Reset**; run 2 on the reused `GR-00128` →
+    `confirmed:true`, `substage:'completed'`, `rated` **unset**. 0 console errors. The pane
+    throttled the 600ms tick twice while occluded and the relay looked dead both times — the
+    documented quirk, not a product bug; screenshot/front the tab and it resumes.
+  - **Deploy was pinned on purpose.** Three other sessions' uncommitted **customer-facing** files
+    (`gopher-connect.html`, `gopher-request.html`, `gopher-go-101.html` + 2 handoff docs) were in the
+    shared clone, so `deploy.sh` ran from a **worktree pinned at `505ac28`** — shipped **1 file, 0
+    riders**, nothing of theirs. Owner of those edits (the *Jira Low Risk Tickets* session, G40-37 +
+    G40-69) was pinged: the deploy reads the **working tree**, so the next `--allow-dirty` deploy
+    from this clone publishes their in-flight work. **Confirmed by curl + `origin/main` that none of
+    it is live yet** — worth stating because that session's own `HTTP 200` + grep reads like a live
+    check but was a local serve.
+  - **Two traps re-confirmed:** a pinned worktree lacks the **gitignored disk-only** allowlisted
+    files (`Go/gopher-banner.js`, `Request/gopher-banner.js`) and the preflight aborts until they are
+    copied in from the clone; and the Go router itself audited **clean** (all 21 `data-goto` values
+    resolve via `BYID` or an explicit `dg===` case) — the one apparent cross-app leak, Go's deals
+    screen pointing at `gopher-request-home.html`, carries a **"do NOT fix these paths"** G40-327
+    deeplink-seam comment. Don't "fix" it.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
