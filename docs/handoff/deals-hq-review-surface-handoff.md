@@ -141,12 +141,24 @@ record that keeps up.
    61730 (deactivated) and 31677 (Gopher Inc, a platform account) = 18. Independently
    reconciled against `sp-eligibility-data.js`. Includes id 14, the owner's own account
    (prelaunch band, 16 jobs) at his instruction — he intends to post the first deal.
-   ⛔ **THE COHORT SPANS 5 TO 19 SERVICE JOBS AGAINST A BAR OF 20**, so neither nudge
-   template may be sent to it — `gopher-email-sp-deals-eligible.html` opens "you've hit the
-   bar", false for 16 of 18. Use **`gopher-email-sp-deals-launch-cohort.html`**: states the
-   standard is unchanged, says plainly they may not have hit it, and explains they were
-   switched on early to seed launch supply. The prelaunch/near-miss templates remain correct
-   for their own bands, which are now a DIFFERENT population than the granted 18.
+   ⛔ **NOTHING AUTOMATED GOES TO THE 18 — owner ruling 2026-08-12**, verbatim: *"I'm NOT
+   sending anything automated to the initial batch. I'm personally calling them since it's a
+   small number. Don't let that block you. Set that for post launch logic."* No welcome, no
+   nudge, no eligibility mail. This REVERSES a plan assumed across at least three sessions,
+   so read it before drafting any send.
+   **The email work is DEFERRED, not wasted** — four templates exist and are the post-launch
+   automated path, for when volume stops being small enough to phone:
+   · `gopher-email-sp-deals-eligible.html` — fires when a worker genuinely crosses the bar
+     (SP-PIPE §2, the deals@ congratulations mail; specified, not launch-blocking)
+   · `gopher-email-sp-deals-prelaunch.html` — the 15–19 band ("you're right there")
+   · `gopher-email-sp-deals-nearmiss.html` — the 5–14 band, neutral where-you-stand copy
+   · `gopher-email-sp-deals-launch-cohort.html` — written for the granted 18 and NOT sent;
+     keep it, because the next hand-picked cohort will need exactly this copy.
+   ⚠️ **Why the launch-cohort template had to exist at all, and why it still matters:** the
+   granted cohort spans **5 to 19 service jobs against a bar of 20**, so the eligible
+   template's "you've hit the bar that matters: 20+ completed service jobs" is FALSE for 16
+   of the 18. Any future hand-picked grant has the same shape. Never send an earned-eligibility
+   mail to a granted population.
    ⚠️ **No admin READ of grant state exists** — only PATCH grant/revoke, so "who is granted?"
    currently requires a mutation probe (409 = already granted) or a DB query, and the
    Dashboard's `grantsInSnapshot:false` cannot be filled until one exists. The Go session
