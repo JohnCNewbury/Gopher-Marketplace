@@ -45,7 +45,47 @@ MATRIX = [
     ("moving", "dolly rental", None),
     ("ride_sharing", "boxes", None),
     ("junk_removal", "help", None),
+    # Owner repro 2026-08-12 — "<trade> work" must be owned by the trade noun, not
+    # by the bare word "work". Before the fix these routed to Hourly / Day Labor
+    # because work/worker/workers stem-folded onto that category's hint vocabulary.
+    ("junk_removal", "Can you help me with electrical work", "home_services"),
+    ("junk_removal", "carpentry work", "home_services"),
+    ("junk_removal", "electric work", "home_services"),
+    # Guards on the SAME token: "work" is topical in these, not grammatical, so
+    # stopping it outright would regress them (cf. "cash out", 2026-07-21).
+    ("home_services", "seasonal yard work", "yard_work_outdoor_projects"),
+    ("home_services", "need a laborer for a few hours", "hourly_day_labor"),
+    ("home_services", "need 2 workers for tomorrow", "hourly_day_labor"),
+    ("junk_removal", "commute to work", "ride_sharing"),
+    ("home_services", "day labor", "hourly_day_labor"),
 ]
+
+# Direct classifier assertions: the mismatch matrix above only sees the DECISION,
+# so a scoring regression that stays on the right side of the thresholds would
+# pass it silently. These pin the ranking itself.
+#   (query, expected top slug, slugs that must NOT be top)
+SCORE_MATRIX = [
+    ("Can you help me with electrical work", "home_services", ["hourly_day_labor", "ride_sharing"]),
+    ("electrical work",   "home_services", ["hourly_day_labor"]),
+    ("plumbing work",     "home_services", ["hourly_day_labor"]),
+    ("carpentry work",    "home_services", ["hourly_day_labor"]),
+    ("hvac work",         "home_services", ["hourly_day_labor"]),
+    ("painting work",     "home_services", ["hourly_day_labor"]),
+    ("handyman work",     "home_services", ["hourly_day_labor"]),
+    ("landscaping work",  "yard_work_outdoor_projects", ["hourly_day_labor"]),
+    ("yard work",         "yard_work_outdoor_projects", ["hourly_day_labor"]),
+    ("day labor",         "hourly_day_labor", []),
+    ("need a laborer for a few hours", "hourly_day_labor", []),
+    ("need 2 workers for tomorrow",    "hourly_day_labor", []),
+    ("workers needed",                 "hourly_day_labor", []),
+    ("commute to work",   "ride_sharing", ["hourly_day_labor"]),
+    ("need a ride to work", "ride_sharing", ["hourly_day_labor"]),
+]
+
+# The bare word "work" carries no service intent on its own. Before the fix it
+# scored hourly_day_labor 7.5 and ride_sharing 3.5 — enough for "work" alone to
+# out-vote the actual subject noun of the sentence.
+BARE_WORK_CEILING = 2.0
 
 
 def _fn(src, name):
@@ -88,6 +128,37 @@ def run(deps, label):
         print("  [%s] %-16s %-42s exp=%-26s got=%s" %
               ("PASS" if r["pass"] else "FAIL", r["sel"], (r["desc"] or "(empty)")[:42],
                r["exp"] or "null", r["got"] or "null"))
+        passed += 1 if r["pass"] else 0
+    return passed, len(rows)
+
+
+def run_scores(deps, label):
+    """Path D — assert the RANKING, not just the mismatch decision."""
+    harness = ("var window={};\n" + deps +
+               "\nvar T=" + json.dumps(SCORE_MATRIX) + ";" +
+               "var res=T.map(function(t){var s=scoreCategories(t[0]);"
+               "var top=s[0]||{slug:null,score:0};var bad=[];"
+               "t[2].forEach(function(b){if(top.slug===b)bad.push(b);});"
+               "return {q:t[0],exp:t[1],got:top.slug,score:top.score,bad:bad,"
+               "pass:(top.slug===t[1]&&bad.length===0)};});"
+               "var w=scoreCategories('work');"
+               "res.push({q:'work (bare)',exp:'<= " + str(BARE_WORK_CEILING) + "',"
+               "got:(w[0]?w[0].slug:'none'),score:(w[0]?w[0].score:0),bad:[],"
+               "pass:(!w[0]||w[0].score<=" + str(BARE_WORK_CEILING) + ")});"
+               "JSON.stringify(res);")
+    tmp = "/tmp/_cat_score_harness.js"
+    open(tmp, "w").write(harness)
+    out = subprocess.run(["osascript", "-l", "JavaScript", tmp], capture_output=True, text=True)
+    os.unlink(tmp)
+    if out.returncode != 0:
+        sys.exit("JXA error (%s): %s" % (label, out.stderr.strip() or out.stdout.strip()))
+    rows = json.loads(out.stdout.strip())
+    passed = 0
+    print("-- path %s --" % label)
+    for r in rows:
+        print("  [%s] %-38s exp=%-28s got=%s (%.1f)%s" %
+              ("PASS" if r["pass"] else "FAIL", r["q"][:38], r["exp"], r["got"], r["score"],
+               "  << must not win: " + ",".join(r["bad"]) if r["bad"] else ""))
         passed += 1 if r["pass"] else 0
     return passed, len(rows)
 
@@ -136,8 +207,12 @@ def main():
     for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
         deps.append(_fn(eng, f))
     b = run("\n".join(deps), "B: inlined-engine globals")
+    cls = open(CLASSIFIER, encoding="utf-8").read()
+    # strip the classifier's IIFE wrapper so scoreCategories is directly callable
+    cls_body = cls[cls.index("(function(){") + len("(function(){"):cls.rindex("})();")]
+    d = run_scores(cls_body, "D: classifier ranking")
     wiring_ok = check_page_wiring()
-    total_ok, total = a[0] + b[0], a[1] + b[1]
+    total_ok, total = a[0] + b[0] + d[0], a[1] + b[1] + d[1]
     print("\n%d/%d passed%s" % (total_ok, total, "" if wiring_ok else " — WIRING FAILURES above"))
     sys.exit(0 if (total_ok == total and wiring_ok) else 1)
 

@@ -1715,36 +1715,65 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   gitignored) and the deploy aborts on them — copy them in from the clone first. That is the
   repeatable way to ship one session's work while another's sits uncommitted-to-live beside it.
 
+- **iQ calibration: `<trade> work` misrouted to Hourly / Day Labor — FIXED (owner screenshot
+  2026-08-12; diagnosed 8/09).** Repro: **"Can you help me with electrical work"** → CTA
+  **Hourly / Day Labor**, a delivery FAQ as the related answer, and **Ride Sharing** suggested.
+  Three defects, fixed together behind a regression matrix per the standing caveat — this
+  matcher is hand-tuned keyword scoring, so every change here is a data-level tune and the
+  corpus is **not** provably collision-free.
+  - **1. The stemmer was the actual cause, not the stop list.** `stem()` folds `worker`/`workers`
+    → `work`, and `hourly_day_labor` legitimately carries both agent nouns in `tokens`+`hints`.
+    So the bare noun `work` collected **hint-strength** score (4× weight) for day labor: `work`
+    alone → labor **7.5**, ride 3.5, home 1. Against `electrical` (home 9.5 alone) the combined
+    query still went **labor 7.5 ▸ home 4.5**. *"plumbing work"* survived by a single point
+    (8.5 ▸ 7.5) — every `<trade> work` phrasing was one point from misrouting.
+    **Fix: `worker`/`workers` added to `STEM_KEEP`**, so the agent nouns keep their own token and
+    the bare verb no longer inherits their weight; both explicit forms were added back to the
+    labor vocabulary so *"need 2 workers"* is unaffected. `work` alone now tops out at **1.0**.
+    ⚠️ **`work` is deliberately NOT a stop word** — "yard work" and "day labor" are topical, the
+    same nuance that made stopping `out` regress "cash out" (2026-07-21). Both are asserted.
+  - **2. `ride_sharing` carried a bare `work` token** (from "commute to work" / "pickup after
+    work") — that alone is why an electrical query offered a ride. Token removed; the phrases
+    stay, so *"commute to work"* still scores ride_sharing **18.5**.
+  - **3. The FAQ related answer was carried by pure function words — but NOT by a STOP-set gap.**
+    The 8/09 note blamed drift between the two STOP sets; **that diagnosis was wrong and is
+    corrected here.** `scoreRec` already excludes low-information words from `terms` via the
+    LOWINFO guard. The leak was that **`synExtra` was built from `expandQuery(q)`, which returns
+    the ORIGINAL query words alongside any synonyms**, and only `terms` were subtracted from it —
+    so every LOWINFO word the guard had just excluded (`help`, `with`, `you`) re-entered as a fake
+    "synonym" and bought the capped −3 confidence bonus, dragging unrelated records under
+    `FAQ_FLOOR`. The guard was working; the bonus path went around it. **Fix: subtract the raw
+    query words from `synSet` too.** (`someone` also added to LOWINFO — "can someone …" is filler.)
+    **Lesson: a guard that is bypassed elsewhere reads exactly like a guard that is missing.**
+  - **Trade vocabulary gap found while fixing:** `electrical`/`carpentry` do **not** stem-fold onto
+    the existing `electrician`/`carpenter` hints (unlike `plumbing`→`plumber`), so home_services had
+    no entry for the adjective at all. Added `electrical`/`electric`/`carpentry` + the trade-work
+    phrases.
+  - **Regression is asserted, not eyeballed — and both harnesses were PROVEN to fail on the old
+    code before being accepted** (8 failures / 3 failures respectively; a green test that cannot
+    fail proves nothing). `run_category_tests.py` gained **path D — classifier ranking** (15 rankings
+    + a `work`-alone score ceiling), because paths A/B only assert the mismatch *decision* and a
+    scoring regression that stays on the right side of the thresholds would pass silently. **72/72.**
+    New **`docs/handoff/category-mismatch/run_faq_matcher_tests.py`** covers the other half of a pill
+    answer (which FAQ is offered) with MUST_MATCH / MUST_NOT sets — **13/13**. FAQS integrity green
+    (184 × 7, hash unchanged: the corpus was not touched, only matcher code). Parity harness 0
+    failures.
+  - **Applied to all 7 synchronized copies** (engine + 6 inline pages) by a two-phase splice that
+    validates every file before writing any, then regenerated `gopher-category-classifier.js` using
+    the generator's own extraction. **`regen_categories_from_ml.py`'s own `STEM_KEEP` was synced
+    too** — it has a duplicate `stem()` for phrase dedupe, so leaving it stale would silently undo
+    the fix on the next data refresh.
+  - Browser-verified on a served copy: the owner's exact query → **Home Services**, no delivery FAQ,
+    no Ride Sharing; plus "seasonal yard work" → Yard Work, "day labor" → Hourly/Day Labor, and the
+    `gopher-request.html` IIFE export intact with the mismatch nudge firing to home_services.
+    0 console errors; all 8 modified files JXA-parse clean.
+  - ⚠️ **"do you have service in Raleigh" lost its related FAQ** (it had been clearing the floor on
+    the same `you` bonus). **Verified in-browser to be cosmetic:** that query is answered by the
+    **coverage brain** ("Raleigh has ~188 neighbors…"), which owns it via `classifyLocationIntent`
+    long before the FAQ pipeline — and category routing for location queries is unchanged. Checked
+    rather than assumed, because the regression matrix flagged it as a loss.
+
 ### Outstanding to-do
-
-- **⚠️ iQ CALIBRATION — "work" is scored as a content word, and the two STOP sets have drifted
-  (owner screenshot, 2026-08-09). NOT FIXED — captured for the next calibration pass.**
-  Repro on the live pill: **"Can you help me with electrical work"** → closest match
-  **Hourly / Day Labor**, a delivery FAQ as the related answer, and **Ride Sharing** offered as a
-  suggestion. Three defects, all reproduced against `assets/js/gopher-category-classifier.js`:
-
-  1. **`work` outweighs the subject noun.** Measured scores:
-     `electrical` alone → **home_services 9.5** (correct). `work` alone → **hourly_day_labor 7.5**,
-     ride_sharing 3.5, home 1. Together → **labor 7.5 ▸ home 4.5** — the trade noun loses.
-     The control shows how close this runs: *"plumbing work"* → home 8.5 ▸ labor 7.5, surviving by
-     one point. **Every `<trade> work` phrasing is one point from misrouting to day labor.**
-     ⚠️ **`work` is NOT a plain stop word** — "yard work" and "day labor" are legitimately topical,
-     the same nuance that made stopping `out` regress "cash out" (2026-07-21). The fix is to treat
-     `<trade> work` as a bigram owned by the trade, not to blanket-stop the token.
-  2. **Ride Sharing scores 3.5 on the bare word `work`** — almost certainly a "ride to work" keyword
-     that should be a bigram. It is why an electrical query offers a ride.
-  3. **The FAQ matcher's STOP set has drifted from the classifier's.** Ten function words are
-     stopped in one and not the other: `at, does, help, me, need, someone, this, we, with, you`.
-     That is why the related answer was *"How does delivery work **with** Gopher?"* — the screenshot
-     shows `with` and `help` highlighted as the matched terms. **Pure function words carried the
-     match**, the identical class of bug fixed in the app prototypes on 2026-07-21 (`there` scoring
-     +1 off an answer body and satisfying the coverage gate). The web engine never got that fix.
-     Both sets live in `gopher-ai-engine.js` — FAQ at ~L169, classifier at ~L197.
-
-  **Do not fix these piecemeal.** Every stop-word decision here is a per-word judgement call, and
-  this corpus is **not** provably collision-free — the standing caveat is that a real retrieval
-  layer is the production answer. Fix them together with a regression matrix, the way the 7/21 pass
-  did (32 queries, each asserted against its expected answer).
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
   **keeping it current is LOW priority; do not flag its drift.** Its job is **fielding merchant
