@@ -22,12 +22,14 @@
    lives here and nowhere else. Display labels never travel over the API.
 
    WHAT A REAL CARD CANNOT SHOW YET (deliberate, not oversight)
-   The payload carries no provider display name, tier, rating, or photo —
-   those are either reviewer-side (eligibility snapshot) or simply not in
-   the deals row. Real provider cards therefore render as "Verified
-   Service Provider" with no rating line. Adding a display name to the
-   feed is a payload-extension decision (it is the worker's business
-   name) — owner's call, not a client-side patch.
+   The provider's NAME now arrives as `title` — resolved server-side at
+   submit (business name when the worker shows as a business, else their
+   first name) and stored on the deal row, so this stays a single-source
+   read with no join. Owner decision 2026-08-12.
+   Still absent, and still deliberate: tier, rating and photo. Tier and
+   rating live in the eligibility snapshot, which is reviewer-side — a
+   customer-facing rating for a provider would need its own privacy call
+   (see INV-RATING), not a quiet payload extension.
    ===================================================================== */
 (function () {
   var API = 'https://api.gophergo.io/api/v1/deals';
@@ -57,8 +59,14 @@
     };
     if (d.track === 'dlp') {
       base.kind = 'service';
+      /* `name` is the SERVICE, `pro` is who provides it — the shape the demo
+         cards already use. `title` carries the provider's display name, chosen
+         server-side at submit: business name when they show as a business,
+         else their first name. It was NULL until 2026-08-12, which is why this
+         used to read "Verified Service Provider" for everyone; that string is
+         now only the fallback for a deal that predates the fix. */
       base.name = titleCase((d.keywords && d.keywords[0]) || 'Service Deal');
-      base.pro = 'Verified Service Provider'; // no display name in the payload — see header
+      base.pro = d.title || 'Verified Service Provider';
       base.price = dollars(d.customer_price);
       base.normalRate = dollars(d.normal_price);
       base.verified = true;

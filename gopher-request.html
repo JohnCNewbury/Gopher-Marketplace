@@ -26495,6 +26495,29 @@ function initPersonalEdit(){
     document.getElementById('referTrackLink').addEventListener('click', function(){ close(); jumpToTrack(); });
     document.getElementById('rfDoneTrack').addEventListener('click', function(){ close(); jumpToTrack(); });
   })();
+  /* ── BACKEND CONTRACT — G40-37, live on production since 2026-08-11 ────────
+     This surface does not yet send anything real. When it is wired to
+     POST /refer-favorite it MUST honour what the backend now enforces:
+
+       • A MY Gopher already sitting unactioned in that recipient's inbox is
+         NOT sent again — the inbox renders one message per stored row, so a
+         second row is a second message.
+       • Dedup is PER GOPHER. Recommending A+B to someone who already has A
+         pending submits B alone, and returns success. Say nothing about the
+         filtered ones (owner ruling: the user's intent was that the Gopher got
+         recommended, and it did).
+       • When NOTHING is new, the endpoint returns
+             409 "Referrals have already been sent."
+         Render the standard "already sent" state — not a generic error. Match
+         the string exactly; that is the contract both live apps already use.
+       • Declined or completed recommendations may be sent again. MY Gopher
+         recommendations do not expire.
+
+     Doc of record: docs/handoff/G40-37-recommend-my-gopher-duplicate.md
+     Not yet shipped, do NOT pre-build: the "…has already been recommended to
+     that user. Great minds…" copy for an already-ACCEPTED gopher. Backend
+     half is unbuilt; it needs a reason code, not this string.
+     ────────────────────────────────────────────────────────────────────────── */
   /* Recommend MY Gophers — reads the canonical store via window.__getMyGophers */
   var recommendSel={};
   function openRecommendModal(){
