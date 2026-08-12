@@ -118,8 +118,17 @@ record that keeps up.
    `/admin/deals/:id/approve|reject`; approve publishes + tags the owner's role
    row atomically in a real transaction; reject requires the reason). Dashboard
    wiring `b425f6d` (confirm modal states both effects; blank reason blocks;
-   errors render in-modal). ⚠️ One end-to-end approve from the served dashboard
-   still owed — the endpoints were verified by stub, not against live Postgres.
+   errors render in-modal). ✅ **END-TO-END VERIFIED against production
+   2026-08-11** (owner-authorized, driven by the session): deal 5 (`DL-0005`,
+   the owner's Path A test) approved through the real Dashboard UI → toast
+   "Published … owner tagged merchant" → `GET /api/v1/deals` serves it publicly
+   (count 0→1) → pending queue 4→3. The feed payload also shows the keyword
+   canonicalisation live (`["delivery","errands","tasks"]`, lowercased) and
+   carries no earn_amount and no owner contact — the Go session's source-pin
+   holding in production. ⚠️ Deal 1 (`DL-0001`) was found status **`paused`**
+   mid-check — a state nothing built sets; presumed the Go session's golden-path
+   run in flight. Deal 5 was chosen instead to avoid a two-session collision on
+   the same row.
 6. ✅ **`deal_code` backfill** — rides the generator fix (`d2ebdf4e`): boot-time
    idempotent UPDATE names deals 1–5 `DL-0001..0005`; the generator itself now
    derives from the row's own id (the `MAX(id)+1` prediction was a race, a drift,
