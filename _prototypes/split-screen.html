@@ -649,7 +649,18 @@
     // live app) so a fresh demo run gets the Attention! acknowledgment again.
     try{ localStorage.removeItem('hideAcceptRequestAttentionModalChecked'); }catch(_){}
     // 2) forget everything the harness has relayed so the fresh frames start clean
-    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; disputeSeen={}; goCancelSeen={}; reqCancelSeen={}; referralSeen=0;
+    /* Every seen-map declared above must be listed here. Order ids are reused across runs
+       (GR-00128 every time), so a map that survives Reset silently suppresses its relay on the
+       second run — the relay looks dead and the product looks broken. confirmSeen was added
+       2026-08-09 and missed here: after one Reset, CONFIRM COMPLETED stopped reaching the Go
+       phone and the worker sat on "Pending confirmation" forever, reproducing the exact bug that
+       change fixed. Add the new map here in the SAME commit that declares it.
+       The seq-keyed maps are the subtler half of this: navSeen and flagSeen compare against
+       job.<x>.seq, which restarts at 1 on a rebooted frame (seq:((j.x&&j.x.seq)||0)+1), so a
+       stale 1 from the previous run matches the fresh 1 and swallows the FIRST nav / first
+       report after a Reset. Both were missing here too. Asserted by
+       docs/handoff/category-mismatch/run_splitscreen_reset_test.py. */
+    injected={}; injectedSeq={}; accepted={}; countered={}; decided={}; statusSeen={}; ratingSeen={}; confirmSeen={}; bidSeen={}; bidDecided={}; goMsgSeen={}; reqMsgSeen={}; adjustSeen={}; adjustDecided={}; noShowAlerted={}; noShowDone={}; disputeSeen={}; goCancelSeen={}; navSeen={}; flagSeen={}; reqCancelSeen={}; referralSeen=0;
     // 3) reboot both phones to their empty state (cache-busted, like the first load)
     var v='&v='+Date.now();
     reqFrame.src=reqFrame.getAttribute('data-src')+v;

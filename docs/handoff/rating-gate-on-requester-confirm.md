@@ -39,11 +39,29 @@ renderer: a low score from a requester who may be standing right there is a reta
    arrived" — confirming rate-before-confirm was a reachable state by design.)
 
 **As of this change (reference implementation):** the rating block renders **nothing** until
-`j.confirmed` is set by the requester's confirm relay (`window.__ptRated`). The wait state
+`j.confirmed` is set by the requester's confirm relay. The wait state
 reads "Job complete — waiting for {requester} to confirm. You'll rate them once they confirm."
 After confirm: "Rate {requester} →" (then "You rated {requester}" once submitted). Verified
-in the split-screen harness: no rate button at `substage='completed'`; button appears on
-`__ptRated(...)` landing.
+in the split-screen harness: no rate button at `substage='completed'`; button appears once the
+confirm lands.
+
+> **⚠️ CORRECTED 2026-08-11 — the confirm relay is `window.__ptConfirmed`, NOT `__ptRated`.**
+> This paragraph and the requester-side section below originally said `__ptRated` set
+> `job.confirmed`. That was true when written and is now **wrong**, and the difference is the
+> whole point of the 2026-08-09 fix (commit `cc4493c`): the two were **fused**, so confirmation
+> could only reach the worker if the requester *also* rated. Rating is optional, so a requester
+> who tapped CONFIRM COMPLETED and closed the rating modal left the worker reading "Pending
+> confirmation — {who} controls the payout until they confirm" **forever**, payout apparently
+> unreleased. `window.__ptConfirmed(id)` is now the only thing that flips `job.confirmed`
+> (idempotent; also clears any open dispute), and `__ptRated` records the rating + favourite and
+> **deliberately does not confirm**.
+>
+> **This also un-broke the gate documented on this page.** Because `confirmed` used to arrive
+> only with a rating, the Gopher's own "Rate {requester} →" button could **never appear for a
+> requester who declined to rate** — the gate was not merely strict, it was unreachable on the
+> most common path. Decoupling fixed the display bug and the gate in one move. Both directions
+> re-verified in the harness 2026-08-11: confirm with **no** rating → `confirmed:true`,
+> `substage:'completed'`, `rated` unset, and the rate button offered.
 
 ### Gopher Go — guided completion demo (same file, `initCompletionFlow`)
 
@@ -53,10 +71,19 @@ your delivery" banner** → locked rating step. The demo never offered rating be
 
 ### Requester side (Request web `Final/gopher-request.html`, Connect, app prototype)
 
-The requester's confirm + rating is a single flow and is the payout trigger. In the prototype
-harness (`_prototypes/split-screen.html`, `watchRating`), the requester's rating relays to the
-Go phone via `__ptRated`, which sets `confirmed`, releases the "paid out" state, and resolves
-any open dispute. Unchanged by this note.
+The requester's confirm is the payout trigger; the rating that follows it is **optional** and
+changes no order state. In the prototype harness (`_prototypes/split-screen.html`,
+`watchRating`) the two relay **separately**, on separate seen-maps (`confirmSeen` / `ratingSeen`):
+the confirm fires first and independently via `__ptConfirmed`, releasing the "paid out" state and
+resolving any open dispute, and a rating arriving later — or never — relays on its own via
+`__ptRated`.
+
+**This mirrors live deliberately, and live is the reference.** On `origin/production`,
+`POST /confirm_payout/:id` captures, transfers, updates order status and notifies, while
+`POST /ratings` (`controllers/common/ratings.js`) writes the rating row and `users_roles` and
+**never touches `aasm_state`**. Two endpoints, two effects. Also live and worth knowing before
+anyone "simplifies" the completion path in the rebuild: `PATCH /:id/complete` confirms payout
+automatically, while `PATCH /:id/complete/v2` completes *without* confirming.
 
 ### Policy copy (`Final/gopher-terms-of-service.html`, §23 "Ratings & Removal")
 
@@ -77,6 +104,12 @@ This repo is the blueprint, not the live code — the live apps must be audited 
       mark-complete, reschedule it to confirm time.
 - [ ] **Data check:** ratings submitted between mark-complete and confirm (the previously
       reachable window) are suspect per this rule — flag for review rather than migrate as-is.
-- [ ] **Requester app:** no change — confirm+rate stays the payout trigger.
+- [ ] **Requester app:** no change — the **confirm** stays the payout trigger.
+- [ ] **Confirm and rating must not be fused on any client** (added 2026-08-11). The live API
+      already separates them (`/confirm_payout/:id` vs `/ratings`), so this is a client-side
+      audit: check that no app releases payout state *inside* a rating-submit handler, and that
+      skipping the optional rating modal still advances the worker's view. The prototype had
+      exactly this defect and it was invisible until someone declined to rate — the failure mode
+      is a worker permanently reading "pending confirmation" on a job that was in fact paid out.
 - [ ] **TOS §23 wording** updated per above (needs attorney sign-off per the repo's review
       conventions).
