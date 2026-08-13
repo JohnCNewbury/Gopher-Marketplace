@@ -2240,6 +2240,108 @@ window.GoAuth = (function(){
      Refused loudly (throws), not silently dropped: a caller that thinks it is
      saving an email must find out here, in development, not in production. -->
 <script>
+window.GoWork = (function(){
+  /* ── WORK SETTINGS ───────────────────────────────────────────────────────
+     GET/PUT /users/worksettings — a purpose-built API, not the onboarding path.
+       GET  -> { hasSetBefore, radius, minEarnings, selectionMap, categoryOptions }
+       PUT  <- { radius, selectionMap }   (server derives selecttype/selectsubtype)
+
+     ⚠️ TWO VOCABULARIES. This pane's cards were written with customer-facing
+     labels ("Ride Sharing", "Yard / Outdoor"); the server's selectionMap is
+     keyed by ITS values ("Need a Ride", "Yard Project"). The map below is the
+     only place they meet. A wrong string here does not error — the selection
+     simply never persists, which is the silent failure this file has been
+     bitten by twice already, so `validate()` checks every mapped value against
+     the categoryOptions the SERVER sends and reports anything that has drifted.
+
+     ⚠️ TWO CARDS HAVE NO SERVER CATEGORY, deliberately left unmapped:
+       "Delivery — Age-Restricted" is not a category server-side; it is the
+         isAgeRestricted SUB-TYPES of Delivery (Alcohol, CBD/Other).
+       "Other" does not exist server-side at all.
+     Both are surfaced to the owner rather than quietly bound to a near-miss. */
+  var CAT_MAP = {
+    'Delivery / Errand':      'Delivery',
+    'Ride Sharing':           'Need a Ride',
+    'Hourly / Day Labor':     'Hourly / Day Labor',
+    'Yard / Outdoor':         'Yard Project',
+    'Home / Office Services': 'Home Services',
+    'Moving':                 'Moving',
+    'Junk Removal':           'Junk Removal'
+  };
+  var UNMAPPED = ['Delivery — Age-Restricted', 'Other'];
+
+  function validate(categoryOptions){
+    var server = (categoryOptions || []).map(function(c){ return c.value; });
+    var missing = Object.keys(CAT_MAP).filter(function(k){
+      return server.indexOf(CAT_MAP[k]) === -1;
+    });
+    if(missing.length && window.console){
+      console.warn('[GoWork] category map has drifted from the server:',
+        missing.map(function(k){ return k + ' -> ' + CAT_MAP[k]; }));
+    }
+    return missing;
+  }
+
+  function load(){
+    if(!(window.GoAuth && window.GoSession && GoSession.token()))
+      return Promise.resolve(null);
+    return GoAuth.apiCall('/users/worksettings', { method:'GET' }).then(function(r){
+      if(!r.ok) return null;
+      var d = (r.body && (r.body.data || r.body)) || {};
+      validate(d.categoryOptions);
+      apply(d);
+      window.GoWork.__last = d;
+      return d;
+    }).catch(function(){ return null; });
+  }
+
+  function apply(d){
+    if(!d) return;
+    var sec = document.querySelector('.dash-section[data-dash-section="work"]');
+    if(!sec) return;
+    var sel = d.selectionMap || {};
+    /* Category toggles reflect the ACCOUNT, not the demo defaults. */
+    Object.keys(CAT_MAP).forEach(function(label){
+      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
+      if(!row) return;
+      var sw = row.querySelector('.sw.js-cat');
+      if(!sw) return;
+      var on = !!sel[CAT_MAP[label]];
+      sw.classList.toggle('on', on);
+      sw.setAttribute('aria-checked', String(on));
+      var hid = row.querySelector('input[data-field]');
+      if(hid) hid.value = on ? 'on' : 'off';
+    });
+    /* Radius: the server default is 25 when a worker has never set one. */
+    if(d.radius != null){
+      var rg = sec.querySelector('input[type=range]');
+      if(rg){ rg.value = d.radius; rg.dispatchEvent(new Event('input',{bubbles:true})); }
+    }
+    if(sec.__setBaseline) sec.__setBaseline();
+  }
+
+  /* Reads the pane back into the server's shape. Only mapped cards travel —
+     an unmapped card must not invent a category the server does not have. */
+  function collect(){
+    var sec = document.querySelector('.dash-section[data-dash-section="work"]');
+    if(!sec) return null;
+    var selectionMap = {};
+    Object.keys(CAT_MAP).forEach(function(label){
+      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
+      if(!row) return;
+      var sw = row.querySelector('.sw.js-cat');
+      if(sw && sw.classList.contains('on')) selectionMap[CAT_MAP[label]] = true;
+    });
+    var rg = sec.querySelector('input[type=range]');
+    return { radius: rg ? +rg.value : undefined, selectionMap: selectionMap };
+  }
+
+  return { load:load, apply:apply, collect:collect, validate:validate,
+           CAT_MAP:CAT_MAP, UNMAPPED:UNMAPPED };
+})();
+</script>
+
+<script>
 window.GoProfile = (function(){
   /* ── THE IDENTITY LOAD ────────────────────────────────────────────────────
      One /users/profile/:id read populates every place the dashboard shows who
@@ -5403,6 +5505,13 @@ window.showNoAccount = function(){
       /* Re-read when the worker enters the dashboard, for the same reason the
          identity load does: signing in mid-session must not leave demo rows. */
       document.addEventListener('go:entered', loadLive);
+      /* Work settings loads on the same event. READ ONLY for now — the save is
+         deliberately not wired until the owner has confirmed the categories and
+         radius come back right, because a wrong selectionMap key does not error,
+         it just silently fails to persist. */
+      document.addEventListener('go:entered', function(){
+        if(window.GoWork && GoWork.load) GoWork.load();
+      });
     })();
 
     // ── Refer & earn ──
