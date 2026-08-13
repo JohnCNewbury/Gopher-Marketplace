@@ -2299,11 +2299,17 @@ window.GoProfile = (function(){
       if(!o) return '';
       return String(o.line1 || o.businessLine1 || o.address || '').trim();
     };
-    var addrPart = function(a, keys){
+    /* Match the key by PATTERN rather than a guessed list. The address object's
+       postcode field was not `zip`/`zipcode`/`postal_code`, so ZIP came back
+       empty while city and state filled — and adding one more guess would have
+       been the same bet again. This finds whatever it is called. */
+    var addrPart = function(a, rx){
       var o = Array.isArray(a) ? a[0] : a;
       if(!o || typeof o !== 'object') return '';
-      for(var i=0;i<keys.length;i++) if(o[keys[i]]) return String(o[keys[i]]);
-      return '';
+      var k = Object.keys(o).filter(function(key){
+        return rx.test(key) && o[key] != null && String(o[key]).trim() !== '';
+      })[0];
+      return k ? String(o[k]).trim() : '';
     };
     /* Personal info */
     set('piFirst', p.first_name);
@@ -2326,9 +2332,9 @@ window.GoProfile = (function(){
       if(m) set('piDob', m[2] + ' / ' + m[3] + ' / ' + m[1]);
     }
     set('piAddr',  addrLine(p.address));
-    set('piCity',  addrPart(p.address, ['city','businessCity']));
-    set('piState', addrPart(p.address, ['state','businessState']));
-    set('piZip',   addrPart(p.address, ['zip','zipcode','postal_code','businessZip']));
+    set('piCity',  addrPart(p.address, /city/i));
+    set('piState', addrPart(p.address, /state|province/i));
+    set('piZip',   addrPart(p.address, /zip|postal|postcode/i));
     set('piSrc',   p.discover_gopher || p.discover_gopher_others);
     /* Greeting and sidebar carry the real first name too. */
     if(p.first_name){
@@ -2343,16 +2349,43 @@ window.GoProfile = (function(){
        "you never gave us one", which is wrong and invites a needless re-upload. */
     var logoTile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
     if(logoTile){
-      var hasLogo = !!(p.business_logo && String(p.business_logo).trim());
+      var logoUrl = String(p.business_logo || '').trim();
+      var hasLogo = !!logoUrl;
+      var hid = logoTile.querySelector('input[data-field]');
+      if(hid) hid.value = hasLogo ? 'onfile' : '0';
+      /* SHOW THE LOGO, don't just claim it exists. "On file ✓" under a camera
+         icon asks the worker to take our word for it — and gives them no way to
+         notice the wrong image is attached. The tile becomes a preview of the
+         actual artwork, with the label as the caption. Only for a usable URL:
+         a bare filename would render a broken image, which is worse than the
+         text it replaced. */
+      var img = logoTile.querySelector('.bizlogo-img');
+      if(hasLogo && /^https?:\/\//i.test(logoUrl)){
+        if(!img){
+          img = document.createElement('img');
+          img.className = 'bizlogo-img';
+          img.alt = 'Your business logo';
+          logoTile.insertBefore(img, logoTile.firstChild);
+        }
+        img.src = logoUrl;
+        img.onerror = function(){ img.remove(); };      // fall back to the icon
+        var ico = logoTile.querySelector('.up-ico'); if(ico) ico.hidden = true;
+        logoTile.classList.add('has-logo');
+      } else {
+        /* No logo (or an unusable path): restore the empty-tile look. Leaving
+           the icon hidden made the tile read as blank rather than as an invitation
+           to upload. */
+        if(img) img.remove();
+        var ico2 = logoTile.querySelector('.up-ico'); if(ico2) ico2.hidden = false;
+        logoTile.classList.remove('has-logo');
+      }
       var st = logoTile.querySelector('.vp-state');
       if(hasLogo && !st){
         st = document.createElement('span');
         st.className = 'vp-state';
         logoTile.appendChild(st);
       }
-      if(st) st.innerHTML = hasLogo ? 'On file &#10003;' : '';
-      var hid = logoTile.querySelector('input[data-field]');
-      if(hid) hid.value = hasLogo ? 'onfile' : '0';
+      if(st) st.innerHTML = hasLogo ? 'On file &#10003; &middot; tap to replace' : '';
     }
     var hid = document.getElementById('bizShowAs'), sw = document.getElementById('bizShowAsSw');
     if(hid && sw){
@@ -2794,6 +2827,9 @@ window.showNoAccount = function(){
   .rh-list::-webkit-scrollbar-thumb:hover { background:#bcc5d4; }
   .rh-count { font-size:12.5px; color:var(--muted); margin:0 0 8px; }
   .rh-count b { color:var(--navy); }
+  .bizlogo-img { display:block; max-width:120px; max-height:64px; width:auto; height:auto;
+                 object-fit:contain; margin:0 auto 8px; border-radius:8px; background:#fff; }
+  .cred.uptile.has-logo { padding-top:14px; border-style:solid; border-color:#dfe6f2; background:#fff; }
   @media (max-width:700px){ .rh-list { max-height:none; } }
   .rh-lump { display:flex; gap:10px; align-items:flex-start; margin-bottom:12px; padding:11px 13px;
     border:1px solid #cfe3f6; background:#f2f8fe; border-radius:12px; }
