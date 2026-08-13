@@ -4967,10 +4967,14 @@ window.showNoAccount = function(){
         const payfailBlock = j.st==='failed'
           ? '<div class="rh-payfail"><span class="pf-ico">&#9888;&#65039;</span><span class="pf-tx"><b>Payout failed</b> &mdash; Stripe declined card &bull;&bull;'+((j.payfail&&j.payfail.last4)||'')+'. Add a new debit card to receive your '+((j.payfail&&j.payfail.amt)||j.pay)+'.</span></div><button class="pf-cta" id="pfFixCard">Add a new debit card &rarr;</button>'
           : '';
-        const rev = j.stars ? '<p>&#9733; '+j.stars+' received \u2014 \u201c'+j.quote+'\u201d</p>' : '';
+        const rev = j.stars ? ('<p>&#9733; '+j.stars+' received'+(j.quote ? ' \u2014 \u201c'+j.quote+'\u201d' : '')+'</p>') : '';
         const note = j.resolve ? '<p>'+j.resolve+'</p>' : '';
         let logsBlock = '';
-        if(j.logs && j.logs.length){
+        /* A real job has no log to show — say so plainly rather than
+           rendering an empty accordion or inventing events. */
+        if(j.live){
+          logsBlock = '<p class="rhm-sub" style="margin-top:12px">The full step-by-step history for this job lives in the Gopher Go app.</p>';
+        } else if(j.logs && j.logs.length){
           const evs = j.logs.map(L => '<div class="rl-ev'+(L.fail?' fail':'')+'"><span class="rl-dot"></span><div><div class="rl-time">'+(L.d||j.date)+' &middot; '+L.t+'</div><div class="rl-label'+(L.fail?' fail':'')+'">'+L.e+'</div>'+(L.sub?'<div class="rl-sub">'+L.sub+'</div>':'')+(L.loc?'<div class="rl-loc">&#128205; '+L.loc+'</div>':'')+(L.gps?'<div class="rl-gps">GPS &middot; '+L.gps+'</div>':'')+'</div></div>').join('');
           logsBlock = '<button class="rl-toggle" id="rlToggle">View Request Logs ('+j.logs.length+') <span class="rl-caret">&#9662;</span></button>'
                     + '<div class="rl-cap" id="rlCap" hidden>GPS- and time-stamped activity trail \u2014 your record of work.</div>'
@@ -4999,9 +5003,69 @@ window.showNoAccount = function(){
       }
 
       let tab='completed', q='';
+      /* ── REAL JOBS ─────────────────────────────────────────────────────────
+         Signed in, this pane shows the worker's OWN completed and cancelled
+         jobs from GET /orders/v3 — token-scoped, so the backend decides whose
+         they are and the client can never ask for someone else's.
+
+         ⚠️ THE EVENT LOG IS DELIBERATELY ABSENT ON REAL JOBS. The demo rows
+         carry a timestamped log with addresses and GPS; /orders/v3 returns
+         nothing of the sort, and `order_logs` has not been confirmed to hold
+         that shape. Rendering a real job with a fabricated log would be worse
+         than showing no log at all — it is the same dishonesty as a form that
+         says "submitted" and transmits nothing. A real card therefore has no
+         "View Request Logs" button, and gets one line saying where the full
+         history lives.
+
+         Demo rows remain for the signed-out/offline case ONLY, and are
+         replaced outright the moment real data arrives — never mixed, so a
+         worker can never be shown someone else's fiction beside their own
+         work. */
+      let LIVE = null;            // null = not loaded; [] = loaded and empty
+      const money = (cents) => (cents == null ? null : '$' + (Math.round(cents)/100).toFixed(2));
+      const shortDate = (iso) => {
+        const d = new Date(iso);
+        return isNaN(d) ? '' : d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+      };
+      function toCard(o, st){
+        /* Field names taken from the app that already consumes this endpoint
+           (requestorhistory.js), not guessed. */
+        const rating = (o.ratings && (o.ratings.score ?? o.ratings.rating)) ?? null;
+        return {
+          st: st,
+          live: true,
+          ic: 'box',
+          cat: o.sub_category_type || o.title || 'Job',
+          id: '#' + o.id,
+          date: shortDate(o.created_at),
+          who: (o.gopher && (o.gopher.first_name || o.gopher.name)) || 'Requester',
+          sub: o.description || o.title || '',
+          pay: money(o.offer),
+          split: 'Paid on completion',
+          stars: rating != null ? String(rating) : '',
+          quote: '',
+          logs: null                      // never fabricated — see above
+        };
+      }
+      function loadLive(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
+        const qs = 'statuses[]=delivered&statuses[]=cancelled&statuses[]=expired&order_history=true&offset=1';
+        GoAuth.apiCall('/orders/v3?' + qs, { method:'GET' }).then(function(r){
+          if(!r.ok) return;                         // silent: demo rows stand, nothing is claimed
+          const arr = (r.body && r.body.data) || [];
+          if(!Array.isArray(arr)) return;
+          LIVE = arr.map(function(o){
+            const s = String(o.aasm_state || o.status || '').toLowerCase();
+            return toCard(o, s === 'delivered' ? 'completed' : (s === 'cancelled' ? 'cancelled' : 'completed'));
+          });
+          render();
+        });
+      }
+
       function render(){
         const ql = q.trim().toLowerCase();
-        const rows = HISTORY.map((j,i)=>[j,i]).filter(([j]) => j.st===tab && (!ql || (j.cat+' '+j.who+' '+j.sub+' '+j.id).toLowerCase().includes(ql)));
+        const SRC = LIVE || HISTORY;
+        const rows = SRC.map((j,i)=>[j,i]).filter(([j]) => j.st===tab && (!ql || ((j.cat||'')+' '+(j.who||'')+' '+(j.sub||'')+' '+(j.id||'')).toLowerCase().includes(ql)));
         if(!rows.length){ list.innerHTML = '<div class="rh-empty">No '+tab+' requests'+(ql?' match \u201c'+q.trim()+'\u201d':' yet')+'.</div>'; return; }
         // Owner 2026-07-28: a payout issue is not per-job. Stripe retries payouts
         // DAILY for every job carrying a balance, so once the worker fixes the
@@ -5020,7 +5084,7 @@ window.showNoAccount = function(){
         list.innerHTML = lump + rows.map(([j,i]) => {
           const pill = j.st==='completed' ? '<span class="rh-pill ok">Completed</span>' : (j.st==='failed' ? '<span class="rh-pill fail">Payout failed</span>' : '<span class="rh-pill cancel">Cancelled</span>');
           const earn = j.pay ? '<div class="rh-earn">Earn <b>'+j.pay+'</b><span class="rh-split">'+j.split+'</span></div>' : '<div class="rh-earn none">'+(j.none||'No earnings')+'</div>';
-          const rated = j.stars ? '<div class="rh-rated">&#9733; '+j.stars+' received<span class="rh-q">\u201c'+j.quote+'\u201d</span></div>' : '';
+          const rated = j.stars ? ('<div class="rh-rated">&#9733; '+j.stars+' received'+(j.quote ? '<span class="rh-q">\u201c'+j.quote+'\u201d</span>' : '')+'</div>') : '';
           const resolve = j.resolve ? '<div class="rh-resolve">'+j.resolve+'</div>' : '';
           const payfail = j.st==='failed' ? '<div class="rh-payfail"><span class="pf-ico">&#9888;&#65039;</span><span class="pf-tx"><b>PAYOUT FAILED</b> &mdash; please add a new debit card to receive your '+((j.payfail&&j.payfail.amt)||j.pay)+'.</span></div>' : '';
           const fixBtn = j.st==='failed' ? '<button class="pf-cta rh-fixcard">Add a new debit card &rarr;</button>' : '';
@@ -5029,7 +5093,11 @@ window.showNoAccount = function(){
             + '<div class="rh-sub">'+j.sub+'</div>'+earn+rated+resolve+payfail+fixBtn
             + '<button class="rh-ghost" data-i="'+i+'">'+(j.cta||'View summary')+' &rarr;</button></div>';
         }).join('');
-        list.querySelectorAll('.rh-ghost').forEach(g => g.addEventListener('click', () => openDetail(HISTORY[+g.dataset.i])));
+        /* Index into the SOURCE THAT WAS RENDERED, not the demo array. When
+           real jobs are loaded, HISTORY[i] is a different job entirely — a
+           real card would have opened a fabricated summary, complete with an
+           invented event log, attributed to the worker's actual work. */
+        list.querySelectorAll('.rh-ghost').forEach(g => g.addEventListener('click', () => openDetail(SRC[+g.dataset.i])));
         list.querySelectorAll('.rh-fixcard').forEach(b => b.addEventListener('click', goToPayoutAddCard));
       }
       document.querySelectorAll('.rh-tab').forEach(b => b.addEventListener('click', () => {
@@ -5038,6 +5106,13 @@ window.showNoAccount = function(){
       const search = document.getElementById('rhSearch');
       if(search) search.addEventListener('input', () => { q = search.value; render(); });
       render();
+      /* Draw demo rows first so the pane is never blank, then replace them
+         outright if a signed-in worker's real jobs come back. */
+      loadLive();
+      /* Exposed so the pane can be refreshed after something changes it —
+         a job completing, or a sign-in that happens after this pane was
+         already drawn. Without it the list is whatever it was at page load. */
+      window.GoHistory = { reload: loadLive };
     })();
 
     // ── Refer & earn ──
