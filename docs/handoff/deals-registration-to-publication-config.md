@@ -1017,6 +1017,13 @@ the docs against each other. None is resolved here unless the resolution is alre
 
 ### 9.1 Category taxonomy — five vocabularies, no two identical ✅ **RESOLVED (owner, 2026-08-05)**
 
+> ⚠️ **This section is about DEALS categories only.** The SERVICE categories a customer picks
+> when placing a request — and a worker picks in Go work settings — are a different list
+> entirely, and crossing the two is a real failure mode. They are recorded in
+> **`canonical-service-categories.md`**, which exists because three separate wrong service
+> lists reached real work before anyone noticed. Do not derive either taxonomy by grepping
+> code.
+
 > **Ruling applied.** Merchant registration stays at the **four** locked June 7 (Restaurant, Food Trucks
 > & Grocery · Local Favorites · Age-Restricted Shops · **Retail Merchants**) — reconfirmed by the owner
 > from the live form. The consumer **"Convenience Stores" rail was the same bucket under a second name**

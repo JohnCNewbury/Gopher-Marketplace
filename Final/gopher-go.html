@@ -2254,6 +2254,18 @@ window.GoWork = (function(){
      bitten by twice already, so `validate()` checks every mapped value against
      the categoryOptions the SERVER sends and reports anything that has drifted.
 
+     ⚠️ THE CUSTOMER TAXONOMY IS 8, THE WORK-SETTINGS API HAS 7. The canonical
+     customer-facing set (owner, 2026-08-13, from the live Request and Connect
+     Step-1 pickers) is: Delivery / Errand · Junk Removal · Moving · Home /
+     Office Services · Hourly / Day Labor · Yard / Outdoor Projects · Ride
+     Sharing · Other. This pane's card labels now match it exactly, so a worker
+     chooses from the same words a customer sees.
+
+     Two of those labels DIFFER BETWEEN THE TWO CUSTOMER APPS, which is worth
+     fixing at source rather than here: Connect says "Delivery / Courier" and
+     "Other / Custom" where Request says "Delivery / Errand" and "Other". This
+     pane follows Request.
+
      ⚠️ TWO CARDS HAVE NO SERVER CATEGORY, deliberately left unmapped:
        "Delivery — Age-Restricted" is not a category server-side; it is the
          isAgeRestricted SUB-TYPES of Delivery (Alcohol, CBD/Other).
@@ -2263,12 +2275,23 @@ window.GoWork = (function(){
     'Delivery / Errand':      'Delivery',
     'Ride Sharing':           'Need a Ride',
     'Hourly / Day Labor':     'Hourly / Day Labor',
-    'Yard / Outdoor':         'Yard Project',
+    'Yard / Outdoor Projects':'Yard Project',
     'Home / Office Services': 'Home Services',
     'Moving':                 'Moving',
     'Junk Removal':           'Junk Removal'
   };
-  var UNMAPPED = ['Delivery — Age-Restricted', 'Other'];
+  /* Age-restricted delivery is its own card by owner decision (2026-07-23), and
+     it DOES have a server home — not a category, but the two isAgeRestricted
+     SUB-TYPES of Delivery. Mapping it to those makes the card real; leaving it
+     unmapped would have meant a worker opting into age-restricted work and
+     nothing happening, which is the worst possible thing for that particular
+     toggle to do. */
+  var SUBTYPE_MAP = {
+    'Delivery — Age-Restricted': ['Delivery-Alcohol', 'Delivery-CBD/Other']
+  };
+  /* "Other" has no server category and no sub-type. It stays unmapped and is
+     reported, rather than bound to a near-miss. */
+  var UNMAPPED = ['Other'];
 
   function validate(categoryOptions){
     var server = (categoryOptions || []).map(function(c){ return c.value; });
@@ -2312,6 +2335,18 @@ window.GoWork = (function(){
       var hid = row.querySelector('input[data-field]');
       if(hid) hid.value = on ? 'on' : 'off';
     });
+    /* Age-restricted card is ON when EITHER age-restricted sub-type is selected. */
+    Object.keys(SUBTYPE_MAP).forEach(function(label){
+      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
+      if(!row) return;
+      var sw = row.querySelector('.sw.js-cat');
+      if(!sw) return;
+      var on = SUBTYPE_MAP[label].some(function(v){ return !!sel[v]; });
+      sw.classList.toggle('on', on);
+      sw.setAttribute('aria-checked', String(on));
+      var hid = row.querySelector('input[data-field]');
+      if(hid) hid.value = on ? 'on' : 'off';
+    });
     /* Radius: the server default is 25 when a worker has never set one. */
     if(d.radius != null){
       var rg = sec.querySelector('input[type=range]');
@@ -2332,12 +2367,24 @@ window.GoWork = (function(){
       var sw = row.querySelector('.sw.js-cat');
       if(sw && sw.classList.contains('on')) selectionMap[CAT_MAP[label]] = true;
     });
+    Object.keys(SUBTYPE_MAP).forEach(function(label){
+      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
+      if(!row) return;
+      var sw = row.querySelector('.sw.js-cat');
+      if(sw && sw.classList.contains('on')){
+        SUBTYPE_MAP[label].forEach(function(v){ selectionMap[v] = true; });
+        /* A sub-type without its parent is not a selection the server can act
+           on — Delivery must be on for an age-restricted delivery to reach this
+           worker at all. */
+        selectionMap['Delivery'] = true;
+      }
+    });
     var rg = sec.querySelector('input[type=range]');
     return { radius: rg ? +rg.value : undefined, selectionMap: selectionMap };
   }
 
   return { load:load, apply:apply, collect:collect, validate:validate,
-           CAT_MAP:CAT_MAP, UNMAPPED:UNMAPPED };
+           CAT_MAP:CAT_MAP, SUBTYPE_MAP:SUBTYPE_MAP, UNMAPPED:UNMAPPED };
 })();
 </script>
 
@@ -3746,7 +3793,7 @@ window.showNoAccount = function(){
             <div class="cat-row" data-cat="Junk Removal"><div class="crow"><span class="cl">Junk Removal</span><span class="sw js-cat"></span></div></div>
             <div class="cat-row" data-cat="Moving"><div class="crow"><span class="cl">Moving</span><span class="sw js-cat"></span></div></div>
             <div class="cat-row" data-cat="Hourly / Day Labor"><div class="crow"><span class="cl">Hourly / Day Labor</span><span class="sw js-cat"></span></div></div>
-            <div class="cat-row" data-cat="Yard / Outdoor"><div class="crow"><span class="cl">Yard / Outdoor</span><span class="sw js-cat"></span></div></div>
+            <div class="cat-row" data-cat="Yard / Outdoor Projects"><div class="crow"><span class="cl">Yard / Outdoor Projects</span><span class="sw js-cat"></span></div></div>
             <div class="cat-row" data-cat="Other"><div class="crow"><span class="cl">Other</span><span class="sw js-cat"></span></div></div>
           </div>
 
