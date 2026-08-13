@@ -131,13 +131,55 @@ name the standard already specifies.**
 - **Disk-only variants and `reqpkg/` / `_stale_pre_upload/`.** Not shipped, deliberately frozen.
 - **The four `.sheet` elements in tracked-but-undeployed files.** Out of scope; noted above.
 
-## Still open on G40-302 after this
+## The rest of G40-302's structural short list — status 2026-08-13
 
-The other structural targets from its short list are untouched:
+### ✅ Connect `.signin-` / `.otp-modal-overlay` — DONE (commit `94c1307`, live)
 
-- `.ca-overlay` fee/rating/dispute family — Request + Connect web
-- Connect `.signin-` / `.otp-modal-overlay` — rename only
-- Go web `.gl-overlay` + `.rhm-overlay`
+The audit called this *"rename only — visually Guide A already."* **That was wrong on the detail.**
+`.gc-modal-overlay` already existed with **39 references**, so a literal rename meant merging a
+3-reference component into it — and the sign-in overlay carries a `backdrop-filter:blur(3px)`, its
+own `signinFadeIn` animation, a different scrim tint (`13,21,52` vs `13,26,62`), 20px padding and
+`z-index:9000` that the canonical class does not. Renaming would have stripped the blur and the
+fade-in from a live customer-facing page.
+
+Resolved by consolidating the **name** while preserving behaviour: both overlays now carry
+`.gc-modal-overlay` and inherit the canonical geometry, with only their genuine deltas as
+modifiers (`.gc-mo--signin`, `.gc-mo--otp`) — the same shape as `.sheet.sheet--full` above.
+Proven by A/B against a pre-change copy: **all 11 computed properties identical**, plus the
+`[hidden]` behaviour. The inner `.signin-modal` / `.otp-modal` cards were left alone — the
+audit's row named the overlay, and this file is on the WORK-REGISTRY's known-collision list.
+
+### ✅ `.ca-overlay` fee/rating/dispute family — ALREADY COMPLIANT, no work needed
+
+Measured 2026-08-13 against the G40-308 token block, both files (8 `.ca-overlay` + 8 `.ca-modal`
+elements each). **Every token the standard specifies already matches exactly:**
+
+| Token | `.ca-*` | G40-308 |
+| --- | --- | --- |
+| `--scrim-a` | `rgba(13,26,62,0.55)` | `rgba(13,26,62,.55)` ✓ |
+| `--radius` | `18px` | `18px` ✓ |
+| `--shadow-card` | `0 30px 80px rgba(0,0,0,.35)` | identical ✓ |
+| z-index | `9500` | `9500` ✓ |
+| card background | white | white ✓ |
+
+Every remaining difference is **layout, not token**: `align-items:flex-start` + `padding:40px 16px`
++ `overflow:auto` on the overlay, and `width:430px` + no card padding + `overflow:hidden` on the
+card. Those exist because the fee modal is tall, scrolls, and is left-aligned — and the audit's own
+instruction is *"keep its fee layout, just align tokens."* **Guide A explicitly sanctions this
+shape** as its wide/form variant (left-aligned, `max-height`/`overflow-y`) for multi-field forms.
+
+**So this row should be closed as compliant, not built.** The only non-canonical thing left is the
+`.ca-*` *name*. Migrating it into `.gr-modal`/`.gc-modal` would take 32 elements across two live
+customer-facing pages and require enough overrides (width, padding, alignment, overflow) that the
+consolidation would be nominal — **zero visual or behavioural gain for real regression risk.**
+Recommend declining; raise it only if the design system later needs one literal class name.
+
+### ⏸ Go web `.gl-overlay` + `.rhm-overlay` — deliberately not started
+
+`Final/gopher-go.html` took **three commits on 2026-08-13** from an active session, and the
+WORK-REGISTRY names it as edited by several sessions at once. Editing under another session's feet
+is exactly what STANDING RULE 13 exists to prevent. This is the last target; it needs a quiet
+moment on that file, not a race.
 
 ## Verification performed
 
