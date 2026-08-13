@@ -147,6 +147,39 @@ with a demo toggle (`Final/gopher-go.html`, "DLP" gate) — presentation only.
 > correct one. **The bar itself is unchanged** — this was a measurement defect, not a
 > rule change, so D-022 and the capability matrix need no amendment.
 
+### 1.1 ✅ SETTLED — the two classifiers disagree on OLD orders, and that is expected (owner, 2026-08-12)
+
+**Do not re-open this.** Comparing the Dashboard's baked `sp-eligibility-data.js` against the
+live gate (`GET /api/v1/admin/workers/:id/sp-grant` → `helpers/sp_eligibility.js`) found **7 of
+18 granted workers with different service-job counts, in both directions** — e.g. Dave Cockroft
+14 vs **9**, Robinson Monzón 12 vs **9**, Kim McLean 15 vs **17**, Brad Garner 5 vs **3**.
+
+**Owner's explanation, and it fits the data:** the disagreements are **distant-past requests from
+before Gopher had preset categories — users titled their own requests.** Two independent title
+heuristics guessing at free text will disagree, and they disagree in both directions because
+neither is wrong so much as both are guessing. **The current flow is unambiguous and the launch
+flow will be too**, so this does not propagate forward: it is a fixed pool of legacy rows, not a
+growing defect.
+
+**Owner ruling — the framing that matters:** *"Don't overthink this initial list. I'm the final
+say. Just because someone is eligible, doesn't mean their deal is approved."*
+
+That is the load-bearing point for anyone tempted to tighten the bar: **eligibility only grants
+the right to SUBMIT.** Every deal, from every worker, on both tracks, still passes a human review
+(§4, §5.2 — there is no automatic approval anywhere in this pipeline). A worker whose legacy job
+count is generous by a few therefore gains nothing but a form; the approval gate is the real
+control, and it is a person.
+
+**Consequences to respect, not revisit:**
+
+- The count discrepancy is **not a launch blocker** and needs no reconciliation before go-live.
+- It **does** matter once eligibility comms are automated (post-launch, §2): banded email must be
+  driven by the **live** verdict, not a CSV bake, or it will address people wrongly — the
+  dashboard put Cockroft in a "you're nearly there" band on 14 while the gate says 9.
+- The durable fix is one authority, not two synced ones: read verdicts from
+  `GET /admin/workers/:id/sp-grant`, which returns `reasons`, `near_miss` and `bar` so a list view
+  can show *why* without a second implementation of the rule.
+
 ## 2. Eligibility notification (owner decision — AUTOMATIC)
 
 The moment a worker crosses the bar:
