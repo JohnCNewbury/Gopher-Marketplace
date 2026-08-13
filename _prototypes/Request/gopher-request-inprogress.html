@@ -11,7 +11,7 @@
 :root{ --radius-pill:99px; --radius-card:16px; --radius-md:12px; --radius-sm:8px; --font-heading:'Nunito'; --font-body:'DM Sans'; --font-script:'Caveat';  --z-deals:#F3F5F8; --z-jobs:#EEF7F1; --z-tools:#EDF1F8; --z-acct:#E9F1FC; --z-perks:#FBF1E8;  --border:#EDF0F5; --warning:#FFDE00; --terra:#C8623C; --aqua:#87F7BD; 
   --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9; --green-tint:#E8F5EE;
   --navy:#002461; --ink:#002461; --ink-soft:#3A4D74; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
-  --paper:#FBF7EF; --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
+  --paper:#FBF7EF;--shadow-sheet:0 -10px 40px rgba(0,0,0,.25); --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
   --terracotta:#D97757; --warning-text:#92580D; --error:#C44257; --cornflower:#BADBFC;
   --line:#EAE3D5; --line-cool:#E3E7EF; --navy-bar:#03143A;
   --card-sh:0 2px 4px rgba(0,36,97,.05),0 9px 20px rgba(0,36,97,.10);
@@ -135,13 +135,13 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
 .g40-banner.is-resolved .g40-b-cta{color:var(--green-dark);}
 .g40-ovl{position:absolute;inset:0;z-index:60;background:rgba(0,16,42,.45);display:flex;align-items:flex-end;justify-content:center;}
 .g40-ovl[hidden]{display:none;}
-.g40-sheet{width:100%;max-height:88%;overflow-y:auto;background:var(--paper);border-radius:24px 24px 0 0;box-shadow:var(--over-sh);padding:8px 18px 22px;animation:g40rise .22s ease;}
+.sheet{width:100%;max-height:88%;overflow-y:auto;background:var(--paper);border-radius:26px 26px 0 0;box-shadow:var(--shadow-sheet);padding:22px 20px 26px;animation:g40rise .34s cubic-bezier(.2,.8,.3,1);}
 @keyframes g40rise{from{transform:translateY(22px);opacity:.6}to{transform:translateY(0);opacity:1}}
 .g40-grip{width:40px;height:4px;border-radius:99px;background:#d9d2c2;margin:6px auto 12px;}
-.g40-sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-.g40-sheet-title{font-family:'Nunito';font-weight:900;font-size:16px;color:var(--navy);}
-.g40-sheet-x{width:28px;height:28px;border-radius:50%;border:none;background:var(--navy-light);color:var(--ink-soft);font-size:15px;cursor:pointer;flex:0 0 auto;}
-.g40-sheet-copy{font-family:'DM Sans';font-size:12px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.sheet-title{font-family:'Nunito';font-weight:900;font-size:16px;color:var(--navy);}
+.sheet-x{width:28px;height:28px;border-radius:50%;border:none;background:var(--navy-light);color:var(--ink-soft);font-size:15px;cursor:pointer;flex:0 0 auto;}
+.sheet-copy{font-family:'DM Sans';font-size:12px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;}
 .g40-timer{display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--warning-text);background:#FBF3E4;border:1px solid #eecf95;border-radius:11px;padding:8px 10px;margin:0 0 13px;}
 .g40-timer .g40-clock{font-variant-numeric:tabular-nums;font-weight:900;}
 .g40-timer .g40-demo{font-weight:700;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
@@ -405,10 +405,10 @@ return { all:all, save:save,
   // ── Bottom-sheets appended to the phone frame ──
   var sheets = el('div'); sheets.id='g40Sheets';
   sheets.innerHTML = [
-    '<div class="g40-ovl" id="g40RecOvl" hidden><div class="g40-sheet">',
+    '<div class="g40-ovl" id="g40RecOvl" hidden><div class="sheet">',
       '<div class="g40-grip"></div>',
-      '<div class="g40-sheet-head"><div class="g40-sheet-title">Your Gopher cancelled</div><button class="g40-sheet-x" id="g40RecX" aria-label="Close">✕</button></div>',
-      '<p class="g40-sheet-copy" id="g40RecCopy"></p>',
+      '<div class="sheet-head"><div class="sheet-title">Your Gopher cancelled</div><button class="sheet-x" id="g40RecX" aria-label="Close">✕</button></div>',
+      '<p class="sheet-copy" id="g40RecCopy"></p>',
       '<div class="g40-timer"><span>Auto-cancels in <span class="g40-clock" id="g40Clock">15:00</span> if no action</span><span class="g40-demo">Demo timer — production needs a durable server-side job</span></div>',
       '<div class="g40-opts">',
         '<button type="button" class="g40-opt g40-opt-recommended" data-g40-recover="assign" aria-label="Assign New Gopher ASAP (recommended)"><span class="g40-o-ico">🔄</span><span class="g40-o-main"><span class="g40-o-title">Assign New Gopher ASAP</span><span class="g40-o-sub">Repost with the same details &amp; price under a new order # — straight back to the marketplace. No edits.</span></span><span class="g40-o-arrow">›</span></button>',
@@ -416,9 +416,9 @@ return { all:all, save:save,
         '<button type="button" class="g40-opt g40-opt-cancel" data-g40-recover="cancel"><span class="g40-o-ico">⭐</span><span class="g40-o-main"><span class="g40-o-title">Cancel Request</span><span class="g40-o-sub">Don’t repost. Rate the Gopher who cancelled and close this request.</span></span><span class="g40-o-arrow">›</span></button>',
       '</div></div></div>',
 
-    '<div class="g40-ovl" id="g40EditOvl" hidden><div class="g40-sheet">',
+    '<div class="g40-ovl" id="g40EditOvl" hidden><div class="sheet">',
       '<div class="g40-grip"></div>',
-      '<div class="g40-sheet-head"><div class="g40-sheet-title">Edit &amp; repost</div><button class="g40-sheet-x" id="g40EditX" aria-label="Close">✕</button></div>',
+      '<div class="sheet-head"><div class="sheet-title">Edit &amp; repost</div><button class="sheet-x" id="g40EditX" aria-label="Close">✕</button></div>',
       '<p class="g40-note">Pre-filled from your original request. Submitting <b>closes the original</b> and reposts under a <b>new order #</b>. (Recovery edit — not the in-place edit that keeps the same #.)</p>',
       '<div class="g40-field"><label for="g40fDetails">Details</label><textarea id="g40fDetails"></textarea></div>',
       '<div class="g40-row"><div class="g40-field"><label for="g40fCost">Cost of items ($)</label><input type="number" id="g40fCost" min="0" step="0.01" inputmode="decimal"></div><div class="g40-field"><label for="g40fPay">Payment to Gopher ($)</label><input type="number" id="g40fPay" min="0" step="0.01" inputmode="decimal"></div></div>',
@@ -428,9 +428,9 @@ return { all:all, save:save,
       '<div class="g40-actions"><button class="g40-btn-primary" id="g40EditSubmit">Repost under a new order #</button><button class="g40-btn-ghost" id="g40EditBack">Back to options</button></div>',
     '</div></div>',
 
-    '<div class="g40-ovl" id="g40RateOvl" hidden><div class="g40-sheet">',
+    '<div class="g40-ovl" id="g40RateOvl" hidden><div class="sheet">',
       '<div class="g40-grip"></div>',
-      '<div class="g40-sheet-head"><div class="g40-sheet-title">Rate your Gopher</div></div>',
+      '<div class="sheet-head"><div class="sheet-title">Rate your Gopher</div></div>',
       '<div class="g40-rate-worker"><div class="gph-pic" id="g40RatePic" style="width:52px;height:52px;font-size:16px">MB</div><div class="g40-rate-name" id="g40RateName">Please rate your Gopher</div></div>',
       '<div class="g40-stars" id="g40Stars"></div>',
       '<div class="g40-field"><textarea id="g40RateComment" placeholder="Please feel free to leave a comment"></textarea></div>',
@@ -571,27 +571,27 @@ return { all:all, save:save,
     body.insertBefore(ecBar, body.firstChild);
 
     var ecOvl = el('div','g40-ovl'); ecOvl.id='ecOvl'; ecOvl.hidden=true;
-    ecOvl.innerHTML = '<div class="g40-sheet"><div class="g40-grip"></div><div id="ecBody"></div></div>';
+    ecOvl.innerHTML = '<div class="sheet"><div class="g40-grip"></div><div id="ecBody"></div></div>';
     phone.appendChild(ecOvl);
     var ecBody = $('ecBody');
 
     function render(variant){
       if(variant==='A'){
         ecBody.innerHTML =
-            '<div class="g40-sheet-head"><div class="g40-sheet-title">📣 Hang tight — a Gopher’s close</div><button class="g40-sheet-x" id="ecX" aria-label="Close">✕</button></div>'
-          + '<p class="g40-sheet-copy">You sent this out just moments ago, and there are <b>24+ Gophers</b> active near <b>Holly Springs</b> right now. Requests like yours usually get picked up within minutes. Want us to keep looking?</p>'
+            '<div class="sheet-head"><div class="sheet-title">📣 Hang tight — a Gopher’s close</div><button class="sheet-x" id="ecX" aria-label="Close">✕</button></div>'
+          + '<p class="sheet-copy">You sent this out just moments ago, and there are <b>24+ Gophers</b> active near <b>Holly Springs</b> right now. Requests like yours usually get picked up within minutes. Want us to keep looking?</p>'
           + '<div class="g40-actions"><button class="g40-btn-primary" id="ecKeep">Still need it — keep looking</button><button class="g40-btn-ghost" id="ecStop" style="color:#C44257">Still cancel</button></div>';
       } else {
         ecBody.innerHTML =
-            '<div class="g40-sheet-head"><div class="g40-sheet-title">🔎 Still want us to keep looking?</div><button class="g40-sheet-x" id="ecX" aria-label="Close">✕</button></div>'
-          + '<p class="g40-sheet-copy">We’re still broadcasting your request to Gophers in your area. Tap <b>Still need it</b> and we’ll send a fresh alert to local Gophers — your request stays exactly as it is, so there may be less time left on the clock. Changed your plans? You can cancel below.</p>'
+            '<div class="sheet-head"><div class="sheet-title">🔎 Still want us to keep looking?</div><button class="sheet-x" id="ecX" aria-label="Close">✕</button></div>'
+          + '<p class="sheet-copy">We’re still broadcasting your request to Gophers in your area. Tap <b>Still need it</b> and we’ll send a fresh alert to local Gophers — your request stays exactly as it is, so there may be less time left on the clock. Changed your plans? You can cancel below.</p>'
           + '<div class="g40-actions"><button class="g40-btn-primary" id="ecKeep">Still need it — re-alert Gophers</button><button class="g40-btn-ghost" id="ecStop" style="color:#C44257">Still cancel</button></div>';
       }
     }
     function success(){
       ecBody.innerHTML =
-          '<div class="g40-sheet-head"><div class="g40-sheet-title">✅ On it!</div><button class="g40-sheet-x" id="ecX" aria-label="Close">✕</button></div>'
-        + '<p class="g40-sheet-copy">We’ve sent a fresh alert to Gophers near you. Hang tight — we’ll let you know the moment someone accepts.</p>'
+          '<div class="sheet-head"><div class="sheet-title">✅ On it!</div><button class="sheet-x" id="ecX" aria-label="Close">✕</button></div>'
+        + '<p class="sheet-copy">We’ve sent a fresh alert to Gophers near you. Hang tight — we’ll let you know the moment someone accepts.</p>'
         + '<div class="g40-actions"><button class="g40-btn-primary" id="ecDone">Got it</button></div>';
     }
     function open(v){ render(v); ecOvl.hidden=false; }
