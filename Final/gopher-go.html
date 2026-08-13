@@ -1853,10 +1853,39 @@ window.GoSession = (function(){
   /* Every dashboard entry point funnels through here so the three of them
      (overlay sign-in, full-screen sign-in, #app hash) can never drift. */
   function enterDash(){
-    /* Every route into the dashboard loads the real identity — sign-in,
-       remembered restore, and the #app hash. Doing it here rather than at
-       each call site is why signing in mid-session now works: the pane used
-       to keep whatever it was born with until a manual reload. */
+    /* ⚠️ PAINT THE WORKER'S OWN IDENTITY BEFORE ANYTHING ELSE.
+       The demo name is baked into the markup, so the browser paints "Marcus
+       Hale" the moment the page loads and only the async profile fetch
+       corrects it — a visible flash of SOMEONE ELSE'S NAME to a signed-in
+       worker. Correcting the page after it renders was the wrong shape.
+
+       A cached identity is applied SYNCHRONOUSLY here, from localStorage, so a
+       returning worker never sees the demo at all. With no cache (first
+       sign-in) the demo values are BLANKED rather than left standing — an
+       empty field for a moment is honest; another person's name is not. The
+       server fetch still runs behind this and corrects anything stale. */
+    if(window.GoSession){
+      var _s = GoSession.load() || {};
+      var _i = _s.identity;
+      if(_i && window.GoProfile && GoProfile.applyIdentity){
+        GoProfile.applyIdentity({
+          first_name:_i.first_name, last_name:_i.last_name,
+          gopher_completed_task_count:_i.jobs, average_rating:_i.rating, created_at:_i.since
+        });
+      } else if(_s.signedIn){
+        ['dashWorkerName','profName'].forEach(function(id){
+          var el=document.getElementById(id); if(el) el.textContent='';
+        });
+        ['dashAvatar','profAvatar'].forEach(function(id){
+          var el=document.getElementById(id); if(el) el.textContent='';
+        });
+        ['profJobs','profRating'].forEach(function(id){
+          var el=document.getElementById(id); if(el) el.textContent='—';
+        });
+        var gr=document.getElementById('dashGreeting'); if(gr) gr.textContent='Welcome back';
+        var ps=document.getElementById('profSince'); if(ps) ps.textContent='';
+      }
+    }
     setTimeout(function(){ if(window.GoProfile && GoProfile.loadIdentity) GoProfile.loadIdentity(); }, 0);
     var s = document.getElementById('signinScreen'); if(s) s.hidden = true;
     var d = document.getElementById('dashboard');    if(d) d.classList.add('active');
@@ -2348,6 +2377,21 @@ window.GoProfile = (function(){
       if(!r.ok) return null;              // silent: nothing is claimed
       window.GoProfile.__cached = r.profile;
       applyIdentity(r.profile);
+      /* Keep a small display cache WITH the session so the next load paints
+         the worker's own name immediately instead of the demo's. Only the
+         handful of fields that appear before a fetch could return — not the
+         whole profile, which does not belong in storage. */
+      try{
+        var sess = GoSession.load() || {};
+        sess.identity = {
+          first_name: r.profile.first_name || '',
+          last_name:  r.profile.last_name  || '',
+          jobs:   r.profile.gopher_completed_task_count,
+          rating: r.profile.average_rating,
+          since:  r.profile.created_at
+        };
+        GoSession.save(sess);
+      }catch(e){}
       return r.profile;
     }).catch(function(){ _loading = false; return null; });
   }
