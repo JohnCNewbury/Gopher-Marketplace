@@ -2252,9 +2252,79 @@ window.GoProfile = (function(){
       var d = new Date(p.created_at);
       if(!isNaN(d)) set('profSince', 'Member since ' + d.toLocaleDateString(undefined,{month:'short',year:'numeric'}), true);
     }
+    /* ── EVERY FIELD THE PAYLOAD CAN FILL ────────────────────────────────
+       Populated in ONE place. The owner signed in and found demo data in
+       pane after pane — Marcus Hale's name, email, phone, date of birth,
+       home address, business address. Fixing those one at a time as they
+       were spotted was the wrong shape: /users/profile/:id returns nearly
+       all of it, so it is filled here or it is not filled at all.
+
+       ⚠️ POPULATING IS NOT WIRING A SAVE. Personal info is READ-ONLY here.
+       Its save still needs the guarded email flow (GoProfile refuses
+       `email`), so these fields show the truth without yet being editable
+       against the account. */
+    var addrLine = function(a){
+      if(!a) return '';
+      if(typeof a === 'string') return a;
+      var o = Array.isArray(a) ? a[0] : a;
+      if(!o) return '';
+      return String(o.line1 || o.businessLine1 || o.address || '').trim();
+    };
+    var addrPart = function(a, keys){
+      var o = Array.isArray(a) ? a[0] : a;
+      if(!o || typeof o !== 'object') return '';
+      for(var i=0;i<keys.length;i++) if(o[keys[i]]) return String(o[keys[i]]);
+      return '';
+    };
+    /* Personal info */
+    set('piFirst', p.first_name);
+    set('piLast',  p.last_name);
+    set('piEmail', p.email);
+    /* Programmatic .value does not fire the shared tel formatter, so a real
+       number arrived as a raw digit string. Format it the same way typing does. */
+    var telDigits = (String(p.telephone||'').match(/\d/g)||[]).join('').slice(-10);
+    set('piPhone', telDigits.length === 10
+      ? '(' + telDigits.slice(0,3) + ') ' + telDigits.slice(3,6) + '-' + telDigits.slice(6)
+      : (p.telephone || ''));
+    if(p.date_of_birth){
+      /* ⚠️ PARSED AS TEXT, NOT THROUGH Date(). A date-only value is treated as
+         UTC midnight, so `new Date('1975-06-09')` renders as JUNE 8 anywhere
+         west of Greenwich — it showed the owner's birthday a day early. A date
+         of birth is checked against government ID before a worker can be paid;
+         it does not get to be approximately right. */
+      var dobStr = String(p.date_of_birth);
+      var m = dobStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(m) set('piDob', m[2] + ' / ' + m[3] + ' / ' + m[1]);
+    }
+    set('piAddr',  addrLine(p.address));
+    set('piCity',  addrPart(p.address, ['city','businessCity']));
+    set('piState', addrPart(p.address, ['state','businessState']));
+    set('piZip',   addrPart(p.address, ['zip','zipcode','postal_code','businessZip']));
+    set('piSrc',   p.discover_gopher || p.discover_gopher_others);
+    /* Greeting and sidebar carry the real first name too. */
+    if(p.first_name){
+      var gr = document.getElementById('dashGreeting');
+      if(gr) gr.innerHTML = 'Welcome back, ' + p.first_name + ' \uD83D\uDC4B';
+    }
     /* Business info — the pane that already writes. Empty CLEARS. */
     set('bizName',  p.business_name);
     set('bizTitle', p.company_title);
+    set('bizAddr',  addrLine(p.business_address));
+    /* A logo already on file must SAY so — an empty upload tile reads as
+       "you never gave us one", which is wrong and invites a needless re-upload. */
+    var logoTile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+    if(logoTile){
+      var hasLogo = !!(p.business_logo && String(p.business_logo).trim());
+      var st = logoTile.querySelector('.vp-state');
+      if(hasLogo && !st){
+        st = document.createElement('span');
+        st.className = 'vp-state';
+        logoTile.appendChild(st);
+      }
+      if(st) st.innerHTML = hasLogo ? 'On file &#10003;' : '';
+      var hid = logoTile.querySelector('input[data-field]');
+      if(hid) hid.value = hasLogo ? 'onfile' : '0';
+    }
     var hid = document.getElementById('bizShowAs'), sw = document.getElementById('bizShowAsSw');
     if(hid && sw){
       var on = !!p.add_business;
@@ -2671,6 +2741,16 @@ window.showNoAccount = function(){
   .rh-tab.on { background:#fff; color:var(--navy); box-shadow:0 2px 6px rgba(26,42,94,0.1); }
   /* Payout issue sits apart from the two job outcomes (owner 2026-07-28). */
   .rh-tab-sep { margin-left:14px; }
+  /* A worker with 342 jobs was scrolling an endless page. The list gets its own
+     floor and scrolls inside the panel, so the tabs and search stay reachable
+     instead of disappearing above the fold. vh so it adapts to the window. */
+  .rh-list { max-height:60vh; overflow-y:auto; overscroll-behavior:contain; padding-right:6px; }
+  .rh-list::-webkit-scrollbar { width:10px; }
+  .rh-list::-webkit-scrollbar-thumb { background:#d5dbe6; border-radius:8px; border:3px solid #fff; }
+  .rh-list::-webkit-scrollbar-thumb:hover { background:#bcc5d4; }
+  .rh-count { font-size:12.5px; color:var(--muted); margin:0 0 8px; }
+  .rh-count b { color:var(--navy); }
+  @media (max-width:700px){ .rh-list { max-height:none; } }
   .rh-lump { display:flex; gap:10px; align-items:flex-start; margin-bottom:12px; padding:11px 13px;
     border:1px solid #cfe3f6; background:#f2f8fe; border-radius:12px; }
   .rh-lump .rl-ico { font-size:15px; line-height:1.3; flex-shrink:0; }
@@ -3330,15 +3410,20 @@ window.showNoAccount = function(){
             </div>
           </div>
         </div>
-        <div class="panel">
+        <!-- Hidden until it has real numbers rather than invented ones. -->
+        <div class="panel" id="statsPanel" hidden>
           <div class="panel-head"><h2>Stats</h2></div>
-          <div class="stat-grid">
-            <div class="stat"><div class="stat-v">86</div><div class="stat-l">Jobs completed</div></div>
-            <div class="stat"><div class="stat-v">4.9&#9733;</div><div class="stat-l">Rating (128)</div></div>
-            <div class="stat"><div class="stat-v">Jan 2026</div><div class="stat-l">Member since</div></div>
-            <div class="stat"><div class="stat-v">3%</div><div class="stat-l">Cancellation rate</div></div>
-            <div class="stat"><div class="stat-v">1</div><div class="stat-l">Unapproved cancellations</div></div>
-          </div>
+          <!-- Jobs completed, Rating and Member since were ALSO here, hardcoded
+               to the demo worker — so the panel contradicted the real numbers in
+               the header above it on the same screen (342/5.0/Oct 2018 vs
+               86/4.9/Jan 2026). They live in the header, which is populated from
+               the account, and are gone from here.
+
+               Cancellation rate and unapproved cancellations are gone too, for a
+               different reason: /users/profile/:id does not return them, so they
+               could only ever be invented. This panel comes back when there are
+               real numbers to put in it. -->
+          <div class="stat-grid" id="statGrid" hidden></div>
         </div>
         <div class="panel">
           <div class="panel-head"><h2>Verification</h2></div>
@@ -3538,6 +3623,7 @@ window.showNoAccount = function(){
                job, it is a money problem that cuts across them. -->
           <div class="rh-tabs"><button class="rh-tab on" data-st="completed">Completed</button><button class="rh-tab" data-st="cancelled">Cancelled</button><button class="rh-tab rh-tab-sep" data-st="failed">Payout issue</button></div>
           <div class="rh-search"><span class="rh-sico">&#128269;</span><input id="rhSearch" placeholder="Search your history"></div>
+          <p class="rh-count" id="rhCount" hidden></p>
           <div class="rh-list" id="rhList"></div>
         </div>
       </section>
@@ -5113,9 +5199,15 @@ window.showNoAccount = function(){
          work. */
       let LIVE = null;            // null = not loaded; [] = loaded and empty
       const money = (cents) => (cents == null ? null : '$' + (Math.round(cents)/100).toFixed(2));
+      /* Show the YEAR unless the job is from this year. A worker with 342 jobs
+         spanning 2018-2026 was seeing "Oct 16" next to "Aug 1" with no way to
+         tell them apart, so a correctly-sorted list still read as scrambled. */
       const shortDate = (iso) => {
         const d = new Date(iso);
-        return isNaN(d) ? '' : d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+        if(isNaN(d)) return '';
+        const opts = { month:'short', day:'numeric' };
+        if(d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+        return d.toLocaleDateString(undefined, opts);
       };
       function toCard(o, st){
         /* Field names taken from the app that already consumes this endpoint
@@ -5128,6 +5220,7 @@ window.showNoAccount = function(){
           cat: o.sub_category_type || o.title || 'Job',
           id: '#' + o.id,
           date: shortDate(o.created_at),
+          ts: Date.parse(o.created_at) || 0,
           who: (o.gopher && (o.gopher.first_name || o.gopher.name)) || 'Requester',
           sub: o.description || o.title || '',
           pay: money(o.offer),
@@ -5154,7 +5247,13 @@ window.showNoAccount = function(){
           LIVE = arr.map(function(o){
             const s = String(o.aasm_state || o.status || '').toLowerCase();
             return toCard(o, s === 'delivered' ? 'completed' : (s === 'cancelled' ? 'cancelled' : 'completed'));
-          });
+          })
+          /* NEWEST FIRST, asserted here rather than assumed. The endpoint does
+             sort created_at DESC when order_history=true, but a worker's own
+             history is the last place to inherit an ordering decision from a
+             query string — if that parameter is ever dropped the list silently
+             flips to oldest-first (the backend default is id ASC). */
+          .sort(function(a,b){ return b.ts - a.ts; });
           render();
         });
       }
@@ -5163,6 +5262,17 @@ window.showNoAccount = function(){
         const ql = q.trim().toLowerCase();
         const SRC = LIVE || HISTORY;
         const rows = SRC.map((j,i)=>[j,i]).filter(([j]) => j.st===tab && (!ql || ((j.cat||'')+' '+(j.who||'')+' '+(j.sub||'')+' '+(j.id||'')).toLowerCase().includes(ql)));
+        /* Tell the worker how many they are looking at — with a 60vh floor the
+           list no longer betrays its own length. Only meaningful for real data;
+           the demo set is four rows. */
+        const cnt = document.getElementById('rhCount');
+        if(cnt){
+          if(LIVE && rows.length){
+            cnt.innerHTML = '<b>' + rows.length + '</b> ' + tab + (rows.length===1?' job':' jobs') + (ql ? ' matching' : '');
+            cnt.hidden = false;
+          } else { cnt.hidden = true; }
+        }
+        list.scrollTop = 0;   // a new tab or search starts at the top, not mid-list
         if(!rows.length){ list.innerHTML = '<div class="rh-empty">No '+tab+' requests'+(ql?' match \u201c'+q.trim()+'\u201d':' yet')+'.</div>'; return; }
         // Owner 2026-07-28: a payout issue is not per-job. Stripe retries payouts
         // DAILY for every job carrying a balance, so once the worker fixes the
