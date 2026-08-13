@@ -20,8 +20,9 @@ lives in a doc now and not in whichever file you found first.
 
 ## 1. The customer-facing taxonomy — 8 categories
 
-Taken from the live Step-1 pickers in Request and Connect. **This is what a customer sees and
-what a worker should choose from.**
+**Labels below are Request's.** They are what a customer sees and what a worker chooses from
+in the Go dashboard. Connect words two of them differently for a business audience — see the
+note under the table; that is intended.
 
 | # | Category |
 |---|---|
@@ -34,10 +35,21 @@ what a worker should choose from.**
 | 7 | Ride Sharing |
 | 8 | Other |
 
-⚠️ **Connect and Request disagree on two labels — fix at source, do not propagate.**
+### ✅ Surface labels differ BY DESIGN — do not "fix" them (owner, 2026-08-13)
+
 Connect renders **"Delivery / Courier"** and **"Other / Custom"** where Request renders
-**"Delivery / Errand"** and **"Other"**. Everything else matches. **Follow Request**; it
-carries the job volume, and "Errand" matches the server's Delivery sub-types.
+**"Delivery / Errand"** and **"Other"**. **That is deliberate and correct.** Owner: *"Leave
+them, that is surface level and relevant to audience. The canonical category in flow is
+Delivery and Other so there is no confusion."*
+
+Connect speaks to businesses (courier work, custom engagements); Request speaks to neighbours
+(errands). Same category underneath, worded for who is reading. **The canonical value is
+`Delivery` and `Other`** — the label is a presentation choice belonging to each surface.
+
+⚠️ **I originally recorded this as drift to fix at source. That was wrong**, and it is the
+mistake this file most needs to prevent going the other way: a session that "harmonises" the
+labels would flatten a deliberate audience distinction and make both surfaces read worse.
+**Only the KEY has to match. The words are each surface's to choose.**
 
 ## 2. The work-settings API vocabulary — 7 values, different words
 
@@ -90,3 +102,6 @@ service category and they must never be mapped onto each other.**
    value against the `categoryOptions` the server actually sent and reports drift, because the
    failure mode is silence.
 4. **If a label changes, change it here first**, then in the surfaces.
+5. **A surface may word a category for its own audience.** Connect and Request deliberately
+   differ on two. What must never differ is the KEY the selection is stored under — that is
+   what makes a wrong value silent instead of loud.
