@@ -1853,11 +1853,17 @@ window.GoSession = (function(){
   /* Every dashboard entry point funnels through here so the three of them
      (overlay sign-in, full-screen sign-in, #app hash) can never drift. */
   function enterDash(){
+    /* Every route into the dashboard loads the real identity — sign-in,
+       remembered restore, and the #app hash. Doing it here rather than at
+       each call site is why signing in mid-session now works: the pane used
+       to keep whatever it was born with until a manual reload. */
+    setTimeout(function(){ if(window.GoProfile && GoProfile.loadIdentity) GoProfile.loadIdentity(); }, 0);
     var s = document.getElementById('signinScreen'); if(s) s.hidden = true;
     var d = document.getElementById('dashboard');    if(d) d.classList.add('active');
     document.body.classList.add('go-dash-active');
     document.body.style.overflow = '';
     window.scrollTo(0,0);
+    try { document.dispatchEvent(new Event('go:entered')); } catch(e){}
   }
   function exitToSignIn(){
     var d = document.getElementById('dashboard');    if(d) d.classList.remove('active');
@@ -1896,9 +1902,18 @@ window.GoSession = (function(){
   function userId(){ var s = load(); return s && s.userId || null; }
   /* Restore before paint where possible, so a remembered worker never sees the
      sign-in screen flash. The markup starts hidden, so this only ever adds.
-     #login is an explicit request FOR the sign-in screen, so it wins over a
-     remembered session — otherwise that entry point could never be reached. */
-  function restore(){ if(location.hash !== '#login' && load()) enterDash(); }
+
+     ⚠️ THE HASH NO LONGER OVERRIDES A REMEMBERED SESSION (owner, 2026-08-13:
+     "Keep me signed in unless I sign out"). It used to: `#login` skipped
+     restore so that entry point stayed reachable. But every link into this
+     page carries #login — including the site header's Login/Sign-Up — so a
+     remembered worker was thrown back to the sign-in screen on essentially
+     every visit, while a 30-day token sat unused in storage. That traded a
+     rare need against the common one.
+
+     Signing out is now the ONLY way to reach the sign-in screen, which is also
+     the only way to switch accounts. That is the intended contract. */
+  function restore(){ if(load()) enterDash(); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore);
   else restore();
   return { load:load, save:save, clear:clear, enterDash:enterDash, exitToSignIn:exitToSignIn,
@@ -2197,6 +2212,76 @@ window.GoAuth = (function(){
      saving an email must find out here, in development, not in production. -->
 <script>
 window.GoProfile = (function(){
+  /* ── THE IDENTITY LOAD ────────────────────────────────────────────────────
+     One /users/profile/:id read populates every place the dashboard shows who
+     the worker is: the sidebar, the Profile pane, the tier badge and Business
+     info. Before this the dashboard displayed a demo person — "Marcus Hale",
+     86 jobs, 4.9★ — to whoever signed in. The owner signed into his own
+     account and correctly said it showed "none of my info".
+
+     ⚠️ RUNS ON EVERY ENTRY, NOT JUST PAGE LOAD. The first version ran once at
+     parse time and only if a token already existed, so signing in during a
+     session changed nothing until a manual reload. Sign-in, session restore
+     and pane opens all call this now.
+
+     ⚠️ AN EMPTY REAL VALUE CLEARS THE FIELD. It used to skip empty values,
+     which left the demo placeholder on screen — so a worker with no business
+     name saw "Hale Services LLC", and a save would have written that fiction
+     onto their account. Real-and-empty must beat demo-and-plausible. */
+  function applyIdentity(p){
+    if(!p) return;
+    var set = function(id, val, fallbackBlank){
+      var el = document.getElementById(id); if(!el) return;
+      var v = (val == null ? '' : String(val)).trim();
+      if('value' in el && el.tagName !== 'DIV') el.value = v;      // inputs: clear when empty
+      else if(v || fallbackBlank) el.textContent = v;
+    };
+    var full = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+    if(full){
+      set('dashWorkerName', full, true);
+      set('profName', full, true);
+      var initials = full.split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+      ['dashAvatar','profAvatar'].forEach(function(id){
+        var el=document.getElementById(id); if(el && initials) el.textContent = initials;
+      });
+    }
+    if(p.gopher_completed_task_count != null) set('profJobs', p.gopher_completed_task_count, true);
+    if(p.average_rating != null && +p.average_rating > 0)
+      set('profRating', (Math.round(+p.average_rating*10)/10).toFixed(1), true);
+    if(p.created_at){
+      var d = new Date(p.created_at);
+      if(!isNaN(d)) set('profSince', 'Member since ' + d.toLocaleDateString(undefined,{month:'short',year:'numeric'}), true);
+    }
+    /* Business info — the pane that already writes. Empty CLEARS. */
+    set('bizName',  p.business_name);
+    set('bizTitle', p.company_title);
+    var hid = document.getElementById('bizShowAs'), sw = document.getElementById('bizShowAsSw');
+    if(hid && sw){
+      var on = !!p.add_business;
+      hid.value = on ? 'business' : 'individual';
+      sw.classList.toggle('on', on);
+      sw.setAttribute('aria-checked', String(on));
+      if(window.GoBiz && GoBiz.paintShowAs) GoBiz.paintShowAs();
+    }
+    var biz = document.querySelector('.dash-section[data-dash-section="business"]');
+    if(biz && biz.__setBaseline) biz.__setBaseline();
+    if(window.GoDeals && GoDeals.paintSubmittingAs) GoDeals.paintSubmittingAs();
+  }
+
+  var _loading = false;
+  function loadIdentity(){
+    if(_loading) return Promise.resolve(null);
+    if(!(window.GoSession && GoSession.token())) return Promise.resolve(null);
+    _loading = true;
+    return read().then(function(r){
+      _loading = false;
+      if(!r.ok) return null;              // silent: nothing is claimed
+      window.GoProfile.__cached = r.profile;
+      applyIdentity(r.profile);
+      return r.profile;
+    }).catch(function(){ _loading = false; return null; });
+  }
+
   var REFUSED = ['email', 'last_completed_step'];
 
   /* The endpoint persists the whole request body as onboarding metadata
@@ -2239,7 +2324,8 @@ window.GoProfile = (function(){
       });
   }
 
-  return { read:read, save:save, REFUSED:REFUSED, assertSafe:assertSafe };
+  return { read:read, save:save, REFUSED:REFUSED, assertSafe:assertSafe,
+           loadIdentity:loadIdentity, applyIdentity:applyIdentity };
 })();
 </script>
 
@@ -3231,11 +3317,11 @@ window.showNoAccount = function(){
             <div class="ph-avatar" id="profAvatar">MH</div>
             <div class="ph-id">
               <div class="ph-name" id="profName">Marcus Hale</div>
-              <div class="ph-since">Member since Jan 2026</div>
+              <div class="ph-since" id="profSince">Member since Jan 2026</div>
               <div class="ph-stats">
-                <div class="ph-stat"><span class="phs-v">86</span><span class="phs-l">Jobs completed</span></div>
+                <div class="ph-stat"><span class="phs-v" id="profJobs">86</span><span class="phs-l">Jobs completed</span></div>
                 <div class="ph-vdiv"></div>
-                <div class="ph-stat"><span class="phs-v"><span class="phs-star">&#9733;</span> 4.9</span><span class="phs-l">Rating</span></div>
+                <div class="ph-stat"><span class="phs-v"><span class="phs-star">&#9733;</span> <span id="profRating">4.9</span></span><span class="phs-l">Rating</span></div>
               </div>
             </div>
             <div class="ph-verify">
@@ -3998,6 +4084,10 @@ window.showNoAccount = function(){
   /* ════ #login entry point ════ */
   (function initLoginHash(){
     function apply(){ if(location.hash === '#login'){
+      /* Already signed in? #login means "let me in", and they are in. Sending a
+         remembered worker to a sign-in screen they do not need is the bug this
+         replaced. Sign out is the way to reach the form. */
+      if(GoSession.load()){ GoSession.enterDash(); return; }
       GoSession.exitToSignIn();
       const e=document.getElementById('signinEmail'); if(e) setTimeout(()=>e.focus(),60);
     } else if(location.hash === '#app'){
@@ -4967,10 +5057,14 @@ window.showNoAccount = function(){
         const payfailBlock = j.st==='failed'
           ? '<div class="rh-payfail"><span class="pf-ico">&#9888;&#65039;</span><span class="pf-tx"><b>Payout failed</b> &mdash; Stripe declined card &bull;&bull;'+((j.payfail&&j.payfail.last4)||'')+'. Add a new debit card to receive your '+((j.payfail&&j.payfail.amt)||j.pay)+'.</span></div><button class="pf-cta" id="pfFixCard">Add a new debit card &rarr;</button>'
           : '';
-        const rev = j.stars ? '<p>&#9733; '+j.stars+' received \u2014 \u201c'+j.quote+'\u201d</p>' : '';
+        const rev = j.stars ? ('<p>&#9733; '+j.stars+' received'+(j.quote ? ' \u2014 \u201c'+j.quote+'\u201d' : '')+'</p>') : '';
         const note = j.resolve ? '<p>'+j.resolve+'</p>' : '';
         let logsBlock = '';
-        if(j.logs && j.logs.length){
+        /* A real job has no log to show — say so plainly rather than
+           rendering an empty accordion or inventing events. */
+        if(j.live){
+          logsBlock = '<p class="rhm-sub" style="margin-top:12px">The full step-by-step history for this job lives in the Gopher Go app.</p>';
+        } else if(j.logs && j.logs.length){
           const evs = j.logs.map(L => '<div class="rl-ev'+(L.fail?' fail':'')+'"><span class="rl-dot"></span><div><div class="rl-time">'+(L.d||j.date)+' &middot; '+L.t+'</div><div class="rl-label'+(L.fail?' fail':'')+'">'+L.e+'</div>'+(L.sub?'<div class="rl-sub">'+L.sub+'</div>':'')+(L.loc?'<div class="rl-loc">&#128205; '+L.loc+'</div>':'')+(L.gps?'<div class="rl-gps">GPS &middot; '+L.gps+'</div>':'')+'</div></div>').join('');
           logsBlock = '<button class="rl-toggle" id="rlToggle">View Request Logs ('+j.logs.length+') <span class="rl-caret">&#9662;</span></button>'
                     + '<div class="rl-cap" id="rlCap" hidden>GPS- and time-stamped activity trail \u2014 your record of work.</div>'
@@ -4999,9 +5093,76 @@ window.showNoAccount = function(){
       }
 
       let tab='completed', q='';
+      /* ── REAL JOBS ─────────────────────────────────────────────────────────
+         Signed in, this pane shows the worker's OWN completed and cancelled
+         jobs from GET /orders/v3 — token-scoped, so the backend decides whose
+         they are and the client can never ask for someone else's.
+
+         ⚠️ THE EVENT LOG IS DELIBERATELY ABSENT ON REAL JOBS. The demo rows
+         carry a timestamped log with addresses and GPS; /orders/v3 returns
+         nothing of the sort, and `order_logs` has not been confirmed to hold
+         that shape. Rendering a real job with a fabricated log would be worse
+         than showing no log at all — it is the same dishonesty as a form that
+         says "submitted" and transmits nothing. A real card therefore has no
+         "View Request Logs" button, and gets one line saying where the full
+         history lives.
+
+         Demo rows remain for the signed-out/offline case ONLY, and are
+         replaced outright the moment real data arrives — never mixed, so a
+         worker can never be shown someone else's fiction beside their own
+         work. */
+      let LIVE = null;            // null = not loaded; [] = loaded and empty
+      const money = (cents) => (cents == null ? null : '$' + (Math.round(cents)/100).toFixed(2));
+      const shortDate = (iso) => {
+        const d = new Date(iso);
+        return isNaN(d) ? '' : d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+      };
+      function toCard(o, st){
+        /* Field names taken from the app that already consumes this endpoint
+           (requestorhistory.js), not guessed. */
+        const rating = (o.ratings && (o.ratings.score ?? o.ratings.rating)) ?? null;
+        return {
+          st: st,
+          live: true,
+          ic: 'box',
+          cat: o.sub_category_type || o.title || 'Job',
+          id: '#' + o.id,
+          date: shortDate(o.created_at),
+          who: (o.gopher && (o.gopher.first_name || o.gopher.name)) || 'Requester',
+          sub: o.description || o.title || '',
+          pay: money(o.offer),
+          split: 'Paid on completion',
+          stars: rating != null ? String(rating) : '',
+          quote: '',
+          logs: null                      // never fabricated — see above
+        };
+      }
+      function loadLive(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
+        /* ⚠️ NO `offset`. Passing it makes the backend hardcode limit=5
+           (retrieve.js: `if (offset) query_option.limit = 5`), so a worker with
+           342 delivered jobs saw five and the pane looked correct. Verified
+           live 2026-08-13: 342 without offset, 5 with it.
+           `order_history=true` is MANDATORY — without it a gopher's query is
+           restricted to payment_status AUTHORIZED, which means live jobs only,
+           and finished work returns an empty list with no error at all. */
+        const qs = 'statuses[]=delivered&statuses[]=cancelled&statuses[]=expired&order_history=true';
+        GoAuth.apiCall('/orders/v3?' + qs, { method:'GET' }).then(function(r){
+          if(!r.ok) return;                         // silent: demo rows stand, nothing is claimed
+          const arr = (r.body && r.body.data) || [];
+          if(!Array.isArray(arr)) return;
+          LIVE = arr.map(function(o){
+            const s = String(o.aasm_state || o.status || '').toLowerCase();
+            return toCard(o, s === 'delivered' ? 'completed' : (s === 'cancelled' ? 'cancelled' : 'completed'));
+          });
+          render();
+        });
+      }
+
       function render(){
         const ql = q.trim().toLowerCase();
-        const rows = HISTORY.map((j,i)=>[j,i]).filter(([j]) => j.st===tab && (!ql || (j.cat+' '+j.who+' '+j.sub+' '+j.id).toLowerCase().includes(ql)));
+        const SRC = LIVE || HISTORY;
+        const rows = SRC.map((j,i)=>[j,i]).filter(([j]) => j.st===tab && (!ql || ((j.cat||'')+' '+(j.who||'')+' '+(j.sub||'')+' '+(j.id||'')).toLowerCase().includes(ql)));
         if(!rows.length){ list.innerHTML = '<div class="rh-empty">No '+tab+' requests'+(ql?' match \u201c'+q.trim()+'\u201d':' yet')+'.</div>'; return; }
         // Owner 2026-07-28: a payout issue is not per-job. Stripe retries payouts
         // DAILY for every job carrying a balance, so once the worker fixes the
@@ -5020,7 +5181,7 @@ window.showNoAccount = function(){
         list.innerHTML = lump + rows.map(([j,i]) => {
           const pill = j.st==='completed' ? '<span class="rh-pill ok">Completed</span>' : (j.st==='failed' ? '<span class="rh-pill fail">Payout failed</span>' : '<span class="rh-pill cancel">Cancelled</span>');
           const earn = j.pay ? '<div class="rh-earn">Earn <b>'+j.pay+'</b><span class="rh-split">'+j.split+'</span></div>' : '<div class="rh-earn none">'+(j.none||'No earnings')+'</div>';
-          const rated = j.stars ? '<div class="rh-rated">&#9733; '+j.stars+' received<span class="rh-q">\u201c'+j.quote+'\u201d</span></div>' : '';
+          const rated = j.stars ? ('<div class="rh-rated">&#9733; '+j.stars+' received'+(j.quote ? '<span class="rh-q">\u201c'+j.quote+'\u201d</span>' : '')+'</div>') : '';
           const resolve = j.resolve ? '<div class="rh-resolve">'+j.resolve+'</div>' : '';
           const payfail = j.st==='failed' ? '<div class="rh-payfail"><span class="pf-ico">&#9888;&#65039;</span><span class="pf-tx"><b>PAYOUT FAILED</b> &mdash; please add a new debit card to receive your '+((j.payfail&&j.payfail.amt)||j.pay)+'.</span></div>' : '';
           const fixBtn = j.st==='failed' ? '<button class="pf-cta rh-fixcard">Add a new debit card &rarr;</button>' : '';
@@ -5029,7 +5190,11 @@ window.showNoAccount = function(){
             + '<div class="rh-sub">'+j.sub+'</div>'+earn+rated+resolve+payfail+fixBtn
             + '<button class="rh-ghost" data-i="'+i+'">'+(j.cta||'View summary')+' &rarr;</button></div>';
         }).join('');
-        list.querySelectorAll('.rh-ghost').forEach(g => g.addEventListener('click', () => openDetail(HISTORY[+g.dataset.i])));
+        /* Index into the SOURCE THAT WAS RENDERED, not the demo array. When
+           real jobs are loaded, HISTORY[i] is a different job entirely — a
+           real card would have opened a fabricated summary, complete with an
+           invented event log, attributed to the worker's actual work. */
+        list.querySelectorAll('.rh-ghost').forEach(g => g.addEventListener('click', () => openDetail(SRC[+g.dataset.i])));
         list.querySelectorAll('.rh-fixcard').forEach(b => b.addEventListener('click', goToPayoutAddCard));
       }
       document.querySelectorAll('.rh-tab').forEach(b => b.addEventListener('click', () => {
@@ -5038,6 +5203,16 @@ window.showNoAccount = function(){
       const search = document.getElementById('rhSearch');
       if(search) search.addEventListener('input', () => { q = search.value; render(); });
       render();
+      /* Draw demo rows first so the pane is never blank, then replace them
+         outright if a signed-in worker's real jobs come back. */
+      loadLive();
+      /* Exposed so the pane can be refreshed after something changes it —
+         a job completing, or a sign-in that happens after this pane was
+         already drawn. Without it the list is whatever it was at page load. */
+      window.GoHistory = { reload: loadLive };
+      /* Re-read when the worker enters the dashboard, for the same reason the
+         identity load does: signing in mid-session must not leave demo rows. */
+      document.addEventListener('go:entered', loadLive);
     })();
 
     // ── Refer & earn ──
