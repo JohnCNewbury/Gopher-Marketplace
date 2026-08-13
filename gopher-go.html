@@ -1930,6 +1930,55 @@ window.GoSession = (function(){
 window.GoAuth = (function(){
   var API = 'https://api.gophergo.io/api/v1';
 
+  /* ── CLOSED PILOT GATE ──────────────────────────────────────────────────
+     ⚠️ THIS IS NOT A SECURITY BOUNDARY, and must never be described as one.
+     This page is static and public on three hosts; anyone with devtools can
+     step past this check. It is a "closed testing" sign on an unfinished
+     surface, and the real protection is elsewhere and unaffected by it: every
+     API call is authorised per-token by the backend, so a caller only ever
+     reaches their OWN account's data whatever this file says.
+
+     What it genuinely buys, and why it runs BEFORE otp/get (owner, 2026-08-12):
+       • no SMS is sent to a number that could not use the dashboard anyway —
+         Twilio is billed per segment;
+       • no ACCOUNT IS MINTED. POST /users/sign_in creates an INCOMPLETE user
+         on a lookup miss, so an open sign-in on a public page is an account
+         generator. Stopping before the code is requested closes that.
+
+     Numbers are stored as SHA-256 of the 10 digits, not in the clear: the
+     source is public and a plaintext list would be a phone book. Honest limit —
+     hashing stops harvesting, it does not stop a determined brute force of a
+     10-digit space. Do not treat these digests as secret.
+
+     To add a tester: sha256 of their 10 digits, no punctuation. */
+  var PILOT_ALLOW = [
+    '6876878151ca45a8c128c7e0ce261a20d7194a91dce6ba6de75769edbca1b0ae' // owner
+  ];
+  var PILOT_ON = true;
+
+  function sha256Hex(str){
+    if(!(window.crypto && window.crypto.subtle)) return Promise.resolve(null);
+    var bytes = new TextEncoder().encode(str);
+    return window.crypto.subtle.digest('SHA-256', bytes).then(function(buf){
+      return Array.prototype.map.call(new Uint8Array(buf), function(b){
+        return ('00' + b.toString(16)).slice(-2);
+      }).join('');
+    });
+  }
+
+  /* Resolves true when the number may proceed. FAILS CLOSED on any environment
+     where we cannot hash (no SubtleCrypto, or a non-secure origin): a gate that
+     silently opens when its mechanism is missing is worse than no gate, because
+     it is trusted. */
+  function pilotAllows(phone){
+    if(!PILOT_ON) return Promise.resolve(true);
+    var digits = (String(phone||'').match(/\d/g)||[]).join('').slice(-10);
+    if(digits.length !== 10) return Promise.resolve(false);
+    return sha256Hex(digits).then(function(h){
+      return !!h && PILOT_ALLOW.indexOf(h) !== -1;
+    }).catch(function(){ return false; });
+  }
+
   /* Never throws on an HTTP error — callers branch on status, because
      422 / 403 / 440 each carry a message worth showing the worker. */
   function apiCall(path, opts){
@@ -1957,6 +2006,9 @@ window.GoAuth = (function(){
      all, so a worker fixes the form in one pass rather than one field per try. */
   function apiMessage(r){
     var b = (r && r.body) || {};
+    /* The pilot gate carries its own copy — it is not an API failure and must
+       not be reported as one. */
+    if (r && r.pilotBlocked && r.message) return r.message;
     if (r && r.status === 0) return 'Couldn’t reach Gopher. Check your connection and try again.';
     if (Array.isArray(b.errors) && b.errors.length) return b.errors.join('\n');
     if (b.error) return b.error;
@@ -1968,8 +2020,18 @@ window.GoAuth = (function(){
   var digits = function(s){ return (String(s||'').match(/\d/g)||[]).join(''); };
 
   /* Step 1 — real SMS. */
+  /* The pilot check runs FIRST, so a number outside the pilot never reaches
+     otp/get: no SMS billed, and — the one that matters — no account minted by
+     a sign-in that would otherwise create one. Shaped like an apiCall result so
+     every caller's existing error handling renders it with no special case. */
   function sendCode(phone){
-    return apiCall('/otp/get', { body: { telephone: digits(phone) } });
+    return pilotAllows(phone).then(function(ok){
+      if(!ok){
+        return { ok:false, status:403, pilotBlocked:true, body:{},
+                 message:'The web dashboard is in closed testing right now — the Gopher Go app has everything you need.' };
+      }
+      return apiCall('/otp/get', { body: { telephone: digits(phone) } });
+    });
   }
 
   /* Was this account just minted by our own sign_in call?
@@ -2092,10 +2154,91 @@ window.GoAuth = (function(){
 
   return {
     apiCall: apiCall, apiMessage: apiMessage,
-    sendCode: sendCode, verifyAndSignIn: verifyAndSignIn,
+    sendCode: sendCode, verifyAndSignIn: verifyAndSignIn, pilotAllows: pilotAllows,
     fetchEligibility: fetchEligibility, submitDeal: submitDeal,
     platform: platform, STORE: STORE, looksNewlyCreated: looksNewlyCreated
   };
+})();
+</script>
+
+<!-- ░░ GoProfile — the ONE place the dashboard writes to a worker's profile ░░
+
+     Every pane that saves goes through here, so the hazards below are disarmed
+     once rather than remembered six times. Investigated at source 2026-08-12
+     against controllers/user/profile.js on origin/production.
+
+     READ  GET  /api/v1/users/profile/:id  — real columns (users, addresses,
+           users_info, users_roles). Deliberately NOT GET /users/onboarding,
+           which returns a metadata BLOB of whatever was last sent and is only
+           backfilled from real data when it looks empty — a dashboard that
+           renders a stale cache as current state is how a worker "saves" a
+           value that was never there.
+
+     WRITE PATCH /api/v1/users/onboarding — the same endpoint the mobile app
+           uses. It is genuinely partial-safe: both its allowlists copy only
+           keys PRESENT in the body, so a pane sends only what it owns.
+
+     ⛔ TWO FIELDS ARE REFUSED AT THIS BOUNDARY, ALWAYS:
+
+     `email` — the endpoint does NOT write it. It stages the address to
+       `unconfirmed_email` and NULLS confirmed_at / confirmation_token /
+       confirmation_sent_at. That is the G40-271 protection working as
+       designed, but it means a pane that bulk-saves an email field silently
+       drops the worker into a re-verification loop on the one flow that has
+       already caused real lockouts. An email change needs its own deliberate
+       flow with the verification step ON SCREEN — never a side effect of
+       tapping Save on a pane.
+
+     `last_completed_step` — writes onboarding progress. A dashboard save that
+       included it could rewind a completed worker's onboarding state.
+
+     Refused loudly (throws), not silently dropped: a caller that thinks it is
+     saving an email must find out here, in development, not in production. -->
+<script>
+window.GoProfile = (function(){
+  var REFUSED = ['email', 'last_completed_step'];
+
+  /* The endpoint persists the whole request body as onboarding metadata
+     (`metadata = {...req.body}`), stripping only `decoded` — not `app_type` or
+     `fetched_user`. Whatever we send is stored verbatim, so send nothing we do
+     not mean. */
+  function assertSafe(patch){
+    REFUSED.forEach(function(k){
+      if(Object.prototype.hasOwnProperty.call(patch, k)){
+        throw new Error(
+          'GoProfile: `' + k + '` must never be sent from a dashboard pane — see the header. ' +
+          (k === 'email'
+            ? 'Changing an email requires its own verified flow.'
+            : 'It would rewrite onboarding progress.')
+        );
+      }
+    });
+  }
+
+  function read(){
+    var uid = window.GoSession && GoSession.userId();
+    if(!uid) return Promise.resolve({ ok:false, message:'Not signed in.' });
+    return GoAuth.apiCall('/users/profile/' + uid, { method:'GET' }).then(function(r){
+      if(!r.ok) return { ok:false, message: GoAuth.apiMessage(r), status:r.status };
+      var d = (r.body && (r.body.data || r.body.user)) || r.body || {};
+      return { ok:true, profile:d };
+    });
+  }
+
+  /* Send ONLY the keys a pane owns. Returns the same {ok, message} shape the
+     rest of the dashboard's network code uses. */
+  function save(patch){
+    patch = patch || {};
+    assertSafe(patch);
+    if(!Object.keys(patch).length) return Promise.resolve({ ok:true, noop:true });
+    return GoAuth.apiCall('/users/onboarding', { method:'PATCH', body: patch })
+      .then(function(r){
+        if(!r.ok) return { ok:false, message: GoAuth.apiMessage(r), status:r.status };
+        return { ok:true, body:r.body };
+      });
+  }
+
+  return { read:read, save:save, REFUSED:REFUSED, assertSafe:assertSafe };
 })();
 </script>
 
@@ -2653,6 +2796,8 @@ window.showNoAccount = function(){
   .osf { text-align:left; margin-top:4px; }
   .osf-asline { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); background:#f6f8fb; border-radius:10px; padding:9px 11px; margin-bottom:6px; }
   .osf-asline b { color:var(--navy); }
+  .osf-askind { color:var(--muted); }
+  .osf-aschange { margin-left:8px; border:none; background:transparent; padding:0; font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--navy); text-decoration:underline; cursor:pointer; }
   .osf-sec { font-family:'Nunito',sans-serif; font-weight:900; font-size:10.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--muted); margin:16px 0 9px; }
   .osf-field { margin-bottom:13px; }
   .osf-field > label { display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy); margin-bottom:5px; }
@@ -3483,7 +3628,20 @@ window.showNoAccount = function(){
       <p class="gc-modal-sub">Your name, phone, email and Gopher ID are already on file &mdash; just add the deal and your price.</p>
 
       <div class="osf">
-        <div class="osf-asline"><span>&#128100;</span><div>Submitting as <b>Marcus Hale</b> &middot; Gopher Pro</div></div>
+        <!-- The name a customer will see on this deal. It is NOT a free choice
+             here: it follows "How you appear to requesters" in Business info,
+             the same switch that governs how the live apps show a Gopher on an
+             order (add_business ? business_name : first name). Owner rule
+             2026-08-12. Showing the outcome plus the one place to change it
+             beats a label the worker has to guess the meaning of. -->
+        <div class="osf-asline">
+          <span>&#128100;</span>
+          <div>
+            Customers will see <b id="osfAsName">Marcus Hale</b>
+            <span id="osfAsKind" class="osf-askind">&middot; your name</span>
+            <button type="button" class="osf-aschange" id="osfAsChange">Change</button>
+          </div>
+        </div>
 
         <div class="osf-sec">Your deal</div>
         <div class="osf-field">
@@ -4218,15 +4376,47 @@ window.showNoAccount = function(){
         note.innerHTML = dirty ? 'Unsaved changes — you\u2019ll confirm with a code before they save.' : 'No changes yet.';
       }
       section.__refresh = refresh;
+      /* Adopt the CURRENT values as the clean state. Needed when real data
+         arrives from the server after wire() has already snapshotted the demo
+         placeholders — without it, loading a worker's own profile would render
+         as "Unsaved changes" the moment they opened the pane. */
+      section.__setBaseline = function(){ baseline = serialize(section); refresh(); };
       section.addEventListener('input', refresh);
       section.addEventListener('change', refresh);
       saveBtn.addEventListener('click', () => {
         if(saveBtn.disabled) return;
         const commit = () => {
-          if(opts.onCommit) opts.onCommit(section);
-          baseline = serialize(section);  // snapshot AFTER any DOM mutations in onCommit
-          refresh();
-          showToast('Changes saved.');
+          const settle = () => {
+            baseline = serialize(section);  // snapshot AFTER any DOM mutations in onCommit
+            refresh();
+            showToast('Changes saved.');
+          };
+          const result = opts.onCommit ? opts.onCommit(section) : null;
+          /* A pane that PERSISTS returns a promise of { ok }. Only then may the
+             pane be marked clean and told "Changes saved." — resetting the
+             baseline before the write lands is how a failed save comes to look
+             like a successful one, which is the exact dishonesty these panes are
+             being made real to remove.
+             Panes that return nothing keep the original synchronous behaviour
+             untouched: they are still demo state and must not start claiming
+             otherwise. */
+          if(result && typeof result.then === 'function'){
+            saveBtn.disabled = true;
+            note.textContent = 'Saving…';
+            result.then((r) => {
+              if(r && r.ok === false){
+                note.textContent = r.message || 'Couldn’t save. Please try again.';
+                refresh();               // leaves it dirty, so Save stays available
+                return;
+              }
+              settle();
+            }).catch(() => {
+              note.textContent = 'Couldn’t save. Please try again.';
+              refresh();
+            });
+            return;
+          }
+          settle();
         };
         (opts.resolveVerify || openConfirm)(commit);
       });
@@ -4333,7 +4523,66 @@ window.showNoAccount = function(){
 
     /* ── BUSINESS ── Name locked; Title/Address editable; credentials replace
        (newest overrides). Uploading bumps a hidden version so Save is required. */
-    const business = wire('business');
+    /* Business info is the first pane to actually persist (owner, 2026-08-12).
+       It sends ONLY the four keys it owns, through GoProfile, which refuses
+       `email` and `last_completed_step` at the boundary — see that module's
+       header for why those two are landmines rather than merely wrong.
+
+       `add_business` is the switch that decides what a customer sees on a
+       Service Provider deal AND how the live apps render this worker on an
+       order. Until now the toggle repainted a label and saved nothing, so the
+       dashboard promised a choice it could not deliver. */
+    const business = wire('business', {
+      onCommit: function(section){
+        var showAs = (document.getElementById('bizShowAs')||{}).value;
+        var patch = {
+          add_business:  showAs === 'business',
+          business_name: ((document.getElementById('bizName')||{}).value || '').trim(),
+          company_title: ((document.getElementById('bizTitle')||{}).value || '').trim()
+        };
+        /* Returned, not fired-and-forgotten: wire() waits on this before it
+           marks the pane clean or says "Changes saved." */
+        return GoProfile.save(patch).then(function(r){
+          if(r.ok && window.GoDeals && GoDeals.paintSubmittingAs){
+            /* The deal form reads this switch — refresh it now rather than
+               waiting for the modal to be reopened. */
+            GoDeals.paintSubmittingAs();
+          }
+          return r;
+        });
+      }
+    });
+    /* Load the REAL values over the demo placeholders once signed in. Without
+       this the pane shows "Hale Services LLC" to every worker and a save would
+       write that fiction to their account. Re-baselines afterwards so arriving
+       data does not read as unsaved changes. */
+    if(business && window.GoProfile && window.GoSession && GoSession.token()){
+      GoProfile.read().then(function(r){
+        if(!r.ok) return;                     // silent: demo values stay, nothing is claimed
+        var p = r.profile || {};
+        window.GoProfile.__cached = p;   // the deal line reads first_name from here
+        var set = function(id, val){
+          var el = document.getElementById(id);
+          if(el && val != null && String(val).length) el.value = String(val);
+        };
+        set('bizName',  p.business_name);
+        set('bizTitle', p.company_title);
+        var hid = document.getElementById('bizShowAs');
+        var sw  = document.getElementById('bizShowAsSw');
+        if(hid && sw){
+          var on = !!p.add_business;
+          hid.value = on ? 'business' : 'individual';
+          sw.classList.toggle('on', on);
+          sw.setAttribute('aria-checked', String(on));
+          /* Repaint the "Showing as …" caption through the pane's own handler
+             so this cannot drift from what the toggle would render. */
+          if(window.GoBiz && GoBiz.paintShowAs) GoBiz.paintShowAs();
+        }
+        /* Adopt these as the clean state — they came FROM the server, so they
+           are not unsaved changes. */
+        if(business.__setBaseline) business.__setBaseline();
+      });
+    }
     const proPane = wire('pro');   // Become a Pro — its own pane (owner, 2026-07-23)
     if(business || proPane){
       const credFile = document.createElement('input');
@@ -4953,7 +5202,49 @@ window.showNoAccount = function(){
   }
   // Deactivated when not auto-eligible (owner, 2026-07-23): a locked tap does
   // nothing — "Learn more" below is the path to the eligibility pop-up.
-  if(btn) btn.addEventListener('click', function(){ if(ELIGIBLE) openOv(svcOv); });
+  /* Keep "Customers will see …" honest: it must show the name the SERVER will
+     put on the deal, which is business name when "Showing as a business" is on
+     and the worker's first name when it is off (owner rule 2026-08-12, and the
+     same rule the live apps use to render a Gopher on an order).
+     Reads the Business info pane, which is where the worker sets it — one
+     switch, not a second choice hidden in the deal form. */
+  function paintSubmittingAs(){
+    var nameEl = document.getElementById('osfAsName');
+    var kindEl = document.getElementById('osfAsKind');
+    if(!nameEl) return;
+    /* The hidden input is the serialized truth the save reads ('business' |
+       'individual'); the switch is its visual. Read the input, so this can
+       never disagree with what a save would persist. */
+    var hid = document.getElementById('bizShowAs');
+    var sw  = document.getElementById('bizShowAsSw');
+    var asBiz = hid ? hid.value === 'business' : !!(sw && sw.classList.contains('on'));
+    var bizName = ((document.getElementById('bizName')||{}).value || '').trim();
+    /* Prefer the profile the server gave us, then the name captured at sign-in.
+       If neither exists we say so plainly rather than printing a placeholder
+       that reads like a name — "Customers will see your name · your name" is
+       worse than saying nothing. */
+    var cached = (window.GoProfile && GoProfile.__cached) || {};
+    var person = String(cached.first_name || '').trim()
+              || ((window.GoSession && GoSession.load() && GoSession.load().name) || '');
+    if(asBiz && bizName){
+      nameEl.textContent = bizName; kindEl.textContent = '\u00b7 your business';
+    } else if(person){
+      nameEl.textContent = person;  kindEl.textContent = '\u00b7 your name';
+    } else {
+      nameEl.textContent = 'your name'; kindEl.textContent = '';
+    }
+  }
+  window.GoDeals = window.GoDeals || {};
+  window.GoDeals.paintSubmittingAs = paintSubmittingAs;
+  var asChange = document.getElementById('osfAsChange');
+  if(asChange) asChange.addEventListener('click', function(){
+    /* Send them to the one place the choice lives, rather than duplicating the
+       switch here — two controls for one setting is how they drift apart. */
+    closeOv(svcOv);
+    var navBtn = document.querySelector('.dash-nav-item[data-dash-section="business"]');
+    if(navBtn) navBtn.click();
+  });
+  if(btn) btn.addEventListener('click', function(){ if(ELIGIBLE){ paintSubmittingAs(); openOv(svcOv); } });
   var learn = document.getElementById('offerLearnMore');
   if(learn) learn.addEventListener('click', function(){ openOv(inelOv); });
   if(demoToggle) demoToggle.addEventListener('click', function(){ ELIGIBLE = !ELIGIBLE; render(); });
@@ -5016,6 +5307,8 @@ window.showNoAccount = function(){
       showSub.innerHTML = 'Requesters see <b>' + (on ? biz : 'Marcus Hale') + '</b>';
       showSw.setAttribute('aria-checked', String(on));
     };
+    window.GoBiz = window.GoBiz || {};
+    window.GoBiz.paintShowAs = paintShowAs;
     showSw.addEventListener('click', function(){
       showSw.classList.toggle('on');
       showHid.value = showSw.classList.contains('on') ? 'business' : 'individual';
