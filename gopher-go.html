@@ -2260,7 +2260,8 @@ window.GoWork = (function(){
      bitten by twice already, so `validate()` checks every mapped value against
      the categoryOptions the SERVER sends and reports anything that has drifted.
 
-     ⚠️ THE CUSTOMER TAXONOMY IS 8, THE WORK-SETTINGS API HAS 7. The canonical
+     ⚠️ BOTH TAXONOMIES ARE 8 AND MAP 1:1 (corrected 2026-08-14 — this said the
+     API had 7, having missed the inline `{ value: 'Other' }`). The canonical
      customer-facing set (owner, 2026-08-13, from the live Request and Connect
      Step-1 pickers) is: Delivery / Errand · Junk Removal · Moving · Home /
      Office Services · Hourly / Day Labor · Yard / Outdoor Projects · Ride
@@ -2302,7 +2303,24 @@ window.GoWork = (function(){
     'Yard / Outdoor Projects':'Yard Project',
     'Home / Office Services': 'Home Services',
     'Moving':                 'Moving',
-    'Junk Removal':           'Junk Removal'
+    'Junk Removal':           'Junk Removal',
+    /* ⚠️ 'Other' IS a real server category and this file used to claim it was
+       not. worksettings.js line 142 declares it as `{ value: 'Other' }` — a
+       top-level entry written inline, unlike its seven siblings which span
+       several lines. An extraction that keyed on the multi-line shape missed
+       it, and the wrong conclusion ("Other does not exist server-side at all")
+       was then written down twice and believed.
+       Cost of the error: the Other card was INERT — it showed the markup
+       default rather than the account, and toggling it saved nothing.
+       ⚠️ It did not merely LOOK right by luck; it showed the OPPOSITE of the
+       truth. Owner, 2026-08-14: "i checked other on the dashboard. It WAS NOT
+       checked at first" — the card rendered unchecked while his account had
+       Other selected, because the markup default is off and nothing ever
+       overwrote it. A pane that contradicts the account is worse than one
+       that admits it does not know.
+       The server has EIGHT categories, and they map 1:1 onto the eight
+       customer-facing ones. There is no orphan on either side. */
+    'Other':                  'Other'
   };
   /* Age-restricted delivery is its own card by owner decision (2026-07-23), and
      it DOES have a server home — not a category, but the two isAgeRestricted
@@ -2313,12 +2331,27 @@ window.GoWork = (function(){
   var SUBTYPE_MAP = {
     'Delivery — Age-Restricted': ['Delivery-Alcohol', 'Delivery-CBD/Other']
   };
-  /* "Other" has no server category and no sub-type. It stays unmapped and is
-     reported, rather than bound to a near-miss. */
-  var UNMAPPED = ['Other'];
+  /* Nothing is unmapped any more: all eight cards bind to a server category,
+     and the age-restricted card binds to Delivery's two isAgeRestricted
+     sub-types. Kept as an empty list rather than deleted so validate() keeps
+     its shape and a future unmappable card has somewhere honest to go. */
+  var UNMAPPED = [];
 
+  /* Checks BOTH directions. The forward check (a card pointing at a value the
+     server does not have) was here from the start. The reverse — a server
+     category with NO card — was not, and that is exactly the gap that let
+     'Other' sit unmapped and unnoticed: nothing pointed anywhere invalid, a
+     whole category was simply absent, and silence read as success. */
   function validate(categoryOptions){
     var server = (categoryOptions || []).map(function(c){ return c.value; });
+    var mapped = Object.keys(CAT_MAP).map(function(k){ return CAT_MAP[k]; });
+    var uncovered = server.filter(function(v){
+      return v.indexOf('-') === -1 && mapped.indexOf(v) === -1;
+    });
+    if(uncovered.length && window.console){
+      console.warn('[GoWork] server categories with no card — they can never be '
+        + 'set or cleared from this pane:', uncovered);
+    }
     var missing = Object.keys(CAT_MAP).filter(function(k){
       return server.indexOf(CAT_MAP[k]) === -1;
     });
