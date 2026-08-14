@@ -2261,10 +2261,11 @@ window.GoWork = (function(){
      Sharing · Other. This pane's card labels now match it exactly, so a worker
      chooses from the same words a customer sees.
 
-     Two of those labels DIFFER BETWEEN THE TWO CUSTOMER APPS, which is worth
-     fixing at source rather than here: Connect says "Delivery / Courier" and
-     "Other / Custom" where Request says "Delivery / Errand" and "Other". This
-     pane follows Request.
+     Connect words two of them differently for a BUSINESS audience ("Delivery /
+     Courier", "Other / Custom") where Request speaks to neighbours ("Delivery /
+     Errand", "Other"). That is deliberate, not drift (owner 2026-08-13) — the
+     canonical value underneath is Delivery / Other, and only the KEY has to
+     match. This pane follows Request's wording; do not "harmonise" them.
 
      ⚠️ TWO CARDS HAVE NO SERVER CATEGORY, deliberately left unmapped:
        "Delivery — Age-Restricted" is not a category server-side; it is the
@@ -2323,13 +2324,39 @@ window.GoWork = (function(){
     var sec = document.querySelector('.dash-section[data-dash-section="work"]');
     if(!sec) return;
     var sel = d.selectionMap || {};
+    var opts = d.categoryOptions || [];
+
+    /* ⚠️ SUB-TYPES ROLL UP. The live taxonomy is FINER than the customer-facing
+       one — Delivery breaks into Grocery, Courier, Alcohol and the rest; Yard
+       Project into Lawn Mowing, Mulch, Trimming. The canonical 8 is a coarser
+       view over the same data, so anything expressible in the live set maps up
+       into it without loss (owner, 2026-08-13).
+
+       This matters because consolidateSelectionMap sets parents and sub-types
+       INDEPENDENTLY (worksettings.js): a worker can have
+       `Yard Project-Lawn Mowing/Service` true while `Yard Project` is false.
+       Reading only the parent — which is what this did — would have shown that
+       worker's card OFF and told them they had opted out of work they are
+       actually taking.
+
+       The sub-type list comes from the categoryOptions the SERVER sends, not a
+       copy here, so a new sub-type is picked up without a code change. */
+    var childrenOf = function(serverValue){
+      var c = opts.filter(function(o){ return o.value === serverValue; })[0];
+      return (c && c.subTypes) ? c.subTypes.map(function(s){ return s.value; }) : [];
+    };
+    var isOn = function(serverValue){
+      if(sel[serverValue]) return true;
+      return childrenOf(serverValue).some(function(v){ return !!sel[v]; });
+    };
+
     /* Category toggles reflect the ACCOUNT, not the demo defaults. */
     Object.keys(CAT_MAP).forEach(function(label){
       var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
       if(!row) return;
       var sw = row.querySelector('.sw.js-cat');
       if(!sw) return;
-      var on = !!sel[CAT_MAP[label]];
+      var on = isOn(CAT_MAP[label]);
       sw.classList.toggle('on', on);
       sw.setAttribute('aria-checked', String(on));
       var hid = row.querySelector('input[data-field]');
