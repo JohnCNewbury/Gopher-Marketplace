@@ -2278,6 +2278,23 @@ window.GoWork = (function(){
          isAgeRestricted SUB-TYPES of Delivery (Alcohol, CBD/Other).
        "Other" does not exist server-side at all.
      Both are surfaced to the owner rather than quietly bound to a near-miss. */
+  /* ⚠️ THE AGE-RESTRICTED CARD'S SWITCH IS `.sw.js-sub`, NOT `.sw.js-cat`.
+     It kept that class when it was promoted to its own card (owner,
+     2026-07-23) so the pre-existing sub-toggle JS kept working. Every read and
+     write here used to query `.sw.js-cat`, so that one card was INVISIBLE to
+     both: it never reflected the account on load, and its state was never
+     collected on save. A worker could switch age-restricted delivery on or
+     off and nothing whatsoever would happen — the precise failure the
+     SUBTYPE_MAP comment above says is the worst possible outcome for that
+     particular toggle.
+     Every row carries exactly one switch in its `.crow` header (verified
+     across all nine cards), so ask for THAT rather than for a class one card
+     does not have. */
+  function rowSwitch(sec, label){
+    var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
+    return row ? row.querySelector('.crow .sw') : null;
+  }
+
   var CAT_MAP = {
     'Delivery / Errand':      'Delivery',
     'Ride Sharing':           'Need a Ride',
@@ -2359,9 +2376,8 @@ window.GoWork = (function(){
     /* Category toggles reflect the ACCOUNT, not the demo defaults. */
     Object.keys(CAT_MAP).forEach(function(label){
       var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
-      if(!row) return;
-      var sw = row.querySelector('.sw.js-cat');
-      if(!sw) return;
+      var sw = rowSwitch(sec, label);
+      if(!row || !sw) return;
       var on = isOn(CAT_MAP[label]);
       sw.classList.toggle('on', on);
       sw.setAttribute('aria-checked', String(on));
@@ -2371,9 +2387,8 @@ window.GoWork = (function(){
     /* Age-restricted card is ON when EITHER age-restricted sub-type is selected. */
     Object.keys(SUBTYPE_MAP).forEach(function(label){
       var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
-      if(!row) return;
-      var sw = row.querySelector('.sw.js-cat');
-      if(!sw) return;
+      var sw = rowSwitch(sec, label);
+      if(!row || !sw) return;
       var on = SUBTYPE_MAP[label].some(function(v){ return !!sel[v]; });
       sw.classList.toggle('on', on);
       sw.setAttribute('aria-checked', String(on));
@@ -2390,33 +2405,109 @@ window.GoWork = (function(){
 
   /* Reads the pane back into the server's shape. Only mapped cards travel —
      an unmapped card must not invent a category the server does not have. */
+  /* Sub-types of a mapped category, read from the server's own categoryOptions
+     so a new one is picked up without a code change here. Age-restricted
+     sub-types are EXCLUDED: they belong to their own card and must never move
+     as a side effect of the parent's toggle. */
+  function subTypesOf(serverValue){
+    var d = (window.GoWork && window.GoWork.__last) || {};
+    var c = (d.categoryOptions || []).filter(function(o){ return o.value === serverValue; })[0];
+    if(!(c && c.subTypes)) return [];
+    var age = [];
+    Object.keys(SUBTYPE_MAP).forEach(function(k){ age = age.concat(SUBTYPE_MAP[k]); });
+    return c.subTypes.map(function(t){ return t.value; })
+                     .filter(function(v){ return age.indexOf(v) === -1; });
+  }
+
+  /* ⚠️ setWorkSettings IS A FULL REPLACE, NOT A PATCH. It rebuilds
+     selecttype/selectsubtype from scratch by walking its own
+     categorySelectionOptions and keeping only the keys present-and-truthy in
+     the submitted selectionMap. Anything omitted is DELETED.
+
+     That is why this starts from the server's last-known map instead of an
+     empty object. This pane has SEVEN coarse cards; the live taxonomy has ~20
+     sub-types beneath them that this UI cannot show. Submitting only the cards
+     — which is what this function used to do — would have wiped every
+     sub-type a worker had ever chosen in the app. A Gopher with Yard Project
+     narrowed to Lawn Mowing and Mulch would have opened the web dashboard,
+     pressed Save, and silently had those selections destroyed. That data loss
+     is the reason this save stayed unwired until now.
+
+     Card ON  -> parent true, existing sub-types preserved. If NONE were on,
+                 all non-age sub-types are turned on: a parent with no sub-type
+                 is a category the worker has opted into but can receive
+                 nothing from.
+     Card OFF -> parent false AND its non-age sub-types false. Leaving them set
+                 would keep routing that work to a worker who just switched it
+                 off, which is worse than the save failing outright. */
   function collect(){
     var sec = document.querySelector('.dash-section[data-dash-section="work"]');
     if(!sec) return null;
+    var last = ((window.GoWork && window.GoWork.__last) || {}).selectionMap || {};
     var selectionMap = {};
+    Object.keys(last).forEach(function(k){ selectionMap[k] = !!last[k]; });
+
     Object.keys(CAT_MAP).forEach(function(label){
-      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
-      if(!row) return;
-      var sw = row.querySelector('.sw.js-cat');
-      if(sw && sw.classList.contains('on')) selectionMap[CAT_MAP[label]] = true;
-    });
-    Object.keys(SUBTYPE_MAP).forEach(function(label){
-      var row = sec.querySelector('.cat-row[data-cat="' + label + '"]');
-      if(!row) return;
-      var sw = row.querySelector('.sw.js-cat');
-      if(sw && sw.classList.contains('on')){
-        SUBTYPE_MAP[label].forEach(function(v){ selectionMap[v] = true; });
-        /* A sub-type without its parent is not a selection the server can act
-           on — Delivery must be on for an age-restricted delivery to reach this
-           worker at all. */
-        selectionMap['Delivery'] = true;
+      var sw = rowSwitch(sec, label);
+      if(!sw) return;
+      var val = CAT_MAP[label], subs = subTypesOf(val);
+      if(sw.classList.contains('on')){
+        selectionMap[val] = true;
+        var anyOn = subs.some(function(v){ return !!selectionMap[v]; });
+        if(!anyOn) subs.forEach(function(v){ selectionMap[v] = true; });
+      } else {
+        selectionMap[val] = false;
+        subs.forEach(function(v){ selectionMap[v] = false; });
       }
     });
+
+    Object.keys(SUBTYPE_MAP).forEach(function(label){
+      var sw = rowSwitch(sec, label);
+      if(!sw) return;
+      var on = sw.classList.contains('on');
+      SUBTYPE_MAP[label].forEach(function(v){ selectionMap[v] = on; });
+      /* A sub-type without its parent is not a selection the server can act
+         on — Delivery must be on for an age-restricted delivery to reach this
+         worker at all. Turning the age card OFF does NOT turn Delivery off:
+         ordinary delivery is a different card and the worker did not touch it. */
+      if(on) selectionMap['Delivery'] = true;
+    });
+
+    /* ⚠️ The server's radius guard is BROKEN — worksettings.js sends a 400 for
+       an out-of-range value but does not return, so it writes the bad radius
+       anyway and then throws on the second res.send. Clamping here is the only
+       thing standing between a slider bug and a persisted out-of-range radius.
+       Raised separately; do not remove this on the assumption the API validates. */
     var rg = sec.querySelector('input[type=range]');
-    return { radius: rg ? +rg.value : undefined, selectionMap: selectionMap };
+    var radius = rg ? Math.max(0, Math.min(50, +rg.value || 0)) : undefined;
+    return { radius: radius, selectionMap: selectionMap };
   }
 
-  return { load:load, apply:apply, collect:collect, validate:validate,
+  /* PUT /users/worksettings — route confirmed at controllers/user/index.js.
+     Returns { ok } so wire()'s async path can hold the pane dirty until the
+     write actually lands; anything else and a failed save would silently read
+     as a successful one.
+
+     On success the server's view is re-read rather than assumed: setWorkSettings
+     derives selecttype/selectsubtype itself and forces offer_limit to 0, so what
+     it stored is not necessarily what was sent. Re-reading also refreshes
+     __last, which the NEXT collect() builds on — stale there would mean the
+     following save reasons from a pre-save world. */
+  function save(){
+    if(!(window.GoAuth && window.GoSession && GoSession.token()))
+      return Promise.resolve({ ok:false, message:'You’re signed out. Sign in and try again.' });
+    var payload = collect();
+    if(!payload) return Promise.resolve({ ok:false, message:'Couldn’t read your work settings.' });
+    return GoAuth.apiCall('/users/worksettings', { method:'PUT', body: payload })
+      .then(function(r){
+        if(!r.ok) return { ok:false, message: GoAuth.apiMessage(r) };
+        return load().then(function(){ return { ok:true }; })
+                     .catch(function(){ return { ok:true }; });
+      });
+  }
+
+  return { load:load, apply:apply, collect:collect, validate:validate, save:save,
+           subTypesOf:subTypesOf,
            CAT_MAP:CAT_MAP, SUBTYPE_MAP:SUBTYPE_MAP, UNMAPPED:UNMAPPED };
 })();
 </script>
@@ -5124,6 +5215,19 @@ window.showNoAccount = function(){
     }
 
     const work = wire('work', {
+      /* REAL as of 2026-08-14. Returning a promise puts this pane on wire()'s
+         async path: it stays dirty and keeps Save available until the server
+         confirms, so a failed write can never render as "Changes saved."
+
+         Ordering note — the ride-photo gate in resolveVerify still runs FIRST
+         and returns without requesting a code, so an incomplete Ride Sharing
+         setup is stopped before an SMS is sent, not after. That ordering was
+         the point of the 2026-07-26 fix and this must not reorder it. */
+      onCommit(){
+        return (window.GoWork && GoWork.save)
+          ? GoWork.save()
+          : null;   /* no module: fall back to the old synchronous demo path */
+      },
       resolveVerify(commit){
         const section = document.querySelector('.dash-section[data-dash-section="work"]');
         const gate = ridePhotoGate(section);
@@ -5627,7 +5731,16 @@ window.showNoAccount = function(){
          radius come back right, because a wrong selectionMap key does not error,
          it just silently fails to persist. */
       document.addEventListener('go:entered', function(){
-        if(window.GoWork && GoWork.load) GoWork.load();
+        if(!(window.GoWork && GoWork.load)) return;
+        GoWork.load().then(function(d){
+          if(!d) return;
+          /* These values came FROM the server, so they are not unsaved changes.
+             Without this the pane reads "Unsaved changes" the moment a worker
+             opens it, and the Save button is live before they have touched
+             anything. Same reason Business info adopts its baseline. */
+          var sec = document.querySelector('.dash-section[data-dash-section="work"]');
+          if(sec && sec.__setBaseline) sec.__setBaseline();
+        });
       });
     })();
 
@@ -5636,12 +5749,15 @@ window.showNoAccount = function(){
        Three facts drive everything below, all verified against
        origin/production rather than inferred:
 
-       1. THE REFERRAL CODE IS THE USER'S OWN id, formatted `GOPHER<id>`.
-          controllers/common/referrals.js get_referrals_by_id splits on
-          'GOPHER' and findByPk's the remainder; get_referral_by_email returns
-          the bare `users.id` (a legacy GOPHER prefix is stripped on input;
-          never displayed — owner 8/14). There is no separate code column. The 820083
-          this pane used to show was invented.
+       1. THE REFERRAL CODE IS THE USER'S OWN `users.id`, SHOWN AND SHARED BARE.
+          ⛔ Never `GOPHER<id>` on any user-facing surface (owner, 2026-08-14):
+          the prefix was removed from onboarding because users did not know to
+          type it and referrals silently failed to link.
+          The parser still STRIPS a legacy prefix on input
+          (get_referrals_by_id splits on 'GOPHER' and findByPk's the
+          remainder), so a prefixed code "working" proves nothing — the failure
+          is the human hand-off, not the API. There is no separate code column.
+          The 820083 this pane used to show was invented.
 
        2. `GET /referrals` (user_auth) returns THREE arrays, and they do not map
           1:1 onto the three tabs:
@@ -5804,11 +5920,14 @@ window.showNoAccount = function(){
          Gopher Connect" and "Refer Gopher Go" are the same request. Do not
          add a kind parameter expecting the server to read it.
 
-         ⚠️ ASYMMETRY, and it is a real gap: the EMAIL carries
-         `referral_token: GOPHER<id>`; the SMS body does NOT — it is a fixed
-         blurb ending in https://gophergo.io/ with no code and no link back to
-         the sender. An SMS invitee is attributed only by the invites row
-         matching the number they later sign up with.
+         ⚠️ THE ASYMMETRY THIS USED TO DESCRIBE IS CLOSED — corrected here
+         2026-08-14 rather than left to mislead. The SMS now carries BOTH the
+         sender's bare Gopher ID and their attributed /self-referral/<id> link
+         (GitLab !298 + G40-135), and is back inside 3 segments. The EMAIL is
+         still the weak channel: it passes `referral_token` to template 8,
+         which is `referral-email-2024.ejs` — a file with ZERO ejs
+         interpolations, so the token is passed and never rendered. Attribution
+         on that channel rests entirely on the invites-row match at signup.
 
          409s are normal, not failures to hide: 'This number has already
          registered.' / 'Referrals have already been sent.' They only fire when
@@ -5916,12 +6035,13 @@ window.showNoAccount = function(){
         if(tabs){ tabs.scrollIntoView({behavior:'smooth', block:'center'});
           const p=tabs.querySelector('[data-tab="pending"]'); if(p) p.click(); }
       };
-      /* ⚠️ THE REFERRAL CODE IS THE ACCOUNT'S OWN id, formatted GOPHER<id>.
-         Verified at source: get_referrals_by_id splits the submitted code on
-         'GOPHER' and findByPk's the remainder — there is no code column to
-         read. The 820083 baked into the markup was invented, and a worker who
-         shared it would have been handing out a code that resolves to somebody
-         else's account (or to nothing). The signed-out fallback is now the owner's
+      /* ⛔ THE REFERRAL CODE IS THE ACCOUNT'S OWN `users.id`, PAINTED BARE.
+         Never prefixed (owner, 2026-08-14) — see code() for why the parser
+         accepting a prefix is not evidence that showing one is safe. There is
+         no code column to read. The 820083 baked into the markup was invented:
+         measured 2026-08-14, the highest live id is 141,808, so it resolved to
+         NOTHING rather than to a stranger — a code that silently fails at
+         signup, not a misattribution. The signed-out fallback is now the owner's
          real Go id (1, bare) — the only real id approved for public prototypes;
          a real session overwrites all three places it appears. */
       function paintReferCode(){
