@@ -2714,26 +2714,22 @@ svg.leaflet-image-layer.leaflet-interactive path {
     });
   });
 
-  // Location entry — placeholder hook for the live deals feed
-  function findDeals(){
-    var loc = (document.getElementById('hero-location') || {}).value
-           || (document.getElementById('cta-location') || {}).value || '';
-    loc = loc.trim();
-    if(!loc){
-      alert('Enter your address or ZIP to see deals near you.');
-      return;
-    }
-    // SET YOUR DEALS-FEED DESTINATION HERE
-    // e.g. window.location.href = '/deals-feed?loc=' + encodeURIComponent(loc);
-    alert('Great! Local deals for "' + loc + '" are on the way. (Connect this to your live deals feed.)');
-  }
-
-  /* ===== Sticky nav shadow on scroll (from homepage) ===== */
+  /* ===== Sticky nav shadow on scroll (from homepage) =====
+     Carried over from index.html, which HAS #mainNav. This page does not — its nav is a
+     bare <nav> with no id — so `nav` was null and every scroll event threw
+     "Cannot read properties of null (reading 'style')". Verified on the live site before
+     fixing: it threw there too, for every visitor, on every scroll.
+     Guarding the registration rather than the body: with no #mainNav there is nothing to
+     shadow, so the listener should not exist at all. If a #mainNav is ever added here the
+     effect returns by itself. */
   const nav = document.getElementById('mainNav');
-  window.addEventListener('scroll', () => {
-    if (window.scrollY > 60) nav.style.boxShadow = '0 2px 24px rgba(0,36,97,0.15)';
-    else nav.style.boxShadow = '0 2px 16px rgba(0,36,97,0.08)';
-  });
+  if (nav) {
+    window.addEventListener('scroll', () => {
+      nav.style.boxShadow = (window.scrollY > 60)
+        ? '0 2px 24px rgba(0,36,97,0.15)'
+        : '0 2px 16px rgba(0,36,97,0.08)';
+    });
+  }
 
   /* ===== Slide-in hamburger menu ===== */
   (function(){
