@@ -5813,6 +5813,40 @@ window.showNoAccount = function(){
          contacts, so one rejection surfaces as an error for the whole call
          while messages to the others may already have gone out. Never retry a
          failed multi-contact submit wholesale. */
+      /* ── The server's 409 copy, translated ────────────────────────────────
+         The raw strings are terse and passive, and one of them is actively
+         confusing: a worker inviting somebody who already has an account is
+         told "Referrals have already been sent." — which sounds like a
+         duplicate-click, not "this person is already on Gopher."
+
+         THE STRINGS THEMSELVES CANNOT BE CHANGED SERVER-SIDE. Both mobile
+         apps compare them with `===` (referInputMobile.js / referInputEmail.js
+         / contactList.js in each app) and collapse all three into one
+         `refer_sms_failed` flag. Reword the backend and those comparisons stop
+         matching, so the apps fall through to Sentry.captureException with no
+         user feedback at all — and only a store release could fix it.
+         Translate on this side instead.
+
+         ⚠️ "Referrals have already been sent." IS AMBIGUOUS BY CONSTRUCTION,
+         and that is a backend ordering bug, not a copy problem: the
+         invite-exists check runs BEFORE the already-registered check, so when
+         both are true the less useful message wins and the account fact is
+         never reported. Until those two checks are swapped, this copy has to
+         cover both readings honestly. Once they are swapped, simplify this
+         line to "You've already invited this contact." */
+      var ERR_COPY = {
+        'This number has already registered.':
+          'That number already has a Gopher account — there’s nothing to send.',
+        'This email has already been used.':
+          'That email already has a Gopher account — there’s nothing to send.',
+        'Referrals have already been sent.':
+          'Already invited, or they already have a Gopher account — either way, nothing was sent.'
+      };
+      function friendlyError(msg){
+        var key = String(msg||'').trim();
+        return ERR_COPY[key] || msg;
+      }
+
       function send(channel, contacts){
         if(!window.GoSession || !GoSession.token()){
           return Promise.resolve({ ok:false, reason:'signed-out' });
@@ -5832,7 +5866,8 @@ window.showNoAccount = function(){
 
         return GoAuth.apiCall('/referrals', { method:'POST', body: body }).then(function(r){
           if(r.ok && r.body && r.body.success) return { ok:true, sent:clean.length };
-          return { ok:false, reason:'api', status:r.status, message: GoAuth.apiMessage(r) };
+          return { ok:false, reason:'api', status:r.status,
+                   message: friendlyError(GoAuth.apiMessage(r)) };
         });
       }
 
