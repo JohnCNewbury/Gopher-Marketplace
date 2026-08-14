@@ -3023,12 +3023,16 @@
              7-digit referrer literally untypeable, and the field would simply truncate to someone
              ELSE'S valid id rather than fail.
 
-             `inputmode` is text, not numeric, because the backend accepts BOTH forms —
-             get_referrals_by_id strips a leading GOPHER prefix before the lookup — and a numeric
-             keypad blocks the GOPHER123 form the SMS and the portals hand out. -->
+             ⛔ THE ID IS SHARED BARE — never teach a GOPHER prefix here (owner, verbatim,
+             2026-08-14: he removed the prefix from onboarding because users didn't know to
+             type it and referrals silently failed to link). `inputmode` stays text, not
+             numeric, ONLY for tolerance: the backend strips a leading GOPHER prefix, and a
+             user pasting a code from an old pre-ruling SMS/screenshot may still have the
+             prefixed form. Accept it; never display or teach it. Promo placeholders
+             (GOPHER10) are a different mechanic and keep their names. -->
         <div class="field" id="regReferredRow" hidden>
           <label>Referred by &mdash; Gopher ID</label>
-          <input type="text" name="referred_by_gopher_id" inputmode="text" maxlength="20" placeholder="Their Gopher ID (e.g. GOPHER1)">
+          <input type="text" name="referred_by_gopher_id" inputmode="text" maxlength="20" placeholder="Their Gopher ID (e.g. 1)">
           <p class="field-hint">Don&rsquo;t know it? <a href="#" onclick="var r=document.getElementById('regReferredRow'); if(r){ r.hidden=true; r.querySelector('input').value=''; } return false;">Skip this</a></p>
         </div>
 
@@ -3244,9 +3248,13 @@
         <div class="field">
           <div class="label-with-info">
             <label>Gopher ID</label>
-            <span class="info-btn" tabindex="0">i<span class="info-tip">Your Gopher ID is your referral code &mdash; find it in the Gopher Go app under <strong>Refer &amp; Earn</strong>, by your QR code (e.g. <strong>820083</strong>).<img class="info-tip-img" src="assets/img/gopher-id-refer.webp" alt="Your Refer &amp; Earn QR code in the Gopher Go app" onerror="this.style.display='none'"></span></span>
+            <span class="info-btn" tabindex="0">i<span class="info-tip">Your Gopher ID is your referral code &mdash; find it in the Gopher Go app under <strong>Refer &amp; Earn</strong>, by your QR code (e.g. <strong>1</strong> &mdash; it can be 1 digit or many).
+             <!-- 820083 was the 7/27 "deliberate worked example"; SUPERSEDED 8/14 by the
+                  owner's rulings (real IDs on referral surfaces, shared BARE) and by the Go
+                  dashboard it points at, which now shows the real bare id. An example id
+                  that doesn't exist teaches the exact invented-id class the ruling retired. --><img class="info-tip-img" src="assets/img/gopher-id-refer.webp" alt="Your Refer &amp; Earn QR code in the Gopher Go app" onerror="this.style.display='none'"></span></span>
           </div>
-          <input type="text" name="gopher_id" placeholder="e.g. 820083" autocomplete="off">
+          <input type="text" name="gopher_id" placeholder="Your Gopher ID (e.g. 1)" autocomplete="off">
         </div>
 
         <button class="modal-submit" onclick="submitForm('worker')">Submit</button>
