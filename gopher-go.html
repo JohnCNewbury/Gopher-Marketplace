@@ -3096,6 +3096,18 @@ window.showNoAccount = function(){
   .hc-sub { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; }
   .hc-arr { color:var(--muted); font-size:20px; }
 
+  /* Refer Yourself's real public link. ⚠️ display: is set here, so the
+     [hidden] attribute alone would NOT hide it on this page — see the
+     2026-07-27 .rf-view finding. The guard below is mandatory, not tidiness. */
+  .rf-selflink{display:flex;flex-direction:column;align-items:center;gap:6px;margin:10px 0 4px;padding:12px;
+    background:#F4F8F5;border:1px solid #DCEBE1;border-radius:12px}
+  .rf-selflink[hidden]{display:none}
+  .rf-selflink-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#5B6B7C}
+  .rf-selflink-url{font-size:12.5px;font-weight:700;color:#002461;word-break:break-all;text-align:center}
+  .rf-selflink-copy{border:1px solid #C9DED1;background:#fff;color:#1a9d4b;font-weight:800;font-size:12.5px;
+    padding:7px 16px;border-radius:10px;cursor:pointer}
+  .rf-selflink-copy:hover{background:#F0FAF4}
+
   /* refer QR card */
   .qr-card { background:#fff; border:1px solid #eef0f5; border-radius:16px; padding:22px; text-align:center; margin-bottom:16px; }
   .qr-ttl { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); }
@@ -3987,6 +3999,11 @@ window.showNoAccount = function(){
       <div class="rf-qr" id="referQr" aria-hidden="true"></div>
       <div class="rf-id-label">Your Gopher ID</div>
       <div class="rf-id" id="referId">820083</div>
+      <div class="rf-selflink" id="rfSelfLink" hidden>
+        <span class="rf-selflink-lbl">Your personal invite link</span>
+        <span class="rf-selflink-url"></span>
+        <button type="button" class="rf-selflink-copy">Copy link</button>
+      </div>
       <button class="gc-modal-btn rf-btn-navy" data-refer-share="sms">Refer via SMS</button>
       <button class="gc-modal-btn rf-btn-navy" data-refer-share="email">Refer via email</button>
       <button class="gc-modal-btn-text" id="referTrackLink">View track referral history</button>
@@ -5588,6 +5605,94 @@ window.showNoAccount = function(){
       });
     })();
 
+    /* ── GoRefer — the referral pane's real data ───────────────────────────
+       The referral system is LIVE in production and predates this dashboard.
+       Three facts drive everything below, all verified against
+       origin/production rather than inferred:
+
+       1. THE REFERRAL CODE IS THE USER'S OWN id, formatted `GOPHER<id>`.
+          controllers/common/referrals.js get_referrals_by_id splits on
+          'GOPHER' and findByPk's the remainder; get_referral_by_email returns
+          `GOPHER${referrer_id}`. There is no separate code column. The 820083
+          this pane used to show was invented.
+
+       2. `GET /referrals` (user_auth) returns THREE arrays, and they do not map
+          1:1 onto the three tabs:
+            emails[]    — pending EMAIL invites  ─┐ together = "Pending"
+            telephones[]— pending SMS invites    ─┘
+            active[]    — everyone who actually signed up, each carrying an
+                          `active` boolean (true = has a delivered order) plus
+                          gopher/requestor role counts.
+          So Added = active[] where active===false (joined, never worked a job)
+          and Active = active[] where active===true. One query, split on the
+          flag — not three endpoints.
+
+       3. Refer Yourself is a real PUBLIC page the API serves itself:
+          GET https://api.gophergo.io/self-referral/<id> renders
+          "<name> invited you to Gopher!" over a First/Last/Phone form that
+          POSTs /api/v1/refer_yourself. Verified live (200, correct name). That
+          URL — not a code — is the thing worth sharing.
+
+       ⚠️ NOT WIRED HERE, DELIBERATELY: `POST /referrals` sends REAL SMS and
+       REAL EMAIL to whatever contacts are submitted. Wiring the four tiles'
+       submit is an outward-facing action on a live messaging path and needs
+       the owner's go-ahead, so the tiles still file locally. Read is safe;
+       send is not. */
+    window.GoRefer = (function(){
+      var SELF_BASE = 'https://api.gophergo.io/self-referral/';
+
+      function code(){
+        var id = window.GoSession && GoSession.userId && GoSession.userId();
+        return id ? 'GOPHER' + id : null;
+      }
+      function selfUrl(){
+        var id = window.GoSession && GoSession.userId && GoSession.userId();
+        return id ? SELF_BASE + id : null;
+      }
+
+      /* Dates arrive as timestamps; render them in the pane's existing m.d.yy
+         style rather than introducing a second format on one screen. */
+      function fmt(ts){
+        if(!ts) return '';
+        var d = new Date(ts);
+        if(isNaN(d.getTime())) return '';
+        return (d.getMonth()+1) + '.' + d.getDate() + '.' + String(d.getFullYear()).slice(2);
+      }
+      /* A row's role counts are sums, so >0 means "holds that role". A user can
+         hold both; worker is the more specific answer on a worker dashboard. */
+      function roleOf(r){
+        if (Number(r.gopher) > 0) return 'Gopher';
+        if (Number(r.requestor) > 0) return 'Requester';
+        return '—';
+      }
+      /* ⚠️ Connect is NOT distinguishable here. The query returns role_id 2/3
+         only, and a Connect business signs in as a requestor, so "App Used"
+         can honestly say Go or Request and nothing finer. Do not guess Connect
+         from this data. */
+      function appOf(r){ return Number(r.gopher) > 0 ? 'Go' : 'Request'; }
+
+      function load(){
+        if(!window.GoSession || !GoSession.token()) return Promise.resolve(null);
+        return GoAuth.apiCall('/referrals', { method:'GET' }).then(function(r){
+          if(!r.ok || !r.body || r.body.success !== true) return null;
+          var b = r.body;
+          var pending = []
+            .concat((b.telephones||[]).map(function(x){
+              return [fmt(x.created_at), x.telephone || '', 'SMS']; }))
+            .concat((b.emails||[]).map(function(x){
+              return [fmt(x.created_at), x.email || '', 'Email']; }))
+            .sort(function(a,b2){ return 0; });
+          var joined = (b.active||[]).filter(function(x){ return x && x.referred_id; });
+          var added  = joined.filter(function(x){ return !x.active; })
+            .map(function(x){ return [fmt(x.created_at), (x.name||'').trim() || '—', roleOf(x)]; });
+          var live   = joined.filter(function(x){ return !!x.active; })
+            .map(function(x){ return [fmt(x.created_at), (x.name||'').trim() || '—', appOf(x)]; });
+          return { pending: pending, added: added, active: live };
+        });
+      }
+      return { code: code, selfUrl: selfUrl, load: load };
+    })();
+
     // ── Refer & earn ──
     (function(){
       const copy = document.getElementById('referCopy'); if(!copy) return;
@@ -5623,12 +5728,48 @@ window.showNoAccount = function(){
         if(tabs){ tabs.scrollIntoView({behavior:'smooth', block:'center'});
           const p=tabs.querySelector('[data-tab="pending"]'); if(p) p.click(); }
       };
+      /* ⚠️ THE REFERRAL CODE IS THE ACCOUNT'S OWN id, formatted GOPHER<id>.
+         Verified at source: get_referrals_by_id splits the submitted code on
+         'GOPHER' and findByPk's the remainder — there is no code column to
+         read. The 820083 baked into the markup was invented, and a worker who
+         shared it would have been handing out a code that resolves to somebody
+         else's account (or to nothing). Demo value stays for signed-out
+         visitors; a real session overwrites all three places it appears. */
+      function paintReferCode(){
+        var code = window.GoRefer && GoRefer.code();
+        if(!code) return;
+        ['referIdBig','referCode','referId'].forEach(function(id){
+          var el = document.getElementById(id); if(el) el.textContent = code;
+        });
+      }
+      document.addEventListener('go:entered', paintReferCode);
+
+      /* Refer Yourself is the one tile with a REAL public landing page behind
+         it — the API renders "<name> invited you to Gopher!" at
+         /self-referral/<id> and posts to /refer_yourself. Surface that link so
+         it can actually be shared; the other three have no such page. */
+      function paintSelfLink(kind){
+        var slot = document.getElementById('rfSelfLink');
+        var url  = window.GoRefer && GoRefer.selfUrl();
+        if(!slot) return;
+        var show = (kind === 'self' && !!url);
+        slot.hidden = !show;
+        if(show){
+          slot.querySelector('.rf-selflink-url').textContent = url;
+          slot.querySelector('.rf-selflink-copy').onclick = function(){
+            if(navigator.clipboard) navigator.clipboard.writeText(url).catch(function(){});
+            showToast('Your personal invite link was copied.');
+          };
+        }
+      }
+
       const openReferModal = kind => {
         referKind=kind; referContacts.length=0;
         const c=REFER_COPY[kind]||REFER_COPY.go;
         document.getElementById('referBrand').textContent=c.brand;
         document.getElementById('referTitle').textContent=c.title;
         document.getElementById('referSub').textContent=c.sub;
+        paintReferCode(); paintSelfLink(kind);
         showReferView('home');
         document.getElementById('referOverlay').hidden=false;
       };
@@ -5684,10 +5825,28 @@ window.showNoAccount = function(){
         tbody.innerHTML = rows.length ? rows.map(x => '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td><td class="rs-ty">'+x[2]+'</td></tr>').join('')
           : '<tr><td colspan="3"><div class="rh-empty">No '+tab+' referrals yet.</div></td></tr>';
       }
+      let curTab = 'pending';
       document.querySelectorAll('.rs-tab').forEach(b => b.addEventListener('click', () => {
-        document.querySelectorAll('.rs-tab').forEach(x => x.classList.remove('on')); b.classList.add('on'); renderTrack(b.dataset.tab);
+        document.querySelectorAll('.rs-tab').forEach(x => x.classList.remove('on')); b.classList.add('on');
+        curTab = b.dataset.tab; renderTrack(curTab);
       }));
       renderTrack('pending');
+
+      /* Real referrals replace the demo rows on sign-in. Same contract as
+         Previous requests: the seeded rows are what an unauthenticated visitor
+         sees, and a real session must never leave them on screen. A failed or
+         empty load leaves the demo rows alone rather than blanking the pane —
+         except when the account genuinely HAS referrals, in which case the
+         real set wins outright. */
+      function loadReferrals(){
+        if(!window.GoRefer) return;
+        GoRefer.load().then(function(d){
+          if(!d) return;
+          REFER.pending = d.pending; REFER.added = d.added; REFER.active = d.active;
+          renderTrack(curTab);
+        }).catch(function(){ /* leave the demo rows; a broken pane is worse */ });
+      }
+      document.addEventListener('go:entered', loadReferrals);
     })();
 
     // ── Blocked requestors (shares BLOCKED with Request history) ──
