@@ -3508,6 +3508,7 @@ window.showNoAccount = function(){
   .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--navy); color:#fff; padding:13px 22px; border-radius:12px; font-family:'Nunito',sans-serif; font-weight:700; font-size:13.5px; box-shadow:0 16px 40px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition:opacity 0.25s, transform 0.25s; z-index:9800; display:flex; align-items:center; gap:9px; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   .toast .t-check { color:var(--green); font-size:16px; }
+  .toast.is-error .t-check { color:#FFC24D; }
   .dash-backdrop { display:none; }
 
   @media (max-width:860px) {
@@ -4747,11 +4748,19 @@ window.showNoAccount = function(){
   })();
 
   /* ════ Toast ════ */
-  function showToast(msg){
+  /* The glyph is a green ✓, so an unqualified showToast() reports every
+     message as a success — including failures. Pass isError to swap it for a
+     warning mark; the second argument is optional and every existing caller
+     keeps its current behaviour. Errors also hold ~1.7s longer, because a
+     message you have to act on should not vanish at success speed. */
+  function showToast(msg, isError){
     const t=document.getElementById('toast');
     document.getElementById('toastMsg').textContent = msg||'Saved.';
+    const ico = t.querySelector('.t-check');
+    if(ico){ ico.textContent = isError ? '\u26A0' : '\u2713'; }
+    t.classList.toggle('is-error', !!isError);
     t.classList.add('show'); clearTimeout(window.__toastTimer);
-    window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+    window.__toastTimer = setTimeout(()=>t.classList.remove('show'), isError ? 4300 : 2600);
   }
 
   /* ════ Payout-failure deep-link + alert ════
@@ -5770,8 +5779,65 @@ window.showNoAccount = function(){
         return ok;
       }
 
+      /* ── send() — POST /referrals. THIS SENDS REAL SMS AND REAL EMAIL. ────
+         Owner-approved 2026-08-13. Everything below is dictated by the live
+         endpoint's contract, which is unusual enough to be worth stating:
+
+         PAYLOAD SHAPE. Both fields are arrays containing ONE comma-joined
+         string — `referral_telephones: ['num1,num2']`, not `['num1','num2']`.
+         The controller's own comment says so and filterString() splits on ','.
+         BOTH KEYS ARE MANDATORY even when unused: the handler reads
+         `referral_telephones.length` with no guard, so a missing key is a
+         TypeError and a 500. Empty array, never omitted, never [''].
+
+         A COMMA INSIDE A CONTACT SILENTLY BECOMES TWO CONTACTS, so contacts
+         carrying one are rejected here rather than sent.
+
+         THE TILE NEVER REACHES THE WIRE. There is no field for it: all four
+         tiles send the identical fixed SMS body / email template 8. "Refer
+         Gopher Connect" and "Refer Gopher Go" are the same request. Do not
+         add a kind parameter expecting the server to read it.
+
+         ⚠️ ASYMMETRY, and it is a real gap: the EMAIL carries
+         `referral_token: GOPHER<id>`; the SMS body does NOT — it is a fixed
+         blurb ending in https://gophergo.io/ with no code and no link back to
+         the sender. An SMS invitee is attributed only by the invites row
+         matching the number they later sign up with.
+
+         409s are normal, not failures to hide: 'This number has already
+         registered.' / 'Referrals have already been sent.' They only fire when
+         exactly ONE contact was submitted — with several, the registered ones
+         are skipped quietly.
+
+         ⚠️ PARTIAL SENDS ARE POSSIBLE. The handler runs Promise.all over the
+         contacts, so one rejection surfaces as an error for the whole call
+         while messages to the others may already have gone out. Never retry a
+         failed multi-contact submit wholesale. */
+      function send(channel, contacts){
+        if(!window.GoSession || !GoSession.token()){
+          return Promise.resolve({ ok:false, reason:'signed-out' });
+        }
+        var clean = (contacts||[]).map(function(c){ return String(c||'').trim(); })
+                                  .filter(function(c){ return c.length; });
+        if(!clean.length) return Promise.resolve({ ok:false, reason:'empty' });
+        var comma = clean.filter(function(c){ return c.indexOf(',') > -1; });
+        if(comma.length){
+          return Promise.resolve({ ok:false, reason:'comma',
+            message:'Remove the comma from “' + comma[0] + '” — it would be read as two contacts.' });
+        }
+        var joined = clean.join(',');
+        var body = { referral_emails: [], referral_telephones: [] };
+        if(channel === 'email') body.referral_emails = [joined];
+        else body.referral_telephones = [joined];
+
+        return GoAuth.apiCall('/referrals', { method:'POST', body: body }).then(function(r){
+          if(r.ok && r.body && r.body.success) return { ok:true, sent:clean.length };
+          return { ok:false, reason:'api', status:r.status, message: GoAuth.apiMessage(r) };
+        });
+      }
+
       return { code: code, selfUrl: selfUrl, load: load,
-               renderQR: renderQR, paintQRs: paintQRs };
+               renderQR: renderQR, paintQRs: paintQRs, send: send };
     })();
 
     // ── Refer & earn ──
@@ -5884,15 +5950,54 @@ window.showNoAccount = function(){
           if(v){ referContacts.push(v); inp.value=''; renderReferChips(); }
         });
         document.getElementById('rfEntryInput').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('rfAddContact').click(); });
-        document.getElementById('rfEntrySubmit').addEventListener('click',()=>{
+        /* Signed in, this SENDS REAL MESSAGES. Signed out it stays the local
+           demo it always was, so the public page still demonstrates the flow.
+
+           The pending row is NOT written optimistically. On success the table
+           is re-read from the server, because the endpoint quietly skips
+           contacts that are already registered — an optimistic row would claim
+           an invite that was never sent. */
+        const submitBtn = document.getElementById('rfEntrySubmit');
+        submitBtn.addEventListener('click',()=>{
           const inp=document.getElementById('rfEntryInput');
-          if(inp.value.trim()){ referContacts.push(inp.value.trim()); inp.value=''; }
+          if(inp.value.trim()){ referContacts.push(inp.value.trim()); inp.value=''; renderReferChips(); }
           if(!referContacts.length) return;
-          const t=new Date(), ds=(t.getMonth()+1)+'.'+t.getDate()+'.'+String(t.getFullYear()).slice(2);
-          referContacts.forEach(c => REFER.pending.unshift([ds, c, referChannel==='sms'?'SMS':'Email']));
-          renderTrack('pending');
-          document.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('on', x.dataset.tab==='pending'));
-          showReferView('done');
+
+          const live = !!(window.GoSession && GoSession.token());
+          if(!live){
+            const t=new Date(), ds=(t.getMonth()+1)+'.'+t.getDate()+'.'+String(t.getFullYear()).slice(2);
+            referContacts.forEach(c => REFER.pending.unshift([ds, c, referChannel==='sms'?'SMS':'Email']));
+            renderTrack('pending');
+            document.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('on', x.dataset.tab==='pending'));
+            showReferView('done');
+            return;
+          }
+
+          /* Guard the double-click. Two clicks are two sends — real messages,
+             billed per segment, and the second one 409s as a duplicate. */
+          if(submitBtn.disabled) return;
+          const label = submitBtn.textContent;
+          submitBtn.disabled = true; submitBtn.textContent = 'Sending…';
+          GoRefer.send(referChannel === 'email' ? 'email' : 'sms', referContacts.slice())
+            .then(res => {
+              if(res.ok){
+                document.getElementById('rfDoneMsg').textContent =
+                  res.sent === 1 ? 'Your invite is on its way. It will appear under Pending once it sends.'
+                                 : res.sent + ' invites are on their way. They will appear under Pending once they send.';
+                referContacts.length = 0; renderReferChips();
+                showReferView('done');
+                loadReferrals();
+                document.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('on', x.dataset.tab==='pending'));
+              } else if(res.reason === 'empty'){
+                /* nothing to do */
+              } else {
+                /* Stay on the entry view: the contact list is still there to
+                   correct, and a 409 is usually "already invited", which the
+                   worker can act on. */
+                showToast(res.message || 'Couldn’t send that referral.', true);
+              }
+            })
+            .finally(() => { submitBtn.disabled = false; submitBtn.textContent = label; });
         });
         document.getElementById('referTrackLink').addEventListener('click',()=>{ close(); jumpToTrack(); });
         document.getElementById('rfDoneTrack').addEventListener('click',()=>{ close(); jumpToTrack(); });
