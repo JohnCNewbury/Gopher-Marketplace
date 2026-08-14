@@ -1621,6 +1621,12 @@
 <div id="gopher-footer"></div>
 <script src="assets/js/gopher-footer.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
+<!-- Real per-user referral QR. Same encoder + version the live worker app uses
+     (react-qr-code -> qrcode-generator@2.0.4), so the dashboard renders the same
+     code the app does. Loaded here rather than beside GoRefer because that module
+     lives mid-block and a script tag cannot split a function. NOT deferred: the
+     global `qrcode` must exist before the go:entered handler paints. -->
+<script src="assets/js/qrcode-generator.js"></script>
 
 <script>
 (function(){
@@ -3190,6 +3196,17 @@ window.showNoAccount = function(){
     content:''; position:absolute; inset:38%; background:var(--green); border-radius:6px;
     box-shadow:0 0 0 6px #fff;
   }
+  /* ⚠️ A REAL QR MUST NOT KEEP THE PLACEHOLDER ART. .rf-qr paints a fake
+     conic-gradient "code" and ::after stamps a green block over the middle at
+     inset:38%. Left in place over a real symbol that block covers the centre
+     modules, and these are level-L codes (matching the app), whose ~7% error
+     correction does not survive an occlusion that size — it would render as a
+     convincing QR that simply does not scan. Cleared here, and the same rule
+     sizes the generated <svg>, which carries no .qr-svg class. */
+  .rf-qr.has-qr, .qr-box.has-qr { background:none; border-color:transparent; }
+  .rf-qr.has-qr::after { content:none; }
+  .rf-qr.has-qr > svg, .qr-box.has-qr > svg { width:100%; height:100%; display:block; }
+
   .rf-id-label { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
   .rf-id { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; color:var(--navy); letter-spacing:0.04em; margin-bottom:16px; }
   .rf-btn-navy { background:var(--navy) !important; color:#fff !important; box-shadow:0 6px 18px rgba(26,42,94,0.25) !important; }
@@ -5690,7 +5707,71 @@ window.showNoAccount = function(){
           return { pending: pending, added: added, active: live };
         });
       }
-      return { code: code, selfUrl: selfUrl, load: load };
+      /* ── The real QR ──────────────────────────────────────────────────────
+         Matched to the live worker app, which is the reference implementation:
+         src/component/qrCodeWithUserInfo.js renders <QRCode value={url}
+         fgColor="#002461" level="L" /> where url is
+         `${gopherSelfReferralURL}/${user.id}`. Same encoder, same version,
+         same colour, same error-correction level — so this produces the same
+         code the app does, not a lookalike.
+
+         ⚠️ ONE DELIBERATE DIFFERENCE: the app appends
+         `?lat=<latitude>&lon=<longitude>` from the worker's CURRENT LOCATION.
+         Nothing consumes it — self_referral_form.ejs never reads lat/lon and
+         send_refer_yourself destructures only {first_name, last_name, phone,
+         gopher_id}. So those parameters do no work, and they put a worker's
+         precise coordinates into a URL they hand to strangers, which then
+         lands in browser history and server access logs, and is frozen into
+         any screenshot or printout of the code. Omitted here on purpose.
+         Raised for the app separately — do not "restore" it for parity.
+
+         A 4-module quiet zone is part of the spec, not padding: scanners use
+         it to find the symbol edge, and codes rendered flush to their border
+         are the classic "won't scan" bug. */
+      function renderQR(el, url, opts){
+        if(!el) return false;
+        if(typeof qrcode !== 'function') return false;   /* encoder absent — leave whatever is there */
+        opts = opts || {};
+        var fg = opts.fg || '#002461', quiet = 4;
+        var q;
+        try { q = qrcode(0, 'L'); q.addData(url); q.make(); }
+        catch(e){ return false; }                        /* over-long input: keep the placeholder */
+        var n = q.getModuleCount(), size = n + quiet*2, rects = '';
+        for(var r=0;r<n;r++){
+          var c=0;
+          while(c<n){
+            if(q.isDark(r,c)){
+              var run=1; while(c+run<n && q.isDark(r,c+run)) run++;
+              rects += '<rect x="'+(c+quiet)+'" y="'+(r+quiet)+'" width="'+run+'" height="1"/>';
+              c += run;
+            } else c++;
+          }
+        }
+        el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+size+' '+size+'" '
+          + 'width="100%" height="100%" shape-rendering="crispEdges" role="img" '
+          + 'aria-label="QR code linking to your personal Gopher invite page">'
+          + '<rect width="'+size+'" height="'+size+'" fill="#fff"/>'
+          + '<g fill="'+fg+'">'+rects+'</g></svg>';
+        el.classList.add('has-qr');   /* clears the placeholder art — see .has-qr */
+        return true;
+      }
+
+      /* Paints every QR slot on the page from the signed-in account. Returns
+         false if there is no session, so callers can leave the demo art up
+         rather than blanking the card. */
+      function paintQRs(){
+        var url = selfUrl();
+        if(!url) return false;
+        var ok = false;
+        var box = document.querySelector('.qr-box');
+        if(box && renderQR(box, url)) ok = true;
+        var modal = document.getElementById('referQr');
+        if(modal && renderQR(modal, url)) ok = true;
+        return ok;
+      }
+
+      return { code: code, selfUrl: selfUrl, load: load,
+               renderQR: renderQR, paintQRs: paintQRs };
     })();
 
     // ── Refer & earn ──
@@ -5743,6 +5824,10 @@ window.showNoAccount = function(){
         });
       }
       document.addEventListener('go:entered', paintReferCode);
+      /* The QR baked into the markup encodes nothing real — it is demo art for
+         signed-out visitors. A real session replaces it with the account's own
+         code; a signed-out one leaves it alone. */
+      document.addEventListener('go:entered', function(){ GoRefer.paintQRs(); });
 
       /* Refer Yourself is the one tile with a REAL public landing page behind
          it — the API renders "<name> invited you to Gopher!" at
@@ -5769,7 +5854,7 @@ window.showNoAccount = function(){
         document.getElementById('referBrand').textContent=c.brand;
         document.getElementById('referTitle').textContent=c.title;
         document.getElementById('referSub').textContent=c.sub;
-        paintReferCode(); paintSelfLink(kind);
+        paintReferCode(); paintSelfLink(kind); GoRefer.paintQRs();
         showReferView('home');
         document.getElementById('referOverlay').hidden=false;
       };
