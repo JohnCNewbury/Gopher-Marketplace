@@ -3012,11 +3012,23 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <!-- Referred-by ONLY appears when Source = Referral. The referrer is identified by their
-             6-digit Gopher User ID; "Skip this" lets the owner proceed if they don't know it. -->
+        <!-- Referred-by ONLY appears when Source = Referral. "Skip this" lets the owner proceed
+             if they don't know it.
+
+             ⚠️ THE ID IS NOT SIX DIGITS, and this field used to insist it was (owner, 2026-08-14:
+             "Remove 6-digit User ID because some users have less and eventually some will have
+             more"). A Gopher ID is `users.id` — a bigint. It is 1 digit for the earliest accounts
+             and grows without bound; live ids already run to six, so the NEXT rollover breaks
+             signup attribution silently. The old `maxlength="6"` was not a copy problem: it made a
+             7-digit referrer literally untypeable, and the field would simply truncate to someone
+             ELSE'S valid id rather than fail.
+
+             `inputmode` is text, not numeric, because the backend accepts BOTH forms —
+             get_referrals_by_id strips a leading GOPHER prefix before the lookup — and a numeric
+             keypad blocks the GOPHER123 form the SMS and the portals hand out. -->
         <div class="field" id="regReferredRow" hidden>
-          <label>Referred by &mdash; Gopher User ID</label>
-          <input type="text" name="referred_by_gopher_id" inputmode="numeric" maxlength="6" placeholder="6-digit User ID">
+          <label>Referred by &mdash; Gopher ID</label>
+          <input type="text" name="referred_by_gopher_id" inputmode="text" maxlength="20" placeholder="Their Gopher ID (e.g. GOPHER1)">
           <p class="field-hint">Don&rsquo;t know it? <a href="#" onclick="var r=document.getElementById('regReferredRow'); if(r){ r.hidden=true; r.querySelector('input').value=''; } return false;">Skip this</a></p>
         </div>
 
