@@ -51,7 +51,7 @@ mistake this file most needs to prevent going the other way: a session that "har
 labels would flatten a deliberate audience distinction and make both surfaces read worse.
 **Only the KEY has to match. The words are each surface's to choose.**
 
-## 2. The work-settings API vocabulary — 7 values, different words
+## 2. The work-settings API vocabulary — 8 values, different words
 
 `GET/PUT /api/v1/users/worksettings` keys its `selectionMap` by **its own** values, which are
 **not** the customer labels. Source of truth: `controllers/user/worksettings.js`,
@@ -67,10 +67,33 @@ so **ask the server rather than hardcoding**.
 | Hourly / Day Labor | `Hourly / Day Labor` |
 | Yard / Outdoor Projects | `Yard Project` |
 | Ride Sharing | `Need a Ride` |
-| **Other** | **— none —** |
+| Other | `Other` |
 
-**Only three of eight match outright.** A wrong key does not error; the selection simply never
+**Only four of eight match outright.** A wrong key does not error; the selection simply never
 persists.
+
+### ⚠️ CORRECTED 2026-08-14 — `Other` DOES exist server-side
+
+This table said **"— none —"** for Other, and `Final/gopher-go.html` carried the same claim in
+code. Both were wrong. `controllers/user/worksettings.js` **line 142** declares
+`{ value: 'Other' }` — a top-level category written **inline**, unlike its seven siblings which
+span several lines. An extraction that keyed on the multi-line shape missed it, the conclusion
+"Other does not exist server-side" was written down twice, and then believed instead of
+re-checked.
+
+**So the two taxonomies map 1:1 — eight and eight, no orphan on either side.**
+
+**What it cost:** the Other card in the Go dashboard was inert in both directions — it showed the
+markup default instead of the account, and toggling it saved nothing. ⚠️ **And it showed the
+OPPOSITE of the truth, not a lucky match.** Owner, 2026-08-14: *"i checked other on the dashboard.
+It WAS NOT checked at first"* — the card rendered **unchecked** while his account had `Other`
+**selected**, because the markup default is off and nothing overwrote it. My first write-up said it
+"looked correct by coincidence"; that was also wrong, and the owner's own observation corrected it.
+
+**The check that would have caught it, now in place:** `GoWork.validate()` compares in BOTH
+directions. It always verified that each card points at a real server value; it now also reports
+any server category with **no card** — which is what silence was hiding. Nothing pointed anywhere
+invalid; a whole category was simply absent.
 
 ### 2.1 Age-restricted is a SUB-TYPE, not a category
 
