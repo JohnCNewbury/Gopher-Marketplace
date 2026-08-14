@@ -19704,7 +19704,17 @@ const PAY_BADGES = {
        This demo profile carries the owner's Gopher Inc BUSINESS account id 31677
        (owner-approved real id — do NOT swap in an invented number: the old
        hardcoded one resolved to a stranger's account or to nothing).
-       QR encodes the REAL self-referral page the API serves:
+       ⚠️ INHERITED BACKEND DEFECT (verified live 2026-08-14, do not copy this
+     assumption into the rebuild): the self-referral page looks the referrer up
+     WHERE role_id = 2 (worker) — a user with NO worker role renders the invite
+     page with a BLANK/absent greeting ("  invited you to Gopher!" or no
+     sentence at all; live-checked id 120000). The three demo ids here all carry
+     the Gopher role, so THE DEMO HIDES IT — but this portal's ordinary user is
+     exactly the failing case (a Request customer / Connect business that never
+     worked). Fix belongs in controllers/common/self_referral.js (widen the
+     lookup or add a roleless fallback greeting), not here. Found by the
+     Go/Deals session; flagged to the owner 8/14.
+     QR encodes the REAL self-referral page the API serves:
          https://api.gophergo.io/self-referral/31677 (verified-live pattern, 8/13).
        Same vendored encoder + level L + navy as the live worker app. ⚠️ The app's
        own QR appends ?lat=&lon= from live location — NOTHING consumes it; a pure
