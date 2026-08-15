@@ -3934,9 +3934,31 @@ window.showNoAccount = function(){
                platform forbids. Locked like Date of birth, which was already correct. -->
           <div class="field locked" id="piFirstField"><label>Legal first name</label><input type="text" id="piFirst" value="Marcus" readonly><span class="lock-note" id="piFirstNote">&#128274; Locked after sign-up &mdash; must match your government ID, which Stripe checks before you can be paid.</span></div>
           <div class="field locked" id="piLastField"><label>Legal last name</label><input type="text" id="piLast" value="Hale" readonly><span class="lock-note" id="piLastNote">&#128274; Locked after sign-up. Customers only ever see your first name and last initial.</span></div>
-            <div class="field"><label>Email</label><input type="email" id="piEmail" data-field value="marcus@email.com"><span class="lock-note">&#128241; Changing your email requires an SMS code</span></div>
+            <!-- ⛔ EMAIL IS LOCKED HERE (owner, 2026-08-15: "the current process is
+                 working so unless i'm missing something, leave it"). Changing an
+                 email IS supported by PATCH /users/onboarding, but it does something
+                 a settings pane must not do quietly: it stages the address in
+                 unconfirmed_email and NULLS confirmed_at, so the account drops to
+                 unverified until the new address is proven. The Go app already runs
+                 that flow properly, with the verify step attached.
+                 Locked rather than left editable: an input that accepts a change and
+                 silently does not save it is the fake-success pattern this dashboard
+                 is being cleared of. -->
+            <div class="field locked"><label>Email</label><input type="email" id="piEmail" value="marcus@email.com" readonly><span class="lock-note">&#128274; Change your email in the Gopher Go app &mdash; it walks you through re-verifying it.</span></div>
             <div class="field locked"><label>Date of birth</label><input type="text" id="piDob" value="04 / 12 / 1991" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
-            <div class="field full"><label>Mobile number</label><input type="tel" id="piPhone" data-field value="(919) 555-0142" inputmode="numeric" maxlength="14"><span class="lock-note">&#9993;&#65039; Changing your number requires an email code</span></div>
+            <!-- ⛔ MOBILE IS LOCKED because NO ENDPOINT CAN CHANGE IT. Verified at
+                 source 2026-08-15: PATCH /users/onboarding's allowedUserFields is
+                 first_name, last_name, date_of_birth, discover_gopher,
+                 discover_gopher_others, requesting_primarly,
+                 requesting_primarly_others, email — telephone is not in it. A search
+                 of every controller for a write to users.telephone found only reads,
+                 admin lookups and SMS sends. Owner confirmed a worker cannot change
+                 their number in the app either.
+                 The old hint promised "changing your number requires an email code",
+                 which described a flow that does not exist anywhere. An editable
+                 field with no write path is worse than a locked one: it invites the
+                 edit, then loses it. -->
+            <div class="field locked full"><label>Mobile number</label><input type="tel" id="piPhone" value="(919) 555-0142" readonly><span class="lock-note">&#128274; Your mobile number is how you sign in &mdash; contact support to change it.</span></div>
             <div class="field full"><label>Home address</label><input type="text" id="piAddr" data-field value="412 Maple Ave" autocomplete="off" placeholder="Start typing your address&hellip;"></div>
             <div class="field locked"><label>City</label><input type="text" id="piCity" data-field value="Fuquay-Varina" readonly></div>
             <div class="field locked"><label>State</label><input type="text" id="piState" data-field value="NC" readonly></div>
