@@ -2613,9 +2613,16 @@
   }
   .mockup-content .radio-group > .radio-row {
     flex:0 0 auto; width:auto; order:1;
+    /* max-width is the mobile guard (owner's iPhone repro, 2026-08-14): these
+       rows size to CONTENT with no shrink, so a long label ("review ratings,
+       reviews and job history before selecting") made the row 580px wide in a
+       375px viewport and it bled out of its section. Capped to the container,
+       the label wraps instead. Desktop is unchanged — rows only wrap when
+       they'd otherwise overflow. */
+    max-width:100%;
     border-radius:12px; padding:11px 18px;
   }
-  .mockup-content .radio-group > .radio-row .rr-label { flex:0 0 auto; }
+  .mockup-content .radio-group > .radio-row .rr-label { flex:0 1 auto; min-width:0; }
   /* Pay-mode's amount sub-field is the only non-radio-row child of a flow
      radio-group; it drops to its own full-width row below the buttons. */
   .mockup-content .radio-group > *:not(.radio-row) { flex:1 0 100%; order:2; }
