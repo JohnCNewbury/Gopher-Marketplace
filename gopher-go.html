@@ -3248,6 +3248,18 @@ window.showNoAccount = function(){
   .ws-ro-text { font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.55; color:#3B4A5A; }
   .ws-ro-text strong { color:var(--navy); }
 
+  /* Elite tiers */
+  .tier-row { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid #EEF0F5;
+    font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:#3B4A5A; }
+  .tier-badge { flex:0 0 62px; font-family:'Nunito',sans-serif; font-weight:900; color:var(--navy); }
+  .tier-link { display:inline-block; margin-top:14px; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:13px; color:#1a9d4b; text-decoration:none; }
+  .tier-link:hover { text-decoration:underline; }
+  /* "Soon" chip — the sidebar tells the truth BEFORE the tap, not only after it. */
+  .dni-soon { margin-left:auto; font-family:'Nunito',sans-serif; font-weight:800; font-size:9.5px;
+    letter-spacing:.04em; text-transform:uppercase; color:rgba(255,255,255,.62);
+    border:1px solid rgba(255,255,255,.28); border-radius:999px; padding:2px 7px; }
+
   /* refer QR card */
   .qr-card { background:#fff; border:1px solid #eef0f5; border-radius:16px; padding:22px; text-align:center; margin-bottom:16px; }
   .qr-ttl { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); }
@@ -3777,6 +3789,11 @@ window.showNoAccount = function(){
       <div class="dash-nav-divider">Account</div>
       <button class="dash-nav-item" data-dash-section="business"><span class="dni-ico">&#127970;</span><span class="dni-label">Business info</span></button>
       <button class="dash-nav-item" data-dash-section="pro"><span class="dni-ico"><img src="assets/img/tier-pro.svg" alt="Pro" style="height:13px;width:auto;background:#fff;border-radius:5px;padding:2px 3px;display:block"></span><span class="dni-label">Become a Pro</span></button>
+      <!-- Matches the App Prototype's openElite() (data-goto="gopher-elite"). Coming
+           soon rather than live: the Pro -> Elite conversion has not happened, so a
+           worker acting on this today would be applying for a tier that does not yet
+           exist under that name. -->
+      <button class="dash-nav-item" data-dash-section="elite"><span class="dni-ico">&#11088;</span><span class="dni-label">Become Elite / Elite+</span></button>
       <button class="dash-nav-item" data-dash-section="personal"><span class="dni-ico">&#128221;</span><span class="dni-label">Personal info</span></button>
       <button class="dash-nav-item" data-dash-section="work"><span class="dni-ico">&#128205;</span><span class="dni-label">Work settings &amp; ratings</span></button>
       <button class="dash-nav-item" data-dash-section="payout"><span class="dni-ico">&#128179;</span><span class="dni-label">Payment info</span></button>
@@ -3938,6 +3955,21 @@ window.showNoAccount = function(){
       </section>
 
       <!-- ░░ WORK SETTINGS & RADIUS ░░ -->
+      <!-- BECOME ELITE / ELITE+ — content matched to the App Prototype's openElite()
+           so the two surfaces teach the same thing. Gated "coming soon": the tier
+           rename has not shipped, and this pane must not invite an application for a
+           tier that is still called Pro everywhere else. -->
+      <section class="dash-section" data-dash-section="elite">
+        <div class="panel">
+          <div class="panel-head"><h2>Become Elite / Elite+</h2></div>
+          <p class="panel-desc">Level-up &mdash; earn more. Below are the Elite tiers on the Gopher Marketplace.</p>
+          <div class="tier-row"><b class="tier-badge">elite</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background from Yardstik.</span></div>
+          <div class="tier-row"><b class="tier-badge">elite+</b><span>Verified identity, SSN, phone, email, Stripe account and verified clean background <strong>and DMV</strong> from Yardstik.</span></div>
+          <p class="panel-desc"><strong>Invest in getting your Elite or Elite+ badge</strong> and increase your earnings and volume instantly.</p>
+          <a class="tier-link" href="gopher-tiers.html" target="_blank" rel="noopener">View the full Gopher tiers page &#8594;</a>
+        </div>
+      </section>
+
       <section class="dash-section" data-dash-section="work">
         <div class="panel">
           <div class="panel-head"><h2>Work settings &amp; ratings</h2></div>
@@ -4200,6 +4232,23 @@ window.showNoAccount = function(){
 </div>
 
 <!-- ░░ Send feedback (owner sidebar spec 2026-07-23 — mirrors Connect's) ░░ -->
+<!-- Coming-soon modal for launch-gated sections. Built on this page's own
+     gc-modal primitive so it inherits the styling, the ESC/backdrop behaviour and
+     the close button rather than inventing a second dialog system.
+     ⚠️ .gc-modal-overlay is display:flex, so the [hidden] attribute alone would
+     NOT hide it — gopher-go.html has no global [hidden] rule (Connect is the only
+     file that does). The per-selector guard already exists for this class; do not
+     assume a new overlay is hidden without checking. -->
+<div class="gc-modal-overlay" id="goSoonOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="goSoonTitle">
+    <button type="button" class="gc-modal-close" id="goSoonClose" aria-label="Close">&times;</button>
+    <div class="gc-modal-icon" style="background:#eef1f8">&#128336;</div>
+    <h4 id="goSoonTitle">Coming soon</h4>
+    <p class="gc-modal-sub" id="goSoonWhy"></p>
+    <button type="button" class="gc-modal-btn" id="goSoonOk">Got it</button>
+  </div>
+</div>
+
 <div class="gc-modal-overlay" id="goFeedbackOverlay" hidden>
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="goFbTitle">
     <button type="button" class="gc-modal-close" id="goFbClose" aria-label="Close">&times;</button>
@@ -4645,7 +4694,75 @@ window.showNoAccount = function(){
       if(name==='history' && window.__maybeReviewPrompt) setTimeout(() => window.__maybeReviewPrompt('go'), 350);
       if(name==='inbox' && typeof renderGoInbox === 'function') renderGoInbox();
     }
-    navItems.forEach(b => b.addEventListener('click', () => show(b.dataset.dashSection)));
+    /* ── THE LAUNCH GATE (owner, 2026-08-14) ──────────────────────────────
+       Three tiers, and the distinction is about what a worker can DO, not what
+       they can see:
+
+         live         full function
+         read-only    opens, shows the account's real data, cannot write
+         coming soon  stays in the menu, tapping explains — the pane does not open
+
+       "Coming soon" deliberately keeps the sidebar entry. Removing it would
+       leave a worker wondering what is missing; keeping it makes the menu a
+       roadmap. Owner's preference, and the honest one.
+
+       ⚠️ THE CHIP MATTERS AS MUCH AS THE MODAL. A menu that looks fully
+       available until you tap each item is a small lie repeated nine times, so
+       every gated entry is marked BEFORE the tap.
+
+       Gating here — at the one place a section is activated — rather than
+       inside each pane means a new pane is gated by adding its name to this
+       list, and cannot be reached by any other route. */
+    const COMING_SOON = {
+      pro:     'Become a Pro',
+      elite:   'Become Elite / Elite+',
+      blocked: 'Block Requesters',
+      payout:  'Payment info'
+    };
+    /* Why each one waits, shown to the worker rather than kept internal. */
+    const SOON_WHY = {
+      pro:     'Pro is being folded into the Elite tiers. Applying now would put you in a tier that is about to be renamed.',
+      elite:   'The Elite tiers go live with launch. Your eligibility keeps building in the meantime — nothing is lost by waiting.',
+      blocked: 'Blocking is handled in the Gopher Go app today. This view arrives at launch so the two never disagree about who is blocked.',
+      payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.'
+    };
+    Object.keys(COMING_SOON).forEach(name => {
+      const btn = navItems.find(b => b.dataset.dashSection === name);
+      if(!btn || btn.querySelector('.dni-soon')) return;
+      const chip = document.createElement('span');
+      chip.className = 'dni-soon'; chip.textContent = 'Soon';
+      btn.appendChild(chip);
+    });
+    (function initSoonModal(){
+      const ov = document.getElementById('goSoonOverlay');
+      if(!ov) return;
+      const close = () => { ov.hidden = true; };
+      const btnClose = document.getElementById('goSoonClose');
+      const btnOk = document.getElementById('goSoonOk');
+      if(btnClose) btnClose.addEventListener('click', close);
+      if(btnOk) btnOk.addEventListener('click', close);
+      ov.addEventListener('click', e => { if(e.target === ov) close(); });
+      document.addEventListener('keydown', e => { if(e.key === 'Escape' && !ov.hidden) close(); });
+    })();
+    function showComingSoon(name){
+      const title = COMING_SOON[name] || 'This section';
+      const why = SOON_WHY[name] || '';
+      const ov = document.getElementById('goSoonOverlay');
+      if(!ov){
+        /* No modal on this build — say it plainly rather than silently doing
+           nothing, which is the failure this gate exists to stop. */
+        showToast(title + ' — coming at launch.');
+        return;
+      }
+      document.getElementById('goSoonTitle').textContent = title + ' — coming at launch';
+      document.getElementById('goSoonWhy').textContent = why;
+      ov.hidden = false;
+    }
+    navItems.forEach(b => b.addEventListener('click', () => {
+      const name = b.dataset.dashSection;
+      if(COMING_SOON[name]){ showComingSoon(name); return; }   /* pane never opens */
+      show(name);
+    }));
 
     /* ░░ INBOX ░░ Built 2026-07-28 (owner: "Gopher-go dashboard needs a functional
        inbox built"). Worker-side threads: the requesters whose jobs this Gopher is on.
