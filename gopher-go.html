@@ -4776,14 +4776,27 @@ window.showNoAccount = function(){
       pro:     'Become a Pro',
       elite:   'Become Elite / Elite+',
       blocked: 'Block Requesters',
-      payout:  'Payment info'
+      payout:  'Payment info',
+      /* ⛔ INBOX IS FABRICATED END TO END, which is why it is gated rather than
+         made read-only. GO_INBOX is a hardcoded array — nothing loads threads
+         from the server — and the composer's doSend() pushes to that array in
+         memory and re-renders. No API call anywhere.
+         So a worker messaging a requester about a LIVE JOB ("I'm outside",
+         "it won't fit") watches it appear in the thread and it goes nowhere.
+         That is the most consequential fake-success state in this file: the
+         others waste a click, this one can cost someone a job.
+         Read-only was considered and rejected — a read-only view of invented
+         conversations is worse than none, because it shows messages nobody
+         sent about jobs that may not exist. */
+      inbox:   'Inbox'
     };
     /* Why each one waits, shown to the worker rather than kept internal. */
     const SOON_WHY = {
       pro:     'Pro is being folded into the Elite tiers. Applying now would put you in a tier that is about to be renamed.',
       elite:   'The Elite tiers go live with launch. Your eligibility keeps building in the meantime — nothing is lost by waiting.',
       blocked: 'Blocking is handled in the Gopher Go app today. This view arrives at launch so the two never disagree about who is blocked.',
-      payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.'
+      payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
+      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.'
     };
     Object.keys(COMING_SOON).forEach(name => {
       const btn = navItems.find(b => b.dataset.dashSection === name);
