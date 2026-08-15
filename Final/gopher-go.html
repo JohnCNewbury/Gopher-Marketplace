@@ -3248,6 +3248,12 @@ window.showNoAccount = function(){
   .ws-ro-text { font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.55; color:#3B4A5A; }
   .ws-ro-text strong { color:var(--navy); }
 
+  .gc-modal-btn.is-soon { opacity:.55; position:relative; }
+  .rf-soon { margin-left:8px; font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+    border:1px solid rgba(255,255,255,.45); border-radius:999px; padding:2px 6px; }
+  .rf-soon-note { font-family:'DM Sans',sans-serif; font-size:11.5px; line-height:1.5; color:var(--muted);
+    margin-top:10px; text-align:center; }
+
   /* Elite tiers */
   .tier-row { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid #EEF0F5;
     font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:#3B4A5A; }
@@ -3890,8 +3896,17 @@ window.showNoAccount = function(){
                permanently and had nowhere to correct it. Editable until Stripe verifies; locked
                after (changing identity post-KYC is the real fraud vector). A change here is
                identity-grade, so it routes through the same OTP confirm as email/phone. -->
-          <div class="field" id="piFirstField"><label>Legal first name</label><input type="text" id="piFirst" data-field value="Marcus"><span class="lock-note" id="piFirstNote">Must match your government ID &mdash; Stripe checks it before you can be paid.</span></div>
-          <div class="field" id="piLastField"><label>Legal last name</label><input type="text" id="piLast" data-field value="Hale"><span class="lock-note" id="piLastNote">Customers only ever see your first name and last initial.</span></div>
+          <!-- ⛔ LEGAL NAME IS LOCKED, PLATFORM-WIDE (owner, 2026-08-14): "every Gopher
+               platform shares the same editable personal info criteria and changing
+               first and last name is ALWAYS locked."
+               This pane previously left both editable behind an OTP, on the reasoning
+               that an identity change is fraud-sensitive and so deserved a confirm
+               step. That reasoning was sound about the RISK and wrong about the RULE —
+               the other surfaces do not offer the edit at all, so offering it here made
+               the Go dashboard the one place a worker could attempt something the
+               platform forbids. Locked like Date of birth, which was already correct. -->
+          <div class="field locked" id="piFirstField"><label>Legal first name</label><input type="text" id="piFirst" value="Marcus" readonly><span class="lock-note" id="piFirstNote">&#128274; Locked after sign-up &mdash; must match your government ID, which Stripe checks before you can be paid.</span></div>
+          <div class="field locked" id="piLastField"><label>Legal last name</label><input type="text" id="piLast" value="Hale" readonly><span class="lock-note" id="piLastNote">&#128274; Locked after sign-up. Customers only ever see your first name and last initial.</span></div>
             <div class="field"><label>Email</label><input type="email" id="piEmail" data-field value="marcus@email.com"><span class="lock-note">&#128241; Changing your email requires an SMS code</span></div>
             <div class="field locked"><label>Date of birth</label><input type="text" id="piDob" value="04 / 12 / 1991" readonly><span class="lock-note">&#128274; Locked after sign-up</span></div>
             <div class="field full"><label>Mobile number</label><input type="tel" id="piPhone" data-field value="(919) 555-0142" inputmode="numeric" maxlength="14"><span class="lock-note">&#9993;&#65039; Changing your number requires an email code</span></div>
@@ -4204,8 +4219,13 @@ window.showNoAccount = function(){
         <span class="rf-selflink-url"></span>
         <button type="button" class="rf-selflink-copy">Copy link</button>
       </div>
-      <button class="gc-modal-btn rf-btn-navy" data-refer-share="sms">Refer via SMS</button>
-      <button class="gc-modal-btn rf-btn-navy" data-refer-share="email">Refer via email</button>
+      <!-- Read-only: the send is gated, everything above it is live. Marked
+           visually as well as behaviourally — a button that looks available and
+           only explains itself after the tap is the pattern this gate exists to
+           remove. -->
+      <button class="gc-modal-btn rf-btn-navy is-soon" data-refer-share="sms">Refer via SMS<span class="rf-soon">Soon</span></button>
+      <button class="gc-modal-btn rf-btn-navy is-soon" data-refer-share="email">Refer via email<span class="rf-soon">Soon</span></button>
+      <p class="rf-soon-note">Sending invites arrives at launch. Your Gopher ID, QR and personal link work now &mdash; share them however you like.</p>
       <button class="gc-modal-btn-text" id="referTrackLink">View track referral history</button>
     </div>
 
@@ -5194,11 +5214,20 @@ window.showNoAccount = function(){
        both → SMS then email (chained); anything else → worker's choice. */
     const personal = wire('personal', {
       resolveVerify(commit){
-        /* D-036: a legal-name change is identity-grade — it is the string submitted to
+        /* ⚠️ THE NAME BRANCH BELOW IS NOW UNREACHABLE, and is kept deliberately.
+           piFirst/piLast were made readonly on 2026-08-14 because the owner's
+           platform rule is that legal name is ALWAYS locked, on every Gopher
+           surface — so nameChanged can no longer become true from this pane.
+           Kept rather than deleted because it encodes a real rule (a name is
+           the KYC string, locked hard once Stripe verifies) and the production
+           seam for it (ACCOUNT.stripeVerified <- the Connect account's
+           individual.verification.status / payouts_enabled). If a
+           support-assisted edit path is ever built, this is its logic.
+
+           D-036: a legal-name change is identity-grade — it is the string submitted to
            Stripe for KYC — so it always requires an OTP confirm, and it is BLOCKED once
            Stripe has verified the worker (support-assisted only from then on, same rule
-           as the app prototype). ACCOUNT.stripeVerified is the production seam: set it
-           from the Connect account's individual.verification.status / payouts_enabled. */
+           as the app prototype). */
         const fEl = document.getElementById('piFirst'), lEl = document.getElementById('piLast');
         const nameChanged = ((fEl.value||'').trim() !== ACCOUNT.firstName)
                          || ((lEl.value||'').trim() !== ACCOUNT.lastName);
@@ -6311,7 +6340,20 @@ window.showNoAccount = function(){
         const overlay=document.getElementById('referOverlay'); if(!overlay) return;
         const close=()=>{ overlay.hidden=true; };
         document.getElementById('referClose').addEventListener('click', close);
+        /* ⛔ SEND IS GATED, THE REST OF THIS PANE IS REAL (owner, 2026-08-14).
+           Refer Gopher is read-only, not coming-soon, because most of it works:
+           the Gopher ID, the QR, the self-referral link and the tracking table
+           all read live data. Only the SEND is withheld — POST /referrals
+           dispatches real SMS and email, and until the four tiles can send
+           per-kind copy (the endpoint is kind-blind, so all four send the same
+           message today) that is the half that should not be live.
+           The tiles still open so a worker can see and copy their own link. */
+        const REFER_SEND_GATED = true;
         overlay.querySelectorAll('[data-refer-share]').forEach(b=>b.addEventListener('click',()=>{
+          if(REFER_SEND_GATED){
+            showToast('Sending invites arrives at launch — your link and code work now.');
+            return;
+          }
           referChannel=b.dataset.referShare;
           const c=REFER_COPY[referKind]||REFER_COPY.go;
           document.getElementById('rfEntryTitle').textContent=c.title+' via '+(referChannel==='sms'?'SMS':'Email');
