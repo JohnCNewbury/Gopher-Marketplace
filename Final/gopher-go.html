@@ -3248,6 +3248,11 @@ window.showNoAccount = function(){
   .ws-ro-text { font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.55; color:#3B4A5A; }
   .ws-ro-text strong { color:var(--navy); }
 
+  .cf-acct { background:#F6F8FB; border:1px solid #E4E9F2; border-radius:12px; padding:12px 14px; margin:2px 0 16px; text-align:left; }
+  .cf-row { display:flex; justify-content:space-between; gap:14px; padding:5px 0; font-family:'DM Sans',sans-serif; font-size:12.5px; }
+  .cf-k { color:var(--muted); }
+  .cf-v { color:var(--navy); font-weight:700; text-align:right; word-break:break-all; }
+
   .gc-modal-btn.is-soon { opacity:.55; position:relative; }
   .rf-soon { margin-left:8px; font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
     border:1px solid rgba(255,255,255,.45); border-radius:999px; padding:2px 6px; }
@@ -3741,14 +3746,36 @@ window.showNoAccount = function(){
 </div>
 
 <!-- ══════════════════ CONFIRM-CHANGES CHANNEL MODAL ══════════════════ -->
+<!-- ⛔ THIS USED TO CLAIM A CODE IT NEVER SENT (owner ruling "go with C",
+     2026-08-14). It read "changes to your account must be verified. How would
+     you like to receive your code?", offered SMS/email against a HARDCODED
+     DEMO phone and email, sent nothing, and its verify handler invoked the
+     commit WITHOUT LOOKING AT THE CODE. Harmless while every pane was demo; a
+     lie the moment a real write sat behind it.
+
+     Three options were put to the owner: (A) make the code real, (B) drop the
+     step entirely to match the live app, which requires no OTP for these
+     settings, (C) keep the friction and drop the fiction. He chose C.
+
+     So this is now a plain confirmation that names the REAL account being
+     written to. It deliberately keeps a deliberate pause on an account change
+     while claiming nothing untrue — and it shows the identity precisely so a
+     worker can catch the case that actually matters: being signed into an
+     account they did not expect. The API call is already token-authorised, so
+     a code would add no security here, only the appearance of it. -->
 <div class="gc-modal-overlay" id="confirmOverlay" hidden>
   <div class="gc-modal" role="dialog" aria-modal="true">
     <button type="button" class="gc-modal-close" id="confirmClose" aria-label="Close">&times;</button>
-    <div class="gc-modal-icon">&#128274;</div>
-    <h4>Confirm it's you</h4>
-    <p class="gc-modal-sub">For your security, changes to your account must be verified. How would you like to receive your code?</p>
-    <button type="button" class="gc-modal-btn" id="confirmSms">Text a code to <span id="confirmPhoneLbl">your phone</span></button>
-    <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="confirmEmail">Email a code to <span id="confirmEmailLbl">your email</span></button>
+    <div class="gc-modal-icon">&#128190;</div>
+    <h4>Save these changes?</h4>
+    <p class="gc-modal-sub">You&rsquo;re updating the Gopher account below. Check it&rsquo;s the right one.</p>
+    <div class="cf-acct">
+      <div class="cf-row"><span class="cf-k">Account</span><span class="cf-v" id="confirmNameLbl">&mdash;</span></div>
+      <div class="cf-row"><span class="cf-k">Mobile</span><span class="cf-v" id="confirmPhoneLbl">&mdash;</span></div>
+      <div class="cf-row"><span class="cf-k">Email</span><span class="cf-v" id="confirmEmailLbl">&mdash;</span></div>
+    </div>
+    <button type="button" class="gc-modal-btn" id="confirmSave">Save changes</button>
+    <button type="button" class="gc-modal-btn-text" id="confirmCancel">Cancel</button>
   </div>
 </div>
 
@@ -4602,11 +4629,22 @@ window.showNoAccount = function(){
     });
     if(otpVerifyBtn){ otpVerifyBtn.addEventListener('click', () => {
       if(otpVerifyBtn.disabled) return;
-      /* __openVerifyModal borrows this same modal for in-dashboard field
-         verification. That path owns its own callback and must keep the old
-         demo behaviour — do NOT route it through sign_in. */
+      /* ⛔ THE IN-DASHBOARD FAKE-VERIFY PATH IS RETIRED (owner "go with C",
+         2026-08-14). __openVerifyModal borrowed this modal for field
+         verification and this branch ran its callback WITHOUT CHECKING THE
+         CODE — no code was ever sent, so there was nothing to check. Every
+         caller now goes through openConfirm, which asks plainly and claims
+         nothing. The branch is kept ONLY to refuse: if some path still reaches
+         here it must not silently commit, because a silent commit behind a
+         verification screen is precisely the dishonesty that was removed.
+         Sign-in below is unaffected — that OTP is real. */
       const ext = window.__pendingOtpCallback;
-      if(typeof ext === 'function'){ window.__pendingOtpCallback=null; closeOtp(); ext(); return; }
+      if(typeof ext === 'function'){
+        window.__pendingOtpCallback = null;
+        closeOtp();
+        showToast('That step has moved — reopen and use Save changes.');
+        return;
+      }
 
       const code = otpInputs.map(i => i.value).join('');
       const label = otpVerifyBtn.textContent;
@@ -5102,20 +5140,53 @@ window.showNoAccount = function(){
 
     const confirmOverlay = document.getElementById('confirmOverlay');
     const confirmClose = document.getElementById('confirmClose');
-    const confirmSms = document.getElementById('confirmSms');
-    const confirmEmail = document.getElementById('confirmEmail');
+    /* confirmSms / confirmEmail are gone with the code-choice modal (option C).
+       Their declarations are removed rather than left resolving to null — a
+       dangling const is a deref waiting for the next edit. */
     let pendingCommit = null;
+    /* Option C (owner, 2026-08-14): keep the pause, drop the fiction.
+
+       ⚠️ THE IDENTITY SHOWN MUST BE THE REAL ACCOUNT, and that is the entire
+       point of this modal now. It previously rendered ACCOUNT.phone /
+       ACCOUNT.email — a hardcoded demo object — so a worker confirmed a write
+       to their own account against a stranger's masked details. Now it reads
+       GoProfile's cached server profile and falls back to the demo values only
+       when signed out, where there is no real account to name.
+
+       Masking is kept: enough to recognise your own account, not enough to
+       expose it to someone reading over a shoulder. */
+    function confirmIdentity(){
+      var p = (window.GoProfile && window.GoProfile.__cached) || null;
+      var signedIn = !!(window.GoSession && GoSession.token());
+      if(!p || !signedIn){
+        return { name: [ACCOUNT.firstName, ACCOUNT.lastName].filter(Boolean).join(' '),
+                 phone: maskPhone(ACCOUNT.phone), email: maskEmail(ACCOUNT.email), real: false };
+      }
+      return {
+        name:  [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || '—',
+        phone: p.telephone ? maskPhone(String(p.telephone)) : '—',
+        email: p.email ? maskEmail(String(p.email)) : '—',
+        real:  true
+      };
+    }
     function openConfirm(commitFn){
       pendingCommit = commitFn;
-      document.getElementById('confirmPhoneLbl').textContent = maskPhone(ACCOUNT.phone);
-      document.getElementById('confirmEmailLbl').textContent = maskEmail(ACCOUNT.email);
+      var who = confirmIdentity();
+      document.getElementById('confirmNameLbl').textContent  = who.name;
+      document.getElementById('confirmPhoneLbl').textContent = who.phone;
+      document.getElementById('confirmEmailLbl').textContent = who.email;
       confirmOverlay.hidden = false;
     }
     function closeConfirm(){ confirmOverlay.hidden = true; }
     confirmClose.addEventListener('click', closeConfirm);
+    document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
     confirmOverlay.addEventListener('click', (e) => { if(e.target===confirmOverlay) closeConfirm(); });
-    confirmSms.addEventListener('click', () => { closeConfirm(); window.__openVerifyModal('phone', maskPhone(ACCOUNT.phone), pendingCommit); });
-    confirmEmail.addEventListener('click', () => { closeConfirm(); window.__openVerifyModal('email', maskEmail(ACCOUNT.email), pendingCommit); });
+    /* Straight to the commit. No code is claimed, so none is faked. */
+    document.getElementById('confirmSave').addEventListener('click', () => {
+      var run = pendingCommit; pendingCommit = null;
+      closeConfirm();
+      if(typeof run === 'function') run();
+    });
 
     function serialize(section){
       const parts = [];
