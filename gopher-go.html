@@ -3238,6 +3238,16 @@ window.showNoAccount = function(){
     padding:7px 16px;border-radius:10px;cursor:pointer}
   .rf-selflink-copy:hover{background:#F0FAF4}
 
+  /* Read-only work settings. ⚠️ `pointer-events:none` here is presentation
+     only — the handlers ALSO refuse, because a CSS-only lock is one devtools
+     toggle away from writing to a real account. */
+  .cat-list.is-readonly, .radius.is-readonly { pointer-events:none; opacity:.92; }
+  .save-row.ws-readonly { display:flex; align-items:flex-start; gap:10px; background:#F4F8F5;
+    border:1px solid #DCEBE1; border-radius:12px; padding:13px 15px; }
+  .ws-ro-icon { font-size:15px; line-height:1.5; }
+  .ws-ro-text { font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.55; color:#3B4A5A; }
+  .ws-ro-text strong { color:var(--navy); }
+
   /* refer QR card */
   .qr-card { background:#fff; border:1px solid #eef0f5; border-radius:16px; padding:22px; text-align:center; margin-bottom:16px; }
   .qr-ttl { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); }
@@ -3992,7 +4002,23 @@ window.showNoAccount = function(){
             <div class="radius"><div class="rl"><span>All other services</span><b>50 mi</b></div><input type="range" class="rg" min="1" max="100" value="50"></div>
           </div>
 
-          <div class="save-row"><button class="btn-save" disabled>Save changes</button><span class="save-note">No changes yet.</span></div>
+          <!-- ⛔ READ-ONLY UNTIL LAUNCH (owner, 2026-08-14). The three-tier gate:
+               hidden / read-only / live. Work settings sits in the middle
+               BECAUSE THE TWO HALVES HAVE DIFFERENT RISK. The read is verified
+               correct against a real account across all nine cards; the write
+               is a FULL REPLACE that rebuilds selecttype/selectsubtype from the
+               submitted map, and this pane shows eight coarse cards over ~37
+               server values it cannot all represent.
+               So a worker sees what their account genuinely says — which is
+               true and useful — and changes it where the model is complete: the
+               Gopher Go app. The save row is replaced rather than disabled: a
+               greyed-out Save invites a click and explains nothing. -->
+          <div class="save-row ws-readonly">
+            <span class="ws-ro-icon" aria-hidden="true">&#128274;</span>
+            <span class="ws-ro-text">This is a read-only view of your live work settings.
+              <strong>Change them in the Gopher Go app</strong> &mdash; it carries the full set of
+              sub-categories this view summarises.</span>
+          </div>
         </div>
       </section>
 
@@ -4969,6 +4995,29 @@ window.showNoAccount = function(){
       if(!section) return null;
       const saveBtn = section.querySelector('.btn-save');
       const note = section.querySelector('.save-note');
+
+      /* ⛔ A READ-ONLY PANE HAS NO SAVE BUTTON, and that is a supported state —
+         the three-tier gate (hidden / read-only / live, owner 2026-08-14) means
+         more panes will arrive here without one.
+
+         This used to assume every pane had one and called
+         saveBtn.addEventListener unguarded. Removing the Save row from Work
+         settings therefore threw a TypeError that ABORTED THE WHOLE SCRIPT
+         BLOCK, silently killing every pane wired after it. The symptom was
+         deceptive in the worst way: the read-only pane's toggles stopped
+         responding, which looked exactly like the gate working, while the real
+         cause was that nothing was listening anywhere.
+
+         Returning the section (rather than null) matters: callers do
+         `const x = wire('x'); if(x){ ...attach handlers... }`, and a null would
+         skip the very handlers a read-only pane needs in order to REFUSE. */
+      if(!saveBtn){
+        section.__refresh = function(){};
+        section.__setBaseline = function(){};
+        section.__readOnly = true;
+        return section;
+      }
+
       let baseline = serialize(section);
       function refresh(){
         const dirty = serialize(section) !== baseline;
@@ -5247,20 +5296,26 @@ window.showNoAccount = function(){
       return 'Ride Sharing needs ' + list + ' before these changes can be saved.';
     }
 
-    const work = wire('work', {
-      /* REAL as of 2026-08-14. Returning a promise puts this pane on wire()'s
-         async path: it stays dirty and keeps Save available until the server
-         confirms, so a failed write can never render as "Changes saved."
+    /* ⛔ READ-ONLY UNTIL LAUNCH (owner, 2026-08-14). GoWork.save() is built,
+       tested and deliberately NOT CALLED — the pane reads real data and offers
+       no way to write it. Two reasons, and the second is the one that decided
+       it:
 
-         Ordering note — the ride-photo gate in resolveVerify still runs FIRST
-         and returns without requesting a code, so an incomplete Ride Sharing
-         setup is stopped before an SMS is sent, not after. That ordering was
-         the point of the 2026-07-26 fix and this must not reorder it. */
-      onCommit(){
-        return (window.GoWork && GoWork.save)
-          ? GoWork.save()
-          : null;   /* no module: fall back to the old synchronous demo path */
-      },
+       1. This view shows EIGHT coarse cards over ~37 server values. The save is
+          a full replace, so the half it cannot represent has to be inferred and
+          carried; that inference is correct today but it is inference, and the
+          Gopher Go app has the complete model.
+       2. The confirm step in front of it is theatre — openConfirm renders a
+          hardcoded demo phone/email and the verify handler invokes its callback
+          WITHOUT CHECKING THE CODE OR SENDING ONE. That was harmless while
+          every pane was demo. Putting a real write behind it made it a lie.
+          Read-only removes the write, so the fake gate stops mattering here;
+          the gate itself still needs deciding before any pane uses it (owner's
+          call — the live app requires no OTP for work settings at all).
+
+       Keep save() and its tests. This is a gate, not a deletion, and the code
+       carries to launch. */
+    const work = wire('work', {
       resolveVerify(commit){
         const section = document.querySelector('.dash-section[data-dash-section="work"]');
         const gate = ridePhotoGate(section);
@@ -5283,9 +5338,19 @@ window.showNoAccount = function(){
         const sub = wrap.querySelector('.js-subwrap'); if(sub) sub.style.display = sw.classList.contains('on') ? '' : 'none';
         const ride = wrap.querySelector('.js-ridewrap'); if(ride) ride.style.display = sw.classList.contains('on') ? '' : 'none';
       };
-      work.querySelectorAll('.crow .js-cat').forEach(sw => { syncPanels(sw); sw.addEventListener('click', () => { sw.classList.toggle('on'); syncPanels(sw); refresh(); }); });
-      work.querySelectorAll('.js-sub').forEach(s => s.addEventListener('click', (e) => { e.stopPropagation(); s.classList.toggle('on'); refresh(); }));
-      work.querySelectorAll('.rg').forEach(rg => rg.addEventListener('input', () => { const b=rg.closest('.radius').querySelector('b'); if(b) b.textContent = rg.value+' mi'; refresh(); }));
+      /* The gate, enforced where it cannot be styled away. CSS pointer-events
+         is cosmetic; this is the actual refusal. */
+      const READ_ONLY = true;
+      work.querySelectorAll('.crow .sw').forEach(sw => { syncPanels(sw); sw.addEventListener('click', () => { if(READ_ONLY) return; sw.classList.toggle('on'); syncPanels(sw); refresh(); }); });
+      work.querySelectorAll('.js-sub').forEach(s => s.addEventListener('click', (e) => { e.stopPropagation(); if(READ_ONLY) return; s.classList.toggle('on'); refresh(); }));
+      work.querySelectorAll('.rg').forEach(rg => rg.addEventListener('input', () => { const b=rg.closest('.radius').querySelector('b'); if(b) b.textContent = rg.value+' mi'; if(READ_ONLY){ rg.setAttribute('disabled',''); return; } refresh(); }));
+      if(READ_ONLY){
+        const list = work.querySelector('.cat-list'); if(list) list.classList.add('is-readonly');
+        work.querySelectorAll('.radius').forEach(r => r.classList.add('is-readonly'));
+        work.querySelectorAll('.rg').forEach(rg => rg.setAttribute('disabled',''));
+        /* Vehicle photo/doc tiles are uploads — also writes, also gated. */
+        work.querySelectorAll('.vphoto, .vdoc').forEach(t => { t.style.pointerEvents='none'; });
+      }
 
       // Vehicle photos: shown on file; flagged for re-upload when any vehicle
       // detail changes. The hidden data-field on each tile lets the change
