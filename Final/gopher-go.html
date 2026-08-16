@@ -2658,6 +2658,9 @@ window.GoProfile = (function(){
       var m = dobStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m) set('piDob', m[2] + ' / ' + m[3] + ' / ' + m[1]);
     }
+    /* Tell the account object who this is BEFORE anything compares against it. */
+    if(window.__syncAccount) window.__syncAccount(p);
+
     var homeAddr = homeAddress(p);
     /* Kept for the save: the row's id decides update-vs-create. */
     if(window.GoProfile) window.GoProfile.__homeAddress = homeAddr;
@@ -5181,6 +5184,16 @@ window.showNoAccount = function(){
      and only commits once verified. Personal info overrides this with
      channel-specific rules (email change → SMS code; mobile change → email code). */
   (function initEditableSections(){
+    /* ⚠️ ACCOUNT IS SEEDED WITH DEMO VALUES AND MUST BE TOLD WHO SIGNED IN.
+       Everything below that compares a field to ACCOUNT is otherwise comparing
+       a REAL value to Marcus Hale, and reports "changed" for every genuine
+       worker. That is not theoretical: resolveVerify's name branch fired on
+       load and its Stripe-locked path ran `fEl.value = ACCOUNT.firstName`,
+       which would have replaced a signed-in worker's real name with the demo
+       name on screen — and returned before the save, so nothing could be
+       saved at all.
+       __syncAccount is called from GoProfile.applyIdentity, so the moment real
+       identity arrives these comparisons are against the truth. */
     const ACCOUNT = { phone: '(919) 555-0142', email: 'marcus@email.com',
       firstName: 'Marcus', lastName: 'Hale',
       /* D-036 seam — in production this comes from the Stripe Connect account
@@ -5203,6 +5216,15 @@ window.showNoAccount = function(){
     /* confirmSms / confirmEmail are gone with the code-choice modal (option C).
        Their declarations are removed rather than left resolving to null — a
        dangling const is a deref waiting for the next edit. */
+    /* Real identity overwrites the seed. Only fields the server actually sent
+       are adopted — a partial profile must not blank what is already known. */
+    window.__syncAccount = function(p){
+      if(!p) return;
+      if(p.first_name) ACCOUNT.firstName = String(p.first_name).trim();
+      if(p.last_name)  ACCOUNT.lastName  = String(p.last_name).trim();
+      if(p.email)      ACCOUNT.email     = String(p.email).trim();
+      if(p.telephone)  ACCOUNT.phone     = String(p.telephone).trim();
+    };
     let pendingCommit = null;
     /* Option C (owner, 2026-08-14): keep the pause, drop the fiction.
 
@@ -5290,7 +5312,9 @@ window.showNoAccount = function(){
       function refresh(){
         const dirty = serialize(section) !== baseline;
         saveBtn.disabled = !dirty;
-        note.innerHTML = dirty ? 'Unsaved changes — you\u2019ll confirm with a code before they save.' : 'No changes yet.';
+        /* No code is sent any more (owner ruling "go with C", 2026-08-14) — the
+           confirm names the account instead. This line still promised one. */
+        note.innerHTML = dirty ? 'Unsaved changes — you\u2019ll confirm before they save.' : 'No changes yet.';
       }
       section.__refresh = refresh;
       /* Adopt the CURRENT values as the clean state. Needed when real data
@@ -5322,8 +5346,14 @@ window.showNoAccount = function(){
             note.textContent = 'Saving…';
             result.then((r) => {
               if(r && r.ok === false){
-                note.textContent = r.message || 'Couldn’t save. Please try again.';
+                /* ⚠️ ORDER MATTERS. refresh() REWRITES the note to the generic
+                   "Unsaved changes" line, so setting the message first meant
+                   every failure reason was clobbered the instant it appeared —
+                   a save could refuse for a specific, fixable reason and the
+                   pane would only ever say "Unsaved changes". Refresh first to
+                   restore the button state, THEN say why. */
                 refresh();               // leaves it dirty, so Save stays available
+                note.textContent = r.message || 'Couldn’t save. Please try again.';
                 return;
               }
               settle();
@@ -5405,16 +5435,60 @@ window.showNoAccount = function(){
           openConfirm(commit);   // address-only etc. → choice
         }
       },
+      /* ⛔ ADDRESS IS THE ONLY THING THIS PANE WRITES. Name, DOB, email and
+         mobile are all locked — name/DOB by platform rule, email because a
+         change stages unconfirmed_email and nulls confirmed_at, mobile because
+         NO endpoint can write users.telephone at all (G40-203 builds that).
+         So this sends one key and nothing else.
+
+         ⚠️ UPDATE-VS-CREATE HINGES ON THE ROW id. PATCH /users/onboarding
+         updates an address only when the payload carries addr.id; without one
+         it CREATES A NEW ROW. Saving without the id would append a duplicate
+         home address on every press. The id comes from the read
+         (GoProfile.__homeAddress), which is why the addresses fix had to land
+         before this could. */
       onCommit(){
         const first = (document.getElementById('piFirst').value||'').trim();
         const last  = (document.getElementById('piLast').value||'').trim();
-        ACCOUNT.firstName = first || ACCOUNT.firstName; ACCOUNT.lastName = last || ACCOUNT.lastName;   /* D-036: persist the corrected legal name */
-        ACCOUNT.email = (document.getElementById('piEmail').value||'').trim() || ACCOUNT.email;
-        ACCOUNT.phone = document.getElementById('piPhone').value || ACCOUNT.phone;
         document.getElementById('dashGreeting').innerHTML = 'Welcome back, ' + (first||'there') + ' \uD83D\uDC4B';
         document.getElementById('dashWorkerName').textContent = (first+' '+last).trim() || 'Worker';
         const initials = ((first[0]||'')+(last[0]||'')).toUpperCase();
         if(initials) document.getElementById('dashAvatar').textContent = initials;
+
+        if(!(window.GoProfile && window.GoSession && GoSession.token())) return null;
+
+        const row  = (window.GoProfile.__homeAddress) || null;
+        const line = (document.getElementById('piAddr').value || '').trim();
+        const was  = row ? String(row.line1 || '').trim() : '';
+        if(!line || line === was) return Promise.resolve({ ok:true });   // nothing to write
+
+        /* A typed-but-unpicked address is refused rather than guessed. City,
+           state and ZIP are readonly and filled ONLY by the geocoder, so a
+           hand-typed street would be saved against the previous address's
+           city/ZIP and coordinates — a wrong row that looks right. */
+        const picked = window.__pickedPlace;
+        if(!picked || picked.line1.trim() !== line){
+          return Promise.resolve({ ok:false,
+            message: 'Pick your address from the suggestions so the city, ZIP and map location match.' });
+        }
+        const payload = {
+          address_type: (row && (row.address_type || row.addressType)) || 'Home',
+          line1: picked.line1, city: picked.city, state: picked.state, zip_code: picked.zip
+        };
+        if(row && row.id != null) payload.id = row.id;     /* update, not append */
+        if(picked.lat != null) payload.latitude  = picked.lat;
+        if(picked.lng != null) payload.longitude = picked.lng;
+
+        return GoProfile.save({ address: payload }).then(function(r){
+          if(!r || r.ok === false) return r || { ok:false, message:'Couldn’t save your address.' };
+          /* Re-read so __homeAddress carries the row the server actually stored —
+             including the id of a row this may have just created. Without it a
+             second save would append. */
+          return GoProfile.read().then(function(rr){
+            if(rr && rr.ok && window.GoProfile.applyIdentity) GoProfile.applyIdentity(rr.profile);
+            return { ok:true };
+          }).catch(function(){ return { ok:true }; });
+        });
       }
     });
     if(personal){
@@ -6612,6 +6686,17 @@ window.showNoAccount = function(){
     GopherAddressAC.attach(addr, { onPick:function(d){
       // Geocoded parts fill Home address + the locked City / State / ZIP fields.
       if(window.__applyPlace) window.__applyPlace(d.street || d.description, d.city, d.state, d.zip);
+      /* ⚠️ KEEP THE COORDINATES. onPick receives lat/lng from the geocoder and
+         this used to drop them. The address row carries latitude/longitude and
+         they drive distance matching — saving a new street while leaving the
+         OLD coordinates in place would put the worker's jobs around their
+         previous home with nothing on screen to show it. Held here so the save
+         can send a consistent row. */
+      window.__pickedPlace = {
+        line1: d.street || d.description || '', city: d.city || '',
+        state: d.state || '', zip: d.zip || '',
+        lat: (d.lat == null ? null : d.lat), lng: (d.lng == null ? null : d.lng)
+      };
     }});
   }
   window.initGoaddr = initGoaddr;
