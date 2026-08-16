@@ -2598,6 +2598,27 @@ window.GoProfile = (function(){
        Its save still needs the guarded email flow (GoProfile refuses
        `email`), so these fields show the truth without yet being editable
        against the account. */
+    /* ⚠️ THE RESPONSE KEY IS `addresses`, PLURAL — and this read used to ask for
+       `p.address`, which is undefined. So the Personal info address fields kept
+       their DEMO values (412 Maple Ave, Fuquay-Varina) while the pane was tiered
+       LIVE. Verified at source 2026-08-15: controllers/user/profile.js
+       user_profile builds `addresses: user.address || []` and no `address` key
+       at all — the singular name exists on the Sequelize association, not on the
+       JSON.
+
+       homeAddress() also returns the row that will be UPDATED, which is what
+       makes a save safe: PATCH /users/onboarding updates an address only when
+       the payload carries addr.id and CREATES A NEW ROW when it does not, so
+       saving without the id would append a duplicate on every press. */
+    var homeAddress = function(p){
+      var list = p && (p.addresses || p.address);
+      if(!list) return null;
+      if(!Array.isArray(list)) return typeof list === 'object' ? list : null;
+      var home = list.filter(function(a){
+        return a && /home/i.test(String(a.address_type || a.addressType || ''));
+      })[0];
+      return home || list[0] || null;
+    };
     var addrLine = function(a){
       if(!a) return '';
       if(typeof a === 'string') return a;
@@ -2637,10 +2658,13 @@ window.GoProfile = (function(){
       var m = dobStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if(m) set('piDob', m[2] + ' / ' + m[3] + ' / ' + m[1]);
     }
-    set('piAddr',  addrLine(p.address));
-    set('piCity',  addrPart(p.address, /city/i));
-    set('piState', addrPart(p.address, /state|province/i));
-    set('piZip',   addrPart(p.address, /zip|postal|postcode/i));
+    var homeAddr = homeAddress(p);
+    /* Kept for the save: the row's id decides update-vs-create. */
+    if(window.GoProfile) window.GoProfile.__homeAddress = homeAddr;
+    set('piAddr',  addrLine(homeAddr));
+    set('piCity',  addrPart(homeAddr, /city/i));
+    set('piState', addrPart(homeAddr, /state|province/i));
+    set('piZip',   addrPart(homeAddr, /zip|postal|postcode/i));
     set('piSrc',   p.discover_gopher || p.discover_gopher_others);
     /* Greeting and sidebar carry the real first name too. */
     if(p.first_name){
