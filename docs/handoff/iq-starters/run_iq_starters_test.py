@@ -43,8 +43,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[3] / "Final"
 SURFACES = [
     ("gopher-go.html", "GO_IQ_KB"),
     ("gopher-deals.html", "DEALS_IQ_KB"),
-    # Connect and Request use `const ASK_GOPHER_KB` and were built earlier;
-    # added here when Website Updates brings them onto the shared component.
+    # Connect and Request are the original component; both declare `const ASK_GOPHER_KB`.
+    ("gopher-connect.html", "ASK_GOPHER_KB"),
+    ("gopher-request.html", "ASK_GOPHER_KB"),
 ]
 
 ENTITIES = {"&amp;": "&", "&hellip;": "…", "&mdash;": "—",
@@ -64,7 +65,8 @@ def kb_keywords(src, var_name):
     because the answers contain quotes, apostrophes and HTML that no naive
     JSON coercion survives — and the answers are not what we are testing.
     """
-    i = src.find("var %s = [" % var_name)
+    # Go/Deals declare with `var`, Connect/Request with `const` — accept both.
+    i = max(src.find("var %s = [" % var_name), src.find("const %s = [" % var_name))
     if i < 0:
         raise SystemExit("KB %s not found" % var_name)
     # bound the search to this array literal
