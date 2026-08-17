@@ -6314,7 +6314,20 @@ window.showNoAccount = function(){
            direction this control offers does not exist server-side.
 
            Never pre-checked either: isBlocked() reads a hardcoded array of two
-           invented people, so a demo name could render as already blocked. */
+           invented people, so a demo name could render as already blocked.
+
+           ⚠️ AND THIS IS THE WRONG PLACE FOR IT (owner ruling, 2026-08-17).
+           The designed trigger is the RATING flow: rate a requester 1 or 2 and
+           the block option appears; take it and they land in Blocked
+           Requesters and stop reaching you. Not a standing toggle on every
+           past job — that placement was inherited from the REQUESTER side,
+           where block genuinely does hang off order history ungated by rating
+           (requestorhistory.js -> handleDonotSendrequest). The two sides
+           differ on purpose; do not build this one by symmetry.
+           Treat this control as a placeholder, not a spec. Whether a worker
+           may also block later, outside that moment, is still open — that
+           decides if this is removed or repurposed. Full spec:
+           gopher-dev-handoff/GO-DASHBOARD-LAUNCH-GATE.md */
         const blockBlock = canBlock ? '<label class="rl-block is-soon" id="rlBlock"><span class="rl-bx"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="rl-bt">Do not send requests from <b>'+j.who+'</b> again</span><span class="rl-soon">Soon</span></label>' : '';
         rhmCard.innerHTML = '<h3>'+j.cat+'</h3><p class="rhm-sub">'+j.id+' &middot; '+j.date+' &middot; Requester '+j.who+'</p><p>'+j.sub+'</p>'+money+payfailBlock+rev+note+logsBlock+blockBlock+'<button class="mclose" id="rlClose">Close</button>';
         rhmOverlay.hidden = false;
