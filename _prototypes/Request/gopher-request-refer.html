@@ -55,8 +55,6 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
   padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;}
 .qr-frame{width:172px;height:172px;border-radius:18px;background:#fff;border:2px solid var(--navy);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
 .qr-frame svg{width:150px;height:150px;}
-.qr-leaf{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:9px;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px #fff;}
-.qr-leaf svg{width:20px;height:20px;}
 .qr-name{margin-top:14px;font-family:'Nunito';font-weight:900;font-size:17px;color:var(--navy);}
 .qr-id{margin-top:2px;font-family:'DM Sans';font-weight:600;font-size:13px;color:var(--muted);}
 .qr-id b{color:var(--green-dark);font-weight:800;}
@@ -321,7 +319,12 @@ const $=(s,r)=>(r||document).querySelector(s);
 const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
 
 /* ---- data (MY Gophers + referral ledger) ---- */
-const REFERRAL_ID='15544';
+/* ⛔ WAS '15544' — a REAL user id (in Users.csv, below the live max 141,808) displayed under
+     "YOUR REFERRAL ID" on a publicly served prototype. Anyone reading it off the screen and
+     passing it on credited that account: misattribution, not the harmless kind. Demo personas
+     carry a NON-RESOLVING id — above the live max, or an em dash. Same synthetic band as the Go
+     prototype's 820083. Codes are shared BARE, never GOPHER-prefixed (owner, 2026-08-14). */
+  const REFERRAL_ID='820014';
 const MY_GOPHERS=[
   {name:'Kamil Areshov',  spec:'Delivery · Errands'},
   {name:'Rondi Tucker',   spec:'Home · Cleaning'},
@@ -353,13 +356,33 @@ function initials(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUppe
 function avColor(n){let s=0;for(const c of n)s+=c.charCodeAt(0);return AV_COLORS[s%AV_COLORS.length];}
 
 /* ---- real QR: encodes https://gopher.app/r/<REFERRAL_ID> (scannable; credits referral) ---- */
-var REFERRAL_QR=['1111111010001100001111111','1000001000100000001000001','1011101011110111101011101','1011101000111100101011101','1011101000111010001011101','1000001010001110101000001','1111111010101010101111111','0000000001000010000000000','1010001100110001100100101','1101110011101011101101011','1000101100001011100001101','1110000100111001111101000','0100101110101010101100001','0110110001000101011100011','1101001010111001111001101','0001100000101011000111000','1111101011110011111110010','0000000011010011100010001','1111111010111110101010001','1000001000001011100010001','1011101000110011111110010','1011101000110011010010110','1011101010010100110111011','1000001001001010101110000','1111111011010010111001001'];
+/* REFERRAL_QR (a hardcoded 25-row matrix) removed. Two problems, not one: buildQR() painted it
+   verbatim so the QR was NOT derived from REFERRAL_ID — the two could disagree — and the comment
+   above it said the payload was `gopher.app/r/<REFERRAL_ID>`, a URL shape that does not exist.
+   The real destination is the page the API itself serves: api.gophergo.io/self-referral/<id>. */
 function buildQR(){
-  var M=REFERRAL_QR, N=M.length, b=4, svg=$('#qr'); if(!svg) return;
-  svg.setAttribute('viewBox',(-b)+' '+(-b)+' '+(N+2*b)+' '+(N+2*b));
-  var s='<rect x="'+(-b)+'" y="'+(-b)+'" width="'+(N+2*b)+'" height="'+(N+2*b)+'" fill="#ffffff"/>';
-  for(var y=0;y<N;y++){var row=M[y];for(var x=0;x<N;x++){ if(row.charAt(x)==='1') s+='<rect x="'+x+'" y="'+y+'" width="1.02" height="1.02" fill="#002461"/>'; }}
-  svg.innerHTML=s;
+  var svg=$('#qr'); if(!svg) return;
+  /* The encoder tag loads AFTER this inline engine, so qrcode can be undefined on the first
+     pass. Retry rather than silently skipping — the bug Website Updates hit on the web port. */
+  if(typeof qrcode==='undefined'){
+    if(!buildQR._armed){ buildQR._armed=true;
+      window.addEventListener('DOMContentLoaded', buildQR); window.addEventListener('load', buildQR); }
+    return;
+  }
+  if(!REFERRAL_ID){ svg.innerHTML=''; return; }   /* no id, no QR — empty is honest */
+  try{
+    var q=qrcode(0,'L');                          /* level L, and NO centre block, like the live worker app */
+    q.addData('https://api.gophergo.io/self-referral/'+REFERRAL_ID);
+    q.make();
+    var n=q.getModuleCount(), b=4;
+    var out='<rect x="'+(-b)+'" y="'+(-b)+'" width="'+(n+2*b)+'" height="'+(n+2*b)+'" fill="#ffffff"/>';
+    for(var y=0;y<n;y++){ for(var x=0;x<n;x++){ if(q.isDark(y,x))
+      out+='<rect x="'+x+'" y="'+y+'" width="1.02" height="1.02" fill="#002461"/>'; } }
+    svg.setAttribute('viewBox',(-b)+' '+(-b)+' '+(n+2*b)+' '+(n+2*b));
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Referral QR code for Gopher ID '+REFERRAL_ID);
+    svg.innerHTML=out;
+  }catch(_){ svg.innerHTML=''; }
 }
 
 /* ---- toast ---- */
@@ -529,5 +552,6 @@ $$('.nav .nv').forEach(n=>n.addEventListener('click',()=>{
   }, true);
 })();
 </script>
+<script src="../../assets/js/qrcode-generator.js"></script>
 </body>
 </html>
