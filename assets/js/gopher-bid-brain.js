@@ -117,7 +117,35 @@
     return 'Bidding closes '+MONTHS[m]+' 20th, '+y;
   }
 
+  /* ⚠️ THE CLOSE DATE ALONE IS AMBIGUOUS, and on the 21st it actively misleads.
+     The round runs 21st -> 20th and places on the 1st of the month AFTER it
+     closes (owner, 2026-08-17): bids close August 20th for a SEPTEMBER 1st
+     placement; at 12:01am on August 21st the board resets to $0 for OCTOBER 1st.
+
+     So a worker bidding on the 21st sees a board freshly at zero and, with only
+     "the top bidder goes live on the 1st" to go on, reasonably concludes they
+     are buying the 1st that is nine days away — which closed and billed the
+     night before. They would expect placement in 9 days and get it in 40.
+
+     Returning BOTH dates from the same computation is the fix; a surface that
+     shows one without the other reintroduces the ambiguity. Additive to the
+     brain rather than written per-page so the Deals board gets it too. */
+  function placementLabel(){
+    var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var now=new Date(), m=now.getMonth(), y=now.getFullYear();
+    if(now.getDate()>20){ m++; if(m>11){ m=0; y++; } }   /* the close month */
+    m++; if(m>11){ m=0; y++; }                            /* placement is the NEXT 1st */
+    return MONTHS[m]+' 1st, '+y;
+  }
+
+  /* One line carrying both halves of the cycle, so neither can be shown alone. */
+  function cycleLabel(){
+    return closeLabel() + ' \u2192 winners go live ' + placementLabel();
+  }
+
   window.GopherBidBrain = {
+    placementLabel: placementLabel,
+    cycleLabel: cycleLabel,
     CATS: CATS.slice(),
     board: board,
     catTop: catTop,

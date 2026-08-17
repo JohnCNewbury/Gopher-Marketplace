@@ -3286,6 +3286,10 @@ window.showNoAccount = function(){
   .rf-soon-note { font-family:'DM Sans',sans-serif; font-size:11.5px; line-height:1.5; color:var(--muted);
     margin-top:10px; text-align:center; }
 
+  .gbb-bid-btn.is-locked { background:#EEF0F5; color:#8C93A3; border-color:#E2E6EE; cursor:not-allowed; box-shadow:none; }
+  .gbb-you-ico { font-size:15px; margin-right:9px; }
+  .gbb-you-txt { font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.55; color:#3B4A5A; }
+
   /* Elite tiers */
   .tier-row { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid #EEF0F5;
     font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:#3B4A5A; }
@@ -4471,7 +4475,10 @@ window.showNoAccount = function(){
     <h4 id="gbbTitle">Place your bid</h4>
     <p class="gc-modal-sub">Feature your Service Provider Deal on the <b>Service Providers</b> category card. Top this month&rsquo;s leading bid to win the card for next month &mdash; only the highest bid at closing wins.</p>
     <div class="osf">
-      <div class="osf-asline"><span>&#128100;</span><div>Bidding as <b>Hale Services LLC</b> &middot; Service Providers</div></div>
+      <!-- Filled from the signed-in account by syncViewerName(). It was the demo
+           business hardcoded, so every worker was told they were bidding as
+           Hale Services LLC — including on the confirmation screen. -->
+      <div class="osf-asline"><span>&#128100;</span><div>Bidding as <b id="gbbAsName">your business</b> &middot; Service Providers</div></div>
       <div class="osf-field">
         <label for="gbbDeal">Which deal do you want to feature?</label>
         <select class="osf-input" id="gbbDeal"></select>
@@ -4837,7 +4844,18 @@ window.showNoAccount = function(){
          Read-only was considered and rejected — a read-only view of invented
          conversations is worse than none, because it shows messages nobody
          sent about jobs that may not exist. */
-      inbox:   'Inbox'
+      inbox:   'Inbox',
+      /* ⛔ THE GATE HERE IS LOAD-BEARING, not belt-and-braces. The logic is now
+         real — eligibility, the worker's own live deals, the signed-in business
+         name, the close-and-placement dates — but placeBid() still writes to an
+         in-memory array because THERE IS NO AUCTION API AND NO BILLING PATH.
+         A bid is a financial commitment and the copy says "Featured win locked
+         in this month"; letting a worker make one that reaches nobody is the
+         worst fake-success state in this file.
+         Built now anyway (owner: "I want the logic built, then gate it with
+         coming soon") so the rules, the gating and the dates are correct and
+         carry to launch. Remove this entry when settlement exists — not before. */
+      bidboard:'Feature my deal'
     };
     /* Why each one waits, shown to the worker rather than kept internal. */
     const SOON_WHY = {
@@ -4845,7 +4863,8 @@ window.showNoAccount = function(){
       elite:   'The Elite tiers go live with launch. Your eligibility keeps building in the meantime — nothing is lost by waiting.',
       blocked: 'Blocking is handled in the Gopher Go app today. This view arrives at launch so the two never disagree about who is blocked.',
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
-      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.'
+      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
+      bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.'
     };
     Object.keys(COMING_SOON).forEach(name => {
       const btn = navItems.find(b => b.dataset.dashSection === name);
@@ -6962,18 +6981,85 @@ window.showNoAccount = function(){
   var board = document.getElementById('gbbBoard');
   if(!BB || !board) return;
 
-  /* The signed-in demo worker. Marcus shows as his business (Business info →
-     "Showing as a business"), and a worker's Service Provider Deal always
-     competes on the Service Providers card — so the viewer category is fixed
-     there. The brain's canBid() enforces the lock; this page only surfaces it. */
-  var VIEWER = { name:'Hale Services LLC', category:'Service Providers' };
+  /* A worker's Service Provider Deal always competes on the Service Providers
+     card, so the viewer category is fixed there; the brain's canBid() enforces
+     the lock and this page only surfaces it. The NAME is the signed-in account's
+     — it was hardcoded to the demo business, so every worker saw "Hale Services
+     LLC" holding their bids. */
+  var VIEWER = { name:'Your business', category:'Service Providers' };
 
-  /* Viewer data, not auction logic (the Deals board keeps its MY_DEALS list
-     the same way): the worker's own submitted SP deals to pick from. */
-  var MY_SP_DEALS = [
-    { id:'sp1', title:'Power washing — whole home $150', status:'Live' },
-    { id:'sp2', title:'Gutter cleaning + haul-away $95',      status:'In review' }
-  ];
+  /* ⛔ THE WORKER'S OWN DEALS, READ FROM THE SERVER. This was a hardcoded array
+     of two invented deals, so a worker picked which of SOMEONE ELSE'S deals to
+     feature — including one they had never submitted. Filled by loadBidData()
+     from GET /users/deals/mine (gopher-backend-api!315).
+
+     Only LIVE deals ever enter this list. Featuring a pending deal would sell a
+     placement for something customers cannot see, and if it were then rejected
+     the slot would point at nothing for the month. */
+  var MY_SP_DEALS = [];
+
+  /* The gate, per the owner's rule (2026-08-17). Three states, and the two
+     inactive ones say DIFFERENT things on purpose:
+
+       not eligible      -> the worker cannot even submit a deal yet, so telling
+                            them to "get a live deal" is an instruction they
+                            cannot act on. Point at the eligibility bar instead.
+       eligible, none live -> the honest next step really is getting one live.
+       has a live deal   -> bidding is open; the round runs to 11:59pm on the
+                            20th and resets at $0 on the 21st for the following
+                            month, so there is no closed window to handle.
+
+     ⚠️ FAILS CLOSED. Unknown eligibility or an unreachable deals endpoint
+     leaves canBid false. !315 is not merged yet, so /deals/mine 404s today and
+     this pane must read that as "no live deal", never as "go ahead". */
+  var GATE = { eligible:null, liveDeals:0, loaded:false };
+  function bidGate(){
+    if(!GATE.loaded)   return { canBid:false, why:'Checking your Service Provider Deals\u2026' };
+    if(!GATE.eligible) return { canBid:false, why:'Service Provider Deals unlock at Elite and 20+ completed service jobs, with a 4.75\u2605 average over your last 20. See what\u2019s needed \u2192', link:true };
+    if(!GATE.liveDeals)return { canBid:false, why:'You can bid once your Service Provider Deal is live. Submit one, and bidding opens as soon as it\u2019s approved.' };
+    return { canBid:true };
+  }
+
+  /* The business name the deal publishes under — same rule as the deal form
+     (add_business ? business_name : first+last), so the board, the bid
+     confirmation and the published deal all name the same party. */
+  function syncViewerName(){
+    var who = (window.GoProfile && GoProfile.__cached) || null;
+    if(who){
+      VIEWER.name = (who.add_business && who.business_name)
+        ? String(who.business_name)
+        : [who.first_name, who.last_name].filter(Boolean).join(' ').trim() || VIEWER.name;
+    }
+    var el = document.getElementById('gbbAsName');
+    if(el) el.textContent = VIEWER.name;
+  }
+
+  /* Real reads. Both are scoped to the signed-in token server-side. */
+  function loadBidData(){
+    /* ⚠️ RESET FIRST. Without this the gate keeps the PREVIOUS load's values
+       when a request fails: a worker who had a live deal, then hit a 404 or an
+       expired session, kept an open bid button on stale state. That is the one
+       direction this gate must never fail in, and it is exactly what happened
+       in testing — the endpoint 404'd and the button stayed enabled. */
+    GATE.loaded = false; GATE.eligible = null; GATE.liveDeals = 0; MY_SP_DEALS = [];
+    if(!(window.GoAuth && window.GoSession && GoSession.token())){ GATE.loaded = true; return Promise.resolve(); }
+    var elig = GoAuth.apiCall('/users/deals/eligibility', { method:'GET' })
+      .then(function(r){ GATE.eligible = !!(r.ok && r.body && (r.body.eligible || r.body.granted)); })
+      .catch(function(){ GATE.eligible = false; });
+    var mine = GoAuth.apiCall('/users/deals/mine', { method:'GET' })
+      .then(function(r){
+        if(!(r.ok && r.body && r.body.success)) return;      /* 404 until !315 merges -> stays 0 */
+        GATE.liveDeals = (r.body.summary && r.body.summary.live) || 0;
+        MY_SP_DEALS = (r.body.deals || [])
+          .filter(function(d){ return d.status === 'live'; })
+          .map(function(d){ return { id:String(d.id), title:(d.title || d.deal_text || d.deal_code), status:'Live' }; });
+      })
+      .catch(function(){});
+    /* The business name the deal will publish under — the same value the deal
+       form uses, so the board and the deal agree on who is bidding. */
+    syncViewerName();
+    return Promise.all([elig, mine]).then(function(){ GATE.loaded = true; });
+  }
 
   var youEl = document.getElementById('gbbYou'),
       monthEl = document.getElementById('gbbMonth'),
@@ -6998,7 +7084,16 @@ window.showNoAccount = function(){
   function openOv(){ overlay.hidden=false; document.body.style.overflow='hidden'; }
   function closeOv(){ overlay.hidden=true; document.body.style.overflow=''; errEl.hidden=true; amtField.value=''; }
 
-  if(monthEl) monthEl.textContent = BB.closeLabel();
+  /* BOTH dates. The close alone is ambiguous and on the 21st it misleads —
+     see placementLabel() in the brain. */
+  if(monthEl) monthEl.textContent = BB.cycleLabel ? BB.cycleLabel() : BB.closeLabel();
+
+  /* Re-read whenever the worker enters the dashboard, for the same reason the
+     other panes do: a sign-in that happens after this block ran must not leave
+     the gate reading a signed-out state. */
+  document.addEventListener('go:entered', function(){
+    loadBidData().then(function(){ renderBoard(); renderYou(); });
+  });
 
   /* Standings board — same card semantics as the Deals portal, restyled onto
      gopher-go's tokens. Every badge/lock decision comes off the brain's card. */
@@ -7019,7 +7114,15 @@ window.showNoAccount = function(){
         '<div class="gbb-amt">'+money(c.amount)+' <small>top bid</small></div>'+
         '<div class="gbb-holder'+(viewerMine?' mine':'')+'">'+(viewerMine?'You hold this spot':'Held by '+esc(holderName))+'</div>'+
         (c.canBid
-          ? '<button type="button" class="gbb-bid-btn" data-cat="'+esc(c.category)+'">'+(viewerMine?'Raise your bid':'Bid here')+'</button>'
+          ? (function(){
+              /* canBid from the brain is the CATEGORY lock only. The owner's
+                 rule is a second, independent gate: no live Service Provider
+                 Deal, no bidding — whatever category you are in. */
+              var g = bidGate();
+              return g.canBid
+                ? '<button type="button" class="gbb-bid-btn" data-cat="'+esc(c.category)+'">'+(viewerMine?'Raise your bid':'Bid here')+'</button>'
+                : '<button type="button" class="gbb-bid-btn is-locked" disabled aria-disabled="true">Bidding locked</button>';
+            })()
           : '<span class="gbb-lock" title="Workers bid in their own category — yours is '+esc(VIEWER.category)+'">Not your category</span>');
       board.appendChild(card);
     });
@@ -7028,6 +7131,14 @@ window.showNoAccount = function(){
   /* "You" strip — the worker's own status, read straight off the brain. */
   function renderYou(){
     if(!youEl) return;
+    /* A locked button with no reason reads as broken. Say which of the two
+       blockers it is, because they need different actions from the worker. */
+    var g = bidGate();
+    if(!g.canBid){
+      youEl.classList.remove('lead');
+      youEl.innerHTML = '<span class="gbb-you-ico">\uD83D\uDD12</span><span class="gbb-you-txt">'+esc(g.why)+'</span>';
+      return;
+    }
     var top = BB.catTop(VIEWER.category);
     var overall = BB.topOverall();
     var leading = BB.isLeading(VIEWER);
@@ -7054,6 +7165,9 @@ window.showNoAccount = function(){
 
   /* ---- bid modal ---- */
   function dealById(id){ for(var i=0;i<MY_SP_DEALS.length;i++){ if(MY_SP_DEALS[i].id===id) return MY_SP_DEALS[i]; } return null; }
+  /* MY_SP_DEALS is already live-only (loadBidData filters on status), so this
+     cannot offer a pending deal. Belt and braces: if it is ever fed unfiltered,
+     refuse rather than list something unpublishable. */
   function populateDeals(){
     dealSel.innerHTML='';
     MY_SP_DEALS.forEach(function(d){
@@ -7078,6 +7192,10 @@ window.showNoAccount = function(){
   function showErr(m){ errEl.textContent=m; errEl.hidden=false; }
   function placeBid(){
     errEl.hidden=true;
+    /* The gate is re-checked HERE, not just at render. A disabled button is a
+       presentation state; this is the one that decides. */
+    var g = bidGate();
+    if(!g.canBid){ showErr(g.why); return; }
     var d=dealById(dealSel.value);
     if(!d){ showErr('Pick a deal to feature.'); return; }
     var amt=parseInt(String(amtField.value).replace(/[^0-9]/g,''),10);
