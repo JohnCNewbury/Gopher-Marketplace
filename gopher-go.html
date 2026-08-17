@@ -3317,6 +3317,10 @@ window.showNoAccount = function(){
   .rc-v { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:#fff; letter-spacing:1px; }
   .rc-copy { background:var(--green); color:var(--ink-on-green); border:none; border-radius:10px; padding:11px 18px; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; transition:background 0.15s; }
   .rc-copy:hover { background:#5fe294; }
+  /* A disabled Copy has to LOOK unavailable. A button that reads as tappable and
+     explains itself only after the tap is the pattern the launch gate removes. */
+  .rc-copy:disabled { background:#e9ecf2; color:var(--muted); cursor:not-allowed; }
+  .rc-copy:disabled:hover { background:#e9ecf2; }
   .refer-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px; }
   .refer-tile { text-align:left; background:#fafbff; border:1.5px solid #eef0f5; border-radius:13px; padding:15px; cursor:pointer; transition:all 0.15s; display:flex; flex-direction:column; gap:4px; }
   .refer-tile:hover { border-color:var(--green); background:var(--green-light); transform:translateY(-1px); }
@@ -4217,7 +4221,10 @@ window.showNoAccount = function(){
           </div>
           <div class="refer-code">
             <div class="rc-left"><span class="rc-k">Your referral code</span><span class="rc-v" id="referCode">1</span></div>
-            <button class="rc-copy" id="referCopy">Copy code</button>
+            <!-- Disabled in the MARKUP so it fails closed: the pane is reachable
+                 signed-out via #app, where the painted code is demo art. Only
+                 paintReferCode() re-enables it, and only against a real id. -->
+            <button class="rc-copy" id="referCopy" disabled>Copy code</button>
           </div>
           <div class="refer-grid">
             <button class="refer-tile" data-rk="self"><span class="rt-ico">&#11088;</span><span class="rt-ttl">Refer Yourself</span><span class="rt-desc">Share your code so new customers add you as their saved Gopher.</span></button>
@@ -6472,7 +6479,12 @@ window.showNoAccount = function(){
     (function(){
       const copy = document.getElementById('referCopy'); if(!copy) return;
       copy.addEventListener('click', () => {
-        const code = document.getElementById('referCode').textContent.trim();
+        /* Read the SESSION, not the DOM. Scraping #referCode copies whatever is
+           painted there — including the demo value — so the guard and the thing
+           guarded were two different sources. One source now, and it is the
+           same one paintReferCode() enables the button against. */
+        const code = window.GoRefer && GoRefer.code();
+        if(!code) return;
         if(navigator.clipboard) navigator.clipboard.writeText(code).catch(()=>{});
         copy.textContent = 'Copied \u2713';
         setTimeout(() => copy.textContent = 'Copy code', 1600);
@@ -6512,12 +6524,39 @@ window.showNoAccount = function(){
          signup, not a misattribution. The signed-out fallback is now the owner's
          real Go id (1, bare) — the only real id approved for public prototypes;
          a real session overwrites all three places it appears. */
+      /* ⚠️ THE DEMO VALUE MUST NEVER STAND FOR A SIGNED-IN WORKER. `userId` is
+         stored from `r.user.id` at sign-in and defaults to null when the
+         response omits it, so "has a token, has no id" is reachable — and in
+         that state the old early-return left `1` painted under the label "Your
+         referral code". A worker copies it, hands it out, and every signup it
+         wins is credited to account 1 instead of theirs. That is a real,
+         resolving code pointing at the wrong person: silent MISATTRIBUTION, not
+         a silent failure. Paint an em dash instead; an empty field is honest.
+
+         Signed OUT is the other case and is left alone deliberately — the pane
+         is reachable at #app with no session, where the whole dashboard is demo
+         art and the owner's real id is approved for display (2026-08-14). What
+         is NOT approved is exporting it: Copy is the one control that puts a
+         working code on the clipboard and out of the page, so it is bound to a
+         real id, never to whatever happens to be painted. */
       function paintReferCode(){
-        var code = window.GoRefer && GoRefer.code();
-        if(!code) return;
-        ['referIdBig','referCode','referId'].forEach(function(id){
-          var el = document.getElementById(id); if(el) el.textContent = code;
-        });
+        var code     = window.GoRefer && GoRefer.code();
+        var signedIn = !!(window.GoSession && GoSession.token());
+        var shown    = code || (signedIn ? '—' : null);
+        if(shown){
+          ['referIdBig','referCode','referId'].forEach(function(id){
+            var el = document.getElementById(id); if(el) el.textContent = shown;
+          });
+        }
+        var btn = document.getElementById('referCopy');
+        if(btn){
+          btn.disabled = !code;
+          /* Two different reasons, two different sentences. Telling a worker who
+             IS signed in to sign in sends them to fix the wrong thing. */
+          btn.title = code ? ''
+            : signedIn ? 'We couldn’t read your referral code. Sign out and back in.'
+                       : 'Sign in to see and copy your referral code.';
+        }
       }
       document.addEventListener('go:entered', paintReferCode);
       /* The QR baked into the markup encodes nothing real — it is demo art for
