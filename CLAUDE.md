@@ -1874,7 +1874,9 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   never functional end to end — it was pure cost. It shipped in `f18cacb` and ran live until the
   backout. The composer now sends nothing (verified: 0 fetch calls on send).
   **Rebuild target: the G40-305 dispatcher (`sendEmail.js`) — NOT Apps Script, and NOT against the
-  lead-capture endpoint.** A tombstone comment at `gopher-deals.html:5554` records this so nobody
+  lead-capture endpoint.** A tombstone comment in `gopher-deals.html` (search
+  `inbox_message` — the line number has already drifted from 5554 to ~6408, so do not cite one)
+  records this so nobody
   re-adds it from the old handoff doc.
   ⚠️ **`docs/handoff/deals-email-wiring.md` is FROZEN and must not be followed as written** — its
   paste-ready snippet keys on `data.email`, but the **merchant** form's field is `owner_email`
