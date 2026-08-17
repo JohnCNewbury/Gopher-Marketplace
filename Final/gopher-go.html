@@ -1730,8 +1730,18 @@
 </div><!-- /#goMarketing -->
 <!-- ░░░░░░░░░░ GOPHER GO LOGIN OVERLAY (overlays the home page) ░░░░░░░░░░ -->
 <style>
-  .gl-overlay { position:fixed; inset:0; background:rgba(0,18,49,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); display:flex; align-items:flex-start; justify-content:center; padding:64px 18px 24px; z-index:4000; overflow-y:auto; }
-  .gl-overlay[hidden] { display:none; }
+  /* G40-302: these three overlays predated G40-308 and each rolled its own scrim. They now carry
+   the canonical .gc-modal-overlay and keep only their genuine deltas as modifiers. Written
+   .gc-modal-overlay.gc-mo--x (specificity 0,2,0) so source order cannot decide the winner —
+   a single-class modifier ties with .gc-modal-overlay and loses on order, which is exactly how
+   .sheet--full silently capped a full-height panel in the Request prototype.
+   ⚠️ ZERO VISUAL CHANGE ON PURPOSE. Each scrim tint is preserved: these read rgba(0,18,49,·)
+   while the canonical reads rgba(13,26,62,0.55). That is real drift and worth resolving, but it
+   is a design decision on the page carrying the owner's live sign-in, so it is surfaced here
+   rather than made silently. The z-indexes are FUNCTIONAL: the OTP step (4100) must stack above
+   the sign-in card (4000) or the auth flow breaks. This file has NO global [hidden] rule, so
+   hiding relies on .gc-modal-overlay[hidden], which beats the base display:flex at 0,2,0. */
+  .gc-modal-overlay.gc-mo--login { background:rgba(0,18,49,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); align-items:flex-start; padding:64px 18px 24px; z-index:4000; overflow-y:auto; }
   .gl-card { position:relative; background:#fff; border-radius:20px; width:100%; max-width:404px; padding:30px 28px 26px; box-shadow:0 30px 70px rgba(0,18,49,0.45); font-family:'DM Sans',system-ui,sans-serif; }
   .gl-close { position:absolute; top:16px; right:16px; width:30px; height:30px; border:none; background:transparent; color:var(--muted); font-size:24px; line-height:1; cursor:pointer; border-radius:8px; }
   .gl-close:hover { background:var(--gray); color:var(--navy); }
@@ -1762,8 +1772,7 @@
   .gl-badges { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
   .gl-badges img { height:42px; width:auto; }
   /* OTP modal */
-  .gl-otp-overlay { position:fixed; inset:0; background:rgba(0,18,49,0.6); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:4100; }
-  .gl-otp-overlay[hidden] { display:none; }
+  .gc-modal-overlay.gc-mo--otp { background:rgba(0,18,49,0.6); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); padding:20px; z-index:4100; }
   .gl-otp-card { background:#fff; border-radius:18px; width:100%; max-width:380px; padding:26px; text-align:center; box-shadow:0 24px 60px rgba(0,18,49,0.45); position:relative; font-family:'DM Sans',sans-serif; }
   .gl-otp-card h4 { font-family:'Nunito',sans-serif; font-weight:900; font-size:19px; color:var(--navy); margin:0 0 5px; }
   .gl-otp-sub { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.5; }
@@ -1778,7 +1787,7 @@
   .gl-otp-close { position:absolute; top:14px; right:14px; width:28px; height:28px; border:none; background:transparent; color:var(--muted); font-size:22px; cursor:pointer; }
 </style>
 
-<div class="gl-overlay" id="goLoginOverlay" hidden>
+<div class="gc-modal-overlay gc-mo--login" id="goLoginOverlay" hidden>
   <div class="gl-card" role="dialog" aria-modal="true" aria-labelledby="glTitle">
     <button type="button" class="gl-close" id="glClose" aria-label="Close">&times;</button>
     <span class="gl-tag">Welcome Back</span>
@@ -1811,7 +1820,7 @@
      Owner ruling 2026-08-10: friendly, and deep-link to the RIGHT store for the
      device. Reuses the .gl-otp-* card so it inherits the sign-in styling.
      Populated by showNoAccount() — the badge shown is chosen at runtime. -->
-<div class="gl-otp-overlay" id="goNoAcctOverlay" hidden>
+<div class="gc-modal-overlay gc-mo--otp" id="goNoAcctOverlay" hidden>
   <div class="gl-otp-card" role="dialog" aria-modal="true" aria-labelledby="goNoAcctTitle">
     <button type="button" class="gl-otp-close" id="goNoAcctClose" aria-label="Close">&times;</button>
     <div style="font-size:34px;line-height:1;margin-bottom:10px">&#128075;</div>
@@ -1822,7 +1831,7 @@
   </div>
 </div>
 
-<div class="gl-otp-overlay" id="goOtpOverlay" hidden>
+<div class="gc-modal-overlay gc-mo--otp" id="goOtpOverlay" hidden>
   <div class="gl-otp-card" role="dialog" aria-modal="true">
     <button type="button" class="gl-otp-close" id="glOtpClose" aria-label="Close">&times;</button>
     <h4>Enter your code</h4>
@@ -3370,8 +3379,7 @@ window.showNoAccount = function(){
   .ai-contact-inline-link[hidden] { display:none; }
 
   /* request-history detail modal */
-  .rhm-overlay { position:fixed; inset:0; background:rgba(0,18,49,0.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:120; }
-  .rhm-overlay[hidden] { display:none; }
+  .gc-modal-overlay.gc-mo--rhm { background:rgba(0,18,49,0.55); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); padding:20px; z-index:120; }
   .rhm-card { background:#fff; border-radius:18px; width:100%; max-width:460px; max-height:88vh; overflow-y:auto; padding:24px; box-shadow:0 24px 60px rgba(0,18,49,0.4); }
   .rhm-card h3 { font-family:'Nunito',sans-serif; font-weight:900; font-size:19px; color:var(--navy); margin:0 0 3px; }
   .rhm-sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
@@ -3390,22 +3398,11 @@ window.showNoAccount = function(){
   .rl-label { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy); margin-top:1px; }
   .rl-loc { font-size:11.5px; color:var(--text); margin-top:3px; }
   .rl-gps { font-size:10.5px; color:var(--green-dark); font-family:'Nunito',sans-serif; font-weight:700; margin-top:1px; }
-  .rl-block { display:flex; align-items:center; gap:11px; background:#fdeef0; border-radius:11px; padding:13px 15px; margin-top:14px; cursor:pointer; }
-  .rl-bx { width:20px; height:20px; border-radius:5px; border:2px solid var(--error); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:#fff; }
-  .rl-bx svg { width:13px; height:13px; fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; opacity:0; }
-  .rl-bx.on { background:var(--error); border-color:var(--error); }
-  .rl-bx.on svg { opacity:1; }
-  .rl-bt { font-size:12.5px; color:var(--navy); line-height:1.4; }
-  .rl-bt b { color:var(--error); }
-  /* The block control is GATED, not functional — see the handler. It has to
-     read as unavailable at a glance: the alarm-red checkbox on a pink card is
-     the loudest thing in that modal and it was promising something real. */
-  .rl-block.is-soon { background:#f4f6fa; cursor:default; }
-  .rl-block.is-soon .rl-bx { border-color:#c2c9d6; }
-  .rl-block.is-soon .rl-bt, .rl-block.is-soon .rl-bt b { color:var(--muted); }
-  .rl-soon { margin-left:auto; flex-shrink:0; background:#e7ebf3; color:var(--muted);
-             font-family:'Nunito',sans-serif; font-weight:800; font-size:10px;
-             letter-spacing:.3px; padding:3px 8px; border-radius:999px; }
+  /* The .rl-block / .rl-bx / .rl-bt / .rl-soon rules were removed with the block
+     control they styled (owner, 2026-08-17 — a block must follow a 1-2 rating,
+     never be a standing toggle). Verified dead first: 0 uses in markup or JS.
+     Recorded rather than silently dropped so the next person to build blocking
+     knows this styling existed and why it is gone. */
   .mclose { width:100%; margin-top:16px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; padding:13px 0; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:14.5px; }
 
   /* ── Payout-failure states: failed pill, red log entry, add-card prompt, alert modal ── */
@@ -4472,7 +4469,7 @@ window.showNoAccount = function(){
 </div>
 
 <!-- Request-history detail modal -->
-<div class="rhm-overlay" id="rhmOverlay" hidden><div class="rhm-card" id="rhmCard" role="dialog" aria-modal="true"></div></div>
+<div class="gc-modal-overlay gc-mo--rhm" id="rhmOverlay" hidden><div class="rhm-card" id="rhmCard" role="dialog" aria-modal="true"></div></div>
 
 <!-- REFER MODAL — ported 1:1 from gopher-connect (owner, 2026-07-23), minus the
      recommend-MY-Gopher card. Refer Yourself was dropped in that same pass but the
@@ -6300,35 +6297,30 @@ window.showNoAccount = function(){
                     + '<div class="rl-tl" id="rlTl" hidden>'+evs+'</div>';
         }
         const canBlock = j.who && j.who!=='Offer';
-        /* ⛔ GATED, and this was the audit's worst find. Tapping this used to
-           toast "You won't receive requests from {name} anymore." while making
-           ZERO network calls — verified by hooking fetch. It is a SAFETY
-           promise, made to a worker who has just had a bad job, and it was
-           false in a way nothing on screen contradicted: the checkbox ticked.
+        /* ⛔ THE BLOCK CONTROL WAS REMOVED FROM THIS MODAL — owner, 2026-08-17.
+           Do not put it back here.
 
-           It could not have been true. Traced on origin/production, the only
-           blocking table is `blocked_gophers` (user_id blocks gopher_id) — a
-           REQUESTER blocking a WORKER. Its route is even commented "Request -
-           Blocked Gopher Feature", the requester app ships BlockedGopher.js
-           against it, and the worker app has NO block action anywhere. The
-           direction this control offers does not exist server-side.
+           It began as a fake success: tapping it toasted "You won't receive
+           requests from {name} anymore." while making ZERO network calls,
+           verified by hooking fetch. It is a SAFETY promise, made to a worker
+           who has just had a bad job, and the checkbox ticked so nothing on
+           screen contradicted it. It was first gated, then deleted, and the
+           deletion is the correct end state for a reason worth keeping:
 
-           Never pre-checked either: isBlocked() reads a hardcoded array of two
-           invented people, so a demo name could render as already blocked.
+           THE PLACEMENT ITSELF IS THE DEFECT. The owner's rule is that the
+           block option appears ONLY after the Gopher rates that requester a 1
+           or a 2 — "the risk if not is blocking a user by mistake if it is an
+           available option unprompted by a poor rating." A standing toggle on
+           every past job is precisely that unprompted option.
 
-           ⚠️ AND THIS IS THE WRONG PLACE FOR IT (owner ruling, 2026-08-17).
-           The designed trigger is the RATING flow: rate a requester 1 or 2 and
-           the block option appears; take it and they land in Blocked
-           Requesters and stop reaching you. Not a standing toggle on every
-           past job — that placement was inherited from the REQUESTER side,
-           where block genuinely does hang off order history ungated by rating
-           (requestorhistory.js -> handleDonotSendrequest). The two sides
-           differ on purpose; do not build this one by symmetry.
-           Treat this control as a placeholder, not a spec. Whether a worker
-           may also block later, outside that moment, is still open — that
-           decides if this is removed or repurposed. Full spec:
-           gopher-dev-handoff/GO-DASHBOARD-LAUNCH-GATE.md */
-        const blockBlock = canBlock ? '<label class="rl-block is-soon" id="rlBlock"><span class="rl-bx"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="rl-bt">Do not send requests from <b>'+j.who+'</b> again</span><span class="rl-soon">Soon</span></label>' : '';
+           This placement was inherited from the REQUESTER app, where block is
+           still a standing toggle on order history (requestorhistory.js ->
+           handleDonotSendrequest). That is not a pattern to copy — the owner
+           ruled it a defect on that side too, to be moved behind the same
+           rating gate. Both sides, one trigger.
+
+           Spec: gopher-dev-handoff/GO-DASHBOARD-LAUNCH-GATE.md */
+        const blockBlock = '';
         rhmCard.innerHTML = '<h3>'+j.cat+'</h3><p class="rhm-sub">'+j.id+' &middot; '+j.date+' &middot; Requester '+j.who+'</p><p>'+j.sub+'</p>'+money+payfailBlock+rev+note+logsBlock+blockBlock+'<button class="mclose" id="rlClose">Close</button>';
         rhmOverlay.hidden = false;
         const fix = document.getElementById('pfFixCard');
@@ -6339,16 +6331,7 @@ window.showNoAccount = function(){
           const willOpen = tl.hasAttribute('hidden');
           tl.toggleAttribute('hidden', !willOpen); cap.toggleAttribute('hidden', !willOpen); tg.classList.toggle('open', willOpen);
         });
-        const bl = document.getElementById('rlBlock');
-        if(bl) bl.addEventListener('click', e => {
-          e.preventDefault();
-          /* Routed through the same gate the sidebar uses, so there is one
-             answer to "is blocking available?" and it cannot drift. No toast,
-             no tick, no mutation of BLOCKED — the point is that nothing
-             happens and the worker is told so. */
-          if(window.__goComingSoon) window.__goComingSoon('blocked');
-          else showToast('Blocking a requester arrives at launch.');
-        });
+        /* The #rlBlock handler went with it — nothing renders that id now. */
         document.getElementById('rlClose').addEventListener('click', closeRhm);
       }
 
