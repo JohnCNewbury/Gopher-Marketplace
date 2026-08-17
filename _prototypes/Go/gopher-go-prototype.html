@@ -70,6 +70,7 @@
 </style>
 <!-- Real Gopher iQ coverage brain (same data as the Final apps) — powers location/availability answers in the FAQ pill -->
 <script src="../../assets/js/gopher-iq-data.js"></script>
+<script src="../../assets/js/qrcode-generator.js"></script>
 </head><body>
 <aside>
  <h1>gopher <span class="go">GO</span> · Prototype</h1>
@@ -368,6 +369,9 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .modal-card .rfv h3{text-align:center;}
   .modal-card .rfv p{text-align:center;}
   .rf-qr{display:flex;justify-content:center;margin:8px 0 4px;}
+  .rf-links{font-family:'DM Sans';font-size:10.5px;color:#5C6685;background:#f6f4ee;border-radius:10px;padding:8px 10px;margin:2px 0 8px;line-height:1.55;word-break:break-all;}
+  .rf-idnote{font-family:'DM Sans';font-size:10.5px;color:#5C6685;text-align:center;margin:4px 0 10px;}
+  .rf-idnote b{color:#002461;font-weight:700;}
   .rf-idlab{text-align:center;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#8C8675;font-family:'Nunito';font-weight:800;margin-top:6px;}
   .rf-id{text-align:center;font-family:'Nunito';font-weight:900;font-size:20px;color:#002461;letter-spacing:.5px;margin-bottom:6px;}
   .rf-big{display:block;width:100%;margin-top:8px;height:46px;border:none;border-radius:12px;background:#002461;color:#fff;font-family:'Nunito';font-weight:900;font-size:14px;cursor:pointer;}
@@ -2472,7 +2476,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
 "refer-self":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   <div class="pad"><div class="top"><div class="back js-back">&#8249;</div><div style="font-family:'Nunito';font-weight:900;font-size:13px;color:#8C8675">Perks</div></div>
    <h1>Refer &amp; Earn</h1>
-   <p class="sub">Invite people to the Gopher network and earn rewards when they join &mdash; starting with referring yourself to new customers.</p><div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:14px 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);"><div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your unique QR</div><p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">They scan &mdash; You benefit.</p><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0nMS4wJyBlbmNvZGluZz0nVVRGLTgnPz4gPHN2ZyB3aWR0aD0iMzFtbSIgaGVpZ2h0PSIzMW1tIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAzMSAzMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMSwxSDJWMkgxek0yLDFIM1YySDJ6TTMsMUg0VjJIM3pNNCwxSDVWMkg0ek01LDFINlYySDV6TTYsMUg3VjJINnpNNywxSDhWMkg3ek0xMywxSDE0VjJIMTN6TTE2LDFIMTdWMkgxNnpNMTcsMUgxOFYySDE3ek0yMCwxSDIxVjJIMjB6TTIzLDFIMjRWMkgyM3pNMjQsMUgyNVYySDI0ek0yNSwxSDI2VjJIMjV6TTI2LDFIMjdWMkgyNnpNMjcsMUgyOFYySDI3ek0yOCwxSDI5VjJIMjh6TTI5LDFIMzBWMkgyOXpNMSwySDJWM0gxek03LDJIOFYzSDd6TTEwLDJIMTFWM0gxMHpNMTEsMkgxMlYzSDExek0xOCwySDE5VjNIMTh6TTE5LDJIMjBWM0gxOXpNMjMsMkgyNFYzSDIzek0yOSwySDMwVjNIMjl6TTEsM0gyVjRIMXpNMywzSDRWNEgzek00LDNINVY0SDR6TTUsM0g2VjRINXpNNywzSDhWNEg3ek05LDNIMTBWNEg5ek0xMCwzSDExVjRIMTB6TTExLDNIMTJWNEgxMXpNMTIsM0gxM1Y0SDEyek0xMywzSDE0VjRIMTN6TTE1LDNIMTZWNEgxNXpNMTcsM0gxOFY0SDE3ek0yMCwzSDIxVjRIMjB6TTIxLDNIMjJWNEgyMXpNMjMsM0gyNFY0SDIzek0yNSwzSDI2VjRIMjV6TTI2LDNIMjdWNEgyNnpNMjcsM0gyOFY0SDI3ek0yOSwzSDMwVjRIMjl6TTEsNEgyVjVIMXpNMyw0SDRWNUgzek00LDRINVY1SDR6TTUsNEg2VjVINXpNNyw0SDhWNUg3ek05LDRIMTBWNUg5ek0xMCw0SDExVjVIMTB6TTExLDRIMTJWNUgxMXpNMTcsNEgxOFY1SDE3ek0xOCw0SDE5VjVIMTh6TTE5LDRIMjBWNUgxOXpNMjEsNEgyMlY1SDIxek0yMyw0SDI0VjVIMjN6TTI1LDRIMjZWNUgyNXpNMjYsNEgyN1Y1SDI2ek0yNyw0SDI4VjVIMjd6TTI5LDRIMzBWNUgyOXpNMSw1SDJWNkgxek0zLDVINFY2SDN6TTQsNUg1VjZINHpNNSw1SDZWNkg1ek03LDVIOFY2SDd6TTksNUgxMFY2SDl6TTEwLDVIMTFWNkgxMHpNMTMsNUgxNFY2SDEzek0xNCw1SDE1VjZIMTR6TTE1LDVIMTZWNkgxNXpNMTYsNUgxN1Y2SDE2ek0yMCw1SDIxVjZIMjB6TTIzLDVIMjRWNkgyM3pNMjUsNUgyNlY2SDI1ek0yNiw1SDI3VjZIMjZ6TTI3LDVIMjhWNkgyN3pNMjksNUgzMFY2SDI5ek0xLDZIMlY3SDF6TTcsNkg4VjdIN3pNOSw2SDEwVjdIOXpNMTAsNkgxMVY3SDEwek0xMiw2SDEzVjdIMTJ6TTE0LDZIMTVWN0gxNHpNMTUsNkgxNlY3SDE1ek0xNiw2SDE3VjdIMTZ6TTE3LDZIMThWN0gxN3pNMTgsNkgxOVY3SDE4ek0xOSw2SDIwVjdIMTl6TTIxLDZIMjJWN0gyMXpNMjMsNkgyNFY3SDIzek0yOSw2SDMwVjdIMjl6TTEsN0gyVjhIMXpNMiw3SDNWOEgyek0zLDdINFY4SDN6TTQsN0g1VjhINHpNNSw3SDZWOEg1ek02LDdIN1Y4SDZ6TTcsN0g4VjhIN3pNOSw3SDEwVjhIOXpNMTEsN0gxMlY4SDExek0xMyw3SDE0VjhIMTN6TTE1LDdIMTZWOEgxNXpNMTcsN0gxOFY4SDE3ek0xOSw3SDIwVjhIMTl6TTIxLDdIMjJWOEgyMXpNMjMsN0gyNFY4SDIzek0yNCw3SDI1VjhIMjR6TTI1LDdIMjZWOEgyNXpNMjYsN0gyN1Y4SDI2ek0yNyw3SDI4VjhIMjd6TTI4LDdIMjlWOEgyOHpNMjksN0gzMFY4SDI5ek05LDhIMTBWOUg5ek0xMCw4SDExVjlIMTB6TTE0LDhIMTVWOUgxNHpNMTYsOEgxN1Y5SDE2ek0yMCw4SDIxVjlIMjB6TTIxLDhIMjJWOUgyMXpNMSw5SDJWMTBIMXpNMyw5SDRWMTBIM3pNNCw5SDVWMTBINHpNNSw5SDZWMTBINXpNNiw5SDdWMTBINnpNNyw5SDhWMTBIN3pNMTAsOUgxMVYxMEgxMHpNMTEsOUgxMlYxMEgxMXpNMTIsOUgxM1YxMEgxMnpNMTUsOUgxNlYxMEgxNXpNMTYsOUgxN1YxMEgxNnpNMTgsOUgxOVYxMEgxOHpNMTksOUgyMFYxMEgxOXpNMjAsOUgyMVYxMEgyMHpNMjMsOUgyNFYxMEgyM3pNMjQsOUgyNVYxMEgyNHpNMjUsOUgyNlYxMEgyNXpNMjYsOUgyN1YxMEgyNnpNMjcsOUgyOFYxMEgyN3pNMiwxMEgzVjExSDJ6TTMsMTBINFYxMUgzek00LDEwSDVWMTFINHpNOSwxMEgxMFYxMUg5ek0xMiwxMEgxM1YxMUgxMnpNMTMsMTBIMTRWMTFIMTN6TTE2LDEwSDE3VjExSDE2ek0xNywxMEgxOFYxMUgxN3pNMTgsMTBIMTlWMTFIMTh6TTIwLDEwSDIxVjExSDIwek0yMiwxMEgyM1YxMUgyMnpNMjMsMTBIMjRWMTFIMjN6TTI0LDEwSDI1VjExSDI0ek0yNSwxMEgyNlYxMUgyNXpNMjksMTBIMzBWMTFIMjl6TTEsMTFIMlYxMkgxek0yLDExSDNWMTJIMnpNMywxMUg0VjEySDN6TTUsMTFINlYxMkg1ek02LDExSDdWMTJINnpNNywxMUg4VjEySDd6TTksMTFIMTBWMTJIOXpNMTAsMTFIMTFWMTJIMTB6TTExLDExSDEyVjEySDExek0xOSwxMUgyMFYxMkgxOXpNMjUsMTFIMjZWMTJIMjV6TTEsMTJIMlYxM0gxek0yLDEySDNWMTNIMnpNMywxMkg0VjEzSDN6TTQsMTJINVYxM0g0ek01LDEySDZWMTNINXpNNiwxMkg3VjEzSDZ6TTgsMTJIOVYxM0g4ek0xMCwxMkgxMVYxM0gxMHpNMTEsMTJIMTJWMTNIMTF6TTEyLDEySDEzVjEzSDEyek0xMywxMkgxNFYxM0gxM3pNMTUsMTJIMTZWMTNIMTV6TTE3LDEySDE4VjEzSDE3ek0yMCwxMkgyMVYxM0gyMHpNMjYsMTJIMjdWMTNIMjZ6TTI4LDEySDI5VjEzSDI4ek0zLDEzSDRWMTRIM3pNNiwxM0g3VjE0SDZ6TTcsMTNIOFYxNEg3ek04LDEzSDlWMTRIOHpNOSwxM0gxMFYxNEg5ek0xMiwxM0gxM1YxNEgxMnpNMTcsMTNIMThWMTRIMTd6TTE4LDEzSDE5VjE0SDE4ek0xOSwxM0gyMFYxNEgxOXpNMjEsMTNIMjJWMTRIMjF6TTI2LDEzSDI3VjE0SDI2ek0yNywxM0gyOFYxNEgyN3pNMSwxNEgyVjE1SDF6TTMsMTRINFYxNUgzek00LDE0SDVWMTVINHpNNSwxNEg2VjE1SDV6TTYsMTRIN1YxNUg2ek0xMCwxNEgxMVYxNUgxMHpNMTQsMTRIMTVWMTVIMTR6TTE1LDE0SDE2VjE1SDE1ek0xNiwxNEgxN1YxNUgxNnpNMjAsMTRIMjFWMTVIMjB6TTIxLDE0SDIyVjE1SDIxek0yMywxNEgyNFYxNUgyM3pNMjQsMTRIMjVWMTVIMjR6TTI1LDE0SDI2VjE1SDI1ek0yOSwxNEgzMFYxNUgyOXpNNSwxNUg2VjE2SDV6TTYsMTVIN1YxNkg2ek03LDE1SDhWMTZIN3pNOCwxNUg5VjE2SDh6TTksMTVIMTBWMTZIOXpNMTQsMTVIMTVWMTZIMTR6TTE1LDE1SDE2VjE2SDE1ek0xNiwxNUgxN1YxNkgxNnpNMTcsMTVIMThWMTZIMTd6TTE4LDE1SDE5VjE2SDE4ek0yMSwxNUgyMlYxNkgyMXpNMjIsMTVIMjNWMTZIMjJ6TTI1LDE1SDI2VjE2SDI1ek0yNiwxNUgyN1YxNkgyNnpNMjcsMTVIMjhWMTZIMjd6TTEsMTZIMlYxN0gxek0yLDE2SDNWMTdIMnpNNSwxNkg2VjE3SDV6TTYsMTZIN1YxN0g2ek0xMCwxNkgxMVYxN0gxMHpNMTEsMTZIMTJWMTdIMTF6TTEzLDE2SDE0VjE3SDEzek0xNCwxNkgxNVYxN0gxNHpNMTYsMTZIMTdWMTdIMTZ6TTIwLDE2SDIxVjE3SDIwek0yMSwxNkgyMlYxN0gyMXpNMjIsMTZIMjNWMTdIMjJ6TTIzLDE2SDI0VjE3SDIzek0yNSwxNkgyNlYxN0gyNXpNMjgsMTZIMjlWMTdIMjh6TTMsMTdINFYxOEgzek03LDE3SDhWMThIN3pNOCwxN0g5VjE4SDh6TTExLDE3SDEyVjE4SDExek0xMywxN0gxNFYxOEgxM3pNMTUsMTdIMTZWMThIMTV6TTE2LDE3SDE3VjE4SDE2ek0xOCwxN0gxOVYxOEgxOHpNMTksMTdIMjBWMThIMTl6TTIwLDE3SDIxVjE4SDIwek0yMiwxN0gyM1YxOEgyMnpNMjQsMTdIMjVWMThIMjR6TTI2LDE3SDI3VjE4SDI2ek0yNywxN0gyOFYxOEgyN3pNMSwxOEgyVjE5SDF6TTIsMThIM1YxOUgyek0zLDE4SDRWMTlIM3pNNCwxOEg1VjE5SDR6TTUsMThINlYxOUg1ek0xMywxOEgxNFYxOUgxM3pNMTYsMThIMTdWMTlIMTZ6TTE3LDE4SDE4VjE5SDE3ek0yMCwxOEgyMVYxOUgyMHpNMjIsMThIMjNWMTlIMjJ6TTIzLDE4SDI0VjE5SDIzek0yNCwxOEgyNVYxOUgyNHpNMjUsMThIMjZWMTlIMjV6TTI3LDE4SDI4VjE5SDI3ek0yOSwxOEgzMFYxOUgyOXpNMSwxOUgyVjIwSDF6TTcsMTlIOFYyMEg3ek04LDE5SDlWMjBIOHpNMTAsMTlIMTFWMjBIMTB6TTEyLDE5SDEzVjIwSDEyek0xMywxOUgxNFYyMEgxM3pNMTgsMTlIMTlWMjBIMTh6TTE5LDE5SDIwVjIwSDE5ek0yMywxOUgyNFYyMEgyM3pNMjQsMTlIMjVWMjBIMjR6TTI3LDE5SDI4VjIwSDI3ek0xLDIwSDJWMjFIMXpNNCwyMEg1VjIxSDR6TTUsMjBINlYyMUg1ek05LDIwSDEwVjIxSDl6TTEwLDIwSDExVjIxSDEwek0xMSwyMEgxMlYyMUgxMXpNMTUsMjBIMTZWMjFIMTV6TTE3LDIwSDE4VjIxSDE3ek0yMiwyMEgyM1YyMUgyMnpNMjMsMjBIMjRWMjFIMjN6TTI0LDIwSDI1VjIxSDI0ek0yOCwyMEgyOVYyMUgyOHpNMSwyMUgyVjIySDF6TTMsMjFINFYyMkgzek00LDIxSDVWMjJINHpNNiwyMUg3VjIySDZ6TTcsMjFIOFYyMkg3ek0xMCwyMUgxMVYyMkgxMHpNMTEsMjFIMTJWMjJIMTF6TTEyLDIxSDEzVjIySDEyek0xMywyMUgxNFYyMkgxM3pNMTcsMjFIMThWMjJIMTd6TTE5LDIxSDIwVjIySDE5ek0yMSwyMUgyMlYyMkgyMXpNMjIsMjFIMjNWMjJIMjJ6TTIzLDIxSDI0VjIySDIzek0yNCwyMUgyNVYyMkgyNHpNMjUsMjFIMjZWMjJIMjV6TTI3LDIxSDI4VjIySDI3ek0yOCwyMUgyOVYyMkgyOHpNMjksMjFIMzBWMjJIMjl6TTksMjJIMTBWMjNIOXpNMTQsMjJIMTVWMjNIMTR6TTE1LDIySDE2VjIzSDE1ek0xNiwyMkgxN1YyM0gxNnpNMTgsMjJIMTlWMjNIMTh6TTE5LDIySDIwVjIzSDE5ek0yMCwyMkgyMVYyM0gyMHpNMjEsMjJIMjJWMjNIMjF6TTI1LDIySDI2VjIzSDI1ek0yNiwyMkgyN1YyM0gyNnpNMjcsMjJIMjhWMjNIMjd6TTI4LDIySDI5VjIzSDI4ek0yOSwyMkgzMFYyM0gyOXpNMSwyM0gyVjI0SDF6TTIsMjNIM1YyNEgyek0zLDIzSDRWMjRIM3pNNCwyM0g1VjI0SDR6TTUsMjNINlYyNEg1ek02LDIzSDdWMjRINnpNNywyM0g4VjI0SDd6TTExLDIzSDEyVjI0SDExek0xMiwyM0gxM1YyNEgxMnpNMTQsMjNIMTVWMjRIMTR6TTE1LDIzSDE2VjI0SDE1ek0xNiwyM0gxN1YyNEgxNnpNMTcsMjNIMThWMjRIMTd6TTE4LDIzSDE5VjI0SDE4ek0yMCwyM0gyMVYyNEgyMHpNMjEsMjNIMjJWMjRIMjF6TTIzLDIzSDI0VjI0SDIzek0yNSwyM0gyNlYyNEgyNXpNMjYsMjNIMjdWMjRIMjZ6TTI3LDIzSDI4VjI0SDI3ek0xLDI0SDJWMjVIMXpNNywyNEg4VjI1SDd6TTksMjRIMTBWMjVIOXpNMTAsMjRIMTFWMjVIMTB6TTExLDI0SDEyVjI1SDExek0xMiwyNEgxM1YyNUgxMnpNMTQsMjRIMTVWMjVIMTR6TTE2LDI0SDE3VjI1SDE2ek0xOCwyNEgxOVYyNUgxOHpNMTksMjRIMjBWMjVIMTl6TTIwLDI0SDIxVjI1SDIwek0yMSwyNEgyMlYyNUgyMXpNMjUsMjRIMjZWMjVIMjV6TTI5LDI0SDMwVjI1SDI5ek0xLDI1SDJWMjZIMXpNMywyNUg0VjI2SDN6TTQsMjVINVYyNkg0ek01LDI1SDZWMjZINXpNNywyNUg4VjI2SDd6TTksMjVIMTBWMjZIOXpNMTUsMjVIMTZWMjZIMTV6TTE2LDI1SDE3VjI2SDE2ek0yMSwyNUgyMlYyNkgyMXpNMjIsMjVIMjNWMjZIMjJ6TTIzLDI1SDI0VjI2SDIzek0yNCwyNUgyNVYyNkgyNHpNMjUsMjVIMjZWMjZIMjV6TTI3LDI1SDI4VjI2SDI3ek0yOCwyNUgyOVYyNkgyOHpNMjksMjVIMzBWMjZIMjl6TTEsMjZIMlYyN0gxek0zLDI2SDRWMjdIM3pNNCwyNkg1VjI3SDR6TTUsMjZINlYyN0g1ek03LDI2SDhWMjdIN3pNOSwyNkgxMFYyN0g5ek0xMCwyNkgxMVYyN0gxMHpNMTEsMjZIMTJWMjdIMTF6TTE2LDI2SDE3VjI3SDE2ek0xNywyNkgxOFYyN0gxN3pNMTksMjZIMjBWMjdIMTl6TTI2LDI2SDI3VjI3SDI2ek0yNywyNkgyOFYyN0gyN3pNMSwyN0gyVjI4SDF6TTMsMjdINFYyOEgzek00LDI3SDVWMjhINHpNNSwyN0g2VjI4SDV6TTcsMjdIOFYyOEg3ek05LDI3SDEwVjI4SDl6TTEzLDI3SDE0VjI4SDEzek0xNCwyN0gxNVYyOEgxNHpNMTksMjdIMjBWMjhIMTl6TTIyLDI3SDIzVjI4SDIyek0yMywyN0gyNFYyOEgyM3pNMjQsMjdIMjVWMjhIMjR6TTI1LDI3SDI2VjI4SDI1ek0yNiwyN0gyN1YyOEgyNnpNMjcsMjdIMjhWMjhIMjd6TTI4LDI3SDI5VjI4SDI4ek0xLDI4SDJWMjlIMXpNNywyOEg4VjI5SDd6TTExLDI4SDEyVjI5SDExek0xMiwyOEgxM1YyOUgxMnpNMTMsMjhIMTRWMjlIMTN6TTE3LDI4SDE4VjI5SDE3ek0yMCwyOEgyMVYyOUgyMHpNMjEsMjhIMjJWMjlIMjF6TTIyLDI4SDIzVjI5SDIyek0yNCwyOEgyNVYyOUgyNHpNMjYsMjhIMjdWMjlIMjZ6TTI4LDI4SDI5VjI5SDI4ek0xLDI5SDJWMzBIMXpNMiwyOUgzVjMwSDJ6TTMsMjlINFYzMEgzek00LDI5SDVWMzBINHpNNSwyOUg2VjMwSDV6TTYsMjlIN1YzMEg2ek03LDI5SDhWMzBIN3pNOSwyOUgxMFYzMEg5ek0xNCwyOUgxNVYzMEgxNHpNMTUsMjlIMTZWMzBIMTV6TTE3LDI5SDE4VjMwSDE3ek0xOSwyOUgyMFYzMEgxOXpNMjAsMjlIMjFWMzBIMjB6TTI0LDI5SDI1VjMwSDI0ek0yNSwyOUgyNlYzMEgyNXpNMjcsMjlIMjhWMzBIMjd6IiBpZD0icXItcGF0aCIgZmlsbD0iIzAwMjQ2MSIgZmlsbC1vcGFjaXR5PSIxIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIvPjwvc3ZnPg==" alt="Referral QR" style="width:170px;height:170px;display:block;margin:0 auto;"><div style="font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.07em;color:#8a93a6;margin-top:14px;">YOUR REFERRAL ID</div><div style="font-family:'Nunito';font-weight:900;font-size:22px;color:#002461;letter-spacing:.05em;">633973</div></div>
+   <p class="sub">Invite people to the Gopher network and earn rewards when they join &mdash; starting with referring yourself to new customers.</p><div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:14px 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);"><div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your unique QR</div><p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">They scan &mdash; You benefit.</p><div class="js-rs-qr" style="width:170px;height:170px;margin:0 auto;display:flex;align-items:center;justify-content:center;"></div><div style="font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.07em;color:#8a93a6;margin-top:14px;">YOUR REFERRAL ID</div><div class="js-rs-id" style="font-family:'Nunito';font-weight:900;font-size:22px;color:#002461;letter-spacing:.05em;">&mdash;</div></div>
    
    <div class="rs-grid">
      <button class="rs-tile" data-rk="self"><span class="rs-tbadge">You</span><span class="rs-tico">&#11088;</span><span class="rs-ttl">Refer Yourself</span><span class="rs-tdesc">Share your code so new customers add you as their saved Gopher.</span><span class="rs-tcta">Share your code &#8594;</span></button>
@@ -2489,18 +2493,40 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
     r.querySelector('.js-how').onclick=()=>load('refer-signup-flow');
-    const refId=(state.userId||'633973');             /* Referral ID is always the User ID */
+    const refId=(state.userId||'');   /* Referral ID IS the User ID, shared BARE — never prefixed
+       (owner 2026-08-14). No fabricated fallback: this was '633973', a fourth invented value on
+       this screen. Empty is honest; a made-up code is not. */
     if(!state.referrals){ state.referrals={
-      pending:[{date:'3.12.24',info:'919-738-2332',type:'SMS'},{date:'2.2.24',info:'jnewbury@gmail.com',type:'email'},{date:'1.1.24',info:'919-222-3223',type:'SMS'}],
+      pending:[{date:'3.12.24',info:'919-555-0177',type:'SMS'},{date:'2.2.24',info:'john.demo@gophergo.io',type:'email'},{date:'1.1.24',info:'919-555-0188',type:'SMS'}],
       added:[{date:'3.12.24',info:'John Newbury',type:'Gopher'},{date:'2.2.24',info:'Dave Kreeger',type:'Requester'},{date:'1.1.24',info:'Tom Livolsi',type:'Gopher'}],
       active:[{date:'3.12.24',info:'John Newbury',type:'Go'},{date:'2.2.24',info:'Dave Kreeger',type:'Request'},{date:'1.1.24',info:'Tom Livolsi',type:'Go'}]
     }; }
-    const QR='<svg viewBox="0 0 116 116" width="116" height="116" aria-label="QR"><rect width="116" height="116" rx="10" fill="#fff"/><g fill="#002461"><rect x="12" y="12" width="26" height="26" rx="4"/><rect x="18" y="18" width="14" height="14" rx="2" fill="#fff"/><rect x="22" y="22" width="6" height="6" rx="1"/><rect x="78" y="12" width="26" height="26" rx="4"/><rect x="84" y="18" width="14" height="14" rx="2" fill="#fff"/><rect x="88" y="22" width="6" height="6" rx="1"/><rect x="12" y="78" width="26" height="26" rx="4"/><rect x="18" y="84" width="14" height="14" rx="2" fill="#fff"/><rect x="22" y="88" width="6" height="6" rx="1"/><rect x="48" y="14" width="6" height="6"/><rect x="58" y="14" width="6" height="6"/><rect x="48" y="24" width="6" height="6"/><rect x="64" y="24" width="6" height="6"/><rect x="14" y="48" width="6" height="6"/><rect x="24" y="48" width="6" height="6"/><rect x="14" y="58" width="6" height="6"/><rect x="24" y="64" width="6" height="6"/><rect x="48" y="48" width="6" height="6"/><rect x="58" y="48" width="6" height="6"/><rect x="68" y="48" width="6" height="6"/><rect x="48" y="58" width="6" height="6"/><rect x="58" y="64" width="6" height="6"/><rect x="68" y="58" width="6" height="6"/><rect x="84" y="48" width="6" height="6"/><rect x="94" y="48" width="6" height="6"/><rect x="84" y="58" width="6" height="6"/><rect x="94" y="64" width="6" height="6"/><rect x="48" y="84" width="6" height="6"/><rect x="58" y="84" width="6" height="6"/><rect x="68" y="94" width="6" height="6"/><rect x="84" y="84" width="6" height="6"/><rect x="94" y="94" width="6" height="6"/></g></svg>';
+    /* Was 116x116 of hand-drawn rects — QR-SHAPED ART, not a code; it could never scan. Now the
+       real thing from the vendored encoder: level L, navy on white, encoding the self-referral
+       page. Empty when there is no id — a decorative square that looks scannable is the same
+       lie in a smaller font. */
+    function qrSvg(id){
+      if(!id || typeof qrcode==='undefined') return '';
+      try{ var q=qrcode(0,'L'); q.addData('https://api.gophergo.io/self-referral/'+id); q.make();
+        return q.createSvgTag({cellSize:4, margin:2, scalable:true})
+                .replace('<svg ','<svg width="116" height="116" role="img" aria-label="Referral QR for Gopher ID '+id+'" ')
+                .replace(/fill="black"/g,'fill="#002461"')   /* this encoder emits fill="black", not #000000 */
+                .replace(/fill="white"/g,'fill="#ffffff"');
+      }catch(_){ return ''; }
+    }
     const COPY={
-      self:{brand:'Gopher Go',title:'Refer Yourself',sub:'Share your code so new customers add you as their saved Gopher \u2014 you earn referral credit on every active sign-up.'},
-      go:{brand:'Gopher Go',title:'Refer Gopher Go',sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.'},
-      request:{brand:'Gopher',title:'Refer Gopher Request',sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.'},
-      connect:{brand:'Gopher Connect',title:'Refer Gopher Connect',sub:'Invite a business to manage their workforce on Gopher Connect. You both earn rewards when they join.'}
+      /* ⛔ POST /api/v1/referrals is KIND-BLIND — nothing in the payload records which tile sent
+         it, so a per-tile link can only live in the ON-SCREEN share copy. Per-kind SMS needs a
+         `kind` field plus templates in controllers/common/referrals.js; nobody has built that.
+         Do NOT wire these into a payload. Owner-approved set, relayed 2026-08-14. */
+      self:{brand:'Gopher Go',title:'Refer Yourself',sub:'Share your code so new customers add you as their saved Gopher \u2014 you earn referral credit on every active sign-up.',
+            links:['Your page: api.gophergo.io/self-referral/<id>']},
+      go:{brand:'Gopher Go',title:'Refer Gopher Go',sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.',
+          links:['iOS: apps.apple.com/us/app/gopher-go/id1438128905','Android: play.google.com/store/apps/details?id=io.gophergoapp.go']},
+      request:{brand:'Gopher',title:'Refer Gopher Request',sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.',
+               links:['Web: gophergo.io/gopher-request.html','iOS: apps.apple.com/us/app/id1438150218','Android: play.google.com/store/apps/details?id=io.gophergoapp.requester']},
+      connect:{brand:'Gopher Connect',title:'Refer Gopher Connect',sub:'Invite a business to manage their workforce on Gopher Connect. You both earn rewards when they join.',
+               links:['Web: gophergo.io/gopher-connect.html']}
     };
     const COLS={pending:['Date Referred','Referred Info','Type'],added:['Date Added','Name','Type'],active:['Date Active','Name','App Used']};
     function renderTrack(tab){
@@ -2519,7 +2545,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const html=
         '<button class="rf-x js-x" aria-label="Close">\u00d7</button>'
        +'<div class="rfv" data-v="home"><div class="rf-brand">'+cp.brand+'</div><h3>'+cp.title+'</h3><p>'+cp.sub+'</p>'
-         +'<div class="rf-qr">'+QR+'</div><div class="rf-idlab">Your Referral ID</div><div class="rf-id">'+refId+'</div>'
+         /* Per-tile links live HERE, in on-screen share copy, because POST /api/v1/referrals is
+            KIND-BLIND — nothing in the payload records which tile sent it. */
+         +((cp.links&&cp.links.length)?'<div class="rf-links">'+cp.links.map(function(l){return '<div>'+l.replace('<id>',(refId||'\u2014'))+'</div>';}).join('')+'</div>':'')
+         +'<div class="rf-qr">'+qrSvg(refId)+'</div><div class="rf-idlab">Your Referral ID</div><div class="rf-id">'+(refId||'\u2014')+'</div>'
+         /* The owner removed the GOPHER prefix from onboarding because people did not know to
+            add it and referrals silently failed to link. Say the shape so nobody re-adds it. */
+         +(refId?'<div class="rf-idnote">That\u2019s your whole code &mdash; just <b>'+refId+'</b>, nothing before it.</div>':'')
          +'<button class="rf-big js-sms">Refer via SMS</button><button class="rf-big js-email">Refer via Email</button>'
          +'<span class="mlink js-viewhist">Track Referral History</span></div>'
        +'<div class="rfv" data-v="entry" hidden><button class="rf-back js-back2">\u2039 Back</button><h3 class="js-etitle">Refer via SMS</h3>'
@@ -2542,7 +2574,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ov.querySelector('.js-eadd').onclick=addC;
       ov.querySelector('.js-einput').addEventListener('keydown',e=>{ if(e.key==='Enter') addC(); });
       ov.querySelector('.js-esubmit').onclick=()=>{ const inp=ov.querySelector('.js-einput'); if(inp.value.trim()){ contacts.push(inp.value.trim()); inp.value=''; } if(!contacts.length) return; const t=new Date(); const ds=(t.getMonth()+1)+'/'+t.getDate()+'/'+String(t.getFullYear()).slice(2); contacts.forEach(c=>state.referrals.pending.unshift({date:ds,info:c,type:channel==='sms'?'SMS':'Email'}));
-        if(kind==='self'){ try{ var gn=((state.fn&&state.ln)?state.fn+' '+state.ln:'Marcus Hale'); window.__ptReferral={gopher:gn, refId:(refId||'633973'), seq:((window.__ptReferral&&window.__ptReferral.seq)||0)+1}; }catch(_){} }   // Refer-Yourself → the harness drops it in the requester's inbox
+        if(kind==='self'){ try{ var gn=((state.fn&&state.ln)?state.fn+' '+state.ln:'Marcus Hale'); window.__ptReferral={gopher:gn, refId:(refId||''), seq:((window.__ptReferral&&window.__ptReferral.seq)||0)+1}; }catch(_){} }   // Refer-Yourself → the harness drops it in the requester's inbox
         show('done'); };
       ov.querySelector('.js-donehist').onclick=()=>{ ov.remove(); r.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('active',x.getAttribute('data-tab')==='pending')); renderTrack('pending'); };
       ov.querySelector('.js-again').onclick=()=>show('home');
@@ -3741,6 +3773,67 @@ function goRecentAreaHTML(){
       }).join('')
     + '</div>';
 }
+/* ===== Refer Yourself: the referral id and its QR, both derived =====
+   Mirrors Final/gopher-go.html (Go/Deals session, e31cbbb) into the prototype.
+
+   RULING (owner, verbatim 2026-08-14): "Absolutely DO NOT add the Gopher prefix. I specifically
+   updated that in the user onboarding earlier this year because users did not know they needed
+   to add GOPHER before the ID and it wasnt linking." So the code is BARE DIGITS — no prefix, no
+   length cap. Both live controllers still strip a legacy GOPHER prefix on input, which means no
+   API test can catch the mistake: `GOPHER1` resolves fine. The failure is human — a referrer
+   taught a prefix passes it on, the invitee omits it, and the referral silently fails to link.
+
+   WHAT THIS REPLACED, and why each was wrong:
+     • a hardcoded "633973" under "YOUR REFERRAL ID" — a third invented id, disagreeing with the
+       same worker's state.userId (820083) shown in the account bar. One worker, two ids.
+     • a hardcoded 6.4 KB base64 QR that was a genuinely SCANNABLE version-3 code (29x29, all
+       three finder patterns, 429 dark modules) whose payload matched none of 20 candidates at
+       any EC level — a real QR encoding something nobody had verified, in a publicly served
+       file. Generating it removes the unknown rather than decoding it.
+
+   Both now derive from state.userId. No id -> em dash and no QR: empty is honest, and another
+   account's code is not. The prototype persona is fictional and its id (820083) is deliberately
+   above the live max user id (141,808), so it cannot resolve to a real person — per the
+   Go/Deals session's warning not to seed a fictional-looking id that happens to resolve. */
+function goReferId(){ try{ return String(state.userId||'').trim(); }catch(_){ return ''; } }
+function goSelfRefUrl(id){ return 'https://api.gophergo.io/self-referral/'+id; }
+function goPaintReferSelf(sr){
+  try{
+    var idEl = sr.querySelector('.js-rs-id'), qrEl = sr.querySelector('.js-rs-qr');
+    if(!idEl && !qrEl) return;
+    var id = goReferId();
+    if(idEl) idEl.textContent = id || '—';
+    if(!qrEl) return;
+    qrEl.innerHTML = '';
+    if(!id) return;                                  // no id, no QR — nothing to encode
+    /* Script-order trap inherited from the web port: the engine can run before the encoder's
+       <script src> has executed, and the paint then silently skips. Retry once the page has
+       loaded rather than leaving an empty box. */
+    if(typeof qrcode === 'undefined'){
+      if(!goPaintReferSelf._armed){
+        goPaintReferSelf._armed = true;
+        var again = function(){ try{ var h=stage&&stage.querySelector('.host'); if(h&&h.shadowRoot) goPaintReferSelf(h.shadowRoot); }catch(_){} };
+        document.addEventListener('DOMContentLoaded', again);
+        window.addEventListener('load', again);
+      }
+      return;
+    }
+    /* Level L and no centre block, matching the live worker app. L carries ~7% error
+       correction; the old decorative centre square produced a QR that looked right and did
+       not scan. Deliberately NOT reproducing the app's ?lat=&lon= suffix — nothing consumes
+       it and it is a pure location leak. */
+    var q = qrcode(0, 'L');
+    q.addData(goSelfRefUrl(id));
+    q.make();
+    qrEl.innerHTML = q.createSvgTag({cellSize:5, margin:2, scalable:true});
+    var svg = qrEl.querySelector('svg');
+    if(svg){ svg.setAttribute('width','170'); svg.setAttribute('height','170');
+             svg.setAttribute('role','img');
+             svg.setAttribute('aria-label','Referral QR code for Gopher ID '+id); }
+    var path = qrEl.querySelector('path'); if(path) path.setAttribute('fill','#002461');
+    var rect = qrEl.querySelector('rect'); if(rect) rect.setAttribute('fill','#ffffff');
+  }catch(_){}
+}
 /* The Requests header caption was hardcoded "59 available nearby · 2 active · 1 scheduled".
    With every other number on this screen now derived, a fixed caption is the one thing that can
    contradict them — and it did: it read "59 available" directly above an empty state saying none
@@ -3779,7 +3872,7 @@ function load(id,isBack){
     Deliberately NOT resetting font-weight: buttons that look bold declare their own,
     and `font:inherit` would flatten them. See docs/screen-spec/TYPE-AND-SHAPE-SCALE.md. */
  const FORM_FONT_RESET='button,input,select,textarea{font-family:inherit;font-size:inherit;}';
- if(NATIVE[id]){ sr.innerHTML='<style>'+FORM_FONT_RESET+NATIVE_CSS+'</style>'+NATIVE[id].html; NATIVE[id].init(sr); renderAcct(sr); decorateNav(sr,id); if(id!=='onboarding') bindPersist(sr,id); }
+ if(NATIVE[id]){ sr.innerHTML='<style>'+FORM_FONT_RESET+NATIVE_CSS+'</style>'+NATIVE[id].html; NATIVE[id].init(sr); renderAcct(sr); decorateNav(sr,id); if(id==='refer-self'){try{goPaintReferSelf(sr);}catch(_){}} if(id!=='onboarding') bindPersist(sr,id); }
  else { const f=FRAMES[id]||{css:'',html:'<div style="padding:40px;font-family:sans-serif">Screen not provided.</div>'};
         sr.innerHTML='<style>'+FORM_FONT_RESET+f.css+'</style>'+f.html; sr.addEventListener('click',handle); decorateImported(sr,id); if(id==='requests'){try{goPaintSumm(sr);goPaintRecentArea(sr);}catch(_){}} if(id==='deals'&&window.initDeals){try{window.initDeals(sr);}catch(e){}} if(id==='home'){try{renderSPTile(sr);}catch(_){}}
  if(id==='home'){try{const _ws=sr.querySelector('.wsr .wt .s'); if(_ws&&state.work){const n=state.work.cats.length,t=state.work.tier,rr=state.work.radii||[];const rad=t==='elite'?((rr[0]||0)+' mi delivery \u00b7 '+((rr[1]||rr[0])||0)+' mi labor'):((rr[0]||0)+' mi radius');_ws.textContent=n+(n===1?' category':' categories')+' \u00b7 '+rad;}}catch(e){}} }
