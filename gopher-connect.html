@@ -7857,9 +7857,9 @@
         <span class="ai-contact-title">Talk to a person</span>
         <button class="ai-contact-back" id="aiContactBack" type="button">← Back to assistant</button>
       </div>
-      <a class="ai-contact-row" href="mailto:support@gopherconnect.com">
+      <a class="ai-contact-row" href="mailto:support@gophergo.io">
         <span class="ai-c-ico">✉️</span>
-        <span class="ai-c-body"><b>Email support</b><span>support@gopherconnect.com · replies within 1 business day</span></span>
+        <span class="ai-c-body"><b>Email support</b><span>support@gophergo.io · replies within 1 business day</span></span>
       </a>
       <button class="ai-contact-row" id="aiOpenFeedback" type="button">
         <span class="ai-c-ico">✍️</span>
@@ -8867,6 +8867,10 @@
       <button class="dash-nav-item dash-nav-link" id="navAskGopher">
         <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher iQ</span>
       </button>
+      <a class="dash-nav-item dash-nav-link" href="gopher-connect-101.html" target="_blank" rel="noopener">
+        <span class="dni-ico">🎓</span><span class="dni-label">Gopher Connect 101</span>
+        <span class="dni-ext" aria-hidden="true">↗</span>
+      </a>
       <a class="dash-nav-item dash-nav-link" href="#top" id="navAbout">
         <span class="dni-ico">🏠</span><span class="dni-label">Visit Connect site</span>
         <span class="dni-ext" aria-hidden="true">↗</span>
@@ -20029,7 +20033,7 @@ const PAY_BADGES = {
     { match:['refer','referral','rewards','reward','share','invite friend'],
       answer:`<b>Refer Gopher:</b> earn rewards when businesses, riders, or workers join through your referral. Use the <b>Refer Gopher</b> sidebar item to share via SMS, email, or QR — and track your referrals' status (Pending, Added, Active) in the same section.` },
     { match:['hours','open','support hours','live agent'],
-      answer:`<b>Support hours:</b> for support, email <b>support@gopherconnect.com</b> and we'll reply within one business day. You can also tap "Need a person? Contact us directly" below to email us or send product feedback.` },
+      answer:`<b>Support hours:</b> for support, email <b>support@gophergo.io</b> and we'll reply within one business day. You can also tap "Need a person? Contact us directly" below to email us or send product feedback.` },
   ];
   function lookupKnowledge(q){
     const text = q.toLowerCase();
@@ -20092,7 +20096,8 @@ const PAY_BADGES = {
 
     const ask = (q) => {
       if(!q.trim()) return;
-      addMsg('user', q);
+      // The typed question goes in via textContent — KB answers are our own HTML, user input is not.
+      addMsg('user','').querySelector('.ai-msg-bubble').textContent = q;
       input.value = ''; send.disabled = true;
       const typing = showTyping();
       // Simulate thinking; replace this with a real API call to your KB later.

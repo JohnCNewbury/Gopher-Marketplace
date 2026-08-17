@@ -18842,6 +18842,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <button class="dash-nav-item dash-nav-link" id="navAskGopher">
         <span class="dni-ico">💡</span><span class="dni-label">Ask Gopher iQ</span>
       </button>
+      <a class="dash-nav-item dash-nav-link" href="gopher-request-101.html" target="_blank" rel="noopener">
+        <span class="dni-ico">🎓</span><span class="dni-label">Gopher Request 101</span>
+        <span class="dni-ext" aria-hidden="true">↗</span>
+      </a>
       <a class="dash-nav-item dash-nav-link" href="#top" id="navAbout">
         <span class="dni-ico">🏠</span><span class="dni-label">Visit Request site</span>
         <span class="dni-ext" aria-hidden="true">↗</span>
@@ -23901,7 +23905,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     };
     const ask = (q) => {
       if(!q.trim()) return;
-      addMsg('user', q);
+      // The typed question goes in via textContent — KB answers are our own HTML, user input is not.
+      addMsg('user','').querySelector('.ai-msg-bubble').textContent = q;
       input.value = ''; send.disabled = true;
       const typing = showTyping();
       setTimeout(() => {
