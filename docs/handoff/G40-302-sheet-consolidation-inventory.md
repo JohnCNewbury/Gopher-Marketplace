@@ -174,12 +174,56 @@ customer-facing pages and require enough overrides (width, padding, alignment, o
 consolidation would be nominal — **zero visual or behavioural gain for real regression risk.**
 Recommend declining; raise it only if the design system later needs one literal class name.
 
-### ⏸ Go web `.gl-overlay` + `.rhm-overlay` — deliberately not started
+### ✅ Go web `.gl-overlay` + `.gl-otp-overlay` + `.rhm-overlay` — DONE 2026-08-14
 
-`Final/gopher-go.html` took **three commits on 2026-08-13** from an active session, and the
-WORK-REGISTRY names it as edited by several sessions at once. Editing under another session's feet
-is exactly what STANDING RULE 13 exists to prevent. This is the last target; it needs a quiet
-moment on that file, not a race.
+**⚠️ The change landed inside commit `dc8a8a7`, whose message describes only the other half of it.**
+Another session committed while my edit was uncommitted in the shared tree, so `dc8a8a7`
+("Remove the standing block toggle — the placement was the defect") contains *both* their
+`.rl-block` removal *and* this overlay consolidation. Nothing was lost and both halves are correct;
+the history simply under-describes it. Recorded here rather than rewritten, because the branch is
+shared. **This is the WORK-REGISTRY hazard in its exact predicted form** — `deploy.sh` and every
+`git commit` read the working tree, so uncommitted work belongs to whoever commits next.
+
+All four elements now carry the canonical `.gc-modal-overlay` with only their genuine deltas as
+modifiers:
+
+| element | class | role | z-index |
+| --- | --- | --- | --- |
+| `#goLoginOverlay` | `.gc-mo--login` | sign-in card, top-aligned | 4000 |
+| `#goNoAcctOverlay` | `.gc-mo--otp` | "no account" | 4100 |
+| `#goOtpOverlay` | `.gc-mo--otp` | **the OTP step** | 4100 |
+| `#rhmOverlay` | `.gc-mo--rhm` | request-history detail | 120 |
+
+Written **`.gc-modal-overlay.gc-mo--x`** (specificity 0,2,0) so source order cannot decide the
+winner — a single-class modifier ties with `.gc-modal-overlay` and loses on order, which is exactly
+how `.sheet--full` silently capped a full-height panel above.
+
+**Zero visual change, deliberately.** Each scrim tint is preserved: these read `rgba(0,18,49,·)`
+while the canonical reads `rgba(13,26,62,0.55)`. **That is real drift and the one open design
+question left on this ticket** — but it is a decision on the page carrying the owner's live sign-in,
+so it is surfaced rather than made silently. The z-indexes are *functional*, not drift: the OTP step
+must stack above the sign-in card or the auth flow breaks.
+
+The three per-class `[hidden]` guards were dropped as redundant — `.gc-modal-overlay[hidden]` beats
+the base `display:flex` at 0,2,0. That matters because **this file has no global `[hidden]` rule**;
+an earlier claim that it did came from counting comment prose and was corrected by the Go/Deals
+session. Verified masked: 0.
+
+**`.menu-overlay` deliberately untouched** — the audit lists it, but it hides via
+`opacity`/`visibility` and an `.open` class, not the `hidden` attribute, so none of this applies.
+
+**Verified** against a pre-change copy served side by side: all four overlays computed-identical
+across ten properties plus the hidden-state display. Sign-in driven through the app's own
+`window.openGoLogin()`; the OTP covers the viewport, stacks above the sign-in card, and
+`elementFromPoint` at screen centre lands on `#glOtpInputs` — inside the OTP — so it receives
+clicks. 13 inline script blocks parse clean.
+
+⚠️ **Not verified, and not verifiable from here: the full live OTP round trip.** Send-code needs a
+real backend response and does not advance on a scratch serve — the untouched baseline behaves
+identically, so that is not a regression. Entering a real code is also not something I will do. The
+CSS contract is what changed and it is fully verified; end-to-end sign-in stays the owner's check.
+
+
 
 ## Verification performed
 
