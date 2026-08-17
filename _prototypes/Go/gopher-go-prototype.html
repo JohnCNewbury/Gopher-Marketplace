@@ -368,6 +368,9 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .modal-card .rfv h3{text-align:center;}
   .modal-card .rfv p{text-align:center;}
   .rf-qr{display:flex;justify-content:center;margin:8px 0 4px;}
+  .rf-links{font-family:'DM Sans';font-size:10.5px;color:#5C6685;background:#f6f4ee;border-radius:10px;padding:8px 10px;margin:2px 0 8px;line-height:1.55;word-break:break-all;}
+  .rf-idnote{font-family:'DM Sans';font-size:10.5px;color:#5C6685;text-align:center;margin:4px 0 10px;}
+  .rf-idnote b{color:#002461;font-weight:700;}
   .rf-idlab{text-align:center;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#8C8675;font-family:'Nunito';font-weight:800;margin-top:6px;}
   .rf-id{text-align:center;font-family:'Nunito';font-weight:900;font-size:20px;color:#002461;letter-spacing:.5px;margin-bottom:6px;}
   .rf-big{display:block;width:100%;margin-top:8px;height:46px;border:none;border-radius:12px;background:#002461;color:#fff;font-family:'Nunito';font-weight:900;font-size:14px;cursor:pointer;}
@@ -2489,18 +2492,40 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
     r.querySelector('.js-how').onclick=()=>load('refer-signup-flow');
-    const refId=(state.userId||'633973');             /* Referral ID is always the User ID */
+    const refId=(state.userId||'');   /* Referral ID IS the User ID, shared BARE — never prefixed
+       (owner 2026-08-14). No fabricated fallback: this was '633973', a fourth invented value on
+       this screen. Empty is honest; a made-up code is not. */
     if(!state.referrals){ state.referrals={
-      pending:[{date:'3.12.24',info:'919-738-2332',type:'SMS'},{date:'2.2.24',info:'jnewbury@gmail.com',type:'email'},{date:'1.1.24',info:'919-222-3223',type:'SMS'}],
+      pending:[{date:'3.12.24',info:'919-555-0177',type:'SMS'},{date:'2.2.24',info:'john.demo@gophergo.io',type:'email'},{date:'1.1.24',info:'919-555-0188',type:'SMS'}],
       added:[{date:'3.12.24',info:'John Newbury',type:'Gopher'},{date:'2.2.24',info:'Dave Kreeger',type:'Requester'},{date:'1.1.24',info:'Tom Livolsi',type:'Gopher'}],
       active:[{date:'3.12.24',info:'John Newbury',type:'Go'},{date:'2.2.24',info:'Dave Kreeger',type:'Request'},{date:'1.1.24',info:'Tom Livolsi',type:'Go'}]
     }; }
-    const QR='<svg viewBox="0 0 116 116" width="116" height="116" aria-label="QR"><rect width="116" height="116" rx="10" fill="#fff"/><g fill="#002461"><rect x="12" y="12" width="26" height="26" rx="4"/><rect x="18" y="18" width="14" height="14" rx="2" fill="#fff"/><rect x="22" y="22" width="6" height="6" rx="1"/><rect x="78" y="12" width="26" height="26" rx="4"/><rect x="84" y="18" width="14" height="14" rx="2" fill="#fff"/><rect x="88" y="22" width="6" height="6" rx="1"/><rect x="12" y="78" width="26" height="26" rx="4"/><rect x="18" y="84" width="14" height="14" rx="2" fill="#fff"/><rect x="22" y="88" width="6" height="6" rx="1"/><rect x="48" y="14" width="6" height="6"/><rect x="58" y="14" width="6" height="6"/><rect x="48" y="24" width="6" height="6"/><rect x="64" y="24" width="6" height="6"/><rect x="14" y="48" width="6" height="6"/><rect x="24" y="48" width="6" height="6"/><rect x="14" y="58" width="6" height="6"/><rect x="24" y="64" width="6" height="6"/><rect x="48" y="48" width="6" height="6"/><rect x="58" y="48" width="6" height="6"/><rect x="68" y="48" width="6" height="6"/><rect x="48" y="58" width="6" height="6"/><rect x="58" y="64" width="6" height="6"/><rect x="68" y="58" width="6" height="6"/><rect x="84" y="48" width="6" height="6"/><rect x="94" y="48" width="6" height="6"/><rect x="84" y="58" width="6" height="6"/><rect x="94" y="64" width="6" height="6"/><rect x="48" y="84" width="6" height="6"/><rect x="58" y="84" width="6" height="6"/><rect x="68" y="94" width="6" height="6"/><rect x="84" y="84" width="6" height="6"/><rect x="94" y="94" width="6" height="6"/></g></svg>';
+    /* Was 116x116 of hand-drawn rects — QR-SHAPED ART, not a code; it could never scan. Now the
+       real thing from the vendored encoder: level L, navy on white, encoding the self-referral
+       page. Empty when there is no id — a decorative square that looks scannable is the same
+       lie in a smaller font. */
+    function qrSvg(id){
+      if(!id || typeof qrcode==='undefined') return '';
+      try{ var q=qrcode(0,'L'); q.addData('https://api.gophergo.io/self-referral/'+id); q.make();
+        return q.createSvgTag({cellSize:4, margin:2, scalable:true})
+                .replace('<svg ','<svg width="116" height="116" role="img" aria-label="Referral QR for Gopher ID '+id+'" ')
+                .replace(/fill="black"/g,'fill="#002461"')   /* this encoder emits fill="black", not #000000 */
+                .replace(/fill="white"/g,'fill="#ffffff"');
+      }catch(_){ return ''; }
+    }
     const COPY={
-      self:{brand:'Gopher Go',title:'Refer Yourself',sub:'Share your code so new customers add you as their saved Gopher \u2014 you earn referral credit on every active sign-up.'},
-      go:{brand:'Gopher Go',title:'Refer Gopher Go',sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.'},
-      request:{brand:'Gopher',title:'Refer Gopher Request',sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.'},
-      connect:{brand:'Gopher Connect',title:'Refer Gopher Connect',sub:'Invite a business to manage their workforce on Gopher Connect. You both earn rewards when they join.'}
+      /* ⛔ POST /api/v1/referrals is KIND-BLIND — nothing in the payload records which tile sent
+         it, so a per-tile link can only live in the ON-SCREEN share copy. Per-kind SMS needs a
+         `kind` field plus templates in controllers/common/referrals.js; nobody has built that.
+         Do NOT wire these into a payload. Owner-approved set, relayed 2026-08-14. */
+      self:{brand:'Gopher Go',title:'Refer Yourself',sub:'Share your code so new customers add you as their saved Gopher \u2014 you earn referral credit on every active sign-up.',
+            links:['Your page: api.gophergo.io/self-referral/<id>']},
+      go:{brand:'Gopher Go',title:'Refer Gopher Go',sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.',
+          links:['iOS: apps.apple.com/us/app/gopher-go/id1438128905','Android: play.google.com/store/apps/details?id=io.gophergoapp.go']},
+      request:{brand:'Gopher',title:'Refer Gopher Request',sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.',
+               links:['Web: gophergo.io/gopher-request.html','iOS: apps.apple.com/us/app/id1438150218','Android: play.google.com/store/apps/details?id=io.gophergoapp.requester']},
+      connect:{brand:'Gopher Connect',title:'Refer Gopher Connect',sub:'Invite a business to manage their workforce on Gopher Connect. You both earn rewards when they join.',
+               links:['Web: gophergo.io/gopher-connect.html']}
     };
     const COLS={pending:['Date Referred','Referred Info','Type'],added:['Date Added','Name','Type'],active:['Date Active','Name','App Used']};
     function renderTrack(tab){
@@ -2519,7 +2544,13 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const html=
         '<button class="rf-x js-x" aria-label="Close">\u00d7</button>'
        +'<div class="rfv" data-v="home"><div class="rf-brand">'+cp.brand+'</div><h3>'+cp.title+'</h3><p>'+cp.sub+'</p>'
-         +'<div class="rf-qr">'+QR+'</div><div class="rf-idlab">Your Referral ID</div><div class="rf-id">'+refId+'</div>'
+         /* Per-tile links live HERE, in on-screen share copy, because POST /api/v1/referrals is
+            KIND-BLIND — nothing in the payload records which tile sent it. */
+         +((cp.links&&cp.links.length)?'<div class="rf-links">'+cp.links.map(function(l){return '<div>'+l.replace('<id>',(refId||'\u2014'))+'</div>';}).join('')+'</div>':'')
+         +'<div class="rf-qr">'+qrSvg(refId)+'</div><div class="rf-idlab">Your Referral ID</div><div class="rf-id">'+(refId||'\u2014')+'</div>'
+         /* The owner removed the GOPHER prefix from onboarding because people did not know to
+            add it and referrals silently failed to link. Say the shape so nobody re-adds it. */
+         +(refId?'<div class="rf-idnote">That\u2019s your whole code &mdash; just <b>'+refId+'</b>, nothing before it.</div>':'')
          +'<button class="rf-big js-sms">Refer via SMS</button><button class="rf-big js-email">Refer via Email</button>'
          +'<span class="mlink js-viewhist">Track Referral History</span></div>'
        +'<div class="rfv" data-v="entry" hidden><button class="rf-back js-back2">\u2039 Back</button><h3 class="js-etitle">Refer via SMS</h3>'
@@ -2542,7 +2573,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ov.querySelector('.js-eadd').onclick=addC;
       ov.querySelector('.js-einput').addEventListener('keydown',e=>{ if(e.key==='Enter') addC(); });
       ov.querySelector('.js-esubmit').onclick=()=>{ const inp=ov.querySelector('.js-einput'); if(inp.value.trim()){ contacts.push(inp.value.trim()); inp.value=''; } if(!contacts.length) return; const t=new Date(); const ds=(t.getMonth()+1)+'/'+t.getDate()+'/'+String(t.getFullYear()).slice(2); contacts.forEach(c=>state.referrals.pending.unshift({date:ds,info:c,type:channel==='sms'?'SMS':'Email'}));
-        if(kind==='self'){ try{ var gn=((state.fn&&state.ln)?state.fn+' '+state.ln:'Marcus Hale'); window.__ptReferral={gopher:gn, refId:(refId||'633973'), seq:((window.__ptReferral&&window.__ptReferral.seq)||0)+1}; }catch(_){} }   // Refer-Yourself → the harness drops it in the requester's inbox
+        if(kind==='self'){ try{ var gn=((state.fn&&state.ln)?state.fn+' '+state.ln:'Marcus Hale'); window.__ptReferral={gopher:gn, refId:(refId||''), seq:((window.__ptReferral&&window.__ptReferral.seq)||0)+1}; }catch(_){} }   // Refer-Yourself → the harness drops it in the requester's inbox
         show('done'); };
       ov.querySelector('.js-donehist').onclick=()=>{ ov.remove(); r.querySelectorAll('.rs-tab').forEach(x=>x.classList.toggle('active',x.getAttribute('data-tab')==='pending')); renderTrack('pending'); };
       ov.querySelector('.js-again').onclick=()=>show('home');
