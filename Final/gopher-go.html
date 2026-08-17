@@ -3695,6 +3695,11 @@ window.showNoAccount = function(){
   .gbb-lock { margin-top:3px; align-self:flex-start; font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--muted); background:#f1f3f8; border-radius:9px; padding:7px 12px; cursor:default; }
   .gbb-cta { margin-top:18px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; padding:13px 22px; font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; cursor:pointer; min-height:50px; box-shadow:0 6px 18px rgba(51,217,117,0.3); transition:background 0.2s; }
   .gbb-cta:hover { background:var(--green-dark); }
+  /* The owner's rule is "DEACTIVATED until an eligible gopher has a live SP
+     Deal" — deactivated, not blocked-after-the-tap. The green CTA has to read
+     as unavailable, the same way the per-card buttons already do. */
+  .gbb-cta:disabled { background:#EEF0F5; color:#8C93A3; box-shadow:none; cursor:not-allowed; }
+  .gbb-cta:disabled:hover { background:#EEF0F5; }
   .gbb-demo-note { font-size:11.5px; color:var(--muted); margin-top:10px; }
 
   .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); background:var(--navy); color:#fff; padding:13px 22px; border-radius:12px; font-family:'Nunito',sans-serif; font-weight:700; font-size:13.5px; box-shadow:0 16px 40px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition:opacity 0.25s, transform 0.25s; z-index:9800; display:flex; align-items:center; gap:9px; }
@@ -7173,6 +7178,7 @@ window.showNoAccount = function(){
     /* A locked button with no reason reads as broken. Say which of the two
        blockers it is, because they need different actions from the worker. */
     var g = bidGate();
+    syncCta(g);
     if(!g.canBid){
       youEl.classList.remove('lead');
       youEl.innerHTML = '<span class="gbb-you-ico">\uD83D\uDD12</span><span class="gbb-you-txt">'+esc(g.why)+'</span>';
@@ -7226,7 +7232,24 @@ window.showNoAccount = function(){
     amtHint.textContent = 'Top this month’s '+money(b.amount)+' to headline the '+VIEWER.category
       +' card. Only the highest bid at closing wins the month.';
   }
-  function openForm(){ populateDeals(); syncForm(); openOv(); amtField.focus(); }
+  /* Gated HERE as well as on the button, for the same reason the referral Copy
+     guard reads the session rather than the DOM: a disabled attribute is a
+     presentation state, and every path that can open this form has to answer to
+     the same gate. Without this, the bottom CTA could open the form on a stale
+     render and the worker would only learn they cannot bid after typing an
+     amount — which is the pattern the launch gate exists to remove. */
+  function openForm(){
+    var g = bidGate();
+    if(!g.canBid) return;
+    populateDeals(); syncForm(); openOv(); amtField.focus();
+  }
+  /* One place decides how the bottom CTA looks, called from renderYou() so it
+     re-runs after every loadBidData(). */
+  function syncCta(g){
+    var b = document.getElementById('gbbStart'); if(!b) return;
+    b.disabled = !g.canBid;
+    b.title = g.canBid ? '' : g.why;
+  }
 
   function showErr(m){ errEl.textContent=m; errEl.hidden=false; }
   function placeBid(){
