@@ -3193,6 +3193,182 @@ window.showNoAccount = function(){
   .rh-ghost:hover { border-color:var(--green); background:var(--green-light); }
   .rh-empty { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
 
+  /* ─── Ask Gopher iQ modal ───────────────────────────────────────────────
+     Ported VERBATIM from gopher-connect.html (lines 1290-1428) so the four
+     dashboards share one component rather than four lookalikes — owner,
+     2026-08-17: "All 4 dashboards should have the same resources."
+     Taken as a contiguous block, not regex-scraped: a scrape lifts rules out
+     of any @media wrapper they live in and silently makes them
+     unconditional. Verified balanced (48 open / 48 close), no @media inside,
+     and zero class-name collisions with this page before insertion.
+     NOT ported: .ai-helper-row / .ai-arrow / .ai-helper-caption — that is
+     Connect's suggested-offer CTA, a different component that only shares the
+     .ai- prefix. */
+  /* ─── AI Assistant modal (Ask Gopher) ─── */
+  .ai-assist-modal {
+    max-width:520px; padding:18px 22px 18px;
+    display:flex; flex-direction:column; gap:10px;
+    max-height:min(680px, 92vh); overflow:hidden;
+  }
+  .ai-assist-head {
+    text-align:center;
+    padding:2px 0 12px; border-bottom:1px solid #eef0f5;
+    flex-shrink:0;
+  }
+  .ai-assist-meta { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .ai-assist-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; color:var(--navy); }
+  .ai-assist-status {
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted);
+  }
+  .aas-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px rgba(51,217,117,0.18); }
+
+  .ai-assist-transcript {
+    flex:1; min-height:240px; overflow-y:auto;
+    display:flex; flex-direction:column; gap:10px;
+    padding:6px 4px;
+  }
+  .ai-msg { display:flex; }
+  .ai-msg.ai { justify-content:flex-start; }
+  .ai-msg.user { justify-content:flex-end; }
+  .ai-msg-bubble {
+    max-width:84%; padding:10px 14px; border-radius:14px;
+    font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55;
+  }
+  .ai-msg.ai .ai-msg-bubble {
+    background:#eef0f8; color:var(--navy); border-bottom-left-radius:4px;
+  }
+  .ai-msg.user .ai-msg-bubble {
+    background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:4px; font-weight:600;
+  }
+  .ai-msg-bubble a { color:var(--green-dark); text-decoration:underline; }
+  .ai-msg.ai .ai-msg-bubble b { color:var(--navy); font-weight:800; }
+
+  .ai-typing { display:inline-flex; gap:4px; padding:6px 4px; }
+  .ai-typing span {
+    width:6px; height:6px; border-radius:50%; background:#a4adc2;
+    animation:aiTypeBounce 1.1s infinite;
+  }
+  .ai-typing span:nth-child(2){ animation-delay:0.15s; }
+  .ai-typing span:nth-child(3){ animation-delay:0.30s; }
+  @keyframes aiTypeBounce {
+    0%,80%,100% { transform:translateY(0); opacity:0.4; }
+    40% { transform:translateY(-4px); opacity:1; }
+  }
+
+  .ai-suggestions {
+    display:flex; flex-wrap:wrap; gap:6px;
+    padding:4px 2px 2px;
+  }
+  .ai-suggestion {
+    border:1px solid #e7eaf2; background:white; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:11.5px;
+    color:var(--navy); padding:6px 11px; border-radius:99px;
+    transition:all 0.15s;
+  }
+  .ai-suggestion:hover { border-color:var(--green); color:var(--green-dark); }
+
+  /* Logo slot above the input pill — holds the real Connect logo */
+  .ai-logo-slot {
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    padding:4px 0 8px;
+  }
+  .ai-logo-slot img { max-height:34px; width:auto; object-fit:contain; }
+
+  .ai-pill-bar {
+    display:flex; align-items:center; gap:6px;
+    background:white; border:1.5px solid #e7eaf2; border-radius:99px;
+    padding:5px 5px 5px 16px;
+    flex-shrink:0;
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  .ai-pill-bar:focus-within {
+    border-color:var(--green);
+    box-shadow:0 0 0 3px rgba(51,217,117,0.12);
+  }
+  .ai-pill-input {
+    flex:1; border:none; outline:none; background:transparent;
+    font-family:'DM Sans',sans-serif; font-size:13.5px; color:var(--navy);
+    padding:8px 0;
+  }
+  .ai-pill-input::placeholder { color:#9aa3b5; }
+  .ai-pill-send {
+    width:34px; height:34px; flex-shrink:0; cursor:pointer;
+    background:var(--green); color:var(--ink-on-green); border:none; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s, transform 0.12s;
+    box-shadow:0 3px 8px rgba(51,217,117,0.28);
+  }
+  .ai-pill-send:hover:not(:disabled) { background:var(--green-dark); }
+  .ai-pill-send:active:not(:disabled) { transform:scale(0.94); }
+  .ai-pill-send:disabled { background:#d4d8e3; box-shadow:none; cursor:not-allowed; color:rgba(0,0,0,0.4); }
+
+  /* Inline "contact us directly" link below the pill bar */
+  .ai-contact-inline-link {
+    flex-shrink:0;
+    background:none; border:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
+    color:var(--green-dark); padding:6px 10px; border-radius:8px;
+    align-self:center; margin:0 auto;
+    transition:all 0.15s;
+  }
+  .ai-contact-inline-link:hover { background:var(--green-light); color:var(--navy); }
+
+  /* Contact-a-human drawer (replaces transcript+input when opened) */
+  .ai-contact-drawer {
+    flex:1; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column; gap:10px;
+    padding:6px 4px 8px;
+  }
+  .ai-contact-head {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:4px; flex-shrink:0;
+  }
+  .ai-contact-title { font-family:'Nunito',sans-serif; font-weight:900; font-size:13.5px; color:var(--navy); }
+  .ai-contact-back {
+    border:none; background:none; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px;
+    color:var(--green-dark); padding:4px 8px; border-radius:7px;
+  }
+  .ai-contact-back:hover { background:var(--green-light); }
+  .ai-contact-row {
+    display:flex; align-items:flex-start; gap:11px;
+    padding:12px 14px; border:1.5px solid #e7eaf2; border-radius:12px;
+    background:white; text-decoration:none; cursor:pointer; text-align:left;
+    transition:all 0.15s;
+    flex-shrink:0;
+  }
+  .ai-contact-row:hover { border-color:var(--green); background:#f6fbf7; }
+  .ai-c-ico { font-size:20px; line-height:1; flex-shrink:0; padding-top:2px; }
+  .ai-c-body { display:flex; flex-direction:column; gap:2px; flex:1; }
+  .ai-c-body b { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
+  .ai-c-body span { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); line-height:1.4; }
+
+  /* ⚠️ [hidden] IS NOT SAFE ON THIS PAGE — the trap from 2026-07-27, hit again
+     by this very port. gopher-connect.html carries a global
+     [hidden]{display:none!important}; gopher-go.html does NOT (it uses
+     per-selector guards, 8 of them). So every rule above that sets display:
+     BEATS the browser's default [hidden] rule, and el.hidden = true does
+     nothing. Ported straight over, the contact drawer rendered UNDERNEATH the
+     live transcript and input — both panels on screen at once.
+
+     Guarded here are the five elements the JS actually toggles. The rest set
+     display: too but are never given the hidden attribute; adding them would
+     be noise, and the real rule to remember is the pairing, not the property:
+     display + the hidden attribute needs a guard, on this page, every time.
+
+     ⚠️ AND THE WAY THIS WAS NEARLY MISSED IS THE POINT. The first verification
+     pass asserted `el.hidden` — the DOM PROPERTY, which was true and correct —
+     and reported the drawer working. It was a screenshot that showed both
+     panels stacked. Assert getComputedStyle().display, not .hidden. That is
+     the same wrong measurement recorded in CLAUDE.md for 2026-07-27; knowing
+     it did not prevent repeating it. */
+  .ai-assist-transcript[hidden],
+  .ai-pill-bar[hidden],
+  .ai-logo-slot[hidden],
+  .ai-contact-drawer[hidden],
+  .ai-contact-inline-link[hidden] { display:none; }
+
   /* request-history detail modal */
   .rhm-overlay { position:fixed; inset:0; background:rgba(0,18,49,0.55); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:120; }
   .rhm-overlay[hidden] { display:none; }
@@ -3874,7 +4050,8 @@ window.showNoAccount = function(){
       <button class="dash-nav-item" data-dash-section="refer"><span class="dni-ico">&#127873;</span><span class="dni-label">Refer Gopher</span></button>
       <button class="dash-nav-item" data-dash-section="bidboard"><span class="dni-ico">&#128227;</span><span class="dni-label">Feature my deal</span></button>
       <div class="dash-nav-divider">Resources</div>
-      <button class="dash-nav-item" data-dash-section="help"><span class="dni-ico">&#128161;</span><span class="dni-label">Ask Gopher iQ</span></button>
+      <button class="dash-nav-item dash-nav-link" id="navAskGopher"><span class="dni-ico">&#128161;</span><span class="dni-label">Ask Gopher iQ</span></button>
+      <a class="dash-nav-item dash-nav-link" href="gopher-go-101.html" target="_blank" rel="noopener"><span class="dni-ico">&#127891;</span><span class="dni-label">Gopher Go 101</span><span class="dni-ext" aria-hidden="true">&#8599;</span></a>
       <a class="dash-nav-item dash-nav-link" href="gopher-go.html"><span class="dni-ico">&#127968;</span><span class="dni-label">Visit Gopher Go site</span><span class="dni-ext" aria-hidden="true">&#8599;</span></a>
       <button class="dash-nav-item" id="goSendFeedback"><span class="dni-ico">&#9997;&#65039;</span><span class="dni-label">Send feedback</span></button>
     </div>
@@ -4273,16 +4450,13 @@ window.showNoAccount = function(){
       </section>
 
       <!-- ░░ HELP CENTER ░░ -->
-      <section class="dash-section" data-dash-section="help">
-        <div class="panel">
-          <div class="panel-head"><h2>Ask Gopher iQ</h2></div>
-          <img src="assets/img/shared-scribble.webp" alt="Gopher iQ" style="height:32px;width:auto;display:block;margin:2px 0 10px">
-          <p class="panel-desc">Quick, mobile-friendly help — tap a topic.</p>
-          <a class="help-card" href="gopher-faqs.html"><span class="hc-ico">?</span><span class="hc-tx"><span class="hc-ttl">FAQs</span><span class="hc-sub">Payments, jobs, tiers &amp; more</span></span><span class="hc-arr">&#8250;</span></a>
-          <a class="help-card" href="gopher-go.html"><span class="hc-ico hc-101">101</span><span class="hc-tx"><span class="hc-ttl">Gopher Go 101</span><span class="hc-sub">The basics in a 2-minute walkthrough</span></span><span class="hc-arr">&#8250;</span></a>
-          <a class="help-card" href="gopher-contact-us.html"><span class="hc-ico">@</span><span class="hc-tx"><span class="hc-ttl">Contact Us</span><span class="hc-sub">Reach a human on the Gopher team</span></span><span class="hc-arr">&#8250;</span></a>
-        </div>
-      </section>
+      <!-- The three-card "help" pane lived here until 2026-08-17. Retired when
+           Ask Gopher iQ became the shared modal: its Contact Us card is now the
+           modal's contact drawer, its Gopher Go 101 card is a Resources nav item
+           (and finally points at the guide instead of at this page), and the FAQs
+           card is superseded by the assistant itself. Removed rather than hidden —
+           a dead pane reachable by no route is the kind of thing that gets
+           re-wired by accident later. -->
 
     </div>
   </main>
@@ -4340,6 +4514,67 @@ window.showNoAccount = function(){
       <p class="rf-sub" id="rfDoneMsg">Some of your referrals may already be on the Gopher network. All new referrals have been submitted and can be viewed in the Track referral history tab.</p>
       <button class="gc-modal-btn" id="rfDoneTrack">View referral history</button>
       <button class="gc-modal-btn-text" data-refer-back="home">Refer someone else</button>
+    </div>
+  </div>
+</div>
+
+<!-- ░░ ASK GOPHER iQ ░░ Ported from gopher-connect/gopher-request (owner,
+     2026-08-17: "All 4 dashboards should have the same resources"). Same
+     component, same markup, WORKER-scoped copy and knowledge base — a Gopher
+     asks about payouts, tiers and counter offers, not about billing a request.
+     Replaces the old three-card "help" pane, whose Gopher Go 101 card pointed
+     at gopher-go.html — this page — so tapping it reloaded the dashboard. -->
+<div class="gc-modal-overlay" id="aiAssistOverlay" hidden>
+  <div class="gc-modal ai-assist-modal" role="dialog" aria-modal="true" aria-labelledby="aiAssistTitle">
+    <button type="button" class="gc-modal-close" id="aiAssistClose" aria-label="Close">&times;</button>
+
+    <div class="ai-assist-head">
+      <div class="ai-assist-meta">
+        <div class="ai-assist-name" id="aiAssistTitle">Gopher iQ</div>
+        <div class="ai-assist-status"><span class="aas-dot"></span>Online &middot; here to help</div>
+      </div>
+    </div>
+
+    <div class="ai-assist-transcript" id="aiAssistTranscript">
+      <div class="ai-msg ai">
+        <span class="ai-msg-bubble">Hi! I can answer questions about working on Gopher Go &mdash; payouts, tiers, counter offers, your work settings, anything. Ask me, or pick a starter below.</span>
+      </div>
+      <div class="ai-suggestions" id="aiSuggestions">
+        <button class="ai-suggestion" data-q="When do I get paid and what fees come out?">When do I get paid?</button>
+        <button class="ai-suggestion" data-q="How do the Elite and Pro tiers work?">Elite &amp; Pro tiers</button>
+        <button class="ai-suggestion" data-q="How much can I counter offer?">Counter offers</button>
+        <button class="ai-suggestion" data-q="How do I change my work settings and radius?">Work settings &amp; radius</button>
+        <button class="ai-suggestion" data-q="What do I need to turn on ride sharing?">Turn on Ride Sharing</button>
+      </div>
+    </div>
+
+    <div class="ai-logo-slot" id="aiLogoSlot" aria-hidden="true"><img src="assets/img/shared-scribble.webp" alt="Gopher iQ"></div>
+
+    <form class="ai-pill-bar" id="aiAssistForm" autocomplete="off">
+      <input type="text" id="aiAssistInput" class="ai-pill-input" placeholder="Ask Gopher anything&hellip;" aria-label="Ask Gopher anything">
+      <button type="submit" class="ai-pill-send" id="aiAssistSend" aria-label="Send" disabled>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-5 14-3-7-6-0z"/></svg>
+      </button>
+    </form>
+
+    <button class="ai-contact-inline-link" id="aiAssistContactBtn" type="button">Need a person? Contact us directly &rarr;</button>
+
+    <div class="ai-contact-drawer" id="aiContactDrawer" hidden>
+      <div class="ai-contact-head">
+        <span class="ai-contact-title">Talk to a person</span>
+        <button class="ai-contact-back" id="aiContactBack" type="button">&larr; Back to assistant</button>
+      </div>
+      <!-- ⚠️ support@gophergo.io, NOT the support@gopherconnect.com that
+           gopher-connect.html's copy of this drawer uses — that domain is not
+           ours. Raised separately; do not "match Connect" on this line. -->
+      <a class="ai-contact-row" href="mailto:support@gophergo.io">
+        <span class="ai-c-ico">&#9993;&#65039;</span>
+        <span class="ai-c-body"><b>Email support</b><span>support@gophergo.io &middot; replies within 1 business day</span></span>
+      </a>
+      <button class="ai-contact-row" id="aiOpenFeedback" type="button">
+        <span class="ai-c-ico">&#9997;&#65039;</span>
+        <span class="ai-c-body"><b>Send product feedback</b><span>Tell our team what's working, what isn't, or what you'd like to see.</span></span>
+      </button>
     </div>
   </div>
 </div>
@@ -6866,6 +7101,154 @@ window.showNoAccount = function(){
   ['offerSvcClose','offerSvcClose2'].forEach(function(id){ var e=document.getElementById(id); if(e) e.addEventListener('click', function(){ closeOv(svcOv); }); });
   [inelOv, svcOv].forEach(function(o){ if(o) o.addEventListener('click', function(e){ if(e.target===o) closeOv(o); }); });
   render();
+
+  /* ░░ ASK GOPHER iQ ░░ ────────────────────────────────────────────────────
+     Ported from gopher-connect/gopher-request so all four dashboards run one
+     component (owner, 2026-08-17). Two things about it are worth stating
+     plainly, because the branding invites a wrong assumption:
+
+     1. THIS IS NOT THE SITE'S REAL iQ ENGINE. assets/js/gopher-ai-engine.js —
+        the 184-entry FAQ corpus, the coverage brain, the category classifier —
+        is what powers the search pill on index/services/faqs and what the app
+        prototypes answer from. This modal is a small hand-written KB with
+        substring matching, exactly as Connect and Request have it. Same name,
+        different and much weaker thing. Do not describe it as the iQ engine,
+        and do not "resync" it from the corpus without deciding that on purpose.
+
+     2. IT FAILS HONESTLY, WHICH IS WHY IT CAN SHIP UNGATED. No match returns a
+        plain "I don't have a good answer for that yet" plus a route to a human —
+        it never invents an answer, so a miss costs a worker nothing. That is the
+        whole reason this pane is live rather than coming-soon.
+
+     Scoped to the WORKER. Connect and Request answer a requester (billing,
+     matching, payment methods); a Gopher asks about getting paid, tiers,
+     counter offers, and what their settings gate. Every figure below is the
+     canon this repo already carries — worker fees, the D-026 counter cap, the
+     SP-Deal bar — not new promises. */
+  var GO_IQ_KB = [
+    { match:['paid','payout','payment','when do i get','transfer','instant','bank','deposit','stripe'],
+      answer:'<b>Getting paid:</b> workers pay <b>zero platform fees</b> — you receive 100% of the offer plus any cost of items. Payouts run through your connected payout account. New accounts sit in a short trust window at first; after that, transfers are instant. Set the account up under <b>Payment info</b> in the sidebar.' },
+    { match:['tier','elite','pro','elite+','level','badge','upgrade'],
+      answer:'<b>Tiers:</b> <b>Elite</b> clears a criminal background screen; <b>Elite+</b> adds a clean motor-vehicle record and priority Ride Sharing benefits; <b>Pro</b> recognises a verifiable professional credential. All three get instant payout from day one, unlimited counter offers without a cap, and eligibility to offer a Gopher Deal.' },
+    { match:['counter','counter offer','counteroffer','negotiate','ask for more','raise the offer'],
+      answer:'<b>Counter offers:</b> a counter has to beat the offer, with a <b>$20 floor</b>. On Standard the ceiling is <b>150% of the offer</b> (the offer alone — cost of items is not part of the base) and you get <b>5 per month</b>, resetting on the 1st. <b>Elite, Elite+ and Pro counter without limit and without a cap.</b>' },
+    { match:['work settings','radius','categories','distance','how far','area','job types'],
+      answer:'<b>Work settings &amp; radius:</b> choose which categories you take and how far you will travel from <b>Work settings &amp; radius</b> in the sidebar. Your categories decide which requests reach you at all, so turning one off is the same as not seeing that work.' },
+    { match:['ride','ride sharing','rideshare','vehicle','car','passenger','registration','insurance'],
+      answer:'<b>Turning on Ride Sharing:</b> it needs your vehicle details plus four things on file — <b>front and rear photos</b> (rear with the plate visible), <b>registration</b> and <b>insurance</b>. All of it has to be submitted before the setting will save; anything already on file counts. If you change a vehicle detail, the photos and documents flip back to "Update needed".' },
+    { match:['deal','service provider deal','sp deal','offer my service','feature','bid'],
+      answer:'<b>Service Provider Deals:</b> you can offer your own deal once you are <b>Elite, Elite+ or Pro</b> with <b>20+ completed service jobs</b> and a <b>4.75&#9733; average over your last 20 service jobs</b>. Delivery/Errand, Ride Sharing and Other do not count toward either number. Submitted deals go to the Gopher team for review before they go live.' },
+    { match:['refer','referral','invite','share','rewards','my code','gopher id'],
+      answer:'<b>Referrals:</b> your referral code is simply your <b>Gopher ID</b> — the bare number shown under <b>Refer Gopher</b>, with no prefix in front of it. Share the ID, your QR, or your personal invite link, and track who joined under the same section.' },
+    { match:['rating','rated','stars','score','reliability'],
+      answer:'<b>Ratings:</b> requesters rate you after a completed job, and your average is what tier and Service Provider Deal eligibility measure. Ratings between you and a requester are never shown to the other party.' },
+    { match:['cancel','cancellation','back out','drop the job'],
+      answer:'<b>Cancelling an accepted job:</b> cancelling after you have accepted can carry a fee of up to <b>$5</b>, affects your reliability, and asks you for a reason. If something has genuinely gone wrong, cancel and say why rather than letting the job run out.' },
+    { match:['block','blocked','requester','requestor','stop getting'],
+      answer:'<b>Blocked requesters:</b> you can stop seeing work from a particular requester. That list lives under <b>Block Requesters</b> in the sidebar.' },
+    { match:['support','help','contact','human','person','hours','email'],
+      answer:'<b>Reaching a person:</b> email <b>support@gophergo.io</b> and we reply within one business day. You can also tap "Need a person? Contact us directly" just below.' }
+  ];
+  function goIqLookup(q){
+    var text = String(q||'').toLowerCase(), best=null, bestHits=0;
+    for(var i=0;i<GO_IQ_KB.length;i++){
+      var hits = GO_IQ_KB[i].match.filter(function(k){ return text.indexOf(k) > -1; }).length;
+      if(hits > bestHits){ bestHits = hits; best = GO_IQ_KB[i]; }
+    }
+    return best ? best.answer : null;
+  }
+  function goIqDefault(){
+    return 'I’m not sure I have a good answer for that one yet — my knowledge base is still growing. <b>Want to talk to a person?</b> Tap “Need a person? Contact us directly” below and we’ll get you connected.';
+  }
+  (function initAskGopherIQ(){
+    var overlay = document.getElementById('aiAssistOverlay');
+    if(!overlay) return;
+    var transcript = document.getElementById('aiAssistTranscript'),
+        input      = document.getElementById('aiAssistInput'),
+        send       = document.getElementById('aiAssistSend'),
+        form       = document.getElementById('aiAssistForm'),
+        drawer     = document.getElementById('aiContactDrawer'),
+        contactBtn = document.getElementById('aiAssistContactBtn'),
+        logoSlot   = document.getElementById('aiLogoSlot');
+    /* The opening transcript is captured once, so re-opening starts clean
+       instead of stacking the previous conversation under the greeting. */
+    var openingHTML = transcript.innerHTML;
+
+    function open(){
+      transcript.innerHTML = openingHTML;
+      transcript.hidden = false; form.hidden = false; drawer.hidden = true;
+      if(logoSlot) logoSlot.hidden = false;
+      if(contactBtn) contactBtn.hidden = false;
+      input.value = ''; send.disabled = true;
+      bindSuggestions();
+      overlay.hidden = false;
+      setTimeout(function(){ input.focus(); }, 80);
+    }
+    function close(){ overlay.hidden = true; }
+
+    function addMsg(who, html){
+      var sug = document.getElementById('aiSuggestions');
+      if(sug && sug.parentNode) sug.remove();
+      var m = document.createElement('div');
+      m.className = 'ai-msg ' + who;
+      m.innerHTML = '<span class="ai-msg-bubble">' + html + '</span>';
+      transcript.appendChild(m);
+      transcript.scrollTop = transcript.scrollHeight;
+      return m;
+    }
+    function showTyping(){
+      var t = document.createElement('div');
+      t.className = 'ai-msg ai';
+      t.innerHTML = '<span class="ai-msg-bubble"><span class="ai-typing"><span></span><span></span><span></span></span></span>';
+      transcript.appendChild(t);
+      transcript.scrollTop = transcript.scrollHeight;
+      return t;
+    }
+    /* ⚠️ The user's question is inserted with textContent, not innerHTML. The KB
+       answers are trusted HTML we wrote; anything a worker types is not, and
+       Connect's copy of this echoes it straight into innerHTML. */
+    function ask(q){
+      if(!String(q||'').trim()) return;
+      var bubble = addMsg('user','');
+      bubble.querySelector('.ai-msg-bubble').textContent = q;
+      input.value = ''; send.disabled = true;
+      var typing = showTyping();
+      setTimeout(function(){
+        typing.remove();
+        addMsg('ai', goIqLookup(q) || goIqDefault());
+      }, 550 + Math.random()*350);
+    }
+    /* Re-bound on every open because the suggestion block is rebuilt from
+       openingHTML each time — listeners attached to the old nodes are gone. */
+    function bindSuggestions(){
+      overlay.querySelectorAll('.ai-suggestion').forEach(function(b){
+        b.addEventListener('click', function(){ ask(b.dataset.q); });
+      });
+    }
+
+    var navBtn = document.getElementById('navAskGopher');
+    if(navBtn) navBtn.addEventListener('click', open);
+    document.getElementById('aiAssistClose').addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
+    form.addEventListener('submit', function(e){ e.preventDefault(); ask(input.value); });
+    input.addEventListener('input', function(){ send.disabled = !input.value.trim(); });
+
+    contactBtn.addEventListener('click', function(){
+      transcript.hidden = true; form.hidden = true;
+      if(logoSlot) logoSlot.hidden = true;
+      contactBtn.hidden = true; drawer.hidden = false;
+    });
+    document.getElementById('aiContactBack').addEventListener('click', function(){
+      drawer.hidden = true; transcript.hidden = false; form.hidden = false;
+      if(logoSlot) logoSlot.hidden = false;
+      contactBtn.hidden = false;
+      setTimeout(function(){ input.focus(); }, 60);
+    });
+    document.getElementById('aiOpenFeedback').addEventListener('click', function(){
+      close();
+      var b = document.getElementById('goSendFeedback'); if(b) b.click();
+    });
+  })();
 
   // Send feedback (minimal — mirrors Connect's; prototype: no real dispatch)
   var fbOv = document.getElementById('goFeedbackOverlay');
