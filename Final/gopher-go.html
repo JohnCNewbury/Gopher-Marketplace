@@ -3397,6 +3397,15 @@ window.showNoAccount = function(){
   .rl-bx.on svg { opacity:1; }
   .rl-bt { font-size:12.5px; color:var(--navy); line-height:1.4; }
   .rl-bt b { color:var(--error); }
+  /* The block control is GATED, not functional — see the handler. It has to
+     read as unavailable at a glance: the alarm-red checkbox on a pink card is
+     the loudest thing in that modal and it was promising something real. */
+  .rl-block.is-soon { background:#f4f6fa; cursor:default; }
+  .rl-block.is-soon .rl-bx { border-color:#c2c9d6; }
+  .rl-block.is-soon .rl-bt, .rl-block.is-soon .rl-bt b { color:var(--muted); }
+  .rl-soon { margin-left:auto; flex-shrink:0; background:#e7ebf3; color:var(--muted);
+             font-family:'Nunito',sans-serif; font-weight:800; font-size:10px;
+             letter-spacing:.3px; padding:3px 8px; border-radius:999px; }
   .mclose { width:100%; margin-top:16px; background:var(--green); color:var(--ink-on-green); border:none; border-radius:12px; padding:13px 0; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:14.5px; }
 
   /* ── Payout-failure states: failed pill, red log entry, add-card prompt, alert modal ── */
@@ -5114,7 +5123,13 @@ window.showNoAccount = function(){
     const SOON_WHY = {
       pro:     'Pro is being folded into the Elite tiers. Applying now would put you in a tier that is about to be renamed.',
       elite:   'The Elite tiers go live with launch. Your eligibility keeps building in the meantime — nothing is lost by waiting.',
-      blocked: 'Blocking is handled in the Gopher Go app today. This view arrives at launch so the two never disagree about who is blocked.',
+      /* ⚠️ THIS COPY WAS BACKWARDS and said the Go app already does this. It
+         does not. Verified on origin/production: one table, `blocked_gophers`,
+         one direction — a REQUESTER blocks a WORKER. The requester app ships a
+         screen for it; the worker app has no block action at all. Telling a
+         worker "use the app instead" sent them looking for a feature that is
+         not there. Worker-side blocking is NET-NEW work, not a port. */
+      blocked: 'Choosing not to work with a requester again isn\u2019t something the Gopher Go app can do yet \u2014 today blocking only runs the other way, where a requester can block a Gopher. We\u2019re building the worker side for launch. If a requester was a problem, report it to support and we\u2019ll act on it.',
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
       inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.'
@@ -5137,6 +5152,10 @@ window.showNoAccount = function(){
       ov.addEventListener('click', e => { if(e.target === ov) close(); });
       document.addEventListener('keydown', e => { if(e.key === 'Escape' && !ov.hidden) close(); });
     })();
+    /* Exposed because the job-detail modal lives in a different IIFE and must
+       route its block control through THIS gate rather than re-implement it —
+       one definition of what is gated and why. */
+    window.__goComingSoon = showComingSoon;
     function showComingSoon(name){
       const title = COMING_SOON[name] || 'This section';
       const why = SOON_WHY[name] || '';
@@ -6281,7 +6300,22 @@ window.showNoAccount = function(){
                     + '<div class="rl-tl" id="rlTl" hidden>'+evs+'</div>';
         }
         const canBlock = j.who && j.who!=='Offer';
-        const blockBlock = canBlock ? '<label class="rl-block" id="rlBlock"><span class="rl-bx'+(isBlocked(j.who)?' on':'')+'"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="rl-bt">Do not send requests from <b>'+j.who+'</b> again</span></label>' : '';
+        /* ⛔ GATED, and this was the audit's worst find. Tapping this used to
+           toast "You won't receive requests from {name} anymore." while making
+           ZERO network calls — verified by hooking fetch. It is a SAFETY
+           promise, made to a worker who has just had a bad job, and it was
+           false in a way nothing on screen contradicted: the checkbox ticked.
+
+           It could not have been true. Traced on origin/production, the only
+           blocking table is `blocked_gophers` (user_id blocks gopher_id) — a
+           REQUESTER blocking a WORKER. Its route is even commented "Request -
+           Blocked Gopher Feature", the requester app ships BlockedGopher.js
+           against it, and the worker app has NO block action anywhere. The
+           direction this control offers does not exist server-side.
+
+           Never pre-checked either: isBlocked() reads a hardcoded array of two
+           invented people, so a demo name could render as already blocked. */
+        const blockBlock = canBlock ? '<label class="rl-block is-soon" id="rlBlock"><span class="rl-bx"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></span><span class="rl-bt">Do not send requests from <b>'+j.who+'</b> again</span><span class="rl-soon">Soon</span></label>' : '';
         rhmCard.innerHTML = '<h3>'+j.cat+'</h3><p class="rhm-sub">'+j.id+' &middot; '+j.date+' &middot; Requester '+j.who+'</p><p>'+j.sub+'</p>'+money+payfailBlock+rev+note+logsBlock+blockBlock+'<button class="mclose" id="rlClose">Close</button>';
         rhmOverlay.hidden = false;
         const fix = document.getElementById('pfFixCard');
@@ -6295,9 +6329,12 @@ window.showNoAccount = function(){
         const bl = document.getElementById('rlBlock');
         if(bl) bl.addEventListener('click', e => {
           e.preventDefault();
-          const bx = bl.querySelector('.rl-bx');
-          if(isBlocked(j.who)){ unblockReq(j.who); bx.classList.remove('on'); showToast(j.who+' unblocked.'); }
-          else { blockReq(j.who); bx.classList.add('on'); showToast('You won\u2019t receive requests from '+j.who+' anymore.'); }
+          /* Routed through the same gate the sidebar uses, so there is one
+             answer to "is blocking available?" and it cannot drift. No toast,
+             no tick, no mutation of BLOCKED — the point is that nothing
+             happens and the worker is told so. */
+          if(window.__goComingSoon) window.__goComingSoon('blocked');
+          else showToast('Blocking a requester arrives at launch.');
         });
         document.getElementById('rlClose').addEventListener('click', closeRhm);
       }
