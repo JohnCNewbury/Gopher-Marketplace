@@ -4543,9 +4543,65 @@
     document.addEventListener('DOMContentLoaded', function(){ wire('modal-merchant'); wire('modal-worker'); });
   })();
 
+  /* ░░ REFERRAL PRE-FILL ░░ ?ref=<id> on the Deals URL fills the merchant form's
+     "Referred by — Gopher ID" and reveals the row, so a merchant arriving from a
+     Gopher's share link never retypes a code. Retyping is where credit dies, and
+     that is the whole point of the link.
+
+     ⛔ THE MERCHANT FORM ONLY. The SP (service-provider) form also has a field
+     called "Gopher ID" — `name="gopher_id"` — and it is NOT the same thing: it
+     holds the APPLICANT'S OWN id, the one identifying which worker is applying.
+     Writing a referrer's id there would file the application under the wrong
+     worker. Only `referred_by_gopher_id` on the merchant form is a referrer.
+     Two fields, similar labels, opposite meanings — check which you are in.
+
+     ⛔ BARE, never GOPHER-prefixed (owner, 2026-08-14). A legacy prefix is
+     STRIPPED on the way in for tolerance — someone may paste from a pre-ruling
+     SMS or screenshot — but it is never displayed or taught. Same tolerance the
+     field's own comment already describes for typed input.
+
+     Non-digits are dropped rather than the value rejected: a link carrying
+     "?ref=%20141808" or a trailing punctuation mark from a text message should
+     still work. An empty result after cleaning is treated as no referral at
+     all, so a malformed link degrades to the normal form rather than
+     pre-filling something wrong. */
+  function referralFromUrl(){
+    var raw;
+    try { raw = new URLSearchParams(location.search).get('ref'); }
+    catch(e){ return null; }                       /* very old browsers: no pre-fill, form still works */
+    if(!raw) return null;
+    var id = String(raw).replace(/^\s*GOPHER\s*/i, '').replace(/[^0-9]/g, '');
+    return id || null;                             /* "" -> null: no referral, not a blank one */
+  }
+  function applyReferralPrefill(){
+    var id = referralFromUrl(); if(!id) return false;
+    var form = document.getElementById('modal-merchant'); if(!form) return false;
+    var input = form.querySelector('input[name="referred_by_gopher_id"]');
+    var row   = document.getElementById('regReferredRow');
+    if(!input || !row) return false;
+    /* Never overwrite something the merchant has already typed. */
+    if(input.value.trim()) return false;
+    input.value = id;
+    row.hidden = false;
+    /* The row is revealed by the discovery_source select, so set that too —
+       otherwise the form says "Referred by" while Source says something else,
+       and the next change of that select would hide a populated field. */
+    var src = form.querySelector('select[name="discovery_source"]');
+    if(src){
+      var hasReferral = Array.prototype.some.call(src.options, function(o){ return o.value === 'Referral'; });
+      if(hasReferral) src.value = 'Referral';
+    }
+    return true;
+  }
+
   function openModal(type) {
     document.getElementById('modal-' + type).classList.add('open');
     document.body.style.overflow = 'hidden';
+    /* Applied on OPEN, not once at load: the modal can be opened from six
+       different buttons on this page, and a merchant may arrive, browse, and
+       open the form minutes later. Idempotent — it returns early once the field
+       holds anything. */
+    if(type === 'merchant') applyReferralPrefill();
   }
   function closeModal(type) {
     var overlay = document.getElementById('modal-' + type);
