@@ -1880,8 +1880,14 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   paste-ready snippet keys on `data.email`, but the **merchant** form's field is `owner_email`
   (only the worker/SP form uses `email`), so the merchant welcome email would silently never fire.
   Left unfixed on purpose while the Apps Script freeze decision is open.
-  **Open owner ruling — freeze the Apps Script?** Recommendation (from Website Updates, carried
-  forward): freeze it at exactly today's behaviour (lead capture + notify deals@). Grounds: SOW
+  **⛔ RULED 2026-08-14 (owner): FREEZE THE APPS SCRIPT.** It stays at exactly today's behaviour —
+  lead capture + notify deals@ — and nothing is added to it, ever. No welcome email, no inbox
+  relay, no new `submission_type`. **Do not build against `GOPHER_FORM_ENDPOINT`**; the work goes
+  to the **G40-305 dispatcher (`sendEmail.js`)** in production. `docs/handoff/deals-email-wiring.md`
+  is now a DECISION RECORD, not a work item — its paste-ready snippet must never be pasted, and its
+  old header wrongly claimed the front end was built (it was reverted, `40fc4eb`) and that the
+  stray POSTs were harmless (they mutated the live Leads sheet). This closes the question below;
+  the grounds are kept because they are the reasons, not the decision: Grounds: SOW
   Bucket F already scopes and prices "two registration paths; full account creation" so anything
   built here is paid for twice; the owner already ruled 7/24 that production has no Apps Script;
   and **the welcome email would open a relay hole** — the endpoint is `Who has access: Anyone` and

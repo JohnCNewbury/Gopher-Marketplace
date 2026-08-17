@@ -1,10 +1,51 @@
-# deals@ email wiring — front end built, one owner paste remaining
+# deals@ email wiring — ⛔ DO NOT IMPLEMENT. The Apps Script is FROZEN.
 
-**Status (2026-08-05):** the front-end half is BUILT and deployed. The Apps Script
-half below is a single paste + redeploy, which is an **owner action** (the script
-runs under the owner's Google account; the no-live-changes rule applies).
+> ## ⛔ OWNER RULING 2026-08-14: **freeze the Apps Script.**
+>
+> It stays at **exactly today's behaviour — lead capture, and notify `deals@` — and nothing is
+> added to it, ever.** No welcome email, no inbox relay, no new `submission_type`. **Everything
+> below this box is HISTORY, not instructions.** The paste-ready snippet in particular must not be
+> pasted.
+>
+> **Why, in the order that matters:**
+>
+> 1. **It would open an email relay from your own domain.** The endpoint's Apps Script deployment is
+>    *"Who has access: Anyone"*, and its URL sits in the public page source of `gopher-deals.html`.
+>    Today that is safe **because it only ever mails one fixed address**. The moment it mails
+>    whatever address arrives in the POST body, anyone who views source can send mail as gophergo.io
+>    — with no rate limiting, no suppression list, and no bounce handling. That is a deliverability
+>    and reputation problem, not just an abuse one.
+> 2. **Production has no Apps Script** (owner, 2026-07-24). Anything built here is thrown away at
+>    go-live, when the script is **deleted, not migrated** (`sp-deal-pipeline.md` §6).
+> 3. **It is already scoped and paid for elsewhere.** SOW **Bucket F** covers "two registration
+>    paths; full account creation", so building it here means paying twice.
+>
+> **Where this work actually goes:** the **G40-305 dispatcher (`sendEmail.js`)**, in production —
+> not Apps Script, and never against the lead-capture endpoint. A tombstone comment at
+> `gopher-deals.html:5554` says the same thing at the call site.
+>
+> ### ⚠️ Two corrections to the text below, because it reads as safe and is not
+>
+> * **"The front-end half is BUILT and deployed" — it is not. It was REVERTED** (`40fc4eb`, after
+>   shipping in `f18cacb`). The composer sends nothing; verified 0 fetch calls on send.
+> * **"these POSTs land in the lead sheet as `inbox_message` rows (harmless…)" — they were NOT
+>   harmless.** That endpoint is the LIVE merchant-lead sheet. Each demo message **mutated the
+>   Leads header with 5 new columns, appended a junk row, and fired a pre-registration alert.** The
+>   relay half was never written script-side, so the feature was never functional end to end — it
+>   was pure cost, and it ran live until the backout.
+> * **The snippet keys on `data.email`. The merchant form's field is `owner_email`** (only the
+>   worker/SP form uses `email`), so the merchant welcome email would have silently never fired.
+>   Left unfixed deliberately — fixing it would make a frozen path look ready.
 
-Owner-tabled 2026-07-22; owner directed completion 2026-08-05.
+---
+
+_Historical record below — retained so the reasoning is auditable, NOT as a work item._
+
+**Status (2026-08-05, SUPERSEDED):** the front-end half was claimed BUILT and deployed. The Apps
+Script half below was described as a single paste + redeploy, an **owner action** (the script runs
+under the owner's Google account; the no-live-changes rule applies).
+
+Owner-tabled 2026-07-22; owner directed completion 2026-08-05; **frozen 2026-08-14.**
 
 ## What was built (front end, `Final/gopher-deals.html`)
 
