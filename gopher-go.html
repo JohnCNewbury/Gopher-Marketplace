@@ -1621,7 +1621,15 @@
 <div id="gopher-footer"></div>
 <script src="assets/js/gopher-footer.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
-<script src="assets/js/gopher-signin-recovery.js" defer></script>
+<!-- gopher-signin-recovery.js is deliberately NOT loaded on this page (owner,
+     2026-08-18: "Gated link is right, don't ship the demo flow for prototype").
+     The shared flow verifies against DEMO persona data baked into the caller —
+     coherent on Connect/Request/Deals, whose dashboards are demo end to end, but
+     THIS page's sign-in is the real POST /users/sign_in + OTP path. A worker who
+     genuinely lost their phone must not meet a working-looking flow that verifies
+     them against a fictional DOB and recovers to nothing. The link below is gated
+     instead; load the script and un-gate ONLY when the server-driven path exists
+     (there is currently no user-facing write to users.telephone at all). -->
 <!-- Real per-user referral QR. Same encoder + version the live worker app uses
      (react-qr-code -> qrcode-generator@2.0.4), so the dashboard renders the same
      code the app does. Loaded here rather than beside GoRefer because that module
@@ -3074,6 +3082,12 @@ window.showNoAccount = function(){
   /* ═══ OTP modal ═══ */
   .otp-modal-overlay { position:fixed; inset:0; z-index:9100; background:rgba(13,26,62,0.55); display:flex; align-items:center; justify-content:center; padding:24px; }
   .otp-modal-overlay[hidden] { display:none; }
+  /* .gr-lost-link's styling normally arrives injected by gopher-signin-recovery.js,
+     which this page does not load (see the comment at the script tags). Restated
+     here so the gated link doesn't render as a raw browser button. */
+  .gr-lost-link { display:inline-block; background:none; border:none; cursor:pointer; font-family:'Nunito',sans-serif; font-size:12.5px; font-weight:800; color:#4b5a7a; text-decoration:underline; padding:0; margin-top:10px; }
+  .gr-lost-link:hover { color:var(--navy); }
+  .gr-lost-link .rf-soon { text-decoration:none; }
   .otp-modal { background:white; border-radius:18px; padding:30px 28px 24px; width:100%; max-width:380px; position:relative; box-shadow:0 30px 80px rgba(0,0,0,0.35); }
   .otp-close { position:absolute; top:14px; right:16px; background:none; border:none; font-size:24px; line-height:1; color:var(--muted); cursor:pointer; }
   .otp-close:hover { color:var(--navy); }
@@ -3957,7 +3971,7 @@ window.showNoAccount = function(){
         <div class="portal-field"><label>Mobile number</label><input type="tel" id="smsPhone" inputmode="numeric" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"></div>
         <button type="button" class="portal-otp-btn" id="sendOtpBtn" disabled>Send code to phone</button>
         <p class="portal-sms-hint" id="smsVerified" hidden>&#10003; Phone verified — you're ready to sign in.</p>
-        <button type="button" class="gr-lost-link" onclick="window.GopherRecovery&&GopherRecovery.open({portal:'Gopher Go',email:'marcus@email.com',emailVerified:true,dob:'04/12/1991',phone:'9195550142',onRecovered:function(d){var p=document.getElementById('smsPhone');if(p){p.value='('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);p.dispatchEvent(new Event('input',{bubbles:true}));}}})">Lost access to this number?</button>
+<button type="button" class="gr-lost-link" onclick="window.__goComingSoon&&__goComingSoon('recovery')">Lost access to this number?<span class="rf-soon">Soon</span></button>
       </div>
       <button class="portal-submit" id="signInBtn" disabled>Sign in &rarr;</button>
       <div class="gl-meta"><label class="gl-check"><input type="checkbox" id="goRememberMe" checked> Remember me</label></div>
@@ -5187,7 +5201,10 @@ window.showNoAccount = function(){
          Built now anyway (owner: "I want the logic built, then gate it with
          coming soon") so the rules, the gating and the dates are correct and
          carry to launch. Remove this entry when settlement exists — not before. */
-      bidboard:'Feature my deal'
+      bidboard:'Feature my deal',
+      /* Not a pane — a control on the sign-in screen. The chip-adder skips keys
+         with no matching nav item, so this only feeds the explain modal. */
+      recovery:'Account recovery'
     };
     /* Why each one waits, shown to the worker rather than kept internal. */
     const SOON_WHY = {
@@ -5202,7 +5219,8 @@ window.showNoAccount = function(){
       blocked: 'Choosing not to work with a requester again isn\u2019t something the Gopher Go app can do yet \u2014 today blocking only runs the other way, where a requester can block a Gopher. We\u2019re building the worker side for launch. If a requester was a problem, report it to support and we\u2019ll act on it.',
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
       inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
-      bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.'
+      bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
+      recovery:'Account recovery arrives at launch: we verify the email on your account, then move your sign-in to a new number you confirm by text. Until then, reach the team from Contact Us below if you\u2019re locked out.'
     };
     Object.keys(COMING_SOON).forEach(name => {
       const btn = navItems.find(b => b.dataset.dashSection === name);
