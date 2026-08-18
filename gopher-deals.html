@@ -1823,6 +1823,28 @@
   .dash-content { padding:28px 32px 60px; max-width:1240px; }
   .dash-section { display:none; animation:fadeIn .25s ease; }
   .dash-section.active { display:block; }
+  /* ░░ Refer Gopher (dref-) ░░ */
+  .dref-hero { display:flex; gap:18px; align-items:stretch; flex-wrap:wrap; margin:14px 0 16px; }
+  .dref-qrcard { background:#fff; border:1.5px solid #e3e7f0; border-radius:16px; padding:16px 18px; text-align:center; flex:0 0 auto; }
+  .dref-qrttl { font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy); margin-bottom:8px; }
+  .dref-qrbox { width:150px; height:150px; margin:0 auto; }
+  .dref-qrbox svg { width:100%; height:100%; display:block; }
+  .dref-qrsub { font-family:'DM Sans'; font-size:11.5px; color:#6a7690; margin-top:8px; }
+  .dref-send { display:flex; flex-direction:column; gap:10px; justify-content:center; flex:1 1 200px; min-width:0; }
+  .dref-sendbtn { border:none; border-radius:12px; background:var(--navy); color:#fff; font-family:'Nunito'; font-weight:800; font-size:14px; padding:13px 16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .dref-soon { background:#ffd76a; color:#5a4a00; font-family:'Nunito'; font-weight:900; font-size:10px; text-transform:uppercase; letter-spacing:.6px; border-radius:999px; padding:2px 8px; }
+  .dref-code { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--navy); border-radius:14px; padding:13px 16px; margin:0 0 16px; flex-wrap:wrap; }
+  .dref-code-l { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .dref-code-k { font-family:'DM Sans'; font-size:11px; color:rgba(255,255,255,.75); text-transform:uppercase; letter-spacing:.8px; }
+  .dref-code-v { font-family:'Nunito'; font-weight:900; font-size:22px; color:#fff; letter-spacing:1px; }
+  .dref-copy { border:none; border-radius:10px; background:var(--green); color:var(--navy); font-family:'Nunito'; font-weight:900; font-size:13px; padding:10px 16px; cursor:pointer; }
+  .dref-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin:0 0 20px; }
+  .dref-card { text-align:left; background:#fff; border:1.5px solid #e3e7f0; border-radius:14px; padding:14px 15px; cursor:pointer; display:flex; flex-direction:column; gap:6px; font-family:'Nunito'; }
+  .dref-card:hover { border-color:var(--green); }
+  .dref-ct { font-weight:800; font-size:14.5px; color:var(--navy); }
+  .dref-cd { font-family:'DM Sans'; font-size:12.5px; color:#6a7690; line-height:1.5; }
+  .dref-cc { font-weight:800; font-size:12.5px; color:var(--green-dark); display:flex; align-items:center; gap:7px; }
+  .dref-trkttl { font-family:'Nunito'; font-weight:800; font-size:16px; color:var(--navy); margin:0 0 10px; }
   /* ─── Inbox (single canonical thread with Gopher, Inc.) ─── */
   .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
   .inbox-list { background:#fff; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; }
@@ -2614,6 +2636,7 @@
 <script src="assets/js/gopher-header.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
 <script src="assets/js/gopher-signin-recovery.js" defer></script>
+<script src="assets/js/qrcode-generator.js"></script>
 
 <!-- HERO -->
 <section class="hero">
@@ -5366,6 +5389,7 @@
       <button class="dash-nav-item" data-section="users"><span class="dni-ico">👥</span><span class="dni-label">Users &amp; access</span></button>
 
       <div class="dash-nav-divider">Rewards</div>
+      <button class="dash-nav-item" data-section="refer"><span class="dni-ico">🎁</span><span class="dni-label">Refer Gopher</span></button>
       <button class="dash-nav-item" data-section="advertise"><span class="dni-ico">📣</span><span class="dni-label">Feature my business</span></button>
 
       <div class="dash-nav-divider">Resources</div>
@@ -5781,6 +5805,63 @@
           </div>
         </div>
       </section>
+      <!-- ░░ REFER GOPHER ░░ — owner ruling 2026-08-18 REVERSES the 2026-07-27
+           "Deals has no refer engine by design" decision: "it should not have anything
+           different than the other 3." Shape per gopher-dev-handoff/shared/
+           REFERRAL-QR-SPEC.md, with Go's live pane as the reference: headline QR is the
+           platform invite labeled "Your personal link" (bare id, no printed URL), the
+           navy bar is the id's ONLY home on this screen (ruling: once per screen), the
+           send pair is GATED with Soon chips (the kind-aware send rail is rebuild scope
+           — an active-looking send here would be fake success), and the grid carries the
+           OTHER three platforms only (no same-platform card). Demo merchant = the
+           john.demo business account, id 31677 — same bare-id canon as the other
+           portals; production reads the signed-in merchant's users.id. -->
+      <section class="dash-section" data-pane="refer">
+        <div class="panel">
+          <div class="panel-head"><h2>Refer Gopher</h2></div>
+          <p class="panel-desc">Invite businesses, customers, and workers to the Gopher network. When they join through your referral, you both earn Gopher Rewards credit.</p>
+          <div class="dref-hero">
+            <div class="dref-qrcard">
+              <div class="dref-qrttl">Your personal link</div>
+              <div class="dref-qrbox" id="drefQr" aria-label="Your personal referral QR code"></div>
+              <div class="dref-qrsub">They scan &mdash; you benefit.</div>
+            </div>
+            <div class="dref-send">
+              <button type="button" class="dref-sendbtn" data-dref-soon>Refer via SMS <span class="dref-soon">Soon</span></button>
+              <button type="button" class="dref-sendbtn" data-dref-soon>Refer via email <span class="dref-soon">Soon</span></button>
+            </div>
+          </div>
+          <div class="dref-code">
+            <div class="dref-code-l"><span class="dref-code-k">Your referral code &mdash; your Gopher ID, shared exactly as shown</span><span class="dref-code-v" id="drefCode">31677</span></div>
+            <button type="button" class="dref-copy" id="drefCopy">Copy code</button>
+          </div>
+          <div class="dref-grid">
+            <button type="button" class="dref-card" data-dref-soon>
+              <span class="dref-ct">Refer Gopher Go</span>
+              <span class="dref-cd">Invite a trusted local worker to start earning on Gopher Go.</span>
+              <span class="dref-cc">Share the app &rarr; <span class="dref-soon">Soon</span></span>
+            </button>
+            <button type="button" class="dref-card" data-dref-soon>
+              <span class="dref-ct">Refer Gopher Request</span>
+              <span class="dref-cd">Invite someone to post requests and hire Gophers on demand.</span>
+              <span class="dref-cc">Share the app &rarr; <span class="dref-soon">Soon</span></span>
+            </button>
+            <button type="button" class="dref-card" data-dref-soon>
+              <span class="dref-ct">Refer Gopher Connect</span>
+              <span class="dref-cd">Invite another business to manage their workforce on Gopher Connect.</span>
+              <span class="dref-cc">Refer a business &rarr; <span class="dref-soon">Soon</span></span>
+            </button>
+          </div>
+          <h3 class="dref-trkttl">Track referral history</h3>
+          <table class="prev-table dref-trk">
+            <thead><tr><th>Referral</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>(919) 555-0177</td><td>Gopher Go</td><td>Pending</td></tr>
+              <tr><td>ally@buoybowls.com</td><td>Gopher Deals</td><td>Active</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
       <section class="dash-section" data-pane="advertise">
         <div class="dash-block bid-intro">
           <div class="bid-intro-head">
@@ -6192,7 +6273,7 @@
   var titles = {
     home:'Dashboard Overview', newdeal:'Submit a New Deal', mydeals:'My Deals',
     inbox:'Inbox', business:'Business Info', personal:'Personal Info', payment:'Payment Info',
-    users:'Users & Access', advertise:'Feature My Business', ask:'Ask Gopher iQ', feedback:'Send Feedback'
+    users:'Users & Access', refer:'Refer Gopher', advertise:'Feature My Business', ask:'Ask Gopher iQ', feedback:'Send Feedback'
   };
   var navItems = document.querySelectorAll('.dash-nav-item[data-section]');
   function showSection(key){
@@ -6206,6 +6287,47 @@
     if(key==='advertise' && typeof renderAdvPreview==='function') renderAdvPreview();
     document.querySelector('.dash-main').scrollTo(0,0);
   }
+  /* ░░ Refer Gopher wiring ░░ — QR derived at runtime from the id (never pre-baked,
+     REFERRAL-QR-SPEC.md), encoder = the vendored qrcode-generator the apps use, level L,
+     navy, NO overlay on the module grid. Sends + platform cards are GATED (Soon): the
+     kind-aware rail is rebuild scope, and an active-looking demo send here would be the
+     fake-success shape remediated on Go 2026-08-18. */
+  (function(){
+    var DREF_ID='31677';
+    function paintDrefQr(){
+      var box=document.getElementById('drefQr');
+      if(!box || typeof qrcode!=='function'){
+        if(!paintDrefQr._armed){ paintDrefQr._armed=true;
+          window.addEventListener('DOMContentLoaded', paintDrefQr);
+          window.addEventListener('load', paintDrefQr); }
+        return;
+      }
+      if(box.firstChild) return;
+      var qr=qrcode(0,'L'); qr.addData('https://api.gophergo.io/self-referral/'+DREF_ID); qr.make();
+      var n=qr.getModuleCount(), cell=150/n, svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150">';
+      for(var r=0;r<n;r++)for(var c=0;c<n;c++) if(qr.isDark(r,c))
+        svg+='<rect x="'+(c*cell).toFixed(2)+'" y="'+(r*cell).toFixed(2)+'" width="'+(cell+0.05).toFixed(2)+'" height="'+(cell+0.05).toFixed(2)+'" fill="#002461"/>';
+      box.innerHTML=svg+'</svg>';
+    }
+    paintDrefQr();
+    document.addEventListener('click', function(e){
+      var cp=e.target.closest('#drefCopy');
+      if(cp){ try{ navigator.clipboard.writeText(DREF_ID); }catch(_){}
+        cp.textContent='Copied!'; setTimeout(function(){ cp.textContent='Copy code'; },1400); return; }
+      var soon=e.target.closest('[data-dref-soon]');
+      if(soon){ openDrefSoon(); }
+    });
+    /* Soon explain uses the portal's own gc-modal primitive (modal standards, G40-308) */
+    function openDrefSoon(){
+      var back=document.createElement('div'); back.className='gc-modal-overlay';
+      back.innerHTML='<div class="gc-modal" role="dialog" aria-modal="true">'+
+        '<h4>Referral sends arrive at launch</h4>'+
+        '<p class="gc-modal-sub">Sending invites lands together across all four platforms. Today, share your Gopher ID <b>'+DREF_ID+'</b> or your personal QR &mdash; your invitee enters it at sign-up and you get the credit.</p>'+
+        '<button type="button" class="gc-modal-btn" data-dref-close>Got it</button></div>';
+      back.addEventListener('click', function(e){ if(e.target===back||e.target.closest('[data-dref-close]')) back.remove(); });
+      document.body.appendChild(back);
+    }
+  })();
   /* ░░ ASK GOPHER iQ ░░ ────────────────────────────────────────────────────
      One component across all four dashboards (owner, 2026-08-17). Two things
      the branding invites people to get wrong:
