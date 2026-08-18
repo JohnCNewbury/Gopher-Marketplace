@@ -4541,7 +4541,7 @@ window.showNoAccount = function(){
       <section class="dash-section" data-dash-section="blocked">
         <div class="panel">
           <div class="panel-head"><h2>Block Requesters</h2></div>
-          <p class="panel-desc">Blocked requesters can't see you, send you requests, or appear in your available jobs. You can unblock anyone here.</p>
+          <p class="panel-desc">New requests from a blocked requester never reach you &mdash; not in your available jobs, not as a notification. A job already in progress finishes normally, and they're never told. Unblock anyone here.</p>
           <div class="bl-list" id="blList"></div>
         </div>
       </section>
@@ -5181,7 +5181,6 @@ window.showNoAccount = function(){
     const COMING_SOON = {
       pro:     'Become a Pro',
       elite:   'Become Elite / Elite+',
-      blocked: 'Block Requesters',
       payout:  'Payment info',
       /* ⛔ INBOX IS FABRICATED END TO END, which is why it is gated rather than
          made read-only. GO_INBOX is a hardcoded array — nothing loads threads
@@ -5220,7 +5219,10 @@ window.showNoAccount = function(){
          screen for it; the worker app has no block action at all. Telling a
          worker "use the app instead" sent them looking for a feature that is
          not there. Worker-side blocking is NET-NEW work, not a port. */
-      blocked: 'Choosing not to work with a requester again isn\u2019t something the Gopher Go app can do yet \u2014 today blocking only runs the other way, where a requester can block a Gopher. We\u2019re building the worker side for launch. If a requester was a problem, report it to support and we\u2019ll act on it.',
+      /* `blocked` left this map 2026-08-18: the backend shipped (!323) and the
+         pane is live as a MANAGE surface — list + Unblock against real
+         endpoints. Block creation stays in the app's rating flow, per the
+         owner's trigger rule. */
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
       inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
@@ -6306,12 +6308,13 @@ window.showNoAccount = function(){
       if(acct) acct.textContent = (t && t!=='Standard') ? ('Gopher ' + t) : 'Standard';
     })();
 
-    // Shared blocked-requestor state (used by both Request history and the Blocked section)
-    const BLOCKED = [ { name:'M. Ortiz', since:'Feb 27, 2026' }, { name:'D. Wells', since:'Feb 12, 2026' } ];
-    let renderBlocked = () => {};
-    const isBlocked = (n) => BLOCKED.some(b => b.name === n);
-    const blockReq = (n) => { if(!isBlocked(n)) BLOCKED.unshift({ name:n, since:'Just now' }); renderBlocked(); };
-    const unblockReq = (n) => { const i = BLOCKED.findIndex(b => b.name===n); if(i>=0) BLOCKED.splice(i,1); renderBlocked(); };
+    /* Demo seeds for the SIGNED-OUT Blocked pane only. Signed in, the pane
+       replaces these with the account's real list from the API.
+       isBlocked()/blockReq() were deleted with the job-detail block toggle
+       (owner, 2026-08-18 — a block must follow a 1-2 rating, never a standing
+       toggle), and unblockReq() was absorbed into the pane module: the pane is
+       now the only surface that touches this state. */
+    const BLOCKED_DEMO = [ { name:'M. Ortiz', since:'Feb 27, 2026' }, { name:'D. Wells', since:'Feb 12, 2026' } ];
 
     // ── Request history ──
     (function(){
@@ -7168,17 +7171,105 @@ window.showNoAccount = function(){
       document.addEventListener('go:entered', loadReferrals);
     })();
 
-    // ── Blocked requestors (shares BLOCKED with Request history) ──
+    /* ── Blocked Requesters — LIVE (manage surface) ─────────────────────────
+       Reads GET /users/blocked_requestors; Unblock is the token-scoped
+       PATCH /users/modify_blocked_requestor/:id (gopher-backend-api!323,
+       merged to production 2026-08-18).
+
+       THIS PANE MANAGES BLOCKS; IT NEVER CREATES ONE. The owner's rule is
+       that the block option appears only after rating a requester 1-2 —
+       and rating happens in the app, not on this dashboard. So the web has
+       list + Unblock, and no Block control anywhere (the job-detail toggle
+       was removed for exactly this reason). Do not add one here.
+
+       ⚠️ THE ENDPOINT IS A TOGGLE, so a stale row is a live hazard: pressing
+       Unblock on someone already unblocked (another device, another tab)
+       would RE-block them. Two defences: the server's response message is
+       checked — if it says 'is blocked', this call just created a block and
+       is immediately toggled back — and the list is re-fetched from the
+       server after every toggle, so the truth on screen is never more than
+       one round-trip old. */
     (function(){
       const list = document.getElementById('blList'); if(!list) return;
-      renderBlocked = function(){
-        if(!BLOCKED.length){ list.innerHTML = '<div class="bl-empty">&#10003; No blocked requesters. When you block someone, they\u2019ll appear here.</div>'; return; }
-        list.innerHTML = BLOCKED.map((b,i) => '<div class="bl-row"><span class="bl-av">'+(b.name[0]||'?')+'</span><div><div class="bl-nm">'+b.name+'</div><div class="bl-sub">Blocked '+b.since+'</div></div><button class="bl-un" data-i="'+i+'">Unblock</button></div>').join('');
-        list.querySelectorAll('.bl-un').forEach(btn => btn.addEventListener('click', () => {
-          const nm = BLOCKED[+btn.dataset.i].name; unblockReq(nm); showToast(nm + ' unblocked \u2014 they can reach you again.');
-        }));
+      let rows = BLOCKED_DEMO.map(b => ({ name:b.name, since:b.since, id:null }));
+      let state = 'demo';   /* demo | live | error */
+
+      const esc = (v) => String(v==null?'':v).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+      /* Names render as the platform shows counterparties everywhere else:
+         first name + last initial ("John N."), never the full surname. */
+      const nameOf = (r) => (r.first_name||'').trim() + ' ' + ((r.last_name||'').trim().charAt(0).toUpperCase() + '.');
+      const fmtDate = (ts) => {
+        const d = new Date(ts); if(isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
       };
-      renderBlocked();
+
+      function render(){
+        if(state === 'error'){
+          list.innerHTML = '<div class="bl-empty">We couldn\u2019t load your blocked list. <a href="#" id="blRetry">Try again</a></div>';
+          const r = document.getElementById('blRetry');
+          if(r) r.addEventListener('click', (e) => { e.preventDefault(); load(); });
+          return;
+        }
+        if(!rows.length){
+          list.innerHTML = '<div class="bl-empty">&#10003; No blocked requesters. If you rate a requester 1\u20132 stars after a job in the Gopher Go app, you\u2019ll get the option to block them \u2014 they\u2019ll appear here.</div>';
+          return;
+        }
+        list.innerHTML = rows.map((b,i) => '<div class="bl-row"><span class="bl-av">'+esc((b.name[0]||'?'))+'</span><div><div class="bl-nm">'+esc(b.name)+'</div><div class="bl-sub">Blocked '+esc(b.since)+'</div></div><button class="bl-un" data-i="'+i+'"'+(b.busy?' disabled':'')+'>Unblock</button></div>').join('');
+        list.querySelectorAll('.bl-un').forEach(btn => btn.addEventListener('click', () => unblock(rows[+btn.dataset.i])));
+      }
+
+      function load(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return Promise.resolve();
+        return GoAuth.apiCall('/users/blocked_requestors', { method:'GET' }).then(r => {
+          if(r.ok && r.body && r.body.success){
+            rows = (r.body.data.blocked_requestor_details || []).map(b => ({
+              id: b.blocked_requestor_id,
+              name: nameOf(b),
+              since: fmtDate(b.blocked_at)
+            }));
+            state = 'live';
+          } else {
+            /* Signed in but unreadable: demo names for a real worker would be
+               fabrication, so the pane says it failed instead. */
+            rows = []; state = 'error';
+          }
+          render();
+        }).catch(() => { rows = []; state = 'error'; render(); });
+      }
+
+      function unblock(row){
+        if(!row || row.busy) return;
+        /* Demo rows (signed out) have no id — local removal, as before. */
+        if(row.id == null){
+          rows = rows.filter(r => r !== row); render();
+          showToast(row.name + ' unblocked \u2014 they can reach you again.');
+          return;
+        }
+        row.busy = true; render();
+        GoAuth.apiCall('/users/modify_blocked_requestor/' + row.id, { method:'PATCH', body:{} }).then(r => {
+          const msg = (r.body && r.body.message) || '';
+          if(r.ok && /Removed/i.test(msg)){
+            showToast(row.name + ' unblocked \u2014 they can reach you again.');
+            return load();
+          }
+          if(r.ok && /is blocked/i.test(msg)){
+            /* Drift: the row was already gone server-side and the toggle just
+               RE-blocked them. Undo immediately, then trust the re-fetch. */
+            return GoAuth.apiCall('/users/modify_blocked_requestor/' + row.id, { method:'PATCH', body:{} })
+              .then(() => load());
+          }
+          row.busy = false;
+          showToast('Couldn\u2019t unblock ' + row.name + ' \u2014 try again.', true);
+          render();
+        }).catch(() => {
+          row.busy = false;
+          showToast('Couldn\u2019t unblock ' + row.name + ' \u2014 try again.', true);
+          render();
+        });
+      }
+
+      document.addEventListener('go:entered', load);
+      render();
     })();
   })();
 
