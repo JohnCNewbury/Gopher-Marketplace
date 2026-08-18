@@ -1214,30 +1214,14 @@ function renderStep2(){
         ${tsPromo()}
         <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON (signed-in profile)':'TrustShield off'}</button>
       `:''}
-      ${state.ageRestricted && !state.itemsPurchased ? `
-        <div class="sub-field age-kw-banner ar-purchase-note">
-          <span class="ar-mark">${svgIco('warning')}</span>
-          <div style="flex:1;">
-            <div class="sf-label">Most age-restricted items need a purchase</div>
-            <div class="sf-value">Alcohol, tobacco, vape and nicotine are almost always bought on your behalf. Turn on “requires a purchase” below and enter the cost so your Gopher can buy them for you.</div>
-            <div class="age-kw-actions"><button class="ts-promo-btn" data-action="enable-purchase">Turn on “requires a purchase”</button></div>
-          </div>
-        </div>
-      `:''}
-      ${(()=>{ const kw=findAgeRestrictedKeyword(state.description);
-        if(kw && !state.ageRestricted && !state.ageKeywordAck){
-          return `<div class="sub-field age-kw-banner">
-            <span class="ar-mark">${svgIco('warning')}</span>
-            <div style="flex:1;">
-              <div class="sf-label">This looks age-restricted</div>
-              <div class="sf-value">Your description mentions “<b>${esc(kw)}</b>.” Age-restricted deliveries need ID verification at drop-off. Turn that on?</div>
-              <div class="age-kw-actions">
-                <button class="ts-promo-btn" data-action="age-keyword-yes">Yes, it's age-restricted</button>
-                <button class="ts-promo-btn age-kw-no" data-action="age-keyword-no">No, it's not</button>
-              </div>
-            </div>
-          </div>`;
-        } return ''; })()}
+      ${''/* Inline purchase-nudge banner retired 2026-08-18 (owner): superseded by the
+        web-parity pair — the age toggle now AUTO-ENABLES "purchase needed" (so this
+        state is rare), and turning it back off is caught by the openAgePurchaseModal
+        guardrail at Continue. Pop-ups mirror the web app; don't rebuild the banner. */}
+      ${''/* Inline "This looks age-restricted" banner retired 2026-08-18 (owner):
+        the blocking openAgeKwModal at the Continue gate is the single surface for
+        this confirmation, mirroring the web app. Two surfaces asking the same
+        question let a user answer the weak one and never see the strong one. */}
       <div class="toggle-row">
         <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="Purchase needed"></button>
         <span class="tr-label">This delivery requires a purchase
@@ -2097,7 +2081,15 @@ function goNext(){
   if(!g.ok){ if(g.age){ openAgeKwModal(); return; } showToast(g.msg,g.tone); flashGate(g); return; }
   // Category-mismatch nudge (worker visibility) — after the age gate (precedence).
   if(state.step===2 && !findAgeRestrictedKeyword(state.description) && window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
-  state.openCatInfo=null;
+  // ── Age-restricted "no purchase" guardrail (owner 2026-08-18, web parity) ──
+    // Age-restricted auto-enables "purchase needed"; if the user turned it back OFF,
+    // warn once before advancing (edge cases: Rx pickup, pre-paid alcohol). Fires at
+    // this single choke point, not on the toggle, so mid-edit flips never nag.
+    if(state.step===2 && state.category==='delivery' && state.ageRestricted
+       && !state.itemsPurchased && !state.agePurchaseAck && !state.agePurchaseDismissed){
+      openAgePurchaseModal(); return;
+    }
+    state.openCatInfo=null;
   if(state.step<6){ state.step=nextVisibleStep(state.step); if(state.step>state.maxStepReached)state.maxStepReached=state.step; render(); }
 }
 // Age-restricted confirmation — the VERY IMPORTANT guardrail. Blocking G40-308-standard modal (parity
@@ -2117,8 +2109,42 @@ function openAgeKwModal(){
     +'<button class="js-agekw-no" style="width:100%;margin-top:12px;border:0;background:#c44257;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">No — this is NOT age-restricted</button>'
   +'</div>';
   document.body.appendChild(ov);
-  ov.querySelector('.js-agekw-yes').onclick=function(){ if(state.category!=='delivery') state.category='delivery'; state.ageRestricted=true; state.ageKeywordAck=true; ov.remove(); render(); };   // route age-restricted → Delivery
+  ov.querySelector('.js-agekw-yes').onclick=function(){ if(state.category!=='delivery') state.category='delivery'; state.ageRestricted=true;
+    // Mirror the toggle's smart default (web parity): confirming age-restricted via the
+    // keyword modal also enables "purchase needed" — skips a step the user would almost
+    // certainly have to do anyway.
+    if(!state.itemsPurchased){ state.itemsPurchased=true; state.agePurchaseAck=false; }
+    state.ageKeywordAck=true; ov.remove(); render(); };   // route age-restricted → Delivery
   ov.querySelector('.js-agekw-no').onclick=function(){ state.ageKeywordAck=true; if(findAgeRestrictedKeyword(state.description)) state.idRequiredAtCompletion=true; ov.remove(); goNext(); };   // no silent bypass: force ID-at-completion
+}
+// Age-restricted "no purchase" guardrail — web-parity modal (copy verbatim from
+// Final/gopher-request.html #agePurchaseOverlay). "Add a purchase amount" turns the
+// purchase toggle on and lands focus in the Cost-of-Items field; "Continue without a
+// purchase" acknowledges for this attempt (plus a session don't-show-again) and resumes.
+function openAgePurchaseModal(){
+  const old=document.getElementById('agePurchaseOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='agePurchaseOv';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:99999;background:rgba(0,18,49,.55);display:flex;align-items:center;justify-content:center;padding:22px;');
+  ov.innerHTML='<div role="dialog" aria-modal="true" aria-labelledby="agePurchTitle" style="background:#fff;width:100%;max-width:340px;border-radius:22px;padding:24px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,18,55,.5);font-family:Nunito,sans-serif;">'
+    +'<div style="width:56px;height:56px;margin:0 auto 12px;border-radius:50%;background:#fdecec;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;">\u26a0\ufe0f</div>'
+    +'<h4 id="agePurchTitle" style="font-size:18px;color:#002461;margin:0 0 10px;">Most age-restricted orders need a purchase</h4>'
+    +'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#5C6685;line-height:1.5;margin:0 0 12px;">You marked this age-restricted but turned off <b>Purchase needed</b>. Almost all age-restricted deliveries require a purchase &mdash; without one, your card is authorized for a lower amount, and if your Gopher needs to add items later, re-authorizing your card can fail and stall your order.</p>'
+    +'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#a3401f;line-height:1.5;background:#fdecec;border:1px solid #f3c3b2;border-radius:12px;padding:11px 13px;margin:0 0 12px;text-align:left;">Only skip if you truly don\u2019t need anything purchased &mdash; e.g. a prescription pickup or pre-paid alcohol.</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#6b7280;margin:2px 0 14px;cursor:pointer;"><input type="checkbox" class="js-agep-dontshow" style="width:16px;height:16px;accent-color:#1CB061;">Don\u2019t show me this again</label>'
+    +'<button class="js-agep-add" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Add a purchase amount</button>'
+    +'<button class="js-agep-skip" style="width:100%;margin-top:12px;border:1.5px solid #dfe3ec;background:transparent;color:#002461;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Continue without a purchase</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('.js-agep-add').onclick=function(){
+    state.itemsPurchased=true; state.agePurchaseAck=false; ov.remove(); render();
+    const cog=document.getElementById('costOfItemsInput');
+    if(cog){ cog.focus(); try{ cog.select(); }catch(e){} }
+  };
+  ov.querySelector('.js-agep-skip').onclick=function(){
+    state.agePurchaseAck=true;
+    if(ov.querySelector('.js-agep-dontshow').checked) state.agePurchaseDismissed=true;
+    ov.remove(); goNext(); // resume the advance, same as the age-keyword "No" path
+  };
 }
 /* Category-mismatch nudge (worker visibility) — parity with the Final Request/Connect
    web apps. Reuses the shared iQ classifier (gopher-category-classifier.js, loaded
@@ -2258,6 +2284,13 @@ document.addEventListener('click',(e)=>{
   // toggles
   const tg=e.target.closest('[data-toggle]');
   if(tg){ const k=tg.dataset.toggle; state[k]=!state[k];
+      // ── Age-restricted smart default (owner 2026-08-18, mirroring the web app) ──
+      // ~95% of age-restricted deliveries need a purchase, so turning the Age-Restricted
+      // slider ON auto-enables "purchase needed", which surfaces the Cost-of-Items field
+      // right there — the user never hunts for it. Turning purchase back ON re-arms the
+      // guardrail so the modal fires again if they toggle it off before Continue.
+      if(k==='ageRestricted' && state.ageRestricted && !state.itemsPurchased){ state.itemsPurchased=true; }
+      if(k==='itemsPurchased' && state.itemsPurchased){ state.agePurchaseAck=false; }
     if(k==='multipleItems' && !state[k]) { /* keep itemCount */ }
     if(k==='moreThanOneWorker' && state[k] && state.numWorkers<2) state.numWorkers=2;
     // Bids remain valid for >1-worker requests; only fall back to a set price when bids are truly
@@ -2307,9 +2340,7 @@ document.addEventListener('click',(e)=>{
     case 'next': goNext(); break;
     case 'back': goBack(); break;
     case 'submit': submitRequest(); break;
-    case 'age-keyword-yes': state.ageRestricted=true; state.ageKeywordAck=true; render(); break;
-    case 'age-keyword-no': state.ageKeywordAck=true; render(); break;
-    case 'enable-purchase': state.itemsPurchased=true; render(); break;
+    /* age-keyword-yes/no + enable-purchase cases retired with the inline banners (2026-08-18) — the modals own these paths now */
     case 'add-pic': if(state.picThumbs.length<3){ const pics=['📷','🛋️','📦','🧾','🏠']; state.picThumbs.push(pics[state.picThumbs.length%pics.length]); render(); } break;
     case 'remove-pic': state.picThumbs.splice(parseInt(act.dataset.i,10),1); render(); break;
     case 'verify-id': window.__openSignup(true,{hideDemo:true, signedIn:true, trustShield: !!state.trustShield}); break;
