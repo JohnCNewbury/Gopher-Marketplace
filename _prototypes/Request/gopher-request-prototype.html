@@ -178,6 +178,7 @@
       <button class="railitem" data-jump="signin-otp">Sign in &middot; enter code</button>
       <button class="railitem" data-jump="signin-personal">Personal info</button>
       <button class="railitem" data-jump="signin-email-otp">Email OTP</button>
+        <button class="railitem" data-jump="signin-recover">Lost phone &middot; recover</button>
       <button class="railitem" data-jump="demo">Demo the flow</button>
 
       <p class="rail-group">App</p>
@@ -222,7 +223,7 @@
           <div class="field"><label>Mobile number</label>
           <input id="siId" type="tel" inputmode="numeric" placeholder="(555) 555-5555" autocomplete="tel"></div>
           <button class="primary" id="siGo">Text me a code</button>
-          <button class="ghostlink" id="siDemo">Demo Gopher Request first →</button>
+          <button class="ghostlink" id="siLost">Lost access to this number?</button><button class="ghostlink" id="siDemo">Demo Gopher Request first →</button>
         </div>
         <div id="siOtpStep" style="display:none">
           <p class="scr-sub" style="margin:-2px 0 14px">Enter the 6-digit code we texted to <b id="siOtpTo">your number</b>. <span style="color:#9aa3b5;font-weight:700">(Demo: any 6 digits.)</span></p>
@@ -250,7 +251,7 @@
             <select id="siSrc"><option>Referral</option><option>Facebook</option><option>Instagram</option><option>X - Grok</option><option>Apple App Store</option><option>Google Play Store</option><option>Web/Internet/Google search</option><option>YouTube</option><option>Reddit</option><option>Nextdoor</option><option>AI Search (i.e. ChatGPT)</option><option>Other</option></select></div>
           <div class="field" id="siRefWrap"><label>Referred by</label><input id="siRef" value="Joe Jones"></div>
           <div class="field" id="siOtherWrap" style="display:none"><label>Tell us where (max 15 characters)</label><input id="siOther" maxlength="15" placeholder="e.g. Billboard"></div>
-          <div class="su-note"><span>✓</span><div><b>Legal first &amp; last are separate fields.</b> Name must match your payment method; name, birthday &amp; phone lock once your email is verified.</div></div>
+          <div class="su-note"><span>✓</span><div><b>Legal first &amp; last are separate fields.</b> Name must match your payment method. Name &amp; birthday lock once your email is verified; your number stays changeable — but only by verifying that email, which is how you get back in if you lose your phone.</div></div>
           <button class="primary" id="siPersonalGo">Continue →</button>
           <button class="ghostlink" id="siPersonalBack">← Back</button>
         </div>
@@ -264,7 +265,14 @@
           <div class="su-note blue"><span>✓</span><div><b>This finalizes your canonical Gopher account.</b> Your verified profile &amp; personal info carry across <b>Gopher Request, Connect, Go &amp; Deals</b> — you won't re-enter it on other platforms.</div></div>
           <button class="ghostlink" id="siEmailBack">← Back</button>
         </div>
-        <p class="fine">This is a clickable prototype — no real account is created and no text is actually sent. Everything runs inside this single file.</p>
+        <div id="siRecEmailStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Your mobile number is how you sign in — so if you’ve lost it, we verify you by the <b>email on your account</b> instead.</p><div class="field"><label>Email on your account</label><input id="siRecEmail" type="email" placeholder="you@email.com" autocomplete="email"></div><button class="primary" id="siRecEmailGo">Email me a code</button><div class="su-note"><span>!</span><div><b>This only works if your email is verified.</b> Verifying your email is what makes a number change possible — so verify it while you still have your current phone.</div></div><button class="ghostlink" id="siRecBack">← Back to sign in</button></div>
+<div id="siRecBlockedStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">We can’t recover <b id="siRecBlockedTo">this account</b> by email.</p><div class="su-note"><span>!</span><div><b>The email on this account isn’t verified,</b> so we have no second way to prove it’s you — and we won’t change the number on an account we can’t verify. If you still have your current phone, sign in and verify your email now; that is what makes a future number change possible.</div></div><button class="primary" id="siRecBlockedBack">← Back to sign in</button></div>
+<div id="siRecOtpStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Enter the 6-digit code we emailed to <b id="siRecEmailTo">your email</b>. <span style="color:#9aa3b5;font-weight:700">(Demo: any 6 digits.)</span></p><div class="field"><label>Email verification code</label><input id="siRecOtp" type="tel" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="letter-spacing:.5em;font-weight:800;text-align:center"></div><button class="primary" id="siRecOtpGo">Verify email</button><button class="ghostlink" id="siRecOtpBack">← Use a different email</button></div>
+<div id="siRecIdStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">One more check before we move your account to a new number.</p><div class="field"><label>Date of birth on the account</label><input id="siRecDob" placeholder="MM / DD / YYYY"></div><button class="primary" id="siRecIdGo">Continue →</button><div class="su-note"><span>✓</span><div>Your name and date of birth were locked when your email was verified, so they are what we check against here.</div></div></div>
+<div id="siRecNewStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Enter the number you want on this account from now on.</p><div class="field"><label>New mobile number</label><input id="siRecNew" type="tel" inputmode="numeric" placeholder="(555) 555-5555" autocomplete="tel"></div><button class="primary" id="siRecNewGo">Text me a code</button><div class="su-note"><span>!</span><div>We’ll text this number to prove it’s yours. <b>Your old number stops working for sign-in</b> the moment this is done.</div></div></div>
+<div id="siRecNewOtpStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Enter the 6-digit code we texted to <b id="siRecNewTo">your new number</b>. <span style="color:#9aa3b5;font-weight:700">(Demo: any 6 digits.)</span></p><div class="field"><label>Verification code</label><input id="siRecNewOtp" type="tel" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="letter-spacing:.5em;font-weight:800;text-align:center"></div><button class="primary" id="siRecNewOtpGo">Verify &amp; update my number</button><button class="ghostlink" id="siRecNewOtpBack">← Use a different number</button></div>
+<div id="siRecDoneStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Your mobile number is now <b id="siRecDoneNum">your new number</b>. Sign in with it from here on.</p><div class="su-note blue"><span>✓</span><div><b>We told both sides.</b> A notice went to <b id="siRecDoneEmail">your email</b> and to your old number — so if this wasn’t you, you’d know.</div></div><button class="primary" id="siRecDoneGo">Continue to Gopher Request →</button></div>
+<p class="fine">This is a clickable prototype — no real account is created and no text is actually sent. Everything runs inside this single file.</p>
       </div>
     </div>
 
@@ -445,11 +453,11 @@ var SCREENS={
   var siPhoneStep=$('siPhoneStep'), siOtpStep=$('siOtpStep'),
       siPersonalStep=$('siPersonalStep'), siEmailOtpStep=$('siEmailOtpStep');
   function suStep(el){
-    [siPhoneStep,siOtpStep,siPersonalStep,siEmailOtpStep].forEach(function(s){ if(s) s.style.display=(s===el)?'':'none'; });
+    [siPhoneStep,siOtpStep,siPersonalStep,siEmailOtpStep,siRecEmailStep,siRecBlockedStep,siRecOtpStep,siRecIdStep,siRecNewStep,siRecNewOtpStep,siRecDoneStep].forEach(function(s){ if(s) s.style.display=(s===el)?'':'none'; });
     var t=$('siTitle'), sub=document.querySelector('#siWelcome .scr-sub');
     var title='Welcome back', showSub=true;
     if(el===siPersonalStep){ title='Create your account'; showSub=false; }
-    else if(el===siEmailOtpStep){ title='Verify your email'; showSub=false; }
+    else if(el===siEmailOtpStep){ title='Verify your email'; showSub=false; } else if(el===siRecEmailStep||el===siRecOtpStep||el===siRecIdStep){ title='Recover your account'; showSub=false; } else if(el===siRecBlockedStep){ title='We can\u2019t recover this one'; showSub=false; } else if(el===siRecNewStep||el===siRecNewOtpStep){ title='Your new number'; showSub=false; } else if(el===siRecDoneStep){ title='Number updated'; showSub=false; }
     if(t) t.textContent=title;
     if(sub) sub.style.display=showSub?'':'none';
   }
@@ -497,6 +505,61 @@ var SCREENS={
   $('siPersonalGo').addEventListener('click', personalContinue);
   $('siPersonalBack').addEventListener('click', function(){ suStep(siOtpStep); });
   $('siEmailVerify').addEventListener('click', verifyEmail);
+  /* ── LOST-PHONE RECOVERY (owner ruling 2026-08-18) ───────────────────────
+     SMS is the primary sign-in and the number is the canonical profile id, but
+     a lost phone must not be a permanently lost account. Recovery is by the
+     VERIFIED EMAIL on the account and by nothing else — owner ruled out both a
+     support-mediated route and knowledge-only questions, because a recovery
+     path weaker than the primary becomes the account's real security.
+
+     Two things here are load-bearing, not decoration:
+     1. The NEW number is itself proven by SMS before it is written. Without
+        that, recovery is a way to point someone's account at another phone.
+     2. An account with no verified email is told so and stopped. That is the
+        honest end of the owner's ruling; looping them back would be a lie.
+
+     ⚠️ Live-system caveat for the rebuild: `telephone` has NO unique index
+     (the model's unique:true is inert), 775 numbers already carry 1,552
+     accounts, and sign-in resolves an un-ordered findOne({where:{telephone}}).
+     So a real implementation must reject a new number that already resolves to
+     another account BEFORE writing it, or recovery silently shadows someone. */
+  var REC_VERIFIED_EMAIL = 'jamie@email.com';   // the demo account's verified address
+  function recGo(step){ suStep(step); }
+  $('siLost').addEventListener('click', function(){ recGo(siRecEmailStep); $('siRecEmail').focus(); });
+  $('siRecBack').addEventListener('click', function(){ recGo(siPhoneStep); });
+  $('siRecBlockedBack').addEventListener('click', function(){ recGo(siPhoneStep); });
+  $('siRecEmailGo').addEventListener('click', function(){
+    var v=($('siRecEmail').value||'').trim();
+    if(!v){ toast('Enter the email on your account'); return; }
+    /* Demo models the ruling: only a VERIFIED email can recover. */
+    if(v.toLowerCase()!==REC_VERIFIED_EMAIL){
+      $('siRecBlockedTo').textContent=v; recGo(siRecBlockedStep); return;
+    }
+    $('siRecEmailTo').textContent=v; recGo(siRecOtpStep); $('siRecOtp').focus();
+  });
+  $('siRecOtpBack').addEventListener('click', function(){ recGo(siRecEmailStep); });
+  $('siRecOtpGo').addEventListener('click', function(){
+    if((($('siRecOtp').value)||'').replace(/\D/g,'').length!==6){ toast('Enter the 6-digit code'); return; }
+    recGo(siRecIdStep); $('siRecDob').focus();
+  });
+  $('siRecIdGo').addEventListener('click', function(){
+    if(!(($('siRecDob').value)||'').trim()){ toast('Enter the date of birth on the account'); return; }
+    recGo(siRecNewStep); $('siRecNew').focus();
+  });
+  $('siRecNewGo').addEventListener('click', function(){
+    var n=(($('siRecNew').value)||'').replace(/\D/g,'');
+    if(n.length!==10){ toast('Enter a 10-digit mobile number'); return; }
+    $('siRecNewTo').textContent=$('siRecNew').value;
+    recGo(siRecNewOtpStep); $('siRecNewOtp').focus();
+  });
+  $('siRecNewOtpBack').addEventListener('click', function(){ recGo(siRecNewStep); });
+  $('siRecNewOtpGo').addEventListener('click', function(){
+    if((($('siRecNewOtp').value)||'').replace(/\D/g,'').length!==6){ toast('Enter the 6-digit code'); return; }
+    $('siRecDoneNum').textContent=$('siRecNew').value;
+    $('siRecDoneEmail').textContent=$('siRecEmail').value;
+    recGo(siRecDoneStep);
+  });
+  $('siRecDoneGo').addEventListener('click', function(){ goApp(); });
   $('siEmailBack').addEventListener('click', function(){ suStep(siPersonalStep); });
   $('siEmailResend').addEventListener('click', function(){ toast('Code resent'); });
   $('siEmailOtp').addEventListener('keydown', function(e){ if(e.key==='Enter') verifyEmail(); });
@@ -571,7 +634,8 @@ var SCREENS={
        ⛔ And note this app expects the step string `image_uploaded_complete`, NOT Go's
        `image_upload_complete`. The backend translates per app; unifying them breaks Go for 21,381
        accounts. Detail: gopher-dev-handoff/UNVERIFIED-EMAIL-LOCKOUT.md ── */
-    if(key==='signin-email-otp'){ goSignin(); var e=$('siEmail'); if(e){ $('siEmailTo').textContent=(e.value||'').trim()||'your email'; } suStep(siEmailOtpStep); setWhere('Sign in'); return; }
+    if(key==='signin-recover'){ goSignin(); suStep(siRecEmailStep); setWhere('Sign in'); return; }
+      if(key==='signin-email-otp'){ goSignin(); var e=$('siEmail'); if(e){ $('siEmailTo').textContent=(e.value||'').trim()||'your email'; } suStep(siEmailOtpStep); setWhere('Sign in'); return; }
     if(key==='demo'){ goSignin(); navTo('gopher-request-flow.html?demo=1'); return; }
     if(key==='account'){ ensureSignedIn(); navTo(HOME); openOverlay('account'); return; }
     if(key==='activity'){ ensureSignedIn(); navTo(HOME); openOverlay('activity'); return; }
