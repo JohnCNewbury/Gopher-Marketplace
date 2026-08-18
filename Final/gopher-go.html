@@ -1621,6 +1621,7 @@
 <div id="gopher-footer"></div>
 <script src="assets/js/gopher-footer.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
+<script src="assets/js/gopher-signin-recovery.js" defer></script>
 <!-- Real per-user referral QR. Same encoder + version the live worker app uses
      (react-qr-code -> qrcode-generator@2.0.4), so the dashboard renders the same
      code the app does. Loaded here rather than beside GoRefer because that module
@@ -3956,6 +3957,7 @@ window.showNoAccount = function(){
         <div class="portal-field"><label>Mobile number</label><input type="tel" id="smsPhone" inputmode="numeric" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"></div>
         <button type="button" class="portal-otp-btn" id="sendOtpBtn" disabled>Send code to phone</button>
         <p class="portal-sms-hint" id="smsVerified" hidden>&#10003; Phone verified — you're ready to sign in.</p>
+        <button type="button" class="gr-lost-link" onclick="window.GopherRecovery&&GopherRecovery.open({portal:'Gopher Go',email:'marcus@email.com',emailVerified:true,dob:'04/12/1991',phone:'9195550142',onRecovered:function(d){var p=document.getElementById('smsPhone');if(p){p.value='('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);p.dispatchEvent(new Event('input',{bubbles:true}));}}})">Lost access to this number?</button>
       </div>
       <button class="portal-submit" id="signInBtn" disabled>Sign in &rarr;</button>
       <div class="gl-meta"><label class="gl-check"><input type="checkbox" id="goRememberMe" checked> Remember me</label></div>
@@ -4156,7 +4158,7 @@ window.showNoAccount = function(){
 
       <!-- ░░ PERSONAL INFO ░░ -->
       <section class="dash-section" data-dash-section="personal">
-        <div class="secure-tip"><span class="st-ico">&#128274;</span><span>Locked fields were set at sign-up and can't be changed here. Changing your <b>email</b> is confirmed by <b>SMS code</b>; changing your <b>mobile number</b> is confirmed by <b>email code</b>.</span></div>
+        <div class="secure-tip"><span class="st-ico">&#128274;</span><span>Locked fields were set at sign-up and can't be changed here. Changing your <b>email</b> is confirmed by <b>SMS code</b>. Lost your phone? Recover your account from the <b>sign-in screen</b> &mdash; we verify your email, then move your sign-in to a new number.</span></div>
         <div class="panel">
           <div class="panel-head"><h2>Personal info</h2></div>
           <p class="panel-desc">Your canonical Gopher profile — it carries across Request, Connect, Go &amp; Deals.</p>
@@ -4204,7 +4206,7 @@ window.showNoAccount = function(){
                  which described a flow that does not exist anywhere. An editable
                  field with no write path is worse than a locked one: it invites the
                  edit, then loses it. -->
-            <div class="field locked full"><label>Mobile number</label><input type="tel" id="piPhone" value="(919) 555-0142" readonly><span class="lock-note">&#128274; Your mobile number is how you sign in &mdash; contact support to change it.</span></div>
+            <div class="field locked full"><label>Mobile number</label><input type="tel" id="piPhone" value="(919) 555-0142" readonly><span class="lock-note">&#128274; Your mobile number is how you sign in. Lost access to it? Use &ldquo;Lost access to this number?&rdquo; on the sign-in screen &mdash; recovery runs on your verified email, never through support.</span></div>
             <div class="field full"><label>Home address</label><input type="text" id="piAddr" data-field value="412 Maple Ave" autocomplete="off" placeholder="Start typing your address&hellip;"></div>
             <div class="field locked"><label>City</label><input type="text" id="piCity" data-field value="Fuquay-Varina" readonly></div>
             <div class="field locked"><label>State</label><input type="text" id="piState" data-field value="NC" readonly></div>
