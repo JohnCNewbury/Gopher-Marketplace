@@ -3493,6 +3493,18 @@ window.showNoAccount = function(){
   .qr-card-hero { background:linear-gradient(180deg,#FFFFFF 0%,#F7FBF8 100%); border-color:#DCEBE1; }
   .qr-eyebrow { font-family:'Nunito',sans-serif; font-weight:800; font-size:10px; letter-spacing:0.8px;
                 text-transform:uppercase; color:var(--green-dark); margin-bottom:6px; }
+  /* Side by side here, not stacked as in the modal. Two full-width navy bars would
+     dominate the hero card and out-shout the four platform cards below it, which are
+     the same rank of action. The owner's 10px gap (2026-07-23) is kept — it just runs
+     horizontally. Below 700px they stack, where side-by-side would wrap "Refer via
+     email" against its Soon chip. */
+  .rf-hero-send { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .rf-hero-send .gc-modal-btn { margin:0; }
+  /* ⚠️ .rf-btn-navy + .rf-btn-navy carries margin-top:10px for the stacked modal.
+     Adjacent siblings here would inherit it and break the grid's own gap. */
+  .rf-hero-send .rf-btn-navy + .rf-btn-navy { margin-top:0; }
+  .rf-soon-note-hero { margin-top:8px; margin-bottom:0; }
+  @media (max-width:700px){ .rf-hero-send { grid-template-columns:1fr; } }
   .qr-ttl { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); }
   .qr-sub { font-size:12.5px; color:var(--muted); margin-top:2px; }
   .qr-box { width:180px; height:180px; margin:16px auto; }
@@ -4441,6 +4453,19 @@ window.showNoAccount = function(){
               <span class="rf-selflink-url"></span>
               <button type="button" class="rf-selflink-copy">Copy link</button>
             </div>
+            <!-- ⚠️ OVERSIGHT CORRECTED (owner, 2026-08-18). Promoting Refer Yourself
+                 out of the modal brought the QR, the ID and the link but LEFT THE SEND
+                 BUTTONS BEHIND — so the headliner was the only one of the five without
+                 them, while all four cards kept theirs. It was in the original draft.
+
+                 Same two buttons, same gate: `data-refer-share` + `is-soon` + the Soon
+                 chip, wired to the SAME REFER_SEND_GATED flag the modal's use, so there
+                 is one answer to "can this send?" and it cannot drift. -->
+            <div class="rf-hero-send">
+              <button class="gc-modal-btn rf-btn-navy is-soon" data-refer-share="sms" data-refer-hero="1">Refer via SMS<span class="rf-soon">Soon</span></button>
+              <button class="gc-modal-btn rf-btn-navy is-soon" data-refer-share="email" data-refer-hero="1">Refer via email<span class="rf-soon">Soon</span></button>
+            </div>
+            <p class="rf-soon-note rf-soon-note-hero">Sending invites arrives at launch. Your Gopher ID, QR and personal link work now &mdash; share them however you like.</p>
           </div>
           <div class="refer-code">
             <div class="rc-left"><span class="rc-k">Your referral code</span><span class="rc-v" id="referCode">1</span></div>
@@ -6989,6 +7014,21 @@ window.showNoAccount = function(){
            message today) that is the half that should not be live.
            The tiles still open so a worker can see and copy their own link. */
         const REFER_SEND_GATED = true;
+        /* The headline's pair lives OUTSIDE this overlay, so the overlay-scoped
+           query below never sees it. Bound here rather than in its own block so it
+           reads the same REFER_SEND_GATED const — one flag, not two that can
+           disagree the day sending is switched on. When ungated, it opens the
+           Refer Yourself modal and jumps straight to that channel's entry view,
+           which is the flow the tile used to reach. */
+        document.querySelectorAll('[data-refer-hero]').forEach(b=>b.addEventListener('click',()=>{
+          if(REFER_SEND_GATED){
+            showToast('Sending invites arrives at launch — your link and code work now.');
+            return;
+          }
+          openReferModal('self');
+          const t=overlay.querySelector('[data-refer-share="'+b.dataset.referShare+'"]');
+          if(t) t.click();
+        }));
         overlay.querySelectorAll('[data-refer-share]').forEach(b=>b.addEventListener('click',()=>{
           if(REFER_SEND_GATED){
             showToast('Sending invites arrives at launch — your link and code work now.');
