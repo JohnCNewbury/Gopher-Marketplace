@@ -207,8 +207,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
     <div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:0 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);">
       <div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your personal link</div> <p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">Scan to open your invite &mdash; they sign up, you get credit.</p>
       <svg id="qr" width="172" height="172" viewBox="0 0 25 25" shape-rendering="crispEdges" style="display:block;margin:0 auto;"></svg>
-      <div style="font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.07em;color:#8a93a6;margin-top:14px;">YOUR REFERRAL ID</div>
-      <div id="qrId" style="font-family:'Nunito';font-weight:900;font-size:22px;color:#002461;letter-spacing:.05em;"></div>
+      
   <div style="display:flex;gap:10px;margin-top:14px;">
     <!-- Headline sends (owner via the web restructure 2026-08-18: "all of the other 4 platform
          referral cards have this and the main headliner does too — I had that in the original
@@ -218,6 +217,14 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
     <button id="qrEmail" style="flex:1;font-family:'Nunito';font-weight:800;font-size:13px;padding:11px 6px;border:0;border-radius:12px;background:#33D975;color:#002461;cursor:pointer;">Refer via Email</button>
   </div>
     </div>
+  <!-- ID ONCE PER SCREEN (owner, 2026-08-18, ruled for all four platforms): the
+     referral id's single home is this navy code bar — it was removed from inside the
+     QR card above, where it duplicated this bar on web Go. Painter hooks kept on the
+     value element, so the id still derives at runtime. -->
+  <div style="background:#002461;border-radius:14px;padding:12px 14px;margin:14px 0 0;display:flex;align-items:center;justify-content:space-between;">
+    <div style="text-align:left;"><span style="font-family:'Nunito';font-weight:800;font-size:11px;color:#9fb3d9;display:block;">Your referral code</span><span id="qrId" style="font-family:'Nunito';font-weight:900;font-size:20px;color:#fff;letter-spacing:.05em;"></span></div>
+    <button id="qrCopy" style="font-family:'Nunito';font-weight:800;font-size:12px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;padding:8px 13px;cursor:pointer;">Copy code</button>
+  </div>
     <div class="rs-grid">
       <button class="rs-tile" data-rk="recommend"><span class="rs-tbadge">You</span><span class="rs-tico">&#11088;</span><span class="rs-ttl">Recommend MY Gopher(s)</span><span class="rs-tdesc">Recommend the Gophers you&#8217;ve hired so other customers can find them.</span><span class="rs-tcta">Recommend a Gopher &#8594;</span></button>
       <button class="rs-tile" data-rk="go"><span class="rs-tico"><img src="../../Final/assets/img/gopher-go-logo.svg" alt="Gopher Go"></span><span class="rs-ttl">Refer Gopher Go</span><span class="rs-tdesc">Invite a trusted local worker to start earning on Gopher Go.</span><span class="rs-tcta">Share the app &#8594;</span></button>
@@ -558,6 +565,10 @@ $$('.rs-tile[data-rk]').forEach(b=>b.addEventListener('click',()=>{
 }));
 $('#qrSms').addEventListener('click',()=>openRefer('sms','Gopher Request'));
 $('#qrEmail').addEventListener('click',()=>openRefer('email','Gopher Request'));
+$('#qrCopy').addEventListener('click',()=>{ const id=($('#qrId').textContent||'').trim();
+  if(!id){ toast&&toast('No code yet'); return; }
+  try{ navigator.clipboard.writeText(id); }catch(_){}
+  const b=$('#qrCopy'); b.textContent='Copied!'; setTimeout(()=>{ b.textContent='Copy code'; },1400); });
 function renderRsTrack(tab){
   $$('.rs-tab[data-rstab]').forEach(t=>t.classList.toggle('active', t.dataset.rstab===tab));
   const rows=(REFERRALS[tab]||[]);

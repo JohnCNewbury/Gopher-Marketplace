@@ -2605,13 +2605,21 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    init so the hero and the modal cannot drift apart — one source, one consumer. -->
    <div style="font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.09em;color:#1CB061;">START HERE</div>
    <h1 class="js-rs-title" style="margin-top:2px">Refer Yourself</h1>
-   <p class="sub js-rs-sub"></p><div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:14px 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);"><div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your personal link</div><p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">Scan to open your page &mdash; they sign up, you get credit.</p><div class="js-rs-qr" style="width:170px;height:170px;margin:0 auto;display:flex;align-items:center;justify-content:center;"></div><div style="font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.07em;color:#8a93a6;margin-top:14px;">YOUR REFERRAL ID</div><div class="js-rs-id" style="font-family:'Nunito';font-weight:900;font-size:22px;color:#002461;letter-spacing:.05em;">&mdash;</div><div style="display:flex;gap:10px;margin-top:14px;">
+   <p class="sub js-rs-sub"></p><div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:14px 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);"><div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your personal link</div><p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">Scan to open your page &mdash; they sign up, you get credit.</p><div class="js-rs-qr" style="width:170px;height:170px;margin:0 auto;display:flex;align-items:center;justify-content:center;"></div><div style="display:flex;gap:10px;margin-top:14px;">
      <!-- Web (70d78ca) gates these behind REFER_SEND_GATED with "Soon" chips because the live
           send rail is kind-blind. The prototype models the UNGATED end-state: each opens the
           Refer Yourself wizard at that channel's entry view. -->
      <div class="act js-rs-sms" style="flex:1;margin:0;">Refer via SMS</div>
      <div class="act js-rs-email" style="flex:1;margin:0;">Refer via Email</div>
    </div></div>
+   <!-- ID ONCE PER SCREEN (owner, 2026-08-18, ruled for all four platforms): the
+     referral id's single home is this navy code bar — it was removed from inside the
+     QR card above, where it duplicated this bar on web Go. Painter hooks kept on the
+     value element, so the id still derives at runtime. -->
+   <div style="background:#002461;border-radius:14px;padding:12px 14px;margin:0 0 16px;display:flex;align-items:center;justify-content:space-between;">
+     <div><span style="font-family:'Nunito';font-weight:800;font-size:11px;color:#9fb3d9;display:block;">Your referral code</span><span class="js-rs-id" style="font-family:'Nunito';font-weight:900;font-size:20px;color:#fff;letter-spacing:.05em;">&mdash;</span></div>
+     <div class="js-rs-copy" style="font-family:'Nunito';font-weight:800;font-size:12px;color:#fff;background:rgba(255,255,255,.14);border-radius:10px;padding:8px 13px;cursor:pointer;">Copy code</div>
+   </div>
    
    <div class="rs-grid">
      <!-- ⛔ Refer Yourself is NOT here because it was PROMOTED to the page headline
@@ -2684,6 +2692,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    if(hS) hS.textContent=COPY.self.sub;
    r.querySelector('.js-rs-sms').onclick=()=>openWizard('self','sms');
    r.querySelector('.js-rs-email').onclick=()=>openWizard('self','email');
+   var cpy=r.querySelector('.js-rs-copy');
+   if(cpy) cpy.onclick=function(){ var id=(state.userId||''); if(!id){ toast('No code yet — finish sign-up first'); return; }
+     try{ navigator.clipboard.writeText(id); toast('Code '+id+' copied'); }catch(_){ toast('Your code: '+id); } };
    const COLS={pending:['Date Referred','Referred Info','Type'],added:['Date Added','Name','Type'],active:['Date Active','Name','App Used']};
     function renderTrack(tab){
       const head=r.querySelector('#rs-thead'), body=r.querySelector('#rs-tbody');
