@@ -1780,13 +1780,19 @@ recover:{ html:`<div class="frame sand"><div class="rib">NEW</div>${SBAR}
         <div id="rcEmail">
           <div class="field"><label>Email on your account</label><input type="email" id="rcEmailIn" placeholder="you@email.com"></div>
           <div class="act js-rc-email">Email me a code &#8594;</div>
-          <div class="note"><span>!</span><div><b>This only works if your email is verified.</b> Verifying it is what makes a number change possible &mdash; do it while you still have your current phone.</div></div>
+          <div class="note"><span>!</span><div><b>Use the email already on your account.</b> Never verified it? You can do that here &mdash; same step you skipped at sign-up. <span style="color:#9aa3b5">(Demo: marcus@email.com is verified; marcus.unverified@email.com never was.)</span></div></div>
           <div class="tiny js-rc-back" style="text-align:center;margin-top:10px;cursor:pointer;"><b>&#8592; Back to sign in</b></div>
         </div>
 
         <div id="rcBlocked" style="display:none">
-          <div class="note"><span>!</span><div><b>The email on this account is not verified,</b> so we have no second way to prove it is you &mdash; and we will not move the number on an account we cannot verify. If you still have your current phone, sign in and verify your email now.</div></div>
+          <div class="note"><span>!</span><div><b>That address is not on this account.</b> A recovery code only ever goes to the email already on file &mdash; never to one typed in here, because that would let anyone claim an account. Check the address, or use the one you signed up with.</div></div>
           <div class="act js-rc-back2">&#8592; Back to sign in</div>
+        </div>
+
+        <div id="rcVerify" style="display:none">
+          <div class="note"><span>&#10003;</span><div><b>This address is on your account, but was never verified.</b> You can do that right now &mdash; it is the same step you skipped at sign-up: we email a 6-digit code, you enter it, and it is verified for good.</div></div>
+          <div class="act js-rc-verify">Send my verification code &#8594;</div>
+          <div class="tiny js-rc-verify-back" style="text-align:center;margin-top:10px;cursor:pointer;"><b>&#8592; Use a different email</b></div>
         </div>
 
         <div id="rcCode" style="display:none">
@@ -1825,14 +1831,26 @@ recover:{ html:`<div class="frame sand"><div class="rib">NEW</div>${SBAR}
        recovery path weaker than the primary becomes the account's real security.
        The NEW number is proven by SMS before it is written -- without that, recovery
        is a way to point a worker's account (and their payouts) at another phone.
-       ⚠️ Rebuild caveat: live `telephone` has NO unique index and 775 numbers already
-       carry 1,552 accounts, so a real implementation must reject a new number that
-       already resolves to another account before writing it. */
+       ⚠️ Rebuild caveat, re-verified against origin/production 2026-08-18.
+       What is ALREADY handled: sign-in no longer picks an arbitrary row — it does
+       findAll + pickAccountForPhone() (helpers/accountResolution.js), sorted
+       deterministically with order-independence tests; and signup rejects a
+       duplicate phone (auth.js:164 → 422 'has already been taken').
+       What is NOT: there is no phone-CHANGE path on production at all, so this
+       feature introduces the first write to users.telephone and there is no guard
+       on an update to inherit. The column has no DB-level uniqueness (the model's
+       unique is Sequelize-level only) and 775 numbers already carried 1,552
+       accounts when last measured (2026-08-09, prod reader — not re-measured
+       here). So the change path must itself reject a new number that already
+       resolves to a live account, normalising on the last 10 digits: 36 of those
+       collisions are the same number stored in two formats. */
     init(r){
       const VERIFIED='marcus@email.com';
-      const steps=['rcEmail','rcBlocked','rcCode','rcId','rcNew','rcNewCode','rcDone'];
+      const UNVERIFIED='marcus.unverified@email.com';   // demo: an account that never verified
+      const steps=['rcEmail','rcBlocked','rcVerify','rcCode','rcId','rcNew','rcNewCode','rcDone'];
       const TITLES={rcEmail:['Recover your account','Your mobile number is how you sign in — so if you have lost it, we verify you by the <b>email on your account</b> instead.'],
-        rcBlocked:['We cannot recover this one','This account has no verified email.'],
+        rcBlocked:['We do not recognise that address','It is not the email on this account.'],
+        rcVerify:['Verify this email','One step, and it is the one you skipped at sign-up.'],
         rcCode:['Recover your account','Enter the 6-digit code we emailed you.'],
         rcId:['Recover your account','One more check before we move your account to a new number.'],
         rcNew:['Your new number','Enter the number you want on this account from now on.'],
@@ -1842,13 +1860,24 @@ recover:{ html:`<div class="frame sand"><div class="rib">NEW</div>${SBAR}
         const t=TITLES[id]; if(t){ r.querySelector('#rcTitle').textContent=t[0]; r.querySelector('#rcSub').innerHTML=t[1]; } };
       const digits=el=>((el&&el.value)||'').replace(/[^0-9]/g,'');
       r.querySelector('.js-rc-email').onclick=()=>{
-        const v=((r.querySelector('#rcEmailIn').value)||'').trim();
+        const v=((r.querySelector('#rcEmailIn').value)||'').trim(), lv=v.toLowerCase();
         if(!v){ toast('Enter the email on your account'); return; }
-        if(v.toLowerCase()!==VERIFIED){ show('rcBlocked'); return; }
+        /* THE RULE, and it is the whole security of this screen: a code only ever
+           goes to an address ALREADY ON THE ACCOUNT, never to one typed here. If a
+           stranger could type their own address and verify it, recovery would be a
+           one-step takeover of a worker's account and payouts. Unrecognised
+           addresses are refused -- we never offer to "add" one. */
+        if(lv!==VERIFIED && lv!==UNVERIFIED){ show('rcBlocked'); return; }
+        /* On file but never verified: don't dead-end them (owner ruling 2026-08-18).
+           It is the step they skipped at sign-up, and it costs no security because
+           the code still goes to the address already on file. */
+        if(lv===UNVERIFIED){ show('rcVerify'); return; }
         show('rcCode');
       };
       r.querySelector('.js-rc-back').onclick=()=>GO('signin');
       r.querySelector('.js-rc-back2').onclick=()=>GO('signin');
+      r.querySelector('.js-rc-verify').onclick=()=>show('rcCode');
+      r.querySelector('.js-rc-verify-back').onclick=()=>show('rcEmail');
       r.querySelector('.js-rc-code').onclick=()=>{ if(digits(r.querySelector('#rcCodeIn')).length!==6){ toast('Enter the 6-digit code'); return; } show('rcId'); };
       r.querySelector('.js-rc-id').onclick=()=>{ if(!((r.querySelector('#rcDobIn').value)||'').trim()){ toast('Enter the date of birth on the account'); return; } show('rcNew'); };
       r.querySelector('.js-rc-new').onclick=()=>{ if(digits(r.querySelector('#rcNewIn')).length!==10){ toast('Enter a 10-digit mobile number'); return; } show('rcNewCode'); };
