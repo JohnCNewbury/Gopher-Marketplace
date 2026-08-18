@@ -163,7 +163,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 18px 0;}
 .rs-tile{position:relative;text-align:left;background:#fff;border:1.5px solid var(--line,#EAE3D5);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;}
 .rs-tile:active{transform:translateY(1px);}
-.rs-tico{font-size:22px;line-height:1;}
+.rs-tico{font-size:22px;line-height:1;height:24px;display:flex;align-items:center;}.rs-tico img{height:20px;width:auto;display:block;}
 .rs-ttl{font-family:'Nunito';font-weight:800;font-size:13.5px;color:var(--navy,#002461);}
 .rs-tdesc{font-size:11.5px;color:var(--muted-cool,#6B7280);line-height:1.4;}
 .rs-tcta{font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green-dark,#1CB061);margin-top:2px;}
@@ -214,9 +214,10 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
     </div>
     <div class="rs-grid">
       <button class="rs-tile" data-rk="recommend"><span class="rs-tbadge">You</span><span class="rs-tico">&#11088;</span><span class="rs-ttl">Recommend MY Gopher(s)</span><span class="rs-tdesc">Recommend the Gophers you&#8217;ve hired so other customers can find them.</span><span class="rs-tcta">Recommend a Gopher &#8594;</span></button>
-      <button class="rs-tile" data-rk="go"><span class="rs-tico">&#128663;</span><span class="rs-ttl">Refer Gopher Go</span><span class="rs-tdesc">Invite a trusted local worker to start earning on Gopher Go.</span><span class="rs-tcta">Share the app &#8594;</span></button>
-      <button class="rs-tile" data-rk="request"><span class="rs-tico">&#128230;</span><span class="rs-ttl">Refer Gopher Request</span><span class="rs-tdesc">Invite someone to post requests and hire Gophers on demand.</span><span class="rs-tcta">Share the app &#8594;</span></button>
-      <button class="rs-tile" data-rk="connect"><span class="rs-tico">&#127970;</span><span class="rs-ttl">Refer Gopher Connect</span><span class="rs-tdesc">Invite a business to manage their workforce on Gopher Connect.</span><span class="rs-tcta">Refer a business &#8594;</span></button>
+      <button class="rs-tile" data-rk="go"><span class="rs-tico"><img src="../../assets/img/gopher-go-logo.svg" alt="Gopher Go"></span><span class="rs-ttl">Refer Gopher Go</span><span class="rs-tdesc">Invite a trusted local worker to start earning on Gopher Go.</span><span class="rs-tcta">Share the app &#8594;</span></button>
+      <button class="rs-tile" data-rk="request"><span class="rs-tico"><img src="../../assets/img/gopher-request-logo.svg" alt="Gopher Request"></span><span class="rs-ttl">Refer Gopher Request</span><span class="rs-tdesc">Invite someone to post requests and hire Gophers on demand.</span><span class="rs-tcta">Share the app &#8594;</span></button>
+      <button class="rs-tile" data-rk="connect"><span class="rs-tico"><img src="../../assets/img/gopher-connect-logo.svg" alt="Gopher Connect"></span><span class="rs-ttl">Refer Gopher Connect</span><span class="rs-tdesc">Invite a business to manage their workforce on Gopher Connect.</span><span class="rs-tcta">Refer a business &#8594;</span></button>
+      <button class="rs-tile" data-rk="deals"><span class="rs-tico"><img src="../../assets/img/gopher-deals-logo.svg" alt="Gopher Deals"></span><span class="rs-ttl">Refer Gopher Deals</span><span class="rs-tdesc">Invite a local business to offer a deal to Gopher customers.</span><span class="rs-tcta">Refer a merchant &#8594;</span></button>
     </div>
     <div class="rs-banner"><div class="rs-bico">&#127873;</div><div><b>Earn rewards for every referral.</b><span>When someone joins through your referral, you both earn Gopher Rewards credit. Rewards launch in 2027 &mdash; your points start accruing now.</span></div></div><div class="rs-trackhead">Track Referral History</div>
     <div class="rs-tabs"><button class="rs-tab active" data-rstab="pending">Pending</button><button class="rs-tab" data-rstab="added">Added</button><button class="rs-tab" data-rstab="active">Active</button></div>
@@ -468,6 +469,31 @@ function setChan(chan){
 }
 function openRefer(chan, appLabel){
   referChan=chan||'email'; referApp=appLabel||''; referChips=[];
+    /* KIND-AWARE MODELLING (owner ruling 2026-08-17). The live POST /referrals is kind-blind —
+       every card would send the identical message. The rebuild's rail is kind-aware, so each card
+       here shows ITS OWN destination link with the referrer's bare id, which is what makes credit
+       survive a phone-number mismatch. Not wired to a real send: outward-facing sends need a
+       per-surface go-ahead. */
+    (function(){
+      var links={
+        'Gopher Go':      'gophergo.io/gopher-go.html?ref='+REFERRAL_ID,
+        'Gopher Request': 'gophergo.io/gopher-request.html?ref='+REFERRAL_ID,
+        'Gopher Connect': 'gophergo.io/gopher-connect.html?ref='+REFERRAL_ID,
+        /* Shape derived from the receiving end, not invented: gopher-deals.html gates its
+           "Referred by — Gopher ID" field on discovery_source="Referral" unhiding #regReferredRow,
+           whose input is name="referred_by_gopher_id". ?ref=<id> sets and fills it. The receiving
+           handler is the Go -> Deal Registration session's lane. */
+        'Gopher Deals':   'gophergo.io/gopher-deals.html?ref='+REFERRAL_ID
+      };
+      var host=$('#rfHeadTitle'); if(!host) return;
+      var old=document.getElementById('rfKindLink'); if(old) old.remove();
+      var url=links[referApp]; if(!url) return;
+      var el=document.createElement('div');
+      el.id='rfKindLink';
+      el.style.cssText='font-family:\'DM Sans\';font-size:10.5px;color:#5C6685;background:#f6f4ee;border-radius:10px;padding:7px 10px;margin:8px 0 2px;word-break:break-all;';
+      el.textContent='They get: '+url;
+      host.parentNode.insertBefore(el, host.nextSibling);
+    })();
   $('#rfHeadTitle').textContent = referApp ? ('Refer '+referApp) : (referChan==='sms'?'Refer via SMS':'Refer via Email');
   ensureChanToggle(); setChan(referChan);
   $('#rfInput').value='';
@@ -518,7 +544,7 @@ $$('.rs-tile[data-rk]').forEach(b=>b.addEventListener('click',()=>{
   if(k==='recommend') openRecommend();
   else if(k==='go') openRefer('email','Gopher Go');
   else if(k==='request') openRefer('email','Gopher Request');
-  else if(k==='connect') openRefer('email','Gopher Connect');
+  else if(k==='connect') openRefer('email','Gopher Connect'); else if(k==='deals') openRefer('email','Gopher Deals');
 }));
 function renderRsTrack(tab){
   $$('.rs-tab[data-rstab]').forEach(t=>t.classList.toggle('active', t.dataset.rstab===tab));

@@ -4419,6 +4419,11 @@ window.showNoAccount = function(){
             <button class="refer-tile" data-rk="go"><span class="rt-ico">&#128663;</span><span class="rt-ttl">Refer Gopher Go</span><span class="rt-desc">Invite a trusted local worker to start earning on Gopher Go.</span></button>
             <button class="refer-tile" data-rk="request"><span class="rt-ico">&#128230;</span><span class="rt-ttl">Refer Gopher Request</span><span class="rt-desc">Invite someone to post requests and hire Gophers.</span></button>
             <button class="refer-tile" data-rk="connect"><span class="rt-ico">&#127970;</span><span class="rt-ttl">Refer Gopher Connect</span><span class="rt-desc">Invite a business to manage their workforce.</span></button>
+            <!-- Deals card — owner-settled Refer Gopher design, 2026-08-17 (Ruling 3).
+                 Deals had never been a card on any platform, while Deals registration
+                 has carried a "Referred by — Gopher ID" field with nothing feeding it.
+                 The card is the feeder; ?ref= on the link is what closes the loop. -->
+            <button class="refer-tile" data-rk="deals"><span class="rt-ico">&#127903;&#65039;</span><span class="rt-ttl">Refer Gopher Deals</span><span class="rt-desc">Invite a local business to offer deals to their neighbors.</span></button>
           </div>
           <div class="sec-h">Referral tracking</div>
           <div class="rs-tabs"><button class="rs-tab on" data-tab="pending">Pending</button><button class="rs-tab" data-tab="added">Added</button><button class="rs-tab" data-tab="active">Active</button></div>
@@ -6780,7 +6785,12 @@ window.showNoAccount = function(){
         request: { brand:'Gopher', title:'Refer Gopher Request',
           sub:'Invite someone to post requests and hire Gophers on demand. You both earn rewards when they join.' },
         go: { brand:'Gopher Go', title:'Refer Gopher Go',
-          sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.' }
+          sub:'Invite a trusted local worker to start earning on the Gopher Go platform. You both earn rewards when they join.' },
+        /* ⚠️ A MISSING KEY DOES NOT ERROR — openReferModal falls back to
+           REFER_COPY.go, so a new card would open silently branded "Refer Gopher
+           Go" and look like it works. Any new data-rk needs its key here. */
+        deals: { brand:'Gopher Deals', title:'Refer Gopher Deals',
+          sub:'Invite a local business to offer deals on Gopher. Your link opens their registration with your Gopher ID already filled in.' }
       };
       let referChannel='sms', referKind='go';
       const referContacts=[];
@@ -6847,17 +6857,43 @@ window.showNoAccount = function(){
          it — the API renders "<name> invited you to Gopher!" at
          /self-referral/<id> and posts to /refer_yourself. Surface that link so
          it can actually be shared; the other three have no such page. */
+      /* The Deals card exists to hand over a LINK, not to send a message: it opens
+         Deals registration with the referrer's id already in the "Referred by"
+         field, so a merchant never retypes a code from a text. Retyping is where
+         credit dies — that is the whole point of the card.
+
+         Surfaced through the SAME rf-selflink slot Refer Yourself uses, because it
+         is the same kind of thing (a real, working URL you can hand to anyone) and
+         because this modal's SEND is gated behind launch. A card whose only
+         affordance were a gated send would be a card that does nothing.
+
+         Relative URL on purpose: this page and gopher-deals.html are siblings, and
+         the site is served from a SUBDIRECTORY on GitHub Pages — a root-absolute
+         path would 404 there. */
+      function dealsReferUrl(){
+        var id = window.GoRefer && GoRefer.code();
+        return id ? 'gopher-deals.html?ref=' + encodeURIComponent(id) : null;
+      }
       function paintSelfLink(kind){
         var slot = document.getElementById('rfSelfLink');
-        var url  = window.GoRefer && GoRefer.selfUrl();
         if(!slot) return;
-        var show = (kind === 'self' && !!url);
-        slot.hidden = !show;
-        if(show){
+        /* Two kinds carry a real link, for different reasons: `self` points at the
+           API-rendered /self-referral/<id> page, `deals` at Deals registration
+           pre-filled. Everything else has no landing page yet and shows nothing —
+           an empty slot beats a link that goes nowhere. */
+        var url   = kind === 'self'  ? (window.GoRefer && GoRefer.selfUrl())
+                  : kind === 'deals' ? dealsReferUrl()
+                  : null;
+        var label = kind === 'deals' ? 'Your Deals invite link' : 'Your personal invite link';
+        var toast = kind === 'deals' ? 'Deals invite link copied — it fills in your Gopher ID for them.'
+                                     : 'Your personal invite link was copied.';
+        slot.hidden = !url;
+        if(url){
+          slot.querySelector('.rf-selflink-lbl').textContent = label;
           slot.querySelector('.rf-selflink-url').textContent = url;
           slot.querySelector('.rf-selflink-copy').onclick = function(){
             if(navigator.clipboard) navigator.clipboard.writeText(url).catch(function(){});
-            showToast('Your personal invite link was copied.');
+            showToast(toast);
           };
         }
       }
