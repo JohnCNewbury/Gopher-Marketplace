@@ -265,8 +265,9 @@
           <div class="su-note blue"><span>✓</span><div><b>This finalizes your canonical Gopher account.</b> Your verified profile &amp; personal info carry across <b>Gopher Request, Connect, Go &amp; Deals</b> — you won't re-enter it on other platforms.</div></div>
           <button class="ghostlink" id="siEmailBack">← Back</button>
         </div>
-        <div id="siRecEmailStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Your mobile number is how you sign in — so if you’ve lost it, we verify you by the <b>email on your account</b> instead.</p><div class="field"><label>Email on your account</label><input id="siRecEmail" type="email" placeholder="you@email.com" autocomplete="email"></div><button class="primary" id="siRecEmailGo">Email me a code</button><div class="su-note"><span>!</span><div><b>This only works if your email is verified.</b> Verifying your email is what makes a number change possible — so verify it while you still have your current phone.</div></div><button class="ghostlink" id="siRecBack">← Back to sign in</button></div>
-<div id="siRecBlockedStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">We can’t recover <b id="siRecBlockedTo">this account</b> by email.</p><div class="su-note"><span>!</span><div><b>The email on this account isn’t verified,</b> so we have no second way to prove it’s you — and we won’t change the number on an account we can’t verify. If you still have your current phone, sign in and verify your email now; that is what makes a future number change possible.</div></div><button class="primary" id="siRecBlockedBack">← Back to sign in</button></div>
+        <div id="siRecEmailStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Your mobile number is how you sign in — so if you’ve lost it, we verify you by the <b>email on your account</b> instead.</p><div class="field"><label>Email on your account</label><input id="siRecEmail" type="email" placeholder="you@email.com" autocomplete="email"></div><button class="primary" id="siRecEmailGo">Email me a code</button><div class="su-note"><span>!</span><div><b>Use the email already on your account.</b> If you never verified it, you can do that here — it’s the same step you skipped at signup. <span style="color:#9aa3b5">(Demo: jamie@email.com is verified; jamie.unverified@email.com never was.)</span></div></div><button class="ghostlink" id="siRecBack">← Back to sign in</button></div>
+<div id="siRecBlockedStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">We don’t recognise <b id="siRecBlockedTo">that address</b> on this account.</p><div class="su-note"><span>!</span><div><b>That address isn’t on this account.</b> We only ever send a recovery code to the email already on file — never to one typed in here, because that would let anyone claim an account. Check the address, or use the one you signed up with.</div></div><button class="primary" id="siRecBlockedBack">← Back to sign in</button></div>
+<div id="siRecVerifyStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">This address <b id="siRecVerifyTo">is on your account</b> — but it was never verified, so we can’t use it to prove it’s you yet.</p><div class="su-note"><span>✓</span><div><b>You can do that right now.</b> It’s the same step you skipped when you signed up: we email a 6-digit code, you enter it, and your email is verified for good.</div></div><button class="primary" id="siRecVerifyGo">Send my verification code</button><button class="ghostlink" id="siRecVerifyBack">← Use a different email</button></div>
 <div id="siRecOtpStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Enter the 6-digit code we emailed to <b id="siRecEmailTo">your email</b>. <span style="color:#9aa3b5;font-weight:700">(Demo: any 6 digits.)</span></p><div class="field"><label>Email verification code</label><input id="siRecOtp" type="tel" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="letter-spacing:.5em;font-weight:800;text-align:center"></div><button class="primary" id="siRecOtpGo">Verify email</button><button class="ghostlink" id="siRecOtpBack">← Use a different email</button></div>
 <div id="siRecIdStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">One more check before we move your account to a new number.</p><div class="field"><label>Date of birth on the account</label><input id="siRecDob" placeholder="MM / DD / YYYY"></div><button class="primary" id="siRecIdGo">Continue →</button><div class="su-note"><span>✓</span><div>Your name and date of birth were locked when your email was verified, so they are what we check against here.</div></div></div>
 <div id="siRecNewStep" style="display:none"><p class="scr-sub" style="margin:-2px 0 14px">Enter the number you want on this account from now on.</p><div class="field"><label>New mobile number</label><input id="siRecNew" type="tel" inputmode="numeric" placeholder="(555) 555-5555" autocomplete="tel"></div><button class="primary" id="siRecNewGo">Text me a code</button><div class="su-note"><span>!</span><div>We’ll text this number to prove it’s yours. <b>Your old number stops working for sign-in</b> the moment this is done.</div></div></div>
@@ -453,11 +454,11 @@ var SCREENS={
   var siPhoneStep=$('siPhoneStep'), siOtpStep=$('siOtpStep'),
       siPersonalStep=$('siPersonalStep'), siEmailOtpStep=$('siEmailOtpStep');
   function suStep(el){
-    [siPhoneStep,siOtpStep,siPersonalStep,siEmailOtpStep,siRecEmailStep,siRecBlockedStep,siRecOtpStep,siRecIdStep,siRecNewStep,siRecNewOtpStep,siRecDoneStep].forEach(function(s){ if(s) s.style.display=(s===el)?'':'none'; });
+    [siPhoneStep,siOtpStep,siPersonalStep,siEmailOtpStep,siRecEmailStep,siRecBlockedStep,siRecVerifyStep,siRecOtpStep,siRecIdStep,siRecNewStep,siRecNewOtpStep,siRecDoneStep].forEach(function(s){ if(s) s.style.display=(s===el)?'':'none'; });
     var t=$('siTitle'), sub=document.querySelector('#siWelcome .scr-sub');
     var title='Welcome back', showSub=true;
     if(el===siPersonalStep){ title='Create your account'; showSub=false; }
-    else if(el===siEmailOtpStep){ title='Verify your email'; showSub=false; } else if(el===siRecEmailStep||el===siRecOtpStep||el===siRecIdStep){ title='Recover your account'; showSub=false; } else if(el===siRecBlockedStep){ title='We can\u2019t recover this one'; showSub=false; } else if(el===siRecNewStep||el===siRecNewOtpStep){ title='Your new number'; showSub=false; } else if(el===siRecDoneStep){ title='Number updated'; showSub=false; }
+    else if(el===siEmailOtpStep){ title='Verify your email'; showSub=false; } else if(el===siRecEmailStep||el===siRecOtpStep||el===siRecIdStep){ title='Recover your account'; showSub=false; } else if(el===siRecVerifyStep){ title='Verify this email'; showSub=false; } else if(el===siRecBlockedStep){ title='We can\u2019t recover this one'; showSub=false; } else if(el===siRecNewStep||el===siRecNewOtpStep){ title='Your new number'; showSub=false; } else if(el===siRecDoneStep){ title='Number updated'; showSub=false; }
     if(t) t.textContent=title;
     if(sub) sub.style.display=showSub?'':'none';
   }
@@ -518,26 +519,48 @@ var SCREENS={
      2. An account with no verified email is told so and stopped. That is the
         honest end of the owner's ruling; looping them back would be a lie.
 
-     ⚠️ Live-system caveat for the rebuild: `telephone` has NO unique index
-     (the model's unique:true is inert), 775 numbers already carry 1,552
-     accounts, and sign-in resolves an un-ordered findOne({where:{telephone}}).
-     So a real implementation must reject a new number that already resolves to
-     another account BEFORE writing it, or recovery silently shadows someone. */
+     ⚠️ Rebuild caveat, re-verified against origin/production 2026-08-18.
+     What is ALREADY handled: sign-in no longer picks an arbitrary row — it does
+     findAll + pickAccountForPhone() (helpers/accountResolution.js), sorted
+     deterministically with order-independence tests; and signup rejects a
+     duplicate phone (auth.js:164 → 422 'has already been taken').
+     What is NOT: there is no phone-CHANGE path on production at all, so this
+     feature introduces the first write to users.telephone and there is no guard
+     on an update to inherit. The column has no DB-level uniqueness (the model's
+     unique is Sequelize-level only) and 775 numbers already carried 1,552
+     accounts when last measured (2026-08-09, prod reader — not re-measured
+     here). So the change path must itself reject a new number that already
+     resolves to a live account, normalising on the last 10 digits: 36 of those
+     collisions are the same number stored in two formats. */
   var REC_VERIFIED_EMAIL = 'jamie@email.com';   // the demo account's verified address
+  var REC_UNVERIFIED_EMAIL = 'jamie.unverified@email.com'; // demo: an account that never verified
   function recGo(step){ suStep(step); }
   $('siLost').addEventListener('click', function(){ recGo(siRecEmailStep); $('siRecEmail').focus(); });
   $('siRecBack').addEventListener('click', function(){ recGo(siPhoneStep); });
   $('siRecBlockedBack').addEventListener('click', function(){ recGo(siPhoneStep); });
   $('siRecEmailGo').addEventListener('click', function(){
-    var v=($('siRecEmail').value||'').trim();
+    var v=($('siRecEmail').value||'').trim(), lv=v.toLowerCase();
     if(!v){ toast('Enter the email on your account'); return; }
-    /* Demo models the ruling: only a VERIFIED email can recover. */
-    if(v.toLowerCase()!==REC_VERIFIED_EMAIL){
+    /* THE RULE, and it is the whole security of this screen: we only ever send a
+       code to an address ALREADY ON THE ACCOUNT. Never to one typed here. If a
+       stranger could type their own address and verify it, recovery would be a
+       one-step account takeover needing nothing but the victim's name. So an
+       address we don't recognise is refused — we do not offer to "add" it. */
+    if(lv!==REC_VERIFIED_EMAIL && lv!==REC_UNVERIFIED_EMAIL){
       $('siRecBlockedTo').textContent=v; recGo(siRecBlockedStep); return;
     }
-    $('siRecEmailTo').textContent=v; recGo(siRecOtpStep); $('siRecOtp').focus();
+    $('siRecEmailTo').textContent=v;
+    if(lv===REC_UNVERIFIED_EMAIL){
+      /* On file but never verified. Owner ruling 2026-08-18: don't dead-end them
+         — this is the exact step they skipped at signup, so offer it here. It
+         costs no security: the code still goes to the address already on file. */
+      $('siRecVerifyTo').textContent=v; recGo(siRecVerifyStep); return;
+    }
+    recGo(siRecOtpStep); $('siRecOtp').focus();
   });
   $('siRecOtpBack').addEventListener('click', function(){ recGo(siRecEmailStep); });
+  $('siRecVerifyBack').addEventListener('click', function(){ recGo(siRecEmailStep); });
+  $('siRecVerifyGo').addEventListener('click', function(){ recGo(siRecOtpStep); $('siRecOtp').focus(); });
   $('siRecOtpGo').addEventListener('click', function(){
     if((($('siRecOtp').value)||'').replace(/\D/g,'').length!==6){ toast('Enter the 6-digit code'); return; }
     recGo(siRecIdStep); $('siRecDob').focus();
