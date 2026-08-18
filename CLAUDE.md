@@ -1360,7 +1360,7 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     missing key mis-brands rather than erroring — add a key for any new `data-rk`); Gopher ID
     consistent page vs modal per portal (Connect **738105** / Request **614072** / Go **820083**);
     full share→entry→submit→tracking round trip on all three; tab labels and added/pending column
-    sets match. **Deals has no refer engine by design** (Rewards = "Feature my business"); its
+    sets match. ~~**Deals has no refer engine by design** (Rewards = "Feature my business")~~ **⚠️ REVERSED by the owner 2026-08-18** — the Deals dashboard "should not have anything different than the other 3"; a Refer Gopher section (spec shape: headline platform-invite QR, ID once in the navy bar, gated sends, other-three card grid) is assigned to Website Updates. "Feature my business" stays alongside it; its
     `820083` is a deliberate worked example in a tooltip pointing merchants at their ID in the Go
     app — not a stray, don't "fix" it.
   - **Left as owner decisions, not silently changed:** Go's active-table header **"App Used"** vs
