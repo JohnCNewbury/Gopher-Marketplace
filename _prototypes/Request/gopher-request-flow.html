@@ -1207,12 +1207,11 @@ function renderStep2(){
         </span>
       </div>
       ${state.ageRestricted ? `
-        <div class="sub-field ar-banner">
-          <span class="ar-mark">${svgIco('warning')}</span>
-          <div><div class="sf-label">Safe-Guarding & Identity Verification Activated</div>
-          <div class="sf-value">Physical ID required during exchange · ${state.trustShield ? '$1.99 fee added · TrustShield −$1 off request fee' : '$1.99 fee added'}</div></div>
-        </div>
-        ${tsPromo()}
+        ${''/* The yellow "Safe-Guarding & Identity Verification Activated" banner was
+         removed 2026-08-18 (owner: "No need for it"). The information it carried is
+         not lost: the $1.99 age fee shows in the fee breakdown, ID-at-exchange is in
+         the toggle's own waiver tip, and the TrustShield line below still reflects
+         verification state. Don't rebuild it here. */}${tsPromo()}
         <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON (signed-in profile)':'TrustShield off'}</button>
       `:''}
       ${''/* Inline purchase-nudge banner retired 2026-08-18 (owner): superseded by the
@@ -2028,7 +2027,7 @@ function stepGate(){
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
-  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
+  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ts-promo',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
   // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop
