@@ -1830,6 +1830,17 @@ recover:{ html:`<div class="frame sand"><div class="rib">NEW</div>${SBAR}
        recovery path weaker than the primary becomes the account's real security.
        The NEW number is proven by SMS before it is written -- without that, recovery
        is a way to point a worker's account (and their payouts) at another phone.
+       ⛔ SURFACE CLASSIFICATION (standing rule, owner 2026-08-18 — see
+       gopher-dev-handoff/shared/SIGNIN-RECOVERY-SPEC.md): interactive demo recovery is
+       legitimate HERE because this prototype's sign-in is pure demo (no network calls
+       in this file; the persona is fictional). The WEB Go dashboard is the
+       counterexample: its sign-in is REAL, so it carries a GATED link only — a demo
+       flow shipped there for ~20 minutes and was ruled off ("Gated link is right,
+       don't ship the demo flow for prototype"). Port the gated pattern, never this
+       flow, to any surface with real auth. Production is server-driven: enter number →
+       server resolves the account → code to the email on file, masked — the client
+       never learns whether a typed address is on file (this demo's typed-email check
+       would be an enumeration oracle on a real surface).
        ⚠️ Rebuild caveat, re-verified against origin/production 2026-08-18.
        What is ALREADY handled: sign-in no longer picks an arbitrary row — it does
        findAll + pickAccountForPhone() (helpers/accountResolution.js), sorted

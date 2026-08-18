@@ -513,6 +513,22 @@ var SCREENS={
      support-mediated route and knowledge-only questions, because a recovery
      path weaker than the primary becomes the account's real security.
 
+     ⛔ SURFACE CLASSIFICATION (standing rule, owner 2026-08-18 — see
+     gopher-dev-handoff/shared/SIGNIN-RECOVERY-SPEC.md): this interactive flow is
+     legitimate HERE because this simulator's sign-in is PURE DEMO — no fetch/XHR
+     anywhere in the file, any 6 digits verify, the persona is fictional. On any
+     surface with REAL authentication, this exact pattern is a defect: client-side
+     answer-checking is fake success on a live auth path (the ~20-min gopher-go.html
+     incident, remediated 42e2434). There, recovery is server-driven or it is GATED
+     (visible link, Soon chip, honest interim). Do not port this flow to a real
+     surface — port the gated pattern.
+     Production shape (differs from this demo on purpose): on a sign-in screen nobody
+     is signed in, so the client can never know whose email/DOB to check — the user
+     enters their NUMBER, the SERVER resolves the account, and the code goes to the
+     email on file (shown masked). This demo's typed-email step would also be an
+     account-enumeration oracle on a real surface (confirming which addresses are on
+     file); the server-driven shape avoids asking at all.
+
      Two things here are load-bearing, not decoration:
      1. The NEW number is itself proven by SMS before it is written. Without
         that, recovery is a way to point someone's account at another phone.
