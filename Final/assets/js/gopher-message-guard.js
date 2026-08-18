@@ -32,12 +32,58 @@
 (function (global) {
   'use strict';
 
+  /* Where this file was loaded from. The module always sits at
+     <siteroot>/assets/js/gopher-message-guard.js, so the site root is two
+     levels up — true on GitHub Pages (a SUBDIRECTORY deploy, where a
+     root-absolute path would 404), on TigerTech, on Netlify, in the repo
+     (Final/assets/js -> Final/), and from the _prototypes tree, which loads
+     this file by a relative path of its own. Same runtime-resolution trick
+     messaging-precheck.md already documents for the srcdoc iframe.
+     Empty when the module is INLINED rather than <script src>'d — the
+     absolute fallback below covers that. */
+  var SELF = (function () {
+    try {
+      if (document.currentScript && document.currentScript.src) {
+        return document.currentScript.src;
+      }
+      var tags = document.getElementsByTagName('script');
+      for (var i = tags.length - 1; i >= 0; i--) {
+        if (/gopher-message-guard\.js/.test(tags[i].src || '')) return tags[i].src;
+      }
+    } catch (e) { /* fall through to the absolute default */ }
+    return '';
+  }());
+
+  function fromSiteRoot(rel, fallback) {
+    if (SELF) {
+      try { return new URL('../../' + rel, SELF).href; } catch (e) { /* noop */ }
+    }
+    return fallback;
+  }
+
   /* ---- CONFIG (edit freely) -------------------------------------- */
   var CONFIG = {
     policyUrl: 'gopher-terms.html',   // relative + case-exact (GitHub Pages/Linux)
-    // "In-App Messaging Terms" link on the transaction-protection alert — points directly
-    // at the Terms of Service (absolute so it works from the site AND the _prototypes tree).
-    termsUrl: 'https://gophergo.io/gopher-terms-of-service.html',
+    /* "In-App Messaging Terms" link on the transaction-protection alert.
+       Deep-links to ToS section 20, "In-App Communication & Accessibility"
+       (owner 2026-08-18) — someone tapping this wants the rule that just
+       fired, not the top of a 30-section contract. The anchor is the
+       <section id="communication"> that wraps that heading; if the ToS is
+       restructured, keep that id.
+       Resolved at runtime rather than hardcoded. The old absolute value
+       (https://gophergo.io/gopher-terms-of-service.html) is DEAD: gophergo.io
+       is the current WordPress marketing site and 301s that path to its
+       homepage, so the link went nowhere and the anchor was discarded with
+       the redirect. Do not point this at gophergo.io again until the ToS
+       actually ships on that host.
+       The fallback is the GitHub Pages URL (owner, 2026-08-18) — the host
+       where the ToS really lives today. It only fires when SELF is empty,
+       i.e. when this module is INLINED instead of <script src>'d, which is
+       the case in the Request srcdoc-iframe prototype. */
+    termsUrl: fromSiteRoot(
+      'gopher-terms-of-service.html#communication',
+      'https://johncnewbury.github.io/Gopher-Marketplace/gopher-terms-of-service.html#communication'
+    ),
     learnMoreUrl: 'gopher-faqs.html#staying-in-app',
     // Escalation is PER USER (across all threads). 1st hit -> level 1,
     // 2nd -> level 2, 3rd and beyond -> level 3 (blocked). Tune to taste.
@@ -220,9 +266,58 @@
   /* ---- detection -------------------------------------------------- *
      Returns a verdict object whose shape matches /messages/precheck:
        { verdict:'allow'|'warn'|'block', policy, level, matched }      */
+  /* ---- spelled-out digits (owner, 2026-08-18) --------------------
+     "five five five one one one two seven eight five" was sailing through:
+     every pattern here is a regex tested against the raw string, and a
+     spelled-out number contains no digits to match. The owner flagged it as
+     a COMMON practice, and messaging-precheck.md already listed it as a
+     known limitation ("misses obfuscation like v3nmo or spelled-out
+     digits").
+
+     Rather than add a second, weaker phone pattern, normalise a COPY of the
+     message and re-test the existing tuned patterns against it. Nothing is
+     rewritten for the user; the original text is what sends.
+
+     The safety valve is the run length: only runs of THREE OR MORE adjacent
+     number-words collapse. An isolated word is left alone, so "I need one
+     more box" never becomes "I need 1 more box" and can never drift into a
+     phone match. A short run like "one two three" does collapse to "123",
+     which is still far short of the 7-digit body the phone pattern needs.
+
+     Mixed forms work for free, because collapsing happens in place:
+     "eight oh five 624 1724" -> "805 624 1724", which the phone regex
+     already knows how to read.
+
+     NOT covered, and deliberately so: homophones ("won too tree"), letter
+     substitution ("v3nmo"), and non-English number words. Those need the
+     real classifier behind POST /messages/precheck, not more regex. */
+  var NUM_WORD = {
+    zero: '0', oh: '0', one: '1', two: '2', three: '3', four: '4',
+    five: '5', six: '6', seven: '7', eight: '8', nine: '9', niner: '9'
+  };
+  var NUM_TOKEN = '(?:zero|oh|one|two|three|four|five|six|seven|eight|nine|niner)';
+  var NUM_RUN = new RegExp(
+    '\\b' + NUM_TOKEN + '(?:[\\s.,\\-]+' + NUM_TOKEN + '){2,}\\b', 'gi'
+  );
+
+  function spellOutToDigits(text) {
+    if (!text) return '';
+    return String(text).replace(NUM_RUN, function (run) {
+      var out = '';
+      var parts = run.split(/[\s.,\-]+/);
+      for (var i = 0; i < parts.length; i++) {
+        out += NUM_WORD[parts[i].toLowerCase()] || '';
+      }
+      return out;
+    });
+  }
+
   function check(text, threadId, opts) {
     opts = opts || {};
     var hits = [];
+    /* Tested in addition to the raw text, never instead of it. */
+    var probe = spellOutToDigits(text);
+    var useProbe = probe !== String(text || '');
     for (var policy in PATTERNS) {
       // Connected relaxation (owner 2026-07-16, re-confirmed with precise scope
       // 2026-07-19): once a worker has ACCEPTED the thread's job (assigned,
@@ -237,7 +332,9 @@
       if (opts.connected && policy === 'contact') continue;
       var list = PATTERNS[policy];
       for (var i = 0; i < list.length; i++) {
-        if (list[i].test(text)) { hits.push(policy); break; }
+        if (list[i].test(text) || (useProbe && list[i].test(probe))) {
+          hits.push(policy); break;
+        }
       }
     }
     if (!hits.length) return { verdict: 'allow', policy: null, level: 0, matched: [] };
