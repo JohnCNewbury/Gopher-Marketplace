@@ -6965,7 +6965,20 @@ window.showNoAccount = function(){
          path would 404 there. */
       function dealsReferUrl(){
         var id = window.GoRefer && GoRefer.code();
-        return id ? 'gopher-deals.html?ref=' + encodeURIComponent(id) : null;
+        if(!id) return null;
+        /* ABSOLUTE, derived at runtime — corrected 2026-08-18 after Website
+           Updates' catch. The original returned a relative URL, which is right
+           for NAVIGATION between sibling pages (root-absolute 404s on the
+           Pages subdirectory) and wrong for THIS, a link the worker copies and
+           texts to a merchant: "gopher-deals.html?ref=141808" in an SMS is not
+           clickable. Two link kinds, two rules — navigate relative, share
+           absolute. Derived from location rather than hardcoding a host so the
+           copied link works on whichever host served it (Pages, TigerTech,
+           localhost) and becomes the production domain automatically at the
+           rebuild — a hardcoded gophergo.io would today hand merchants a URL
+           that lands on the old WordPress site, not this page. */
+        try { return new URL('gopher-deals.html?ref=' + encodeURIComponent(id), location.href).href; }
+        catch(e){ return 'gopher-deals.html?ref=' + encodeURIComponent(id); }
       }
       /* The headline's title and copy are painted from REFER_COPY.self rather than
          written into the markup twice. That key is no longer used by any tile — the
