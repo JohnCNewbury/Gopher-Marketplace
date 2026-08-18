@@ -13,6 +13,46 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > **email**). Escalation is **per user**; admin email + account flag fire at
 > **level ≥ 2**. All previously-open developer questions are answered below.
 
+> **2026-08-18 update (owner) — the MOBILE apps deliberately diverge; do NOT "fix" them.**
+> The native apps (`gopher-mobile-gopher-capacitorjs`, `gopher-mobile-requester-capacitorjs`)
+> carry a **different, superseded** moderation UI, and the owner has ruled it **stays** until
+> the correct implementation lands **at the launch of Connect, Request web, and the reskins**.
+>
+> **What is in the apps** (merged 2026-08-18, `production` on both, never in a store build):
+> a modal titled *"Keep it in the app"* with a single *"Got it"* button, fired by a
+> `messageFlagged` socket event that the backend emits to **both parties**, **after** the
+> message row is written and delivered.
+>
+> **Why it is wrong, recorded so nobody re-derives it:** this doc's approved copy says
+> *"You can edit your message to avoid it being sent as-is, which is currently flagged."*
+> On that surface there is no edit, the message is already sent, and "currently flagged" is
+> already final — and because the backend notifies both parties, the RECIPIENT would read
+> "you can edit your message" about a message they did not write. **The approved copy cannot
+> be pasted into that modal.** Two MRs that tried to polish the superseded wording
+> (`gopher-mobile-gopher-capacitorjs!235`, `gopher-mobile-requester-capacitorjs!225`) were
+> **closed** for this reason, not merged and not retargeted.
+>
+> **Root cause:** the two halves were built to different models — web/prototypes run the
+> client guard **pre-send** (decision point: Edit / Send as-is, recipient gets a bubble note),
+> while the mobile client was built against the backend's **post-write** scoring (notice after
+> delivery, modal to both parties). Same feature, two products.
+>
+> **What is correct and stays:** the backend flag row and the `admin@` email match this spec.
+> Only the notification UX diverges.
+>
+> **What the correct implementation needs when it is built:** the pre-send guard in both apps,
+> the Edit / Send-as-is pair, and the recipient note rendered from a **persisted `flagged`
+> field on the message row** — which this doc already specifies ("the send endpoint persists
+> `flagged` on the message row") and which has never been built. `orders_faqs_flags` keys a
+> flag to an ORDER (`order_id`/`from_user_id`/`to_user_id`/`description`), not to a message,
+> so a per-message stamp needs that schema change first.
+>
+> **Also parked (owner, same day):** storing the attempted message TEXT in the flag log.
+> Today's row records the verdict only — score, threshold, categories, combination, action,
+> order state — and **no content**, which is a deliberate privacy position. The owner asked
+> to hold it and will revisit. Logging abandoned attempts (the "sneaky editor" case) requires
+> both that decision and a pre-send report from the client.
+
 > **2026-07-19 update (owner):** the **conduct** family's warn levels 1–2 now
 > use the **same Edit message / Send as-is pair** as the off-platform alert —
 > the old single-button acknowledge ("Got It" → send unflagged) is retired.
