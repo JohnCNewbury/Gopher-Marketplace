@@ -13,15 +13,21 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > **email**). Escalation is **per user**; admin email + account flag fire at
 > **level ≥ 2**. All previously-open developer questions are answered below.
 
-> **2026-08-18 update (owner) — the MOBILE apps deliberately diverge; do NOT "fix" them.**
-> The native apps (`gopher-mobile-gopher-capacitorjs`, `gopher-mobile-requester-capacitorjs`)
-> carry a **different, superseded** moderation UI, and the owner has ruled it **stays** until
-> the correct implementation lands **at the launch of Connect, Request web, and the reskins**.
+> **2026-08-18 update (owner) — the mobile flag pop-up was SCRAPPED, not shipped.**
+> The correct implementation lands **at the launch of Connect, Request web, and the reskins**.
+> Until then the native apps have **no in-app moderation UI at all**, deliberately.
 >
-> **What is in the apps** (merged 2026-08-18, `production` on both, never in a store build):
-> a modal titled *"Keep it in the app"* with a single *"Got it"* button, fired by a
-> `messageFlagged` socket event that the backend emits to **both parties**, **after** the
-> message row is written and delivered.
+> **What was removed** (merged to `production` on both mobile repos that morning, **never in a
+> store build**): a modal titled *"Keep it in the app"* with a single *"Got it"* button, fired
+> by a `messageFlagged` socket event that the backend emits to **both parties**, **after** the
+> message row is written and delivered. Reverted by
+> `gopher-mobile-gopher-capacitorjs!237` and `gopher-mobile-requester-capacitorjs!226`.
+>
+> **The owner first ruled "leave it", then reconsidered — and the second call was right.**
+> The asymmetry that decided it: while it has never reached a user, removing it costs nothing;
+> once a build ships it, removal becomes a user-visible regression needing its own release.
+> Scrapping was also cheaper than either alternative — the whole feature was 1 file per app,
+> 1 listener, 2 cleanups, 2 state refs, and nothing else in either codebase read it.
 >
 > **Why it is wrong, recorded so nobody re-derives it:** this doc's approved copy says
 > *"You can edit your message to avoid it being sent as-is, which is currently flagged."*
