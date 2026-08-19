@@ -1716,8 +1716,10 @@
   .sg-pane[hidden] { display:none; }
 
   /* OTP code modal */
-  .otp-modal-overlay { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(0,12,40,.55); backdrop-filter:blur(3px); }
-  .otp-modal-overlay[hidden] { display:none; }
+  /* G40-308: OTP overlay on the canonical base. Modifier keeps its real deltas —
+   the portal's own stacking level (z:120; this page stacks low, do NOT lift it to the
+   base 9500) and the blur. Variant scrim rgba(0,12,40,.55) KEPT — owner rule 2026-08-19: no UI change without side-by-side approval; unification DECLINED by owner 2026-08-19 from a side-by-side — do not re-propose. */
+.gc-modal-overlay.gc-mo--otp { z-index:120; background:rgba(0,12,40,.55); backdrop-filter:blur(3px); }
   .otp-modal { position:relative; width:100%; max-width:380px; background:#fff; border-radius:20px; padding:28px 26px; box-shadow:0 30px 80px rgba(0,12,40,.5); text-align:center; }
   .otp-close, .signin-close { position:absolute; top:14px; right:16px; border:none; background:none; font-size:24px; line-height:1; color:#b6bcc9; cursor:pointer; }
   .otp-close:hover, .signin-close:hover { color:var(--navy); }
@@ -5250,7 +5252,7 @@
 </div>
 
 <!-- OTP code modal (shared by all flows) -->
-<div class="otp-modal-overlay" id="otpOverlay" hidden>
+<div class="gc-modal-overlay gc-mo--otp" id="otpOverlay" hidden>
   <div class="otp-modal" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
     <button type="button" class="otp-close" id="otpClose" aria-label="Close">×</button>
     <h4 id="otpTitle">Enter your code</h4>

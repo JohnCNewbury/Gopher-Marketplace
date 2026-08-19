@@ -6648,12 +6648,9 @@
   .portal-hint code { background:#f1f3f8; padding:1px 6px; border-radius:5px; font-weight:700; color:var(--navy); }
 
   /* OTP modal */
-  .otp-modal-overlay {
-    position:fixed; inset:0; z-index:2000;
-    background:rgba(13,26,62,0.55);
-    display:flex; align-items:center; justify-content:center; padding:24px;
-  }
-  .otp-modal-overlay[hidden] { display:none; }
+  /* G40-308: OTP overlay composes the canonical base (scrim/padding identical);
+   the modifier carries only its stacking level — same pattern as Connect's .gc-mo--otp. */
+.gr-modal-overlay.gr-mo--otp { z-index:2000; }
   .otp-modal { background:white; border-radius:18px; padding:30px 28px 24px; width:100%; max-width:380px; position:relative; box-shadow:0 30px 80px rgba(0,0,0,0.35); }
   .otp-close { position:absolute; top:14px; right:16px; background:none; border:none; font-size:24px; line-height:1; color:var(--muted); cursor:pointer; }
   .otp-close:hover { color:var(--navy); }
@@ -7491,9 +7488,17 @@
   .adj-fine { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.4; }
 
   /* ─── Cost-adjustment breakdown modal (canonical fee vocabulary; reusable shell) ─── */
-  .ca-overlay { position:fixed; inset:0; z-index:9500; background:rgba(13,26,62,0.55); display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; }
-  .ca-overlay[hidden] { display:none; }
-  .ca-modal { background:#fff; border-radius:18px; width:430px; max-width:100%; box-shadow:0 30px 80px rgba(0,0,0,0.35); overflow:hidden; }
+  /* G40-308 migration (2026-08-19): the cost-adjustment/dispute/recovery family
+   (formerly .gr-mo--tall/.gr-m--flush (formerly .gr-mo--tall/.gr-m--flush)) now composes the canonical .gr-modal-overlay
+   base + a --tall modifier carrying its ONLY real deltas: top-aligned, padded,
+   scrollable — for cards taller than the viewport. Scrim/z/position were already
+   canonical (--scrim-a). The base's [hidden] rule covers hiding. Zero visual change,
+   verified by computed-style diff. */
+    .gr-modal-overlay.gr-mo--tall { align-items:flex-start; padding:40px 16px; overflow:auto; }
+  .gr-modal.gr-m--flush { width:430px; max-width:100%; padding:0; text-align:left; overflow:hidden; }
+    /* --flush deltas vs the base card: fixed 430px (base max-width:380px would cap it,
+       hence max-width:100%), zero padding (sections pad themselves), left-aligned
+       (base centers; this card never inherited centering), clipped corners. */
   .ca-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e7eaf2; }
   .ca-head h3 { margin:0; font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); }
   .ca-x { border:none; background:var(--gray); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; color:var(--muted); }
@@ -7523,7 +7528,7 @@
 
   /* ══════════════════════════════════════════════════════════════════════════
      Auto-Repost recovery UX (Gopher-cancels → Requestor recovery).
-     FRONT-END PROTOTYPE ONLY. Reuses the .ca-overlay/.ca-modal/.rate-* shells
+     FRONT-END PROTOTYPE ONLY. Reuses the .gr-mo--tall/.gr-m--flush (formerly .gr-mo--tall/.gr-m--flush)/.rate-* shells
      above so the recovery modal + cancelling-Gopher rating look native. Semantic
      g40-* classNames per the ticket (no Figma token binding yet). Nothing here is
      wired to real payments/persistence/matching — see the deferred-backend seams
@@ -9025,9 +9030,9 @@
   .pay-card .pc-link:hover { color:var(--navy); }
   .pay-card .pc-remove { color:var(--terracotta); }
   .pay-empty { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); padding:10px 0; }
-  .pay-modal-ov { position:fixed; inset:0; background:rgba(20,26,42,0.55); z-index:9000;
-    display:flex; align-items:flex-start; justify-content:center; padding:34px 16px; overflow-y:auto; }
-  .pay-modal-ov[hidden] { display:none; }
+  /* G40-308: payment-methods overlay on the canonical base. Modifier keeps its real
+   deltas (top-aligned, its padding, scrollable, its stacking level). Variant scrim rgba(20,26,42,.55) KEPT — owner rule 2026-08-19: no UI change without side-by-side approval; unification DECLINED by owner 2026-08-19 from a side-by-side — do not re-propose. */
+.gr-modal-overlay.gr-mo--pay { z-index:9000; background:rgba(20,26,42,0.55); align-items:flex-start; padding:34px 16px; overflow-y:auto; }
   .pay-modal-card { background:#fff; border-radius:20px; padding:24px 22px 22px; width:100%; max-width:430px;
     position:relative; box-shadow:0 24px 60px rgba(20,26,42,0.3); }
   .pay-modal-card h4 { font-family:'Nunito',sans-serif; font-weight:800; font-size:18px; color:var(--navy); margin:0 0 16px; }
@@ -10974,7 +10979,7 @@
                  : isAndroid ? 'Google Pay is available on this device.'
                  : 'Apple Pay shows on Apple devices; Google Pay on Android/Chrome.';
       const ov = document.createElement('div');
-      ov.className = 'pay-modal-ov'; ov.id = 'payModalOv'; ov.hidden = true;
+      ov.className = 'gr-modal-overlay gr-mo--pay'; ov.id = 'payModalOv'; ov.hidden = true;
       ov.innerHTML =
         '<div class="pay-modal-card" role="dialog" aria-modal="true" aria-labelledby="payModalTitle">'
         +   '<button type="button" class="gr-modal-close" id="payModalClose" aria-label="Close">\u00D7</button>'
@@ -17660,7 +17665,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 </div>
 
 <!-- OTP MODAL (phone for returning, email for sign-up) -->
-<div class="otp-modal-overlay" id="rqOtpOverlay" hidden>
+<div class="gr-modal-overlay gr-mo--otp" id="rqOtpOverlay" hidden>
   <div class="otp-modal" role="dialog" aria-modal="true" aria-labelledby="rqOtpTitle">
     <button type="button" class="otp-close" id="rqOtpClose" aria-label="Close">×</button>
     <h4 id="rqOtpTitle">Enter your code</h4>
@@ -21716,14 +21721,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         }
 
         // 2a-counter) Counter-offer Details modal — close via ✕ (data-counter-close)
-        //     or backdrop. Each counter overlay is its OWN .ca-overlay.counter-overlay,
+        //     or backdrop. Each counter overlay is its OWN .gr-mo--tall.counter-overlay,
         //     so close the one ACTUALLY clicked (not the cost-adjustment caOverlay).
         //     This sits AHEAD of the cost-adjustment close branch below, whose generic
-        //     .ca-overlay backdrop test would otherwise swallow counter backdrop clicks
-        //     (counter overlays carry .ca-overlay too). Accept/Deny inside the modal
+        //     .gr-mo--tall backdrop test would otherwise swallow counter backdrop clicks
+        //     (counter overlays carry .gr-mo--tall too). Accept/Deny inside the modal
         //     carry data-coact and resolve via the counter-offer branch above.
         const ccClose = target.closest('[data-counter-close]');
-        if(ccClose){ const ov = ccClose.closest('.ca-overlay'); if(ov) ov.hidden = true; return; }
+        if(ccClose){ const ov = ccClose.closest('.gr-mo--tall'); if(ov) ov.hidden = true; return; }
         if(target.classList.contains('counter-overlay')){ target.hidden = true; return; }
 
         // 2b) Cost-adjustment — open/close the breakdown modal, or resolve approve/
@@ -21734,7 +21739,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           const ov = document.getElementById('caOverlay'); if(ov) ov.hidden = false;
           return;
         }
-        if(target.closest('[data-adj-close]') || target.classList.contains('ca-overlay')){
+        if(target.closest('[data-adj-close]') || target.classList.contains('gr-mo--tall')){
           const ov = document.getElementById('caOverlay'); if(ov) ov.hidden = true;
           return;
         }
@@ -21929,10 +21934,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Full breakdown modal — one Original/Adjusted/Difference group PER canonical fee
   // line the recap shows. Difference = adjusted − original; positive → +$X green,
   // negative → −$X red (pure sign, no semantic judgment). Discount lines (Promo,
-  // TrustShield) display negative. The .ca-modal shell is built REUSABLY so Port
+  // TrustShield) display negative. The .gr-m--flush shell is built REUSABLY so Port
   // Commit 6 (counter-offers) can reuse it, exactly as Connect did.
   // Completion-details + star-conditional rating + unable modals (mirrors Connect;
-  // GA-285; INV-RATING Jul 12 2026). Reuse the .ca-modal
+  // GA-285; INV-RATING Jul 12 2026). Reuse the .gr-m--flush
   // shell. Details pics section OMITTED when completionPhotos empty. Rating is
   // DISMISSIBLE (✕ + backdrop); the modals stay in the DOM until rated so the card's
   // "Rate now" CTA can reopen them; options filled live by the delegated handler
@@ -21946,8 +21951,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="ca-eyebrow">View pic(s) of completed request</div>
             <div class="cmp-pics">${photos.map(p => `<div class="cmp-pic"><img src="${p}" alt="Completion photo"></div>`).join('')}</div>` : '';
     const detailsModal = `
-      <div class="ca-overlay" id="completionDetailsOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Completed request details">
+      <div class="gr-modal-overlay gr-mo--tall" id="completionDetailsOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Completed request details">
           <div class="ca-head"><h3>Completed delivery</h3><button class="ca-x" data-completion-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="cmp-detail-rows">
@@ -21959,8 +21964,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </div>`;
     const ratingModal = `
-      <div class="ca-overlay" id="ratingOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
+      <div class="gr-modal-overlay gr-mo--tall" id="ratingOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
           <div class="ca-head"><h3>Rate your Gopher</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
@@ -21972,8 +21977,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </div>`;
     const unableModal = `
-      <div class="ca-overlay" id="unableOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Dispute escalated">
+      <div class="gr-modal-overlay gr-mo--tall" id="unableOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Dispute escalated">
           <div class="ca-head"><h3>Unable to resolve</h3><button class="ca-x" data-unable-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <p class="cmp-modal-copy">We're sorry things didn't go as originally planned. Gopher, Inc has been notified of the unresolved dispute and will be in touch timely. Please make sure you have saved any/all correspondence and/or pictures related to the disputed request. While your dispute is being investigated, you can continue to use the Gopher. If you need further assistance, please contact Gopher Support.</p>
@@ -22076,8 +22081,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     lines += group('Total', fmt(snap.total), fmt(A.gmvTotal), diff(snap.total, A.gmvTotal), true);
 
     return `
-      <div class="ca-overlay" id="caOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Cost adjustment breakdown">
+      <div class="gr-modal-overlay gr-mo--tall" id="caOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Cost adjustment breakdown">
           <div class="ca-head"><h3>Cost adjustment</h3><button class="ca-x" data-adj-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="ca-eyebrow">Adjustment details</div>
@@ -22128,7 +22133,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // state the Hire button produces — then re-render and fire the start-encourage modal.
   // No fee math here; the counter object is pre-footed mock data. In-memory only.
   // Counter-offer Details modal — a VISUAL REPLICA of the cost-adjustment breakdown
-  // modal above (same .ca-modal shell/classes, same canonical fee-line layout + sign-
+  // modal above (same .gr-m--flush shell/classes, same canonical fee-line layout + sign-
   // based coloring). Differences: title "Counter-offer", columns Original/Counter, the
   // data source (THIS counter's stored footed fee object vs the request's ORIGINAL
   // reviewSnapshot.fee — no recompute), and the comments rule (rendered only when this
@@ -22192,8 +22197,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             </div>` : '';
 
     return `
-      <div class="ca-overlay counter-overlay" id="counterOverlay-${ci}" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Counter-offer breakdown">
+      <div class="gr-modal-overlay gr-mo--tall counter-overlay" id="counterOverlay-${ci}" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Counter-offer breakdown">
           <div class="ca-head"><h3>Counter-offer</h3><button class="ca-x" data-counter-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="ca-eyebrow">Counter-offer details</div>
@@ -24955,7 +24960,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // 3-option modal (Assign New Gopher / Edit request / Cancel request), plus a
   // 15-minute no-action auto-cancel. This module owns ONLY the clickable UI. It
   // reuses existing primitives: DASH_DATA / renderActiveRequests (dashboard),
-  // the .ca-overlay/.ca-modal shell, the rating overlay look (.rate-*), and the
+  // the .gr-mo--tall/.gr-m--flush (formerly .gr-mo--tall/.gr-m--flush) shell, the rating overlay look (.rate-*), and the
   // "clone terms → new request" idea behind Request-Again FAST.
   //
   // DELIBERATELY NOT BUILT HERE (deferred to the human-dev backend track; each
@@ -25039,8 +25044,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     //    into <body>. Kept out of the dashboard container so the app's delegated
     //    click handlers (data-star / data-rate-submit) never fire on them.
     const modalHTML = `
-      <div class="ca-overlay" id="g40RecoveryOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40RecoveryHead">
+      <div class="gr-modal-overlay gr-mo--tall" id="g40RecoveryOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-labelledby="g40RecoveryHead">
           <div class="ca-head"><h3 id="g40RecoveryHead">Your Gopher cancelled</h3>
             <button class="ca-x" id="g40RecoveryClose" aria-label="Close">✕</button></div>
           <div class="ca-body">
@@ -25074,8 +25079,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </div>
 
-      <div class="ca-overlay" id="g40EditOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40EditHead">
+      <div class="gr-modal-overlay gr-mo--tall" id="g40EditOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-labelledby="g40EditHead">
           <div class="ca-head"><h3 id="g40EditHead">Edit &amp; repost request</h3>
             <button class="ca-x" id="g40EditClose" aria-label="Close">✕</button></div>
           <div class="ca-body">
@@ -25114,13 +25119,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       </div>
 
-      <!-- Cancelling-Gopher rating (AC4). Reuses the .ca-modal shell + .rate-*
+      <!-- Cancelling-Gopher rating (AC4). Reuses the .gr-m--flush shell + .rate-*
            classes so it matches the app's "Rate your Gopher" overlay, but is a
            distinct instance (its own data-attrs) so it never collides with the
            completion flow's rating overlay / resolveCompletion (which would mark
            the order "Completed"; here we mark it CLOSED). -->
-      <div class="ca-overlay" id="g40RatingOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate the Gopher who cancelled">
+      <div class="gr-modal-overlay gr-mo--tall" id="g40RatingOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Rate the Gopher who cancelled">
           <div class="ca-head"><h3>Rate your Gopher</h3></div>
           <div class="ca-body">
             <div class="rate-worker"><span id="g40RatePhoto"></span><div class="rate-name" id="g40RateName">Please rate your Gopher</div></div>

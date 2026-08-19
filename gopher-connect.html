@@ -388,7 +388,8 @@
   }
 
   /* ─── Sign-in modal (centered overlay) ─── */
-  .gc-modal-overlay.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
+  .gc-modal-overlay/* Variant scrim rgba(13,21,52,.55) KEPT — owner rule 2026-08-19: no UI change without a side-by-side approval first. Canonical-scrim unification was DECLINED by the owner 2026-08-19 (side-by-side shown; "keep current look") — do not re-propose. */
+.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
   .gc-modal-overlay.gc-mo--signin[hidden] { display:none; }
   @keyframes signinFadeIn {
     from { opacity:0; }
@@ -5272,9 +5273,17 @@
   .adj-fine { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.4; }
 
   /* ─── Cost-adjustment breakdown modal (canonical fee vocabulary) ─── */
-  .ca-overlay { position:fixed; inset:0; z-index:9500; background:rgba(13,26,62,0.55); display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; }
-  .ca-overlay[hidden] { display:none; }
-  .ca-modal { background:#fff; border-radius:18px; width:430px; max-width:100%; box-shadow:0 30px 80px rgba(0,0,0,0.35); overflow:hidden; }
+  /* G40-308 migration (2026-08-19): the cost-adjustment/dispute/recovery family
+   (formerly .gc-mo--tall/.gc-m--flush (formerly .gc-mo--tall/.gc-m--flush)) now composes the canonical .gc-modal-overlay
+   base + a --tall modifier carrying its ONLY real deltas: top-aligned, padded,
+   scrollable — for cards taller than the viewport. Scrim/z/position were already
+   canonical (--scrim-a). The base's [hidden] rule covers hiding. Zero visual change,
+   verified by computed-style diff. */
+    .gc-modal-overlay.gc-mo--tall { align-items:flex-start; padding:40px 16px; overflow:auto; }
+  .gc-modal.gc-m--flush { width:430px; max-width:100%; padding:0; text-align:left; overflow:hidden; }
+    /* --flush deltas vs the base card: fixed 430px (base max-width:380px would cap it,
+       hence max-width:100%), zero padding (sections pad themselves), left-aligned
+       (base centers; this card never inherited centering), clipped corners. */
   .ca-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e7eaf2; }
   .ca-head h3 { margin:0; font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); }
   .ca-x { border:none; background:var(--gray); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; color:var(--muted); }
@@ -5305,7 +5314,7 @@
   /* ══════════════════════════════════════════════════════════════════════════
      Auto-Repost recovery UX (Gopher-cancels → Requestor recovery).
      FRONT-END PROTOTYPE ONLY. Ported from Final/gopher-request.html (source of
-     truth) to Connect, reusing Connect's own .ca-overlay/.ca-modal/.rate-* shells
+     truth) to Connect, reusing Connect's own .gc-mo--tall/.gc-m--flush (formerly .gc-mo--tall/.gc-m--flush)/.rate-* shells
      so the recovery modal + cancelling-Gopher rating look native. Semantic g40-*
      classNames. Nothing wired to real payments/persistence/matching — see the
      "BACKEND SEAM" notes in the JS module.
@@ -16502,7 +16511,7 @@ const PAY_BADGES = {
     // Counter-offer Details modal — close via ✕ or backdrop. (Accept/Deny inside the
     // modal carry data-coact and resolve via the handler above, which re-renders.)
     document.querySelectorAll('#reqDetailBody [data-counter-close]').forEach(b => {
-      b.addEventListener('click', () => { const ov = b.closest('.ca-overlay'); if(ov) ov.hidden = true; });
+      b.addEventListener('click', () => { const ov = b.closest('.gc-mo--tall'); if(ov) ov.hidden = true; });
     });
     document.querySelectorAll('#reqDetailBody .counter-overlay').forEach(ov => {
       ov.addEventListener('click', (e) => { if(e.target === ov) ov.hidden = true; });
@@ -16849,7 +16858,7 @@ const PAY_BADGES = {
   // Difference = adjusted − original; positive → +$X green, negative → −$X red (pure
   // sign, no semantic judgment). Discount lines (Promo, TrustShield) display negative.
   // Completion-details + star-conditional rating modals (requestor-
-  // facing; INV-RATING Jul 12 2026). Both reuse the .ca-modal shell.
+  // facing; INV-RATING Jul 12 2026). Both reuse the .gc-m--flush shell.
   // Details: request recap + the worker's completion pics — the pics section is
   // OMITTED when the worker skipped photos (completionPhotos empty). Rating: 5-star
   // input, DISMISSIBLE (✕ + backdrop); the modals stay in the DOM until rated so the
@@ -16864,8 +16873,8 @@ const PAY_BADGES = {
             <div class="ca-eyebrow">View pic(s) of completed request</div>
             <div class="cmp-pics">${photos.map(p => `<div class="cmp-pic"><img src="${p}" alt="Completion photo"></div>`).join('')}</div>` : '';
     const detailsModal = `
-      <div class="ca-overlay" id="completionDetailsOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Completed request details">
+      <div class="gc-modal-overlay gc-mo--tall" id="completionDetailsOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Completed request details">
           <div class="ca-head"><h3>Completed delivery</h3><button class="ca-x" data-completion-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="cmp-detail-rows">
@@ -16878,8 +16887,8 @@ const PAY_BADGES = {
       </div>`;
     // DISMISSIBLE (✕ + backdrop) — the card's pulsing "Rate now" CTA persists until rated.
     const ratingModal = `
-      <div class="ca-overlay" id="ratingOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
+      <div class="gc-modal-overlay gc-mo--tall" id="ratingOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
           <div class="ca-head"><h3>Rate your Gopher</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
@@ -16893,8 +16902,8 @@ const PAY_BADGES = {
     // Unable-To-Resolve outcome modal (Dispute Process Update). Account stays active
     // ("you can continue to use the Gopher"); the matter goes to Gopher, Inc.
     const unableModal = `
-      <div class="ca-overlay" id="unableOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Dispute escalated">
+      <div class="gc-modal-overlay gc-mo--tall" id="unableOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Dispute escalated">
           <div class="ca-head"><h3>Unable to resolve</h3><button class="ca-x" data-unable-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <p class="cmp-modal-copy">We're sorry things didn't go as originally planned. Gopher, Inc has been notified of the unresolved dispute and will be in touch timely. Please make sure you have saved any/all correspondence and/or pictures related to the disputed request. While your dispute is being investigated, you can continue to use the Gopher. If you need further assistance, please contact Gopher Support.</p>
@@ -16979,8 +16988,8 @@ const PAY_BADGES = {
     lines += group('Total', fmt(snap.total), fmt(A.gmvTotal), diff(snap.total, A.gmvTotal), true);
 
     return `
-      <div class="ca-overlay" id="caOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Cost adjustment breakdown">
+      <div class="gc-modal-overlay gc-mo--tall" id="caOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Cost adjustment breakdown">
           <div class="ca-head"><h3>Cost adjustment</h3><button class="ca-x" data-adj-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="ca-eyebrow">Adjustment details</div>
@@ -17000,7 +17009,7 @@ const PAY_BADGES = {
   }
 
   // Counter-offer Details modal — a VISUAL REPLICA of the cost-adjustment breakdown
-  // modal above (same .ca-modal shell/classes, same canonical fee-line layout + sign-
+  // modal above (same .gc-m--flush shell/classes, same canonical fee-line layout + sign-
   // based coloring). Differences: title "Counter-offer", columns Original/Counter, the
   // data source (THIS counter's stored footed fee object vs the request's ORIGINAL
   // reviewSnapshot.fee — no recompute), and the comments rule (rendered only when this
@@ -17062,8 +17071,8 @@ const PAY_BADGES = {
             </div>` : '';
 
     return `
-      <div class="ca-overlay counter-overlay" id="counterOverlay-${ci}" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Counter-offer breakdown">
+      <div class="gc-modal-overlay gc-mo--tall counter-overlay" id="counterOverlay-${ci}" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Counter-offer breakdown">
           <div class="ca-head"><h3>Counter-offer</h3><button class="ca-x" data-counter-close aria-label="Close">✕</button></div>
           <div class="ca-body">
             <div class="ca-eyebrow">Counter-offer details</div>
@@ -22495,7 +22504,7 @@ const PAY_BADGES = {
   // Gopher cancels an active request the Requestor gets a banner + a 3-option
   // modal (Assign New Gopher ASAP / Edit request / Cancel request), plus a
   // 15-minute no-action auto-cancel. Owns ONLY the clickable UI. Reuses Connect's
-  // own primitives: DASH_DATA / renderActiveRequests, the .ca-overlay/.ca-modal
+  // own primitives: DASH_DATA / renderActiveRequests, the .gc-mo--tall/.gc-m--flush (formerly .gc-mo--tall/.gc-m--flush)
   // shell, the .rate-* rating overlay look, and the GC-##### order scheme.
   //
   // DELIBERATELY NOT BUILT HERE (deferred to the human-dev backend track; each
@@ -22589,8 +22598,8 @@ const PAY_BADGES = {
     // ── DOM: inject the modals into <body> (outside #dashboard so Connect's own
     //    delegated handlers never fire on them). ────────────────────────────────
     const modalHTML = `
-      <div class="ca-overlay" id="g40RecoveryOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40RecoveryHead">
+      <div class="gc-modal-overlay gc-mo--tall" id="g40RecoveryOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-labelledby="g40RecoveryHead">
           <div class="ca-head"><h3 id="g40RecoveryHead">Your Gopher cancelled</h3>
             <button class="ca-x" id="g40RecoveryClose" aria-label="Close">✕</button></div>
           <div class="ca-body">
@@ -22624,8 +22633,8 @@ const PAY_BADGES = {
         </div>
       </div>
 
-      <div class="ca-overlay" id="g40EditOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-labelledby="g40EditHead">
+      <div class="gc-modal-overlay gc-mo--tall" id="g40EditOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-labelledby="g40EditHead">
           <div class="ca-head"><h3 id="g40EditHead">Edit &amp; repost request</h3>
             <button class="ca-x" id="g40EditClose" aria-label="Close">✕</button></div>
           <div class="ca-body">
@@ -22664,13 +22673,13 @@ const PAY_BADGES = {
         </div>
       </div>
 
-      <!-- Cancelling-Gopher rating (AC4). Reuses Connect's .ca-modal shell + .rate-*
+      <!-- Cancelling-Gopher rating (AC4). Reuses Connect's .gc-m--flush shell + .rate-*
            classes so it matches the "Rate your Gopher" overlay, but is a distinct
            instance (its own data-attrs) so it never collides with the completion
            flow's rating overlay / resolveCompletion (which marks the order
            "Completed"; here we mark it CLOSED). -->
-      <div class="ca-overlay" id="g40RatingOverlay" hidden>
-        <div class="ca-modal" role="dialog" aria-modal="true" aria-label="Rate the Gopher who cancelled">
+      <div class="gc-modal-overlay gc-mo--tall" id="g40RatingOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Rate the Gopher who cancelled">
           <div class="ca-head"><h3>Rate your Gopher</h3></div>
           <div class="ca-body">
             <div class="rate-worker"><span id="g40RatePhoto"></span><div class="rate-name" id="g40RateName">Please rate your Gopher</div></div>

@@ -3080,8 +3080,9 @@ window.showNoAccount = function(){
   .signin-foot a:hover { color:var(--green); }
 
   /* ═══ OTP modal ═══ */
-  .otp-modal-overlay { position:fixed; inset:0; z-index:9100; background:rgba(13,26,62,0.55); display:flex; align-items:center; justify-content:center; padding:24px; }
-  .otp-modal-overlay[hidden] { display:none; }
+  /* G40-308: OTP overlay composes the canonical base (scrim/padding identical);
+   modifier carries only the stacking level — exact parity with Connect's .gc-mo--otp. */
+.gc-modal-overlay.gc-mo--otp { z-index:9100; }
   /* .gr-lost-link's styling normally arrives injected by gopher-signin-recovery.js,
      which this page does not load (see the comment at the script tags). Restated
      here so the gated link doesn't render as a raw browser button. */
@@ -3988,7 +3989,7 @@ window.showNoAccount = function(){
 </div>
 
 <!-- ══════════════════ OTP MODAL ══════════════════ -->
-<div class="otp-modal-overlay" id="otpOverlay" hidden>
+<div class="gc-modal-overlay gc-mo--otp" id="otpOverlay" hidden>
   <div class="otp-modal" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
     <button type="button" class="otp-close" id="otpClose" aria-label="Close">&times;</button>
     <h4 id="otpTitle">Enter your code</h4>
