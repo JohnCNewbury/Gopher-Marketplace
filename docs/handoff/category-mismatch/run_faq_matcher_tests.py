@@ -47,7 +47,26 @@ MUST_MATCH = [
     ("how do I become a gopher",          "gopher"),
     ("how does delivery work with Gopher", "delivery work"),
     ("can I use contactless delivery",    "contactless"),
+    # No-Show Completion FAQ (added 2026-08-18 with ToS 9). These are the phrasings
+    # that DO clear the matcher's coverage gate; see the known-gap note below.
+    ("not home",                          "not home"),
+    # NOTE: "I was not home" deliberately omitted. It resolves to the ID FAQ, whose
+    # answer now covers the not-present case too, so both records are correct and the
+    # ordering between them is not worth pinning. "not home" below asserts the
+    # stronger claim -- that the dedicated no-show record wins outright.
+    ("what happens if I miss the delivery", "not home"),
+    ("why was I charged for not providing my ID", "not providing my ID"),
 ]
+
+# KNOWN GAP, not a bug in the corpus — colloquial paraphrases of the no-show
+# question ("I was asleep and got charged anyway", "I wasn't home when the driver
+# came", "nobody answered the door") do NOT reach the FAQ. scoreRec scores the
+# QUESTION at base 2 with a -4 penalty per uncovered query word, but the ANSWER
+# and kw only at base 14, so unmatched filler words sink an otherwise-correct
+# record below FAQ_FLOOR. Stuffing more kw does not help: kw is concatenated into
+# the ANSWER string, i.e. the weak branch. Fixing this is matcher tuning (or the
+# real retrieval layer), not a corpus edit -- do not "fix" it by adding duplicate
+# near-identical FAQ entries.
 
 # (query, substring of a record question that must NOT be the top match)
 MUST_NOT = [
