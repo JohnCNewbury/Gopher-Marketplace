@@ -1,6 +1,6 @@
 # G40-301 — Banner-notification audit (reskin-readiness)
 
-**Status:** In Progress · Assignee: John Newbury
+**Status:** DONE — ticket closed 2026-08-19 (audit completed 2026-07-07; this doc is the deliverable and outlives the ticket) · Assignee: John Newbury
 **Sibling:** G40-302 (pop-up modal audit) · **Implements-from-this:** G40-306 (banner templates + sound toggle)
 **Goal:** make the eventual UX refresh a *pure reskin, not a discovery exercise* — inventory every banner
 notification across Request + Connect + Go, decide relevance against the **new canonical flow + current
