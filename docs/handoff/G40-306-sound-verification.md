@@ -44,9 +44,9 @@ no-show warning (deck-silent; progress-family is sensible).
 | `order.bid.declined.requester` "Order Offer Request Denied" | default tone | `payment_failure.wav` (deck's declined/disputed family) |
 
 **Deliberately unchanged:**
-- `order.new_counter.available` → `in_app_msg.wav`. Deck is silent on requestor-side
-  counters; the alternative is the bid-activity family (`request_accepted.wav`). Owner's
-  taste call — flagged in the MR, not decided.
+- `order.new_counter.available` → `in_app_msg.wav`. **SETTLED — owner ruled 2026-08-19:
+  "leave counter offer as is."** It stays the message sound permanently; do not re-raise
+  the `request_accepted` alternative.
 - Expiring / reminder / app-update / inactive nudges → default tone (no deck family).
 
 **Deck rows that CANNOT ship, per the ruling (recorded, not built):**
