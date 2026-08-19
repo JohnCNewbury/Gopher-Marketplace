@@ -1716,7 +1716,8 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   repeatable way to ship one session's work while another's sits uncommitted-to-live beside it.
 
 - **iQ calibration: `<trade> work` misrouted to Hourly / Day Labor — FIXED (owner screenshot
-  2026-08-12; diagnosed 8/09).** Repro: **"Can you help me with electrical work"** → CTA
+  2026-08-12; diagnosed 8/09; shipped 8/19, commit `ae6f8a0`, deploy `3fa5b80`, live on Pages +
+  TigerTech, content-verified on all 8 files both hosts).** Repro: **"Can you help me with electrical work"** → CTA
   **Hourly / Day Labor**, a delivery FAQ as the related answer, and **Ride Sharing** suggested.
   Three defects, fixed together behind a regression matrix per the standing caveat — this
   matcher is hand-tuned keyword scoring, so every change here is a data-level tune and the
@@ -1772,6 +1773,56 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     **coverage brain** ("Raleigh has ~188 neighbors…"), which owns it via `classifyLocationIntent`
     long before the FAQ pipeline — and category routing for location queries is unchanged. Checked
     rather than assumed, because the regression matrix flagged it as a loss.
+
+- **Category-mismatch nudge stayed silent on a misfiled Moving job — a DUAL-USE NOUN was reading as
+  proof the requester chose right (owner screenshots 2026-08-19, BOTH surfaces; commit `9986eb0`,
+  deploy `7de4ed4`, live on Pages + TigerTech).** Repro: **"Looking to have a couch moved to 3rd
+  floor"** (Request web) and **"looking to move a couch"** (Request app) filed under **Junk
+  Removal** → **no reroute offered to Moving**, though Moving scored **16** to junk's **4.5**.
+  - **Root cause: "weak selected" was an ABSOLUTE floor only.** The confident-disagreement gate
+    required `selectedScore < CAT_THRESH` (4) before suggesting a switch. **One dual-use object
+    noun clears that:** `couch` is a legitimate junk-removal **token (2.5)** + **pword (1)**, and
+    the filler `looking` adds **1** → **4.5**, over the line by half a point. The nudge was
+    suppressed at a **3.6× dominance**. Nothing was wrong with the scoring; the *gate* was.
+  - **Fix: the weakness test is now RELATIVE as well as absolute.** New `DOMINANCE_RATIO = 2.5`;
+    `selectedWeak = selectedScore < CAT_THRESH || top.score >= DOMINANCE_RATIO * selectedScore`.
+    **`strongTop` (≥8) and `MARGIN` (≥5) are unchanged** — only the faulty condition loosened.
+  - **2.5 was measured, not chosen by feel — and the band it sits in is empty.** Genuinely
+    dual-category junk/moving jobs cluster at ratio **1.00–1.61** ("move a couch to the dump" 1.36,
+    "get rid of an old couch and mattress" 1.60, "haul away my old couch" 1.00, "take my old
+    furniture to the landfill" 1.36); real misfilings sit at **3.56–5.57**. **Nothing occupies the
+    gap between**, which is why the constant has room on both sides. ⚠️ **Do NOT lower it toward
+    1.6** — that is the top of the legitimately-dual band, and the code comment says so.
+  - ⚠️ **`couch` stays a junk-removal token on purpose — couch removal IS junk work.** The
+    vocabulary was right; the gate was reading a *shared* noun as evidence of correct filing. The
+    tempting "fix" (prune the dual-use nouns) would have broken real junk queries.
+  - **One definition, three consumers — verified by grep BEFORE editing, not assumed.**
+    `detectCategoryMismatch` is defined **only** in `Final/assets/js/gopher-request-logic.js` and
+    consumed by `gopher-request.html`, `gopher-connect.html`, and
+    `_prototypes/Request/gopher-request-flow.html` — so **one edit covered both surfaces the owner
+    filmed**. (Contrast the 7/25 defect, where the *page's* inlined engine was the broken copy.)
+  - **Harness: +13 rows, PROVEN to fail on the pre-fix module first** — 4 failures, exactly the two
+    owner repros across paths A **and** B (same standing rule as 8/12: a green test that cannot
+    fail proves nothing). **98/98** after. ⚠️ **The 8/12 entry above says 72/72 — that was the count
+    then; don't read it as current.** Two of the four new repro rows (*"need a couch moved
+    upstairs"* 5.29, *"help moving a mattress to my new apartment"* 5.57) **already passed pre-fix**
+    — their selected score was 3.5, under the absolute floor — so they are regression guards, not
+    things this fix repaired. The 9 guard rows are what forbid lowering the ratio.
+  - Browser-verified through the **real event path** (programmatic `input` + `blur` on
+    `#descriptionInput`, i.e. the handler the product actually uses), on a served copy: the modal
+    renders — *"🧭 This looks like a Moving job … Switch to Moving?"* — and **"move a couch to the
+    dump" stays silent on that same wiring**; prototype flow confirmed to load both modules and
+    agree; 0 console errors; module JXA-parse clean.
+  - **Deploy was pinned, and had to be.** Another session's **G40-308** modal work sat uncommitted
+    in the shared clone on `gopher-connect.html` + `gopher-request.html` (and was committed as
+    `c5d8012` mid-deploy). Shipped from a **worktree pinned at `9986eb0`** → **1 file, 0 riders**;
+    the 2 gitignored disk-only allowlisted prototype files were copied in first, as always.
+  - ⚠️ **Method note — a rider check that proves nothing.** The first "did their work ride along?"
+    check grepped the live page for `ca-overlay` **expecting 0, and got 13** — the class **predates**
+    that commit, so its presence was evidence of neither outcome. The real check is a **content hash
+    of the live page against BOTH candidate source states** (pre- and post-their-commit): live ==
+    pre-G40-308, byte-identical, so nothing of theirs shipped. Same family as *verify by content,
+    never by SHA* — but the sharper form: **a string that already existed cannot be a rider probe.**
 
 - **Split-screen harness: "⟳ Reset demo" now clears EVERY seen-map — the second demo run was
   broken (2026-08-11/12, commit `505ac28`, deploy `3a31b0b`, live on Pages + TigerTech).**
