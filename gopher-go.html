@@ -1621,15 +1621,14 @@
 <div id="gopher-footer"></div>
 <script src="assets/js/gopher-footer.js" defer></script>
 <script src="assets/js/gopher-phone-input.js" defer></script>
-<!-- gopher-signin-recovery.js is deliberately NOT loaded on this page (owner,
-     2026-08-18: "Gated link is right, don't ship the demo flow for prototype").
-     The shared flow verifies against DEMO persona data baked into the caller —
-     coherent on Connect/Request/Deals, whose dashboards are demo end to end, but
-     THIS page's sign-in is the real POST /users/sign_in + OTP path. A worker who
-     genuinely lost their phone must not meet a working-looking flow that verifies
-     them against a fictional DOB and recovers to nothing. The link below is gated
-     instead; load the script and un-gate ONLY when the server-driven path exists
-     (there is currently no user-facing write to users.telephone at all). -->
+<!-- gopher-signin-recovery.js is deliberately NOT loaded on this page. That
+     module is the DEMO flow (client-seeded answers) used by the three demo
+     portals. This page's sign-in is real, so its recovery is the real
+     SERVER-DRIVEN flow (GoRecovery below, against /recovery/* — !329, live
+     2026-08-19): the server looks the account up by phone, codes go only to
+     what's on file, and the page never holds an answer to check. Loading the
+     demo module here would reintroduce the fake-success path the owner ruled
+     out on 2026-08-18. -->
 <!-- Real per-user referral QR. Same encoder + version the live worker app uses
      (react-qr-code -> qrcode-generator@2.0.4), so the dashboard renders the same
      code the app does. Loaded here rather than beside GoRefer because that module
@@ -3972,7 +3971,7 @@ window.showNoAccount = function(){
         <div class="portal-field"><label>Mobile number</label><input type="tel" id="smsPhone" inputmode="numeric" autocomplete="tel" placeholder="(555) 555-5555" maxlength="14"></div>
         <button type="button" class="portal-otp-btn" id="sendOtpBtn" disabled>Send code to phone</button>
         <p class="portal-sms-hint" id="smsVerified" hidden>&#10003; Phone verified — you're ready to sign in.</p>
-<button type="button" class="gr-lost-link" onclick="window.__goComingSoon&&__goComingSoon('recovery')">Lost access to this number?<span class="rf-soon">Soon</span></button>
+<button type="button" class="gr-lost-link" onclick="window.GoRecovery&&GoRecovery.open()">Lost access to this number?</button>
       </div>
       <button class="portal-submit" id="signInBtn" disabled>Sign in &rarr;</button>
       <div class="gl-meta"><label class="gl-check"><input type="checkbox" id="goRememberMe" checked> Remember me</label></div>
@@ -4691,6 +4690,48 @@ window.showNoAccount = function(){
      NOT hide it — gopher-go.html has no global [hidden] rule (Connect is the only
      file that does). The per-selector guard already exists for this class; do not
      assume a new overlay is hidden without checking. -->
+<!-- ░░ ACCOUNT RECOVERY — the real, server-driven flow (!329) ░░
+     Five steps mirroring the five endpoints; the modal holds NOTHING but the
+     flow token the server hands back. No answers live in this page: the server
+     looks the account up by phone, mails the code to the address ON FILE, and
+     answers identically whether the account exists or not. Step views are
+     plain block divs, so the `hidden` attribute needs no per-selector guard
+     (the [hidden] trap on this page bites only elements whose class sets
+     display) — the overlay itself is covered by the existing
+     .gc-modal-overlay[hidden] rule. -->
+<div class="gc-modal-overlay" id="recOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="recTitle">
+    <button type="button" class="gc-modal-close" id="recClose" aria-label="Close">&times;</button>
+    <h3 id="recTitle" style="margin:0 0 4px;font-family:'Nunito',sans-serif;font-weight:900;font-size:18px;color:var(--navy);">Recover your account</h3>
+    <p class="rec-sub" id="recSub" style="margin:0 0 16px;font-size:12.5px;color:var(--muted);line-height:1.5;">We&rsquo;ll verify the email on your account, then move your sign-in to a new number.</p>
+
+    <div class="rec-step" data-rec-step="1">
+      <label class="portal-field" style="display:block;text-align:left;"><span style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;">The mobile number you signed up with</span>
+        <input type="tel" id="recPhone" inputmode="numeric" placeholder="(555) 555-5555" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #dfe3ec;border-radius:10px;font-size:15px;"></label>
+    </div>
+    <div class="rec-step" data-rec-step="2" hidden>
+      <p class="rec-hint" style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">If that number belongs to a Gopher account, a 6-digit code is on its way to the email on file. It expires in 10 minutes.</p>
+      <input type="text" id="recEmailCode" inputmode="numeric" maxlength="6" placeholder="6-digit code from your email" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #dfe3ec;border-radius:10px;font-size:15px;letter-spacing:3px;text-align:center;">
+    </div>
+    <div class="rec-step" data-rec-step="3" hidden>
+      <label style="display:block;text-align:left;"><span style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;">Your date of birth</span>
+        <input type="text" id="recDob" inputmode="numeric" placeholder="MM/DD/YYYY" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #dfe3ec;border-radius:10px;font-size:15px;"></label>
+    </div>
+    <div class="rec-step" data-rec-step="4" hidden>
+      <label style="display:block;text-align:left;"><span style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;">The new number to move your sign-in to</span>
+        <input type="tel" id="recNewPhone" inputmode="numeric" placeholder="(555) 555-5555" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #dfe3ec;border-radius:10px;font-size:15px;"></label>
+      <p class="rec-hint" style="font-size:11.5px;color:var(--muted);margin:8px 0 0;">We&rsquo;ll text a code to this number to prove it&rsquo;s yours before anything changes.</p>
+    </div>
+    <div class="rec-step" data-rec-step="5" hidden>
+      <p class="rec-hint" style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">Enter the 6-digit code we just texted to your new number.</p>
+      <input type="text" id="recSmsCode" inputmode="numeric" maxlength="6" placeholder="6-digit code from the text" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #dfe3ec;border-radius:10px;font-size:15px;letter-spacing:3px;text-align:center;">
+    </div>
+
+    <p id="recErr" style="color:var(--error);font-size:12.5px;margin:10px 0 0;min-height:16px;" aria-live="polite"></p>
+    <button class="gc-modal-btn" id="recNext" type="button" style="margin-top:14px;">Continue</button>
+  </div>
+</div>
+
 <div class="gc-modal-overlay" id="goSoonOverlay" hidden>
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="goSoonTitle">
     <button type="button" class="gc-modal-close" id="goSoonClose" aria-label="Close">&times;</button>
@@ -5123,6 +5164,108 @@ window.showNoAccount = function(){
     });
   })();
 
+  /* ░░ ACCOUNT RECOVERY — GoRecovery ░░ ─────────────────────────────────────
+     The client half of !329. This module knows five endpoints and one token;
+     it verifies NOTHING itself. Every check happens server-side against what
+     is on file, which is why this can run on a signed-out page without being
+     the oracle or the fake-success the 2026-08-18 ruling removed. Server
+     messages are shown verbatim — they are written for users, and the
+     enumeration-uniform pairs among them must not be "improved" here. */
+  window.GoRecovery = (function(){
+    var token = null, step = 1;
+    var ov, err, btn;
+    function q(id){ return document.getElementById(id); }
+    function digits(v){ return String(v||'').replace(/\D/g,''); }
+    function show(n){
+      step = n;
+      document.querySelectorAll('.rec-step').forEach(function(el){
+        el.hidden = (+el.dataset.recStep !== n);
+      });
+      err.textContent = '';
+      btn.textContent = n === 5 ? 'Move my sign-in' : 'Continue';
+      var focus = { 1:'recPhone', 2:'recEmailCode', 3:'recDob', 4:'recNewPhone', 5:'recSmsCode' }[n];
+      setTimeout(function(){ var f = q(focus); if(f) f.focus(); }, 60);
+    }
+    function fail(r, fallback){
+      err.textContent = (r && r.body && r.body.message) || fallback;
+      /* A dead flow (caps hit, expired) restarts cleanly rather than trapping
+         the user on a step that will refuse forever. */
+      if (r && r.body && /no longer valid/i.test(r.body.message || '')) {
+        token = null;
+        setTimeout(function(){ show(1); }, 1600);
+      }
+    }
+    function busy(on){ btn.disabled = on; btn.textContent = on ? 'One moment…' : (step===5 ? 'Move my sign-in' : 'Continue'); }
+    function submit(){
+      if (btn.disabled) return;
+      err.textContent = '';
+      if (step === 1) {
+        var ph = digits(q('recPhone').value);
+        if (ph.length < 10) { err.textContent = 'Enter the 10-digit mobile number you signed up with.'; return; }
+        busy(true);
+        GoAuth.apiCall('/recovery/start', { body: { telephone: ph } }).then(function(r){
+          busy(false);
+          if (r.ok && r.body && r.body.recovery_token) { token = r.body.recovery_token; show(2); }
+          else fail(r, 'Couldn’t start recovery. Try again.');
+        });
+      } else if (step === 2) {
+        busy(true);
+        GoAuth.apiCall('/recovery/verify_email', { body: { recovery_token: token, code: digits(q('recEmailCode').value) } }).then(function(r){
+          busy(false);
+          if (r.ok && r.body && r.body.success) show(3); else fail(r, 'That code didn’t match or has expired.');
+        });
+      } else if (step === 3) {
+        busy(true);
+        GoAuth.apiCall('/recovery/verify_identity', { body: { recovery_token: token, date_of_birth: q('recDob').value.trim() } }).then(function(r){
+          busy(false);
+          if (r.ok && r.body && r.body.success) show(4); else fail(r, 'That date of birth doesn’t match our records.');
+        });
+      } else if (step === 4) {
+        var np = digits(q('recNewPhone').value);
+        if (np.length < 10) { err.textContent = 'Enter the 10-digit number to move your sign-in to.'; return; }
+        busy(true);
+        GoAuth.apiCall('/recovery/new_number', { body: { recovery_token: token, new_telephone: np } }).then(function(r){
+          busy(false);
+          if (r.ok && r.body && r.body.success) show(5); else fail(r, 'Couldn’t use that number.');
+        });
+      } else if (step === 5) {
+        busy(true);
+        GoAuth.apiCall('/recovery/confirm', { body: { recovery_token: token, code: digits(q('recSmsCode').value) } }).then(function(r){
+          busy(false);
+          if (r.ok && r.body && r.body.success) {
+            /* Done: land the worker exactly where they need to be — the SMS
+               pane with the NEW number filled, ready to sign in. */
+            var np2 = digits(q('recNewPhone').value);
+            var p = document.getElementById('smsPhone');
+            if (p && np2.length === 10) {
+              p.value = '(' + np2.slice(0,3) + ') ' + np2.slice(3,6) + '-' + np2.slice(6);
+              p.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            close_();
+            if (typeof showToast === 'function') showToast('Your sign-in number is updated — sign in with it now.');
+          } else fail(r, 'That code didn’t match or has expired.');
+        });
+      }
+    }
+    function open(){
+      ov = q('recOverlay'); err = q('recErr'); btn = q('recNext');
+      if (!ov) return;
+      token = null;
+      ['recPhone','recEmailCode','recDob','recNewPhone','recSmsCode'].forEach(function(id){ var f=q(id); if(f) f.value=''; });
+      show(1);
+      ov.hidden = false;
+      if (!ov.dataset.wired) {
+        ov.dataset.wired = '1';
+        btn.addEventListener('click', submit);
+        q('recClose').addEventListener('click', close_);
+        ov.addEventListener('click', function(e){ if (e.target === ov) close_(); });
+        ov.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+      }
+    }
+    function close_(){ if (ov) ov.hidden = true; }
+    return { open: open };
+  })();
+
   /* ════ #login entry point ════ */
   (function initLoginHash(){
     function apply(){ if(location.hash === '#login'){
@@ -5208,7 +5351,6 @@ window.showNoAccount = function(){
       bidboard:'Feature my deal',
       /* Not a pane — a control on the sign-in screen. The chip-adder skips keys
          with no matching nav item, so this only feeds the explain modal. */
-      recovery:'Account recovery'
     };
     /* Why each one waits, shown to the worker rather than kept internal. */
     const SOON_WHY = {
@@ -5227,7 +5369,8 @@ window.showNoAccount = function(){
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
       inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
-      recovery:'Account recovery arrives at launch: we verify the email on your account, then move your sign-in to a new number you confirm by text. Until then, reach the team from Contact Us below if you\u2019re locked out.'
+      /* `recovery` left both maps 2026-08-19: the backend shipped (!329) and
+         the sign-in link now opens the real server-driven flow (GoRecovery). */
     };
     Object.keys(COMING_SOON).forEach(name => {
       const btn = navItems.find(b => b.dataset.dashSection === name);
