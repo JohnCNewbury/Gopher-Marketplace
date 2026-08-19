@@ -58,6 +58,28 @@ MATRIX = [
     ("home_services", "need 2 workers for tomorrow", "hourly_day_labor"),
     ("junk_removal", "commute to work", "ride_sharing"),
     ("home_services", "day labor", "hourly_day_labor"),
+
+    # ---- Owner repro 2026-08-19, BOTH surfaces (Request web + Request app) ----
+    # Filed under Junk Removal, described as a move; no nudge fired. "Weak selected"
+    # was an ABSOLUTE floor only, and ONE dual-use object noun clears it: 'couch' is
+    # a legitimate junk token (2.5) + pword (1), plus filler 'looking' (1) = 4.5,
+    # over CAT_THRESH=4 by 0.5 — while Moving scored 16 (3.6x dominance). Fixed by
+    # making the weakness test relative as well (DOMINANCE_RATIO).
+    ("junk_removal", "Looking to have a couch moved to 3rd floor", "moving"),
+    ("junk_removal", "looking to move a couch", "moving"),
+    ("junk_removal", "need a couch moved upstairs", "moving"),
+    ("junk_removal", "help moving a mattress to my new apartment", "moving"),
+    # Guards on that SAME clause — genuinely dual-category junk/moving jobs. These
+    # are the rows that forbid lowering DOMINANCE_RATIO toward the ~1.6 band.
+    ("junk_removal", "haul away my old couch", None),                 # ratio 1.00
+    ("junk_removal", "get rid of an old couch and mattress", None),   # ratio 1.60
+    ("junk_removal", "couch removal", None),                          # ratio 1.00
+    ("junk_removal", "take my old furniture to the landfill", None),  # ratio 1.36
+    ("junk_removal", "clean out the garage and dispose of debris", None),
+    ("moving", "help me move apartments this weekend", None),
+    ("delivery", "pick up a package and drop it at my office", None),
+    ("yard_work_outdoor_projects", "mow my lawn and trim hedges", None),
+    ("ride_sharing", "ride to the airport tomorrow", None),
 ]
 
 # Direct classifier assertions: the mismatch matrix above only sees the DECISION,

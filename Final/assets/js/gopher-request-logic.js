@@ -25,6 +25,7 @@
   var STRONG_BAR        = 8;   // top category must be a confident match (= CAT_HIGH)
   var MARGIN            = 5;   // top must beat the selected category's score by this
   var UNAMBIG_RATIO     = 2.5; // modest-top path: top must dwarf the runner-up by this
+  var DOMINANCE_RATIO   = 2.5; // "weak selected" may be RELATIVE, not just absolute — see below
 
   /* The submission UIs use short category keys; the classifier uses full slugs. */
   var UI_TO_SLUG = { junk:'junk_removal', ride:'ride_sharing', yard:'yard_work_outdoor_projects',
@@ -68,9 +69,22 @@
     if(selectedSlug === 'other' && strongTop)
       return { suggestedSlug: top.slug, suggestedLabel: top.label,
                selectedScore: selectedScore, suggestedScore: top.score };
-    /* Confident disagreement: strong top AND weak selected AND a clear margin. */
+    /* "Weak selected" is RELATIVE as well as absolute (owner repro 2026-08-19).
+       The absolute floor alone was too brittle: ONE dual-use object noun carries a
+       category over it. "Looking to have a couch moved to 3rd floor" filed under
+       Junk Removal scored junk 4.5 — 'couch' is a legitimate junk-removal token
+       (2.5) + pword (1), plus filler 'looking' (1) — which cleared CAT_THRESH=4 by
+       0.5 and suppressed the nudge even though Moving scored 16, a 3.6x dominance.
+       So: the selected category is also "weak" when the top DWARFS it, which is a
+       different claim from "the selected has no support at all".
+       Both paths still require strongTop (>=8) AND the absolute MARGIN (>=5).
+       Calibrated against the matrix — genuinely dual-category jobs sit at ratio
+       <=1.61 ("move a couch to the dump" 1.36, "get rid of an old couch and
+       mattress" 1.60), real misfilings at >=3.56. Do NOT lower toward 1.6. */
+    var selectedWeak = selectedScore < CLS.CAT_THRESH
+                    || top.score >= DOMINANCE_RATIO * selectedScore;
     if(strongTop && top.slug !== selectedSlug
-       && (top.score - selectedScore) >= MARGIN && selectedScore < CLS.CAT_THRESH)
+       && (top.score - selectedScore) >= MARGIN && selectedWeak)
       return { suggestedSlug: top.slug, suggestedLabel: top.label,
                selectedScore: selectedScore, suggestedScore: top.score };
     /* Modest-but-UNAMBIGUOUS disagreement: a single strong signal word like
@@ -545,6 +559,7 @@
     uiToSlug: function(key){ return UI_TO_SLUG[key] || key; },
     slugToUi: function(slug){ return SLUG_TO_UI[slug] || slug; },
     MIN_CONTENT_WORDS: MIN_CONTENT_WORDS, STRONG_BAR: STRONG_BAR, MARGIN: MARGIN,
+    DOMINANCE_RATIO: DOMINANCE_RATIO,
     findAgeRestrictedKeyword: findAgeRestrictedKeyword,
     suggestedOffer: suggestedOffer,
     regionIsNC: regionIsNC,
