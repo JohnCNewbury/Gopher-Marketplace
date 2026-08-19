@@ -142,3 +142,29 @@ consistent with G40-309's disposition.
   "Multi-worker job accept" modal.
 - **Strip at prod:** `__g40ReqMenu()` demo launcher, demo payment card forms, `admin@gopher.example`.
 - No prototype code was changed by this audit.
+
+---
+
+## CLOSE-OUT — structural reskin COMPLETE (2026-08-19, deploy `1ad25c4`, live-verified both hosts)
+
+Every reskin target from the list above is done; the residual sweep across `Final/*.html` reads
+**zero ad-hoc modal primitives**:
+
+| target | disposition |
+|---|---|
+| `.ca-overlay`/`.ca-modal` family (Request + Connect, ~30 refs each) | → canonical base + `--tall`/`--flush` modifiers; zero-pixel, computed-style-diff verified (`c5d8012`) |
+| Connect `.signin-`/`.otp-modal-overlay` | done earlier (`.gc-mo--signin`/`--otp`) |
+| Go `.gl-overlay`/`.rhm-overlay` | done earlier (`.gc-mo--login`/`--otp`/`--rhm`) |
+| Request + Go web OTP overlays, Request `.pay-modal-ov` | → base + `--otp`/`--pay` modifiers (`b1b4bcd`) |
+| **Deals OTP overlay — NOT in this audit's original table**, found by residual sweep | → base + `--otp` (z:120 kept — that page stacks low) |
+| Request-mobile bespoke sheets | consolidated onto Guide-B `.sheet` earlier (see G40-302-sheet-consolidation-inventory.md) |
+| `.menu-overlay` (Connect + Go) | deliberately NOT converted — nav-drawer backdrop, not a modal primitive |
+
+**Scrim unification: DECLINED by the owner 2026-08-19** from a side-by-side (standing rule the
+same day: no UI change without a proposed-vs-current comparison shown FIRST). Variant tints are
+grandfathered, carried inside their modifiers with sealed comments; only NEW surfaces take
+`--scrim-a`/`--scrim-b`. The brand Style Guide's modal section now documents the real G40-308
+contract (its 60% dimmer figure and phantom `.modal-overlay` class names were corrected).
+
+Remaining ticket-adjacent work is future by nature: the G40-309 "build" rows (new modals for the
+rebuild) — dev-handoff scope, not prototype scope.
