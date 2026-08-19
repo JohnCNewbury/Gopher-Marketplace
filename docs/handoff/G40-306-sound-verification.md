@@ -59,6 +59,8 @@ no-show warning (deck-silent; progress-family is sensible).
 
 ## Ticket dispositions
 - **G40-306** → Done. Banner template built (`gopher-banner.js` + the reference doc +
-  Style Guide §7.7); sound mapping verified and corrected (MR !326 pending merge).
+  Style Guide §7.7); sound mapping verified and corrected — **MR !326 MERGED 2026-08-19**
+  (merge commit `a9e6d7c9`, no squash, source branch kept; all 5 corrections content-verified
+  at origin/production, 33 sound refs exact; runtime rollout = the merge auto-deploy).
 - **G40-311** → Cancelled. Its entire content (new per-category sound set + New/Legacy
   toggle) is ruled out — and its premise was stale anyway: per-category is already live.
