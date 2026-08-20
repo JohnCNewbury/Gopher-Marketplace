@@ -9,7 +9,7 @@
 >
 > - **The invariant is enforced at the payout seam:** `transfer()` re-reads THIS order's
 >   PaymentIntent from Stripe and refuses to move money unless it is `succeeded` with
->   `amount_captured` covering the transfer. Failure classes are distinct: **blocked** (409,
+>   `amount_received` covering the transfer (the PI field — see the incident note below). Failure classes are distinct: **blocked** (409,
 >   red `PAYOUT BLOCKED` order_log, support), **deferred** (503, retryable — Stripe unreadable),
 >   **legacy** (`ch_` tokens block for an owner ruling).
 > - **Re-auth rolls are real for every order that should hold funds:** must-confirm derives
@@ -45,6 +45,19 @@
 > **Closed 2026-08-20:** the Stripe event subscription (new destination + SSM secret, above)
 > and the CloudWatch filters — alarms `Gopher-Prod-{PayoutBlocked,AuthCanceledLiveOrder,
 > StrayHoldUnreleased}` exist and are registered in `docs/alert-markers.json`.
+> **⚠️ INCIDENT + FIX, 2026-08-20 (order #64627 — the first live completion under this code):**
+> every PaymentIntent verify read `amount_captured`, a field that exists only on Charge
+> objects — a PI reports **`amount_received`**. So the first real Complete tap captured
+> $218.14 at Stripe correctly and then failed its own verify (DB stuck `authorized`, worker
+> unpaid), and the already-captured recovery branch 409'd all 11 retries instead of engaging.
+> **Fixed same morning in `!337` (`ad2b3b9c`)** — 12-site field rename, no logic change; the
+> invariant test gained an INCIDENT GUARD that fails on ANY `amount_captured` read in
+> `payment.stripe.js`. The order healed exactly as designed on the next tap: recovery branch
+> returned the captured intent → $200 transfer (`tr_1U6WNW…`) → instant payout → `paid`, the
+> full AUTH LIFECYCLE timeline on the order. **This was also the invariant's first live
+> positive control.** Lesson recorded: anchored source tests verify shape, not third-party
+> schema truth — validate external field names against a real payload.
+>
 > **Still open:** client deep-link handling for the new push type — ticketed as **G40-402**
 > 2026-08-20 (store-gated; contract: `requestor.payment_action_needed`, notif index 36,
 > `extra_data.order_id` as String); `helpers/payment_error_handler.js` is caller-less from
