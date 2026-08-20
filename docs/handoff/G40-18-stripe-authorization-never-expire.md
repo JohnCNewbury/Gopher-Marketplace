@@ -27,15 +27,26 @@
 >   transferred → paid in HQ.
 > - **Webhooks:** `payment_intent.canceled` / `amount_capturable_updated` handled at the
 >   existing signed endpoint (re-read trust model; self-cancel ledger filters our own rolls).
->   **Inert until the owner subscribes the Stripe endpoint to those events.**
+>   ~~Inert until the owner subscribes the Stripe endpoint to those events.~~ **LIVE since
+>   2026-08-20** (`!335` → `2c460ed3`): Stripe scopes a destination to platform OR connected
+>   events — never both — so the events come from a NEW destination
+>   (`we_1U6TWpCQp3eawbpnwNazBAlG`, "Your account" scope, same URL) whose signing secret is
+>   held in SSM `/gopher/production/stripe-webhook-secret-2` and verified by the now
+>   multi-secret `middleware/stripe_webhook_auth.js` (5-min TTL — **rotate by overwriting the
+>   parameter in place, never delete-then-recreate**). Proven end to end with real event
+>   `evt_3U6UOzCQp3eawbpn1rMCMjv7` (order #64627): 200/Recovered, server-side SSM fetch on
+>   that request, 0 rejections since.
 > - The always-false double-capture guard is alive (409, already-captured = recovery path);
 >   `services/payment_authorization.service.js` is deleted; `orders.stripe_charge_token` is
 >   indexed.
 >
-> **Guard:** `test/g40-18-auth-invariant.test.js` — 41 anchored checks, 11 mutations proven.
-> **Still open:** owner's Stripe event subscription + CloudWatch filters (see
-> `docs/alert-markers.json`); client deep-link handling for the new push type (store-gated,
-> unowned); `helpers/payment_error_handler.js` is caller-less from the cron path.
+> **Guard:** `test/g40-18-auth-invariant.test.js` — 41 anchored checks, 11 mutations proven;
+> plus the multi-secret cases in `test/stripe-account-webhook.test.js` (29 checks, 5 mutations).
+> **Closed 2026-08-20:** the Stripe event subscription (new destination + SSM secret, above)
+> and the CloudWatch filters — alarms `Gopher-Prod-{PayoutBlocked,AuthCanceledLiveOrder,
+> StrayHoldUnreleased}` exist and are registered in `docs/alert-markers.json`.
+> **Still open:** client deep-link handling for the new push type (store-gated, unowned);
+> `helpers/payment_error_handler.js` is caller-less from the cron path (cleanup ruling).
 
 **Type:** Bug · **Priority:** Highest · `pay` · Both apps + backend. Verified against the 2026-06-12 `gopher-backend-api` export. All `file:line` refs are from that snapshot.
 
