@@ -1,5 +1,31 @@
 # Rating gate — the Gopher rates the requester only AFTER the requester confirms
 
+> ## ✅ BUILT IN THE LIVE APPS 2026-08-20 — G40-331 closed (with G40-39 scenarios 4–7)
+>
+> **Server (`gopher-backend-api!347`, merge `0112957e`, deployed):** at confirm,
+> `rateYourRequestor` (socket + `pending_notifications` offline fallback) now fires for EVERY
+> order whose Gopher has not already rated — it was age-restricted-only. The rating-absence
+> guard makes the widening safe on installed apps: already-rated → never re-prompted;
+> skipped → nudged. The "Payday!!" push (`order.payout`) carries deep-link `extra_data`
+> {type, order_id}; `/orders/v3` gopher history orders carry `gopher_rated` (batched).
+> Guard: `test/g40-331-rate-gate-on-confirm.test.js` (9 checks, 6 proven failures pre-fix).
+>
+> **Client (`gopher-mobile-gopher-capacitorjs!245`, merge `15b4a269`, STORE-GATED):**
+> completion (photo and non-photo paths) lands on the new `completion_waiting` screen —
+> *"Job complete — waiting for {name} to confirm. Confirmation releases your payout — and
+> you'll rate them once they confirm."* The rating opens at confirm via the EXISTING
+> bottomMenu pending-alert pipeline (the mechanism A/R orders always used — no second
+> routing path was built). New `PushTapListener` routes a Payday-banner tap to the
+> dashboard, where that pipeline lives. The rating stays dismissible; a pulsing
+> **"Rate now →"** CTA on confirmed history cards (`payment_status==='paid' &&
+> gopher_rated===false`) keeps it reachable until submitted — INV-RATING's shape. Older
+> servers omit `gopher_rated` → no CTA, never a wrong one. **Favorite congrats
+> (G40-39 scenarios 6–7) needed no change** — the `favoriteGopher` emit and congrats modal
+> already existed, sequenced after the rating by the alert queue's priority order.
+>
+> The checklist below was this build's map; the "what IS" sections describe the PRE-change
+> live apps and are kept as history.
+
 **Requested by:** John Newbury, 2026-07-17 (App Prototypes session)
 **Surfaces:** Gopher Go app (live + `_prototypes/Go/gopher-go-prototype.html`) · policy copy in
 `Final/gopher-terms-of-service.html`
