@@ -58,10 +58,24 @@
 > positive control.** Lesson recorded: anchored source tests verify shape, not third-party
 > schema truth — validate external field names against a real payload.
 >
-> **Still open:** client deep-link handling for the new push type — ticketed as **G40-402**
-> 2026-08-20 (store-gated; contract: `requestor.payment_action_needed`, notif index 36,
-> `extra_data.order_id` as String); `helpers/payment_error_handler.js` is caller-less from
-> the cron path (cleanup ruling).
+> **G40-402 CLOSED 2026-08-20 — and it was bigger than a deep-link.** Building the tap
+> handler exposed that the AC6 notification was a promise the system could not keep: nothing
+> un-exhausted an order after the requester fixed their card (the cron excludes
+> `payment_auth_retry_count >= 3` forever, and a failed roll's repoint stamps a fresh 7-day
+> expiry). Two merged halves:
+> - **Backend `!342`** (`e3b096a1`, deploys on merge): the three requester card-fix endpoints
+>   (select default / add card / attach) re-arm the requester's own exhausted live orders —
+>   retry budget 0 AND `payment_auth_expires_at = NOW()` (webhook-handler semantics) — so the
+>   cron rebuilds the hold within a minute, genuinely with the fixed card (`charge.create`
+>   resolves the current default per attempt). Guards mirror the cron's own selection with a
+>   drift-check (`test/g40-402-rearm-on-card-fix.test.js`, 12 checks, 5 mutations proven);
+>   fail-open; AUTH LIFECYCLE order_log marks each re-arm.
+> - **Client `gopher-mobile-requester-capacitorjs!233`** (`8ec24659`, **store-gated**): tapping
+>   the push lands on the card-management screen via the PushTapListener seam. Deliberately
+>   account-level, not order-scoped — the remedy is the default card and the re-arm covers
+>   every exhausted order at once.
+> **Still open:** `helpers/payment_error_handler.js` is caller-less from the cron path
+> (cleanup ruling).
 
 **Type:** Bug · **Priority:** Highest · `pay` · Both apps + backend. Verified against the 2026-06-12 `gopher-backend-api` export. All `file:line` refs are from that snapshot.
 
