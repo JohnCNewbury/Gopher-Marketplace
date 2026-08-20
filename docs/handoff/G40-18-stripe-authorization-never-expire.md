@@ -1,5 +1,42 @@
 # G40-18 — Stripe authorization must NEVER expire during an order — TECHNICAL DEEP-DIVE
 
+> ## ✅ RESOLVED 2026-08-20 — `gopher-backend-api!333` merged to `production` (`e25f5d7e`)
+>
+> **Everything below this header is the ORIGINAL 2026-06-12 analysis, kept as history. Its
+> `file:line` anchors and its "seven flaws" are all superseded.** The cron rewrite (continuous,
+> all non-terminal states, retry-capped) had already shipped by late 2025 under other tickets;
+> !333 closed what remained, plus defects the build itself found. **What production does now:**
+>
+> - **The invariant is enforced at the payout seam:** `transfer()` re-reads THIS order's
+>   PaymentIntent from Stripe and refuses to move money unless it is `succeeded` with
+>   `amount_captured` covering the transfer. Failure classes are distinct: **blocked** (409,
+>   red `PAYOUT BLOCKED` order_log, support), **deferred** (503, retryable — Stripe unreadable),
+>   **legacy** (`ch_` tokens block for an owner ruling).
+> - **Re-auth rolls are real for every order that should hold funds:** must-confirm derives
+>   from ORDER STATE (accepted/in_progress/scheduled), never from the stored intent's status.
+>   Rolls are **cancel-only** (structurally cannot refund captured money), a `succeeded`
+>   reading aborts the roll, both roll writes are **compare-and-swap on status + token**, a
+>   failed confirm repoints the order at the new intent, and **success resets the retry
+>   budget** (it used to burn it).
+> - **AC6:** on retry exhaustion the requester gets SMS + push (`requestor.payment_action_needed`,
+>   notif index 36, deep-link keys) + email (type 41), outcomes on the order as
+>   `payment_action_needed_channels`. Fires in the loop's CATCH — the only reachable
+>   exhaustion point; the old in-loop branch was dead code and is deleted.
+> - **AC7:** capture/transfer/payout successes write `AUTH LIFECYCLE` order_logs; with the
+>   cron's re-auth logs the order timeline reads authorized → re-authorized → captured →
+>   transferred → paid in HQ.
+> - **Webhooks:** `payment_intent.canceled` / `amount_capturable_updated` handled at the
+>   existing signed endpoint (re-read trust model; self-cancel ledger filters our own rolls).
+>   **Inert until the owner subscribes the Stripe endpoint to those events.**
+> - The always-false double-capture guard is alive (409, already-captured = recovery path);
+>   `services/payment_authorization.service.js` is deleted; `orders.stripe_charge_token` is
+>   indexed.
+>
+> **Guard:** `test/g40-18-auth-invariant.test.js` — 41 anchored checks, 11 mutations proven.
+> **Still open:** owner's Stripe event subscription + CloudWatch filters (see
+> `docs/alert-markers.json`); client deep-link handling for the new push type (store-gated,
+> unowned); `helpers/payment_error_handler.js` is caller-less from the cron path.
+
 **Type:** Bug · **Priority:** Highest · `pay` · Both apps + backend. Verified against the 2026-06-12 `gopher-backend-api` export. All `file:line` refs are from that snapshot.
 
 ## The invariant (non-negotiable)
