@@ -45,8 +45,10 @@
 > **Closed 2026-08-20:** the Stripe event subscription (new destination + SSM secret, above)
 > and the CloudWatch filters — alarms `Gopher-Prod-{PayoutBlocked,AuthCanceledLiveOrder,
 > StrayHoldUnreleased}` exist and are registered in `docs/alert-markers.json`.
-> **Still open:** client deep-link handling for the new push type (store-gated, unowned);
-> `helpers/payment_error_handler.js` is caller-less from the cron path (cleanup ruling).
+> **Still open:** client deep-link handling for the new push type — ticketed as **G40-402**
+> 2026-08-20 (store-gated; contract: `requestor.payment_action_needed`, notif index 36,
+> `extra_data.order_id` as String); `helpers/payment_error_handler.js` is caller-less from
+> the cron path (cleanup ruling).
 
 **Type:** Bug · **Priority:** Highest · `pay` · Both apps + backend. Verified against the 2026-06-12 `gopher-backend-api` export. All `file:line` refs are from that snapshot.
 
