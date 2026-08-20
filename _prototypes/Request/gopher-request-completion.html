@@ -321,10 +321,12 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     for(var i=0;i<stars.length;i++){ stars[i].classList.toggle('on', (i+1)<=state.rating); }
     var opts=document.getElementById('opts');
     if(state.rating>=4){
-      opts.innerHTML='<label class="opt"><input type="checkbox" checked> Add as MY Gopher</label>'
-                    +'<label class="opt"><input type="checkbox" checked> Recommend '+esc(WORKER)+' for similar jobs</label>';
+      // ids match the web surfaces (gopher-request.html / gopher-connect.html) so
+      // the submit handler reads the same three names on every customer surface.
+      opts.innerHTML='<label class="opt"><input type="checkbox" id="optFav" checked> Add as MY Gopher</label>'
+                    +'<label class="opt"><input type="checkbox" id="optRec" checked> Recommend '+esc(WORKER)+' for similar jobs</label>';
     } else {
-      opts.innerHTML='<label class="opt block"><input type="checkbox"> Do not send requests to '+esc(WORKER)+' again</label>';
+      opts.innerHTML='<label class="opt block"><input type="checkbox" id="optBlock"> Do not send requests to '+esc(WORKER)+' again</label>';
     }
   }
 
@@ -342,7 +344,20 @@ html.embedded #phone{position:absolute;inset:0;width:auto;height:auto;max-width:
     if(t.closest('[data-confirm]')){ state.phase='confirmed'; state.rating=5; render(); toast('Completion confirmed — receipt emailed, payment released'); openOv('rateOv'); paintRating(); return; }
     if(t.closest('[data-rate-open]')){ state.rating=5; openOv('rateOv'); paintRating(); return; }
     if(t.closest('[data-star]')){ state.rating=parseInt(t.closest('[data-star]').getAttribute('data-star'),10); paintRating(); return; }
-    if(t.closest('[data-rate-done]')){ closeOv('rateOv'); state.rated=true; render(); toast('Thanks — your rating of '+WORKER+' was submitted'); return; }
+    if(t.closest('[data-rate-done]')){
+      // G40-300 Scenario 4 — read the follow-up options BEFORE closing the
+      // overlay. They were rendered checked-by-default and then discarded, so a
+      // requester ticked "Add as MY Gopher" and nothing happened.
+      var oF=document.getElementById('optFav'), oR=document.getElementById('optRec'), oB=document.getElementById('optBlock');
+      state.favorited   = !!(oF && oF.checked);
+      state.recommended = !!(oR && oR.checked);
+      state.blocked     = !!(oB && oB.checked);
+      closeOv('rateOv'); state.rated=true; render();
+      toast(state.favorited
+        ? 'Thanks — your rating was submitted and '+WORKER+' was added to MY Gophers'
+        : 'Thanks — your rating of '+WORKER+' was submitted');
+      return;
+    }
     if(t.closest('[data-dispute-open]')){ state.phase='entry'; render(); return; }
     if(t.closest('[data-dispute-submit]')){ state.phase='disputed'; render(); toast('Dispute submitted — your Gopher has been notified.'); return; }
     if(t.closest('[data-unable]')){ openOv('unableOv'); return; }
