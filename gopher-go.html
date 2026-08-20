@@ -5187,6 +5187,18 @@ window.showNoAccount = function(){
       setTimeout(function(){ var f = q(focus); if(f) f.focus(); }, 60);
     }
     function fail(r, fallback){
+      /* ⚠️ A SERVER FAULT MUST NOT READ AS A WRONG ANSWER. This originally
+         showed `fallback` for ANY non-ok response, so the first real recovery
+         attempt (2026-08-20) rendered a 500 as "That code didn't match or has
+         expired." — telling the user their correct code was wrong and sending
+         them to re-read an email that was fine. A 5xx or a network failure is
+         OUR fault and has to say so, or the next outage looks like a user
+         error to every user having it. */
+      var st = r && r.status;
+      if (st === 0 || st >= 500) {
+        err.textContent = 'Something went wrong on our end — not your code. Try again in a moment.';
+        return;
+      }
       err.textContent = (r && r.body && r.body.message) || fallback;
       /* A dead flow (caps hit, expired) restarts cleanly rather than trapping
          the user on a step that will refuse forever. */

@@ -22025,11 +22025,68 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function submitRating(r){
     r.rated = true;
     const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
-    const wnm = (_crew[0] && _crew[0].name) || (r.live && r.live.worker && r.live.worker.name) || 'your Gopher';
+    const _w    = _crew[0] || (r.live && r.live.worker) || null;
+    const wnm = (_w && _w.name) || 'your Gopher';
+    // G40-300 Scenario 4 — the follow-up options are ACTED ON, not just shown.
+    // paintRating() renders #optFav/#optRec (≥4★) or #optBlock (≤3★) with the
+    // favorite/recommend boxes CHECKED BY DEFAULT. Before this, submitRating
+    // ignored all three, so the default-on "Add as MY Gopher" was collected and
+    // silently discarded — the requester saw a ticked box and nothing happened.
+    // Read them here, while the overlay is still in the DOM (it is hidden below,
+    // and paintRating rebuilds #rateOpts on every open, so there is no stale
+    // node to read from a previous rating).
+    const optFav   = document.getElementById('optFav');
+    const optRec   = document.getElementById('optRec');
+    const optBlock = document.getElementById('optBlock');
+    const wantFav = !!(optFav && optFav.checked);
+    const wantRec = !!(optRec && optRec.checked);
+    let favAdded = false;
+    if(wantFav && _w && _w.name){
+      // Upsert through the canonical API — never touch DASH_DATA.myGophers
+      // directly (see the MY Gophers store contract above). `has()` is checked
+      // first only so the toast can tell the truth about whether this ADDED
+      // someone; add() is an idempotent upsert either way.
+      favAdded = !MyGophers.has(_w.name);
+      MyGophers.add({
+        name: _w.name,
+        rating: r.ratingValue,
+        photo: _w.photo,
+        badge: _w.badge,
+        tier: _w.tier || _w.badge,
+        // Recency comes from the request's own `when` string ('Completed Today,
+        // 1:42 PM'). There is NO `category`/`date` field on a request record —
+        // verified at runtime, where guessing those names produced a record with
+        // every enrichment field blank. `title` is the closest thing to a
+        // specialty, so it seeds lastCategory rather than leaving the card line
+        // empty; MyGophers.add() preserves any richer existing value.
+        lastCategory: r.title || '',
+        lastUsed: r.when || ''
+      });
+      // Canonical favourite flag on the request record. Currently a dormant seam
+      // (seeded, no consumer yet) — but it is the name the backend reads, so the
+      // Favorite recognition is recorded where the rebuild will look for it.
+      r.favoritedByRequestor = true;
+    }
+    if(wantRec && _w && _w.name){
+      // Recommendations are a flat, de-duplicated name list on the request
+      // record; the recommend modal is the surface that consumes them.
+      DASH_DATA.recommended = DASH_DATA.recommended || [];
+      if(!DASH_DATA.recommended.includes(_w.name)) DASH_DATA.recommended.push(_w.name);
+    }
+    // ≤3★ block path: the option is rendered and its state captured on the
+    // request, but there is NO customer-side blocked-worker store on this
+    // surface to route it into (the existing block list is worker-side, in Go).
+    // Recorded rather than silently dropped so the backend seam is visible.
+    if(optBlock && optBlock.checked && _w && _w.name) r.doNotSendAgain = _w.name;
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
-    if(typeof toast === 'function') toast('Thanks — your rating of ' + wnm + ' was submitted');
+    if(typeof toast === 'function'){
+      toast(favAdded
+        ? 'Thanks — your rating was submitted and ' + wnm + ' was added to MY Gophers'
+        : 'Thanks — your rating of ' + wnm + ' was submitted');
+    }
     renderActiveRequests();
     renderRequestDetail();
+    if(typeof renderGophers === 'function' && favAdded) renderGophers();
   }
 
   function buildAdjustmentModal(r){

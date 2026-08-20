@@ -16932,11 +16932,62 @@ const PAY_BADGES = {
   function submitRating(r, stars){
     r.rated = true;
     r.ratingValue = stars;
-    const wnm = (r.live && r.live.worker && r.live.worker.name) || 'your Gopher';
+    const _w  = (r.live && r.live.worker) || null;
+    const wnm = (_w && _w.name) || 'your Gopher';
+    // G40-300 Scenario 4 — act on the follow-up options instead of only showing
+    // them. renderOpts() draws #optFav/#optRec (≥4★) or #optBlock (≤3★) with the
+    // favorite/recommend boxes CHECKED BY DEFAULT; this function used to ignore
+    // all three, so a ticked "Add as MY Gopher" was collected and discarded.
+    // Connect has no MyGophers API wrapper (Request does) — DASH_DATA.myGophers
+    // is a plain array here, so this de-dupes by name and matches the seed shape
+    // { name, tier, specialty, jobs, lastUsed, photo }.
+    const optFav   = document.getElementById('optFav');
+    const optRec   = document.getElementById('optRec');
+    const optBlock = document.getElementById('optBlock');
+    let favAdded = false;
+    if(optFav && optFav.checked && _w && _w.name){
+      DASH_DATA.myGophers = DASH_DATA.myGophers || [];
+      const existing = DASH_DATA.myGophers.find(g => g && g.name === _w.name);
+      if(existing){
+        // Re-rating someone already saved refreshes recency, never duplicates.
+        existing.lastUsed = 'Just now';
+        if(_w.photo && !existing.photo) existing.photo = _w.photo;
+      } else {
+        // A request record carries `title`/`when` — there is no `category` or
+        // `date` field (verified at runtime on the Request surface, where
+        // guessing those names yielded blank enrichment). `specialty` seeds from
+        // the request title so the MY Gophers card line is never empty.
+        DASH_DATA.myGophers.push({
+          name: _w.name,
+          tier: _w.tier || _w.badge || '',
+          specialty: r.title || '',
+          jobs: 1,
+          lastUsed: 'Just now',
+          photo: _w.photo || ''
+        });
+        favAdded = true;
+      }
+      // Canonical favourite flag on the request record — a dormant seam today
+      // (seeded, no consumer), but the name the backend reads.
+      r.favoritedByRequestor = true;
+    }
+    if(optRec && optRec.checked && _w && _w.name){
+      DASH_DATA.recommended = DASH_DATA.recommended || [];
+      if(!DASH_DATA.recommended.includes(_w.name)) DASH_DATA.recommended.push(_w.name);
+    }
+    // ≤3★ block path: captured on the request record. There is no customer-side
+    // blocked-worker store on this surface (the existing block list is
+    // worker-side, in Go), so this marks the backend seam rather than dropping it.
+    if(optBlock && optBlock.checked && _w && _w.name) r.doNotSendAgain = _w.name;
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
-    if(typeof toast === 'function') toast('Thanks — your rating of ' + wnm + ' was submitted');
+    if(typeof toast === 'function'){
+      toast(favAdded
+        ? 'Thanks — your rating was submitted and ' + wnm + ' was added to MY Gophers'
+        : 'Thanks — your rating of ' + wnm + ' was submitted');
+    }
     renderActiveRequests();
     renderRequestDetail();
+    if(typeof renderGophers === 'function' && favAdded) renderGophers();
   }
 
   function buildAdjustmentModal(r){
