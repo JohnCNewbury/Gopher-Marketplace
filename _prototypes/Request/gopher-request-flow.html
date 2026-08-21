@@ -2452,6 +2452,12 @@ return { all:all, save:save,
     // Need ASAP expiry (1-hour broadcast window) — the home card counts down from submittedAt.
     asap:(state.scheduleType==='now'),submittedAt:Date.now(),
     cost:cost,pay:pay,pickup:pickup,dropoff:dropoff,
+      /* ACCESS DETAILS (owner 2026-08-19): stairs/elevator were CAPTURED at step 4 and then
+         dropped on submit — invisible to the requester's own View-details AND to the worker
+         deciding whether to accept. A flight of stairs is exactly the fact that changes who
+         raises a hand, so it travels with the request. Counters are ints; 0 renders nothing. */
+      pickupStairs:(parseInt(state.pickupStairs,10)||0), destStairs:(parseInt(state.destStairs,10)||0),
+      serviceElevatorPickup:!!state.serviceElevatorPickup, serviceElevatorDest:!!state.serviceElevatorDest,
     scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
     // richer detail carried for the crew pill + full "View details" summary
     workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
