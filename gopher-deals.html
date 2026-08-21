@@ -1826,13 +1826,20 @@
   .dash-section { display:none; animation:fadeIn .25s ease; }
   .dash-section.active { display:block; }
   /* ░░ Refer Gopher (dref-) ░░ */
-  .dref-hero { display:flex; gap:18px; align-items:stretch; flex-wrap:wrap; margin:14px 0 16px; }
-  .dref-qrcard { background:#fff; border:1.5px solid #e3e7f0; border-radius:16px; padding:16px 18px; text-align:center; flex:0 0 auto; }
-  .dref-qrttl { font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy); margin-bottom:8px; }
-  .dref-qrbox { width:150px; height:150px; margin:0 auto; }
+  /* Hero card — same composition and rhythm as Go's .qr-card-hero. */
+  .dref-qrcard { background:linear-gradient(180deg,#FFFFFF 0%,#F7FBF8 100%); border:1.5px solid #DCEBE1;
+                 border-radius:16px; padding:22px; text-align:center; margin:14px 0 16px; }
+  .dref-eyebrow { font-family:'Nunito'; font-weight:800; font-size:10px; letter-spacing:0.8px;
+                  text-transform:uppercase; color:var(--green-dark); margin-bottom:6px; }
+  .dref-qrttl { font-family:'Nunito'; font-weight:900; font-size:16px; color:var(--navy); }
+  .dref-qrsub { font-family:'DM Sans'; font-size:12.5px; color:#6a7690; margin-top:2px; }
+  .dref-linklbl { font-family:'Nunito'; font-weight:800; font-size:10.5px; text-transform:uppercase;
+                  letter-spacing:0.6px; color:#6a7690; margin-top:16px; }
+  .dref-qrbox { width:180px; height:180px; margin:6px auto 0; }
   .dref-qrbox svg { width:100%; height:100%; display:block; }
-  .dref-qrsub { font-family:'DM Sans'; font-size:11.5px; color:#6a7690; margin-top:8px; }
-  .dref-send { display:flex; flex-direction:column; gap:10px; justify-content:center; flex:1 1 200px; min-width:0; }
+  .dref-hero-send { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .dref-note { font-family:'DM Sans'; font-size:11.5px; line-height:1.5; color:#6a7690; margin:8px 0 0; }
+  @media (max-width:700px){ .dref-hero-send { grid-template-columns:1fr; } }
   .dref-sendbtn { border:none; border-radius:12px; background:var(--navy); color:#fff; font-family:'Nunito'; font-weight:800; font-size:14px; padding:13px 16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
   .dref-soon { background:#ffd76a; color:#5a4a00; font-family:'Nunito'; font-weight:900; font-size:10px; text-transform:uppercase; letter-spacing:.6px; border-radius:999px; padding:2px 8px; }
   .dref-code { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--navy); border-radius:14px; padding:13px 16px; margin:0 0 16px; flex-wrap:wrap; }
@@ -5822,16 +5829,22 @@
         <div class="panel">
           <div class="panel-head"><h2>Refer Gopher</h2></div>
           <p class="panel-desc">Invite businesses, customers, and workers to the Gopher network. When they join through your referral, you both earn Gopher Rewards credit.</p>
-          <div class="dref-hero">
-            <div class="dref-qrcard">
-              <div class="dref-qrttl">Your personal link</div>
-              <div class="dref-qrbox" id="drefQr" aria-label="Your personal referral QR code"></div>
-              <div class="dref-qrsub">They scan &mdash; you benefit.</div>
-            </div>
-            <div class="dref-send">
+          <!-- Structure matched to Gopher Go's refer hero (owner, 2026-08-20) — same
+               order on every platform: eyebrow, platform invite, link label, QR, send
+               pair, note. Deals' sends STAY GATED (unlike Connect/Request, whose sends
+               work): the kind-aware send rail is rebuild scope here, so an active-looking
+               send would be fake success. -->
+          <div class="dref-qrcard">
+            <div class="dref-eyebrow">Start here</div>
+            <div class="dref-qrttl">Refer Gopher Deals</div>
+            <div class="dref-qrsub">Invite a local business to feature deals on Gopher Deals &mdash; you both earn rewards when they join.</div>
+            <div class="dref-linklbl">Your personal link</div>
+            <div class="dref-qrbox" id="drefQr" aria-label="Your personal referral QR code"></div>
+            <div class="dref-hero-send">
               <button type="button" class="dref-sendbtn" data-dref-soon>Refer via SMS <span class="dref-soon">Soon</span></button>
               <button type="button" class="dref-sendbtn" data-dref-soon>Refer via email <span class="dref-soon">Soon</span></button>
             </div>
+            <p class="dref-note">Sending invites arrives at launch. Your Gopher ID and QR work now &mdash; share them however you like.</p>
           </div>
           <div class="dref-code">
             <div class="dref-code-l"><span class="dref-code-k">Your referral code &mdash; your Gopher ID, shared exactly as shown</span><span class="dref-code-v" id="drefCode">31677</span></div>
@@ -6306,7 +6319,7 @@
       }
       if(box.firstChild) return;
       var qr=qrcode(0,'L'); qr.addData('https://api.gophergo.io/self-referral/'+DREF_ID); qr.make();
-      var n=qr.getModuleCount(), cell=150/n, svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150">';
+      var n=qr.getModuleCount(), cell=180/n, svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">';
       for(var r=0;r<n;r++)for(var c=0;c<n;c++) if(qr.isDark(r,c))
         svg+='<rect x="'+(c*cell).toFixed(2)+'" y="'+(r*cell).toFixed(2)+'" width="'+(cell+0.05).toFixed(2)+'" height="'+(cell+0.05).toFixed(2)+'" fill="#002461"/>';
       box.innerHTML=svg+'</svg>';
