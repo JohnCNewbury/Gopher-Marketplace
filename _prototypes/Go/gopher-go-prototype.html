@@ -2297,7 +2297,18 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <div class="jd-cat js-cat-eyebrow" style="font-family:'Nunito';font-weight:800;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#8C8675">Available \u00b7 near you</div>
    <h1 class="js-cat-title">Available jobs</h1>
    <p class="sub">Sorted by fit near you</p><div class="jl-sort js-sort"><button class="jl-chip on" data-sort="fit">Best fit</button><button class="jl-chip" data-sort="pay">Pay</button><button class="jl-chip" data-sort="dist">Distance</button><button class="jl-chip" data-sort="exp">Expiring</button><button class="jl-chip" data-sort="new">Newest</button></div>
-   <div class="joblist js-list"></div></div></div>`,
+   <div class="joblist js-list"></div></div>
+    <!-- App footer (owner 2026-08-19): this screen is the GO tab's own destination
+         (the shadow-root [data-gnav] map sends go -> jobs-list) yet it rendered without
+         the nav, dead-ending the worker. .pad is flex:1/scroll and .nav is flex:0 0 auto,
+         so it pins to the bottom exactly as it does on the inbox screen. -->
+    <div class="nav">
+      <div class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</div>
+      <div class="nv g40nv" data-gnav="inbox"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</div>
+      <div class="nv c g40nv" data-gnav="go" aria-current="page"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</div>
+      <div class="nv g40nv" data-gnav="refer"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</div>
+      <div class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</div>
+    </div></div>`,
   init(r){ const activeMode=(state.jobsMode==='active');   // set by the home "Active" tab; reset at every Available entry point
     const schedMode=(state.jobsMode==='scheduled');        // home "Scheduled" tab → accepted scheduled bookings not yet started
     const hasCat=!!state.category && !activeMode && !schedMode; const cat=state.category||'Local jobs';
@@ -2848,7 +2859,21 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // requirements
       let reqs='';
       flags.forEach(f=>{ const w=(f.k==='warn')?' warn':(f.k==='good'?' good':''); reqs+='<div class="rq-req'+w+'"><span class="rq-ri">'+sv(reqIcon(f.t))+'</span>'+(f.t||'')+'</div>'; });
-      const purchase=flags.find(f=>/purchas|buy|reimburs/i.test(f.t||''));
+      /* ACCESS DETAILS (owner 2026-08-19): stairs were captured in the Request app and never
+       reached the worker — the one fact that most changes whether someone takes a moving job.
+       Rendered as warn chips (a flight of stairs is a cost, not a nicety); a service elevator
+       downgrades it to neutral because it removes the carry. 0 flights renders nothing. */
+    (function(){
+      var ps=+j.pickupStairs||0, ds=+j.destStairs||0;
+      var chip=function(n,where,elev){
+        var k=elev?'':' warn';
+        return '<div class="rq-req'+k+'"><span class="rq-ri">'+sv(reqIcon('stairs carry'))+'</span>'
+          + n+' flight'+(n>1?'s':'')+' of stairs '+where+(elev?' &middot; service elevator available':'')+'</div>';
+      };
+      if(ps) reqs+=chip(ps,'at pick-up',!!j.serviceElevatorPickup);
+      if(ds) reqs+=chip(ds,'at destination',!!j.serviceElevatorDest);
+    })();
+    const purchase=flags.find(f=>/purchas|buy|reimburs/i.test(f.t||''));
       if(!reqs) reqs='<div class="rq-req good"><span class="rq-ri">'+sv(I.check)+'</span>No special requirements</div>';
       // pay
       let pay;

@@ -2116,6 +2116,11 @@ function openDetails(order){
     +(hasPickup?row('Pick-up', esc(r.pickup)):'')
     +row(hasPickup?'Destination':'Location', esc(r.dropoff||'\u2014'))
     +(r.dist?row('Distance', esc(r.dist)+(/mi/i.test(r.dist)?'':' mi')):'')
+   /* Access details — same facts the worker sees, so the two sides never disagree. */
+   +(function(){var L=[];var ps=+r.pickupStairs||0,ds=+r.destStairs||0;
+     if(ps) L.push(ps+' flight'+(ps>1?'s':'')+' at pick-up'+(r.serviceElevatorPickup?' (service elevator available)':''));
+     if(ds) L.push(ds+' flight'+(ds>1?'s':'')+' at destination'+(r.serviceElevatorDest?' (service elevator available)':''));
+     return L.length?row('Stairs', L.join('<br>')):''; })()
     +'<div style="height:10px;"></div>'
     +row(wc>1?'Payment to workers':'Worker takes home', bids?'Pending bids':(money((+r.pay||0)*wc)+(wc>1?' <span style="color:#8a94a3;font-weight:600;">('+wc+' × '+money(r.pay)+')</span>':'')))
     +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
