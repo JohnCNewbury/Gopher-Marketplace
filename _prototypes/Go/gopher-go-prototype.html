@@ -344,7 +344,15 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
   .rs-banner .ico{font-size:22px;line-height:1;}
   .rs-banner b{font-family:'Nunito';font-weight:800;font-size:13.5px;color:#002461;display:block;margin-bottom:2px;}
   .rs-banner span{font-size:12px;color:#3A4D74;line-height:1.5;}
-  .rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 18px 0;}
+  /* CONTINUITY (owner 2026-08-19, 'still off'): grid rows sized independently, so a card whose
+   title wrapped to two lines made its WHOLE ROW taller — Request read 205/205 then 189/189,
+   a visibly ragged grid against Go's even one. grid-auto-rows:1fr makes every tile the same
+   height regardless of copy length, which is what makes the two apps read as one system. */
+/* Side margin stays 18, matching this screen's OWN siblings (banner, tabs, tracker all sit at
+   306). An earlier pass trimmed it to 14 to match Request's 314 content width — that bought
+   4px of cross-app parity and cost internal alignment, which is the more visible error: the
+   grid would have overhung every element under it. Internal alignment wins. */
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px;margin:16px 18px 0;}
   .rs-tile{position:relative;text-align:left;background:#fff;border:1.5px solid #E3E7EF;border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;}
   .rs-tile:active{transform:translateY(1px);}
   .rs-tico{font-size:22px;line-height:1;height:24px;display:flex;align-items:center;}.rs-tico img{height:20px;width:auto;display:block;}
