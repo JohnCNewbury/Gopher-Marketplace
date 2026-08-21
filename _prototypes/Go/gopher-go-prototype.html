@@ -2621,8 +2621,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
      <!-- Web (70d78ca) gates these behind REFER_SEND_GATED with "Soon" chips because the live
           send rail is kind-blind. The prototype models the UNGATED end-state: each opens the
           Refer Yourself wizard at that channel's entry view. -->
-     <div class="act js-rs-sms" style="flex:1;margin:0;">Refer via SMS</div>
-     <div class="act js-rs-email" style="flex:1;margin:0;">Refer via Email</div>
+     <div class="act js-rs-sms" style="flex:1;margin:0;height:40px;min-height:0;padding:0;border-radius:12px;font-family:'Nunito';font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">Refer via SMS</div>
+     <div class="act js-rs-email" style="flex:1;margin:0;height:40px;min-height:0;padding:0;border-radius:12px;font-family:'Nunito';font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;">Refer via Email</div>
    </div></div>
    <!-- ID ONCE PER SCREEN (owner, 2026-08-18, ruled for all four platforms): the
      referral id's single home is this navy code bar — it was removed from inside the
@@ -2649,7 +2649,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <div class="rs-twrap"><table class="rs-table"><thead id="rs-thead"></thead><tbody id="rs-tbody"></tbody></table></div>
    <div class="rs-how js-how">See how the full referral flow works &#8594;</div>
    <p class="fine">Customers recommend their favorite Gophers from the Gopher Request app &mdash; that adds you the same way.</p>
-  </div></div>`,
+  </div>
+    <!-- App footer: this screen had none, so Refer dead-ended (owner 2026-08-19). -->
+    <div class="nav"><div class="nv g40nv" data-gnav="home"><svg class="g40ic" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>home</div><div class="nv g40nv" data-gnav="inbox"><svg class="g40ic" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12 7.6L3 21l1.9-6A8.4 8.4 0 1 1 21 11.5z"/></svg>inbox</div><div class="nv c g40nv" data-gnav="go"><span class="cc"><svg viewBox="0 0 32 32"><rect x="11.5" y="5" width="9" height="22" rx="3.5"/><rect x="5" y="11.5" width="22" height="9" rx="3.5"/></svg></span>GO</div><div class="nv g40nv" data-gnav="refer" aria-current="page"><svg class="g40ic" viewBox="0 0 24 24"><path d="M12 4.5l2.2 4.6 5 .4-3.8 3.3 1.2 4.9-4.6-2.7-4.6 2.7 1.2-4.9L4.8 9.5l5-.4z"/></svg>refer</div><div class="nv g40nv" data-gnav="help"><svg class="g40ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 0 1 4.6 1c0 1.6-2.2 2-2.2 3.2"/><circle cx="12" cy="16.6" r=".7"/></svg>help</div></div></div>`,
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
     r.querySelector('.js-how').onclick=()=>load('refer-signup-flow');
@@ -3998,7 +4000,22 @@ function goPaintReferSelf(sr){
     if(idEl) idEl.textContent = id || '—';
     if(!qrEl) return;
     qrEl.innerHTML = '';
-    if(!id) return;                                  // no id, no QR — nothing to encode
+    if(!id){
+      /* HONEST PLACEHOLDER (owner ruling 2026-08-19). The no-fake-QR rule stands — a decorative
+         square that looks scannable is a lie — but a BLANK white card reads as a broken screen,
+         which is exactly how it got reported. Say why it is empty, in a muted dashed outline that
+         can never be mistaken for a scannable code. Still zero fabricated identifiers. */
+      qrEl.innerHTML =
+        '<div style="width:150px;height:150px;border:2px dashed #D9D3C6;border-radius:14px;'
+        + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;'
+        + 'padding:10px;text-align:center;">'
+        + '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B9B2A3" stroke-width="1.8">'
+        + '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>'
+        + '<rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2M17 21h2"/></svg>'
+        + '<span style="font-family:DM Sans,sans-serif;font-size:10.5px;line-height:1.35;color:#8C8675;">'
+        + 'Your QR appears here once you finish sign-up</span></div>';
+      return;
+    }
     /* Script-order trap inherited from the web port: the engine can run before the encoder's
        <script src> has executed, and the paint then silently skips. Retry once the page has
        loaded rather than leaving an empty box. */
