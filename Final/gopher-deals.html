@@ -1228,6 +1228,29 @@
     font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--brand-green-dk);
   }
   .otp-verified.show { display:inline-flex; }
+
+  /* SP eligibility verdict (worker funnel, 2026-08-21).
+     ⚠️ The [hidden] guard is REQUIRED and is not belt-and-braces: `.sp-result`
+     sets `display:block`, which beats the browser's default `[hidden]` rule, and
+     this page carries no global `[hidden]{display:none!important}` — only
+     gopher-connect.html does. Without the guard the empty panel renders at load.
+     Same trap as the `.rf-view` referral bug fixed 2026-07-27. */
+  .sp-result { display:block; margin-top:16px; border-radius:12px; padding:16px 18px; border:1px solid; }
+  .sp-result[hidden] { display:none; }
+  .sp-result h4 { margin:0 0 6px; font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; }
+  .sp-result p { margin:0 0 8px; font-size:13.5px; line-height:1.5; }
+  .sp-result ul { margin:8px 0 0; padding-left:18px; font-size:13px; line-height:1.6; }
+  .sp-result .sp-cta {
+    display:inline-block; margin-top:12px; border-radius:10px; padding:10px 18px;
+    background:var(--brand-navy); color:#fff; text-decoration:none;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+  }
+  .sp-yes  { border-color:#1CB061; background:#F1FBF5; }
+  .sp-yes h4 { color:var(--brand-green-dk); }
+  .sp-no   { border-color:#d8ddE6; background:#F7F8FA; }
+  .sp-no h4 { color:var(--brand-navy); }
+  .sp-err  { border-color:#e0b4a6; background:#FBF1EE; }
+  .sp-err h4 { color:#A8442A; }
   /* Existing-Gopher fast path: Personal-Info fields wait (dimmed + disabled) until the
      SMS verify pulls the account; auto-filled inputs get a green tint until edited. */
   .egu-dim { opacity:.45; }
@@ -3414,42 +3437,43 @@
 </svg>
         <button class="modal-close" onclick="closeModal('worker')" aria-label="Close">&times;</button>
         <h3>Offer your service on Gopher</h3>
-        <p>If you&rsquo;re interested in offering a local Service Provider Deal, complete the quick form below and we&rsquo;ll email you with eligibility terms and next steps &mdash; plus a message in your Gopher Go inbox.</p>
+        <p>Interested in offering a local Service Provider Deal? Verify your mobile number and we&rsquo;ll tell you right now whether you qualify.</p>
       </div>
       <div class="modal-body">
-        <!-- Eligibility funnel (DLP). Public entry checks eligibility only — the deal itself
-             is submitted in-app (Gopher Go) by eligible workers. Collect identity + Gopher ID so the
-             backend can verify the worker's tier/jobs/rating, then email terms + inbox message. -->
-        <div class="form-section-head">Your Info</div>
-        <div class="field">
-          <label>First Name</label>
-          <input type="text" name="first_name" placeholder="First name">
-        </div>
-        <div class="field">
-          <label>Last Name</label>
-          <input type="text" name="last_name" placeholder="Last name">
-        </div>
+        <!-- SP ELIGIBILITY FUNNEL (DLP) — SEVERED FROM GOOGLE APPS SCRIPT 2026-08-21 (owner).
+             Owner, verbatim: "I wanted to sever App Scripts and EVERYTHING is internal now."
+             This form used to POST first/last/sms/email/gopher_id to GOPHER_FORM_ENDPOINT (a
+             Google Sheet) and promise an email later. It now verifies the phone against the
+             real platform and answers on the spot from GET /users/deals/eligibility.
+
+             WHY THE OTHER FIELDS ARE GONE. Once the phone is OTP-verified we know exactly which
+             account this is, so name, email and Gopher ID were redundant — and worse, they were
+             collected and would have gone nowhere, which is the same "accepted then dropped"
+             defect just fixed on the merchant intake. Do not re-add an input this form does not
+             send.
+
+             ⚠️ THE OLD `name="gopher_id"` FIELD WAS THE APPLICANT'S OWN ID, not a referrer's —
+             the merchant form's `referred_by_gopher_id` is the referrer. Near-identical names,
+             opposite meanings. `applyReferralPrefill` is merchant-scoped and deliberately never
+             touched this form; keep it that way. -->
+        <div class="form-section-head">Check your eligibility</div>
         <div class="field">
           <label>Mobile (SMS)</label>
-          <input type="tel" name="sms" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555">
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" name="email" placeholder="you@email.com">
-        </div>
-        <div class="field">
-          <div class="label-with-info">
-            <label>Gopher ID</label>
-            <span class="info-btn" tabindex="0">i<span class="info-tip">Your Gopher ID is your referral code &mdash; find it in the Gopher Go app under <strong>Refer &amp; Earn</strong>, by your QR code (e.g. <strong>1</strong> &mdash; it can be 1 digit or many).
-             <!-- 820083 was the 7/27 "deliberate worked example"; SUPERSEDED 8/14 by the
-                  owner's rulings (real IDs on referral surfaces, shared BARE) and by the Go
-                  dashboard it points at, which now shows the real bare id. An example id
-                  that doesn't exist teaches the exact invented-id class the ruling retired. --><img class="info-tip-img" src="assets/img/gopher-id-refer.webp" alt="Your Refer &amp; Earn QR code in the Gopher Go app" onerror="this.style.display='none'"></span></span>
+          <div class="otp-row">
+            <input type="tel" name="sms" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555" oninput="resetOtp(this)">
+            <button type="button" class="btn-verify otp-send-btn" onclick="sendOtp(this)">Send code</button>
           </div>
-          <input type="text" name="gopher_id" placeholder="Your Gopher ID (e.g. 1)" autocomplete="off">
+          <div class="otp-confirm">
+            <p class="field-hint">Enter the 6-digit code we texted you.</p>
+            <div class="otp-code-row">
+              <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="one-time-code" name="otp_code_sms">
+              <button type="button" class="btn-verify" onclick="workerCheckOtp(this)">Check eligibility</button>
+            </div>
+          </div>
+          <span class="otp-verified">&check; Verified</span>
+          <p class="field-hint">We text a code to confirm it&rsquo;s you. Standard rates apply.</p>
         </div>
-
-        <button class="modal-submit" onclick="submitForm('worker')">Submit</button>
+        <div class="sp-result" id="spResult" hidden></div>
       </div>
     </div>
     <div class="modal-thankyou" id="thankyou-worker">
@@ -4222,6 +4246,93 @@
       .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
   }
 
+  /* ── SP ELIGIBILITY, ANSWERED LIVE ────────────────────────────────────────────
+     Replaces the Google Apps Script POST this funnel used to make (owner, 2026-08-21:
+     "I wanted to sever App Scripts and EVERYTHING is internal now").
+
+     ⚠️ POST /users/sign_in CREATES AN ACCOUNT on a number it does not recognise — see
+     the warning by GOPHER_API. That is DESIRED for a merchant and NOT desired here: this
+     funnel is for people who are already Gophers. There is no user-exists lookup and no
+     other way to obtain a token, so the mint cannot be prevented client-side; it is
+     DETECTED instead, via the @placeholder.gophergo.io address the new account carries,
+     and the flow stops there rather than pretending they qualify. `apptype:'gopher'`
+     matters only on that miss — it decides the minted row's role (2, not 3) — so if they
+     do go on to sign up in Gopher Go, the role is already right.
+
+     WHAT WE SHOW AN INELIGIBLE WORKER: the criteria, never their own numbers. The verdict
+     carries service_jobs and service_rating and we deliberately do not render them —
+     matching the Go dashboard's bid-board gate, which the owner already accepted. State
+     the bar; don't publish their scorecard.
+
+     This check is UX, not the security boundary: POST /users/deals re-runs
+     computeEligibility server-side and 403s an ineligible worker regardless. */
+  function spShow(kind, extra) {
+    var box = document.getElementById('spResult');
+    if (!box) return;
+    var html = '';
+    if (kind === 'eligible') {
+      html = '<h4>&check; You qualify</h4>' +
+        '<p>You can offer a Service Provider Deal. Open <strong>Gopher Go</strong> and tap ' +
+        '<strong>+ Service Provider Deal</strong> to set yours up &mdash; you choose the service, ' +
+        'your earnings and how far you&rsquo;ll travel.</p>' +
+        '<a class="sp-cta" href="gopher-go-101.html#offer-deals">How it works &rarr;</a>';
+      box.className = 'sp-result sp-yes';
+    } else if (kind === 'ineligible') {
+      html = '<h4>Not yet &mdash; here&rsquo;s the bar</h4>' +
+        '<p>Service Provider Deals are open to workers who have:</p>' +
+        '<ul>' +
+          '<li>Reached <strong>Elite</strong>, <strong>Elite+</strong> or <strong>Pro</strong></li>' +
+          '<li>Completed <strong>20+ service jobs</strong> (Delivery, Ride Sharing and Other don&rsquo;t count)</li>' +
+          '<li>A <strong>4.75&#9733;</strong> average over the last 20 of those service jobs</li>' +
+        '</ul>' +
+        '<p style="margin-top:10px">Keep taking service work and check back &mdash; eligibility is recalculated every time.</p>';
+      box.className = 'sp-result sp-no';
+    } else if (kind === 'notgopher') {
+      html = '<h4>We don&rsquo;t recognise that number</h4>' +
+        '<p>Service Provider Deals are for people already working as a Gopher. Download ' +
+        '<strong>Gopher Go</strong>, finish signing up, then come back and check.</p>' +
+        '<a class="sp-cta" href="gopher-go.html">Get Gopher Go &rarr;</a>';
+      box.className = 'sp-result sp-no';
+    } else {
+      html = '<h4>We couldn&rsquo;t check that just now</h4><p>' +
+        (extra || 'Please try again in a moment.') + '</p>';
+      box.className = 'sp-result sp-err';
+    }
+    box.innerHTML = html;
+    box.hidden = false;
+    try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+  }
+
+  function workerCheckOtp(btn) {
+    var field = btn.closest('.field');
+    var code = (field.querySelector('.otp-code').value || '').trim();
+    if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code.'); return; }
+    var digits = (field.querySelector('input[type=tel]').value || '').replace(/\D/g, '');
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Checking\u2026'; btn.disabled = true;
+
+    apiCall('/users/sign_in', { body: { telephone: digits, code: code, apptype: 'gopher' } })
+      .then(function (r) {
+        if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+        _authToken = r.token || null;
+        var prof = (r.body && r.body.data) || {};
+        _apiUserId = prof.id || null;
+        _otpAccept(field);
+        /* A placeholder address means sign_in just minted this account, i.e. the number
+           was not a known Gopher. Do not check eligibility for an account created two
+           milliseconds ago — it would read "not eligible" and imply they were assessed. */
+        if (/@placeholder\.gophergo\.io$/i.test(prof.email || '')) { spShow('notgopher'); return; }
+        return apiCall('/users/deals/eligibility', { method: 'GET' }).then(function (er) {
+          if (!er.ok) { spShow('error', apiMessage(er)); return; }
+          var v = (er.body && er.body.data) || er.body || {};
+          spShow(v.eligible ? 'eligible' : 'ineligible');
+        });
+      })
+      .catch(function () { alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
+  }
+
   /* Fill the owner section from the account we just signed into. */
   function _fillFromAccount(prof) {
     var m = document.getElementById('modal-merchant'); if (!m) return;
@@ -4526,11 +4637,11 @@
         need('select[name="discovery_source"]', 'Tell us how you discovered Gopher.');
       }
     } else {
-      need('input[name="first_name"]', 'First name is required.');
-      need('input[name="last_name"]', 'Last name is required.');
+      /* SP funnel, 2026-08-21: the form is one field now. First/last/email/gopher_id
+         were removed with the Apps Script severance, and validating inputs that no
+         longer exist would have made dcValidateAll unsatisfiable — the user would see
+         "First name is required" with no first-name field on screen. */
       need('input[name="sms"]', 'Mobile number is required.');
-      need('input[name="email"]', 'Email is required.');
-      need('input[name="gopher_id"]', 'Your Gopher ID is required — tap the ⓘ to find it.');
     }
     if (firstBad){ firstBad.focus(); if (firstBad.scrollIntoView) firstBad.scrollIntoView({block:'center', behavior:'smooth'}); return false; }
     return true;
@@ -4650,17 +4761,11 @@
     var modalCard = document.querySelector('#modal-' + type + ' .modal');
     if (modalCard) modalCard.classList.remove('dp-wide');
   }
-  /* ============================================================
-     ===  GOPHER DEALS — PRE-REGISTRATION ENDPOINT (EDIT ME)  ===
-     ============================================================
-     Submissions are sent to the destination set below.
-       GOPHER_BACKEND = "sheets"  -> Google Apps Script -> Google Sheet
-       GOPHER_BACKEND = "formspree" -> Formspree (email + dashboard)
-     To redeploy the Google script after editing it: Apps Script ->
-       Deploy -> Manage deployments -> edit -> New version -> Deploy
-       (keep the same URL so you don't have to re-paste it here).
-  ============================================================ */
-  var GOPHER_BACKEND = "sheets";
+  /* GOPHER_BACKEND ("sheets" | "formspree") REMOVED 2026-08-21 with the Apps Script
+     severance. It selected between two third-party form destinations and, once the
+     only code that read it was deleted, became a declared-but-never-read constant
+     that still documented a Google Sheet as the intake. There is one destination now
+     and it is ours. */
   /* ── THE REAL INTAKE API ────────────────────────────────────────────────────────
      Contract verified end-to-end against production 2026-08-10 (deal id 1, user
      141557). Every shape below was driven by hand, not read off a spec.
@@ -4715,7 +4820,11 @@
     return 'Something went wrong (HTTP ' + (r && r.status) + '). Please try again.';
   }
 
-  var GOPHER_FORM_ENDPOINT = "https://script.google.com/macros/s/AKfycbxSIbfXelHFBd1RcF3H50v_QLorKskgj5LRNgDTQbV79mHEXerC_lOwnNueRjnITAEAjg/exec";
+  /* GOPHER_FORM_ENDPOINT (Google Apps Script) REMOVED 2026-08-21 — owner: "I wanted to
+     sever App Scripts and EVERYTHING is internal now. Deals and GO -> HQ and soon
+     HQ -> Connect and Request." Merchant registration posts to POST /users/deals; the
+     SP funnel reads GET /users/deals/eligibility. Do not reintroduce this constant or
+     anything that posts to script.google.com. */
   // Version stamp recorded with each merchant's Merchant Agreement acceptance (see gopher-merchant-agreement.html
   // "Effective Date"). Bump this whenever the agreement's effective date changes so acceptances stay auditable.
   var MERCHANT_AGREEMENT_VERSION = "2026-07-10";
@@ -4867,7 +4976,13 @@
           owner_email:      data.owner_email,
           owner_phone:      (data.owner_phone || '').replace(/\D/g, ''),
           telephone:        (data.owner_phone || '').replace(/\D/g, ''),
-          discovery_source: data.discovery_source
+          discovery_source: data.discovery_source,
+          /* The ?src= campaign tag captured from the landing URL. Distinct from
+             discovery_source, which is what the merchant says themselves — a campaign
+             needs both. Allowlisted + persisted server-side 2026-08-21 (!353); before
+             that this key would have 422'd the whole submission, and the other two were
+             accepted and silently dropped. */
+          channel_source: data.source
         };
         try {
           if (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list)
@@ -4924,17 +5039,17 @@
         return;
       }
 
-      if (!GOPHER_FORM_ENDPOINT) { console.log('Stored locally (no endpoint):', data); showThanks(); return; }
-
-      // Google Apps Script needs a "simple" request (text/plain) to avoid a
-      // CORS preflight it can't answer. Formspree wants real JSON.
-      var fetchOpts = (GOPHER_BACKEND === 'sheets')
-        ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(data) }
-        : { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(data) };
-
-      fetch(GOPHER_FORM_ENDPOINT, fetchOpts)
-        .then(function(res) { if (!res.ok) throw new Error('Bad response: ' + res.status); showThanks(); })
-        .catch(function(err) { console.error('Submission failed (saved locally as backup):', err); showThanks(); });
+      /* ── APPS SCRIPT SEVERED 2026-08-21 (owner) ──────────────────────────────────
+         Everything that used to fall through to a Google Apps Script POST is gone.
+         `submitForm` now has exactly ONE caller — the merchant form — and it returns
+         inside the `type === 'merchant'` branch above. The SP/worker funnel no longer
+         submits at all: it verifies a phone and reads the live eligibility endpoint
+         (see workerCheckOtp). Reaching here means a third form was added without a
+         destination; fail loudly rather than silently showing a thank-you for a
+         submission that went nowhere. */
+      console.error('submitForm: no internal destination for type "' + type + '" — nothing was submitted.');
+      alert('Something went wrong. Please refresh and try again.');
+      _submitInFlight[type] = false;
     }
 
     // Geocode-at-submit: stamp lat/lng on the lead so the coverage tracker can pin it

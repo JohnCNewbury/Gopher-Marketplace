@@ -1933,7 +1933,21 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   paste-ready snippet keys on `data.email`, but the **merchant** form's field is `owner_email`
   (only the worker/SP form uses `email`), so the merchant welcome email would silently never fire.
   Left unfixed on purpose while the Apps Script freeze decision is open.
-  **⛔ RULED 2026-08-14 (owner): FREEZE THE APPS SCRIPT.** It stays at exactly today's behaviour —
+  **⛔⛔ SUPERSEDED 2026-08-21 (owner) — THE APPS SCRIPT IS BEING *SEVERED*, NOT KEPT.** Verbatim:
+  *"I wanted to sever App Scripts and EVERYTHING is internal now. Deals and GO -> HQ and soon
+  HQ -> Connect and Request."* The architecture is internal end to end.
+  **Read the 08-14 "freeze" below as *stop building on it while it is being removed*, NOT as
+  *it legitimately stays*.** That misreading is live-tested: on 2026-08-21 a session reported the
+  one surviving Apps Script dependency to the owner as intended design, and was corrected.
+  **Any remaining `GOPHER_FORM_ENDPOINT` / `script.google.com` / `AKfycb…` reference is DEBT TO
+  REMOVE.** Audited 2026-08-21 — the entire remaining surface is **one path**:
+  `Final/gopher-deals.html` `submitForm('worker')`, the SP-eligibility funnel. The **merchant**
+  path is already fully internal (`POST /api/v1/users/deals` behind phone + email OTP) and is
+  proven with real public traffic. Use the merchant path as the template for severing the worker
+  one. See memory `apps-script-is-severed-everything-internal`.
+
+  _Superseded ruling, kept for its reasoning:_
+  **RULED 2026-08-14 (owner): FREEZE THE APPS SCRIPT.** It stays at exactly today's behaviour —
   lead capture + notify deals@ — and nothing is added to it, ever. No welcome email, no inbox
   relay, no new `submission_type`. **Do not build against `GOPHER_FORM_ENDPOINT`**; the work goes
   to the **G40-305 dispatcher (`sendEmail.js`)** in production. `docs/handoff/deals-email-wiring.md`
