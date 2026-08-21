@@ -1073,7 +1073,7 @@ function cardHTML(r){
   ? (attn.type==='counter'
      ? '<button class="rc-view urgent" data-pending-action="counter" data-order="'+r.order+'">Review now →</button>'
      : attn.type==='bid'
-       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+' bids · Review →'):'Review bid →')+'</button>'
+       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+(r.bids?' bids · Review →':' accepted · Review →')):(r.bids?'Review bid →':'Review & approve →'))+'</button>'
        : attn.type==='rate'
        ? '<button class="rc-view rate" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
        : attn.type==='confirm'
@@ -1137,7 +1137,7 @@ function startAccepting(){
  clearTimeout(acceptTimer);
  var tick=function(){ var reqs=GReq.all(), changed=false;
   reqs.forEach(function(r){ if(r.stage==='searching'){ r.accepted=(r.accepted||0)+1;
-   if(r.accepted>=PENDING_GOPHERS.length){ r.stage='accepted'; if(!r.attention){ r.attention={type:'bid',label:'New bid from '+PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' — above your offer'}; } }
+   if(r.accepted>=PENDING_GOPHERS.length){ r.stage='accepted'; if(!r.attention){ r.attention={type:'bid',label:(r.bids?('New bid from '+PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' \u2014 above your offer'):(PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' accepted \u2014 approve to hire'))}; } }
    changed=true; } });
   if(changed){ GReq.save(reqs); renderPending(); }
   if(GReq.all().some(function(r){return r.stage==='searching';})) acceptTimer=setTimeout(tick,1000);
@@ -1266,6 +1266,17 @@ function openCounterReview(order){
 var _bidSort='amount';
 function openBidsList(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  /* SET-PRICE vs BID (owner 2026-08-21). A worker ACCEPTING a set-price request is surfaced
+     through this same review-and-hire flow — right plumbing, wrong words: it read "Review bid",
+     "Bid amount", "Bid denied" on a request that never had bidding. r.bids is the request's own
+     payMode flag, so the copy follows the REQUEST rather than the attention type, which stays
+     'bid' so every downstream handler keeps working untouched. */
+  var _isBid = !!r.bids;
+  var W = _isBid
+    ? {amt:'Bid amount', head:' bids \u2014 review & hire',
+       none:'All bids passed \u2014 request stays open', denied:'Bid denied'}
+    : {amt:'Their price', head:' accepted \u2014 review & hire',
+       none:'All applicants passed \u2014 request stays open', denied:'Acceptance declined'};
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
   function sortList(list){ var l=list.slice();
@@ -1296,7 +1307,7 @@ function openBidsList(order){
   function renderBody(){
     var rr=GReq.get(order); var list=(rr&&rr.bidsList)||[];
     var active=sortList(list.filter(function(b){return b.status!=='denied';}));
-    var sorts=[['amount','Bid amount'],['distance','Distance'],['rating','Ratings'],['jobs','Total jobs']];
+    var sorts=[['amount',W.amt],['distance','Distance'],['rating','Ratings'],['jobs','Total jobs']];
     var tabs='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;">'+sorts.map(function(s){var on=_bidSort===s[0];return '<button class="bid-sort" data-bs="'+s[0]+'" style="flex:0 0 auto;border:1px solid '+(on?'#002461':'#e3ddcd')+';background:'+(on?'#002461':'#fff')+';color:'+(on?'#fff':'#002461')+';border-radius:99px;padding:6px 12px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">'+s[1]+'</button>';}).join('')+'</div>';
     var body=o.querySelector('#bidsBody'); if(!body) return;
     body.innerHTML='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:-2px 0 8px;">'+esc(rr.title||'Request')+' \u00b7 #'+order+' \u00b7 <b>'+active.length+'</b> interested</div>'+tabs+active.map(bidRow).join('');
@@ -1316,9 +1327,9 @@ function openBidsList(order){
     if(act==='consider'){ b.status=(b.status==='considered'?'new':'considered'); GReq.update(order,{bidsList:list}); renderBody(); return; }
     if(act==='deny'){ b.status='denied'; GReq.update(order,{bidsList:list});
       var remaining=list.filter(function(x){return x.status!=='denied';});
-      if(!remaining.length){ GReq.update(order,{attention:null}); o.remove(); renderPending(); toast('All bids passed \u2014 request stays open'); return; }
-      GReq.update(order,{ attention:{type:'bid',label:remaining.length+' bids \u2014 review & hire',count:remaining.length} });
-      renderBody(); toast('Bid denied'); return; }
+      if(!remaining.length){ GReq.update(order,{attention:null}); o.remove(); renderPending(); toast(W.none); return; }
+      GReq.update(order,{ attention:{type:'bid',label:remaining.length+W.head,count:remaining.length} });
+      renderBody(); toast(W.denied); return; }
   }
   renderBody();
 }
