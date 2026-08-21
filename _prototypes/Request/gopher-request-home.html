@@ -994,8 +994,24 @@ const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toU
 const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
-function statusBucket(r){ if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Previous requests
-  if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
+function statusBucket(r){
+    if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — lives in Previous requests
+    /* ACCEPTANCE IS THE GATE (owner ruling 2026-08-21). Active and Scheduled are ONLY
+       occupied once a Gopher has ACCEPTED. Until then a request sits in Submitted no
+       matter how it was timed — Need-ASAP and exact-time bookings alike.
+       The bug this replaces: `scheduledForLater` is stamped at SUBMIT time, and it was
+       tested BEFORE any acceptance check, so a scheduled request nobody had taken yet
+       showed up under Scheduled and was missing from Submitted. */
+    var isAccepted = !!r.hired || r.accepted>=1 ||
+                     r.stage==='accepted' || r.stage==='matched' || r.stage==='active';
+    if(!isAccepted) return 'submitted';
+    /* Accepted. Started work -> Active; an accepted booking still waiting for its
+       date -> Scheduled. `substage` is the worker's progress (in-progress, purchased,
+       picked-up, completed), so any substage means it has started. */
+    var hasStarted = r.stage==='active' || !!r.substage;
+    if((r.scheduledForLater || r.stage==='scheduled') && !hasStarted) return 'scheduled';
+    return 'active';
+  }
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
 function statusText(r){

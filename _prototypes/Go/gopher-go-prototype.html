@@ -2333,7 +2333,14 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       ? allJobs.filter(j=>j.accepted && j.scheduled && !j.substage && !j.noShow && !j.cancelled)
       : activeMode
       ? allJobs.filter(j=>j.accepted && jobApproved(j) && !(j.scheduled && !j.substage) && !(j.substage==='completed' && j.confirmed) && !j.noShow && !j.cancelled)   // ACTIVE = approved by the requester (accept alone is not active)
-      : jobsFor(hasCat?cat:'all').filter(j=>!isBlocked(j.who) && !j.cancelled && !(j.accepted && jobApproved(j)));   // accepted-but-not-yet-approved stays in Available marked "Accepted · pending" (worker can remove it); once the requester approves it moves to Active
+      : (hasCat ? jobsFor(cat) : allJobs)
+        /* "View all" must list EVERY open job, not a preview. jobsFor('all') deliberately
+           returns .slice(0,1) per category for the HOME rail — using it here silently
+           dropped every job after the first in each category (owner 2026-08-21: home
+           counted 3, this screen showed 2). The comment above already warned that
+           jobsFor('all') is a preview; the Available branch was still calling it.
+           allJobs is the same flattened set Active/Scheduled already scan. */
+        .filter(j=>!isBlocked(j.who) && !j.cancelled && !(j.accepted && jobApproved(j)));   // accepted-but-not-yet-approved stays in Available marked "Accepted · pending" (worker can remove it); once the requester approves it moves to Active
     /* DEV HEADS-UP — Standard-Gopher concurrency gate (NOT built here; demo Gopher is Pro):
        A Standard Gopher may hold only ONE ACTIVE request at a time. A SCHEDULED request does NOT
        count against this gate. When a Standard Gopher is connected to ≥1 active request, they can still
