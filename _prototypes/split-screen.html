@@ -130,7 +130,10 @@
       directBooking:!!r.directBooking, provider:r.provider||'',
       // Worker-selection mode drives the Go card badge + whether an accept auto-hires ('first') or
       // becomes an application the requester approves ('select'/'my'). Was dropped here.
-      workerSelection:r.workerSelection||'first'
+      /* Normalised at the WRITE as well as the read: the Go phone never receives the retired
+         'prioritize', so the relayed record is canonical even when the source record is old.
+         Go's own alias stays as a backstop rather than a dependency. */
+      workerSelection:(function(v){ v=String(v||'first'); return v==='prioritize' ? 'my' : v; })(r.workerSelection)
     };
   }
 
