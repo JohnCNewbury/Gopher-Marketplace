@@ -857,7 +857,12 @@ function computeRequestFee(cogOffer){
   //    but never reduce the offer/items); TS absorbs any truncation when the cap binds.
   const hasTS = (typeof window.__hasTrustShield === 'function')
     ? !!window.__hasTrustShield() : !!(state && state.trustShield);
-  const tsEligible = hasTS && (state.category==='delivery' || state.category==='ride');
+  /* TrustShield $1 perk scope — age-restricted Delivery + ALL Ride Sharing, never plain
+     delivery. Owner ruling 2026-07-05 made the NARROW build scope authoritative; this file
+     carried the rejected broad scope, so the discount was applying to every delivery — a
+     silent money leak with no visible error, which is why it survived. Request and Connect
+     were both already correct. */
+  const tsEligible = hasTS && ((state.category==='delivery' && state.ageRestricted) || state.category==='ride');
   const promoDiscount = Math.min(promoPct * totalFees, totalFees);
   const tsDiscount    = tsEligible ? Math.min(1.00, totalFees - promoDiscount) : 0;
 
@@ -948,7 +953,16 @@ const FIELD_HIDDEN_FOR = {
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
   serviceElevator:['delivery','home','labor','junk','yard','ride','other'],
   destStairs:['delivery','home','yard','ride'],
-  aiPaySuggest:['moving','home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
+  /* ⚠️ POLARITY: this table is FIELD_HIDDEN_FOR — every array lists the categories a field is
+     HIDDEN for. isVisible(f) = !FIELD_HIDDEN_FOR[f].includes(category). So REMOVING a category
+     from an array TURNS THE FIELD ON for it. The old comment here named the VISIBLE set
+     ("Delivery + Ride + Junk") one line from a hide list — opposite polarity, side by side,
+     which is plausibly how this drifted in the first place. Naming the rule instead.
+     RULE: aiPaySuggest is visible for exactly PRICED_CATEGORIES (delivery, ride, moving, junk)
+     — so the hide list is everything else. 'moving' was removed 2026-08-22 because Moving
+     joined PRICED_CATEGORIES on 2026-08-08 and its suggestion had stopped appearing; taking it
+     out of the HIDE list is what turns it back ON. The parity harness asserts this equivalence. */
+  aiPaySuggest:['home','labor','yard','other'],
   bidsOption:['delivery','ride']
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
@@ -1028,6 +1042,46 @@ function getCurrentOfferModel(){
 /* ============================================================
    STATE
    ============================================================ */
+  /* CATEGORY-SCOPED STATE — mirrors Final/gopher-request.html and gopher-connect.html
+     (identical 26-key table; the canonical copy also lives in
+     Final/assets/js/gopher-flow-rules.js as GopherFlowRules.categoryScopedKeys()).
+     Duplicated rather than imported ON PURPOSE — and NOT for the reason first written here: the
+     module IS committed (d08f7e1) and is currently live. It went live as a SIDE EFFECT (deploy.sh
+     ships the whole Final/ tree, so it rode along in someone else's push), not as a decision, and
+     another session can legitimately hold it back again. Request and Connect also both mirror this
+     list inline today, and Phase 2's design is agree-then-adopt: the harness asserts each surface
+     AGREES with the module; actually consuming it is Phase 3, per surface, with approval. The parity
+     harness (docs/handoff/request-app-parity/run_parity_harness.py) is what keeps this copy
+     honest — it fails the moment this list drifts from the module.
+
+     Why it exists: without it a category switch carried the PREVIOUS category's answers
+     forward — pick Junk, let iQ set a volume tier and a price, switch to Delivery, and the
+     delivery was priced off a junk volume tier with hazardous/itemCount still set.
+
+     Deliberately NOT reset: user-typed, category-agnostic input (description, pics,
+     addresses, specialInstructions) and agePurchaseDismissed, a session-level
+     "don't show me again". workerSelection is NOT category-scoped either — it is the
+     requester's hiring preference, not a property of the category. */
+  const CATEGORY_SCOPED_KEYS = [
+    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'itemsPurchased','costOfItems',
+    'numRiders','numBags',
+    'junkTier','movingTier',
+    'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
+    'payByHour','numHours',
+    'itemCount','multipleItems','hazardous',
+    'payMode','payAmount','lowOfferAck','lowAvailabilityAck','suggestedOfferUsed'
+  ];
+  /* Defaults are READ FROM makeInitialState() — never from a stored record — so a reset can
+     never resurrect a retired value, and this can't drift from the schema. */
+  function realignCategoryState(){
+    const fresh = makeInitialState();
+    CATEGORY_SCOPED_KEYS.forEach(function(k){
+      if(!(k in fresh)) return;                 // key this surface doesn't carry — skip
+      state[k] = fresh[k];
+    });
+  }
+
 function makeInitialState(){
   return {
     step:1, maxStepReached:1,
@@ -2272,7 +2326,7 @@ document.addEventListener('click',(e)=>{
 
   // category select — selects only, no auto-advance
   const cat=e.target.closest('[data-cat]');
-  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
+  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; realignCategoryState(); if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
   // outside tap closes an open popover (only relevant on step 1)
   if(state.step===1 && state.openCatInfo){ state.openCatInfo=null; render(); return; }
 
