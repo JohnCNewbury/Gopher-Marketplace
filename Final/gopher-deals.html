@@ -3776,6 +3776,49 @@
     console.error('[gopher-deals] gm_authFailure: key / referrer / API-enable / billing.');
   };
 
+  /* ── ADDRESS AUTOCOMPLETE ON THE REGISTRATION FORM ────────────────────────────
+     Owner, 2026-08-22, on his own live submission: "Missing city."
+
+     Both address fields were plain text with a "Street, City, State, ZIP"
+     placeholder and nothing that captured or enforced it. His BUSINESS address
+     stored as "405 Shorehouse Way" — no city, state or ZIP — while his OWNER
+     address was complete only because the existing-Gopher autofill pulled it
+     from his account. A merchant typing their own street line gets the same
+     truncation, and for a fixed-location merchant the business address is what
+     resolves the last-mile pickup when a deal parlays into a Gopher Request.
+
+     Uses the SAME helper the audience map already uses, so there is one
+     autocomplete implementation on this page rather than two. attachOnFocus
+     because these live inside a modal that does not exist at load, and it is
+     safe to call before Maps has finished loading.
+
+     On pick we write the FULL formatted address back into the field, which is
+     what gets submitted — the same shape owner_address already had.
+
+     ⚠️ Free typing is still allowed. This is an aid, not a gate: a merchant
+     whose address Google does not know (a new unit, a rural route) must still
+     be able to register. The completeness CHECK below is what stops a bare
+     street line, and it accepts anything with a city-looking tail. */
+  function initRegAddressAutocomplete(){
+    if(!window.GopherAddressAC) return;
+    GopherAddressAC.attachOnFocus(
+      function(el){
+        return el && el.tagName === 'INPUT' &&
+               (el.name === 'address' || el.name === 'owner_address') &&
+               el.closest && el.closest('#modal-merchant');
+      },
+      function(el){
+        return { onPick: function(d){
+          if (d && d.formatted) {
+            el.value = d.formatted;
+            /* Clear any completeness error the moment a real address lands. */
+            try { el.classList.remove('field-invalid'); dcSetErr(el, ''); } catch(e){}
+          }
+        }};
+      }
+    );
+  }
+
   function initAudienceAutocomplete(){
     if(!window.GopherAddressAC) return;
     var input=document.getElementById('audience-address');
@@ -3921,6 +3964,7 @@
   document.addEventListener('DOMContentLoaded',function(){
     var inp=document.getElementById('audience-address');
     if(inp) inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); viewAudience(); }});
+    initRegAddressAutocomplete();
     if(inp) inp.addEventListener('focus',initAudienceAutocomplete);   // safety net once Maps is ready
     if(_gmapsReady) initAudienceAutocomplete();   // in case Maps loaded before DOM
   });
@@ -4957,7 +5001,19 @@
         }
       }
       var mobile = modal.querySelector('#regAddrMobile');
-      if (!(mobile && mobile.checked)) need('input[name="address"]', 'Business address is required (or check "address is mobile").');
+      if (!(mobile && mobile.checked)) {
+        need('input[name="address"]', 'Business address is required (or check "address is mobile").');
+        /* A bare street line is what "405 Shorehouse Way" was — accepted, stored,
+           and useless for resolving a pickup. Ask for a city rather than silently
+           taking half an address. Deliberately loose: any comma-separated tail
+           counts, because the alternative is rejecting addresses Google has never
+           heard of, and a merchant who cannot register is worse than one whose
+           address needs a follow-up call. */
+        var addrEl = modal.querySelector('input[name="address"]');
+        if (addrEl && (addrEl.value || '').trim() && !/,\s*\S/.test(addrEl.value)) {
+          bad(addrEl, 'Include the city and state — e.g. 405 Shorehouse Way, Holly Springs, NC.');
+        }
+      }
       else { var a = modal.querySelector('input[name="address"]'); if (a){ a.classList.remove('field-invalid'); dcSetErr(a,''); } }
       need('select[name="category"]', 'Pick a category.');
       need('textarea[name="deal"]', 'Tell us the deal you’re offering.');

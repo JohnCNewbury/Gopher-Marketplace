@@ -4055,7 +4055,7 @@ window.showNoAccount = function(){
         <path fill="#012462" d="m684.98,61.88c6.62,0,10.68,4.83,10.68,10.39s-4.06,10.44-10.68,10.44-10.68-4.98-10.68-10.44,4.06-10.39,10.68-10.39Zm-8.99,10.39c0,4.98,3.63,8.99,8.99,8.99s8.99-4.01,8.99-8.99-3.58-8.94-8.99-8.94-8.99,3.96-8.99,8.94Zm10.92,1.35l2.51,2.9h-2.42l-2.22-2.66h-1.21v2.66h-1.93v-9.23h3.87c2.03,0,3.48,1.5,3.48,3.29,0,1.35-.82,2.56-2.08,3.04Zm-1.74-1.3c1.21,0,1.93-.68,1.93-1.74s-.72-1.69-1.93-1.69h-1.6v3.43h1.6Z"/>
       </g>
     </svg></div>
-        <div class="dash-worker-name" id="dashWorkerName">Marcus Hale</div>
+        <div class="dash-worker-name" id="dashWorkerName">&nbsp;</div>
         <div class="dash-worker-sub">Status &middot; Active &middot; TrustShield&trade;</div>
         <div class="dash-acct-tier" id="dashAcctTier"></div>
       </div>
@@ -4128,7 +4128,7 @@ window.showNoAccount = function(){
           <div class="profile-hero">
             <div class="ph-avatar" id="profAvatar">MH</div>
             <div class="ph-id">
-              <div class="ph-name" id="profName">Marcus Hale</div>
+              <div class="ph-name" id="profName">&nbsp;</div>
               <div class="ph-since" id="profSince">Member since Jan 2026</div>
               <div class="ph-stats">
                 <div class="ph-stat"><span class="phs-v" id="profJobs">86</span><span class="phs-l">Jobs completed</span></div>
@@ -4249,7 +4249,7 @@ window.showNoAccount = function(){
             <div class="showas-card">
               <div class="showas-main">
                 <span class="showas-ttl" id="bizShowAsTtl">Showing as a business</span>
-                <span class="showas-sub" id="bizShowAsSub">Requesters see <b>Hale Services LLC</b></span>
+                <span class="showas-sub" id="bizShowAsSub">Requesters see <b>your business</b></span>
               </div>
               <span class="sw on" id="bizShowAsSw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
             </div>
@@ -4793,7 +4793,7 @@ window.showNoAccount = function(){
         <div class="osf-asline">
           <span>&#128100;</span>
           <div>
-            Customers will see <b id="osfAsName">Marcus Hale</b>
+            Customers will see <b id="osfAsName">your name</b>
             <span id="osfAsKind" class="osf-askind">&middot; your name</span>
             <button type="button" class="osf-aschange" id="osfAsChange">Change</button>
           </div>
@@ -7736,8 +7736,22 @@ window.showNoAccount = function(){
     var paintShowAs = function(){
       var on = showSw.classList.contains('on');
       var biz = (document.getElementById('bizName')||{}).value || 'your business';
+      /* ⛔ WAS HARDCODED 'Marcus Hale'. GoProfile's identity load already writes the
+         real signed-in name into #dashWorkerName / #profName from
+         /users/profile/:id — this one line never read it, so a worker toggling to
+         "individual" was told requesters would see a demo person. The owner hit it
+         on his own account: "my personal/business info isnt correct".
+
+         Read from the DOM the identity load owns rather than re-fetching: one
+         source, and it is already refreshed on sign-in, session restore and pane
+         open. 'your name' is the honest fallback before the profile lands — never
+         a person who does not exist. */
+      var who = (document.getElementById('dashWorkerName') || {}).textContent
+             || (document.getElementById('profName') || {}).textContent || '';
+      who = String(who).trim();
+      if (!who || /^Marcus Hale$/i.test(who)) who = 'your name';
       showTtl.textContent = on ? 'Showing as a business' : 'Showing as an individual';
-      showSub.innerHTML = 'Requesters see <b>' + (on ? biz : 'Marcus Hale') + '</b>';
+      showSub.innerHTML = 'Requesters see <b>' + (on ? biz : who) + '</b>';
       showSw.setAttribute('aria-checked', String(on));
     };
     window.GoBiz = window.GoBiz || {};
