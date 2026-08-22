@@ -57,6 +57,12 @@
       dealSpecifics: d.deal_text || '',
       promo: d.promo_code || undefined
     };
+    /* The merchant's logo. `deal_img` has been published by the feed all along —
+       toPublicDeal() includes it — but nothing ever WROTE it and nothing here ever
+       read it, so every live card rendered with no mark while the demo cards had one.
+       Both halves landed 2026-08-21 (backend !354). Absent on older deals, so the
+       card's own no-logo fallback still applies. */
+    if (d.deal_img) base.logo = d.deal_img;
     if (d.track === 'dlp') {
       base.kind = 'service';
       /* `name` is the SERVICE, `pro` is who provides it — the shape the demo
