@@ -1273,9 +1273,9 @@ function openBidsList(order){
      'bid' so every downstream handler keeps working untouched. */
   var _isBid = !!r.bids;
   var W = _isBid
-    ? {amt:'Bid amount', head:' bids \u2014 review & hire',
+    ? {amt:'Bid amount', unit:'bid', head:' bids \u2014 review & hire',
        none:'All bids passed \u2014 request stays open', denied:'Bid denied'}
-    : {amt:'Their price', head:' accepted \u2014 review & hire',
+    : {amt:'Their price', unit:'accepted', head:' accepted \u2014 review & hire',
        none:'All applicants passed \u2014 request stays open', denied:'Acceptance declined'};
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
@@ -1293,7 +1293,7 @@ function openBidsList(order){
         +'<div style="width:40px;height:40px;border-radius:50%;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:900;font-size:14px;flex:0 0 auto;">'+esc(initials)+'</div>'
         +'<div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">'+esc(b.by)+(considering?' <span style="font-size:10px;color:#1CB061;font-weight:800;">\u00b7 Considering</span>':'')+'</div>'
           +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;">\u2605 '+esc(b.rating)+' \u00b7 '+(b.jobs||0)+' jobs \u00b7 '+esc(b.dist)+' away</div></div>'
-        +'<div style="text-align:right;flex:0 0 auto;"><div style="font-family:Nunito;font-weight:900;font-size:17px;color:#1CB061;">'+money(b.amt)+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:9.5px;color:#8a94a3;text-transform:uppercase;letter-spacing:.5px;">bid</div></div>'
+        +'<div style="text-align:right;flex:0 0 auto;"><div style="font-family:Nunito;font-weight:900;font-size:17px;color:#1CB061;">'+money(b.amt)+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:9.5px;color:#8a94a3;text-transform:uppercase;letter-spacing:.5px;">'+W.unit+'</div></div>'
       +'</div>'
       +'<div style="display:flex;gap:16px;margin:9px 0 2px;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;"><span>Materials cost <b style="color:#002461;">'+money(b.cost)+'</b></span><span>Labor <b style="color:#002461;">'+money(b.labor)+'</b></span></div>'
       +(b.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;margin-bottom:4px;">\u201c'+esc(b.note)+'\u201d</div>':'')
