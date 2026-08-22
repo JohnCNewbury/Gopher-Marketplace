@@ -3928,8 +3928,22 @@
     // === Searchable keyword chips (merchant form) ===
   var MAX_KEYWORDS = 3;
   // Keyword store for the merchant form (kw-* fields).
+  /* ⛔ THE LIST STARTS EMPTY. It was seeded ['Burgers','Shakes','Fries'] — not as
+     placeholder text but as three REAL CHIPS, rendered and submitted. A merchant
+     who did not notice them published a deal tagged with someone else's menu, and
+     keywords are the search terms customers match on, so the wrong ones put the
+     deal in front of the wrong people.
+
+     This is not hypothetical: DL-0009, the first real merchant through this form,
+     filed an AGE-RESTRICTED deal carrying "burgers, shakes, fries". That mismatch
+     was read as her mis-categorising; it was the form's defaults, left in place.
+     Owner, 2026-08-22: "need to remove the auto populated keywords. Users might
+     use those by mistake."
+
+     `placeholder` stays — greyed hint text inside an empty input cannot be
+     submitted by accident, which is the whole difference. */
   var keywordStore = {
-    merchant: { list: ['Burgers', 'Shakes', 'Fries'], prefix: 'kw', placeholder: 'e.g. Burgers' }
+    merchant: { list: [], prefix: 'kw', placeholder: 'e.g. Burgers' }
   };
   // Back-compat alias used elsewhere.
   var keywords = keywordStore.merchant.list;
