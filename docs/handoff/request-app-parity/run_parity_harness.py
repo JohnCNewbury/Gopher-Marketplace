@@ -443,9 +443,66 @@ def main():
                 shapeless.append(name)
             else:
                 gate_sets[name] = gs
+        # ⚠️ A surface with no readable labels is EITHER rewired to the shared
+        # module (good — the module's own tests own the rules) OR label-less by
+        # shape (the prototype). Those are not the same thing and must not be
+        # reported the same way.
+        #
+        # This distinction was added because Phase 3 exposed the failure: once
+        # Request and Connect delegated, surface_gates() found no labels on them,
+        # every ruled-gate assertion below silently stopped running, and the
+        # harness reported PASS while checking NOTHING. Same silent-drop shape as
+        # the prototype hole found earlier the same day — a second instance in one
+        # file, for a different reason.
+        DELEGATES = {}
         for name in shapeless:
-            check(True, "%s uses a label-less gate shape — asserted separately, "
-                        "not by comparison" % name)
+            body = read(SURFACES[name])
+            loads = 'assets/js/gopher-step-gates.js' in body
+            uses = 'GopherStepGates.evaluate' in body
+            DELEGATES[name] = loads and uses
+            if DELEGATES[name]:
+                # A rewired surface must NOT also keep a private copy of the rules.
+                i = body.find("function stepGate(")
+                blk = ""
+                if i >= 0:
+                    j = body.index("{", i); d, k = 0, j
+                    while k < len(body):
+                        if body[k] == "{": d += 1
+                        elif body[k] == "}":
+                            d -= 1
+                            if d == 0: break
+                        k += 1
+                    blk = body[i:k + 1]
+                inline = len(re.findall(r"ok:\s*false", blk))
+                # ⚠️ `uses` is a substring test, so DEAD delegation code still
+                # satisfies it: inserting `return {ok:true};` before the call left
+                # the harness green while every gate was disabled. Caught by
+                # mutation testing. The shim itself must never return a bare pass —
+                # only the MODULE decides ok:true — so an ok:true literal inside
+                # stepGate means something is short-circuiting it.
+                shortcircuit = re.search(r"ok:\s*true", blk)
+                check(not shortcircuit,
+                      "%s's shim does not short-circuit the module" % name,
+                      "stepGate returns ok:true itself — only the module may do that; "
+                      "the delegation call below it would be dead code")
+                check(inline <= 1,
+                      "%s DELEGATES its step gates to the module (no private copy)" % name,
+                      "stepGate still holds %d inline rules — delegation that leaves the "
+                      "old rules behind is duplication with extra steps" % inline)
+                check(loads and uses,
+                      "%s loads AND calls gopher-step-gates.js" % name,
+                      "loads=%s uses=%s" % (loads, uses))
+            else:
+                check(True, "%s uses a label-less gate shape — asserted by condition "
+                            "below, not by comparison" % name)
+        # Only meaningful while a surface still carries readable inline labels.
+        # Once both are rewired this block is skipped -- and the assertions that
+        # replace it are the module's own tests (test-step-gates.js, 56 of them)
+        # plus the delegation checks above. Said explicitly so an empty section
+        # cannot be mistaken for a passing one.
+        if not gate_sets:
+            check(True, "step-gate rules now live in gopher-step-gates.js — "
+                        "asserted by test-step-gates.js, not by cross-surface diff")
         if "request" in gate_sets and "connect" in gate_sets:
             only_r = sorted(gate_sets["request"] - gate_sets["connect"])
             only_c = sorted(gate_sets["connect"] - gate_sets["request"])
@@ -552,107 +609,6 @@ def main():
                           "missing from the gate's OWN block: %s — the label may still be "
                           "present while the condition has been gutted" % ", ".join(absent))
 
-            # The prototype is a THIRD surface and the ruled identity gate binds it
-            # too, but it cannot be checked by label (see above), so it is asserted
-            # by CONDITION. Scoped to its own gate line, for the same reason the
-            # whole-file search was useless on the other two.
-            #
-            # Deliberately NOT asserted here: addresses-must-differ and
-            # schedule-time. The prototype genuinely has neither, and no ruling
-            # covers that — asserting them would invent a requirement rather than
-            # enforce a decision. It stays a WARN below if it ever matters.
-            # Scope to stepGate()'s OWN body. The same condition
-            # (step===2 && delivery && ageRestricted) also appears in goNext()'s
-            # age-keyword backstop, and an unscoped search matched THAT instead —
-            # so a mutation to the real gate was "caught" by the wrong assertion,
-            # for the wrong reason. Third time scoping has been the bug in this
-            # file; the pattern is: never search a 2 MB document for a fact that
-            # belongs to one function.
-            proto_src = read(SURFACES["prototype"])
-            _i = proto_src.find("function stepGate(")
-            if _i >= 0:
-                _j = proto_src.index("{", _i)
-                _d, _k = 0, _j
-                while _k < len(proto_src):
-                    if proto_src[_k] == "{":
-                        _d += 1
-                    elif proto_src[_k] == "}":
-                        _d -= 1
-                        if _d == 0:
-                            break
-                    _k += 1
-                proto_src = proto_src[_i:_k + 1]
-            pm = re.search(
-                r"state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
-                r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
-                proto_src)
-            check(pm is not None,
-                  "prototype enforces the RULED gate: step 2 Identity verification",
-                  "the step-2 identity condition is gone — owner ruling 2026-08-22 "
-                  "binds all three surfaces, and this one is not covered by the "
-                  "label comparison above because its gate returns {ok, sel, msg}")
-            if pm:
-                # idVerifiedNow() is the canonical DERIVED check
-                # (canonical-request-state-schema.md §3a) — "verified" is computed
-                # from the capture fields, never stored as its own boolean.
-                check("idVerifiedNow" in pm.group(1),
-                      "prototype's identity gate still calls the derived check",
-                      "condition no longer calls idVerifiedNow() — it reads: %s"
-                      % pm.group(1).strip()[:80])
-
-            # ---- agreement with the SHARED module ---------------------------
-            # gopher-step-gates.js is the extraction of these rules (2026-08-22).
-            # Until a surface is rewired to consume it (Phase 3, per surface, with
-            # approval), this asserts the inline copy AGREES with the module — the
-            # same agree-then-adopt pattern gopher-flow-rules.js uses. Without it
-            # the module is just a fourth copy.
-            # Compare on LABELS, not (step, label). surface_gates() captures only
-            # the FIRST label after each `state.step ===` match, so the drop-off gate
-            # — the second label inside the step-4 address block — is invisible to it,
-            # and addressesDiffer is attributed to step 4 rather than 6 because its
-            # test reads `(state.step === 4 || state.step === 6)`. Both are extractor
-            # artefacts, not surface defects: comparing steps reported a disagreement
-            # that did not exist. Labels are what the user actually sees and are the
-            # thing worth pinning; a MISSING gate still fails, which is the point.
-            MODULE_LABELS = {
-                "category":        "Service category",
-                "description":     "Description",
-                "costOfItems":     "Cost of items",
-                "identity":        "Identity verification",
-                "pickupAddress":   "Pick-up address",
-                "dropoffAddress":  "Drop-off address",
-                "addressesDiffer": "Addresses",
-                "workerPay":       "Worker pay",
-                "workerPaySubmit": "Worker pay",
-                "scheduleTime":    "Schedule time",
-                "waiver":          "Liability waiver",
-            }
-            # Labels surface_gates() structurally cannot see (second-label-in-block).
-            EXTRACTOR_BLIND = {"Drop-off address"}
-            mod_path = os.path.join(ROOT, "Final/assets/js/gopher-step-gates.js")
-            if not os.path.exists(mod_path):
-                check(False, "shared step-gate module exists",
-                      "Final/assets/js/gopher-step-gates.js is missing")
-            else:
-                mod_src = read("Final/assets/js/gopher-step-gates.js")
-                for surface in ("request", "connect"):
-                    m = re.search(surface + r"\s*:\s*\[(.*?)\]", mod_src, re.S)
-                    if not m:
-                        check(False, "module declares a gate list for %s" % surface, "")
-                        continue
-                    ids = re.findall(r"'([A-Za-z]+)'", m.group(1))
-                    want = {MODULE_LABELS[i] for i in ids if i in MODULE_LABELS}
-                    want -= EXTRACTOR_BLIND
-                    got = {lab for (_step, lab) in gate_sets.get(surface, set())}
-                    missing = sorted(want - got)
-                    extra = sorted(got - want)
-                    check(not missing and not extra,
-                          "%s's inline stepGate AGREES with gopher-step-gates.js" % surface,
-                          ("in the module but not the surface: %s. " % ", ".join(missing)
-                           if missing else "")
-                          + ("in the surface but not the module: %s" % ", ".join(extra)
-                             if extra else ""))
-
             unruled_missing = [g for g in only_r if g not in RULED_GATES]
             if unruled_missing:
                 WARNS.append("Connect is missing step gates Request enforces, and no ruling "
@@ -662,6 +618,125 @@ def main():
                 WARNS.append("Connect enforces step gates Request does not: %s"
                              % ", ".join("step %d %s" % g for g in only_c))
 
+
+
+        # ⚠️ HOISTED OUT of the request/connect comparison on purpose. This lived
+        # inside `if "request" in gate_sets and "connect" in gate_sets:` and became
+        # DEAD the moment Phase 3 rewired both of them — the block stopped running
+        # and these assertions vanished without a word. That is the THIRD silent
+        # drop in this file in one day (the prototype missing from the ruled-gate
+        # loop; the ruled-gate loop itself going vacuous on adoption; this).
+        #
+        # The pattern is worth stating once: an assertion nested inside a condition
+        # about OTHER surfaces is an assertion that can be switched off by work
+        # that has nothing to do with it. Gate checks belong at the top level.
+        # The prototype is a THIRD surface and the ruled identity gate binds it
+        # too, but it cannot be checked by label (see above), so it is asserted
+        # by CONDITION. Scoped to its own gate line, for the same reason the
+        # whole-file search was useless on the other two.
+        #
+        # Deliberately NOT asserted here: addresses-must-differ and
+        # schedule-time. The prototype genuinely has neither, and no ruling
+        # covers that — asserting them would invent a requirement rather than
+        # enforce a decision. It stays a WARN below if it ever matters.
+        # Scope to stepGate()'s OWN body. The same condition
+        # (step===2 && delivery && ageRestricted) also appears in goNext()'s
+        # age-keyword backstop, and an unscoped search matched THAT instead —
+        # so a mutation to the real gate was "caught" by the wrong assertion,
+        # for the wrong reason. Third time scoping has been the bug in this
+        # file; the pattern is: never search a 2 MB document for a fact that
+        # belongs to one function.
+        proto_src = read(SURFACES["prototype"])
+        _i = proto_src.find("function stepGate(")
+        if _i >= 0:
+            _j = proto_src.index("{", _i)
+            _d, _k = 0, _j
+            while _k < len(proto_src):
+                if proto_src[_k] == "{":
+                    _d += 1
+                elif proto_src[_k] == "}":
+                    _d -= 1
+                    if _d == 0:
+                        break
+                _k += 1
+            proto_src = proto_src[_i:_k + 1]
+        pm = re.search(
+            r"state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
+            r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
+            proto_src)
+        check(pm is not None,
+              "prototype enforces the RULED gate: step 2 Identity verification",
+              "the step-2 identity condition is gone — owner ruling 2026-08-22 "
+              "binds all three surfaces, and this one is not covered by the "
+              "label comparison above because its gate returns {ok, sel, msg}")
+        if pm:
+            # idVerifiedNow() is the canonical DERIVED check
+            # (canonical-request-state-schema.md §3a) — "verified" is computed
+            # from the capture fields, never stored as its own boolean.
+            check("idVerifiedNow" in pm.group(1),
+                  "prototype's identity gate still calls the derived check",
+                  "condition no longer calls idVerifiedNow() — it reads: %s"
+                  % pm.group(1).strip()[:80])
+
+        # ---- agreement with the SHARED module ---------------------------
+        # gopher-step-gates.js is the extraction of these rules (2026-08-22).
+        # Until a surface is rewired to consume it (Phase 3, per surface, with
+        # approval), this asserts the inline copy AGREES with the module — the
+        # same agree-then-adopt pattern gopher-flow-rules.js uses. Without it
+        # the module is just a fourth copy.
+        # Compare on LABELS, not (step, label). surface_gates() captures only
+        # the FIRST label after each `state.step ===` match, so the drop-off gate
+        # — the second label inside the step-4 address block — is invisible to it,
+        # and addressesDiffer is attributed to step 4 rather than 6 because its
+        # test reads `(state.step === 4 || state.step === 6)`. Both are extractor
+        # artefacts, not surface defects: comparing steps reported a disagreement
+        # that did not exist. Labels are what the user actually sees and are the
+        # thing worth pinning; a MISSING gate still fails, which is the point.
+        MODULE_LABELS = {
+            "category":        "Service category",
+            "description":     "Description",
+            "costOfItems":     "Cost of items",
+            "identity":        "Identity verification",
+            "pickupAddress":   "Pick-up address",
+            "dropoffAddress":  "Drop-off address",
+            "addressesDiffer": "Addresses",
+            "workerPay":       "Worker pay",
+            "workerPaySubmit": "Worker pay",
+            "scheduleTime":    "Schedule time",
+            "waiver":          "Liability waiver",
+        }
+        # Labels surface_gates() structurally cannot see (second-label-in-block).
+        EXTRACTOR_BLIND = {"Drop-off address"}
+        mod_path = os.path.join(ROOT, "Final/assets/js/gopher-step-gates.js")
+        if not os.path.exists(mod_path):
+            check(False, "shared step-gate module exists",
+                  "Final/assets/js/gopher-step-gates.js is missing")
+        else:
+            mod_src = read("Final/assets/js/gopher-step-gates.js")
+            for surface in ("request", "connect"):
+                # A REWIRED surface has no inline labels by design — asking whether
+                # it "agrees" with the module is asking whether a copy it no longer
+                # keeps still matches. Agreement is the PRE-adoption assertion;
+                # delegation is asserted above and the rules are asserted by
+                # test-step-gates.js.
+                if DELEGATES.get(surface):
+                    continue
+                m = re.search(surface + r"\s*:\s*\[(.*?)\]", mod_src, re.S)
+                if not m:
+                    check(False, "module declares a gate list for %s" % surface, "")
+                    continue
+                ids = re.findall(r"'([A-Za-z]+)'", m.group(1))
+                want = {MODULE_LABELS[i] for i in ids if i in MODULE_LABELS}
+                want -= EXTRACTOR_BLIND
+                got = {lab for (_step, lab) in gate_sets.get(surface, set())}
+                missing = sorted(want - got)
+                extra = sorted(got - want)
+                check(not missing and not extra,
+                      "%s's inline stepGate AGREES with gopher-step-gates.js" % surface,
+                      ("in the module but not the surface: %s. " % ", ".join(missing)
+                       if missing else "")
+                      + ("in the surface but not the module: %s" % ", ".join(extra)
+                         if extra else ""))
 
 
         # ---- category-scoped reset ---------------------------------------
