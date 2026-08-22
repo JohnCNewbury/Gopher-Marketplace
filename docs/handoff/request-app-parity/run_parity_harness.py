@@ -424,11 +424,28 @@ def main():
         # "identity"/"verification" and finding neither is not the same as canon
         # having no rule). Owner ruled 2026-08-22: BOTH surfaces gate identity at
         # step 2, and connect-flows-granular.html now carries the dated row.
+        # ⚠️ A surface that yields an EMPTY gate set used to be dropped here in
+        # silence, which is how the prototype sat outside every gate assertion
+        # without anyone noticing (found by App Prototypes 2026-08-22). It is not
+        # a parse failure: the prototype's stepGate() returns {ok, sel, msg} with
+        # NO `label:` key, so the label-keyed extractor legitimately finds nothing.
+        # Dropping it is still correct — comparing labels to nothing is noise — but
+        # it must be ANNOUNCED, and that surface then needs its own assertion below.
         gate_sets = {}
+        shapeless = []
         for name, rel in SURFACES.items():
             gs = surface_gates(read(rel))
-            if gs is not None and gs:
+            if gs is None:
+                check(False, "%s exposes a stepGate() the harness can read" % name,
+                      "no function stepGate( found — the gate comparison silently "
+                      "skipped this surface")
+            elif not gs:
+                shapeless.append(name)
+            else:
                 gate_sets[name] = gs
+        for name in shapeless:
+            check(True, "%s uses a label-less gate shape — asserted separately, "
+                        "not by comparison" % name)
         if "request" in gate_sets and "connect" in gate_sets:
             only_r = sorted(gate_sets["request"] - gate_sets["connect"])
             only_c = sorted(gate_sets["connect"] - gate_sets["request"])
@@ -534,6 +551,54 @@ def main():
                           if dead else
                           "missing from the gate's OWN block: %s — the label may still be "
                           "present while the condition has been gutted" % ", ".join(absent))
+
+            # The prototype is a THIRD surface and the ruled identity gate binds it
+            # too, but it cannot be checked by label (see above), so it is asserted
+            # by CONDITION. Scoped to its own gate line, for the same reason the
+            # whole-file search was useless on the other two.
+            #
+            # Deliberately NOT asserted here: addresses-must-differ and
+            # schedule-time. The prototype genuinely has neither, and no ruling
+            # covers that — asserting them would invent a requirement rather than
+            # enforce a decision. It stays a WARN below if it ever matters.
+            # Scope to stepGate()'s OWN body. The same condition
+            # (step===2 && delivery && ageRestricted) also appears in goNext()'s
+            # age-keyword backstop, and an unscoped search matched THAT instead —
+            # so a mutation to the real gate was "caught" by the wrong assertion,
+            # for the wrong reason. Third time scoping has been the bug in this
+            # file; the pattern is: never search a 2 MB document for a fact that
+            # belongs to one function.
+            proto_src = read(SURFACES["prototype"])
+            _i = proto_src.find("function stepGate(")
+            if _i >= 0:
+                _j = proto_src.index("{", _i)
+                _d, _k = 0, _j
+                while _k < len(proto_src):
+                    if proto_src[_k] == "{":
+                        _d += 1
+                    elif proto_src[_k] == "}":
+                        _d -= 1
+                        if _d == 0:
+                            break
+                    _k += 1
+                proto_src = proto_src[_i:_k + 1]
+            pm = re.search(
+                r"state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
+                r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
+                proto_src)
+            check(pm is not None,
+                  "prototype enforces the RULED gate: step 2 Identity verification",
+                  "the step-2 identity condition is gone — owner ruling 2026-08-22 "
+                  "binds all three surfaces, and this one is not covered by the "
+                  "label comparison above because its gate returns {ok, sel, msg}")
+            if pm:
+                # idVerifiedNow() is the canonical DERIVED check
+                # (canonical-request-state-schema.md §3a) — "verified" is computed
+                # from the capture fields, never stored as its own boolean.
+                check("idVerifiedNow" in pm.group(1),
+                      "prototype's identity gate still calls the derived check",
+                      "condition no longer calls idVerifiedNow() — it reads: %s"
+                      % pm.group(1).strip()[:80])
 
             unruled_missing = [g for g in only_r if g not in RULED_GATES]
             if unruled_missing:
