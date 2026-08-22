@@ -856,7 +856,12 @@ function computeRequestFee(cogOffer){
   //    but never reduce the offer/items); TS absorbs any truncation when the cap binds.
   const hasTS = (typeof window.__hasTrustShield === 'function')
     ? !!window.__hasTrustShield() : !!(state && state.trustShield);
-  const tsEligible = hasTS && (state.category==='delivery' || state.category==='ride');
+  /* TrustShield $1 perk scope — age-restricted Delivery + ALL Ride Sharing, never plain
+     delivery. Owner ruling 2026-07-05 made the NARROW build scope authoritative; this file
+     carried the rejected broad scope, so the discount was applying to every delivery — a
+     silent money leak with no visible error, which is why it survived. Request and Connect
+     were both already correct. */
+  const tsEligible = hasTS && ((state.category==='delivery' && state.ageRestricted) || state.category==='ride');
   const promoDiscount = Math.min(promoPct * totalFees, totalFees);
   const tsDiscount    = tsEligible ? Math.min(1.00, totalFees - promoDiscount) : 0;
 
@@ -947,7 +952,7 @@ const FIELD_HIDDEN_FOR = {
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
   serviceElevator:['delivery','home','labor','junk','yard','ride','other'],
   destStairs:['delivery','home','yard','ride'],
-  aiPaySuggest:['moving','home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
+  aiPaySuggest:['home','labor','yard','other'],   // 'moving' REMOVED 2026-08-22: Moving joined PRICED_CATEGORIES on 2026-08-08 (iQ prices it), so it must not also show the generic pay suggestion. This table predated that change.   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
   bidsOption:['delivery','ride']
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
@@ -1027,6 +1032,42 @@ function getCurrentOfferModel(){
 /* ============================================================
    STATE
    ============================================================ */
+  /* CATEGORY-SCOPED STATE — mirrors Final/gopher-request.html and gopher-connect.html
+     (identical 26-key table; the canonical copy also lives in
+     Final/assets/js/gopher-flow-rules.js as GopherFlowRules.categoryScopedKeys()).
+     Duplicated rather than imported ON PURPOSE: that module is not yet committed, and a
+     prototype that <script src>'s a file which isn't deployed is a live 404. The parity
+     harness (docs/handoff/request-app-parity/run_parity_harness.py) is what keeps this copy
+     honest — it fails the moment this list drifts from the module.
+
+     Why it exists: without it a category switch carried the PREVIOUS category's answers
+     forward — pick Junk, let iQ set a volume tier and a price, switch to Delivery, and the
+     delivery was priced off a junk volume tier with hazardous/itemCount still set.
+
+     Deliberately NOT reset: user-typed, category-agnostic input (description, pics,
+     addresses, specialInstructions) and agePurchaseDismissed, a session-level
+     "don't show me again". workerSelection is NOT category-scoped either — it is the
+     requester's hiring preference, not a property of the category. */
+  const CATEGORY_SCOPED_KEYS = [
+    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'itemsPurchased','costOfItems',
+    'numRiders','numBags',
+    'junkTier','movingTier',
+    'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
+    'payByHour','numHours',
+    'itemCount','multipleItems','hazardous',
+    'payMode','payAmount','lowOfferAck','lowAvailabilityAck','suggestedOfferUsed'
+  ];
+  /* Defaults are READ FROM makeInitialState() — never from a stored record — so a reset can
+     never resurrect a retired value, and this can't drift from the schema. */
+  function realignCategoryState(){
+    const fresh = makeInitialState();
+    CATEGORY_SCOPED_KEYS.forEach(function(k){
+      if(!(k in fresh)) return;                 // key this surface doesn't carry — skip
+      state[k] = fresh[k];
+    });
+  }
+
 function makeInitialState(){
   return {
     step:1, maxStepReached:1,
@@ -2271,7 +2312,7 @@ document.addEventListener('click',(e)=>{
 
   // category select — selects only, no auto-advance
   const cat=e.target.closest('[data-cat]');
-  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
+  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; realignCategoryState(); if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
   // outside tap closes an open popover (only relevant on step 1)
   if(state.step===1 && state.openCatInfo){ state.openCatInfo=null; render(); return; }
 
