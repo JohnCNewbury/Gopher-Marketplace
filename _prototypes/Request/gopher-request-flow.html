@@ -952,7 +952,16 @@ const FIELD_HIDDEN_FOR = {
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
   serviceElevator:['delivery','home','labor','junk','yard','ride','other'],
   destStairs:['delivery','home','yard','ride'],
-  aiPaySuggest:['home','labor','yard','other'],   // 'moving' REMOVED 2026-08-22: Moving joined PRICED_CATEGORIES on 2026-08-08 (iQ prices it), so it must not also show the generic pay suggestion. This table predated that change.   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
+  /* ⚠️ POLARITY: this table is FIELD_HIDDEN_FOR — every array lists the categories a field is
+     HIDDEN for. isVisible(f) = !FIELD_HIDDEN_FOR[f].includes(category). So REMOVING a category
+     from an array TURNS THE FIELD ON for it. The old comment here named the VISIBLE set
+     ("Delivery + Ride + Junk") one line from a hide list — opposite polarity, side by side,
+     which is plausibly how this drifted in the first place. Naming the rule instead.
+     RULE: aiPaySuggest is visible for exactly PRICED_CATEGORIES (delivery, ride, moving, junk)
+     — so the hide list is everything else. 'moving' was removed 2026-08-22 because Moving
+     joined PRICED_CATEGORIES on 2026-08-08 and its suggestion had stopped appearing; taking it
+     out of the HIDE list is what turns it back ON. The parity harness asserts this equivalence. */
+  aiPaySuggest:['home','labor','yard','other'],
   bidsOption:['delivery','ride']
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
@@ -1035,8 +1044,12 @@ function getCurrentOfferModel(){
   /* CATEGORY-SCOPED STATE — mirrors Final/gopher-request.html and gopher-connect.html
      (identical 26-key table; the canonical copy also lives in
      Final/assets/js/gopher-flow-rules.js as GopherFlowRules.categoryScopedKeys()).
-     Duplicated rather than imported ON PURPOSE: that module is not yet committed, and a
-     prototype that <script src>'s a file which isn't deployed is a live 404. The parity
+     Duplicated rather than imported ON PURPOSE — and NOT for the reason first written here: the
+     module IS committed (d08f7e1) and is currently live. It went live as a SIDE EFFECT (deploy.sh
+     ships the whole Final/ tree, so it rode along in someone else's push), not as a decision, and
+     another session can legitimately hold it back again. Request and Connect also both mirror this
+     list inline today, and Phase 2's design is agree-then-adopt: the harness asserts each surface
+     AGREES with the module; actually consuming it is Phase 3, per surface, with approval. The parity
      harness (docs/handoff/request-app-parity/run_parity_harness.py) is what keeps this copy
      honest — it fails the moment this list drifts from the module.
 
