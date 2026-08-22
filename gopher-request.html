@@ -12175,6 +12175,7 @@
       // first-available > 15 mi approval note in renderRequestDetail).
       bidsMode: state.payMode !== 'set',
       firstAvailable: state.workerSelection === 'first',
+      workerSelection: state.workerSelection,   // 'first' | 'select' | 'my' — drives INV-ACCEPT below
       hasPickup: Array.isArray(state.pickupStops) && state.pickupStops.length > 0,
       pickups: Array.isArray(state.pickupStops) ? state.pickupStops.slice() : [],
       dropoffs: Array.isArray(state.dropoffStops) ? state.dropoffStops.slice() : [],
@@ -20361,6 +20362,38 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const interested = (data.interestedWorkers || []).map(w => ({ ...w, status: w.status || 'interested' }));
     const needed = data.workersNeeded || interested.length || 1;
     if(interested[0]) interested[0].justAccepted = true;
+
+    /* ░░ INV-ACCEPT — what an acceptance MEANS depends on the mode ░░
+       Canonical flow doc (owner-confirmed 2026-07-21; MY Gophers split amended
+       2026-08-21), Known-discrepancies disposition: "the fix belongs to the
+       web-prototype surface: simulate the first-acceptance auto-hire under First
+       available (<=15 mi)". Owner chose to simulate (2026-08-22) and set the shape:
+       "we already have demo (fake) gophers - if first available is used, assign one
+       to be the gopher who accepts the request."
+
+         - First available     -> ONE demo Gopher accepts and IS the hire. No pool,
+                                  no Hire/Consider/Deny. >15 mi is the documented
+                                  exception: auto-match pauses and the requester must
+                                  approve, which is the only reason the card's
+                                  "auto-match paused" note is true rather than fiction.
+         - Prioritize MY Gophers -> SPLIT: a worker already on the MY Gophers list is
+                                  auto-hired; everyone else stays a candidacy.
+         - I'll select         -> always a candidacy.  ("MY" is capitalized because it
+       names Michael Yorrie, the first Gopher Pro this feature was built for - see the
+       green-heart tooltip in the 101 guides. It is a name, never a possessive.) */
+    const _mode = data.workerSelection || (data.firstAvailable ? 'first' : 'select');
+    if(_mode === 'first' && interested.length){
+      const _w = interested[0];
+      const _far = _w.distanceMi != null && Number(_w.distanceMi) > 15;
+      if(!_far){
+        _w.status = 'hired'; _w.autoHired = true;
+        interested.length = 1;           // one Gopher accepted; no candidate pool exists
+      }
+    } else if(_mode === 'my' && interested.length){
+      const _names = (typeof window.__myGopherNames === 'function') ? window.__myGopherNames() : [];
+      const _mine = interested.find(w => w.isMyGopher || _names.indexOf(w.name) > -1);
+      if(_mine){ _mine.status = 'hired'; _mine.autoHired = true; }
+    }
     const req = {
       id,
       icon: data.icon || '📋',
@@ -20376,6 +20409,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       idRequiredAtCompletion: !!data.idRequiredAtCompletion,
       bidsMode: !!data.bidsMode,
       firstAvailable: !!data.firstAvailable,
+      workerSelection: _mode,
       hasPickup: !!data.hasPickup,
       pickups: Array.isArray(data.pickups) ? data.pickups : [],
       dropoffs: Array.isArray(data.dropoffs) ? data.dropoffs : [],
