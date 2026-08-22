@@ -149,6 +149,30 @@ def engine_deps():
     return "\n".join(parts)
 
 
+def surface_gates(src):
+    """Extract {(step, label)} from a surface's inline stepGate()."""
+    i = src.find("function stepGate(")
+    if i < 0:
+        return None
+    j = src.index("{", i); depth, k = 0, j
+    while k < len(src):
+        if src[k] == "{":
+            depth += 1
+        elif src[k] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        k += 1
+    body = src[i:k + 1]
+    out = set()
+    for m in re.finditer(r"state\.step\s*===\s*(\d+)", body):
+        tail = body[m.start():m.start() + 900]
+        lab = re.search(r"label:\s*'([^']{0,40})'", tail)
+        if lab:
+            out.add((int(m.group(1)), lab.group(1)))
+    return out
+
+
 FHF_RE = re.compile(r"FIELD_HIDDEN_FOR\s*=\s*\{")
 def surface_hidden_for(src):
     """Parse a surface's inline FIELD_HIDDEN_FOR into {field: [categories]}."""
@@ -389,6 +413,30 @@ def main():
                 if extra:
                     WARNS.append("%s defines visibility fields the module does not: %s"
                                  % (name, ", ".join(extra)))
+
+        # ---- step gates: which rules block Continue -----------------------
+        # NOT extracted into the shared module yet, deliberately: the surfaces
+        # diverge on an identity-verification gate and the canonical flow doc is
+        # SILENT on which is correct, so extracting would bake in a guess. This
+        # makes the divergence visible and stops NEW divergence appearing.
+        gate_sets = {}
+        for name, rel in SURFACES.items():
+            gs = surface_gates(read(rel))
+            if gs is not None and gs:
+                gate_sets[name] = gs
+        if "request" in gate_sets and "connect" in gate_sets:
+            only_r = sorted(gate_sets["request"] - gate_sets["connect"])
+            only_c = sorted(gate_sets["connect"] - gate_sets["request"])
+            check(True, "step gates compared (request %d / connect %d)"
+                  % (len(gate_sets["request"]), len(gate_sets["connect"])))
+            if only_r:
+                WARNS.append("Connect is missing step gates Request enforces: %s — "
+                             "canon is silent on the identity one; see PHASE-2-FINDINGS.md"
+                             % ", ".join("step %d %s" % g for g in only_r))
+            if only_c:
+                WARNS.append("Connect enforces step gates Request does not: %s"
+                             % ", ".join("step %d %s" % g for g in only_c))
+
 
     print()
     for w in WARNS:
