@@ -5298,6 +5298,23 @@
           owner_phone:      (data.owner_phone || '').replace(/\D/g, ''),
           telephone:        (data.owner_phone || '').replace(/\D/g, ''),
           discovery_source: data.discovery_source,
+          /* ⚠️ ADDED 2026-08-22, and the reason !356 was only half-effective when it
+             shipped: the server had just started persisting owner_dob and
+             owner_address, and this payload had never sent them. Both were on the
+             intake allowlist the whole time, so nothing 422'd and nothing stored —
+             the same "accepted, not stored" shape, one layer up.
+
+             DOB is normalised to YYYY-MM-DD here, matching what sendEmailOtp already
+             does for PUT /users. The form holds MM/DD/YYYY; handing that straight to a
+             Postgres date column makes the meaning of 01/02/1990 depend on the
+             server's DateStyle. Normalise once, at the only place that knows the
+             field's format. */
+          owner_dob: (function(){
+            var d = (data.owner_dob || '').trim();
+            var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d);
+            return m ? (m[3] + '-' + m[1] + '-' + m[2]) : undefined;
+          })(),
+          owner_address: data.owner_address,
           /* The ?src= campaign tag captured from the landing URL. Distinct from
              discovery_source, which is what the merchant says themselves — a campaign
              needs both. Allowlisted + persisted server-side 2026-08-21 (!353); before
