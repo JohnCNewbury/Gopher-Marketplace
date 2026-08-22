@@ -3,7 +3,39 @@
 **Status 2026-08-22.** The visibility rule set is extracted, tested and enforced, and the money
 constants are pinned. **Five findings** came out of comparing the surfaces — including a revenue
 leak that contradicts an owner ruling, and three separate ways the app prototype has fallen behind
-the web builds. **Four need your decision.** Nothing was changed in a deployed file.
+the web builds.
+
+> ### ✅ UPDATE 2026-08-22 — Findings 1, 4 and 5 are FIXED and LIVE.
+>
+> Fixed by the **App Prototypes** session (`5b017aa`, explanations corrected in `d3211f4`),
+> deployed by this session as **`5218686`**, and **content-verified on both public hosts**
+> (GitHub Pages + TigerTech) — not by HTTP 200, which only proves the file exists.
+>
+> **Harness went 3 failures → 0.** `PARITY: OK (0 failures, 3 warnings)`; `test-flow-rules.js`
+> 44/44. The 3 remaining warnings are the documented ones, none of them these.
+>
+> | Finding | Live proof |
+> |---|---|
+> | 1 — Moving pay suggestion | `aiPaySuggest:['home','labor','yard','other']` — `moving` gone from the **hide** list, so the suggestion is ON |
+> | 4 — TrustShield over-discount | `hasTS && ((category==='delivery' && ageRestricted) \|\| category==='ride')` — broad form absent |
+> | 5 — category reset | 26-key scoped table present; `junkTier`/`movingTier`/`payAmount`/`idVerification` in, `description`/`pickupStops`/`specialInstructions` correctly out |
+>
+> **Finding 3 remains open and still needs a ruling.**
+>
+> **Two corrections to what this document originally claimed, both mine:**
+> 1. I wrote that `workerSelection` is category-scoped. **It is not** — absent from the module's
+>    26 keys and from Request's and Connect's. I inferred it from the field name without opening
+>    the list. Verified absent in the live table above.
+> 2. Finding 1's suggested fix was written **backwards**. `FIELD_HIDDEN_FOR` is a *hide* list, so
+>    **removing** `moving` turns the suggestion **on**. The shipped code was right either way; the
+>    reasoning was inverted. The pre-existing comment on that line had the same inverted polarity
+>    and is the likeliest original cause of the defect — it now states the rule plus an explicit
+>    polarity warning.
+>
+> **Deploy note:** this shipped as a deliberate, pinned-at-HEAD deploy of one file (0 riders,
+> 0 reverts). The pin point was moved from `5b017aa` to `d3211f4` after checking — pinning at the
+> originally-named commit would have **reverted** the newer correction. See
+> `pinned-deploy-can-revert-live-work`.
 
 Run it yourself:
 
