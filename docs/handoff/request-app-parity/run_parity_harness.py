@@ -600,6 +600,59 @@ def main():
                       "condition no longer calls idVerifiedNow() — it reads: %s"
                       % pm.group(1).strip()[:80])
 
+            # ---- agreement with the SHARED module ---------------------------
+            # gopher-step-gates.js is the extraction of these rules (2026-08-22).
+            # Until a surface is rewired to consume it (Phase 3, per surface, with
+            # approval), this asserts the inline copy AGREES with the module — the
+            # same agree-then-adopt pattern gopher-flow-rules.js uses. Without it
+            # the module is just a fourth copy.
+            # Compare on LABELS, not (step, label). surface_gates() captures only
+            # the FIRST label after each `state.step ===` match, so the drop-off gate
+            # — the second label inside the step-4 address block — is invisible to it,
+            # and addressesDiffer is attributed to step 4 rather than 6 because its
+            # test reads `(state.step === 4 || state.step === 6)`. Both are extractor
+            # artefacts, not surface defects: comparing steps reported a disagreement
+            # that did not exist. Labels are what the user actually sees and are the
+            # thing worth pinning; a MISSING gate still fails, which is the point.
+            MODULE_LABELS = {
+                "category":        "Service category",
+                "description":     "Description",
+                "costOfItems":     "Cost of items",
+                "identity":        "Identity verification",
+                "pickupAddress":   "Pick-up address",
+                "dropoffAddress":  "Drop-off address",
+                "addressesDiffer": "Addresses",
+                "workerPay":       "Worker pay",
+                "workerPaySubmit": "Worker pay",
+                "scheduleTime":    "Schedule time",
+                "waiver":          "Liability waiver",
+            }
+            # Labels surface_gates() structurally cannot see (second-label-in-block).
+            EXTRACTOR_BLIND = {"Drop-off address"}
+            mod_path = os.path.join(ROOT, "Final/assets/js/gopher-step-gates.js")
+            if not os.path.exists(mod_path):
+                check(False, "shared step-gate module exists",
+                      "Final/assets/js/gopher-step-gates.js is missing")
+            else:
+                mod_src = read("Final/assets/js/gopher-step-gates.js")
+                for surface in ("request", "connect"):
+                    m = re.search(surface + r"\s*:\s*\[(.*?)\]", mod_src, re.S)
+                    if not m:
+                        check(False, "module declares a gate list for %s" % surface, "")
+                        continue
+                    ids = re.findall(r"'([A-Za-z]+)'", m.group(1))
+                    want = {MODULE_LABELS[i] for i in ids if i in MODULE_LABELS}
+                    want -= EXTRACTOR_BLIND
+                    got = {lab for (_step, lab) in gate_sets.get(surface, set())}
+                    missing = sorted(want - got)
+                    extra = sorted(got - want)
+                    check(not missing and not extra,
+                          "%s's inline stepGate AGREES with gopher-step-gates.js" % surface,
+                          ("in the module but not the surface: %s. " % ", ".join(missing)
+                           if missing else "")
+                          + ("in the surface but not the module: %s" % ", ".join(extra)
+                             if extra else ""))
+
             unruled_missing = [g for g in only_r if g not in RULED_GATES]
             if unruled_missing:
                 WARNS.append("Connect is missing step gates Request enforces, and no ruling "
