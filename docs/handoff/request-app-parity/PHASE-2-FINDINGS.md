@@ -1,7 +1,8 @@
 # Phase 2 — shared decision layer: findings
 
-**Status 2026-08-22.** The visibility rule set is extracted, tested and enforced. Three findings
-came out of comparing the surfaces, and **two need an owner decision**. Nothing was changed in a
+**Status 2026-08-22.** The visibility rule set is extracted, tested and enforced, and the money
+constants are pinned. **Four findings** came out of comparing the surfaces — one of them a revenue
+leak that contradicts an owner ruling. **Three need your decision.** Nothing was changed in a
 deployed file.
 
 Run it yourself:
@@ -116,6 +117,57 @@ divergence instead, so it cannot widen while the question is open.
 
 ---
 
+## Finding 4 — the prototype over-discounts TrustShield ⚠️ MONEY, HARNESS FAILS
+
+Found by a fee-parity check added while verifying the money constants. **The app prototype grants
+the $1.00 TrustShield discount on every delivery, not only age-restricted ones.**
+
+```
+Request / Connect / canon:
+    tsEligible = hasTS && ((category === 'delivery' && state.ageRestricted) || category === 'ride')
+
+Prototype:
+    tsEligible = hasTS && ( category === 'delivery'                          || category === 'ride')
+                                                    ^^^^ missing && state.ageRestricted
+```
+
+**This contradicts an explicit owner ruling.** The canonical flow doc states the perk is *"a flat
+$1.00 discount on age-restricted Delivery + all Ride Sharing orders (both editions; **not plain
+delivery** — scope reconciled Jul 5 2026)"*. On 2026-07-05 the owner ruled the **narrow** build
+scope authoritative and the canonical doc was corrected to match. The prototype still carries the
+**broad** scope — the one that was rejected.
+
+**Effect if the app is built from this blueprint:** every plain, non-age-restricted delivery placed
+by a TrustShield holder is discounted $1.00 that canon says it should not be. It is a silent
+revenue leak rather than a visible error, which is why it survived.
+
+**Scope of the impact today:** prototype only — this is the app blueprint, not a live customer
+payment path. Request and Connect both implement the narrow scope correctly and were verified,
+including the promo-first ordering and the cap that stops discounts exceeding total fees.
+
+**Fix:** add `&& state.ageRestricted` to the delivery arm of `tsEligible`. One condition.
+
+**Left unfixed deliberately** — same reason as Finding 1: the prototype is a deployed file.
+
+---
+
+## Verified healthy — do not re-investigate
+
+Recorded so the next person does not redo the work:
+
+- **Fee constants match canon on all three surfaces.** Request $1.99 / Connect $2.99 age-restricted
+  fee, 8% instant transfer everywhere, $1.00 TrustShield. The `$2.99` Connect difference is
+  deliberate and documented as a HARD NOTE in canon.
+- **Request's TrustShield logic is exactly right** — correct eligibility, promo applied first, and
+  the discount capped so promo + TrustShield can never exceed total fees.
+- **The 8% rate is a named constant** (`INSTANT_TRANSFER_RATE`), not a scattered literal. A raw
+  count of `0.08` looks alarming (35 in Request) but all but one are CSS letter-spacing,
+  transitions and an SVG path.
+- **No surface calls `isVisible()` with a field missing from its own table** — that would throw,
+  since the lookup is `FIELD_HIDDEN_FOR[field].includes(...)`. All three are clean.
+
+---
+
 ## What was built
 
 | Artifact | What it does |
@@ -123,6 +175,7 @@ divergence instead, so it cannot widen while the question is open.
 | `Final/assets/js/gopher-flow-rules.js` | The shared rule set: 8 canonical categories with the slugs the `category_id` work adopts, the visibility table, Connect's override, priced categories, category-scoped keys, and a self-check |
 | `docs/handoff/request-app-parity/test-flow-rules.js` | 44 assertions — including two that prove the invariant checker **fails** when fed the prototype's real defect and a mistyped category |
 | `run_parity_harness.py` §6 | Asserts every surface's inline table still agrees with the module, and warns on step-gate divergence |
+| `run_parity_harness.py` §7 | Pins the money constants — age-restricted fee per edition, the 8% instant-transfer rate, and the TrustShield amount *and scope*. This is the check that caught Finding 4. |
 
 **The design was measured, not assumed.** Request and Connect agree on **16 of 17** fields; the
 prototype differs on exactly one. A single flat shared table would have been wrong — Connect is a
@@ -142,7 +195,9 @@ that matches reality instead of flattening it.
 
 ## Next in Phase 2
 
-1. **Your two rulings** — the prototype pricing fix, and Connect's identity gate.
+1. **Your three rulings** — the prototype's stale Moving pricing (Finding 1), its TrustShield
+   over-discount (Finding 4), and Connect's identity gate (Finding 3). The first two are one-line
+   fixes to the same file and could go together.
 2. **Rewire the surfaces** to delegate to the module rather than merely agreeing with it, one at a
    time with browser verification.
 3. **Extract `stepGate()`** once Finding 3 is settled.

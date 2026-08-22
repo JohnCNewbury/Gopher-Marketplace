@@ -438,6 +438,38 @@ def main():
                              % ", ".join("step %d %s" % g for g in only_c))
 
 
+
+    # ---------------------------------------------------------------- 7. FEES
+    # Money constants live inline in each surface. They are NOT extracted — the
+    # editions legitimately differ (Connect's A/R fee is $2.99 against Request's
+    # $1.99, a documented HARD NOTE in the canonical flow doc) and fee logic is
+    # the wrong thing to refactor speculatively. But a silent drift here charges
+    # real customers the wrong amount, so the values are pinned.
+    print("\n7. FEES — money constants match canon")
+    EXPECTED_AGE_FEE = {"request": "1.99", "prototype": "1.99", "connect": "2.99"}
+    for name, rel in SURFACES.items():
+        src = read(rel)
+        m = re.search(r"\bAGE_FEE\b\s*=\s*([0-9.]+)", src)
+        want = EXPECTED_AGE_FEE[name]
+        check(bool(m) and m.group(1) == want,
+              "%s age-restricted fee is $%s" % (name, want),
+              "" if (m and m.group(1) == want) else "found %s" % (m.group(1) if m else "nothing"))
+
+        itf = re.search(r"INSTANT_TRANSFER_RATE\s*=\s*([0-9.]+)", src)
+        check(bool(itf) and itf.group(1) == "0.08",
+              "%s instant-transfer rate is 8%%" % name,
+              "" if (itf and itf.group(1) == "0.08") else "found %s" % (itf.group(1) if itf else "nothing"))
+
+        # TrustShield is a flat $1.00 on age-restricted Delivery + ALL Ride Sharing
+        # (both editions; scope reconciled 2026-07-05). Assert the amount and that
+        # the eligibility test still names both arms — a silent narrowing here
+        # quietly overcharges verified customers.
+        ts = re.search(r"tsRaw\s*=\s*[^;]{0,60}?1\.00|tsDiscount[^;]{0,80}?1\.00|TRUSTSHIELD_DISCOUNT\s*=\s*1\.00", src)
+        check(bool(ts), "%s TrustShield discount is $1.00" % name)
+        scope = re.search(r"ageRestricted[^;]{0,120}?'ride'|'ride'[^;]{0,120}?ageRestricted", src)
+        check(bool(scope),
+              "%s TrustShield scope still covers age-restricted delivery AND ride" % name)
+
     print()
     for w in WARNS:
         print("  [WARN] " + w)
