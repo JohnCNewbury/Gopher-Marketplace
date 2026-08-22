@@ -252,6 +252,39 @@ that matches reality instead of flattening it.
 
 ---
 
+## How a surface adopts the module (the Phase 3 step)
+
+Nothing loads it yet — by design. The harness asserts each surface *agrees* with the module first;
+rewiring is a reviewed change, not an overnight one. When you do rewire, it is small:
+
+**Web surfaces** (`Final/gopher-request.html`, `Final/gopher-connect.html`) — add the script beside
+the existing shared modules, then delete the inline table and point `isVisible` at the module:
+
+```html
+<script src="assets/js/gopher-flow-rules.js"></script>
+```
+```js
+// replaces the inline FIELD_HIDDEN_FOR + isVisible pair
+const FR = window.GopherFlowRules;
+const isVisible = (field) => FR.isVisible(field, state.category /*, 'connect' */);
+```
+
+Connect passes `'connect'` as the third argument; Request and the app pass nothing. Everything else
+— the 50 `isVisible()` call sites on each page — is untouched, because the signature is the same.
+
+**React / Capacitor** — `import` or `require` it directly; the UMD wrapper covers CommonJS, AMD and
+the browser global, and both paths are verified.
+
+**Order matters:** the module must load *before* the flow script that calls `isVisible`, exactly
+like `gopher-request-logic.js` today.
+
+**Verify after rewiring** by running the harness (the surface must still match) and clicking one
+category of each shape in a browser — a delivery (shows delivery type), a ride (hides describe), a
+junk (shows hazardous), and a moving (shows stairs/elevator). Those four cover every distinct
+visibility branch.
+
+---
+
 ## Next in Phase 2
 
 1. **Your rulings** — three prototype fixes (Findings 1, 4, 5) that all live in the same file and
