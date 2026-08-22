@@ -108,7 +108,48 @@ is Connect-only. Harmless, worth knowing before someone treats the table as auth
 
 ---
 
-## Finding 3 — Connect is missing four gates Request enforces ⚠️ NEEDS A RULING
+## Finding 3 — Connect is missing four gates Request enforces ✅ RULED + BUILT
+
+> ### ✅ OWNER RULING 2026-08-22: fix the three data-quality gates, port the full capture path.
+> Built in commit `947cf69`. **Not deployed** — awaiting approval. Harness 3 warnings → 2.
+>
+> **⛔ Three things this finding got WRONG. They are corrected here because a wrong
+> reason outlives the fix.**
+>
+> **1. "Canon does not say" — it does.** I searched for *identity* / *verification* /
+> *valid ID* and found nothing, and concluded silence. Canon states the rule in different
+> words: *"age-restricted deliveries always require ID"* — **in-person, at the exchange** —
+> and `idRequiredAtCompletion` appears **12 times**, including the reasoning that the
+> normal "Yes" path clears it because *"`ageRestricted` already implies ID"*.
+> **So Connect matched canon and Request carried the extra gate.** The question was never
+> "should Connect verify identity"; it was where the gate should be surfaced.
+>
+> **2. The real defect is a dead end, not a compliance hole.** `controllers/order/create.js:351`
+> calls `trust_shield_required()`, which branches on the **requester's own** age and
+> verification only — **no apptype or client branch** (verified on `origin/production`;
+> `DEFAULT_MIN_AGE = 30`). The backend refuses these orders whichever front end submits.
+> Connect's gap meant a requester completed the whole flow, hit submit, and received a 403
+> naming a remedy **Connect did not offer** — it had zero ID-capture machinery.
+>
+> **3. Schedule-time was not wholly missing.** It existed on the in-content "Done"
+> button (`[data-action="sched-done"]`) but not on the footer Submit. The gate added is a
+> **backstop**, which is exactly what Request's own comment says it is.
+>
+> **Also worth recording: the omission was deliberate.** `gopher-request.html`'s changelog,
+> v91 2026-06-09: *"Submit identification … Request-only feature (gopher-connect ships only
+> the seal; deferred there)."* The ruling retires that deferral; the comment encoding it in
+> `gopher-connect.html` was corrected at its source rather than left to contradict the code.
+>
+> **Canon row still owed** in `connect-flows-granular.html` — held by the **Technology
+> Documentation Truth** session, so it was handed to them rather than edited here.
+>
+> **Verified by driving the real controls**, not by reading source: identity gate across
+> 4 states; the three banner branches including **no-DOB → the safest path**; addresses
+> matching the normaliser in 4 cases; schedule across 4. One address case initially read as
+> a failure — `"St"` vs `"Street"` — and **the test was wrong, not the code**: the compare is
+> case/space/punctuation-insensitive by design, identical to Request.
+
+### Original finding (kept — the table is still the accurate diff)
 
 `stepGate()` decides what blocks Continue. Comparing the surfaces:
 
