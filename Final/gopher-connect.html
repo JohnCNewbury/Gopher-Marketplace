@@ -2552,6 +2552,116 @@
     font-family:'Nunito',sans-serif; font-weight:800; font-size:9px; line-height:1.1;
     color:var(--navy); text-transform:uppercase; letter-spacing:0.4px;
   }
+  /* ══ Submit-identification path — PORTED FROM gopher-request.html 2026-08-22 ══
+     Owner ruling (Phase 2 Finding 3): Connect previously shipped only the
+     TrustShield seal — the v91 2026-06-09 deferral — which left an age-restricted
+     Connect requester with no way to satisfy the backend's TrustShield gate
+     (controllers/order/create.js → trust_shield_required, 403). Kept selector-identical
+     to Request so the two can be diffed; gr-modal-* renamed to Connect's gc-modal-*. */
+  /* ── Age-restricted banner control (Submit identification feature) ──
+     The banner becomes a flex row: text on the left, a status-dependent control
+     on the right (TrustShield seal, "Get TrustShield™", or "Submit ID"). */
+  /* Seal/control sits right after the text, not pinned to the far edge —
+     .ar-banner-text must NOT grow to fill (flex:0 1 auto), leaving open space
+     on the right. */
+  /* .sub-field.ar-banner / .ar-banner-text already defined above — not repeated. */
+  .ar-control { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:4px; text-align:center; }
+  .ar-action {
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
+    color:#fff; background:var(--green-dark); border:none; border-radius:9px;
+    padding:9px 14px; cursor:pointer; white-space:nowrap; line-height:1.1;
+    transition:background 0.18s, transform 0.18s;
+  }
+  .ar-action:hover { background:var(--navy); transform:translateY(-1px); }
+  .ar-action.ar-get-ts { background:var(--navy); }
+  .ar-action.ar-get-ts:hover { background:var(--green-dark); }
+  .ar-action-note {
+    font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
+    color:var(--muted); max-width:140px; margin:0 auto;
+  }
+  /* Verified seal + "ID submitted" share the column badge look. The .ar-ts-badge
+     base rule and its .ar-ts-art/.ar-ts-label children already exist above; only
+     the ID-submitted variant is added here. */
+  .ar-ts-badge.ar-id-done .ar-id-check { font-size:26px; line-height:34px; }
+  .ar-ts-badge.ar-id-done .ar-id-update {
+    margin-top:2px; font-family:'Nunito',sans-serif; font-weight:700; font-size:9px;
+    color:var(--green-dark); background:none; border:none; text-decoration:underline;
+    cursor:pointer; padding:0; text-transform:uppercase; letter-spacing:0.3px;
+  }
+  .ar-ts-badge.ar-id-done .ar-id-update:hover { color:var(--navy); }
+  @media (max-width:560px){
+    .sub-field.ar-banner { flex-direction:column; align-items:flex-start; }
+    .ar-control { width:100%; }
+    .ar-ts-badge { width:100%; padding-left:0; border-left:none;
+      border-top:1px solid rgba(1,36,98,0.10); padding-top:8px; flex-direction:row; gap:8px; justify-content:center; }
+    .ar-action-note { max-width:none; }
+  }
+
+  /* ── Submit identification modal (two steps: ID front, then live selfie) ── */
+  .idsub-modal { max-width:440px; text-align:left; }
+  .idsub-steps { display:flex; gap:8px; margin:4px 0 16px; }
+  .idsub-stepchip { flex:1 1 0; font-family:'Nunito',sans-serif; font-weight:800; font-size:10px;
+    text-transform:uppercase; letter-spacing:0.4px; text-align:center; padding:7px 6px;
+    border-radius:8px; background:#f0f2f7; color:var(--muted); }
+  .idsub-stepchip.done { background:var(--green); color:var(--ink-on-green); }
+  .idsub-stepchip.active { background:var(--navy); color:#fff; }
+  .idsub-step { display:none; }
+  .idsub-step.active { display:block; }
+  .idsub-step h5 { font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; color:var(--navy); margin:0 0 4px; }
+  .idsub-step .idsub-hint { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); margin:0 0 14px; }
+  .idsub-captures { display:flex; gap:10px; }
+  .idsub-cap {
+    flex:1 1 0; position:relative; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:6px; min-height:96px; padding:12px;
+    border:2px dashed #cfd6e4; border-radius:12px; background:#fafbfd; cursor:pointer;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:12px; color:var(--navy);
+    text-align:center; transition:border-color 0.18s, background 0.18s;
+  }
+  .idsub-cap:hover { border-color:var(--green); background:rgba(51,217,117,0.05); }
+  .idsub-cap .idsub-cap-ico { font-size:24px; }
+  .idsub-cap input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .idsub-thumb { margin-top:14px; display:flex; align-items:center; gap:10px;
+    padding:8px; border:1px solid #e6e9f0; border-radius:10px; background:#fff; }
+  /* Without this the empty capture preview renders before anything is captured. */
+  .idsub-thumb[hidden] { display:none; }
+  .idsub-thumb img { width:64px; height:44px; object-fit:cover; border-radius:6px; flex:0 0 auto; }
+  .idsub-thumb .idsub-thumb-meta { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--text); }
+  .idsub-thumb .idsub-thumb-meta b { color:var(--green-dark); }
+  .idsub-thumb .idsub-retake { margin-left:auto; font-family:'Nunito',sans-serif; font-weight:700;
+    font-size:11px; color:var(--green-dark); background:none; border:none; cursor:pointer; text-decoration:underline; }
+  .idsub-actions { display:flex; flex-direction:column; gap:10px; margin-top:18px; }
+  .idsub-actions .gc-modal-btn { width:100%; margin:0; }
+  .idsub-actions .gc-modal-btn[disabled] { opacity:0.45; cursor:not-allowed; }
+  .idsub-actions .gc-modal-btn.idsub-btn-secondary { background:#eef0f5; color:var(--navy); box-shadow:none; }
+  .idsub-actions .gc-modal-btn.idsub-btn-secondary:hover { background:#e2e7f0; }
+  .idsub-save { margin-top:14px; display:flex; align-items:flex-start; gap:9px;
+    padding:11px 12px; border-radius:10px; background:rgba(51,217,117,0.06); border:1px solid rgba(51,217,117,0.25); }
+  .idsub-save input { margin-top:2px; flex:0 0 auto; }
+  .idsub-save label { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--text); line-height:1.35; }
+  .idsub-note { margin-top:12px; font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); line-height:1.4; }
+  .idsub-done-msg { text-align:center; padding:6px 0 2px; }
+  .idsub-done-msg .idsub-done-ico { font-size:40px; }
+  /* Live camera view */
+  .idsub-camwrap {
+    margin-top:6px; border-radius:14px; overflow:hidden; background:#0d1530;
+    aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
+  }
+  #idSubCamVideo { width:100%; height:100%; object-fit:cover; display:block; background:#0d1530; }
+  #idSubCamVideo.mirror { transform:scaleX(-1); }   /* selfie preview reads naturally */
+  .idsub-camerr {
+    margin-top:10px; padding:9px 11px; border-radius:9px;
+    background:rgba(225,72,72,0.08); border:1px solid rgba(225,72,72,0.28);
+    font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.4; color:#b3261e;
+  }
+  /* Connect has no .ts-store-badge base rule (Request's lives with its TrustShield
+     modal), so the badge is fully described here rather than half-inherited. */
+  .idsub-stores .ts-store-badge { display:inline-flex; text-decoration:none; }
+  .idsub-stores { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin:4px 0 16px; }
+  .idsub-stores .ts-store-badge { display:inline-flex; line-height:0; border-radius:9px; overflow:hidden; transition:transform 0.15s, box-shadow 0.15s; }
+  .idsub-stores .ts-store-badge img { height:44px; width:auto; display:block; }
+  .idsub-stores .ts-store-badge:hover { transform:translateY(-1px); box-shadow:0 6px 16px -8px rgba(13,21,52,0.45); }
+
+
   @keyframes subFieldIn {
     from { opacity:0; transform:translateY(-4px); }
     to { opacity:1; transform:translateY(0); }
@@ -8026,6 +8136,125 @@
   </div>
 </div>
 
+<!--      SUBMIT IDENTIFICATION modal (age-restricted, 30+ path)
+     Step A: front of ID (camera OR upload) → Step B: live selfie (camera only)
+     → optional save-on-file. Opened via [data-open-idsubmit].
+     ============================================================ -->
+<div class="gc-modal-overlay" id="idSubmitOverlay" hidden>
+  <div class="gc-modal idsub-modal" role="dialog" aria-modal="true" aria-labelledby="idSubmitTitle">
+    <button type="button" class="gc-modal-close" id="idSubmitClose" aria-label="Close">×</button>
+    <h4 id="idSubmitTitle">Submit identification</h4>
+    <p class="gc-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. You'll still show a physical ID in person at hand-off.</p>
+
+    <div class="idsub-steps" id="idSubChips">
+      <div class="idsub-stepchip" id="idSubChipA">1 · Front of ID</div>
+      <div class="idsub-stepchip" id="idSubChipB">2 · Selfie</div>
+    </div>
+
+    <!-- Checking camera (brief) -->
+    <div class="idsub-step" id="idSubStepChecking">
+      <div class="idsub-done-msg">
+        <div class="idsub-done-ico">📷</div>
+        <div class="idsub-hint">Checking your camera…</div>
+      </div>
+    </div>
+
+    <!-- Step A — Front of ID (live photo OR upload) -->
+    <div class="idsub-step" id="idSubStepA">
+      <h5>Front of your ID</h5>
+      <div class="idsub-hint">Take a photo of the front of a valid government ID, or upload one.</div>
+      <div class="idsub-captures">
+        <button type="button" class="idsub-cap" id="idSubFrontTake">
+          <span class="idsub-cap-ico">📷</span>Take photo
+        </button>
+        <label class="idsub-cap">
+          <span class="idsub-cap-ico">⬆️</span>Upload
+          <input type="file" accept="image/*" id="idSubFrontUpload">
+        </label>
+      </div>
+      <div class="idsub-camerr" id="idSubFrontErr" hidden></div>
+      <div class="idsub-thumb" id="idSubFrontThumb" hidden>
+        <img id="idSubFrontImg" src="" alt="Front of ID preview">
+        <span class="idsub-thumb-meta"><b>ID front captured</b><br>Looks good? Continue to the selfie.</span>
+        <button type="button" class="idsub-retake" id="idSubFrontRetake">Retake</button>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubContinue" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step B — Selfie (LIVE camera only, no upload) -->
+    <div class="idsub-step" id="idSubStepB">
+      <h5>Quick selfie</h5>
+      <div class="idsub-hint">Take a live selfie so we can match it to your ID. A live photo is required — upload isn't available for the selfie.</div>
+      <div class="idsub-captures">
+        <button type="button" class="idsub-cap" id="idSubSelfieTake">
+          <span class="idsub-cap-ico">🤳</span>Take selfie
+        </button>
+      </div>
+      <div class="idsub-camerr" id="idSubSelfieErr" hidden></div>
+      <div class="idsub-thumb" id="idSubSelfieThumb" hidden>
+        <img id="idSubSelfieImg" src="" alt="Selfie preview">
+        <span class="idsub-thumb-meta"><b>Selfie captured</b><br>Ready to submit.</span>
+        <button type="button" class="idsub-retake" id="idSubSelfieRetake">Retake</button>
+      </div>
+      <div class="idsub-save" id="idSubSaveRow">
+        <input type="checkbox" id="idSubSaveOnFile">
+        <label for="idSubSaveOnFile">Save my ID and selfie for future age-restricted orders. If you ever update your ID, you'll take a new selfie too.</label>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubSubmit" disabled>Submit identification</button>
+        <button type="button" class="gc-modal-btn idsub-btn-secondary" id="idSubBack">Back</button>
+      </div>
+      <div class="idsub-note">Submitting here is pre-clearance only. A valid physical ID is still required in person before the order is handed over.</div>
+    </div>
+
+    <!-- Live camera capture (shared by ID front + selfie) -->
+    <div class="idsub-step" id="idSubStepCam">
+      <h5 id="idSubCamTitle">Camera</h5>
+      <div class="idsub-hint" id="idSubCamHint">Position yourself in the frame, then capture.</div>
+      <div class="idsub-camwrap">
+        <video id="idSubCamVideo" autoplay playsinline muted></video>
+      </div>
+      <canvas id="idSubCamCanvas" hidden></canvas>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubCamShoot">Capture</button>
+        <button type="button" class="gc-modal-btn idsub-btn-secondary" id="idSubCamCancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- No camera → direct to the mobile app -->
+    <div class="idsub-step" id="idSubStepNoCam">
+      <div class="idsub-done-msg">
+        <div class="idsub-done-ico">📱</div>
+        <h5>Finish in the app</h5>
+        <div class="idsub-hint">Verifying an age-restricted order needs a live selfie, and we couldn't find a camera on this device. Please finish in the Gopher Request mobile app — it only takes a minute, and every phone has a camera built in.</div>
+      </div>
+      <div class="idsub-stores" id="idSubStores">
+        <a class="ts-store-badge" id="idSubApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
+        <a class="ts-store-badge" id="idSubGoogle" href="https://play.google.com/store/apps/details?id=io.gophergoapp.requester" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"></a>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubNoCamClose">Close</button>
+      </div>
+    </div>
+
+    <!-- Done -->
+    <div class="idsub-step" id="idSubStepDone">
+      <div class="idsub-done-msg">
+        <div class="idsub-done-ico">✅</div>
+        <h5 id="idSubDoneTitle">Identification submitted</h5>
+        <div class="idsub-hint" id="idSubDoneMsg">You're pre-cleared for this order. Remember to bring your physical ID to the hand-off.</div>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubDoneClose">Back to my request</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 <!-- TRUST BAR -->
 <div class="trust-bar">
   <div class="trust-inner">
@@ -10083,6 +10312,17 @@ const PAY_BADGES = {
     hasPic: false, // legacy - kept for backwards compat
     picThumbs: [], // array of {id, src} of attached pic thumbnails (max 3)
     waiverChecked: false, // Step 6 liability waiver checkbox
+    // Age-restricted identity capture (ported from Request 2026-08-22). Shape is
+    // the canonical one in canonical-request-state-schema.md §3a — "verified" is
+    // DERIVED from these, never stored as its own boolean.
+    idVerification: {
+      idFrontCaptured: false,   // front-of-ID photo present (camera or upload)
+      selfieCaptured:  false,   // live selfie present (camera only)
+      idFrontSrc: null,         // data URL (mockup-only — see storage notes)
+      selfieSrc:  null,
+      savedOnFile: false,       // user opted to save (≥30 path only)
+      submittedAt: null,
+    },
     promoCode: '',        // Step 6: text entered in the promo field
     promoApplied: false,  // true once a valid code is applied
     promoError: false,    // true when an invalid code was submitted
@@ -10635,7 +10875,7 @@ const PAY_BADGES = {
               <div class="sf-label">Safeguarding & identity verification activated</div>
               <div class="sf-value">Physical ID required during exchange</div>
             </div>
-            ${(typeof window.__trustShieldBannerBadge === 'function') ? window.__trustShieldBannerBadge() : ''}
+            ${ageRestrictedBannerControl()}
           </div>
         ` : ''}
         <div class="toggle-row">
@@ -12392,6 +12632,379 @@ const PAY_BADGES = {
   window.__gopherSyncGate = function(){
     try { var bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(e){}
   };
+
+  // Reads the canonical YYYY-MM-DD from the hidden #snDob, falling back to the
+  // profile DOB. Unknown age → null (treated as the must-verify path below).
+  function customerAgeYears(){
+    const el = document.getElementById('snDob');
+    const dob = (el && el.value) || (window.__customerDob && window.__customerDob()) || null;
+    if(!dob) return null;
+    // Accept YYYY-MM-DD (calendar canonical) or MM-DD-YYYY (demo profiles).
+    let y, mo, d;
+    const s = String(dob).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))      { const p=s.split('-').map(Number); y=p[0]; mo=p[1]; d=p[2]; }
+    else if(/^\d{2}-\d{2}-\d{4}$/.test(s)) { const p=s.split('-').map(Number); mo=p[0]; d=p[1]; y=p[2]; }
+    else { const dt=new Date(s); if(isNaN(dt)) return null; y=dt.getFullYear(); mo=dt.getMonth()+1; d=dt.getDate(); }
+    const birth = new Date(y, mo-1, d);
+    if(isNaN(birth)) return null;
+    const now = new Date();
+    let a = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if(m < 0 || (m === 0 && now.getDate() < birth.getDate())) a--;
+    return a;
+  }
+
+  // ── Age-restricted banner control — one render, three branches ──
+  //   1) Has TrustShield        → seal, no button (replaces the control).
+  //   2) Under 30 / unknown age → "Get TrustShield™" (enrollment required;
+  //                               no one-off ID pic offered to this group).
+  //   3) 30 and over            → "Submit Identification" (ID front + live
+  //                               selfie), or the "ID Submitted / on file" state.
+  // Boundary: 30 and over = ID-submission path (age >= 30). Change to age > 30
+  // if product wants 30 to be must-verify. Unknown age = must-verify (safest).
+  function ageRestrictedBannerControl(){
+    if(window.__hasTrustShield && window.__hasTrustShield()){
+      return (window.__trustShieldBannerBadge && window.__trustShieldBannerBadge()) || '';
+    }
+    const age = customerAgeYears();
+    if(age == null || age < 30){
+      return '<div class="ar-control">'
+           + '<button type="button" class="ar-action ar-get-ts" data-open-trustshield>Get TrustShield™</button>'
+           + '<div class="ar-action-note">Required for under-30 age-restricted orders</div>'
+           + '</div>';
+    }
+    const onFile = window.__idOnFile && window.__idOnFile();
+    if(state.idVerification.submittedAt || onFile){
+      return '<div class="ar-ts-badge ar-id-done" title="Identification submitted">'
+           + '<div class="ar-ts-art ar-id-check">✅</div>'
+           + '<span class="ar-ts-label">ID<br>Submitted</span>'
+           + '<button type="button" class="ar-id-update" data-open-idsubmit data-id-update="1">Update</button>'
+           + '</div>';
+    }
+    return '<div class="ar-control">'
+         + '<button type="button" class="ar-action ar-submit-id" data-open-idsubmit>Submit identification</button>'
+         + '</div>';
+  }
+
+  // ── Submit identification modal controller ──
+  // Lazy-wired on first open (the modal DOM lives later in the document), then
+  // reused. Reads/writes state.idVerification; persists the ID front via
+  // window.__saveIdOnFile (selfie is never persisted). Re-renders the flow on
+  (function initIdSubmitController(){
+    let wired = false;
+    let camStream = null;
+    let camTarget = null;      // 'idfront' | 'selfie'
+    let camReturn = 'A';       // step to return to after the camera view
+    let camPoll = null;        // interval that waits for the first real video frame
+
+    const fileToDataURL = (file, cb) => {
+      if(!file || !/^image\//.test(file.type || '')){ cb(null); return; }
+      const fr = new FileReader();
+      fr.onload = () => cb(typeof fr.result === 'string' && fr.result.length > 64 ? fr.result : null);
+      fr.onerror = () => cb(null);
+      fr.readAsDataURL(file);
+    };
+
+    const chipsEl = () => document.getElementById('idSubChips');
+    function refreshChips(){
+      const a = document.getElementById('idSubChipA');
+      const b = document.getElementById('idSubChipB');
+      const onB = document.getElementById('idSubStepB').classList.contains('active');
+      const v = state.idVerification;
+      if(a){ a.classList.toggle('done', !!v.idFrontCaptured); a.classList.toggle('active', !onB); }
+      if(b){ b.classList.toggle('done', !!v.selfieCaptured); b.classList.toggle('active', onB); }
+    }
+    const STEPS = ['Checking','A','B','Cam','NoCam','Done'];
+    function showStep(which){
+      STEPS.forEach(s => {
+        const el = document.getElementById('idSubStep'+s);
+        if(el) el.classList.toggle('active', s === which);
+      });
+      // Chips only make sense on the two capture steps.
+      const ch = chipsEl();
+      if(ch) ch.style.display = (which === 'A' || which === 'B') ? '' : 'none';
+      if(which === 'A' || which === 'B'){ refreshChips(); syncButtons(); }
+    }
+    function syncButtons(){
+      const v = state.idVerification;
+      const cont = document.getElementById('idSubContinue');
+      const sub  = document.getElementById('idSubSubmit');
+      if(cont) cont.disabled = !v.idFrontCaptured;
+      if(sub)  sub.disabled  = !(v.idFrontCaptured && v.selfieCaptured);
+    }
+    function paintThumb(kind){
+      const v = state.idVerification;
+      if(kind === 'front'){
+        const t = document.getElementById('idSubFrontThumb');
+        const img = document.getElementById('idSubFrontImg');
+        if(v.idFrontCaptured){ img.src = v.idFrontSrc || ''; t.hidden = false; }
+        else { t.hidden = true; img.src = ''; }
+      } else {
+        const t = document.getElementById('idSubSelfieThumb');
+        const img = document.getElementById('idSubSelfieImg');
+        if(v.selfieCaptured){ img.src = v.selfieSrc || ''; t.hidden = false; }
+        else { t.hidden = true; img.src = ''; }
+      }
+    }
+    function setErr(target, msg){
+      const el = document.getElementById(target === 'selfie' ? 'idSubSelfieErr' : 'idSubFrontErr');
+      if(!el) return;
+      if(msg){ el.textContent = msg; el.hidden = false; } else { el.textContent = ''; el.hidden = true; }
+    }
+    // Selfie is always tied to the current ID. Changing the ID clears the selfie.
+    function clearSelfie(){
+      state.idVerification.selfieCaptured = false;
+      state.idVerification.selfieSrc = null;
+      paintThumb('selfie');
+    }
+    function setFront(url){
+      state.idVerification.idFrontCaptured = true;
+      state.idVerification.idFrontSrc = url;
+      clearSelfie();                 // new ID ⇒ redo selfie
+      paintThumb('front'); syncButtons();
+    }
+    function setSelfie(url){
+      state.idVerification.selfieCaptured = true;
+      state.idVerification.selfieSrc = url;
+      paintThumb('selfie'); syncButtons();
+    }
+
+    function resetCaptures(){
+      state.idVerification.idFrontCaptured = false;
+      state.idVerification.selfieCaptured  = false;
+      state.idVerification.idFrontSrc = null;
+      state.idVerification.selfieSrc  = null;
+      const up = document.getElementById('idSubFrontUpload'); if(up) up.value = '';
+      setErr('idfront',''); setErr('selfie','');
+      paintThumb('front'); paintThumb('selfie'); syncButtons();
+    }
+
+    // ── Camera (getUserMedia) ──
+    function stopCam(){
+      if(camPoll){ clearInterval(camPoll); camPoll = null; }
+      if(camStream){ try { camStream.getTracks().forEach(t => t.stop()); } catch(e){} camStream = null; }
+      const video = document.getElementById('idSubCamVideo');
+      if(video){ try { video.pause(); } catch(e){} video.onloadedmetadata = video.onloadeddata = video.oncanplay = null; video.srcObject = null; }
+    }
+    function setCamReady(ready){
+      const shootBtn = document.getElementById('idSubCamShoot');
+      if(shootBtn) shootBtn.disabled = !ready;
+      const hint = document.getElementById('idSubCamHint');
+      if(hint && !ready) hint.textContent = 'Starting camera…';
+    }
+    function videoLive(){
+      const v = document.getElementById('idSubCamVideo');
+      return !!(v && v.videoWidth > 0 && v.videoHeight > 0 && v.readyState >= 2);
+    }
+    async function cameraExists(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+      try {
+        if(navigator.mediaDevices.enumerateDevices){
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          return devs.some(d => d.kind === 'videoinput');
+        }
+      } catch(e){}
+      return true; // getUserMedia present but can't enumerate — let the live attempt decide
+    }
+    async function openCamera(target){
+      camTarget = target;
+      camReturn = (target === 'selfie') ? 'B' : 'A';
+      setErr(target,'');
+      const title = document.getElementById('idSubCamTitle');
+      const hint  = document.getElementById('idSubCamHint');
+      const video = document.getElementById('idSubCamVideo');
+      if(title) title.textContent = target === 'selfie' ? 'Take your selfie' : 'Photograph your ID';
+      if(video) video.classList.toggle('mirror', target === 'selfie');
+      showStep('Cam');
+      setCamReady(false);                       // Capture disabled until a real frame arrives
+      const ready = () => {
+        const liveHint = target === 'selfie'
+          ? 'Center your face in the frame, then capture.'
+          : 'Fit the front of your ID in the frame, then capture.';
+        setCamReady(true);
+        if(hint) hint.textContent = liveHint;
+      };
+      const onFrameFail = () => {
+        stopCam();
+        if(target === 'selfie'){
+          showStep('B');
+          setErr('selfie', 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
+        } else {
+          showStep('A');
+          setErr('idfront', 'We couldn\u2019t get a picture from your camera. You can upload a photo of your ID instead.');
+        }
+      };
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: target === 'selfie' ? 'user' : 'environment' }, audio: false
+        });
+        if(video){
+          video.srcObject = camStream;
+          const tryReady = () => { if(videoLive()){ if(camPoll){ clearInterval(camPoll); camPoll = null; } ready(); return true; } return false; };
+          video.onloadedmetadata = tryReady; video.onloadeddata = tryReady; video.oncanplay = tryReady;
+          await video.play().catch(()=>{});
+          // Fallback: some browsers fire events inconsistently. Poll for the first
+          // real frame; if none after ~4s, the camera opened but produced nothing.
+          let tries = 0;
+          camPoll = setInterval(() => {
+            tries++;
+            if(tryReady()) return;
+            if(tries >= 40){ clearInterval(camPoll); camPoll = null; if(!videoLive()) onFrameFail(); }
+          }, 100);
+        }
+      } catch(err){
+        stopCam();
+        const name = err && err.name;
+        if(target === 'selfie'){
+          // Selfie needs a camera. No hardware → app. Permission/other → message + app option.
+          if(name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError'){
+            showNoCam();
+          } else {
+            showStep('B');
+            setErr('selfie', 'We couldn\u2019t access the camera. Please allow camera access and try again — or finish in the mobile app.');
+          }
+        } else {
+          showStep('A');
+          setErr('idfront', 'Couldn\u2019t open the camera. You can upload a photo of your ID instead.');
+        }
+      }
+    }
+    function shoot(){
+      const video = document.getElementById('idSubCamVideo');
+      const canvas = document.getElementById('idSubCamCanvas');
+      if(!video || !canvas || !camStream) return;
+      if(!videoLive()){                          // never capture before a real frame (avoids a black image)
+        setErr(camTarget, 'Camera is still starting — give it a moment, then capture.');
+        return;
+      }
+      const w = video.videoWidth, h = video.videoHeight;
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if(camTarget === 'selfie'){ ctx.translate(w,0); ctx.scale(-1,1); } // un-mirror the selfie
+      ctx.drawImage(video, 0, 0, w, h);
+      let url = '';
+      try { url = canvas.toDataURL('image/jpeg', 0.85); } catch(e){ url = ''; }
+      const target = camTarget;
+      stopCam();
+      if(!url){ showStep(target === 'selfie' ? 'B' : 'A'); setErr(target, 'Capture failed — please try again.'); return; }
+      if(target === 'selfie') setSelfie(url); else setFront(url);
+      showStep(target === 'selfie' ? 'B' : 'A');
+    }
+
+    // Request scrapes these off its own .store-badge imgs via window.grAsset;
+    // Connect has neither that helper nor those elements, so the shared assets are
+    // referenced directly. Relative paths — this site deploys to a subdirectory.
+    function hydrateStores(){
+      const apple  = document.getElementById('idSubApple');
+      const google = document.getElementById('idSubGoogle');
+      if(apple  && !apple.querySelector('img'))  apple.innerHTML  = '<img src="assets/img/badge-app-store.webp" alt="Download on the App Store">';
+      if(google && !google.querySelector('img')) google.innerHTML = '<img src="assets/img/badge-google-play.webp" alt="Get it on Google Play">';
+    }
+    function showNoCam(){ hydrateStores(); showStep('NoCam'); }
+
+    function wire(){
+      if(wired) return;
+      const overlay = document.getElementById('idSubmitOverlay');
+      if(!overlay) return;
+      wired = true;
+      const close = () => { stopCam(); overlay.hidden = true; render(); };
+
+      overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+      document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+      ['idSubmitClose','idSubDoneClose','idSubNoCamClose'].forEach(id => {
+        const b = document.getElementById(id); if(b) b.addEventListener('click', close);
+      });
+
+      // Live camera triggers (request device permission via getUserMedia)
+      const ftake = document.getElementById('idSubFrontTake');
+      if(ftake) ftake.addEventListener('click', () => openCamera('idfront'));
+      const stake = document.getElementById('idSubSelfieTake');
+      if(stake) stake.addEventListener('click', () => openCamera('selfie'));
+
+      // Upload (ID front only)
+      const up = document.getElementById('idSubFrontUpload');
+      if(up) up.addEventListener('change', () => {
+        setErr('idfront','');
+        fileToDataURL(up.files && up.files[0], (url) => {
+          if(!url){ setErr('idfront','That file didn\u2019t look like a photo. Please choose an image.'); up.value=''; return; }
+          setFront(url);
+        });
+      });
+
+      // Camera view controls
+      const shootBtn = document.getElementById('idSubCamShoot');
+      if(shootBtn) shootBtn.addEventListener('click', shoot);
+      const camCancel = document.getElementById('idSubCamCancel');
+      if(camCancel) camCancel.addEventListener('click', () => { const r = camReturn; stopCam(); showStep(r); });
+
+      // Retake
+      const fRetake = document.getElementById('idSubFrontRetake');
+      if(fRetake) fRetake.addEventListener('click', () => {
+        state.idVerification.idFrontCaptured = false;
+        state.idVerification.idFrontSrc = null;
+        const ui = document.getElementById('idSubFrontUpload'); if(ui) ui.value='';
+        clearSelfie();                 // changing the ID redoes the selfie
+        paintThumb('front'); syncButtons();
+      });
+      const sRetake = document.getElementById('idSubSelfieRetake');
+      if(sRetake) sRetake.addEventListener('click', () => { clearSelfie(); syncButtons(); });
+
+      // Step nav
+      const cont = document.getElementById('idSubContinue');
+      if(cont) cont.addEventListener('click', () => { if(state.idVerification.idFrontCaptured) showStep('B'); });
+      const back = document.getElementById('idSubBack');
+      if(back) back.addEventListener('click', () => showStep('A'));
+
+      const submit = document.getElementById('idSubSubmit');
+      if(submit) submit.addEventListener('click', () => {
+        const v = state.idVerification;
+        if(!(v.idFrontCaptured && v.selfieCaptured)) return;   // hard gate
+        v.submittedAt = Date.now();
+        const save = document.getElementById('idSubSaveOnFile');
+        if(save && save.checked){
+          v.savedOnFile = true;
+          if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc);
+        } else {
+          v.savedOnFile = false;
+        }
+        showStep('Done');
+      });
+    }
+
+    // opts.update === true → re-run the full flow (fresh front + fresh selfie).
+    window.__openIdSubmitModal = async function(opts){
+      wire();
+      const overlay = document.getElementById('idSubmitOverlay');
+      if(!overlay) return;
+      const isUpdate = !!(opts && opts.update);
+      stopCam();
+      resetCaptures();              // fresh session — ID + selfie always recaptured
+      const title = document.getElementById('idSubmitTitle');
+      if(title) title.textContent = isUpdate ? 'Update Identification' : 'Submit identification';
+      const save = document.getElementById('idSubSaveOnFile');
+      if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
+      overlay.hidden = false;
+      // Get out in front of it: a live selfie is required, so if there's no
+      // camera on this device, route to the app BEFORE they fill anything in.
+      showStep('Checking');
+      const ok = await cameraExists();
+      if(ok) showStep('A'); else showNoCam();
+    };
+  })();
+
+  // Global delegate for the Submit-identification banner control. Added once
+  // (document always exists); the modal itself wires lazily on first open.
+  // Connect's TrustShield button already has its own [data-open-trustshield]
+  // handler elsewhere in this file — deliberately not duplicated here.
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest) return;
+    const idBtn = e.target.closest('[data-open-idsubmit]');
+    if(idBtn){
+      const update = idBtn.getAttribute('data-id-update') === '1';
+      if(window.__openIdSubmitModal) window.__openIdSubmitModal({ update });
+    }
+  });
+
   function stepGate(){
     // Step 1 — a service category must be selected before continuing.
     if(state.step === 1 && !state.category){
@@ -12410,6 +13023,30 @@ const PAY_BADGES = {
       if(!(cogNum > 0)){
         return { ok:false, label:'Cost of items', selector:'#costOfItemsInput',
                  msg:'Please enter the cost of items needed before continuing.' };
+      }
+    }
+    // Step 2 — age-restricted delivery requires identity verification before
+    // continuing: TrustShield, OR (for 30+) a submitted / on-file ID. Under-30
+    // has no ID-pic path, so only TrustShield satisfies them. (Keyword-detected
+    // orders with the slider OFF stay awareness-only and are NOT gated here.)
+    //
+    // PORTED FROM REQUEST 2026-08-22 (owner ruling, Phase 2 Finding 3). This is
+    // not a new policy: the backend already refuses these orders 403 via
+    // trust_shield_required() in controllers/order/create.js, and that gate reads
+    // the requester's own age/verification ONLY — it does not branch on which
+    // front end submitted. Without this gate a Connect requester filled in the
+    // whole request, hit submit, and got an error naming a remedy Connect did
+    // not offer. Gating here makes it fixable at the point it is raised.
+    if(state.step === 2 && state.category === 'delivery' && state.ageRestricted){
+      const onFile = !!(window.__idOnFile && window.__idOnFile());
+      const hasTS  = !!(window.__hasTrustShield && window.__hasTrustShield());
+      const idDone = !!state.idVerification.submittedAt || onFile;
+      if(!(hasTS || idDone)){
+        const age = (typeof customerAgeYears === 'function') ? customerAgeYears() : null;
+        const msg = (age != null && age < 30)
+          ? 'This age-restricted order needs TrustShield verification. Tap \u201cGet TrustShield\u2122\u201d to continue.'
+          : 'Please verify your identity for this age-restricted order \u2014 tap \u201cSubmit identification\u201d (or add TrustShield) to continue.';
+        return { ok:false, label:'Identity verification', selector:'.ar-banner', msg };
       }
     }
     // Step 5 — Worker pay. When setting a flat price, an amount must be entered
@@ -12435,6 +13072,12 @@ const PAY_BADGES = {
                  msg:'Your worker’s pay can’t be $0 — go back to Worker pay and set an offer.' };
       }
     }
+    // Step 6 — a scheduled (exact-time) request must have a real time picked.
+    // Backstops the footer Submit, not just the in-content Done button.
+    if(state.step === 6 && state.scheduleType === 'scheduled' && !state.timeSlot){
+      return { ok:false, label:'Schedule time', selector:'.cal-time-row',
+               msg:'Please pick a time for your scheduled request.' };
+    }
     // Step 6 — submission requires the liability waiver.
     if(state.step === 6 && !state.waiverChecked){
       return { ok:false, label:'Liability waiver', selector:'.waiver-box',
@@ -12451,6 +13094,23 @@ const PAY_BADGES = {
       const de = firstEmpty(state.dropoffStops);
       if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
                            msg:'Add a drop-off address so your Gopher knows where to go.' };
+    }
+    // Steps 4 AND 6 — pick-up and drop-off must be DIFFERENT addresses. Step 6 is
+    // the submit-time backstop: a step gate only checks the current step, so an
+    // identical pair edited earlier would otherwise submit. Normalised compare
+    // (case / space / punctuation-insensitive) catches formatting-only differences.
+    // Only for categories that genuinely have both ends — single-location service
+    // requests have no pickup/drop-off distinction, so isVisible('pickupSection')
+    // is what keeps this off them.
+    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup && isVisible('pickupSection')
+       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+      const normAddr = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const pk = state.pickupStops.map(normAddr).filter(Boolean);
+      const dp = state.dropoffStops.map(normAddr).filter(Boolean);
+      if(pk.some(p => dp.includes(p))){
+        return { ok:false, label:'Addresses', selector:'.field-input',
+                 msg:'Your pick-up and drop-off need to be different addresses \u2014 please update one so your Gopher knows where to go.' };
+      }
     }
     return { ok:true };
   }
@@ -20403,10 +21063,13 @@ const PAY_BADGES = {
   }
 
   // Exposed for the request flow (separate IIFE). The age-restricted banner shows
-  // the TrustShield seal when the signed-in customer is verified; otherwise nothing
-  // extra appears in Connect. (Connect intentionally shows ONLY the seal — the full
-  // Submit-Identification flow lives in Request; see notes.) Returns ready-to-drop
+  // the TrustShield seal when the signed-in customer is verified. Returns ready-to-drop
   // badge HTML so the base64 mark isn't duplicated in the flow scope.
+  //
+  // ⚠️ The note that used to sit here — "Connect intentionally shows ONLY the seal;
+  // the full Submit-Identification flow lives in Request" — recorded the v91
+  // 2026-06-09 deferral and is RETIRED by owner ruling 2026-08-22 (Phase 2
+  // Finding 3). Connect now carries the full path; see ageRestrictedBannerControl().
   window.__hasTrustShield = () => !!(DASH_DATA.profile && DASH_DATA.profile.trustShield);
   window.__trustShieldBannerBadge = () =>
     window.__hasTrustShield()
@@ -20415,6 +21078,20 @@ const PAY_BADGES = {
         + '<span class="ar-ts-label">TrustShield<br>Verified</span>'
         + '</div>'
       : '';
+
+  // ── ID-on-file hooks (ported from Request 2026-08-22) ───────────────────────
+  // Demo-grade like the rest of this dashboard: in-memory only, so a saved ID does
+  // NOT survive a reload. Production replaces these three with real profile reads
+  // and a real upload — do not let UI copy imply persistence (same honesty rule as
+  // the 2026-06 gopher-request.html copy fixes).
+  window.__idOnFile   = () => (DASH_DATA.profile && DASH_DATA.profile.idOnFile) || null;
+  window.__customerDob = () => (DASH_DATA.profile && DASH_DATA.profile.dob) || null;
+  window.__saveIdOnFile = (idFrontSrc /*, selfieSrc */) => {
+    if(!DASH_DATA.profile) return;
+    // The selfie is deliberately NOT persisted — it is a liveness check for THIS
+    // submission, not an identity document. Request does the same.
+    DASH_DATA.profile.idOnFile = { idFrontSrc: idFrontSrc || null, savedAt: Date.now() };
+  };
 
   function updateProfileStats(){
     const reqEl  = document.getElementById('ph-requests');
