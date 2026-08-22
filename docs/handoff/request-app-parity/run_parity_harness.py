@@ -100,7 +100,7 @@ scheduleConfirmed selectedDate suggestedOfferUsed""".split())
 DOCUMENTED_EXTRA = set("""businessPlan dealBoost dealKind
 descriptionIsPlaceholder descriptionPlaceholder dupWarnAck
 eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
-idVerification junkTier laborManagement lowAvailabilityAck
+idVerification junkTier movingTier laborManagement lowAvailabilityAck
 openCatInfo openInfo osOpen profileOpen savedOnFile
 selfieCaptured selfieSrc submittedAt waiverPrompted
 userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())
@@ -147,6 +147,29 @@ def engine_deps():
     for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
         parts.append(extract_fn(eng, f))
     return "\n".join(parts)
+
+
+FHF_RE = re.compile(r"FIELD_HIDDEN_FOR\s*=\s*\{")
+def surface_hidden_for(src):
+    """Parse a surface's inline FIELD_HIDDEN_FOR into {field: [categories]}."""
+    m = FHF_RE.search(src)
+    if not m:
+        return None
+    start = m.end() - 1
+    depth, j = 0, start
+    while j < len(src):
+        if src[j] == "{":
+            depth += 1
+        elif src[j] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    body = src[start:j + 1]
+    out = {}
+    for k, v in re.findall(r"([A-Za-z0-9_]+)\s*:\s*\[([^\]]*)\]", body):
+        out[k] = sorted(x.strip().strip("'\"") for x in v.split(",") if x.strip())
+    return out
 
 
 FAILS, WARNS = [], []
@@ -320,6 +343,52 @@ def main():
             # Consent must be re-taken on the receiving device, never inherited.
             check(set(info["reconsent"]) >= {"waiverChecked"},
                   "liability waiver is re-consented on resume, not carried")
+
+    # ---------------------------------------------------------------- 6. FLOW RULES
+    # Which fields a category shows is duplicated inline in all three surfaces.
+    # gopher-flow-rules.js is the shared source of truth; this asserts every
+    # surface's private copy still agrees with it, so drift fails a run instead
+    # of shipping. Request and Connect agree on 16 of 17 fields — the one real
+    # difference (multiStop) is modelled as a surface override, not tolerated as
+    # drift.
+    print("\n6. FLOW RULES — inline visibility tables vs the shared module")
+    rules_js = os.path.join(ROOT, "Final/assets/js/gopher-flow-rules.js")
+    if not os.path.exists(rules_js):
+        check(False, "shared flow-rules module present", rules_js)
+    else:
+        try:
+            # jxa() already returns parsed JSON.
+            M = jxa("var module={exports:{}};" + read("Final/assets/js/gopher-flow-rules.js") +
+                    ";JSON.stringify({base:module.exports.tableFor(),"
+                    "connect:module.exports.tableFor('connect'),"
+                    "bad:module.exports.assertInvariants()})")
+        except Exception as e:
+            M = None
+            check(False, "shared flow-rules module runs", str(e)[:160])
+        if M:
+            check(not M["bad"], "flow-rules module passes its own invariants",
+                  "; ".join(M["bad"]))
+            # Each surface is compared against the table for ITS surface.
+            for name, rel in SURFACES.items():
+                want = M["connect"] if name == "connect" else M["base"]
+                got = surface_hidden_for(read(rel))
+                if got is None:
+                    check(False, "%s exposes a FIELD_HIDDEN_FOR table" % name)
+                    continue
+                # A surface need not implement every field; it must not DISAGREE
+                # about one it does implement.
+                shared = sorted(set(got) & set(want))
+                bad = [f for f in shared if sorted(got[f]) != sorted(want[f])]
+                check(not bad,
+                      "%s visibility matches the shared module (%d shared fields)"
+                      % (name, len(shared)),
+                      "" if not bad else "DRIFT on %s — %s has %s, module has %s" % (
+                          ", ".join(bad), name,
+                          {f: got[f] for f in bad}, {f: want[f] for f in bad}))
+                extra = sorted(set(got) - set(want))
+                if extra:
+                    WARNS.append("%s defines visibility fields the module does not: %s"
+                                 % (name, ", ".join(extra)))
 
     print()
     for w in WARNS:

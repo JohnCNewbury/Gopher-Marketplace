@@ -94,6 +94,13 @@ Ordered by severity. **These are the concrete things that break "resume where yo
   `recordJunkOffer()` at completion (the forward-learning loop). **Persist it** — it is a structured
   field the production pricing model learns from, not UI state. Add to P when the prototype adopts
   the Junk tier model.
+- **Moving tier** (`movingTier`) — R, C (added 2026-08-08). Moving joined `PRICED_CATEGORIES` on
+  that date, giving it the same tier-driven suggested-offer treatment as Junk. Same rules as
+  `junkTier`: **persist it**, it is a structured pricing input rather than UI state, and it is
+  category-scoped (§3d) so it must not survive a switch away from Moving.
+  ⚠️ **The prototype has not adopted the Moving pricing model** — it still hides `aiPaySuggest`
+  for `moving`, so the app would offer no Moving pay suggestion. Caught by the flow-rules check in
+  `run_parity_harness.py`; the fix is one entry in the prototype's `FIELD_HIDDEN_FOR`.
 
 ### 3d. CATEGORY-SCOPED FIELDS — must reset when the category changes (2026-07-19)
 
@@ -107,6 +114,7 @@ walked rather than skipped past.
 | Delivery | `ageRestricted`, `ageKeywordAck`, `agePurchaseAck`, `idRequiredAtCompletion`, `idVerification`, `itemsPurchased`, `costOfItems` |
 | Ride | `numRiders`, `numBags` |
 | Junk | `junkTier` |
+| Moving (pricing) | `movingTier` |
 | Moving | `noSpecificPickup`, `serviceElevatorPickup`, `serviceElevatorDest`, `pickupStairs`, `destStairs` |
 | Labor / Yard | `payByHour`, `numHours` |
 | Item info | `itemCount`, `multipleItems`, `hazardous` |
