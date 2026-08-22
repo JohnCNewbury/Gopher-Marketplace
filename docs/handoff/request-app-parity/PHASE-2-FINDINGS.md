@@ -37,6 +37,11 @@ prototype aiPaySuggest hidden for: home, labor, moving, other, yard
 module    aiPaySuggest hidden for: home, labor,         other, yard
 ```
 
+⚠️ **Read that as a HIDE list.** `FIELD_HIDDEN_FOR` names the categories a field is hidden *for*,
+so listing `'moving'` is what suppresses the suggestion, and the fix is to **remove** it. The
+adjacent comment in the prototype says *"Delivery + Ride + Junk"* — the visible set — which is the
+opposite polarity and easy to misread at a glance.
+
 **Effect if shipped:** the app offers no pay suggestion on Moving requests, silently. Nothing
 errors; the control simply never appears.
 
@@ -141,9 +146,25 @@ scope authoritative and the canonical doc was corrected to match. The prototype 
 by a TrustShield holder is discounted $1.00 that canon says it should not be. It is a silent
 revenue leak rather than a visible error, which is why it survived.
 
-**Scope of the impact today:** prototype only — this is the app blueprint, not a live customer
-payment path. Request and Connect both implement the narrow scope correctly and were verified,
-including the promo-first ordering and the cap that stops discounts exceeding total fees.
+**Scope of the impact today — corrected 2026-08-22, my first framing understated it.** I originally
+wrote "prototype only, not a live customer payment path". The second half is true: no real money
+moves, because the prototype processes no payments. **But it is not internal.**
+`_prototypes/Request/gopher-request-flow.html` is on the **deploy allowlist** and is served publicly
+— verified live, HTTP 200, and the public copy carries both this bug and Finding 1 verbatim:
+
+```
+https://johncnewbury.github.io/Gopher-Marketplace/_prototypes/Request/gopher-request-flow.html
+  const tsEligible = hasTS && (state.category==='delivery' || state.category==='ride');
+  aiPaySuggest:['moving','home','labor','yard','other']
+```
+
+So this is the wrong discount **on a public URL the owner demos from**, computed into the displayed
+fee breakdown. Not a revenue loss — a credibility one, in front of exactly the audience least able
+to spot it. *(Public-exposure point raised by the Total SOW Priorities session; verified here
+against the live URL rather than taken on report.)*
+
+Request and Connect both implement the narrow scope correctly and were verified, including the
+promo-first ordering and the cap that stops discounts exceeding total fees.
 
 **Fix:** add `&& state.ageRestricted` to the delivery arm of `tsEligible`. One condition.
 
