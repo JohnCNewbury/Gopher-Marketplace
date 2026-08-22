@@ -129,7 +129,7 @@
       requestor:r.requestor||'A requester',
       directBooking:!!r.directBooking, provider:r.provider||'',
       // Worker-selection mode drives the Go card badge + whether an accept auto-hires ('first') or
-      // becomes an application the requester approves ('select'/'prioritize'). Was dropped here.
+      // becomes an application the requester approves ('select'/'my'). Was dropped here.
       workerSelection:r.workerSelection||'first'
     };
   }
@@ -185,22 +185,29 @@
             // (requesterPicks, gopher-go-prototype.html) — the harness was ignoring it and putting
             // EVERY acceptance through the approval queue, so "First available — fastest match"
             // behaved exactly like "I'll select my worker".
-            var wsel=String(r0.workerSelection||'first');
+            /* ENUM SETTLED (owner, 2026-08-22): the third workerSelection value is 'my', NOT
+   'prioritize'. The reason outlives the spelling: **MY is a proper name — Michael Yorrie**,
+   the first Favorite Gopher (3,600+ requests, never below 5 stars); the feature exists
+   because customers kept asking for him by name. So MY is ALWAYS capitalized in copy and is
+   never a possessive — do not "correct" it to "my Gophers". Legacy records may still carry
+   'prioritize'; wsMode() below accepts it and returns 'my', so nothing breaks either way. */
+        function wsMode(v){ v=String(v||'first'); return v==='prioritize' ? 'my' : v; }  // legacy alias
+        var wsel=wsMode(r0.workerSelection);
         /* THREE ACCEPTANCE PATHS (owner, 2026-08-21 — canonical INV-ACCEPT, amended):
              'first'      First available   — the first acceptance IS the hire, no approval.
              'select'     I'll select my worker — every acceptance is a candidacy to approve.
-             'prioritize' Prioritize MY Gopher(s) — SPLIT behaviour: a MY Gopher accepting
+             'my' Prioritize MY Gopher(s) — SPLIT behaviour: a MY Gopher accepting
                           behaves like First available (auto-hire); anyone else is a candidacy
                           the requester approves. That split is the whole point of the mode —
                           it prioritises the people you already trust without locking out the
                           rest of the workforce.
-           The bug this replaces: 'prioritize' was lumped with 'select', so a MY Gopher
+           The bug this replaces: this mode was lumped with 'select', so a MY Gopher
            accepting still sat in the approval queue and the mode behaved identically to
            "I'll select my worker". */
         var accBy='Marcus K.';
         var isMine=false;
         try{ isMine = !!(l.isMyGopher && l.isMyGopher(accBy)); }catch(_){ isMine=false; }
-        var requesterPicks = (wsel==='select') || (wsel==='prioritize' && !isMine);
+        var requesterPicks = (wsel==='select') || (wsel==='my' && !isMine);
 
             if(!requesterPicks){
               /* FIRST AVAILABLE — the first accept IS the hire. No bidsList, no attention, no
@@ -215,7 +222,7 @@
               try{ if(l.uiBucket!==undefined){ l.uiBucket='active'; l.uiIdx=0; } }catch(_){}
               try{ if(l.renderPending) l.renderPending(); }catch(_){}
               reqBanner('Your Gopher Is On The Job','Marcus K. accepted — select here to view');
-              status('Gopher <b>accepted</b> '+id+' \u2014 '+(wsel==='prioritize'?'<b>Prioritize MY Gophers</b> and Marcus is one of yours, so he is hired on the spot':'<b>first available</b>, so Marcus is hired on the spot')+'. <b>Active</b> on both phones.');
+              status('Gopher <b>accepted</b> '+id+' \u2014 '+(wsel==='my'?'<b>Prioritize MY Gophers</b> and Marcus is one of yours, so he is hired on the spot':'<b>first available</b>, so Marcus is hired on the spot')+'. <b>Active</b> on both phones.');
               continue;
             }
 
