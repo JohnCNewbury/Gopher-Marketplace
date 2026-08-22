@@ -385,6 +385,7 @@ def main():
             M = jxa("var module={exports:{}};" + read("Final/assets/js/gopher-flow-rules.js") +
                     ";JSON.stringify({base:module.exports.tableFor(),"
                     "connect:module.exports.tableFor('connect'),"
+                    "scoped:module.exports.CATEGORY_SCOPED_KEYS,"
                     "bad:module.exports.assertInvariants()})")
         except Exception as e:
             M = None
@@ -392,6 +393,7 @@ def main():
         if M:
             check(not M["bad"], "flow-rules module passes its own invariants",
                   "; ".join(M["bad"]))
+            M_SCOPED = M["scoped"]
             # Each surface is compared against the table for ITS surface.
             for name, rel in SURFACES.items():
                 want = M["connect"] if name == "connect" else M["base"]
@@ -437,6 +439,38 @@ def main():
                 WARNS.append("Connect enforces step gates Request does not: %s"
                              % ", ".join("step %d %s" % g for g in only_c))
 
+
+
+        # ---- category-scoped reset ---------------------------------------
+        # Switching category must snap category-OWNED fields back to their
+        # initial values, or the new category silently inherits answers the user
+        # never gave it — a Junk volume tier still pricing a Delivery request.
+        # Fixed in the web builds 2026-07-19; asserted here so it stays fixed.
+        want_scoped = set(M_SCOPED)
+        for name, rel in SURFACES.items():
+            src = read(rel)
+            m = re.search(r"CATEGORY_SCOPED_KEYS\s*=\s*\[", src)
+            if not m:
+                check(False,
+                      "%s resets category-scoped fields on switch" % name,
+                      "no CATEGORY_SCOPED_KEYS table — a category switch carries the "
+                      "previous category's answers forward (see PHASE-2-FINDINGS.md)")
+                continue
+            start = m.end() - 1
+            depth, k = 0, start
+            while k < len(src):
+                if src[k] == "[":
+                    depth += 1
+                elif src[k] == "]":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k += 1
+            got = set(re.findall(r"'([A-Za-z0-9_]+)'", src[start:k + 1]))
+            missing = sorted(want_scoped - got)
+            check(not missing,
+                  "%s resets all %d category-scoped fields" % (name, len(want_scoped)),
+                  "" if not missing else "missing: " + ", ".join(missing))
 
 
     # ---------------------------------------------------------------- 7. FEES

@@ -1,9 +1,9 @@
 # Phase 2 — shared decision layer: findings
 
 **Status 2026-08-22.** The visibility rule set is extracted, tested and enforced, and the money
-constants are pinned. **Four findings** came out of comparing the surfaces — one of them a revenue
-leak that contradicts an owner ruling. **Three need your decision.** Nothing was changed in a
-deployed file.
+constants are pinned. **Five findings** came out of comparing the surfaces — including a revenue
+leak that contradicts an owner ruling, and three separate ways the app prototype has fallen behind
+the web builds. **Four need your decision.** Nothing was changed in a deployed file.
 
 Run it yourself:
 
@@ -151,6 +151,58 @@ including the promo-first ordering and the cap that stops discounts exceeding to
 
 ---
 
+## Finding 5 — the prototype never resets category-scoped state ⚠️ HARNESS FAILS
+
+The web builds fixed this on **2026-07-19**. The prototype still has the pre-fix behaviour.
+
+Switching category must snap category-**owned** fields back to their initial values, or the new
+category silently inherits answers the user never gave it. Request and Connect both do this via
+`CATEGORY_SCOPED_KEYS` (26 fields, identical on both, matching the module). **The prototype has no
+such table and no `switchCategory` at all.** Its switch path is:
+
+```js
+state.category = cat.dataset.cat; state.openCatInfo = null;
+if (state.payMode === 'bids' && !bidsAllowed()) state.payMode = 'set';
+```
+
+It resets `payMode`, and only when bids stop being valid. **22 of the 23 scoped fields it
+implements carry straight across**, including `junkTier`, `payAmount`, `costOfItems`,
+`itemsPurchased`, `itemCount`, `hazardous`, `numRiders`, `numBags`, `payByHour`, `numHours`, the
+stairs/elevator access flags, and the age-gate acknowledgements.
+
+**Concrete failure:** choose Junk → iQ detects a volume tier → the suggested pay comes from the
+junk model → switch to Delivery → `junkTier` and `payAmount` both persist, so a Delivery request is
+priced off a junk volume tier, with `hazardous` and `itemCount` still set from the junk job.
+
+That is the exact scenario the July fix was written for: *"a category switch used to keep the
+PREVIOUS category's answers, so the new category silently inherited gates the user had never
+seen."*
+
+**Fix:** port `CATEGORY_SCOPED_KEYS` and the reset into the prototype's category-change path —
+now available from the shared module as `GopherFlowRules.categoryScopedKeys()`. Bigger than
+Findings 1 and 4, but mechanical.
+
+**Left unfixed deliberately** — deployed file, and unlike the other two this is a behavioural
+change rather than a one-line correction, so it wants review.
+
+---
+
+## The pattern across Findings 1, 4 and 5
+
+All three are the **app prototype lagging the web builds**, and all three would ship into the app:
+
+| # | Drift | Fixed in web | Effect in the app |
+|---|---|---|---|
+| 1 | Moving missing from pay-suggestion visibility | 2026-08-08 | no Moving pay suggestion |
+| 4 | TrustShield scope too broad | 2026-07-05 | $1.00 over-discount on plain delivery |
+| 5 | No category-scoped reset | 2026-07-19 | stale pricing/answers after a category switch |
+
+The prototype is the app's blueprint, so each of these is a defect waiting to be built. **They are
+all in one file** (`_prototypes/Request/gopher-request-flow.html`) and could be fixed and verified
+together. The harness now fails on all three, so they cannot be forgotten.
+
+---
+
 ## Verified healthy — do not re-investigate
 
 Recorded so the next person does not redo the work:
@@ -195,9 +247,9 @@ that matches reality instead of flattening it.
 
 ## Next in Phase 2
 
-1. **Your three rulings** — the prototype's stale Moving pricing (Finding 1), its TrustShield
-   over-discount (Finding 4), and Connect's identity gate (Finding 3). The first two are one-line
-   fixes to the same file and could go together.
+1. **Your rulings** — three prototype fixes (Findings 1, 4, 5) that all live in the same file and
+   could be done and verified in one pass, plus Connect's identity gate (Finding 3), which needs a
+   product decision and a canon row rather than a code change.
 2. **Rewire the surfaces** to delegate to the module rather than merely agreeing with it, one at a
    time with browser verification.
 3. **Extract `stepGate()`** once Finding 3 is settled.
