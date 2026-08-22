@@ -4716,7 +4716,8 @@
     var dob = g('owner_dob');
     var body = { email: email, first_name: g('owner_first_name'), last_name: g('owner_last_name') };
     if (g('discovery_source')) body.discover_gopher = g('discovery_source');
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) { var d = dob.split('/'); body.date_of_birth = d[2] + '-' + d[0] + '-' + d[1]; }
+    var dobIso = dobToIso(dob);
+    if (dobIso) body.date_of_birth = dobIso;
     /* `address` is deliberately omitted: update_user expects an object carrying an id,
        and this form holds a free-text string. Sending a string throws server-side. */
     apiCall('/users', { method: 'PUT', body: body })
@@ -4880,6 +4881,32 @@
     el.value = o;
   }
   function dcIsDob(s){ return /^\d{2} \/ \d{2} \/ \d{4}$/.test((s||'').trim()); }
+
+  /* ⛔ THE FORM'S DOB FORMAT HAS SPACES: "MM / DD / YYYY". dcFormatDob inserts
+     them, dcIsDob (directly above) requires them, the placeholder shows them,
+     and the existing-Gopher autofill writes them. TWO separate senders matched
+     `MM/DD/YYYY` WITHOUT spaces, so both silently dropped the value:
+
+       - PUT /users (sendEmailOtp) — pre-existing. This is a second, older
+         reason merchants had no date of birth on file: the field was required,
+         filled, validated, and then never sent.
+       - the deal payload — mine, 2026-08-22. Once the server began REQUIRING
+         owner_dob, dropping it turned into a hard 422 that blocked every
+         merchant registration. Reported live by the owner mid-test.
+
+     One helper now, used by both, so they cannot drift apart again. It accepts
+     the form's spaced form, the unspaced form, and an already-ISO value, and
+     returns '' when it cannot parse — callers omit the field rather than send
+     something a Postgres date column will read as a different day. */
+  function dobToIso(v){
+    var t = String(v == null ? '' : v).trim();
+    if (!t) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;              // already ISO
+    var m = /^(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})$/.exec(t);
+    if (!m) return '';
+    var mm = ('0' + m[1]).slice(-2), dd = ('0' + m[2]).slice(-2);
+    return m[3] + '-' + mm + '-' + dd;
+  }
   function dcSetErr(inp, msg){
     var field = inp.closest('.field') || inp.parentNode;
     var err = field.querySelector('.field-err');
@@ -5323,12 +5350,15 @@
              Postgres date column makes the meaning of 01/02/1990 depend on the
              server's DateStyle. Normalise once, at the only place that knows the
              field's format. */
-          owner_dob: (function(){
-            var d = (data.owner_dob || '').trim();
-            var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d);
-            return m ? (m[3] + '-' + m[1] + '-' + m[2]) : undefined;
-          })(),
+          owner_dob: dobToIso(data.owner_dob) || undefined,
           owner_address: data.owner_address,
+          /* ⛔ REQUIRED FOR THE PATH A CARVE-OUT. When the merchant ticks "I'm
+             already a Gopher user" the form DISABLES first/last/DOB/email/address
+             and fills them from the account, and the intake skips its personal-field
+             requirements for exactly that case — but only if it is TOLD. This was
+             never sent, so a returning merchant was judged as a brand-new one and
+             asked for a date of birth the form had already greyed out. */
+          already_gopher: _isExistingGopher() || undefined,
           /* The ?src= campaign tag captured from the landing URL. Distinct from
              discovery_source, which is what the merchant says themselves — a campaign
              needs both. Allowlisted + persisted server-side 2026-08-21 (!353); before
