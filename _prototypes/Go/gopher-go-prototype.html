@@ -4207,8 +4207,10 @@ if(PT){
     // card badge: owner decided the accept flow stays as-is (no requester-picks/application step), so a
     // "Requester picks" pill would advertise behavior that doesn't happen. The only new card signal is
     // the honest "Accepted" state (renderJobCard).
-    var wsel=String(order.workerSelection||'first');
-    var requesterPicks=(wsel==='select'||wsel==='prioritize');
+    /* 'my' (Prioritize MY Gophers) — MY is Michael Yorrie, a proper name, always capitalized,
+     never a possessive (owner 2026-08-22). 'prioritize' is the retired alias, still accepted. */
+    var wsel=String(order.workerSelection||'first'); if(wsel==='prioritize') wsel='my';
+    var requesterPicks=(wsel==='select'||wsel==='my');
     if(costN>0) flags.push({t:'Purchase needed',k:'warn',i:'alert'});   // worker fronts item cost → reimbursed
     if(order.ageRestricted) flags.push({t:'Age-restricted · ID at drop-off',k:'warn',i:'alert'});   // verify recipient ID
     if(crew>1) flags.push({t:'Needs '+crew+' workers',k:'warn',i:'alert'});   // crew heads-up on the available card
@@ -4221,7 +4223,7 @@ if(PT){
       ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
       deal:!!order.deal, dealMerchant:order.dealMerchant||'',   // Gopher Deal request → card shows the "Gopher Deal" badge (unshaded — this Gopher is Pro)
       scheduled:!!order.scheduled,   // exact-time booking → lands in the Scheduled tab once accepted (until the worker starts it)
-      workerSelection:wsel, requesterPicks:requesterPicks,   // 'select'/'prioritize' → accepting = applying, requester approves (not auto-hire)
+      workerSelection:wsel, requesterPicks:requesterPicks,   // 'select'/'my' → accepting = applying, requester approves (not auto-hire)
       who:order.requestor||'A requester', scope:order.scope||order.title||'New request',
       pickup:order.pickup||'', dropoff:(order.dropoff&&order.dropoff[0])||order.dropoff||'',
       stats:stats, flags:flags };
