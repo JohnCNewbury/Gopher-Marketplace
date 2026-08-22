@@ -504,6 +504,42 @@ def main():
         check(bool(scope),
               "%s TrustShield scope still covers age-restricted delivery AND ride" % name)
 
+
+    # Per-category Gopher fee tables. Two relationships canon asserts:
+    #   1. the app prototype is the Request app, so its table must equal Request's
+    #   2. "The Connect Business plan mirrors Gopher Request's base fees"
+    def fee_tbl(src, name):
+        m = re.search(r"\b" + name + r"\b\s*=\s*\{", src)
+        if not m:
+            return None
+        st = m.end() - 1
+        d, j = 0, st
+        while j < len(src):
+            if src[j] == "{":
+                d += 1
+            elif src[j] == "}":
+                d -= 1
+                if d == 0:
+                    break
+            j += 1
+        return dict(re.findall(r"([A-Za-z_]+)\s*:\s*([0-9.]+)", src[st:j + 1]))
+
+    req_fee = fee_tbl(read(SURFACES["request"]), "GOPHER_FEE")
+    pro_fee = fee_tbl(read(SURFACES["prototype"]), "GOPHER_FEE")
+    biz_fee = fee_tbl(read(SURFACES["connect"]), "GOPHER_FEE_BUSINESS")
+    check(req_fee == pro_fee,
+          "prototype per-category fees match Request (same product)",
+          "" if req_fee == pro_fee else "differ: %s" % [
+              (k, req_fee.get(k), pro_fee.get(k))
+              for k in sorted(set(req_fee or {}) | set(pro_fee or {}))
+              if (req_fee or {}).get(k) != (pro_fee or {}).get(k)])
+    check(biz_fee == req_fee,
+          "Connect Business plan mirrors Request base fees (canon)",
+          "" if biz_fee == req_fee else "differ: %s" % [
+              (k, req_fee.get(k), biz_fee.get(k))
+              for k in sorted(set(req_fee or {}) | set(biz_fee or {}))
+              if (req_fee or {}).get(k) != (biz_fee or {}).get(k)])
+
     print()
     for w in WARNS:
         print("  [WARN] " + w)

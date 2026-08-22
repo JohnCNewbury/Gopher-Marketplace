@@ -217,6 +217,13 @@ Recorded so the next person does not redo the work:
   transitions and an SVG path.
 - **No surface calls `isVisible()` with a field missing from its own table** — that would throw,
   since the lookup is `FIELD_HIDDEN_FOR[field].includes(...)`. All three are clean.
+- **The per-category fee tables are correct.** The prototype's `GOPHER_FEE` is identical to
+  Request's ($0.99 delivery → $4.99 home), as it must be for the same product, and Connect's
+  `GOPHER_FEE_BUSINESS` mirrors Request's base fees exactly — which is what canon asserts. Both
+  relationships are now pinned by the harness.
+- **Request and Connect agree on all 26 category-scoped keys**, matching the module.
+- **The shared module works through both UMD paths** — CommonJS `require` and the browser global —
+  so a surface can adopt it by script tag or bundler without a shim.
 
 ---
 
