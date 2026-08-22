@@ -1904,11 +1904,23 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     `MY_DEALS` is a hardcoded `d1/d2/d3` array. That is why the logo-edit surface is a standalone
     authenticated modal on real APIs, not a button on that dashboard. Wiring the portal to
     `GET /users/deals/mine` is the obvious next piece.
-  - **⚠️ A pinned deploy can be a REVERT.** Pinning at an older commit to exclude another
-    session's committed file showed two `_prototypes/` files as changes — live had moved past the
-    pin. Pinning excludes *uncommitted* work only. Build the deploy tree from HEAD and remove the
-    specific file instead, and read the dry-run list every time: riders and reverts look
-    identical in a diffstat.
+  - **⚠️ A PINNED DEPLOY CAN BE A REVERT.** The rule, in its sharpest form:
+    **pinning is safe ONLY when the pin point is at or ahead of what is currently live.**
+    Pinning excludes *uncommitted* work only — it does nothing about other sessions' commits, and
+    if the pin point sits BEHIND live it silently rolls back everything shipped since. Pinning at
+    your own last-**deployed** commit is the dangerous case (live has usually moved on); pinning
+    at your own **latest** commit is safe, because it carries everyone's ancestors.
+    Caught 2026-08-22: pinning at `193bd8d` to exclude another session's committed file showed two
+    `_prototypes/` files as changes — that deploy would have reverted them. The safe shape is
+    **build the deploy tree from HEAD and `git rm` the specific file you don't own.**
+    ⚠️ **The dry-run diffstat shows riders and reverts IDENTICALLY.** An unfamiliar file is either
+    someone else's new work or something you are about to roll back, and the only way to tell is
+    to check whether it is currently live — one `curl`. Do not skip it.
+  - **⚠️ `git` author does NOT identify a session** — every commit here is "John Newbury". To find
+    which workstream owns a file, read the SIBLING PATHS in the same commit (a `docs/handoff/<x>/`
+    directory usually names the lane), or search session transcripts. Guessing "the nearest active
+    session that touches this area" produced a misattribution on 2026-08-22 that the wrongly-named
+    session had to correct.
 
 ### Outstanding to-do
 
