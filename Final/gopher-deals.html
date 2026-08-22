@@ -1245,6 +1245,53 @@
     background:var(--brand-navy); color:#fff; text-decoration:none;
     font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
   }
+  .already-reg { margin-top:14px; font-size:13.5px; color:#6F6A5F; }
+  .linkish {
+    background:none; border:0; padding:0; font:inherit; color:var(--brand-navy);
+    font-weight:800; text-decoration:underline; cursor:pointer;
+  }
+  .linkish:hover { color:#013a8f; }
+
+  /* Merchant logo edit — the deal list and its per-deal logo swap. */
+  .ld-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-top:1px solid #E7E3DA; }
+  .ld-row:first-of-type { border-top:0; }
+  .ld-thumb {
+    width:52px; height:52px; flex:0 0 52px; border-radius:10px; border:1px solid #E7E3DA;
+    background:#fff center/contain no-repeat; display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:#8B8578; text-align:center; line-height:1.15;
+  }
+  .ld-meta { flex:1; min-width:0; }
+  /* ⚠️ display:block is REQUIRED, not tidiness. These are <span>s, and
+     text-overflow/overflow are ignored on an inline box — so the title did not
+     ellipsis, it just grew, and the "Change logo" button rode over the deal code at
+     375px. Same family as the .hac-photo min-height trap: the property was declared
+     and silently inert. .ld-meta already carries min-width:0 so the flex item can
+     actually shrink below its content width. */
+  .ld-title { display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:14px;
+              color:var(--brand-navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ld-sub { display:block; font-size:12px; color:#6F6A5F; margin-top:2px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ld-status { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.04em;
+               text-transform:uppercase; padding:2px 7px; border-radius:4px; margin-left:6px; }
+  .ld-live { background:#E6F7EE; color:#0F7A42; }
+  .ld-other{ background:#F1EFEA; color:#6F6A5F; }
+  .ld-btn {
+    flex:0 0 auto; border:1px solid var(--brand-navy); background:#fff; color:var(--brand-navy);
+    border-radius:9px; padding:8px 13px; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:12.5px; cursor:pointer;
+  }
+  .ld-btn:hover { background:var(--brand-navy); color:#fff; }
+  .ld-btn:disabled { opacity:.55; cursor:default; background:#fff; color:var(--brand-navy); }
+  .ld-note { display:block; font-size:12px; margin-top:6px; }
+  /* Below 700px the thumb + title + button do not co-exist on one line without the
+     title collapsing to nothing useful. Give the button its own row instead of
+     shrinking the only text that identifies which deal is being changed. */
+  @media (max-width:700px){
+    .ld-row { flex-wrap:wrap; }
+    .ld-btn { flex:1 1 100%; margin-top:4px; }
+  }
+  .ld-ok  { color:#0F7A42; }
+  .ld-err { color:#A8442A; }
   .sp-yes  { border-color:#1CB061; background:#F1FBF5; }
   .sp-yes h4 { color:var(--brand-green-dk); }
   .sp-no   { border-color:#d8ddE6; background:#F7F8FA; }
@@ -2814,6 +2861,10 @@
     <div class="compare-cta">
       <p class="kicker">The reach of the giants. The hands-on help. <em>A fraction of the cost.</em></p>
       <button class="btn-lg btn-green" onclick="openModal('merchant')">Join the Disruption &mdash; Free to Start &rarr;</button>
+      <!-- Entry to the logo-edit surface. Deliberately quiet and BELOW the primary CTA:
+           it serves merchants who already registered, so competing with the register
+           button would trade a new merchant for a housekeeping task. -->
+      <p class="already-reg">Already registered? <button type="button" class="linkish" onclick="openModal('logo')">Update your deal logo</button></p>
     </div>
 
     <div class="faq">
@@ -3404,6 +3455,48 @@
 </div>
 
 <!-- WORKER MODAL -->
+<div class="modal-overlay" id="modal-logo" onclick="if(event.target===this)closeModal('logo')">
+  <div class="modal">
+    <div class="modal-form" id="form-wrap-logo">
+      <div class="modal-header">
+        <button class="modal-close" onclick="closeModal('logo')" aria-label="Close">&times;</button>
+        <h3>Update your deal logo</h3>
+        <p>Already registered? Verify your mobile number and you can change the logo on any of your deals &mdash; including ones that are already live.</p>
+      </div>
+      <div class="modal-body">
+        <!-- MERCHANT LOGO EDIT (2026-08-21).
+             ⚠️ THIS IS A STANDALONE AUTHENTICATED SURFACE, NOT PART OF THE PORTAL
+             DASHBOARD, and that is deliberate. `enterDashboard()` unhides a div and
+             sets some text — it establishes no backend session, and its deal list
+             (MY_DEALS) is a hardcoded demo array of d1/d2/d3. Hanging a real edit
+             control off it would produce a button that looks like it works and
+             cannot, against deal ids that do not exist. Everything here runs on real
+             APIs only: /otp/get -> /users/sign_in -> GET /users/deals/mine ->
+             POST /users/deals/logo -> PATCH /users/deals/:id/logo.
+             When the portal is wired to live data, move this in and delete the entry
+             point rather than leaving two ways to do it. -->
+        <div class="form-section-head">Verify it&rsquo;s you</div>
+        <div class="field">
+          <label>Mobile (SMS)</label>
+          <div class="otp-row">
+            <input type="tel" name="sms" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="(555) 555-5555" oninput="resetOtp(this)">
+            <button type="button" class="btn-verify otp-send-btn" onclick="sendOtp(this)">Send code</button>
+          </div>
+          <div class="otp-confirm">
+            <p class="field-hint">Enter the 6-digit code we texted you.</p>
+            <div class="otp-code-row">
+              <input type="text" class="otp-code" inputmode="numeric" maxlength="6" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="one-time-code" name="otp_code_sms">
+              <button type="button" class="btn-verify" onclick="logoCheckOtp(this)">Find my deals</button>
+            </div>
+          </div>
+          <span class="otp-verified">&check; Verified</span>
+        </div>
+        <div class="sp-result" id="logoResult" hidden></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-worker" onclick="if(event.target===this)closeModal('worker')">
   <div class="modal">
     <div class="modal-form" id="form-wrap-worker">
@@ -3911,15 +4004,77 @@
     { title: "Your branded deal page", caption: "" },
     { title: "Your own ordering site", caption: "" }
   ];
-  var regLogoImg = null;
+  var regLogoImg = null;   // data URL, for the live deal preview only
+  var regLogoKey = null;   // the S3 key the server minted — THIS is what gets submitted
+
+  /* Upload the logo the moment it is chosen, rather than at submit.
+     ⚠️ Until 2026-08-21 this handler read the file ONLY to draw the preview and the
+     bytes never left the browser — the form transmitted the FILE NAME and the server
+     did not persist even that. A merchant picked a logo, saw success, and published a
+     card with no mark on it. The preview is still local (instant, no round trip); what
+     is new is that the file is also sent, and `regLogoKey` is what the submit attaches.
+     Uploading here rather than at submit means a 6MB photo or an SVG is refused while
+     the merchant is still looking at the file picker. */
+  function uploadRegLogo(file, fieldEl){
+    var errSlot = fieldEl ? (fieldEl.querySelector('.field-err') || (function(){
+      var e = document.createElement('div'); e.className = 'field-err'; fieldEl.appendChild(e); return e;
+    })()) : null;
+    function setErr(msg){ if (errSlot) errSlot.textContent = msg || ''; }
+    function setNote(msg){ var n = fieldEl && fieldEl.querySelector('.logo-note'); if (n) n.textContent = msg || ''; }
+
+    if (!_authToken){
+      /* Path B: the account does not exist until the phone is verified at
+         "Review my deal", so there is nobody to own the asset yet. Hold the file and
+         upload it once a token appears — see flushPendingLogo(). */
+      _pendingLogoFile = file;
+      setNote('Ready to upload once your phone is verified.');
+      return;
+    }
+    setErr(''); setNote('Uploading\u2026');
+    var fd = new FormData();
+    fd.append('logo', file);
+    fetch(GOPHER_API + '/users/deals/logo', {
+      method: 'POST',
+      headers: { 'access-token': _authToken },   // NO Content-Type: the browser sets the multipart boundary
+      body: fd
+    })
+      .then(function(res){ return res.json().catch(function(){ return {}; }).then(function(b){ return { ok: res.ok, body: b }; }); })
+      .then(function(r){
+        if (!r.ok){
+          regLogoKey = null;
+          setNote('');
+          setErr((r.body && r.body.message) || 'That logo could not be uploaded.');
+          return;
+        }
+        regLogoKey = r.body.logo;
+        setNote('\u2713 Logo uploaded (' + r.body.width + '\u00D7' + r.body.height + ')');
+      })
+      .catch(function(){
+        regLogoKey = null; setNote('');
+        setErr('Could not reach the server. Please try again.');
+      });
+  }
+
+  var _pendingLogoFile = null;
+  /* Called after the phone OTP mints or signs into the account, so a logo chosen before
+     verification is not silently lost. */
+  function flushPendingLogo(){
+    if (!_pendingLogoFile || !_authToken) return;
+    var li = document.querySelector('#modal-merchant input[name="logo"]');
+    var f = _pendingLogoFile; _pendingLogoFile = null;
+    uploadRegLogo(f, li ? (li.closest('.field') || li.parentNode) : null);
+  }
+
   (function(){
     var li = document.querySelector('#modal-merchant input[name="logo"]');
     if (li) li.addEventListener('change', function(){
       var f = this.files && this.files[0];
-      if (!f) { regLogoImg = null; return; }
+      regLogoKey = null;
+      if (!f) { regLogoImg = null; _pendingLogoFile = null; return; }
       var rd = new FileReader();
       rd.onload = function(){ regLogoImg = rd.result; };
       rd.readAsDataURL(f);
+      uploadRegLogo(f, this.closest('.field') || this.parentNode);
     });
   })();
   function dpSync() {
@@ -4225,6 +4380,7 @@
         var isNew = /@placeholder\.gophergo\.io$/i.test(prof.email || '');
         _otpAccept(field);
 
+        flushPendingLogo();
         if (isNew) {
           /* Brand-new account. They verify their email next, in the field below —
              same shape as the phone step rather than a separate stage. */
@@ -4237,6 +4393,7 @@
            again is a step that buys nothing — owner ruling 2026-08-10. Auto-fill and
            mark it done. */
         _emailVerified = true;
+        flushPendingLogo();
         _fillFromAccount(prof);
         _emailStepEnable(false);
         var cb = document.getElementById('regExistingGopher');
@@ -4301,6 +4458,149 @@
     box.innerHTML = html;
     box.hidden = false;
     try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+  }
+
+  /* ── MERCHANT LOGO EDIT ───────────────────────────────────────────────────────
+     Real APIs only. See the comment in #modal-logo for why this is not bolted onto
+     the portal dashboard.
+
+     ⚠️ apptype:'requester' here, NOT 'gopher' as in the SP funnel. It only matters
+     when sign_in does not recognise the number, in which case it decides the role of
+     the account it mints — and a merchant is a requester (role 3), which is what the
+     registration path creates. Getting this wrong would mint the wrong role for
+     anyone who mistypes their number. A minted account owns no deals, so the flow
+     stops with "no deals found" rather than showing an empty editor. */
+  function logoCheckOtp(btn) {
+    var field = btn.closest('.field');
+    var code = (field.querySelector('.otp-code').value || '').trim();
+    if (!/^\d{6}$/.test(code)) { alert('Enter the 6-digit code.'); return; }
+    var digits = (field.querySelector('input[type=tel]').value || '').replace(/\D/g, '');
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Checking…'; btn.disabled = true;
+
+    apiCall('/users/sign_in', { body: { telephone: digits, code: code, apptype: 'requester' } })
+      .then(function (r) {
+        if (!r.ok) { alert(apiMessage(r)); btn.textContent = was; return; }
+        _authToken = r.token || null;
+        _apiUserId = (r.body && r.body.data && r.body.data.id) || null;
+        _otpAccept(field);
+        return apiCall('/users/deals/mine', { method: 'GET' }).then(function (dr) {
+          if (!dr.ok) { logoShowError(apiMessage(dr)); return; }
+          var deals = (dr.body && dr.body.deals) || [];
+          renderLogoDeals(deals);
+        });
+      })
+      .catch(function () { alert('Could not verify the code. Check your connection and try again.'); btn.textContent = was; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; });
+  }
+
+  /* Own escaper, own name. There are THREE functions called `esc` in this file and
+     not one of them is usable here: two are nested inside dpSync() and
+     downloadGopherLeads() so they are out of scope, and the third lives in a
+     different <script> block. Worse, downloadGopherLeads()'s `esc` is a CSV field
+     quoter — same name, completely different job — so a future refactor that hoists
+     the "wrong" one would silently turn HTML escaping into CSV quoting and hand us
+     an injection. Caught by driving the real flow: it threw "esc is not defined".
+     Named ldEsc so it cannot be confused with, or shadowed by, any of them. */
+  function ldEsc(t){
+    return String(t == null ? '' : t).replace(/[<>&"']/g, function(c){
+      return { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  function logoShowError(msg) {
+    var box = document.getElementById('logoResult');
+    if (!box) return;
+    box.className = 'sp-result sp-err';
+    box.innerHTML = '<h4>We couldn’t load your deals</h4><p>' + (msg || 'Please try again in a moment.') + '</p>';
+    box.hidden = false;
+  }
+
+  function renderLogoDeals(deals) {
+    var box = document.getElementById('logoResult');
+    if (!box) return;
+    if (!deals.length) {
+      box.className = 'sp-result sp-no';
+      box.innerHTML = '<h4>No deals on this number</h4>' +
+        '<p>We couldn’t find a deal registered to that mobile number. If you registered with a different number, verify that one instead.</p>';
+      box.hidden = false;
+      return;
+    }
+    box.className = 'sp-result sp-no';
+    var html = '<h4>Your deals</h4><p>Choose one and upload a new logo. Changes appear on your card straight away.</p>';
+    deals.forEach(function (d) {
+      var live = String(d.status).toLowerCase() === 'live';
+      var thumb = d.deal_img
+        ? ' style="background-image:url(\'' + d.deal_img.replace(/'/g, "%27") + '\')"'
+        : '';
+      html +=
+        '<div class="ld-row" data-deal="' + d.id + '">' +
+          '<span class="ld-thumb"' + thumb + '>' + (d.deal_img ? '' : 'no logo') + '</span>' +
+          '<span class="ld-meta">' +
+            '<span class="ld-title">' + ldEsc(d.title || d.deal_code || ('Deal ' + d.id)) + '</span>' +
+            '<span class="ld-sub">' + ldEsc(d.deal_code || '') +
+              '<span class="ld-status ' + (live ? 'ld-live' : 'ld-other') + '">' + ldEsc(d.status || '') + '</span>' +
+            '</span>' +
+            '<span class="ld-note" data-note="' + d.id + '"></span>' +
+          '</span>' +
+          '<button type="button" class="ld-btn" data-pick="' + d.id + '">Change logo</button>' +
+          /* One input per row: a shared one would need its value cleared between
+             deals, and a stale FileList is how the wrong logo lands on the wrong
+             deal. accept= is a picker hint only — the server decides by magic bytes. */
+          '<input type="file" accept="image/png,image/jpeg,image/webp" hidden data-file="' + d.id + '">' +
+        '</div>';
+    });
+    box.innerHTML = html;
+    box.hidden = false;
+
+    box.querySelectorAll('[data-pick]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-pick');
+        var inp = box.querySelector('input[data-file="' + id + '"]');
+        if (inp) inp.click();
+      });
+    });
+    box.querySelectorAll('input[data-file]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var id = inp.getAttribute('data-file');
+        var f = inp.files && inp.files[0];
+        if (f) replaceDealLogo(id, f, box);
+      });
+    });
+  }
+
+  /* Upload then attach — the same two steps as registration, and the same endpoints.
+     The upload is what validates (type, size, dimensions); the PATCH only attaches a
+     key the server already minted for this caller. */
+  function replaceDealLogo(dealId, file, box) {
+    var note = box.querySelector('[data-note="' + dealId + '"]');
+    var btn = box.querySelector('[data-pick="' + dealId + '"]');
+    function say(msg, cls) { if (note) { note.className = 'ld-note ' + (cls || ''); note.textContent = msg; } }
+    if (btn) btn.disabled = true;
+    say('Uploading…', '');
+
+    var fd = new FormData();
+    fd.append('logo', file);
+    fetch(GOPHER_API + '/users/deals/logo', {
+      method: 'POST',
+      headers: { 'access-token': _authToken },  // no Content-Type — the browser sets the boundary
+      body: fd
+    })
+      .then(function (res) { return res.json().catch(function () { return {}; }).then(function (b) { return { ok: res.ok, body: b }; }); })
+      .then(function (up) {
+        if (!up.ok) { say((up.body && up.body.message) || 'That logo was not accepted.', 'ld-err'); return null; }
+        return apiCall('/users/deals/' + dealId + '/logo', { method: 'PATCH', body: { logo: up.body.logo } })
+          .then(function (pa) {
+            if (!pa.ok) { say(apiMessage(pa), 'ld-err'); return null; }
+            var th = box.querySelector('.ld-row[data-deal="' + dealId + '"] .ld-thumb');
+            if (th) { th.style.backgroundImage = "url('" + up.body.url.replace(/'/g, '%27') + "')"; th.textContent = ''; }
+            say('✓ Logo updated', 'ld-ok');
+            return true;
+          });
+      })
+      .catch(function () { say('Could not reach the server. Please try again.', 'ld-err'); })
+      .then(function () { if (btn) btn.disabled = false; });
   }
 
   function workerCheckOtp(btn) {
@@ -4593,16 +4893,27 @@
       need('input[name="business_name"]', 'Business name is required.');
       need('input[name="tagline"]', 'Tagline is required — no formal tagline? Enter any sub-header you like under your business name.');
       var logo = modal.querySelector('input[name="logo"]');
-      /* The logo is NOT required to submit, deliberately (2026-08-06). This form can
-         only transmit the FILE NAME — see the file branch in submitForm() — so making
-         it mandatory blocked registration on a file that is then discarded, while the
-         success screen implied it had been received. Production DOES require it, with
-         magic-byte type validation, SVG sanitisation, a 256px floor and a 5MB cap:
-         Gopher-Deals-Build-Spec §4.1a. Restore the gate when a real upload exists. */
+      /* THE LOGO GATE IS BACK ON (2026-08-21). It was switched OFF on 2026-08-06 for a
+         good reason that has now expired: the form could transmit only the FILE NAME,
+         so requiring a logo blocked registration on a file that was then discarded
+         while the success screen implied it had arrived. A real upload exists as of
+         today (POST /users/deals/logo — magic-byte typing, SVG refused, 256px floor,
+         5MB cap, Build Spec §4.1a), so the honest thing is to require it again.
+         Owner 2026-08-21: the logo is "a critical component of Deals".
+
+         The gate is on the UPLOADED KEY, not on the file input. `input[type=file]`
+         keeps its value after a failed upload, so checking `logo.value` would pass a
+         merchant whose 6MB photo or SVG was refused — and publish them logo-less,
+         which is the bug this whole change exists to end. */
       if (logo){
         var lf = logo.closest('.field') || logo.parentNode.parentNode;
         var lerr = lf.querySelector('.field-err');
         if (lerr) lerr.remove();
+        if (!regLogoKey){
+          bad(logo, (logo.files && logo.files.length)
+            ? 'That logo was not accepted — see the message above, then choose another file.'
+            : 'A logo is required. Upload a PNG, JPG or WebP at least 256px on its shortest side.');
+        }
       }
       var mobile = modal.querySelector('#regAddrMobile');
       if (!(mobile && mobile.checked)) need('input[name="address"]', 'Business address is required (or check "address is mobile").');
@@ -4750,12 +5061,22 @@
   }
   function closeModal(type) {
     var overlay = document.getElementById('modal-' + type);
+    if (!overlay) return;
     overlay.classList.remove('open');
     document.body.style.overflow = '';
     if (typeof dpStopAuto === 'function') dpStopAuto();
-    // Reset back to form view for next open
-    document.getElementById('form-wrap-' + type).style.display = '';
-    document.getElementById('thankyou-' + type).classList.remove('show');
+    /* Reset back to form view for next open.
+       ⚠️ NULL-GUARDED 2026-08-21. These two were unguarded and assumed every modal
+       has both a form wrapper AND a thank-you panel. #modal-logo has no thank-you
+       panel — it never "submits", it edits in place — so closeModal('logo') threw on
+       the missing element and the X button did nothing. Found by driving the real
+       control, not by reading: the throw is silent unless you watch the console.
+       Guarded rather than adding an empty thankyou-logo div, so the next modal that
+       does not fit the register-then-thank-you shape cannot hit this again. */
+    var formWrap = document.getElementById('form-wrap-' + type);
+    if (formWrap) formWrap.style.display = '';
+    var thanks = document.getElementById('thankyou-' + type);
+    if (thanks) thanks.classList.remove('show');
     var prev = document.getElementById('preview-' + type);
     if (prev) prev.classList.remove('show');
     var modalCard = document.querySelector('#modal-' + type + ' .modal');
@@ -4982,7 +5303,11 @@
              needs both. Allowlisted + persisted server-side 2026-08-21 (!353); before
              that this key would have 422'd the whole submission, and the other two were
              accepted and silently dropped. */
-          channel_source: data.source
+          channel_source: data.source,
+          /* The S3 key minted by POST /users/deals/logo — never a filename and never a
+             data URL. The server re-checks it belongs to this caller. Omitted when no
+             logo was uploaded; a deal without one is still a valid submission. */
+          logo: regLogoKey || undefined
         };
         try {
           if (window.keywordStore && keywordStore.merchant && keywordStore.merchant.list)
@@ -7662,6 +7987,7 @@ var PAY_BADGES = {
   function maybeOpenFromHash(){
     if(location.hash==='#login'){ openPortal(); }
     else if(location.hash==='#merchant'){ if(typeof openModal==='function') openModal('merchant'); }
+    else if(location.hash==='#logo'){ if(typeof openModal==='function') openModal('logo'); }
   }
   window.addEventListener('hashchange', maybeOpenFromHash);
   if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', maybeOpenFromHash); } else { maybeOpenFromHash(); }
