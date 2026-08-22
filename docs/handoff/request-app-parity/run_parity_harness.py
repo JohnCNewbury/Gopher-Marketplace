@@ -417,10 +417,13 @@ def main():
                                  % (name, ", ".join(extra)))
 
         # ---- step gates: which rules block Continue -----------------------
-        # NOT extracted into the shared module yet, deliberately: the surfaces
-        # diverge on an identity-verification gate and the canonical flow doc is
-        # SILENT on which is correct, so extracting would bake in a guess. This
-        # makes the divergence visible and stops NEW divergence appearing.
+        # NOT extracted into the shared module yet — that is Phase 3 — but the
+        # reason has CHANGED and the old one is retired. It used to read: "the
+        # canonical flow doc is SILENT on which is correct." It is not silent;
+        # it documents ID-at-the-exchange and was read wrongly (searching for
+        # "identity"/"verification" and finding neither is not the same as canon
+        # having no rule). Owner ruled 2026-08-22: BOTH surfaces gate identity at
+        # step 2, and connect-flows-granular.html now carries the dated row.
         gate_sets = {}
         for name, rel in SURFACES.items():
             gs = surface_gates(read(rel))
@@ -431,10 +434,112 @@ def main():
             only_c = sorted(gate_sets["connect"] - gate_sets["request"])
             check(True, "step gates compared (request %d / connect %d)"
                   % (len(gate_sets["request"]), len(gate_sets["connect"])))
-            if only_r:
-                WARNS.append("Connect is missing step gates Request enforces: %s — "
-                             "canon is silent on the identity one; see PHASE-2-FINDINGS.md"
-                             % ", ".join("step %d %s" % g for g in only_r))
+            # RULED gates are a hard failure, not a warning. A warning that
+            # clears when the fix lands guards nothing: remove the gate again and
+            # it merely returns to WARN, which is the state people scroll past.
+            # Anything NOT yet ruled on stays a warning — this asserts the
+            # decisions that exist, and flags the ones that do not.
+            RULED_GATES = {
+                (2, "Identity verification"): "owner ruling 2026-08-22 (Phase 2 Finding 3)",
+                (4, "Addresses"):             "data quality — same ruling",
+                (6, "Addresses"):             "data quality — same ruling",
+                (6, "Schedule time"):         "data quality — same ruling",
+            }
+            for g, why in sorted(RULED_GATES.items()):
+                check(g in gate_sets["connect"],
+                      "connect enforces the RULED gate: step %d %s" % g,
+                      "" if g in gate_sets["connect"] else
+                      "gate is missing — %s. Removing it does not merely diverge from "
+                      "Request: the backend refuses these orders anyway "
+                      "(trust_shield_required, controllers/order/create.js), so the user "
+                      "hits a 403 naming a remedy this surface would not offer." % why)
+                check(g in gate_sets["request"],
+                      "request enforces the RULED gate: step %d %s" % g,
+                      "" if g in gate_sets["request"] else "gate is missing — %s" % why)
+
+            # ⚠️ The label check above catches a DELETED or RENAMED gate but not a
+            # DISABLED one. Proven, not assumed: `if(false && …)` in front of the
+            # identity gate left the label in place and the harness stayed green.
+            #
+            # A first attempt at a fix searched the WHOLE FILE for the guard tokens
+            # and was ALSO useless — every token still occurs elsewhere, so all three
+            # mutations passed. The search has to be scoped to the gate's own block.
+            # Still source-text matching; executing stepGate() is the real answer and
+            # is Phase 3 work.
+            def gate_block(body, label):
+                """The source of the `if` that returns this gate, or None."""
+                i = body.find("label:'%s'" % label)
+                if i < 0:
+                    return None
+                # Walk back to the OUTER `if(state.step …)`, not the nearest `if(`.
+                # The nearest one is the gate's INNER test (`if(!(hasTS || idDone))`,
+                # `if(pk.some(…))`), whose block does not contain the tokens being
+                # asserted — a first version made exactly that mistake and failed on
+                # correct code, which is how it was caught.
+                # Both spellings occur — `if(state.step === 2 …)` and
+                # `if((state.step === 4 || state.step === 6) …)`. Take whichever is
+                # NEAREST the label, not whichever is tried first: ordering them
+                # wrongly picks up an earlier, unrelated gate whose block does not
+                # contain these tokens, and reports a failure on correct code.
+                j = max(body.rfind("if(state.step", 0, i),
+                        body.rfind("if((state.step", 0, i))
+                if j < 0:
+                    return None
+                depth, k = 0, body.find("{", j)
+                if k < 0:
+                    return None
+                while k < len(body):
+                    if body[k] == "{":
+                        depth += 1
+                    elif body[k] == "}":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    k += 1
+                return body[j:k + 1]
+
+            GUARDS = {
+                "Identity verification": (
+                    ["state.ageRestricted", "__hasTrustShield",
+                     "idVerification.submittedAt", "__idOnFile"],
+                    "the step-2 identity gate",
+                ),
+                "Addresses": (
+                    # The character class is pinned deliberately. Renaming normAddr
+                    # would throw at runtime and get noticed; SILENTLY WEAKENING the
+                    # normaliser would not — drop the punctuation strip and
+                    # "123 Main St, Raleigh" stops matching "123 main st raleigh",
+                    # so two identical addresses sail through. That is the mutation
+                    # worth catching, and the token list missed it until this line.
+                    ["normAddr", "pickupStops.map", "dropoffStops.map", "dp.includes",
+                     "toLowerCase()", "[^a-z0-9]+"],
+                    "the addresses-must-differ comparison",
+                ),
+            }
+            for name in ("request", "connect"):
+                body = read(SURFACES[name])
+                for label, (tokens, human) in GUARDS.items():
+                    blk = gate_block(body, label)
+                    if blk is None:
+                        check(False, "%s keeps %s intact" % (name, human),
+                              "could not locate the gate block at all")
+                        continue
+                    absent = [t for t in tokens if t not in blk]
+                    # A short-circuited condition keeps every token but stops firing.
+                    dead = re.search(r"if\(\s*(false|0|!true)\b", blk) is not None
+                    check(not absent and not dead,
+                          "%s keeps %s intact" % (name, human),
+                          "condition is short-circuited (`if(false …`) — the gate's label "
+                          "is still present, so the label check cannot see this"
+                          if dead else
+                          "missing from the gate's OWN block: %s — the label may still be "
+                          "present while the condition has been gutted" % ", ".join(absent))
+
+            unruled_missing = [g for g in only_r if g not in RULED_GATES]
+            if unruled_missing:
+                WARNS.append("Connect is missing step gates Request enforces, and no ruling "
+                             "covers them: %s — see PHASE-2-FINDINGS.md"
+                             % ", ".join("step %d %s" % g for g in unruled_missing))
             if only_c:
                 WARNS.append("Connect enforces step gates Request does not: %s"
                              % ", ".join("step %d %s" % g for g in only_c))
