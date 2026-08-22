@@ -1878,6 +1878,38 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     screen pointing at `gopher-request-home.html`, carries a **"do NOT fix these paths"** G40-327
     deeplink-seam comment. Don't "fix" it.
 
+- **Gopher Deals: Apps Script severed, attribution persisted, merchant logos built (2026-08-21/22,
+  owner-directed).** Three pieces, all live and content-verified:
+  - **Apps Script SEVERED** (commit `193bd8d`, deploy `7fa5a60`). Owner corrected the record —
+    the 08-14 "freeze" meant *stop building on it while it is removed*, not *keep it*; the entry
+    above is marked superseded. The last dependency was the SP/worker eligibility funnel, which
+    now does phone OTP → `GET /users/deals/eligibility` and answers on the spot instead of
+    promising an email. `GOPHER_FORM_ENDPOINT`, its `fetch` and `GOPHER_BACKEND` are gone.
+    **0 `AKfycb` on all three hosts.** ⚠️ `POST /users/sign_in` MINTS an account on an
+    unrecognised number — desired for a merchant, not here; detected via the
+    `@placeholder.gophergo.io` address and the flow stops rather than "assessing" a
+    two-second-old account. Sized first: 2,460 placeholder accounts already exist, ~440–500/mo,
+    **zero of which have ever ordered or worked** — which also inflates every roster metric.
+  - **Attribution persisted** (`!353`). `?src=` was the small half: `discovery_source` and
+    `referred_by_gopher_id` were allowlisted and **never written**, so no merchant registration
+    had ever carried attribution. Three columns, all written, all returned by the HQ queue.
+  - **Merchant logos** (`!354`, `!355`, deploy `af5c3d7`). There was no logo pipeline at all and
+    it was invisible from four sides at once. Upload → key → JSON submit; `PATCH
+    /users/deals/:id/logo` to change it later in any status including live. **SVG is REJECTED,
+    not sanitised** (no sanitiser in the 43 deps; hand-rolling one is stored XSS on a public
+    surface). Keys are owner-namespaced and ownership is proven from the key shape. Details +
+    the four `gopher-deals.html` runtime traps: memories `deals-merchant-logo-pipeline` and
+    `gopher-deals-html-traps`.
+  - **⚠️ The merchant portal dashboard is still a DEMO** — `enterDashboard()` unhides a div and
+    `MY_DEALS` is a hardcoded `d1/d2/d3` array. That is why the logo-edit surface is a standalone
+    authenticated modal on real APIs, not a button on that dashboard. Wiring the portal to
+    `GET /users/deals/mine` is the obvious next piece.
+  - **⚠️ A pinned deploy can be a REVERT.** Pinning at an older commit to exclude another
+    session's committed file showed two `_prototypes/` files as changes — live had moved past the
+    pin. Pinning excludes *uncommitted* work only. Build the deploy tree from HEAD and remove the
+    specific file instead, and read the dry-run list every time: riders and reverts look
+    identical in a diffstat.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
