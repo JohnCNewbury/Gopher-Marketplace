@@ -220,10 +220,26 @@
      fixing. Adopting this changes ONE observable behaviour on Connect — which
      message appears when both fail at once — and nothing else. */
   var SURFACE_GATES = {
-    request: ['category', 'description', 'costOfItems', 'identity',
+    /* ⛔ 'identity' REMOVED from both web surfaces — owner ruling 2026-08-23
+       (trustshield-gate-removal-interim.md §8.1, G40-410). This SUPERSEDES the
+       2026-08-22 D-038 Part 1 ruling that put it here; that gate was correct under
+       the policy then in force. iDenfy is being retired (~218 credits, ~6.6/day,
+       cliff ~Sept 22-25) and cannot be topped up at a price the owner will pay, so
+       when enrollment stops the badge would permanently block ~28 new requesters a
+       week (76.7% of new enrollments are 21-29, who must verify to participate).
+       TrustShield becomes voluntary: a trust badge and the $1 perk. The compliance
+       control is unchanged and was always the real one — the Gopher checks a
+       physical ID at the door.
+       The gate DEFINITION stays in the catalogue below, unreferenced, because the
+       barcode work (docs/handoff/id-barcode-age-read.md) re-enables it later.
+       ⚠️ This does NOT touch under-21 protection: on web the age-restricted path is
+       reached through the category + the ageRestricted slider, a different mechanism
+       from the app's can_request_restricted_items. Zero A/R orders from under-21
+       requesters in 2025 or 2026 — do not "tidy" that away with this. */
+    request: ['category', 'description', 'costOfItems',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
-    connect: ['category', 'description', 'costOfItems', 'identity',
+    connect: ['category', 'description', 'costOfItems',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
     /* The prototype has no addresses-differ and no schedule-time gate, and it is
@@ -333,11 +349,19 @@
       if (new Set(seen).size !== seen.length) problems.push(surface + ' lists a gate twice');
     });
 
-    /* The identity gate is owner-ruled for every surface (2026-08-22). If a future
-       edit drops it from one, that is a compliance regression, not a preference. */
-    Object.keys(SURFACE_GATES).forEach(function (surface) {
-      if (SURFACE_GATES[surface].indexOf('identity') === -1) {
-        problems.push(surface + ' is missing the RULED identity gate');
+    /* This assertion is INVERTED, not deleted (owner ruling 2026-08-23, superseding
+       2026-08-22). It used to fail when a surface LACKED the identity gate; it now
+       fails when a web surface CARRIES it. Same purpose either way — a ruling that
+       is only a habit gets undone by the next edit — so the guard follows the ruling
+       instead of being silenced with it.
+       'prototype' is deliberately NOT checked here: it is surface 2 of the staged
+       rollout (web -> app prototypes -> live apps) and still carries the gate until
+       App Prototypes removes it. Asserting its absence now would fail the module for
+       work that is correctly still in flight. Add it to this list when that lands. */
+    ['request', 'connect'].forEach(function (surface) {
+      if (SURFACE_GATES[surface].indexOf('identity') !== -1) {
+        problems.push(surface + ' carries the identity gate, which the owner removed '
+          + 'on 2026-08-23 (TrustShield is voluntary; the Gopher checks ID at the door)');
       }
     });
 
