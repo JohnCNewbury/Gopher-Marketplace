@@ -660,8 +660,20 @@ def main():
                         break
                 _k += 1
             proto_src = proto_src[_i:_k + 1]
+        # ⚠️ ANCHORED TO `if(` ON PURPOSE. Reported by App Prototypes, who
+        # mutation-tested this assertion against their own surface and found it
+        # decorative: `if(false && state.step===2 && …)` disables the gate while
+        # leaving every matched substring intact, so the check stayed green. Third
+        # appearance of that exact shape in two days.
+        #
+        # They proposed rejecting a list of falsy prefixes (`false &&`, `0 &&`,
+        # `!true &&`). That closes the observed cases but not a hoisted flag
+        # (`if(killSwitch && …)`), so this requires the condition to begin
+        # IMMEDIATELY after `if(` — which rejects ANY prefix, known or not.
+        # Still source-text matching; EXECUTING stepGate() is the honest fix and is
+        # the adoption work for that surface.
         pm = re.search(
-            r"state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
+            r"if\(\s*state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
             r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
             proto_src)
         check(pm is not None,
