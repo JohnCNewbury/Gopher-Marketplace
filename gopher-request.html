@@ -1815,6 +1815,7 @@
      truth across Request web / Connect / the Request App prototype — the parity
      harness asserts no surface re-implements it locally. -->
 <script src="assets/js/gopher-request-logic.js"></script>
+<script src="assets/js/gopher-step-gates.js"></script>
 <!-- Cross-device request drafts. The kernel defines the contract (what travels, what
      never does, how two devices reconcile); the store owns where it lives and when it
      moves. Kernel first — the store reads it. Both are UMD, so the same files are what
@@ -14733,104 +14734,42 @@
     try { var bn = document.getElementById('btnNext'); if(bn && typeof stepGate === 'function') bn.classList.toggle('is-disabled', !stepGate().ok); } catch(e){}
   };
   function stepGate(){
-    // Step 1 — a service category must be selected before continuing.
-    if(state.step === 1 && !state.category){
-      return { ok:false, label:'Service category', selector:'.cat-grid',
-               msg:'Please pick a service category to continue.' };
+    /* ── DELEGATES to gopher-step-gates.js ────────────────────────────────────
+       This function used to hold 11 gate rules inline, and Request, Connect and
+       the app prototype each carried their own copy. That is how Connect ended up
+       without an identity gate the backend was already refusing orders over, with
+       nothing to notice it for months. The rules now live in ONE place; this is the
+       adapter that supplies the helpers this surface calls by its own names.
+
+       The return shape is unchanged — {ok, label, selector, msg} — so showGatePrompt
+       and __gopherSyncGate are untouched.
+
+       ⚠️ FAILS CLOSED. If the module is missing, this BLOCKS rather than waving
+       everything through. A compliance gate that no-ops because a script did not
+       load is the worst outcome available: it looks fine and enforces nothing. A
+       missing file is a deploy error and should be loud. */
+    if(!window.GopherStepGates){
+      return { ok:false, label:'Checks unavailable', selector:null,
+               msg:'We can’t validate this step right now — please reload the page and try again.' };
     }
-    // Step 2 — a description is required wherever the Describe field is shown.
-    if(state.step === 2 && isVisible('describe') && !(state.description || '').trim()){
-      return { ok:false, label:'Description', selector:'#descriptionInput',
-               msg:'Please add a description before continuing.' };
-    }
-    // Step 2 — when "purchase needed" is toggled on, a cost of items must be
-    // entered (never pre-populated, so this gates Continue until filled).
-    if(state.step === 2 && state.itemsPurchased){
-      const cogNum = parseFloat(String(state.costOfItems).replace(/[^\d.]/g,''));
-      if(!(cogNum > 0)){
-        return { ok:false, label:'Cost of items', selector:'#costOfItemsInput',
-                 msg:'Please enter the cost of items needed before continuing.' };
-      }
-    }
-    // Step 2 — age-restricted delivery requires identity verification before
-    // continuing: TrustShield, OR (for 30+) a submitted / on-file ID. Under-30
-    // has no ID-pic path, so only TrustShield satisfies them. (Keyword-detected
-    // orders with the slider OFF stay awareness-only and are NOT gated here.)
-    if(state.step === 2 && state.category === 'delivery' && state.ageRestricted){
-      const onFile = !!(window.__idOnFile && window.__idOnFile());
-      const hasTS  = !!(window.__hasTrustShield && window.__hasTrustShield());
-      const idDone = !!state.idVerification.submittedAt || onFile;
-      if(!(hasTS || idDone)){
-        const age = (typeof customerAgeYears === 'function') ? customerAgeYears() : null;
-        const msg = (age != null && age < 30)
-          ? 'This age-restricted order needs TrustShield verification. Tap “Get TrustShield™” to continue.'
-          : 'Please verify your identity for this age-restricted order — tap “Submit Identification” (or add TrustShield) to continue.';
-        return { ok:false, label:'Identity verification', selector:'.ar-banner', msg };
-      }
-    }
-    // Step 4 (Locations) — pick-up and drop-off must be different addresses.
-    // Only when a specific pickup is set (not "Any location") and both sides have entries.
-    // Normalized compare (case/space/punctuation-insensitive) catches slight formatting diffs.
-    // Step 4 — pick-up and drop-off addresses are REQUIRED now that Maps is live.
-    // Returns the first empty field so the gate redirects the user to it in sequence.
-    if(state.step === 4 && !state.noSpecificPickup && isVisible('pickupSection')
-       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
-      const firstEmpty = (arr) => { for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; } return -1; };
-      const pe = firstEmpty(state.pickupStops);
-      if(pe > -1) return { ok:false, label:'Pick-up address', selector:`input[data-locedit="pickup"][data-idx="${pe}"]`,
-                           msg:'Add a pick-up address so your Gopher knows where to start.' };
-      const de = firstEmpty(state.dropoffStops);
-      if(de > -1) return { ok:false, label:'Drop-off address', selector:`input[data-locedit="dropoff"][data-idx="${de}"]`,
-                           msg:'Add a drop-off address so your Gopher knows where to go.' };
-    }
-    // Also backstops the footer Submit at Step 6. Only for categories that actually
-    // have a pick-up AND a drop-off (Delivery/Moving/Ride) — single-location service
-    // requests (Home/Office, Labor, Yard, Junk, Other), incl. redeemed Service-Provider
-    // deals, have no pickup/drop-off distinction, so this rule must not apply to them.
-    if((state.step === 4 || state.step === 6) && !state.noSpecificPickup && isVisible('pickupSection')
-       && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
-      const normAddr = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
-      const pk = state.pickupStops.map(normAddr).filter(Boolean);
-      const dp = state.dropoffStops.map(normAddr).filter(Boolean);
-      if(pk.some(p => dp.includes(p))){
-        return { ok:false, label:'Addresses', selector:'.field-input',
-                 msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.' };
-      }
-    }
-    // Step 5 — Worker pay. When setting a flat price, an amount must be entered.
-    // A REAL bids job (payMode 'bids' AND the category allows bids) needs no amount;
-    // anything else — including a stale 'bids' choice carried onto a no-bids
-    // category — must have a positive offer (owner 2026-07-17: a worker can NEVER
-    // receive a $0 offer).
-    if(state.step === 5 && !(state.payMode === 'bids' && bidsAllowed())){
-      const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
-      if(!(payNum > 0)){
-        return { ok:false, label:'Worker pay', selector:'#payAmountInput',
-                 msg:'Please enter how much you’d like to pay your worker before continuing.' };
-      }
-    }
-    // Submit-time backstop for the same rule — step gates only check the current
-    // step, so a $0 that survived to review would otherwise submit.
-    if(state.step === 6 && !(state.payMode === 'bids' && bidsAllowed())){
-      const payNum6 = parseFloat(String(state.payAmount).replace(/[^\d.]/g,''));
-      if(!(payNum6 > 0)){
-        return { ok:false, label:'Worker pay', selector:null,
-                 msg:'Your worker’s pay can’t be $0 — go back to Worker pay and set an offer.' };
-      }
-    }
-    // Step 6 — a scheduled (exact-time) request must have a real time picked
-    // (the time no longer false-defaults, so this also backstops the footer Submit,
-    // not just the in-content Done button).
-    if(state.step === 6 && state.scheduleType === 'scheduled' && !state.timeSlot){
-      return { ok:false, label:'Schedule time', selector:'.cal-time-row',
-               msg:'Please pick a time for your scheduled request.' };
-    }
-    // Step 6 — submission requires the liability waiver.
-    if(state.step === 6 && !state.waiverChecked){
-      return { ok:false, label:'Liability waiver', selector:'.waiver-box',
-               msg:'Please check the liability waiver before submitting.' };
-    }
-    return { ok:true };
+    return GopherStepGates.toWebShape(
+      GopherStepGates.evaluate(state, {
+        isVisible: isVisible,
+        /* This surface calls it bidsAllowed(); the module asks for bidsAllowed. */
+        bidsAllowed: function(){ return bidsAllowed(); },
+        /* TrustShield OR a submitted/on-file ID. Identical on both web surfaces;
+           the prototype derives the same answer through idVerifiedNow(). */
+        identityVerified: function(s){
+          var onFile = !!(window.__idOnFile && window.__idOnFile());
+          var hasTS  = !!(window.__hasTrustShield && window.__hasTrustShield());
+          return hasTS || !!(s.idVerification && s.idVerification.submittedAt) || onFile;
+        },
+        /* Age changes the MESSAGE only, never the requirement. */
+        customerAge: function(){
+          return (typeof customerAgeYears === 'function') ? customerAgeYears() : null;
+        }
+      }, 'request')
+    );
   }
 
   let __gateToastTimer = null;
