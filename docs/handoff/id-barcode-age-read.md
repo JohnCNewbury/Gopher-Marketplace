@@ -28,9 +28,31 @@ a store release.
 
 ### 0.1 The dates, and why there is NO config-only fix
 
-**Tokens expire ~2026-09-10** (owner estimate, 2026-08-23 — **18 days**). Nothing is broken today;
-verification works now. But 18 days does not reach the launch build, so **the interim is required,
-not hypothetical.**
+**Credits run out ~2026-09-22 to 09-25** — *hard numbers from the TrustShield session, 2026-08-23,
+read off iDenfy's own dashboard:* **218 credits remaining** (3,370 limit − 3,152 used) at a burn of
+**~6.6 approvals/day** → **~3–4 weeks**. Their DB count tracks iDenfy's billing credit-for-credit
+this month (105 approved = iDenfy's "Verifications 105", exact match), so the figure is good to
+within 1–2 credits between dashboard reads.
+
+⚠️ **Two earlier dates in circulation are WRONG and should be disregarded.** *"~Aug 10"* was a slip —
+it has not passed us into a gap. *Dec 30* is the **subscription term** expiry, which is later and is
+**not** the binding constraint: **credits run out first.**
+
+**Verification is live right now, verified empirically rather than assumed** — most recent approval
+was user 142415 at 2026-08-23 18:43 UTC, 15 in the last 72 h, 105 in August. Live config
+reconfirmed at the known-good state: `TRUSTSHIELD_MIN_AGE=30`,
+`TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false`.
+
+✅ **Existing badge holders are fully insulated, and this is now built, not assumed.**
+`get_idenfy_files` serves the ID and selfie from **our own S3 mirror first** (merged `ed270b91`,
+verified live returning `source:'mirror'`). Existing TrustShield badges keep working end-to-end
+after iDenfy goes dark. **Only NEW enrollment depends on credits** — which narrows this whole
+problem to one population.
+
+⛔ **The failure mode at credit exhaustion is an INFINITE SPINNER, not an error.** When token
+issuance fails, `idenfy.js` sits on `<Loader/>` with no error state. So the user-visible symptom of
+running out is not "TrustShield is unavailable" — it is an app that appears to hang. **That is worse
+than a refusal and it is the thing to fix first if the cliff is going to be crossed at all.**
 
 ⛔ **The obvious interim does not work, and the reason is a failure this project has already had.**
 Dropping `TRUSTSHIELD_MIN_AGE` from 30 to 21 is an env var — instant, no deploy, no store release.
@@ -60,8 +82,9 @@ needs a store release, which has to start now.**
 This does **not** weaken the age floor; it removes a verification requirement that will shortly have
 no way to be satisfied.
 
-**The alternative is to do nothing** and accept that from ~Sept 10 users aged **21–29 cannot order
-age-restricted goods** until launch. That may be acceptable — ⚠️ **but nobody has pulled the number:
+**The alternative is to do nothing** and accept that from the ~Sept 22–25 cliff, **new** under-30
+enrollment stops — existing holders are unaffected (see the S3 mirror above), so the exposed
+population is *new* under-30 users who want age-restricted delivery. That may be acceptable — ⚠️ **but nobody has pulled the number:
 what share of age-restricted volume comes from requesters aged 21–29?** That single figure decides
 between "ship a store release now" and "accept the gap". It is the highest-value missing input in
 this document.
