@@ -89,6 +89,65 @@ what share of age-restricted volume comes from requesters aged 21–29?** That s
 between "ship a store release now" and "accept the gap". It is the highest-value missing input in
 this document.
 
+### 0.2 Who is actually exposed — measured, and the intuition inverts
+
+**Order volume says the band is small. Enrollment says it is not. The second number is the one that
+decides.**
+
+**By order volume** — 2026 age-restricted orders (n=11,153), requester age *at order time*, from
+`Dashboard/data/master/Orders.csv` + `Users.csv`:
+
+| Band | Orders | Share |
+|---|---|---|
+| **Under 21** | **0** | **0.0%** |
+| 21–29 | 1,275 | 11.4% |
+| 30+ | 9,177 | 82.3% |
+| Unknown DOB | 701 | 6.3% |
+
+2025 agrees (12.7% in-band), and the **TrustShield session independently measured 10.2–12.0% off the
+live production DB** across three windows. Two sources, two methods, same answer.
+
+**⚠️ But that understates the exposure, and the reason is structural.** New TrustShield enrollments,
+Aug 1–23 (live DB, TrustShield session): **21–29 = 76.7%**, 30+ = 19.2%, **under-21 = 0**.
+
+**Why it flips:** 30+ place 84% of age-restricted orders but **the gate does not require the badge
+for them**, so they almost never enroll. 21–29 place only ~10% of orders but **each one must verify
+to participate at all**. The enrollment funnel is therefore ~77% 21–29 even though their order share
+is ~11%.
+
+✅ **Corroborated independently from the user export** (this session): among **6,894** current
+TrustShield holders, **61.6% are aged 21–29** vs **19.8%** of all 140,367 users — a **3.1×
+over-representation**, with 30-39 at 0.5× and 40+ at 0.4×. The stock (61.6%) sits below the flow
+(76.7%) exactly as ageing predicts — a 25-year-old who enrolled in 2023 is 28 now, and some have
+aged out into the 30-39 holders. **Two different measurements, two different sources, same
+conclusion.**
+
+**So the harm of crossing the cliff is NOT "≈11% of orders blink out".** Existing holders are
+insulated by the S3 mirror. The exposed population is **new 21–29 first-timers**, at ~92 per 23 days
+= **~4/day, ~28/week**, who cannot start at all — **and who hit the infinite spinner rather than a
+refusal**. That compounds weekly until launch.
+
+⛔ **This is the quantified case for shipping the error-state screen as a standalone small store
+release, independent of the capture-flow timeline.** It converts a hung app into an honest
+"verification temporarily unavailable" and makes the cliff crossable deliberately.
+
+**Also measured, and relevant to D-038:** **0 age-restricted orders from under-21 requesters** in
+2025 or 2026, and **0 under-21 TrustShield holders**. `can_request_restricted_items` and iDenfy's
+under-21 refusal are both demonstrably working — **which is exactly what a self-granted badge would
+remove.**
+
+*Reconciliation note:* the "8,191 A/R in 2026" figure in older records counted only the two dedicated
+sub-categories (`Other Age-Restricted` 7,675 + `Alcohol` 529 = 8,204). The 11,153 used here adds
+orders in other categories where the requester ticked the slider — mostly Convenience Store (2,455).
+**11,153 is the correct denominator for this question**, because `trust_shield_required()` reads the
+flag and does not branch on category. Both figures are right; they measure different things.
+
+⚠️ *One unreconciled discrepancy, flagged not averaged:* the TrustShield session reported **105
+approved in August** in one message and **120 enrollments Aug 1–23** in the next. ~14% apart, same
+day. Likely "approved" vs "enrollment attempts" or a date-boundary difference. **It does not change
+any conclusion here** — the skew is overwhelming either way — but the exact burn rate should be
+taken from one definition before it is used to project a date.
+
 **So the scope question is not launch-vs-live, it is: does the token supply outlast the launch
 build?** *(Answered 2026-08-23: **no** — ~18 days.)*
 
