@@ -395,15 +395,42 @@ the copy change with the flow, not after it.
    states plus at least one older-format card, to settle the `CCYYMMDD` / `MMDDCCYY` trap in §3 with
    evidence rather than with the standard's text. **That is a separate gate from the decoder choice
    and is NOT closed by this ruling.**
-2. **What happens to non-US IDs and passports?** Passports carry an MRZ (also standard, also
+2. ✅ **RESOLVED — one enforcement moment is correct, not two.** *(TrustShield session,
+   2026-08-23; verified against `origin/production` here.)* The live design has two age checks and
+   **they were never two gates**:
+
+   | Moment | Reads | Purpose |
+   |---|---|---|
+   | **Token-time** (`controllers/user/trustshield.js:130`, `meets_legal_min_age`) | `users.date_of_birth` — **self-reported** | **Cost-saver.** Avoids spending a paid credit on a self-evident under-21 |
+   | **Webhook-time** (`document_shows_under_age`) | iDenfy's `docDob` — **off the document** | **The authoritative refusal** |
+
+   The source comment states it outright: *"self-reported, so this only catches the honest cases —
+   the authoritative check is against iDenfy's document DOB in verify_idenfy_hook"*, immediately
+   above *"generate_token is the call that spends an iDenfy credit."*
+
+   **In-house there is no credit to save, so moment #1 has no reason to exist.** Collapse to a
+   **single authoritative check at the barcode read** — the exact equivalent of moment #2, on a DOB
+   the **server** derived. Nothing is lost by having one read moment; what is dropped is a
+   cost-optimisation that only existed because verifications were billed.
+
+   ⚠️ **If any client-side pre-check is kept** to fail fast on an obvious under-21 before capture,
+   it must be treated exactly as token-time treats self-reported DOB today — **advisory only, never
+   the gate.** The server-parsed `DBB` is the gate, full stop.
+
+   ✅ **Related correction:** an earlier note in this workstream worried that the admin panel's
+   manual grant (`controllers/admin/user.js:1349`) could bypass an under-21 rule. **It cannot** —
+   `controllers/admin/user.js:1340` applies `meets_legal_min_age` before granting. The floor is
+   already enforced on that path; no new work is owed there.
+
+3. **What happens to non-US IDs and passports?** Passports carry an MRZ (also standard, also
    decodable, different parser). Options: support MRZ too, accept a manual-review path, or accept
    that those users cannot hold TrustShield. Today iDenfy absorbed this and nobody had to decide.
-3. **Is the selfie doing any work, or is it theatre?** Nothing compares it to the ID under this
+4. **Is the selfie doing any work, or is it theatre?** Nothing compares it to the ID under this
    spec. Either state internally that it is a deterrent and a manual-review artefact, or plan a
    comparison step. **Do not let it imply a match that is not happening.**
-4. **Retention, encryption and access for the stored ID images** — precondition for the in-house
+5. **Retention, encryption and access for the stored ID images** — precondition for the in-house
    flow generally. Not created by this spec, not solved by it.
-5. **Does the under-21 floor move to the server's order path?** Today `can_request_restricted_items`
+6. **Does the under-21 floor move to the server's order path?** Today `can_request_restricted_items`
    (`+user_age >= 21`) hides the tiles client-side and appears **nowhere in
    `controllers/order/*.js`**. Related: if under-21 users are barred from TrustShield entirely
    (owner's simpler proposal, 2026-08-23), the badge short-circuit in `trust_shield_required()`
