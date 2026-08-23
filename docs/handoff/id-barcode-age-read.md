@@ -7,6 +7,43 @@ ruling does not close.
 
 ---
 
+## 0. Scope — which surface, and the timing gap
+
+**This targets the LAUNCH build, not the live apps.** TrustShield verification is app-only today
+(the web modal routes users to the store), so the barcode read lands in the rebuilt client.
+
+⚠️ **But the reason for the change is a *now* problem and launch is not a *now* thing.** iDenfy is
+being retired because **TrustShield tokens are running out**. If they run dry before the launch
+build ships:
+
+- **Existing badge holders are unaffected** — `trust_shield_verified` is stored, nothing is revoked.
+- **New verifications become impossible.**
+- **Under-30 users lose age-restricted ordering entirely** — `trust_shield_required()` refuses an
+  age-restricted order from anyone under 30 without the badge, and with no way to obtain one that is
+  a hard block with **no remedy available in the product**. Same dead-end shape as Connect's missing
+  ID-capture path (D-038 Part 1): an error naming a remedy the surface cannot offer.
+
+**And the live apps cannot be patched quickly** — there is no OTA; every mobile client change needs
+a store release.
+
+**So the scope question is not launch-vs-live, it is: does the token supply outlast the launch
+build?**
+
+| If | Then |
+|---|---|
+| Tokens outlast launch | Launch-only is correct. This spec is the whole answer. |
+| Tokens run out first | An interim answer is needed for **live**, and it is **not** this spec — a barcode read requires a store release too. |
+
+**The cheap interim, if it is needed:** bar under-21 users from TrustShield entirely (owner's
+proposal, 2026-08-23). That is a **server-side** change requiring no store release, and it closes
+the badge short-circuit in `trust_shield_required()` for exactly the population the age floor exists
+to protect. It does not restore verification for everyone else — nothing without a vendor does, on
+a client that cannot be updated — but it keeps the *age* guarantee intact while the launch build
+lands. **⚠️ Open: how many tokens remain, and what the launch date is. Nobody has put those two
+numbers side by side.**
+
+---
+
 ## 1. Why this exists
 
 iDenfy is being retired and TrustShield verification is being brought in-house. One thing iDenfy
