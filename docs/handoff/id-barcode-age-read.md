@@ -1,8 +1,9 @@
 # Reading DOB off the ID barcode — in-house replacement for iDenfy's `docDob`
 
 **Status: SPEC, not built. 2026-08-23.**
-Owner decisions this depends on are listed in §9. Nothing here should be implemented before §9.1
-(which decoder, after a real-card trial) is answered.
+Owner decisions are listed in §9. §9.1 (decoder) is **DECIDED — ML Kit, on-device, both
+platforms**. Nothing should be implemented before the **real-card decode trial** in §9.1, which that
+ruling does not close.
 
 ---
 
@@ -186,11 +187,26 @@ the copy change with the flow, not after it.
 
 ## 9. Open owner decisions — do not build past these
 
-1. **Which decoder, and does ML Kit count as "third party"?** (§4.1). Bundled on-device library vs
-   first-party-only (Vision + native Android, two implementations). **And before either is
-   committed: run a decode trial against real cards from several states and at least one
-   older-format card**, to settle the `CCYYMMDD` / `MMDDCCYY` trap in §3 with evidence rather than
-   with the standard's text.
+1. ~~**Which decoder, and does ML Kit count as "third party"?**~~ ✅ **DECIDED — owner, 2026-08-23:
+   ML Kit is acceptable; it is on-device with no vendor relationship.** Use ML Kit on **both**
+   platforms via the Capacitor plugin — one implementation. Apple Vision on iOS is genuinely
+   first-party and equally capable, but a hybrid buys nothing functional and costs two code paths
+   and two sets of edge cases.
+
+   ⚠️ **Two implementation specifics decide whether "on-device, no vendor" actually holds:**
+   **(a) On Android, use the BUNDLED model, not the Play-Services thin client.** ML Kit ships both:
+   the thin variant fetches the model from Google Play Services on first use, which reintroduces a
+   **network fetch and a Play Services dependency** — the exact properties this decision was made to
+   avoid — and fails outright on devices without Play Services. Bundled costs a few MB of APK and
+   keeps the guarantee.
+   **(b) Confirm there is no telemetry egress, at build time, once.** ML Kit has historically had
+   optional Firebase/analytics coupling. *This is stated from knowledge, not from inspecting this
+   build* — take one network trace during a decode and the question is closed permanently.
+
+   **Still required before writing the parser: the real-card decode trial** — cards from several
+   states plus at least one older-format card, to settle the `CCYYMMDD` / `MMDDCCYY` trap in §3 with
+   evidence rather than with the standard's text. **That is a separate gate from the decoder choice
+   and is NOT closed by this ruling.**
 2. **What happens to non-US IDs and passports?** Passports carry an MRZ (also standard, also
    decodable, different parser). Options: support MRZ too, accept a manual-review path, or accept
    that those users cannot hold TrustShield. Today iDenfy absorbed this and nobody had to decide.
