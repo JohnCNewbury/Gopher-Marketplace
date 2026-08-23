@@ -28,9 +28,17 @@ a store release.
 
 ### 0.1 The dates, and why there is NO config-only fix
 
-**Credits run out ~2026-09-22 to 09-25** — *hard numbers from the TrustShield session, 2026-08-23,
-read off iDenfy's own dashboard:* **218 credits remaining** (3,370 limit − 3,152 used) at a burn of
-**~6.6 approvals/day** → **~3–4 weeks**. Their DB count tracks iDenfy's billing credit-for-credit
+**Credits run out in the LAST WEEK OF SEPTEMBER (~Sept 26–29)** — *re-dated 2026-08-23; see the burn-rate note below* — *hard numbers from the TrustShield session, 2026-08-23,
+read off iDenfy's own dashboard:* **218 credits remaining** (3,370 limit − 3,152 used).
+
+**PINNED BURN DEFINITION** — burn = **APPROVED** verifications (the billed event; DENIED/EXPIRED are
+not billed), timestamped by **scan-ref creation**. Measured over clean windows: 7d **5.57/day**, 14d
+**5.93/day**, 30d **6.30/day**, Aug-MTD excluding the Aug 7–9 outage **6.05/day**. **Central forward
+estimate ~6.0/day → ~36 days → last week of September.**
+
+⚠️ **Do not plan to the day.** And do not use the Aug-MTD figure of 5.25/day: it includes the
+**Aug 7–9 outage** (~3 days at zero enrollments), which drags the mean down and would push the
+projected cliff artificially LATE. Their DB count tracks iDenfy's billing credit-for-credit
 this month (105 approved = iDenfy's "Verifications 105", exact match), so the figure is good to
 within 1–2 credits between dashboard reads.
 
@@ -142,11 +150,7 @@ orders in other categories where the requester ticked the slider — mostly Conv
 **11,153 is the correct denominator for this question**, because `trust_shield_required()` reads the
 flag and does not branch on category. Both figures are right; they measure different things.
 
-⚠️ *One unreconciled discrepancy, flagged not averaged:* the TrustShield session reported **105
-approved in August** in one message and **120 enrollments Aug 1–23** in the next. ~14% apart, same
-day. Likely "approved" vs "enrollment attempts" or a date-boundary difference. **It does not change
-any conclusion here** — the skew is overwhelming either way — but the exact burn rate should be
-taken from one definition before it is used to project a date.
+✅ *The two figures flagged earlier are RESOLVED, not averaged* (TrustShield session, 2026-08-23). **105 vs 120 approved** was a **3-day time gap**, not a definition conflict — same metric measured Aug 20 and Aug 23 (+15 ≈ 5/day). **6.6 vs 5.2/day** was two different windows, one **contaminated by the Aug 7–9 outage**. Flagging rather than averaging is what surfaced both; averaging would have produced a plausible wrong number and a wrong cliff date.
 
 **So the scope question is not launch-vs-live, it is: does the token supply outlast the launch
 build?** *(Answered 2026-08-23: **no** — ~18 days.)*
@@ -275,13 +279,35 @@ native path, which is an argument for capture-time feedback (§6).
 
 ## 5. Where it runs, and what we keep
 
-**Decode on the client; verify the decision on the server.**
+**Decode on the client; RE-DERIVE on the server. Do not let the app send a bare DOB.**
 
-1. Client decodes the barcode and extracts `DBB`.
-2. Client sends the **parsed DOB** (and the AAMVA version it parsed under) with the verification
-   submission — *not* a client-computed age, and never a client-computed "is over 21" boolean.
-3. **The server computes the age and makes the decision.** A client-supplied verdict is trivially
-   forged and would recreate the exact hole this closes.
+1. Client decodes the barcode and captures the **raw AAMVA payload**.
+2. Client sends **the payload** (not just the parsed date) with the verification submission — never a
+   client-computed age, and never a client-computed "is over 21" boolean.
+3. **The server parses `DBB` itself and makes the decision.**
+
+⚠️ **This is a weaker trust boundary than iDenfy was, and the spec must not pretend otherwise**
+(raised by the TrustShield session, 2026-08-23). With a vendor, the DOB was asserted by a third party
+the client could not influence. Here **the client computes the value it is then trusted on** — so a
+tampered or directly-called client can claim anything.
+
+Re-deriving server-side does not make that impossible; a determined attacker can craft a valid-looking
+AAMVA payload, or photograph a barcode they generated. **What it does is raise the bar from "edit one
+JSON field" to "forge a structurally valid document payload"**, and it removes the case where the app
+is simply wrong rather than malicious. Stronger still — and worth doing if cost allows — is sending
+the **captured image** and decoding server-side, so the app never handles the value at all.
+
+**None of this reaches vendor-grade assurance, and per §2 it does not need to:** the compliance
+control is the Gopher checking physical ID at the door. But the difference between *"the gate works"*
+and *"the gate looks like it works"* is exactly this, and the doc should say which one is being
+bought.
+
+⛔ **The under-21 refusal must live SERVER-side on the re-derived value.** Client-side it is
+bypassable, and it is the single protection currently producing **zero** under-21 badge holders (§0.2)
+— see `LEGAL_MIN_AGE` / `meets_legal_min_age` at token time and `document_shows_under_age` at webhook
+in `helpers/trustshield_policy.js` for how the live gate enforces the floor today. **Whatever
+replaces iDenfy inherits that refusal as a hard requirement, granted from the BARCODE-read DOB and
+never from a self-typed one.**
 
 **Stored:** the extracted DOB, the AAMVA version, and a decode-outcome marker (`decoded` /
 `unreadable` / `absent`). Enough to audit a decision and to re-run analysis later.

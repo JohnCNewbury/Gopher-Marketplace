@@ -1,15 +1,16 @@
 # INTERIM — remove the TrustShield gate before the iDenfy credit cliff
 
 **Status: SPEC, ready to build. Owner-approved 2026-08-23.**
-**⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is **~Sept 22–25**
+**⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week of September (~Sept 26–29)**
 and this cannot land without a store release. See §7.
 
 ---
 
 ## 1. What is happening and why this is the answer
 
-iDenfy is being retired. **Credits run out ~2026-09-22 to 09-25** — 218 remaining at ~6.6
-approvals/day (read off iDenfy's dashboard, 2026-08-23). **A top-up was pursued and is not available
+iDenfy is being retired. **Credits run out in the last week of September (~Sept 26–29)** — 218 remaining at a pinned
+**~6.0 approvals/day** (re-dated 2026-08-23 from clean 7/14/30-day windows; the earlier "~Sept 22"
+used a transient 6.6/day figure). **Plan to "late September", not to a day.** **A top-up was pursued and is not available
 at an acceptable price**, so the cliff is now certain rather than avoidable.
 
 When credits hit zero, **new TrustShield enrollment stops**. Today the badge is *required* for
@@ -180,7 +181,7 @@ voluntarily-added badge asserts nothing about the age on file.
 |---|---|
 | 2026-08-23 | Spec approved. ~30 days of credits left. |
 | **2026-08-31** | **Cutoff — this must be in the FIRST release after this date.** |
-| ~2026-09-22 – 09-25 | Credits exhausted. Without this release, new under-30 enrollment dies into a hung app. |
+| **~2026-09-26 – 09-29** | Credits exhausted (last week of September). Without this release, new under-30 enrollment dies into a hung app. |
 
 **There is no OTA.** Every client change needs a store release, so submission and review time sit
 between the merge and the fix reaching users. **Missing the release after 8/31 means arriving after
