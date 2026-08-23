@@ -12900,8 +12900,6 @@
       state.idVerification.idFrontSrc = null;
       state.idVerification.idBackSrc  = null;
       state.idVerification.selfieSrc  = null;
-      const up = document.getElementById('idSubFrontUpload'); if(up) up.value = '';
-      const ub = document.getElementById('idSubBackUpload');  if(ub) ub.value = '';
       setErr('idfront',''); setErr('idback',''); setErr('selfie','');
       paintThumb('front'); paintThumb('back'); paintThumb('selfie'); syncButtons();
     }
@@ -12963,12 +12961,11 @@
         if(target === 'selfie'){
           showStep('B');
           setErr('selfie', 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
-        } else if(target === 'idback'){
-          showStep('Back');
-          setErr('idback', 'We couldn\u2019t get a picture from your camera. You can upload a photo of the back instead.');
         } else {
-          showStep('A');
-          setErr('idfront', 'We couldn\u2019t get a picture from your camera. You can upload a photo of your ID instead.');
+          const step = (target === 'idback') ? 'Back' : 'A';
+          const err  = (target === 'idback') ? 'idback' : 'idfront';
+          showStep(step);
+          setErr(err, 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
         }
       };
       try {
@@ -13000,12 +12997,18 @@
             showStep('B');
             setErr('selfie', 'We couldn\u2019t access the camera. Please allow camera access and try again — or finish in the mobile app.');
           }
-        } else if(target === 'idback'){
-          showStep('Back');
-          setErr('idback', 'Couldn\u2019t open the camera. You can upload a photo of the back instead.');
         } else {
-          showStep('A');
-          setErr('idfront', 'Couldn\u2019t open the camera. You can upload a photo of your ID instead.');
+          /* No upload fallback exists any more, so a MISSING camera is a dead end on
+             web exactly as it is for the selfie — send them to the app rather than to
+             a step they cannot finish. Permission/other errors stay retryable. */
+          const step = (target === 'idback') ? 'Back' : 'A';
+          const err  = (target === 'idback') ? 'idback' : 'idfront';
+          if(name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError'){
+            showNoCam();
+          } else {
+            showStep(step);
+            setErr(err, 'We couldn\u2019t access the camera. Please allow camera access and try again — or finish in the mobile app.');
+          }
         }
       }
     }
@@ -13065,30 +13068,16 @@
       const btake = document.getElementById('idSubBackTake');
       if(btake) btake.addEventListener('click', () => openCamera('idback'));
 
-      // Upload (ID front only)
-      const up = document.getElementById('idSubFrontUpload');
-      if(up) up.addEventListener('change', () => {
-        setErr('idfront','');
-        fileToDataURL(up.files && up.files[0], (url) => {
-          if(!url){ setErr('idfront','That file didn\u2019t look like a photo. Please choose an image.'); up.value=''; return; }
-          setFront(url);
-        });
-      });
+      /* Upload handlers for the ID front and back were removed 2026-08-23 (owner:
+         live only). fileToDataURL() is deliberately KEPT — it is the decoder for
+         anything arriving as a File, and deleting it would only have to be rewritten
+         if a later ruling re-allows uploads. */
 
-      // Back-of-ID upload + navigation
-      const ub = document.getElementById('idSubBackUpload');
-      if(ub) ub.addEventListener('change', () => {
-        setErr('idback','');
-        fileToDataURL(ub.files && ub.files[0], (url) => {
-          if(!url){ setErr('idback','That file didn\u2019t look like a photo. Please choose an image.'); ub.value=''; return; }
-          setBack(url);
-        });
-      });
+      // Back-of-ID navigation
       const bRetake = document.getElementById('idSubBackRetake');
       if(bRetake) bRetake.addEventListener('click', () => {
         state.idVerification.idBackCaptured = false;
         state.idVerification.idBackSrc = null;
-        const ui = document.getElementById('idSubBackUpload'); if(ui) ui.value='';
         paintThumb('back'); syncButtons();
       });
       const bCont = document.getElementById('idSubBackContinue');
@@ -13107,7 +13096,6 @@
       if(fRetake) fRetake.addEventListener('click', () => {
         state.idVerification.idFrontCaptured = false;
         state.idVerification.idFrontSrc = null;
-        const ui = document.getElementById('idSubFrontUpload'); if(ui) ui.value='';
         clearSelfie();                 // changing the ID redoes the selfie
         paintThumb('front'); syncButtons();
       });
@@ -17346,15 +17334,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <!-- Step A — Front of ID (live photo OR upload) -->
     <div class="idsub-step" id="idSubStepA">
       <h5>Front of your ID</h5>
-      <div class="idsub-hint">Take a photo of the front of a valid government ID, or upload one.</div>
+      <!-- LIVE ONLY (owner, 2026-08-23): "make the IDs live too - more authentic and
+           consistent with what TrustShield was." Upload was REMOVED, not hidden. An
+           uploaded ID is a photo of a photo — a screenshot, a borrowed licence, an
+           image off the web — and none of that is distinguishable after the fact.
+           TrustShield's premise was a live capture, so allowing uploads here would
+           have left the non-TrustShield path weaker while looking equivalent.
+           ⚠️ There is now NO fallback when a camera is unavailable: that routes to the
+           app (showNoCam), exactly as the selfie always has. -->
+      <div class="idsub-hint">Take a live photo of the front of a valid government ID. Uploads aren't accepted — the photo has to be taken here.</div>
       <div class="idsub-captures">
         <button type="button" class="idsub-cap" id="idSubFrontTake">
           <span class="idsub-cap-ico">📷</span>Take photo
         </button>
-        <label class="idsub-cap">
-          <span class="idsub-cap-ico">⬆️</span>Upload
-          <input type="file" accept="image/*" id="idSubFrontUpload">
-        </label>
       </div>
       <div class="idsub-camerr" id="idSubFrontErr" hidden></div>
       <div class="idsub-thumb" id="idSubFrontThumb" hidden>
@@ -17373,15 +17365,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
          becomes a photo nobody can check. Same capture affordances as the front. -->
     <div class="idsub-step" id="idSubStepBack">
       <h5>Back of your ID</h5>
-      <div class="idsub-hint">Now the back. The barcode there is what lets us confirm the date of birth on the ID.</div>
+      <div class="idsub-hint">Now the back, taken live as well. The barcode there is what lets us confirm the date of birth on the ID.</div>
       <div class="idsub-captures">
         <button type="button" class="idsub-cap" id="idSubBackTake">
           <span class="idsub-cap-ico">📷</span>Take photo
         </button>
-        <label class="idsub-cap">
-          <span class="idsub-cap-ico">⬆️</span>Upload
-          <input type="file" accept="image/*" id="idSubBackUpload">
-        </label>
       </div>
       <div class="idsub-camerr" id="idSubBackErr" hidden></div>
       <div class="idsub-thumb" id="idSubBackThumb" hidden>
