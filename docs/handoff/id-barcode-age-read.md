@@ -26,8 +26,48 @@ build ships:
 **And the live apps cannot be patched quickly** — there is no OTA; every mobile client change needs
 a store release.
 
+### 0.1 The dates, and why there is NO config-only fix
+
+**Tokens expire ~2026-09-10** (owner estimate, 2026-08-23 — **18 days**). Nothing is broken today;
+verification works now. But 18 days does not reach the launch build, so **the interim is required,
+not hypothetical.**
+
+⛔ **The obvious interim does not work, and the reason is a failure this project has already had.**
+Dropping `TRUSTSHIELD_MIN_AGE` from 30 to 21 is an env var — instant, no deploy, no store release.
+It fails because **the live app hardcodes the threshold**:
+
+| Layer | Threshold | Changeable how |
+|---|---|---|
+| Backend order gate | `TRUSTSHIELD_MIN_AGE` (default 30) | env var — instant |
+| Backend token gate | `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` | env var — instant |
+| **Live requester app** | **`calculateAge() < 30`, hardcoded in TWO places** | **store release only** |
+
+`RequestCategoryBlock.js:77` and `togglebutton.js:139` both carry the literal. An under-30
+unverified user is blocked **client-side** whatever the backend says, so lowering the server
+threshold alone recreates the **2026-08-06 deadlock** — the app demanding a badge the server no
+longer requires, with the user stuck between them. See `age-gate-lives-in-three-layers`.
+
+**Therefore: restoring under-30 age-restricted ordering after ~Sept 10 needs a CLIENT change, which
+needs a store release, which has to start now.**
+
+**Smallest change that closes it — align all three layers on 21 rather than 30:**
+- Under-21 is unaffected: they already cannot see the tiles (`can_request_restricted_items`).
+- 21–29 year-olds would order age-restricted **without** TrustShield — exactly how 30+ users work
+  today, so this is not a new posture.
+- Residual risk is a requester who lied about their DOB, caught by **the Gopher's physical ID check
+  at the door** — the §2 threat model, unchanged.
+
+This does **not** weaken the age floor; it removes a verification requirement that will shortly have
+no way to be satisfied.
+
+**The alternative is to do nothing** and accept that from ~Sept 10 users aged **21–29 cannot order
+age-restricted goods** until launch. That may be acceptable — ⚠️ **but nobody has pulled the number:
+what share of age-restricted volume comes from requesters aged 21–29?** That single figure decides
+between "ship a store release now" and "accept the gap". It is the highest-value missing input in
+this document.
+
 **So the scope question is not launch-vs-live, it is: does the token supply outlast the launch
-build?**
+build?** *(Answered 2026-08-23: **no** — ~18 days.)*
 
 | If | Then |
 |---|---|
