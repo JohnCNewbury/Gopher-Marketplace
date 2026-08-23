@@ -235,19 +235,72 @@ the `ageRestricted` slider. Removing the *identity* gate must not touch category
 ### 8.2 App prototype
 
 `_prototypes/Request/gopher-request-flow.html` carries its own `stepGate()` returning
-`{ok, sel, msg}` and gates on `!idVerifiedNow()`. Remove that one condition. The module already
+`{ok, sel, msg}` and gates on `!idVerifiedNow()`. Remove **that one condition**. The module already
 models the prototype in `SURFACE_GATES.prototype`; if it adopts the shared module later, the entry
 must match whatever the web surfaces do.
 
+⚠️ **`idVerifiedNow` has exactly THREE references and only ONE is the gate** (App Prototypes,
+verified here 2026-08-23):
+
+| Line | What it is | Action |
+|---|---|---|
+| 1144 | the function definition | **keep** |
+| 1223 | `ts-verified` — *"Identity verified — you're all set for this delivery."* | **keep** |
+| 2078 | the step-2 gate | **remove** |
+
+Removing all three would delete **the perk, not the gate** — the badge and its verified state must
+stay visible, because voluntary-but-visible is the intended end state.
+
+⛔ **THERE IS NO UNDER-21 LOGIC IN THE PROTOTYPE TO PRESERVE.** Verified by search: **zero**
+occurrences of `isMinor`, `calculateAge`, `customerAge`, `getAge`, `date_of_birth` or
+`can_request_restricted_items`. Every `21` in the file is **copy** — the waiver sentence, the
+*"Tobacco, vape and nicotine delivery (21+ only)"* category example, and a `21` SVG mark — or
+unrelated (`h<=21` building time slots).
+
+**So §3.2's "keep the under-21 hide" is a LIVE-APP concern only.** An acceptance criterion asserting
+the prototype preserves an under-21 gate would be asserting something that never existed — the
+vacuous-criterion failure this project has hit three times in two days, where a check passes because
+there is nothing for it to test. *(Corrected 2026-08-23 after App Prototypes flagged that §8.3 said
+exactly that.)*
+
 ### 8.3 What "done" looks like on web and prototype
 
-Same as §6 acceptance, minus the app-only items: a requester with no TrustShield can complete an
-age-restricted request; nothing demands the badge to proceed; the under-21 path is unchanged; no
-console errors; harness and module tests green **after** their assertions are updated to the new
-ruling rather than silenced.
+Same as §6 acceptance, minus the app-only items:
+
+1. A requester with no TrustShield can complete an age-restricted request end-to-end.
+2. Nothing demands the badge in order to proceed.
+3. The TrustShield badge and its verified state **still render** — voluntary, not vanished.
+4. 0 console errors.
+5. Harness and module tests green **after** their assertions are updated to the new ruling rather
+   than silenced.
+
+**Web only, #6:** the under-21 path is unchanged. ⛔ **Do NOT apply this criterion to the prototype**
+— see §8.2: it has no under-21 logic, so the check would pass vacuously and prove nothing.
 
 ### 8.4 Sequencing note
 
 **Web and prototype are reversible in minutes; the live app is not.** Anything learned on surfaces 1
 and 2 — especially anything the acceptance criteria missed — should be folded into G40-410 **before**
 the store build is cut, because that is the last point at which it is cheap.
+
+
+---
+
+## 9. Sequencing ruling — 2026-08-23
+
+**App Prototypes stands down until Website Updates has wired Connect and Request web.** Owner,
+verbatim: *"You are to stand down on this until Website Updates can wire Connect and Request web."*
+
+**The change is confirmed and coming — this is sequencing, not a reversal.** Surface 2 is *queued*,
+not cancelled, and matches §8.4: web is reversible in minutes and should flush out the surprises
+first.
+
+**Harness ownership:** the Connect/Request Parity session makes **all six assertion edits in one
+change**, atomically with surface 1, so the tooling never has a green-but-wrong window. The
+prototype session re-runs rather than assumes when its turn comes.
+
+⚠️ **One thing not to misread when surface 1 lands:** the assertion
+`prototype enforces the RULED gate` catches **deletion** but not **disabling** — mutation-proved
+2026-08-23, where `if(false && …)` shipped green. The coming change *is* a deletion, so it will fail
+correctly — **but that failure is not evidence the check is sound.** It remains blind to the disabled
+shape.
