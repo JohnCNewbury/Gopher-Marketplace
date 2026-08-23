@@ -96,12 +96,15 @@ Capture is already solved — `@capacitor/camera` v8 is in the app today. Only d
 PDF417 is a supported symbology. Runs **entirely on the device**: no account, no API key, no
 per-scan fee, and **the image never leaves the phone for decoding**.
 
-> **Honest framing:** ML Kit is a Google *library bundled into the app*, not a service. It is a
-> dependency, not a vendor relationship — no contract, no usage billing, no data sent anywhere. If
-> the owner's "no third party" rule is about **vendors and per-scan cost**, this satisfies it. If it
-> is about **any external code at all**, then the alternative is Apple's Vision framework on iOS
-> (`VNDetectBarcodesRequest`, first-party, supports PDF417) plus a native Android path — more work,
-> two implementations, same result. **That is an owner call (§9.1), not a technical one.**
+> ✅ **DECIDED — owner, 2026-08-23: ML Kit on both platforms.** The bar is *on-device with no vendor
+> relationship*, and ML Kit meets it: a Google **library bundled into the app**, not a service — no
+> contract, no usage billing, no per-scan fee. Apple's Vision framework
+> (`VNDetectBarcodesRequest`) is genuinely first-party and equally capable on iOS, but a hybrid buys
+> nothing functional and costs two code paths and two sets of edge cases.
+>
+> ⚠️ **Two specifics decide whether that guarantee is real rather than nominal — see §9.1:** use the
+> **bundled** Android model (the Play-Services thin client re-adds a network fetch and a Play
+> Services dependency), and confirm **no telemetry egress** with one build-time network trace.
 
 ### 4.2 Web (Request web / Connect web)
 
