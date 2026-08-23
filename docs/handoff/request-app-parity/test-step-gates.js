@@ -60,8 +60,11 @@ section('1. Catalogue');
   ok(G.GATES.length === 12, 'twelve distinct gates', String(G.GATES.length));
   ok(G.assertInvariants().length === 0, 'module passes its own self-check',
      JSON.stringify(G.assertInvariants()));
-  ok(G.gatesFor('request').length === 11, 'request enables 11');
-  ok(G.gatesFor('connect').length === 11, 'connect enables 11');
+  /* 11 -> 10: the identity gate left both web surfaces on 2026-08-23 (owner,
+     G40-410). The prototype still has 10 because it never had scheduleTime or
+     addressesDiffer and still carries identity until surface 2 of the rollout. */
+  ok(G.gatesFor('request').length === 10, 'request enables 10');
+  ok(G.gatesFor('connect').length === 10, 'connect enables 10');
   ok(G.gatesFor('prototype').length === 10, 'prototype enables 10',
      String(G.gatesFor('prototype').length));
   ok(G.gateById('nope') === null, 'unknown id returns null, does not throw');
@@ -82,14 +85,24 @@ section('2. Gates fire');
   ok(ev(state({ step: 2, itemsPurchased: true, costOfItems: '0' })).id === 'costOfItems',
      'zero cost blocks');
 
+  /* ⚠️ These now run on 'prototype', the only surface that still ENABLES the
+     identity gate (owner removed it from web 2026-08-23). The gate's logic is
+     still worth testing: the definition stays in the catalogue because the
+     barcode work re-enables it, and an untested definition rots. Re-point these
+     to whichever surface enables it if that changes. */
   var idBlocked = ev(state({ step: 2, ageRestricted: true }),
-                     host({ identityVerified: function () { return false; } }));
-  ok(idBlocked.id === 'identity', 'age-restricted delivery blocks without identity');
-  ok(ev(state({ step: 2, ageRestricted: true })).ok === true,
+                     host({ identityVerified: function () { return false; } }), 'prototype');
+  ok(idBlocked.id === 'identity', 'age-restricted delivery blocks without identity (prototype)');
+  ok(ev(state({ step: 2, ageRestricted: true }), host(), 'prototype').ok === true,
      'satisfied identity lets it through');
   ok(ev(state({ step: 2, ageRestricted: true, category: 'moving' }),
-        host({ identityVerified: function () { return false; } })).ok === true,
+        host({ identityVerified: function () { return false; } }), 'prototype').ok === true,
      'identity gate is DELIVERY-only — moving is never gated on it');
+  /* The new ruling, asserted where it can actually fail. */
+  ok(ev(state({ step: 2, ageRestricted: true }),
+        host({ identityVerified: function () { return false; } })).ok === true,
+     'WEB: an age-restricted order proceeds with NO identity verification '
+     + '(owner 2026-08-23 — TrustShield is voluntary, the Gopher checks ID at the door)');
   ok(ev(state({ step: 2, ageRestricted: false }),
         host({ identityVerified: function () { return false; } })).ok === true,
      'slider OFF is never gated, even with a keyword in the description');
@@ -153,10 +166,14 @@ section('4. Per-surface behaviour is PRESERVED');
      'the web pair do NOT get it — they run that scan from their Continue handler, '
      + 'so enabling it here would fire it twice rather than fix a gap');
 
-  /* The identity gate is owner-ruled for all three (2026-08-22). */
-  ok(['request', 'connect', 'prototype'].every(function (s) {
-    return G.SURFACE_GATES[s].indexOf('identity') !== -1;
-  }), 'all three surfaces carry the RULED identity gate');
+  /* INVERTED 2026-08-23, not deleted: the ruling flipped, so the guard flips with
+     it. A ruling with no assertion behind it is a habit, and habits get undone. */
+  ok(['request', 'connect'].every(function (s) {
+    return G.SURFACE_GATES[s].indexOf('identity') === -1;
+  }), 'the web pair do NOT carry the identity gate (owner 2026-08-23, G40-410)');
+  ok(G.SURFACE_GATES.prototype.indexOf('identity') !== -1,
+     'the prototype still carries it — surface 2 of the staged rollout, removed by '
+     + 'App Prototypes; flip this assertion when that lands');
 
   /* Same broken state, each surface's own answer. */
   var s = state({ step: 6, scheduleType: 'scheduled', timeSlot: '', waiverChecked: false });
@@ -190,7 +207,14 @@ section('6. Missing helpers fail loudly');
      by mutation testing: disabling the throw left this test green. */
   var msg = '';
   try {
-    G.evaluate(state({ step: 2, ageRestricted: true }), { isVisible: function () { return true; } }, 'request');
+    /* 'prototype' — the identity gate no longer runs on web, and a gate that never
+       evaluates cannot demonstrate a missing-helper throw. */
+    G.evaluate(state({ step: 2, ageRestricted: true }),
+               { isVisible: function () { return true; },
+                 /* Supplied deliberately: the prototype evaluates ageKeyword BEFORE
+                    identity, so omitting this throws on the WRONG gate and the test
+                    would pass while proving nothing about the one it names. */
+                 findAgeRestrictedKeyword: function () { return null; } }, 'prototype');
   } catch (e) { msg = e.message; }
   ok(/gopher-step-gates/.test(msg) && /identityVerified/.test(msg),
      'a gate whose host helper is absent throws the MODULE\'s own diagnostic, '
@@ -239,16 +263,19 @@ section('8. Under-30 changes the MESSAGE, not the rule');
   var blocked = host({ identityVerified: function () { return false; } });
   var s = state({ step: 2, ageRestricted: true });
 
+  /* On 'prototype' for the same reason as section 3 — the message logic belongs to
+     the gate, which the barcode work re-enables; only the web surfaces stopped
+     running it. */
   var young = G.evaluate(s, host({ identityVerified: function () { return false; },
-                                   customerAge: function () { return 22; } }), 'request');
-  var older = G.evaluate(s, blocked, 'request');
+                                   customerAge: function () { return 22; } }), 'prototype');
+  var older = G.evaluate(s, blocked, 'prototype');
   ok(young.id === 'identity' && older.id === 'identity',
      'both ages are gated — the requirement is identical');
   ok(/TrustShield/.test(young.message) && /Submit identification/.test(older.message),
      'only the wording differs');
 
   var noDob = G.evaluate(s, host({ identityVerified: function () { return false; },
-                                   customerAge: function () { return null; } }), 'request');
+                                   customerAge: function () { return null; } }), 'prototype');
   ok(noDob.id === 'identity', 'unknown DOB is still gated (the safest path)');
   ok(/Submit identification/.test(noDob.message),
      'and gets the generic wording rather than a TrustShield-specific claim');

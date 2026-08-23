@@ -513,8 +513,16 @@ def main():
             # it merely returns to WARN, which is the state people scroll past.
             # Anything NOT yet ruled on stays a warning — this asserts the
             # decisions that exist, and flags the ones that do not.
+            # ⛔ (2, "Identity verification") was RULED here on 2026-08-22 and REMOVED
+            # from both web surfaces on 2026-08-23 (owner, G40-410 / trustshield-gate-
+            # removal-interim.md §8.1): iDenfy is being retired, so TrustShield becomes
+            # voluntary and the Gopher's physical ID check at the door remains the
+            # compliance control. Listing it here would fail a surface for obeying the
+            # current ruling. Deliberately NOT re-added — the module's assertInvariants()
+            # and test-step-gates.js now assert its ABSENCE on request/connect, which is
+            # where that guard belongs (both web surfaces delegate, so this block does
+            # not even execute for them today).
             RULED_GATES = {
-                (2, "Identity verification"): "owner ruling 2026-08-22 (Phase 2 Finding 3)",
                 (4, "Addresses"):             "data quality — same ruling",
                 (6, "Addresses"):             "data quality — same ruling",
                 (6, "Schedule time"):         "data quality — same ruling",
@@ -572,12 +580,11 @@ def main():
                     k += 1
                 return body[j:k + 1]
 
+            # "Identity verification" was checked here until 2026-08-23. Its tokens
+            # guarded an INLINE gate that no longer exists on either web surface (the
+            # gate was removed by owner ruling, and both surfaces delegate to the module
+            # regardless). Keeping it would assert tokens for a gate that is gone.
             GUARDS = {
-                "Identity verification": (
-                    ["state.ageRestricted", "__hasTrustShield",
-                     "idVerification.submittedAt", "__idOnFile"],
-                    "the step-2 identity gate",
-                ),
                 "Addresses": (
                     # The character class is pinned deliberately. Renaming normAddr
                     # would throw at runtime and get noticed; SILENTLY WEAKENING the
