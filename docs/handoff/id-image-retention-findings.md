@@ -37,6 +37,31 @@ stop.**
 
 ---
 
+## 1b. ⚠️ Access-control defect — and an honest severity (corrected 2026-08-23)
+
+`GET /users/get_trustshield_files/:reqid` had **no authorization**: it took the target id from the
+URL and returned that user's ID front/back/selfie to any authenticated caller. Fixed on
+`fix/trustshield-files-authz` (backend, commit `28d6ddd9`, **not merged**) — bind to the owner or a
+Gopher with an order for that requester; unauthorized callers get 204.
+
+**Severity, stated accurately after checking the whole attack chain — NOT the "one HTTP request"
+framing it was first raised with:**
+
+1. **The caller must be authenticated, and auth is phone + SMS OTP** (no password path). So it is
+   **not anonymous** — the attacker registers a phone-verified account, which costs a working number
+   and is attributable. Low bar, not zero.
+2. **Per victim, it is genuinely one request** — no per-resource check exists. If an id is known or
+   guessed, one call returns that person's identity documents.
+3. **Bulk enumeration is rate-limited.** A global `express-rate-limit` of **30 req/s per IP**
+   (`index.js`) applies. Walking all 6,894 verified users is ~4 minutes of sustained traffic from one
+   IP — detectable and blockable; going faster needs IP rotation.
+
+**So the real shape is TARGETED disclosure, not anonymous instant mass-scrape:** a known/guessed id
+yields that user's ID documents in one attributable, rate-limited request, stopped only by a per-IP
+cap rather than by any check that the caller should see them. The defect is real and the fix stands;
+the severity is lower than first stated, and the rate limiter should have been confirmed before the
+"one request / whole population" framing was used.
+
 ## 2. There is also a SHARING fact nobody has written down
 
 From `gopher-trustshield.html`:
