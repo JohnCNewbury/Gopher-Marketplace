@@ -188,3 +188,66 @@ the cliff**, at ~28 new blocked requesters per week and compounding.
 
 **Mobile work targets `next`, not `production`** (standing rule) — this is a release promotion, so
 route it accordingly and state target branch, squash, and delete-source explicitly on the MR.
+
+
+---
+
+## 8. Rollout — three surfaces, in this order (owner, 2026-08-23)
+
+**Web → app prototypes → live apps.** Deliberate de-risking: the first two need no store release, so
+the change is proven twice before it enters a build that cannot be recalled.
+
+| # | Surface | Owner | Release mechanism |
+|---|---|---|---|
+| 1 | **Web** — `Final/gopher-request.html`, `gopher-connect.html` | **Website Updates** | `scripts/deploy.sh` — minutes |
+| 2 | **App prototype** — `_prototypes/Request/gopher-request-flow.html` | **App Prototypes** | same deploy — minutes |
+| 3 | **Live apps** — §3 above | Matt, via `next` → release | **store release — G40-410** |
+
+### 8.1 ⚠️ On web this REVERSES work deployed 2026-08-22
+
+**D-038 Part 1 — the step-2 identity gate — is superseded by this decision on the web surfaces.**
+That gate was built, deployed (`ab091b9`, `941204a`) and is live on both hosts. It was correct under
+the policy in force at the time: the backend refused these orders and Connect offered no way to
+satisfy it. **The policy changed because the vendor is going away, not because the work was wrong.**
+
+**The removal is now a one-place change, because Phase 3 centralised it.** All three surfaces
+previously carried their own `stepGate()`; Request and Connect now delegate to
+`Final/assets/js/gopher-step-gates.js`, so the `identity` gate is deleted or disabled **once** rather
+than hunted across two 1.3 MB HTML files.
+
+**What to change:**
+1. Remove `'identity'` from `SURFACE_GATES.request` and `SURFACE_GATES.connect` in
+   `gopher-step-gates.js`. The gate definition can stay in the catalogue — unreferenced — so the
+   barcode work can re-enable it later without rebuilding it.
+2. ⛔ **Update `assertInvariants()` in the same edit.** It currently *fails the build* if any surface
+   is missing the `identity` gate — that assertion was added deliberately on 2026-08-22 to stop the
+   gate being dropped by accident. It must now encode the new ruling, or the module reports itself
+   broken.
+3. Update `run_parity_harness.py` — `RULED_GATES` and the `GUARD_TOKENS` identity entry — for the
+   same reason.
+4. Update `test-step-gates.js` — the "all three surfaces carry the RULED identity gate" assertion.
+5. TrustShield discovery moves to the profile area on web too, matching §3.5.
+
+**⚠️ Do NOT also remove the under-21 protection on web.** It is a different mechanism from the app's
+(`can_request_restricted_items`): on web the age-restricted path is reached through the category and
+the `ageRestricted` slider. Removing the *identity* gate must not touch category visibility.
+
+### 8.2 App prototype
+
+`_prototypes/Request/gopher-request-flow.html` carries its own `stepGate()` returning
+`{ok, sel, msg}` and gates on `!idVerifiedNow()`. Remove that one condition. The module already
+models the prototype in `SURFACE_GATES.prototype`; if it adopts the shared module later, the entry
+must match whatever the web surfaces do.
+
+### 8.3 What "done" looks like on web and prototype
+
+Same as §6 acceptance, minus the app-only items: a requester with no TrustShield can complete an
+age-restricted request; nothing demands the badge to proceed; the under-21 path is unchanged; no
+console errors; harness and module tests green **after** their assertions are updated to the new
+ruling rather than silenced.
+
+### 8.4 Sequencing note
+
+**Web and prototype are reversible in minutes; the live app is not.** Anything learned on surfaces 1
+and 2 — especially anything the acceptance criteria missed — should be folded into G40-410 **before**
+the store build is cut, because that is the last point at which it is cheap.
