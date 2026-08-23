@@ -1800,6 +1800,11 @@
   .otp-inputs input:focus { outline:none; border-color:var(--green); }
   .otp-verify-btn { width:100%; padding:13px; border:none; border-radius:11px; background:var(--green); color:var(--ink-on-green); font-family:'Nunito',sans-serif; font-weight:900; font-size:14.5px; cursor:pointer; box-shadow:0 6px 16px rgba(51,217,117,.35); }
   .otp-verify-btn:disabled { opacity:.5; cursor:default; box-shadow:none; }
+  /* Sign-in failures speak here rather than in an alert(), which would close
+     over the code the merchant just typed. Collapses to nothing when empty, so
+     it never pushes the Verify button around on the demo paths. */
+  .otp-err { font-size:12.5px; color:#b3261e; margin:10px 0 0; line-height:1.45; text-align:center; }
+  .otp-err:empty { display:none; }
   .otp-resend { font-size:12.5px; color:var(--muted); margin-top:14px; }
   .otp-resend a { color:var(--green-dark); font-weight:700; text-decoration:none; }
   .portal-demo { font-size:11.5px; color:#9aa1ad; text-align:center; margin-top:16px; }
@@ -5829,6 +5834,10 @@
       <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 5">
       <input type="text" inputmode="numeric" maxlength="1" aria-label="Digit 6">
     </div>
+    <!-- Real sign-in can fail (wrong code, unknown number, network). It needs
+         somewhere to say so INSIDE the modal — an alert() would close over the
+         code the merchant just typed and lose it. Empty and inert otherwise. -->
+    <p class="otp-err" id="otpErr" role="alert" aria-live="polite"></p>
     <button type="button" class="otp-verify-btn" id="otpVerifyBtn" disabled>Verify</button>
     <p class="otp-resend">Didn't get it? <a href="#" id="otpResend">Resend code</a></p>
   </div>
@@ -6650,6 +6659,9 @@
     $('bizPlan').textContent = (role === 'provider' ? 'Service Provider' : 'Merchant') + ' · Active';
     if(opts.biz){ $('bizName').textContent = opts.biz; }
     if(opts.name){ $('greeting').textContent = 'Welcome back, ' + opts.name.split(' ')[0] + ' \uD83D\uDC4B'; }
+    /* Real deals, when this is a real session. No-ops on a demo sign-in, so the
+       showroom content still demonstrates the portal to a prospect. */
+    if(typeof loadMyDeals === 'function') loadMyDeals();
     // Users & access: the signed-in account IS the Owner row (mirrors Connect).
     if(opts.name && typeof USERS !== 'undefined'){
       var ow = USERS.find(function(u){ return u.role === 'owner'; });
@@ -6755,15 +6767,39 @@
   }
   $('signInBtn').addEventListener('click', doSignIn);
 
-  /* --- OTP code modal (any 6 digits in demo) --- */
-  var otpCb = null, otpInputs = $('otpInputs').querySelectorAll('input');
-  function openOtp(target, cb){
+  /* --- OTP code modal ---------------------------------------------------
+     TWO MODES, and the difference is deliberate.
+
+     Demo (default): any 6 digits, no server call. The multi-step SIGNUP steps
+     still use this — they collect details before an account exists, and the
+     real account is created by the registration POST at the end.
+
+     Real (opts.real + opts.telephone): /otp/get sends an actual code and
+     /users/sign_in verifies it, exactly as the logo-edit modal already does in
+     the other script block. This is what the PORTAL SIGN-IN uses, because the
+     dashboard cannot show a merchant their own deals without knowing which
+     merchant is asking — GET /users/deals/mine scopes off the token's own id
+     and nothing else.
+
+     Kept as an opt-in flag rather than switching every call site, so the signup
+     path's behaviour is untouched by a change it does not need. */
+  var otpCb = null, otpOpts = {}, otpInputs = $('otpInputs').querySelectorAll('input');
+  function openOtp(target, cb, opts){
     otpCb = cb;
+    otpOpts = opts || {};
     $('otpTarget').textContent = target || 'your device';
     otpInputs.forEach(function(i){ i.value = ''; });
     $('otpVerifyBtn').disabled = true;
+    $('otpErr').textContent = '';
     $('otpOverlay').hidden = false;
     otpInputs[0].focus();
+    /* Send the real code only in real mode. A demo open must never text
+       anybody: these numbers are typed by whoever is on the page. */
+    if (otpOpts.real && otpOpts.telephone) {
+      apiCall('/otp/get', { body: { telephone: otpOpts.telephone } })
+        .then(function (r) { if (!r.ok) $('otpErr').textContent = apiMessage(r); })
+        .catch(function () { $('otpErr').textContent = 'Could not send the code. Check your connection.'; });
+    }
   }
   function closeOtp(){ $('otpOverlay').hidden = true; }
   $('otpClose').addEventListener('click', closeOtp);
@@ -6778,8 +6814,41 @@
     });
   });
   $('otpVerifyBtn').addEventListener('click', function(){
-    // TODO: validate the code against your backend (e.g. Twilio Verify). Demo accepts any 6 digits.
-    closeOtp(); if(typeof otpCb === 'function') otpCb();
+    var btn = this;
+    var code = Array.prototype.map.call(otpInputs, function(i){ return i.value; }).join('');
+    /* Demo paths (the signup steps) are unchanged: any 6 digits, no server. */
+    if (!otpOpts.real || !otpOpts.telephone) {
+      closeOtp(); if(typeof otpCb === 'function') otpCb();
+      return;
+    }
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    var was = btn.textContent; btn.textContent = 'Verifying…'; btn.disabled = true;
+    $('otpErr').textContent = '';
+    /* apptype 'requester' matches the logo modal and the registration flow —
+       a merchant signs in as a requester-side account, not a worker. */
+    apiCall('/users/sign_in', { body: { telephone: otpOpts.telephone, code: code, apptype: 'requester' } })
+      .then(function (r) {
+        if (!r.ok) { $('otpErr').textContent = apiMessage(r); return; }
+        _authToken = r.token || null;
+        var prof = (r.body && r.body.data) || {};
+        _apiUserId = prof.id || null;
+        /* ⚠️ POST /users/sign_in MINTS an account on an unrecognised number.
+           Desired when a merchant is registering; wrong here — signing IN should
+           not create the very account it failed to find. The placeholder email
+           is the tell (documented on the SP eligibility funnel), so a
+           two-second-old account is refused rather than shown an empty
+           dashboard it will never be able to fill. */
+        if (/@placeholder\.gophergo\.io$/i.test(prof.email || '')) {
+          $('otpErr').textContent = 'We don’t have a merchant account on that number yet. Use “New to Gopher” to register your business first.';
+          _authToken = null; _apiUserId = null;
+          return;
+        }
+        closeOtp();
+        if (typeof otpCb === 'function') otpCb(prof);
+      })
+      .catch(function () { $('otpErr').textContent = 'Could not verify the code. Check your connection and try again.'; })
+      .then(function () { btn.dataset.busy = ''; btn.disabled = false; btn.textContent = was; });
   });
   $('otpResend').addEventListener('click', function(e){ e.preventDefault(); });
 
@@ -6835,8 +6904,18 @@
   });
   $('sgEmail').addEventListener('input', refreshGates);
   $('sgLookupBtn').addEventListener('click', function(){
-    var target = $('sgPhonePane').hidden ? $('sgEmail').value : $('sgPhone').value;
-    openOtp(target, function(){ enterDashboard({}); });
+    var byPhone = !$('sgPhonePane').hidden;
+    var target = byPhone ? $('sgPhone').value : $('sgEmail').value;
+    /* PHONE signs in for real — /otp/get then /users/sign_in — because the
+       dashboard needs a token to ask which merchant this is.
+       EMAIL stays demo: there is no email sign-in endpoint on this API (the
+       email OTP that exists is a VERIFICATION step on an account you are already
+       holding a token for, not a way to obtain one). Rather than fake a token,
+       the email path opens the same demo dashboard it always has. */
+    var tel = byPhone ? (($('sgPhone').value || '').replace(/\D/g, '')) : '';
+    openOtp(target, function(prof){
+      enterDashboard(prof && prof.first_name ? { name: prof.first_name } : {});
+    }, byPhone && tel.length === 10 ? { real: true, telephone: tel } : {});
   });
 
   refreshGates();
@@ -7554,11 +7633,117 @@ var PAY_BADGES = {
      brain (assets/js/gopher-bid-brain.js) \u2014 gopher-go's worker dashboard is
      expected to render from the same module. This block is view-only. */
   var BID_VIEWER = { name:'My Way Tavern', category:'Restaurants & Food Trucks' };
+  /* Showroom content, and ONLY that. Until 2026-08-23 this array and the four
+     hardcoded rows in the My Deals pane were all a signed-in merchant ever saw \u2014
+     "10% off your online order" belongs to nobody, so a real merchant who
+     registered, got approved and signed in was shown three deals that were not
+     theirs and could not find the one that was.
+
+     loadMyDeals() below replaces both from GET /users/deals/mine once a real
+     token exists. This stays as the signed-out / demo view: the page is a public
+     marketing surface as well as a portal, and an empty dashboard behind a demo
+     sign-in shows a prospective merchant nothing about what they would get. */
   var MY_DEALS = [
     { id:'d1', title:'10% off your online order',         category:'Restaurants & Food Trucks', status:'Live' },
     { id:'d2', title:'Free appetizer with 2 entr\u00E9es', category:'Restaurants & Food Trucks', status:'Live' },
     { id:'d3', title:'Happy hour: $2 off all drinks',     category:'Restaurants & Food Trucks', status:'In review' }
   ];
+
+  /* ---- the merchant's REAL deals ---------------------------------------
+     One fetch, two consumers: the My Deals pane (rows) and the bid form
+     (MY_DEALS drives its dropdown, and featuring a deal you do not own would be
+     nonsense). Called from enterDashboard when a token exists.
+
+     Category comes back as the canonical KEY (restaurants \u00B7 favorites \u00B7 age \u00B7
+     retail \u00B7 providers); the bid brain and the bid form both speak DISPLAY
+     labels, so the bridge lives here \u2014 the same shape as the rail bridge in
+     gopher-deals-feed.js, and for the same reason: keys travel over the API,
+     labels never do. */
+  var DEAL_CAT_LABEL = {
+    restaurants: 'Restaurants & Food Trucks',
+    favorites:   'Local Favorites',
+    age:         'Age-Restricted Shops',
+    retail:      'Retail Merchants',
+    providers:   'Service Providers'
+  };
+  var DEAL_STATUS_LABEL = {
+    live: 'Live', pending: 'In review', considered: 'In review',
+    paused: 'Paused', rejected: 'Not approved', expired: 'Expired'
+  };
+  var DEAL_STATUS_BADGE = {
+    live: 'live', pending: 'review', considered: 'review',
+    paused: 'draft', rejected: 'draft', expired: 'draft'
+  };
+
+  function mdEsc(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(m){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];
+    });
+  }
+
+  function renderMyDeals(deals){
+    var host = document.querySelector('[data-pane="mydeals"] .dash-block');
+    if(!host) return;
+    var head = host.querySelector('.dash-block-head');
+    /* Rebuild the rows, keep the header \u2014 the "+ New deal" button in it already
+       has a listener bound and re-creating it would drop that. */
+    Array.prototype.slice.call(host.children).forEach(function(n){
+      if(n !== head) host.removeChild(n);
+    });
+    if(!deals.length){
+      var empty = document.createElement('div');
+      empty.className = 'deal-row';
+      empty.innerHTML = '<div class="deal-meta"><div class="dm-title">No deals yet</div>'
+        + '<div class="dm-sub">Submit your first deal and it will appear here while it is reviewed.</div></div>';
+      host.appendChild(empty);
+      return;
+    }
+    deals.forEach(function(d){
+      var st = String(d.status || '').toLowerCase();
+      var cat = DEAL_CAT_LABEL[d.category] || d.category || '';
+      var row = document.createElement('div');
+      row.className = 'deal-row';
+      /* The logo if there is one, initials if not \u2014 the same fallback the
+         consumer card uses, so a merchant sees here what customers see there. */
+      var logo = d.deal_img
+        ? '<div class="deal-logo" style="background:#fff;padding:0;overflow:hidden">'
+            + '<img src="' + mdEsc(d.deal_img) + '" alt="" style="width:100%;height:100%;object-fit:cover"></div>'
+        : '<div class="deal-logo" style="background:#002461">'
+            + mdEsc((d.title || '?').slice(0,2).toUpperCase()) + '</div>';
+      /* A rejected deal shows WHY. It is the one status a merchant cannot act on
+         without the reason, and it is now returned by the API (2026-08-23). */
+      var sub = st === 'rejected' && d.rejection_reason
+        ? 'Not approved \u2014 ' + mdEsc(d.rejection_reason)
+        : mdEsc([d.deal_code, cat].filter(Boolean).join(' \u00B7 '));
+      row.innerHTML = logo
+        + '<div class="deal-meta"><div class="dm-title">' + mdEsc(d.title || d.deal_text || 'Untitled deal') + '</div>'
+        + '<div class="dm-sub">' + sub + '</div></div>'
+        + '<span class="badge ' + (DEAL_STATUS_BADGE[st] || 'draft') + '">'
+        + (st === 'live' ? '\u25CF ' : '') + mdEsc(DEAL_STATUS_LABEL[st] || d.status || '') + '</span>';
+      host.appendChild(row);
+    });
+  }
+
+  function loadMyDeals(){
+    if(typeof _authToken === 'undefined' || !_authToken) return;   // demo session: showroom stands
+    apiCall('/users/deals/mine', { method: 'GET' }).then(function(r){
+      if(!r.ok) return;   // silent: a failed load must not blank a working page
+      var deals = (r.body && r.body.deals) || [];
+      renderMyDeals(deals);
+      /* Re-point the bid form at real deals. Replace the CONTENTS rather than
+         the binding \u2014 other code holds a reference to this array. */
+      MY_DEALS.length = 0;
+      deals.forEach(function(d){
+        MY_DEALS.push({
+          id: d.deal_code || String(d.id),
+          title: d.title || d.deal_text || 'Untitled deal',
+          category: DEAL_CAT_LABEL[d.category] || d.category || '',
+          status: DEAL_STATUS_LABEL[String(d.status || '').toLowerCase()] || d.status || ''
+        });
+      });
+      if(typeof populateBidDeals === 'function') populateBidDeals();
+    }).catch(function(){ /* keep the showroom */ });
+  }
   function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
   function dealById(id){ for(var i=0;i<MY_DEALS.length;i++){ if(MY_DEALS[i].id===id) return MY_DEALS[i]; } return null; }
 
