@@ -897,6 +897,42 @@ regardless of what the UI renders. Compute `customerPrice` server-side and send 
 
 Also excluded: owner personal info, `reviewedBy`, `rejectionReason`.
 
+> **AMENDMENT 2026-08-24 — the feed carries `provider_tier`, and the source-pin claim above
+> needed correcting.** Owner-directed, after the first real provider deal (DL-0012) went live.
+>
+> **What was wrong.** The consumer card template read `m.tier || 'Gopher Elite'`. The feed had
+> never carried a tier, so that fallback fired on **every** live provider deal: DL-0012 rendered
+> as *Gopher Elite* on both consumer surfaces, a credential nobody verified for that provider.
+> It was invisible until real deals existed, because every demo card sets its own tier. The
+> literal appeared at **five** sites per page, not the two a `deal-tier` search finds — two of
+> them wrote the invented tier into `payload.providerTier` and on into the accepted-provider
+> card, so it outlived the deal card it came from.
+>
+> **What the feed now sends.** `provider_tier` — `'Elite'` / `'Elite+'`, or absent. The pages map
+> it to their display vocabulary (`Gopher Elite+`) in the shared module, and render **no badge**
+> when it is absent. Missing data must look missing.
+>
+> **Resolved LIVE, never from `deals.eligibility_tier`.** The snapshot column exists and would
+> have saved a query, but it is captured at submit and a deal stays live for months — publishing
+> it would advertise Elite+ for someone who has since dropped to Elite. This mirrors the rule
+> already in force for a provider's image (`resolveProviderPics`), where a stored value does not
+> go stale, it 404s. `eligibility_*` stays what it says it is: reviewer-side evidence.
+>
+> **Tier only.** `eligibility_service_jobs` and `eligibility_service_rating` remain private
+> pending an explicit owner ruling — a rating shown to a browsing stranger is an
+> INV-RATING-adjacent decision, not a payload that quietly grows. ⚠️ Note this is also the gap
+> behind the launch-marketing line *"we promote your performance history"*: the feed carries no
+> job count or rating today, so nothing on a card substantiates that promise.
+>
+> **⚠️ The source-pin sentence above ("never touches `users`/`users_roles`") was ALREADY FALSE
+> when it was written into this doc, and the test that "enforced" it could not see the
+> violation.** It grepped only the CONTROLLER file, while `resolveProviderPics` reads `users`,
+> `users_infos` and `images` from a **helper** — invisible to that grep. The tier read would have
+> slipped through the same blind spot. The test now states what the feed actually does and applies
+> the check that carries the risk — **no personal detail in a storefront payload, and the person
+> is looked up by numeric id only** — across the whole helper chain. Do not restore the
+> single-table wording; it describes a feed that no longer exists.
+
 ### 7.3 Reach and ordering
 
 | Track | Reach | Source |
