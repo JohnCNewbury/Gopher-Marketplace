@@ -125,30 +125,69 @@ policy now describes the selfie, the delivery photo, worker visibility, purpose-
 retention principle. ⚠️ A *specific* published destruction schedule and counsel review remain open
 (see §5). Everything below is a detail of this.
 
-**4.2 — Retention period, per stream.** They should differ:
-- **Enrollment images:** the badge is durable, so what is the *image* still for once verified? A
-  recommendation is in §6.
-- **Delivery-time photos:** the ToS ties these to dispute evidence — so the period should be the
-  dispute/chargeback window, not indefinite.
-- **Support-mailbox images:** see 4.5.
+**4.2 — Retention period, per stream.** ⚠️ **STILL OPEN — needs a NUMBER and counsel; the shipped
+policy states a principle only.** As of 2026-08-24 there is **no deletion/expiry job** for any ID
+image (confirmed by the investigations in 4.4/4.6). The concrete streams needing a period:
+- **Enrollment images (mirror):** private + signed, kept **indefinitely**. Once the badge (a boolean)
+  exists, the *image's* only ongoing use is the at-door match display — so the question is whether
+  that justifies indefinite retention or a fixed window.
+- **At-door ID photos (order attachments):** private + signed, kept **indefinitely** — but the ToS
+  ties them to *dispute evidence*, which argues for the dispute/chargeback window, not forever.
+- **Completion photos (non-ID, public):** see 4.6 — a posture to ratify separately.
+- **Support-mailbox images:** ✅ path removed (4.5).
+
+⚠️ **BIPA specifics for the SELFIE (not legal advice — counsel must confirm):** Illinois BIPA §15(a)
+requires a *written, published* retention schedule **and** destruction guidelines, destroying
+biometric data **when the purpose is satisfied or within 3 years of the individual's last
+interaction, whichever comes first.** A principle ("as long as necessary") does not satisfy the
+"published schedule" element — a **specific timeframe** is the requirement. Recommended shape for
+counsel to ratify: *destroy the verification selfie within [N days] of the last transaction, or 3
+years of last interaction, whichever is first*; ID images on the dispute-window clock. **This is the
+one item genuinely blocked on a lawyer** — the rest of the ID track is engineering/decisions the
+owner can make.
 
 **4.3 — Deletion triggers.** What happens to images on account deletion, on TrustShield removal, on
 a worker's device? Today nothing is specified. Note `users.updated_at` is **not** auto-stamped
 (`timestamps:false`), so "last activity" is not a reliable clock for expiry — a retention job needs
 its own timestamp.
 
-**4.4 — Access control.** Who internally can view an ID image, is it logged, and is the S3 mirror
-encrypted and non-public? **Not yet verified by this session** — the TrustShield session built the
-mirror and should confirm bucket policy, encryption at rest, and whether access is audited.
+**4.4 — Access control.** ✅ **INVESTIGATED 2026-08-24 (backend code, `origin/production`).**
+Enrollment images (stream 1) live in `process.env.AWS_BUCKET` under `uploads/trustshield/<scanRef>/`,
+uploaded **`ACL: 'private'`** (`helpers/trustshield_files.js:138`) and served as **signed URLs with a
+3600-second / 1-hour TTL** (`URL_TTL_SECONDS`, via `shared/S3.js` `getSecureUrl`). Caller access is
+now gated by the `!367` authz fix (owner or the assigned Gopher). **So: private, time-limited,
+authorized.** ⚠️ **One gap I could NOT confirm from code:** the upload sets no `ServerSideEncryption`
+param, so **encryption-at-rest depends on the bucket's DEFAULT encryption setting**, which is AWS
+console config, not code. Likewise **S3 Block Public Access** and access **logging/audit** are
+bucket-level settings invisible to the repo. **These three (default SSE, block-public-access,
+access logging) need a console check** — the AWS/TrustShield session or the owner, not something this
+session can verify. Nothing here is public *by code*; whether the bucket enforces it at the platform
+level is the open item.
 
 **4.5 — Stop stream 3.** The support-mailbox path exists to solve one narrow problem (an alias
 account whose name won't match the ID). **Recommendation: remove that instruction and replace it
 with an in-product path.** It is the only stream where identity documents sit in a general-purpose
 mailbox, and it is a copy change plus a small flow — the cheapest risk reduction available here.
 
-**4.6 — Worker-side handling.** Stream 2 produces ID photos on contractor devices. Are they uploaded
-and removed locally, or do they persist in a camera roll? **Unknown — needs checking in the worker
-app**, and it is the stream with the least platform control.
+**4.6 — Worker-side handling.** ✅ **INVESTIGATED 2026-08-24 (worker app + backend,
+`origin/production`).** Better than feared on the device, but it surfaced a separate finding:
+- **NOT persisted on the worker's device.** Capture uses `@capacitor-community/camera-preview` with
+  **no `saveToGallery` / `storeToFile` flag** (`cameraPreviewBox.js`), so the base64 image lives in a
+  Formik field (`id_image`) in memory and never lands in the camera roll. The main worry — IDs
+  accumulating on contractors' phones — **does not happen.**
+- **Uploaded only for NON-TrustShield customers:** `id_image: isNonTrustShield ? … : null`
+  (`ordercard.js:1334`, `RequestDetailPullOver.js:1366`). A TrustShield customer is matched against
+  the mirror instead, so no new photo is taken.
+- **Server-side it IS retained**, as an order attachment: `POST /orders/:id/complete` →
+  `uploads/attachment/file/<id>/…jpg`, **`'private'` + signed read** (`update.js:2146+`, and the
+  line-4642 comment confirms "The A/R identity path uses 'private' and is signed"). So stream 2 is a
+  real retained corpus of government-ID photos — private and signed, but with no deletion policy
+  (feeds 4.2).
+- ⚠️ **ADJACENT FINDING, non-ID but worth the owner knowing:** the *non*-age-restricted **completion
+  photos** (G40-39 proof-of-delivery) upload **PUBLIC with unsigned URLs** — the same
+  `update.js:4642` comment states this deliberately ("Uploaded PUBLIC, matching ratings.js… stated
+  here so it is a choice rather than an accident"). These are delivery/proof photos, **not IDs**, so
+  lower stakes — but "public, unsigned, permanent" is a posture the owner should ratify, not inherit.
 
 ---
 
