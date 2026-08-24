@@ -53,7 +53,35 @@ against `origin/production` after merge.
 
 ---
 
-## The one thing still open, and it is an OWNER decision
+## ⛔ OPEN DECISION FOR THE OWNER — leader election on the money crons
+
+**This is the one item this session leaves undecided. It is not assigned, and nobody should
+build it without the owner's word.** Raised with John 2026-08-24; still open at retirement.
+
+**What it solves.** Every cron double-runs during every rolling deploy (~34 instance streams a
+day). Today's symptom was benign — a duplicate authorisation cancel — but the same shape runs
+on `confirm_auto_payout`, `re_authorize_token` and `process_scheduled_orders`.
+`confirm_order_payout` does guard on `payment_status === PAID`, but that is a read-then-write
+with no lock: the same window. **Stated as a risk to evaluate, NOT a proven defect** — the
+money check below came back negative.
+
+**The risk of doing it.** A lock in the money-cron path is itself a payments change. A stale
+lock or a DB hiccup would stop money crons *silently*, which is strictly worse than
+double-running loudly. **It must fail LOUD** — alarm on "tick skipped, lock held" — before it
+goes anywhere near production.
+
+**The reward.** Closes a whole class of duplicate-work bugs for all ~20 crons at once instead
+of case by case.
+
+**Recommended order (mine, not decided):**
+1. Let the idempotency fix land (John's Tickets, `cronTasks.js`) — it stands on its own merits.
+2. **Stripe idempotency keys** on capture/transfer/payout, keyed on order + operation. Cheaper
+   and narrower than a cron-wide lock, and it defends against duplicate calls from *any* cause
+   — race, retry, or an admin re-push.
+3. Leader election (`pg_try_advisory_lock` around `getTasks` in `middleware/crons.js`, no
+   migration) as the structural fix, designed fail-loud per above.
+
+### Background for that decision
 
 **`Gopher-Prod-PaymentIntentCancelFailed` — benign symptom, real mechanism.**
 
@@ -67,7 +95,9 @@ against `origin/production` after merge.
 - **Money check came back NEGATIVE** — 0 duplicate captures, 25 payouts all unique, ~20M
   records, two sessions using two different methods (mine: CloudWatch Insights). **Limits:
   7-day retention, and this is OUR logging, not Stripe's ledger.** Well-supported, NOT
-  confirmed. Stripe read-only access is still owed to the AWS session.
+  confirmed. *(The Stripe read-only-access question was addressed by the owner on 2026-08-24 —
+  do NOT re-raise it as an open ask; check with the AWS session for the ledger-side result
+  rather than assuming either outcome.)*
 - **In flight (not mine):** John's Tickets is building the idempotency half in `cronTasks.js`,
   keyed on Stripe's error code — treating "already canceled" as success. That fix stands on its
   own: Stripe auto-cancels uncaptured holds at 7 days, so a genuine already-cancelled arrival
@@ -92,8 +122,9 @@ against `origin/production` after merge.
    lesson): (a) a real `moderation: flag email sent` line after `!372` — the AWS session is
    watching; (b) the first accepted-order re-auth roll showing a `Re-authorization` order_log
    **and** a subsequent confirm on the same order (G40-18's first live proof).
-4. **Answer the Stripe-ledger question** so the money-duplication negative can be confirmed
-   rather than well-supported.
+4. **Pick up the Stripe-ledger result from the AWS session** — the access question is settled
+   (owner, 08-24); what is still missing is the ledger-side confirmation that would move the
+   money-duplication negative from *well-supported* to *confirmed*. Do not re-ask for access.
 
 ---
 
