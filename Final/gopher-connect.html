@@ -11904,7 +11904,7 @@ const PAY_BADGES = {
         <div class="worker-avatar">${prov.pic ? `<img src="${_esc(prov.pic)}" alt="" style="${prov.picIsLogo ? 'object-fit:contain;background:#fff;padding:6px;box-sizing:border-box;' : 'object-fit:cover;'}">` : _esc((prov.name || '?').slice(0,1))}</div>
         <div class="worker-info">
           <div class="worker-name-row"><span class="worker-name">${_esc(prov.name)}</span></div>
-          <div class="worker-stats"><span>${_esc(prov.tier)}</span>${prov.role ? `<span>${_esc(prov.role)}</span>` : ''}<span>Accepted your deal</span></div>
+          <div class="worker-stats">${prov.tier ? `<span>${_esc(prov.tier)}</span>` : ''}${prov.role ? `<span>${_esc(prov.role)}</span>` : ''}<span>Accepted your deal</span></div>
         </div>
         <div class="worker-cta-group" style="flex-direction:row;align-items:center;gap:8px;">
           <span class="worker-cta primary" style="cursor:default;">✓ Connected</span>
@@ -13817,7 +13817,7 @@ const PAY_BADGES = {
     state.dealProvider = _isSvcDeal ? {
       name: deal.providerName || deal.merchantName || 'Gopher Pro',
       role: deal.providerRole || '',
-      tier: deal.providerTier || 'Gopher Elite',
+      tier: deal.providerTier || '',
       pic:  deal.providerPic || '',
       picIsLogo: !!deal.providerPicIsLogo
     } : null;
@@ -15167,7 +15167,7 @@ const PAY_BADGES = {
       const search = `${m.name} ${m.pro||''} ${m.offer||''}`.toLowerCase();
       return `<button type="button" class="deal-card deal-card-service" data-merchant="${esc(m.id)}" data-search="${esc(search)}">
         ${pic}
-        <span class="deal-tier">${esc(m.tier||'Gopher Elite')}</span>
+        ${m.tier ? `<span class="deal-tier">${esc(m.tier)}</span>` : ''}
         <div class="deal-pro-name">${esc(m.pro||'')}</div>
         <div class="deal-name">${esc(m.name)}</div>
         ${price}
@@ -15602,7 +15602,18 @@ const PAY_BADGES = {
     document.getElementById('svcDealPic').innerHTML = photo
       ? '<img class="' + (isLogo ? 'svc-pic-logo' : '') + '" src="' + esc(photo) + '" alt="" onerror="this.remove()"><span class="svc-pic-fb">' + esc(dealsInitials(m.name)) + '</span>'
       : '<span class="svc-pic-fb">' + esc(dealsInitials(m.name)) + '</span>';
-    document.getElementById('svcDealTier').textContent = m.tier || 'Gopher Elite';
+    /* NO TIER MEANS NO BADGE. This used to read `m.tier || 'Gopher Elite'`,
+       which was invisible while every card was demo content (demo cards all
+       set a tier) and became a false claim the moment real deals arrived: the
+       publication feed carried no tier, so every approved provider was
+       labelled Gopher Elite whether they were or not.
+       Display is toggled explicitly rather than via the `hidden` attribute —
+       this pill has a navy background and padding, so an emptied-but-present
+       span renders as a small navy blob (the #progressCat bug), and
+       gopher-request.html carries no global [hidden] rule to lean on. */
+    var _tierEl = document.getElementById('svcDealTier');
+    _tierEl.textContent = m.tier || '';
+    _tierEl.style.display = m.tier ? '' : 'none';
     document.getElementById('svcDealText').textContent = m.dealSpecifics
       || (m.offer + (m.normalRate ? ('  (normally $' + m.normalRate + ')') : ''));
     document.getElementById('svcDealOverlay').hidden = false;
@@ -15641,7 +15652,7 @@ const PAY_BADGES = {
             ? '<div class="dd-logo dd-logo-lg dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt=""></div>'
             : '<div class="dd-logo dd-logo-lg" data-cat="localpro">' + dealEsc(dealsInitials(m.name)) + '</div>')
       +   '<h2 class="dd-title">' + dealEsc(m.name) + ' Deal</h2>'
-      +   '<div class="dd-provider"><span class="dd-tier">' + dealEsc(m.tier || 'Gopher Elite') + '</span> ' + dealEsc(m.pro || '') + '</div>'
+      +   '<div class="dd-provider">' + (m.tier ? '<span class="dd-tier">' + dealEsc(m.tier) + '</span> ' : '') + dealEsc(m.pro || '') + '</div>'
       +   (m.price != null ? '<div class="dd-price">$' + dealEsc(m.price) + '<span class="dd-price-lbl"> set price</span></div>' : '')
       +   '<div class="dd-offer-strong">' + dealEsc(m.offer) + '</div>'
       +   (m.testimonial ? '<p class="dd-quote">\u201C' + dealEsc(m.testimonial) + '\u201D</p>' : '')
@@ -16057,7 +16068,10 @@ const PAY_BADGES = {
       // Carry the offering provider so the confirmation can auto-connect them.
       payload.providerName = m.pro || 'Gopher Pro';
       payload.providerRole = m.name || '';
-      payload.providerTier = m.tier || 'Gopher Elite';
+      /* '' , never a default tier. This carried a fabricated 'Gopher Elite'
+         into the request payload and on into the accepted-provider card, so
+         the invented credential outlived the deal card it came from. */
+      payload.providerTier = m.tier || '';
       const _pp = serviceProviderPic(m);
       payload.providerPic = (_pp && _pp.src) || '';
       payload.providerPicIsLogo = !!(_pp && _pp.isLogo);
