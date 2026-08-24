@@ -1900,10 +1900,33 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     surface). Keys are owner-namespaced and ownership is proven from the key shape. Details +
     the four `gopher-deals.html` runtime traps: memories `deals-merchant-logo-pipeline` and
     `gopher-deals-html-traps`.
-  - **⚠️ The merchant portal dashboard is still a DEMO** — `enterDashboard()` unhides a div and
-    `MY_DEALS` is a hardcoded `d1/d2/d3` array. That is why the logo-edit surface is a standalone
-    authenticated modal on real APIs, not a button on that dashboard. Wiring the portal to
-    `GET /users/deals/mine` is the obvious next piece.
+  - **✅ The merchant portal is WIRED TO LIVE DATA — `a2ec9a2`, 2026-08-23.** Real sign-in (phone
+    OTP → `/users/sign_in` → token), then `loadMyDeals()` fetches **`GET /users/deals/mine`** and
+    renders the merchant's own rows: logos, deal codes, statuses, rejection reasons. `MY_DEALS`
+    survives **only as the signed-out showroom**, because this page is a public marketing surface
+    as well as a portal. Live on both hosts (md5 `0067b7c2…` on local HEAD, Pages and TigerTech).
+    ⚠️ **This bullet used to say the dashboard "is still a DEMO" and that wiring it to
+    `GET /users/deals/mine` was "the obvious next piece."** True on 08-22; **wrong from 08-23**,
+    and left standing. On **2026-08-24 it sent a session to propose rebuilding the live feature** —
+    it never opened `loadMyDeals`, because a sentence stating the dashboard was a demo answered
+    the question before it was asked. **That is the cost of a stale claim: not a wrong sentence, a
+    verification that never happens and therefore leaves no trace.** The same wording was standing
+    in **three** places — here, a comment in `gopher-deals.html`, and the memory
+    `deals-merchant-logo-pipeline` — all descended from **one** pre-`a2ec9a2` observation, so their
+    agreement was worth one observation, not three. Fixing two of the three would have re-seeded
+    from the third; this file is the worst place for one to survive, because it loads into **every**
+    session automatically. See memory `agreement-is-not-corroboration`.
+    ⛔ **STILL UNVERIFIED and it needs a real phone: the end-to-end sign-in.** `/otp/get` sends a
+    live SMS, so proving the token path takes a real code on a real handset. Every render branch
+    and the whole demo path are proven. **Failure is silent by design** — no token, a failed fetch
+    and an error all leave the showroom standing — which is exactly why it could stay broken
+    unnoticed. Do not record it as verified until someone actually signs in.
+    **OPEN, owner's call (2026-08-24):** `#modal-logo`'s own trigger — *"when the portal is wired
+    to live data, move this in and delete the entry point"* — has now fired, but that modal is
+    reachable by a merchant who never opens the dashboard ("Already registered?"), so deleting the
+    entry point removes that path. **Owner ruled: leave both doors for now**, precisely because the
+    real sign-in above is unverified — if that path is broken, the standalone modal is the only
+    working way a merchant can change a live logo.
   - **⚠️ A PINNED DEPLOY CAN BE A REVERT.** The rule, in its sharpest form:
     **pinning is safe ONLY when the pin point is at or ahead of what is currently live.**
     Pinning excludes *uncommitted* work only — it does nothing about other sessions' commits, and
