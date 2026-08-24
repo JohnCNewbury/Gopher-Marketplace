@@ -53,10 +53,33 @@ against `origin/production` after merge.
 
 ---
 
-## ⛔ OPEN DECISION FOR THE OWNER — leader election on the money crons
+**⛔ OWNER RULING 2026-08-24 — TICKET IT → filed as `G40-411` (backlog, no sprint).** Recorded as known work, not built now. Do not
+build it unasked, and do not re-raise it as an open decision — it is decided.
 
-**This is the one item this session leaves undecided. It is not assigned, and nobody should
-build it without the owner's word.** Raised with John 2026-08-24; still open at retirement.
+Grounds (established before the ruling — this is a scheduling decision, not a dismissal):
+- The money-duplication check came back clean, and John then confirmed it **at Stripe itself** —
+  "clean and closed." The harm was looked for at the authority and is not there.
+- The one error the race actually produced is **fixed and live**: MR !375 treats Stripe's
+  already-cancelled response as success (merge `91231bcb`, verified on `origin/production`).
+- What remains is a *window*, not an observed defect.
+- A stuck lock would stop the money crons **silently**, which is worse than double-running —
+  a duplicate is visible, a job that quietly never runs is not.
+
+**Why ticket rather than leave:** the urgency is gone but the window is real, and an unticketed
+known-risk quietly disappears from the record. **Per `docs-are-truth-not-tickets`: this memory /
+doc carries the canonical rule; the ticket carries only the repro, the acceptance criteria and
+the assignee, and references the doc. The ticket is meant to die; this text is not.**
+
+**Priority signals:** an actual duplicate capture or payout appearing, or a change to the deploy
+policy / instance count. Either one promotes this from backlog to active.
+
+## ~~OPEN DECISION~~ — leader election on the money crons · **CLOSED 2026-08-24, see the ruling above**
+
+> ⛔ **This header used to read "OPEN DECISION FOR THE OWNER … the one item this session leaves
+> undecided." It is no longer true and is corrected in place** (2026-08-24, successor session).
+> The owner ruled the same day: ticketed as **`G40-411`**, backlog, no sprint. Everything below is
+> kept because it is the *reasoning*, which outlives the decision — but do **not** read it as a
+> live ask. Do not build it unasked; do not re-raise it.
 
 **What it solves.** Every cron double-runs during every rolling deploy (~34 instance streams a
 day). Today's symptom was benign — a duplicate authorisation cancel — but the same shape runs
@@ -94,10 +117,9 @@ of case by case.
   I told the owner "2 in 7 days" and had to correct it to "≥3, structurally undercounted."
 - **Money check came back NEGATIVE** — 0 duplicate captures, 25 payouts all unique, ~20M
   records, two sessions using two different methods (mine: CloudWatch Insights). **Limits:
-  7-day retention, and this is OUR logging, not Stripe's ledger.** Well-supported, NOT
-  confirmed. *(The Stripe read-only-access question was addressed by the owner on 2026-08-24 —
-  do NOT re-raise it as an open ask; check with the AWS session for the ledger-side result
-  rather than assuming either outcome.)*
+  7-day retention, and this is OUR logging, not Stripe's ledger.** ✅ **CLOSED 2026-08-24 — the
+  owner checked Stripe itself: "clean and closed."** The authority has spoken, so this is no
+  longer inherited or log-derived. **Do not re-raise it and do not re-derive it from our logs.**
 - **In flight (not mine):** John's Tickets is building the idempotency half in `cronTasks.js`,
   keyed on Stripe's error code — treating "already canceled" as success. That fix stands on its
   own: Stripe auto-cancels uncaptured holds at 7 days, so a genuine already-cancelled arrival
@@ -111,6 +133,113 @@ of case by case.
 
 ---
 
+## ✅ POSITIVE CONTROLS — collected 2026-08-24 (successor session)
+
+This is item 3 of the list below, worked. **Everything here is first-hand**: CloudWatch Insights
+over `/aws/elasticbeanstalk/Gopher-Production/var/log/web.stdout.log` (7-day retention) and
+read-only SQL against production Aurora via the SSM tunnel. Nothing is inherited.
+
+### Deploy timeline established first (everything else hangs off it)
+
+Version labels carry the merge sha, so `git merge-base --is-ancestor` against the **deployed
+label** settles what was running when — not the MR page, not the label's name.
+
+| deployed (UTC) | version sha | carries `!372` (`201dc69d`) | carries `!333` (`e25f5d7e`) |
+|---|---|---|---|
+| 08-24 13:40 | `1140a9d3` | **NO** | YES |
+| 08-24 14:49 | `9db9e0d1` | **YES** ← flag-email fix goes live | YES |
+| 08-24 18:13 | `d69b89b2` | YES | YES |
+| 08-24 18:43 | `91231bcb` | YES | YES ← current, Ready/Green |
+
+### (a) G40-35 flag email — ❌ NOT YET COLLECTABLE, and now quantified
+
+**No flag event has occurred since the fix went live.** ~7 hours of post-fix uptime at time of
+writing (fix live 14:49 UTC, checked 21:48 UTC), zero flags. **Absence proves nothing** — but the
+wait is now sized rather than guessed:
+
+- **Exactly ONE message-flag event in the whole 7-day window**: order 64688, **08-24 13:56:04 UTC**.
+  That is the base rate. Waiting for the positive control is a **~weekly** proposition, not an
+  hourly one. Anyone "watching for it" should plan accordingly.
+- ⚠️ **That one event FAILED** — `MESSAGE FLAG EMAIL FAILED for order=64688: WHERE parameter "id"
+  has invalid "undefined" value`. **This is NOT a counter-example to the fix.** It ran at 13:56:04
+  on `1140a9d3`, which does not carry `!372`; the fix deployed **53 minutes later**. Checked before
+  concluding, because the alternative reading — "the fix is live and still failing" — would have
+  been the most alarming finding of the session and it is not what happened.
+- **It is, however, a PROBE CONTROL, which is what makes the eventual zero meaningful.** My query
+  demonstrably sees these lines: it returned all three of the event's log lines (`moderation:
+  flagged`, `MESSAGE FLAG EMAIL FAILED`, `moderation: flag notice emitted`). A later "no failures"
+  result therefore means *no failures*, not *a query that cannot see*.
+- It also **re-confirms the diagnosis from production one last time**, and independently confirms
+  the handoff's claim that only the admin@ push was lost: the `flag notice emitted` line succeeded
+  in the same millisecond the email failed.
+
+### (b) G40-18 re-authorization — ⚠️ HALF collected, and the other half may never arrive naturally
+
+**A live post-`!333` re-authorization exists.** Order **64561**, `order_logs` id 301868,
+**08-24 19:14:01 UTC**: *"Payment re-authorized successfully (attempt 1). New auth expires:
+Mon Aug 31 2026 19:14:01"*. Auth created 08-18 19:13:28 → rolled at **6 days + 33 seconds**, new
+expiry exactly 7 days out. Ran on `91231bcb`, which carries `e25f5d7e`.
+
+**But it does NOT close the control as specified, and the reason is structural.** 64561 was
+`aasm_state = pending` — never accepted. `crons.js:879-880` sets `must_confirm` only for
+`accepted` / `in_progress` / `scheduled`, so **the confirm branch was not taken**. Confirmed two
+ways: no `New authorization confirmed` line anywhere in 7 days of logs, and the order's own log
+timeline is just Created → 2× OOA broadcast → the roll. The order was a Need-a-Ride posted 08-18,
+broadcast to 5 people, and never picked up.
+
+⛔ **The specified control may be unobtainable from natural traffic — this is the finding, not an
+excuse.** It requires an order that is **accepted and still un-completed six days later**. Current
+production state:
+
+- **Zero** `accepted`/`in_progress` orders hold an `authorized` payment. Not "none found" — the
+  probe was proven: the same query returns the full state×payment_status grid for the last 30 days
+  (476 cancelled/refunded, 408 expired/cancelled, 229 delivered/paid, 6 pending/authorized,
+  3 scheduled/authorized, 1 picked_up/authorized).
+- Rolls themselves are not rare — **53 successful rolls across 42 orders since 2026-01-19**, ~7–8 a
+  month. It is the *accepted-state* subset that does not occur.
+- ⚠️ The three orders that will roll next are all `scheduled` (64672 ~08-27 15:19 UTC, 64688 ~08-28
+  01:52 UTC, 64772 ~08-30 14:43 UTC). **`scheduled` proves nothing here** — it is the one state
+  that confirmed correctly *before* `!333` too. Do not accept a scheduled roll as the proof.
+
+**Recommendation:** stop waiting for this one. The accepted-order confirm path should be proven on
+**stage** with a deliberately-aged accepted order, not by watching production. Flagging rather than
+building it — that is a payments-path exercise and needs the owner's word.
+
+### 🎁 A different live control DID land — and it is a clean before/after across the deploy boundary
+
+`!333` fixed four defects; one of them — *"successful rolls burned the 3-retry budget"* — is
+**visible in production data as a before/after contrast**, which is stronger than any single
+observation:
+
+| | orders | `payment_auth_retry_count` after a SUCCESSFUL roll |
+|---|---|---|
+| **pre-`!333`** | 13 | **1** (and `2` for order 63593, which rolled twice) |
+| **post-`!333`** | 1 (order 64561) | **0** |
+
+**The obvious confound was checked and ruled out:** a `retries=1` could have come from a *failed*
+attempt rather than the successful roll incrementing it. It did not — **zero** `Re-authorization
+failed%` log rows exist on any of those 14 orders. The counter was being burned by success, exactly
+as `!333` said, and it no longer is.
+
+⚠️ **n=1 on the post-fix side.** Say it that way. The pre-fix side is n=13 with no counter-examples,
+so the mechanism is well-established, but one post-fix observation is one observation.
+
+### Clean negatives (7-day window, probe proven above)
+
+**Zero** occurrences of `PAYOUT BLOCKED`, `AUTH CANCELED ON LIVE ORDER`, or `could not release
+stray hold` — the three markers `!333` flagged as its harm signals.
+
+### Trap this cost me
+
+⚠️ **`RUNBOOK-production-db-readonly.md` names a dead jump host.** `i-070ac0a1c168013fc` returns
+`TargetNotConnected` — **EB replaces its instances on every deploy**, so any hard-coded instance id
+in that runbook is stale the moment the next deploy lands. Find the current one with
+`aws ssm describe-instance-information`, then **confirm which environment it belongs to** before
+tunnelling — one of the two Online instances is `Gopher-Stage`, and it would have answered happily.
+The runbook has been left alone (not my file); this is the correction.
+
+---
+
 ## What I would do next, in order
 
 1. **Nothing is time-critical.** Every fix is merged and every backend piece is live.
@@ -118,17 +247,26 @@ of case by case.
    wait on it: no-show (`!239`/`!228`/`!230`), G40-363 (`!232`/`!242`), G40-402 (`!233`),
    G40-39 (`!243`/`!234`), G40-331 (`!245`). Device-QA checklist:
    `docs/handoff/G40-39-completion-flow.md`.
-3. **Collect two positive controls** (absence proves nothing — this is the session's recurring
-   lesson): (a) a real `moderation: flag email sent` line after `!372` — the AWS session is
-   watching; (b) the first accepted-order re-auth roll showing a `Re-authorization` order_log
-   **and** a subsequent confirm on the same order (G40-18's first live proof).
-4. **Pick up the Stripe-ledger result from the AWS session** — the access question is settled
-   (owner, 08-24); what is still missing is the ledger-side confirmation that would move the
-   money-duplication negative from *well-supported* to *confirmed*. Do not re-ask for access.
+3. ~~Collect two positive controls~~ — **WORKED 2026-08-24, see the section above.** Outcome in
+   one line each: **(a)** still uncollected, but now *sized* — one flag event per ~7 days, so the
+   watch is weekly not hourly, and the probe is proven so a future zero will mean something;
+   **(b)** half collected — a live post-`!333` roll exists (order 64561), but on a `pending`
+   order, so the accepted-order confirm branch is still unproven and **probably cannot be proven
+   from natural traffic**. A *different* control landed instead: a clean pre/post contrast showing
+   successful rolls no longer burn the retry budget.
+4. ~~Pick up the Stripe-ledger result~~ — **CLOSED (owner, 08-24): checked at Stripe itself,
+   "clean and closed."** Do not re-raise it and do not re-derive it from our logs.
+5. **The one live thing left, and it needs the owner's word:** prove G40-18's accepted-order
+   confirm on **stage** with a deliberately-aged accepted order. Flagged, not built — it is a
+   payments-path exercise. Everything else in this lane is either merged-and-live or store-gated.
 
 ---
 
 ## Traps that cost me time (all first-hand)
+
+> *(Successor, 2026-08-24: two more are recorded above rather than here, to keep authorship
+> clear — a **dead jump-host id in the DB runbook**, and a **memory file filed under a
+> different name than the handoff gave it**. Both are instances of trap 2 below.)*
 
 1. **A test that mocks its own subject proves only the stub.** Twice now: G40-18's 41 anchored
    checks passed with the wrong field name baked in, and G40-35's 332-line suite passed through
@@ -154,12 +292,20 @@ of case by case.
 
 ---
 
-## MEMORY.md lines owed (NOT appended — file is over its limit and 12 sessions are retiring)
+## ~~MEMORY.md lines owed~~ — **NOTHING IS OWED. Verified 2026-08-24, not assumed.**
 
-```
-- [⛔ Mocking the subject proves nothing](mocking-the-subject-proves-nothing.md) — 2 prod defects past green suites; drive real code with every caller's shape
-- [⛔ Prod crons double-run every deploy](prod-crons-double-run-on-every-deploy.md) — START_CRONS is env-level + rolling adds an instance; 34 streams/24h; the alarm undercounts
-```
-Both memory files are written; only the index lines are owed.
-*(Note: `mocking-the-subject-proves-nothing`'s index line was appended earlier today, before
-the no-append instruction — verify it is still present rather than assuming.)*
+The retiring session recorded two index lines as outstanding. **Both are already present**, so
+appending them would have duplicated entries in a file that is already over its limit (207 lines
+vs a 200 limit):
+
+- `mocking-the-subject-proves-nothing` — present, **MEMORY.md:63**. (The handoff asked for this one
+  to be verified rather than assumed. Verified.)
+- The cron double-run memory — present, **MEMORY.md:185**, but filed as
+  **`cron-double-run-on-every-deploy.md`**, *not* the `prod-crons-double-run-on-every-deploy.md`
+  the handoff named. Searching for the handoff's filename returns nothing and reads as "missing".
+  ⚠️ **A file that is not at the name you were given is not an absent file** — same family as the
+  probe traps above. Check by content before writing a second copy.
+
+Both memory files are also **already current** on the two items that went stale after the handoff
+was written: the cron memory carries the `G40-411` ruling and the "clean and closed" Stripe
+confirmation. No edit needed.
