@@ -65,7 +65,8 @@ main already matches Final/`.**
 
 - My last three ID commits (`9d35ba0`, `54a357a`, `3fa276a`) were shipped in deploy
   `196bc40` by **App / Web Sync**, on John's "ship all of it". I had been holding them for
-  John's local test per his 2026-08-23 rule. See "Open question" below.
+  John's local test per his 2026-08-23 rule. Both were correct — see the RESOLVED
+  ruling below; his "ship all of it" was a per-deploy override, not a lapsed gate.
 
 ### In flight / not mine
 
@@ -96,13 +97,12 @@ main already matches Final/`.**
 
 ## What I'd do next, in order
 
-1. **Ask John the open question below** before any further ID work.
-2. **Port the 3-step live capture to `gopher-go.html` / `gopher-deals.html`** if those
+1. **Port the 3-step live capture to `gopher-go.html` / `gopher-deals.html`** if those
    surfaces capture ID at all — check first; do not assume they do.
-3. **Watch the two-session overlap** on `gopher-request.html` / `gopher-connect.html`
+2. **Watch the two-session overlap** on `gopher-request.html` / `gopher-connect.html`
    (App / Web Sync is in them). Claim files in
    `Dev/gopher-dev-handoff/WORK-REGISTRY.md` before starting.
-4. Revisit `docs/handoff/refer-parity/run_refer_copy_coverage_test.py` if refer cards change.
+3. Revisit `docs/handoff/refer-parity/run_refer_copy_coverage_test.py` if refer cards change.
 
 ---
 
