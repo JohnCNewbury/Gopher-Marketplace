@@ -1,5 +1,53 @@
 # G40-35 — In-app message guard
 
+> ## ⚠️ DEFECT + FIX 2026-08-24 — the flag email failed 100% of the time for a week
+>
+> The alert email added by `94b899d3` (the notification half, MR !318) **never worked once in
+> production.** `helpers/fraud_alert.js buildAlertEmailData` fetches the order row and then
+> resolved the two parties from its **ARGUMENT** instead of that row:
+>
+> ```js
+> const get_order = await db.orders.findOne({ where: { id: order.id } });  // fetched
+> db.users.findOne({ where: { id: order.gopher_id } })     // <- ARGUMENT
+> db.users.findOne({ where: { id: order.requestor_id } })  // <- ARGUMENT
+> ```
+>
+> Two callers, two shapes. `triggerFraudAlert` passes a whole order, so the **fraud** path
+> worked by accident. `helpers/message_guard.js:106` passes `{ id: order_id }`, so both ids
+> were `undefined` and Sequelize refused outright — *WHERE parameter "id" has invalid
+> "undefined" value*. Alarm `Gopher-Prod-MessageFlagEmailFailed`; **1 attempt / 1 failure /
+> 0 successes across the full 7-day retention.** The healthy fraud path is exactly why it was
+> invisible. Found from production by the AWS session, confirmed at source here.
+>
+> **Fixed in `gopher-backend-api!372` (merge `201dc69d`)** — the ids now come off `get_order`,
+> the row already fetched and previously used only for a null check. That makes the helper
+> correct for **any** caller that can name an order (its export's actual contract) rather than
+> patching `message_guard` and leaving the trap armed for the next caller.
+>
+> **Blast radius was narrow, verified not assumed** (7-day marker totals): `NoticeFailed` 0,
+> `GuardFailed` 0, `CorpusUnreadable` 0 — both parties still received the in-app notice and the
+> `orders_faqs_flags` row was still written, so every flag stayed visible in the admin panel.
+> Only the proactive push to admin@ was lost.
+>
+> ### ⛔ The lesson that outlives this: the 332-line suite passed the whole time
+> `test/g40-35-flag-email.test.js:73` **mocks `buildAlertEmailData`** — the function that was
+> broken. It proved the wiring (mail sent, right type, null-order short-circuit) and never
+> executed the helper, so it never saw an `{id}`-only argument reach a query. **A test that
+> stubs its own subject can only confirm the stub.** Same family as the `amount_received`
+> incident (order #64627): mocked and anchored tests verify shape, not truth.
+> New **`test/g40-35-build-alert-email-data.test.js`** drives the REAL helper with BOTH caller
+> shapes and fails if any `undefined` id reaches a lookup — 7 checks, 4 proven failures against
+> the unfixed helper, fraud path asserted unchanged in the same run.
+>
+> ### ⚠️ Trap for anyone writing a test in this dependency chain
+> `helpers/fraud_alert.js` requires `lib/sendEmail`, `lib/sendSms` and (transitively)
+> `lib/payment.stripe` at **top level**, and each constructs its vendor client at require time.
+> Miss any dummy credential (`SENDGRID_API_KEY`, `TWILIO_ACCNT_SID` + `TWILIO_AUTH_TOKEN`,
+> `STRIPE_API_KEY`) and **winston's exception handler swallows the reason and exits 1** — the
+> test file prints *nothing at all*. Unmask it with a `process.on('uncaughtException')` probe;
+> don't chase the silence.
+
+
 > **STATUS 2026-08-12 — PHASE 1 LIVE ON PRODUCTION.** Detection and flagging only; no
 > user-visible change. Phase 2 (the warning the user can act on) needs a mobile release.
 > **Not Done** — the ticket stays open until phase 2 ships.
