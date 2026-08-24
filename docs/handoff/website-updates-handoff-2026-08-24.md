@@ -137,14 +137,25 @@ main already matches Final/`.**
 
 ---
 
-## Open question for John (asked in-session 2026-08-24)
+## ✅ RESOLVED — owner ruling 2026-08-24 (was an open question; do NOT re-raise)
 
-**Did "ship all of it" include work you hadn't locally tested yet?** On 2026-08-23 he
-ruled: *"Before we push anything to tiger or github, i want to test this on the local
-drive"* (memory `local-test-before-deploy`), and I held the ID work all morning on that
-basis. App / Web Sync then deployed those three commits on his go. Both can be true — but
-the next session needs to know whether the local-test gate still stands. **Treat it as
-standing until John says otherwise.**
+**The local-test gate STANDS.** Asked directly after App / Web Sync shipped three commits
+I was deliberately holding for it. John's ruling:
+
+> The gate stands. An explicit per-instance **"ship it" from him overrides it for THAT
+> deploy only** — it is not a standing suspension. The next deploy returns to the gate.
+
+- **Default:** stand up a local serve, give John the URL, wait for his go-ahead, *then*
+  `scripts/deploy.sh --push`.
+- **⛔ Do not read a past "ship all of it" as evidence the gate lapsed.** That exact
+  misreading was anticipated and ruled against — and the 2026-08-24 deploy sitting in the
+  log is precisely the artefact that invites it.
+- **Both of 2026-08-24's events were legitimate at once:** holding the ID work for the
+  local test was right, *and* shipping it on his explicit word was right. Neither
+  invalidates the other.
+
+Written into memory `local-test-before-deploy` by the session-rotation session, so it
+reaches successors that never read this file.
 
 ---
 
