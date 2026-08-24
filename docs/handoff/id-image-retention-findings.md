@@ -91,11 +91,25 @@ rendered text:
 Its "Personal Data" list is: contact information, usage data, cookies, shared content (*"reviews and
 ratings… or photos you upload"*), payment information, and communications.
 
-**So the policy:**
-1. **Does not disclose that we collect government ID images or selfies at all.**
-2. **Has no retention section** — no statement of how long anything is kept.
-3. **Does not disclose that workers see a requester's ID.**
-4. Predates TrustShield.
+**So the policy (as it stood before the 2026-08-24 update):**
+1. ⚠️ **CORRECTION — it DID disclose ID collection, worded differently than I searched for.**
+   The keyword counts above are a false negative: the bullet *"Identification Documentation and
+   Signature for Age-Restricted Products… driver's license or other government-issued
+   identification"* was present. My grep for `identity document` / `selfie` / `biometric` missed
+   *"Identification Documentation"* / *"driver's license"*. The **selfie specifically** was not
+   named, and biometric framing was absent — but "collects government ID: not disclosed at all"
+   was wrong. Same negative-grep trap flagged elsewhere in this session.
+2. **Had no retention section** — no statement of how long anything is kept. (True.)
+3. **Did not disclose that workers see a requester's ID.** (True.)
+4. Predated TrustShield by name. (True.)
+
+✅ **Addressed 2026-08-24** in `Final/gopher-privacy.html` (committed, **not yet deployed** — holds
+to ride with the `!367` merge): §2 now names the selfie, its voluntary and purpose-limited nature
+(no marketing/profiling/sale), and the delivery-time photo; §5 gains an *"Identity Confirmation at
+Delivery"* subsection disclosing worker visibility; §6 renamed *"Security and Retention"* with a
+retention subsection. ⚠️ **Still owed:** a *specific published destruction schedule* (BIPA wants a
+number, not a principle) and counsel review of the biometric + retention language — the update
+improves disclosure, it does not by itself make us BIPA-compliant.
 
 ⚠️ **This is why retention could not be answered as asked.** A retention period is a promise about
 data the policy does not admit to collecting. **The disclosure gap is the prior problem**, and it
@@ -106,9 +120,10 @@ to point at a vendor.
 
 ## 4. Open decisions
 
-**4.1 — Disclosure (do this first, it gates the rest).** Update the privacy policy to describe what
-is collected (ID front/back, selfie, delivery-time ID photo), why, **who sees it including workers**,
-and how long it is kept. Everything below is a detail of this.
+**4.1 — Disclosure.** ✅ **DONE 2026-08-24** (committed, not deployed; rides with `!367`). Privacy
+policy now describes the selfie, the delivery photo, worker visibility, purpose-limitation, and a
+retention principle. ⚠️ A *specific* published destruction schedule and counsel review remain open
+(see §5). Everything below is a detail of this.
 
 **4.2 — Retention period, per stream.** They should differ:
 - **Enrollment images:** the badge is durable, so what is the *image* still for once verified? A
