@@ -3791,6 +3791,12 @@
     font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
     color:var(--muted); max-width:140px; margin:0 auto;
   }
+  /* Inline "add TrustShield" inside the note. A <button> is used rather than an <a>
+     because it opens a modal — but it must READ as a link, or the note grows a second
+     competing control next to the primary Submit action. */
+  .ar-linkbtn { background:none; border:none; padding:0; font:inherit; color:var(--green-dark);
+                font-weight:800; text-decoration:underline; cursor:pointer; }
+  .ar-linkbtn:hover { color:var(--navy); }
   /* Verified seal + "ID submitted" share the column badge look */
   .ar-ts-badge { flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
     gap:3px; text-align:center; padding-left:10px; border-left:1px solid rgba(1,36,98,0.10); }
@@ -12768,9 +12774,23 @@
     }
     const age = customerAgeYears();
     if(age == null || age < 30){
+      /* ⛔ REWRITTEN 2026-08-23/24 (owner). Under-30 used to be offered TrustShield and
+         NOTHING ELSE, with the note "Required for under-30 age-restricted orders". Both
+         halves died with the gate removal:
+           • "Required" is false — TrustShield is voluntary now (a badge and the $1 perk).
+           • TrustShield-only was a dead end waiting to happen. It is being retired
+             because iDenfy is going away, so when enrollment stops this group would have
+             had NO way to pre-submit ID at all, while 30+ kept a working one. The
+             youngest requesters — 76.7% of new enrollments are 21-29 — would have been
+             the only ones without a path.
+         They now get the SAME submission path as everyone else, with TrustShield offered
+         beside it as the optional upgrade it now is. */
+      const sub = state.idVerification.submittedAt || (window.__idOnFile && window.__idOnFile());
       return '<div class="ar-control">'
-           + '<button type="button" class="ar-action ar-get-ts" data-open-trustshield>Get TrustShield™</button>'
-           + '<div class="ar-action-note">Required for under-30 age-restricted orders</div>'
+           + (sub
+               ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
+               : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
+           + '<div class="ar-action-note">Or <button type="button" class="ar-linkbtn" data-open-trustshield>add TrustShield™</button> — optional, saves $1 and verifies you once for every future order.</div>'
            + '</div>';
     }
     const onFile = window.__idOnFile && window.__idOnFile();
@@ -12893,6 +12913,7 @@
       paintThumb('selfie'); syncButtons();
     }
 
+    let _idSubOnDone = null;
     function resetCaptures(){
       state.idVerification.idFrontCaptured = false;
       state.idVerification.idBackCaptured  = false;
@@ -13116,6 +13137,9 @@
            so a submission without it is unverifiable later. */
         if(!(v.idFrontCaptured && v.idBackCaptured && v.selfieCaptured)) return;
         v.submittedAt = Date.now();
+        /* TrustShield enrolment reuses this capture; its grant runs here. */
+        const done = _idSubOnDone; _idSubOnDone = null;
+        if(typeof done === 'function') { try { done(); } catch(_){} }
         const save = document.getElementById('idSubSaveOnFile');
         if(save && save.checked){
           v.savedOnFile = true;
@@ -13128,15 +13152,29 @@
     }
 
     // opts.update === true → re-run the full flow (fresh front + fresh selfie).
+    /* opts.trustShield → the SAME capture, framed as enrolment, calling opts.onDone on
+       submit. Added 2026-08-24 so TrustShield stops carrying its own second ID-capture
+       UI: two components collecting the same three artefacts drifted apart within a day
+       (the owner tested under-30, got the old file-picker flow, and none of the live/
+       3-shot/aligned rules applied to it). One capture, one set of rules. */
     window.__openIdSubmitModal = async function(opts){
       wire();
       const overlay = document.getElementById('idSubmitOverlay');
       if(!overlay) return;
       const isUpdate = !!(opts && opts.update);
+      const isTS     = !!(opts && opts.trustShield);
+      _idSubOnDone   = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
       stopCam();
       resetCaptures();              // fresh session — ID + selfie always recaptured
       const title = document.getElementById('idSubmitTitle');
-      if(title) title.textContent = isUpdate ? 'Update Identification' : 'Submit identification';
+      if(title) title.textContent = isTS ? 'Add TrustShield™'
+                                 : isUpdate ? 'Update Identification' : 'Submit identification';
+      const sub = document.getElementById('idSubmitSub');
+      if(sub) sub.textContent = isTS
+        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides.'
+        : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
+      const submitBtn = document.getElementById('idSubSubmit');
+      if(submitBtn) submitBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
       const save = document.getElementById('idSubSaveOnFile');
       if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
@@ -13164,7 +13202,15 @@
       // Connect). Run the two-step ID + selfie enroll flow, then flip the flag
       // and repaint. The old app-funnel modal is kept ONLY as a fallback for
       // when the web flow isn't available (decision C).
-      if(typeof window.__openIdVerifyFlow === 'function'){
+      /* Was __openIdVerifyFlow (its own 2-step, upload-based modal). Now the shared
+         live 3-step capture — see the note on __openIdSubmitModal. __openIdVerifyFlow
+         is left in place as the fallback below and for the D-029 quick-signup path. */
+      if(typeof window.__openIdSubmitModal === 'function'){
+        window.__openIdSubmitModal({ trustShield: true, onDone: () => {
+          if(window.__setTrustShield) window.__setTrustShield(true);
+          try { if(typeof render === 'function') render(); } catch(_){}
+        }});
+      } else if(typeof window.__openIdVerifyFlow === 'function'){
         window.__openIdVerifyFlow('enroll', () => {
           if(window.__setTrustShield) window.__setTrustShield(true);
           // Repaint the current request step so the AR-banner "Get TrustShield"
@@ -18687,7 +18733,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
     return ov;
   }
+  /* ⛔ DELEGATES to the shared live capture (2026-08-24), so EVERY entry point gets
+     it — including the D-029 age-restricted quick-signup, which would otherwise still
+     open the old 2-step upload modal. Original panes kept as the fallback. */
   function openIdVerifyFlow(mode, onDone){
+    if(typeof window.__openIdSubmitModal === 'function'){
+      window.__openIdSubmitModal({ trustShield: mode === 'enroll', onDone: onDone });
+      return;
+    }
+    return _legacyIdVerifyFlow(mode, onDone);
+  }
+  function _legacyIdVerifyFlow(mode, onDone){
     const ov = ensureIdVerifyModal();
     _idvOnDone = onDone || null;
     ov.querySelector('#idvPane1').hidden = false;
