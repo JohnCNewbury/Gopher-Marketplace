@@ -2643,12 +2643,27 @@
   .idsub-done-msg { text-align:center; padding:6px 0 2px; }
   .idsub-done-msg .idsub-done-ico { font-size:40px; }
   /* Live camera view */
-  .idsub-camwrap {
+  .idsub-camwrap { position:relative;
     margin-top:6px; border-radius:14px; overflow:hidden; background:#0d1530;
     aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
   }
   #idSubCamVideo { width:100%; height:100%; object-fit:cover; display:block; background:#0d1530; }
-  #idSubCamVideo.mirror { transform:scaleX(-1); }   /* selfie preview reads naturally */
+  #idSubCamVideo.mirror { transform:scaleX(-1); }
+  /* Capture alignment guide — see gopher-request.html for the full rationale. */
+  .idsub-guide { position:absolute; inset:0; pointer-events:none; display:flex;
+                 align-items:center; justify-content:center; }
+  .idsub-guide-win { position:relative; width:86%; aspect-ratio:1.586 / 1;
+                     border-radius:12px; box-shadow:0 0 0 9999px rgba(6,14,38,0.55); }
+  .idsub-guide-win span { position:absolute; width:26px; height:26px; border:3px solid #33D975; }
+  .idsub-guide-win span:nth-child(1){ top:-2px;  left:-2px;  border-right:none; border-bottom:none; border-radius:12px 0 0 0; }
+  .idsub-guide-win span:nth-child(2){ top:-2px;  right:-2px; border-left:none;  border-bottom:none; border-radius:0 12px 0 0; }
+  .idsub-guide-win span:nth-child(3){ bottom:-2px; left:-2px;  border-right:none; border-top:none; border-radius:0 0 0 12px; }
+  .idsub-guide-win span:nth-child(4){ bottom:-2px; right:-2px; border-left:none;  border-top:none; border-radius:0 0 12px 0; }
+  .idsub-guide.face .idsub-guide-win { width:62%; aspect-ratio:0.78 / 1; border-radius:50%; }
+  .idsub-guide.face .idsub-guide-win span { display:none; }
+  .ar-linkbtn { background:none; border:none; padding:0; font:inherit; color:var(--green-dark);
+                font-weight:800; text-decoration:underline; cursor:pointer; }
+  .ar-linkbtn:hover { color:var(--navy); }   /* selfie preview reads naturally */
   .idsub-camerr {
     margin-top:10px; padding:9px 11px; border-radius:9px;
     background:rgba(225,72,72,0.08); border:1px solid rgba(225,72,72,0.28);
@@ -8148,8 +8163,9 @@
     <p class="gc-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. You'll still show a physical ID in person at hand-off.</p>
 
     <div class="idsub-steps" id="idSubChips">
-      <div class="idsub-stepchip" id="idSubChipA">1 · Front of ID</div>
-      <div class="idsub-stepchip" id="idSubChipB">2 · Selfie</div>
+      <div class="idsub-stepchip" id="idSubChipA">1 · Front</div>
+      <div class="idsub-stepchip" id="idSubChipBk">2 · Back</div>
+      <div class="idsub-stepchip" id="idSubChipB">3 · Selfie</div>
     </div>
 
     <!-- Checking camera (brief) -->
@@ -8163,24 +8179,46 @@
     <!-- Step A — Front of ID (live photo OR upload) -->
     <div class="idsub-step" id="idSubStepA">
       <h5>Front of your ID</h5>
-      <div class="idsub-hint">Take a photo of the front of a valid government ID, or upload one.</div>
+      <!-- LIVE ONLY + 3 shots (owner, 2026-08-23/24) — ported from gopher-request.html.
+           An uploaded ID is a photo of a photo; TrustShield's premise was live capture,
+           so uploads made the non-TrustShield path quietly weaker. No camera = app
+           handoff, since upload was the old fallback and no longer exists. -->
+      <div class="idsub-hint">Take a live photo of the front of a valid government ID. Uploads aren't accepted — the photo has to be taken here.</div>
       <div class="idsub-captures">
         <button type="button" class="idsub-cap" id="idSubFrontTake">
           <span class="idsub-cap-ico">📷</span>Take photo
         </button>
-        <label class="idsub-cap">
-          <span class="idsub-cap-ico">⬆️</span>Upload
-          <input type="file" accept="image/*" id="idSubFrontUpload">
-        </label>
       </div>
       <div class="idsub-camerr" id="idSubFrontErr" hidden></div>
       <div class="idsub-thumb" id="idSubFrontThumb" hidden>
         <img id="idSubFrontImg" src="" alt="Front of ID preview">
-        <span class="idsub-thumb-meta"><b>ID front captured</b><br>Looks good? Continue to the selfie.</span>
+        <span class="idsub-thumb-meta"><b>ID front captured</b><br>Looks good? Continue to the back.</span>
         <button type="button" class="idsub-retake" id="idSubFrontRetake">Retake</button>
       </div>
       <div class="idsub-actions">
         <button type="button" class="gc-modal-btn" id="idSubContinue" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step Bk — BACK of ID. The barcode is what an age scanner reads, so a
+         submission without it cannot be verified later. -->
+    <div class="idsub-step" id="idSubStepBack">
+      <h5>Back of your ID</h5>
+      <div class="idsub-hint">Now the back, taken live as well. The barcode there is what lets us confirm the date of birth on the ID.</div>
+      <div class="idsub-captures">
+        <button type="button" class="idsub-cap" id="idSubBackTake">
+          <span class="idsub-cap-ico">📷</span>Take photo
+        </button>
+      </div>
+      <div class="idsub-camerr" id="idSubBackErr" hidden></div>
+      <div class="idsub-thumb" id="idSubBackThumb" hidden>
+        <img id="idSubBackImg" src="" alt="Back of ID preview">
+        <span class="idsub-thumb-meta"><b>ID back captured</b><br>Looks good? Continue to the selfie.</span>
+        <button type="button" class="idsub-retake" id="idSubBackRetake">Retake</button>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gc-modal-btn" id="idSubBackContinue" disabled>Continue</button>
+        <button type="button" class="gc-modal-btn idsub-btn-secondary" id="idSubBackBack">Back</button>
       </div>
     </div>
 
@@ -8216,6 +8254,12 @@
       <div class="idsub-hint" id="idSubCamHint">Position yourself in the frame, then capture.</div>
       <div class="idsub-camwrap">
         <video id="idSubCamVideo" autoplay playsinline muted></video>
+        <!-- ID-1 proportion (85.6 x 54 mm = 1.586:1) so the SHAPE tells the user to hold
+             the licence horizontally; oval for the selfie. pointer-events:none or it
+             swallows taps meant for Capture. -->
+        <div class="idsub-guide" id="idSubGuide" aria-hidden="true">
+          <div class="idsub-guide-win"><span></span><span></span><span></span><span></span></div>
+        </div>
       </div>
       <canvas id="idSubCamCanvas" hidden></canvas>
       <div class="idsub-actions">
@@ -10863,7 +10907,7 @@ const PAY_BADGES = {
               <button class="info-btn" aria-label="Age-restricted waiver info">?</button>
               <div class="info-popover" role="tooltip">
                 <h5>Age-restricted waiver</h5>
-                <p>By submitting, you agree that you are at least 21 years old with a valid government-issued ID to present to the Gopher who delivers your order.</p>
+                <p>By submitting, you agree that you are at least 21 years old with a valid government-issued ID to present to the Gopher who delivers your order. If your request involves age-restricted delivery, you consent to Gopher's collection and use of your identity-verification images and any Gopher TrustShield selfie to confirm your identity and legal age, as described in our Terms of Service and Privacy Policy — the selfie may be biometric information under laws such as BIPA, we use it only for that purpose, we never sell it, and we destroy it on the schedule published in those documents.</p>
                 <p>If you are not able to provide a valid ID during delivery, you will still be responsible for the cost of the items and the offer made to your Gopher. Please do not submit the request if you're unable to provide the required identification.</p>
                 <p class="emphasis">Age-Restricted Delivery requests ALWAYS require ID to be shown IN-PERSON during drop-off.</p>
               </div>
@@ -12669,9 +12713,16 @@ const PAY_BADGES = {
     }
     const age = customerAgeYears();
     if(age == null || age < 30){
+      /* ⛔ REWRITTEN 2026-08-24 (owner) — ported from gopher-request.html. Under-30 was
+         offered TrustShield and nothing else, labelled "Required". Both halves died with
+         the gate removal: it is voluntary now, and TrustShield-only becomes a dead end
+         when iDenfy retires. They get the same submission path as everyone else. */
+      const sub = state.idVerification.submittedAt || (window.__idOnFile && window.__idOnFile());
       return '<div class="ar-control">'
-           + '<button type="button" class="ar-action ar-get-ts" data-open-trustshield>Get TrustShield™</button>'
-           + '<div class="ar-action-note">Required for under-30 age-restricted orders</div>'
+           + (sub
+               ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
+               : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
+           + '<div class="ar-action-note">Or <button type="button" class="ar-linkbtn" data-open-trustshield>add TrustShield\u2122</button> — optional, saves $1 and verifies you once for every future order.</div>'
            + '</div>';
     }
     const onFile = window.__idOnFile && window.__idOnFile();
@@ -12708,14 +12759,17 @@ const PAY_BADGES = {
 
     const chipsEl = () => document.getElementById('idSubChips');
     function refreshChips(){
-      const a = document.getElementById('idSubChipA');
-      const b = document.getElementById('idSubChipB');
-      const onB = document.getElementById('idSubStepB').classList.contains('active');
+      const a  = document.getElementById('idSubChipA');
+      const bk = document.getElementById('idSubChipBk');
+      const b  = document.getElementById('idSubChipB');
+      const onBack = document.getElementById('idSubStepBack').classList.contains('active');
+      const onB    = document.getElementById('idSubStepB').classList.contains('active');
       const v = state.idVerification;
-      if(a){ a.classList.toggle('done', !!v.idFrontCaptured); a.classList.toggle('active', !onB); }
-      if(b){ b.classList.toggle('done', !!v.selfieCaptured); b.classList.toggle('active', onB); }
+      if(a){  a.classList.toggle('done', !!v.idFrontCaptured); a.classList.toggle('active', !onBack && !onB); }
+      if(bk){ bk.classList.toggle('done', !!v.idBackCaptured); bk.classList.toggle('active', onBack); }
+      if(b){  b.classList.toggle('done', !!v.selfieCaptured);  b.classList.toggle('active', onB); }
     }
-    const STEPS = ['Checking','A','B','Cam','NoCam','Done'];
+    const STEPS = ['Checking','A','Back','B','Cam','NoCam','Done'];
     function showStep(which){
       STEPS.forEach(s => {
         const el = document.getElementById('idSubStep'+s);
@@ -12730,8 +12784,10 @@ const PAY_BADGES = {
       const v = state.idVerification;
       const cont = document.getElementById('idSubContinue');
       const sub  = document.getElementById('idSubSubmit');
-      if(cont) cont.disabled = !v.idFrontCaptured;
-      if(sub)  sub.disabled  = !(v.idFrontCaptured && v.selfieCaptured);
+      const bcont = document.getElementById('idSubBackContinue');
+      if(cont)  cont.disabled  = !v.idFrontCaptured;
+      if(bcont) bcont.disabled = !v.idBackCaptured;
+      if(sub)   sub.disabled   = !(v.idFrontCaptured && v.idBackCaptured && v.selfieCaptured);
     }
     function paintThumb(kind){
       const v = state.idVerification;
@@ -12739,6 +12795,11 @@ const PAY_BADGES = {
         const t = document.getElementById('idSubFrontThumb');
         const img = document.getElementById('idSubFrontImg');
         if(v.idFrontCaptured){ img.src = v.idFrontSrc || ''; t.hidden = false; }
+        else { t.hidden = true; img.src = ''; }
+      } else if(kind === 'back'){
+        const t = document.getElementById('idSubBackThumb');
+        const img = document.getElementById('idSubBackImg');
+        if(v.idBackCaptured){ img.src = v.idBackSrc || ''; t.hidden = false; }
         else { t.hidden = true; img.src = ''; }
       } else {
         const t = document.getElementById('idSubSelfieThumb');
@@ -12748,7 +12809,8 @@ const PAY_BADGES = {
       }
     }
     function setErr(target, msg){
-      const el = document.getElementById(target === 'selfie' ? 'idSubSelfieErr' : 'idSubFrontErr');
+      const el = document.getElementById(
+        target === 'selfie' ? 'idSubSelfieErr' : target === 'idback' ? 'idSubBackErr' : 'idSubFrontErr');
       if(!el) return;
       if(msg){ el.textContent = msg; el.hidden = false; } else { el.textContent = ''; el.hidden = true; }
     }
@@ -12761,8 +12823,17 @@ const PAY_BADGES = {
     function setFront(url){
       state.idVerification.idFrontCaptured = true;
       state.idVerification.idFrontSrc = url;
-      clearSelfie();                 // new ID ⇒ redo selfie
-      paintThumb('front'); syncButtons();
+      /* A new front means a different ID — the back and selfie belong to the old one. */
+      state.idVerification.idBackCaptured = false;
+      state.idVerification.idBackSrc = null;
+      clearSelfie();
+      paintThumb('front'); paintThumb('back'); syncButtons();
+    }
+    function setBack(url){
+      state.idVerification.idBackCaptured = true;
+      state.idVerification.idBackSrc = url;
+      clearSelfie();
+      paintThumb('back'); syncButtons();
     }
     function setSelfie(url){
       state.idVerification.selfieCaptured = true;
@@ -12772,12 +12843,13 @@ const PAY_BADGES = {
 
     function resetCaptures(){
       state.idVerification.idFrontCaptured = false;
+      state.idVerification.idBackCaptured  = false;
       state.idVerification.selfieCaptured  = false;
       state.idVerification.idFrontSrc = null;
+      state.idVerification.idBackSrc  = null;
       state.idVerification.selfieSrc  = null;
-      const up = document.getElementById('idSubFrontUpload'); if(up) up.value = '';
-      setErr('idfront',''); setErr('selfie','');
-      paintThumb('front'); paintThumb('selfie'); syncButtons();
+      setErr('idfront',''); setErr('idback',''); setErr('selfie','');
+      paintThumb('front'); paintThumb('back'); paintThumb('selfie'); syncButtons();
     }
 
     // ── Camera (getUserMedia) ──
@@ -12809,19 +12881,28 @@ const PAY_BADGES = {
     }
     async function openCamera(target){
       camTarget = target;
-      camReturn = (target === 'selfie') ? 'B' : 'A';
+      camReturn = (target === 'selfie') ? 'B' : (target === 'idback') ? 'Back' : 'A';
       setErr(target,'');
       const title = document.getElementById('idSubCamTitle');
       const hint  = document.getElementById('idSubCamHint');
       const video = document.getElementById('idSubCamVideo');
-      if(title) title.textContent = target === 'selfie' ? 'Take your selfie' : 'Photograph your ID';
+      if(title) title.textContent = target === 'selfie' ? 'Take your selfie'
+                                  : target === 'idback' ? 'Photograph the BACK of your ID'
+                                  : 'Photograph the FRONT of your ID';
       if(video) video.classList.toggle('mirror', target === 'selfie');
+      /* Card window for an ID, oval for a face. Missing this toggle showed the
+         rectangular ID frame on the selfie step while the hint said "oval" — caught
+         by a screenshot, not by the state assertions, which all passed. */
+      const guide = document.getElementById('idSubGuide');
+      if(guide) guide.classList.toggle('face', target === 'selfie');
       showStep('Cam');
       setCamReady(false);                       // Capture disabled until a real frame arrives
       const ready = () => {
         const liveHint = target === 'selfie'
-          ? 'Center your face in the frame, then capture.'
-          : 'Fit the front of your ID in the frame, then capture.';
+          ? 'Center your face in the oval, then capture.'
+          : target === 'idback'
+            ? 'Line the BACK of your ID up inside the frame — hold it flat and horizontal so the barcode is readable.'
+            : 'Line the FRONT of your ID up inside the frame — hold it flat and horizontal, edges inside the corners.';
         setCamReady(true);
         if(hint) hint.textContent = liveHint;
       };
@@ -12831,8 +12912,9 @@ const PAY_BADGES = {
           showStep('B');
           setErr('selfie', 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
         } else {
-          showStep('A');
-          setErr('idfront', 'We couldn\u2019t get a picture from your camera. You can upload a photo of your ID instead.');
+          const st = (target === 'idback') ? 'Back' : 'A';
+          showStep(st);
+          setErr((target === 'idback') ? 'idback' : 'idfront', 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
         }
       };
       try {
@@ -12887,9 +12969,12 @@ const PAY_BADGES = {
       try { url = canvas.toDataURL('image/jpeg', 0.85); } catch(e){ url = ''; }
       const target = camTarget;
       stopCam();
-      if(!url){ showStep(target === 'selfie' ? 'B' : 'A'); setErr(target, 'Capture failed — please try again.'); return; }
-      if(target === 'selfie') setSelfie(url); else setFront(url);
-      showStep(target === 'selfie' ? 'B' : 'A');
+      const backTo = (target === 'selfie') ? 'B' : (target === 'idback') ? 'Back' : 'A';
+      if(!url){ showStep(backTo); setErr(target, 'Capture failed — please try again.'); return; }
+      if(target === 'selfie') setSelfie(url);
+      else if(target === 'idback') setBack(url);
+      else setFront(url);
+      showStep(backTo);
     }
 
     // Request scrapes these off its own .store-badge imgs via window.grAsset;
@@ -12922,15 +13007,20 @@ const PAY_BADGES = {
       const stake = document.getElementById('idSubSelfieTake');
       if(stake) stake.addEventListener('click', () => openCamera('selfie'));
 
-      // Upload (ID front only)
-      const up = document.getElementById('idSubFrontUpload');
-      if(up) up.addEventListener('change', () => {
-        setErr('idfront','');
-        fileToDataURL(up.files && up.files[0], (url) => {
-          if(!url){ setErr('idfront','That file didn\u2019t look like a photo. Please choose an image.'); up.value=''; return; }
-          setFront(url);
-        });
+      const btake = document.getElementById('idSubBackTake');
+      if(btake) btake.addEventListener('click', () => openCamera('idback'));
+      const bRetake = document.getElementById('idSubBackRetake');
+      if(bRetake) bRetake.addEventListener('click', () => {
+        state.idVerification.idBackCaptured = false;
+        state.idVerification.idBackSrc = null;
+        paintThumb('back'); syncButtons();
       });
+      const bCont = document.getElementById('idSubBackContinue');
+      if(bCont) bCont.addEventListener('click', () => showStep('B'));
+      const bBack = document.getElementById('idSubBackBack');
+      if(bBack) bBack.addEventListener('click', () => showStep('A'));
+      /* Upload handlers removed 2026-08-24 (owner: live only). fileToDataURL stays as
+         the File decoder, not upload policy. */
 
       // Camera view controls
       const shootBtn = document.getElementById('idSubCamShoot');
@@ -12943,7 +13033,6 @@ const PAY_BADGES = {
       if(fRetake) fRetake.addEventListener('click', () => {
         state.idVerification.idFrontCaptured = false;
         state.idVerification.idFrontSrc = null;
-        const ui = document.getElementById('idSubFrontUpload'); if(ui) ui.value='';
         clearSelfie();                 // changing the ID redoes the selfie
         paintThumb('front'); syncButtons();
       });
@@ -12952,15 +13041,17 @@ const PAY_BADGES = {
 
       // Step nav
       const cont = document.getElementById('idSubContinue');
-      if(cont) cont.addEventListener('click', () => { if(state.idVerification.idFrontCaptured) showStep('B'); });
+      if(cont) cont.addEventListener('click', () => { if(state.idVerification.idFrontCaptured) showStep('Back'); });
       const back = document.getElementById('idSubBack');
-      if(back) back.addEventListener('click', () => showStep('A'));
+      if(back) back.addEventListener('click', () => showStep('Back'));
 
       const submit = document.getElementById('idSubSubmit');
       if(submit) submit.addEventListener('click', () => {
         const v = state.idVerification;
-        if(!(v.idFrontCaptured && v.selfieCaptured)) return;   // hard gate
+        if(!(v.idFrontCaptured && v.idBackCaptured && v.selfieCaptured)) return;   // hard gate
         v.submittedAt = Date.now();
+        const done = _idSubOnDone; _idSubOnDone = null;
+        if(typeof done === 'function') { try { done(); } catch(_){} }
         const save = document.getElementById('idSubSaveOnFile');
         if(save && save.checked){
           v.savedOnFile = true;
@@ -12973,6 +13064,9 @@ const PAY_BADGES = {
     }
 
     // opts.update === true → re-run the full flow (fresh front + fresh selfie).
+    let _idSubOnDone = null;
+    /* opts.trustShield → same capture, framed as enrolment, opts.onDone on submit.
+       One ID-capture component instead of two that drift (2026-08-24). */
     window.__openIdSubmitModal = async function(opts){
       wire();
       const overlay = document.getElementById('idSubmitOverlay');
@@ -12981,7 +13075,16 @@ const PAY_BADGES = {
       stopCam();
       resetCaptures();              // fresh session — ID + selfie always recaptured
       const title = document.getElementById('idSubmitTitle');
-      if(title) title.textContent = isUpdate ? 'Update Identification' : 'Submit identification';
+      const isTS = !!(opts && opts.trustShield);
+      _idSubOnDone = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
+      if(title) title.textContent = isTS ? 'Add TrustShield\u2122'
+                                 : isUpdate ? 'Update Identification' : 'Submit identification';
+      const subEl = document.getElementById('idSubmitSub');
+      if(subEl) subEl.textContent = isTS
+        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides.'
+        : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
+      const subBtn = document.getElementById('idSubSubmit');
+      if(subBtn) subBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
       const save = document.getElementById('idSubSaveOnFile');
       if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
@@ -15905,7 +16008,18 @@ const PAY_BADGES = {
     });
     return ov;
   }
+  /* ⛔ DELEGATES to the shared live capture (2026-08-24). Every entry point — the
+     TrustShield tile, the deal "verify once" and one-off paths — now runs the same
+     3-shot live flow with the ID-shaped guide, instead of this file's own 2-step
+     upload modal. The original panes below remain as the fallback. */
   function openIdVerifyFlow(mode, onDone){
+    if(typeof window.__openIdSubmitModal === 'function'){
+      window.__openIdSubmitModal({ trustShield: mode === 'enroll', onDone: onDone });
+      return;
+    }
+    return _legacyIdVerifyFlow(mode, onDone);
+  }
+  function _legacyIdVerifyFlow(mode, onDone){
     const ov = ensureIdVerifyModal();
     _idvOnDone = onDone || null;
     ov.querySelector('#idvPane1').hidden = false;

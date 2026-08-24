@@ -3791,6 +3791,12 @@
     font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
     color:var(--muted); max-width:140px; margin:0 auto;
   }
+  /* Inline "add TrustShield" inside the note. A <button> is used rather than an <a>
+     because it opens a modal — but it must READ as a link, or the note grows a second
+     competing control next to the primary Submit action. */
+  .ar-linkbtn { background:none; border:none; padding:0; font:inherit; color:var(--green-dark);
+                font-weight:800; text-decoration:underline; cursor:pointer; }
+  .ar-linkbtn:hover { color:var(--navy); }
   /* Verified seal + "ID submitted" share the column badge look */
   .ar-ts-badge { flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
     gap:3px; text-align:center; padding-left:10px; border-left:1px solid rgba(1,36,98,0.10); }
@@ -3858,12 +3864,33 @@
   .idsub-done-msg { text-align:center; padding:6px 0 2px; }
   .idsub-done-msg .idsub-done-ico { font-size:40px; }
   /* Live camera view */
-  .idsub-camwrap {
+  .idsub-camwrap { position:relative;
     margin-top:6px; border-radius:14px; overflow:hidden; background:#0d1530;
     aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
   }
   #idSubCamVideo { width:100%; height:100%; object-fit:cover; display:block; background:#0d1530; }
   #idSubCamVideo.mirror { transform:scaleX(-1); }   /* selfie preview reads naturally */
+  /* ░░ Capture alignment guide (owner, 2026-08-23) ░░
+     A dimmed surround with a clear window in the middle, plus corner brackets — the
+     pattern every ID-capture flow uses, because "fit it in the frame" as text alone
+     produces tilted, cropped photos. The window is ID-1 proportion (1.586:1, the real
+     licence shape) and HORIZONTAL, so the user is told the orientation by the shape
+     rather than by a sentence they may not read.
+     pointer-events:none is load-bearing — the guide sits over the video and would
+     otherwise swallow taps meant for the Capture button on small screens. */
+  .idsub-guide { position:absolute; inset:0; pointer-events:none; display:flex;
+                 align-items:center; justify-content:center; }
+  .idsub-guide-win { position:relative; width:86%; aspect-ratio:1.586 / 1;
+                     border-radius:12px; box-shadow:0 0 0 9999px rgba(6,14,38,0.55); }
+  /* Corner brackets: four spans, one per corner, drawn with two borders each. */
+  .idsub-guide-win span { position:absolute; width:26px; height:26px; border:3px solid #33D975; }
+  .idsub-guide-win span:nth-child(1){ top:-2px;  left:-2px;  border-right:none; border-bottom:none; border-radius:12px 0 0 0; }
+  .idsub-guide-win span:nth-child(2){ top:-2px;  right:-2px; border-left:none;  border-bottom:none; border-radius:0 12px 0 0; }
+  .idsub-guide-win span:nth-child(3){ bottom:-2px; left:-2px;  border-right:none; border-top:none; border-radius:0 0 0 12px; }
+  .idsub-guide-win span:nth-child(4){ bottom:-2px; right:-2px; border-left:none;  border-top:none; border-radius:0 0 12px 0; }
+  /* Selfie: a face is not a card. Oval, portrait, narrower. */
+  .idsub-guide.face .idsub-guide-win { width:62%; aspect-ratio:0.78 / 1; border-radius:50%; }
+  .idsub-guide.face .idsub-guide-win span { display:none; }
   .idsub-camerr {
     margin-top:10px; padding:9px 11px; border-radius:9px;
     background:rgba(225,72,72,0.08); border:1px solid rgba(225,72,72,0.28);
@@ -12281,8 +12308,10 @@
     // front may be saved on file for reuse; the selfie is never persisted.
     idVerification: {
       idFrontCaptured: false,   // front-of-ID photo present (camera or upload)
-      selfieCaptured:  false,   // live selfie present (camera only)
+      idBackCaptured:  false,   // back-of-ID photo present (camera or upload) — owner 2026-08-23
+      selfieCaptured:  false,   // live selfie present (camera ONLY — never an upload)
       idFrontSrc: null,         // data URL (mockup-only — see storage notes)
+      idBackSrc:  null,
       selfieSrc:  null,
       savedOnFile: false,       // user opted to save (≥30 path only)
       submittedAt: null,
@@ -12745,9 +12774,23 @@
     }
     const age = customerAgeYears();
     if(age == null || age < 30){
+      /* ⛔ REWRITTEN 2026-08-23/24 (owner). Under-30 used to be offered TrustShield and
+         NOTHING ELSE, with the note "Required for under-30 age-restricted orders". Both
+         halves died with the gate removal:
+           • "Required" is false — TrustShield is voluntary now (a badge and the $1 perk).
+           • TrustShield-only was a dead end waiting to happen. It is being retired
+             because iDenfy is going away, so when enrollment stops this group would have
+             had NO way to pre-submit ID at all, while 30+ kept a working one. The
+             youngest requesters — 76.7% of new enrollments are 21-29 — would have been
+             the only ones without a path.
+         They now get the SAME submission path as everyone else, with TrustShield offered
+         beside it as the optional upgrade it now is. */
+      const sub = state.idVerification.submittedAt || (window.__idOnFile && window.__idOnFile());
       return '<div class="ar-control">'
-           + '<button type="button" class="ar-action ar-get-ts" data-open-trustshield>Get TrustShield™</button>'
-           + '<div class="ar-action-note">Required for under-30 age-restricted orders</div>'
+           + (sub
+               ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
+               : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
+           + '<div class="ar-action-note">Or <button type="button" class="ar-linkbtn" data-open-trustshield>add TrustShield™</button> — optional, saves $1 and verifies you once for every future order.</div>'
            + '</div>';
     }
     const onFile = window.__idOnFile && window.__idOnFile();
@@ -12785,14 +12828,17 @@
 
     const chipsEl = () => document.getElementById('idSubChips');
     function refreshChips(){
-      const a = document.getElementById('idSubChipA');
-      const b = document.getElementById('idSubChipB');
-      const onB = document.getElementById('idSubStepB').classList.contains('active');
+      const a  = document.getElementById('idSubChipA');
+      const bk = document.getElementById('idSubChipBk');
+      const b  = document.getElementById('idSubChipB');
+      const onBack = document.getElementById('idSubStepBack').classList.contains('active');
+      const onB    = document.getElementById('idSubStepB').classList.contains('active');
       const v = state.idVerification;
-      if(a){ a.classList.toggle('done', !!v.idFrontCaptured); a.classList.toggle('active', !onB); }
-      if(b){ b.classList.toggle('done', !!v.selfieCaptured); b.classList.toggle('active', onB); }
+      if(a){  a.classList.toggle('done', !!v.idFrontCaptured); a.classList.toggle('active', !onBack && !onB); }
+      if(bk){ bk.classList.toggle('done', !!v.idBackCaptured); bk.classList.toggle('active', onBack); }
+      if(b){  b.classList.toggle('done', !!v.selfieCaptured);  b.classList.toggle('active', onB); }
     }
-    const STEPS = ['Checking','A','B','Cam','NoCam','Done'];
+    const STEPS = ['Checking','A','Back','B','Cam','NoCam','Done'];
     function showStep(which){
       STEPS.forEach(s => {
         const el = document.getElementById('idSubStep'+s);
@@ -12807,8 +12853,12 @@
       const v = state.idVerification;
       const cont = document.getElementById('idSubContinue');
       const sub  = document.getElementById('idSubSubmit');
-      if(cont) cont.disabled = !v.idFrontCaptured;
-      if(sub)  sub.disabled  = !(v.idFrontCaptured && v.selfieCaptured);
+      const bcont = document.getElementById('idSubBackContinue');
+      if(cont)  cont.disabled  = !v.idFrontCaptured;
+      if(bcont) bcont.disabled = !v.idBackCaptured;
+      /* All THREE now — a submission missing the back cannot be age-verified by the
+         scanner, so accepting it would be the fake-success shape. */
+      if(sub)   sub.disabled   = !(v.idFrontCaptured && v.idBackCaptured && v.selfieCaptured);
     }
     function paintThumb(kind){
       const v = state.idVerification;
@@ -12816,6 +12866,11 @@
         const t = document.getElementById('idSubFrontThumb');
         const img = document.getElementById('idSubFrontImg');
         if(v.idFrontCaptured){ img.src = v.idFrontSrc || ''; t.hidden = false; }
+        else { t.hidden = true; img.src = ''; }
+      } else if(kind === 'back'){
+        const t = document.getElementById('idSubBackThumb');
+        const img = document.getElementById('idSubBackImg');
+        if(v.idBackCaptured){ img.src = v.idBackSrc || ''; t.hidden = false; }
         else { t.hidden = true; img.src = ''; }
       } else {
         const t = document.getElementById('idSubSelfieThumb');
@@ -12825,7 +12880,8 @@
       }
     }
     function setErr(target, msg){
-      const el = document.getElementById(target === 'selfie' ? 'idSubSelfieErr' : 'idSubFrontErr');
+      const el = document.getElementById(
+        target === 'selfie' ? 'idSubSelfieErr' : target === 'idback' ? 'idSubBackErr' : 'idSubFrontErr');
       if(!el) return;
       if(msg){ el.textContent = msg; el.hidden = false; } else { el.textContent = ''; el.hidden = true; }
     }
@@ -12838,8 +12894,18 @@
     function setFront(url){
       state.idVerification.idFrontCaptured = true;
       state.idVerification.idFrontSrc = url;
-      clearSelfie();                 // new ID ⇒ redo selfie
-      paintThumb('front'); syncButtons();
+      /* A new FRONT means a different ID, so the back and the selfie both belong to
+         the old one. Keeping either would pair a new licence with a stale barcode. */
+      state.idVerification.idBackCaptured = false;
+      state.idVerification.idBackSrc = null;
+      clearSelfie();
+      paintThumb('front'); paintThumb('back'); syncButtons();
+    }
+    function setBack(url){
+      state.idVerification.idBackCaptured = true;
+      state.idVerification.idBackSrc = url;
+      clearSelfie();                 // the selfie is tied to the ID as a whole
+      paintThumb('back'); syncButtons();
     }
     function setSelfie(url){
       state.idVerification.selfieCaptured = true;
@@ -12847,14 +12913,16 @@
       paintThumb('selfie'); syncButtons();
     }
 
+    let _idSubOnDone = null;
     function resetCaptures(){
       state.idVerification.idFrontCaptured = false;
+      state.idVerification.idBackCaptured  = false;
       state.idVerification.selfieCaptured  = false;
       state.idVerification.idFrontSrc = null;
+      state.idVerification.idBackSrc  = null;
       state.idVerification.selfieSrc  = null;
-      const up = document.getElementById('idSubFrontUpload'); if(up) up.value = '';
-      setErr('idfront',''); setErr('selfie','');
-      paintThumb('front'); paintThumb('selfie'); syncButtons();
+      setErr('idfront',''); setErr('idback',''); setErr('selfie','');
+      paintThumb('front'); paintThumb('back'); paintThumb('selfie'); syncButtons();
     }
 
     // ── Camera (getUserMedia) ──
@@ -12886,19 +12954,26 @@
     }
     async function openCamera(target){
       camTarget = target;
-      camReturn = (target === 'selfie') ? 'B' : 'A';
+      camReturn = (target === 'selfie') ? 'B' : (target === 'idback') ? 'Back' : 'A';
       setErr(target,'');
       const title = document.getElementById('idSubCamTitle');
       const hint  = document.getElementById('idSubCamHint');
       const video = document.getElementById('idSubCamVideo');
-      if(title) title.textContent = target === 'selfie' ? 'Take your selfie' : 'Photograph your ID';
+      if(title) title.textContent = target === 'selfie' ? 'Take your selfie'
+                                  : target === 'idback' ? 'Photograph the BACK of your ID'
+                                  : 'Photograph the FRONT of your ID';
       if(video) video.classList.toggle('mirror', target === 'selfie');
+      /* Card window for an ID, oval for a face. */
+      const guide = document.getElementById('idSubGuide');
+      if(guide) guide.classList.toggle('face', target === 'selfie');
       showStep('Cam');
       setCamReady(false);                       // Capture disabled until a real frame arrives
       const ready = () => {
         const liveHint = target === 'selfie'
-          ? 'Center your face in the frame, then capture.'
-          : 'Fit the front of your ID in the frame, then capture.';
+          ? 'Center your face in the oval, then capture.'
+          : target === 'idback'
+            ? 'Line the BACK of your ID up inside the frame — hold it flat and horizontal so the barcode is readable.'
+            : 'Line the FRONT of your ID up inside the frame — hold it flat and horizontal, edges inside the corners.';
         setCamReady(true);
         if(hint) hint.textContent = liveHint;
       };
@@ -12908,8 +12983,10 @@
           showStep('B');
           setErr('selfie', 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
         } else {
-          showStep('A');
-          setErr('idfront', 'We couldn\u2019t get a picture from your camera. You can upload a photo of your ID instead.');
+          const step = (target === 'idback') ? 'Back' : 'A';
+          const err  = (target === 'idback') ? 'idback' : 'idfront';
+          showStep(step);
+          setErr(err, 'We couldn\u2019t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.');
         }
       };
       try {
@@ -12942,8 +13019,17 @@
             setErr('selfie', 'We couldn\u2019t access the camera. Please allow camera access and try again — or finish in the mobile app.');
           }
         } else {
-          showStep('A');
-          setErr('idfront', 'Couldn\u2019t open the camera. You can upload a photo of your ID instead.');
+          /* No upload fallback exists any more, so a MISSING camera is a dead end on
+             web exactly as it is for the selfie — send them to the app rather than to
+             a step they cannot finish. Permission/other errors stay retryable. */
+          const step = (target === 'idback') ? 'Back' : 'A';
+          const err  = (target === 'idback') ? 'idback' : 'idfront';
+          if(name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError'){
+            showNoCam();
+          } else {
+            showStep(step);
+            setErr(err, 'We couldn\u2019t access the camera. Please allow camera access and try again — or finish in the mobile app.');
+          }
         }
       }
     }
@@ -12964,9 +13050,12 @@
       try { url = canvas.toDataURL('image/jpeg', 0.85); } catch(e){ url = ''; }
       const target = camTarget;
       stopCam();
-      if(!url){ showStep(target === 'selfie' ? 'B' : 'A'); setErr(target, 'Capture failed — please try again.'); return; }
-      if(target === 'selfie') setSelfie(url); else setFront(url);
-      showStep(target === 'selfie' ? 'B' : 'A');
+      const backTo = (target === 'selfie') ? 'B' : (target === 'idback') ? 'Back' : 'A';
+      if(!url){ showStep(backTo); setErr(target, 'Capture failed — please try again.'); return; }
+      if(target === 'selfie') setSelfie(url);
+      else if(target === 'idback') setBack(url);
+      else setFront(url);
+      showStep(backTo);
     }
 
     function hydrateStores(){
@@ -12997,16 +13086,25 @@
       if(ftake) ftake.addEventListener('click', () => openCamera('idfront'));
       const stake = document.getElementById('idSubSelfieTake');
       if(stake) stake.addEventListener('click', () => openCamera('selfie'));
+      const btake = document.getElementById('idSubBackTake');
+      if(btake) btake.addEventListener('click', () => openCamera('idback'));
 
-      // Upload (ID front only)
-      const up = document.getElementById('idSubFrontUpload');
-      if(up) up.addEventListener('change', () => {
-        setErr('idfront','');
-        fileToDataURL(up.files && up.files[0], (url) => {
-          if(!url){ setErr('idfront','That file didn\u2019t look like a photo. Please choose an image.'); up.value=''; return; }
-          setFront(url);
-        });
+      /* Upload handlers for the ID front and back were removed 2026-08-23 (owner:
+         live only). fileToDataURL() is deliberately KEPT — it is the decoder for
+         anything arriving as a File, and deleting it would only have to be rewritten
+         if a later ruling re-allows uploads. */
+
+      // Back-of-ID navigation
+      const bRetake = document.getElementById('idSubBackRetake');
+      if(bRetake) bRetake.addEventListener('click', () => {
+        state.idVerification.idBackCaptured = false;
+        state.idVerification.idBackSrc = null;
+        paintThumb('back'); syncButtons();
       });
+      const bCont = document.getElementById('idSubBackContinue');
+      if(bCont) bCont.addEventListener('click', () => showStep('B'));
+      const bBack = document.getElementById('idSubBackBack');
+      if(bBack) bBack.addEventListener('click', () => showStep('A'));
 
       // Camera view controls
       const shootBtn = document.getElementById('idSubCamShoot');
@@ -13019,7 +13117,6 @@
       if(fRetake) fRetake.addEventListener('click', () => {
         state.idVerification.idFrontCaptured = false;
         state.idVerification.idFrontSrc = null;
-        const ui = document.getElementById('idSubFrontUpload'); if(ui) ui.value='';
         clearSelfie();                 // changing the ID redoes the selfie
         paintThumb('front'); syncButtons();
       });
@@ -13028,19 +13125,25 @@
 
       // Step nav
       const cont = document.getElementById('idSubContinue');
-      if(cont) cont.addEventListener('click', () => { if(state.idVerification.idFrontCaptured) showStep('B'); });
+      /* Front -> BACK (was Front -> Selfie until 2026-08-23). */
+      if(cont) cont.addEventListener('click', () => { if(state.idVerification.idFrontCaptured) showStep('Back'); });
       const back = document.getElementById('idSubBack');
-      if(back) back.addEventListener('click', () => showStep('A'));
+      if(back) back.addEventListener('click', () => showStep('Back'));
 
       const submit = document.getElementById('idSubSubmit');
       if(submit) submit.addEventListener('click', () => {
         const v = state.idVerification;
-        if(!(v.idFrontCaptured && v.selfieCaptured)) return;   // hard gate
+        /* Hard gate — all THREE. The back carries the barcode the age scanner reads,
+           so a submission without it is unverifiable later. */
+        if(!(v.idFrontCaptured && v.idBackCaptured && v.selfieCaptured)) return;
         v.submittedAt = Date.now();
+        /* TrustShield enrolment reuses this capture; its grant runs here. */
+        const done = _idSubOnDone; _idSubOnDone = null;
+        if(typeof done === 'function') { try { done(); } catch(_){} }
         const save = document.getElementById('idSubSaveOnFile');
         if(save && save.checked){
           v.savedOnFile = true;
-          if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc);
+          if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc, v.idBackSrc);
         } else {
           v.savedOnFile = false;
         }
@@ -13049,15 +13152,29 @@
     }
 
     // opts.update === true → re-run the full flow (fresh front + fresh selfie).
+    /* opts.trustShield → the SAME capture, framed as enrolment, calling opts.onDone on
+       submit. Added 2026-08-24 so TrustShield stops carrying its own second ID-capture
+       UI: two components collecting the same three artefacts drifted apart within a day
+       (the owner tested under-30, got the old file-picker flow, and none of the live/
+       3-shot/aligned rules applied to it). One capture, one set of rules. */
     window.__openIdSubmitModal = async function(opts){
       wire();
       const overlay = document.getElementById('idSubmitOverlay');
       if(!overlay) return;
       const isUpdate = !!(opts && opts.update);
+      const isTS     = !!(opts && opts.trustShield);
+      _idSubOnDone   = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
       stopCam();
       resetCaptures();              // fresh session — ID + selfie always recaptured
       const title = document.getElementById('idSubmitTitle');
-      if(title) title.textContent = isUpdate ? 'Update Identification' : 'Submit identification';
+      if(title) title.textContent = isTS ? 'Add TrustShield™'
+                                 : isUpdate ? 'Update Identification' : 'Submit identification';
+      const sub = document.getElementById('idSubmitSub');
+      if(sub) sub.textContent = isTS
+        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides.'
+        : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
+      const submitBtn = document.getElementById('idSubSubmit');
+      if(submitBtn) submitBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
       const save = document.getElementById('idSubSaveOnFile');
       if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
@@ -13085,7 +13202,15 @@
       // Connect). Run the two-step ID + selfie enroll flow, then flip the flag
       // and repaint. The old app-funnel modal is kept ONLY as a fallback for
       // when the web flow isn't available (decision C).
-      if(typeof window.__openIdVerifyFlow === 'function'){
+      /* Was __openIdVerifyFlow (its own 2-step, upload-based modal). Now the shared
+         live 3-step capture — see the note on __openIdSubmitModal. __openIdVerifyFlow
+         is left in place as the fallback below and for the D-029 quick-signup path. */
+      if(typeof window.__openIdSubmitModal === 'function'){
+        window.__openIdSubmitModal({ trustShield: true, onDone: () => {
+          if(window.__setTrustShield) window.__setTrustShield(true);
+          try { if(typeof render === 'function') render(); } catch(_){}
+        }});
+      } else if(typeof window.__openIdVerifyFlow === 'function'){
         window.__openIdVerifyFlow('enroll', () => {
           if(window.__setTrustShield) window.__setTrustShield(true);
           // Repaint the current request step so the AR-banner "Get TrustShield"
@@ -13151,7 +13276,7 @@
               <button class="info-btn" aria-label="Age-restricted waiver info">?</button>
               <div class="info-popover" role="tooltip">
                 <h5>Age-restricted waiver</h5>
-                <p>By submitting, you agree that you are at least 21 years old with a valid government-issued ID to present to the Gopher who delivers your order.</p>
+                <p>By submitting, you agree that you are at least 21 years old with a valid government-issued ID to present to the Gopher who delivers your order. If your request involves age-restricted delivery, you consent to Gopher's collection and use of your identity-verification images and any Gopher TrustShield selfie to confirm your identity and legal age, as described in our Terms of Service and Privacy Policy — the selfie may be biometric information under laws such as BIPA, we use it only for that purpose, we never sell it, and we destroy it on the schedule published in those documents.</p>
                 <p>If you are not able to provide a valid ID during delivery, you will still be responsible for the cost of the items and the offer made to your Gopher. Please do not submit the request if you're unable to provide the required identification.</p>
                 <p class="emphasis">Age-Restricted Delivery requests ALWAYS require ID to be shown IN-PERSON during drop-off.</p>
               </div>
@@ -17239,8 +17364,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <p class="gr-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. You'll still show a physical ID in person at hand-off.</p>
 
     <div class="idsub-steps" id="idSubChips">
-      <div class="idsub-stepchip" id="idSubChipA">1 · Front of ID</div>
-      <div class="idsub-stepchip" id="idSubChipB">2 · Selfie</div>
+      <div class="idsub-stepchip" id="idSubChipA">1 · Front</div>
+      <div class="idsub-stepchip" id="idSubChipBk">2 · Back</div>
+      <div class="idsub-stepchip" id="idSubChipB">3 · Selfie</div>
     </div>
 
     <!-- Checking camera (brief) -->
@@ -17254,24 +17380,52 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <!-- Step A — Front of ID (live photo OR upload) -->
     <div class="idsub-step" id="idSubStepA">
       <h5>Front of your ID</h5>
-      <div class="idsub-hint">Take a photo of the front of a valid government ID, or upload one.</div>
+      <!-- LIVE ONLY (owner, 2026-08-23): "make the IDs live too - more authentic and
+           consistent with what TrustShield was." Upload was REMOVED, not hidden. An
+           uploaded ID is a photo of a photo — a screenshot, a borrowed licence, an
+           image off the web — and none of that is distinguishable after the fact.
+           TrustShield's premise was a live capture, so allowing uploads here would
+           have left the non-TrustShield path weaker while looking equivalent.
+           ⚠️ There is now NO fallback when a camera is unavailable: that routes to the
+           app (showNoCam), exactly as the selfie always has. -->
+      <div class="idsub-hint">Take a live photo of the front of a valid government ID. Uploads aren't accepted — the photo has to be taken here.</div>
       <div class="idsub-captures">
         <button type="button" class="idsub-cap" id="idSubFrontTake">
           <span class="idsub-cap-ico">📷</span>Take photo
         </button>
-        <label class="idsub-cap">
-          <span class="idsub-cap-ico">⬆️</span>Upload
-          <input type="file" accept="image/*" id="idSubFrontUpload">
-        </label>
       </div>
       <div class="idsub-camerr" id="idSubFrontErr" hidden></div>
       <div class="idsub-thumb" id="idSubFrontThumb" hidden>
         <img id="idSubFrontImg" src="" alt="Front of ID preview">
-        <span class="idsub-thumb-meta"><b>ID front captured</b><br>Looks good? Continue to the selfie.</span>
+        <span class="idsub-thumb-meta"><b>ID front captured</b><br>Looks good? Continue to the back.</span>
         <button type="button" class="idsub-retake" id="idSubFrontRetake">Retake</button>
       </div>
       <div class="idsub-actions">
         <button type="button" class="gr-modal-btn" id="idSubContinue" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step Bk — BACK of ID (owner, 2026-08-23). Required, not optional: the barcode
+         on the back is what a scanner reads to verify age (docs/handoff/id-barcode-age-read.md),
+         so a submission without it cannot be age-verified later and the whole capture
+         becomes a photo nobody can check. Same capture affordances as the front. -->
+    <div class="idsub-step" id="idSubStepBack">
+      <h5>Back of your ID</h5>
+      <div class="idsub-hint">Now the back, taken live as well. The barcode there is what lets us confirm the date of birth on the ID.</div>
+      <div class="idsub-captures">
+        <button type="button" class="idsub-cap" id="idSubBackTake">
+          <span class="idsub-cap-ico">📷</span>Take photo
+        </button>
+      </div>
+      <div class="idsub-camerr" id="idSubBackErr" hidden></div>
+      <div class="idsub-thumb" id="idSubBackThumb" hidden>
+        <img id="idSubBackImg" src="" alt="Back of ID preview">
+        <span class="idsub-thumb-meta"><b>ID back captured</b><br>Looks good? Continue to the selfie.</span>
+        <button type="button" class="idsub-retake" id="idSubBackRetake">Retake</button>
+      </div>
+      <div class="idsub-actions">
+        <button type="button" class="gr-modal-btn" id="idSubBackContinue" disabled>Continue</button>
+        <button type="button" class="gr-modal-btn idsub-btn-secondary" id="idSubBackBack">Back</button>
       </div>
     </div>
 
@@ -17307,6 +17461,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <div class="idsub-hint" id="idSubCamHint">Position yourself in the frame, then capture.</div>
       <div class="idsub-camwrap">
         <video id="idSubCamVideo" autoplay playsinline muted></video>
+        <!-- Alignment guide (owner, 2026-08-23): "line it up like a real ID, horizontal".
+             The window is ID-1 proportion (85.6 x 54 mm = 1.586:1) — the actual shape of a
+             driver's licence — so filling it produces a straight, fully-in-frame capture
+             instead of a tilted photo with the edges cut off. Selfie swaps it for an oval.
+             aria-hidden: it is a visual aid, and the spoken hint above already says it. -->
+        <div class="idsub-guide" id="idSubGuide" aria-hidden="true">
+          <div class="idsub-guide-win"><span></span><span></span><span></span><span></span></div>
+        </div>
       </div>
       <canvas id="idSubCamCanvas" hidden></canvas>
       <div class="idsub-actions">
@@ -18571,7 +18733,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
     return ov;
   }
+  /* ⛔ DELEGATES to the shared live capture (2026-08-24), so EVERY entry point gets
+     it — including the D-029 age-restricted quick-signup, which would otherwise still
+     open the old 2-step upload modal. Original panes kept as the fallback. */
   function openIdVerifyFlow(mode, onDone){
+    if(typeof window.__openIdSubmitModal === 'function'){
+      window.__openIdSubmitModal({ trustShield: mode === 'enroll', onDone: onDone });
+      return;
+    }
+    return _legacyIdVerifyFlow(mode, onDone);
+  }
+  function _legacyIdVerifyFlow(mode, onDone){
     const ov = ensureIdVerifyModal();
     _idvOnDone = onDone || null;
     ov.querySelector('#idvPane1').hidden = false;
@@ -22676,11 +22848,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       : '';
   window.__customerDob   = () => (DASH_DATA.profile && DASH_DATA.profile.dob) || null;
   window.__idOnFile      = () => (DASH_DATA.profile && DASH_DATA.profile.idOnFile) || null;
-  window.__saveIdOnFile  = (idFrontSrc, selfieSrc) => {
-    // Both the ID front AND the selfie are saved on file for reuse. Updating the
-    // ID always recaptures a fresh selfie (handled in the capture flow).
+  window.__saveIdOnFile  = (idFrontSrc, selfieSrc, idBackSrc) => {
+    // Front, BACK and selfie are all saved for reuse (back added 2026-08-23 — the
+    // barcode is what makes a stored ID age-verifiable). Updating the ID recaptures
+    // every part; the capture flow enforces that.
+    // ⚠️ idBackSrc is the THIRD parameter deliberately: any caller written before
+    // 2026-08-23 passes two arguments and stores null rather than mis-filing the
+    // selfie as the back.
     if(DASH_DATA.profile) DASH_DATA.profile.idOnFile = {
       idFrontSrc: idFrontSrc || null,
+      idBackSrc:  idBackSrc  || null,
       selfieSrc:  selfieSrc  || null,
       savedAt: Date.now()
     };
