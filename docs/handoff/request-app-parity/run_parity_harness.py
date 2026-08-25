@@ -103,7 +103,7 @@ eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
 idVerification junkTier movingTier laborManagement lowAvailabilityAck
 openCatInfo openInfo osOpen profileOpen savedOnFile
 selfieCaptured selfieSrc submittedAt waiverPrompted
-idBackCaptured idBackSrc idSubmittedAt dob
+idBackCaptured idBackSrc idSubmittedAt dob dealMerchant
 userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())
 
 
@@ -276,7 +276,13 @@ def main():
                 d -= 1
                 if d == 0: break
             j += 1
-        body = re.sub(r"//[^\n]*", "", src[k:j + 1])
+        # ⚠️ Strip BLOCK comments as well as line comments. The field regex matches
+        # any `word:` , so a single explanatory /* … declared: … */ inside the state
+        # literal invented a state field called "declared" and reported it as
+        # undocumented drift. Caught 2026-08-25. A comment must never be able to
+        # create a finding — that is noise that trains people to ignore the warning.
+        body = re.sub(r"/\*.*?\*/", "", src[k:j + 1], flags=re.S)
+        body = re.sub(r"//[^\n]*", "", body)
         fields = set(re.findall(r"([A-Za-z_]\w*)\s*:", body))
         missing = CORE_FIELDS - fields
         check(not missing, "%s carries all %d core fields" % (name, len(CORE_FIELDS)),

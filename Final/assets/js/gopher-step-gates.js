@@ -251,14 +251,19 @@
     connect: ['category', 'description', 'costOfItems', 'identity',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
-    /* The prototype has no addresses-differ and no schedule-time gate, and it is
-       the only surface running the age-keyword scan from stepGate. Listed rather
-       than inherited: an omission anyone can see beats an absence nobody notices.
-       Adding either address gate here would CHANGE its behaviour, which is a
-       product decision and not part of an extraction. */
+    /* ⛔ THE PROTOTYPE NO LONGER DIVERGES. It used to lack addresses-differ and
+       schedule-time, and the note here said adding them "would CHANGE its behaviour,
+       which is a product decision and not part of an extraction". The owner made that
+       decision on 2026-08-25 — "Connect and Request are both currently live and
+       correct. You're to model that flow and logic" — so both gates were added to that
+       surface and are listed here.
+       It still differs from the web pair in ONE respect, which is not a gap: it is the
+       only surface running the age-keyword scan from stepGate, so it carries
+       'ageKeyword' and they do not. Listed rather than inherited — an omission anyone
+       can see beats an absence nobody notices. Step-6 order matches Request's. */
     prototype: ['category', 'description', 'costOfItems', 'ageKeyword', 'identity',
-                'pickupAddress', 'dropoffAddress',
-                'workerPay', 'workerPaySubmit', 'waiver']
+                'pickupAddress', 'dropoffAddress', 'addressesDiffer',
+                'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver']
   };
 
   /* ── helpers ──────────────────────────────────────────────────────────────── */

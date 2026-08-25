@@ -71,7 +71,7 @@ section('1. Catalogue');
      String(G.gatesFor('request').length));
   ok(G.gatesFor('connect').length === 11, 'connect enables 11',
      String(G.gatesFor('connect').length));
-  ok(G.gatesFor('prototype').length === 10, 'prototype enables 10',
+  ok(G.gatesFor('prototype').length === 12, 'prototype enables 12',
      String(G.gatesFor('prototype').length));
   ok(Object.keys(G.SURFACE_GATES).every(function (s) {
     return G.SURFACE_GATES[s].indexOf('identity') !== -1;
@@ -174,10 +174,21 @@ section('3. Addresses');
 section('4. Per-surface behaviour is PRESERVED');
 (function () {
   var proto = G.SURFACE_GATES.prototype;
-  ok(proto.indexOf('addressesDiffer') === -1,
-     'prototype still has NO addresses-differ gate — it does not today');
-  ok(proto.indexOf('scheduleTime') === -1,
-     'prototype still has NO schedule-time gate — it does not today');
+  /* ⛔ INVERTED 2026-08-25. These asserted the prototype LACKED both gates, which was
+     true and deliberate while this module was an extraction: adding them would have
+     changed that surface's behaviour, and that was a product decision nobody had made.
+     The owner made it — "Connect and Request are both currently live and correct.
+     You're to model that flow and logic" — so the prototype now carries both. */
+  ok(proto.indexOf('addressesDiffer') !== -1,
+     'prototype carries the addresses-differ gate (owner 2026-08-25 — model web)');
+  ok(proto.indexOf('scheduleTime') !== -1,
+     'prototype carries the schedule-time gate (owner 2026-08-25 — model web)');
+  /* What still differs, and it is NOT a gap: the prototype is the only surface running
+     the age-keyword scan from stepGate. Pinned so nobody "fixes" it into parity. */
+  ok(proto.indexOf('ageKeyword') !== -1
+     && G.SURFACE_GATES.request.indexOf('ageKeyword') === -1
+     && G.SURFACE_GATES.connect.indexOf('ageKeyword') === -1,
+     'ageKeyword remains prototype-only — its stepGate owns that scan, web does not');
   ok(proto.indexOf('ageKeyword') !== -1,
      'prototype keeps the age-keyword gate — it is the only surface running it here');
   ok(G.SURFACE_GATES.request.indexOf('ageKeyword') === -1 &&
@@ -198,8 +209,9 @@ section('4. Per-surface behaviour is PRESERVED');
   var s = state({ step: 6, scheduleType: 'scheduled', timeSlot: '', waiverChecked: false });
   ok(ev(s, host(), 'request').id === 'scheduleTime',
      'request reports schedule-time before the waiver');
-  ok(ev(s, host(), 'prototype').id === 'waiver',
-     'the prototype has no schedule gate, so it reports the waiver — unchanged behaviour');
+  ok(ev(s, host(), 'prototype').id === 'scheduleTime',
+     'the prototype now reports schedule-time too — same order as Request '
+     + '(owner 2026-08-25: model the live web flow)');
 })();
 
 /* ═══ 5. Step-6 ordering — a decision, pinned ═════════════════════════════════ */

@@ -57,14 +57,23 @@ const protoIdentitySrc = (function(){
   return m[0];
 })();
 const protoIdentity = st => new Function('state', protoIdentitySrc + '; return identitySatisfied();')(st);
+/* Same rule for normAddr: LIFTED, not re-implemented. It decides whether two addresses
+   are "the same", so a hand-written copy here would let the file's real normaliser drift
+   (e.g. stop stripping punctuation) while this sweep kept agreeing with itself. */
+const protoNormAddrSrc = (function(){
+  const m = src.match(/function normAddr\([^)]*\)\{[^}]*\}/);
+  if(!m) throw new Error('normAddr() not found — extraction failed');
+  return m[0];
+})();
 const CANON = st => !!(st.trustShield || st.idSubmittedAt || st.savedOnFile);
 function runProto(st){
   const isVisible=f=>!(FH[f]||[]).includes(st.category);
   const f=new Function('state','isVisible','toNum','findAgeRestrictedKeyword','firstEmptyStop',
-    'bidsAllowed','perWorkerPay','identitySatisfied',stepGateSrc+'; return stepGate();');
+    'bidsAllowed','perWorkerPay','identitySatisfied','normAddr',
+    protoNormAddrSrc+'\n'+stepGateSrc+'; return stepGate();');
   return f(st,isVisible,v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.]/g,''));return isNaN(n)?0:n;},
     ()=>null,firstEmptyStop,()=>false,()=>st.payAmount?parseFloat(st.payAmount)||0:0,
-    ()=>protoIdentity(st));
+    ()=>protoIdentity(st), null);
 }
 function runModule(st){
   const host={isVisible:f=>!(FH[f]||[]).includes(st.category),bidsAllowed:()=>false,
@@ -86,10 +95,19 @@ let n=0,diff=0;const seen=new Set();
 for(const category of CATS)
  for(const step of [1,2,3,4,5,6])
   for(const pu of [['1 A St'],[''],['1 A St','']])
-   for(const dp of [['2 B St'],[''],['2 B St','']])
+   /* ⚠️ '1 A St' is here ON PURPOSE — it MATCHES a pickup option, and without an
+      identical pair the addressesDiffer gate never fires and this sweep is blind to
+      it. That has now happened three times in this file (ageRestricted fixed false,
+      identitySatisfied injected, addresses never equal): a dimension that is never
+      varied is a gate that is never tested, and the suite still reports PASS.
+      '1 a st.' also differs from '1 A St' only in case and punctuation, so it proves
+      the normaliser is actually applied rather than a raw string compare. */
+   for(const dp of [['2 B St'],[''],['2 B St',''],['1 A St'],['1 a st.']])
     for(const nsp of [false,true])
      for(const pay of ['40','','0'])
       for(const waiver of [true,false])
+      /* scheduleType/timeSlot — previously fixed at now/'' so scheduleTime never ran. */
+      for(const [schedType,slot] of [['now',''],['scheduled','2:00 PM'],['scheduled','']])
        /* The identity dimension. ageRestricted was previously FIXED false, so the
           identity gate never once executed and the sweep's green was meaningless.
           The four identity states are: nothing, a one-off submission, the badge, and
@@ -103,13 +121,14 @@ for(const category of CATS)
         for(const purchased of [false,true]){
         const st=B(Object.assign({category,step,pickupStops:pu,dropoffStops:dp,noSpecificPickup:nsp,
                     payAmount:pay,waiverChecked:waiver,itemsPurchased:purchased,
-                    costOfItems:purchased?'':'',ageRestricted:ar},ident));
+                    costOfItems:purchased?'':'',ageRestricted:ar,
+                    scheduleType:schedType,timeSlot:slot},ident));
         n++;
         const p=runProto(st),m=runModule(st);
         if(p.ok!==m.ok){diff++;
           const k=[category,step,p.ok,m.ok,m.id].join('|');
           if(!seen.has(k)){seen.add(k);
-            console.log(`⚠ ${category} step${step} ar=${st.ageRestricted} ts=${st.trustShield} sub=${!!st.idSubmittedAt} file=${st.savedOnFile} pu=${JSON.stringify(pu)} dp=${JSON.stringify(dp)} nsp=${nsp} → proto ${p.ok?'passes':'blocks'} / module ${m.ok?'passes':'blocks '+m.id}`);}}
+            console.log(`⚠ ${category} step${step} ar=${st.ageRestricted} sched=${st.scheduleType}/${st.timeSlot||'-'} ts=${st.trustShield} sub=${!!st.idSubmittedAt} file=${st.savedOnFile} pu=${JSON.stringify(pu)} dp=${JSON.stringify(dp)} nsp=${nsp} → proto ${p.ok?'passes':'blocks'} / module ${m.ok?'passes':'blocks '+m.id}`);}}
        }
 console.log('\ncases: '+n+'   disagreements: '+diff);
 if (diff) {

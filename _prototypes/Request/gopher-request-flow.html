@@ -926,6 +926,21 @@ const PROMO_CODES = { GOPHER50:{ label:'GOPHER50', desc:'50% off fees', feeMulti
 const getPromo = (code)=> code ? (PROMO_CODES[String(code).trim().toUpperCase()] || null) : null;
 
 function computeRequestFee(cogOffer){
+  /* GOPHER DEALS — service-provider deals are a SET PRICE: the customer pays exactly
+     that and NOTHING else. Zero fees, no ITF, no promo, no TrustShield line — there is
+     no fee bundle left for a discount to apply to. The 10% Deal Boost is Gopher's own
+     take out of that price and is NEVER added to what the customer pays; it is carried
+     for the admin log only. Ported verbatim in behaviour from the web app's
+     computeRequestFee (Final/gopher-request.html), which this surface must match.
+     ⚠️ Gated on dealKind === 'service', not on fromDeal — a MERCHANT deal is a normal
+     priced request and must keep its full fee schedule. */
+  if(state.fromDeal && state.dealKind === 'service'){
+    const dealBoostFee = Math.round(cogOffer * 0.10 * 100) / 100;
+    return { gopherFee:0, ageFee:0, instantTransfer:0, requestFee:0, cogOffer,
+             gmvTotal:cogOffer, grossCost:cogOffer, promo:null, promoDiscount:0,
+             trustShieldDiscount:0, fullGopherFee:0, fullAgeFee:0, fullInstantTransfer:0,
+             dealBoostFee, serviceDealZeroFee:true };
+  }
   const promo = getPromo(state.promoApplied ? state.promoCode : null);
   const promoPct = promo ? (1 - promo.feeMultiplier) : 0;          // 0.5 == "50% off" for GOPHER50
   const baseGopher = GOPHER_FEE[state.category] ?? GOPHER_FEE.other;
@@ -1188,6 +1203,13 @@ function makeInitialState(){
     // capture — the TrustShield process was unreachable in the demo. Flip these four to
     // false to demo the non-TrustShield path; the "TrustShield ON/OFF" chip (act 'demo-ts')
     // still toggles it at runtime either way.
+    /* Gopher Deals provenance — mirrors the web app's makeInitialState. These were
+       being USED without being declared: `state.fromDeal` is read by orderFromReq()
+       and written by the ?from=deal deep-link, so before this it was `undefined`
+       rather than `false` on every ordinary request, and a resumed draft carried
+       nothing. dealKind/dealBoost did not exist here at all, which is why this
+       surface had no service-deal branch. Set by the deep-link below. */
+    fromDeal:false, dealKind:null, dealBoost:false, dealMerchant:'',
     trustShield:true,
     idFrontCaptured:true, idFrontSrc:'', selfieCaptured:true, selfieSrc:'', savedOnFile:true,
     /* BACK-OF-ID added 2026-08-25 to match the web app (owner, 2026-08-23): the barcode on
@@ -1249,6 +1271,9 @@ function pickupAddr(){ return (state.pickupStops && state.pickupStops[0]) || '';
 function dropoffAddr(){ return (state.dropoffStops && state.dropoffStops[0]) || ''; }
 /* Index of the first blank stop, or -1. Mirrors firstEmpty() in gopher-step-gates.js
    byte-for-byte in behaviour so the two surfaces cannot drift on what "empty" means. */
+/* Address normaliser — byte-for-byte the module's normAddr() in behaviour, so the two
+   surfaces cannot disagree on whether two addresses are "the same". */
+function normAddr(v){ return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9]+/g,''); }
 function firstEmptyStop(arr){
   if(!Array.isArray(arr)) return -1;
   for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; }
@@ -2290,6 +2315,20 @@ function stepGate(){
     return {ok:false,sel:'input[data-field="pickupStops"]',msg:'Add a pick-up address so your Gopher knows where to start.'};
   if(state.step===4 && !state.noSpecificPickup && isVisible('pickupSection') && firstEmptyStop(state.dropoffStops)>-1)
     return {ok:false,sel:'input[data-field="dropoffStops"]',msg:'Add a drop-off address so your Gopher knows where to go.'};
+  /* ADDRESSES MUST DIFFER — added 2026-08-25 (owner: model Connect and Request, which
+     are live and correct). Mirrors the shared module's addressesDiffer gate, including
+     its step list: 4 AND 6. Step 6 is not redundant — a step gate only sees the CURRENT
+     step, so a pair edited back to identical after leaving Locations would otherwise
+     reach submit unchecked. Comparison is normalised the same way the module does it
+     (lowercase, strip everything non-alphanumeric), so "218 Fayetteville St." and
+     "218 fayetteville st" are correctly the same address. */
+  if((state.step===4 || state.step===6) && !state.noSpecificPickup && isVisible('pickupSection')
+     && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+    const pk=state.pickupStops.map(normAddr).filter(Boolean);
+    const dp=state.dropoffStops.map(normAddr).filter(Boolean);
+    if(pk.some(a=>dp.indexOf(a)!==-1))
+      return {ok:false,sel:'input[data-field="dropoffStops"]',msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.'};
+  }
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
   // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop
@@ -2297,6 +2336,16 @@ function stepGate(){
   if(state.step===5 && !(state.payMode==='bids' && bidsAllowed()) && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
   if(state.step===6 && !(state.payMode==='bids' && bidsAllowed()) && !(perWorkerPay()>0))
     return {ok:false,sel:null,msg:'Your worker\'s pay can\'t be $0 — go back to Worker pay and set an offer.',tone:'alert'};
+  /* SCHEDULED REQUESTS NEED A TIME — added 2026-08-25, mirroring the module's
+     scheduleTime gate. Sits BEFORE the waiver deliberately: that ordering is a decision
+     on the web surfaces (a missing time is an upstream data fault, the waiver is a
+     deliberate action), and modelling their flow means modelling the order too.
+     ⚠️ Mostly a BACKSTOP here: this surface's timeSlot defaults to '2:00 PM' and its
+     picker is a <select> that always has a selection, so a user cannot normally empty
+     it. A restored draft or a programmatic set can, which is exactly when a silent
+     submit with no time would otherwise get through. */
+  if(state.step===6 && state.scheduleType==='scheduled' && !state.timeSlot)
+    return {ok:false,sel:'#schedTime',msg:'Pick a time for your scheduled request.'};
   if(state.step===6 && !state.waiverChecked) return {ok:false,sel:'.waiver-box',msg:'Check the liability waiver before submitting.'};
   return {ok:true};
 }
@@ -3065,6 +3114,13 @@ state.category='delivery';
     const pay=q.get('pay'); if(pay && parseFloat(pay)>0) state.payAmount='$'+(parseFloat(pay)||0);
     state.dealMerchant=q.get('merchant')||'';
     state.fromDeal=true;   // marks this as a Gopher Deal request → the Go card shows the "Gopher Deal" badge
+    /* kind: 'service' (a Service-Provider deal, set price) or 'merchant'. boost: the
+       10% Deal Boost. Web sets these in __startDealRequest from the deal payload; this
+       surface receives them on the query string. Defaulting kind to 'merchant' rather
+       than null is deliberate — an unlabelled deal must NOT fall into the zero-fee
+       service branch, which would waive every fee on an ordinary merchant deal. */
+    state.dealKind = (q.get('kind')==='service') ? 'service' : 'merchant';
+    state.dealBoost = q.get('boost')==='1' || state.dealKind==='service';
     state.step=6; state.maxStepReached=6;
     render(); return;
   }
