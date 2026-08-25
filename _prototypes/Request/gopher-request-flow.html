@@ -2895,10 +2895,24 @@ state.category='delivery';
   }
   function go(next){ step=next; paint(); }
 
+  /* ⚠️ These are LINKS, not decoration. The no-camera screen is a DEAD END by design —
+     the store buttons are the only way out of it — so a badge that renders but does
+     nothing strands the requester exactly where they have no other option.
+     Two bugs lived here on 2026-08-25 and one hid the other: the filenames were wrong
+     (app-store-badge.svg / google-play-badge.png do not exist; the real assets are
+     badge-app-store.webp / badge-google-play.webp) AND an onerror handler set
+     display:none, so the broken images vanished silently and the screen simply showed
+     no way forward. No console error, nothing missing on screen to notice — the
+     failure erased its own evidence. onerror is gone; a broken badge must now be
+     visible so it gets fixed.
+     Store URLs match the web app's; the Play id is io.gophergoapp.requester — the
+     io.gophergo.* listings are dead packages Google removed. */
+  const APP_STORE_URL='https://apps.apple.com/us/app/gopher-request/id1438150218';
+  const PLAY_STORE_URL='https://play.google.com/store/apps/details?id=io.gophergoapp.requester';
   function hydrateStores(){
     const wrap=document.createElement('div'); wrap.className='idc-stores';
-    wrap.innerHTML=`<img src="../../Final/assets/img/app-store-badge.svg" alt="Download on the App Store" onerror="this.style.display='none'">
-                    <img src="../../Final/assets/img/google-play-badge.png" alt="Get it on Google Play" onerror="this.style.display='none'">`;
+    wrap.innerHTML=`<a href="${APP_STORE_URL}" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"><img src="../../Final/assets/img/badge-app-store.webp" alt="Download on the App Store"></a>
+                    <a href="${PLAY_STORE_URL}" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"><img src="../../Final/assets/img/badge-google-play.webp" alt="Get it on Google Play"></a>`;
     const msg=body.querySelector('.idc-done-msg'); if(msg) msg.after(wrap);
   }
 
