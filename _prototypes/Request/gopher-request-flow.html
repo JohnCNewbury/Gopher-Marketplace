@@ -1141,6 +1141,13 @@ let state = makeInitialState();
 // stored as its own flag.
 function pickupAddr(){ return (state.pickupStops && state.pickupStops[0]) || ''; }
 function dropoffAddr(){ return (state.dropoffStops && state.dropoffStops[0]) || ''; }
+/* Index of the first blank stop, or -1. Mirrors firstEmpty() in gopher-step-gates.js
+   byte-for-byte in behaviour so the two surfaces cannot drift on what "empty" means. */
+function firstEmptyStop(arr){
+  if(!Array.isArray(arr)) return -1;
+  for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; }
+  return -1;
+}
 function idVerifiedNow(){ return !!(state.savedOnFile || (state.idFrontCaptured && state.selfieCaptured)); }
 function markIdVerified(onFile){ state.idFrontCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
 
@@ -2076,6 +2083,25 @@ function stepGate(){
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
   // G40-410 (owner, 2026-08-24): TrustShield ID gate REMOVED — verification is voluntary. Surface 2 of 3; web surfaces cleared in 77b4617. The ts-promo perk and ts-verified badge stay.
+  /* Step 4 LOCATIONS — added 2026-08-25 (owner: align the prototype with Request web + Connect).
+     This step had NO gate at all: a requester could leave BOTH address fields blank, walk past
+     "Locations", and reach Review with the destination rendering as an em-dash. Both web surfaces
+     have gated this since the shared module landed, and gopher-step-gates.js ALREADY modelled the
+     prototype as having these two gates — the model was right and the code was the outlier. Proven
+     by executing this stepGate() against GopherStepGates.evaluate(..., 'prototype'), not by reading.
+     Semantics MIRROR the module's pickupAddress/dropoffAddress gates deliberately, including the
+     firstEmpty() array walk (this UI renders one stop, but state is array-shaped for web parity)
+     and the pick-up-reports-first ordering, which the sequential ifs below give for free.
+     ⚠️ The `isVisible('pickupSection')` guard is copied from the module and carries a KNOWN HOLE
+     with it: the five categories that hide the pick-up section (home, labor, junk, yard, other)
+     still RENDER a Destination input that nothing validates — on all three surfaces, live on web.
+     Reproduced here on purpose so "aligned with web" is literally true; raised with the owner as a
+     cross-surface defect. The fix is one clause in the module's dropoffAddress.when — when it
+     lands, this needs the same change (or this surface adopts the module outright). */
+  if(state.step===4 && !state.noSpecificPickup && isVisible('pickupSection') && firstEmptyStop(state.pickupStops)>-1)
+    return {ok:false,sel:'input[data-field="pickupStops"]',msg:'Add a pick-up address so your Gopher knows where to start.'};
+  if(state.step===4 && !state.noSpecificPickup && isVisible('pickupSection') && firstEmptyStop(state.dropoffStops)>-1)
+    return {ok:false,sel:'input[data-field="dropoffStops"]',msg:'Add a drop-off address so your Gopher knows where to go.'};
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
   // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop
