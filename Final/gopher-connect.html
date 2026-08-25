@@ -10775,7 +10775,20 @@ const PAY_BADGES = {
     calViewISO: null,                 // first-of-month being viewed, 'YYYY-MM-DD'
     timeSlot: '',                    // no default — user must pick ("Select time")
     // Legacy fields kept so older references don't break; derived from schedDate.
-    selectedDate: 18
+    selectedDate: 18,
+    /* ⛔ DECLARED, not merely used (parity harness, 2026-08-25). All four were read
+       and written but never declared here, so resetFlowState() treated them as
+       runtime junk and DELETED them rather than resetting them. That happened to be
+       safe — every read coerces (`!!state.dealBoost`, `state.fromDeal || null`,
+       `state.hireAgainGophers || []`), so undefined behaved like the default — but it
+       was accidental safety, not designed safety: the first UNCOERCED read would have
+       silently got undefined. Request has declared all four all along; this is Connect
+       catching up, and it is behaviourally null today.
+       ⚠️ dealKind is the one with teeth. The zero-fee branch is
+       `fromDeal && dealKind === 'service'` — keyed on BOTH. Keying it on fromDeal
+       alone would waive every fee on every merchant deal. */
+    fromDeal: false, dealKind: null, dealBoost: false,   // Gopher Deals provenance (set by __startDealRequest)
+    hireAgainGophers: []
     };
   }
 
