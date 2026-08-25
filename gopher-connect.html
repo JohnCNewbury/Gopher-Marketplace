@@ -3888,6 +3888,18 @@
     box-shadow:0 1px 3px rgba(51,217,117,0.4);
     text-transform:lowercase;
   }
+  /* The real tier artwork. Sized by HEIGHT so the pill matches the text badge it
+     replaced; width follows the lockup's own ~2.3:1 ratio. */
+  .tier-lockup { height:18px; width:auto; display:inline-block; vertical-align:middle; }
+  .tier-lockup-cred { margin-left:4px; }
+  .profile-stat-bubble .tier-lockup { height:15px; }
+  /* ⚠️ SPECIFICITY, NOT DECORATION. `.profile-hero-pic img` (0,1,1) sets
+     width/height:100% + object-fit:cover for the PROFILE PHOTO, and the tier
+     lockup is an <img> inside that same container — so it inherited the photo's
+     sizing and was stretched to fill and CROPPED by object-fit. This selector is
+     (0,2,0) so it wins, and width:auto restores the lockup's own ratio. Caught by
+     reading computed style; the screenshot looked plausible. */
+  .profile-hero-badge .tier-lockup { height:22px; width:auto; object-fit:contain; }
   .gopher-badge .gb-plus {
     font-size:11px; font-weight:900; margin-left:1px;
     color:#fff7a8; line-height:1;
@@ -4072,12 +4084,20 @@
   }
   .profile-hero-pic {
     width:110px; height:110px; border-radius:50%;
-    overflow:hidden; position:relative;
+    /* ⚠️ WAS overflow:hidden — which clipped the tier badge that sits at this
+       circle's bottom-right edge. The old badge was a small text pill and mostly
+       fitted; the real lockup is wider and lost its "+". The circular crop now
+       lives on the PHOTO itself (border-radius below) instead of on the
+       container, so the badge can overhang as designed. */
+    overflow:visible; position:relative;
     border:3px solid white; box-shadow:0 6px 18px rgba(13,21,52,0.18);
     background:#e7f5e9;
   }
-  .profile-hero-pic img {
-    width:100%; height:100%; object-fit:cover; display:block;
+  /* ⚠️ DIRECT CHILD, deliberately. The photo is a direct child of .profile-hero-pic
+     while the tier lockup is a grandchild (inside .profile-hero-badge), so `>`
+     keeps this photo styling from ever reaching the badge image again. */
+  .profile-hero-pic > img {
+    width:100%; height:100%; object-fit:cover; display:block; border-radius:50%;
   }
   .profile-hero-badge {
     position:absolute; bottom:4px; right:-2px;
@@ -9911,15 +9931,41 @@ const PAY_BADGES = {
   // -- Worker tier badges (D-015): tiers Standard / Elite / Elite+; "Pro" is a
   // stacking CREDENTIAL (proCred) shown as its own chip beside the tier. Customer-
   // facing: earned tiers/credentials are recognised. Legacy pro/pro+ -> Standard.
+  /* THE REAL TIER LOCKUPS. Same map and same asset files gopher-go.html already
+     uses — a tier is a brand mark, and a mark is never re-typed as styled text. */
+  window.__TIER_LOGOS = window.__TIER_LOGOS || {
+    'Elite': 'assets/img/tier-elite.svg',
+    'Elite+': 'assets/img/tier-elite-plus.webp',
+    'Pro': 'assets/img/tier-pro.svg'
+  };
+  /* Canonical tier name from whatever a caller holds — 'elite+', 'Gopher Elite',
+     'Elite'. Returns null for anything with no lockup (Standard included), and
+     the callers treat null as "render no badge" rather than substituting one. */
+  window.__tierName = function(t){
+    var k = String(t == null ? '' : t).toLowerCase().replace(/^gopher\s+/, '').trim();
+    if(k === 'elite+' || k === 'pro+') return 'Elite+';
+    if(k === 'elite') return 'Elite';
+    if(k === 'pro') return 'Pro';
+    return null;
+  };
+  /* ⛔ WORDMARKS ARE NOT LOGOS (owner, 2026-08-25). This used to build a styled
+     <span> reading "elite" with a superscript "+" — a hand-typed imitation of a
+     brand mark that already exists as artwork. It now renders the real lockup.
+     Standard keeps a text pill deliberately: there IS no Standard lockup, and
+     inventing one would be the same mistake in the other direction. */
   window.__tierBadge = function(t, proCred, styleAttr){
-    t = String(t == null ? 'standard' : t).toLowerCase();
-    var isEliteP = (t === 'elite+'), isElite = (t === 'elite');
-    var text = (isEliteP || isElite) ? 'elite' : 'standard';
-    var cls  = (isEliteP || isElite) ? '' : ' tier-standard';
-    var st   = styleAttr ? (' style="' + styleAttr + '"') : '';
-    var html = '<span class="gopher-badge' + cls + '"' + st + '>' + text
-             + (isEliteP ? '<span class="gb-plus">+</span>' : '') + '</span>';
-    if(proCred) html += '<span class="gopher-badge cred-pro"' + st + '>pro</span>';
+    var name = window.__tierName(t);
+    var logos = window.__TIER_LOGOS || {};
+    var st = styleAttr ? (' style="' + styleAttr + '"') : '';
+    var html = '';
+    if(name && logos[name]){
+      html = '<img class="tier-lockup" src="' + logos[name] + '" alt="Gopher ' + name + '">';
+    } else if(!name){
+      html = '<span class="gopher-badge tier-standard"' + st + '>standard</span>';
+    }
+    if(proCred && logos['Pro'] && name !== 'Pro'){
+      html += '<img class="tier-lockup tier-lockup-cred" src="' + logos['Pro'] + '" alt="Gopher Pro">';
+    }
     return html;
   };
   window.__tierTitle = function(t, proCred){
@@ -15537,9 +15583,19 @@ const PAY_BADGES = {
   function tierToWorker(m){
     return {
       name: m.pro || 'Gopher Pro',
-      tier: (m.tier && m.tier.includes('Elite')) ? 'elite+' : 'standard',
-      proCred: !!(m.tier && String(m.tier).includes('Pro')),
-      photo: serviceProviderPhoto(m),
+      /* ⚠️ This used to be `m.tier.includes('Elite') ? 'elite+' : 'standard'`,
+         which PROMOTED every plain Elite provider to Elite+ on their own
+         profile — a fabricated tier, in the opposite direction to the card bug.
+         __tierName does the mapping properly in one place. */
+      tier: (window.__tierName(m.tier) || 'standard').toLowerCase(),
+      proCred: String(m.tier || '') === 'Gopher Pro',
+      /* ⛔ SAME IMAGE RESOLVER THE CARD USES. serviceProviderPhoto() alone
+         returns m.photo, which live feed deals never carry (the feed sets
+         .logo from deal_img), so the profile rendered an empty circle while
+         the card beside it showed the real picture. Two surfaces, one
+         provider, two different answers. */
+      photo: (serviceProviderPic(m) || {}).src || null,
+      live: !!m.live,
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
       dealServiceName: m.name || '', dealServiceOffer: m.offer || m.name || '',
@@ -16573,17 +16629,39 @@ const PAY_BADGES = {
   // Full-profile view for a worker in Request Details. Mirrors the flow's
   // Step-7 profile markup so styling is shared; maps the dashboard worker shape
   // (tier / ratingNum / jobsNum) onto the fields that markup expects.
+  /* ⛔ DO NOT ABBREVIATE A SERVER-RESOLVED NAME. "first word + last initial" is a
+     PRIVACY convention for a PERSON (John Newbury -> John N). A deal from the
+     publication feed has already had that rule applied server-side — `title` is
+     the business name when the provider shows as a business, otherwise just their
+     first name — so abbreviating again mangled a real business into "Gopher, I".
+     Demo providers keep the abbreviation: their names are full personal names. */
+  function profileDisplayName(w){
+    var n = String(w && w.name || '').trim();
+    if(!n) return '';
+    if(w && w.live) return n;
+    var parts = n.split(' ');
+    return parts[0] + (parts[1] ? ' ' + parts[1].charAt(0) : '');
+  }
+
   function renderWorkerProfile(r, w, idx){
     const tier = w.tier || 'standard';
     const tierLabel = tier.replace('+','');
     const reviews = (w.reviews != null) ? w.reviews : (w.jobsNum || 0);
-    const rating = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : 5.0);
+    /* ⛔ NEVER DEFAULT A RATING. This read `: 5.0` — so a provider we hold no
+       rating for was published as a perfect 5.0, beside a "0 Reviews" count
+       that contradicted it. A real business's reputation is not a placeholder. */
+    const ratingNum = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : null);
+    const rating = (ratingNum != null) ? Number(ratingNum).toFixed(1) : '—';
     const firstWord = (r.title || 'Previous').split(/[\s·]/)[0];
+    /* A deal that came from the publication feed carries `live`. We hold no job
+       history for those providers, so the showroom history below is withheld
+       rather than shown under their name. */
+    const isLive = !!w.live;
     return `
       <div class="profile-detail">
         <div class="profile-detail-head">
           <button class="profile-detail-back" data-wact="profile-back">← Back</button>
-          <div class="profile-detail-title">Gopher ${window.__tierTitle(tier, w.proCred)} | ${w.name.split(' ')[0]} ${w.name.split(' ')[1]?w.name.split(' ')[1].charAt(0):''}</div>
+          <div class="profile-detail-title">Gopher ${window.__tierTitle(tier, w.proCred)} | ${profileDisplayName(w)}</div>
           <div class="profile-detail-spacer"></div>
         </div>
 
@@ -16594,7 +16672,7 @@ const PAY_BADGES = {
               ${window.__tierBadge(tier, w.proCred)}
             </span>
           </div>
-          <div class="profile-hero-tagline">"${w.tagline || 'Jack of all trades! Ready to help you tackle whatever you need!'}"</div>
+          ${w.tagline ? `<div class="profile-hero-tagline">"${w.tagline}"</div>` : (isLive ? '' : `<div class="profile-hero-tagline">"Jack of all trades! Ready to help you tackle whatever you need!"</div>`)}
         </div>
 
         <div class="profile-stat-circles">
@@ -16609,7 +16687,7 @@ const PAY_BADGES = {
             <div class="profile-stat-label">Reviews</div>
           </div>
           <div class="profile-stat">
-            <div class="profile-stat-bubble rating">${Number(rating).toFixed(1)}</div>
+            <div class="profile-stat-bubble rating">${rating}</div>
             <div class="profile-stat-label">Rating</div>
           </div>
         </div>
@@ -16618,12 +16696,19 @@ const PAY_BADGES = {
           <button class="profile-message-btn" data-wact="message" data-i="${idx}">💬 Message</button>
         </div>
 
-        <div class="profile-links">
+        ${isLive ? '' : `<div class="profile-links">
           <span class="profile-link">View all previous jobs</span>
           <span class="profile-link">View All Previous ${firstWord} Jobs Only</span>
-        </div>
+        </div>`}
+        <!-- The job filters are withheld for a live provider: they filter a
+             history we do not have, so they would be two controls that do
+             nothing above an empty state. -->
 
-        <div class="profile-history-item">
+        ${isLive ? `
+        <div class="profile-history-empty">
+          No completed jobs to show yet. This provider's history will appear here
+          once they have finished work through Gopher.
+        </div>` : `        <div class="profile-history-item">
           <div class="phi-id">Request #212121</div>
           <div><b>Date:</b> 3/4/26</div>
           <div><b>Request type:</b> ${w.dealServiceName || 'Home Services'}</div>
@@ -16642,7 +16727,7 @@ const PAY_BADGES = {
           <div><b>Gopher name:</b> ${w.name}</div>
           <div><b>Amount Spent:</b> ${w.dealServiceName ? '$120.00' : '$40.00'}</div>
           <div><b>Rating:</b> ${w.dealServiceName ? '4.95' : 'No Rating'}</div>
-        </div>
+        </div>`}
       </div>
     `;
   }
