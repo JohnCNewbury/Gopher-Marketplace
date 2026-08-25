@@ -1281,6 +1281,10 @@ function customerAgeYears(){
    folded in deliberately: replacing its last call site would have left it DEAD while
    still looking load-bearing, and other paths (markIdVerified, the deals deep-link,
    the Go relay) still write the flags it reads. */
+/* Identity satisfied for an age-restricted order. Mirrors the web host's
+   identityVerified(): hasTS || submittedAt || onFile — the badge and a one-off
+   submission are equally valid; they differ only in how long they last. */
+function identitySatisfied(){ return !!(state.trustShield || state.idSubmittedAt || state.savedOnFile); }
 function idOnFileOrSubmitted(){ return !!(state.savedOnFile || state.idSubmittedAt || idVerifiedNow()); }
 
 /* ============================================================
@@ -1374,35 +1378,28 @@ function renderStep1(){
    the people who use it most. customerAgeYears() is still read for the COPY only. */
 function arIdentityControl(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
-  const age=customerAgeYears();
-  /* ⚠️ THE ONLY AGE-DEPENDENT DIFFERENCE, and it is deliberately one button.
-     Verified by driving the live web page with nothing but the DOB changed:
-       30+      -> ["Submit identification"]
-       under 30 -> ["Submit identification", "+Add Gopher TrustShield™"]
-     Both then see the same TrustShield promo card below the banner, so 30+ is still
-     offered the badge — just through "Learn more" rather than a button in the banner.
-     This is the RESIDUE of a much bigger difference that was removed on 2026-08-23/24:
-     under-30 used to be offered TrustShield and NOTHING ELSE. That died because iDenfy
-     is being retired, which would have left the youngest requesters (76.7% of new
-     enrolments are 21-29) with no way to pre-submit ID at all while 30+ kept one.
-     The inline button is what remains of nudging that group hardest. */
-  const nudgeTS = (age==null || age<30);
-  if(idOnFileOrSubmitted()){
-    /* Web splits here too: 30+ collapses to a compact badge, under-30 keeps the full
-       row so the TrustShield nudge survives having already submitted. */
-    if(!nudgeTS) return `<div class="ar-id-done">
-        <span class="ar-id-check">✅</span>
-        <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
-        <button class="ar-id-update" data-action="id-update">Update</button>
-      </div>`;
-    return `<div class="ar-control">
-      <button class="ar-action" data-action="id-update">Update identification</button>
-      <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
+  /* ⛔ NO AGE BRANCH (owner ruling, 2026-08-25: "there is no distinction with ANY age.
+     ALL users need to submit their identification"). Modelled on the web change in
+     036bc2d, which removed the same fork from Request and Connect.
+     It used to fork on customerAgeYears() < 30 — a boundary that existed only because
+     under-30 once had a TrustShield-only path. Everyone now gets the SAME control, and
+     the two outcomes differ only in HOW LONG the identity lasts:
+       • Submit identification — ONE-TIME, this order only (savedOnFile stays false).
+       • TrustShield          — kept for as long as the badge is carried.
+     That persistence split is enforced in the capture sheet's submit handler by its
+     isTS flag, not here; this function only paints the control.
+     ⚠️ Do not reintroduce an age fork. The 21+ rule is a SEPARATE, still-live gate —
+     nobody under 21 can order age-restricted at all — enforced on the deal categories,
+     not in this banner, and it has no implementation on this surface (verified: zero
+     isMinor / calculateAge / customerAge gating here). */
+  if(idOnFileOrSubmitted()) return `<div class="ar-id-done">
+      <span class="ar-id-check">✅</span>
+      <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
+      <button class="ar-id-update" data-action="id-update">Update</button>
     </div>`;
-  }
   return `<div class="ar-control">
     <button class="ar-action" data-action="id-submit">Submit identification</button>
-    ${nudgeTS ? `<div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>` : ''}
+    <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
   </div>`;
 }
 /* Kept as the name the rest of this file already calls. */
@@ -2258,7 +2255,22 @@ function stepGate(){
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
-  // G40-410 (owner, 2026-08-24): TrustShield ID gate REMOVED — verification is voluntary. Surface 2 of 3; web surfaces cleared in 77b4617. The ts-promo perk and ts-verified badge stay.
+  /* ⛔⛔ THE IDENTITY GATE IS BACK (owner ruling, 2026-08-25) — this SUPERSEDES the
+     G40-410 removal that stood here on 2026-08-24; that note is kept below rather than
+     deleted, so the reversal stays legible instead of looking like the gate was never
+     touched. Modelled on the web change in 036bc2d.
+     G40-410 removed it for exactly one reason: iDenfy was being retired, enrolment
+     would stop, and under-30 (who then had no one-off ID path) would have been left
+     unable to order at all. TrustShield now runs INTERNALLY — enrolment never stops —
+     so the reason is gone and the requirement returns, for EVERYONE, no age branch.
+     ⚠️ SCOPE IS NARROW and this condition is what carries it: delivery + ageRestricted
+     only. A normal order is never gated by this.
+     ⚠️ Satisfied by EITHER path — that is the point: a one-time submission
+     (idSubmittedAt) or the persistent badge (trustShield / savedOnFile).
+     Superseded: "G40-410 (owner, 2026-08-24): TrustShield ID gate REMOVED —
+     verification is voluntary. Surface 2 of 3; web surfaces cleared in 77b4617." */
+  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !identitySatisfied())
+    return {ok:false,sel:'.ar-control',msg:'Submit your identification for this age-restricted order to continue.',tone:'alert'};
   /* Step 4 LOCATIONS — added 2026-08-25 (owner: align the prototype with Request web + Connect).
      This step had NO gate at all: a requester could leave BOTH address fields blank, walk past
      "Locations", and reach Review with the destination rendering as an em-dash. Both web surfaces

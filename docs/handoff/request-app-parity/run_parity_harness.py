@@ -680,23 +680,32 @@ def main():
         # IMMEDIATELY after `if(` — which rejects ANY prefix, known or not.
         # Still source-text matching; EXECUTING stepGate() is the honest fix and is
         # the adoption work for that surface.
-        # ⛔ INVERTED 2026-08-25 — surface 2 of the staged rollout LANDED (owner
-        # authorised 2026-08-24; web surfaces cleared in 77b4617). This used to
-        # assert the gate was PRESENT. It now asserts it is GONE, for the same
-        # reason the module's assertInvariants() was inverted rather than deleted:
-        # a ruling with no assertion behind it is a habit, and habits get undone.
+        # ⛔ INVERTED AGAIN 2026-08-25 — THIRD state for this check in three days, so
+        # read the DATE, not the shape. It required the gate; then required its
+        # ABSENCE (G40-410, because iDenfy was being retired and under-30 had no
+        # one-off path); and now requires its PRESENCE again, because TrustShield runs
+        # INTERNALLY, enrolment never stops, and the owner made identity mandatory for
+        # age-restricted orders with no age branch. The guard follows the ruling rather
+        # than being deleted with it — which is exactly why it keeps flipping.
         pm = re.search(
             r"if\(\s*state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
             r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
             proto_src)
-        check(pm is None,
-              "prototype does NOT gate step 2 on identity (owner 2026-08-24, G40-410)",
-              "" if pm is None else
-              "the step-2 identity gate is back — it reads: %s. TrustShield is "
-              "VOLUNTARY: iDenfy is retired, so a required badge permanently blocks "
-              "every new under-30 requester once credits hit zero. The compliance "
-              "control is the Gopher's physical ID check at the door."
-              % pm.group(1).strip()[:80])
+        check(pm is not None,
+              "prototype GATES step 2 on identity for A/R delivery (owner 2026-08-25)",
+              "the step-2 identity condition is gone. Identity is mandatory for "
+              "age-restricted orders again — TrustShield is internal now, so the "
+              "iDenfy cliff that justified removing it in G40-410 no longer exists.")
+        if pm:
+            # Must be satisfiable by EITHER path. A gate that only accepts the badge
+            # would make TrustShield mandatory rather than persistent, which is the
+            # opposite of the ruling: submission is one-time, TrustShield lasts.
+            cond = pm.group(1)
+            check("identitySatisfied" in cond,
+                  "prototype's identity gate accepts EITHER path (one-off or badge)",
+                  "condition reads: %s — it must call identitySatisfied(), which is "
+                  "trustShield || idSubmittedAt || savedOnFile, mirroring the web "
+                  "host's identityVerified()." % cond.strip()[:80])
 
         # ⚠️ The check above, alone, is satisfied by DELETING THE WHOLE FEATURE —
         # idVerifiedNow() had three references and only ONE was the gate, so removing

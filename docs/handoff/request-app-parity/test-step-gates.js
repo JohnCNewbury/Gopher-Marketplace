@@ -60,19 +60,22 @@ section('1. Catalogue');
   ok(G.GATES.length === 12, 'twelve distinct gates', String(G.GATES.length));
   ok(G.assertInvariants().length === 0, 'module passes its own self-check',
      JSON.stringify(G.assertInvariants()));
-  /* 11 -> 10: the identity gate left both web surfaces on 2026-08-23 (owner,
-     G40-410). The prototype went 10 -> 9 on 2026-08-25 when surface 2 of the
-     rollout landed; it is one short of the web pair because it never had
-     scheduleTime or addressesDiffer but does carry ageKeyword. NO surface
-     enables identity now — the definition stays in the catalogue, unreferenced,
-     for the barcode work to re-enable. */
-  ok(G.gatesFor('request').length === 10, 'request enables 10');
-  ok(G.gatesFor('connect').length === 10, 'connect enables 10');
-  ok(G.gatesFor('prototype').length === 9, 'prototype enables 9',
+  /* Identity RETURNED to all three on 2026-08-25 (owner: mandatory for A/R orders,
+     no age branch) — web in 036bc2d, prototype the same day. Counts went 10 -> 11 and
+     9 -> 10. The prototype stays one short of the web pair because it has neither
+     scheduleTime nor addressesDiffer, but does carry ageKeyword.
+     ⚠️ This block has now been rewritten three times in three days. Read the DATE,
+     not the shape — the gate was required, then removed with G40-410 when iDenfy was
+     being retired, and is required again now TrustShield runs internally. */
+  ok(G.gatesFor('request').length === 11, 'request enables 11',
+     String(G.gatesFor('request').length));
+  ok(G.gatesFor('connect').length === 11, 'connect enables 11',
+     String(G.gatesFor('connect').length));
+  ok(G.gatesFor('prototype').length === 10, 'prototype enables 10',
      String(G.gatesFor('prototype').length));
   ok(Object.keys(G.SURFACE_GATES).every(function (s) {
-    return G.SURFACE_GATES[s].indexOf('identity') === -1;
-  }), 'no surface enables the identity gate (all three landed, G40-410)');
+    return G.SURFACE_GATES[s].indexOf('identity') !== -1;
+  }), 'EVERY modelled surface enables the identity gate (owner 2026-08-25)');
   ok(G.gateById('nope') === null, 'unknown id returns null, does not throw');
 })();
 
@@ -109,15 +112,16 @@ section('2. Gates fire');
   ok(idGate.when(state({ step: 2, ageRestricted: true, category: 'moving' }),
                  host({ identityVerified: function () { return false; } })) === false,
      'definition: identity gate is DELIVERY-only — moving is never gated on it');
-  /* …and the ruling itself: no surface routes to it any more. */
-  ok(ev(state({ step: 2, ageRestricted: true }),
-        host({ identityVerified: function () { return false; } }), 'prototype').ok === true,
-     'prototype no longer gates on identity (surface 2, owner 2026-08-24)');
-  /* The new ruling, asserted where it can actually fail. */
-  ok(ev(state({ step: 2, ageRestricted: true }),
-        host({ identityVerified: function () { return false; } })).ok === true,
-     'WEB: an age-restricted order proceeds with NO identity verification '
-     + '(owner 2026-08-23 — TrustShield is voluntary, the Gopher checks ID at the door)');
+  /* …and the ruling itself, asserted on every surface that models it. An
+     age-restricted delivery with no identity is BLOCKED — owner 2026-08-25, and the
+     scope is exactly this: A/R delivery, not orders in general (see below). */
+  ['request', 'connect', 'prototype'].forEach(function (sf) {
+    ok(ev(state({ step: 2, ageRestricted: true }),
+          host({ identityVerified: function () { return false; } }), sf).id === 'identity',
+       sf + ': an age-restricted order is BLOCKED without identity (owner 2026-08-25)');
+  });
+  ok(ev(state({ step: 2, ageRestricted: true }), host()).ok === true,
+     'satisfied identity lets an age-restricted order through');
   ok(ev(state({ step: 2, ageRestricted: false }),
         host({ identityVerified: function () { return false; } })).ok === true,
      'slider OFF is never gated, even with a keyword in the description');
@@ -184,8 +188,9 @@ section('4. Per-surface behaviour is PRESERVED');
   /* INVERTED 2026-08-23, not deleted: the ruling flipped, so the guard flips with
      it. A ruling with no assertion behind it is a habit, and habits get undone. */
   ok(['request', 'connect', 'prototype'].every(function (s) {
-    return G.SURFACE_GATES[s].indexOf('identity') === -1;
-  }), 'NO modelled surface carries the identity gate (owner 2026-08-23/24, G40-410)');
+    return G.SURFACE_GATES[s].indexOf('identity') !== -1;
+  }), 'EVERY modelled surface carries the identity gate (owner 2026-08-25 — '
+     + 'mandatory for A/R orders now TrustShield is internal)');
   /* Surface 3 — the live apps — is not modelled in this module; it ships via a
      store release and is asserted by run_parity_harness.py against real sources. */
 
@@ -274,29 +279,41 @@ section('7. Adapters preserve each surface\'s existing call sites');
 })();
 
 /* ═══ 8. The under-30 message — copy only, never the requirement ══════════════ */
-section('8. Under-30 changes the MESSAGE, not the rule');
+section('8. Age changes NOTHING — not the rule, and no longer the wording');
 (function () {
-  var blocked = host({ identityVerified: function () { return false; } });
-  var s = state({ step: 2, ageRestricted: true });
-
-  /* Against the DEFINITION as of 2026-08-25 (section 3 explains why): no surface
-     enables identity, so evaluate() can no longer reach this message logic. It is
-     still worth pinning — the barcode work re-enables the gate, and the age branch
-     has already been misread once as a behavioural divergence between surfaces. */
+  /* ⛔ REWRITTEN 2026-08-25. This section used to assert that age changed the MESSAGE
+     while never changing the requirement. The owner removed the distinction entirely
+     ("there is no distinction with ANY age"), so `messageFor` was DELETED from the
+     gate in 036bc2d and these assertions crashed with
+     `idGate.messageFor is not a function` — a real crash, not a soft failure.
+     They are re-pointed at what the ruling actually says: every age is gated
+     identically and gets identical wording. The `customerAge` host helper survives in
+     the contract but nothing reads it — that is expected, not a leftover. */
   var idGate = G.gateById('identity');
-  var youngHost = host({ identityVerified: function () { return false; },
-                         customerAge: function () { return 22; } });
-  ok(idGate.when(s, youngHost) === true && idGate.when(s, blocked) === true,
-     'both ages are gated — the requirement is identical');
-  ok(/TrustShield/.test(idGate.messageFor(s, youngHost))
-     && /Submit identification/.test(idGate.messageFor(s, blocked)),
-     'only the wording differs');
+  var s = state({ step: 2, ageRestricted: true });
+  var mk = function (age) {
+    return host({ identityVerified: function () { return false; },
+                  customerAge: function () { return age; } });
+  };
+  var young = mk(22), older = mk(46), unknown = mk(null);
 
-  var noDobHost = host({ identityVerified: function () { return false; },
-                         customerAge: function () { return null; } });
-  ok(idGate.when(s, noDobHost) === true, 'unknown DOB is still gated (the safest path)');
-  ok(/Submit identification/.test(idGate.messageFor(s, noDobHost)),
-     'and gets the generic wording rather than a TrustShield-specific claim');
+  ok(idGate.when(s, young) === true && idGate.when(s, older) === true
+     && idGate.when(s, unknown) === true,
+     'every age is gated — 22, 46 and unknown DOB alike');
+  ok(typeof idGate.messageFor !== 'function',
+     'the age-dependent messageFor is GONE (owner 2026-08-25 — age changes no wording)');
+
+  /* Same message for everyone, read through evaluate() so this asserts what a user
+     actually sees rather than a property of the definition. */
+  var mFor = function (h) { return ev(s, h, 'request').message; };
+  ok(mFor(young) === mFor(older) && mFor(older) === mFor(unknown),
+     'all three ages receive the IDENTICAL message');
+  ok(/Submit identification/.test(mFor(young)),
+     'and it is the generic submission wording, with no TrustShield-only claim');
+
+  /* The scope of the ruling: A/R orders, not orders in general. */
+  ok(ev(state({ step: 2, ageRestricted: false }), mk(22), 'request').ok === true,
+     'a NON age-restricted order is never gated on identity, at any age');
 })();
 
 console.log('\n' + (fail === 0 ? 'PASS' : 'FAIL') + ' — ' + pass + ' passed, ' + fail + ' failed');

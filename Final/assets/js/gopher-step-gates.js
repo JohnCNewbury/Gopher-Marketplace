@@ -256,7 +256,7 @@
        than inherited: an omission anyone can see beats an absence nobody notices.
        Adding either address gate here would CHANGE its behaviour, which is a
        product decision and not part of an extraction. */
-    prototype: ['category', 'description', 'costOfItems', 'ageKeyword',
+    prototype: ['category', 'description', 'costOfItems', 'ageKeyword', 'identity',
                 'pickupAddress', 'dropoffAddress',
                 'workerPay', 'workerPaySubmit', 'waiver']
   };
@@ -373,9 +373,12 @@
        because TrustShield runs internally and identity is mandatory for A/R orders.
        The guard follows the ruling instead of being deleted with it, which is why it
        keeps flipping rather than quietly disappearing.
-       'prototype' is deliberately NOT checked: App Prototypes lands that surface
-       separately. Add it here the day it does. */
-    ['request', 'connect'].forEach(function (surface) {
+       'prototype' JOINED this list on 2026-08-25, the day App Prototypes landed the
+       gate on that surface (its stepGate() now blocks A/R delivery until identity is
+       satisfied, and its UI can satisfy it — both paths, one-off and TrustShield).
+       All three modelled surfaces are asserted to CARRY the gate. Surface 3, the live
+       apps, is not modelled here; it ships via a store release. */
+    ['request', 'connect', 'prototype'].forEach(function (surface) {
       if (SURFACE_GATES[surface].indexOf('identity') === -1) {
         problems.push(surface + ' is MISSING the identity gate, which the owner made '
           + 'mandatory for age-restricted orders on 2026-08-25 (TrustShield is internal now)');

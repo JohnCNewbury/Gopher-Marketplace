@@ -41,23 +41,46 @@ if(!FH.pickupSection||CATS.length<6) throw new Error('extraction failed');
 const firstEmptyStop=a=>{if(!Array.isArray(a))return -1;
   for(let i=0;i<a.length;i++){if(!String(a[i]==null?'':a[i]).trim())return i;}return -1;};
 
+/* ⚠️ TWO DIFFERENT implementations on purpose, and the difference IS the test.
+   • protoIdentity — the REAL identitySatisfied() lifted verbatim out of the file, so
+     the prototype side runs its own logic. An earlier version injected the mirror
+     below into BOTH sides; that is mocking the unit under test, and it showed:
+     narrowing the file's version to `trustShield` only — which would make TrustShield
+     mandatory instead of persistent, inverting the owner's ruling — produced ZERO
+     disagreements. The check could not see the thing it existed to check.
+   • CANON — the contract the module's host is required to honour, mirroring web's
+     identityVerified(): hasTS || submittedAt || onFile. If the file drifts off this,
+     the two sides now disagree and the sweep says so. */
+const protoIdentitySrc = (function(){
+  const m = src.match(/function identitySatisfied\(\)\{[^}]*\}/);
+  if(!m) throw new Error('identitySatisfied() not found — extraction failed');
+  return m[0];
+})();
+const protoIdentity = st => new Function('state', protoIdentitySrc + '; return identitySatisfied();')(st);
+const CANON = st => !!(st.trustShield || st.idSubmittedAt || st.savedOnFile);
 function runProto(st){
   const isVisible=f=>!(FH[f]||[]).includes(st.category);
   const f=new Function('state','isVisible','toNum','findAgeRestrictedKeyword','firstEmptyStop',
-    'bidsAllowed','perWorkerPay',stepGateSrc+'; return stepGate();');
+    'bidsAllowed','perWorkerPay','identitySatisfied',stepGateSrc+'; return stepGate();');
   return f(st,isVisible,v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.]/g,''));return isNaN(n)?0:n;},
-    ()=>null,firstEmptyStop,()=>false,()=>st.payAmount?parseFloat(st.payAmount)||0:0);
+    ()=>null,firstEmptyStop,()=>false,()=>st.payAmount?parseFloat(st.payAmount)||0:0,
+    ()=>protoIdentity(st));
 }
 function runModule(st){
   const host={isVisible:f=>!(FH[f]||[]).includes(st.category),bidsAllowed:()=>false,
-    identityVerified:()=>true,findAgeRestrictedKeyword:()=>null,customerAge:()=>40,
+    /* Was hardcoded TRUE, which made the identity gate unreachable on the module side
+       just as ageRestricted:false made it unreachable on the prototype's — the sweep
+       reported "0 disagreements" while blind to the whole gate. Both now read state. */
+    identityVerified:()=>CANON(st),
+    findAgeRestrictedKeyword:()=>null,customerAge:()=>40,
     perWorkerPay:()=>st.payAmount?parseFloat(st.payAmount)||0:0};
   return G.evaluate(st,host,'prototype');
 }
 const B=o=>Object.assign({step:1,category:'delivery',description:'x',itemsPurchased:false,
   costOfItems:'',ageRestricted:false,ageKeywordAck:false,noSpecificPickup:false,
   pickupStops:['1 A St'],dropoffStops:['2 B St'],payMode:'set',payAmount:'40',
-  scheduleType:'now',timeSlot:'',waiverChecked:true},o);
+  scheduleType:'now',timeSlot:'',waiverChecked:true,
+  trustShield:false,idSubmittedAt:null,savedOnFile:false},o);
 
 let n=0,diff=0;const seen=new Set();
 for(const category of CATS)
@@ -67,16 +90,26 @@ for(const category of CATS)
     for(const nsp of [false,true])
      for(const pay of ['40','','0'])
       for(const waiver of [true,false])
-       for(const purchased of [false,true]){
-        const st=B({category,step,pickupStops:pu,dropoffStops:dp,noSpecificPickup:nsp,
+       /* The identity dimension. ageRestricted was previously FIXED false, so the
+          identity gate never once executed and the sweep's green was meaningless.
+          The four identity states are: nothing, a one-off submission, the badge, and
+          ID kept on file — the last three must all SATISFY the gate, because the
+          ruling is that submission and TrustShield differ in PERSISTENCE, not in
+          whether they count. */
+       for(const [ar,ident] of [[false,{}],[true,{}],
+                                [true,{idSubmittedAt:1}],
+                                [true,{trustShield:true}],
+                                [true,{savedOnFile:true}]])
+        for(const purchased of [false,true]){
+        const st=B(Object.assign({category,step,pickupStops:pu,dropoffStops:dp,noSpecificPickup:nsp,
                     payAmount:pay,waiverChecked:waiver,itemsPurchased:purchased,
-                    costOfItems:purchased?'':''});
+                    costOfItems:purchased?'':'',ageRestricted:ar},ident));
         n++;
         const p=runProto(st),m=runModule(st);
         if(p.ok!==m.ok){diff++;
           const k=[category,step,p.ok,m.ok,m.id].join('|');
           if(!seen.has(k)){seen.add(k);
-            console.log(`⚠ ${category} step${step} pu=${JSON.stringify(pu)} dp=${JSON.stringify(dp)} nsp=${nsp} → proto ${p.ok?'passes':'blocks'} / module ${m.ok?'passes':'blocks '+m.id}`);}}
+            console.log(`⚠ ${category} step${step} ar=${st.ageRestricted} ts=${st.trustShield} sub=${!!st.idSubmittedAt} file=${st.savedOnFile} pu=${JSON.stringify(pu)} dp=${JSON.stringify(dp)} nsp=${nsp} → proto ${p.ok?'passes':'blocks'} / module ${m.ok?'passes':'blocks '+m.id}`);}}
        }
 console.log('\ncases: '+n+'   disagreements: '+diff);
 if (diff) {
