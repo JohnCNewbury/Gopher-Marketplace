@@ -389,17 +389,25 @@
   }
 
   /* ─── Sign-in modal (centered overlay) ─── */
-  .gc-modal-overlay/* Variant scrim rgba(13,21,52,.55) KEPT — owner rule 2026-08-19: no UI change without a side-by-side approval first. Canonical-scrim unification was DECLINED by the owner 2026-08-19 (side-by-side shown; "keep current look") — do not re-propose. */
-/* ⛔ MUST stay two-class (owner-reported 2026-08-25: the OTP opened BEHIND the
-   sign-in sheet, so users had to close sign-in to reach the code).
-   As `.gc-mo--signin` alone this is specificity (0,1,0) — the SAME as the base
-   `.gc-modal-overlay { z-index:9500 }` rule, which is declared LATER in the file
-   and therefore won. Sign-in computed to 9500 and the OTP (9100) sat under it.
-   The z-index values were always right; only the selector was too weak.
-   Qualifying it with .gc-modal-overlay makes it (0,2,0) — matching how
-   .gc-modal-overlay.gc-mo--otp is already written a few hundred lines below. */
-.gc-modal-overlay.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
-  .gc-modal-overlay.gc-mo--signin[hidden] { display:none; }
+  /* Variant scrim rgba(13,21,52,.55) KEPT — owner rule 2026-08-19: no UI change
+     without a side-by-side approval first. Canonical-scrim unification was
+     DECLINED by the owner 2026-08-19 (side-by-side shown; "keep current look")
+     — do not re-propose.
+
+     KEEP THIS COMMENT ABOVE THE RULE, NEVER BETWEEN THE TWO CLASS SELECTORS.
+     It used to sit immediately after .gc-modal-overlay, on the line above
+     .gc-mo--signin. CSS discards a comment and the newline around it collapses
+     to a space, so the selector silently became a DESCENDANT selector — a
+     .gc-mo--signin inside a .gc-modal-overlay — which never exists, because the
+     sign-in sheet IS the overlay. The whole rule was therefore dead: z-index,
+     scrim, blur, padding and animation all fell through to the base
+     .gc-modal-overlay rule at z-index 9500. That is why the OTP overlay (9100)
+     rendered BEHIND the sign-in sheet, owner-reported 2026-08-25, and why this
+     sheet never showed its own backdrop blur.
+     A comment placed between two class selectors changes what the rule MATCHES.
+     Verified through the CSSOM, not by reading the source. */
+  .gc-modal-overlay.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
+    .gc-modal-overlay.gc-mo--signin[hidden] { display:none; }
   @keyframes signinFadeIn {
     from { opacity:0; }
     to   { opacity:1; }
@@ -8404,7 +8412,7 @@
                cannot be literal: Connect's AGE_FEE is $2.99 (D-031, flat on every
                plan), Request's is $1.99. Copying Request's sentence verbatim would
                state a price Connect does not charge. -->
-          <span>Applied automatically once you're verified, reducing the $2.99 age-restricted fee to $1.99 as long as you carry the badge. Adds up fast.</span>
+          <span>Applied automatically once you're verified, reducing the $2.99 age-restricted fee to $1.99 as long as you carry the badge. Savings add up fast.</span>
         </div>
       </div>
       <div class="ts-perk">
@@ -8435,7 +8443,7 @@
   <div class="gc-modal idsub-modal" role="dialog" aria-modal="true" aria-labelledby="idSubmitTitle">
     <button type="button" class="gc-modal-close" id="idSubmitClose" aria-label="Close">×</button>
     <h4 id="idSubmitTitle">Submit identification</h4>
-    <p class="gc-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. You'll still show a physical ID in person at hand-off.</p>
+    <p class="gc-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. This is required each time you make an age-restricted delivery. Gopher TrustShield&trade; allows you to skip this portion indefinitely as long as you carry the badge. You&rsquo;ll still show a physical ID in person at hand-off.</p>
 
     <div class="idsub-steps" id="idSubChips">
       <div class="idsub-stepchip" id="idSubChipA">1 · Front</div>
@@ -13403,8 +13411,8 @@ const PAY_BADGES = {
                                  : isUpdate ? 'Update Identification' : 'Submit identification';
       const subEl = document.getElementById('idSubmitSub');
       if(subEl) subEl.textContent = isTS
-        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides.'
-        : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
+        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides. You\u2019ll still show a physical ID in person at hand-off.'
+        : 'Verify your identity for this age-restricted order. This is required each time you make an age-restricted delivery. Gopher TrustShield\u2122 allows you to skip this portion indefinitely as long as you carry the badge. You\u2019ll still show a physical ID in person at hand-off.';
       const subBtn = document.getElementById('idSubSubmit');
       if(subBtn) subBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
       overlay.hidden = false;
