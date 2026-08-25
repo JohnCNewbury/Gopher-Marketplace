@@ -15444,7 +15444,25 @@ const PAY_BADGES = {
      content (shared module assets/js/gopher-deals-feed.js — same one Request
      uses, so the two pages can never drift apart again). Silent on failure by
      design: no feed just means the showroom content stands alone. */
-  if(window.GopherDealsFeed) GopherDealsFeed.merge(DEALS_DATA);
+
+  /* Re-ask the feed for THIS location and redraw. The server decides what is
+     visible — reach and market are enforced there — so changing the pill means
+     a new request, never a client-side filter of a list we already hold. */
+  let _dealsLiveIds = [];
+  function refreshDealsForLocation(){
+    if(!window.GopherDealsFeed){ renderDealsPanel(); return; }
+    /* Drop the previous location's live cards before asking for the next
+       location's, or a customer who moves out of range keeps seeing them. */
+    DEALS_DATA.forEach(c => {
+      if(Array.isArray(c.merchants))
+        c.merchants = c.merchants.filter(m => !m.live);
+    });
+    GopherDealsFeed.merge(DEALS_DATA, function(added, meta){
+      _dealsFeedMeta = meta || {};
+      renderDealsPanel();
+    }, { zip: _dealsLocationZip });
+  }
+  let _dealsFeedMeta = {};
 
   function findDealMerchant(id){
     for(const c of DEALS_DATA){ const m = c.merchants.find(x => x.id === id); if(m) return m; }
@@ -15459,7 +15477,47 @@ const PAY_BADGES = {
   const DEALS_PIN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
   const DEALS_SEARCH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-3.5-3.5"/></svg>';
 
-  let _dealsLocationLabel = 'Home';   // location pill label (Home = user's address)
+  const DEFAULT_HOME_ZIP = '27601';
+  let _dealsLocationLabel = 'Home';
+  /* ⛔ THE MARKET IS THE TRIANGLE, AND THE SERVER IS THE ONE ENFORCING IT
+     (NC ZIPs 275/276/277 — owner ruling 2026-08-25). This map exists only to
+     turn a town the customer TYPED into a zip we can send; isInRaleighDMA()
+     below still decides what the picker accepts, and the feed re-checks the zip
+     server-side regardless. A client-side gate alone would be decorative.
+     One representative zip per town — precision beyond the town is not needed,
+     because the customer's own coordinates are not known here anyway and the
+     smallest reach a provider can set is a mile. */
+  const DMA_TOWN_ZIP = {
+    'raleigh':'27601','durham':'27701','cary':'27511','apex':'27502',
+    'holly springs':'27540','morrisville':'27560','wake forest':'27587',
+    'garner':'27529','fuquay':'27526','clayton':'27520','chapel hill':'27514',
+    'wendell':'27591','knightdale':'27545','rolesville':'27571','zebulon':'27597',
+    'pittsboro':'27312','hillsborough':'27278','smithfield':'27577','angier':'27501',
+    'willow spring':'27592','new hill':'27562','creedmoor':'27522',
+    'franklinton':'27525','louisburg':'27549','butner':'27509','carrboro':'27510',
+    'wake county':'27601'
+  };
+  /* The customer's zip. Defaults to the account address; the picker can change
+     it. `Home` in the pill means "this zip came from their profile". */
+  let _dealsLocationZip = (function(){
+    const el = document.getElementById('peZip');
+    const v = el && (el.value || '').trim();
+    return /^\d{5}$/.test(v || '') ? v : DEFAULT_HOME_ZIP;
+  })();
+  function zipFromLocationText(text){
+    const t = String(text||'').toLowerCase();
+    const m = t.match(/\b(\d{5})\b/);
+    if(m) return m[1];
+    const hit = Object.keys(DMA_TOWN_ZIP).find(c => t.includes(c));
+    return hit ? DMA_TOWN_ZIP[hit] : '';
+  }
+  /* ⚠️ CALLED HERE, BELOW THE ZIP DECLARATIONS, AND NOT WHERE THE OLD
+     unconditional merge() sat. `_dealsLocationZip` is a `let`: calling this
+     above it throws "Cannot access before initialization" — the temporal dead
+     zone, which looks like nothing at parse time and kills the whole deals rail
+     at run time. Caught by checking declaration order, not by the parser. */
+  if(window.GopherDealsFeed) refreshDealsForLocation();
+   // location pill label (Home = user's address)
 
   // Profile photo for a service provider. If the provider is the signed-in user
   // (e.g. Power Washing → John Newbury), use their on-file photo; else the record's.
@@ -15736,13 +15794,15 @@ const PAY_BADGES = {
     document.getElementById('dealsLocClose').addEventListener('click', close);
     ov.addEventListener('click', (e) => { if(e.target === ov) close(); });
     document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !ov.hidden) close(); });
-    document.getElementById('dealsLocHome').addEventListener('click', () => { _dealsLocationLabel = 'Home'; close(); renderDealsPanel(); });
+    document.getElementById('dealsLocHome').addEventListener('click', () => { _dealsLocationLabel = 'Home'; _dealsLocationZip = DEFAULT_HOME_ZIP; close(); refreshDealsForLocation(); });
     document.getElementById('dealsLocApply').addEventListener('click', () => {
       const val = (document.getElementById('dealsLocInput').value || '').trim();
       if(!val){ close(); return; }
-      if(isInRaleighDMA(val)){
+      const z = zipFromLocationText(val);
+      if(isInRaleighDMA(val) && z){
         _dealsLocationLabel = dealsLocLabelFrom(val);
-        close(); renderDealsPanel();
+        _dealsLocationZip = z;
+        close(); refreshDealsForLocation();
       } else {
         close();
         const cs = document.getElementById('dealsOverlay');   // "coming soon to your area"

@@ -119,13 +119,27 @@
   /* Fetch and prepend into the page's DEALS_DATA. Failure is silent BY
      DESIGN — the inline data is the fallback, so an unreachable feed must
      look like "no real deals yet", never like a broken page. */
-  function merge(dealsData, done) {
-    var finish = function (added) { if (typeof done === 'function') done(added); };
+  function merge(dealsData, done, opts) {
+    var finish = function (added, meta) {
+      if (typeof done === 'function') done(added, meta || {});
+    };
     if (!window.fetch || !Array.isArray(dealsData)) { finish(0); return; }
-    fetch(API)
+    /* ⛔ THE ZIP IS THE GATE, and the server enforces it — this is not a client
+       filter dressed up as one. Deals are live in the Triangle only
+       (NC 275/276/277) until other markets launch, and without a zip the feed
+       returns nothing with `location_required` so the page can ask rather than
+       render an empty rail and look broken. */
+    var zip = (opts && opts.zip) || '';
+    var url = API + (zip ? '?zip=' + encodeURIComponent(zip) : '');
+    fetch(url)
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (body) {
         var deals = (body && body.deals) || [];
+        var meta = {
+          locationRequired: !!(body && body.location_required),
+          outOfArea: !!(body && body.out_of_area),
+          message: (body && body.message) || ''
+        };
         var added = 0;
         deals.forEach(function (d) {
           var railKey = RAIL_FOR_KEY[d.category];
@@ -139,7 +153,7 @@
           var exists = rail.merchants.some(function (m) { return m.id === card.id; });
           if (!exists) { rail.merchants.unshift(card); added += 1; }
         });
-        finish(added);
+        finish(added, meta);
       })
       .catch(function () { finish(0); });
   }
