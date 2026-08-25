@@ -151,7 +151,7 @@ a worker's device? Today nothing is specified. Note `users.updated_at` is **not*
 (`timestamps:false`), so "last activity" is not a reliable clock for expiry — a retention job needs
 its own timestamp.
 
-**4.4 — Access control.** ✅ **INVESTIGATED 2026-08-24 (backend code, `origin/production`).**
+**4.4 — Access control.** ✅ **INVESTIGATED 2026-08-24 (backend code) — and ANSWERED AT THE CONSOLE 2026-08-25; see the dated section below, which supersedes this paragraph's open items.**
 Enrollment images (stream 1) live in `process.env.AWS_BUCKET` under `uploads/trustshield/<scanRef>/`,
 uploaded **`ACL: 'private'`** (`helpers/trustshield_files.js:138`) and served as **signed URLs with a
 3600-second / 1-hour TTL** (`URL_TTL_SECONDS`, via `shared/S3.js` `getSecureUrl`). Caller access is
@@ -163,6 +163,62 @@ bucket-level settings invisible to the repo. **These three (default SSE, block-p
 access logging) need a console check** — the AWS/TrustShield session or the owner, not something this
 session can verify. Nothing here is public *by code*; whether the bucket enforces it at the platform
 level is the open item.
+
+---
+
+### 4.4 — ANSWERED AT THE CONSOLE, 2026-08-25 (owner opened AWS; read-only discovery, nothing changed)
+
+**Production `AWS_BUCKET` = `gopher-test`** (read from the `Gopher-Production` EB environment).
+⚠️ **A production bucket holding identity documents is named `gopher-test`.** Not a vulnerability;
+a live trap — the name invites someone to treat it as disposable.
+
+| Check | Result |
+|---|---|
+| Default encryption (SSE) | ✅ **AES256 enabled** — the code gap is closed at the bucket |
+| Block Public Access | ⚠️ **Not configured at all** (`NoSuchPublicAccessBlockConfiguration`) |
+| Access logging | ⚠️ **Not enabled** — reads of these objects are not auditable |
+| Bucket policy / bucket ACL | ✅ No policy; ACL grants owner `FULL_CONTROL` only. **The bucket is not public.** |
+
+**✅ The ID images are PRIVATE, confirmed by request, not by reading code.**
+`uploads/trustshield/<scanRef>/BACK.png` — no `AllUsers` grant, and an unsigned public fetch returns
+**HTTP 403**. `ACL: 'private'` holds in production. **This was the question that mattered and the
+answer is good.**
+
+**⚠️ Other prefixes in the SAME bucket are world-readable — object ACLs grant `AllUsers READ`, and
+unsigned fetches return HTTP 200:**
+
+| Prefix | Contents | Unsigned fetch |
+|---|---|---|
+| `uploads/image/file/` | user profile photos | **200** |
+| `uploads/image/business_profile/` | business logos | **200** |
+| `uploads/attachment/file/` | attachments | **200** |
+| `uploads/image/user_attachement/business_credential/` | **business credentials** (sampled: a `Certificate of Existence .pdf`) | **200** |
+| `uploads/image/user_attachement/past_jobs/` | completed-job photos | **200** |
+
+This is **by design, not by accident** — `helpers/functions.js:90` `generate_image_url()` builds
+exactly these unsigned URLs and is called live from `controllers/user/auth.js`,
+`controllers/user/deals.js`, `services/users.services.js`, `services/orders.services.js`.
+
+⛔ **Therefore: switching Block Public Access on would break profile pictures, business logos,
+credentials and past-job photos platform-wide.** It is not a one-click fix. The correct shape is a
+prefix-scoped policy that keeps `uploads/image/*` and `uploads/attachment/*` readable while
+denying everything else, *then* enabling BPA's account-level settings that don't conflict.
+
+**Severity nuance — anonymous LIST is denied (403), which is doing less work than it appears.**
+The keys are deterministic: `uploads/image/file/<user_id>/profile.jpg`, and `user_id` is a
+sequential integer (sampled: 1, 100, 10000, 100000, 100001, 100003). **For profile photos the
+pattern IS the index** — no enumeration is needed, so the denied listing buys nothing there. It
+does still matter for the credential and past-job prefixes, whose filenames are not predictable
+(`Certificate of Existence .pdf`, `completedjob_0.jpg`).
+
+**Recommended, in order:** (1) decide whether business credentials and past-job photos should be
+public at all — that is a product/legal call, not an engineering one; (2) enable **access logging**,
+which is free and blocks nothing; (3) prefix-scoped policy, then BPA; (4) rename or re-home the
+bucket away from `gopher-test` (highest-risk change, do last).
+
+**Method note:** every "is it public?" claim here is an **unsigned HTTP request that returned a
+status code**, plus the object ACL. Reading `ACL: 'private'` in source is what made this look
+answered for weeks; it was only half the question, and the other half needed the console.
 
 **4.5 — Stop stream 3.** The support-mailbox path exists to solve one narrow problem (an alias
 account whose name won't match the ID). **Recommendation: remove that instruction and replace it
