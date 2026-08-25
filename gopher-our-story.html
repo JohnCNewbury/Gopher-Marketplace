@@ -197,8 +197,6 @@
   border-radius:18px; border:6px solid #fff; background:linear-gradient(135deg,var(--aqua),var(--corn));
   color:var(--navy); font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; }
 /* peeking mascot at final stop */
-.os-finalmascot{ text-align:center; margin-top:8px; }
-.os-finalmascot img{ width:clamp(120px,18vw,170px); animation:peek 4s ease-in-out infinite; filter:drop-shadow(0 12px 20px rgba(0,36,97,.18)); }
 
 /* ===================== REQUESTS TICKER ===================== */
 .os-req{ background:var(--navy); color:var(--white); position:relative; overflow:hidden; padding:74px 0; }
@@ -287,7 +285,17 @@
 .os-dcard.b p{ color:rgba(255,255,255,.84); }
 .os-dcard h3{ font-size:clamp(24px,3vw,30px); max-width:80%; }
 .os-dcard p{ font-size:15px; line-height:1.6; color:var(--body); margin:10px 0 20px; max-width:80%; }
-.os-dcard img{ position:absolute; right:-14px; bottom:-14px; width:130px; pointer-events:none;
+/* ⛔ SITS INSIDE THE CARD, not past it (owner-reported 2026-08-25: the graphic
+   leaks out of the bottom-right corner, then snaps back in on hover).
+   It used to be right:-14px; bottom:-14px — deliberately OUTSIDE the box, relying
+   on the card's overflow:hidden to hide the excess. That reliance is the bug:
+   overflow clipping at a border-radius corner is not honoured consistently for a
+   descendant until it is promoted to its own layer, which is exactly what the
+   hover transform was doing — hence "falls back in on a mouse hover".
+   Positioning it at 0/0 removes the dependency entirely: there is no overflow to
+   clip, so no engine can disagree about it. The hover lift still works, and any
+   few pixels the rotation swings out are inside the card's own clip. */
+.os-dcard img{ position:absolute; right:0; bottom:0; width:130px; pointer-events:none;
   filter:drop-shadow(0 10px 18px rgba(0,0,0,.2)); }
 .os-dcard:hover img{ transform:rotate(-4deg) translateY(-4px); transition:transform .25s; }
 
@@ -413,9 +421,6 @@
             <p>This year we&rsquo;re bringing Gopher to business. Gopher Connect is our
                business extension to the Marketplace &mdash; on-demand labor for when a
                full-time hire doesn&rsquo;t make sense but the part-time demand is real.</p>
-            <div class="os-finalmascot">
-              <img src="assets/img/shared-mh-sub.svg" alt="Gopher peeking out, ready for the next job">
-            </div>
           </div>
         </div>
 
@@ -444,7 +449,12 @@
                job. A huge win for everyone.</p>
           </div>
           <div class="pin"><div class="os-pin">5</div></div>
-          <div class="port"><div class="os-pic os-photo">
+          <!-- os-map variant, not os-photo: `.os-pic img` crops to 16/10 with
+               object-fit:cover, which is right for photographs. This is a GRAPHIC,
+               and os-map is the existing variant for one — object-fit:contain over a
+               sand backdrop, exactly as stop 3 renders its map. The asset is 560x351
+               (~16:10) so it fills the frame with no crop. -->
+          <div class="port"><div class="os-pic os-map">
             <img src="assets/img/story-deals-laptop.webp" alt="The Gopher Deals board: local service-provider deals, restaurants and neighborhood favorites" loading="eager">
             <span class="badge">New &middot; Gopher Deals</span>
           </div></div>
