@@ -92,7 +92,13 @@ const NAVMAP = {"account": "home", "requests": "requests", "rewards": "tracker",
 const META   = [["Sign up (canonical)", [["splash", "Splash", "new"], ["signin", "Sign in (phone)", "new"], ["recover", "Lost phone \u00B7 recover", "new"], ["phone-otp", "Phone OTP", "new"], ["onboarding", "Personal info", "new"], ["email-otp", "Email OTP", "new"], ["business", "Register as Business (opt)", "new"], ["work-settings", "Work Settings & Radius", "new"], ["payout", "Payout setup", "new"], ["best-practices", "Best Practices", "new"]]], ["Browse & accept", [["home", "Home", ""], ["jobs-list", "Available Jobs (by category)", "new"], ["job-detail", "Job Detail", "new"], ["inbox", "Inbox", "new"], ["requests", "Requests", ""], ["worker-flow", "Available Jobs / Detail", "flow"], ["counter-offer", "Job Detail / Counter-Offer", "flow"], ["purchase-disclaimer", "Purchase Disclaimer", ""], ["purchase-delivery", "Purchase / Delivery", "flow"], ["completion-flow", "Job Completion / Rating", "flow"]]], ["After / other", [["request-history", "Previous requests", ""], ["tracker", "Points & Activity", ""], ["account", "Account", ""], ["job-card-states", "Job-Card States", "flow"], ["refer-signup-flow", "Refer to Signup (customer)", "flow"], ["refer-self", "Refer Yourself", "new"], ["profile", "My Profile", ""], ["help", "Help Center", ""], ["blocked", "Block Requesters", ""], ["gopher-contact-us", "Contact Us", ""], ["gopher-faqs", "FAQs", ""]]]];
 
 /* ===== shared state (carries across the canonical sign-up) ===== */
-const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false,
+const state = { /* How the worker presents to requesters, and the business-picture rule (owner, 2026-08-25).
+     showAs:'business'|'individual'.  bizPicFromProfile mirrors users_infos
+     .business_pic_from_profile — a FLAG, never a copied file, so it TRACKS: change the
+     profile photo and the business picture changes with it. Copying at election time
+     would snapshot a photo they later replaced. */
+  showAs:"business", bizPicFromProfile:false,
+  category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false,
   /* D-036(b) SEAM. In production this is set from Stripe's account status
      (individual.verification.status === "verified" / payouts_enabled), and it is the
      ONLY thing that freezes the legal name — email verification no longer does.
@@ -154,6 +160,22 @@ p.sub{font-size:13.5px;color:#3A4D74;margin-top:5px;line-height:1.46;}
 .sw{width:42px;height:25px;border-radius:99px;background:#d9d3c4;position:relative;flex:0 0 auto;cursor:pointer;transition:background .15s;}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
 .sw.on{background:#33D975;}.sw.on::after{left:20px;}
+/* "How you appear to requesters" + "My business doesn't have a logo" (owner, 2026-08-25) */
+.showas-card{display:flex;align-items:center;gap:12px;background:var(--card,#fff);border:1px solid var(--line-cool,#E3E7EF);border-radius:12px;padding:12px 13px;margin-top:7px;}
+.showas-main{flex:1;min-width:0;}
+.showas-ttl{display:block;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy,#002461);}
+.showas-sub{display:block;font-family:'DM Sans';font-size:11.5px;color:var(--ink-soft,#3A4D74);margin-top:2px;}
+/* WARNING: this CSS lives inside a JS TEMPLATE LITERAL (NATIVE_CSS). A backtick here
+   ENDS the literal and the rest becomes a tagged-template call — the page then dies at
+   load with ".field is not a function", and a per-block syntax check still PASSES
+   because the result is valid JS, just not what was meant. No backticks in this file's
+   CSS. Cost me a debugging round on 2026-08-25.
+   Explicit [hidden] guard below: .field here is only a margin, so the UA rule does
+   apply — but this card sits inside one, and the same pattern on gopher-go.html DOES
+   set display:flex, where el.hidden silently does nothing. Guarding both means the two
+   surfaces cannot diverge on whether "hidden" hides. Assert computed display, never
+   the attribute. */
+.field[hidden],.showas-card[hidden]{display:none!important;}
 .sub2{display:flex;align-items:center;gap:9px;padding:9px 0 11px 14px;border-bottom:1px solid #efe9da;}
 .sub2 .sl{font-size:13px;color:#3A4D74;flex:1;}
 .sec{font-family:'Nunito';font-weight:900;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:#8C8675;margin:18px 0 4px;}
@@ -2276,6 +2298,18 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <div class="field"><label>Business name</label><input placeholder="Gopher, Inc"></div>
    <div class="field"><label>Title</label><input placeholder="Owner"></div>
    <div class="field"><label>Business address</label><input placeholder="Street, City, State ZIP"></div>
+   <div class="field"><label>How you appear to requesters</label>
+     <div class="showas-card">
+       <div class="showas-main"><span class="showas-ttl js-showas-ttl">Showing as a business</span><span class="showas-sub js-showas-sub">Requesters see <b>your business</b></span></div>
+       <span class="sw on js-showas-sw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
+     </div>
+   </div>
+   <div class="field js-nologo-wrap" hidden>
+     <div class="showas-card">
+       <div class="showas-main"><span class="showas-ttl">My business doesn&rsquo;t have a logo</span><span class="showas-sub js-nologo-sub">Requesters see <b>no picture</b></span></div>
+       <span class="sw js-nologo-sw" role="switch" aria-checked="false" aria-label="Use my profile picture as my business picture"></span>
+     </div>
+   </div>
    <div class="sec">Documents (if applicable)</div>
    <div class="procallout"><img src="${PRO_BADGE}" alt="Gopher Pro"><div class="pt">These docs determine your <b>Gopher Pro</b> eligibility — submit now or later in your profile. <b>Reviewed for approval.</b></div><div class="pi js-proinfo">i</div></div>
    <div class="up2"><div class="uptile js-up">${CAM}<span>Business logo</span></div><div class="uptile js-up">${CAM}<span>Proof of insurance</span></div></div>
@@ -2284,7 +2318,62 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <div class="ghost js-skip">Skip — I'm an individual</div></div></div>`,
   init(r){ r.querySelector('.js-back').onclick=()=>BACK(); wireUploads(r); wireVehiclePhotos(r);
     const pin=r.querySelector('.js-proinfo'); if(pin) pin.onclick=(e)=>{ e.stopPropagation(); openTiers(); };
-    r.querySelector('.js-next').onclick=()=>GO('work-settings'); r.querySelector('.js-skip').onclick=()=>GO('work-settings'); } },
+    /* ── Business picture rule (owner, 2026-08-25) ────────────────────────────
+       Ported from Final/gopher-go.html, where it is live. Four outcomes, and there
+       is NO automatic fallback anywhere — the worker states it:
+         business + logo      -> the logo
+         business + this ON   -> their profile photo
+         business + neither   -> no image
+         individual           -> their profile photo
+       Owner's words: "make the worker specifically state with a slider, my business
+       does not have a logo, use my profile pic." */
+    const showSw=r.querySelector('.js-showas-sw'), showTtl=r.querySelector('.js-showas-ttl'),
+          showSub=r.querySelector('.js-showas-sub'), noWrap=r.querySelector('.js-nologo-wrap'),
+          noSw=r.querySelector('.js-nologo-sw'), noSub=r.querySelector('.js-nologo-sub');
+    const bizInput=r.querySelectorAll('.field input')[0];
+    /* ⚠️ Asks whether a logo is ACTUALLY showing, not whether a field says so.
+       wireUploads() adds .done to the tile once a file is chosen, so this tracks what
+       is on screen. Keyed on a stored flag instead, the slider would stay hidden behind
+       a logo that never rendered — the exact case the worker needs it for. */
+    const logoOnFile=()=>{
+      const tile=[...r.querySelectorAll('.uptile')].find(t=>/Business logo/.test(t.textContent));
+      return !!(tile && tile.classList.contains('done'));
+    };
+    const paint=()=>{
+      const isBiz = state.showAs==='business';
+      const who = (state.fn&&state.ln) ? state.fn+' '+state.ln : 'Marcus Hale';
+      const biz = (bizInput&&bizInput.value.trim()) || 'your business';
+      showTtl.textContent = isBiz ? 'Showing as a business' : 'Showing as an individual';
+      showSub.innerHTML = 'Requesters see <b>'+(isBiz?biz:who)+'</b>';
+      showSw.classList.toggle('on', isBiz);
+      showSw.setAttribute('aria-checked', String(isBiz));
+      /* ⛔ VISIBLE ONLY WHERE IT CAN DO SOMETHING — both conditions matter.
+         individual -> hidden: their profile photo is ALREADY what requesters see, so the
+           control would claim credit for something that happens anyway.
+         logo on file -> hidden: the logo always wins, so the switch would be inert.
+           Showing an inert switch is how a UI teaches people it lies. */
+      const show = isBiz && !logoOnFile();
+      noWrap.hidden = !show;
+      const on = !!state.bizPicFromProfile;
+      noSw.classList.toggle('on', on);
+      noSw.setAttribute('aria-checked', String(on));
+      /* Say what a requester will SEE, not what the setting is called. */
+      noSub.innerHTML = 'Requesters see <b>'+(on?'your profile picture':'no picture')+'</b>';
+    };
+    showSw.onclick=()=>{ state.showAs = state.showAs==='business' ? 'individual' : 'business'; paint(); };
+    noSw.onclick=()=>{ state.bizPicFromProfile = !state.bizPicFromProfile; paint(); };
+    if(bizInput) bizInput.addEventListener('input', paint);
+    /* Re-evaluate after an upload lands — the tile gains .done asynchronously. */
+    r.querySelectorAll('.js-up').forEach(t=>t.addEventListener('click',()=>setTimeout(paint,400)));
+    paint();
+    /* Reached from Account rather than signup? Then this is an edit, not a step: the
+       screen's own copy has always promised "you can add this later in Account", and
+       until 2026-08-25 there was nowhere to do it. Continue becomes Save and returns. */
+    const fromAcct = hist.length && hist[hist.length-1]==='profile';
+    const next=r.querySelector('.js-next'), skip=r.querySelector('.js-skip');
+    if(fromAcct){ next.textContent='Save'; next.onclick=()=>{ toast('Business info saved'); BACK(); };
+                  skip.style.display='none'; }
+    else { next.onclick=()=>GO('work-settings'); skip.onclick=()=>GO('work-settings'); } } },
 
 "ride-info":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   <div class="pad"><div class="top"><div class="back js-back">&#8249;</div><div style="font-family:'Nunito';font-weight:900;font-size:13px;color:#8C8675">Ride Sharing</div></div>
@@ -2499,7 +2588,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
   <div class="pr-card" id="pr-stats"></div>
   <div class="pr-sec">Verification</div>
   <div class="pr-card" id="pr-verif"></div>
-  <div class="pr-actions"><div class="pr-btn primary js-editp">Edit profile</div><div class="pr-btn js-payout">Payout account</div></div>
+  <div class="pr-actions"><div class="pr-btn primary js-editp">Edit profile</div><div class="pr-btn js-payout">Payout account</div><div class="pr-btn js-bizinfo">Business info</div></div>
 </div></div>`,
   init(r){
     r.querySelector('.js-back').onclick=()=>BACK();
@@ -2524,6 +2613,11 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const edit=()=>openEditProfile();   // canonical Personal Info edit + dual same-channel OTP (was a Stripe info stub)
     r.querySelector('.js-edit').onclick=edit; r.querySelector('.js-editp').onclick=edit;
     r.querySelector('.js-payout').onclick=()=>load('payout');
+    /* The business screen was SIGNUP-ONLY until 2026-08-25 — its own copy said "you can
+       add this later in Account" and Account had no way in. With the show-as switch and
+       the no-logo slider living there, it has to be reachable after signup or the rule
+       is unreachable for anyone already onboarded. */
+    r.querySelector('.js-bizinfo').onclick=()=>GO('business');
   } },
 
 "blocked":{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}<div class="blbody">
