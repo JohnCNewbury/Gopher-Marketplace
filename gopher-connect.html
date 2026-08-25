@@ -6225,10 +6225,14 @@
   .deal-pic { position:relative; width:92px; height:92px; border-radius:50%; margin:2px 0 8px; overflow:hidden;
     background:linear-gradient(135deg,#1CB061,#0c5f36); display:flex; align-items:center; justify-content:center;
     box-shadow:0 4px 12px rgba(0,36,97,.16); }
-  .deal-pic-fallback { font-family:'Nunito',sans-serif; font-weight:800; font-size:26px; color:#fff; }
   .deal-pic img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .deal-pic.deal-pic-haslogo { background:#fff; }
   .deal-pic img.deal-pic-logo { object-fit:contain; background:#fff; padding:8px; box-sizing:border-box; }
+  /* No-image fallback (owner ruling 2026-08-25): the Gopher mascot on plain white,
+     the same treatment a logo gets. Never initials or wordmarks. The photo img's
+     onerror also flips to this, so a broken image degrades to the mascot. */
+  .svc-deal-pic.svc-pic-white { background:#fff; }
+  .deal-pic img.deal-pic-mascot, .svc-deal-pic img.deal-pic-mascot { position:static; width:62%; height:62%; object-fit:contain; }
   .deal-tier { font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:#fff; background:var(--navy);
     border-radius:999px; padding:3px 11px; letter-spacing:.3px; }
   .deal-pro-name { font-size:13px; color:var(--muted); line-height:1.2; }
@@ -6534,7 +6538,6 @@
     box-shadow:0 6px 16px rgba(0,36,97,.18); }
   .svc-deal-pic img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .svc-deal-pic img.svc-pic-logo { object-fit:contain; background:#fff; padding:16px; box-sizing:border-box; }
-  .svc-pic-fb { font-family:'Nunito',sans-serif; font-weight:800; font-size:34px; color:#fff; }
   .svc-deal-tier { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:#fff; background:var(--navy);
     border-radius:999px; padding:6px 14px; min-width:0; text-align:center; justify-self:start; }
   .svc-deal-history-row { text-align:center; margin:0 0 22px; }
@@ -15579,12 +15582,11 @@ const PAY_BADGES = {
     // Service-provider card — PROFILE PHOTO, tier, provider, service name,
     // the SET PRICE (green), then a "View Details" button.
     const serviceCard = (m) => {
-      const initials = dealsInitials(m.name);
       const _pp = serviceProviderPic(m);
       const photo = _pp.src;
       const isLogo = _pp.isLogo;
-      const pic = `<div class="deal-pic${isLogo?' deal-pic-haslogo':''}"><span class="deal-pic-fallback">${esc(initials)}</span>`
-        + (photo ? `<img class="${isLogo?'deal-pic-logo':''}" src="${esc(photo)}" alt="" onerror="this.remove()">` : '') + `</div>`;
+      const pic = `<div class="deal-pic${(isLogo||!photo)?' deal-pic-haslogo':''}"><img class="deal-pic-mascot" src="assets/img/gopher-character-full.svg" alt="">`
+        + (photo ? `<img class="${isLogo?'deal-pic-logo':''}" src="${esc(photo)}" alt="" onerror="this.closest('.deal-pic').classList.add('deal-pic-haslogo');this.remove()">` : '') + `</div>`;
       const price = (m.price != null) ? `<div class="deal-price">$${esc(m.price)}</div>` : '';
       const search = `${m.name} ${m.pro||''} ${m.offer||''}`.toLowerCase();
       return `<button type="button" class="deal-card deal-card-service" data-merchant="${esc(m.id)}" data-search="${esc(search)}">
@@ -16037,11 +16039,12 @@ const PAY_BADGES = {
     }
     document.getElementById('svcDealTitle').textContent = m.name + ' Deal';
     document.getElementById('svcDealPro').textContent = m.pro || '';
-    const isLogo = serviceProviderPic(m).isLogo;
-    const photo = serviceProviderPic(m).src;
-    document.getElementById('svcDealPic').innerHTML = photo
-      ? '<img class="' + (isLogo ? 'svc-pic-logo' : '') + '" src="' + esc(photo) + '" alt="" onerror="this.remove()"><span class="svc-pic-fb">' + esc(dealsInitials(m.name)) + '</span>'
-      : '<span class="svc-pic-fb">' + esc(dealsInitials(m.name)) + '</span>';
+    const _pp = serviceProviderPic(m);
+    const photo = _pp.src, isLogo = _pp.isLogo;
+    const _picEl = document.getElementById('svcDealPic');
+    _picEl.classList.toggle('svc-pic-white', !photo);
+    _picEl.innerHTML = '<img class="deal-pic-mascot" src="assets/img/gopher-character-full.svg" alt="">'
+      + (photo ? '<img class="' + (isLogo ? 'svc-pic-logo' : '') + '" src="' + esc(photo) + '" alt="" onerror="this.parentElement.classList.add(\'svc-pic-white\');this.remove()">' : '');
     /* NO TIER MEANS NO BADGE. This used to read `m.tier || 'Gopher Elite'`,
        which was invisible while every card was demo content (demo cards all
        set a tier) and became a false claim the moment real deals arrived: the
