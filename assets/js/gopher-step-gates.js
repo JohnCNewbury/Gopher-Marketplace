@@ -251,14 +251,19 @@
     connect: ['category', 'description', 'costOfItems', 'identity',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
-    /* The prototype has no addresses-differ and no schedule-time gate, and it is
-       the only surface running the age-keyword scan from stepGate. Listed rather
-       than inherited: an omission anyone can see beats an absence nobody notices.
-       Adding either address gate here would CHANGE its behaviour, which is a
-       product decision and not part of an extraction. */
-    prototype: ['category', 'description', 'costOfItems', 'ageKeyword',
-                'pickupAddress', 'dropoffAddress',
-                'workerPay', 'workerPaySubmit', 'waiver']
+    /* ⛔ THE PROTOTYPE NO LONGER DIVERGES. It used to lack addresses-differ and
+       schedule-time, and the note here said adding them "would CHANGE its behaviour,
+       which is a product decision and not part of an extraction". The owner made that
+       decision on 2026-08-25 — "Connect and Request are both currently live and
+       correct. You're to model that flow and logic" — so both gates were added to that
+       surface and are listed here.
+       It still differs from the web pair in ONE respect, which is not a gap: it is the
+       only surface running the age-keyword scan from stepGate, so it carries
+       'ageKeyword' and they do not. Listed rather than inherited — an omission anyone
+       can see beats an absence nobody notices. Step-6 order matches Request's. */
+    prototype: ['category', 'description', 'costOfItems', 'ageKeyword', 'identity',
+                'pickupAddress', 'dropoffAddress', 'addressesDiffer',
+                'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver']
   };
 
   /* ── helpers ──────────────────────────────────────────────────────────────── */
@@ -373,9 +378,12 @@
        because TrustShield runs internally and identity is mandatory for A/R orders.
        The guard follows the ruling instead of being deleted with it, which is why it
        keeps flipping rather than quietly disappearing.
-       'prototype' is deliberately NOT checked: App Prototypes lands that surface
-       separately. Add it here the day it does. */
-    ['request', 'connect'].forEach(function (surface) {
+       'prototype' JOINED this list on 2026-08-25, the day App Prototypes landed the
+       gate on that surface (its stepGate() now blocks A/R delivery until identity is
+       satisfied, and its UI can satisfy it — both paths, one-off and TrustShield).
+       All three modelled surfaces are asserted to CARRY the gate. Surface 3, the live
+       apps, is not modelled here; it ships via a store release. */
+    ['request', 'connect', 'prototype'].forEach(function (surface) {
       if (SURFACE_GATES[surface].indexOf('identity') === -1) {
         problems.push(surface + ' is MISSING the identity gate, which the owner made '
           + 'mandatory for age-restricted orders on 2026-08-25 (TrustShield is internal now)');
