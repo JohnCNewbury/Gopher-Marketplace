@@ -151,10 +151,38 @@
   .contact-card a { color:var(--green); border:none; font-weight:700; }
 
   /* ── RESPONSIVE ── */
+  /* Mobile-only section launcher — desktop keeps the sticky sidebar. */
+  .legal-toc-fab, .legal-toc-scrim { display:none; }
+
   @media (max-width:900px) {
     .terms-hero { padding:56px 24px 48px; }
     .terms-layout { grid-template-columns:1fr; gap:0; padding:36px 24px 64px; }
-    .terms-toc { display:none; }
+    /* ⛔ WAS `display:none` (owner-reported 2026-08-25: "mobile view not showing
+       menu for users to jump to certain section"). The TOC is now a slide-in panel
+       driven by the .legal-toc-fab button, reusing this same <aside> — do not
+       duplicate the link list for mobile, or the two lists will drift. */
+    .terms-toc {
+      position:fixed; top:0; left:0; z-index:1200;
+      width:min(320px, 86vw); height:100vh; max-height:100vh;
+      background:#fff; border-right:1px solid rgba(0,36,97,.12);
+      box-shadow:0 0 40px rgba(0,0,0,.18);
+      padding:78px 18px 24px; overflow-y:auto;
+      transform:translateX(-105%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+    }
+    body.legal-toc-open .terms-toc { transform:translateX(0); }
+    .legal-toc-fab {
+      display:inline-flex; align-items:center; gap:8px;
+      position:fixed; left:18px; bottom:22px; z-index:1190;
+      background:var(--navy); color:#fff; border:none; border-radius:999px;
+      padding:11px 18px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
+      box-shadow:0 8px 24px rgba(0,36,97,.4); cursor:pointer;
+    }
+    .legal-toc-fab svg { width:16px; height:16px; }
+    body.legal-toc-open .legal-toc-fab { display:none; }
+    .legal-toc-scrim {
+      position:fixed; inset:0; z-index:1150; background:rgba(13,21,52,.55);
+    }
+    .legal-toc-scrim[hidden] { display:none; }
 }
 </style>
 </head>
@@ -800,6 +828,35 @@
   </div>
 
 </footer>
+
+
+<!-- Mobile-only "Jump to a section" launcher. The TOC aside is a sticky sidebar on
+     desktop and was display:none below the breakpoint, leaving phone readers with no
+     way to reach a section (owner-reported 2026-08-25). Reuses the SAME aside rather
+     than duplicating the link list, so the two can never drift. -->
+<button class="legal-toc-fab" id="legalTocFab" aria-controls="toc" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  Sections
+</button>
+<div class="legal-toc-scrim" id="legalTocScrim" hidden></div>
+<script>
+(function(){
+  var fab   = document.getElementById('legalTocFab');
+  var scrim = document.getElementById('legalTocScrim');
+  var toc   = document.getElementById('toc');
+  if(!fab || !toc || !scrim) return;
+  function setOpen(on){
+    document.body.classList.toggle('legal-toc-open', on);
+    fab.setAttribute('aria-expanded', on ? 'true' : 'false');
+    scrim.hidden = !on;
+  }
+  fab.addEventListener('click', function(){ setOpen(!document.body.classList.contains('legal-toc-open')); });
+  scrim.addEventListener('click', function(){ setOpen(false); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') setOpen(false); });
+  /* Close on choose — the panel covers the text it just jumped to. */
+  toc.addEventListener('click', function(e){ if(e.target.closest('a')) setOpen(false); });
+})();
+</script>
 
 <script src="assets/js/gopher-header.js" defer></script>
 
