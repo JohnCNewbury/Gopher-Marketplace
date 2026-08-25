@@ -726,7 +726,11 @@
                       Gopher Request app, and the iDenfy identity partner captures
                       a live selfie — plus real App Store + Play Store badges
                       (#trustShieldApple / #trustShieldGoogle) linking to the
-                      Request listings. Modal now hydrates on open and a global
+                      Request listings. [Both the app-only callout and those two
+                      badges were REMOVED 2026-08-25 by owner ruling — enrolment
+                      completes on the web now. Kept here as changelog history;
+                      do not treat this entry as current behaviour.]
+                      Modal now hydrates on open and a global
                       [data-ts-promo-open] delegate lets the dashboard open it too.
 
                    3) Dashboard sidebar (upper-left): initLogo() now injects the
@@ -3777,19 +3781,44 @@
      on the right. */
   .sub-field.ar-banner { display:flex; align-items:center; gap:18px; }
   .sub-field.ar-banner .ar-banner-text { flex:0 1 auto; min-width:0; }
-  .ar-control { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:4px; text-align:center; }
+  /* ⛔ ROW, not a column (owner, 2026-08-25 — AR Flow.pptx slide 1 item 4). The
+     TrustShield note used to sit UNDER the Submit button, which pushed the note's
+     width onto the button and made the primary action read as the smaller thing.
+     It now sits to the RIGHT of the button, so the button keeps its own width and
+     the note reads as an aside. `align-items:center` keeps the two vertically
+     centred on each other regardless of how many lines the note wraps to. */
+  .ar-control { flex:0 0 auto; display:flex; flex-direction:row; align-items:center; gap:10px; text-align:left; }
+  /* ⛔ NAVY, not green (owner, 2026-08-25: "make the Submit identification button
+     blue"). It now sits beside a GREEN TrustShield button, and two greens side by
+     side gave neither one priority. Navy-on-white also lets the green button read
+     as the optional upgrade rather than a competing primary. */
   .ar-action {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
-    color:#fff; background:var(--green-dark); border:none; border-radius:9px;
+    color:#fff; background:var(--navy); border:none; border-radius:9px;
     padding:9px 14px; cursor:pointer; white-space:nowrap; line-height:1.1;
     transition:background 0.18s, transform 0.18s;
   }
-  .ar-action:hover { background:var(--navy); transform:translateY(-1px); }
+  .ar-action:hover { background:var(--green-dark); transform:translateY(-1px); }
+  /* "+Add Gopher TrustShield™" — the green sibling to the navy Submit button.
+     ⛔ NAVY INK ON --green (#33D975), never white. Owner brand ruling 2026-08-25:
+     white on #33D975 is too hard to read; only the darker green (#1CB061 family,
+     i.e. --green-dark) may carry white, and that combination is rare. */
+  .ar-tsbtn {
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
+    color:var(--navy); background:var(--green); border:none; border-radius:9px;
+    padding:9px 14px; cursor:pointer; white-space:nowrap; line-height:1.1;
+    transition:background 0.18s, transform 0.18s;
+  }
+  .ar-tsbtn:hover { background:var(--green-dark); color:#fff; transform:translateY(-1px); }
   .ar-action.ar-get-ts { background:var(--navy); }
   .ar-action.ar-get-ts:hover { background:var(--green-dark); }
+  /* Now just the word "or" + the green button — the explanatory sentence was
+     removed (owner, 2026-08-25: "remove all the explanation narrative since it
+     is on the TrustShield card below it"). No max-width: it no longer wraps. */
   .ar-action-note {
-    font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
-    color:var(--muted); max-width:140px; margin:0 auto;
+    font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.2;
+    color:var(--muted); margin:0; text-align:left;
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
   }
   /* Inline "add TrustShield" inside the note. A <button> is used rather than an <a>
      because it opens a modal — but it must READ as a link, or the note grows a second
@@ -3816,7 +3845,10 @@
     .ar-control { width:100%; }
     .ar-ts-badge { width:100%; padding-left:0; border-left:none;
       border-top:1px solid rgba(1,36,98,0.10); padding-top:8px; flex-direction:row; gap:8px; justify-content:center; }
-    .ar-action-note { max-width:none; }
+    /* Back to a column on phones — a row here squeezes the button to a few
+       characters. Mirrors the pre-2026-08-25 desktop layout, on purpose. */
+    .ar-control { flex-direction:column; align-items:stretch; text-align:center; }
+    .ar-action-note { max-width:none; margin:0 auto; text-align:center; }
   }
 
   /* ── Submit identification modal (two steps: ID front, then live selfie) ── */
@@ -4508,6 +4540,13 @@
      The component is identical in both contexts (per design directive).
      Subtle navy-tinted card so it reads as informational, not promotional.
      ────────────────────────────────────────────────────────────────────── */
+  /* ⛔ SHRINK-TO-CONTENT, not full-bleed (owner, 2026-08-25 — AR Flow.pptx slide 2:
+     "less wide (similar to other sections) to represent more of a button… doesn't
+     need to extend all the way to the end of the screen"). Running edge-to-edge made
+     it read as a page-width banner and pushed "Learn more" to the far right, miles
+     from the text it belongs to. `width:fit-content` collapses the 1fr track onto
+     its own text, so the card ends where its content ends and the CTA sits beside
+     the copy. `max-width:100%` keeps it inside narrow parents. */
   .ts-promo {
     margin-top:14px;
     background:linear-gradient(135deg, #f3f6fc 0%, #eaf2fc 100%);
@@ -4515,9 +4554,11 @@
     border-radius:12px;
     padding:14px 16px;
     display:grid;
-    grid-template-columns:auto 1fr auto;
+    grid-template-columns:auto auto auto;
     gap:14px;
     align-items:center;
+    width:fit-content;
+    max-width:100%;
   }
   .ts-promo-icon {
     width:38px; height:38px;
@@ -4562,6 +4603,10 @@
       grid-template-columns:auto 1fr;
       grid-template-rows:auto auto;
       row-gap:10px;
+      /* Full width again on phones — shrink-to-content is a DESKTOP correction.
+         At 375 the card is already near the viewport width, and fit-content here
+         would wrap the title to a ragged column instead of using the space. */
+      width:auto;
     }
     .ts-promo-cta {
       grid-column:1 / -1;
@@ -4656,21 +4701,13 @@
     font-weight:600; color:var(--navy);
   }
   /* v75 — App Store / Play Store badges in the TrustShield modal */
-  .ts-modal-stores {
-    display:flex; justify-content:center; align-items:center;
-    gap:10px; flex-wrap:wrap;
-    margin:0 0 18px;
-  }
-  .ts-modal-stores .ts-store-badge {
-    display:inline-flex; line-height:0;
-    border-radius:9px; overflow:hidden;
-    transition:transform 0.15s, box-shadow 0.15s;
-  }
-  .ts-modal-stores .ts-store-badge img { height:44px; width:auto; display:block; }
-  .ts-modal-stores .ts-store-badge:hover {
-    transform:translateY(-1px);
-    box-shadow:0 6px 16px -8px rgba(13,21,52,0.45);
-  }
+  /* ⛔ .ts-modal-stores REMOVED 2026-08-25 (owner): "remove the app/play store
+     icons to avoid any confusion — no need to redirect a user to the store when
+     they can do it right there." Enrolment completes on the web now, so the
+     badges pointed people away from the thing they were already able to finish.
+     ⚠️ The .idsub-stores badges are a DIFFERENT surface and deliberately stay:
+     they are the no-camera fallback, where the user genuinely cannot verify on
+     web and the app is the only route. Do not "tidy" those away with these. */
 
   /* ─── Resources sidebar items (Ask Gopher / Visit Site / Feedback) ─── */
   .dni-ext {
@@ -5005,6 +5042,13 @@
     font-family:'Nunito',sans-serif; font-weight:900;
     font-size:13px; line-height:1;
   }
+  /* ⛔ These are real <a> now (owner-reported 2026-08-25: "ToS and worker
+     independent-contractor agreement links not working"). They had been
+     <span class="legal-link"> — styled to look like links, underlined and
+     cursor:pointer, with NO href and NO click handler anywhere. Inert.
+     ⛔ target="_blank" IS LOAD-BEARING, not a preference: the request flow keeps
+     its entire state in memory, so navigating this tab away from step 6 destroys
+     the user's in-progress request. Never make these same-tab links. */
   .waiver-box .legal-link {
     color:var(--navy);
     text-decoration:underline;
@@ -12795,7 +12839,7 @@
            + (sub
                ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
                : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
-           + '<div class="ar-action-note">Or <button type="button" class="ar-linkbtn" data-open-trustshield>add TrustShield™</button> — optional, saves $1 and verifies you once for every future order.</div>'
+           + '<div class="ar-action-note">or <button type="button" class="ar-tsbtn" data-open-trustshield>+Add Gopher TrustShield™</button></div>'
            + '</div>';
     }
     const onFile = window.__idOnFile && window.__idOnFile();
@@ -12919,6 +12963,11 @@
     }
 
     let _idSubOnDone = null;
+    /* ⛔ Persisted because the submit handler is a DIFFERENT closure from the open
+       function, where `isTS` is a local const. Saving the ID on file is now the
+       TrustShield grant itself (owner, 2026-08-25 — AR Flow.pptx slide 3), so the
+       submit path has to know which mode it is running in. */
+    let _idSubIsTS   = false;
     function resetCaptures(){
       state.idVerification.idFrontCaptured = false;
       state.idVerification.idBackCaptured  = false;
@@ -13145,8 +13194,14 @@
         /* TrustShield enrolment reuses this capture; its grant runs here. */
         const done = _idSubOnDone; _idSubOnDone = null;
         if(typeof done === 'function') { try { done(); } catch(_){} }
-        const save = document.getElementById('idSubSaveOnFile');
-        if(save && save.checked){
+        /* ⛔ NO "save my ID" CHOICE ANY MORE (owner, 2026-08-25 — AR Flow.pptx
+           slide 3: "this would defeat the purpose of TrustShield"). Keeping an ID
+           on file for future orders IS TrustShield; offering it free as a checkbox
+           on the one-off path gave away the badge's whole reason to exist.
+           ⚠️ The persistence itself is NOT dead code — enrolment still has to store
+           the ID, or TrustShield would badge people whose ID was never kept. It is
+           now driven by the MODE instead of by a checkbox. */
+        if(_idSubIsTS){
           v.savedOnFile = true;
           if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc, v.idBackSrc);
         } else {
@@ -13168,6 +13223,7 @@
       if(!overlay) return;
       const isUpdate = !!(opts && opts.update);
       const isTS     = !!(opts && opts.trustShield);
+      _idSubIsTS     = isTS;
       _idSubOnDone   = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
       stopCam();
       resetCaptures();              // fresh session — ID + selfie always recaptured
@@ -13176,12 +13232,10 @@
                                  : isUpdate ? 'Update Identification' : 'Submit identification';
       const sub = document.getElementById('idSubmitSub');
       if(sub) sub.textContent = isTS
-        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides.'
-        : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
+        ? 'Verify once with a live photo of your ID and a selfie — then you\u2019re set for every future order, and you save $1 on age-restricted delivery and rides. You\u2019ll still show a physical ID in person at hand-off.'
+        : 'Verify your identity for this age-restricted order. This is required each time you make an age-restricted delivery. Gopher TrustShield\u2122 allows you to skip this portion indefinitely as long as you carry the badge. You\u2019ll still show a physical ID in person at hand-off.';
       const submitBtn = document.getElementById('idSubSubmit');
       if(submitBtn) submitBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
-      const save = document.getElementById('idSubSaveOnFile');
-      if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
       // Get out in front of it: a live selfie is required, so if there's no
       // camera on this device, route to the app BEFORE they fill anything in.
@@ -13291,8 +13345,8 @@
         ${state.ageRestricted ? `
           <div class="sub-field ar-banner">
             <div class="ar-banner-text">
-              <div class="sf-label">Safeguarding & identity verification activated</div>
-              <div class="sf-value">Physical ID required during exchange · $1.99 Fee added</div>
+              <div class="sf-label">Safeguarding & identity verification required</div>
+              <div class="sf-value">Physical ID always required during items exchange</div>
             </div>
             ${ageRestrictedBannerControl()}
           </div>
@@ -14058,7 +14112,7 @@
       <div class="waiver-box waiver-box-bottom">
         <button class="waiver-check ${state.waiverChecked?'checked':''}" data-action="toggle-waiver" aria-label="Acknowledge liability waiver"></button>
         <span>
-          <strong>Liability waiver.</strong> You agree that Gopher, Inc is released from any/all liability associated with this request. By submitting, you acknowledge the <span class="legal-link">terms of service</span> and the <span class="legal-link">worker independent-contractor agreement</span>.
+          <strong>Liability waiver.</strong> You agree that Gopher, Inc is released from any/all liability associated with this request. By submitting, you acknowledge the <a class="legal-link" href="gopher-terms-of-service.html" target="_blank" rel="noopener">terms of service</a> and the <a class="legal-link" href="gopher-terms-of-service.html#marketplace" target="_blank" rel="noopener">worker independent-contractor agreement</a>.
         </span>
       </div>
 
@@ -17325,32 +17379,32 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="ts-perk-icon">$</div>
         <div class="ts-perk-body">
           <strong>$1 off Age-Restricted Delivery and Ride-Sharing</strong>
-          <span>Applied automatically once you're verified. Adds up fast.</span>
+          <span>Applied automatically once you're verified, reducing the $1.99 age-restricted fee to $0.99 as long as you carry the badge. Savings add up fast.</span>
         </div>
       </div>
       <div class="ts-perk">
         <div class="ts-perk-icon">⚡</div>
         <div class="ts-perk-body">
           <strong>Skip ID re-entry</strong>
-          <span>Workers see your verification badge — no more re-showing ID on every job.</span>
+          <span>No more scanning your ID before each request — simply just show it at the door.</span>
         </div>
       </div>
       <div class="ts-perk">
         <div class="ts-perk-icon">🛡</div>
         <div class="ts-perk-body">
-          <strong>Verified neighbors only</strong>
-          <span>You earn assurance from verified workers, and they earn the same from you.</span>
+          <strong>Workers appreciate it</strong>
+          <span>Give workers the same assurance you have, knowing they are who they say they are.</span>
         </div>
       </div>
     </div>
+    <!-- ⛔ WAS "Verify in the Gopher Request app" (owner, 2026-08-25 — AR Flow.pptx
+         slide 4: "Remove this - no longer accurate. TrustShield available on the
+         spot."). Two claims died at once: web CAN complete enrolment now (it runs
+         the same 3-shot live capture as the one-off path), and the iDenfy line
+         named a vendor being retired. Replaced with what the badge actually does. -->
     <div class="ts-modal-note">
-      <strong>Verify in the Gopher Request app</strong>
-      <span>TrustShield verification is only available in the Gopher Request mobile app — it can't be completed here on the web.</span>
-      <span class="ts-idenfy">Our identity partner, iDenfy, captures a quick live selfie to confirm it's really you.</span>
-    </div>
-    <div class="ts-modal-stores" id="trustShieldStores">
-      <a class="ts-store-badge" id="trustShieldApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
-      <a class="ts-store-badge" id="trustShieldGoogle" href="https://play.google.com/store/apps/details?id=io.gophergoapp.requester" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"></a>
+      <strong>How it works</strong>
+      <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
     </div>
     <button type="button" class="gr-modal-btn" id="trustShieldGotIt">Got it — back to my request</button>
     <a href="gopher-trustshield.html" target="_blank" rel="noopener" class="ts-modal-learn" id="trustShieldLearn">See the full TrustShield page →</a>
@@ -17366,7 +17420,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   <div class="gr-modal idsub-modal" role="dialog" aria-modal="true" aria-labelledby="idSubmitTitle">
     <button type="button" class="gr-modal-close" id="idSubmitClose" aria-label="Close">×</button>
     <h4 id="idSubmitTitle">Submit identification</h4>
-    <p class="gr-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. You'll still show a physical ID in person at hand-off.</p>
+    <p class="gr-modal-sub" id="idSubmitSub">Verify your identity for this age-restricted order. This is required each time you make an age-restricted delivery. Gopher TrustShield&trade; allows you to skip this portion indefinitely as long as you carry the badge. You&rsquo;ll still show a physical ID in person at hand-off.</p>
 
     <div class="idsub-steps" id="idSubChips">
       <div class="idsub-stepchip" id="idSubChipA">1 · Front</div>
@@ -17448,10 +17502,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <img id="idSubSelfieImg" src="" alt="Selfie preview">
         <span class="idsub-thumb-meta"><b>Selfie captured</b><br>Ready to submit.</span>
         <button type="button" class="idsub-retake" id="idSubSelfieRetake">Retake</button>
-      </div>
-      <div class="idsub-save" id="idSubSaveRow">
-        <input type="checkbox" id="idSubSaveOnFile">
-        <label for="idSubSaveOnFile">Save my ID and selfie for future age-restricted orders. If you ever update your ID, you'll take a new selfie too.</label>
       </div>
       <div class="idsub-actions">
         <button type="button" class="gr-modal-btn" id="idSubSubmit" disabled>Submit identification</button>
@@ -17765,7 +17815,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <span class="age-seal-mark">🛡️</span>
           <div class="age-seal-body">
             <b id="rqAgeSealTitle">TrustShield verified — ID on file, no submission needed</b>
-            <small>Safeguarding &amp; identity verification activated.</small>
+            <small>Safeguarding &amp; identity verification required.</small>
           </div>
         </div>
         <button class="portal-submit" id="rqAgeProceed">Continue →</button>
@@ -20743,12 +20793,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         shield.innerHTML = '<img class="ts-modal-logo" src="' + tsSrc + '" alt="Gopher TrustShield">';
         shield.dataset.real = '1';
       }
-      const apple  = document.getElementById('trustShieldApple');
-      const google = document.getElementById('trustShieldGoogle');
-      const aSrc = (window.grAsset && grAsset('appStoreImg'))  || '';
-      const gSrc = (window.grAsset && grAsset('playStoreImg')) || '';
-      if(apple  && aSrc && !apple.querySelector('img'))  apple.innerHTML  = '<img src="' + aSrc + '" alt="Download on the App Store">';
-      if(google && gSrc && !google.querySelector('img')) google.innerHTML = '<img src="' + gSrc + '" alt="Get it on Google Play">';
     }
     const open = () => { hydrate(); overlay.hidden = false; };
     window.openTrustShieldModal = open;
@@ -25063,7 +25107,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     ['dealDropoff','dealPickup','dealCost'].forEach(id => document.getElementById(id).addEventListener('input', validate));
     document.getElementById('dealReqContinue').addEventListener('click', () => { if(_activeDeal) launchDealRequest(_activeDeal); });
     // iQ hint re-prices as the address or offer changes.
-    ['dealDropoff','dealPay'].forEach(id => document.getElementById(id).addEventListener('input', () => { if(_activeDeal) updateIqHint(_activeDeal); }));
+    ['dealDropoff','dealPay','dealCost'].forEach(id => document.getElementById(id).addEventListener('input', () => { if(_activeDeal) updateIqHint(_activeDeal); }));
     // Savings note starts minimized to its headline; the chevron expands it.
     const saveTgl = document.getElementById('dealSaveToggle');
     if(saveTgl) saveTgl.addEventListener('click', () => {
@@ -25100,10 +25144,34 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const drop = (document.getElementById('dealDropoff').value || '').trim();
     const payEl = document.getElementById('dealPay');
     if(!drop){ hint.hidden = true; hint.classList.remove('low'); if(payEl) payEl.placeholder = '0.00'; return; }
-    const d = iqDistanceFor(m, drop);
-    const iqLo = Math.max(6, Math.round(7 + Math.max(0, d.mi - 2)));
-    hint.innerHTML = '<img class="iq-logo" src="assets/img/shared-scribble.webp" alt="gopher iQ"> $' + iqLo + '–' + (iqLo + 2)
-      + ' is fair pay for this ' + d.label + ' run.';
+    /* ⛔ USES THE CANONICAL iQ MODEL, not a local formula (owner, 2026-08-25:
+       "AR suggested pricing logic needs to follow our normal iQ pricing. The cost
+       of good out of pocket expense incurred for the worker is why").
+       This used to be its own line — $7 for the first 2 miles, +$1/mile, +$2
+       spread — which read ONLY distance and never the cost of items. On a $100
+       age-restricted deal it suggested $7-9 while the model the rest of the flow
+       uses says ~$21, so the Gopher was asked to front $100 of someone else's
+       goods for single-digit pay. Distance was never the driver on this schedule;
+       out-of-pocket is.
+       GopherRequestLogic.suggestedOffer(itemCost, isNC) is the SAME call the main
+       request flow makes. Band is low-suggested, matching the flow's own
+       "Most neighbors offer around $x-$y" sentence — do not invent a new band. */
+    const costNum = parseFloat((document.getElementById('dealCost').value || '').replace(/[^\d.]/g, '')) || 0;
+    const L = window.GopherRequestLogic;
+    let iqLo, iqHi, basis;
+    if(L && typeof L.suggestedOffer === 'function'){
+      const model = L.suggestedOffer(costNum, true);   // NC pricing platform-wide (regionIsNC)
+      iqLo = model.low; iqHi = model.suggested;
+      basis = costNum > 0
+        ? 'fair pay \u2014 your Gopher fronts $' + costNum.toFixed(2).replace(/\.00$/, '') + ' for the items.'
+        : 'fair pay for this ' + iqDistanceFor(m, drop).label + ' run.';
+    } else {
+      /* Fail-safe only. The module is loaded on this page; if it ever is not,
+         a wrong number is worse than none, so say nothing. */
+      hint.hidden = true; return;
+    }
+    hint.innerHTML = '<img class="iq-logo" src="assets/img/shared-scribble.webp" alt="gopher iQ"> $' + iqLo + '\u2013' + iqHi
+      + ' is ' + basis;
     hint.hidden = false;
     if(payEl){
       payEl.placeholder = iqLo + '.00';
@@ -25764,6 +25832,21 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 (function(){
   function openLoginFromHash(){
     if (location.hash !== '#login') return;
+    /* ⛔ CLEAR THE HASH THE MOMENT WE ACT ON IT (owner-reported 2026-08-25:
+       "tapping login is not transitioning to the dashboard… I was already
+       logged in").
+       This only ever fired on DOMContentLoaded and hashchange. The header link
+       is href="gopher-request.html#login", so the FIRST click moved the hash
+       '' -> '#login' and worked. The hash then LINGERED, so every later click
+       assigned the same value, fired no hashchange, and did nothing at all —
+       the button looked dead precisely for people who had already signed in
+       once. Stripping the hash here restores the '' -> '#login' transition for
+       the next click, and covers every exit path (button, Escape, overlay
+       click, successful sign-in) rather than just the ones that call a closer.
+       gopher-go.html and gopher-deals.html already do this; Request and
+       Connect were the two that did not. */
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch (e) { /* file:// and old browsers — the portal still opens */ }
     var tries = 0;
     (function attempt(){
       if (typeof window.openPortal === 'function'){ window.openPortal(); return; }
