@@ -1945,6 +1945,37 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     session that touches this area" produced a misattribution on 2026-08-22 that the wrongly-named
     session had to correct.
 
+- **SP deal cards: no-image fallback = Gopher mascot on white, never initials (owner rulings
+  2026-08-25; commits `04dd155` + `75f3332`, deploys `903f11f` + `86470a7`, live-verified on
+  Pages + TigerTech).** The "JR" initials wordmark is gone from both LIVE SP render sites on
+  BOTH apps (rail `serviceCard` `.deal-pic` + View Details `#svcDealPic`): a provider with no
+  logo and no elected profile photo now shows `assets/img/gopher-character-full.svg` on plain
+  white — the identical treatment a logo gets ("Logos are against NO background. White is the
+  cleanest."). The mascot img always renders UNDER the photo, so a broken image (the exact
+  live-"JR" mechanism: bad S3 headers → onerror) degrades to mascot-on-white too. In the
+  onerror handler, `classList.add` runs BEFORE `this.remove()` — closest()/parentElement stop
+  resolving on a detached node. Dead `.deal-pic-fallback`/`.svc-pic-fb` CSS removed so the
+  ruled-out pattern can't be quietly reused. `serviceDetailHTML` still carries an initials
+  fallback but has ZERO callers on both surfaces — dead code, left alone. **Merchant tiles
+  (`deal-logo-tile`/`dh-mono`/`dd-logo` initials on category tints) are NOT covered by this
+  ruling** — open question for the owner, side-by-side first. Ruling path worth keeping: the
+  first side-by-side offered mascot-on-cream and the owner picked it AS LABELED, then corrected
+  when shown — a ruling on a mock is only as good as what the mock shows; re-confirm with the
+  actual pixels. Companion (same rulings): all three merchant logo-upload surfaces in
+  `gopher-deals.html` + the Deals 101 field description now warn that logos display on a white
+  background (all-white/very-light artwork won't show — the registration copy asks for a
+  TRANSPARENT PNG, which is exactly when white art vanishes). Also this session: Connect now
+  declares the four deal/hire-again contract fields it was already using (`a915e85`, parity
+  harness 0 warnings; `resetFlowState` had been DELETING them as unknown keys rather than
+  resetting — accidentally safe only because every Connect read coerces). **Both deploys were
+  pinned worktrees, and the second one earned it:** the Deals session committed `b783964` (321
+  lines, portal self-service) BETWEEN my two deploys, so the 101 follow-up would have shipped
+  it as a rider — caught on the dry-run diffstat, excluded by restoring `origin/main`'s
+  `gopher-deals.html` into the pinned worktree (md5-verified = live) and shipping
+  `--allow-dirty` with a 1-file diffstat. `b783964` remains committed-not-live, its session's
+  to ship. ⚠️ The "App Prototypes' 5 prototype commits await the owner's localhost test" note
+  from 08-24 was STALE by this deploy — all of them content-verified already live.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
