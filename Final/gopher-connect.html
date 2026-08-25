@@ -2566,7 +2566,10 @@
      .ar-banner-text must NOT grow to fill (flex:0 1 auto), leaving open space
      on the right. */
   /* .sub-field.ar-banner / .ar-banner-text already defined above — not repeated. */
-  .ar-control { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:4px; text-align:center; }
+  /* ⛔ ROW, not a column (owner, 2026-08-25 — AR Flow.pptx slide 1 item 4).
+     Identical to gopher-request.html: the TrustShield note sits to the RIGHT of
+     the Submit button so the button keeps its own width. */
+  .ar-control { flex:0 0 auto; display:flex; flex-direction:row; align-items:center; gap:10px; text-align:left; }
   .ar-action {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
     color:#fff; background:var(--green-dark); border:none; border-radius:9px;
@@ -2578,8 +2581,199 @@
   .ar-action.ar-get-ts:hover { background:var(--green-dark); }
   .ar-action-note {
     font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
-    color:var(--muted); max-width:140px; margin:0 auto;
+    color:var(--muted); max-width:140px; margin:0; text-align:left;
   }
+  /* ═══ TrustShield promo card + benefits modal — PORTED FROM gopher-request.html
+     2026-08-25 (owner: "Request and Connect 100% identical", AR Flow.pptx).
+     Connect previously had the TrustShield ENROLMENT flow but neither of these two
+     components; its own code said so ("Connect has no TrustShield modal yet").
+     Kept byte-identical to Request's rules so the two surfaces cannot drift on
+     styling — the only deliberate differences are in the COPY, where the A/R fee
+     figure is per-surface (Connect $2.99, Request $1.99). ═══ */
+/* ─── TrustShield reminder card (v72) ──────────────────────────────────
+     Used in two locations in the request flow:
+       1. Below the Safe-Guarding banner when Age-Restricted Delivery is on
+       2. Below the "Special instructions for driver" field in Ride Sharing
+     The component is identical in both contexts (per design directive).
+     Subtle navy-tinted card so it reads as informational, not promotional.
+     ────────────────────────────────────────────────────────────────────── */
+  /* ⛔ SHRINK-TO-CONTENT, not full-bleed (owner, 2026-08-25 — AR Flow.pptx slide 2:
+     "less wide (similar to other sections) to represent more of a button… doesn't
+     need to extend all the way to the end of the screen"). Running edge-to-edge made
+     it read as a page-width banner and pushed "Learn more" to the far right, miles
+     from the text it belongs to. `width:fit-content` collapses the 1fr track onto
+     its own text, so the card ends where its content ends and the CTA sits beside
+     the copy. `max-width:100%` keeps it inside narrow parents. */
+  .ts-promo {
+    margin-top:14px;
+    background:linear-gradient(135deg, #f3f6fc 0%, #eaf2fc 100%);
+    border:1px solid #d4dceb;
+    border-radius:12px;
+    padding:14px 16px;
+    display:grid;
+    grid-template-columns:auto auto auto;
+    gap:14px;
+    align-items:center;
+    width:fit-content;
+    max-width:100%;
+  }
+  .ts-promo-icon {
+    width:38px; height:38px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .ts-promo-icon svg { width:34px; height:34px; display:block; }
+  .ts-promo-body { min-width:0; }
+  .ts-promo-title {
+    font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:13.5px;
+    color:#002461; line-height:1.35;
+  }
+  .ts-promo-title strong {
+    font-weight:900;
+    color:var(--green-dark);
+  }
+  .ts-promo-meta {
+    font-family:'DM Sans',sans-serif;
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:3px; line-height:1.4;
+  }
+  .ts-promo-cta {
+    flex-shrink:0;
+    background:#002461;
+    color:#fff;
+    font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:12px;
+    padding:9px 14px;
+    border:0; border-radius:8px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background 0.2s, transform 0.2s;
+  }
+  .ts-promo-cta:hover {
+    background:#003d8a;
+    transform:translateY(-1px);
+  }
+  @media (max-width: 640px) {
+    .ts-promo {
+      grid-template-columns:auto 1fr;
+      grid-template-rows:auto auto;
+      row-gap:10px;
+      /* Full width again on phones — shrink-to-content is a DESKTOP correction.
+         At 375 the card is already near the viewport width, and fit-content here
+         would wrap the title to a ragged column instead of using the space. */
+      width:auto;
+    }
+    .ts-promo-cta {
+      grid-column:1 / -1;
+      width:100%;
+    }
+  }
+
+  /* ─── TrustShield modal — opened from .ts-promo-cta "Learn more" ──── */
+  .ts-modal { max-width:440px; padding:32px 28px 24px; }
+  .ts-modal-shield {
+    width:72px; height:72px; margin:0 auto 16px;
+    display:flex; align-items:center; justify-content:center;
+    filter:drop-shadow(0 6px 14px rgba(0,36,97,0.18));
+  }
+  .ts-modal-shield svg { width:72px; height:72px; display:block; }
+  .ts-modal h4 { margin-bottom:6px; }
+  .ts-modal .gr-modal-sub { margin-bottom:18px; }
+  .ts-modal-perks {
+    text-align:left;
+    margin:0 0 20px;
+    display:flex; flex-direction:column;
+    gap:12px;
+  }
+  .ts-perk {
+    display:grid;
+    grid-template-columns:34px 1fr;
+    gap:12px;
+    align-items:start;
+  }
+  .ts-perk-icon {
+    width:32px; height:32px;
+    background:var(--green-light);
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    color:var(--green-dark);
+    font-size:16px;
+  }
+  .ts-perk-body strong {
+    display:block;
+    font-family:'Nunito',sans-serif;
+    font-weight:800; font-size:13.5px;
+    color:var(--navy);
+    margin-bottom:2px;
+  }
+  .ts-perk-body span {
+    font-family:'DM Sans',sans-serif;
+    font-size:12px; color:var(--muted);
+    line-height:1.45;
+  }
+  .ts-modal-learn {
+    display:block;
+    margin-top:10px;
+    text-align:center;
+    font-family:'Nunito',sans-serif;
+    font-weight:700; font-size:12.5px;
+    color:var(--muted);
+    text-decoration:none;
+    padding:8px;
+  }
+  .ts-modal-learn:hover { color:var(--navy); text-decoration:underline; }
+
+  /* v75 — real TrustShield mark inside the promo card (replaces the generic
+     inline shield SVG). Portrait logo, sized by height to fit the 38px slot. */
+  .ts-promo-icon img.ts-promo-logo { height:42px; width:auto; display:block; }
+  /* v75 — real TrustShield mark inside the modal header */
+  .ts-modal-shield img.ts-modal-logo { height:72px; width:auto; display:block; }
+  /* v75 — "app-only + iDenfy live selfie" callout in the TrustShield modal */
+  .ts-modal-note {
+    text-align:left;
+    background:#f3f6fc;
+    border:1px solid #d4dceb;
+    border-radius:12px;
+    padding:13px 15px;
+    margin:0 0 16px;
+  }
+  .ts-modal-note strong {
+    display:block;
+    font-family:'Nunito',sans-serif;
+    font-weight:800; font-size:13px;
+    color:var(--navy);
+    margin-bottom:4px;
+  }
+  .ts-modal-note span {
+    display:block;
+    font-family:'DM Sans',sans-serif;
+    font-size:12px; line-height:1.5;
+    color:var(--muted);
+  }
+  .ts-modal-note .ts-idenfy {
+    margin-top:7px;
+    font-weight:600; color:var(--navy);
+  }
+  /* v75 — App Store / Play Store badges in the TrustShield modal */
+  .ts-modal-stores {
+    display:flex; justify-content:center; align-items:center;
+    gap:10px; flex-wrap:wrap;
+    margin:0 0 18px;
+  }
+  .ts-modal-stores .ts-store-badge {
+    display:inline-flex; line-height:0;
+    border-radius:9px; overflow:hidden;
+    transition:transform 0.15s, box-shadow 0.15s;
+  }
+  .ts-modal-stores .ts-store-badge img { height:44px; width:auto; display:block; }
+  .ts-modal-stores .ts-store-badge:hover {
+    transform:translateY(-1px);
+    box-shadow:0 6px 16px -8px rgba(13,21,52,0.45);
+  }
+
   /* Verified seal + "ID submitted" share the column badge look. The .ar-ts-badge
      base rule and its .ar-ts-art/.ar-ts-label children already exist above; only
      the ID-submitted variant is added here. */
@@ -2595,7 +2789,9 @@
     .ar-control { width:100%; }
     .ar-ts-badge { width:100%; padding-left:0; border-left:none;
       border-top:1px solid rgba(1,36,98,0.10); padding-top:8px; flex-direction:row; gap:8px; justify-content:center; }
-    .ar-action-note { max-width:none; }
+    /* Back to a column on phones — a row here squeezes the button to a few chars. */
+    .ar-control { flex-direction:column; align-items:stretch; text-align:center; }
+    .ar-action-note { max-width:none; margin:0 auto; text-align:center; }
   }
 
   /* ── Submit identification modal (two steps: ID front, then live selfie) ── */
@@ -8163,6 +8359,63 @@
      Step A: front of ID (camera OR upload) → Step B: live selfie (camera only)
      → optional save-on-file. Opened via [data-open-idsubmit].
      ============================================================ -->
+<!-- ============================================================
+     GOPHER TRUSTSHIELD — benefits modal. Ported from gopher-request.html
+     2026-08-25 (owner: Request and Connect 100% identical).
+     Opened by [data-ts-promo-open]; enrolment itself is [data-open-trustshield].
+     ============================================================ -->
+<div class="gc-modal-overlay" id="trustShieldOverlay" hidden>
+  <div class="gc-modal ts-modal" role="dialog" aria-modal="true" aria-labelledby="trustShieldTitle">
+    <button type="button" class="gc-modal-close" id="trustShieldClose" aria-label="Close">&times;</button>
+    <div class="ts-modal-shield" id="trustShieldShield">
+      <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path d="M32 4l22 8v16c0 14-9 24-22 30-13-6-22-16-22-30V12l22-8z" fill="#002461"/>
+        <path d="M32 12l14 5v11c0 9-6 15-14 19-8-4-14-10-14-19V17l14-5z" fill="#33D975"/>
+        <path d="M25 31l5 5 9-10" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <h4 id="trustShieldTitle">Gopher TrustShield&trade;</h4>
+    <p class="gc-modal-sub">Trust that runs both ways. Verify your identity once &mdash; and Gopher's badge follows you everywhere on the platform.</p>
+    <div class="ts-modal-perks">
+      <div class="ts-perk">
+        <div class="ts-perk-icon">$</div>
+        <div class="ts-perk-body">
+          <strong>$1 off Age-Restricted Delivery and Ride-Sharing</strong>
+          <!-- ⚠️ FEE FIGURE IS PER-SURFACE, and this is the one place "100% identical"
+               cannot be literal: Connect's AGE_FEE is $2.99 (D-031, flat on every
+               plan), Request's is $1.99. Copying Request's sentence verbatim would
+               state a price Connect does not charge. -->
+          <span>Applied automatically once you're verified, reducing the $2.99 age-restricted fee to $1.99 as long as you carry the badge. Adds up fast.</span>
+        </div>
+      </div>
+      <div class="ts-perk">
+        <div class="ts-perk-icon">&#9889;</div>
+        <div class="ts-perk-body">
+          <strong>Skip ID re-entry</strong>
+          <span>No more scanning your ID before each request &mdash; simply just show it at the door.</span>
+        </div>
+      </div>
+      <div class="ts-perk">
+        <div class="ts-perk-icon">&#128737;</div>
+        <div class="ts-perk-body">
+          <strong>Workers appreciate it</strong>
+          <span>Give workers the same assurance you have, knowing they are who they say they are.</span>
+        </div>
+      </div>
+    </div>
+    <div class="ts-modal-note">
+      <strong>How it works</strong>
+      <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
+    </div>
+    <div class="ts-modal-stores" id="trustShieldStores">
+      <a class="ts-store-badge" id="trustShieldApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
+      <a class="ts-store-badge" id="trustShieldGoogle" href="https://play.google.com/store/apps/details?id=io.gophergoapp.requester" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"></a>
+    </div>
+    <button type="button" class="gc-modal-btn" id="trustShieldGotIt">Got it &mdash; back to my request</button>
+    <a href="gopher-trustshield.html" target="_blank" rel="noopener" class="ts-modal-learn" id="trustShieldLearn">See the full TrustShield page &rarr;</a>
+  </div>
+</div>
+
 <div class="gc-modal-overlay" id="idSubmitOverlay" hidden>
   <div class="gc-modal idsub-modal" role="dialog" aria-modal="true" aria-labelledby="idSubmitTitle">
     <button type="button" class="gc-modal-close" id="idSubmitClose" aria-label="Close">×</button>
@@ -8243,10 +8496,6 @@
         <img id="idSubSelfieImg" src="" alt="Selfie preview">
         <span class="idsub-thumb-meta"><b>Selfie captured</b><br>Ready to submit.</span>
         <button type="button" class="idsub-retake" id="idSubSelfieRetake">Retake</button>
-      </div>
-      <div class="idsub-save" id="idSubSaveRow">
-        <input type="checkbox" id="idSubSaveOnFile">
-        <label for="idSubSaveOnFile">Save my ID and selfie for future age-restricted orders. If you ever update your ID, you'll take a new selfie too.</label>
       </div>
       <div class="idsub-actions">
         <button type="button" class="gc-modal-btn" id="idSubSubmit" disabled>Submit identification</button>
@@ -10950,11 +11199,12 @@ const PAY_BADGES = {
         ${state.ageRestricted ? `
           <div class="sub-field ar-banner">
             <div class="ar-banner-text">
-              <div class="sf-label">Safeguarding & identity verification activated</div>
-              <div class="sf-value">Physical ID required during exchange</div>
+              <div class="sf-label">Safeguarding & identity verification required</div>
+              <div class="sf-value">Physical ID always required during items exchange</div>
             </div>
             ${ageRestrictedBannerControl()}
           </div>
+          ${(window.__hasTrustShield && window.__hasTrustShield()) ? '' : tsPromoMarkup()}
         ` : ''}
         <div class="toggle-row">
           <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="Items purchased toggle"></button>
@@ -12737,6 +12987,23 @@ const PAY_BADGES = {
   //                               selfie), or the "ID Submitted / on file" state.
   // Boundary: 30 and over = ID-submission path (age >= 30). Change to age > 30
   // if product wants 30 to be must-verify. Unknown age = must-verify (safest).
+  /* TrustShield reminder card — ported from gopher-request.html 2026-08-25
+     (owner: "Request and Connect 100% identical"). Rendered under the A/R banner
+     only when the requester is NOT already verified; "Learn more" opens the
+     benefits modal via [data-ts-promo-open], never enrolment directly. */
+  const tsPromoMarkup = () => `
+    <div class="ts-promo" role="region" aria-label="Gopher TrustShield reminder">
+      <div class="ts-promo-icon">
+        <img class="ts-promo-logo" src="assets/img/connect-img-4.webp" alt="Gopher TrustShield">
+      </div>
+      <div class="ts-promo-body">
+        <div class="ts-promo-title">Add your free TrustShield&trade; badge — save <strong>$1 on Age-Restricted Delivery and Ride-Sharing</strong></div>
+        <div class="ts-promo-meta">Verify once. Use everywhere. Skip ID re-entry.</div>
+      </div>
+      <button type="button" class="ts-promo-cta" data-ts-promo-open>Learn more</button>
+    </div>
+  `;
+
   function ageRestrictedBannerControl(){
     if(window.__hasTrustShield && window.__hasTrustShield()){
       return (window.__trustShieldBannerBadge && window.__trustShieldBannerBadge()) || '';
@@ -13082,8 +13349,13 @@ const PAY_BADGES = {
         v.submittedAt = Date.now();
         const done = _idSubOnDone; _idSubOnDone = null;
         if(typeof done === 'function') { try { done(); } catch(_){} }
-        const save = document.getElementById('idSubSaveOnFile');
-        if(save && save.checked){
+        /* ⛔ NO "save my ID" CHOICE ANY MORE (owner, 2026-08-25 — AR Flow.pptx
+           slide 3: "this would defeat the purpose of TrustShield"). Keeping an ID
+           on file for future orders IS TrustShield; a free checkbox on the one-off
+           path gave the badge's reason to exist away.
+           ⚠️ Persistence is NOT dead code — enrolment must still store the ID, or
+           TrustShield would badge people whose ID was never kept. Mode-driven now. */
+        if(_idSubIsTS){
           v.savedOnFile = true;
           if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc);
         } else {
@@ -13095,6 +13367,10 @@ const PAY_BADGES = {
 
     // opts.update === true → re-run the full flow (fresh front + fresh selfie).
     let _idSubOnDone = null;
+    /* ⛔ Persisted because the submit handler is a DIFFERENT closure from the open
+       function, where `isTS` is a local const. Saving the ID on file is now the
+       TrustShield grant itself (owner, 2026-08-25 — AR Flow.pptx slide 3). */
+    let _idSubIsTS   = false;
     /* opts.trustShield → same capture, framed as enrolment, opts.onDone on submit.
        One ID-capture component instead of two that drift (2026-08-24). */
     window.__openIdSubmitModal = async function(opts){
@@ -13106,6 +13382,7 @@ const PAY_BADGES = {
       resetCaptures();              // fresh session — ID + selfie always recaptured
       const title = document.getElementById('idSubmitTitle');
       const isTS = !!(opts && opts.trustShield);
+      _idSubIsTS = isTS;
       _idSubOnDone = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
       if(title) title.textContent = isTS ? 'Add TrustShield\u2122'
                                  : isUpdate ? 'Update Identification' : 'Submit identification';
@@ -13115,8 +13392,6 @@ const PAY_BADGES = {
         : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
       const subBtn = document.getElementById('idSubSubmit');
       if(subBtn) subBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
-      const save = document.getElementById('idSubSaveOnFile');
-      if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
       // Get out in front of it: a live selfie is required, so if there's no
       // camera on this device, route to the app BEFORE they fill anything in.
@@ -16090,6 +16365,41 @@ const PAY_BADGES = {
     ov.hidden = false;
   }
   // Wire the dashboard "Add TrustShield" tile to the same standard flow (enroll).
+  /* TrustShield BENEFITS modal — ported from gopher-request.html 2026-08-25.
+     Distinct from __openTrustShieldModal below, which is ENROLMENT. Store art is
+     referenced directly rather than scraped via window.grAsset (Connect has no
+     such helper — it already hardcodes the same two files in the no-camera step). */
+  (function initTrustShieldModal(){
+    const overlay = document.getElementById('trustShieldOverlay');
+    if(!overlay) return;
+    const close = () => { overlay.hidden = true; };
+    function hydrate(){
+      const shield = document.getElementById('trustShieldShield');
+      if(shield && !shield.dataset.real){
+        shield.innerHTML = '<img class="ts-modal-logo" src="assets/img/connect-img-4.webp" alt="Gopher TrustShield">';
+        shield.dataset.real = '1';
+      }
+      const apple  = document.getElementById('trustShieldApple');
+      const google = document.getElementById('trustShieldGoogle');
+      if(apple  && !apple.querySelector('img'))  apple.innerHTML  = '<img src="assets/img/badge-app-store.webp" alt="Download on the App Store">';
+      if(google && !google.querySelector('img')) google.innerHTML = '<img src="assets/img/badge-google-play.webp" alt="Get it on Google Play">';
+    }
+    const open = () => { hydrate(); overlay.hidden = false; };
+    window.openTrustShieldModal = open;
+    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+    const closeBtn = document.getElementById('trustShieldClose');
+    const okBtn    = document.getElementById('trustShieldGotIt');
+    if(closeBtn) closeBtn.addEventListener('click', close);
+    if(okBtn)    okBtn.addEventListener('click', close);
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && !overlay.hidden) close();
+    });
+    document.addEventListener('click', e => {
+      const t = e.target.closest && e.target.closest('[data-ts-promo-open]');
+      if(t) open();
+    });
+  })();
+
   window.__openTrustShieldModal = () => openIdVerifyFlow('enroll', () => {
     if(DASH_DATA.profile) DASH_DATA.profile.trustShield = true;
     if(typeof renderProfileBadges === 'function') renderProfileBadges();
@@ -21159,7 +21469,11 @@ const PAY_BADGES = {
         + '</div>');
     } else {
       tiles.push(
-        '<button type="button" class="ph-badge-add" data-ts-promo-open aria-label="Add TrustShield verification">'
+        /* data-open-trustshield (NOT data-ts-promo-open) — matches Request v105: the
+           dashed "Add" tile runs ENROLMENT directly. [data-ts-promo-open] now opens
+           the benefits modal, so leaving it here would have turned a one-tap enrol
+           into a marketing card. */
+        '<button type="button" class="ph-badge-add" data-open-trustshield aria-label="Add TrustShield verification">'
         + '<div class="ph-badge-add-art">+</div>'
         + '<div class="ph-badge-label">Add<br>TrustShield™</div>'
         + '</button>');
@@ -21236,14 +21550,12 @@ const PAY_BADGES = {
     }
   }
 
-  // "Add TrustShield" tile (only shown when unverified) — document-level delegate so
-  // it survives rail re-renders. Connect has no TrustShield modal yet; open one if/when
-  // it's wired (window.__openTrustShieldModal), otherwise no-op safely.
-  document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-ts-promo-open]');
-    if(!t) return;
-    if(typeof window.__openTrustShieldModal === 'function') window.__openTrustShieldModal();
-  });
+  /* ⛔ REMOVED 2026-08-25 — this delegate made [data-ts-promo-open] mean "enrol".
+     The comment it carried ("Connect has no TrustShield modal yet") is no longer
+     true: the benefits modal now exists and owns that hook, exactly as on Request.
+     Leaving this in place would have fired BOTH the benefits modal and the capture
+     flow from one click. The dashed "Add" tile moved to [data-open-trustshield],
+     which is the enrolment hook Connect already had. */
 
   // "Get verified" tile (only shown when the business is unverified) — same safe
   // delegate pattern. The verification mechanism (EIN check / domain match /

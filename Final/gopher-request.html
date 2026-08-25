@@ -3777,7 +3777,13 @@
      on the right. */
   .sub-field.ar-banner { display:flex; align-items:center; gap:18px; }
   .sub-field.ar-banner .ar-banner-text { flex:0 1 auto; min-width:0; }
-  .ar-control { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:4px; text-align:center; }
+  /* ⛔ ROW, not a column (owner, 2026-08-25 — AR Flow.pptx slide 1 item 4). The
+     TrustShield note used to sit UNDER the Submit button, which pushed the note's
+     width onto the button and made the primary action read as the smaller thing.
+     It now sits to the RIGHT of the button, so the button keeps its own width and
+     the note reads as an aside. `align-items:center` keeps the two vertically
+     centred on each other regardless of how many lines the note wraps to. */
+  .ar-control { flex:0 0 auto; display:flex; flex-direction:row; align-items:center; gap:10px; text-align:left; }
   .ar-action {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
     color:#fff; background:var(--green-dark); border:none; border-radius:9px;
@@ -3789,7 +3795,7 @@
   .ar-action.ar-get-ts:hover { background:var(--green-dark); }
   .ar-action-note {
     font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
-    color:var(--muted); max-width:140px; margin:0 auto;
+    color:var(--muted); max-width:140px; margin:0; text-align:left;
   }
   /* Inline "add TrustShield" inside the note. A <button> is used rather than an <a>
      because it opens a modal — but it must READ as a link, or the note grows a second
@@ -3816,7 +3822,10 @@
     .ar-control { width:100%; }
     .ar-ts-badge { width:100%; padding-left:0; border-left:none;
       border-top:1px solid rgba(1,36,98,0.10); padding-top:8px; flex-direction:row; gap:8px; justify-content:center; }
-    .ar-action-note { max-width:none; }
+    /* Back to a column on phones — a row here squeezes the button to a few
+       characters. Mirrors the pre-2026-08-25 desktop layout, on purpose. */
+    .ar-control { flex-direction:column; align-items:stretch; text-align:center; }
+    .ar-action-note { max-width:none; margin:0 auto; text-align:center; }
   }
 
   /* ── Submit identification modal (two steps: ID front, then live selfie) ── */
@@ -4508,6 +4517,13 @@
      The component is identical in both contexts (per design directive).
      Subtle navy-tinted card so it reads as informational, not promotional.
      ────────────────────────────────────────────────────────────────────── */
+  /* ⛔ SHRINK-TO-CONTENT, not full-bleed (owner, 2026-08-25 — AR Flow.pptx slide 2:
+     "less wide (similar to other sections) to represent more of a button… doesn't
+     need to extend all the way to the end of the screen"). Running edge-to-edge made
+     it read as a page-width banner and pushed "Learn more" to the far right, miles
+     from the text it belongs to. `width:fit-content` collapses the 1fr track onto
+     its own text, so the card ends where its content ends and the CTA sits beside
+     the copy. `max-width:100%` keeps it inside narrow parents. */
   .ts-promo {
     margin-top:14px;
     background:linear-gradient(135deg, #f3f6fc 0%, #eaf2fc 100%);
@@ -4515,9 +4531,11 @@
     border-radius:12px;
     padding:14px 16px;
     display:grid;
-    grid-template-columns:auto 1fr auto;
+    grid-template-columns:auto auto auto;
     gap:14px;
     align-items:center;
+    width:fit-content;
+    max-width:100%;
   }
   .ts-promo-icon {
     width:38px; height:38px;
@@ -4562,6 +4580,10 @@
       grid-template-columns:auto 1fr;
       grid-template-rows:auto auto;
       row-gap:10px;
+      /* Full width again on phones — shrink-to-content is a DESKTOP correction.
+         At 375 the card is already near the viewport width, and fit-content here
+         would wrap the title to a ragged column instead of using the space. */
+      width:auto;
     }
     .ts-promo-cta {
       grid-column:1 / -1;
@@ -12919,6 +12941,11 @@
     }
 
     let _idSubOnDone = null;
+    /* ⛔ Persisted because the submit handler is a DIFFERENT closure from the open
+       function, where `isTS` is a local const. Saving the ID on file is now the
+       TrustShield grant itself (owner, 2026-08-25 — AR Flow.pptx slide 3), so the
+       submit path has to know which mode it is running in. */
+    let _idSubIsTS   = false;
     function resetCaptures(){
       state.idVerification.idFrontCaptured = false;
       state.idVerification.idBackCaptured  = false;
@@ -13145,8 +13172,14 @@
         /* TrustShield enrolment reuses this capture; its grant runs here. */
         const done = _idSubOnDone; _idSubOnDone = null;
         if(typeof done === 'function') { try { done(); } catch(_){} }
-        const save = document.getElementById('idSubSaveOnFile');
-        if(save && save.checked){
+        /* ⛔ NO "save my ID" CHOICE ANY MORE (owner, 2026-08-25 — AR Flow.pptx
+           slide 3: "this would defeat the purpose of TrustShield"). Keeping an ID
+           on file for future orders IS TrustShield; offering it free as a checkbox
+           on the one-off path gave away the badge's whole reason to exist.
+           ⚠️ The persistence itself is NOT dead code — enrolment still has to store
+           the ID, or TrustShield would badge people whose ID was never kept. It is
+           now driven by the MODE instead of by a checkbox. */
+        if(_idSubIsTS){
           v.savedOnFile = true;
           if(window.__saveIdOnFile) window.__saveIdOnFile(v.idFrontSrc, v.selfieSrc, v.idBackSrc);
         } else {
@@ -13168,6 +13201,7 @@
       if(!overlay) return;
       const isUpdate = !!(opts && opts.update);
       const isTS     = !!(opts && opts.trustShield);
+      _idSubIsTS     = isTS;
       _idSubOnDone   = (opts && typeof opts.onDone === 'function') ? opts.onDone : null;
       stopCam();
       resetCaptures();              // fresh session — ID + selfie always recaptured
@@ -13180,8 +13214,6 @@
         : 'Verify your identity for this age-restricted order. You\u2019ll still show a physical ID in person at hand-off.';
       const submitBtn = document.getElementById('idSubSubmit');
       if(submitBtn) submitBtn.textContent = isTS ? 'Finish verification' : 'Submit identification';
-      const save = document.getElementById('idSubSaveOnFile');
-      if(save) save.checked = !!(window.__idOnFile && window.__idOnFile()) || !!state.idVerification.savedOnFile;
       overlay.hidden = false;
       // Get out in front of it: a live selfie is required, so if there's no
       // camera on this device, route to the app BEFORE they fill anything in.
@@ -13291,8 +13323,8 @@
         ${state.ageRestricted ? `
           <div class="sub-field ar-banner">
             <div class="ar-banner-text">
-              <div class="sf-label">Safeguarding & identity verification activated</div>
-              <div class="sf-value">Physical ID required during exchange · $1.99 Fee added</div>
+              <div class="sf-label">Safeguarding & identity verification required</div>
+              <div class="sf-value">Physical ID always required during items exchange</div>
             </div>
             ${ageRestrictedBannerControl()}
           </div>
@@ -17325,28 +17357,32 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="ts-perk-icon">$</div>
         <div class="ts-perk-body">
           <strong>$1 off Age-Restricted Delivery and Ride-Sharing</strong>
-          <span>Applied automatically once you're verified. Adds up fast.</span>
+          <span>Applied automatically once you're verified, reducing the $1.99 age-restricted fee to $0.99 as long as you carry the badge. Adds up fast.</span>
         </div>
       </div>
       <div class="ts-perk">
         <div class="ts-perk-icon">⚡</div>
         <div class="ts-perk-body">
           <strong>Skip ID re-entry</strong>
-          <span>Workers see your verification badge — no more re-showing ID on every job.</span>
+          <span>No more scanning your ID before each request — simply just show it at the door.</span>
         </div>
       </div>
       <div class="ts-perk">
         <div class="ts-perk-icon">🛡</div>
         <div class="ts-perk-body">
-          <strong>Verified neighbors only</strong>
-          <span>You earn assurance from verified workers, and they earn the same from you.</span>
+          <strong>Workers appreciate it</strong>
+          <span>Give workers the same assurance you have, knowing they are who they say they are.</span>
         </div>
       </div>
     </div>
+    <!-- ⛔ WAS "Verify in the Gopher Request app" (owner, 2026-08-25 — AR Flow.pptx
+         slide 4: "Remove this - no longer accurate. TrustShield available on the
+         spot."). Two claims died at once: web CAN complete enrolment now (it runs
+         the same 3-shot live capture as the one-off path), and the iDenfy line
+         named a vendor being retired. Replaced with what the badge actually does. -->
     <div class="ts-modal-note">
-      <strong>Verify in the Gopher Request app</strong>
-      <span>TrustShield verification is only available in the Gopher Request mobile app — it can't be completed here on the web.</span>
-      <span class="ts-idenfy">Our identity partner, iDenfy, captures a quick live selfie to confirm it's really you.</span>
+      <strong>How it works</strong>
+      <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
     </div>
     <div class="ts-modal-stores" id="trustShieldStores">
       <a class="ts-store-badge" id="trustShieldApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
@@ -17448,10 +17484,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <img id="idSubSelfieImg" src="" alt="Selfie preview">
         <span class="idsub-thumb-meta"><b>Selfie captured</b><br>Ready to submit.</span>
         <button type="button" class="idsub-retake" id="idSubSelfieRetake">Retake</button>
-      </div>
-      <div class="idsub-save" id="idSubSaveRow">
-        <input type="checkbox" id="idSubSaveOnFile">
-        <label for="idSubSaveOnFile">Save my ID and selfie for future age-restricted orders. If you ever update your ID, you'll take a new selfie too.</label>
       </div>
       <div class="idsub-actions">
         <button type="button" class="gr-modal-btn" id="idSubSubmit" disabled>Submit identification</button>
@@ -17765,7 +17797,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <span class="age-seal-mark">🛡️</span>
           <div class="age-seal-body">
             <b id="rqAgeSealTitle">TrustShield verified — ID on file, no submission needed</b>
-            <small>Safeguarding &amp; identity verification activated.</small>
+            <small>Safeguarding &amp; identity verification required.</small>
           </div>
         </div>
         <button class="portal-submit" id="rqAgeProceed">Continue →</button>
