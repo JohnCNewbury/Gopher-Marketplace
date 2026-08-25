@@ -36,10 +36,15 @@
    card makes the page invent a credential. Never set `tier` to a
    placeholder here; leave it off entirely.
 
-   Still absent, and still deliberate: rating and job count. Both live in the
-   eligibility snapshot, which is reviewer-side — a customer-facing rating for
-   a provider would need its own privacy call (see INV-RATING), not a quiet
-   payload extension.
+   PERFORMANCE HISTORY arrives too, as of 2026-08-25 (owner ruling: customers
+   see both) — `provider_jobs`, `provider_rating` and `provider_reviews`. Also
+   resolved live server-side, from the same evaluate() the eligibility bar uses,
+   so a card's job count means the same jobs the gate counted.
+   ⚠️ Each is set only when the server actually sent it. A missing job count is
+   NOT zero and a missing rating is NOT 5.0 — the card must render nothing.
+   `reviews` is the sample size behind `rating`; never show the average without
+   it. All of this is service-scoped: Delivery / Ride / Other count toward
+   neither figure (owner, 2026-07-23).
    ===================================================================== */
 (function () {
   var API = 'https://api.gophergo.io/api/v1/deals';
@@ -94,6 +99,12 @@
          the key absent is what makes the card render no badge instead of
          falling back to a hardcoded one. */
       if (d.provider_tier) base.tier = 'Gopher ' + d.provider_tier;
+      /* Only when told. `!= null` rather than a truthiness test on purpose:
+         a genuine 0 jobs or a 0.0 rating from the server is data and should
+         show, whereas undefined is "we were not told" and must not. */
+      if (d.provider_jobs != null) base.jobs = d.provider_jobs;
+      if (d.provider_rating != null) base.rating = Number(d.provider_rating);
+      if (d.provider_reviews != null) base.reviews = d.provider_reviews;
     } else {
       base.kind = 'merchant';
       base.name = d.title || 'Local Merchant';

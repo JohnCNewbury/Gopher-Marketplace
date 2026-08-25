@@ -3481,6 +3481,13 @@
      independent-contractor agreement links not working"). They had been
      <span class="legal-link"> — styled to look like links, underlined and
      cursor:pointer, with NO href and NO click handler anywhere. Inert.
+     ⛔ THE SECOND LINK POINTING AT THE ToS IS DELIBERATE AND OWNER-APPROVED
+     (John, 2026-08-25: "pointing is totally fine"). There is NO standalone
+     worker independent-contractor agreement document on this site; the
+     agreement is stated in Terms of Service §6, "Marketplace Facilitator &
+     Independent Contractor Relationship" (#marketplace), which is where this
+     link goes. Do not "fix" it to a page that does not exist, and do not
+     re-raise it as a broken link.
      ⛔ target="_blank" IS LOAD-BEARING, not a preference: the request flow keeps
      its entire state in memory, so navigating this tab away from step 6 destroys
      the user's in-progress request. Never make these same-tab links. */
@@ -4171,6 +4178,12 @@
   .worker-cta.secondary:hover { border-color:var(--green); color:var(--green-dark); }
 
   /* Profile Message button row */
+  .tier-verified-check { display:inline-flex; width:20px; height:20px; color:var(--green-dark); }
+  .tier-verified-check svg { width:100%; height:100%; }
+  .profile-rated-note {
+    text-align:center; font-family:'Nunito',sans-serif; font-weight:700;
+    font-size:11.5px; color:var(--muted); margin:-4px 0 10px;
+  }
   .profile-message-row {
     display:flex; justify-content:center;
     margin:14px 0 6px;
@@ -10227,7 +10240,14 @@ const PAY_BADGES = {
     if(name && logos[name]){
       html = '<img class="tier-lockup" src="' + logos[name] + '" alt="Gopher ' + name + '">';
     } else if(!name){
-      html = '<span class="gopher-badge tier-standard"' + st + '>standard</span>';
+      /* ⛔ NO WORDMARK, and no invented tier. There is no Standard lockup, and a
+         missing tier means "not told" rather than "Standard" — so this renders
+         the VERIFIED check, which is the thing the bubble's own label claims and
+         the one thing we do know about a published provider. */
+      /* Inlined, NOT the DEAL_CHECK_SVG constant: that lives ~5,500 lines later
+         inside the deals IIFE, so referencing it from here would resolve to
+         nothing at call time. Self-contained beats tidy. */
+      html = '<span class="tier-verified-check" aria-label="Verified">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' + '</span>';
     }
     if(proCred && logos['Pro'] && name !== 'Pro'){
       html += '<img class="tier-lockup tier-lockup-cred" src="' + logos['Pro'] + '" alt="Gopher Pro">';
@@ -12354,7 +12374,7 @@ const PAY_BADGES = {
             </div>
           </div>
 
-          <div class="profile-message-row">
+        <div class="profile-message-row">
             <button class="profile-message-btn" data-action="message-worker">💬 Message</button>
           </div>
 
@@ -15876,7 +15896,12 @@ const PAY_BADGES = {
          which PROMOTED every plain Elite provider to Elite+ on their own
          profile — a fabricated tier, in the opposite direction to the card bug.
          __tierName does the mapping properly in one place. */
-      tier: (window.__tierName(m.tier) || 'standard').toLowerCase(),
+      /* ⛔ NULL MEANS UNKNOWN, NOT STANDARD. This coerced an unknown tier to
+         the string 'standard', which the badge then rendered as a pill — a
+         claim about someone we simply hold no tier for. Real case, not
+         hypothetical: a provider admitted by an ADMIN GRANT can hold a live
+         SP deal while sitting on a tier with no public lockup. */
+      tier: window.__tierName(m.tier),
       proCred: String(m.tier || '') === 'Gopher Pro',
       /* ⛔ SAME IMAGE RESOLVER THE CARD USES. serviceProviderPhoto() alone
          returns m.photo, which live feed deals never carry (the feed sets
@@ -15885,6 +15910,7 @@ const PAY_BADGES = {
          provider, two different answers. */
       photo: (serviceProviderPic(m) || {}).src || null,
       live: !!m.live,
+      jobs: (m.jobs != null ? m.jobs : null),
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
       dealServiceName: m.name || '', dealServiceOffer: m.offer || m.name || '',
@@ -16996,6 +17022,24 @@ const PAY_BADGES = {
        that contradicted it. A real business's reputation is not a placeholder. */
     const ratingNum = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : null);
     const rating = (ratingNum != null) ? Number(ratingNum).toFixed(1) : '—';
+    /* WHICH NUMBER SITS BESIDE THE RATING, and it is data-driven on purpose.
+       A real provider from the feed carries a COMPLETED-JOB count (owner ruled
+       2026-08-25 that customers see jobs + rating); the showroom cards carry a
+       review count and mean it. Rather than relabel one to match the other and
+       make a true number read as something it isn't, each card says what it
+       actually holds. */
+    const hasJobs = (w.jobs != null);
+    /* ⛔ A ZERO IS A CLAIM. When we hold neither a job count nor a review count
+       the bubble shows "—", not 0: "0 jobs" asserts this provider has never
+       worked, on the strength of a lookup that simply returned nothing. */
+    const knowsCount = hasJobs || (w.reviews != null);
+    const rawCount = hasJobs ? w.jobs : reviews;
+    const countNum = knowsCount ? rawCount : '—';
+    const countLabel = hasJobs ? 'Jobs' : 'Reviews';
+    /* An average is never shown without its sample size. */
+    const ratedNote = (ratingNum != null && w.reviews != null)
+      ? `Rating across ${w.reviews} ${hasJobs ? `rated job${w.reviews === 1 ? '' : 's'}` : `review${w.reviews === 1 ? '' : 's'}`}`
+      : '';
     const firstWord = (r.title || 'Previous').split(/[\s·]/)[0];
     /* A deal that came from the publication feed carries `live`. We hold no job
        history for those providers, so the showroom history below is withheld
@@ -17024,14 +17068,16 @@ const PAY_BADGES = {
             <div class="profile-stat-label">${w.verified || 'Verified'}</div>
           </div>
           <div class="profile-stat">
-            <div class="profile-stat-bubble reviews">${reviews >= 1000 ? (reviews/1000).toFixed(1)+'k' : reviews}</div>
-            <div class="profile-stat-label">Reviews</div>
+            <div class="profile-stat-bubble reviews">${(typeof countNum === 'number' && countNum >= 1000) ? (countNum/1000).toFixed(1)+'k' : countNum}</div>
+            <div class="profile-stat-label">${countLabel}</div>
           </div>
           <div class="profile-stat">
             <div class="profile-stat-bubble rating">${rating}</div>
             <div class="profile-stat-label">Rating</div>
           </div>
         </div>
+
+        ${ratedNote ? `<div class="profile-rated-note">${ratedNote}</div>` : ''}
 
         <div class="profile-message-row">
           <button class="profile-message-btn" data-wact="message" data-i="${idx}">💬 Message</button>
@@ -17047,8 +17093,11 @@ const PAY_BADGES = {
 
         ${isLive ? `
         <div class="profile-history-empty">
-          No completed jobs to show yet. This provider's history will appear here
-          once they have finished work through Gopher.
+          ${hasJobs && w.jobs > 0
+            ? `Individual job records aren't shown here yet — the totals above are
+               this provider's Gopher history.`
+            : `No completed jobs to show yet. This provider's history will appear
+               here once they have finished work through Gopher.`}
         </div>` : `        <div class="profile-history-item">
           <div class="phi-id">Request #212121</div>
           <div><b>Date:</b> 3/4/26</div>
