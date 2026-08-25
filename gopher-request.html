@@ -25097,11 +25097,22 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     return ''
       + '<div class="deal-detail deal-detail-merchant">'
       +   '<div class="dd-head">'
+      /* ⛔ DEAL_LOGOS IS A TABLE OF DEMO ART KEYED BY DEMO ID. A real deal from
+         the publication feed is never in it, so this fell straight through to
+         INITIALS — the merchant uploaded a logo, it rendered on the rail card
+         (which reads m.logo), and then vanished inside their own deal.
+         ⚠️ gopher-connect.html has never had this bug: it reads m.logo and has
+         no DEAL_LOGOS at all. Two pages, one component, one of them wrong —
+         which is the drift the shared feed module exists to stop.
+         Order matters: the curated table still wins for demo cards so the
+         showroom is unchanged, and m.logo catches everything real. */
       +     ((typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id])
             ? '<div class="dd-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
             : (m.logoSvg
               ? '<div class="dd-logo dd-logo-svg">' + m.logoSvg + '</div>'
-              : '<div class="dd-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>'))
+              : (m.logo
+                ? '<div class="dd-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt=""></div>'
+                : '<div class="dd-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>')))
       +     '<div class="dd-head-text"><h2 class="dd-title">' + dealEsc(m.name) + '</h2>'
       +       '<div class="dd-sub">' + dealEsc(m.sub || '') + (m.distance ? ' \u00B7 ' + dealEsc(m.distance) : '') + '</div></div>'
       +   '</div>'
@@ -25110,7 +25121,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +     '<div class="dd-portal-body" id="ddPortalBody">'
       +       ((typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id])
             ? '<div class="dd-portal-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
-            : '<div class="dd-portal-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>')
+            : (m.logo
+              ? '<div class="dd-portal-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt=""></div>'
+              : '<div class="dd-portal-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>'))
       +       '<div class="dd-portal-welcome">Welcome to ' + dealEsc(m.name) + '</div>'
       +       '<div class="dd-portal-tag">' + dealEsc(m.portalTag || '') + '</div>'
       +       (m.promo ? '<div class="dd-portal-promo">Use code <b>' + dealEsc(m.promo) + '</b> for your deal</div>' : '')
