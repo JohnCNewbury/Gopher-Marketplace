@@ -106,17 +106,11 @@
         if (s.category !== 'delivery' || !s.ageRestricted) return false;
         return !h.identityVerified(s);
       },
-      /* Under-30 has no one-off ID-pic path, so only TrustShield satisfies them.
-         The age changes the MESSAGE only — never the requirement. (Confirmed on
-         all three surfaces 2026-08-22; a peer nearly filed the age branch as a
-         behavioural divergence before reading the whole block.) */
-      messageFor: function (s, h) {
-        var age = h.customerAge ? h.customerAge() : null;
-        return (age != null && age < 30)
-          ? 'This age-restricted order needs TrustShield verification. Tap '
-            + '“Get TrustShield™” to continue.'
-          : this.message;
-      }
+      /* ⛔ NO messageFor ANY MORE (owner, 2026-08-25: "there is no distinction with
+         ANY age"). It used to swap in a TrustShield-only sentence for under-30,
+         because under-30 once had no one-off ID path. They have had the same path
+         since 2026-08-24, and age no longer changes the requirement OR the wording.
+         `customerAge` is left in the host contract but nothing here reads it. */
     },
     {
       id: 'pickupAddress', step: 4,
@@ -220,7 +214,22 @@
      fixing. Adopting this changes ONE observable behaviour on Connect — which
      message appears when both fail at once — and nothing else. */
   var SURFACE_GATES = {
-    /* ⛔ 'identity' REMOVED from both web surfaces — owner ruling 2026-08-23
+    /* ⛔⛔ 'identity' IS BACK ON THE WEB SURFACES — owner ruling 2026-08-25.
+       This SUPERSEDES the 2026-08-23 G40-410 removal quoted below. That removal
+       existed for exactly one reason: iDenfy was being retired, so enrolment would
+       stop and under-30 (who then had no one-off path) would be left unable to
+       order at all. TrustShield now runs INTERNALLY — enrolment never stops — so
+       the reason is gone and the gate returns.
+       Owner, 2026-08-25: identity is required to submit an AGE-RESTRICTED order,
+       for everyone, with no age branch. The gate's own `when` already scopes it to
+       delivery + ageRestricted, so restoring it here is exactly that and nothing
+       wider — a non-A/R order is never gated.
+       ⚠️ 'prototype' is NOT restored here yet: App Prototypes owns that surface and
+       lands it in `_prototypes/`. Adding it before their UI can satisfy it would
+       recreate the dead end this file's own identity-gate comment warns about.
+       Add it — and to the assertion below — when they land.
+       Superseded text follows.
+       ⛔ 'identity' REMOVED from both web surfaces — owner ruling 2026-08-23
        (trustshield-gate-removal-interim.md §8.1, G40-410). This SUPERSEDES the
        2026-08-22 D-038 Part 1 ruling that put it here; that gate was correct under
        the policy then in force. iDenfy is being retired (~218 credits, ~6.6/day,
@@ -236,10 +245,10 @@
        reached through the category + the ageRestricted slider, a different mechanism
        from the app's can_request_restricted_items. Zero A/R orders from under-21
        requesters in 2025 or 2026 — do not "tidy" that away with this. */
-    request: ['category', 'description', 'costOfItems',
+    request: ['category', 'description', 'costOfItems', 'identity',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
-    connect: ['category', 'description', 'costOfItems',
+    connect: ['category', 'description', 'costOfItems', 'identity',
               'pickupAddress', 'dropoffAddress', 'addressesDiffer',
               'workerPay', 'workerPaySubmit', 'scheduleTime', 'waiver'],
     /* The prototype has no addresses-differ and no schedule-time gate, and it is
@@ -358,10 +367,18 @@
        (web -> app prototypes -> live apps) landed, so all three checked surfaces are
        now asserted to be free of the gate. Surface 3 is the live apps, which are not
        modelled here — they ship via a store release (G40-410, Matt). */
-    ['request', 'connect', 'prototype'].forEach(function (surface) {
-      if (SURFACE_GATES[surface].indexOf('identity') !== -1) {
-        problems.push(surface + ' carries the identity gate, which the owner removed '
-          + 'on 2026-08-23 (TrustShield is voluntary; the Gopher checks ID at the door)');
+    /* ⛔ INVERTED AGAIN, 2026-08-25 — third state for this guard, so read the date
+       not the shape. It once required the gate, then required its ABSENCE (G40-410,
+       iDenfy retirement), and now requires its PRESENCE on the web surfaces again
+       because TrustShield runs internally and identity is mandatory for A/R orders.
+       The guard follows the ruling instead of being deleted with it, which is why it
+       keeps flipping rather than quietly disappearing.
+       'prototype' is deliberately NOT checked: App Prototypes lands that surface
+       separately. Add it here the day it does. */
+    ['request', 'connect'].forEach(function (surface) {
+      if (SURFACE_GATES[surface].indexOf('identity') === -1) {
+        problems.push(surface + ' is MISSING the identity gate, which the owner made '
+          + 'mandatory for age-restricted orders on 2026-08-25 (TrustShield is internal now)');
       }
     });
 

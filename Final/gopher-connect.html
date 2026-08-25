@@ -2788,11 +2788,7 @@
     font-size:12px; line-height:1.5;
     color:var(--muted);
   }
-  .ts-modal-note .ts-idenfy {
-    margin-top:7px;
-    font-weight:600; color:var(--navy);
-  }
-  /* v75 — App Store / Play Store badges in the TrustShield modal */
+    /* v75 — App Store / Play Store badges in the TrustShield modal */
   /* ⛔ .ts-modal-stores REMOVED 2026-08-25 (owner): "remove the app/play store
      icons to avoid any confusion — no need to redirect a user to the store when
      they can do it right there." Enrolment completes on the web now, so the
@@ -13054,34 +13050,34 @@ const PAY_BADGES = {
     </div>
   `;
 
+  /* ⛔ NO AGE BRANCH (owner ruling, 2026-08-25: "there is no distinction with ANY
+     age. ALL users need to submit their identification").
+     This used to fork on customerAgeYears() < 30, a boundary that existed only
+     because under-30 once had a TrustShield-only path. Everyone now gets the SAME
+     control, and the two outcomes differ only in HOW LONG the identity lasts:
+       • Submit identification — ONE-TIME, this order only (savedOnFile stays false).
+       • TrustShield          — kept for as long as the badge is carried.
+     That persistence split is enforced in the submit handler by _idSubIsTS, not
+     here; this function only paints the control.
+     ⚠️ Do not reintroduce an age fork. The 21+ rule is a SEPARATE, still-live gate:
+     nobody under 21 can order age-restricted at all, enforced on the deal
+     categories, not in this banner. */
   function ageRestrictedBannerControl(){
     if(window.__hasTrustShield && window.__hasTrustShield()){
       return (window.__trustShieldBannerBadge && window.__trustShieldBannerBadge()) || '';
     }
-    const age = customerAgeYears();
-    if(age == null || age < 30){
-      /* ⛔ REWRITTEN 2026-08-24 (owner) — ported from gopher-request.html. Under-30 was
-         offered TrustShield and nothing else, labelled "Required". Both halves died with
-         the gate removal: it is voluntary now, and TrustShield-only becomes a dead end
-         when iDenfy retires. They get the same submission path as everyone else. */
-      const sub = state.idVerification.submittedAt || (window.__idOnFile && window.__idOnFile());
-      return '<div class="ar-control">'
-           + (sub
-               ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
-               : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
-           + '<div class="ar-action-note">or <button type="button" class="ar-tsbtn" data-open-trustshield>+Add Gopher TrustShield\u2122</button></div>'
-           + '</div>';
-    }
     const onFile = window.__idOnFile && window.__idOnFile();
-    if(state.idVerification.submittedAt || onFile){
+    const sub = state.idVerification.submittedAt || onFile;
+    if(sub){
       return '<div class="ar-ts-badge ar-id-done" title="Identification submitted">'
-           + '<div class="ar-ts-art ar-id-check">✅</div>'
+           + '<div class="ar-ts-art ar-id-check">\u2705</div>'
            + '<span class="ar-ts-label">ID<br>Submitted</span>'
            + '<button type="button" class="ar-id-update" data-open-idsubmit data-id-update="1">Update</button>'
            + '</div>';
     }
     return '<div class="ar-control">'
-         + '<button type="button" class="ar-action ar-submit-id" data-open-idsubmit>Submit identification</button>'
+         + '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>'
+         + '<div class="ar-action-note">or <button type="button" class="ar-tsbtn" data-open-trustshield>+Add Gopher TrustShield\u2122</button></div>'
          + '</div>';
   }
 
