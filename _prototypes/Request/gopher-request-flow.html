@@ -1374,19 +1374,35 @@ function renderStep1(){
    the people who use it most. customerAgeYears() is still read for the COPY only. */
 function arIdentityControl(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
-  if(idOnFileOrSubmitted()) return `<div class="ar-id-done">
-      <span class="ar-id-check">✅</span>
-      <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
-      <button class="ar-id-update" data-action="id-update">Update</button>
-    </div>`;
   const age=customerAgeYears();
-  const sub=(age==null||age<30)
-    ? 'Take three quick photos — front and back of your ID, plus a selfie.'
-    : 'Submit an ID for this order, or verify once with TrustShield™.';
+  /* ⚠️ THE ONLY AGE-DEPENDENT DIFFERENCE, and it is deliberately one button.
+     Verified by driving the live web page with nothing but the DOB changed:
+       30+      -> ["Submit identification"]
+       under 30 -> ["Submit identification", "+Add Gopher TrustShield™"]
+     Both then see the same TrustShield promo card below the banner, so 30+ is still
+     offered the badge — just through "Learn more" rather than a button in the banner.
+     This is the RESIDUE of a much bigger difference that was removed on 2026-08-23/24:
+     under-30 used to be offered TrustShield and NOTHING ELSE. That died because iDenfy
+     is being retired, which would have left the youngest requesters (76.7% of new
+     enrolments are 21-29) with no way to pre-submit ID at all while 30+ kept one.
+     The inline button is what remains of nudging that group hardest. */
+  const nudgeTS = (age==null || age<30);
+  if(idOnFileOrSubmitted()){
+    /* Web splits here too: 30+ collapses to a compact badge, under-30 keeps the full
+       row so the TrustShield nudge survives having already submitted. */
+    if(!nudgeTS) return `<div class="ar-id-done">
+        <span class="ar-id-check">✅</span>
+        <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
+        <button class="ar-id-update" data-action="id-update">Update</button>
+      </div>`;
+    return `<div class="ar-control">
+      <button class="ar-action" data-action="id-update">Update identification</button>
+      <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
+    </div>`;
+  }
   return `<div class="ar-control">
-    <div class="idc-hint" style="margin:0 0 2px;">${sub}</div>
     <button class="ar-action" data-action="id-submit">Submit identification</button>
-    <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
+    ${nudgeTS ? `<div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>` : ''}
   </div>`;
 }
 /* Kept as the name the rest of this file already calls. */
