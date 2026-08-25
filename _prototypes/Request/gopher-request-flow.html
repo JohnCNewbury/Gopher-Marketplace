@@ -1289,6 +1289,13 @@ function idCaptureComplete(){ return !!(state.idFrontCaptured && state.idBackCap
    MM-DD-YYYY (this file's demo profiles) and YYYY-MM-DD, exactly as web's
    customerAgeYears() does — a single-format parser silently returns null on the other,
    and null means "under 30" here, so the bug would look like a policy. */
+/* ⚠️ CURRENTLY UNCALLED, and kept on purpose. Age stopped branching anything on
+   2026-08-25, so nothing reads this today. It is retained because `dob` is real data
+   and the 21+ rule is a live gate elsewhere on the platform — a future reader should
+   find a correct age parser here rather than write a new one and get the two date
+   formats wrong. Web keeps its equivalent for the same reason (still passed to the
+   step-gate host as `customerAge`, still read by nothing). Delete both together or
+   neither. */
 function customerAgeYears(){
   const raw=(state.dob||'').trim(); if(!raw) return null;
   let y,m,d;
@@ -1394,13 +1401,14 @@ function renderStep1(){
      2) ID already usable → "ID Submitted" + Update.
      3) Otherwise         → navy "Submit identification" + green "+Add Gopher TrustShield™".
 
-   ⚠️ Under-30 gets the SAME path as everyone else. It used to be offered TrustShield
-   and nothing else; web rewrote that 2026-08-23/24 and this follows, because both
-   halves of the old rule died: "required" is false now (G40-410 made verification
-   voluntary), and TrustShield-only was a dead end — iDenfy is being retired, so when
-   enrolment stops, that group would have had NO way to pre-submit ID while 30+ kept a
-   working one. 76.7% of new enrolments are 21-29, so it would have stranded exactly
-   the people who use it most. customerAgeYears() is still read for the COPY only. */
+   ⚠️ Under-30 gets the SAME path as everyone else — same control, same copy, same
+   requirement. It was once offered TrustShield and nothing else, which would have
+   become a dead end when iDenfy retired and enrolment stopped (76.7% of new enrolments
+   are 21-29, so it would have stranded exactly the people who use it most).
+   ⚠️ Two claims that USED to sit here are now false and were removed rather than left
+   to mislead: verification is NOT voluntary (G40-410 was reversed 2026-08-25 — identity
+   is required for age-restricted orders), and customerAgeYears() is NOT read for the
+   copy any more. Age changes nothing on this surface. */
 function arIdentityControl(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
   /* ⛔ NO AGE BRANCH (owner ruling, 2026-08-25: "there is no distinction with ANY age.
@@ -1462,10 +1470,12 @@ function renderStep2(){
          not lost: the $1.99 age fee shows in the fee breakdown, ID-at-exchange is in
          the toggle's own waiver tip, and the TrustShield line below still reflects
          verification state. Don't rebuild it here. */}${tsPromo()}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-        <button data-action="demo-ts" style="background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON':'TrustShield off'}</button>
-        <button data-action="demo-age" style="background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${(()=>{const a=customerAgeYears();return a==null?'age unknown':(a<30?'under 30 ('+a+')':'30+ ('+a+')');})()}</button>
-        </div>
+        ${''/* The DEMO age chip was REMOVED 2026-08-25 (owner). It existed to switch
+           between the under-30 and 30+ perspectives back when they rendered different
+           controls. They no longer do — "there is no distinction with ANY age" — so the
+           chip toggled a value nothing reads and implied a difference that does not
+           exist. Do not add it back unless age starts branching the UI again. */}
+        <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON':'TrustShield off'}</button>
       `:''}
       ${''/* Inline purchase-nudge banner retired 2026-08-18 (owner): superseded by the
         web-parity pair — the age toggle now AUTO-ENABLES "purchase needed" (so this
@@ -2665,11 +2675,6 @@ document.addEventListener('click',(e)=>{
       if(state.trustShield){ markIdVerified(true); }
       else { state.idFrontCaptured=false; state.idBackCaptured=false; state.selfieCaptured=false;
              state.savedOnFile=false; state.idSubmittedAt=null; }
-      render(); break;
-    /* Demo control for the age branch. Web exposes the same three perspectives through
-       sign-in numbers ((111) 111-1111 = under 30, (222) 222-2222 = 30+, (333) 333-3333 =
-       TrustShield); this surface has no sign-in, so the chip stands in for it. */
-    case 'demo-age': state.dob = (customerAgeYears()!=null && customerAgeYears()<30) ? '07-22-1980' : '03-15-2003';
       render(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
