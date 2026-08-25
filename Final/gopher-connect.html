@@ -390,7 +390,15 @@
 
   /* ─── Sign-in modal (centered overlay) ─── */
   .gc-modal-overlay/* Variant scrim rgba(13,21,52,.55) KEPT — owner rule 2026-08-19: no UI change without a side-by-side approval first. Canonical-scrim unification was DECLINED by the owner 2026-08-19 (side-by-side shown; "keep current look") — do not re-propose. */
-.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
+/* ⛔ MUST stay two-class (owner-reported 2026-08-25: the OTP opened BEHIND the
+   sign-in sheet, so users had to close sign-in to reach the code).
+   As `.gc-mo--signin` alone this is specificity (0,1,0) — the SAME as the base
+   `.gc-modal-overlay { z-index:9500 }` rule, which is declared LATER in the file
+   and therefore won. Sign-in computed to 9500 and the OTP (9100) sat under it.
+   The z-index values were always right; only the selector was too weak.
+   Qualifying it with .gc-modal-overlay makes it (0,2,0) — matching how
+   .gc-modal-overlay.gc-mo--otp is already written a few hundred lines below. */
+.gc-modal-overlay.gc-mo--signin { z-index:9000; background:rgba(13,21,52,0.55); backdrop-filter:blur(3px); padding:20px; animation:signinFadeIn 0.18s ease; }
   .gc-modal-overlay.gc-mo--signin[hidden] { display:none; }
   @keyframes signinFadeIn {
     from { opacity:0; }
@@ -2570,18 +2578,37 @@
      Identical to gopher-request.html: the TrustShield note sits to the RIGHT of
      the Submit button so the button keeps its own width. */
   .ar-control { flex:0 0 auto; display:flex; flex-direction:row; align-items:center; gap:10px; text-align:left; }
+  /* ⛔ NAVY, not green (owner, 2026-08-25: "make the Submit identification button
+     blue"). It now sits beside a GREEN TrustShield button, and two greens side by
+     side gave neither one priority. Navy-on-white also lets the green button read
+     as the optional upgrade rather than a competing primary. */
   .ar-action {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
-    color:#fff; background:var(--green-dark); border:none; border-radius:9px;
+    color:#fff; background:var(--navy); border:none; border-radius:9px;
     padding:9px 14px; cursor:pointer; white-space:nowrap; line-height:1.1;
     transition:background 0.18s, transform 0.18s;
   }
-  .ar-action:hover { background:var(--navy); transform:translateY(-1px); }
+  .ar-action:hover { background:var(--green-dark); transform:translateY(-1px); }
+  /* "+Add Gopher TrustShield™" — the green sibling to the navy Submit button.
+     ⛔ NAVY INK ON --green (#33D975), never white. Owner brand ruling 2026-08-25:
+     white on #33D975 is too hard to read; only the darker green (#1CB061 family,
+     i.e. --green-dark) may carry white, and that combination is rare. */
+  .ar-tsbtn {
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
+    color:var(--navy); background:var(--green); border:none; border-radius:9px;
+    padding:9px 14px; cursor:pointer; white-space:nowrap; line-height:1.1;
+    transition:background 0.18s, transform 0.18s;
+  }
+  .ar-tsbtn:hover { background:var(--green-dark); color:#fff; transform:translateY(-1px); }
   .ar-action.ar-get-ts { background:var(--navy); }
   .ar-action.ar-get-ts:hover { background:var(--green-dark); }
+  /* Now just the word "or" + the green button — the explanatory sentence was
+     removed (owner, 2026-08-25: "remove all the explanation narrative since it
+     is on the TrustShield card below it"). No max-width: it no longer wraps. */
   .ar-action-note {
-    font-family:'DM Sans',sans-serif; font-size:9.5px; line-height:1.2;
-    color:var(--muted); max-width:140px; margin:0; text-align:left;
+    font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.2;
+    color:var(--muted); margin:0; text-align:left;
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
   }
   /* ═══ TrustShield promo card + benefits modal — PORTED FROM gopher-request.html
      2026-08-25 (owner: "Request and Connect 100% identical", AR Flow.pptx).
@@ -13007,7 +13034,7 @@ const PAY_BADGES = {
            + (sub
                ? '<button type="button" class="ar-action" data-open-idsubmit data-id-update="1">Update identification</button>'
                : '<button type="button" class="ar-action" data-open-idsubmit>Submit identification</button>')
-           + '<div class="ar-action-note">Or <button type="button" class="ar-linkbtn" data-open-trustshield>add TrustShield\u2122</button> — optional, saves $1 and verifies you once for every future order.</div>'
+           + '<div class="ar-action-note">or <button type="button" class="ar-tsbtn" data-open-trustshield>+Add Gopher TrustShield\u2122</button></div>'
            + '</div>';
     }
     const onFile = window.__idOnFile && window.__idOnFile();
@@ -21857,7 +21884,18 @@ const PAY_BADGES = {
     // Gopher Connect" choice). Connect's sign-in is a MODAL, not an on-page
     // section, so there is no #login element for the browser to scroll to —
     // detect the hash on load (and on hash change) and open the modal instead.
-    function openFromLoginHash(){ if(location.hash === '#login') openSigninModal(); }
+    /* ⛔ Clear the hash as soon as we act on it — same defect Request had
+       (owner-reported 2026-08-25). The header link is
+       href="gopher-connect.html#login"; once the hash sticks at '#login' a
+       second click assigns the same value, fires no hashchange, and the
+       sign-in never opens. gopher-go.html and gopher-deals.html already
+       strip it; these two did not. */
+    function openFromLoginHash(){
+      if(location.hash !== '#login') return;
+      try { history.replaceState(null, '', location.pathname + location.search); }
+      catch(e) { /* file:// and old browsers — the modal still opens */ }
+      openSigninModal();
+    }
     openFromLoginHash();
     window.addEventListener('hashchange', openFromLoginHash);
   })();
