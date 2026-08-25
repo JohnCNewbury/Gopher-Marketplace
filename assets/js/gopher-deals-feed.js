@@ -26,10 +26,20 @@
    submit (business name when the worker shows as a business, else their
    first name) and stored on the deal row, so this stays a single-source
    read with no join. Owner decision 2026-08-12.
-   Still absent, and still deliberate: tier, rating and photo. Tier and
-   rating live in the eligibility snapshot, which is reviewer-side — a
-   customer-facing rating for a provider would need its own privacy call
-   (see INV-RATING), not a quiet payload extension.
+   TIER now arrives too, as `provider_tier` (2026-08-24). It is resolved
+   LIVE server-side from the worker's current tier — NOT from the deal's
+   submit-time eligibility snapshot, which goes stale on a deal that stays
+   live for months. It is absent when the provider holds no public tier, and
+   `tier` is then left UNSET on the card so the page renders no badge.
+   ⚠️ That last part is the whole fix. The card template reads
+   `m.tier || 'Gopher Elite'`, so anything that puts a falsy tier on a live
+   card makes the page invent a credential. Never set `tier` to a
+   placeholder here; leave it off entirely.
+
+   Still absent, and still deliberate: rating and job count. Both live in the
+   eligibility snapshot, which is reviewer-side — a customer-facing rating for
+   a provider would need its own privacy call (see INV-RATING), not a quiet
+   payload extension.
    ===================================================================== */
 (function () {
   var API = 'https://api.gophergo.io/api/v1/deals';
@@ -76,6 +86,14 @@
       base.price = dollars(d.customer_price);
       base.normalRate = dollars(d.normal_price);
       base.verified = true;
+      /* The feed speaks the platform's tier vocabulary ('Elite' / 'Elite+');
+         the cards have always displayed it prefixed ('Gopher Elite'). That
+         bridge lives HERE and nowhere else, the same discipline as the
+         category key bridge above — a display string must never travel over
+         the API. Set only when the server actually resolved a tier: leaving
+         the key absent is what makes the card render no badge instead of
+         falling back to a hardcoded one. */
+      if (d.provider_tier) base.tier = 'Gopher ' + d.provider_tier;
     } else {
       base.kind = 'merchant';
       base.name = d.title || 'Local Merchant';

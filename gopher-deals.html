@@ -3470,16 +3470,30 @@
       </div>
       <div class="modal-body">
         <!-- MERCHANT LOGO EDIT (2026-08-21).
-             ⚠️ THIS IS A STANDALONE AUTHENTICATED SURFACE, NOT PART OF THE PORTAL
-             DASHBOARD, and that is deliberate. `enterDashboard()` unhides a div and
-             sets some text — it establishes no backend session, and its deal list
-             (MY_DEALS) is a hardcoded demo array of d1/d2/d3. Hanging a real edit
-             control off it would produce a button that looks like it works and
-             cannot, against deal ids that do not exist. Everything here runs on real
-             APIs only: /otp/get -> /users/sign_in -> GET /users/deals/mine ->
-             POST /users/deals/logo -> PATCH /users/deals/:id/logo.
-             When the portal is wired to live data, move this in and delete the entry
-             point rather than leaving two ways to do it. -->
+             ⚠️ STANDALONE AUTHENTICATED SURFACE, deliberately separate from the
+             portal dashboard. Runs on real APIs only: /otp/get -> /users/sign_in
+             -> GET /users/deals/mine -> POST /users/deals/logo ->
+             PATCH /users/deals/:id/logo.
+
+             ⛔ ITS ORIGINAL REASON EXPIRED ON 2026-08-23 — READ THIS BEFORE
+             REPEATING IT. This comment used to say the dashboard "establishes no
+             backend session" and that "its deal list (MY_DEALS) is a hardcoded
+             demo array of d1/d2/d3". BOTH WERE FIXED THE NEXT DAY by a2ec9a2: the
+             portal signs in for real and loadMyDeals() replaces the rows AND the
+             contents of MY_DEALS from GET /users/deals/mine. MY_DEALS survives
+             only as the SIGNED-OUT showroom, because this page is a public
+             marketing surface too.
+
+             That stale wording has already misled one session (2026-08-24) into
+             reporting the wired dashboard as still-demo and proposing to build it
+             again. A comment describing a condition that has since been fixed
+             reads exactly like a current fact.
+
+             So the "when the portal is wired to live data, move this in" trigger
+             HAS NOW FIRED, and it is an open piece of work rather than a settled
+             design — but it is NOT a pure cleanup: this modal is also reachable
+             by a merchant who never opens the dashboard ("Already registered?"),
+             so deleting the entry point removes that path. Owner's call. -->
         <div class="form-section-head">Verify it&rsquo;s you</div>
         <div class="field">
           <label>Mobile (SMS)</label>
