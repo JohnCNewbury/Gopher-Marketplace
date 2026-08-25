@@ -264,6 +264,100 @@ body{
 .ts-promo-text h5{font-family:'Nunito';font-weight:900;font-size:12px;color:#fff;}
 .ts-promo-text p{font-size:10.5px;color:#bcd0e8;line-height:1.35;margin-top:1px;}
 .ts-promo-btn{font-family:'Nunito';font-weight:900;font-size:11px;color:var(--navy);background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;padding:8px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
+
+/* ===== Age-restricted identity controls + live ID capture =====================
+   Ported from Final/gopher-request.html 2026-08-25 (owner: "virtually replicate the
+   flow of connect and request"). Web values kept where they carry meaning (the ID-1
+   card guide is 1.586:1 because that IS a driver's licence); sizes reflowed for the
+   375px phone frame instead of a 440px desktop modal. Uses this file's own tokens. */
+.ar-control{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:11px;}
+/* Slide 1 of AR Flow.pptx (owner, 2026-08-25): the submit action is NAVY and the
+   TrustShield action is GREEN — the two are different offers and must not read as
+   one repeated button. The explanatory narrative that used to sit here was removed
+   with it; the TrustShield card below already carries that copy. */
+.ar-action{font-family:'Nunito';font-weight:900;font-size:12.5px;color:#fff;background:var(--navy);
+  border:none;border-radius:10px;padding:11px 14px;cursor:pointer;line-height:1.1;width:100%;
+  transition:background .18s,transform .18s;}
+.ar-action:active{transform:translateY(1px);}
+.ar-action-note{display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool);margin:0;}
+.ar-tsbtn{font-family:'Nunito';font-weight:900;font-size:12.5px;color:var(--ink-on-green);
+  background:var(--green);border:none;border-radius:10px;padding:11px 14px;cursor:pointer;
+  line-height:1.1;flex:1 1 auto;transition:background .18s,transform .18s;}
+.ar-tsbtn:active{transform:translateY(1px);}
+.ar-id-done{display:flex;align-items:center;gap:10px;background:var(--green-light);
+  border:1px solid #bfe6cf;border-radius:13px;padding:10px 12px;margin-top:11px;}
+.ar-id-done .ar-id-check{font-size:20px;}
+.ar-id-label{font-family:'Nunito';font-weight:900;font-size:12px;color:var(--green);flex:1;}
+.ar-id-update{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green);
+  background:none;border:none;cursor:pointer;text-decoration:underline;}
+
+/* ---- live capture sheet (same bottom-sheet primitive as the signup pop-up) ---- */
+.idc-back{position:absolute;inset:0;z-index:130;background:rgba(0,16,42,.46);
+  opacity:0;pointer-events:none;transition:opacity .22s;}
+.idc-back.show{opacity:1;pointer-events:auto;}
+.idc-sheet{position:absolute;left:0;right:0;bottom:0;z-index:131;background:var(--card);
+  border-radius:22px 22px 0 0;box-shadow:var(--over-sh);transform:translateY(102%);
+  transition:transform .26s cubic-bezier(.22,.9,.3,1);max-height:94%;display:flex;
+  flex-direction:column;padding:16px 16px calc(14px + env(safe-area-inset-bottom));}
+.idc-sheet.show{transform:translateY(0);}
+.idc-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.idc-title{font-family:'Nunito';font-weight:900;font-size:17px;color:var(--navy);line-height:1.2;}
+.idc-sub{font-family:'DM Sans';font-size:12px;color:var(--ink-soft);margin-top:5px;line-height:1.45;}
+.idc-steps{display:flex;gap:6px;margin:13px 0 14px;}
+.idc-chip{flex:1 1 0;font-family:'Nunito';font-weight:800;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.4px;text-align:center;padding:7px 4px;border-radius:8px;background:#f0f2f7;color:var(--muted-cool);}
+.idc-chip.done{background:var(--green);color:var(--ink-on-green);}
+.idc-chip.active{background:var(--navy);color:#fff;}   /* .active wins over .done — a
+  captured-but-current step must not read as finished (web v95) */
+.idc-step{display:none;}
+.idc-step.on{display:block;}
+.idc-step h5{font-family:'Nunito';font-weight:900;font-size:14px;color:var(--navy);}
+.idc-hint{font-family:'DM Sans';font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:5px;}
+.idc-cap{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:92px;margin-top:12px;padding:12px;border:2px dashed #cfd6e4;border-radius:12px;
+  background:#fafbfd;cursor:pointer;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);}
+.idc-cap-ico{font-size:24px;}
+.idc-thumb{margin-top:12px;display:flex;align-items:center;gap:10px;padding:8px;
+  border:1px solid var(--line-cool);border-radius:10px;background:#fff;}
+.idc-thumb[hidden]{display:none;}   /* ⚠️ .idc-thumb sets display:flex, which beats the
+  browser default [hidden] rule — this file has no global [hidden] guard (see the
+  2026-07-27 referral-engine finding). Without this line every thumb renders at once. */
+.idc-thumb img{width:60px;height:42px;object-fit:cover;border-radius:6px;flex:0 0 auto;background:#0d1530;}
+.idc-thumb-meta{font-family:'DM Sans';font-size:11.5px;color:var(--text);line-height:1.35;}
+.idc-thumb-meta b{color:var(--green);}
+.idc-retake{margin-left:auto;font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green);
+  background:none;border:none;cursor:pointer;text-decoration:underline;flex:0 0 auto;}
+.idc-camwrap{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#0d1530;
+  aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;}
+.idc-camwrap video{width:100%;height:100%;object-fit:cover;}
+.idc-camwrap video.mirror{transform:scaleX(-1);}
+.idc-guide{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+/* ID-1 proportion (85.6 x 54 mm = 1.586:1) — the real shape of a licence, so filling
+   it yields a straight, fully-in-frame capture. Selfie swaps it for an oval. */
+.idc-guide-win{position:relative;width:86%;aspect-ratio:1.586/1;border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(6,14,38,.55);}
+.idc-guide-win span{position:absolute;width:24px;height:24px;border:3px solid var(--green-bright);}
+.idc-guide-win span:nth-child(1){top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
+.idc-guide-win span:nth-child(2){top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 12px 0 0;}
+.idc-guide-win span:nth-child(3){bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 12px;}
+.idc-guide-win span:nth-child(4){bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
+.idc-guide.face .idc-guide-win{width:62%;aspect-ratio:.78/1;border-radius:50%;}
+.idc-guide.face .idc-guide-win span{display:none;}
+.idc-err{margin-top:10px;padding:9px 11px;border-radius:9px;background:rgba(225,72,72,.08);
+  border:1px solid rgba(225,72,72,.28);font-family:'DM Sans';font-size:11.5px;line-height:1.4;color:#b3261e;}
+.idc-err[hidden]{display:none;}
+.idc-actions{display:flex;flex-direction:column;gap:9px;margin-top:16px;}
+.idc-btn{width:100%;font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--ink-on-green);
+  background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;border-radius:12px;
+  padding:13px;cursor:pointer;}
+.idc-btn[disabled]{opacity:.45;cursor:not-allowed;}
+.idc-btn.sec{background:#eef0f5;color:var(--navy);}
+.idc-note{margin-top:11px;font-family:'DM Sans';font-size:10.5px;color:var(--muted-cool);line-height:1.4;}
+.idc-done-msg{text-align:center;padding:6px 0 2px;}
+.idc-done-ico{font-size:38px;}
+.idc-stores{display:flex;gap:9px;justify-content:center;margin-top:13px;}
+.idc-stores img{height:38px;}
 .ts-verified{display:flex;align-items:center;gap:7px;background:var(--green-light);border:1px solid #bfe6cf;border-radius:13px;padding:11px 13px;margin-top:11px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green);}
 .ts-verified svg{width:18px;height:18px;fill:none;stroke:var(--green);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 
@@ -1096,6 +1190,18 @@ function makeInitialState(){
     // still toggles it at runtime either way.
     trustShield:true,
     idFrontCaptured:true, idFrontSrc:'', selfieCaptured:true, selfieSrc:'', savedOnFile:true,
+    /* BACK-OF-ID added 2026-08-25 to match the web app (owner, 2026-08-23): the barcode on
+       the back is what a scanner reads to confirm the DOB, so a capture without it cannot
+       be age-verified afterwards and the other two shots become photos nobody can check.
+       See docs/handoff/id-barcode-age-read.md. Three shots, all live, no uploads. */
+    idBackCaptured:true, idBackSrc:'',
+    /* submittedAt marks a one-off pre-clearance for THIS order (web parity). null = none. */
+    idSubmittedAt:null,
+    /* DOB drives which identity control the age-restricted banner offers. The demo
+       profile is 30+; sign-in as (111) 111-1111 on web is the under-30 perspective, and
+       the DEMO age chip below flips it here. Unknown DOB is treated as under-30, which
+       is the safer default and is what web does. */
+    dob:'07-22-1980',
     // age-compliance contract fields (parity with web)
     idRequiredAtCompletion:false, agePurchaseAck:false, agePurchaseDismissed:false,
     // schedule + offer-telemetry contract fields (parity with web)
@@ -1149,7 +1255,33 @@ function firstEmptyStop(arr){
   return -1;
 }
 function idVerifiedNow(){ return !!(state.savedOnFile || (state.idFrontCaptured && state.selfieCaptured)); }
-function markIdVerified(onFile){ state.idFrontCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
+function markIdVerified(onFile){ state.idFrontCaptured=true; state.idBackCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
+/* All THREE shots present. Deliberately separate from idVerifiedNow(), which is the
+   older two-shot contract other code already reads — widening that in place would have
+   silently invalidated every existing caller, including the ts-verified badge. */
+function idCaptureComplete(){ return !!(state.idFrontCaptured && state.idBackCaptured && state.selfieCaptured); }
+/* Age in whole years from state.dob, or null when it cannot be derived. Accepts both
+   MM-DD-YYYY (this file's demo profiles) and YYYY-MM-DD, exactly as web's
+   customerAgeYears() does — a single-format parser silently returns null on the other,
+   and null means "under 30" here, so the bug would look like a policy. */
+function customerAgeYears(){
+  const raw=(state.dob||'').trim(); if(!raw) return null;
+  let y,m,d;
+  let mm=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(mm){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else { mm=raw.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/); if(!mm) return null; m=+mm[1]; d=+mm[2]; y=+mm[3]; }
+  const birth=new Date(y,m-1,d); if(isNaN(birth)) return null;
+  const now=new Date(); let a=now.getFullYear()-birth.getFullYear();
+  const md=now.getMonth()-birth.getMonth();
+  if(md<0 || (md===0 && now.getDate()<birth.getDate())) a--;
+  return a;
+}
+/* ID already usable for this order — kept on file (TrustShield), pre-cleared once for
+   this request, or satisfied by the older two-shot derived check. idVerifiedNow() is
+   folded in deliberately: replacing its last call site would have left it DEAD while
+   still looking load-bearing, and other paths (markIdVerified, the deals deep-link,
+   the Go relay) still write the flags it reads. */
+function idOnFileOrSubmitted(){ return !!(state.savedOnFile || state.idSubmittedAt || idVerifiedNow()); }
 
 /* ============================================================
    HELPERS
@@ -1225,15 +1357,40 @@ function renderStep1(){
 /* ============================================================
    STEP 2 — Job details
    ============================================================ */
-function tsPromo(){
+/* Age-restricted identity control — ONE render, THREE branches, ported from the web
+   app's ageRestrictedBannerControl() on 2026-08-25 (owner: "virtually replicate the
+   flow of connect and request").
+
+     1) Has TrustShield  → the seal replaces the control entirely; no promo below.
+     2) ID already usable → "ID Submitted" + Update.
+     3) Otherwise         → navy "Submit identification" + green "+Add Gopher TrustShield™".
+
+   ⚠️ Under-30 gets the SAME path as everyone else. It used to be offered TrustShield
+   and nothing else; web rewrote that 2026-08-23/24 and this follows, because both
+   halves of the old rule died: "required" is false now (G40-410 made verification
+   voluntary), and TrustShield-only was a dead end — iDenfy is being retired, so when
+   enrolment stops, that group would have had NO way to pre-submit ID while 30+ kept a
+   working one. 76.7% of new enrolments are 21-29, so it would have stranded exactly
+   the people who use it most. customerAgeYears() is still read for the COPY only. */
+function arIdentityControl(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
-  if(idVerifiedNow()) return `<div class="ts-verified">${svgIco('shield')}Identity verified — you're all set for this delivery.</div>`;
-  return `<div class="ts-promo">
-    <span class="ts-shield">${tsSeal(20)}</span>
-    <span class="ts-promo-text"><h5>Verify your identity</h5><p>Get TrustShield™ once, or submit an ID for this order.</p></span>
-    <button class="ts-promo-btn" data-action="verify-id">Verify now</button>
+  if(idOnFileOrSubmitted()) return `<div class="ar-id-done">
+      <span class="ar-id-check">✅</span>
+      <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
+      <button class="ar-id-update" data-action="id-update">Update</button>
+    </div>`;
+  const age=customerAgeYears();
+  const sub=(age==null||age<30)
+    ? 'Take three quick photos — front and back of your ID, plus a selfie.'
+    : 'Submit an ID for this order, or verify once with TrustShield™.';
+  return `<div class="ar-control">
+    <div class="idc-hint" style="margin:0 0 2px;">${sub}</div>
+    <button class="ar-action" data-action="id-submit">Submit identification</button>
+    <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
   </div>`;
 }
+/* Kept as the name the rest of this file already calls. */
+function tsPromo(){ return arIdentityControl(); }
 function renderStep2(){
   const c=CATEGORIES[state.category];
   let h=`<div class="step-head"><h3>Tell us about your ${c.name.toLowerCase()} request</h3>
@@ -1267,7 +1424,10 @@ function renderStep2(){
          not lost: the $1.99 age fee shows in the fee breakdown, ID-at-exchange is in
          the toggle's own waiver tip, and the TrustShield line below still reflects
          verification state. Don't rebuild it here. */}${tsPromo()}
-        <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON (signed-in profile)':'TrustShield off'}</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+        <button data-action="demo-ts" style="background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON':'TrustShield off'}</button>
+        <button data-action="demo-age" style="background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${(()=>{const a=customerAgeYears();return a==null?'age unknown':(a<30?'under 30 ('+a+')':'30+ ('+a+')');})()}</button>
+        </div>
       `:''}
       ${''/* Inline purchase-nudge banner retired 2026-08-18 (owner): superseded by the
         web-parity pair — the age toggle now AUTO-ENABLES "purchase needed" (so this
@@ -2417,10 +2577,22 @@ document.addEventListener('click',(e)=>{
     /* age-keyword-yes/no + enable-purchase cases retired with the inline banners (2026-08-18) — the modals own these paths now */
     case 'add-pic': if(state.picThumbs.length<3){ const pics=['📷','🛋️','📦','🧾','🏠']; state.picThumbs.push(pics[state.picThumbs.length%pics.length]); render(); } break;
     case 'remove-pic': state.picThumbs.splice(parseInt(act.dataset.i,10),1); render(); break;
-    case 'verify-id': window.__openSignup(true,{hideDemo:true, signedIn:true, trustShield: !!state.trustShield}); break;
+    /* ⛔ 'verify-id' USED TO OPEN THE SIGNUP SHEET — an OTP flow, not a camera. That is
+       why the owner's review said "no camera": the identity capture was unreachable on
+       this surface. It now opens the same three-shot live capture the web apps run. */
+    case 'id-submit':      window.__openIdCapture({}); break;
+    case 'id-update':      window.__openIdCapture({}); break;
+    case 'id-trustshield': window.__openIdCapture({trustShield:true}); break;
+    case 'verify-id':      window.__openIdCapture({}); break;   // legacy hook, same destination
     case 'demo-ts': state.trustShield=!state.trustShield;
       if(state.trustShield){ markIdVerified(true); }
-      else { state.idFrontCaptured=false; state.selfieCaptured=false; state.savedOnFile=false; }
+      else { state.idFrontCaptured=false; state.idBackCaptured=false; state.selfieCaptured=false;
+             state.savedOnFile=false; state.idSubmittedAt=null; }
+      render(); break;
+    /* Demo control for the age branch. Web exposes the same three perspectives through
+       sign-in numbers ((111) 111-1111 = under 30, (222) 222-2222 = 30+, (333) 333-3333 =
+       TrustShield); this surface has no sign-in, so the chip stands in for it. */
+    case 'demo-age': state.dob = (customerAgeYears()!=null && customerAgeYears()<30) ? '07-22-1980' : '03-15-2003';
       render(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
@@ -2578,6 +2750,260 @@ window.__onSignupComplete = function(r){
 state.category='delivery';
 // Boot. Default simulates the Home handoff (Step 2, Delivery). URL params enable
 // deep-links: "?category=" from Home's Continue, and "?from=deal&..." from a
+/* ============================================================
+   LIVE ID CAPTURE — front + back + selfie
+   Ported from Final/gopher-request.html on 2026-08-25 (owner: "virtually replicate
+   the flow of connect and request ... no camera"). The prototype previously had NO
+   camera at all: three booleans defaulted to true and the "Verify now" button opened
+   the signup sheet, so the whole identity capture was unreachable here.
+
+   RULES CARRIED OVER, each one owner-set on the web build — do not "simplify" them:
+   • LIVE ONLY. Upload was REMOVED on web 2026-08-23, not hidden: an uploaded ID is a
+     photo of a photo (a screenshot, a borrowed licence) and is indistinguishable after
+     the fact. TrustShield's premise is a live capture, so an upload path would leave
+     the non-TrustShield route weaker while looking equivalent.
+   • THREE shots. The back carries the barcode a scanner reads for the DOB.
+   • No camera is a DEAD END, routed to the app — not a downgrade to upload.
+   • Capture stays disabled until the video reports a real frame. A 0-dimension video
+     falls back to 640x480 and produces an all-black JPEG; that was a real web bug.
+   • Retaking the FRONT clears the selfie, because the pair has to match.
+   • TrustShield enrolment REUSES this same component (opts.trustShield). Web tried two
+     components collecting the same three artefacts and they drifted apart within a day.
+   • No "save my ID" checkbox (owner, 2026-08-25, AR Flow.pptx slide 3) — keeping an ID
+     on file IS TrustShield, so offering it free here defeats the badge. Persistence is
+     driven by the MODE instead.
+   ============================================================ */
+(function initIdCapture(){
+  const phone=document.getElementById('phone'); if(!phone) return;
+  let camStream=null, camPoll=null, camTarget=null, camReturn='A', isTS=false, onDone=null;
+
+  const back=document.createElement('div'); back.className='idc-back'; back.id='idcBack';
+  const sheet=document.createElement('div'); sheet.className='idc-sheet'; sheet.id='idcSheet';
+  sheet.setAttribute('role','dialog'); sheet.setAttribute('aria-modal','true');
+  sheet.innerHTML=`<div class="su-grip"></div><div class="idc-body" id="idcBody"></div>`;
+  phone.appendChild(back); phone.appendChild(sheet);
+  const body=sheet.querySelector('#idcBody');
+
+  const V=()=>state;                       // captures live on the request state
+  function shot(k){ return {front:'idFront',back:'idBack',selfie:'selfie'}[k]; }
+  function has(k){ return !!state[shot(k)+'Captured']; }
+  function src(k){ return state[shot(k)+'Src']||''; }
+  function setShot(k,url){ state[shot(k)+'Captured']=true; state[shot(k)+'Src']=url; }
+  function clearShot(k){ state[shot(k)+'Captured']=false; state[shot(k)+'Src']=''; }
+
+  let step='A', errs={front:'',back:'',selfie:''};
+
+  function chips(){
+    const map=[['A','1 · Front','front'],['Bk','2 · Back','back'],['B','3 · Selfie','selfie']];
+    return `<div class="idc-steps">${map.map(([id,label,k])=>{
+      const on = (step===id) || (step==='Cam' && camReturn===id);
+      /* .active must win over .done: a captured step you are standing on reads as
+         current, not finished (web v95). */
+      const cls = on ? 'active' : (has(k) ? 'done' : '');
+      return `<div class="idc-chip ${cls}">${label}</div>`;
+    }).join('')}</div>`;
+  }
+  function thumb(k,caption){
+    if(!has(k)) return '';
+    return `<div class="idc-thumb">
+      <img src="${src(k)}" alt="">
+      <span class="idc-thumb-meta"><b>${k==='selfie'?'Selfie':'ID '+k} captured</b><br>${caption}</span>
+      <button class="idc-retake" data-idc="retake-${k}">Retake</button>
+    </div>`;
+  }
+  function err(k){ return errs[k] ? `<div class="idc-err">${errs[k]}</div>` : ''; }
+
+  function view(){
+    if(step==='Checking') return `<div class="idc-done-msg"><div class="idc-done-ico">📷</div>
+      <div class="idc-hint">Checking your camera…</div></div>`;
+    if(step==='NoCam') return `<div class="idc-done-msg"><div class="idc-done-ico">📱</div>
+        <h5>Finish in the app</h5>
+        <div class="idc-hint">Verifying an age-restricted order needs a live photo, and we couldn't find a camera on this device. Please finish in the Gopher Request mobile app — it only takes a minute, and every phone has a camera built in.</div>
+      </div>
+      <div class="idc-actions"><button class="idc-btn" data-idc="close">Close</button></div>`;
+    if(step==='Done') return `<div class="idc-done-msg"><div class="idc-done-ico">✅</div>
+        <h5>${isTS?'TrustShield™ added':'Identification submitted'}</h5>
+        <div class="idc-hint">${isTS
+          ? 'Your ID and selfie are on file. Every qualified order from now on skips this step — and saves you $1.'
+          : 'You\'re pre-cleared for this order. Remember to bring your physical ID to the hand-off.'}</div>
+      </div>
+      <div class="idc-actions"><button class="idc-btn" data-idc="close">Back to my request</button></div>`;
+    if(step==='Cam'){
+      const selfie=camTarget==='selfie';
+      return `<h5>${selfie?'Take your selfie':(camTarget==='idback'?'Photograph the BACK of your ID':'Photograph the FRONT of your ID')}</h5>
+        <div class="idc-hint" id="idcCamHint">Starting camera…</div>
+        <div class="idc-camwrap">
+          <video id="idcVideo" class="${selfie?'mirror':''}" autoplay playsinline muted></video>
+          <div class="idc-guide ${selfie?'face':''}" aria-hidden="true">
+            <div class="idc-guide-win"><span></span><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <canvas id="idcCanvas" hidden></canvas>
+        <div class="idc-actions">
+          <button class="idc-btn" id="idcShoot" data-idc="shoot" disabled>Capture</button>
+          <button class="idc-btn sec" data-idc="cam-cancel">Cancel</button>
+        </div>`;
+    }
+    if(step==='A') return `<h5>Front of your ID</h5>
+      <div class="idc-hint">Take a live photo of the front of a valid government ID. Uploads aren't accepted — the photo has to be taken here.</div>
+      <button class="idc-cap" data-idc="take-front"><span class="idc-cap-ico">📷</span>Take photo</button>
+      ${err('front')}${thumb('front','Looks good? Continue to the back.')}
+      <div class="idc-actions"><button class="idc-btn" data-idc="to-back" ${has('front')?'':'disabled'}>Continue</button></div>`;
+    if(step==='Bk') return `<h5>Back of your ID</h5>
+      <div class="idc-hint">Now the back, taken live as well. The barcode there is what lets us confirm the date of birth on the ID.</div>
+      <button class="idc-cap" data-idc="take-back"><span class="idc-cap-ico">📷</span>Take photo</button>
+      ${err('back')}${thumb('back','Looks good? Continue to the selfie.')}
+      <div class="idc-actions">
+        <button class="idc-btn" data-idc="to-selfie" ${has('back')?'':'disabled'}>Continue</button>
+        <button class="idc-btn sec" data-idc="to-front">Back</button>
+      </div>`;
+    // step B — selfie
+    return `<h5>Quick selfie</h5>
+      <div class="idc-hint">Take a live selfie so we can match it to your ID. A live photo is required — upload isn't available for the selfie.</div>
+      <button class="idc-cap" data-idc="take-selfie"><span class="idc-cap-ico">🤳</span>Take selfie</button>
+      ${err('selfie')}${thumb('selfie','Ready to submit.')}
+      <div class="idc-actions">
+        <button class="idc-btn" data-idc="submit" ${idCaptureComplete()?'':'disabled'}>${isTS?'Add TrustShield™':'Submit identification'}</button>
+        <button class="idc-btn sec" data-idc="to-back">Back</button>
+      </div>
+      <div class="idc-note">Submitting here is pre-clearance only. A valid physical ID is still required in person before the order is handed over.</div>`;
+  }
+  function paint(){
+    const chrome = (step==='Done'||step==='NoCam'||step==='Checking') ? '' : chips();
+    body.innerHTML=`<div class="idc-title">${isTS?'Add TrustShield™':'Submit identification'}</div>
+      <div class="idc-sub">${isTS
+        ? 'Verify once and carry the badge — every qualified order after this skips the ID step and saves you $1.'
+        : 'Verify your identity for this age-restricted order. You\'ll still show a physical ID in person at hand-off.'}</div>
+      ${chrome}<div class="idc-step on">${view()}</div>`;
+    if(step==='NoCam') hydrateStores();
+  }
+  function go(next){ step=next; paint(); }
+
+  function hydrateStores(){
+    const wrap=document.createElement('div'); wrap.className='idc-stores';
+    wrap.innerHTML=`<img src="../../Final/assets/img/app-store-badge.svg" alt="Download on the App Store" onerror="this.style.display='none'">
+                    <img src="../../Final/assets/img/google-play-badge.png" alt="Get it on Google Play" onerror="this.style.display='none'">`;
+    const msg=body.querySelector('.idc-done-msg'); if(msg) msg.after(wrap);
+  }
+
+  /* ── camera ── */
+  function stopCam(){
+    if(camPoll){ clearInterval(camPoll); camPoll=null; }
+    if(camStream){ try{ camStream.getTracks().forEach(t=>t.stop()); }catch(e){} camStream=null; }
+    const v=document.getElementById('idcVideo');
+    if(v){ try{ v.pause(); }catch(e){} v.onloadedmetadata=v.onloadeddata=v.oncanplay=null; v.srcObject=null; }
+  }
+  function videoLive(){ const v=document.getElementById('idcVideo');
+    return !!(v && v.videoWidth>0 && v.videoHeight>0 && v.readyState>=2); }
+  async function cameraExists(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return false;
+    try{ if(navigator.mediaDevices.enumerateDevices){
+      const d=await navigator.mediaDevices.enumerateDevices(); return d.some(x=>x.kind==='videoinput'); } }catch(e){}
+    return true;   // present but unenumerable — let the live attempt decide
+  }
+  const KEY={idfront:'front', idback:'back', selfie:'selfie'};
+  const STEP={idfront:'A', idback:'Bk', selfie:'B'};
+  async function openCamera(target){
+    camTarget=target; camReturn=STEP[target]; errs[KEY[target]]='';
+    go('Cam');
+    const hint=document.getElementById('idcCamHint');
+    const shootBtn=document.getElementById('idcShoot');
+    const ready=()=>{ if(shootBtn) shootBtn.disabled=false;
+      if(hint) hint.textContent = target==='selfie'
+        ? 'Center your face in the oval, then capture.'
+        : target==='idback'
+          ? 'Line the BACK of your ID up inside the frame — hold it flat and horizontal so the barcode is readable.'
+          : 'Line the FRONT of your ID up inside the frame — hold it flat and horizontal, edges inside the corners.'; };
+    const fail=(msg)=>{ stopCam(); errs[KEY[target]]=msg; go(STEP[target]); };
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode: target==='selfie'?'user':'environment' }, audio:false });
+      const v=document.getElementById('idcVideo');
+      if(v){
+        v.srcObject=camStream;
+        const tryReady=()=>{ if(videoLive()){ if(camPoll){clearInterval(camPoll);camPoll=null;} ready(); return true; } return false; };
+        v.onloadedmetadata=tryReady; v.onloadeddata=tryReady; v.oncanplay=tryReady;
+        await v.play().catch(()=>{});
+        /* Some browsers fire those events inconsistently — poll for the first real
+           frame, and treat ~4s of nothing as a camera that opened but yields nothing
+           (covered lens, or in use by another app). */
+        let tries=0;
+        camPoll=setInterval(()=>{ tries++;
+          if(tryReady()) return;
+          if(tries>=40){ clearInterval(camPoll); camPoll=null;
+            if(!videoLive()) fail('We couldn’t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.'); }
+        },100);
+      }
+    }catch(e){
+      const n=e&&e.name;
+      stopCam();
+      if(n==='NotFoundError'||n==='OverconstrainedError'||n==='DevicesNotFoundError'){ go('NoCam'); }
+      else fail('We couldn’t access the camera. Please allow camera access and try again — or finish in the mobile app.');
+    }
+  }
+  function shoot(){
+    const v=document.getElementById('idcVideo'), c=document.getElementById('idcCanvas');
+    if(!v||!c||!camStream) return;
+    if(!videoLive()){ errs[KEY[camTarget]]='Camera is still starting — give it a moment, then capture.'; go(STEP[camTarget]); return; }
+    const w=v.videoWidth, h=v.videoHeight;
+    c.width=w; c.height=h;
+    const ctx=c.getContext('2d');
+    if(camTarget==='selfie'){ ctx.translate(w,0); ctx.scale(-1,1); }   // un-mirror
+    ctx.drawImage(v,0,0,w,h);
+    let url=''; try{ url=c.toDataURL('image/jpeg',0.85); }catch(e){ url=''; }
+    const t=camTarget, backTo=STEP[t];
+    stopCam();
+    if(!url){ errs[KEY[t]]='Capture failed — please try again.'; go(backTo); return; }
+    setShot(KEY[t],url);
+    go(backTo);
+  }
+
+  sheet.addEventListener('click',e=>{
+    const b=e.target.closest('[data-idc]'); if(!b) return;
+    const a=b.getAttribute('data-idc');
+    if(a==='close'){ close(); return; }
+    if(a==='take-front')  return openCamera('idfront');
+    if(a==='take-back')   return openCamera('idback');
+    if(a==='take-selfie') return openCamera('selfie');
+    if(a==='shoot')       return shoot();
+    if(a==='cam-cancel'){ const r=camReturn; stopCam(); return go(r); }
+    if(a==='to-front')  return go('A');
+    if(a==='to-back')   return go('Bk');
+    if(a==='to-selfie') return go('B');
+    if(a==='retake-front'){ clearShot('front'); clearShot('selfie'); return go('A'); } // ID change ⇒ new selfie
+    if(a==='retake-back'){  clearShot('back');  return go('Bk'); }
+    if(a==='retake-selfie'){clearShot('selfie');return go('B'); }
+    if(a==='submit'){
+      if(!idCaptureComplete()) return;          // hard gate — all THREE
+      state.idSubmittedAt=Date.now();
+      if(isTS){ state.trustShield=true; state.savedOnFile=true; }
+      else { state.savedOnFile=false; }
+      if(typeof onDone==='function'){ try{ onDone(); }catch(_){ } }
+      go('Done');
+    }
+  });
+  back.addEventListener('click',close);
+
+  function close(){
+    stopCam();
+    sheet.classList.remove('show'); back.classList.remove('show');
+    render();                                   // banner reflects the new state
+  }
+  window.__openIdCapture=async function(opts){
+    opts=opts||{};
+    isTS=!!opts.trustShield; onDone=typeof opts.onDone==='function'?opts.onDone:null;
+    stopCam();
+    /* Fresh session every time — the ID and selfie are always recaptured, so a stale
+       pair can never be resubmitted as if it were taken now. */
+    clearShot('front'); clearShot('back'); clearShot('selfie');
+    errs={front:'',back:'',selfie:''};
+    go('Checking');
+    back.classList.add('show'); requestAnimationFrame(()=>sheet.classList.add('show'));
+    const ok=await cameraExists();
+    go(ok?'A':'NoCam');
+  };
+})();
+
 // redeemed merchant Deal (lands prefilled on the canonical Review, Step 6).
 (function(){
   const q=new URLSearchParams(location.search);

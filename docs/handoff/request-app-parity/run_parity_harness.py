@@ -103,6 +103,7 @@ eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
 idVerification junkTier movingTier laborManagement lowAvailabilityAck
 openCatInfo openInfo osOpen profileOpen savedOnFile
 selfieCaptured selfieSrc submittedAt waiverPrompted
+idBackCaptured idBackSrc idSubmittedAt dob
 userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())
 
 
@@ -698,32 +699,42 @@ def main():
               % pm.group(1).strip()[:80])
 
         # ⚠️ The check above, alone, is satisfied by DELETING THE WHOLE FEATURE —
-        # and that is a live hazard, not a hypothetical: idVerifiedNow() had three
-        # references and only ONE was the gate. Removing all three deletes THE PERK,
-        # NOT THE GATE. Voluntary-but-VISIBLE is the ruled end state, so the badge
-        # and its verified state are pinned here. Exactly two refs must survive:
-        # the function itself, and the ts-verified badge that renders from it.
-        id_refs = len(re.findall(r"idVerifiedNow", read(SURFACES["prototype"])))
-        check(id_refs == 2,
-              "prototype keeps the TrustShield PERK — idVerifiedNow has exactly 2 refs",
-              "found %d, expected 2 (the function definition + the ts-verified badge). "
-              "Fewer means the perk was deleted along with the gate — the badge must "
-              "stay visible. More means a new consumer appeared; if it is a gate, that "
-              "reverses the owner ruling." % id_refs)
-        # ⚠️ Count RENDER sites, not occurrences. The first version of this check was
-        # `"ts-verified" in src` and was DECORATIVE: the string also appears in a CSS
-        # rule and in a code comment, so it passed with both badge lines deleted.
-        # Caught by mutation-testing it, which is the only reason it is not still
-        # sitting here green and useless. Two badges must render: the TrustShield
-        # holder's, and the one for a requester who verified voluntarily — that pair
-        # IS "voluntary but visible". The idVerifiedNow ref-count above cannot see the
-        # first one, because that line does not call it.
-        badge_renders = read(SURFACES["prototype"]).count('<div class="ts-verified">')
-        check(badge_renders == 2,
-              "prototype renders BOTH ts-verified badges (voluntary but VISIBLE)",
-              "found %d render sites, expected 2 — the TrustShield-holder badge and "
-              "the voluntarily-verified badge. Removing the gate must not remove the "
-              "reward for verifying." % badge_renders)
+        # idVerifiedNow() had three references and only ONE was the gate, so removing
+        # all three deletes THE PERK, NOT THE GATE. Voluntary-but-VISIBLE is the ruled
+        # end state, so what follows pins the REWARD rather than any one class name.
+        #
+        # ⚠️ REWRITTEN 2026-08-25, and the reason matters more than the rule. The first
+        # version counted `idVerifiedNow` occurrences and required exactly 2. It passed
+        # while the function was DEAD — its second "reference" was a COMMENT mentioning
+        # the name. Same failure as the `"ts-verified" in src` test it replaced a day
+        # earlier: a substring cannot tell code from prose. Both now require a CALL and
+        # pin behaviour rather than spelling.
+        proto_full = read(SURFACES["prototype"])
+        proto_code = re.sub(r"/\*.*?\*/", "", proto_full, flags=re.S)
+        # Trailing comments too, not just whole-line ones. Caught by mutation-testing:
+        # `state.idSubmittedAt); // was: idVerifiedNow()` kept the mention alive and the
+        # check went green on a dead function — the very hole this rewrite exists to
+        # close. The (?<!:) keeps "https://" from being eaten as a comment.
+        proto_code = re.sub(r"(?m)(?<!:)//[^\n]*$", "", proto_code)
+        id_calls = len(re.findall(r"idVerifiedNow\s*\(", proto_code))
+        check(id_calls >= 2,
+              "prototype still CALLS idVerifiedNow (definition + >=1 live caller)",
+              "found %d in code with comments stripped. 1 means it is defined and never "
+              "called — the derived identity check went dead, which reads identical to "
+              "it working." % id_calls)
+
+        # The reward must be VISIBLE in BOTH states a verified requester can occupy:
+        # carrying the badge, and having pre-cleared this one order. Web renders those
+        # as two different components, so counting a single class name is the wrong test.
+        ts_badge = proto_full.count('<div class="ts-verified">')
+        id_done  = proto_full.count('class="ar-id-done"')
+        check(ts_badge >= 1,
+              "prototype renders the TrustShield seal badge",
+              "found %d — a TrustShield holder must SEE the badge they carry" % ts_badge)
+        check(id_done >= 1,
+              "prototype acknowledges a submitted ID (pre-cleared state)",
+              "found %d — after submitting, the requester must see that it registered, "
+              "or the capture reads as having failed" % id_done)
 
         # ---- agreement with the SHARED module ---------------------------
         # gopher-step-gates.js is the extraction of these rules (2026-08-22).
