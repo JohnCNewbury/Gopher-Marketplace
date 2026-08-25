@@ -2758,21 +2758,13 @@
     font-weight:600; color:var(--navy);
   }
   /* v75 — App Store / Play Store badges in the TrustShield modal */
-  .ts-modal-stores {
-    display:flex; justify-content:center; align-items:center;
-    gap:10px; flex-wrap:wrap;
-    margin:0 0 18px;
-  }
-  .ts-modal-stores .ts-store-badge {
-    display:inline-flex; line-height:0;
-    border-radius:9px; overflow:hidden;
-    transition:transform 0.15s, box-shadow 0.15s;
-  }
-  .ts-modal-stores .ts-store-badge img { height:44px; width:auto; display:block; }
-  .ts-modal-stores .ts-store-badge:hover {
-    transform:translateY(-1px);
-    box-shadow:0 6px 16px -8px rgba(13,21,52,0.45);
-  }
+  /* ⛔ .ts-modal-stores REMOVED 2026-08-25 (owner): "remove the app/play store
+     icons to avoid any confusion — no need to redirect a user to the store when
+     they can do it right there." Enrolment completes on the web now, so the
+     badges pointed people away from the thing they were already able to finish.
+     ⚠️ The .idsub-stores badges are a DIFFERENT surface and deliberately stay:
+     they are the no-camera fallback, where the user genuinely cannot verify on
+     web and the app is the only route. Do not "tidy" those away with these. */
 
   /* Verified seal + "ID submitted" share the column badge look. The .ar-ts-badge
      base rule and its .ar-ts-art/.ar-ts-label children already exist above; only
@@ -8406,10 +8398,6 @@
     <div class="ts-modal-note">
       <strong>How it works</strong>
       <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
-    </div>
-    <div class="ts-modal-stores" id="trustShieldStores">
-      <a class="ts-store-badge" id="trustShieldApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
-      <a class="ts-store-badge" id="trustShieldGoogle" href="https://play.google.com/store/apps/details?id=io.gophergoapp.requester" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"></a>
     </div>
     <button type="button" class="gc-modal-btn" id="trustShieldGotIt">Got it &mdash; back to my request</button>
     <a href="gopher-trustshield.html" target="_blank" rel="noopener" class="ts-modal-learn" id="trustShieldLearn">See the full TrustShield page &rarr;</a>
@@ -16379,10 +16367,6 @@ const PAY_BADGES = {
         shield.innerHTML = '<img class="ts-modal-logo" src="assets/img/connect-img-4.webp" alt="Gopher TrustShield">';
         shield.dataset.real = '1';
       }
-      const apple  = document.getElementById('trustShieldApple');
-      const google = document.getElementById('trustShieldGoogle');
-      if(apple  && !apple.querySelector('img'))  apple.innerHTML  = '<img src="assets/img/badge-app-store.webp" alt="Download on the App Store">';
-      if(google && !google.querySelector('img')) google.innerHTML = '<img src="assets/img/badge-google-play.webp" alt="Get it on Google Play">';
     }
     const open = () => { hydrate(); overlay.hidden = false; };
     window.openTrustShieldModal = open;

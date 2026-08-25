@@ -726,7 +726,11 @@
                       Gopher Request app, and the iDenfy identity partner captures
                       a live selfie — plus real App Store + Play Store badges
                       (#trustShieldApple / #trustShieldGoogle) linking to the
-                      Request listings. Modal now hydrates on open and a global
+                      Request listings. [Both the app-only callout and those two
+                      badges were REMOVED 2026-08-25 by owner ruling — enrolment
+                      completes on the web now. Kept here as changelog history;
+                      do not treat this entry as current behaviour.]
+                      Modal now hydrates on open and a global
                       [data-ts-promo-open] delegate lets the dashboard open it too.
 
                    3) Dashboard sidebar (upper-left): initLogo() now injects the
@@ -4678,21 +4682,13 @@
     font-weight:600; color:var(--navy);
   }
   /* v75 — App Store / Play Store badges in the TrustShield modal */
-  .ts-modal-stores {
-    display:flex; justify-content:center; align-items:center;
-    gap:10px; flex-wrap:wrap;
-    margin:0 0 18px;
-  }
-  .ts-modal-stores .ts-store-badge {
-    display:inline-flex; line-height:0;
-    border-radius:9px; overflow:hidden;
-    transition:transform 0.15s, box-shadow 0.15s;
-  }
-  .ts-modal-stores .ts-store-badge img { height:44px; width:auto; display:block; }
-  .ts-modal-stores .ts-store-badge:hover {
-    transform:translateY(-1px);
-    box-shadow:0 6px 16px -8px rgba(13,21,52,0.45);
-  }
+  /* ⛔ .ts-modal-stores REMOVED 2026-08-25 (owner): "remove the app/play store
+     icons to avoid any confusion — no need to redirect a user to the store when
+     they can do it right there." Enrolment completes on the web now, so the
+     badges pointed people away from the thing they were already able to finish.
+     ⚠️ The .idsub-stores badges are a DIFFERENT surface and deliberately stay:
+     they are the no-camera fallback, where the user genuinely cannot verify on
+     web and the app is the only route. Do not "tidy" those away with these. */
 
   /* ─── Resources sidebar items (Ask Gopher / Visit Site / Feedback) ─── */
   .dni-ext {
@@ -17384,10 +17380,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <strong>How it works</strong>
       <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
     </div>
-    <div class="ts-modal-stores" id="trustShieldStores">
-      <a class="ts-store-badge" id="trustShieldApple" href="https://apps.apple.com/us/app/gopher-request/id1438150218" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"></a>
-      <a class="ts-store-badge" id="trustShieldGoogle" href="https://play.google.com/store/apps/details?id=io.gophergoapp.requester" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"></a>
-    </div>
     <button type="button" class="gr-modal-btn" id="trustShieldGotIt">Got it — back to my request</button>
     <a href="gopher-trustshield.html" target="_blank" rel="noopener" class="ts-modal-learn" id="trustShieldLearn">See the full TrustShield page →</a>
   </div>
@@ -20775,12 +20767,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         shield.innerHTML = '<img class="ts-modal-logo" src="' + tsSrc + '" alt="Gopher TrustShield">';
         shield.dataset.real = '1';
       }
-      const apple  = document.getElementById('trustShieldApple');
-      const google = document.getElementById('trustShieldGoogle');
-      const aSrc = (window.grAsset && grAsset('appStoreImg'))  || '';
-      const gSrc = (window.grAsset && grAsset('playStoreImg')) || '';
-      if(apple  && aSrc && !apple.querySelector('img'))  apple.innerHTML  = '<img src="' + aSrc + '" alt="Download on the App Store">';
-      if(google && gSrc && !google.querySelector('img')) google.innerHTML = '<img src="' + gSrc + '" alt="Get it on Google Play">';
     }
     const open = () => { hydrate(); overlay.hidden = false; };
     window.openTrustShieldModal = open;
