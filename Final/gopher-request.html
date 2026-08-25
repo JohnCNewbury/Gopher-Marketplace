@@ -5759,13 +5759,6 @@
   .tier-lockup { height:18px; width:auto; display:inline-block; vertical-align:middle; }
   .tier-lockup-cred { margin-left:4px; }
   .profile-stat-bubble .tier-lockup { height:15px; }
-  /* ⚠️ SPECIFICITY, NOT DECORATION. `.profile-hero-pic img` (0,1,1) sets
-     width/height:100% + object-fit:cover for the PROFILE PHOTO, and the tier
-     lockup is an <img> inside that same container — so it inherited the photo's
-     sizing and was stretched to fill and CROPPED by object-fit. This selector is
-     (0,2,0) so it wins, and width:auto restores the lockup's own ratio. Caught by
-     reading computed style; the screenshot looked plausible. */
-  .profile-hero-badge .tier-lockup { height:22px; width:auto; object-fit:contain; }
   .gopher-badge .gb-plus {
     font-size:11px; font-weight:900; margin-left:1px;
     color:#fff7a8; line-height:1;
@@ -5896,24 +5889,18 @@
   }
   .profile-hero-pic {
     width:110px; height:110px; border-radius:50%;
-    /* ⚠️ WAS overflow:hidden — which clipped the tier badge that sits at this
-       circle's bottom-right edge. The old badge was a small text pill and mostly
-       fitted; the real lockup is wider and lost its "+". The circular crop now
-       lives on the PHOTO itself (border-radius below) instead of on the
-       container, so the badge can overhang as designed. */
-    overflow:visible; position:relative;
+    overflow:hidden; position:relative;
     border:3px solid white; box-shadow:0 6px 18px rgba(13,21,52,0.18);
     background:#e7f5e9;
   }
-  /* ⚠️ DIRECT CHILD, deliberately. The photo is a direct child of .profile-hero-pic
-     while the tier lockup is a grandchild (inside .profile-hero-badge), so `>`
-     keeps this photo styling from ever reaching the badge image again. */
+  /* DIRECT CHILD, deliberately: this styles the PHOTO, not "any image that happens
+     to be in here". It briefly also hit a tier lockup overlaid on the photo —
+     stretching and cropping the artwork — and that overlay has since been removed
+     entirely (owner, 2026-08-25: a profile pic or company logo does not carry a
+     tier badge on the new marketplace; the Verified bubble already shows it, so
+     the overlay was both wrong and redundant). The `>` stays as the guard. */
   .profile-hero-pic > img {
     width:100%; height:100%; object-fit:cover; display:block; border-radius:50%;
-  }
-  .profile-hero-badge {
-    position:absolute; bottom:4px; right:-2px;
-    z-index:2;
   }
   .profile-hero-tagline {
     font-family:'Nunito',sans-serif; font-weight:700; font-style:italic;
@@ -21390,9 +21377,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="profile-hero">
           <div class="profile-hero-pic">
             ${w.photo ? `<img src="${w.photo}" alt="${w.name}">` : ''}
-            <span class="profile-hero-badge">
-              ${window.__tierBadge(tier, w.proCred)}
-            </span>
           </div>
           ${w.tagline ? `<div class="profile-hero-tagline">"${w.tagline}"</div>` : (isLive ? '' : `<div class="profile-hero-tagline">"Jack of all trades! Ready to help you tackle whatever you need!"</div>`)}
         </div>
