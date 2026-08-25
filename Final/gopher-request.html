@@ -5756,6 +5756,16 @@
     box-shadow:0 1px 3px rgba(51,217,117,0.4);
     text-transform:lowercase;
   }
+  .tier-lockup { height:18px; width:auto; display:inline-block; vertical-align:middle; }
+  .tier-lockup-cred { margin-left:4px; }
+  .profile-stat-bubble .tier-lockup { height:15px; }
+  /* ⚠️ SPECIFICITY, NOT DECORATION. `.profile-hero-pic img` (0,1,1) sets
+     width/height:100% + object-fit:cover for the PROFILE PHOTO, and the tier
+     lockup is an <img> inside that same container — so it inherited the photo's
+     sizing and was stretched to fill and CROPPED by object-fit. This selector is
+     (0,2,0) so it wins, and width:auto restores the lockup's own ratio. Caught by
+     reading computed style; the screenshot looked plausible. */
+  .profile-hero-badge .tier-lockup { height:22px; width:auto; object-fit:contain; }
   .gopher-badge .gb-plus {
     font-size:11px; font-weight:900; margin-left:1px;
     color:#fff7a8; line-height:1;
@@ -5886,12 +5896,20 @@
   }
   .profile-hero-pic {
     width:110px; height:110px; border-radius:50%;
-    overflow:hidden; position:relative;
+    /* ⚠️ WAS overflow:hidden — which clipped the tier badge that sits at this
+       circle's bottom-right edge. The old badge was a small text pill and mostly
+       fitted; the real lockup is wider and lost its "+". The circular crop now
+       lives on the PHOTO itself (border-radius below) instead of on the
+       container, so the badge can overhang as designed. */
+    overflow:visible; position:relative;
     border:3px solid white; box-shadow:0 6px 18px rgba(13,21,52,0.18);
     background:#e7f5e9;
   }
-  .profile-hero-pic img {
-    width:100%; height:100%; object-fit:cover; display:block;
+  /* ⚠️ DIRECT CHILD, deliberately. The photo is a direct child of .profile-hero-pic
+     while the tier lockup is a grandchild (inside .profile-hero-badge), so `>`
+     keeps this photo styling from ever reaching the badge image again. */
+  .profile-hero-pic > img {
+    width:100%; height:100%; object-fit:cover; display:block; border-radius:50%;
   }
   .profile-hero-badge {
     position:absolute; bottom:4px; right:-2px;
@@ -21291,13 +21309,66 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Ported from Connect. Mirrors the flow's Step-7 profile markup so styling is
   // shared. Maps the dashboard worker shape (badge / ratingNum / jobsNum) onto
   // the fields that markup expects.
+  /* THE REAL TIER LOCKUPS — same map, same assets, same rule as Connect and
+     gopher-go.html. ⛔ A tier is a brand mark; it is never re-typed as styled
+     text (owner, 2026-08-25). Request previously inlined a <span> reading
+     "elite" with a superscript "+" at two sites in the profile alone. */
+  window.__TIER_LOGOS = window.__TIER_LOGOS || {
+    'Elite': 'assets/img/tier-elite.svg',
+    'Elite+': 'assets/img/tier-elite-plus.webp',
+    'Pro': 'assets/img/tier-pro.svg'
+  };
+  window.__tierName = window.__tierName || function(t){
+    var k = String(t == null ? '' : t).toLowerCase().replace(/^gopher\s+/, '').trim();
+    if(k === 'elite+' || k === 'pro+') return 'Elite+';
+    if(k === 'elite') return 'Elite';
+    if(k === 'pro') return 'Pro';
+    return null;
+  };
+  window.__tierBadge = window.__tierBadge || function(t, proCred, styleAttr){
+    var name = window.__tierName(t);
+    var logos = window.__TIER_LOGOS || {};
+    var st = styleAttr ? (' style="' + styleAttr + '"') : '';
+    var html = '';
+    if(name && logos[name]){
+      html = '<img class="tier-lockup" src="' + logos[name] + '" alt="Gopher ' + name + '">';
+    } else if(!name){
+      html = '<span class="gopher-badge tier-standard"' + st + '>standard</span>';
+    }
+    if(proCred && logos['Pro'] && name !== 'Pro'){
+      html += '<img class="tier-lockup tier-lockup-cred" src="' + logos['Pro'] + '" alt="Gopher Pro">';
+    }
+    return html;
+  };
+
+  /* ⛔ DO NOT ABBREVIATE A SERVER-RESOLVED NAME. "first word + last initial" is a
+     PRIVACY convention for a PERSON (John Newbury -> John N). A deal from the
+     publication feed has already had that rule applied server-side — `title` is
+     the business name when the provider shows as a business, otherwise just their
+     first name — so abbreviating again mangled a real business into "Gopher, I".
+     Demo providers keep the abbreviation: their names are full personal names. */
+  function profileDisplayName(w){
+    var n = String(w && w.name || '').trim();
+    if(!n) return '';
+    if(w && w.live) return n;
+    var parts = n.split(' ');
+    return parts[0] + (parts[1] ? ' ' + parts[1].charAt(0) : '');
+  }
+
   function renderWorkerProfile(r, w, idx){
     const tier = w.tier || w.badge || 'pro+';
     const tierLabel = tier.replace('+','');
     const reviews = (w.reviews != null) ? w.reviews : (w.jobsNum || 0);
-    const rating = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : 5.0);
+    /* ⛔ NEVER DEFAULT A RATING — this read `: 5.0`, publishing a perfect score
+       for a provider we hold no rating for, next to a contradicting "0 Reviews". */
+    const ratingNum = (w.ratingNum != null) ? w.ratingNum : (w.rating != null ? w.rating : null);
+    const rating = (ratingNum != null) ? Number(ratingNum).toFixed(1) : '—';
     const topCat = __topCategoryOf(r);
-    const jobsHtml = __demoJobsFor(w).map(j => `
+    /* Providers that came from the publication feed carry `live`. __demoJobsFor()
+       is showroom content — inventing job records, amounts and customer comments
+       under a real business's name is not a placeholder, it is a fake review. */
+    const isLive = !!w.live;
+    const jobsHtml = isLive ? '' : __demoJobsFor(w).map(j => `
         <div class="profile-history-item" data-cat="${j.cat}">
           <div class="phi-id">Request ${j.id}</div>
           <div><b>Date:</b> ${j.date}</div>
@@ -21312,7 +21383,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <div class="profile-detail">
         <div class="profile-detail-head">
           <button class="profile-detail-back" data-wact="profile-back">← Back</button>
-          <div class="profile-detail-title">Gopher ${tier==='elite+'?'Elite+':'Pro'} | ${w.name.split(' ')[0]} ${w.name.split(' ')[1]?w.name.split(' ')[1].charAt(0):''}</div>
+          <div class="profile-detail-title">${window.__tierName(tier) ? 'Gopher ' + window.__tierName(tier) + ' | ' : ''}${profileDisplayName(w)}</div>
           <div class="profile-detail-spacer"></div>
         </div>
 
@@ -21320,16 +21391,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="profile-hero-pic">
             ${w.photo ? `<img src="${w.photo}" alt="${w.name}">` : ''}
             <span class="profile-hero-badge">
-              <span class="gopher-badge ${tier==='pro+'?'tier-pro':''}">${tierLabel}${tier==='elite+'?'<span class="gb-plus">+</span>':''}</span>
+              ${window.__tierBadge(tier, w.proCred)}
             </span>
           </div>
-          <div class="profile-hero-tagline">"${w.tagline || 'Jack of all trades! Ready to help you tackle whatever you need!'}"</div>
+          ${w.tagline ? `<div class="profile-hero-tagline">"${w.tagline}"</div>` : (isLive ? '' : `<div class="profile-hero-tagline">"Jack of all trades! Ready to help you tackle whatever you need!"</div>`)}
         </div>
 
         <div class="profile-stat-circles">
           <div class="profile-stat">
             <div class="profile-stat-bubble verified">
-              <span class="gopher-badge ${tier==='pro+'?'tier-pro':''}" style="font-size:8.5px;padding:2px 6px 2px 7px;">${tierLabel}${tier==='elite+'?'<span class="gb-plus" style="font-size:9px;">+</span>':''}</span>
+              ${window.__tierBadge(tier, w.proCred, 'font-size:8.5px;padding:2px 6px 2px 7px;')}
             </div>
             <div class="profile-stat-label">${w.verified || 'Verified'}</div>
           </div>
@@ -21338,7 +21409,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="profile-stat-label">Reviews</div>
           </div>
           <div class="profile-stat">
-            <div class="profile-stat-bubble rating">${Number(rating).toFixed(1)}</div>
+            <div class="profile-stat-bubble rating">${rating}</div>
             <div class="profile-stat-label">Rating</div>
           </div>
         </div>
@@ -21347,13 +21418,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <button class="profile-message-btn" data-wact="message" data-i="${idx}">💬 Text</button>
         </div>
 
-        <div class="profile-links">
+        ${isLive ? '' : `<div class="profile-links">
           <button type="button" class="profile-link on" data-jobfilter="all">View all previous jobs</button>
           <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${topCat} Jobs Only</button>
-        </div>
+        </div>`}
+        <!-- The job filters are withheld for a live provider: they filter a
+             history we do not have, so they would be two controls that do
+             nothing above an empty state. -->
 
         <div class="profile-history" data-topcat="${topCat}">
-          ${jobsHtml}
+          ${isLive ? `<div class="profile-history-empty">
+            No completed jobs to show yet. This provider's history will appear
+            here once they have finished work through Gopher.
+          </div>` : jobsHtml}
           <div class="profile-history-empty" style="display:none">No Previous ${topCat} Jobs</div>
         </div>
       </div>
@@ -24751,8 +24828,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function tierToWorker(m){
     return {
       name: m.pro || 'Gopher Pro',
-      tier: (m.tier && m.tier.includes('Elite')) ? 'elite+' : 'pro+',
-      photo: serviceProviderPhoto(m),
+      /* ⚠️ Was `includes('Elite') ? 'elite+' : 'pro+'` — which PROMOTED a plain
+         Elite provider to Elite+, and labelled anyone else "Pro". Both were
+         fabricated tiers. __tierName maps it properly, once. */
+      tier: (window.__tierName(m.tier) || 'standard').toLowerCase(),
+      proCred: String(m.tier || '') === 'Gopher Pro',
+      /* ⛔ THE SAME RESOLVER THE CARD USES. serviceProviderPhoto() returns
+         m.photo, which live feed deals never carry (the feed sets .logo from
+         deal_img) — so the profile showed an empty circle while the card beside
+         it showed the real picture. */
+      photo: (serviceProviderPic(m) || {}).src || null,
+      live: !!m.live,
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
       dealServiceName: m.name || '', dealServiceOffer: m.offer || m.name || '',
