@@ -202,7 +202,21 @@ the change is proven twice before it enters a build that cannot be recalled.
 |---|---|---|---|
 | 1 | **Web** — `Final/gopher-request.html`, `gopher-connect.html` | **Website Updates** | `scripts/deploy.sh` — minutes |
 | 2 | **App prototype** — `_prototypes/Request/gopher-request-flow.html` | **App Prototypes** | same deploy — minutes |
-| 3 | **Live apps** — §3 above | Matt, via `next` → release | **store release — G40-410** |
+| 3 | **Live apps** — §3 above | **John** — already placed in **John's Tickets** sprint | **store release — G40-410, goes AFTER the 8/31 sprint is released** |
+
+> ⚠️ **Ownership and timing corrected by the owner, 2026-08-25.** This row previously read
+> *"Matt, via `next` → release"* and this document treated 8/31 as a **cutoff to ship before**.
+> Both were wrong. **G40-410 is the owner's, it is already correctly placed in the John's Tickets
+> sprint, and it goes AFTER the 8/31 sprint is released** — not before it. Do not re-raise 8/31 as
+> a deadline this must beat, and do not route this to the contractor.
+>
+> ⛔ **AND READ §8.1 BEFORE ACTING ON ANY OF §3.** The premise of this whole document — remove the
+> TrustShield gate — was **reversed on 2026-08-24/25.** The owner ruled the removed flow *not
+> approved and not correct*; the step-2 identity gate is **BACK on all three surfaces** and now
+> applies **at every age** (`036bc2d` web, `83b59b9` prototype), recorded as canon **v3.13** in
+> `connect-flows-granular.html`. Surfaces 1 and 2 as written here are **undone**. What G40-410 now
+> covers on the live apps is the owner's to define; the §3 change list below is the ORIGINAL
+> removal plan and must not be implemented as-is.
 
 ### 8.1 ⚠️ On web this REVERSES work deployed 2026-08-22
 
