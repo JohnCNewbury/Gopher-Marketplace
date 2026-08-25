@@ -679,23 +679,51 @@ def main():
         # IMMEDIATELY after `if(` — which rejects ANY prefix, known or not.
         # Still source-text matching; EXECUTING stepGate() is the honest fix and is
         # the adoption work for that surface.
+        # ⛔ INVERTED 2026-08-25 — surface 2 of the staged rollout LANDED (owner
+        # authorised 2026-08-24; web surfaces cleared in 77b4617). This used to
+        # assert the gate was PRESENT. It now asserts it is GONE, for the same
+        # reason the module's assertInvariants() was inverted rather than deleted:
+        # a ruling with no assertion behind it is a habit, and habits get undone.
         pm = re.search(
             r"if\(\s*state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
             r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
             proto_src)
-        check(pm is not None,
-              "prototype enforces the RULED gate: step 2 Identity verification",
-              "the step-2 identity condition is gone — owner ruling 2026-08-22 "
-              "binds all three surfaces, and this one is not covered by the "
-              "label comparison above because its gate returns {ok, sel, msg}")
-        if pm:
-            # idVerifiedNow() is the canonical DERIVED check
-            # (canonical-request-state-schema.md §3a) — "verified" is computed
-            # from the capture fields, never stored as its own boolean.
-            check("idVerifiedNow" in pm.group(1),
-                  "prototype's identity gate still calls the derived check",
-                  "condition no longer calls idVerifiedNow() — it reads: %s"
-                  % pm.group(1).strip()[:80])
+        check(pm is None,
+              "prototype does NOT gate step 2 on identity (owner 2026-08-24, G40-410)",
+              "" if pm is None else
+              "the step-2 identity gate is back — it reads: %s. TrustShield is "
+              "VOLUNTARY: iDenfy is retired, so a required badge permanently blocks "
+              "every new under-30 requester once credits hit zero. The compliance "
+              "control is the Gopher's physical ID check at the door."
+              % pm.group(1).strip()[:80])
+
+        # ⚠️ The check above, alone, is satisfied by DELETING THE WHOLE FEATURE —
+        # and that is a live hazard, not a hypothetical: idVerifiedNow() had three
+        # references and only ONE was the gate. Removing all three deletes THE PERK,
+        # NOT THE GATE. Voluntary-but-VISIBLE is the ruled end state, so the badge
+        # and its verified state are pinned here. Exactly two refs must survive:
+        # the function itself, and the ts-verified badge that renders from it.
+        id_refs = len(re.findall(r"idVerifiedNow", read(SURFACES["prototype"])))
+        check(id_refs == 2,
+              "prototype keeps the TrustShield PERK — idVerifiedNow has exactly 2 refs",
+              "found %d, expected 2 (the function definition + the ts-verified badge). "
+              "Fewer means the perk was deleted along with the gate — the badge must "
+              "stay visible. More means a new consumer appeared; if it is a gate, that "
+              "reverses the owner ruling." % id_refs)
+        # ⚠️ Count RENDER sites, not occurrences. The first version of this check was
+        # `"ts-verified" in src` and was DECORATIVE: the string also appears in a CSS
+        # rule and in a code comment, so it passed with both badge lines deleted.
+        # Caught by mutation-testing it, which is the only reason it is not still
+        # sitting here green and useless. Two badges must render: the TrustShield
+        # holder's, and the one for a requester who verified voluntarily — that pair
+        # IS "voluntary but visible". The idVerifiedNow ref-count above cannot see the
+        # first one, because that line does not call it.
+        badge_renders = read(SURFACES["prototype"]).count('<div class="ts-verified">')
+        check(badge_renders == 2,
+              "prototype renders BOTH ts-verified badges (voluntary but VISIBLE)",
+              "found %d render sites, expected 2 — the TrustShield-holder badge and "
+              "the voluntarily-verified badge. Removing the gate must not remove the "
+              "reward for verifying." % badge_renders)
 
         # ---- agreement with the SHARED module ---------------------------
         # gopher-step-gates.js is the extraction of these rules (2026-08-22).

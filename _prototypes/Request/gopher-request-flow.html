@@ -2075,7 +2075,7 @@ function stepGate(){
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
-  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ts-promo',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
+  // G40-410 (owner, 2026-08-24): TrustShield ID gate REMOVED — verification is voluntary. Surface 2 of 3; web surfaces cleared in 77b4617. The ts-promo perk and ts-verified badge stay.
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
   // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop

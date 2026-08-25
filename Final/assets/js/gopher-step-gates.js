@@ -247,7 +247,7 @@
        than inherited: an omission anyone can see beats an absence nobody notices.
        Adding either address gate here would CHANGE its behaviour, which is a
        product decision and not part of an extraction. */
-    prototype: ['category', 'description', 'costOfItems', 'ageKeyword', 'identity',
+    prototype: ['category', 'description', 'costOfItems', 'ageKeyword',
                 'pickupAddress', 'dropoffAddress',
                 'workerPay', 'workerPaySubmit', 'waiver']
   };
@@ -354,11 +354,11 @@
        fails when a web surface CARRIES it. Same purpose either way — a ruling that
        is only a habit gets undone by the next edit — so the guard follows the ruling
        instead of being silenced with it.
-       'prototype' is deliberately NOT checked here: it is surface 2 of the staged
-       rollout (web -> app prototypes -> live apps) and still carries the gate until
-       App Prototypes removes it. Asserting its absence now would fail the module for
-       work that is correctly still in flight. Add it to this list when that lands. */
-    ['request', 'connect'].forEach(function (surface) {
+       'prototype' JOINED this list on 2026-08-25: surface 2 of the staged rollout
+       (web -> app prototypes -> live apps) landed, so all three checked surfaces are
+       now asserted to be free of the gate. Surface 3 is the live apps, which are not
+       modelled here — they ship via a store release (G40-410, Matt). */
+    ['request', 'connect', 'prototype'].forEach(function (surface) {
       if (SURFACE_GATES[surface].indexOf('identity') !== -1) {
         problems.push(surface + ' carries the identity gate, which the owner removed '
           + 'on 2026-08-23 (TrustShield is voluntary; the Gopher checks ID at the door)');
