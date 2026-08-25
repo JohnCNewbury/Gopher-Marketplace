@@ -2737,7 +2737,12 @@ window.GoProfile = (function(){
        repaints it from the upload response. */
     if(logoTile && logoTile.__pendingLogo) logoTile = null;
     if(logoTile){
-      var logoUrl = String(p.business_logo || '').trim();
+      /* ⚠️ `business_logo` is '' for anyone presenting as an INDIVIDUAL, because
+         the server only resolves it when add_business is true — so a worker who
+         HAS a logo would be told they never gave us one, and the no-logo slider
+         would offer itself to someone who does have one. `business_logo_on_file`
+         (gopher-backend-api!378) is the ungated answer; fall back to it. */
+      var logoUrl = String(p.business_logo || p.business_logo_on_file || '').trim();
       var hasLogo = !!logoUrl;
       var hid = logoTile.querySelector('input[data-field]');
       if(hid) hid.value = hasLogo ? 'onfile' : '0';
@@ -2756,7 +2761,21 @@ window.GoProfile = (function(){
           logoTile.insertBefore(img, logoTile.firstChild);
         }
         img.src = logoUrl;
-        img.onerror = function(){ img.remove(); };      // fall back to the icon
+        /* ⚠️ THE COMMENT USED TO SAY "fall back to the icon" AND THE CODE DID NOT
+           DO IT — it removed the image and left `.up-ico` hidden and `.has-logo`
+           set, so a logo URL that 404s produced an EMPTY tile: no picture, no
+           camera icon, nothing to tap-as-invitation, and still captioned
+           "On file ✓". Actually restore the empty-tile look, which is what the
+           no-logo branch below does too. (A stored URL CAN 404 here — replacing
+           a profile photo destroys the row and deletes the object, which is why
+           provider images resolve live server-side.) */
+        img.onerror = function(){
+          img.remove();
+          var ico3 = logoTile.querySelector('.up-ico'); if(ico3) ico3.hidden = false;
+          logoTile.classList.remove('has-logo');
+          window.__goSetLogoState(logoTile, '', '');
+          if(window.GoBiz && GoBiz.paintNoLogo) GoBiz.paintNoLogo();
+        };
         var ico = logoTile.querySelector('.up-ico'); if(ico) ico.hidden = true;
         logoTile.classList.add('has-logo');
       } else {
@@ -2781,6 +2800,17 @@ window.GoProfile = (function(){
       sw.setAttribute('aria-checked', String(on));
       if(window.GoBiz && GoBiz.paintShowAs) GoBiz.paintShowAs();
     }
+    /* The no-logo slider's own state. Until gopher-backend-api!378 this value
+       was writable and returned by NOTHING, so the switch could only ever have
+       rendered OFF — including for someone who had turned it on. Reading it is
+       what makes the control honest rather than decorative. */
+    var nlHid = document.getElementById('bizNoLogo'), nlSw = document.getElementById('bizNoLogoSw');
+    if(nlHid && nlSw){
+      var nlOn = !!p.business_pic_from_profile;
+      nlHid.value = nlOn ? '1' : '0';
+      nlSw.classList.toggle('on', nlOn);
+      nlSw.setAttribute('aria-checked', String(nlOn));
+    }
     var biz = document.querySelector('.dash-section[data-dash-section="business"]');
     /* ⛔ RE-BASELINING WOULD STRAND A PENDING LOGO. __setBaseline() adopts the
        CURRENT DOM as the clean state, which is right when server values have
@@ -2798,6 +2828,7 @@ window.GoProfile = (function(){
       if(_tile && _tile.__pendingLogo){ if(biz.__refresh) biz.__refresh(); }
       else if(biz.__setBaseline) biz.__setBaseline();
     }
+    if(window.GoBiz && GoBiz.paintNoLogo) GoBiz.paintNoLogo();
     if(window.GoDeals && GoDeals.paintSubmittingAs) GoDeals.paintSubmittingAs();
   }
 
@@ -3403,6 +3434,13 @@ window.showNoAccount = function(){
      this rule, which is how it behaved before and would flip on any reorder. */
   .cred.logo-error:not(.has-logo) { border-style:solid; border-color:var(--error); background:#fff6f7; }
   .cred.logo-error .vp-state { color:var(--error); font-weight:600; }
+  /* ⚠️ THE GUARD IS REQUIRED, NOT DECORATION — see the [hidden] note above.
+     `.field` sets display:flex, which beats the browser's default [hidden]
+     rule, so `el.hidden = true` on this wrapper would do NOTHING and the
+     slider would sit on screen for individuals and for anyone who already has
+     a logo. This page has no global [hidden] rule; every display+hidden
+     pairing needs its own. */
+  .field[hidden] { display:none; }
   .up2.up2-solo { grid-template-columns:1fr; }
   .up2-solo .bizlogo-img { max-width:160px; max-height:96px; }
   @media (max-width:700px){ .rh-list { max-height:none; } }
@@ -4472,6 +4510,30 @@ window.showNoAccount = function(){
               <span class="sw on" id="bizShowAsSw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
             </div>
             <input type="hidden" id="bizShowAs" data-field value="business">
+          </div>
+          <!-- "My business doesn't have a logo" (owner, 2026-08-25). An EXPLICIT
+               statement by the worker, never an automatic fallback: the whole
+               point is that they say it. Backed by users_infos.business_pic_from_profile,
+               which helpers/business_pic.js has honoured since 08-24 —
+                 business + logo      -> the logo
+                 business + this ON   -> their profile photo
+                 business + neither   -> no image
+               It is a FLAG, not a copy, so it TRACKS: change the profile photo and
+               the business picture changes with it. That is what "use my profile
+               pic" has to mean, or the card keeps showing a photo they replaced.
+
+               Shown only when it can actually do something — see js-nologo
+               wiring: business-side only, and only while no logo is on file,
+               because an uploaded logo always wins. -->
+          <div class="field full" id="bizNoLogoWrap" hidden>
+            <div class="showas-card">
+              <div class="showas-main">
+                <span class="showas-ttl">My business doesn&rsquo;t have a logo</span>
+                <span class="showas-sub" id="bizNoLogoSub">Requesters see <b>no picture</b></span>
+              </div>
+              <span class="sw" id="bizNoLogoSw" role="switch" aria-checked="false" aria-label="Use my profile picture as my business picture"></span>
+            </div>
+            <input type="hidden" id="bizNoLogo" data-field value="0">
           </div>
           <!-- One tile, so it takes the whole row rather than sitting in half a
                two-column grid beside an empty cell: the logo preview is what the
@@ -6301,7 +6363,15 @@ window.showNoAccount = function(){
         var patch = {
           add_business:  showAs === 'business',
           business_name: ((document.getElementById('bizName')||{}).value || '').trim(),
-          company_title: ((document.getElementById('bizTitle')||{}).value || '').trim()
+          company_title: ((document.getElementById('bizTitle')||{}).value || '').trim(),
+          /* "My business doesn't have a logo — use my profile picture."
+             Sent ALWAYS, not only when true: this is a full-replace patch, so
+             omitting it when the worker switches it OFF would leave the old
+             `true` standing on the server and the card would keep using their
+             photo after they said stop. Same trap as the address section on the
+             order-update endpoint. */
+          business_pic_from_profile:
+            ((document.getElementById('bizNoLogo')||{}).value || '0') === '1'
         };
         var logoTile = section.querySelector('.cred[data-cred="Business logo"]');
         var pending  = logoTile && logoTile.__pendingLogo;
@@ -8128,6 +8198,78 @@ window.showNoAccount = function(){
     var bn = document.getElementById('bizName');
     if(bn) bn.addEventListener('input', paintShowAs);
     paintShowAs();
+  }
+
+  /* ── "My business doesn't have a logo" (owner, 2026-08-25) ────────────────
+     The worker says it explicitly; nothing infers it. Writes
+     users_infos.business_pic_from_profile, which the backend already honours.
+
+     ⛔ VISIBLE ONLY WHERE IT CAN DO SOMETHING. Two conditions, and both matter:
+
+       showing as an individual -> hidden. Their profile photo is ALREADY what
+         requesters see (pickBusinessPicUrl's first line), so the control would
+         claim credit for something that happens anyway, and turning it off
+         would look like it should change something. It cannot.
+
+       a logo is on file -> hidden. `if (businessUrl) return businessUrl` runs
+         BEFORE the flag is consulted, so the slider is inert while a logo
+         exists. Showing an inert switch is how a UI teaches people it lies.
+
+     A pending (chosen but unsaved) logo counts as "on file" for this purpose —
+     otherwise picking a logo would leave a now-meaningless slider on screen
+     until the save lands. */
+  var noLogoSw  = document.getElementById('bizNoLogoSw');
+  var noLogoWrap = document.getElementById('bizNoLogoWrap');
+  if(noLogoSw && noLogoWrap){
+    var noLogoHid = document.getElementById('bizNoLogo');
+    var noLogoSub = document.getElementById('bizNoLogoSub');
+
+    /* ⚠️ ASKS WHETHER A USABLE LOGO IS ACTUALLY SHOWING — deliberately NOT the
+       tile's hidden field. The field says 'onfile' as soon as the server hands
+       us a URL, but that URL can 404 (a stored provider image goes stale when
+       the underlying row is replaced), and the tile's own onerror then restores
+       the empty look. Keyed on the field, the slider stayed HIDDEN behind a
+       logo that does not render — the exact case the worker needs it for.
+       `.has-logo` is added when the image loads and removed when it fails, so
+       it tracks what is on screen. Reading the class also avoids writing to the
+       hidden field here, which would make the pane look dirty for something the
+       worker never touched. */
+    var logoOnFile = function(){
+      var tile = document.querySelector('.dash-section[data-dash-section="business"] .cred[data-cred="Business logo"]');
+      if(!tile) return false;
+      if(tile.__pendingLogo) return true;                 // chosen, not yet saved
+      return tile.classList.contains('has-logo');
+    };
+
+    var paintNoLogo = function(){
+      var isBiz = (document.getElementById('bizShowAs')||{}).value === 'business';
+      var show  = isBiz && !logoOnFile();
+      noLogoWrap.hidden = !show;
+      var on = noLogoSw.classList.contains('on');
+      noLogoSw.setAttribute('aria-checked', String(on));
+      /* Say what a requester will actually see, in the same shape as the
+         switch above it — not what the setting is called. */
+      noLogoSub.innerHTML = 'Requesters see <b>'
+        + (on ? 'your profile picture' : 'no picture')
+        + '</b>';
+    };
+    window.GoBiz = window.GoBiz || {};
+    window.GoBiz.paintNoLogo = paintNoLogo;
+
+    noLogoSw.addEventListener('click', function(){
+      noLogoSw.classList.toggle('on');
+      noLogoHid.value = noLogoSw.classList.contains('on') ? '1' : '0';
+      noLogoHid.dispatchEvent(new Event('input', { bubbles:true }));
+      paintNoLogo();
+    });
+
+    /* Re-evaluate whenever either input to the visibility rule can change: the
+       business/individual switch, and the logo tile. */
+    var showSw2 = document.getElementById('bizShowAsSw');
+    if(showSw2) showSw2.addEventListener('click', paintNoLogo);
+    var bizSection = document.querySelector('.dash-section[data-dash-section="business"]');
+    if(bizSection) bizSection.addEventListener('input', paintNoLogo);
+    paintNoLogo();
   }
 })();
 </script>
