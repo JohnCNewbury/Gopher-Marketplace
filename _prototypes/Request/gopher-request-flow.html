@@ -261,18 +261,28 @@ body{
    .si-band WRAPS rather than clipping, which is precisely the property the first
    build got wrong. Recoloured calm-blue only: this is an offer, not a warning.
    ⚠️ No global [hidden]{display:none} in this file -- shown/hidden by add/remove. */
-/* ⚠️ Compound selectors (.si-band.dr-resume), not bare .dr-resume: .si-band is
-   defined LATER in this stylesheet, so a single-class override loses on source
-   order and the band rendered GREEN -- reading as a success state rather than an
-   offer. The screenshot caught it; the DOM assertions could not. */
-.si-band.dr-resume{background:linear-gradient(135deg,#eef7ff,#e6f1ff);border:1px solid #c9dcf5;margin:14px 14px 0;align-items:flex-start;}
-.si-band.dr-resume .si-ico{background:#2f6fd0;color:#fff;font-size:17px;margin-top:1px;}
-.si-band.dr-resume .si-text h5{color:#17325c;}
-.si-band.dr-resume .si-text p{color:#41618f;}
-.si-band.dr-resume .dr-where{color:#5b7aa8;margin-top:3px;font-size:11.5px;line-height:1.3;}
-.si-band.dr-resume .dr-acts{display:flex;gap:8px;margin-top:9px;}
-.si-band.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:8px;padding:7px 12px;cursor:pointer;border:1px solid #c9dcf5;background:#fff;color:#2f6fd0;}
-.si-band.dr-resume button.dr-primary{background:#2f6fd0;border-color:#2f6fd0;color:#fff;}
+/* Resume banner — brand colours only, from the surface's own tokens.
+   ⛔ The first build invented #2f6fd0. That is not a Gopher colour. Canon
+   (Documentation/Brand/, Style Guide 2026): navy #002461, green #33D975,
+   Sand #FBF3E4, Terracotta #D97757. This band is SAND + NAVY: an official pair,
+   and deliberately not the green .si-band treatment, which reads as success
+   rather than as an offer.
+   ⚠️ Owner ruling 2026-08-25: on #33D975 the ink must be NAVY, never white.
+   Only --green-dark/#1CB061 may carry white — which is why the primary button
+   below is navy, not green.
+   ⚠️ Compound selectors: .si-band is declared LATER in this stylesheet, so a bare
+   .dr-resume loses on source order and the band rendered green.
+   ⚠️ margin has NO horizontal component: the stage content sits flush to #content
+   (measured left 461 / width 358) and a 14px inset put this band at 475 — visibly
+   narrower than everything under it. */
+.si-band.dr-resume{background:var(--sand,#FBF3E4);border:1px solid #efe2c9;border-radius:var(--radius,18px);margin:14px 0 0;align-items:flex-start;}
+.si-band.dr-resume .si-ico{background:var(--navy,#002461);color:#fff;font-size:17px;margin-top:1px;}
+.si-band.dr-resume .si-text h5{color:var(--navy,#002461);}
+.si-band.dr-resume .si-text p{color:#4a4335;}
+.si-band.dr-resume .dr-where{color:#7a6f5c;margin-top:3px;font-size:11.5px;line-height:1.3;}
+.si-band.dr-resume .dr-acts{display:flex;gap:8px;margin-top:10px;}
+.si-band.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:10px;padding:8px 14px;cursor:pointer;border:1px solid var(--navy,#002461);background:transparent;color:var(--navy,#002461);}
+.si-band.dr-resume button.dr-primary{background:var(--navy,#002461);border-color:var(--navy,#002461);color:#fff;}
 .age-kw-actions{display:flex;gap:14px;margin-top:12px;}
 .age-kw-actions .ts-promo-btn{padding:7px 13px;}
 .age-kw-actions .age-kw-no{background:#fff;color:var(--navy);border:1.5px solid #e3d7a0;}
