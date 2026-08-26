@@ -73,6 +73,15 @@ def read(rel):
         return fh.read()
 
 
+def strip_b64(src):
+    """⚠️ REQUIRED, same class as strip_svg. Embedded base64 blobs contain long
+    random alphanumeric runs, so a short uppercase token matches inside artwork:
+    'MVR' appears NINETEEN times in the app prototype, every one of them inside
+    base64 data and none of them a rule. Found by reading the hits instead of
+    counting them."""
+    return re.sub(r"[A-Za-z0-9+/]{120,}={0,2}", " ", src)
+
+
 def strip_svg(src):
     """⚠️ REQUIRED, not tidiness. SVG path data contains bare numbers: `4.75`
     appears twice inside <path d="..."> coordinates in gopher-go.html. Without
@@ -93,7 +102,7 @@ def searchable(src):
     cannot see either.
 
     So: strip artwork, keep everything else."""
-    return " ".join(strip_svg(src).split())
+    return " ".join(strip_b64(strip_svg(src)).split())
 
 
 def plain(src):
@@ -104,7 +113,7 @@ def plain(src):
     <b>Standard speed`, so a phrase regex over raw source fails on a rule that is
     plainly there. Phrase checks use plain(); code-pattern checks (Math.max, ...)
     use searchable(), which keeps script bodies."""
-    return " ".join(re.sub(r"<[^>]*>", " ", strip_svg(src)).split())
+    return " ".join(re.sub(r"<[^>]*>", " ", strip_b64(strip_svg(src))).split())
 
 
 web_raw, app_raw, canon_raw = read(WEB), read(APP), read(CANON)
@@ -357,6 +366,35 @@ for label, rx in [("broadcast wave", re.compile(r"\bwave\b", re.I)),
         not rx.search(web_src) and not rx.search(app_src),
         "if this FAILS a client has grown matching logic; that is an architecture "
         "change, not a harness bug",
+    )
+
+# ── F · SINGLE-SURFACE worker facts with a defect history ────────────────────
+print("\nF · Single-surface facts (no app counterpart — guarded for history)")
+
+# ⚠️ NOT an alignment check, and labelled so nobody "fixes" it by adding a second
+# surface. The tier REQUIREMENT table lives only on Final/gopher-tiers.html --
+# neither Go web nor the app states it (the app's 19 'MVR' hits are all base64).
+# It is guarded here because this exact rule SHIPPED WRONG: the original
+# AI-generated tiers card listed MVR under Elite, and Gopher-Deals-Build-Spec
+# D-015 inherited the error verbatim while citing the page as its source. Owner
+# corrected it 2026-07-24: MVR belongs to ELITE+.
+try:
+    tiers = plain(read("Final/gopher-tiers.html"))
+except OSError:
+    tiers = ""
+check(
+    "gopher-tiers.html is readable (probe guard)",
+    len(tiers) > 3000,
+    f"got {len(tiers)} chars",
+)
+if tiers:
+    mvr_at = tiers.find("MVR")
+    eliteplus_at = tiers.find("Everything in Elite,")
+    check(
+        "MVR sits in the ELITE+ section, not Elite (owner correction 2026-07-24)",
+        mvr_at > 0 and eliteplus_at > 0 and mvr_at > eliteplus_at,
+        f"MVR@{mvr_at} Elite+@{eliteplus_at} — MVR must follow the Elite+ lede; "
+        "the tier-grant emails were always right, the CARD was wrong",
     )
 
 print("")
