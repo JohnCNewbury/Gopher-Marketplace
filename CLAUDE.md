@@ -1984,6 +1984,38 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   to ship. ⚠️ The "App Prototypes' 5 prototype commits await the owner's localhost test" note
   from 08-24 was STALE by this deploy — all of them content-verified already live.
 
+- **G40 request modals: all six WIRED, the preview chip is gone, four owner corrections
+  (2026-08-26; commits `76a3b9c`→`7db2171`, deploy `c72c824`, live-verified BOTH hosts).** The
+  bottom-right "G40" chip was dev chrome shipping to every real visitor, and `window.G40_REQ`'s six
+  rebuilt modals had ZERO callers outside its preview menu. Now: **phoneEntered** hard-blocks step-2
+  Continue on a phone number in the description (no ack flag — the no-broadcast rule holds);
+  **pickupSameAsDropoff** is PRESENTATION on the existing shared `addressesDiffer` hard gate
+  (steps 4 AND 6) — `toWebShape()` now carries the failing rule's `id` and Request swaps that one
+  gate's field-flash for the modal (a duplicate warn-once backstop was built first and reverted);
+  **selectedGopherBusy** blocks Hire/Approve on `busy:true` before the hire cap — **mirrored to
+  Connect** (`#busyGopherOverlay` on gc-modal primitives) after the owner's "didn't fire" turned out
+  to be BOTH apps seeding a Marcus with wiring on only one — when a repro disagrees with
+  verification, ask WHICH SURFACE before debugging the one you wired; **expiredInterestedWorkers**
+  fires at the EXPIRY of an active request a worker accepted but was never approved (owner corrected
+  my previous-requests wiring; DEMO sim bar, since no broadcast-expiry runs in the prototype;
+  production also sends SMS); **paymentNotAuthorized** got a DEMO sim bar in the hired section (real
+  trigger = backend Stripe event); **cantDeleteOnlyCard was REMOVED from the Request set** — owner:
+  a last-card guard is a WORKER concept protecting the Stripe payout account, and `gopher-go.html`
+  already implements it (`#lastCardOverlay`). Also owner-ruled: **hourly mode hides the iQ suggested
+  offer AND skips the low-offer notice** (the model prices a WHOLE JOB; in hourly mode the field is
+  a per-hour rate — Moving+Junk carry both features); and the low-offer notice **names the actual
+  category** (said "a delivery like this" on a Moving job; per-category phrase, both apps).
+  Traps worth keeping: an HTML cache-buster does NOT bust `<script src>` — a stale cached
+  `gopher-step-gates.js` made the gate-id wiring look broken mid-verification (fetch
+  `{cache:'reload'}` before concluding anything about a shared-module edit); the page pre-builds
+  ~24 static `.gr-modal-overlay` nodes, so `querySelector('.gr-modal-overlay')` grabs the wrong one
+  — filter on `!o.hidden`; and `grep -c` under `LC_ALL=C` errors on multibyte pages ("character not
+  in range") and reads as 0 — a probe failure indistinguishable from a real miss; verify live
+  content with a UTF-8-safe prober. ⚠️ **The TigerTech workflow did NOT auto-trigger on this push**
+  (first time since the 7/26 fix; workflow active, file present, same commit-message shape) —
+  fired manually via `workflow_dispatch` + the stored token, went green, content-verified. Watch
+  the next push: if it skips again, that is a pattern, not a blip.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
