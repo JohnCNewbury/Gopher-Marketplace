@@ -1943,3 +1943,72 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   (production keys placements by merchantId — the brain documents this). CSS is `gbb-`-prefixed
   (`.bid-cta` already means something else on this page).
 - ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).
+
+---
+
+## App / Web Sync — session notes, 2026-08-26
+
+**Lane:** the seam between the new web surfaces and the reskinned apps. **Index of everything
+below lives in `gopher-dev-handoff/APP-WEB-ALIGNMENT.md`** — start there, not here, if you want
+the current state rather than the history.
+
+### Where the work is
+
+| Topic | Where |
+|---|---|
+| **App↔web cutover contract** (the owning doc) | `gopher-dev-handoff/APP-WEB-ALIGNMENT.md`, cross-referenced from `LAUNCH-SOW.md` §E |
+| Requester parity harness | `Code:docs/handoff/request-app-parity/` — `run_parity_harness.py`, `test-step-gates.js`, `test-prototype-stepgate-equivalence.js` |
+| **Worker parity harness (new)** | `Code:docs/handoff/go-app-parity/run_go_parity_harness.py` — 35 checks, six classes |
+| Read-side authz audit (3 IDORs) | `Code:docs/handoff/read-side-authz-audit-2026-08-24.md` |
+| Fix spec for the above | `Code:docs/handoff/user-data-exposure-fix-spec-2026-08-25.md` |
+| AWS / S3 exposure findings | `Code:docs/handoff/id-image-retention-findings.md` §4.4 |
+| Cross-device resume design | `Code:docs/handoff/request-app-parity/cross-device-resume.md` |
+| Canon changes | `connect-flows-granular.html` **v3.13**; `gopher-go-canonical.html` (payout-vocabulary note) |
+| Merge requests | `gopher-backend-api` **!387**, **!391**, **!395** — all merged to `production` |
+
+### What shipped to production (backend)
+
+- **!387** — three read-side IDORs closed (`users/profile/:id`, `orders/:id/cog`,
+  `orders/:id/counter_offer`), plus `shared/S3.js` defaulting to `private`.
+- **!391** — ⚠️ **hotfix for a regression !387 caused.** The ACL default flip went out on an
+  enumeration that found **5** call sites when there were **12**; six callers relying on the
+  default went private while still served as unsigned URLs and began 403ing. Restored
+  explicitly, and `test/s3-acl-explicit-at-every-call-site.test.js` now forbids an implicit ACL.
+- **!395** — server half of cross-device resume (`GET/PATCH/DELETE /api/v1/requests/draft`).
+  Branch was **435 commits stale**; production was merged into it and both additive conflicts
+  resolved by keeping BOTH sides.
+
+### AWS (owner-directed, read-only discovery then two changes)
+
+Production `AWS_BUCKET` = **`gopher-test`**. ID images were **already private** and stayed so.
+What was world-readable was everything *around* them. Enabled **S3 access logging** (delivery
+confirmed with a planted 200 and 403) and made **347 credential/past-job objects private**.
+⛔ **Full Block Public Access is unreachable** — seven prefixes upload `public-read` and are
+served unsigned, so `BlockPublicAcls` breaks uploads and `IgnorePublicAcls` breaks serving.
+Only `BlockPublicPolicy` + `RestrictPublicBuckets` were enabled.
+
+### Prototype draft layer (built 08-26, awaiting deploy)
+
+`_prototypes/Request/gopher-request-flow.html` gained the cross-device draft layer and a resume
+banner. **Local tier only** — the requester surfaces have no sign-in, and `/requests/draft`
+scopes off the token's own user id, so the copy says *"Saved on this device"* and is derived
+from the active adapter, not hardcoded.
+
+### ⚠️ Corrections I made to my own claims — worth reading before trusting a doc
+
+1. **"No server-side draft concept — no table, no column, no endpoint."** Wrong. I grepped
+   `origin/production` and reported absence of the **work** instead of absence from
+   **production**. It was built, tested and pushed on a branch the whole time.
+2. **"gopher-go.html over-promises Instant Payouts."** Wrong. I read *"Stripe Standard speed"*
+   in canon as a user-facing claim; it is Stripe's **API term**. Owner: 2h is instant against a
+   24h+ industry baseline. Now marked in canon so it cannot mislead again.
+3. **Finding 3 "remains open"** in `PHASE-2-FINDINGS.md` while its own body said RULED + BUILT —
+   four days of a document contradicting itself, in this lane's file.
+
+### The pattern behind most of today
+
+**Six defects in one banner were found by LOOKING, not by testing** — truncated honesty caveat,
+green-reading-as-success, an invented non-brand colour, a 14px inset, a top-heavy icon, zero gap
+to the content below. **Every one passed the DOM assertions.** Functional tests proved the
+mechanism; only a picture showed the product. Related: a peer's repro found a real data-loss bug
+my own comment claimed was impossible.
