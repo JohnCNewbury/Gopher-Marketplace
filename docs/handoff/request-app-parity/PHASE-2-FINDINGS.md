@@ -20,7 +20,14 @@ the web builds.
 > | 4 — TrustShield over-discount | `hasTS && ((category==='delivery' && ageRestricted) \|\| category==='ride')` — broad form absent |
 > | 5 — category reset | 26-key scoped table present; `junkTier`/`movingTier`/`payAmount`/`idVerification` in, `description`/`pickupStops`/`specialInstructions` correctly out |
 >
-> **Finding 3 remains open and still needs a ruling.**
+> ~~**Finding 3 remains open and still needs a ruling.**~~ ⛔ **STALE — corrected 2026-08-26.**
+> Finding 3 was **RULED by the owner on 2026-08-22 and BUILT** (`947cf69`); see its own section
+> below, which has said `✅ RULED + BUILT` since. This header contradicted the body for four
+> days. Left visible rather than deleted because the failure mode is the point: a stale claim
+> near the top of a document is read instead of the body, and it suppresses the check that
+> would correct it. ⚠️ Note the identity gate it added was later **removed and then restored
+> at every age** — canon `v3.13` in `connect-flows-granular.html` is the current word, not this
+> document.
 >
 > **Two corrections to what this document originally claimed, both mine:**
 > 1. I wrote that `workerSelection` is category-scoped. **It is not** — absent from the module's
