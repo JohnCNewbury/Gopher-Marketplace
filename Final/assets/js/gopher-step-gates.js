@@ -337,7 +337,9 @@
   /* Adapters so a surface can drop this in without touching its call sites. */
   function toWebShape(r) {
     if (r.ok) return { ok: true };
-    return { ok: false, label: r.label, selector: r.selector, msg: r.message };
+    /* id: lets a surface give a specific gate a richer treatment than the
+       generic field flash (e.g. addressesDiffer opens its purpose-built modal). */
+    return { ok: false, id: r.id, label: r.label, selector: r.selector, msg: r.message };
   }
   function toPrototypeShape(r) {
     if (r.ok) return { ok: true };
