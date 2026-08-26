@@ -1991,7 +1991,12 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   Continue on a phone number in the description (no ack flag — the no-broadcast rule holds);
   **pickupSameAsDropoff** is PRESENTATION on the existing shared `addressesDiffer` hard gate
   (steps 4 AND 6) — `toWebShape()` now carries the failing rule's `id` and Request swaps that one
-  gate's field-flash for the modal (a duplicate warn-once backstop was built first and reverted);
+  gate's field-flash for the modal (a duplicate warn-once backstop was built first and reverted).
+  ⚠️ **The id exists ONLY where the shared module is consumed** — a surface with its own inline
+  `stepGate()` returns `{ok,sel,msg}` with no id, so copying the `gate.id === 'addressesDiffer'`
+  wiring there is a SILENT NO-OP: false forever, nothing throws, presents as "the modal just
+  doesn't appear." App Prototypes hit exactly this mirroring the work (2026-08-26) and caught it
+  only by driving the gate — carry the id on that surface's own return first;
   **selectedGopherBusy** blocks Hire/Approve on `busy:true` before the hire cap — **mirrored to
   Connect** (`#busyGopherOverlay` on gc-modal primitives) after the owner's "didn't fire" turned out
   to be BOTH apps seeding a Marcus with wiring on only one — when a repro disagrees with
