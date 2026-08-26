@@ -12153,7 +12153,7 @@
   const EXTRA_INTERESTED = [
     { initials:'AW', name:'Andre W.',  badge:'elite+', photo:'assets/img/px-3932291-400x400.webp', tagline:'Shows up early, works hard, gets it done.', verified:'Verified', reviews:203, rating:4.96, stats:['⭐ 4.96 (203 jobs)','3 mi away','Available now'] },
     { initials:'PN', name:'Priya N.',  badge:'pro+',   photo:'assets/img/px-3763188-400x400.webp', tagline:'Friendly, reliable, and detail-oriented.', verified:'Verified', reviews:118, rating:4.90, stats:['⭐ 4.90 (118 jobs)','4 mi away','Available 1pm'] },
-    { initials:'MT', name:'Marcus T.', badge:'pro+',   photo:'assets/img/px-1681010-400x400.webp', tagline:'Strong, dependable, and ready to roll.', verified:'Verified', reviews:91, rating:4.87, stats:['⭐ 4.87 (91 jobs)','6 mi away','Available now'] },
+    { initials:'MT', name:'Marcus T.', badge:'pro+',   photo:'assets/img/px-1681010-400x400.webp', tagline:'Strong, dependable, and ready to roll.', verified:'Verified', reviews:91, rating:4.87, busy:true, stats:['⭐ 4.87 (91 jobs)','6 mi away','On a job · free ~3pm'] },
     { initials:'ER', name:'Elena R.',  badge:'elite+', photo:'assets/img/px-1130626-400x400.webp', tagline:'5-star track record — your job in safe hands.', verified:'Verified', reviews:412, rating:4.99, stats:['⭐ 4.99 (412 jobs)','2 mi away','Available 2pm'] },
     { initials:'SK', name:'Sam K.',    badge:'pro+',   photo:'assets/img/px-697509-400x400.webp', tagline:'Quick, careful, and easy to work with.', verified:'Verified', reviews:67, rating:4.85, stats:['⭐ 4.85 (67 jobs)','5 mi away','Available now'] },
     { initials:'BL', name:'Bianca L.', badge:'elite+', photo:'assets/img/px-1542085-400x400.webp', tagline:'Pro-level results, every single time.', verified:'Verified', reviews:288, rating:4.97, stats:['⭐ 4.97 (288 jobs)','3 mi away','Available 11am'] },
@@ -13678,7 +13678,12 @@
                 </div>
               `;
             })() : ''}
-            ${isVisible('aiPaySuggest') ? `
+            ${/* Hidden in hourly mode (owner, 2026-08-26): the iQ model prices a
+                  WHOLE JOB, and in hourly mode this field is a per-hour rate — a
+                  job-level suggestion written into a rate field multiplies by the
+                  hours and misprices the job. Moving + Junk are the two categories
+                  that carry both this helper and the hourly toggle. */ ''}
+            ${isVisible('aiPaySuggest') && !state.payByHour ? `
             <button type="button" class="ai-helper-row" data-action="ai-pay-suggest">
               <span class="ai-head"><img src="${GOPHER_IQ_SRC}" alt="Gopher iQ"></span>
               <span class="ai-text">Get a suggested offer</span>
@@ -15082,7 +15087,16 @@
     // Universal gate: if this step has an unmet requirement, don't advance —
     // flash the missing field and tell the user which one is required.
     const gate = stepGate();
-    if(!gate.ok){ showGatePrompt(gate); return; }
+    if(!gate.ok){
+      // G40 modal: pickupSameAsDropoff — the shared addressesDiffer gate
+      // (gopher-step-gates.js, steps 4 AND 6) already hard-blocks identical
+      // ends; this swaps its generic field-flash for the purpose-built modal,
+      // which tells the user about the two sliders that resolve it. The gate
+      // still blocks every time until the addresses differ — the modal is
+      // presentation, not policy.
+      if(gate.id === 'addressesDiffer' && window.G40_REQ){ G40_REQ.pickupSameAsDropoff(); return; }
+      showGatePrompt(gate); return;
+    }
     // ── Age-restricted keyword backstop (ALL categories — compliance) ──
     // On Job Details (step 2), scan the description for an age-restricted keyword
     // whenever age handling isn't already active (delivery + slider on) and the
@@ -15098,6 +15112,15 @@
         if(window.__openAgeKeywordModal && window.__openAgeKeywordModal(kw)) return;
         state.ageKeywordAck = true;
       }
+    }
+    // ── Phone-number privacy gate (G40 modal: phoneEntered) ──
+    // Phone numbers are never broadcast; in-app text/call exists after submit.
+    // HARD block (no ack flag) until the number is edited out — that is the
+    // rule the modal states. Fails open if the modal library is missing,
+    // matching the age-keyword precedent (never trap the user on a dead modal).
+    if(state.step === 2 && window.G40_REQ
+       && /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/.test(String(state.description||''))){
+      G40_REQ.phoneEntered(); return;
     }
     // ── Category-mismatch nudge (worker visibility) ──
     // After the age gate (which takes precedence): if no age-restricted keyword is
@@ -15119,7 +15142,10 @@
     // iQ low-end, show a respectful notice before advancing. This is the single
     // choke point both entry paths (typed field + iQ modal) pass through.
     // Acknowledged via "Send as-is" (state.lowOfferAck), re-armed on edit.
-    if(state.step === 5 && state.payMode === 'set' && !state.lowOfferAck){
+    // Skipped in hourly mode (owner, 2026-08-26, same ruling as hiding the iQ
+    // helper there): the model is a WHOLE-JOB figure and payAmount is a per-hour
+    // rate — comparing them warns on fair rates and blesses low ones.
+    if(state.step === 5 && state.payMode === 'set' && !state.payByHour && !state.lowOfferAck){
       const offerModel = getCurrentOfferModel();
       const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,'')) || 0;
       if(offerModel && payNum > 0 && payNum < offerModel.low){
@@ -15171,9 +15197,29 @@
     render();
   };
 
-  /* ── Request modals (rebuilt for the Request web flow) ──
-     Dynamic .gr-modal overlays; reachable now via the review launcher (bottom-right
-     "G40" button → window.__g40ReqMenu). Real triggers to be wired at each flow point. */
+  /* ── Request modals (G40 rebuild) — WIRED 2026-08-26 ──
+     Dynamic .gr-modal overlays. The bottom-right "G40" preview chip and
+     __g40ReqMenu are GONE (they shipped dev chrome to every real visitor);
+     every modal now fires from its real flow point:
+       phoneEntered             → step-2 Continue, phone number in the description
+       pickupSameAsDropoff      → address-step Continue, pick-up == drop-off (warn once)
+       selectedGopherBusy       → Hire/Approve on a worker flagged busy:true
+       expiredInterestedWorkers → the EXPIRY moment of an active request where a
+                                  worker accepted but the requester never approved
+                                  (owner, 2026-08-26 — NOT previous-request browsing;
+                                  production also sends an SMS at this moment).
+                                  Real trigger is the broadcast-expiry event, which
+                                  the prototype does not run — DEMO sim bar in the
+                                  interested section.
+     cantDeleteOnlyCard was REMOVED from this set (owner, 2026-08-26): a
+     last-card guard is a WORKER concept — it protects the Stripe payout
+     account — and gopher-go.html already implements it correctly
+     (#lastCardOverlay, "Keep one card on file"). A requester removing their
+     only card is not blocked.
+       paymentNotAuthorized     → DEMO-tagged sim bar in the hired section — the real
+                                  trigger is a backend Stripe auth-failure event the
+                                  prototype cannot receive
+     Do not re-add a floating launcher; preview each modal by driving its flow point. */
   (function initG40ReqModals(){
     function reqModal(html){
       var ov=document.createElement('div'); ov.className='gr-modal-overlay';
@@ -15182,20 +15228,33 @@
       document.body.appendChild(ov); ov.hidden=false; return ov;
     }
     function b2(label){ return '<button type="button" class="gr-modal-btn grx" style="margin-top:8px;background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;">'+label+'</button>'; }
+    /* Primary buttons keep the grx class, so one click runs the wired action
+       AND closes the overlay (the overlay's own grx listener handles closing). */
+    function wirePrimary(ov, fn){ if(fn){ var b=ov.querySelector('.gr-modal-btn'); if(b) b.addEventListener('click', fn); } return ov; }
+    function openAddPay(){ if(window.__openAddPaymentModal) window.__openAddPaymentModal(); }
     window.G40_REQ = {
-      phoneEntered: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')); },
-      paymentNotAuthorized: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'); },
+      phoneEntered: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
+      paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
       pickupSameAsDropoff: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gr-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gr-modal-btn grx">Got it</button>'); },
-      selectedGopherBusy: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">⚠️</div><h4>That Gopher is on another job</h4><p class="gr-modal-sub">The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.</p><button type="button" class="gr-modal-btn grx">Message the Gopher</button>'+b2('Choose another Gopher')); },
-      cantDeleteOnlyCard: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Add a card before removing this one</h4><p class="gr-modal-sub">You need at least one card on file to keep your account in good standing. Add a new card, then you can remove this one.</p><button type="button" class="gr-modal-btn grx">Add new card</button>'+b2('Cancel')); },
+      selectedGopherBusy: function(onMessage){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">⚠️</div><h4>That Gopher is on another job</h4><p class="gr-modal-sub">The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.</p><button type="button" class="gr-modal-btn grx">Message the Gopher</button>'+b2('Choose another Gopher')), onMessage); },
       expiredInterestedWorkers: function(){ return reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;">⏰</div><h4>Your request expired — workers are interested</h4><p class="gr-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gr-modal-btn grx">View interested workers</button>'+b2('Cancel request')); }
     };
-    window.__g40ReqMenu = function(){
-      var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['cantDeleteOnlyCard','Can’t delete only card on file'],['expiredInterestedWorkers','Request expired — interested workers']];
-      reqModal('<h4>Request modals</h4><p class="gr-modal-sub">Preview each rebuilt modal.</p>'+items.map(function(i){return '<button type="button" class="gr-modal-btn grx" style="background:#eef0f8;color:var(--navy);box-shadow:none;text-align:left;margin-top:6px;font-size:13px;" onclick="setTimeout(function(){window.G40_REQ.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+b2('Close'));
+    /* DEMO sim bar for paymentNotAuthorized (see header). Renders only when a
+       worker is hired — same demobar pattern as the G40-308 recovery family. */
+    window.__g40PayDeclineBar = function(hiredCount){
+      if(!hiredCount) return '';
+      return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
+        + '<span class="g40-demo-note">Bank declined the charge after acceptance — preview the recovery modal.</span>'
+        + '<button type="button" class="g40-recovery-simbtn" data-g40-paydecline>Simulate decline</button></div>';
     };
-    function addLaunch(){ if(document.getElementById('g40ReqLaunch'))return; var b=document.createElement('button'); b.id='g40ReqLaunch'; b.textContent='G40'; b.title='Preview request modals'; b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99999;background:#002461;color:#33D975;border:none;border-radius:10px;padding:9px 13px;font-family:sans-serif;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,36,97,.3)'; b.onclick=function(){ try{ window.__g40ReqMenu(); }catch(e){} }; document.body.appendChild(b); }
-    if(document.body) addLaunch(); else document.addEventListener('DOMContentLoaded', addLaunch);
+    /* DEMO sim for expiredInterestedWorkers (see header). Shows only in the
+       forgot-to-approve state: workers accepted, nobody approved yet. */
+    window.__g40ExpirySimBar = function(hiredCount, interestedCount){
+      if(hiredCount || !interestedCount) return '';
+      return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
+        + '<span class="g40-demo-note">Request expires with workers accepted and none approved — preview the popup (production also texts you).</span>'
+        + '<button type="button" class="g40-recovery-simbtn" data-g40-expiresim>Simulate expiry</button></div>';
+    };
   })();
 
   // ---- Start the request flow pre-set to a specific service category ----
@@ -15517,9 +15576,12 @@
       wireOnce(overlay);
       const rangeEl = document.getElementById('lowOfferRange');
       if(rangeEl && model){
-        const isRide = state.category === 'ride';
+        /* Named for the ACTUAL category — this said "a delivery like this" for
+           every non-ride category, including Moving (owner catch, 2026-08-26). */
+        const jobPhrase = ({ ride:'a ride', delivery:'a delivery', moving:'a move',
+                             junk:'a junk-removal job' })[state.category] || 'a job';
         rangeEl.textContent = 'Most neighbors offer around $' + model.low + '–$' + model.suggested
-          + ' for ' + (isRide ? 'a ride like this' : 'a delivery like this') + '.';
+          + ' for ' + jobPhrase + ' like this.';
       }
       overlay.hidden = false;
       return true;
@@ -20161,7 +20223,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         when:'Today, 2:00 PM · awaiting your selection',
         interestedWorkers:[
           makeSeedWorker('AW','Andre W.','elite+'), makeSeedWorker('PN','Priya N.','pro+'),
-          makeSeedWorker('MT','Marcus T.','pro+'),  makeSeedWorker('ER','Elena R.','elite+'),
+          /* Marcus is seeded BUSY so the selectedGopherBusy modal has a demo
+             path (Standard Gophers take one job at a time). */
+          Object.assign(makeSeedWorker('MT','Marcus T.','pro+'),
+            { busy:true, stats:['⭐ 4.95 (180 jobs)','3 mi away','On a job · free ~3pm'] }),
+          makeSeedWorker('ER','Elena R.','elite+'),
           makeSeedWorker('SK','Sam K.','pro+'),      makeSeedWorker('BL','Bianca L.','elite+'),
         ],
       },
@@ -21841,8 +21907,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         workersHtml = `
           ${topBar}
           ${section('Hire Approved', `${hired.length} of ${needed}`, hired, 'wsection-hired')}
+          ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -21855,8 +21923,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         workersHtml = `
           ${topBar}
           ${section('Hired', `${hired.length}`, hired, 'wsection-hired')}
+          ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -21936,6 +22006,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         if(target.closest('[data-dispute-unable]')){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = false; return; }
         if(target.closest('[data-unable-close]') || target.id === 'unableOverlay'){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = true; return; }
 
+        // 0-g40) Payment-declined DEMO sim (see __g40PayDeclineBar).
+        if(target.closest('[data-g40-paydecline]')){
+          if(window.G40_REQ) G40_REQ.paymentNotAuthorized();
+          return;
+        }
+        // 0-g40b) Expiry DEMO sim (see __g40ExpirySimBar): the popup a requester
+        // gets when their request expires with accepted-but-unapproved workers.
+        if(target.closest('[data-g40-expiresim]')){
+          if(window.G40_REQ) G40_REQ.expiredInterestedWorkers();
+          return;
+        }
+
         // 1) Worker action buttons (Hire / Consider / Deny / Approve / Remove / profile / message)
         const wact = target.closest('[data-wact]');
         if(wact){
@@ -21954,6 +22036,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           }
           const i = parseInt(wact.dataset.i, 10);
           if(isNaN(i) || !list || !list[i]) return;
+          if((act === 'hire' || act === 'approve') && list[i].busy && window.G40_REQ){
+            // G40 modal: selectedGopherBusy — Standard Gophers take one job at
+            // a time. Runs BEFORE the hire-cap check; nothing about the worker
+            // changes state until the requester picks someone available.
+            G40_REQ.selectedGopherBusy(function(){ openInboxThread(r.id); });
+            return;
+          }
           if(act === 'hire' || act === 'approve'){
             const hiredCount = list.filter(w => w.status === 'hired').length;
             const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
