@@ -196,8 +196,12 @@ commit.
    before submit and syncing URLs — which adds orphan cleanup. Owner decision.
 3. **One draft per user** is the current model ("pick up where I left off" is singular).
    Multiple concurrent drafts would need a `draft_id` and a picker.
-4. **Deploying the backend branch** merges to `production`, which auto-deploys. It is
-   committed and tested but unpushed and unmerged.
+4. **Deploying the backend branch** merges to `production`, which auto-deploys.
+   ⚠️ **Corrected 2026-08-26: it is PUSHED, not "unpushed."** `feat/g40-request-drafts` is on
+   the remote at `f8542ac0` and its suite was re-run there the same day — **PASS, 0 failures**.
+   `origin/production` carries **0** draft references, so it is *unmerged*, which is the accurate
+   word. The distinction matters: "unpushed" reads as work sitting on one machine that could be
+   lost; this is reviewable, fetchable, and one merge from live.
 
 ---
 
