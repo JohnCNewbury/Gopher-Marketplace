@@ -14,6 +14,41 @@ and that one still gates only "mark as viewed".
 
 ---
 
+## ⛔ CORRECTIONS — read before anything below (added 2026-08-25, after shipping)
+
+**Both MRs are MERGED and LIVE** (`a3e4c17e`, then hotfix `fa2cbb32`). Two things this spec got
+wrong, recorded because a spec that is wrong in the confident direction is worse than no spec.
+
+**1. "ALL FIVE live call sites" was wrong — there are TWELVE.** The enumeration used a one-line
+grep matching `S3.upload(` / `uploadAsset(` / `.copy(`, which **misses `s3Actions.upload(`**.
+Six callers relying on the default silently went private while still being served as unsigned
+public URLs, and began **403ing for real users**: rating attachments, report attachments, order
+attachments (×2), in-app message images, completed-job photos. Hotfixed the same day by passing
+`'public-read'` explicitly at all seven affected sites.
+**`test/s3-acl-explicit-at-every-call-site.test.js` now forbids an implicit ACL anywhere** — it
+brace-matches multi-line calls, strips comments, and asserts it found ≥10 sites so a blind probe
+cannot pass. It found two more implicit sites the moment it ran.
+
+**2. §1.5 "Block Public Access — last, and not a switch" understated it. NO BPA setting that
+matters can be enabled today.** Checked against the live bucket:
+
+| BPA setting | Effect here |
+|---|---|
+| `BlockPublicAcls` | ⛔ **breaks new uploads** — seven prefixes upload with `ACL: 'public-read'` |
+| `IgnorePublicAcls` | ⛔ **breaks all serving** — those same objects become unreadable |
+| `BlockPublicPolicy` | ✅ safe no-op — `gopher-test` has no bucket policy |
+| `RestrictPublicBuckets` | ✅ safe no-op — same reason |
+
+So the achievable step is **partial BPA** (`BlockPublicPolicy` + `RestrictPublicBuckets` only),
+which prevents anyone *adding* a public bucket policy later but changes nothing today. **Full BPA
+requires migrating all seven public prefixes to signed URLs first** — a much larger piece of work
+than this spec implied, and a product decision (some of those render where there is no session).
+
+**Still true and unchanged:** the ordering rule (code first, ACLs second), the private default being
+correct, and the counterparty-projection finding in §2.1, which remains **unbuilt**.
+
+---
+
 ## 0. The root cause, which is one line
 
 ```js
