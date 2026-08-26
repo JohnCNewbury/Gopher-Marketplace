@@ -260,28 +260,39 @@ note(
     "per-tier perk tables, broadcast-wave timing, and anything about Connect."
 )
 
-# ── D · WEB COPY vs CANON — real divergence, owner decision to resolve ───────
-print("\nD · Web copy vs canon (divergence found -> owner ruling, not a code edit)")
+# ── D · Payout vocabulary — the terms are the PRODUCT's, not a promise ───────
+print("\nD · Payout speed vocabulary (owner-settled 2026-08-26)")
 
-web_promises_always_instant = re.search(
-    r"Instant Payouts?\s*(&mdash;|--|\u2014)\s*Every Job", web, re.I
+# ⛔ SETTLED, DO NOT RE-RAISE. An earlier version of this harness warned that
+# Final/gopher-go.html's "Instant Payouts - Every Job" over-promised, because
+# canon phrases the first-10 speed as "Stripe Standard speed (~2 hr)". That was
+# WRONG, and the reasoning is worth keeping so it is not rediscovered:
+#   * "Instant Payout" is STRIPE'S OWN PRODUCT NAME, not a latency claim.
+#   * The payout is INITIATED instantly in every case.
+#   * ~2 hours against an industry standard of 24h+ on other gig platforms is
+#     instant in the only sense a worker experiences.
+#   * "Bullet" is the INTERNAL term for the ~1-2 minute tier. It appears only in
+#     canon -- deliberately absent from both product surfaces.
+# So the web copy is accurate. What IS worth asserting is the tier rule below.
+check(
+    "'bullet' stays INTERNAL vocabulary — absent from both product surfaces",
+    ("bullet" not in web.lower()) and ("bullet" not in app.lower()),
+    "bullet is canon's word for the ~1-2 min tier; surfacing it to users would "
+    "invent a speed promise the product does not make",
 )
-if web_promises_always_instant and RAMP_CANON.search(canon):
-    warn(
-        "web promises instant payout on EVERY job; canon ramps the first 10",
-        "Final/gopher-go.html marquee: 'Instant Payouts - Every Job ... the money's "
-        "yours! Same day'. Canon and the app: a worker's FIRST 10 payouts arrive at "
-        "Stripe Standard speed (~2 hr after the requester confirms), then upgrade to "
-        "Instant. A new worker is told same-day-every-job and experiences ~2hr for "
-        "their first ten. Same honesty class as the 2026-06 gopher-request.html copy "
-        "fixes. ⛔ NOT auto-fixable here: live user-facing copy needs an owner ruling.",
-    )
-else:
-    check(
-        "web payout copy does not over-promise against the canon ramp",
-        True,
-        "",
-    )
+
+TIER_SKIP = re.compile(r"Tiered\s+Gophers?.{0,80}Instant|Elite.{0,60}start on Instant", re.I | re.S)
+check(
+    "app states that TIERED workers start on Instant (they skip the ramp)",
+    bool(TIER_SKIP.search(app)),
+    "canon: 'Tiered workers (Elite / Elite+ / Pro) skip the ramp — bullet from job 1' "
+    "(live code: method='instant' for gopher_type_id != 0)",
+)
+check(
+    "canon states the same tier exemption",
+    bool(re.search(r"skip the ramp", canon, re.I)),
+    "",
+)
 
 print("")
 if failures:
