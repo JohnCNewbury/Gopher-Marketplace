@@ -1802,6 +1802,39 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   fired manually via `workflow_dispatch` + the stored token, went green, content-verified. Watch
   the next push: if it skips again, that is a pattern, not a blip.
 
+- **Connect had its OWN G40 preview chip, still live — wired and removed (2026-08-26, commit
+  `a6dc482`, deploy `973fc07`, live-verified both hosts).** Found by sweeping all four portals for
+  dev chrome *after* the Request fix — which is the check that should have run with it.
+  `gopher-connect.html` carried its own `__g40ReqMenu` + fixed `z-index:99999` launcher and its own
+  7-modal set with **zero real callers**, live on Pages and TigerTech the entire time. **The lesson
+  is the scoping, not the chip: the ticket said "Request modals" and I fixed one file for a defect
+  that was a PATTERN.** When a defect is a pattern (dev chrome, a duplicated helper, a copied
+  block), sweep every surface that could carry it before closing.
+  Wired to real flow points, mirroring Request: `phoneEntered` (step-2 Continue hard block);
+  `pickupSameAsDropoff` (presentation on the shared `addressesDiffer` gate — Connect **does**
+  consume `gopher-step-gates.js`, so `gate.id` is populated, verified at runtime not assumed);
+  `paymentNotAuthorized` + `expiredInterestedWorkers` as DEMO sim bars, mutually exclusive by
+  construction (decline needs `hired>0`, expiry needs `hired==0`).
+  **Deliberately NOT wired, each recorded in the block header:** `selectedGopherBusy` (already built
+  the same day as static `#busyGopherOverlay` — one copy, not two); `cantDeleteOnlyCard` (owner
+  ruling: worker concept, `gopher-go.html` owns it via `#lastCardOverlay`); and Connect-only
+  **`duplicateRequest`, which has no supporting infrastructure** (no `__findDuplicateActive` /
+  `dupWarnAck` as Request has) — wiring it means BUILDING duplicate detection, a scoped feature
+  rather than modal plumbing. **Open for an owner ruling.**
+  ⚠️ **Bug introduced and caught only by DRIVING it:** the rebuilt block dropped the `b2()`
+  secondary-button helper the payloads call, so every modal threw `b2 is not defined` **at call
+  time**. The library loaded fine and the page looked healthy — the symptom was "Continue does
+  nothing", not an error anyone would see. **A JS parse check cannot catch this; only calling each
+  modal can.** The block now smoke-tests all four on load.
+  Two environment notes: the **`localhost:8123` server had survived a permissions reset but lost
+  filesystem access** — still holding the port while 404-ing every request, so it looked like the
+  site was broken rather than the server; restarted from `Final/`. And the **browser pane's console
+  buffer persists across navigations**, so stale errors read as current — the proof that mattered
+  was each modal returning its title instead of throwing.
+  ✅ **The TigerTech auto-trigger anomaly flagged on the previous deploy did NOT recur** — this push
+  triggered `Deploy to Tiger Tech` on `push` and went green, as did another session's `cb4b00e`.
+  One-off blip, not a pattern; no longer worth watching.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
