@@ -2012,6 +2012,10 @@
   .dash-block-head .view-all { font-family:'Nunito'; font-size:12.5px; font-weight:700; color:var(--green-dark); cursor:pointer; background:none; border:none; }
   .dash-block-head .view-all:hover { color:var(--navy); }
 
+  .md-actions { display:flex; gap:8px; margin-left:auto; margin-right:12px; }
+  .md-act { font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--navy);
+    background:#fff; border:1.5px solid #d8dee9; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  .md-act:hover { border-color:var(--green); }
   .deal-row { display:flex; align-items:center; gap:14px; padding:13px 0; border-top:1px solid #f0f2f6; }
   .deal-row:first-of-type { border-top:none; }
   .deal-logo { width:46px; height:46px; border-radius:11px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:900; font-size:16px; color:#fff; }
@@ -6677,6 +6681,9 @@
     /* Real deals, when this is a real session. No-ops on a demo sign-in, so the
        showroom content still demonstrates the portal to a prospect. */
     if(typeof loadMyDeals === 'function') loadMyDeals();
+    /* Real profile, roster and payment panes — no-ops without a token, so the
+       demo showroom keeps its scripted content for prospects. */
+    if(typeof portalLiveEnter === 'function') portalLiveEnter();
     // Users & access: the signed-in account IS the Owner row (mirrors Connect).
     if(opts.name && typeof USERS !== 'undefined'){
       var ow = USERS.find(function(u){ return u.role === 'owner'; });
@@ -7730,9 +7737,36 @@ var PAY_BADGES = {
       var sub = st === 'rejected' && d.rejection_reason
         ? 'Not approved \u2014 ' + mdEsc(d.rejection_reason)
         : mdEsc([d.deal_code, cat].filter(Boolean).join(' \u00B7 '));
+      /* Self-service state rides into the sub-line (owner ruling 2026-08-25):
+         an edit in review, a rejected edit's reason, or the pause reason. */
+      if(st === 'live' && d.pending_edit){
+        sub += ' \u00B7 <span style="color:#E0A106;font-weight:700">Update in review \u2014 current version still live</span>';
+      } else if(st === 'live' && d.edit_rejection_reason){
+        sub += ' \u00B7 <span style="color:#c0392b">Update not approved \u2014 ' + mdEsc(d.edit_rejection_reason) + '</span>';
+      } else if(st === 'paused' && d.paused_by_owner){
+        sub += ' \u00B7 Paused by you' + (d.pause_reason ? ' \u2014 ' + mdEsc(d.pause_reason) : '');
+      }
+      /* Actions only on a REAL session: the buttons call authenticated APIs, so
+         on the demo showroom they would only produce alerts. paused_by_owner
+         gates Resume — a deal GOPHER took down must not offer a button that
+         can only 409 (the API refuses it; the UI should not tease it). */
+      var actions = '';
+      if(typeof _authToken !== 'undefined' && _authToken){
+        if(st === 'live'){
+          actions = '<div class="md-actions">'
+            + '<button type="button" class="md-act" data-md-edit="' + d.id + '">Edit</button>'
+            + '<button type="button" class="md-act" data-md-pause="' + d.id + '">Pause</button>'
+            + '</div>';
+        } else if(st === 'paused' && d.paused_by_owner){
+          actions = '<div class="md-actions">'
+            + '<button type="button" class="md-act" data-md-resume="' + d.id + '">Resume</button>'
+            + '</div>';
+        }
+      }
       row.innerHTML = logo
         + '<div class="deal-meta"><div class="dm-title">' + mdEsc(d.title || d.deal_text || 'Untitled deal') + '</div>'
         + '<div class="dm-sub">' + sub + '</div></div>'
+        + actions
         + '<span class="badge ' + (DEAL_STATUS_BADGE[st] || 'draft') + '">'
         + (st === 'live' ? '\u25CF ' : '') + mdEsc(DEAL_STATUS_LABEL[st] || d.status || '') + '</span>';
       host.appendChild(row);
@@ -7744,6 +7778,7 @@ var PAY_BADGES = {
     apiCall('/users/deals/mine', { method: 'GET' }).then(function(r){
       if(!r.ok) return;   // silent: a failed load must not blank a working page
       var deals = (r.body && r.body.deals) || [];
+      _liveDealsCache = deals;   // the modals prefill from this
       renderMyDeals(deals);
       /* Re-point the bid form at real deals. Replace the CONTENTS rather than
          the binding \u2014 other code holds a reference to this array. */
@@ -7759,6 +7794,292 @@ var PAY_BADGES = {
       if(typeof populateBidDeals === 'function') populateBidDeals();
     }).catch(function(){ /* keep the showroom */ });
   }
+  /* ═══════════════════════════════════════════════════════════════════════
+     PORTAL LIVE — the owner's real access (owner ruling 2026-08-25, all four:
+     pause with a reason · edit through review · real profile panes up to the
+     Stripe seam · Users & access on the membership service).
+
+     Everything here is gated on _authToken: the demo showroom keeps its
+     scripted behaviour for prospects, and a REAL session swaps in real data.
+     ⚠️ File traps (see memory): THREE different esc() functions exist in this
+     file — this scope's is mdEsc; closeModal() throws — every overlay here
+     manages its own hidden flag; and there is NO global [hidden] CSS rule, so
+     display is toggled explicitly where an element carries display styles.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var _liveDealsCache = [];
+  function _liveDeal(id){
+    for(var i=0;i<_liveDealsCache.length;i++){ if(String(_liveDealsCache[i].id)===String(id)) return _liveDealsCache[i]; }
+    return null;
+  }
+
+  /* One overlay factory: gc-modal skin, self-managed visibility. */
+  function _plOverlay(id, cardHtml){
+    var ov = document.getElementById(id);
+    if(ov){ ov.remove(); }
+    ov = document.createElement('div');
+    ov.className = 'gc-modal-overlay'; ov.id = id;
+    ov.innerHTML = '<div class="gc-modal">' + cardHtml + '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+    return ov;
+  }
+  function _plErr(el, msg){ el.textContent = msg || ''; el.hidden = !msg; el.style.display = msg ? 'block' : 'none'; }
+
+  /* ── PAUSE: reason required — it is the whole point ─────────────────────── */
+  function openPauseModal(deal){
+    var ov = _plOverlay('plPause',
+        '<h3 class="gc-modal-title">Pause this deal?</h3>'
+      + '<p class="gc-modal-sub">' + mdEsc(deal.title || deal.deal_code) + ' comes off the customer feed immediately. You can put it back anytime — no re-review needed.</p>'
+      + '<div class="iv-field"><label class="iv-label" for="plPauseWhy">Why are you pausing it?</label>'
+      + '<textarea id="plPauseWhy" class="iv-input" rows="3" maxlength="500" placeholder="e.g. Out of stock this week"></textarea></div>'
+      + '<div class="iv-error" id="plPauseErr" hidden></div>'
+      + '<button type="button" class="gc-modal-btn" id="plPauseGo">Pause deal</button>'
+      + '<button type="button" class="gc-modal-btn-text" id="plPauseNo">Keep it live</button>');
+    document.getElementById('plPauseNo').addEventListener('click', function(){ ov.remove(); });
+    document.getElementById('plPauseGo').addEventListener('click', function(){
+      var why = (document.getElementById('plPauseWhy').value || '').trim();
+      var err = document.getElementById('plPauseErr');
+      if(why.length < 3){ _plErr(err, 'Tell us why you are pausing this deal.'); return; }
+      var btn = this; btn.disabled = true; btn.textContent = 'Pausing…';
+      apiCall('/users/deals/' + deal.id + '/pause', { method:'PATCH', body:{ reason: why } })
+        .then(function(r){
+          if(!r.ok){ btn.disabled=false; btn.textContent='Pause deal'; _plErr(err, apiMessage(r)); return; }
+          ov.remove(); loadMyDeals();
+        });
+    });
+  }
+
+  /* ── RESUME ─────────────────────────────────────────────────────────────── */
+  function resumeDeal(deal){
+    apiCall('/users/deals/' + deal.id + '/resume', { method:'PATCH', body:{} })
+      .then(function(r){
+        if(!r.ok){ alert(apiMessage(r)); return; }
+        loadMyDeals();
+      });
+  }
+
+  /* ── EDIT: same fields intake validates; live version keeps serving ─────── */
+  function openEditModal(deal){
+    var isDlp = deal.track === 'dlp';
+    var kw = Array.isArray(deal.keywords) ? deal.keywords.join(', ') : '';
+    var body = ''
+      + '<h3 class="gc-modal-title">Edit ' + mdEsc(deal.title || deal.deal_code) + '</h3>'
+      + '<p class="gc-modal-sub">Changes go to the Deals team for review. <b>Your current deal stays live and unchanged</b> until they approve.</p>';
+    if(isDlp){
+      body += '<div class="iv-field"><label class="iv-label">The deal</label><textarea id="plEdDeal" class="iv-input" rows="3" maxlength="500">' + mdEsc(deal.deal_text || '') + '</textarea></div>'
+        + '<div class="iv-field"><label class="iv-label">You earn ($)</label><input type="number" id="plEdEarn" class="iv-input" min="1" step="1" value="' + (deal.earn_amount ? Math.round(deal.earn_amount/100) : '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Your normal rate ($)</label><input type="number" id="plEdNormal" class="iv-input" min="1" step="1" value="' + (deal.normal_price ? Math.round(deal.normal_price/100) : '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Reach (miles, 1–50)</label><input type="number" id="plEdReach" class="iv-input" min="1" max="50" value="' + (deal.reach_miles || 20) + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Keywords (up to 3, comma-separated)</label><input type="text" id="plEdKw" class="iv-input" value="' + mdEsc(kw) + '"></div>';
+    } else {
+      body += '<div class="iv-field"><label class="iv-label">Business name</label><input type="text" id="plEdBiz" class="iv-input" value="' + mdEsc(deal.title || '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">The deal</label><textarea id="plEdDeal" class="iv-input" rows="3" maxlength="500">' + mdEsc(deal.deal_text || '') + '</textarea></div>'
+        + '<div class="iv-field"><label class="iv-label">Promo code (optional)</label><input type="text" id="plEdPromo" class="iv-input" value="' + mdEsc(deal.promo_code || '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Business address</label><input type="text" id="plEdAddr" class="iv-input" value="' + mdEsc(deal.business_address || '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Tagline</label><input type="text" id="plEdTag" class="iv-input" value="' + mdEsc(deal.tagline || '') + '"></div>'
+        + '<div class="iv-field"><label class="iv-label">Keywords (up to 3, comma-separated)</label><input type="text" id="plEdKw" class="iv-input" value="' + mdEsc(kw) + '"></div>';
+    }
+    body += '<div class="iv-error" id="plEdErr" hidden></div>'
+      + '<button type="button" class="gc-modal-btn" id="plEdGo">Submit for review</button>'
+      + '<button type="button" class="gc-modal-btn-text" id="plEdNo">Cancel</button>';
+    var ov = _plOverlay('plEdit', body);
+    document.getElementById('plEdNo').addEventListener('click', function(){ ov.remove(); });
+    document.getElementById('plEdGo').addEventListener('click', function(){
+      var err = document.getElementById('plEdErr');
+      var payload = {};
+      var kws = (document.getElementById('plEdKw').value || '').split(',')
+        .map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean);
+      if(isDlp){
+        payload.deal = (document.getElementById('plEdDeal').value || '').trim();
+        payload.earn_amount = Math.round(Number(document.getElementById('plEdEarn').value || 0) * 100);
+        payload.normal_price = Math.round(Number(document.getElementById('plEdNormal').value || 0) * 100);
+        payload.reach_miles = Number(document.getElementById('plEdReach').value || 0);
+        payload.keywords = kws;
+      } else {
+        payload.business_name = (document.getElementById('plEdBiz').value || '').trim();
+        payload.deal = (document.getElementById('plEdDeal').value || '').trim();
+        payload.promo = (document.getElementById('plEdPromo').value || '').trim();
+        payload.address = (document.getElementById('plEdAddr').value || '').trim();
+        payload.tagline = (document.getElementById('plEdTag').value || '').trim();
+        payload.category = deal.category;   // category changes are a resubmit, not an edit
+        payload.keywords = kws;
+      }
+      var btn = this; btn.disabled = true; btn.textContent = 'Submitting…';
+      apiCall('/users/deals/' + deal.id, { method:'PATCH', body: payload })
+        .then(function(r){
+          if(!r.ok){
+            btn.disabled = false; btn.textContent = 'Submit for review';
+            var msg = (r.body && r.body.errors && r.body.errors.join(' ')) || apiMessage(r);
+            _plErr(err, msg); return;
+          }
+          ov.remove(); loadMyDeals();
+        });
+    });
+  }
+
+  /* Action clicks, delegated on the pane. */
+  (function(){
+    var pane = document.querySelector('[data-pane="mydeals"]');
+    if(!pane) return;
+    pane.addEventListener('click', function(e){
+      var t = e.target.closest('[data-md-pause],[data-md-resume],[data-md-edit]');
+      if(!t) return;
+      var d;
+      if(t.hasAttribute('data-md-pause')){ d=_liveDeal(t.getAttribute('data-md-pause')); if(d) openPauseModal(d); }
+      else if(t.hasAttribute('data-md-resume')){ d=_liveDeal(t.getAttribute('data-md-resume')); if(d) resumeDeal(d); }
+      else { d=_liveDeal(t.getAttribute('data-md-edit')); if(d) openEditModal(d); }
+    });
+  })();
+
+  /* ── PROFILE PANES: real reads, saves through the Go page's proven seam ─── */
+  function hydrateProfile(){
+    if(!_authToken || !_apiUserId) return;
+    apiCall('/users/profile/' + _apiUserId, { method:'GET' }).then(function(r){
+      if(!r.ok) return;   // demo content stands; a failed read must not blank a pane
+      var d = (r.body && (r.body.data || r.body.user)) || r.body || {};
+      var set = function(id, v){ var el = document.getElementById(id); if(el && v != null && v !== '') el.textContent = v; };
+      var full = ((d.first_name || '') + ' ' + (d.last_name || '')).trim();
+      set('ph-name', d.first_name || full);
+      set('pi-fullname', full);
+      set('pi-email', d.email);
+      set('pi-phone', d.telephone);
+      set('pi-dob', d.date_of_birth);
+      set('pi-accountid', d.id != null ? String(d.id) : null);
+      var addr = (d.addresses && d.addresses[0]) || null;
+      if(addr) set('pi-address', [addr.line1, addr.city, addr.state, addr.zip_code].filter(Boolean).join(', '));
+      /* Rows with no real source say so, rather than showing another person's
+         demo data under a real account. */
+      ['pi-source','pi-referredby','pi-lastsignin'].forEach(function(id){
+        var el = document.getElementById(id); if(el) el.textContent = '—';
+      });
+      set('ph-since-label', d.created_at ? 'User since ' + new Date(d.created_at).getFullYear() : null);
+      var av = document.getElementById('ph-avatar-img');
+      if(av){ if(d.profile_photo){ av.src = d.profile_photo; } else { av.removeAttribute('src'); } }
+    });
+    /* Payment: the honest state. Billing exists when the placement auction
+       does; showing a real merchant fake cards would be worse than nothing. */
+    var pay = document.getElementById('payMethodsList');
+    if(pay){
+      pay.innerHTML = '<div class="deal-row"><div class="deal-meta">'
+        + '<div class="dm-title">No payment method on file yet</div>'
+        + '<div class="dm-sub">Billing starts with featured-placement bidding at launch. '
+        + 'Card entry connects to Stripe here — nothing is charged before you add one and win a bid.</div>'
+        + '</div></div>';
+      var addBtn = document.getElementById('addPayBtn');
+      if(addBtn){ addBtn.onclick = function(){ alert('Card entry opens at launch — this is where the Stripe form plugs in.'); }; }
+    }
+  }
+
+  /* ── USERS & ACCESS: the demo array becomes the real roster ─────────────── */
+  function hydrateUsers(){
+    if(!_authToken) return;
+    apiCall('/users/org/members', { method:'GET' }).then(function(r){
+      if(!r.ok) return;
+      var b = r.body || {};
+      usersViewAs = b.caller_role || 'owner';
+      USERS.length = 0;
+      (b.members || []).forEach(function(m){
+        var nm = m.name || '';
+        USERS.push({
+          _id: m.id,
+          initials: nm ? nm.split(' ').map(function(w){ return w.charAt(0); }).join('').slice(0,2).toUpperCase() : '?',
+          name: nm, namePending: !nm,
+          email: m.contact || '',
+          role: m.role, roleLabel: m.role === 'owner' ? 'Owner' : m.role === 'admin' ? 'Admin' : 'User',
+          status: m.status, statusLabel: m.status === 'active' ? 'Active' : 'Pending',
+          lastActive: m.status === 'pending'
+            ? 'Invite sent' + (m.invite_channel ? ' by ' + (m.invite_channel === 'sms' ? 'text' : 'email') : '')
+            : (m.accepted_at ? 'Joined ' + new Date(m.accepted_at).toLocaleDateString() : '—')
+        });
+      });
+      renderUsers();
+    });
+  }
+
+  /* Real invite send: capture-phase, so the demo handler (which only appends a
+     local row) never runs on a real session. */
+  (function(){
+    var send = document.getElementById('ivSend');
+    if(!send) return;
+    send.addEventListener('click', function(e){
+      if(!_authToken) return;                      // demo keeps its script
+      e.stopImmediatePropagation();
+      var isSms = !document.getElementById('ivPhoneField').hidden;
+      var contact = isSms ? (document.getElementById('ivPhone').value || '')
+                          : (document.getElementById('ivEmail').value || '');
+      var roleEl = document.querySelector('input[name="ivRole"]:checked');
+      var err = document.getElementById('ivError');
+      apiCall('/users/org/invites', { method:'POST', body:{
+        contact: contact, channel: isSms ? 'sms' : 'email',
+        role: roleEl ? roleEl.value : 'user'
+      }}).then(function(r){
+        if(!r.ok){ _plErr(err, apiMessage(r)); return; }
+        _plErr(err, '');
+        document.getElementById('inviteFormView').hidden = true;
+        var done = document.getElementById('inviteDoneView'); done.hidden = false;
+        document.getElementById('ivDoneMsg').textContent =
+          'Invite sent to ' + (r.body.invite ? r.body.invite.contact : contact)
+          + (r.body.delivered && r.body.delivered.sent ? '.' : ' — saved, but delivery failed; use Resend.');
+        hydrateUsers();
+      });
+    }, true);
+  })();
+
+  /* Real manage: capture-phase on the roster; a compact real-actions sheet
+     instead of the demo's in-memory manage modal. */
+  (function(){
+    var rows = document.getElementById('usersTableRows');
+    if(!rows) return;
+    rows.addEventListener('click', function(e){
+      if(!_authToken) return;
+      var btn = e.target.closest('[data-manage-user]');
+      if(!btn) return;
+      var u = null, key = btn.getAttribute('data-manage-user');
+      for(var i=0;i<USERS.length;i++){ if(USERS[i].email === key){ u = USERS[i]; break; } }
+      /* ⚠️ Decide BEFORE stopping propagation. The Owner row has no membership
+         id (_id null) — its Manage opens the demo's ownership-transfer modal,
+         which must keep working on a real session. Swallowing the event first
+         and returning after would leave that button doing nothing at all. */
+      if(!u || u._id == null) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      var pending = u.status === 'pending';
+      var ov = _plOverlay('plManage',
+          '<h3 class="gc-modal-title">' + mdEsc(u.name || u.email) + '</h3>'
+        + '<p class="gc-modal-sub">' + (pending ? 'Invite pending — the link expires 7 days after it was sent.' : (u.roleLabel + ' · Active')) + '</p>'
+        + '<div class="iv-error" id="plMgErr" hidden></div>'
+        + (pending
+            ? '<button type="button" class="gc-modal-btn" id="plMgResend">Resend invite</button>'
+              + '<button type="button" class="gc-modal-btn-text" id="plMgCancelInv">Cancel invite</button>'
+            : '<button type="button" class="gc-modal-btn" id="plMgRole">Make ' + (u.role === 'admin' ? 'User' : 'Admin') + '</button>'
+              + '<button type="button" class="gc-modal-btn-text" id="plMgRemove">Remove from business</button>')
+        + '<button type="button" class="gc-modal-btn-text" id="plMgClose">Close</button>');
+      var err = function(){ return document.getElementById('plMgErr'); };
+      var done = function(r){ if(!r.ok){ _plErr(err(), apiMessage(r)); return; } ov.remove(); hydrateUsers(); };
+      document.getElementById('plMgClose').addEventListener('click', function(){ ov.remove(); });
+      if(pending){
+        document.getElementById('plMgResend').addEventListener('click', function(){
+          apiCall('/users/org/invites/' + u._id + '/resend', { method:'POST', body:{} }).then(done);
+        });
+        document.getElementById('plMgCancelInv').addEventListener('click', function(){
+          apiCall('/users/org/invites/' + u._id, { method:'DELETE', body:{} }).then(done);
+        });
+      } else {
+        document.getElementById('plMgRole').addEventListener('click', function(){
+          apiCall('/users/org/members/' + u._id + '/role', { method:'PATCH',
+            body:{ role: u.role === 'admin' ? 'user' : 'admin' } }).then(done);
+        });
+        document.getElementById('plMgRemove').addEventListener('click', function(){
+          apiCall('/users/org/members/' + u._id, { method:'DELETE', body:{} }).then(done);
+        });
+      }
+    }, true);
+  })();
+
+  function portalLiveEnter(){
+    hydrateProfile();
+    hydrateUsers();
+  }
+
   function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
   function dealById(id){ for(var i=0;i<MY_DEALS.length;i++){ if(MY_DEALS[i].id===id) return MY_DEALS[i]; } return null; }
 
