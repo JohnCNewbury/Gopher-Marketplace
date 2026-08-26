@@ -86,7 +86,35 @@ that **hands it to the client**. There was no server-side enforcement of anythin
 
 ## What is built, and what is not
 
-**Server half — `gopher-backend-api!393`, branch `fix/offer-must-be-nonzero`.**
+### ⛔ SHIP ORDER — owner ruling 2026-08-26. It REVERSED my recommendation, and it was right.
+
+**Do NOT ship the server guard on its own.** Owner, 2026-08-26:
+
+> *"Don't ship the backend change here and leave it in John's Ticket as a todo with notes.
+> Because a Gopher can counter this, leaving it is better than killing the broadcast."*
+
+**The mechanism.** A worker can **counter-offer** a $0 job. The live cap is
+`max($20, 1.5 × offer)` — at an offer of $0 the `1.5 ×` term is zero, so **the $20 floor is what
+binds**, and the job is still rescuable at a real price. A server rejection would replace a
+*recoverable* order with a **silent dead end**, because the shipped app shows the requester
+nothing on a create error. **Killing the broadcast is worse than letting a counterable order
+through.**
+
+**The data agrees with the ruling, and it corrects the emphasis I gave it.** The 71 delivered
+$0 jobs are almost entirely **historical**: since 2026-01-01 there are 104 zero-offer orders and
+only **2** were delivered. I led with the all-time figure, which made a low-current-rate harm
+read as an active one. The acute case for shipping immediately was weaker than I presented.
+
+**So: client gate first, or both in the same release.** The server guard merges only once the app
+can stop the user in the form — or at minimum can display a create error.
+
+---
+
+**Server half — BUILT, PUSHED, NOT MERGED.** Branch `fix/offer-must-be-nonzero` (kept, not
+deleted). **`gopher-backend-api!393` was raised and then CLOSED unmerged** under the ruling above;
+re-raise it when the client half is ready.
+
+
 One definition in `helpers/offer_floor.js`, imported by both `create` and `update` (two copies of
 a money rule drift). Floor is `MIN_GOPHER_OFFER_CENTS = 1` — strictly greater than zero, the
 owner's rule exactly and nothing more.
@@ -98,16 +126,18 @@ owner's rule exactly and nothing more.
 - **Merge hand-off:** target `production` · squash **no** · delete source **no**. Merging
   **auto-deploys**.
 
-**Client half — `G40-415`, John's Tickets (sprint 677). NOT BUILT.** Store-gated.
+**Client half — NOT BUILT.** Both halves now live on **`G40-415`**, John's Tickets (sprint 677), as one todo — the client gate is the part that unblocks the server guard.
 
-### ⚠️ The accepted cost, stated plainly
+### Why the silent dead end decided it
 
-Until the client half ships, a requester who leaves the offer at 0 gets a **silent dead end**:
-`requestOrder.js:314` captures create errors to Sentry and shows the user **nothing**.
+`requestOrder.js:314` captures create errors to Sentry and shows the user **nothing**. That single
+fact is what makes a server-only guard net-negative here: the requester cannot post, cannot see
+why, and cannot self-correct — whereas today's $0 order at least reaches workers who can counter
+it up to $20.
 
-The owner's call on 2026-08-26 was to ship the server half anyway, because the harm reaches
-workers and **the Request app last shipped 2026-01-28** — waiting for a release could mean
-months, not weeks.
+⚠️ **Do not read this as "the guard is wrong."** The guard is built, tested and correct. Only its
+*sequencing* was wrong. Anyone tempted to merge `fix/offer-must-be-nonzero` on its own should
+read the ruling above first.
 
 **This is NOT the `PAYOUT_TOKEN_REQUIRED_FROM_VERSION` shape** (see
 `server-guard-must-be-appversion-gated`), and no appversion gate is needed: there, the shipped
