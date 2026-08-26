@@ -8158,13 +8158,10 @@
   .deal-logo-svg { height:118px; display:flex; align-items:center; }
   .deal-logo-svg svg { height:118px; width:auto; display:block; }
   .deal-logo-img2 { max-height:110px; max-width:78%; object-fit:contain; }
-  .deal-logo-tile { width:104px; height:104px; border-radius:24px; display:flex; align-items:center; justify-content:center;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:34px; color:#fff;
-    background:linear-gradient(135deg, var(--lc1,#1CB061), var(--lc2,#002461)); }
-  .deal-logo-tile[data-cat="restaurants"] { --lc1:#E8662A; --lc2:#B23F12; }
-  .deal-logo-tile[data-cat="favorites"]   { --lc1:#33D975; --lc2:#1CB061; }
-  .deal-logo-tile[data-cat="retail"] { --lc1:#3B82C4; --lc2:#002461; }
-  .deal-logo-tile[data-cat="age"]         { --lc1:#7A4DD0; --lc2:#3C2470; }
+  /* Merchant no-logo fallback (owner ruling 2026-08-26, option A): the Gopher
+     mascot renders free-floating via the SAME classes a logo uses
+     (.deal-logo-img2 / .dd-logo-img / the dh container img rules) -- no tile,
+     no category tint, never initials. .deal-mascot-fb is a marker class only. */
   .deal-tagline { font-size:13px; color:var(--muted); font-style:italic; line-height:1.35; }
 
   /* Service card: profile photo, tier, provider, service, SET PRICE, View Details */
@@ -8239,9 +8236,6 @@
     display:flex; align-items:center; justify-content:center; margin-bottom:16px; box-shadow:0 10px 24px rgba(0,36,97,.12); }
   .dh-feat-logo img { width:100%; height:100%; object-fit:contain; padding:16px; box-sizing:border-box; }
   .dh-feat-logo img.dh-bleed, .dh-cat-logo img.dh-bleed { object-fit:cover; padding:0; }
-  .dh-mono { width:100%; height:100%; display:flex; align-items:center; justify-content:center;
-    font-family:'Nunito',sans-serif; font-weight:900; color:#fff; background:linear-gradient(135deg,var(--lc1,#1CB061),var(--lc2,#002461)); }
-  .dh-feat-logo .dh-mono { font-size:50px; }
   .dh-feat-badge { display:inline-flex; align-items:center; gap:7px; font-family:'Nunito',sans-serif; font-weight:800;
     font-size:11.5px; letter-spacing:.08em; color:#8A6D1E; border:1px solid #E6CC78; border-radius:999px; padding:6px 14px;
     background:linear-gradient(180deg,#FFF8E4,#FBEEC2); box-shadow:0 2px 6px rgba(201,150,43,.18); }
@@ -8270,11 +8264,6 @@
   .dh-cat-logo { width:110px; height:110px; border-radius:24px; margin:14px auto 12px; overflow:hidden; background:#f3ede1;
     display:flex; align-items:center; justify-content:center; }
   .dh-cat-logo img { width:100%; height:100%; object-fit:contain; padding:10px; box-sizing:border-box; }
-  .dh-cat-logo .dh-mono { font-size:36px; }
-  .dh-cat-logo .dh-mono[data-cat="restaurants"] { --lc1:#E8662A; --lc2:#B23F12; }
-  .dh-cat-logo .dh-mono[data-cat="favorites"]   { --lc1:#33D975; --lc2:#1CB061; }
-  .dh-cat-logo .dh-mono[data-cat="retail"] { --lc1:#3B82C4; --lc2:#002461; }
-  .dh-cat-logo .dh-mono[data-cat="age"]         { --lc1:#7A4DD0; --lc2:#3C2470; }
   .dh-cat-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:17px; color:var(--navy); line-height:1.22; }
   .dh-cat-win { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); margin-top:4px; }
   .dh-cat-offer { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--green-dark); line-height:1.3; margin-top:8px; }
@@ -24599,12 +24588,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const cat = dealCategoryKey(m.id);
       const logoSrc = (typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id]) || null;
       const logo = logoSrc
-        ? `<img class="deal-logo-img2" src="${logoSrc}" alt="">`
+        ? `<img class="deal-logo-img2" src="${logoSrc}" alt="" onerror="this.onerror=null;this.src='assets/img/gopher-character-full.svg'">`
         : (m.logoSvg
             ? `<div class="deal-logo-svg">${m.logoSvg}</div>`
             : (m.logo
-                ? `<img class="deal-logo-img2" src="${esc(m.logo)}" alt="">`
-                : `<div class="deal-logo-tile" data-cat="${esc(cat)}">${esc(dealsInitials(m.name))}</div>`));
+                ? `<img class="deal-logo-img2" src="${esc(m.logo)}" alt="" onerror="this.onerror=null;this.src='assets/img/gopher-character-full.svg'">`
+                : `<img class="deal-logo-img2 deal-mascot-fb" src="assets/img/gopher-character-full.svg" alt="">`));
       const tagline = m.portalTag || m.sub || '';
       const meta = m.distance ? `<div class="deal-meta"><span class="deal-dist">${esc(m.distance)}</span></div>` : '';
       const search = `${m.name} ${m.sub||''} ${m.offer||''}`.toLowerCase();
@@ -24694,10 +24683,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const src = m ? serviceProviderPhoto(m) : null;
       if(src){
         const bleed = DEALS_FULLBLEED_LOGOS.has(m.id) ? ' class="dh-bleed"' : '';
-        return '<img' + bleed + ' src="' + esc(src) + '" alt="">';
+        return '<img' + bleed + ' src="' + esc(src) + '" alt="" onerror="this.onerror=null;this.classList.remove(\'dh-bleed\');this.src=\'assets/img/gopher-character-full.svg\'">';
       }
-      const initials = dealsInitials(m ? m.name : (cat || ''));
-      return '<span class="dh-mono" data-cat="' + esc(cat || '') + '">' + esc(initials) + '</span>';
+      return '<img class="deal-mascot-fb" src="assets/img/gopher-character-full.svg" alt="">';
     };
 
     const fm = findDealMerchant(DEALS_HOME.featured);
@@ -25110,12 +25098,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
          Order matters: the curated table still wins for demo cards so the
          showroom is unchanged, and m.logo catches everything real. */
       +     ((typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id])
-            ? '<div class="dd-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
+            ? '<div class="dd-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt="" onerror="this.onerror=null;this.src=\'assets/img/gopher-character-full.svg\'"></div>'
             : (m.logoSvg
               ? '<div class="dd-logo dd-logo-svg">' + m.logoSvg + '</div>'
               : (m.logo
-                ? '<div class="dd-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt=""></div>'
-                : '<div class="dd-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>')))
+                ? '<div class="dd-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt="" onerror="this.onerror=null;this.src=\'assets/img/gopher-character-full.svg\'"></div>'
+                : '<div class="dd-logo dd-logo-haslogo"><img class="dd-logo-img deal-mascot-fb" src="assets/img/gopher-character-full.svg" alt=""></div>')))
       +     '<div class="dd-head-text"><h2 class="dd-title">' + dealEsc(m.name) + '</h2>'
       +       '<div class="dd-sub">' + dealEsc(m.sub || '') + (m.distance ? ' \u00B7 ' + dealEsc(m.distance) : '') + '</div></div>'
       +   '</div>'
@@ -25123,10 +25111,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       +   '<div class="dd-portal" id="ddPortal">'
       +     '<div class="dd-portal-body" id="ddPortalBody">'
       +       ((typeof DEAL_LOGOS !== 'undefined' && DEAL_LOGOS[m.id])
-            ? '<div class="dd-portal-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
+            ? '<div class="dd-portal-logo dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt="" onerror="this.onerror=null;this.src=\'assets/img/gopher-character-full.svg\'"></div>'
             : (m.logo
-              ? '<div class="dd-portal-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt=""></div>'
-              : '<div class="dd-portal-logo" data-cat="' + dealEsc(cat) + '">' + dealEsc(dealsInitials(m.name)) + '</div>'))
+              ? '<div class="dd-portal-logo dd-logo-haslogo"><img class="dd-logo-img" src="' + dealEsc(m.logo) + '" alt="" onerror="this.onerror=null;this.src=\'assets/img/gopher-character-full.svg\'"></div>'
+              : '<div class="dd-portal-logo dd-logo-haslogo"><img class="dd-logo-img deal-mascot-fb" src="assets/img/gopher-character-full.svg" alt=""></div>'))
       +       '<div class="dd-portal-welcome">Welcome to ' + dealEsc(m.name) + '</div>'
       +       '<div class="dd-portal-tag">' + dealEsc(m.portalTag || '') + '</div>'
       +       (m.promo ? '<div class="dd-portal-promo">Use code <b>' + dealEsc(m.promo) + '</b> for your deal</div>' : '')
