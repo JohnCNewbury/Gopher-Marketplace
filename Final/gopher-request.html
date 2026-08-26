@@ -5804,6 +5804,9 @@
     text-transform:lowercase;
   }
   .tier-lockup { height:18px; width:auto; display:inline-block; vertical-align:middle; }
+  .tier-lockup.tl-card { height:22px; margin:0 auto; display:block; }
+  .tier-lockup.tl-modal { height:30px; }
+  .tier-lockup.tl-inline { height:14px; }
   .tier-lockup-cred { margin-left:4px; }
   .profile-stat-bubble .tier-lockup { height:15px; }
   .gopher-badge .gb-plus {
@@ -8177,8 +8180,6 @@
      onerror also flips to this, so a broken image degrades to the mascot. */
   .svc-deal-pic.svc-pic-white { background:#fff; }
   .deal-pic img.deal-pic-mascot, .svc-deal-pic img.deal-pic-mascot { position:static; width:62%; height:62%; object-fit:contain; }
-  .deal-tier { font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:#fff; background:var(--navy);
-    border-radius:999px; padding:3px 11px; letter-spacing:.3px; }
   .deal-pro-name { font-size:13px; color:var(--muted); line-height:1.2; }
   .deal-price { font-family:'Nunito',sans-serif; font-weight:800; font-size:23px; color:var(--green); line-height:1; margin:2px 0 2px; }
   .deal-view-btn { margin-top:8px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy);
@@ -8307,8 +8308,6 @@
   .dd-sub { font-size:13px; color:var(--muted); margin-top:2px; }
   .deal-detail-service { text-align:center; }
   .dd-provider { font-size:13.5px; color:var(--text); margin:0 0 10px; }
-  .dd-tier { font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:#fff; background:var(--navy);
-    border-radius:999px; padding:3px 9px; letter-spacing:.3px; }
   .dd-offer-strong { font-family:'Nunito',sans-serif; font-weight:800; font-size:17px; color:var(--green-dark); margin:0 0 12px; }
   .dd-quote { font-style:italic; color:var(--muted); font-size:13.5px; margin:0 0 18px; }
   .dd-stats { display:flex; justify-content:center; gap:26px; margin:0 0 22px; }
@@ -8449,8 +8448,7 @@
     box-shadow:0 6px 16px rgba(0,36,97,.18); }
   .svc-deal-pic img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .svc-deal-pic img.svc-pic-logo { object-fit:contain; background:#fff; padding:16px; box-sizing:border-box; }
-  .svc-deal-tier { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:#fff; background:var(--navy);
-    border-radius:999px; padding:6px 14px; min-width:0; text-align:center; justify-self:start; }
+  .svc-deal-tier { min-width:0; text-align:center; justify-self:start; }
   .svc-deal-history-row { text-align:center; margin:0 0 22px; }
   .svc-deal-history { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy);
     background:#fff; border:1.5px solid var(--navy); border-radius:10px; padding:9px 22px; cursor:pointer;
@@ -14162,7 +14160,7 @@
         <div class="worker-avatar">${prov.pic ? `<img src="${_esc(prov.pic)}" alt="" style="${prov.picIsLogo ? 'object-fit:contain;background:#fff;padding:6px;box-sizing:border-box;' : 'object-fit:cover;'}">` : _esc((prov.name || '?').slice(0,1))}</div>
         <div class="worker-info">
           <div class="worker-name-row"><span class="worker-name">${_esc(prov.name)}</span></div>
-          <div class="worker-stats">${prov.tier ? `<span>${_esc(prov.tier)}</span>` : ''}${prov.role ? `<span>${_esc(prov.role)}</span>` : ''}<span>Accepted your deal</span></div>
+          <div class="worker-stats">${window.__tierLockup(prov.tier, 'tl-inline')}${prov.role ? `<span>${_esc(prov.role)}</span>` : ''}<span>Accepted your deal</span></div>
         </div>
         <div class="worker-cta-group" style="flex-direction:row;align-items:center;gap:8px;">
           <span class="worker-cta primary" style="cursor:default;">✓ Connected</span>
@@ -21416,7 +21414,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(k === 'pro') return 'Pro';
     return null;
   };
-  window.__tierBadge = window.__tierBadge || function(t, proCred, styleAttr){
+  /* ⛔ A TIER BADGE IS THE REAL LOCKUP OR NOTHING — never typed text (owner,
+     2026-08-25, re-affirmed 2026-08-26 on the deal cards: "Elite Real Logos
+     MUST replace wordmarks. That violates our style guidelines"). Uses the same
+     __TIER_LOGOS/__tierName the profile badges already use, so every surface
+     draws from one map. A tier with no lockup (Standard, unknown) renders
+     NOTHING here — inventing a Standard mark is the same violation mirrored. */
+  window.__tierLockup = function(tier, cls){
+    var name = window.__tierName ? window.__tierName(tier) : null;
+    var logos = window.__TIER_LOGOS || {};
+    if(!name || !logos[name]) return '';
+    return '<img class="tier-lockup ' + (cls || '') + '" src="' + logos[name] + '" alt="Gopher ' + name + '">';
+  };
+  window.__tierBadge =  window.__tierBadge || function(t, proCred, styleAttr){
     var name = window.__tierName(t);
     var logos = window.__TIER_LOGOS || {};
     var st = styleAttr ? (' style="' + styleAttr + '"') : '';
@@ -24664,7 +24674,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const search = `${m.name} ${m.pro||''} ${m.offer||''}`.toLowerCase();
       return `<button type="button" class="deal-card deal-card-service" data-merchant="${esc(m.id)}" data-search="${esc(search)}">
         ${pic}
-        ${m.tier ? `<span class="deal-tier">${esc(m.tier)}</span>` : ''}
+        ${window.__tierLockup(m.tier, 'tl-card')}
         <div class="deal-pro-name">${esc(m.pro||'')}</div>
         <div class="deal-name">${esc(m.name)}</div>
         ${price}
@@ -25118,8 +25128,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        span renders as a small navy blob (the #progressCat bug), and
        gopher-request.html carries no global [hidden] rule to lean on. */
     var _tierEl = document.getElementById('svcDealTier');
-    _tierEl.textContent = m.tier || '';
-    _tierEl.style.display = m.tier ? '' : 'none';
+    /* The real lockup, not the navy text chip (style ruling above). */
+    var _tierImg = window.__tierLockup(m.tier, 'tl-modal');
+    _tierEl.innerHTML = _tierImg;
+    _tierEl.style.display = _tierImg ? '' : 'none';
     document.getElementById('svcDealText').textContent = m.dealSpecifics
       || (m.offer + (m.normalRate ? ('  (normally $' + m.normalRate + ')') : ''));
     document.getElementById('svcDealOverlay').hidden = false;
@@ -25158,7 +25170,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ? '<div class="dd-logo dd-logo-lg dd-logo-img"><img src="' + DEAL_LOGOS[m.id] + '" alt=""></div>'
           : '<div class="dd-logo dd-logo-lg" data-cat="localpro">' + dealEsc(dealsInitials(m.name)) + '</div>')
       +   '<h2 class="dd-title">' + dealEsc(m.name) + ' Deal</h2>'
-      +   '<div class="dd-provider">' + (m.tier ? '<span class="dd-tier">' + dealEsc(m.tier) + '</span> ' : '') + dealEsc(m.pro || '') + '</div>'
+      +   '<div class="dd-provider">' + window.__tierLockup(m.tier, 'tl-inline') + ' ' + dealEsc(m.pro || '') + '</div>'
       +   (m.price != null ? '<div class="dd-price">$' + dealEsc(m.price) + '<span class="dd-price-lbl"> set price</span></div>' : '')
       +   '<div class="dd-offer-strong">' + dealEsc(m.offer) + '</div>'
       +   (m.testimonial ? '<p class="dd-quote">\u201C' + dealEsc(m.testimonial) + '\u201D</p>' : '')
