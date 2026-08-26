@@ -3352,6 +3352,16 @@ state.category='delivery';
      question still on screen a moment earlier. The comment claimed this could not
      happen while the code did it. Arm on Resume, on Start fresh, and immediately
      when there is nothing to protect -- never merely because bytes arrived. */
+  /* ⚠️ IF YOU ARE DEBUGGING AND "NOTHING IS PERSISTING", CHECK FOR AN OPEN BANNER
+     BEFORE ASSUMING THIS IS BROKEN. While an offer is pending, NO WRITE IS THE
+     CORRECT STATE -- that is the whole point of arming on the answer. App
+     Prototypes hit this on the verification re-run and nearly filed it as a
+     regression; the absence of a write is now expected, which makes it very easy
+     to misread as a defect. Two further probe traps from that same re-run, worth
+     the two lines: the store's write is debounced, so a check at ~900ms can land
+     just before it (dispatch `pagehide` to force a flush); and this band is
+     painted with a background-IMAGE gradient, so `backgroundColor` reads
+     rgba(0,0,0,0) even though it is plainly blue. */
   function armAfterAnswer(){ armed = true; }
 
   function offerResume(found){
