@@ -1956,9 +1956,17 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   onerror handler, `classList.add` runs BEFORE `this.remove()` — closest()/parentElement stop
   resolving on a detached node. Dead `.deal-pic-fallback`/`.svc-pic-fb` CSS removed so the
   ruled-out pattern can't be quietly reused. `serviceDetailHTML` still carries an initials
-  fallback but has ZERO callers on both surfaces — dead code, left alone. **Merchant tiles
-  (`deal-logo-tile`/`dh-mono`/`dd-logo` initials on category tints) are NOT covered by this
-  ruling** — open question for the owner, side-by-side first. Ruling path worth keeping: the
+  fallback but has ZERO callers on both surfaces — dead code, left alone. **Merchant tiles: CLOSED 2026-08-26 (owner ruled option A of the side-by-side)** — commit
+  `a61a7b8`, deploy `f23c2b0`, live-verified both hosts: a no-logo merchant shows the mascot
+  free-floating via the SAME classes a logo uses (no tile, no category tint); every merchant
+  logo `<img>` also gained in-place onerror→mascot degradation; `.deal-logo-tile` + `.dh-mono`
+  CSS deleted with their producers. Portal admin rows in `gopher-deals.html` deliberately out
+  of scope ("no logo" there is information to the listing's own merchant). Deploy note: the
+  Deals session had ALREADY shipped `b783964` (`26ca21a`), so the pin-at-live carried their
+  work forward untouched — and a Pages CDN edge briefly served the pre-`26ca21a` deals.html,
+  making the two hosts look divergent; cache-busted curl showed them identical. **A cross-host
+  content mismatch on a file your deploy didn't touch is a cache artifact until proven
+  otherwise — cache-bust before concluding anything.** Ruling path worth keeping: the
   first side-by-side offered mascot-on-cream and the owner picked it AS LABELED, then corrected
   when shown — a ruling on a mock is only as good as what the mock shows; re-confirm with the
   actual pixels. Companion (same rulings): all three merchant logo-upload surfaces in
