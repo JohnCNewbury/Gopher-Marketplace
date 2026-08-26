@@ -45,6 +45,12 @@
 <!-- Shared request decision logic (category-mismatch detection). Single source of
      truth across Request web / Connect / this app prototype. -->
 <script src="../../Final/assets/js/gopher-request-logic.js"></script>
+<!-- Cross-device draft layer. Shared with Final/gopher-request.html so the two
+     surfaces cannot drift on WHAT a draft contains. ⚠️ Keep the ../../Final/ prefix:
+     scripts/deploy.sh rewrites it to ../../ when it flattens Final/ to the site root,
+     and the local serve + tunnel need the repo-layout form. Do NOT "fix" it here. -->
+<script src="../../Final/assets/js/gopher-request-draft.js"></script>
+<script src="../../Final/assets/js/gopher-request-draft-store.js"></script>
 <!-- G40-38 payment methods — shared store + checkout pay-picker (same session store as the account Payment Info screen). -->
 <script src="gopher-pay-store.js"></script>
 <style>
@@ -245,6 +251,23 @@ body{
 .age-kw-banner .ar-mark svg{width:18px;height:18px;fill:none;stroke:var(--warning-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .age-kw-banner .sf-label{color:var(--warning-text);}
 .age-kw-banner .sf-value{color:#8a6a1f;margin-top:2px;line-height:1.4;}
+/* Resume banner. Same visual language as .age-kw-banner but calm (not a warning):
+   this is an offer, not a compliance stop. ⚠️ Explicit display on the element --
+   this file has NO global [hidden]{display:none}, so anything relying on the hidden
+   attribute renders anyway. Shown/hidden by add/remove, never by [hidden]. */
+.dr-resume{background:linear-gradient(135deg,#eef7ff,#e6f1ff);border:1px solid #c9dcf5;border-radius:12px;padding:12px 13px;display:flex;align-items:flex-start;gap:11px;margin:0 0 12px;}
+.dr-resume .dr-mark{width:30px;height:30px;border-radius:9px;background:#2f6fd0;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:15px;}
+.dr-resume .dr-body{flex:1 1 auto;min-width:0;}
+.dr-resume .dr-title{font-weight:650;color:#17325c;font-size:14px;}
+.dr-resume .dr-sub{color:#41618f;margin-top:2px;line-height:1.4;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* ⛔ The truth clause gets its OWN line and must never be the thing that clips.
+   The first build put it after the description on one nowrap line, and the
+   screenshot showed 'saved o...' -- the honesty caveat truncated away while the
+   free-text description survived. Exactly backwards. Only .dr-sub clips. */
+.dr-resume .dr-where{color:#5b7aa8;margin-top:3px;font-size:11.5px;line-height:1.3;}
+.dr-resume .dr-acts{display:flex;gap:8px;margin-top:9px;}
+.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:8px;padding:7px 12px;cursor:pointer;border:1px solid #c9dcf5;background:#fff;color:#2f6fd0;}
+.dr-resume button.dr-primary{background:#2f6fd0;border-color:#2f6fd0;color:#fff;}
 .age-kw-actions{display:flex;gap:14px;margin-top:12px;}
 .age-kw-actions .ts-promo-btn{padding:7px 13px;}
 .age-kw-actions .age-kw-no{background:#fff;color:var(--navy);border:1.5px solid #e3d7a0;}
@@ -3216,6 +3239,159 @@ state.category='delivery';
   }
   state.step=2; state.maxStepReached=2;
   render();
+})();
+
+/* ── Cross-device draft sync (prototype) ─────────────────────────────────────
+   Mirrors the wiring in Final/gopher-request.html so the app and the web agree on
+   what a draft is. All judgement lives in the shared kernel
+   (Final/assets/js/gopher-request-draft.js): what travels, what never does (ID
+   captures and photo bytes never leave the device), what is re-derived on arrival.
+   This block is only the wiring.
+
+   ⛔ REMOTE SYNC IS OFF, AND THE COPY MUST KEEP SAYING "this device only".
+   The requester surfaces have NO sign-in — 0 apiCall / sign_in / otp on both this
+   file and the web page — and GET /api/v1/requests/draft scopes off the token's own
+   user id, so there is nothing to scope to. Cross-device is gated on a
+   requester-identity product decision, not on this code. Defining
+   window.GOPHER_API_BASE + window.__gopherAuthToken() turns the server tier on with
+   no other change here. Until then the wording stays local: the June copy fixes on
+   gopher-request.html exist because it once claimed "your information is saved
+   automatically" while nothing persisted. Do not let a dev token hook change it. */
+(function initDraftSync(){
+  var K = window.GopherRequestDraft, S = window.GopherRequestDraftStore;
+  if(!K || !S) return;                 // modules absent -> flow behaves exactly as before
+
+  /* Lazy, never at init: someone who merely opens this page and starts nothing is
+     never given a persistent identifier. The store accepts a function and calls it
+     only when it is about to persist. */
+  var deviceId = null;
+  function getDeviceId(){
+    if(deviceId) return deviceId;
+    try{
+      deviceId = localStorage.getItem('gopher.request.deviceId');
+      if(!deviceId){
+        deviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                                                        : 'proto-' + Math.random().toString(36).slice(2);
+        localStorage.setItem('gopher.request.deviceId', deviceId);
+      }
+    }catch(_e){}
+    return deviceId;
+  }
+
+  var apiBase = window.GOPHER_API_BASE || null;
+  var tokenFn = typeof window.__gopherAuthToken === 'function' ? window.__gopherAuthToken : null;
+  var crossDevice = !!(apiBase && tokenFn && tokenFn());
+
+  var adapter = S.webLocalAdapter({ key: 'gopher.request.draft.proto' });
+  if(crossDevice){
+    adapter = S.tieredAdapter(adapter, S.remoteAdapter({
+      baseUrl: apiBase,
+      getHeaders: function(){ return { 'access-token': tokenFn() }; }
+    }));
+  }
+
+  var store = S.createStore({
+    adapter: adapter, origin: 'app-prototype', clientId: getDeviceId,
+    onConflict: function(){ /* local wins until identity exists; nothing to reconcile */ }
+  });
+
+  /* ⛔ ARMING — the single most important line here, and this file makes it harder
+     than the web page does. render() is called SYNCHRONOUSLY at the end of the entry
+     IIFE, and there are FIVE such paths (?demo=1, ?step=1, ?from=deal, ?from=again,
+     and the default), each of which may mutate state first — the deals deep-link sets
+     category, cost and identity before rendering. All five run long before load()
+     resolves. Unarmed, the first autosave would overwrite the very draft we are about
+     to offer and a discard would delete it. Nothing is written or cleared until the
+     resume question has been answered. */
+  var armed = false;
+
+  var _render = render;
+  render = function(){
+    _render.apply(this, arguments);
+    if(armed) store.touch(state);
+  };
+
+  window.addEventListener('pagehide', function(){ if(armed) store.flush(state); });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden && armed) store.flush(state);
+  });
+
+  /* ── The offer ────────────────────────────────────────────────────────────
+     ⛔ COPY IS DELIBERATELY LOCAL-ONLY: "saved on this device". That is TRUE
+     today and stays true until a real token exists. It must not become "saved
+     across your devices" when the remote tier is switched on unless the token is
+     genuinely there -- gopher-request.html once claimed "your information is
+     saved automatically" while nothing persisted, and that is why this rule
+     exists. The wording is derived from the adapter, not hardcoded optimism. */
+  function summaryLine(sum){
+    if(sum && sum.description) return String(sum.description).slice(0, 60);
+    if(sum && sum.category) return String(sum.category);
+    return 'Your request in progress';
+  }
+  /* Derived from the ADAPTER, never hardcoded: if the remote tier is off this must
+     say "this device", because that is what is true. */
+  function whereLine(){
+    return crossDevice ? 'Saved to your account' : 'Saved on this device';
+  }
+
+  function dismissBanner(){
+    var el = document.querySelector('.dr-resume');
+    if(el && el.parentNode) el.parentNode.removeChild(el);   // remove, never [hidden]
+  }
+
+  function offerResume(found){
+    var host = document.querySelector('#content') || document.querySelector('#scroll');
+    if(!host) return;
+    dismissBanner();
+    var el = document.createElement('div');
+    el.className = 'dr-resume';
+    var body = document.createElement('div'); body.className = 'dr-body';
+    var t = document.createElement('div'); t.className = 'dr-title';
+    t.textContent = 'Pick up where you left off';
+    var sub = document.createElement('div'); sub.className = 'dr-sub';
+    sub.textContent = summaryLine(found.summary);
+    var where = document.createElement('div'); where.className = 'dr-where';
+    where.textContent = whereLine();
+    var acts = document.createElement('div'); acts.className = 'dr-acts';
+    var yes = document.createElement('button'); yes.className = 'dr-primary';
+    yes.type = 'button'; yes.textContent = 'Resume';
+    var no  = document.createElement('button'); no.type = 'button'; no.textContent = 'Start fresh';
+    yes.addEventListener('click', function(){ dismissBanner(); window.__protoDraftResume(found); });
+    no.addEventListener('click',  function(){ dismissBanner(); store.discard(); });
+    acts.appendChild(yes); acts.appendChild(no);
+    var mark = document.createElement('div'); mark.className = 'dr-mark'; mark.textContent = '\u21bb';
+    body.appendChild(t); body.appendChild(sub); body.appendChild(where); body.appendChild(acts);
+    el.appendChild(mark); el.appendChild(body);
+    host.insertBefore(el, host.firstChild);
+  }
+
+  store.load().then(function(found){
+    armed = true;                      // arm regardless: a miss still enables autosave
+    if(!found || !found.draft) return;
+    window.__protoDraftFound = found;  // still inspectable for tests
+    /* Only offer a draft with something in it -- an empty one is noise, and the
+       five synchronous first-render paths mean a bare ?step=1 load can have
+       persisted almost nothing. */
+    var sum = found.summary || {};
+    if(sum.description || (sum.step && sum.step > 1)) offerResume(found);
+  }).catch(function(){ armed = true; });
+
+  /* Dev-only, deliberately NOT wired to any button or copy. Lets a web->app
+     cut-over be DEMONSTRATED without shipping a promise the build cannot keep. */
+  window.__protoDraftResume = function(found){
+    var f = found || window.__protoDraftFound;
+    if(!f || !f.draft) return false;
+    var r = store.resumeInto(f.draft, makeInitialState());
+    /* ⚠️ Category FIRST, then the rest. realignCategoryState() wipes the 26 keys in
+       CATEGORY_SCOPED_KEYS on a category change, so assigning category after the
+       other fields would clear them out from under the restore. */
+    if(r.state && r.state.category) state.category = r.state.category;
+    if(typeof realignCategoryState === 'function') realignCategoryState();
+    Object.keys(r.state || {}).forEach(function(k){ state[k] = r.state[k]; });
+    render();
+    return true;
+  };
+  window.__protoDraftDiscard = function(){ store.discard(); return true; };
 })();
 
 /* ====================================================================
