@@ -13663,7 +13663,25 @@ const PAY_BADGES = {
     // Universal gate: if this step has an unmet requirement, don't advance —
     // flash the missing field and tell the user which one ("X") is required.
     const gate = stepGate();
-    if(!gate.ok){ showGatePrompt(gate); return; }
+    if(!gate.ok){
+      // G40 modal: pickupSameAsDropoff — the shared addressesDiffer gate
+      // (gopher-step-gates.js, steps 4 AND 6) already hard-blocks identical
+      // ends; this swaps its generic field-flash for the purpose-built modal,
+      // which names the two sliders that resolve it. Presentation, not policy.
+      // NOTE: gate.id exists because this surface consumes the shared module —
+      // a surface with its own inline stepGate() returns no id and this
+      // comparison would be false forever, silently.
+      if(gate.id === 'addressesDiffer' && window.G40_REQ){ G40_REQ.pickupSameAsDropoff(); return; }
+      showGatePrompt(gate); return;
+    }
+    // ── Phone-number privacy gate (G40 modal: phoneEntered) ──
+    // Numbers are never broadcast; in-app text/call exists after submit. HARD
+    // block (no ack flag) until the number is edited out. Fails open if the
+    // modal library is missing, matching the age-keyword precedent.
+    if(state.step === 2 && window.G40_REQ
+       && /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/.test(String(state.description||''))){
+      G40_REQ.phoneEntered(); return;
+    }
     // AGE-RESTRICTED KEYWORD BACKSTOP (ALL categories — compliance): when leaving
     // the Job Details step (step 2), scan the description for known age-restricted
     // keywords whenever age handling isn't already active (delivery + slider on) and
@@ -14080,9 +14098,31 @@ const PAY_BADGES = {
     render();
   };
 
-  /* ── Request modals (rebuilt) for Connect web ──
-     Dynamic .gc-modal overlays; reachable via the bottom-right "G40" launcher
-     (window.__g40ReqMenu). Real triggers to be wired at each flow point. */
+  /* ── Request modals (G40 rebuild) — WIRED 2026-08-26 ──
+     Dynamic .gc-modal overlays. The bottom-right "G40" preview chip and
+     __g40ReqMenu are GONE (they shipped dev chrome to every real visitor on
+     this page, exactly as on gopher-request.html — that surface was fixed
+     first and this one was MISSED because the ticket said "Request modals").
+     Each modal now fires from its real flow point:
+       phoneEntered             → step-2 Continue, phone number in the description
+       pickupSameAsDropoff      → the shared addressesDiffer gate (steps 4 AND 6),
+                                  swapping its generic field-flash for this modal
+       paymentNotAuthorized     → DEMO sim bar in the hired section (real trigger is
+                                  a backend Stripe auth-failure event)
+       expiredInterestedWorkers → DEMO sim bar in the interested section: the expiry
+                                  of a request a worker accepted but was never
+                                  approved (production also sends an SMS then)
+     NOT here, deliberately:
+       selectedGopherBusy  — built as static markup instead (#busyGopherOverlay),
+                             wired into the hire/approve dispatch. One copy only.
+       cantDeleteOnlyCard  — owner ruling: a last-card guard is a WORKER concept
+                             protecting the Stripe payout account; gopher-go.html
+                             already implements it (#lastCardOverlay).
+       duplicateRequest    — Connect has no duplicate-detection infrastructure
+                             (no __findDuplicateActive / dupWarnAck, unlike
+                             Request). Wiring it would mean BUILDING the check,
+                             which is a scoped feature, not modal plumbing.
+     Do not re-add a floating launcher; drive each modal from its flow point. */
   (function initG40ReqModalsConnect(){
     function gcModal(html){
       var ov=document.createElement('div'); ov.className='gc-modal-overlay';
@@ -14090,22 +14130,34 @@ const PAY_BADGES = {
       ov.addEventListener('click',function(e){ if(e.target===ov||e.target.classList.contains('grx')) ov.remove(); });
       document.body.appendChild(ov); ov.hidden=false; return ov;
     }
-    function b2(label){ return '<button type="button" class="gc-modal-btn gc-modal-btn-secondary grx">'+label+'</button>'; }
+    /* Secondary (outline) button — the modal payloads below call this. It was
+       dropped in the first rebuild of this block and every modal threw
+       "b2 is not defined" at call time: the library loaded fine, so the failure
+       looked like "Continue does nothing" rather than a missing function. */
+    function b2(label){ return '<button type="button" class="gc-modal-btn grx" style="margin-top:8px;background:transparent;color:var(--navy);border:1.5px solid #dfe3ec;box-shadow:none;">'+label+'</button>'; }
+    /* Primary buttons carry grx, so one click runs the action AND closes. */
+    function wirePrimary(ov, fn){ if(fn){ var b=ov.querySelector('.gc-modal-btn'); if(b) b.addEventListener('click', fn); } return ov; }
     window.G40_REQ = {
-      phoneEntered: function(){ return gcModal('<div class="gc-modal-icon">📵</div><h4>Remove the phone number</h4><p class="gc-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your worker in-app. Please edit your message to remove it.</p><button type="button" class="gc-modal-btn grx">Edit my message</button>'+b2('Cancel')); },
-      paymentNotAuthorized: function(){ return gcModal('<div class="gc-modal-icon">💳</div><h4>Update your card to keep this request</h4><p class="gc-modal-sub">A worker accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast immediately.</p><button type="button" class="gc-modal-btn grx">Update payment</button>'); },
+      phoneEntered: function(){ return wirePrimary(gcModal('<div class="gc-modal-icon">📵</div><h4>Remove the phone number</h4><p class="gc-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your worker in-app. Please edit your message to remove it.</p><button type="button" class="gc-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
+      paymentNotAuthorized: function(){ return wirePrimary(gcModal('<div class="gc-modal-icon">💳</div><h4>Update your card to keep this request</h4><p class="gc-modal-sub">A worker accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast immediately.</p><button type="button" class="gc-modal-btn grx">Update payment</button>'), function(){ if(window.__openAddPaymentModal) window.__openAddPaymentModal(); }); },
       pickupSameAsDropoff: function(){ return gcModal('<div class="gc-modal-icon">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gc-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gc-modal-btn grx">Got it</button>'); },
-      selectedGopherBusy: function(){ return gcModal('<div class="gc-modal-icon">⚠️</div><h4>That worker is on another job</h4><p class="gc-modal-sub">The worker you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.</p><button type="button" class="gc-modal-btn grx">Message the worker</button>'+b2('Choose another')); },
-      cantDeleteOnlyCard: function(){ return gcModal('<div class="gc-modal-icon">💳</div><h4>Add a card before removing this one</h4><p class="gc-modal-sub">You need at least one card on file to keep your account in good standing. Add a new card, then you can remove this one.</p><button type="button" class="gc-modal-btn grx">Add new card</button>'+b2('Cancel')); },
-      expiredInterestedWorkers: function(){ return gcModal('<div class="gc-modal-icon">⏰</div><h4>Your request expired — workers are interested</h4><p class="gc-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gc-modal-btn grx">View interested workers</button>'+b2('Cancel request')); },
-      duplicateRequest: function(){ return gcModal('<div class="gc-modal-icon">📋</div><h4>You already have this request out</h4><p class="gc-modal-sub">You currently have a nearly identical request broadcasting. Posting it again sends two of the same job to workers and splits their attention. Continue only if you truly need a second.</p><button type="button" class="gc-modal-btn grx">Continue — post anyway</button>'+b2('Keep the one I have')); }
+      expiredInterestedWorkers: function(){ return gcModal('<div class="gc-modal-icon">⏰</div><h4>Your request expired — workers are interested</h4><p class="gc-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gc-modal-btn grx">View interested workers</button>'+b2('Cancel request')); }
     };
-    window.__g40ReqMenu = function(){
-      var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected worker already on a job'],['cantDeleteOnlyCard','Can’t delete only card on file'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
-      gcModal('<h4>Request modals</h4><p class="gc-modal-sub">Preview each rebuilt modal.</p>'+items.map(function(i){return '<button type="button" class="gc-modal-btn gc-modal-btn-secondary grx" style="text-align:left;margin-top:6px;" onclick="setTimeout(function(){window.G40_REQ.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+b2('Close'));
+    /* DEMO sim bars — same pattern as the G40-308 recovery bar already on this
+       page. Mutually exclusive by construction: decline needs a hire, expiry
+       needs none. */
+    window.__g40PayDeclineBar = function(hiredCount){
+      if(!hiredCount) return '';
+      return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
+        + '<span class="g40-demo-note">Bank declined the charge after acceptance — preview the recovery modal.</span>'
+        + '<button type="button" class="g40-recovery-simbtn" data-g40-paydecline>Simulate decline</button></div>';
     };
-    function addLaunch(){ if(document.getElementById('g40ReqLaunch'))return; var b=document.createElement('button'); b.id='g40ReqLaunch'; b.textContent='G40'; b.title='Preview request modals'; b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99999;background:#002461;color:#33D975;border:none;border-radius:10px;padding:9px 13px;font-family:sans-serif;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 6px 18px rgba(0,36,97,.3)'; b.onclick=function(){ try{ window.__g40ReqMenu(); }catch(e){} }; document.body.appendChild(b); }
-    if(document.body) addLaunch(); else document.addEventListener('DOMContentLoaded', addLaunch);
+    window.__g40ExpirySimBar = function(hiredCount, interestedCount){
+      if(hiredCount || !interestedCount) return '';
+      return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
+        + '<span class="g40-demo-note">Request expires with workers accepted and none approved — preview the popup (production also texts you).</span>'
+        + '<button type="button" class="g40-recovery-simbtn" data-g40-expiresim>Simulate expiry</button></div>';
+    };
   })();
 
   // ---- Hire again: pre-set category + carry the MY-Gopher context into the flow ----
@@ -17547,8 +17599,10 @@ const PAY_BADGES = {
         workersHtml = `
           ${topBar}
           ${section('Hire Approved', `${hired.length} of ${needed}`, hired, 'wsection-hired')}
+          ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -17559,8 +17613,10 @@ const PAY_BADGES = {
         workersHtml = `
           ${topBar}
           ${section('Hired', `${hired.length}`, hired, 'wsection-hired')}
+          ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -17748,6 +17804,16 @@ const PAY_BADGES = {
     // Entry point → this request's message thread (in the Inbox).
     document.querySelectorAll('#reqDetailBody [data-open-thread]').forEach(b => {
       b.addEventListener('click', () => openInboxThread(b.dataset.openThread));
+    });
+
+    // G40 DEMO sims (see __g40PayDeclineBar / __g40ExpirySimBar). Bound here
+    // per-element like every other control in this function — this surface does
+    // not use a delegated dispatch.
+    document.querySelectorAll('#reqDetailBody [data-g40-paydecline]').forEach(b => {
+      b.addEventListener('click', () => { if(window.G40_REQ) G40_REQ.paymentNotAuthorized(); });
+    });
+    document.querySelectorAll('#reqDetailBody [data-g40-expiresim]').forEach(b => {
+      b.addEventListener('click', () => { if(window.G40_REQ) G40_REQ.expiredInterestedWorkers(); });
     });
 
     // Worker action buttons — move workers between statuses (Hire / Consider /
