@@ -220,6 +220,28 @@ bucket away from `gopher-test` (highest-risk change, do last).
 status code**, plus the object ACL. Reading `ACL: 'private'` in source is what made this look
 answered for weeks; it was only half the question, and the other half needed the console.
 
+### 4.4 CLOSED — 2026-08-25, actions taken (owner-directed)
+
+| Action | State |
+|---|---|
+| S3 access logging on `gopher-test` | ✅ **enabled** → `gopher-logs/s3-access/gopher-test/`, delivery **confirmed** (a planted 200 and 403 both appear in the logs) |
+| Business credentials + past-job photos | ✅ **private** — 109 objects re-ACL'd, 238 already private, 0 failures, across 138 + 209 objects |
+| Serving path for those two prefixes | ✅ **signed URLs** (`getSecureUrl`, 3600s) live in `origin/production` |
+| Verified end to end | ✅ unsigned = **403**, presigned = **200**, on one object of each prefix |
+| Block Public Access | ⚠️ **PARTIAL only** — see below |
+
+⛔ **Full BPA is NOT reachable on this bucket today, and this is the durable finding.**
+`BlockPublicAcls` would break new uploads and `IgnorePublicAcls` would break all serving, because
+**seven prefixes upload `public-read` and are served as unsigned URLs**: `uploads/image/file/`,
+`business_profile/`, `attachment/file/`, `deal_logo/`, `In_app_message/`, `Completed_orders/`,
+`assets/`. Only `BlockPublicPolicy` + `RestrictPublicBuckets` were enabled — verified zero-impact,
+they merely stop anyone adding a public *bucket policy* later. **Full BPA requires migrating those
+seven prefixes to signed URLs first**, which is a product decision (several render where there is
+no session), not a cleanup.
+
+⚠️ **The ID images were never the exposure.** They were already private and stayed private
+throughout. What was world-readable was everything *around* them.
+
 **4.5 — Stop stream 3.** The support-mailbox path exists to solve one narrow problem (an alias
 account whose name won't match the ID). **Recommendation: remove that instruction and replace it
 with an in-product path.** It is the only stream where identity documents sit in a general-purpose
