@@ -41,6 +41,7 @@ CANON = "_prototypes/Go/gopher-go-canonical.html"  # byte-identical to the Maste
 
 failures = []
 notes = []
+warnings = []
 
 
 def check(name, cond, detail=""):
@@ -54,6 +55,17 @@ def check(name, cond, detail=""):
 def note(msg):
     notes.append(msg)
     print(f"  [NOTE] {msg}")
+
+
+def warn(name, detail):
+    """A real divergence whose FIX is an owner decision, not a code edit.
+
+    Deliberately not a failure: a harness that is permanently red gets ignored,
+    and then it guards nothing. Warnings are for divergences that are confirmed
+    real but whose resolution needs a ruling -- typically live user-facing copy,
+    which cannot be changed here under the standing no-live-changes rule."""
+    warnings.append(name)
+    print(f"  [WARN] {name}\n         {detail}")
 
 
 def read(rel):
@@ -84,9 +96,21 @@ def searchable(src):
     return " ".join(strip_svg(src).split())
 
 
+def plain(src):
+    """Human-sentence view: artwork gone, MARKUP gone, whitespace collapsed.
+
+    ⚠️ Needed because a rule sentence is routinely broken by inline tags. Canon
+    writes the payout ramp as `first <b>10 completed payouts</b> arrive at Stripe
+    <b>Standard speed`, so a phrase regex over raw source fails on a rule that is
+    plainly there. Phrase checks use plain(); code-pattern checks (Math.max, ...)
+    use searchable(), which keeps script bodies."""
+    return " ".join(re.sub(r"<[^>]*>", " ", strip_svg(src)).split())
+
+
 web_raw, app_raw, canon_raw = read(WEB), read(APP), read(CANON)
-web, app, canon = searchable(web_raw), searchable(app_raw), searchable(canon_raw)
-web_code, app_code = strip_svg(web_raw), strip_svg(app_raw)
+web, app, canon = plain(web_raw), plain(app_raw), plain(canon_raw)
+# code-pattern checks need script bodies, which plain() drops
+web_src, app_src = searchable(web_raw), searchable(app_raw)
 
 print("\nWorker-side parity — Go web vs Go app vs canon")
 print(f"  web   {WEB}   {len(web_raw):,} bytes")
@@ -138,10 +162,33 @@ check(
     f"web={bool(EXCL.search(web))} app={bool(EXCL.search(app))}",
 )
 
+# Ride-Sharing gate (owner ruling 2026-07-26: "all ride fields need to be
+# submitted to pass" -- the web was widened to match the prototype's stricter bar).
+RIDE_PHOTOS = re.compile(r"front.{0,40}rear|rear.{0,40}front", re.I | re.S)
+RIDE_DOCS = re.compile(r"registration.{0,60}insurance|insurance.{0,60}registration", re.I | re.S)
+check(
+    "ride gate requires BOTH photos (front + rear) on BOTH surfaces",
+    bool(RIDE_PHOTOS.search(web)) and bool(RIDE_PHOTOS.search(app)),
+    f"web={bool(RIDE_PHOTOS.search(web))} app={bool(RIDE_PHOTOS.search(app))}",
+)
+check(
+    "ride gate requires registration AND insurance on BOTH surfaces",
+    bool(RIDE_DOCS.search(web)) and bool(RIDE_DOCS.search(app)),
+    f"web={bool(RIDE_DOCS.search(web))} app={bool(RIDE_DOCS.search(app))}",
+)
+
+# Worker payout canon: the worker keeps the whole offer; every fee is requester-side.
+NO_FEE = re.compile(r"100% of|no fee is ever|never withheld|keeps? 100", re.I)
+check(
+    "worker-keeps-everything is stated on BOTH surfaces (no worker-side fee)",
+    bool(NO_FEE.search(web)) and bool(NO_FEE.search(app)),
+    f"web={bool(NO_FEE.search(web))} app={bool(NO_FEE.search(app))}",
+)
+
 # ── B · APP-ONLY rules — no web counterpart, so check against CANON ───────────
 print("\nB · APP-ONLY rules (checked against canon, not against web)")
 
-cap = re.search(r"Math\.max\(\s*20\s*,\s*[A-Za-z0-9_.]+\s*\*\s*1\.5\s*\)", app_code)
+cap = re.search(r"Math\.max\(\s*20\s*,\s*[A-Za-z0-9_.]+\s*\*\s*1\.5\s*\)", app_src)
 check(
     "app enforces the D-026 counter cap as max($20, 1.5 x offer)",
     bool(cap),
@@ -154,7 +201,7 @@ check(
 )
 check(
     "the cap base is the OFFER, never cost-of-items (owner correction 2026-07-24)",
-    not re.search(r"Math\.max\(\s*20\s*,\s*[A-Za-z0-9_.]*cost[A-Za-z0-9_.]*\s*\*", app_code, re.I),
+    not re.search(r"Math\.max\(\s*20\s*,\s*[A-Za-z0-9_.]*cost[A-Za-z0-9_.]*\s*\*", app_src, re.I),
     "a cost_of_goods base is the legacy worker-app bug; it must not reappear",
 )
 
@@ -162,6 +209,27 @@ check(
     "app models the no-show flow (G40-192); canon documents it",
     re.search(r"no.?show", app, re.I) is not None,
     "",
+)
+
+# Payout speed ramp (canon: first 10 payouts at Stripe Standard ~2hr, then Instant).
+RAMP_APP = re.compile(r"first 10 payouts.{0,80}Standard", re.I | re.S)
+RAMP_CANON = re.compile(r"first 10 completed payouts.{0,60}Standard", re.I | re.S)
+check(
+    "app states the payout SPEED RAMP (first 10 at Standard, then Instant)",
+    bool(RAMP_APP.search(app)),
+    "canon: first 10 completed payouts arrive at Stripe Standard speed (~2hr)",
+)
+check(
+    "canon states the same ramp the app implements",
+    bool(RAMP_CANON.search(canon)),
+    "",
+)
+
+# Acceptance paths (canon: First Available - I'll select - Prioritize MY Gophers).
+check(
+    "app models the First Available acceptance path",
+    "First Available" in app,
+    "canon defines three acceptance paths; the web dashboard has none by design",
 )
 
 # ── C · DECLARED absences — legitimate, asserted so they read as intentional ──
@@ -184,15 +252,41 @@ note(
     "blanket web-vs-app equality check — it would fail on every lifecycle rule by design."
 )
 note(
-    "COVERAGE IS PARTIAL AND THIS IS THE HONEST LIMIT: this harness asserts the "
-    "SP-deal bar, the counter cap and the no-show split. It does NOT yet cover "
-    "acceptance paths, tier perks, ride-photo gating or payout timing."
+    "COVERAGE IS PARTIAL AND THIS IS THE HONEST LIMIT. Asserted: the SP-deal bar "
+    "(tiers, 4.75, 20+ SERVICE jobs, Delivery/Ride exclusion), the ride-gate photo "
+    "AND document requirements, worker-keeps-everything, the D-026 counter cap and "
+    "its base, the no-show split, the payout speed ramp, and the First Available "
+    "acceptance path. NOT asserted: the other two acceptance paths in detail, "
+    "per-tier perk tables, broadcast-wave timing, and anything about Connect."
 )
+
+# ── D · WEB COPY vs CANON — real divergence, owner decision to resolve ───────
+print("\nD · Web copy vs canon (divergence found -> owner ruling, not a code edit)")
+
+web_promises_always_instant = re.search(
+    r"Instant Payouts?\s*(&mdash;|--|\u2014)\s*Every Job", web, re.I
+)
+if web_promises_always_instant and RAMP_CANON.search(canon):
+    warn(
+        "web promises instant payout on EVERY job; canon ramps the first 10",
+        "Final/gopher-go.html marquee: 'Instant Payouts - Every Job ... the money's "
+        "yours! Same day'. Canon and the app: a worker's FIRST 10 payouts arrive at "
+        "Stripe Standard speed (~2 hr after the requester confirms), then upgrade to "
+        "Instant. A new worker is told same-day-every-job and experiences ~2hr for "
+        "their first ten. Same honesty class as the 2026-06 gopher-request.html copy "
+        "fixes. ⛔ NOT auto-fixable here: live user-facing copy needs an owner ruling.",
+    )
+else:
+    check(
+        "web payout copy does not over-promise against the canon ramp",
+        True,
+        "",
+    )
 
 print("")
 if failures:
-    print(f"GO PARITY: BROKEN ({len(failures)} failure(s), {len(notes)} note(s))")
+    print(f"GO PARITY: BROKEN ({len(failures)} failure(s), {len(warnings)} warning(s), {len(notes)} note(s))")
     for f in failures:
         print(f"   - {f}")
     sys.exit(1)
-print(f"GO PARITY: OK (0 failures, {len(notes)} note(s))")
+print(f"GO PARITY: OK (0 failures, {len(warnings)} warning(s), {len(notes)} note(s))")
