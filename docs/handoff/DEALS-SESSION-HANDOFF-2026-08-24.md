@@ -53,7 +53,7 @@ UI can set it.
 ## Deployed?
 
 Verified **by content**, not by SHA (`git merge-base --is-ancestor` is invalid for a feature
-commit against the flattened `main` — see CLAUDE.md).
+commit against the flattened `main` — see CLAUDE.md → *Deploy & verification rules*).
 
 - backend `production` = **`d69b89b2`**, EB Green/Ready, `/deals` 200
 - Dashboard remote + host = **`d72844d`** (host `/opt/gopher-hq/Dashboard`)

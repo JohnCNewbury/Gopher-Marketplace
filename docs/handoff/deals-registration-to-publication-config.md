@@ -43,7 +43,7 @@ does three things and nothing else:
 | **GO-CANON** | `Documentation/Canonical Go Flow - Master/gopher-go-canonical.html` |
 | **REQ-CANON** | `Documentation/Canonical Request Flow - Master /connect-flows-granular.html` |
 | **DASH** | the HQ Dashboard repo (private) |
-| **LOG** | `CLAUDE.md` → *Session progress* |
+| **LOG** | `docs/handoff/session-log.md` (was `CLAUDE.md` → *Session progress* until 2026-08-26) |
 
 Paths inside `Final/` are relative to the site root. Everything else is relative to the
 `Documentation/` parent.
