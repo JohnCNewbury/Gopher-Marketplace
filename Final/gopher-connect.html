@@ -7762,6 +7762,20 @@
   </div>
 </div>
 
+<!-- BUSY GOPHER MODAL — Hire/Approve on a worker flagged busy:true.
+     Standard Gophers take one job at a time. Mirrors gopher-request.html's
+     selectedGopherBusy (owner-ruled set, wired 2026-08-26). -->
+<div class="gc-modal-overlay" id="busyGopherOverlay" hidden>
+  <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="busyGopherTitle">
+    <button type="button" class="gc-modal-close" id="busyGopherClose" aria-label="Close">×</button>
+    <div class="gc-modal-icon">⚠️</div>
+    <h4 id="busyGopherTitle">That Gopher is on another job</h4>
+    <p class="gc-modal-sub">The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.</p>
+    <button type="button" class="gc-modal-btn" id="busyGopherMsg">Message the Gopher</button>
+    <button type="button" class="gc-modal-btn gc-modal-btn-secondary" id="busyGopherOk">Choose another Gopher</button>
+  </div>
+</div>
+
 <!-- START JOB ENCOURAGEMENT MODAL -->
 <div class="gc-modal-overlay" id="startEncOverlay" hidden>
   <div class="gc-modal" role="dialog" aria-modal="true" aria-labelledby="startEncTitle">
@@ -13894,7 +13908,9 @@ const PAY_BADGES = {
   const EXTRA_INTERESTED = [
     { name:'Andre W.',  badge:'elite+', photo:'assets/img/px-3932291-200x200.webp', tagline:'Shows up early, works hard, gets it done.', stats:['⭐ 4.96 (203 jobs)','3 mi away','Available now'] },
     { name:'Priya N.',  badge:'elite+',   photo:'assets/img/px-3763188-200x200.webp', tagline:'Friendly, reliable, and detail-oriented.', stats:['⭐ 4.90 (118 jobs)','4 mi away','Available 1pm'] },
-    { name:'Marcus T.', badge:'standard',   photo:'assets/img/px-1681010-200x200.webp', tagline:'Strong, dependable, and ready to roll.', stats:['⭐ 4.87 (91 jobs)','6 mi away','Available now'] },
+    /* Marcus is seeded BUSY so the busy-Gopher modal has a demo path
+       (Standard Gophers take one job at a time) — mirrors gopher-request.html. */
+    { name:'Marcus T.', badge:'standard',   photo:'assets/img/px-1681010-200x200.webp', tagline:'Strong, dependable, and ready to roll.', busy:true, stats:['⭐ 4.87 (91 jobs)','6 mi away','On a job · free ~3pm'] },
     { name:'Elena R.',  badge:'elite+', photo:'assets/img/px-1130626-200x200.webp', tagline:'5-star track record — your job in safe hands.', stats:['⭐ 4.99 (412 jobs)','2 mi away','Available 2pm'] },
     { name:'Sam K.',    badge:'elite',   photo:'assets/img/px-697509-200x200.webp', tagline:'Quick, careful, and easy to work with.', stats:['⭐ 4.85 (67 jobs)','5 mi away','Available now'] },
     { name:'Bianca L.', badge:'elite+', photo:'assets/img/px-1542085-200x200.webp', tagline:'Pro-level results, every single time.', stats:['⭐ 4.97 (288 jobs)','3 mi away','Available 11am'] },
@@ -14888,10 +14904,10 @@ const PAY_BADGES = {
             photo:'assets/img/px-1222271-200x200.webp',
             tagline:'Veteran lead — handled 200+ pallet jobs.',
             stats:['⭐ 4.97 (415 jobs)','4 mi away','Available 1pm'] },
-          { name:'Marcus K.',  tier:'elite+', status:'interested',
+          { name:'Marcus T.',  tier:'standard', status:'interested', busy:true,
             photo:'assets/img/px-220453-200x200.webp',
             tagline:'Hardworking and experienced — gets it done quick.',
-            stats:['⭐ 4.94 (180 jobs)','4 mi away','Available now'] },
+            stats:['⭐ 4.94 (180 jobs)','4 mi away','On a job · free ~3pm'] },
           { name:'Kevin S.',   tier:'elite', status:'interested',
             photo:'assets/img/px-2379005-200x200.webp',
             tagline:'Reliable hands for any heavy-lift job.',
@@ -15324,6 +15340,28 @@ const PAY_BADGES = {
     }
     overlay.hidden = false;
   }
+  function showBusyGopherModal(reqId){
+    const overlay = document.getElementById('busyGopherOverlay');
+    if(!overlay) return;
+    overlay.dataset.reqId = reqId || '';
+    overlay.hidden = false;
+  }
+  (function initBusyGopherModal(){
+    const overlay = document.getElementById('busyGopherOverlay');
+    if(!overlay) return;
+    const close = () => { overlay.hidden = true; };
+    const x   = document.getElementById('busyGopherClose');
+    const ok  = document.getElementById('busyGopherOk');
+    const msg = document.getElementById('busyGopherMsg');
+    if(x)  x.addEventListener('click', close);
+    if(ok) ok.addEventListener('click', close);
+    if(msg) msg.addEventListener('click', () => {
+      const id = overlay.dataset.reqId; close();
+      if(id && typeof openInboxThread === 'function') openInboxThread(id);
+    });
+    overlay.addEventListener('click', (e) => { if(e.target === overlay) close(); });
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
+  })();
   (function initHireCapModal(){
     const overlay = document.getElementById('hireCapOverlay');
     if(!overlay) return;
@@ -17717,6 +17755,12 @@ const PAY_BADGES = {
         const i = parseInt(b.dataset.i, 10);
         const list = r.interestedWorkers;
         if(isNaN(i) || !list[i]) return;
+        // Busy Gopher: Standard Gophers take one job at a time — runs BEFORE
+        // the hire cap, and nothing about the worker changes state.
+        if((act === 'hire' || act === 'approve') && list[i].busy){
+          showBusyGopherModal(r.id);
+          return;
+        }
         // Hire cap: can't approve more workers than the request needs.
         if((act === 'hire' || act === 'approve')){
           const hiredCount = list.filter(w => w.status === 'hired').length;
