@@ -252,12 +252,13 @@ note(
     "blanket web-vs-app equality check — it would fail on every lifecycle rule by design."
 )
 note(
-    "COVERAGE IS PARTIAL AND THIS IS THE HONEST LIMIT. Asserted: the SP-deal bar "
-    "(tiers, 4.75, 20+ SERVICE jobs, Delivery/Ride exclusion), the ride-gate photo "
-    "AND document requirements, worker-keeps-everything, the D-026 counter cap and "
-    "its base, the no-show split, the payout speed ramp, and the First Available "
-    "acceptance path. NOT asserted: the other two acceptance paths in detail, "
-    "per-tier perk tables, broadcast-wave timing, and anything about Connect."
+    "COVERAGE. Asserted: SP-deal bar (tiers, 4.75, 20+ SERVICE jobs, Delivery/Ride "
+    "exclusion), ride gate (both photos AND registration+insurance), "
+    "worker-keeps-everything, D-026 counter cap and its base, no-show split, payout "
+    "ramp + tier exemption, 'bullet' kept internal, First Available and Prioritize MY "
+    "acceptance paths, and the server-owned broadcast/first-look rules in canon. "
+    "NOT asserted: per-tier perk TABLES (the SP-deal bar covers the eligibility half), "
+    "and anything about Connect, which is the requester-side harness's scope."
 )
 
 # ── D · Payout vocabulary — the terms are the PRODUCT's, not a promise ───────
@@ -293,6 +294,70 @@ check(
     bool(re.search(r"skip the ramp", canon, re.I)),
     "",
 )
+
+# ── E · SERVER-OWNED rules — canon defines them, NO client should implement ──
+print("\nE · Server-owned matching rules (client absence is CORRECT)")
+
+# ⚠️ WHY THIS CLASS EXISTS. Broadcast cadence and first-look priority are
+# SERVER-side matching. The worker app receives a request; it does not compute
+# which wave it was in. Verified: the app has zero 'wave' / 'first look' hits.
+# So asserting the app implements them would be demanding that a client
+# reimplement backend logic -- the check would be wrong, and "fixing" it would
+# put matching rules in a client where they can drift. What IS worth guarding is
+# CANON, because canon is the only place these rules exist and the backend is
+# built from it.
+
+WAVES = [
+    (r"0\s*[-–]\s*1 min", "0-1 min → checked MY Gophers"),
+    (r"1\s*[-–]\s*2 min", "1-2 min → Tiered (Elite/Elite+/Pro)"),
+    (r"2\s*[-–]\s*2\.5 min", "2-2.5 min → >=4.8 stars"),
+    (r"2\.5 min\+", "2.5 min+ → below 4.8"),
+]
+for rx, label in WAVES:
+    check(f"canon defines the broadcast wave: {label}", bool(re.search(rx, canon)), "")
+
+# ⛔ THE HIGHEST-RISK RULE ON THE WORKER SIDE. First look requires BOTH the
+# requester choosing Prioritize MY Gophers AND that Gopher being checked on the
+# request. An OR here silently hands priority to every MY Gopher on every job.
+FIRST_LOOK_AND = re.compile(
+    r"requires both conditions,\s*never one", re.I
+)
+check(
+    "canon states first-look needs BOTH conditions, never one (owner 2026-08-05)",
+    bool(FIRST_LOOK_AND.search(canon)),
+    "an OR would give priority to every MY Gopher on every request",
+)
+check(
+    "canon keeps the 'not checked -> falls in line' consequence",
+    bool(re.search(r"NOT\s*(&#10003;|✓|checked).{0,60}falls in line", canon, re.I | re.S)),
+    "the negative case is what makes the AND observable",
+)
+check(
+    "canon keeps empty-tier promotion (lower tiers move up)",
+    bool(re.search(r"lower tiers move up", canon, re.I)),
+    "without it an empty tier stalls the broadcast",
+)
+
+# The acceptance path IS client-visible, unlike the cadence that drives it.
+check(
+    "app models the Prioritize MY Gophers acceptance path",
+    bool(re.search(r"[Pp]rioriti[sz]e MY", app)),
+    "canon: three acceptance paths; Prioritize MY is the SPLIT path",
+)
+
+# ⚠️ Checked against the CODE view, not the rendered view. A client that grew
+# matching logic would do it in JavaScript, which plain() strips -- an earlier
+# version looked at rendered text only and a mutation planted in code slipped
+# straight past. Verified false-positive-free: 'wave' and 'first look' appear
+# ZERO times in both surfaces today, so any hit is a real change.
+for label, rx in [("broadcast wave", re.compile(r"\bwave\b", re.I)),
+                  ("first look", re.compile(r"first.?look", re.I))]:
+    check(
+        f"'{label}' absent from BOTH clients (code included) — server-side matching",
+        not rx.search(web_src) and not rx.search(app_src),
+        "if this FAILS a client has grown matching logic; that is an architecture "
+        "change, not a harness bug",
+    )
 
 print("")
 if failures:
