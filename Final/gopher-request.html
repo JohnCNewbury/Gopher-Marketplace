@@ -13678,7 +13678,12 @@
                 </div>
               `;
             })() : ''}
-            ${isVisible('aiPaySuggest') ? `
+            ${/* Hidden in hourly mode (owner, 2026-08-26): the iQ model prices a
+                  WHOLE JOB, and in hourly mode this field is a per-hour rate — a
+                  job-level suggestion written into a rate field multiplies by the
+                  hours and misprices the job. Moving + Junk are the two categories
+                  that carry both this helper and the hourly toggle. */ ''}
+            ${isVisible('aiPaySuggest') && !state.payByHour ? `
             <button type="button" class="ai-helper-row" data-action="ai-pay-suggest">
               <span class="ai-head"><img src="${GOPHER_IQ_SRC}" alt="Gopher iQ"></span>
               <span class="ai-text">Get a suggested offer</span>
@@ -15137,7 +15142,10 @@
     // iQ low-end, show a respectful notice before advancing. This is the single
     // choke point both entry paths (typed field + iQ modal) pass through.
     // Acknowledged via "Send as-is" (state.lowOfferAck), re-armed on edit.
-    if(state.step === 5 && state.payMode === 'set' && !state.lowOfferAck){
+    // Skipped in hourly mode (owner, 2026-08-26, same ruling as hiding the iQ
+    // helper there): the model is a WHOLE-JOB figure and payAmount is a per-hour
+    // rate — comparing them warns on fair rates and blesses low ones.
+    if(state.step === 5 && state.payMode === 'set' && !state.payByHour && !state.lowOfferAck){
       const offerModel = getCurrentOfferModel();
       const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,'')) || 0;
       if(offerModel && payNum > 0 && payNum < offerModel.low){
