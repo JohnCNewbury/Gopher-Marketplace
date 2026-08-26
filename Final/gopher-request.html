@@ -15576,9 +15576,12 @@
       wireOnce(overlay);
       const rangeEl = document.getElementById('lowOfferRange');
       if(rangeEl && model){
-        const isRide = state.category === 'ride';
+        /* Named for the ACTUAL category — this said "a delivery like this" for
+           every non-ride category, including Moving (owner catch, 2026-08-26). */
+        const jobPhrase = ({ ride:'a ride', delivery:'a delivery', moving:'a move',
+                             junk:'a junk-removal job' })[state.category] || 'a job';
         rangeEl.textContent = 'Most neighbors offer around $' + model.low + '–$' + model.suggested
-          + ' for ' + (isRide ? 'a ride like this' : 'a delivery like this') + '.';
+          + ' for ' + jobPhrase + ' like this.';
       }
       overlay.hidden = false;
       return true;
