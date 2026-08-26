@@ -255,19 +255,24 @@ body{
    this is an offer, not a compliance stop. ⚠️ Explicit display on the element --
    this file has NO global [hidden]{display:none}, so anything relying on the hidden
    attribute renders anyway. Shown/hidden by add/remove, never by [hidden]. */
-.dr-resume{background:linear-gradient(135deg,#eef7ff,#e6f1ff);border:1px solid #c9dcf5;border-radius:12px;padding:12px 13px;display:flex;align-items:flex-start;gap:11px;margin:0 0 12px;}
-.dr-resume .dr-mark{width:30px;height:30px;border-radius:9px;background:#2f6fd0;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:15px;}
-.dr-resume .dr-body{flex:1 1 auto;min-width:0;}
-.dr-resume .dr-title{font-weight:650;color:#17325c;font-size:14px;}
-.dr-resume .dr-sub{color:#41618f;margin-top:2px;line-height:1.4;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* ⛔ The truth clause gets its OWN line and must never be the thing that clips.
-   The first build put it after the description on one nowrap line, and the
-   screenshot showed 'saved o...' -- the honesty caveat truncated away while the
-   free-text description survived. Exactly backwards. Only .dr-sub clips. */
-.dr-resume .dr-where{color:#5b7aa8;margin-top:3px;font-size:11.5px;line-height:1.3;}
-.dr-resume .dr-acts{display:flex;gap:8px;margin-top:9px;}
-.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:8px;padding:7px 12px;cursor:pointer;border:1px solid #c9dcf5;background:#fff;color:#2f6fd0;}
-.dr-resume button.dr-primary{background:#2f6fd0;border-color:#2f6fd0;color:#fff;}
+/* Resume banner. Built on the LIVE .si-band idiom (si-ico + si-text > h5 + p),
+   not on .age-kw-banner -- that banner was RETIRED 2026-08-18 and only its orphan
+   CSS survives, so matching it meant matching a corpse (App Prototypes, 2026-08-26).
+   .si-band WRAPS rather than clipping, which is precisely the property the first
+   build got wrong. Recoloured calm-blue only: this is an offer, not a warning.
+   ⚠️ No global [hidden]{display:none} in this file -- shown/hidden by add/remove. */
+/* ⚠️ Compound selectors (.si-band.dr-resume), not bare .dr-resume: .si-band is
+   defined LATER in this stylesheet, so a single-class override loses on source
+   order and the band rendered GREEN -- reading as a success state rather than an
+   offer. The screenshot caught it; the DOM assertions could not. */
+.si-band.dr-resume{background:linear-gradient(135deg,#eef7ff,#e6f1ff);border:1px solid #c9dcf5;margin:14px 14px 0;align-items:flex-start;}
+.si-band.dr-resume .si-ico{background:#2f6fd0;color:#fff;font-size:17px;margin-top:1px;}
+.si-band.dr-resume .si-text h5{color:#17325c;}
+.si-band.dr-resume .si-text p{color:#41618f;}
+.si-band.dr-resume .dr-where{color:#5b7aa8;margin-top:3px;font-size:11.5px;line-height:1.3;}
+.si-band.dr-resume .dr-acts{display:flex;gap:8px;margin-top:9px;}
+.si-band.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:8px;padding:7px 12px;cursor:pointer;border:1px solid #c9dcf5;background:#fff;color:#2f6fd0;}
+.si-band.dr-resume button.dr-primary{background:#2f6fd0;border-color:#2f6fd0;color:#fff;}
 .age-kw-actions{display:flex;gap:14px;margin-top:12px;}
 .age-kw-actions .ts-promo-btn{padding:7px 13px;}
 .age-kw-actions .age-kw-no{background:#fff;color:var(--navy);border:1.5px solid #e3d7a0;}
@@ -3339,42 +3344,58 @@ state.category='delivery';
     if(el && el.parentNode) el.parentNode.removeChild(el);   // remove, never [hidden]
   }
 
+  /* ⛔ ARM ONLY ON AN ANSWER. The first version set armed=true when load() RESOLVED,
+     which read as "we have finished asking" but means "we have finished LOADING" --
+     the user had not answered anything yet. App Prototypes reproduced the
+     consequence on the served build: banner up, user touches anything, autosave
+     fires, and the saved request is overwritten by the new one. Silently, with the
+     question still on screen a moment earlier. The comment claimed this could not
+     happen while the code did it. Arm on Resume, on Start fresh, and immediately
+     when there is nothing to protect -- never merely because bytes arrived. */
+  function armAfterAnswer(){ armed = true; }
+
   function offerResume(found){
-    var host = document.querySelector('#content') || document.querySelector('#scroll');
-    if(!host) return;
+    /* ⛔ MOUNTED AS A SIBLING OF #content, NOT INSIDE IT. render() does
+       `content.innerHTML = bodyHTML` (:2303), which destroys anything within --
+       so an unanswered offer vanished on the first re-render and took the user's
+       chance to answer with it. #scroll is outside innerHTML's reach. Re-inserting
+       after every render would also work and is strictly more code that can drift. */
+    var scroll = document.querySelector('#scroll');
+    var content = document.querySelector('#content');
+    if(!scroll || !content) { armAfterAnswer(); return; }   // fail open: never trap a draft
     dismissBanner();
+
     var el = document.createElement('div');
-    el.className = 'dr-resume';
-    var body = document.createElement('div'); body.className = 'dr-body';
-    var t = document.createElement('div'); t.className = 'dr-title';
-    t.textContent = 'Pick up where you left off';
-    var sub = document.createElement('div'); sub.className = 'dr-sub';
-    sub.textContent = summaryLine(found.summary);
+    el.className = 'si-band dr-resume';
+    var ico = document.createElement('span'); ico.className = 'si-ico'; ico.textContent = '\u21bb';
+    var txt = document.createElement('div'); txt.className = 'si-text';
+    var h = document.createElement('h5'); h.textContent = 'Pick up where you left off';
+    var pEl = document.createElement('p'); pEl.textContent = summaryLine(found.summary);
     var where = document.createElement('div'); where.className = 'dr-where';
     where.textContent = whereLine();
     var acts = document.createElement('div'); acts.className = 'dr-acts';
     var yes = document.createElement('button'); yes.className = 'dr-primary';
     yes.type = 'button'; yes.textContent = 'Resume';
-    var no  = document.createElement('button'); no.type = 'button'; no.textContent = 'Start fresh';
-    yes.addEventListener('click', function(){ dismissBanner(); window.__protoDraftResume(found); });
-    no.addEventListener('click',  function(){ dismissBanner(); store.discard(); });
+    var no = document.createElement('button'); no.type = 'button'; no.textContent = 'Start fresh';
+    yes.addEventListener('click', function(){
+      dismissBanner(); window.__protoDraftResume(found); armAfterAnswer();
+    });
+    no.addEventListener('click', function(){
+      dismissBanner(); store.discard(); armAfterAnswer();
+    });
     acts.appendChild(yes); acts.appendChild(no);
-    var mark = document.createElement('div'); mark.className = 'dr-mark'; mark.textContent = '\u21bb';
-    body.appendChild(t); body.appendChild(sub); body.appendChild(where); body.appendChild(acts);
-    el.appendChild(mark); el.appendChild(body);
-    host.insertBefore(el, host.firstChild);
+    txt.appendChild(h); txt.appendChild(pEl); txt.appendChild(where); txt.appendChild(acts);
+    el.appendChild(ico); el.appendChild(txt);
+    scroll.insertBefore(el, content);
   }
 
   store.load().then(function(found){
-    armed = true;                      // arm regardless: a miss still enables autosave
-    if(!found || !found.draft) return;
-    window.__protoDraftFound = found;  // still inspectable for tests
-    /* Only offer a draft with something in it -- an empty one is noise, and the
-       five synchronous first-render paths mean a bare ?step=1 load can have
-       persisted almost nothing. */
-    var sum = found.summary || {};
-    if(sum.description || (sum.step && sum.step > 1)) offerResume(found);
-  }).catch(function(){ armed = true; });
+    var sum = (found && found.summary) || {};
+    var worthOffering = !!(found && found.draft) && (sum.description || (sum.step && sum.step > 1));
+    if(!worthOffering){ armAfterAnswer(); return; }   // nothing to protect -> arm now
+    window.__protoDraftFound = found;                 // still inspectable for tests
+    offerResume(found);                               // stays UNARMED until answered
+  }).catch(function(){ armAfterAnswer(); });
 
   /* Dev-only, deliberately NOT wired to any button or copy. Lets a web->app
      cut-over be DEMONSTRATED without shipping a promise the build cannot keep. */
