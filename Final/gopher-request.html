@@ -11218,15 +11218,7 @@
       wrap.querySelector('#rqAddPayBtn').addEventListener('click', () => window.__openAddPaymentModal());
       wrap.querySelectorAll('[data-pay-default]').forEach(b => b.addEventListener('click', () => window.__setDefaultPayMethod(b.dataset.payDefault)));
       wrap.querySelectorAll('[data-pay-edit]').forEach(b => b.addEventListener('click', () => window.__openAddPaymentModal(b.dataset.payEdit)));
-      wrap.querySelectorAll('[data-pay-remove]').forEach(b => b.addEventListener('click', () => {
-        // G40 modal: cantDeleteOnlyCard — at least one CARD stays on file.
-        // Wallets don't count as cards, and removing a wallet is never blocked.
-        const _m = store.find(x => x.key === b.dataset.payRemove);
-        if(_m && !_m.wallet && store.filter(x => !x.wallet).length <= 1 && window.G40_REQ){
-          G40_REQ.cantDeleteOnlyCard(); return;
-        }
-        window.__removePayMethod(b.dataset.payRemove);
-      }));
+      wrap.querySelectorAll('[data-pay-remove]').forEach(b => b.addEventListener('click', () => window.__removePayMethod(b.dataset.payRemove)));
     };
 
     // Re-render both surfaces whenever the store changes.
@@ -15203,9 +15195,19 @@
      every modal now fires from its real flow point:
        phoneEntered             → step-2 Continue, phone number in the description
        pickupSameAsDropoff      → address-step Continue, pick-up == drop-off (warn once)
-       cantDeleteOnlyCard       → Payment info, removing the last card on file
        selectedGopherBusy       → Hire/Approve on a worker flagged busy:true
-       expiredInterestedWorkers → opening an expired request that had interested workers
+       expiredInterestedWorkers → the EXPIRY moment of an active request where a
+                                  worker accepted but the requester never approved
+                                  (owner, 2026-08-26 — NOT previous-request browsing;
+                                  production also sends an SMS at this moment).
+                                  Real trigger is the broadcast-expiry event, which
+                                  the prototype does not run — DEMO sim bar in the
+                                  interested section.
+     cantDeleteOnlyCard was REMOVED from this set (owner, 2026-08-26): a
+     last-card guard is a WORKER concept — it protects the Stripe payout
+     account — and gopher-go.html already implements it correctly
+     (#lastCardOverlay, "Keep one card on file"). A requester removing their
+     only card is not blocked.
        paymentNotAuthorized     → DEMO-tagged sim bar in the hired section — the real
                                   trigger is a backend Stripe auth-failure event the
                                   prototype cannot receive
@@ -15227,7 +15229,6 @@
       paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
       pickupSameAsDropoff: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gr-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gr-modal-btn grx">Got it</button>'); },
       selectedGopherBusy: function(onMessage){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">⚠️</div><h4>That Gopher is on another job</h4><p class="gr-modal-sub">The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.</p><button type="button" class="gr-modal-btn grx">Message the Gopher</button>'+b2('Choose another Gopher')), onMessage); },
-      cantDeleteOnlyCard: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Add a card before removing this one</h4><p class="gr-modal-sub">You need at least one card on file to keep your account in good standing. Add a new card, then you can remove this one.</p><button type="button" class="gr-modal-btn grx">Add new card</button>'+b2('Cancel')), openAddPay); },
       expiredInterestedWorkers: function(){ return reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;">⏰</div><h4>Your request expired — workers are interested</h4><p class="gr-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gr-modal-btn grx">View interested workers</button>'+b2('Cancel request')); }
     };
     /* DEMO sim bar for paymentNotAuthorized (see header). Renders only when a
@@ -15237,6 +15238,14 @@
       return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
         + '<span class="g40-demo-note">Bank declined the charge after acceptance — preview the recovery modal.</span>'
         + '<button type="button" class="g40-recovery-simbtn" data-g40-paydecline>Simulate decline</button></div>';
+    };
+    /* DEMO sim for expiredInterestedWorkers (see header). Shows only in the
+       forgot-to-approve state: workers accepted, nobody approved yet. */
+    window.__g40ExpirySimBar = function(hiredCount, interestedCount){
+      if(hiredCount || !interestedCount) return '';
+      return '<div class="g40-recovery-demobar"><span class="g40-demo-tag">DEMO</span>'
+        + '<span class="g40-demo-note">Request expires with workers accepted and none approved — preview the popup (production also texts you).</span>'
+        + '<button type="button" class="g40-recovery-simbtn" data-g40-expiresim>Simulate expiry</button></div>';
     };
   })();
 
@@ -19999,8 +20008,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     ],
     expiredRequests: [
       { date:'5/19/26', id:'GR-00126', category:'Yard Work', details:'Sod installation, ~400 sq ft',
-        reason:'No workers accepted within the scheduled window',
-        interestedWorkers:['Marcus B.','Tina R.'] },
+        reason:'No workers accepted within the scheduled window' },
       { date:'4/30/26', id:'GR-00117', category:'Handyman', details:'Repair fence post · west side',
         reason:'No workers accepted within the scheduled window' },
     ],
@@ -21891,6 +21899,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -21906,6 +21915,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
           ${midBar}
           ${interestedBlock(interested)}
+          ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
           ${counterSection}
         `;
@@ -21988,6 +21998,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         // 0-g40) Payment-declined DEMO sim (see __g40PayDeclineBar).
         if(target.closest('[data-g40-paydecline]')){
           if(window.G40_REQ) G40_REQ.paymentNotAuthorized();
+          return;
+        }
+        // 0-g40b) Expiry DEMO sim (see __g40ExpirySimBar): the popup a requester
+        // gets when their request expires with accepted-but-unapproved workers.
+        if(target.closest('[data-g40-expiresim]')){
+          if(window.G40_REQ) G40_REQ.expiredInterestedWorkers();
           return;
         }
 
@@ -23623,7 +23639,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="prev-detail-row"><span class="pdr-label">Date:</span><span class="pdr-value">${r.date}</span></div>
             <div class="prev-detail-row"><span class="pdr-label">Request type:</span><span class="pdr-value">${r.category}</span></div>
             <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
-            ${(status === 'expired' && r.interestedWorkers && r.interestedWorkers.length) ? `<div class="prev-detail-row"><span class="pdr-label">Interested:</span><span class="pdr-value">${r.interestedWorkers.join(', ')}</span></div>` : ''}
           </div>
           ${r.reason ? `<div class="prev-detail-reason"><b>Why:</b> ${r.reason}</div>` : ''}
           <div class="prev-detail-ctas">
@@ -23631,15 +23646,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
           </div>
         </div>`;
-    }
-
-    // G40 modal: expiredInterestedWorkers — the request expired but workers had
-    // shown interest. Fires once per request per session; the detail behind it
-    // lists the names, and both "Request again" CTAs are the keep-going path.
-    if(status === 'expired' && r.interestedWorkers && r.interestedWorkers.length
-       && !r._expInterestShown && window.G40_REQ){
-      r._expInterestShown = true;
-      G40_REQ.expiredInterestedWorkers();
     }
 
     // Toggle handlers (completed view only). The MyGophers API is the single
