@@ -474,6 +474,13 @@ body{
 .low-offer{display:flex;gap:9px;background:#fff7c2;border:1px solid #f3e09a;border-radius:12px;padding:11px 12px;margin-top:11px;}
 .low-offer svg{width:18px;height:18px;fill:none;stroke:var(--warning-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;margin-top:1px;}
 .low-offer p{font-size:11.5px;color:var(--warning-text);line-height:1.45;}
+/* DEMO sim bars on the submitted screen (see renderStep7). Deliberately styled as dev
+   chrome, not product: dashed border and a DEMO tag, so a reviewer can never mistake
+   one for a real notification. */
+.g40-simbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;border:1px dashed #c9d2e3;border-radius:10px;background:#eef0f8;}
+.g40-simtag{font-family:'Nunito';font-weight:900;font-size:9px;letter-spacing:.08em;color:#fff;background:#3A4D74;border-radius:5px;padding:2px 6px;}
+.g40-simnote{flex:1;min-width:120px;font-family:'DM Sans';font-size:10.5px;color:#3A4D74;line-height:1.35;}
+.g40-simbtn{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--navy);background:#fff;border:1px solid #c9d2e3;border-radius:8px;padding:6px 10px;cursor:pointer;}
 
 /* ── Review card ── */
 .review-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:6px 15px;margin-top:16px;box-shadow:var(--card-sh);}
@@ -1709,7 +1716,12 @@ function renderStep5(){
   const rate = toNum(state.payAmount);
   const oneWorkerPay = perWorkerPay();
   const lowThresh = offerLowThreshold();
-  const lowOffer = state.payMode==='set' && oneWorkerPay>0 && lowThresh>0 && oneWorkerPay < lowThresh && !state.lowOfferAck;
+  /* ⛔ HOURLY MODE SKIPS THIS (owner, 2026-08-26 — web parity, 0a249c7). The
+     suggested-pricing model prices a WHOLE JOB; in hourly mode this field is a
+     PER-HOUR rate, so comparing the two says a $25/hr offer is "low" against a
+     $60 whole-job threshold. Moving and Junk are the overlap categories — priced
+     model AND an hourly option — so this is reachable, not theoretical. */
+  const lowOffer = !state.payByHour && state.payMode==='set' && oneWorkerPay>0 && lowThresh>0 && oneWorkerPay < lowThresh && !state.lowOfferAck;
   let h=`<div class="step-head"><h3>How would you like to pay your worker?</h3>
     <p class="mc-sub">Set your hiring price, or ask local workers for bids.</p></div>
     <div class="radio-group">
@@ -1724,9 +1736,13 @@ function renderStep5(){
         <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Your offer to the worker"></div>
       <div class="sf-hint">Exact amount your worker takes home — 100% of your offer. Request fees are shown at review.</div>
       ${state.payByHour ? `<div id="wageSummaryWrap">${renderWageSummary(rate)}</div>` : ''}
-      ${lowOffer ? `<div class="low-offer">${svgIco('warning')}<p>That's on the low side for this kind of work. A fair offer gets accepted faster — but you can send it as-is.</p></div>
+      ${lowOffer ? `<div class="low-offer">${svgIco('warning')}<p>That's on the low side for ${({ride:'a ride',delivery:'a delivery',moving:'a move',junk:'a junk-removal job'})[state.category]||'a job'} like this. A fair offer gets accepted faster — but you can send it as-is.</p></div>
         <div style="text-align:right;margin-top:8px;"><button class="ts-promo-btn" style="background:#f1f3f8;color:var(--navy);" data-action="ack-low">Send as-is</button></div>`:''}
-      ${isVisible('aiPaySuggest') ? renderPaySuggest() : ''}
+      ${''/* ⛔ HIDDEN IN HOURLY MODE (owner, 2026-08-26 — web parity, 0a249c7): the iQ
+           model returns a whole-job range, which is not a per-hour rate. Offering it
+           beside an hourly field invites the requester to paste a job total into a
+           rate box. Same reason the low-offer notice above is skipped. */}
+      ${isVisible('aiPaySuggest') && !state.payByHour ? renderPaySuggest() : ''}
     </div>`;
   }
 
@@ -2155,6 +2171,14 @@ function renderStep7(){
     <span class="si-ico">${svgIco('users')}</span>
     <div class="si-text"><h5>${interested} worker${interested!==1?'s':''} already interested</h5><p>Review profiles, hire, or consider workers from your dashboard.</p></div>
   </div>`}
+  ${''/* DEMO sim bars — web parity (76a3b9c / f48e261). Both modals have REAL triggers
+       that this prototype cannot receive: expiredInterestedWorkers fires at the EXPIRY
+       MOMENT of an active request where a worker accepted but the requester never
+       approved (production also texts them then), and paymentNotAuthorized fires on a
+       backend Stripe auth-failure event. Web uses the same sim-bar pattern for the same
+       reason. Tagged DEMO so nobody mistakes them for product surface. */}
+  ${state.demo ? `` : `<div class="g40-simbar"><span class="g40-simtag">DEMO</span><span class="g40-simnote">Request expires with workers accepted and none approved — production also texts you.</span><button type="button" class="g40-simbtn" data-action="sim-expiry">Simulate expiry</button></div>
+  <div class="g40-simbar"><span class="g40-simtag">DEMO</span><span class="g40-simnote">Bank declined the charge after a Gopher accepted.</span><button type="button" class="g40-simbtn" data-action="sim-paydecline">Simulate decline</button></div>`}
   ${state.demo ? `` : `<button class="si-btn" data-action="see-workers">Track it on your home screen →</button>
   <div class="matched-actions">
     <button class="ma-btn" data-action="edit-request">Edit request</button>
@@ -2183,8 +2207,27 @@ function renderStep7(){
    RENDER ENGINE
    ============================================================ */
 /* ── G40-308 request modals (G40-309 survivors) for the Request app ──
-   Appended to #phone (like the iQ offer modal); reachable via the in-frame "G40"
-   launcher (window.__g40ReqMenu). Real triggers to be wired at each flow point. */
+   Appended to #phone (like the iQ offer modal).
+
+   ⛔ WIRED TO REAL FLOW POINTS 2026-08-26, mirroring web (76a3b9c / f48e261). They were
+   preview-only before — defined, reachable from a console menu, and fired by nothing.
+     phoneEntered        -> step-2 Continue, phone number in the description (HARD block)
+     pickupSameAsDropoff -> the addressesDiffer gate, swapping its field-flash for the
+                            modal that names the two sliders which resolve it
+     expiredInterestedWorkers / paymentNotAuthorized -> DEMO sim bars on the submitted
+                            screen; the real triggers are a broadcast-expiry event and a
+                            backend Stripe auth failure, neither of which this prototype
+                            receives (web does the same, for the same reason)
+   ⛔ cantDeleteOnlyCard was REMOVED from this set (owner, 2026-08-26): a last-card guard
+   is a WORKER concept protecting the Stripe payout account, and the Go app already
+   implements it. A requester removing their only card is not blocked. Do not re-add it.
+   ⚠️ selectedGopherBusy is defined but UNWIRED HERE ON PURPOSE: this file is the request
+   FLOW (steps 1-7) and has no worker pool, hire, or approve surface to gate. Web wired it
+   into Request's and Connect's dashboards. It belongs wherever this prototype's hire
+   surface lives, which is a different file — flagged, not faked.
+   __g40ReqMenu stays as a CONSOLE-only preview (the floating badge went 2026-07-19); do
+   not rebuild a launcher — web deleted its chip because it shipped dev chrome to every
+   visitor. */
 (function initG40ReqAppModals(){
   function rqModal(html){
     var ph=document.getElementById('phone'); if(!ph) return;
@@ -2199,16 +2242,20 @@ function renderStep7(){
   function b1(t){ return '<button class="grx" style="margin-top:14px;height:46px;border-radius:12px;background:#33D975;color:#002461;border:none;font-family:\'Nunito\';font-weight:900;font-size:14px;width:100%;cursor:pointer;">'+t+'</button>'; }
   function b2(t){ return '<button class="grx" style="margin-top:8px;height:44px;border-radius:12px;background:transparent;color:#002461;border:1.5px solid #d4d8e3;font-family:\'Nunito\';font-weight:800;font-size:13px;width:100%;cursor:pointer;">'+t+'</button>'; }
   window.G40_REQ={
-    phoneEntered:function(){return rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));},
-    paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re gone, we’ll rebroadcast immediately.')+b1('Update payment'));},
+    /* "Edit my message" FOCUSES the description — web wires this via wirePrimary().
+       Without it the button only closes the overlay, which looks identical to working
+       and leaves the user staring at the same screen wondering what it did. */
+    phoneEntered:function(){var ov=rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));
+      if(ov){var b=ov.querySelector('button'); if(b) b.addEventListener('click',function(){var d=document.getElementById('descriptionInput'); if(d){try{d.focus();}catch(_){}}});}
+      return ov;},
+    paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.')+b1('Update payment'));},
     pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)')+b1('Got it'));},
-    selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
-    cantDeleteOnlyCard:function(){return rqModal(h('Add a card before removing this one')+p('You need at least one card on file. Add a new card, then you can remove this one.')+b1('Add new card')+b2('Cancel'));},
+    selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
     expiredInterestedWorkers:function(){return rqModal(h('Your request expired — workers are interested')+p('Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.')+b1('View interested workers')+b2('Cancel request'));},
     duplicateRequest:function(){return rqModal(h('You already have this request out')+p('You currently have a nearly identical request broadcasting. Posting it again sends two of the same job to Gophers and splits their attention. Continue only if you truly need a second.')+b1('Continue — post anyway')+b2('Keep the one I have'));}
   };
   window.__g40ReqMenu=function(){
-    var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['cantDeleteOnlyCard','Can’t delete only card on file'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
+    var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
     rqModal(h('G40-308 request modals')+p('Preview each rebuilt modal.')+items.map(function(i){return '<button class="grx" style="margin-top:6px;height:40px;border-radius:10px;background:#eef0f8;color:#002461;border:none;font-family:\'Nunito\';font-weight:800;font-size:12px;width:100%;cursor:pointer;text-align:left;padding:0 12px;" onclick="setTimeout(function(){window.G40_REQ.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+b2('Close'));
   };
   // The floating "G40" review-launcher badge was removed from the prototype (owner 2026-07-19).
@@ -2337,8 +2384,14 @@ function stepGate(){
      && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
     const pk=state.pickupStops.map(normAddr).filter(Boolean);
     const dp=state.dropoffStops.map(normAddr).filter(Boolean);
+    /* `id` is carried so goNext() can swap this one gate's field-flash for the
+       pickupSameAsDropoff modal — the same additive move web made in toWebShape().
+       ⚠️ Without it the modal wiring is a SILENT NO-OP: g.id is undefined, the
+       comparison is simply false, nothing throws, and the generic flash keeps
+       showing as if nothing were wired. The other gates carry no id because
+       nothing consumes one yet; add one when something does. */
     if(pk.some(a=>dp.indexOf(a)!==-1))
-      return {ok:false,sel:'input[data-field="dropoffStops"]',msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.'};
+      return {ok:false,id:'addressesDiffer',sel:'input[data-field="dropoffStops"]',msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.'};
   }
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
@@ -2400,7 +2453,25 @@ function flashGate(gate){
    ============================================================ */
 function goNext(){
   const g=stepGate();
-  if(!g.ok){ if(g.age){ openAgeKwModal(); return; } showToast(g.msg,g.tone); flashGate(g); return; }
+  if(!g.ok){
+    if(g.age){ openAgeKwModal(); return; }
+    /* G40 modal: pickupSameAsDropoff (web parity, 76a3b9c). The addressesDiffer gate
+       ALREADY hard-blocks identical ends — this swaps its generic field-flash for the
+       purpose-built modal, which names the two sliders that resolve it. The gate still
+       blocks every time until the addresses differ: presentation, not policy. */
+    if(g.id==='addressesDiffer' && window.G40_REQ){ G40_REQ.pickupSameAsDropoff(); return; }
+    showToast(g.msg,g.tone); flashGate(g); return; }
+  /* ── Phone-number privacy gate (G40 modal: phoneEntered) ──────────────────
+     Phone numbers are never broadcast; in-app text/call exists after submit. HARD
+     block with NO ack flag — that is the rule the modal states, so an "I know"
+     escape hatch would contradict it. Ordered AFTER the age-keyword gate and BEFORE
+     the category nudge, matching web exactly; compliance outranks privacy outranks
+     a suggestion. Fails open if the modal library is missing, matching the
+     age-keyword precedent — never trap the user behind a dead modal. */
+  if(state.step===2 && window.G40_REQ
+     && /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/.test(String(state.description||''))){
+    G40_REQ.phoneEntered(); return;
+  }
   // Category-mismatch nudge (worker visibility) — after the age gate (precedence).
   if(state.step===2 && !findAgeRestrictedKeyword(state.description) && window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
   // ── Age-restricted "no purchase" guardrail (owner 2026-08-18, web parity) ──
@@ -2677,6 +2748,8 @@ document.addEventListener('click',(e)=>{
       else { state.idFrontCaptured=false; state.idBackCaptured=false; state.selfieCaptured=false;
              state.savedOnFile=false; state.idSubmittedAt=null; }
       render(); break;
+    case 'sim-expiry': if(window.G40_REQ) G40_REQ.expiredInterestedWorkers(); break;
+    case 'sim-paydecline': if(window.G40_REQ) G40_REQ.paymentNotAuthorized(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
     case 'junk-tier': state.junkTier=act.dataset.tier; render(); break;   // user correction now owns the tier; re-render re-ranges the slider
