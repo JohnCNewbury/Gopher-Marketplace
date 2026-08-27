@@ -301,6 +301,30 @@ L345, L1081, L1788, L2390, L2534, L2608, L2752 — all still `include_address: t
 next most severe**: it hands the customer the assigned worker's phone, email, DOB, address and
 `fcm_token` post-acceptance, on the main order-detail path. Needs its own ticket.
 
+> ⚠️ **TRUE OF `origin/production`, ALREADY ADDRESSED ON A BRANCH — read this before ticketing
+> the seven.** *(cross-reference added by the Customer Support session; §9's body is untouched.)*
+>
+> **`gopher-backend-api!404`** (`fix/counterparty-user-projection`) narrows **all eight**
+> `retrieve.js` sites plus `view_cog`, the counter-offer view and the active-bid view, and sets
+> **`include_address: false` at every one**. So the list above describes production, not the
+> outstanding work. Raising seven tickets from it would duplicate a branch that is already
+> reviewed and green.
+>
+> **§9's architectural point stands and is the sharper one:** a narrowed `attributes` argument does
+> NOT govern `users_info`, and a fix that only narrows it cannot be verified by reading its
+> argument list. !404 hit exactly that trap — its first version removed a bidder's email and DOB
+> while still shipping their **driver's licence number** — and closed it with an explicit
+> redaction step rather than a separate query. A dedicated minimal query
+> (`get_bidder_public_details`, §9) is the cleaner shape for new code and needs no redaction step;
+> the two approaches should be reconciled once the owner rules on !404 vs !405 rather than both
+> landing.
+>
+> **What settles it either way is the test, not the shape.** !404 carries
+> `test/counterparty-projection-runtime.test.js` — it calls `get_users_details` against a stubbed
+> db and asserts on the returned object, and is mutation-proven: reverting the gate makes it fail
+> with the full licence number present. A source-shape assertion cannot catch this class of bug,
+> which is the lesson §9 is really about.
+
 *Credit: the eight call sites, the `fcm_token` catch and the L2678 pre-acceptance case were found
 and routed by the Customer Support session (§8); independently verified at source here before
 acting.*
@@ -402,3 +426,64 @@ merge note on both MRs. Whoever merges second re-reads the whole function rather
 git.
 
 ---
+
+## 11. Addendum 2026-08-27 — the raw-interpolation sweep (§10.2's wider question), FINDING ONLY
+
+**Read-only sweep. Nothing was executed and nothing was tested** — see the closing note. §10.2 asked
+whether, if `view_bid` interpolates a route param into raw SQL, others do. **They do**, and one is a
+stronger candidate than the case that prompted the question.
+
+⚠️ **Probe was proven before its zeros were believed:** the pattern was first confirmed to find the
+known `order_bids.js:253` case.
+
+### 11.1 ⛔ `controllers/admin/orders.js:66-68` — request body, list, NO numeric filter
+
+```js
+const { id, … } = req.body;
+const ids = id.split(',');
+order_ids = ids.filter((filter_order_id) => filter_order_id).toString();
+…
+query += `AND ord.id IN (${order_ids}) `;      // :90, and again at :129
+```
+
+The filter tests **truthiness only**. A non-numeric element survives it intact and reaches the SQL
+verbatim. This is request-body input, a list, on an admin surface.
+
+### 11.2 The fix already exists in this repo, one file away — they differ by ONE character
+
+`controllers/admin/user.js:38` does the identical job:
+
+```js
+const user_ids = ids.filter((filter_id) => +filter_id).toString();   // note the +
+```
+
+The `+` coerces first, so anything non-numeric becomes `NaN`, is falsy, and is dropped. **That one
+is accidentally safe; its sibling is not.** Same author, same pattern, same week — which is exactly
+why "we fixed the one we found" is not a strategy for this class.
+
+⚠️ Neither is *deliberately* parameterised. `user.js` is safe by coincidence of a coercion someone
+added for a different reason. Both should use bind parameters (`replacements`), not a cleverer
+filter.
+
+### 11.3 Lower concern, recorded for completeness
+
+- `services/users.services.js:458` (`gopher_id=${gopher_id}`), `retrieve.js:2596`, `update.js:1287`
+  — interpolate **DB-derived** ids, not request input. Worth parameterising on principle; not the
+  same risk.
+- `controllers/common/referrals.js:340/348/371` — `referrer_id=${referrer_id}` where
+  **`referrer_id = decoded.id`**, i.e. from the verified JWT. **Clean negative, checked rather than
+  assumed.**
+
+### 11.4 ⛔ Severity, stated carefully — and what has NOT been done
+
+Admin routes carry `verify_auth` (§7: 26/28 mounts), so this needs **admin credentials**. That
+lowers the likelihood and not the impact: SQL injection under an admin session is full database
+access, and it reaches further than any of the four IDORs above.
+
+⛔ **NOTHING HERE WAS TESTED, and no claim of exploitability is made.** Finding a candidate is a
+grep; establishing one is an attack, and the two are different work with different authorization.
+**Confirming any of these must not happen against production** and is an owner decision.
+
+**The distinction worth keeping: a sweep is cheap and safe; testing what it finds is neither.**
+Only the second needs authorization — which is why this section exists and why it stops here.
+
