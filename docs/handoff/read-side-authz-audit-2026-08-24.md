@@ -149,3 +149,158 @@ product decision, not mine.
 - **Any runtime proof.** Every finding here is from reading `origin/production` source. **Nothing
   was executed against a live or staging server, and no request was made with anyone's token.**
   A repro against staging is the natural next step and is owner-authorized work, not mine to assume.
+
+---
+
+## 8. Addendum 2026-08-27 — the projection also leaks on the HAPPY PATH, with no IDOR required
+
+**Traced from `origin/production` on 2026-08-27**, arriving from the opposite direction: a support
+email from Gopher **139722**, who asked whether her phone number and home address were protected.
+
+§6 is correct and is the finding that matters. This addendum **raises its severity**, because §3's
+three routes all require **id enumeration by a stranger**, and the ones below require **nothing at
+all** — they are the ordinary, authorized, everyday paths, hit on every order.
+
+### 8.1 Eight call sites in `controllers/order/retrieve.js`, every one passing `include_address = true`
+
+| Line | Handler | Route | Whose record is fetched |
+|---|---|---|---|
+| 345 | (module helper) | — | requester + gopher |
+| 1081 | (module helper) | — | requester + gopher |
+| 1788 | `get_gopher_active_and_available_orders` | `GET /orders/available-active` | requester + gopher |
+| 2390 | `order_view` | `GET /orders/:id` | gopher + requester |
+| 2534 | `order_view` | `GET /orders/:id` | gopher |
+| 2608 | `order_view` | `GET /orders/:id` | the requester's selected Gophers |
+| 2678 | `order_view` | `GET /orders/:id` | **every Gopher who BID on the order** |
+| 2752 | `order_view` | `GET /orders/:id` | every message sender on the order |
+
+`retrieve.js:1204` then does `newOrder.gopher = { ...gopher_data, ... }` — the whole record, spread
+into the response.
+
+### 8.2 ⛔ The worst of these is `L2678` — bidders, BEFORE any connection exists
+
+`order_view` hands the requester the full `get_users_details(..., true)` record for **every Gopher
+who placed a bid**. A bidder is by definition *not yet* connected to that requester.
+
+**This contradicts a live product policy.** The In-App Communication Policy (G40-35, and the
+owner's 2026-07-19 ruling recorded in `connected-job-contact-rule`) blocks contact-sharing in
+messages **until the job is connected**, precisely because pre-acceptance contact exchange is how
+transactions leave the platform. The moderation layer masks a phone number typed into a message —
+while this endpoint ships that same worker's phone, email, DOB, home address and FCM token to the
+same counterparty, in JSON, for merely having bid.
+
+The guard and the API disagree about the same rule. Whichever is right, they cannot both be.
+
+### 8.3 `fcm_token` — confirmed still present
+
+`required_user_fields` on `origin/production` today:
+
+```
+id, email, first_name, last_name, telephone, email (listed twice), date_of_birth,
+requesting_primarly, discover_gopher, requesting_primarly_others, discover_gopher_others,
+confirmed_at, fcm_token, created_at, trust_shield_verified
+```
+
+§6's closing warning stands and is **not** yet actioned. Worth restating plainly: a push token is
+**actionable**, not merely disclosed — unlike a DOB, holding it is a capability.
+
+⚠️ **Correcting my own first report of this.** I originally routed it to the Live App Bugs session
+as "phone, email, DOB and address" and **omitted `fcm_token`**, having read the field list without
+registering it. That session caught the omission. The token is the most severe item in the list.
+
+### 8.4 What this changes about the fix order
+
+§6's recommendation is unchanged and still right — **the projection first**. This addendum only
+sharpens why:
+
+- Fixing the three §3 routes and not the projection leaves **eight further call sites in one file**
+  still shipping the full record to a legitimately authorized caller.
+- A `counterparty_user_fields` projection closes §3 and §8 together.
+- ⚠️ **`include_address` is passed `true` at all eight sites.** Whatever projection is introduced,
+  the second argument has to be revisited at each call site rather than left as-is; a narrowed field
+  list with `include_address` still `true` would keep shipping home addresses.
+
+### 8.5 Not verified
+
+- **Whether any client renders these fields.** The data reaches the device; what the UI draws was
+  not traced. For a privacy answer it makes little difference, but for a UI-regression assessment
+  it does — a narrowed projection may blank fields some screen is reading.
+- **No runtime proof**, consistent with §7: this is source reading on `origin/production`. Nothing
+  was executed and no request was made with anyone's token.
+
+### 8.6 Independently corroborated
+
+§8 was re-read from `origin/production` by a second session on 2026-08-27, working from the source
+rather than from this write-up — each call site's second argument checked directly, not matched
+against the line numbers above. Both readings agree on all eight sites and on `include_address =
+true` at every one.
+
+The bidder path was additionally traced to the response body and confirmed here first-hand
+(`retrieve.js` ~2709-2719):
+
+```js
+if (find_user) {
+  return { ...updatedItem, ...find_user };   // whole user object, not a subset
+}
+...
+get_order.order_bids = updated_bids || [];
+```
+
+So `order_bids` carries the complete `get_users_details(..., true)` record per bidder — this is the
+served payload, not an intermediate.
+
+**Lead with the policy contradiction, not the severity.** "Over-projection" invites prioritisation
+against other work; *"a live product policy is not enforced on the read path"* does not. G40-35 and
+the owner's 2026-07-19 ruling moderate a phone number **typed into a message** pre-connection, while
+this endpoint ships that same worker's phone, email, DOB, home address and FCM token as JSON for
+merely having bid. One rule, two answers, and the API is the one that wins.
+
+---
+
+## §9 · Addendum 2026-08-27 — the bidder path is FIXED, and `attributes` is not the lever
+
+*Added by the Live App Bugs session, owner-assigned. Does not renumber or edit §1–§8.*
+
+**Fixed:** `retrieve.js` L2678, the bidder projection — `gopher-backend-api!405`, branch
+`fix/bidder-pii-projection`, **awaiting the owner's merge** (merging auto-deploys). Ticket
+**`G40-416`** (John's Tickets, sprint 677, High).
+
+### ⛔ The correction that matters for the rest of the sweep
+
+§6 and §8 both recommend narrowing the projection. **A narrowed `attributes` argument to
+`get_users_details` does NOT do that**, and it looks like it does.
+
+`attributes` governs **only the `users` table**. The function then attaches, from other tables and
+*regardless of that argument*:
+
+- `address`, from `addresses` (gated by `include_address`, a separate parameter); and
+- from `users_info` — **`license_plate_number`, `driver_license_number`, `driver_license_state`,
+  `car_insurance`, `personal_info`**.
+
+So a "narrowed projection" fix would have left **a driver's licence number and licence plate in a
+pre-acceptance payload** while passing review. ⚠️ **Those five fields are not listed anywhere in
+§1–§8** — the audit's field inventory came from `required_user_fields`, which does not include
+them.
+
+**Therefore: a subtractive fix to `get_users_details` cannot be verified by reading its argument
+list.** The bidder fix uses a **separate minimal query** (`get_bidder_public_details`) — it has
+nothing to strip. The remaining seven sites should follow that shape, not a narrowed `attributes`.
+
+### How to size an allow-list honestly
+
+The bidder allow-list is `id` + `first_name` + `last_name`, derived by reading **both** consumers
+rather than guessing: the requester bid card renders exactly those two user fields (no avatar, no
+badge — everything else comes from the bid row or is attached at the call site), and the worker app
+reads no user fields from bids at all. **Do the same per call site.** The seven remaining sites
+will not share one allow-list — the assigned-worker card almost certainly needs the avatar the bid
+card does not.
+
+### Still open
+
+L345, L1081, L1788, L2390, L2534, L2608, L2752 — all still `include_address: true`. **L1081 is the
+next most severe**: it hands the customer the assigned worker's phone, email, DOB, address and
+`fcm_token` post-acceptance, on the main order-detail path. Needs its own ticket.
+
+*Credit: the eight call sites, the `fcm_token` catch and the L2678 pre-acceptance case were found
+and routed by the Customer Support session (§8); independently verified at source here before
+acting.*
