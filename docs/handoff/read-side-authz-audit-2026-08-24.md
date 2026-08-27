@@ -295,14 +295,37 @@ reads no user fields from bids at all. **Do the same per call site.** The seven 
 will not share one allow-list — the assigned-worker card almost certainly needs the avatar the bid
 card does not.
 
-### Still open
+### Still open — ⚠️ READ THE STATE LINE BEFORE TICKETING
 
-L345, L1081, L1788, L2390, L2534, L2608, L2752 — all still `include_address: true`. **L1081 is the
-next most severe**: it hands the customer the assigned worker's phone, email, DOB, address and
-`fcm_token` post-acceptance, on the main order-detail path. Needs its own ticket.
+⛔ **Corrected 2026-08-27 by the author of this section.** It previously read *"L345, L1081, L1788,
+L2390, L2534, L2608, L2752 — all still `include_address: true` … needs its own ticket."* **That was
+true of `origin/production` and stale the moment `!404` was pushed**, and it is stale in the
+dangerous direction: anyone ticketing from it would have raised seven tickets against work that is
+reviewed and green. Flagged by the Customer Support session; **verified here** before correcting —
+all eight `retrieve.js` sites on `fix/counterparty-user-projection` carry `false` plus a projection.
 
-> ⚠️ **TRUE OF `origin/production`, ALREADY ADDRESSED ON A BRANCH — read this before ticketing
-> the seven.** *(cross-reference added by the Customer Support session; §9's body is untouched.)*
+**Actual state, by branch — this is the thing to check, not the line above:**
+
+| | `origin/production` | on `!404` |
+|---|---|---|
+| the eight `retrieve.js` sites | **open**, `include_address: true` | narrowed, `false` + projection |
+| `view_cog`, counter-offer view, active-bid view | **open** | narrowed |
+
+So **nothing here needs a ticket if `!404` lands.** If it does not, all of it does — **L1081 first**,
+which hands the customer the assigned worker's phone, email, DOB, address and `fcm_token`
+post-acceptance on the main order-detail path.
+
+⚠️ **The general lesson, since this doc is canonical and read by people who are not in the thread:
+a "still open" list is a claim about a MOMENT, and branches move under it.** Say which ref the
+claim is about, or it becomes an instruction to duplicate somebody's finished work.
+
+**Still genuinely open regardless of which branch lands:** `counterparty_user_fields` is **one list
+across every counterparty site**. The seven remaining sites will not share one allow-list — the
+assigned-worker card needs the avatar the bid card does not. Sizing a projection per call site,
+against its real consumers, is unfinished work in either remedy.
+
+> *(Cross-reference added by the Customer Support session before the correction above; retained
+> because its second half is the substantive part.)*
 >
 > **`gopher-backend-api!404`** (`fix/counterparty-user-projection`) narrows **all eight**
 > `retrieve.js` sites plus `view_cog`, the counter-offer view and the active-bid view, and sets
