@@ -257,7 +257,7 @@ merely having bid. One rule, two answers, and the API is the one that wins.
 
 ---
 
-## §9 · Addendum 2026-08-27 — the bidder path is FIXED, and `attributes` is not the lever
+## 9. Addendum 2026-08-27 — the bidder path is FIXED, and `attributes` is not the lever
 
 *Added by the Live App Bugs session, owner-assigned. Does not renumber or edit §1–§8.*
 
@@ -307,7 +307,7 @@ acting.*
 
 ---
 
-## 9. Addendum 2026-08-27 — a FOURTH read-side IDOR: `GET /api/v1/orders/bid/:id`
+## 10. Addendum 2026-08-27 — a FOURTH read-side IDOR: `GET /api/v1/orders/bid/:id`
 
 Found by the Live App Bugs session while tracing which endpoint feeds the offer
 card; **verified first-hand here against `origin/production` before being
@@ -332,7 +332,7 @@ RESPONSE.** Bid ids are sequential integers, so any authenticated caller can
 walk them and read every bid on the platform — bidder identity, and the order's
 money detail.
 
-### 9.1 The §8 projection is currently the only thing limiting the blast radius
+### 10.1 The §8 projection is currently the only thing limiting the blast radius
 
 Worth stating plainly because it changes how the two pieces of work relate:
 before §8, this IDOR returned the bidder's full internal record. It now returns
@@ -340,7 +340,7 @@ before §8, this IDOR returned the bidder's full internal record. It now returns
 standing in for an authorization control, and it should not be mistaken for
 one.** Narrowing what an IDOR leaks is not the same as closing it.
 
-### 9.2 ⚠️ Possible SQL injection — NOT ESTABLISHED, and deliberately untested
+### 10.2 ⚠️ Possible SQL injection — NOT ESTABLISHED, and deliberately untested
 
 `req.params.id` is interpolated raw into the query string with no validation,
 cast, or bind parameter, on a `db.sequelize.query({ query: … })` call that passes
@@ -355,7 +355,7 @@ whoever fixes one should look at the other.
 same discipline as the `/users/reauth/:stripe` note in §5, and the same reason:
 a confident wrong answer about an injection is worse than no answer.
 
-### 9.3 Separate, and it needs a store release
+### 10.3 Separate, and it needs a store release
 
 The bidder's licence last-4 reaching a requester **pre-acceptance** is real
 counterparty disclosure, not a self-view: `makeAnOfferData` is filled by
@@ -368,44 +368,37 @@ unguarded `.slice`. Closing it means guarding the `.slice` in two store
 releases, with no OTA. **That is a store-release ticket, not a backend change**,
 and it is written here so it is not known-and-forgotten.
 
+### 10.4 ⛔ Nothing in CI can catch the fifth — this outlasts any single route
+
+Four IDORs now share **one root**: a comparison that gates a **side effect** while the response
+returns below it. Reviewing for *"does this handler reference `decoded`?"* passes every one of them.
+
+And `scripts/check-route-authz.js` is **structurally blind** to the whole class —
+`MUTATING = 'post|put|patch|delete'`, so GET is outside its remit **by construction** (§3.3 says the
+same of the `!367` case). A green run is not evidence.
+
+⚠️ **This one was found by tracing an unrelated question, not by a sweep.** The audit predicted the
+class on 2026-08-24 and nothing systematic went looking for more of it in the three days since.
+**That gap deserves a ticket more than any individual route does** — a guard that can actually see
+GET handlers, or it happens again and is found the same accidental way.
+
+### 10.5 Fix status, and one thing noticed in passing
+
+**Fixed in `gopher-backend-api!406`** (`fix/view-bid-authz`), **awaiting the owner's merge** —
+ticket **`G40-417`**. A bid becomes readable by exactly two parties: the gopher who made it and the
+requester who owns its order. The guard runs **before** the projection, so an unauthorized caller
+assembles no data.
+
+⚠️ **Do not write `order_logs` on an authz refusal for an enumerable endpoint** — a row per rejected
+probe lets an attacker write unbounded noise into a **victim's** order history. Server log instead,
+with the caller id. (`create_bid`'s sibling guard does write one; this deliberately does not.)
+
+⚠️ **`set_viewed` is called without `await` and has no `.catch`**, so a rejection in it is an
+unhandled rejection in production — and it escapes a caller's try/catch in tests, too. Noticed
+while writing the guard; out of scope for an authz fix, unfixed.
+
+⚠️ **`!404` and `!406` touch the same function.** Hunks are adjacent, not separate — see the
+merge note on both MRs. Whoever merges second re-reads the whole function rather than trusting
+git.
+
 ---
-
-## §10 · A FOURTH IDOR — `view_bid` (added 2026-08-27, Live App Bugs, owner-assigned)
-
-**`GET /orders/bid/:id`** had no ownership check. Fixed in **`gopher-backend-api!406`**
-(`fix/view-bid-authz`), **awaiting the owner's merge**. Ticket **`G40-417`**.
-
-`where g.id=${id}`, no scoping, **bid ids sequential**. Any authenticated caller could walk them and
-read every bid: bidder name, licence last-4, and the order's money detail.
-
-**It is §-for-§ the `counter_offer` shape this audit already named.** `decoded` appeared twice —
-the destructure, and `if (!decoded.gopher) this.set_viewed(id)`, which gates *marking the bid
-viewed* and never the response. **Found only by tracing an unrelated question**, which is the point
-worth recording: the audit predicted this class and nothing systematic was looking for more of it.
-
-⚠️ **Four instances now share one root: a comparison that gates a SIDE EFFECT while the response
-returns below it.** Reviewing for "does this handler reference `decoded`?" passes every one of them,
-and `scripts/check-route-authz.js` is structurally blind here (`MUTATING = 'post|put|patch|delete'`).
-**Nothing in CI can currently catch the fifth.** That gap is the item worth a ticket, more than any
-individual route.
-
-### ⛔ Separate and NOT established — `req.params.id` is interpolated raw
-
-`where g.id=${id}` takes an unvalidated, uncast route param. **Possible SQL injection. Deliberately
-NOT tested** — establishing it needs a controlled check that must not run against production, which
-is an owner authorization. **Do not escalate it as confirmed and do not treat `!406` as covering
-it.** Same discipline as the `/users/reauth/:stripe` note above. It needs its own ticket.
-
-⚠️ Worth a sweep on its own terms: if this handler interpolates a route param, others may. Nobody
-has looked.
-
-### Noticed in passing, out of scope
-
-`set_viewed` is called **without `await`** and has no `.catch`, so a rejection there is an unhandled
-rejection in production.
-
-### Overlap
-
-`!404` edits the prospect projection **inside this same function**. Hunks are separate; whoever
-merges second re-reads the whole function. **`!404`'s projection is currently the only thing
-limiting what this IDOR returns**, so landing either is an improvement — waiting to bundle is not.
