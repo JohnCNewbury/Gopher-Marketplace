@@ -488,6 +488,55 @@ stronger candidate than the case that prompted the question.
 ⚠️ **Probe was proven before its zeros were believed:** the pattern was first confirmed to find the
 known `order_bids.js:253` case.
 
+### 11.0 ⛔ CORRECTION — this sweep MISSED HALF OF WHAT IT WAS LOOKING FOR
+
+**Written by its author, 2026-08-27.** §11 originally reported three interpolation sites. There are
+**five**, and **two of the four `IN (…)` id-list sites were missed** — including a second real
+defect. Both misses were **probe faults, not code**:
+
+- the pathspec `controllers/**/*.js` silently matched **nothing at depth 1**, hiding
+  `controllers/admin.controller.js`;
+- a `grep -viE 'message'` filter, meant to drop log lines, ate
+  `controllers/admin/inbox_message.js` **by its FILENAME**, because `git grep -n` output contains
+  the path.
+
+⚠️ **A sweep is only as good as its probe, and this one had passed its control.** The control proved
+the pattern could find the *known* case — it did not prove the *file set* was complete. **Prove the
+corpus as well as the pattern.** Correct probe: `git grep -n 'IN (\${' -- controllers services
+helpers middleware`, no globs, no filename-sensitive filters.
+
+**All four id-list sites are fixed in `gopher-backend-api!408`** (`fix/admin-id-filters-parameterised`).
+
+### 11.0b ⛔ The second defect, and it is worse than the one that prompted the sweep
+
+`controllers/admin/inbox_message.js:277-279`:
+
+```js
+array = custom.replace(/,\s*$/, '').split(',');
+array.map((item) => +item);        // "Convert each element of the array to an integer"
+…
+query += `AND u.id IN (${array}) `;
+```
+
+**`.map` returns a new array and does not mutate. The result was discarded**, so `array` stayed as
+the raw split strings and `req.body.custom` reached the SQL verbatim.
+
+The comment describes a transformation that never happened. ⛔ **A no-op that READS as a control is
+more dangerous than a missing one** — the missing one gets found, the no-op gets ticked off.
+
+**The four sites did one job four ways, and only two were safe — both by accident:**
+
+| file | "sanitisation" | |
+|---|---|---|
+| `admin/orders.js` | `filter((x) => x)` — truthiness only | **unsafe** |
+| `admin/inbox_message.js` | `map((x) => +x)` — **result discarded** | **unsafe** |
+| `admin/user.js` | `filter((x) => +x)` — coerces | safe by luck |
+| `admin.controller.js` | `map(parseInt)` — coerces | safe by luck |
+
+**That is the finding, more than any one route:** correctness depended on which variant a file
+happened to copy. All four are now `IN (:list)` with the value bound — a filter must be re-derived
+correctly in every file forever; a binding does not.
+
 ### 11.1 ⛔ `controllers/admin/orders.js:66-68` — request body, list, NO numeric filter
 
 ```js
