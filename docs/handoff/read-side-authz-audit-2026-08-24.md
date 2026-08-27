@@ -45,6 +45,26 @@ Corrected count: **37** parameterised GET routes, not 6.
 
 ---
 
+> # ⛔ READ THIS FIRST — §3's IDOR LIST IS STALE, AND IT MISLED THE CHECK BUILT TO REPLACE IT
+>
+> **Corrected 2026-08-27 by re-reading every handler against `origin/production`.**
+>
+> **All four IDORs in §3 are FIXED**, three of them before today: `user_profile` (2026-08-25),
+> `view_cog`, `view_counter_offer`, and `view_bid` (`!406`). Each now carries an ownership
+> comparison that **gates the response**. The two found on 2026-08-27 (§12) are fixed too (`!412`).
+>
+> **Current state: 14 of 15 parameterised GET routes are owner-checked. ZERO open IDORs.** The one
+> remaining is `GET /reauth/:stripe`, unauthenticated **by design**.
+>
+> ⚠️ **How this went wrong, because it is the more useful part.** §3's list was seeded into
+> `scripts/check-read-route-authz.js` as `KNOWN-OPEN` **without checking it against production** —
+> so a security check shipped asserting four fixed routes were open. That is the same stale-claim
+> failure §9 of this document warns about, committed *while building the guard against it*. A list
+> of open findings is a claim about a **moment**; this one was three days old.
+>
+> **The section below is kept unedited** — its mechanism, its examples and its architectural
+> finding are all still correct and still worth reading. Only its *status* was wrong.
+
 ## 3. CONFIRMED read-side IDOR — 3
 
 All three are reachable by **any authenticated user**, against **any id**, with ids being
@@ -679,3 +699,43 @@ account the ciphertext names.
 ⛔ **What that link permits is still NOT ESTABLISHED** (§5). It is deliberately *not* downgraded to
 `public`, because "unauthenticated on purpose" and "safe" are different claims and only the first
 one is proven.
+
+## 13. Addendum 2026-08-27 — the `/reauth/:stripe` question, ANSWERED at source
+
+§5 and §10.2 both said what the onboarding link permits was **not established**. It is now — by
+reading, not by testing. **Nothing was executed and no exploitability is claimed.**
+
+**The mechanism, end to end:**
+
+1. `lib/payment.stripe.js:2346` `account_onboarding(stripe_id)` calls
+   `stripe.accountLinks.create({ account: stripe_id, type: 'account_onboarding' })` and builds its
+   own `refresh_url` as `…/users/reauth/stripe?<AES(stripe_id,'Gopher-secret')>`.
+2. `GET /api/v1/users/reauth/:stripe` is mounted **with no `user_auth`** (`controllers/user/index.js`),
+   decrypts that query string with the same **hardcoded** key, and **302s to a live Stripe-hosted
+   onboarding URL** for whatever connected account the ciphertext names.
+
+The key is symmetric and in the source, so **minting a link is trivial for anyone who knows an
+`acct_…` id.** An `account_onboarding` link walks that account's onboarding, which per Stripe's
+documented behaviour includes the **external (payout) account**.
+
+### 13.1 ✅ The chain is BROKEN, and by exactly one thing
+
+The missing link is the `acct_…` id. **`user_profile` is the only user-facing response that returns
+`users_roles.stripe_id`** — and since 2026-08-25 it is scoped to the caller's own record. So a
+caller can obtain only their **own** connected-account id, and minting a link for your own account
+is the legitimate flow.
+
+⛔ **That makes `user_profile`'s self-scoping load-bearing for a vulnerability in a different file,
+and nothing at either site says so.** Widening it — a "let workers see requester profiles" feature,
+say — would silently re-open a payout-modification path. Recorded on that route's entry in
+`check-read-route-authz.js` so the next person to touch it sees the coupling.
+
+### 13.2 What should still change, and why it needs no exploitability finding
+
+**Move `'Gopher-secret'` out of the source into an env var.** Correct regardless of whether the
+chain is reachable, and it removes "anyone with repo access can mint an onboarding link for any
+account they can name" as a standing property. Owner action for the variable itself.
+
+A stronger version — a short-lived random token stored server-side, so the URL carries no account
+identifier at all — is the right end state, and is more work than the risk currently justifies.
+
