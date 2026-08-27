@@ -2184,6 +2184,15 @@ window.GoAuth = (function(){
         tier: d.tier || null,
         serviceJobs: (d.service_jobs != null ? d.service_jobs : d.serviceJobs) || 0,
         serviceRating: (d.service_rating != null ? d.service_rating : d.serviceRating) || null,
+        /* ⛔ WHY A DEAL CAN BE BLOCKED BY AN IMAGE (owner, 2026-08-27). A card
+           with no mark misrepresents nothing — it just shows a customer
+           nothing — and until this ruling the OWNER was the only thing that
+           ever noticed, by eye, in the HQ queue. `image.reason` says which
+           piece is missing so the page can name the actual fix:
+             no_profile_photo  -> no photo on the account at all
+             business_no_mark  -> showing as a business, no logo, and has not
+                                  elected to use the profile photo */
+        image: (d.image && typeof d.image === 'object') ? d.image : null,
         raw: d
       };
     });
@@ -2597,6 +2606,39 @@ window.GoProfile = (function(){
      above and by the file picker below, so the two can never disagree about
      which element holds the message or leave a stale one behind.
      `tone` is '' | 'ready' | 'error'. */
+/* ⛔ PAINT THE REAL PHOTO INTO EVERY AVATAR. One writer, so the topbar and
+     the profile hero cannot disagree — and so the Business-info tile and the
+     Profile page show the SAME picture, which is what the owner meant by
+     "profile pics do NOT match". Falls back to initials, which is what these
+     always did and is still right for someone with no photo. */
+  window.GoAvatar = window.GoAvatar || {};
+  window.GoAvatar.paint = function(url){
+    ['dashAvatar','profAvatar'].forEach(function(id){
+      var el = document.getElementById(id); if(!el) return;
+      var img = el.querySelector('.avatar-img');
+      if(url){
+        if(!img){
+          img = document.createElement('img');
+          img.className = 'avatar-img';
+          img.alt = 'Your profile photo';
+          /* A dead URL must fall back to initials rather than leave a blank
+             circle — the S3 key changes whenever a photo is replaced. */
+          img.addEventListener('error', function(){
+            img.remove();
+            el.childNodes.forEach && null;
+            if(!el.textContent.trim()) el.textContent = (window.GoAvatar.initials || '');
+          });
+          el.textContent = '';
+          el.appendChild(img);
+        }
+        if(img.getAttribute('src') !== url) img.src = url;
+      } else if(img){
+        img.remove();
+        el.textContent = window.GoAvatar.initials || '';
+      }
+    });
+  };
+
   window.__goSetLogoState = function(tile, html, tone){
     if(!tile) return;
     var st = tile.querySelector('.vp-state');
@@ -2624,10 +2666,46 @@ window.GoProfile = (function(){
       set('dashWorkerName', full, true);
       set('profName', full, true);
       var initials = full.split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+      window.GoAvatar = window.GoAvatar || {};
+      window.GoAvatar.initials = initials;
       ['dashAvatar','profAvatar'].forEach(function(id){
-        var el=document.getElementById(id); if(el && initials) el.textContent = initials;
+        var el=document.getElementById(id); if(!el) return;
+        /* Only write initials where there is no photo already painted. */
+        if(!el.querySelector('.avatar-img') && initials) el.textContent = initials;
       });
     }
+    /* ⛔ THE PIC IS PART OF SP-DEAL ELIGIBILITY (owner, 2026-08-27) — and the
+       worker has to be TOLD, next to the thing that needs fixing, or the owner
+       goes back to being the discovery mechanism. Asks the server rather than
+       guessing from the avatar: the initials fallback renders identically
+       whether a photo exists or not, so the DOM cannot answer this. Fails
+       silent — an unreachable endpoint must not accuse a worker of a problem
+       they may not have. */
+    /* The identity toggle previews an UNSAVED choice, so the page needs the
+       PARTS, not just the server's resolved answer — see provider_image in
+       controllers/user/profile.js. Stashed here because this is the one place
+       the profile payload lands. */
+    if(p.provider_image && typeof p.provider_image === 'object'){
+      window.GoBiz = window.GoBiz || {};
+      window.GoBiz.providerImage = p.provider_image;
+      if(window.GoBiz.paintShowAs) window.GoBiz.paintShowAs();
+      /* The SAME url the Business-info tile uses, so the two always match. */
+      if(window.GoAvatar && GoAvatar.paint)
+        GoAvatar.paint(p.provider_image.profile_photo_url || '');
+    }
+
+    (function showPicGate(){
+      var warn = document.getElementById('profPicWarn');
+      if(!warn || !window.GoAuth || !GoAuth.fetchEligibility) return;
+      GoAuth.fetchEligibility().then(function(e){
+        var reason = e && e.ok && e.image ? e.image.reason : null;
+        if(!reason){ warn.hidden = true; return; }
+        warn.textContent = reason === 'business_no_mark'
+          ? 'Add a business logo — or choose to use your profile photo — to be eligible for Gopher Deals.'
+          : 'Add a profile photo to be eligible for Gopher Deals.';
+        warn.hidden = false;
+      }).catch(function(){ warn.hidden = true; });
+    })();
     if(p.gopher_completed_task_count != null) set('profJobs', p.gopher_completed_task_count, true);
     if(p.average_rating != null && +p.average_rating > 0)
       set('profRating', (Math.round(+p.average_rating*10)/10).toFixed(1), true);
@@ -3368,7 +3446,19 @@ window.showNoAccount = function(){
 
   /* profile overview */
   .profile-hero { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
-  .ph-avatar { width:66px; height:66px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:24px; flex-shrink:0; }
+  .ph-avatar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  /* Deliberately small and quiet: this is a prompt, not an error. It names the
+     fix rather than the rule — a worker does not care what "eligibility" means,
+     they care that adding a photo unlocks something. */
+  .ph-pic-warn { max-width:150px; margin:0; font-family:'DM Sans',sans-serif;
+    font-size:11px; line-height:1.35; color:#8A6D00; background:#FFF6E5;
+    border:1px solid #F0DCA8; border-radius:8px; padding:6px 8px; text-align:center; }
+  .ph-avatar { overflow:hidden; width:66px; height:66px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:24px; flex-shrink:0; }
+  /* ⛔ AN AVATAR MUST BE ABLE TO SHOW THE ACTUAL PHOTO. Both avatars were
+     initials-only — there was no <img> path at all — so a worker WITH a profile
+     photo saw "JN" on their own profile page and had no way to tell the product
+     even had their picture. Reported three times before it was fixed. */
+  .avatar-img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .ph-id { flex:1; min-width:200px; }
   .ph-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:21px; color:var(--navy); }
   .ph-since { font-size:13px; color:var(--muted); margin-top:1px; }
@@ -3406,6 +3496,33 @@ window.showNoAccount = function(){
   .rh-list::-webkit-scrollbar-thumb:hover { background:#bcc5d4; }
   .rh-count { font-size:12.5px; color:var(--muted); margin:0 0 8px; }
   .rh-count b { color:var(--navy); }
+  .up2-pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:420px){ .up2-pair { grid-template-columns:1fr; } }
+  /* The ACTIVE image is the one being answered for, so it gets the emphasis —
+     the inactive one stays legible and tappable, never hidden: a worker has to
+     be able to add the other one. */
+  .idtile { opacity:.55; transition:opacity .15s, box-shadow .15s; }
+  .idtile.is-active { opacity:1; box-shadow:0 0 0 2px var(--green,#33D975); }
+  /* ⛔ NEVER OVER THE IMAGE. Owner, 2026-08-27: "Do NOT allow the pill to
+     interfere with the logo or pic, that would be taboo UI." It sat absolutely
+     positioned on top of the artwork — covering the very thing it was labelling.
+     It is a caption under the tile now, in normal flow. */
+  /* ⛔ [hidden] MUST WIN. Giving this an explicit `display` overrode the UA
+     stylesheet's `display:none`, so the hidden attribute did nothing and BOTH
+     tiles wore "Shown to customers" — announcing two live images when only one
+     can be. This repo has no global [hidden] rule to fall back on. */
+  .idtile-flag[hidden] { display:none !important; }
+  .idtile-flag { display:block; margin:8px auto 0; width:fit-content;
+    background:var(--green,#33D975); color:var(--navy,#002461);
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.2px; border-radius:999px; padding:3px 10px; }
+  /* A business needs a profile photo before it can exist (owner, 2026-08-27),
+     so the switch is refused rather than allowed-then-broken. */
+  .showas-blocked { opacity:.45; pointer-events:none; }
+  .bizlogo-use { margin:8px 2px 0; font-family:'DM Sans',sans-serif; font-size:12px;
+    line-height:1.45; color:var(--muted); }
+  .bizlogo-use.is-idle { color:#8A6D00; background:#FFF6E5; border:1px solid #F0DCA8;
+    border-radius:8px; padding:7px 10px; }
   .bizlogo-img { display:block; max-width:120px; max-height:64px; width:auto; height:auto;
                  object-fit:contain; margin:0 auto 8px; border-radius:8px; background:#fff; }
   .cred.uptile.has-logo { padding-top:14px; border-style:solid; border-color:#dfe6f2; background:#fff; }
@@ -3955,7 +4072,7 @@ window.showNoAccount = function(){
   .dash-burger { display:none; background:none; border:none; font-size:22px; color:var(--navy); cursor:pointer; }
   .dash-greeting { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--muted); }
   .dash-section-title { font-family:'Nunito',sans-serif; font-weight:900; font-size:19px; color:var(--navy); line-height:1.2; margin-top:1px; }
-  .dash-avatar { width:42px; height:42px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; }
+  .dash-avatar { overflow:hidden; width:42px; height:42px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; }
   .dash-content { padding:30px; max-width:860px; width:100%; }
   .dash-section { display:none; }
   .dash-section.active { display:block; animation:fadeIn 0.25s ease; }
@@ -4383,7 +4500,10 @@ window.showNoAccount = function(){
       <section class="dash-section active" data-dash-section="profile">
         <div class="panel">
           <div class="profile-hero">
-            <div class="ph-avatar" id="profAvatar">MH</div>
+            <div class="ph-avatar-wrap">
+              <div class="ph-avatar" id="profAvatar">MH</div>
+              <p class="ph-pic-warn" id="profPicWarn" hidden></p>
+            </div>
             <div class="ph-id">
               <div class="ph-name" id="profName">&nbsp;</div>
               <div class="ph-since" id="profSince">Member since Jan 2026</div>
@@ -4511,6 +4631,7 @@ window.showNoAccount = function(){
               <span class="sw on" id="bizShowAsSw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
             </div>
             <input type="hidden" id="bizShowAs" data-field value="business">
+            <p class="bizlogo-use is-idle" id="bizShowAsBlock" hidden>Add a <b>profile photo</b> in <b>Profile</b> before showing as a business &mdash; it is what represents you until you add a business logo.</p>
           </div>
           <!-- "My business doesn't have a logo" (owner, 2026-08-25). An EXPLICIT
                statement by the worker, never an automatic fallback: the whole
@@ -4540,9 +4661,32 @@ window.showNoAccount = function(){
                two-column grid beside an empty cell: the logo preview is what the
                worker is judging, and a refusal ("that is an SVG", "that is 6.2MB")
                is a sentence that needs the width to stay readable at 375. -->
-          <div class="up2 up2-solo">
-            <div class="cred uptile" data-cred="Business logo"><div class="up-ico">&#128247;</div><span>Business logo</span><input type="hidden" data-field value="0"></div>
+          <!-- ⛔ BOTH IMAGES, WITH THE ACTIVE ONE MARKED (owner, 2026-08-27:
+               "show both profile AND business logo… IF the view is individual,
+               highlight the profile pic as the one that will be shown").
+               One tile could never answer "which of my images do customers
+               actually see" — the owner slid the toggle twice and the panel
+               looked identical both times. -->
+          <div class="up2 up2-pair">
+            <div class="cred uptile idtile" data-cred="Profile photo" id="tileProfilePic">
+              <div class="up-ico">&#128100;</div><span>Profile photo</span>
+              <span class="idtile-flag" hidden>Shown to customers</span>
+            </div>
+            <div class="cred uptile idtile" data-cred="Business logo">
+              <div class="up-ico">&#128247;</div><span>Business logo</span>
+              <span class="idtile-flag" hidden>Shown to customers</span>
+              <input type="hidden" data-field value="0">
+            </div>
           </div>
+          <!-- ⛔ "On file ✓" ALONE IS MISLEADING, because whether the logo is
+               USED depends on the toggle above it, and the tile looks identical
+               either way. Owner demonstrated it 2026-08-27 by screenshotting
+               both positions: same image, same green tick, in the state where it
+               is the mark and in the state where it is ignored entirely.
+                 helpers/business_pic.js: if (!addBusiness) return profileUrl || null
+               A worker could upload a logo, see the tick, be refused a deal by
+               the image gate, and have nothing on screen to explain why. -->
+          <p class="bizlogo-use" id="bizLogoUse" hidden></p>
           <div class="save-row"><button class="btn-save" disabled>Save changes</button><span class="save-note">No changes yet.</span></div>
         </div>
       </section>
@@ -6450,7 +6594,12 @@ window.showNoAccount = function(){
          its own handler below, which validates the file and keeps it. Leaving
          the logo tile on this list would attach BOTH handlers, so every pick
          would also run the demo one and print a second, competing status. */
-      document.querySelectorAll('.dash-section[data-dash-section="business"] .cred:not([data-cred="Business logo"]), .dash-section[data-dash-section="pro"] .cred')
+      /* ⚠️ THE PROFILE-PHOTO TILE IS EXCLUDED FOR THE SAME REASON AS THE LOGO.
+         It got caught by this generic DEMO handler the moment it was added: it
+         printed "New file ready" and dropped the File on the floor, so a worker
+         would set their photo, be told it worked, save, and have nothing happen.
+         It has a real upload of its own below. */
+      document.querySelectorAll('.dash-section[data-dash-section="business"] .cred:not([data-cred="Business logo"]):not([data-cred="Profile photo"]), .dash-section[data-dash-section="pro"] .cred')
         .forEach(tile => tile.addEventListener('click', () => { credTarget=tile; credFile.value=''; credFile.click(); }));
       credFile.addEventListener('change', () => {
         if(!credTarget) return;
@@ -6463,6 +6612,82 @@ window.showNoAccount = function(){
         credTarget=null;
       });
     }
+
+    /* ══ PROFILE PHOTO — one image, two places ═══════════════════════════════
+       Owner, 2026-08-27: "if i add my profile pic to the business page, it
+       updates to the profile page and vice versa." It is ONE asset, so this
+       uploads to the SAME endpoint the profile surface uses —
+       PATCH /users/ (multipart, field `profile_photo`) — rather than storing a
+       second copy that would immediately disagree with the first.
+
+       ⛔ It must never be wired to the generic credential handler above: that
+       one is demo, prints "New file ready", and discards the file. A tile that
+       claims success and does nothing is worse than no tile. */
+    (function wireProfilePhoto(){
+      var tile = document.getElementById('tileProfilePic');
+      if(!tile) return;
+      var picker = document.createElement('input');
+      picker.type = 'file'; picker.accept = 'image/*'; picker.style.display = 'none';
+      document.body.appendChild(picker);
+
+      var say = function(msg, bad){
+        var el = document.getElementById('bizLogoUse');
+        if(!el) return;
+        el.classList.toggle('is-idle', !!bad);
+        el.textContent = msg;
+        el.hidden = false;
+      };
+
+      tile.addEventListener('click', function(){ picker.value=''; picker.click(); });
+
+      picker.addEventListener('change', function(){
+        var file = picker.files && picker.files[0];
+        if(!file) return;
+        if(!/^image\//.test(file.type)) return say('That is not an image file.', true);
+        if(!(window.GoSession && GoSession.token()))
+          return say('Sign in to update your profile photo.', true);
+
+        say('Uploading your profile photo\u2026');
+        var fd = new FormData();
+        fd.append('profile_photo', file, 'profile-' + Date.now() + '.jpg');
+        GoAuth.apiCall('/users/', { method:'PATCH', body: fd })
+          .then(function(r){
+            if(!r.ok) return say(GoAuth.apiMessage(r) || 'Could not update your photo.', true);
+
+            /* ⛔ SHOW THE FILE THEY JUST PICKED, IMMEDIATELY. The upload
+               succeeded and the tile still showed an empty placeholder, so the
+               owner reported "added pic and it wasn't recognized" — a true
+               report of what the screen said. The page has no profile-photo URL
+               until the paired backend field ships, and even after it does the
+               re-read is a round trip. The picked File is the one thing we hold
+               for certain, so render it and stop lying about the state.
+
+               ⚠️ The object URL is a LOCAL preview of a confirmed upload, never
+               a claim about what the server stored — the next profile read
+               replaces it with the real URL. */
+            var localUrl = '';
+            try { localUrl = URL.createObjectURL(file); } catch(e) {}
+            if(localUrl){
+              window.GoBiz = window.GoBiz || {};
+              GoBiz.providerImage = GoBiz.providerImage || {};
+              GoBiz.providerImage.profile_photo_url = localUrl;
+            }
+            if(window.GoBiz && GoBiz.paintShowAs) GoBiz.paintShowAs();
+            /* The claim in the message below has to be TRUE on screen, not just
+               in the database — repaint the avatars from the same url. */
+            if(localUrl && window.GoAvatar && GoAvatar.paint) GoAvatar.paint(localUrl);
+            say('Profile photo updated \u2014 it is used on your profile too.');
+
+            /* Then re-read for the real URL: update_profile_photo DESTROYS the
+               old images row and CREATES a new one, so any cached value is
+               already stale. Best-effort — the preview above already stands. */
+            if(window.GoProfile && GoProfile.reload){
+              try { GoProfile.reload(); } catch(e) {}
+            }
+          })
+          .catch(function(){ say('Could not update your photo.', true); });
+      });
+    })();
 
     /* ══ BUSINESS LOGO — a real upload path ═══════════════════════════════════
        The tile used to say "On file ✓ · tap to replace" over a file picker that
@@ -8187,10 +8412,169 @@ window.showNoAccount = function(){
       showTtl.textContent = on ? 'Showing as a business' : 'Showing as an individual';
       showSub.innerHTML = 'Requesters see <b>' + (on ? biz : who) + '</b>';
       showSw.setAttribute('aria-checked', String(on));
+      /* Say whether the logo is actually in play. Painted HERE rather than by
+         the logo tile's own writer so it can never disagree with the toggle —
+         they are the same state and one repaint owns it. */
+      /* ⛔ SHOW THE IMAGE THAT IS ACTUALLY IN USE, and change it as the switch
+         moves (owner, 2026-08-27: "the version activated should be the logo
+         shown so the user can change if needed" / "they should change on
+         slide"). The tile used to render the uploaded logo in BOTH positions —
+         identical picture, identical "On file ✓" — in the state where it is the
+         mark and the state where it is ignored entirely.
+
+         ⚠️ THIS BRANCH MIRRORS helpers/business_pic.js pickBusinessPicUrl AND
+         IS A PREVIEW ONLY. It exists because the server cannot answer a
+         question about a state that has not been saved yet. The saved answer is
+         provider_image.mark and the server stays authoritative; if the two ever
+         disagree, the server is right and this is the bug. */
+      var PI = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var useEl = document.getElementById('bizLogoUse');
+      var tile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+
+      /* ⛔ WHICH IMAGE IS ACTIVE, MARKED ON THE TILE ITSELF (owner, 2026-08-27).
+         Two tiles, the live one ringed. The inactive tile stays tappable — a
+         worker must be able to add the image they do not yet have.
+
+         ⛔ A BUSINESS REQUIRES A PROFILE PHOTO. Owner: "IF no profile, they
+         cannot select show me as a business… IF they want to create an optional
+         business profile, they MUST have AT LEAST a profile pic." Refused at
+         the switch rather than allowed and then broken downstream — and it is
+         what makes the fallback below always have something to fall back to.
+         Working with no profile photo at all stays permitted; only the BUSINESS
+         identity is gated.
+
+         ⚠️ Mirrors helpers/business_pic.js for PREVIEW ONLY — the server cannot
+         answer a question about an unsaved state. provider_image.mark is the
+         saved truth; if the two disagree, the server is right. */
+      var PI = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var useEl = document.getElementById('bizLogoUse');
+      var logoTileEl = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+      var picTileEl  = document.getElementById('tileProfilePic');
+
+      var hasPhoto = PI ? !!PI.profile_photo_url
+                        : !!(picTileEl && picTileEl.querySelector('.bizlogo-img'));
+      var hasLogo  = PI ? !!PI.business_logo_url
+                        : !!(logoTileEl && logoTileEl.querySelector('.bizlogo-img'));
+
+      /* ⛔ BOTH TILES PAINT FROM THE SERVER'S TRUTH (owner, 2026-08-27: "it
+         should represent EXACTLY what the gopher's live profile pic is. AND
+         business logo IF they have one").
+
+         Only the profile tile did. The LOGO tile was still painted by the older
+         writer, so the two disagreed: the logo tile showed an empty camera icon
+         while `business_logo_url` said a logo existed — and the empty tile was
+         therefore marked active and captioned "see your business logo". One
+         source, or the panel argues with itself.
+
+         ⚠️ A PENDING UPLOAD WINS. __pendingLogo means the worker has just picked
+         a file that has not been saved yet; repainting from the server would
+         throw away what they are looking at. */
+      if(PI && logoTileEl && !logoTileEl.__pendingLogo){
+        var lim = logoTileEl.querySelector('.bizlogo-img');
+        if(PI.business_logo_url){
+          if(!lim){
+            lim = document.createElement('img');
+            lim.className = 'bizlogo-img';
+            lim.alt = 'Your business logo';
+            logoTileEl.insertBefore(lim, logoTileEl.firstChild);
+          }
+          if(lim.getAttribute('src') !== PI.business_logo_url) lim.src = PI.business_logo_url;
+          logoTileEl.classList.add('has-logo');
+          var lico = logoTileEl.querySelector('.up-ico'); if(lico) lico.hidden = true;
+        } else if(lim){
+          lim.remove();
+          logoTileEl.classList.remove('has-logo');
+          var lico2 = logoTileEl.querySelector('.up-ico'); if(lico2) lico2.hidden = false;
+        }
+      }
+
+      /* Paint the profile-photo tile from the resolved parts when we have them. */
+      if(PI && picTileEl){
+        var pp = picTileEl.querySelector('.bizlogo-img');
+        if(PI.profile_photo_url){
+          if(!pp){ pp = document.createElement('img'); pp.className='bizlogo-img';
+                   pp.alt='Your profile photo'; picTileEl.insertBefore(pp, picTileEl.firstChild); }
+          if(pp.getAttribute('src') !== PI.profile_photo_url) pp.src = PI.profile_photo_url;
+          picTileEl.classList.add('has-logo');
+          var pico = picTileEl.querySelector('.up-ico'); if(pico) pico.hidden = true;
+        } else if(pp){
+          pp.remove(); picTileEl.classList.remove('has-logo');
+          var pico2 = picTileEl.querySelector('.up-ico'); if(pico2) pico2.hidden = false;
+        }
+      }
+
+      /* WHICH ONE IS LIVE. Business prefers the logo and falls back to the
+         profile photo (guaranteed present by the gate above); an individual is
+         always their profile photo. */
+      var activeTile = null, note = '';
+      if(!on){
+        activeTile = picTileEl;
+        note = hasPhoto
+          ? 'Requesters and Deals customers see <b>your profile photo</b>.'
+          : 'No image is shown. Add a profile photo in <b>Profile</b>.';
+      } else if(hasLogo){
+        activeTile = logoTileEl;
+        note = 'Requesters and Deals customers see <b>your business logo</b>. Tap it to replace.';
+      } else {
+        activeTile = picTileEl;
+        note = 'No business logo yet \u2014 <b>your profile photo</b> represents your business until you add one. Tap <b>Business logo</b> to add it.';
+      }
+      /* ⛔ THE PILL CLAIMS SOMETHING IS SHOWN TO CUSTOMERS, so it may only
+         appear when an image ACTUALLY EXISTS (owner, 2026-08-27: "should not be
+         shown at all until a qualified pic is added"). It was keyed on which
+         tile was ACTIVE, so an empty placeholder wore a badge saying customers
+         could see it — announcing a picture that does not exist. */
+      var activeHasImage =
+        activeTile === picTileEl ? hasPhoto
+        : activeTile === logoTileEl ? hasLogo
+        : false;
+      [picTileEl, logoTileEl].forEach(function(t){
+        if(!t) return;
+        var active = (t === activeTile);
+        t.classList.toggle('is-active', active);
+        var flag = t.querySelector('.idtile-flag');
+        if(flag) flag.hidden = !(active && activeHasImage);
+      });
+      if(useEl){
+        useEl.classList.toggle('is-idle', !activeHasImage);
+        useEl.innerHTML = note;
+        useEl.hidden = false;
+      }
+
+      /* THE GATE ON THE SWITCH ITSELF.
+         ⛔ A BUSINESS LOGO SATISFIES IT TOO (owner, 2026-08-27: "once business
+         logo is added, remove the disclaimer"). The requirement was never "a
+         profile photo" for its own sake — it is that a business must have SOME
+         image, and the profile photo is only the fallback when there is no
+         logo. Someone who has uploaded a logo has already met it, and telling
+         them otherwise sends them after a fix they do not need. */
+      var blockEl = document.getElementById('bizShowAsBlock');
+      var identityOk = hasPhoto || hasLogo;
+      if(blockEl){
+        blockEl.hidden = identityOk;
+        showSw.classList.toggle('showas-blocked', !identityOk);
+        showSw.setAttribute('aria-disabled', String(!identityOk));
+      }
     };
     window.GoBiz = window.GoBiz || {};
     window.GoBiz.paintShowAs = paintShowAs;
     showSw.addEventListener('click', function(){
+      /* ⛔ Refuse the flip, don't just grey it: pointer-events can be defeated
+         by a keyboard activation, and a switch that moves and then silently
+         reverts is worse than one that will not move. */
+      var PIc = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var pTile = document.getElementById('tileProfilePic');
+      var lTile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+      /* Same condition as the disclaimer above — a logo satisfies it. */
+      var photoOk = PIc
+        ? !!(PIc.profile_photo_url || PIc.business_logo_url)
+        : !!((pTile && pTile.querySelector('.bizlogo-img')) ||
+             (lTile && lTile.querySelector('.bizlogo-img')));
+      if(!showSw.classList.contains('on') && !photoOk){
+        var b = document.getElementById('bizShowAsBlock');
+        if(b){ b.hidden = false; b.scrollIntoView({block:'nearest'}); }
+        return;
+      }
       showSw.classList.toggle('on');
       showHid.value = showSw.classList.contains('on') ? 'business' : 'individual';
       showHid.dispatchEvent(new Event('input', { bubbles:true }));
@@ -8445,7 +8829,14 @@ window.showNoAccount = function(){
     GATE.loaded = false; GATE.eligible = null; GATE.liveDeals = 0; MY_SP_DEALS = [];
     if(!(window.GoAuth && window.GoSession && GoSession.token())){ GATE.loaded = true; return Promise.resolve(); }
     var elig = GoAuth.apiCall('/users/deals/eligibility', { method:'GET' })
-      .then(function(r){ GATE.eligible = !!(r.ok && r.body && (r.body.eligible || r.body.granted)); })
+      /* ⛔ `eligible` ALONE. This used to OR in `granted`, which was right when a
+         grant was the only override — but since 2026-08-27 a missing image
+         fails the bar for granted workers too, and the server already folds
+         both into `eligible`. Keeping the OR would open the deal form for a
+         granted worker whose submit is then refused server-side: the exact
+         "composed a deal for nothing" outcome fetchEligibility fails closed to
+         avoid. */
+      .then(function(r){ GATE.eligible = !!(r.ok && r.body && r.body.eligible); })
       .catch(function(){ GATE.eligible = false; });
     var mine = GoAuth.apiCall('/users/deals/mine', { method:'GET' })
       .then(function(r){
