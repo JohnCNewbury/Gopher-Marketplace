@@ -14255,7 +14255,9 @@ const PAY_BADGES = {
     state.scheduleType   = _isSvcDeal ? 'flexible' : 'now';
     if(_isSvcDeal) state.flexibleWindow = '2weeks';   // → pre-selects the "Within 2 weeks" timing tab
     state.dealProvider = _isSvcDeal ? {
-      name: deal.providerName || deal.merchantName || 'Gopher Pro',
+      /* '' , never an invented provider name — this rides into the request the
+         customer is about to place. */
+      name: deal.providerName || deal.merchantName || '',
       role: deal.providerRole || '',
       tier: deal.providerTier || '',
       pic:  deal.providerPic || '',
@@ -16056,7 +16058,11 @@ const PAY_BADGES = {
   // ── Service deal: large 3D card centered in the screen (modal) ──
   function tierToWorker(m){
     return {
-      name: m.pro || 'Gopher Pro',
+      /* ⛔ NO INVENTED NAME. This fell back to 'Gopher Pro', and the feed
+         module's own fallback was 'Verified Service Provider' — a made-up
+         business name that also asserted verification. profileDisplayName()
+         already returns '' for a missing name, so null degrades cleanly. */
+      name: m.pro || null,
       /* ⚠️ This used to be `m.tier.includes('Elite') ? 'elite+' : 'standard'`,
          which PROMOTED every plain Elite provider to Elite+ on their own
          profile — a fabricated tier, in the opposite direction to the card bug.
@@ -16662,10 +16668,15 @@ const PAY_BADGES = {
       payload.category     = m.reqCategory || 'home';
       payload.dropoffStops = drop ? [drop] : undefined;
       payload.pickupStops  = drop ? [drop] : undefined;   // service happens at the destination
-      payload.description  = m.name + ' \u2014 ' + (m.pro || 'Gopher Pro') + ' (Gopher Deal): ' + m.offer + '.';
+      /* ⛔ NO FABRICATED PROVIDER IN THE PAYLOAD. This wrote 'Gopher Pro' into
+         the DESCRIPTION of a real request when the provider's name was absent —
+         not a display default but invented data entering an order. The name is
+         omitted from the sentence instead. Same lesson the tier default below
+         already learned, applied to the name. */
+      payload.description  = m.name + (m.pro ? ' \u2014 ' + m.pro : '') + ' (Gopher Deal): ' + m.offer + '.';
       if(m.price != null) payload.pay = m.price;   // service deals are a set price
       // Carry the offering provider so the confirmation can auto-connect them.
-      payload.providerName = m.pro || 'Gopher Pro';
+      payload.providerName = m.pro || '';
       payload.providerRole = m.name || '';
       /* '' , never a default tier. This carried a fabricated 'Gopher Elite'
          into the request payload and on into the accepted-provider card, so
@@ -17238,6 +17249,12 @@ const PAY_BADGES = {
             <div class="profile-stat-bubble verified">
               ${window.__tierBadge(tier, w.proCred, 'font-size:8.5px;padding:2px 6px 2px 7px;')}
             </div>
+            <!-- The label stays. A null tier does NOT render an empty bubble:
+                 __tierBadge deliberately draws the VERIFIED CHECK there, because
+                 "not told a tier" still means the provider passed approval to
+                 hold a live deal. I removed this label once, reading the bubble
+                 as empty; it is not, and the check and its label belong
+                 together. -->
             <div class="profile-stat-label">${w.verified || 'Verified'}</div>
           </div>
           <div class="profile-stat">

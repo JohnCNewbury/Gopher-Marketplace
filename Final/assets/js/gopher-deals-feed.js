@@ -94,7 +94,12 @@
          used to read "Verified Service Provider" for everyone; that string is
          now only the fallback for a deal that predates the fix. */
       base.name = titleCase((d.keywords && d.keywords[0]) || 'Service Deal');
-      base.pro = d.title || 'Verified Service Provider';
+      /* ⛔ NO FALLBACK NAME. This read 'Verified Service Provider' — an
+         invented business name that also asserted a credential. `title` is set
+         server-side at submit (business name, else first name) and has been
+         since 2026-08-12; a deal filed before that shows no name rather than a
+         fabricated one. */
+      base.pro = d.title || null;
       base.price = dollars(d.customer_price);
       base.normalRate = dollars(d.normal_price);
       base.verified = true;
