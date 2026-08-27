@@ -7322,6 +7322,7 @@
 <script src="assets/js/gopher-phone-input.js" defer></script>
 <script src="assets/js/gopher-signin-recovery.js" defer></script>
 <script src="assets/js/gopher-deals-feed.js"></script>
+<script src="assets/js/gopher-provider-history.js"></script>
 <script>
 /* Phones: show a soft LIGHT field behind the open Login / hamburger panel so
    the card sits on a clean light surface (matches the standalone header on a
@@ -16072,6 +16073,11 @@ const PAY_BADGES = {
          provider, two different answers. */
       photo: (serviceProviderPic(m) || {}).src || null,
       live: !!m.live,
+      /* The deal's own code, used to ask the API for this provider's job
+         history. Keyed on the DEAL rather than the worker on purpose — the
+         feed never publishes owner_user_id, so a worker's primary key stays
+         off a public page and the history cannot be enumerated. */
+      dealCode: m.dealCode || null,
       jobs: (m.jobs != null ? m.jobs : null),
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
@@ -17252,12 +17258,14 @@ const PAY_BADGES = {
           <span class="profile-link">View all previous jobs</span>
           <span class="profile-link">View All Previous ${firstWord} Jobs Only</span>
         </div>`}
-        <!-- The job filters are withheld for a live provider: they filter a
-             history we do not have, so they would be two controls that do
-             nothing above an empty state. -->
+        <!-- The demo filters stay demo-only. A LIVE provider gets the real
+             Service jobs / All jobs toggle, rendered by
+             assets/js/gopher-provider-history.js from the deal's own code —
+             two controls over a history we actually hold, rather than two that
+             do nothing. -->
 
         ${isLive ? `
-        <div class="profile-history-empty">
+        <div class="profile-history-empty" data-pjh="${w.dealCode || ''}">
           ${hasJobs && w.jobs > 0
             ? `Individual job records aren't shown here yet — the totals above are
                this provider's Gopher history.`

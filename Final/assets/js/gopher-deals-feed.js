@@ -68,6 +68,13 @@
     var base = {
       id: 'live-' + (d.deal_code || d.id),
       live: true,                        // marks a real deal; demo cards lack it
+      /* The RAW code, unprefixed, because it is an API key and not a DOM id.
+         The provider-history endpoint is keyed on the deal rather than on the
+         worker — the feed deliberately does not publish owner_user_id, and
+         putting a gopher's primary key on a public page would make every
+         provider's job history enumerable. So the card carries the code it was
+         already given. */
+      dealCode: d.deal_code || null,
       offer: d.deal_text || '',
       dealSpecifics: d.deal_text || '',
       promo: d.promo_code || undefined
