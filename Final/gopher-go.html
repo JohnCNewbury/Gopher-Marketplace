@@ -6539,6 +6539,19 @@ window.showNoAccount = function(){
           ? GoProfile.uploadBusinessLogo(pending.file, pending.kind).then(function(u){
               if(!u.ok) return u;
               if(logoTile.__logoSaved) logoTile.__logoSaved(u.url);
+              /* ⛔ THE PANEL'S COPY OF THE SERVER DATA GOES STALE HERE. The
+                 upload succeeds and the tile shows the new logo, but
+                 provider_image was read at page load and still says there is
+                 none — so Business info kept the profile photo highlighted and
+                 said "No business logo yet" over a visible logo. The identical
+                 staleness was already fixed for the profile photo upload; this
+                 is its mirror, and its absence is why the owner uploaded a logo
+                 and saw nothing change. */
+              if(u.url && window.GoBiz){
+                GoBiz.providerImage = GoBiz.providerImage || {};
+                GoBiz.providerImage.business_logo_url = u.url;
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+              }
               return { ok:true };
             })
           : Promise.resolve({ ok:true });
@@ -8470,10 +8483,20 @@ window.showNoAccount = function(){
       var logoTileEl = document.querySelector('.cred.uptile[data-cred="Business logo"]');
       var picTileEl  = document.getElementById('tileProfilePic');
 
-      var hasPhoto = PI ? !!PI.profile_photo_url
-                        : !!(picTileEl && picTileEl.querySelector('.bizlogo-img'));
-      var hasLogo  = PI ? !!PI.business_logo_url
-                        : !!(logoTileEl && logoTileEl.querySelector('.bizlogo-img'));
+      /* ⛔ AN IMAGE ON SCREEN COUNTS, whatever the cached payload says. Reading
+         provider_image ALONE made this panel argue with itself: a freshly
+         uploaded logo was visible in its tile while the stale payload said
+         there was none, so the profile photo stayed highlighted and the copy
+         read "No business logo yet". Either source proving an image is enough;
+         requiring both is how a true thing gets contradicted by a stale one. */
+      var tileShows = function(t){
+        if(!t) return false;
+        var i = t.querySelector('.bizlogo-img');
+        /* naturalWidth guards a BROKEN image — see the dead-url note below. */
+        return !!(i && i.getAttribute('src') && (!i.complete || i.naturalWidth > 0));
+      };
+      var hasPhoto = !!(PI && PI.profile_photo_url) || tileShows(picTileEl);
+      var hasLogo  = !!(PI && PI.business_logo_url) || tileShows(logoTileEl);
 
       /* ⛔ BOTH TILES PAINT FROM THE SERVER'S TRUTH (owner, 2026-08-27: "it
          should represent EXACTLY what the gopher's live profile pic is. AND
@@ -8517,6 +8540,21 @@ window.showNoAccount = function(){
               if(window.GoBiz && GoBiz.providerImage &&
                  GoBiz.providerImage.business_logo_url === deadUrl){
                 GoBiz.providerImage.business_logo_url = '';
+                /* Drop the broken element so `tileShows()` cannot keep counting
+                   it — but leave any OTHER image the tile's writer owns. */
+                /* ⛔ RESTORE THE CAMERA ICON. Removing the broken image without
+                   un-hiding .up-ico and clearing .has-logo leaves an EMPTY tile:
+                   no picture, no icon, nothing to tap — captioned "On file ✓".
+                   That is the exact defect this file's own logo writer records
+                   having fixed once already, and I reintroduced it from a second
+                   place. A tile that cannot be tapped is worse than a broken
+                   image, because the worker cannot even retry. */
+                if(lim && lim.getAttribute('src') === deadUrl){
+                  lim.remove();
+                  logoTileEl.classList.remove('has-logo');
+                  var deadIco = logoTileEl.querySelector('.up-ico');
+                  if(deadIco) deadIco.hidden = false;
+                }
                 if(GoBiz.paintShowAs) GoBiz.paintShowAs();
               }
             });
@@ -8524,11 +8562,16 @@ window.showNoAccount = function(){
           if(lim.getAttribute('src') !== PI.business_logo_url) lim.src = PI.business_logo_url;
           logoTileEl.classList.add('has-logo');
           var lico = logoTileEl.querySelector('.up-ico'); if(lico) lico.hidden = true;
-        } else if(lim){
-          lim.remove();
-          logoTileEl.classList.remove('has-logo');
-          var lico2 = logoTileEl.querySelector('.up-ico'); if(lico2) lico2.hidden = false;
         }
+        /* ⛔ NEVER REMOVE AN IMAGE THIS FUNCTION DID NOT PUT THERE. This branch
+           used to clear the tile whenever the cached payload said "no logo" —
+           and it deleted the logo the tile's OWN writer had painted from
+           business_logo_on_file. Combined with the dead-url handler clearing
+           that field on a single failed load, one transient hiccup erased a
+           logo that was genuinely saved, leaving a camera icon under a caption
+           reading "On file ✓". Two writers, and only one of them destructive.
+           This repaint is ADDITIVE now: it can set or update an image, never
+           take one away. The tile's own writer owns removal. */
       }
 
       /* Paint the profile-photo tile from the resolved parts when we have them. */
@@ -8544,6 +8587,12 @@ window.showNoAccount = function(){
               if(window.GoBiz && GoBiz.providerImage &&
                  GoBiz.providerImage.profile_photo_url === deadPhoto){
                 GoBiz.providerImage.profile_photo_url = '';
+                if(pp && pp.getAttribute('src') === deadPhoto){
+                  pp.remove();
+                  picTileEl.classList.remove('has-logo');
+                  var deadPico = picTileEl.querySelector('.up-ico');
+                  if(deadPico) deadPico.hidden = false;
+                }
                 if(GoBiz.paintShowAs) GoBiz.paintShowAs();
                 if(window.GoAvatar && GoAvatar.paint) GoAvatar.paint('');
               }
@@ -8552,10 +8601,8 @@ window.showNoAccount = function(){
           if(pp.getAttribute('src') !== PI.profile_photo_url) pp.src = PI.profile_photo_url;
           picTileEl.classList.add('has-logo');
           var pico = picTileEl.querySelector('.up-ico'); if(pico) pico.hidden = true;
-        } else if(pp){
-          pp.remove(); picTileEl.classList.remove('has-logo');
-          var pico2 = picTileEl.querySelector('.up-ico'); if(pico2) pico2.hidden = false;
         }
+        /* Additive here too, for the same reason. */
       }
 
       /* WHICH ONE IS LIVE. Business prefers the logo and falls back to the
