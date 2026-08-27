@@ -3458,6 +3458,14 @@ window.showNoAccount = function(){
      initials-only — there was no <img> path at all — so a worker WITH a profile
      photo saw "JN" on their own profile page and had no way to tell the product
      even had their picture. Reported three times before it was fixed. */
+  /* ⛔ THE ONLY PLACE TO CHANGE A PROFILE PHOTO WAS THE BUSINESS SECTION.
+     Owner, 2026-08-27: "there is nowhere for me to change my profile pic IF i
+     do not go into the business section" — a worker who never opens Business
+     info could not set the image that represents them everywhere. Same upload,
+     same endpoint, reachable from the profile itself. */
+  button.ph-avatar { border:none; padding:0; cursor:pointer; }
+  .ph-avatar-hint { margin:6px 0 0; text-align:center; font-family:'DM Sans',sans-serif;
+    font-size:11px; color:var(--muted); }
   .avatar-img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .ph-id { flex:1; min-width:200px; }
   .ph-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:21px; color:var(--navy); }
@@ -4501,7 +4509,8 @@ window.showNoAccount = function(){
         <div class="panel">
           <div class="profile-hero">
             <div class="ph-avatar-wrap">
-              <div class="ph-avatar" id="profAvatar">MH</div>
+              <button type="button" class="ph-avatar" id="profAvatar" title="Change your profile photo" aria-label="Change your profile photo">MH</button>
+              <p class="ph-avatar-hint" id="profAvatarHint">Tap to change</p>
               <p class="ph-pic-warn" id="profPicWarn" hidden></p>
             </div>
             <div class="ph-id">
@@ -6625,12 +6634,17 @@ window.showNoAccount = function(){
        claims success and does nothing is worse than no tile. */
     (function wireProfilePhoto(){
       var tile = document.getElementById('tileProfilePic');
-      if(!tile) return;
+      var hero = document.getElementById('profAvatar');
+      if(!tile && !hero) return;
       var picker = document.createElement('input');
       picker.type = 'file'; picker.accept = 'image/*'; picker.style.display = 'none';
       document.body.appendChild(picker);
 
       var say = function(msg, bad){
+        /* Report next to whichever entry point they used — a status written
+           into the business panel is invisible to someone on the profile. */
+        var hint = document.getElementById('profAvatarHint');
+        if(hint) hint.textContent = msg.replace(/<[^>]+>/g,'');
         var el = document.getElementById('bizLogoUse');
         if(!el) return;
         el.classList.toggle('is-idle', !!bad);
@@ -6638,7 +6652,12 @@ window.showNoAccount = function(){
         el.hidden = false;
       };
 
-      tile.addEventListener('click', function(){ picker.value=''; picker.click(); });
+      /* ONE picker and ONE handler for both entry points — a second copy would
+         be a second place for the endpoint or the repaint to drift. */
+      [tile, hero].forEach(function(el){
+        if(!el) return;
+        el.addEventListener('click', function(){ picker.value=''; picker.click(); });
+      });
 
       picker.addEventListener('change', function(){
         var file = picker.files && picker.files[0];
@@ -8469,14 +8488,38 @@ window.showNoAccount = function(){
          ⚠️ A PENDING UPLOAD WINS. __pendingLogo means the worker has just picked
          a file that has not been saved yet; repainting from the server would
          throw away what they are looking at. */
+      /* ⛔ A URL THAT DOES NOT LOAD IS NOT A LOGO. The owner switched to
+         showing as a business with no usable logo and the panel highlighted the
+         logo tile, gave it the "Shown to customers" pill and said customers see
+         it — over a BROKEN IMAGE showing its own alt text. A provider image URL
+         does not go stale, it 404s: replacing a photo destroys the images row
+         and deletes the S3 object, so the key changes and the old one is gone.
+
+         Treating a dead URL as an existing logo is the worst of both: the
+         worker is told they are covered, and the customer sees nothing. On
+         error we forget the URL and repaint, which drops through to the profile
+         photo exactly as if no logo had ever been uploaded. */
       if(PI && logoTileEl && !logoTileEl.__pendingLogo){
         var lim = logoTileEl.querySelector('.bizlogo-img');
         if(PI.business_logo_url){
+          var deadUrl = PI.business_logo_url;
           if(!lim){
             lim = document.createElement('img');
             lim.className = 'bizlogo-img';
             lim.alt = 'Your business logo';
             logoTileEl.insertBefore(lim, logoTileEl.firstChild);
+          }
+          if(!lim.__deadWatch){
+            lim.__deadWatch = true;
+            lim.addEventListener('error', function(){
+              /* Only forget the url we actually failed on — a later, good one
+                 must not be discarded by a stale handler. */
+              if(window.GoBiz && GoBiz.providerImage &&
+                 GoBiz.providerImage.business_logo_url === deadUrl){
+                GoBiz.providerImage.business_logo_url = '';
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+              }
+            });
           }
           if(lim.getAttribute('src') !== PI.business_logo_url) lim.src = PI.business_logo_url;
           logoTileEl.classList.add('has-logo');
@@ -8494,6 +8537,18 @@ window.showNoAccount = function(){
         if(PI.profile_photo_url){
           if(!pp){ pp = document.createElement('img'); pp.className='bizlogo-img';
                    pp.alt='Your profile photo'; picTileEl.insertBefore(pp, picTileEl.firstChild); }
+          if(!pp.__deadWatch){
+            pp.__deadWatch = true;
+            var deadPhoto = PI.profile_photo_url;
+            pp.addEventListener('error', function(){
+              if(window.GoBiz && GoBiz.providerImage &&
+                 GoBiz.providerImage.profile_photo_url === deadPhoto){
+                GoBiz.providerImage.profile_photo_url = '';
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+                if(window.GoAvatar && GoAvatar.paint) GoAvatar.paint('');
+              }
+            });
+          }
           if(pp.getAttribute('src') !== PI.profile_photo_url) pp.src = PI.profile_photo_url;
           picTileEl.classList.add('has-logo');
           var pico = picTileEl.querySelector('.up-ico'); if(pico) pico.hidden = true;
