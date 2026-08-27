@@ -458,6 +458,31 @@ class on 2026-08-24 and nothing systematic went looking for more of it in the th
 **That gap deserves a ticket more than any individual route does** — a guard that can actually see
 GET handlers, or it happens again and is found the same accidental way.
 
+### 10.4b ✅ BUILT — `gopher-backend-api!410`, and what it can and cannot claim
+
+`scripts/check-read-route-authz.js` + `test/read-route-authz-guard.test.js`, awaiting merge.
+**Not ticketed** (owner directive 2026-08-27: reduce tickets, do the work).
+
+**It does not judge the code, because it cannot.** §3.3 is the proof: `view_counter_offer`
+*compares `decoded.id` to `order.requestor_id`* and is still an IDOR, because the comparison gates
+"mark as viewed". A presence check passes it; a comparison check passes it. **There is no textual
+property of a correct read guard that a broken one cannot also have.** So the check requires that a
+human has reviewed each parameterised GET, and **fails on any route nobody has listed**.
+
+**Seeded as baseline + ratchet, so it could be adopted rather than deleted:** of 15 routes, 4 are
+KNOWN-OPEN (these IDORs) and **11 are BASELINE — inherited and not yet read by anyone.** Neither
+fails the build; both counts print on every run. ⚠️ **BASELINE is the absence of a verdict, not a
+verdict** — a green run says nothing about those 11, and the script prints that.
+
+⛔ **A design bug worth recording, found by testing the ratchet rather than trusting it:** keyed on
+the *handler*, a new route reusing an already-reviewed handler **passed**. The key is the ROUTE now.
+The same handler at a new path can carry entirely different authorization implications.
+
+**The 11 BASELINE routes are the next real read-side work** — an inventory nobody has assessed. Two
+stand out from the parse: `order_gopher.view_gopher` (`GET /gopherorder/:id`), which the mutating
+guard reports **never references `decoded` at all**, and `payment.refresh_pauout_verification`
+(`GET /reauth/:stripe`), which is §5's unauthenticated hardcoded-key route.
+
 ### 10.5 Fix status, and one thing noticed in passing
 
 **Fixed in `gopher-backend-api!406`** (`fix/view-bid-authz`), **awaiting the owner's merge** —
