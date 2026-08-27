@@ -613,3 +613,69 @@ grep; establishing one is an attack, and the two are different work with differe
 **The distinction worth keeping: a sweep is cheap and safe; testing what it finds is neither.**
 Only the second needs authorization — which is why this section exists and why it stops here.
 
+
+## 12. Addendum 2026-08-27 — all 15 parameterised GET routes assessed. Four IDORs became SIX.
+
+**Every handler was READ, not grepped.** One question of each: *does a caller-vs-owner comparison
+gate the RESPONSE?* Recorded per-route in `scripts/check-read-route-authz.js` (`!410`), where the
+verdicts live with their reasons — this section is the summary and the two new findings.
+
+| | |
+|---|---|
+| owner-checked | **8** |
+| IDOR | **6** (4 previously known + 2 new) |
+| unauthenticated by design, unresolved | **1** |
+
+### 12.1 ⛔ NEW — `GET /gopherorder/:id` → `order_gopher.view_gopher`. The worst one left.
+
+**Zero references to `decoded` anywhere in the handler.** `OrderGophers.findByPk(req.params.id)`,
+unscoped, then `get_users_details([order_gopher.gopher_id], true)` spread into the response.
+
+⚠️ **`!404` did not touch `order_gophers.js`.** So unlike every other counterparty site, this one
+**still ships the full internal record** — email, telephone, DOB, home address, `fcm_token`, licence.
+**No authorization and no projection.** Every other IDOR in this audit now leaks a narrowed payload;
+this one does not.
+
+### 12.2 ⛔ NEW — `GET /order_log/:order_id` → `retrieve.get_order_log`
+
+`decoded` appears twice: once building a display string, once as `if (!decoded.gopher)` to null the
+`address` field. **Neither gates access.** Any authenticated caller reads any order's log by
+sequential id.
+
+**The address redaction is content-shaping mistaken for authorization** — precisely the
+`counter_offer` shape (§3.3) that this whole class is named for. Two independent instances of one
+error is what makes it a class rather than a mistake.
+
+### 12.3 ⚠️ The near-miss, and the lesson for anyone repeating this pass
+
+**`retrieve.order_view` — the main order-detail endpoint — is CORRECT, and I nearly filed it as an
+IDOR.** It gates both sides (`+58` gopher, `+70` requestor) but does so by **returning 200 with
+`data: null`**. A grep for `401|403|Unauthorized` finds nothing in that handler, and the single
+`Unauthorized` string it does contain is a **data-fetch failure message** with no bearing on the
+caller.
+
+⛔ **Read the returns, not the status codes.** A refusal that looks like a success is invisible to
+every shortcut.
+
+**Recorded, not fixed:** both of its gates key on the role flags `decoded.gopher` /
+`decoded.requestor`. A token carrying neither falls through both. Not established as reachable.
+
+### 12.4 One route is correct with no guard at all
+
+`get_all_faqs_v2` has no ownership check and does not need one: the **query** is scoped to the
+caller (`from`/`to` must include them). `to` is attacker-controlled via `req.query` but cannot
+broaden past conversations the caller is party to.
+
+**Scoping-by-query is easy to mistake for no check — and easy to break by accident**, since nothing
+about it announces that it is load-bearing. Worth a comment in the handler; it has none.
+
+### 12.5 Left KNOWN-OPEN rather than blessed
+
+`GET /reauth/:stripe` is unauthenticated **by design** — Stripe's `refresh_url` callback, correctly
+mounted without `user_auth`. Its only guard is an AES decrypt with the **hardcoded key
+`'Gopher-secret'`**, and it redirects to a fresh `account_onboarding` link for whatever connected
+account the ciphertext names.
+
+⛔ **What that link permits is still NOT ESTABLISHED** (§5). It is deliberately *not* downgraded to
+`public`, because "unauthenticated on purpose" and "safe" are different claims and only the first
+one is proven.
