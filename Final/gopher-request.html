@@ -8467,7 +8467,11 @@
   }
 
   /* Gopher profile modal (reuses the request-detail worker profile markup) */
-  .gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,440px); max-height:90vh; overflow:auto;
+  /* 560, not 440: the provider card's two history buttons wrapped to two lines
+   of text at the old width, which reads as a squeezed layout rather than a
+   pair of controls (owner, 2026-08-27). 92vw still governs on a phone, so
+   this only widens where there is room. */
+.gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,560px); max-height:90vh; overflow:auto;
     padding:20px 20px 24px; box-shadow:0 40px 90px rgba(0,0,0,0.30), 0 12px 30px rgba(0,0,0,0.18); }
   .gopher-prof-card .profile-detail-back { cursor:pointer; }
 
@@ -21495,16 +21499,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        is showroom content — inventing job records, amounts and customer comments
        under a real business's name is not a placeholder, it is a fake review. */
     const isLive = !!w.live;
+    /* ⛔ THE SHOWROOM MUST NOT PROMISE WHAT THE LIVE CARD WILL NOT SHOW.
+       These rows used to carry the past customer's spend and their written
+       comment — exactly the two fields the live endpoint deliberately never
+       returns, because a past customer never agreed to appear on someone
+       else's sales card. A prospect comparing a demo card against a real one
+       read the real one as broken or thinner. Matched to live: category,
+       month/year, rating, and nothing else. */
     const jobsHtml = isLive ? '' : __demoJobsFor(w).map(j => `
-        <div class="profile-history-item" data-cat="${j.cat}">
-          <div class="phi-id">Request ${j.id}</div>
-          <div><b>Date:</b> ${j.date}</div>
-          <div><b>Request type:</b> ${j.type}</div>
-          <div><b>Details:</b> ${j.details}</div>
-          <div><b>Gopher name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> ${j.amount}</div>
-          <div><b>Rating:</b> ${j.rating}</div>
-          ${j.comment ? `<div><b>Comments:</b></div><div class="phi-comment">${j.comment}</div>` : ''}
+        <div class="profile-history-item pjh-row" data-cat="${j.cat}">
+          <span class="pjh-cat">${j.type}</span>
+          <span class="pjh-when">${j.date}</span>
+          ${j.rating ? `<span class="pjh-star">★ ${Number(j.rating).toFixed(1)}</span>`
+                     : `<span class="pjh-unrated">Not rated</span>`}
         </div>`).join('');
     return `
       <div class="profile-detail">
@@ -21547,7 +21554,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
         ${isLive ? '' : `<div class="profile-links">
           <button type="button" class="profile-link on" data-jobfilter="all">View all previous jobs</button>
-          <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${topCat} Jobs Only</button>
+          <button type="button" class="profile-link" data-jobfilter="cat">View previous ${topCat} jobs only</button>
         </div>`}
         <!-- The demo filters stay demo-only. A LIVE provider gets the real
              Service jobs / All jobs toggle, rendered by
