@@ -257,6 +257,35 @@ merely having bid. One rule, two answers, and the API is the one that wins.
 
 ---
 
+## ⛔ OWNER RULING 2026-08-27 — `!404` is the remedy. `!405` is CLOSED. Read this before §9.
+
+**Decided:** `gopher-backend-api!404` (`fix/counterparty-user-projection`) carries the fix.
+**`!405` was closed in favour of it**; its branch `fix/bidder-pii-projection` is **kept on purpose**
+— do not delete it, see the follow-up below.
+
+**Why.** Coverage, and it was not close: **11 call sites against 1.** Landing `!405` would have
+closed ~9% of the known exposure and left the rest live. `!404` is also the more reviewed artifact
+— it absorbed three findings from this lane and carries a mutation-proven **behavioural** test.
+
+**What `!405` was right about, and why it still lost.** `get_bidder_public_details` is a **separate
+minimal query**: it cannot leak `users_info` or `addresses` because it never joins them — nothing to
+strip, nothing to keep in sync. That is the better *pattern*. It covers one site. A cleaner shape
+over 9% loses to a slightly less clean shape over 100%.
+
+⛔ **THE FOLLOW-UP, and it is the same bug class `!404` already fixed once.**
+`redact_users_info_for_counterparty` handles **1 of the 16 fields** `users_info` attaches — a
+**deny-list of one**. Add a sensitive column to that block and it ships to counterparties silently,
+with no test failing. That is structurally the fail-open shape of the reference-equality gate
+`!404` corrected earlier the same day. **It should be an allow-list**, as `counterparty_user_fields`
+already is for the `users` table, and `get_bidder_public_details` on the kept branch is the shape to
+generalise toward. **Not a reason to hold `!404`: the live exposure is worse than the latent one.**
+
+**Merge order:** `!404`, then `!406` rebased onto the new `production`, then `!406`. Nobody
+hand-resolves the `!404`/`!406` conflict — a resolved conflict in an authorization fix is where a
+mistake hides.
+
+---
+
 ## 9. Addendum 2026-08-27 — the bidder path is FIXED, and `attributes` is not the lever
 
 *Added by the Live App Bugs session, owner-assigned. Does not renumber or edit §1–§8.*
