@@ -70,3 +70,40 @@ rather than assume one edit covers it. See memory `two-id-capture-components`,
 `check-every-consumer-before-changing-a-shared-value`.
 
 ⚠️ **Not yet checked on iOS.** Text wraps differently; the clipping may be better, worse, or absent.
+
+### F2 — Gopher GO "Available" request list: four overlapping/clipping defects on one screen
+
+**Where:** Gopher GO → **Available** tab (the worker's open-jobs list).
+**Seen on:** Android, Galaxy A50, build 3.9.1 (864). Owner screenshot, 2026-08-28 10:10.
+
+Four separate layout problems visible in a single viewport:
+
+**F2a — Card title is sliced by the filter row.**
+The first card's title ("Hourly / Day Labor") renders **cut horizontally**, with the top half
+hidden behind the Active / Scheduled / Available chips. The list scrolls *under* the filter row
+and the row has no opaque background, so card content bleeds through it. Every card title will do
+this as it scrolls past.
+
+**F2b — "Select My Gopher" label is truncated by the card edge.**
+The label wraps to two lines and the second line is clipped mid-glyph — renders as
+"Select My Gophe…". The icon row has insufficient height for a two-line label.
+
+**F2c — Folder icon overlaps "Tap to view".**
+The icon sits **on top of** the text, hiding a character — renders as "Tap ⌷o view". The two
+elements are competing for the same horizontal space.
+
+**F2d — The "Scheduled" pill crowds into the icon.**
+The blue rounded pill ("Scheduled Aug 28th, 09:45 AM") extends far enough right that it runs into
+the folder icon / "Tap to view" cluster, which is what forces F2c.
+
+**Assessment:** F2a is the most visible — it affects *every* card on the most-used screen in the
+worker app, and it looks broken rather than merely tight. F2b–d are one cluster: that header row
+has more content than it has width, and nothing is reflowing.
+
+⚠️ **Open question, possibly functional rather than cosmetic:** the card shows
+**"Scheduled Aug 28th, 09:45 AM"** while the device clock reads **10:10** — a job whose scheduled
+start passed 25 minutes ago is still sitting in **Available**. Either that is intended (the job
+stays claimable after its start time) or stale jobs are not being aged out of the available feed.
+Worth deciding deliberately; I am not asserting it is a bug.
+
+⚠️ **Not yet checked on iOS.**
