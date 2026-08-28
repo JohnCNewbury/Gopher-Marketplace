@@ -8467,7 +8467,11 @@
   }
 
   /* Gopher profile modal (reuses the request-detail worker profile markup) */
-  .gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,440px); max-height:90vh; overflow:auto;
+  /* 560, not 440: the provider card's two history buttons wrapped to two lines
+   of text at the old width, which reads as a squeezed layout rather than a
+   pair of controls (owner, 2026-08-27). 92vw still governs on a phone, so
+   this only widens where there is room. */
+.gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,560px); max-height:90vh; overflow:auto;
     padding:20px 20px 24px; box-shadow:0 40px 90px rgba(0,0,0,0.30), 0 12px 30px rgba(0,0,0,0.18); }
   .gopher-prof-card .profile-detail-back { cursor:pointer; }
 
@@ -9535,6 +9539,7 @@
 <script src="assets/js/gopher-phone-input.js" defer></script>
 <script src="assets/js/gopher-signin-recovery.js" defer></script>
 <script src="assets/js/gopher-deals-feed.js"></script>
+<script src="assets/js/gopher-provider-history.js"></script>
 
 <!-- HERO -->
 <section class="hero">
@@ -15372,7 +15377,9 @@
     state.scheduleType = _isSvcDeal ? 'flexible' : 'now';
     if(_isSvcDeal) state.flexibleWindow = '2weeks';   // → pre-selects the "Within 2 weeks" timing tab
     state.dealProvider = _isSvcDeal ? {
-      name: payload.providerName || payload.merchantName || 'Gopher Pro',
+      /* '' , never an invented provider name — this rides into the request the
+         customer is about to place. */
+      name: payload.providerName || payload.merchantName || '',
       role: payload.providerRole || '',
       tier: payload.providerTier || '',
       pic:  payload.providerPic || '',
@@ -20664,7 +20671,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       if(prov){
         prov.status = 'hired';
         const crewMember = {
-          name: prov.name, tier: prov.tier || prov.badge || 'pro+', phone: '+1 (919) 555-0123',
+          /* ⛔ NO DEFAULT TIER on the provider a customer just connected with.
+             'pro+' resolves to the ELITE+ lockup, so a real provider we hold no
+             tier for wore the top credential at the moment of commitment.
+             Empty renders no badge — what the deal card beside it already does. */
+          name: prov.name, tier: prov.tier || prov.badge || '', phone: '+1 (919) 555-0123',
           photo: prov.photo || '', photoIsLogo: !!prov.photoIsLogo, verified: true, reviews: 0, rating: 0,
           tagline: prov.tagline || (goScheduled ? 'Booked and ready for your scheduled time.' : 'On the job and ready to help.')
         };
@@ -21464,7 +21475,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   }
 
   function renderWorkerProfile(r, w, idx){
-    const tier = w.tier || w.badge || 'pro+';
+    /* ⛔ NEVER A DEFAULT TIER FOR A LIVE PROVIDER. This read
+       `w.tier || w.badge || 'pro+'`, and __tierName('pro+') returns 'Elite+' —
+       so a real provider the backend resolved NO tier for rendered the TOP
+       tier's lockup. Exactly the promotion tierToWorker's own comment says it
+       fixed, surviving one line further down. Showroom cards keep their
+       fictional default; a live one shows a badge only when a tier was
+       actually resolved. */
+    const tier = w.live ? (w.tier || null) : (w.tier || w.badge || 'pro+');
     const tierLabel = tier.replace('+','');
     const reviews = (w.reviews != null) ? w.reviews : (w.jobsNum || 0);
     /* ⛔ NEVER DEFAULT A RATING — this read `: 5.0`, publishing a perfect score
@@ -21494,16 +21512,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        is showroom content — inventing job records, amounts and customer comments
        under a real business's name is not a placeholder, it is a fake review. */
     const isLive = !!w.live;
+    /* ⛔ THE SHOWROOM MUST NOT PROMISE WHAT THE LIVE CARD WILL NOT SHOW.
+       These rows used to carry the past customer's spend and their written
+       comment — exactly the two fields the live endpoint deliberately never
+       returns, because a past customer never agreed to appear on someone
+       else's sales card. A prospect comparing a demo card against a real one
+       read the real one as broken or thinner. Matched to live: category,
+       month/year, rating, and nothing else. */
     const jobsHtml = isLive ? '' : __demoJobsFor(w).map(j => `
-        <div class="profile-history-item" data-cat="${j.cat}">
-          <div class="phi-id">Request ${j.id}</div>
-          <div><b>Date:</b> ${j.date}</div>
-          <div><b>Request type:</b> ${j.type}</div>
-          <div><b>Details:</b> ${j.details}</div>
-          <div><b>Gopher name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> ${j.amount}</div>
-          <div><b>Rating:</b> ${j.rating}</div>
-          ${j.comment ? `<div><b>Comments:</b></div><div class="phi-comment">${j.comment}</div>` : ''}
+        <div class="profile-history-item pjh-row" data-cat="${j.cat}">
+          <span class="pjh-cat">${j.type}</span>
+          <span class="pjh-when">${j.date}</span>
+          ${j.rating ? `<span class="pjh-star">★ ${Number(j.rating).toFixed(1)}</span>`
+                     : `<span class="pjh-unrated">Not rated</span>`}
         </div>`).join('');
     return `
       <div class="profile-detail">
@@ -21525,6 +21546,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <div class="profile-stat-bubble verified">
               ${window.__tierBadge(tier, w.proCred, 'font-size:8.5px;padding:2px 6px 2px 7px;')}
             </div>
+            <!-- The label stays. A null tier does NOT render an empty bubble:
+                 __tierBadge deliberately draws the VERIFIED CHECK there, because
+                 "not told a tier" still means the provider passed approval to
+                 hold a live deal. I removed this label once, reading the bubble
+                 as empty; it is not, and the check and its label belong
+                 together. -->
             <div class="profile-stat-label">${w.verified || 'Verified'}</div>
           </div>
           <div class="profile-stat">
@@ -21546,14 +21573,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
         ${isLive ? '' : `<div class="profile-links">
           <button type="button" class="profile-link on" data-jobfilter="all">View all previous jobs</button>
-          <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${topCat} Jobs Only</button>
+          <button type="button" class="profile-link" data-jobfilter="cat">View previous ${topCat} jobs only</button>
         </div>`}
-        <!-- The job filters are withheld for a live provider: they filter a
-             history we do not have, so they would be two controls that do
-             nothing above an empty state. -->
+        <!-- The demo filters stay demo-only. A LIVE provider gets the real
+             Service jobs / All jobs toggle, rendered by
+             assets/js/gopher-provider-history.js from the deal's own code —
+             two controls over a history we actually hold, rather than two that
+             do nothing. -->
 
         <div class="profile-history" data-topcat="${topCat}">
-          ${isLive ? `<div class="profile-history-empty">
+          ${isLive ? `<div class="profile-history-empty" data-pjh="${w.dealCode || ''}">
             ${hasJobs && w.jobs > 0
               ? `Individual job records aren't shown here yet — the totals above
                  are this provider's Gopher history.`
@@ -25037,7 +25066,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // ── Service deal: large 3D card centered in the screen (modal) ──
   function tierToWorker(m){
     return {
-      name: m.pro || 'Gopher Pro',
+      /* ⛔ NO INVENTED NAME. This fell back to 'Gopher Pro', and the feed
+         module's own fallback was 'Verified Service Provider' — a made-up
+         business name that also asserted verification. profileDisplayName()
+         already returns '' for a missing name, so null degrades cleanly. */
+      name: m.pro || null,
       /* ⚠️ Was `includes('Elite') ? 'elite+' : 'pro+'` — which PROMOTED a plain
          Elite provider to Elite+, and labelled anyone else "Pro". Both were
          fabricated tiers. __tierName maps it properly, once. */
@@ -25054,6 +25087,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
          it showed the real picture. */
       photo: (serviceProviderPic(m) || {}).src || null,
       live: !!m.live,
+      /* The deal's own code, used to ask the API for this provider's job
+         history. Keyed on the DEAL rather than the worker on purpose — the
+         feed never publishes owner_user_id, so a worker's primary key stays
+         off a public page and the history cannot be enumerated. */
+      dealCode: m.dealCode || null,
       jobs: (m.jobs != null ? m.jobs : null),
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
@@ -25457,10 +25495,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       payload.category     = m.reqCategory || 'home';
       payload.dropoffStops = drop ? [drop] : undefined;
       payload.pickupStops  = drop ? [drop] : undefined;   // service happens at the destination
-      payload.description  = m.name + ' \u2014 ' + (m.pro || 'Gopher Pro') + ' (Gopher Deal): ' + m.offer + '.';
+      /* ⛔ NO FABRICATED PROVIDER IN THE PAYLOAD. This wrote 'Gopher Pro' into
+         the DESCRIPTION of a real request when the provider's name was absent —
+         invented data entering an order, not a display default. */
+      payload.description  = m.name + (m.pro ? ' \u2014 ' + m.pro : '') + ' (Gopher Deal): ' + m.offer + '.';
       if(m.price != null) payload.pay = m.price;   // service deals are a set price
       // Carry the offering provider so the confirmation can auto-connect them.
-      payload.providerName = m.pro || 'Gopher Pro';
+      payload.providerName = m.pro || '';
       payload.providerRole = m.name || '';
       /* '' , never a default tier. This carried a fabricated 'Gopher Elite'
          into the request payload and on into the accepted-provider card, so

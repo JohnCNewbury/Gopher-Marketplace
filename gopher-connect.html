@@ -6545,7 +6545,9 @@
   }
 
   /* Gopher profile modal (reuses the request-detail worker profile markup) */
-  .gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,440px); max-height:90vh; overflow:auto;
+  /* 560, not 440: the provider card's two history buttons wrapped to two lines
+   at the old width (owner, 2026-08-27). 92vw still governs on a phone. */
+.gopher-prof-card { position:relative; background:#fff; border-radius:22px; width:min(92vw,560px); max-height:90vh; overflow:auto;
     padding:20px 20px 24px; box-shadow:0 40px 90px rgba(0,0,0,0.30), 0 12px 30px rgba(0,0,0,0.18); }
   .gopher-prof-card .profile-detail-back { cursor:pointer; }
 
@@ -7322,6 +7324,7 @@
 <script src="assets/js/gopher-phone-input.js" defer></script>
 <script src="assets/js/gopher-signin-recovery.js" defer></script>
 <script src="assets/js/gopher-deals-feed.js"></script>
+<script src="assets/js/gopher-provider-history.js"></script>
 <script>
 /* Phones: show a soft LIGHT field behind the open Login / hamburger panel so
    the card sits on a clean light surface (matches the standalone header on a
@@ -12405,7 +12408,7 @@ const PAY_BADGES = {
 
           <div class="profile-links">
             <button type="button" class="profile-link on" data-jobfilter="all">View all previous jobs</button>
-            <button type="button" class="profile-link" data-jobfilter="cat">View Previous ${window.__ecTopCat(state.category)} Jobs Only</button>
+            <button type="button" class="profile-link" data-jobfilter="cat">View previous ${window.__ecTopCat(state.category)} jobs only</button>
           </div>
 
           <div class="profile-history" data-topcat="${window.__ecTopCat(state.category)}">
@@ -14252,7 +14255,9 @@ const PAY_BADGES = {
     state.scheduleType   = _isSvcDeal ? 'flexible' : 'now';
     if(_isSvcDeal) state.flexibleWindow = '2weeks';   // → pre-selects the "Within 2 weeks" timing tab
     state.dealProvider = _isSvcDeal ? {
-      name: deal.providerName || deal.merchantName || 'Gopher Pro',
+      /* '' , never an invented provider name — this rides into the request the
+         customer is about to place. */
+      name: deal.providerName || deal.merchantName || '',
       role: deal.providerRole || '',
       tier: deal.providerTier || '',
       pic:  deal.providerPic || '',
@@ -16053,7 +16058,11 @@ const PAY_BADGES = {
   // ── Service deal: large 3D card centered in the screen (modal) ──
   function tierToWorker(m){
     return {
-      name: m.pro || 'Gopher Pro',
+      /* ⛔ NO INVENTED NAME. This fell back to 'Gopher Pro', and the feed
+         module's own fallback was 'Verified Service Provider' — a made-up
+         business name that also asserted verification. profileDisplayName()
+         already returns '' for a missing name, so null degrades cleanly. */
+      name: m.pro || null,
       /* ⚠️ This used to be `m.tier.includes('Elite') ? 'elite+' : 'standard'`,
          which PROMOTED every plain Elite provider to Elite+ on their own
          profile — a fabricated tier, in the opposite direction to the card bug.
@@ -16072,6 +16081,11 @@ const PAY_BADGES = {
          provider, two different answers. */
       photo: (serviceProviderPic(m) || {}).src || null,
       live: !!m.live,
+      /* The deal's own code, used to ask the API for this provider's job
+         history. Keyed on the DEAL rather than the worker on purpose — the
+         feed never publishes owner_user_id, so a worker's primary key stays
+         off a public page and the history cannot be enumerated. */
+      dealCode: m.dealCode || null,
       jobs: (m.jobs != null ? m.jobs : null),
       reviews: m.reviews, rating: m.rating,
       tagline: m.testimonial || '',
@@ -16654,10 +16668,15 @@ const PAY_BADGES = {
       payload.category     = m.reqCategory || 'home';
       payload.dropoffStops = drop ? [drop] : undefined;
       payload.pickupStops  = drop ? [drop] : undefined;   // service happens at the destination
-      payload.description  = m.name + ' \u2014 ' + (m.pro || 'Gopher Pro') + ' (Gopher Deal): ' + m.offer + '.';
+      /* ⛔ NO FABRICATED PROVIDER IN THE PAYLOAD. This wrote 'Gopher Pro' into
+         the DESCRIPTION of a real request when the provider's name was absent —
+         not a display default but invented data entering an order. The name is
+         omitted from the sentence instead. Same lesson the tier default below
+         already learned, applied to the name. */
+      payload.description  = m.name + (m.pro ? ' \u2014 ' + m.pro : '') + ' (Gopher Deal): ' + m.offer + '.';
       if(m.price != null) payload.pay = m.price;   // service deals are a set price
       // Carry the offering provider so the confirmation can auto-connect them.
-      payload.providerName = m.pro || 'Gopher Pro';
+      payload.providerName = m.pro || '';
       payload.providerRole = m.name || '';
       /* '' , never a default tier. This carried a fabricated 'Gopher Elite'
          into the request payload and on into the accepted-provider card, so
@@ -17230,6 +17249,12 @@ const PAY_BADGES = {
             <div class="profile-stat-bubble verified">
               ${window.__tierBadge(tier, w.proCred, 'font-size:8.5px;padding:2px 6px 2px 7px;')}
             </div>
+            <!-- The label stays. A null tier does NOT render an empty bubble:
+                 __tierBadge deliberately draws the VERIFIED CHECK there, because
+                 "not told a tier" still means the provider passed approval to
+                 hold a live deal. I removed this label once, reading the bubble
+                 as empty; it is not, and the check and its label belong
+                 together. -->
             <div class="profile-stat-label">${w.verified || 'Verified'}</div>
           </div>
           <div class="profile-stat">
@@ -17250,38 +17275,38 @@ const PAY_BADGES = {
 
         ${isLive ? '' : `<div class="profile-links">
           <span class="profile-link">View all previous jobs</span>
-          <span class="profile-link">View All Previous ${firstWord} Jobs Only</span>
+          <span class="profile-link">View all previous ${firstWord} jobs only</span>
         </div>`}
-        <!-- The job filters are withheld for a live provider: they filter a
-             history we do not have, so they would be two controls that do
-             nothing above an empty state. -->
+        <!-- The demo filters stay demo-only. A LIVE provider gets the real
+             Service jobs / All jobs toggle, rendered by
+             assets/js/gopher-provider-history.js from the deal's own code —
+             two controls over a history we actually hold, rather than two that
+             do nothing. -->
 
         ${isLive ? `
-        <div class="profile-history-empty">
+        <div class="profile-history-empty" data-pjh="${w.dealCode || ''}">
           ${hasJobs && w.jobs > 0
             ? `Individual job records aren't shown here yet — the totals above are
                this provider's Gopher history.`
             : `No completed jobs to show yet. This provider's history will appear
                here once they have finished work through Gopher.`}
-        </div>` : `        <div class="profile-history-item">
-          <div class="phi-id">Request #212121</div>
-          <div><b>Date:</b> 3/4/26</div>
-          <div><b>Request type:</b> ${w.dealServiceName || 'Home Services'}</div>
-          <div><b>Details:</b> ${w.dealServiceOffer || 'Install ceiling fan'}</div>
-          <div><b>Gopher name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> $140.00</div>
-          <div><b>Rating:</b> 5.00</div>
-          <div><b>Comments:</b></div>
-          <div class="phi-comment">${w.dealServiceName ? 'Outstanding service — professional, on time, and thorough. Highly recommend!' : 'Excellent job moving our furniture. Highly recommend and will use again.'}</div>
+        </div>` : `
+        <!-- ⛔ MATCHED TO THE LIVE CARD. These rows carried the past customer's
+             spend and their written comment — the two fields the live endpoint
+             deliberately never returns, because a past customer never agreed to
+             appear on someone else's sales card. A prospect comparing a demo
+             card with a real one read the real one as broken or thinner.
+             Category, month/year, rating. Nothing else. -->
+        <div class="profile-history-item pjh-row">
+          <span class="pjh-cat">${w.dealServiceName || 'Home Services'}</span>
+          <span class="pjh-when">Mar 2026</span>
+          <span class="pjh-star">★ 5.0</span>
         </div>
-        <div class="profile-history-item">
-          <div class="phi-id">Request #20245</div>
-          <div><b>Date:</b> 3/1/26</div>
-          <div><b>Request type:</b> ${w.dealServiceName || 'Delivery — Age-Restricted'}</div>
-          <div><b>Details:</b> ${w.dealServiceOffer || '1 can of ZYN wintergreen'}</div>
-          <div><b>Gopher name:</b> ${w.name}</div>
-          <div><b>Amount Spent:</b> ${w.dealServiceName ? '$120.00' : '$40.00'}</div>
-          <div><b>Rating:</b> ${w.dealServiceName ? '4.95' : 'No Rating'}</div>
+        <div class="profile-history-item pjh-row">
+          <span class="pjh-cat">${w.dealServiceName || 'Delivery'}</span>
+          <span class="pjh-when">Mar 2026</span>
+          ${w.dealServiceName ? `<span class="pjh-star">★ 5.0</span>`
+                              : `<span class="pjh-unrated">Not rated</span>`}
         </div>`}
       </div>
     `;
@@ -24602,21 +24627,33 @@ const PAY_BADGES = {
   window.__ecJobs = function(pw){
     var name = (pw && pw.name) || 'Gopher';
     var jobs = [
-      { id:'#212121', date:'3/4/26',  type:'Home Services · Handyman',  details:'Install ceiling fan',       amount:'$140.00', rating:'5.00', comment:'Excellent — professional and quick. Highly recommend.', cat:'Service' },
-      { id:'#20245',  date:'3/1/26',  type:'Delivery — Age-Restricted', details:'1 can of ZYN wintergreen',  amount:'$40.00',  rating:'4.95', comment:'', cat:'Delivery' },
-      { id:'#20188',  date:'2/22/26', type:'Junk Removal',              details:'Garage cleanout — 6 items', amount:'$210.00', rating:'5.00', comment:'Fast and careful with everything.', cat:'Service' },
-      { id:'#20102',  date:'2/10/26', type:'Need A Ride',               details:'Airport drop-off',          amount:'$55.00',  rating:'4.90', comment:'', cat:'Need A Ride' }
+      /* Month/year only, matching what the live endpoint returns — a precise
+         day plus a category is a correlation key for anyone who knows one job.
+         ⛔ CATEGORY NAMES ARE PROPER NOUNS and keep their own capitalisation.
+         "Need a Ride" and "Home Services" are the platform's canonical values,
+         verified against controllers/user/worksettings.js — not prose to be
+         sentence-cased. The Style Guide's rule governs headlines and labels; it
+         does not rename the taxonomy. "Age-restricted" IS prose, so that one is
+         lowercased. */
+      { id:'#212121', when:'Mar 2026', type:'Home Services · Handyman',  rating:'5.00', cat:'Service' },
+      { id:'#20245',  when:'Mar 2026', type:'Delivery — Age-restricted', rating:'4.95', cat:'Delivery' },
+      { id:'#20188',  when:'Feb 2026', type:'Junk Removal',              rating:'5.00', cat:'Service' },
+      { id:'#20102',  when:'Feb 2026', type:'Need a Ride',               rating:'',     cat:'Need A Ride' }
     ];
+    /* ⛔ MATCHED TO THE LIVE CARD — the THIRD copy of this renderer, and the
+       reason the live history was extracted into one shared module. These rows
+       carried the past customer's spend and their written comment, which the
+       live endpoint deliberately never returns. Category, month/year, rating.
+       `name` is left unused rather than removed from the signature: the caller
+       still passes it and a signature change here is not this fix's business. */
+    void name;
     return jobs.map(function(j){
-      return '<div class="profile-history-item" data-cat="'+j.cat+'">'
-        + '<div class="phi-id">Request '+j.id+'</div>'
-        + '<div><b>Date:</b> '+j.date+'</div>'
-        + '<div><b>Request type:</b> '+j.type+'</div>'
-        + '<div><b>Details:</b> '+j.details+'</div>'
-        + '<div><b>Gopher name:</b> '+name+'</div>'
-        + '<div><b>Amount Spent:</b> '+j.amount+'</div>'
-        + '<div><b>Rating:</b> '+j.rating+'</div>'
-        + (j.comment ? '<div><b>Comments:</b></div><div class="phi-comment">'+j.comment+'</div>' : '')
+      return '<div class="profile-history-item pjh-row" data-cat="'+j.cat+'">'
+        + '<span class="pjh-cat">'+j.type+'</span>'
+        + '<span class="pjh-when">'+j.when+'</span>'
+        + (j.rating
+            ? '<span class="pjh-star">★ '+Number(j.rating).toFixed(1)+'</span>'
+            : '<span class="pjh-unrated">Not rated</span>')
         + '</div>';
     }).join('');
   };

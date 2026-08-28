@@ -4603,13 +4603,30 @@ BY_ID['feat-johns']=FEAT_DEAL;
 if(typeof DEAL_LOGOS!=='undefined' && DEAL_LOGOS['feat-johns']) FEAT_DEAL.logo=DEAL_LOGOS['feat-johns'];
 const REQ_NAME={home:'Home / Office',junk:'Junk Removal',yard:'Yard / Outdoor',moving:'Moving',labor:'Hourly / Day Labor',delivery:'Delivery'};
 const GOPHER_FEE={delivery:0.99,home:4.99,junk:3.99,yard:3.99,moving:3.99,labor:2.99};
-function initials(n){return n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');}
+/* NO-LOGO FALLBACK IS THE GOPHER MASCOT, NEVER AN INITIALS WORDMARK (owner,
+   2026-08-25 for SP cards and 2026-08-26 for merchant cards, both from a side-by-side;
+   web landed them in 04dd155 / a61a7b8). Owner's words: "Logos are against NO
+   background. White is the cleanest." A wordmark standing in for a real brand mark is
+   what he called "a big brand no no" when he caught it on live deal cards.
+   The mascot renders FREE-FLOATING through the same element a logo uses -- no tile, no
+   category tint, plain white -- which is why every call site below drops its data-cat
+   and its tinted background when there is no logo.
+   WARNING: object-fit is forced to CONTAIN. .lp-img is object-fit:cover, which is right
+   for a photographic logo but CROPS the mascot's head and feet.
+   The old per-name initials producer was DELETED with its four call sites, exactly as
+   web deleted its initials CSS with its producers, so the pattern cannot come back
+   quietly. The customer AVATAR elsewhere in this file still uses letters on navy and is
+   deliberately untouched: that ruling was about brand marks on deal cards, not people. */
+const DEAL_MASCOT='../../assets/img/gopher-character-full.svg';
+function dealPic(m){
+  return m.logo || '<img class="lp-img deal-mascot-fb" src="'+DEAL_MASCOT+'" alt="" style="object-fit:contain;padding:13%;background:#fff;">';
+}
 function money(n){return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 /* ---------- BROWSE ---------- */
 function svcCard(m){
   return `<button class="deal svc" data-open="${m.id}">
-    <div class="svc-top"><span class="svc-pic">${m.logo||initials(m.pro)}</span>
+    <div class="svc-top"><span class="svc-pic"${m.logo?'':' style="background:#fff;"'}>${dealPic(m)}</span>
       <span><div class="svc-pro">${esc(m.pro)}</div></span></div>
     <div class="nm">${esc(m.name)}</div>
     <div class="offer">${esc(m.offer)}</div>
@@ -4620,7 +4637,7 @@ function svcCard(m){
 function merchCard(m){
   return `<button class="deal" data-open="${m.id}">
     <div class="offer">${esc(m.offer)}</div>
-    <div class="logo-area"><span class="tile" data-cat="${m._cat}">${m.logo||initials(m.name)}</span></div>
+    <div class="logo-area"><span class="tile"${m.logo?` data-cat="${m._cat}"`:' style="background:#fff;"'}>${dealPic(m)}</span></div>
     <div class="tagline">${esc(m.portalTag||m.sub||'')}</div>
     <div class="nm">${esc(m.name)}</div>
     ${m.distance?`<div class="dist">${esc(m.distance)}</div>`:''}
@@ -4642,7 +4659,7 @@ function detailHTML(m){
   if(m.kind==='service'){
     const r=m.rating.toFixed(1);
     return `<span class="dd-badge svc">Provider Deal</span>
-      <div class="dd-logo" style="background:#fff;color:var(--green-dark);overflow:hidden;">${m.logo||initials(m.pro)}</div>
+      <div class="dd-logo" style="background:#fff;color:var(--green-dark);overflow:hidden;">${dealPic(m)}</div>
       <div class="dd-title">${esc(m.name)} Deal</div>
       <div class="dd-provider">${__tierBadge(m.tier,m.proCred)} · ${esc(m.pro)}</div>
       <div class="dd-price">$${m.price}<s>$${m.normalRate}</s><span class="lbl">set price</span></div>
@@ -4660,7 +4677,7 @@ function detailHTML(m){
   const url=m.portalUrl||(m.name.toLowerCase().replace(/[^a-z0-9]+/g,'')+'.com');
   return `<span class="dd-badge">Gopher Deal</span>
     <div class="dd-head" style="display:flex;gap:13px;align-items:center;">
-      <div class="dd-logo" style="margin-bottom:0;background:var(--navy-light);color:var(--navy);overflow:hidden" data-cat="${m._cat}">${m.logo||initials(m.name)}</div>
+      <div class="dd-logo" style="margin-bottom:0;background:${m.logo?'var(--navy-light)':'#fff'};color:var(--navy);overflow:hidden"${m.logo?` data-cat="${m._cat}"`:''}>${dealPic(m)}</div>
       <div><div class="dd-title">${esc(m.name)}</div><div class="dd-sub">${esc(m.sub||'')}${m.distance?' \u00b7 '+esc(m.distance):''}</div></div>
     </div>
     <div class="dd-offer">${esc(m.offer)}${m.promo?`<span class="code">Code ${esc(m.promo)}</span>`:''}</div>
