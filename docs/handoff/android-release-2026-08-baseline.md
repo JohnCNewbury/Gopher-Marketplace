@@ -149,3 +149,47 @@ QA:** content sliding under the status/navigation bars, and layout on a tablet o
 Request's Android versionName skips 3.8.x and 3.9.0 entirely. Both apps' env vars read `3.9.1`, so this
 looks like a deliberate alignment of the two apps — **confirm it is intended** before release; Play
 accepts it either way since the versionCode rises.
+
+---
+
+# Release state — 2026-08-28, end of the build session
+
+Four builds, all green. **Nothing has reached a production user yet.**
+
+| app | platform | Appflow | version | where it is now |
+|---|---|---|---|---|
+| Gopher Go | iOS | #263 | 13.9.1 (863) | TestFlight — installed, **BGGeo licence verified on device** |
+| Gopher Request | iOS | #251 | 13.9.1 (851) | TestFlight |
+| Gopher Go | Android | #264 | 3.9.1 (864) | Play **internal — DRAFT** |
+| Gopher Request | Android | #252 | 3.9.1 (852) | Play **internal — DRAFT** |
+
+⚠️ **Both Android uploads are `release_status: draft`.** A draft is not installable by testers.
+Publish each from **Test and release → Testing → Internal testing** before any QA.
+
+Note: **R8 / code shrinking never runs** on either app — no `minify*WithR8` task in either log. The
+release path differs from debug by signing and resource optimisation only.
+
+## Device QA checklist — do this on the Internal build, both apps
+
+Ordered by what this release is most likely to have broken or fixed.
+
+- [ ] **Go: run a real job and confirm locations reach the backend.** This is the only test of the
+      **Android** BGGeo v9 licence — a separate key from the iOS one that is already proven. Also the
+      only test of whether the `ForegroundServiceDidNotStartInTime` crash (73.5 % of Go's affected
+      users) moved.
+- [ ] **Both: open the photo picker.** `CameraPlugin.lambda$openPhotos$4` NPE appears in BOTH apps'
+      crash lists and is 50 % of Request's events. Capacitor 8 may fix it.
+- [ ] **Both: show and hide the keyboard** on a text field. `Keyboard$1.onEnd` NPE is the other 50 %
+      of Request's crashes.
+- [ ] **Both: look for content under the status bar and navigation bar.** `targetSdk 36` ENFORCES
+      edge-to-edge; Play already flags this on the live 840/856. Most likely visual regression.
+- [ ] **Both: open on a tablet or foldable.** API 36 ignores orientation/resizability restrictions
+      on large screens.
+- [ ] **Both: sign in, and complete one request end to end.**
+
+## Then, and only then
+
+Staged rollout at **5–10 %**, watching crash-free rate against the baseline above
+(Go 0.85 %, Request **1.17 % — over Google's 1.09 % threshold**). Request is the one to watch: its
+whole measured crash surface is the two plugin NPEs, so if Capacitor 8 fixed them it should drop
+below the threshold, and if it climbs instead, halt.
