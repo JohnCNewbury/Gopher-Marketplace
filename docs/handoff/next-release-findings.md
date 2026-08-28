@@ -178,4 +178,20 @@ testing session may span days. **Two possibilities:**
 - It was taken **28 August** → past-date scheduling is possible, which is a **functional defect
   well above the UI issues in this log** and needs its own ticket.
 
-**Owner: which was it?** That single answer decides whether F4b exists.
+**RESOLVED 2026-08-28 — owner confirms the screenshot was taken TODAY, 28 August.**
+
+⛔ **F4b IS REAL. Past dates are selectable when scheduling a request.**
+On 28 August the picker enables **23–27 August** and **pre-selects 23** — five days in the past,
+with a past date as the default value. Everything up to 22 is correctly greyed, so a minimum-date
+bound exists but is being computed wrong (note it lands exactly 5 days before "today", which may
+be a clue — a stale or relative min-date rather than a missing one).
+
+⚠️ **Verified only as far as the picker.** Past dates are *selectable*; whether a request actually
+**submits and persists** with one is **NOT verified** — downstream validation may reject it. That
+distinction changes severity substantially:
+- rejected at submit → annoying dead end, medium
+- accepted → a job exists that can never be fulfilled on time, and the requester was told it was
+  scheduled. High.
+
+**Next step before or alongside the fix:** actually submit one and see. That is a five-minute test
+and it decides how hard this needs to be hit.
