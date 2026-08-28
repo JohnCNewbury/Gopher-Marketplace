@@ -2211,6 +2211,10 @@ window.GoAuth = (function(){
            422 "Unrecognised field(s): deal_text." Allowlist: DLP_FIELDS in
            helpers/deals_intake_validation.js. */
         deal: d.dealText,
+        /* Ruling 9. The SERVICE this deal is for, as a slug. Required by the
+           server for every dlp submission — a missing or gated value is a 422,
+           and `other` additionally requires a real keyword. */
+        service_category: d.serviceCategory,
         keywords: (d.keywords || []).slice(0, 3),
         earn_amount: Math.round(Number(d.earn) * 100),
         normal_price: Math.round(Number(d.normal) * 100),
@@ -5238,6 +5242,33 @@ window.showNoAccount = function(){
         </div>
 
         <div class="osf-sec">Your deal</div>
+        <!-- ⛔ RULING 9 (owner, 2026-08-27) — the deal must say WHAT SERVICE it is
+             for. Until this field existed an SP deal carried no service category at
+             all, so a customer choosing "Home / Office Services" could not be
+             matched to one: there was nothing to match on.
+
+             VALUES ARE THE `slug`, LABELS ARE DISPLAY ONLY. Three vocabularies exist
+             for these eight categories (canonical-service-categories.md §2.3) and
+             none substitutes for another — never send the label.
+
+             ⛔ Delivery and Ride Sharing are DELIBERATELY ABSENT. Not a new rule:
+             sp_eligibility.js already excludes exactly those when counting the
+             service jobs that make a worker eligible, so a worker may only offer a
+             deal in the kind of work that qualified them. The server refuses them
+             by name if a client sends one anyway. -->
+        <div class="osf-field">
+          <label for="osfSvcCat">What service is this for?</label>
+          <select class="osf-input" id="osfSvcCat">
+            <option value="">Choose a service&hellip;</option>
+            <option value="junk_removal">Junk Removal</option>
+            <option value="moving">Moving</option>
+            <option value="home_services">Home / Office Services</option>
+            <option value="hourly_day_labor">Hourly / Day Labor</option>
+            <option value="yard_work_outdoor_projects">Yard / Outdoor Projects</option>
+            <option value="other">Other</option>
+          </select>
+          <p class="osf-hint" id="osfSvcCatHint" hidden>Your keywords are how customers will find this &mdash; describe the service, e.g. &ldquo;dog grooming&rdquo;.</p>
+        </div>
         <div class="osf-field">
           <label for="osfDeal">Deal you&rsquo;re offering</label>
           <textarea class="osf-ta" id="osfDeal" placeholder="e.g. I&rsquo;ll power wash your home (up to 2,500 sq ft) for $150 &mdash; normally $200."></textarea>
@@ -8797,11 +8828,27 @@ window.showNoAccount = function(){
   kwInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addKw(); }});
   earn.addEventListener('input', function(){ var e=money(earn.value); pay.value=e?'$'+(e*1.10).toFixed(2):''; });
   reach.addEventListener('input', function(){ reachVal.textContent=reach.value+' mi'; });
+  var svcCat = document.getElementById('osfSvcCat');
+  var svcCatHint = document.getElementById('osfSvcCatHint');
+  /* `other` is the one category whose keywords ARE the category — surface that
+     when they pick it, not as a 422 after they press Submit. */
+  if(svcCat) svcCat.addEventListener('change', function(){
+    if(svcCatHint) svcCatHint.hidden = (svcCat.value !== 'other');
+  });
   function showErr(m){ err.textContent=m; err.hidden=false; }
   submit.addEventListener('click', function(){
     err.hidden=true;
+    if(!(svcCat && svcCat.value)) return showErr('Choose the service this deal is for.');
     if(!(deal.value||'').trim()) return showErr('Add the deal you’re offering.');
     if(keywords.length<1)       return showErr('Add at least one searchable keyword.');
+    /* ⛔ Ruling 9: for `other` the keywords are the ONLY thing a customer can find
+       this deal by, so they have to say something. Mirrors the server's
+       MIN_OTHER_KEYWORD_LEN — the server still re-checks; this is here so the worker
+       is told before the round trip. The first real SP deal shipped with keywords
+       ['1','2','3'], which is what free text does when nothing checks it. */
+    if(svcCat && svcCat.value === 'other' &&
+       !keywords.some(function(k){ return k.trim().length >= 3 && /[a-z]/i.test(k); }))
+      return showErr('For “Other”, add a keyword that describes the service — e.g. “dog grooming”.');
     if(!money(earn.value))       return showErr('Enter what you want to earn.');
     if(!money(normal.value))     return showErr('Enter your normal price.');
     /* The normal price is the struck-through comparison the customer sees, and the
@@ -8820,6 +8867,7 @@ window.showNoAccount = function(){
     submit.disabled = true; submit.textContent = 'Submitting…';
     GoAuth.submitDeal({
       dealText: (deal.value||'').trim(),
+      serviceCategory: svcCat ? svcCat.value : '',
       keywords: keywords,
       earn: _earn, normal: _norm,
       reachMiles: parseInt(reach.value, 10)
@@ -8845,6 +8893,8 @@ window.showNoAccount = function(){
   });
   function reset(){
     deal.value=''; earn.value=''; normal.value=''; pay.value='';
+    if(svcCat) svcCat.value='';
+    if(svcCatHint) svcCatHint.hidden=true;
     reach.value=25; reachVal.textContent='25 mi'; keywords=[]; renderChips();
     err.hidden=true; success.hidden=true; formWrap.hidden=false;
   }
