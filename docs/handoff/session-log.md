@@ -1605,6 +1605,107 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     pre-G40-308, byte-identical, so nothing of theirs shipped. Same family as *verify by content,
     never by SHA* — but the sharper form: **a string that already existed cannot be a rider probe.**
 
+- **G40-35 — the moderation flag email named the WRONG PARTY, and the guard missed the
+  solicitation that caused it (owner report, order 64830; 2026-08-27/28). Both halves are MERGED
+  AND LIVE ON PRODUCTION.** The Gopher asked *"Im on to you to get the money for your order. Do you
+  have cash?"* → scored **0**. The customer's reply **declining** to go off-platform (it contained
+  `venmo`) → scored **60** and flagged. The email then printed `Sender User: 142629`, so the only
+  party it named was the one who **refused**.
+  - **MR !417 — the email (commit `432e8413`, merge `8e8fd757`, EB Green on that SHA).** Two
+    defects in one template line: a bare numeric id **names nobody**, and *"Sender User"* **reads as
+    the accused**. Each party now resolves to **role + name + id** off the authoritative order row
+    `buildAlertEmailData` already fetched (no extra query); a non-party (support in-thread) is
+    labelled *"Not a party to this order"* rather than guessed into a role. The template also states
+    plainly that it flags **one message, not a person**, and says the counterparty's messages are
+    unscored and may be the real concern. ⚠️ **The codebase had already solved this once** — the
+    `flag.user_id` label carries a comment saying passing the author there *"would read as an
+    accusation by the wrong party"*. That reasoning was never carried to the two lines below it.
+  - **MR !419 — the corpus (commit `d216fd2f`, merge `3dfec14d`, EB Green on that SHA).** Phrase
+    coverage carried the *instruction* form (`cash only` 60, `pay me in cash` 60) but not the
+    **question**, which is how people actually ask. Added three phrases: `do you have cash`,
+    `do cash`, `give you cash`.
+  - **⛔ THE RECOMMENDATION WAS MEASURED, AND THE MEASUREMENT REVERSED IT.** The standing advice
+    (mine, and the reporting session's) was *"a corpus edit will flood the queue with confused
+    users — probably don't."* Scored **70,806 real in-app messages** twice, baseline vs candidate,
+    joined to the owner's **1,279 triage decisions** in `alert_learnings.json`:
+    **616 → 635 flagged, i.e. +19 (+0.027%)**. Of the 19, **one had been triaged and he had ACTED on
+    it**; precision on the judged subset **100%** against an **81.2% baseline**. The fear was
+    empirically false at this width. *Do not re-litigate this from intuition — re-run the numbers.*
+  - **⛔ REJECTED, with the measurements that reject them** — these are the guardrails, not
+    leftovers. **Un-stopwording bare `cash`** (the obvious fix): **~225** historical hits, dominated
+    by **declines** (*"I dont have cash ma'am"*) — the very shape that misled the owner. `in cash`:
+    47 hits, mostly benign receipt talk. `give cash`: 2 hits, 1 benign — 50%, excluded on principle.
+    `bring cash` / `ill take cash` / `cash instead` / `pay you cash` / `cash app`: **zero hits in
+    70,806 messages** — three of these were in the original proposal, on intuition. Corpus bloat.
+  - ⚠️ **`money` is NOT absent from the corpus, it is absent from `payment`** — it lives in
+    **circumvention** (`save money off app`) and **scam_fraud** (`money order`, `wire money`).
+    Adding it to `payment` would create a cross-category interaction at a higher severity
+    (circumvention 75 forces a combo to 100/block). Recorded because "money isn't in the corpus" is
+    the natural half-truth to carry away.
+  - ⚠️ **`violence_threats` has the same stopword nullification and it is CORRECT — do not "fix"
+    it.** 14 terms are nullified there, which looks alarming until scored: *"im going to kill you"*
+    85, *"ill shoot you"* 85 — the phrase list carries it, and bare *"i have a gun"* scoring 0 is
+    right on a delivery marketplace. `profanity` and `regulated_items` are the same deliberate shape.
+  - **⛔ THE PARITY TEST THE CODE CITED DID NOT EXIST.** `helpers/message_moderation.js` has always
+    said `test/g40-35-moderation-parity.test.js` pins it to the HQ Dashboard's `regen_reports.py`.
+    **It was not in the tree, not tracked, not on any branch.** The lockstep guarantee was a
+    *comment*, and a comment cannot fail a build. The real mechanism is that both sides hold a
+    **byte-identical `moderation_rules.json`** — unchecked. !419 adds the test; it is verified to
+    catch real drift (it failed while the two copies were briefly out of step mid-edit).
+    **Both sides now read `475b2b21ab9957d0`.**
+  - **On the substance, 64830 is an onboarding gap, not enforcement** — both parties new and
+    confused about who fronts cost of goods on a $25 age-restricted order. Worth remembering before
+    anyone tunes harder at this shape: it is *worker solicits, customer declines*, so tightening
+    catches confused users at least as often as bad actors.
+
+- **⛔ THE MODERATION CORPUS WAS SILENTLY REVERTED — FOURTH OCCURRENCE — AND THE STANDING ADVICE
+  ABOUT IT IS WRONG ON THIS MACHINE (2026-08-27/28).** The three payment phrases were committed to
+  the dashboard (`8132389`, 40 phrases), then a regen overwrote the file back to 37 and another
+  session committed the reverted state as `3aab8ea`, correctly flagging it rather than guessing at
+  intent. Memory `moderation-rules-json-is-generated` already recorded *"cash phrases died 3x"*.
+  This was the fourth.
+  - **The usual advice — "fix the xlsx, not the JSON" — is only half right here.**
+    `regen_reports.py` resolves its spreadsheet through `UP = os.environ.get("GOPHER_DATA",
+    "/mnt/user-data/uploads")`. **That path does not exist on this machine**, so `newest()` returns
+    `None` and `load_mod_rules()` **always** takes the fallback branch, printing
+    `moderation rules: moderation_rules.json`. On this box **the JSON is the operative source and
+    the xlsx is never read.**
+  - **So BOTH were updated:** `Gopher_Moderation_ML_Import_Package.xlsx` → Phrases sheet 37 → 40
+    payment rows (so any environment that *does* resolve `GOPHER_DATA` agrees), and the JSON (so
+    this one works). ⚠️ **The xlsx is gitignored (`*.xlsx`)** — that half lives on disk only and is
+    not carried by the repo.
+
+- **HQ Dashboard iQ: a promo code was read as a CATEGORY, and an unreadable question was answered
+  anyway (owner screenshot 2026-08-28; dashboard `8cdc9d6`).** *"How many orders used promo code
+  LABORDAY?"* returned **316 orders** under a **Category: Hourly / Day Labor** filter. **The true
+  answer is 1** — verified twice, by counting the `PROMO CODE` column across 63,795 orders and
+  against the coupon catalogue's own `order_count`.
+  - **1. Substring, not word.** `iqParse` matched category keys with `t.includes(k)`, and
+    `"laborday"` contains `"labor"`. Reproduced across the map: `MOVEIT` / `REMOVE10` → Moving,
+    `RIDEALONG` → Ride Sharing, `PAINTBALL` → Home / Office Services.
+    ⚠️ **A plain word-boundary check is TOO STRICT and regresses two live queries** — several keys
+    are deliberate **stems** (`landscap` must still match "landscaping") or **singulars**
+    (`home service` must still match "home services"). Caught by the matrix, not by reading. The
+    rule that works is **inflection vs. concatenation**: the boundary allows a grammatical suffix
+    (`s|es|ing|ed|er|ers`) and nothing else — `landscap|ing` is an inflection, `labor|day` is a
+    second word glued on. Both `catmap` consumers moved (positive **and** negation paths).
+  - **2. It answered anyway.** There was no not-understood path. `iqParse` now returns `understood`,
+    computed by **comparing the filter object against its defaults — NOT by counting chips**,
+    because some chips (e.g. *"Source: Gopher Request"*) filter nothing and would mask a total miss.
+    An unreadable question now refuses in plain words, leaves the table unfiltered, says the full
+    list is **not an answer**, names what iQ does understand, and points promo-code questions at
+    **Reports → Promo Codes**, which already carries redemptions per code.
+  - ⚠️ **The refusal must render from `renderAnalysis` — it is that panel's SINGLE writer.** The
+    first attempt rendered it at the top of `render()`; `renderAnalysis` then ran later in the
+    **same pass** and its `if(!anaSpec) box.innerHTML=''` wiped it every time. **The parser was
+    already correct while the UI showed nothing** — found only by driving the built dashboard. An
+    intermediate broken state was committed locally as `563649e` by another session picking up the
+    uncommitted working tree; `8cdc9d6` supersedes it.
+  - **NOT fixed, and deliberately scoped out: orders carry no promo code.** The bake drops the
+    column (`0` references to `PROMO CODE` in the orders bake) and the filter model `F` has no promo
+    dimension, so even a perfect parse could not answer this. The number exists in **Promo Codes**
+    (baked from `Coupons.csv` with `order_count` per code); the two datasets are simply never joined.
+
 - **Split-screen harness: "⟳ Reset demo" now clears EVERY seen-map — the second demo run was
   broken (2026-08-11/12, commit `505ac28`, deploy `3a31b0b`, live on Pages + TigerTech).**
   _(Scope: `_prototypes/split-screen.html` + one new test + one doc correction. No app, backend,
