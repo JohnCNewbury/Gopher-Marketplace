@@ -44,6 +44,19 @@ different population from Go's; its top-crash list still needs capturing.
 
 Same three `targetSdk` actions flagged on 840 as on Go's 856 (edge-to-edge, orientation/resizability).
 
+### Request app size (from 840)
+
+Play showed **no download-size figure and "Data unavailable"** for the size-over-time chart — so unlike
+Go there is no byte baseline to compare against. What it did report:
+
+| | |
+|---|---|
+| Devices with < 2 GB free | 5.65 % |
+| Largest available saving | WebP for images — **7.17 MB (11.71 %)** |
+
+The 11.71 % implies a total around **61 MB**, close to Go's 62.2 MB, but that is arithmetic from a
+percentage, **not a figure Play stated** — treat it as an estimate. Config APKs already implemented.
+
 ### Request top crashes — 28 days (Jul 31 – Aug 28)
 
 **Only 3 issues exist: 5 affected users, 6 events.** Percentages are of events.
