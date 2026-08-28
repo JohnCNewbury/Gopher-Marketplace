@@ -108,6 +108,39 @@ sub-type without its parent is not something the server can act on.
 (*"being removed as a filterable field"*), and `setWorkSettings` **forces `offer_limit` to 0**
 regardless of what is sent. Do not build UI that implies either can be set.
 
+## 2.3 The `slug` vocabulary — the STORED identifier (owner decision, 2026-08-21)
+
+⚠️ **Added 2026-08-27. This is a THIRD vocabulary for the same eight, and it was missing from
+this file** — so a session needing the stored identifier had to grep
+`Final/assets/js/gopher-flow-rules.js`, which is precisely what this file exists to stop. I did
+exactly that before finding this gap.
+
+`slug` is what the **backend `category_id` work adopts** and what any new column storing a service
+category must hold. It is not a display string and must never be rendered.
+
+| # | Customer label (Request) | `selectionMap` key (§2) | **`slug`** — store THIS |
+|---|---|---|---|
+| 1 | Delivery / Errand | `Delivery` | `delivery` |
+| 2 | Junk Removal | `Junk Removal` | `junk_removal` |
+| 3 | Moving | `Moving` | `moving` |
+| 4 | Home / Office Services | `Home Services` | `home_services` |
+| 5 | Hourly / Day Labor | `Hourly / Day Labor` | `hourly_day_labor` |
+| 6 | Yard / Outdoor Projects | `Yard Project` | `yard_work_outdoor_projects` |
+| 7 | Ride Sharing | `Need a Ride` | `ride_sharing` |
+| 8 | Other | `Other` | `other` |
+
+**Three vocabularies, one taxonomy.** The label is the surface's to choose (§1). The
+`selectionMap` key is what the work-settings API already stores and cannot be changed without a
+migration. The `slug` is what NEW storage uses. Crossing them is silent — `Yard Project` and
+`yard_work_outdoor_projects` are the same category and neither is a valid substitute for the other.
+
+⚠️ **`Yard Project` vs `yard_work_outdoor_projects` is the trap.** Three different words for one
+category across three layers, and no layer errors on the wrong one.
+
+**Source:** `gopher-flow-rules.js` `CATEGORIES[]`, which carries the owner's 2026-08-21 decision in
+its own header. That file remains the implementation; **this table is now the record.** If they
+ever disagree, they must be reconciled — do not silently prefer either.
+
 ## 3. Deals categories are a DIFFERENT list — do not cross them
 
 Gopher Deals has its own four registerable categories plus a publication-only fifth

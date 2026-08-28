@@ -1378,6 +1378,36 @@ is unbuilt, and say which term you searched when reporting a negative.
 
 ---
 
+### 9.18 An SP deal carries NO service category — it is discoverable only by three free-text words ⛔ → **Ruling 9**
+
+**Found 2026-08-27 by the owner**, driving the first real SP deal (`SP3`) end to end.
+
+A **merchant** deal has a category: `DLM_FIELDS` in `helpers/deals_intake_validation.js` includes
+`category`. A **service-provider** deal does not — `DLP_FIELDS` is
+`deal · keywords · earn_amount · normal_price · reach_miles`. The `category: 'providers'` on a live
+SP row is the **publication track** (§9.1's fifth, publication-only value), not the service being
+offered.
+
+So an SP deal's only discoverability is `keywords`: free text, max 3, lowercased, described in the
+contract as *"the customer search index"* (§4.1). Measured on the live rails 2026-08-27:
+
+| Check | Result |
+|---|---|
+| `keywords` on the first real SP deal | `['1','2','3']` |
+| `controllers/common/deals_feed.js` references to keywords | **0** (control: `deal_code` = 1, so the probe reads the file) |
+| `Final/gopher-request.html` category-matching for deals | **0** |
+
+**Consequences.** A customer choosing **Home / Office Services** in the Request flow cannot be
+matched to an SP deal — there is nothing to match on. The provider-history card beside the deal
+lists that provider's real categories while the deal itself names none. And every other surface
+keys on the service taxonomy (`selecttype`/`selectsubtype`, `category_type`/`sub_category_type`), so
+SP deals are the one thing standing outside it.
+
+**The tell that the design wants this:** `helpers/sp_eligibility.js` already decides *eligibility*
+by category — it excludes `Delivery`, `Need a Ride` and `Errand` when counting service jobs. The bar
+that decides whether a provider **may** publish reads categories; the deal they publish declares
+none.
+
 ## 10. Rulings — ALL SETTLED (owner, 2026-08-05)
 
 **All eight decided.** Rulings 1–6 and 8 are applied or applicable as written; **Ruling 7 changes
@@ -1652,6 +1682,42 @@ surfaces. **The one unacceptable outcome is the current one** — a live discoun
 that no system can honour and no spec acknowledges.
 
 ---
+
+### Ruling 9 — SP deals must declare a service category ✅ **DECIDED 2026-08-27**
+
+> **Owner ruling.** An SP deal picks **one** service category. Source list is the **eight canonical
+> service categories** (`canonical-service-categories.md` §1), **minus Delivery and Ride Sharing,
+> which are gated**. **`Other` IS available.**
+>
+> **Why `Other` stays — the owner's own case.** *"I have a worker going to offer mobile dog
+> grooming. What category would they use otherwise?"* None of the five fit, and forcing it into
+> Home / Office Services would be a lie the customer reads. A recommendation to drop `Other` for
+> discoverability's sake was **put and rejected on this example.**
+>
+> **Store the `slug`, never the label** — `canonical-service-categories.md` §2.3. `Yard Project`,
+> `Yard / Outdoor Projects` and `yard_work_outdoor_projects` are the same category in three
+> vocabularies and none substitutes for another.
+>
+> **Selectable (6):** `moving` · `junk_removal` · `hourly_day_labor` ·
+> `yard_work_outdoor_projects` · `home_services` · `other`
+> **Gated (2):** `delivery` · `ride_sharing`
+>
+> ⚠️ **Gating those two is not a new rule — it is the existing one moved earlier.**
+> `sp_eligibility.js` already excludes exactly Delivery / Errand and Ride Sharing when counting the
+> service jobs that make a provider eligible. A provider may therefore only publish in the kind of
+> work that qualified them.
+
+**Keywords stay, and become load-bearing for `Other`.** The dog-groomer case is the argument: for an
+`other` deal the keywords *are* the category (`dog grooming`, `mobile grooming`, `pet`). So keywords
+must be **required and validated when `category = other`** — which also closes the `1,2,3` hole
+§9.18 measured. For the other five they remain optional search terms.
+
+⚠️ **DEPENDS ON an unresolved supply-side gap.** A provider must clear the eligibility bar before
+any of this applies, and `Gopher-Worker-Flow-Build-Spec.md` **§3.3a** (added 2026-08-27) records
+that the bar cannot currently see whole trades — **pet care: 32 of 35 real jobs invisible**. The
+owner's dog-groomer would be blocked *before* reaching this ruling. §3.3a is **open and awaiting an
+owner decision**; this ruling is not blocked by it, but shipping this alone would not let that
+worker publish.
 
 ## 11. Build order
 
