@@ -107,3 +107,40 @@ stays claimable after its start time) or stale jobs are not being aged out of th
 Worth deciding deliberately; I am not asserting it is a bug.
 
 ⚠️ **Not yet checked on iOS.**
+
+### F3 — iOS: the keyboard completely hides the support message composer ⚠️ FUNCTIONAL
+
+**Where:** **More → Help Center → Message support → Send us a message** (the Intercom messenger).
+**Platform:** **iOS** — Gopher Go, TestFlight 13.9.1 (863). Owner test, 2026-08-28.
+**Android status:** not yet checked.
+
+**Symptom, from two screenshots taken seconds apart:**
+
+| keyboard up | keyboard dismissed |
+|---|---|
+| No composer visible **at all**. Screen shows the Intercom header, "Ask us anything, or share your feedback.", then blank white down to the keyboard. | Composer appears, containing the text that was typed blind: `Bdbdjsnnejxjdjdjdndhbb`, plus the attachment clip and the send arrow. |
+
+So the text field, the attachment control **and the send button** are all underneath the keyboard
+while typing. The user types with **zero visual feedback** — they cannot see their own message,
+cannot proofread it, and cannot reach Send without first dismissing the keyboard.
+
+**Why this one matters more than a layout nit:** this is the **support channel**. The person
+using it is, by definition, already having a problem. Handing them a text box they cannot see is
+the worst possible moment for a broken screen, and it will read as "this app is broken" rather
+than "this screen is broken".
+
+**Diagnosis — NOT established, candidates only:**
+1. **Capacitor keyboard resize mode.** `@capacitor/keyboard@8.0.5` is in the build. If `resize` is
+   `none`, or the webview does not resize on `keyboardWillShow`, bottom-anchored content stays
+   under the keyboard. This is the classic Capacitor-on-iOS shape and the first thing to check.
+2. **Intercom's own messenger** handling insets incorrectly inside the webview / when presented
+   over it. If the messenger is Intercom's native SDK rather than web, our keyboard config is not
+   the cause and the fix is elsewhere entirely.
+
+**Determine which before writing any fix** — these have completely different remedies, and
+guessing wrong burns a store cycle. Related: `@capacitor/keyboard` is *also* implicated in
+Android's `Keyboard$1.onEnd` NPE (see the crash baseline), so the plugin is worth a proper look
+rather than a patch.
+
+⚠️ **Check the same path on Android** before ticketing — if it reproduces there too, it is one
+ticket, not two.
