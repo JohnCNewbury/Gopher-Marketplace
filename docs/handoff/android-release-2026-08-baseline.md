@@ -29,6 +29,48 @@ median. Not a policy problem today; the thing to watch is whether the release mo
 
 ⚠️ NOT YET CAPTURED. Fill in from Monitor and improve → Android vitals → Overview before releasing.
 
+## Top crashes on 856 — 28 days (Jul 31 – Aug 28), Go
+
+19 affected users / 34 events across the top 10. **The top two are the same defect and account for
+73.5 % of affected users.**
+
+| % users | users | events | crash |
+|---|---|---|---|
+| **52.9 %** | 6 | 18 | `RemoteServiceException$ForegroundServiceDidNotStartInTimeException` |
+| **20.6 %** | 4 | 7 | `RemoteServiceException$ForegroundServiceDidNotStartInTimeException` (2nd cluster) |
+| 5.9 % | 2 | 2 | `OutOfMemoryError` — `ch.qos.logback.classic.spi.CallerData.extract` |
+| 2.9 % | 1 | 1 | `NullPointerException` — `com.getcapacitor.BridgeActivity.onDetachedFromWindow` |
+| 2.9 % | 1 | 1 | `NullPointerException` — `CameraPlugin.lambda$openPhotos$4` |
+| 2.9 % | 1 | 1 | `OutOfMemoryError` — `ParceledListSlice$1.createFromParcel` |
+| 2.9 % | 1 | 1 | `RuntimeException` — `com.ahm.capacitor.camera.preview.CameraActivity$6.run` |
+| 2.9 % | 1 | 1 | `SIGABRT` — `[libc.so] abort` |
+| 2.9 % | 1 | 1 | `OutOfMemoryError` — `com.transistorsoft.locationmanager.location.TSLocation.a` |
+| 2.9 % | 1 | 1 | `SQLiteDatabaseCorruptException` — `SQLiteLocationDAO.count` |
+
+**Two named Transistorsoft frames** (`TSLocation.a`, `SQLiteLocationDAO.count`) are confirmed BGGeo.
+
+⚠️ **INFERENCE, NOT VERIFIED:** the two `ForegroundServiceDidNotStartInTimeException` clusters are
+*probably* the location foreground service — that exception fires when a service started with
+`startForegroundService()` fails to call `startForeground()` within ~5 s, and BGGeo is the app's main
+FGS user. **The Play stack shows only the Android framework generating the exception; it does not name
+the service.** Confirm from the full stack or Sentry before treating it as fact.
+
+**Why this matters for THIS release:** it changes BGGeo v7.2.5 → v9.3.0 *and* moves to `targetSdk 36`,
+and Android has tightened foreground-service rules at every level since 14. So the release plausibly
+**fixes** the dominant crash — or **worsens** it. This is the single metric to watch during rollout.
+
+## App size (Go, from 856)
+
+| | |
+|---|---|
+| Download size | **62.2 MB** (60.8 – 62.8 MB across configs) |
+| vs peer median | **+7.45 MB** (peers 54.7 MB) |
+| Devices with < 2 GB free | 4.91 % |
+| Largest available saving | WebP for images — **6.71 MB (10.72 %)** |
+
+Language / screen-density / ABI config APKs already implemented. Code shrinking + obfuscation show no
+measured saving. Not release-blocking; recorded so post-release size change is attributable.
+
 ## Three Play-flagged actions on 856 — all `targetSdk`-related, all get WORSE at 36
 
 1. **Deprecated edge-to-edge APIs / parameters**
