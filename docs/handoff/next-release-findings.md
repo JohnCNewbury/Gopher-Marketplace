@@ -3,7 +3,7 @@
 Opened 2026-08-28 during owner's release-testing session. **Capture-first, ticket-after.** Capture phase closed 2026-08-28; see ticket mapping below.
 
 **TICKETED 2026-08-28** into Jira sprint **John's Tickets** (id `677`, board 2, project G40).
-All four are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
+All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 
 | ticket | covers | |
 |---|---|---|
@@ -11,6 +11,7 @@ All four are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | **G40-421** | **F3** — iOS keyboard hides the entire support composer | ⛔ functional; support channel |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | F1b carries mis-tap risk on an age-restricted decision |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
+| **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | F5a may be a dead end |
 
 Grouped by repo rather than one-ticket-per-finding: the two apps are diverged forks, so tickets
 spanning both create double work, and several findings are one fix.
