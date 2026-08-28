@@ -3,9 +3,30 @@
 Written 2026-08-28 01:00. Everything below is what remains AFTER tonight's four green builds.
 Baseline numbers and the reasoning behind the QA order: `android-release-2026-08-baseline.md`.
 
-**Where things stand right now:** both AABs are uploaded to Play as **internal-track DRAFTS**.
-Nothing is published. Play production is still serving the March builds (Go 856/3.9.0,
-Request 840/3.8.0).
+**UPDATED 2026-08-28 — PHASE 1 IS DONE.** Both apps are **published to the internal track**
+(Go 3.9.1/864, Request 3.9.1/852; both tracks Active). Tester list `Gopher Team` carries
+`jnewbury@gophergo.io`, `johncnewbury@gmail.com`, `rob.hazle@gmail.com`.
+**Play production is still serving the March builds** (Go 856/3.9.0, Request 840/3.8.0) —
+nothing has reached a production user.
+
+**Recorded at publish time, both apps, all benign:**
+- **1,164 devices dropped** (1,024 phones −8 %, 139 tablets −3 %, 1 TV) — `minSdk` moved
+  **23 → 24** with the Capacitor 8 upgrade. Owner confirms a prior instance of this was "a
+  fraction of a fraction" of real users. Those devices keep the March build forever.
+- **No deobfuscation file** — Play confirming from its side that **R8 does not run** on either app.
+- **No native debug symbols** — native crashes show as raw addresses in Play Vitals. Sentry has
+  its own symbols, so the primary crash view is unaffected. Worth fixing someday, not now.
+
+**Size at publish:**
+
+| app | new installs | vs previous | update size |
+|---|---|---|---|
+| Request | 62.6 MB | +1.29 MB | 12.4 MB |
+| Go | **67.1 MB** | **+4.48 MB** | 16.6 MB |
+
+⚠️ Go grew 3.5× more than Request — almost certainly the BGGeo v9 native library, which is Go's
+alone. Go was already +7.45 MB over its peer median; it is now roughly **+12 MB** over. Not
+release-blocking, but it only surfaces on the publish preview screen and is otherwise invisible.
 
 | app | package | new build | replaces |
 |---|---|---|---|
