@@ -144,3 +144,38 @@ rather than a patch.
 
 ⚠️ **Check the same path on Android** before ticketing — if it reproduces there too, it is one
 ticket, not two.
+
+### F4 — Android Request: the scheduling picker's "Done" button collides with the tab bar
+
+**Where:** Gopher Request → new Grocery request → schedule (date/time picker).
+**Platform:** **Android**, build 3.9.1 (852). Owner screenshot, status bar 9:56.
+
+**F4a — "Done" is rendered on top of the "Inbox" tab. ⚠️ Same class as F1b.**
+The picker sheet extends down over the bottom navigation bar. Its **Done** button and the
+**Inbox** tab occupy the same pixels — "Done" renders as `D⌷ne` with the envelope icon showing
+through it. The picker's last date row (30, 31, 1–5) sits directly on the tab strip, and the time
+column's final entry (12:25 PM) is clipped by it.
+
+Why it is more than ugly: **Done is the commit action for the schedule.** A near-miss hits
+**Inbox**, which navigates away from the request being composed. Whether the in-progress request
+survives that navigation is unknown and worth testing deliberately — if it does not, a mis-tap
+costs the user everything they have entered.
+
+This is the **third** instance tonight of a primary action overlapping another control (F1b, F2c,
+F4a). Three separate screens, same failure shape: a bottom-anchored sheet or row that does not
+account for what is beneath it. Worth considering whether these get one structural fix rather
+than three patches.
+
+**F4b — ⚠️ OPEN QUESTION, possibly serious, NOT asserted: are past dates selectable?**
+In the screenshot, **23 is selected** (blue) and **23–27 are enabled** (black, tappable), while
+everything up to 22 is greyed out. If this screenshot was taken on **28 August**, then five past
+dates are selectable and one is pre-selected — meaning a user could schedule a request **in the
+past**.
+
+I cannot confirm this from the screenshot alone, because the capture date is not visible and this
+testing session may span days. **Two possibilities:**
+- The screenshot was taken on/around **23 August** → the picker is behaving correctly, ignore.
+- It was taken **28 August** → past-date scheduling is possible, which is a **functional defect
+  well above the UI issues in this log** and needs its own ticket.
+
+**Owner: which was it?** That single answer decides whether F4b exists.
