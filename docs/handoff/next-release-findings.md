@@ -208,3 +208,43 @@ distinction changes severity substantially:
 
 **Next step before or alongside the fix:** actually submit one and see. That is a five-minute test
 and it decides how hard this needs to be hit.
+
+### F5 — Favorite Gopher Referral: the referred gophers are hidden behind the action buttons ⚠️ POSSIBLE DEAD END
+
+**Where:** Gopher **Request** → Inbox → "You Have A Favorite Gopher Referral" message.
+**Platform:** Android, build 3.9.1 (852). Owner screenshot, status bar 3:55.
+
+**F5a — ⚠️ the list of referred gophers is unreachable behind the fixed buttons.**
+Below the message body the screen shows a **Select All** checkbox, then the first referral row —
+**"Ryan Newbury"** — **sliced horizontally**: half the avatar, half the name, half the checkbox.
+Everything below that is covered by the fixed **Accept Referrals** / **Decline** buttons.
+
+**Why this may be a functional dead end, not a layout nit:**
+Both buttons render **greyed out / disabled** — presumably because no gopher is selected yet. But
+the per-gopher checkboxes are exactly what is buried under those buttons. If the list does not
+scroll independently, the user **cannot select anyone, so cannot enable the buttons, so cannot
+action the referral at all.**
+
+⚠️ **NOT VERIFIED: does the list scroll behind the fixed buttons?** A screenshot cannot show this.
+- Scrolls → bad layout, recoverable, medium
+- Does not scroll → the referral flow is **unusable** on this screen size. High.
+
+**Test that first.** It is one swipe and it decides the severity.
+
+**Second-order problem even if it does scroll:** **Select All** *is* reachable while the individual
+rows are not. So the path of least resistance is to accept **every** referral without being able to
+see who they are. Favorite Gophers affect who gets offered work — accepting blind is not a neutral
+outcome.
+
+**F5b — subject line breaks mid-word.**
+"You Have A Favorite Gopher Referral" wraps so the final **"l" falls alone onto the next line**,
+and the "Subject:" label is left stranded and vertically misaligned beside it. Reads as truncated
+even though the text is technically all present.
+
+⚠️ **Not yet checked on iOS.**
+
+**Pattern — this is the FOURTH instance in one session** of a fixed/bottom-anchored element
+covering content that the user needs (F1b, F2c, F4a, F5a). Four screens, two apps. This is no
+longer a series of one-off layout bugs; it is a systemic problem with how bottom-anchored
+controls are composed against scrollable content. Worth one deliberate look rather than four
+patches.
