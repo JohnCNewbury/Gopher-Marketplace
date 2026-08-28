@@ -236,10 +236,30 @@ rows are not. So the path of least resistance is to accept **every** referral wi
 see who they are. Favorite Gophers affect who gets offered work — accepting blind is not a neutral
 outcome.
 
-**F5b — subject line breaks mid-word.**
-"You Have A Favorite Gopher Referral" wraps so the final **"l" falls alone onto the next line**,
-and the "Subject:" label is left stranded and vertically misaligned beside it. Reads as truncated
-even though the text is technically all present.
+**F5b — the subject row is broken, and it is the first thing the eye lands on.**
+The subject reads **"You Have A Favorite Gopher Referra"** on line one with the final **"l"
+orphaned onto line two by itself**. Beside it, the **"Subject:" label sits stranded** — its
+baseline aligns with the orphaned "l", not with the first line of the value it labels, so the two
+elements read as unrelated.
+
+Three things are wrong at once in that one row:
+- the value column is too narrow, so a 35-character subject cannot fit and wraps by one character
+- the label is baseline-aligned to the wrong line
+- there is no padding between the value and the right edge
+
+The net effect is that the **headline of the message looks like a rendering failure**. Owner's
+words: *"look at subject"* — it is the most visible defect on the screen even though F5a is the
+more consequential one.
+
+**F5c — the screen has no coherent spacing system (owner: "overall poor UI").**
+Beyond the two specific defects, the composition itself is the problem:
+- the subject row is cramped against both the divider above and the text below
+- the message bubble is wide and squared off against a narrow gutter, with a large empty gap under it
+- the referral list is jammed into whatever vertical space is left, then covered
+- the avatar and its TrustShield badge sit in a large empty band with no relationship to what follows
+
+This is not a list of pixels to nudge — the screen needs laying out again with a consistent
+spacing scale. Treat F5b/F5c as one design pass, not as separate tweaks.
 
 ⚠️ **Not yet checked on iOS.**
 
