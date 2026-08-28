@@ -44,7 +44,31 @@ different population from Go's; its top-crash list still needs capturing.
 
 Same three `targetSdk` actions flagged on 840 as on Go's 856 (edge-to-edge, orientation/resizability).
 
-⚠️ TODO: Request top-10 crashes, ANR rate, app size.
+### Request top crashes — 28 days (Jul 31 – Aug 28)
+
+**Only 3 issues exist: 5 affected users, 6 events.** Percentages are of events.
+
+| % events | users | events | crash |
+|---|---|---|---|
+| 50.0 % | 2 | 3 | `NullPointerException` — `com.capacitorjs.plugins.keyboard.Keyboard$1.onEnd` |
+| 33.3 % | 2 | 2 | `NullPointerException` — `com.capacitorjs.plugins.camera.CameraPlugin.lambda$openPhotos$4` |
+| 16.7 % | 1 | 1 | `NullPointerException` — `CameraPlugin.lambda$openPhotos$4` (2nd cluster) |
+
+**Both defects are Capacitor plugin bugs, and BOTH are plausibly fixed by this release**, which moves to
+Capacitor 8 (`@capacitor/camera@8.2.1`, `@capacitor/keyboard@8.0.5`).
+⚠️ `CameraPlugin.lambda$openPhotos$4` **also appears in Go's list** — one shared defect, two apps.
+
+### Why 1.17 % on only 5 users
+
+Go: 19 affected users → 0.85 %. Request: 5 → 1.17 %. The rate is per *active user*, not per install,
+so Request's denominator must be far smaller than Go's despite having more installs (5.15 K vs 2.2 K) —
+consistent with requesters opening the app rarely while workers use it daily.
+
+Two consequences: the metric is **volatile** (a couple of users swing it), and it is **cheap to fix** —
+clearing these two plugin NPEs could alone put Request back under 1.09 %.
+
+**QA implication:** on the Internal build, deliberately exercise the **photo picker** and the
+**keyboard show/hide** on both apps. Those two paths are the entire measured crash surface of Request.
 
 ## Top crashes on 856 — 28 days (Jul 31 – Aug 28), Go
 
