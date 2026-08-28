@@ -1,9 +1,22 @@
 # Findings for the NEXT release — capture log
 
-Opened 2026-08-28 during owner's release-testing session. **Capture first, ticket later** —
-the owner is sending findings one at a time and will decide ticketing when the list is complete.
+Opened 2026-08-28 during owner's release-testing session. **Capture-first, ticket-after.** Capture phase closed 2026-08-28; see ticket mapping below.
 
-**Destination when we ticket:** Jira sprint **"John's Tickets"**.
+**TICKETED 2026-08-28** into Jira sprint **John's Tickets** (id `677`, board 2, project G40).
+All four are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
+
+| ticket | covers | |
+|---|---|---|
+| **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
+| **G40-421** | **F3** — iOS keyboard hides the entire support composer | ⛔ functional; support channel |
+| **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | F1b carries mis-tap risk on an age-restricted decision |
+| **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
+
+Grouped by repo rather than one-ticket-per-finding: the two apps are diverged forks, so tickets
+spanning both create double work, and several findings are one fix.
+
+**Each ticket points back at this doc.** Per the standing rule, the doc is the record and the
+ticket dies with the fix — so update the finding here, not only the ticket.
 
 **Why a doc first:** per the standing rule, the doc carries the canonical record and the ticket
 references it — never the reverse. A finding written only into a ticket dies with the ticket.
