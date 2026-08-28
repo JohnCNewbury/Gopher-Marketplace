@@ -156,6 +156,18 @@
       base.name = d.title || 'Local Merchant';
       base.sub = (d.keywords || []).map(titleCase).join(' · ');
       base.mobile = !!d.mobile_address;
+      /* ⛔ THE PICKUP POINT. gopher-request.html resolves it as
+             const pick = m.mobile ? dealPickup.value : (m.address || '');
+         and its comment says fixed merchants "auto-fill from registration" — they
+         never did, because nothing ever set `address` here and the feed did not
+         return it. `pick` was therefore '' on every live merchant deal and the
+         request was created with NO pickup location. Found on MD1, the first real
+         merchant deal, 2026-08-28.
+
+         ⚠️ A MOBILE merchant deliberately has none: the customer types where the
+         truck is that day, which is what the pickup field is for. Null here is
+         correct for them, not missing. */
+      base.address = d.business_address || null;
       base.noOrdering = !!d.no_online_ordering;
       if (d.order_url) base.portalUrl = d.order_url;
     }
