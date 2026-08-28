@@ -5444,6 +5444,27 @@
              that this key would have 422'd the whole submission, and the other two were
              accepted and silently dropped. */
           channel_source: data.source,
+          /* ⛔ THE FOURTH FIELD THIS FORM VALIDATED AND NEVER SENT. The checkbox
+             above (#regAddrMobile) decides client-side whether an address is
+             required — and then this payload dropped it, so the server always saw
+             a FIXED business. Same shape as owner_dob, owner_address,
+             already_gopher and channel_source before it, each documented a few
+             lines up: on the intake allowlist, no 422, nothing stored.
+
+             ⚠️ WORSE THAN THE OTHERS, because it made the two halves disagree
+             about one rule. Tick mobile and leave the address blank: the form lets
+             you through, the server never hears about it, and 422s "Business
+             address is required (or tick that your business is mobile)" — telling
+             the merchant to tick a box they just ticked. Tick it AND give an
+             address: stored as NOT mobile, silently. MD1, the first real merchant
+             deal, was filed exactly that way.
+
+             It also stranded both halves of the food-truck path shipped
+             2026-08-28: the customer-supplied pickup field, and the geocode
+             fallback that lets a mobile merchant's deal be seen at all. Both key
+             off a flag that never arrived. */
+          address_is_mobile:
+            (modal.querySelector('#regAddrMobile') || {}).checked || undefined,
           /* The S3 key minted by POST /users/deals/logo — never a filename and never a
              data URL. The server re-checks it belongs to this caller. Omitted when no
              logo was uploaded; a deal without one is still a valid submission. */
