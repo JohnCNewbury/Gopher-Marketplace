@@ -156,3 +156,44 @@ Compare against the baseline (`android-release-2026-08-baseline.md`):
 
 **No OTA exists.** Every fix after this needs another store cycle. That is the whole reason for
 the staged rollout.
+
+---
+
+## QA progress — 2026-08-28
+
+**Installs verified over USB (`adb dumpsys package`), device SM-A505U:**
+
+| package | version | installer | |
+|---|---|---|---|
+| `io.gophergoapp.go` | 864 / 3.9.1, minSdk 24, targetSdk 36 | `com.android.vending` | ✅ Play, clean install |
+| `io.gophergoapp.requester` | 852 / 3.9.1, minSdk 24, targetSdk 36 | `com.android.vending` | ✅ Play, clean install |
+
+`firstInstallTime == lastUpdateTime` on both — genuine fresh installs, not upgrades over the
+sideloaded Appflow APKs. Crashes will therefore reach Play Vitals and the signature matches
+production.
+
+### ✅ Android gopher — location VERIFIED
+Owner ran the job flow **twice** with Android as the gopher; location worked both times.
+**This settles the Android Transistorsoft v9 licence end to end** — not just licence validation,
+but locations actually flowing.
+
+⚠️ **It does NOT settle the `ForegroundServiceDidNotStartInTime` crash** (73.5 % of Go's affected
+users). Two successful runs prove the happy path; that crash is a timing failure under conditions
+two manual runs will not reliably reproduce. Only Vitals over days will answer it.
+
+### ⛔ Test gap — the QA phone is Android 11 (API 30)
+Two checklist items **cannot be tested on this handset** and must not be recorded as passing:
+
+| check | why it cannot run |
+|---|---|
+| Content under status / navigation bars | Edge-to-edge enforcement is **Android 15+** behaviour |
+| Orientation & resizability on large screens | **Android 16** behaviour, large screens only |
+
+These are exactly the two risks `targetSdk 36` introduces. **Cover them with the Play
+Pre-launch report** (left nav) — Google runs each internal release on a device farm including
+current Android versions and returns screenshots plus crash logs, free, populating within hours
+of publish.
+
+### ⏳ Still open — iOS as the gopher
+The iOS licence banner is gone on TestFlight **13.9.1 (863)**, which proves the key validates.
+It does **not** prove background location reaches the backend on iOS. That run has not happened.
