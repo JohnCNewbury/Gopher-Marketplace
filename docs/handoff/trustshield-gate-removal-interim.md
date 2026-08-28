@@ -1,5 +1,36 @@
 # INTERIM — remove the TrustShield gate before the iDenfy credit cliff
 
+> # ⛔ STOP — THIS DOCUMENT'S PREMISE WAS REVERSED. READ §8 AND §8.1 BEFORE §3.
+>
+> **The owner reversed the removal on 2026-08-24/25** and ruled the removed flow *not approved and
+> not correct*. The identity gate is **back on all three surfaces** and applies **at every age**
+> (canon v3.13). **§2 and §3 below are the ORIGINAL removal plan and must not be implemented as
+> written.** They are kept because §3.2's under-21 warning and §3.4's spinner fix are still correct
+> and still needed.
+>
+> **What the live-app work actually is (G40-410):** identity required for an age-restricted order at
+> every age, **satisfiable two ways** — TrustShield, **or** a one-off "Submit identification" (ID
+> front, ID back, live selfie; this order only; never touches iDenfy). The one-off is the
+> load-bearing half: it is what keeps "required for everyone" satisfiable after the credits die.
+>
+> ## ⛔ AND THE TWO HALVES SHIP IN ONE RELEASE. NEITHER GOES ALONE.
+>
+> | ship alone | result |
+> |---|---|
+> | **Client only** | the app accepts an ID, then `trust_shield_required()` still 403s under-30 at order creation — the dead end moves one screen later, *after* the user handed over their ID |
+> | **Backend only** | server stops requiring the badge, app still demands it — **the 2026-08-06 outage in reverse** |
+>
+> The client is the binding layer. Together, or backend after client — never before.
+>
+> ## ⚠️ "TrustShield now runs internally" is TRUE OF WEB ONLY
+>
+> That sentence in `gopher-step-gates.js` is the stated reason the gate came back. It is correct for
+> web, which never called iDenfy. **It is false for the live apps** — verified on `origin/production`
+> 2026-08-28: `controllers/user/trustshield.js:162` still calls `idenfy.generate_token`, its own
+> comment calls that *"the call that spends an iDenfy credit"*, `lib/idenfy_trustshield.js` posts to
+> `ivs.idenfy.com`, and **zero** barcode/PDF417/AAMVA files exist. **The credit cliff is unchanged.**
+
+
 **Status: SPEC, ready to build. Owner-approved 2026-08-23.**
 **⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week of September (~Sept 26–29)**
 and this cannot land without a store release. See §7.
@@ -159,6 +190,48 @@ voluntarily-added badge asserts nothing about the age on file.
 
 ---
 
+### 5.1 ⚠️ The replacement control has two known defects — inherited from G40-350
+
+This section leans on *"the Gopher's physical ID check at the door"* as the control that survives the
+gate. **That control works, but its record-keeping is broken in two places.** Both were filed as
+cleanup while TrustShield backstopped the check. Once the gate is gone the at-door record **is** the
+whole record, so they stop being cleanup — a null confirmation flag and a discarded photo are
+exactly where a liable control fails to evidence itself.
+
+| # | Defect | Where | Effect |
+|---|---|---|---|
+| 1 | `age_restricted_id_confirmed` stores **`null`** on every multipart completion | `update.js:~1990` | strict `=== true \|\| === false`; multer delivers text fields as **strings**, so `"true" === true` is false and the value falls through to `null` |
+| 2 | The **no-show / ID-not-confirmed** path parses its upload and never reads it | `order_pick_up_complete` (`update.js:2305`) | photo is discarded; remedy is porting the `req.files` → S3 block that already exists in `order_pick_up_complete_v2`, **not** "add multer" |
+
+Defect 1 hits **precisely the unverified-requester population** — the people who photograph an ID,
+i.e. everyone this change creates. Verified requesters send JSON, so their boolean survives; that is
+why the column looks fine today and will not after the gate is removed. Any reporting on
+`age_restricted_id_confirmed` is already wrong for that population.
+
+**Both are backend-only and need no store release**, so neither blocks the client work in §3 — but
+defect 1 should land **with or before** the gate removal, because it degrades the moment the
+unverified population grows.
+
+> ⚠️ **Do not re-derive these as "the at-door photo is never stored."** That earlier claim was
+> **wrong** and was corrected on 2026-08-05: multer is applied *inside* the handlers, not on the
+> routes (`update.js:2` requires it, `:48` defines `uploadIdentity`, wrapped at `:1906` and `:2309`),
+> so the **normal** completion path (`/complete/v2`) has stored photos since 2024-10-24 (`4180cadb`).
+> Grepping `controllers/order/index.js` for `multer` returns 0 and is misleading.
+
+### 5.2 Live configuration baseline — verified 2026-08-28
+
+Read directly from the `Gopher-Production` Beanstalk environment, not inherited from a ticket:
+
+    TRUSTSHIELD_MIN_AGE               = 30      ← the gate is fully ON
+    TRUSTSHIELD_TOKEN_GATED_AGES_ONLY = false
+    TRUSTSHIELD_GATE_MISSING_DOB      = (unset → false)
+
+**Nothing in this spec has shipped.** This is the known-good state restored on 2026-08-10 after the
+outage. ⚠️ EB config and the running process can disagree — this is the EB config; confirm against
+the process when the change lands (AC 7).
+
+---
+
 ## 6. Acceptance criteria
 
 1. A requester aged 21–29 with no TrustShield can complete an age-restricted delivery request
@@ -172,6 +245,11 @@ voluntarily-added badge asserts nothing about the age on file.
    mirror).
 7. `TRUSTSHIELD_MIN_AGE=1` **and** `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` in the live
    environment, confirmed by reading them back after the release ships.
+8. **`age_restricted_id_confirmed` is stored as a real boolean, not `null`,** for an age-restricted
+   order completed by an unverified requester (§5.1 defect 1). This is the record the at-door control
+   produces; without it the control evidences nothing for exactly the population this change creates.
+9. *(follow-on, not release-blocking)* The **no-show / ID-not-confirmed** completion persists its
+   photo (§5.1 defect 2).
 
 ---
 

@@ -8,7 +8,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | ticket | covers | |
 |---|---|---|
 | **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
-| **G40-421** | **F3** — iOS keyboard hides the entire support composer | ⛔ functional; support channel |
+| **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | F1b carries mis-tap risk on an age-restricted decision |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
 | **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | F5a may be a dead end |
@@ -159,6 +159,66 @@ rather than a patch.
 ⚠️ **Check the same path on Android** before ticketing — if it reproduces there too, it is one
 ticket, not two.
 
+---
+
+### F3b — ⛔ F3 IS THE NINTH INSTANCE. Nine tickets, fourteen months, not one sweep.
+
+**Raised 2026-08-28 by the release-QA session (App/Play Store Release Notes) during D3 device
+testing of G40-271 §B. Every row below verified against Jira on 2026-08-28 — status and date, not
+transcribed from the report.**
+
+Keyboard occlusion has been found, ticketed and closed **nine separate times**, and every single
+one was fixed as a *single screen*. None was ever swept across the apps.
+
+| ticket | date | screen | state |
+|---|---|---|---|
+| G40-36 | Jul 2025 | inputs during request creation | Done |
+| G40-50 | Jul 2025 | debit/CC entry | Done |
+| G40-233 | Dec 2025 | message input box | Done |
+| G40-234 | Dec 2025 | Name/DOB/Email (Android) | Done |
+| G40-236 | Dec 2025 | ↑ its regression | Canceled |
+| G40-245 | Dec 2025 | iOS address entry, text not visible | Done |
+| G40-252 | Jan 2026 | Android composer shifts out of view | Done |
+| **G40-377** | Aug 2026 | iOS in-app composer — **carries the actual root cause** | Ready for Release |
+| **G40-421** | **2026-08-28** | **support composer (F3, this doc)** | **To Do** |
+| *(new)* | 2026-08-28 | **email-OTP "Not your email? Change it"** | see below |
+
+**G40-377 already found the mechanism:** the safe-area inset was subtracted from `bottom`, pushing
+the composer *down* rather than up. And ledger finding **F-011** records that G40-377's fix **did
+not propagate to an adjacent screen** — so the handling is **per-screen, not global.** That is the
+whole problem in one sentence: there is no shared solution, so each screen fails independently and
+each fix buys exactly one screen.
+
+**The tenth instance is the one that matters most.** On the email-OTP screen, tapping
+*"Not your email? Change it"* reveals the address field and the keyboard covers it — owner:
+*"completely blocked by the keyboard… a terrible experience."*
+
+⚠️ **Every previous instance covered a field on a screen the user could LEAVE. This one covers the
+only EXIT from the email-verification trap.** A user who mistypes their address cannot see the
+field that corrects it, and therefore cannot get into the app at all. It is the door out of
+G40-271, and the keyboard is standing in front of it.
+
+**Owner ruling 2026-08-28: not a blocker** for this release.
+
+**Repro accounts** (both `confirmed_at` NULL, so sign-in drops straight onto the email-OTP screen —
+this is the **resume** path; initial signup was never broken, so testing a fresh signup gives a
+**false pass**):
+
+- **82271** — `johncnewbury+614@gmail.com`, +1 614 222 4444, roles [2,3]. Pending address carries a
+  real typo: `johncnewbury+614@gmil.com`
+- **84223** — `johncnewbury+gizelle@gophergo.io`, +1 618 232 3232, role [3], **no profile picture**
+
+**Disposition — NO new ticket was raised, deliberately.** The standing owner directive of
+2026-08-27 is *"complete the backlog, not add to it"* (`G40-418` was cancelled for exactly this).
+Raising a tenth point-fix ticket would also be the precise mistake this finding is about. Instead
+**G40-421 was widened from one screen to the audit + shared fix**, and linked to G40-377. This
+doc is the record; the ticket is the disposable half.
+
+**Related, owned elsewhere — do not absorb:** ledger **F-027** (this pattern) and **F-028** (back
+from email-OTP on a picture-less account dead-ends on an empty profile; recovery was force-close —
+owner: not a blocker) belong to the release-QA session and live in
+`Dev/gopher-dev-handoff/release/TESTING-FINDINGS-LEDGER.html` @ `51e662e`.
+
 ### F4 — Android Request: the scheduling picker's "Done" button collides with the tab bar
 
 **Where:** Gopher Request → new Grocery request → schedule (date/time picker).
@@ -269,3 +329,58 @@ covering content that the user needs (F1b, F2c, F4a, F5a). Four screens, two app
 longer a series of one-off layout bugs; it is a systemic problem with how bottom-anchored
 controls are composed against scrollable content. Worth one deliberate look rather than four
 patches.
+
+---
+
+## Ruling — the no-show gate is ONE feature, and G40-419 governs it (2026-08-28)
+
+**G40-192 and G40-419 specced the same no-show payout gate with different numbers.** Consolidated
+under one owner on 2026-08-28. Recorded here because the ruling must outlive both tickets.
+
+| rule | G40-192 (older) | ⭐ GOVERNING — G40-419 |
+|---|---|---|
+| Distance threshold | 50 feet | a **distinct, tighter no-show constant**, explicitly not `FRAUD_COMPLETION_DIST_M` |
+| Payout hold | 24 hours | **48 h auto-release, or manual sooner** |
+| Fraud alert | on no-show submit | **immediately at tap time, inside `gopher_reached`** |
+| Requester ack | **blocking precondition** | ⛔ **flag, do not block** |
+
+**G40-192 keeps only what it uniquely owns** — the age-restricted completion flow (TrustShield vs
+on-site ID capture, completion popup + Do-Not-Show-Again GPS log, the 10-minute timer, Confirmation
+Pending, admin manual complete).
+
+### ⛔ Why the ack-gate had to go — the deadlock
+
+G40-192 required the requester to **acknowledge the timer before a no-show could be submitted**. The
+acknowledgment surface is the red `!! ACTION NEEDED !!` countdown banner — and **F-030 proves that
+banner has never rendered** (order 64913, 2026-08-28, Android build 852 *which contains it*; push,
+SMS and email all delivered, banner absent even after force-close; backend ruled out live). Evidence
+lives in the release-QA ledger, `gopher-dev-handoff/release/TESTING-FINDINGS-LEDGER.html` → **F-030**.
+
+Built as specced, the chain is:
+
+> banner never renders → requester can never acknowledge → **no Gopher can ever submit a no-show** →
+> the job cannot complete → **the worker is not paid**
+
+A fraud control becomes a payout outage. **"Flag, don't block" is not the softer option here — it is
+the one that does not strand workers.**
+
+### Two defects this feature cannot ship without
+
+1. **The banner render itself.** Suspect *(not cause)*: `NoShowWatcher` bails unless
+   `localStorage.activeRequest` is set, a key written in exactly one place —
+   `locationPermission.js` inside `fetchActiveRequest()`. Settle it by reading that key on the
+   handset during a live no-show window; a debuggable build or WebView inspect, **not another test
+   order**.
+2. **The client ignores `requestor_reminded_seconds_remaining`.** The backend added it because the
+   app computes the deadline from the **device clock**, so a skewed clock reads "window passed" the
+   instant the banner appears. Backend half shipped; client half never did.
+
+### ⚠️ The no-show control exists ONLY in the age-restricted flow
+
+`ordercard.js` gates it on `props.state.request["age_restricted?"]`. On a standard order **there is
+no button to tap** — owner confirms this is expected. So G40-419's client pop-up physically lives
+inside G40-192's screen, and **a no-show cannot be tested on a standard order.** The earlier
+"testable on any order type" was true of the backend and false of the client, and it burned a live
+test order.
+
+**Generalisable lesson, worth keeping:** *"the API allows it" is not "the user can do it."*
