@@ -48,6 +48,31 @@
    ===================================================================== */
 (function () {
   var API = 'https://api.gophergo.io/api/v1/deals';
+  /* ⛔ SERVICE SLUG -> DISPLAY LABEL (Ruling 9, owner 2026-08-27).
+     The card's heading used to be keyword #1, which meant a provider could
+     rename their own deal by reordering their search terms — SP4 reads "Junk
+     Removal" only because that happens to be the first keyword they typed.
+     `service_category` is what they actually CHOSE, so it wins.
+
+     ⚠️ VALUES ARE THE SLUG; these labels are display only and belong to this
+     surface. Request's wording is used here; Connect words two categories
+     differently for a business audience and that is deliberate
+     (canonical-service-categories.md §1). Never send a label back to the API.
+
+     ⛔ `other` IS DELIBERATELY ABSENT, and so are the two gated slugs. "Other"
+     as a card heading tells a customer nothing — and for an `other` deal the
+     KEYWORDS are the category, which is exactly why Ruling 9 makes them
+     required there. So `other` falls through to keyword #1 by design.
+     `delivery` and `ride_sharing` cannot be submitted at all (gated at intake),
+     so they are not listed; if one ever appeared the same fallback renders
+     something honest rather than nothing. */
+  var SERVICE_LABEL = {
+    moving: 'Moving',
+    junk_removal: 'Junk Removal',
+    hourly_day_labor: 'Hourly / Day Labor',
+    yard_work_outdoor_projects: 'Yard / Outdoor Projects',
+    home_services: 'Home / Office Services'
+  };
   var RAIL_FOR_KEY = {
     providers: 'localpro',
     restaurants: 'restaurants',
@@ -93,13 +118,22 @@
          else their first name. It was NULL until 2026-08-12, which is why this
          used to read "Verified Service Provider" for everyone; that string is
          now only the fallback for a deal that predates the fix. */
-      base.name = titleCase((d.keywords && d.keywords[0]) || 'Service Deal');
+      /* Ruling 9: the service the provider DECLARED, not whichever search term
+         they happened to type first. Falls back to keyword #1 for an `other`
+         deal (where the keywords ARE the category) and for any deal filed
+         before the field existed. */
+      base.name =
+        SERVICE_LABEL[d.service_category] ||
+        titleCase((d.keywords && d.keywords[0]) || 'Service Deal');
       /* ⛔ NO FALLBACK NAME. This read 'Verified Service Provider' — an
          invented business name that also asserted a credential. `title` is set
          server-side at submit (business name, else first name) and has been
          since 2026-08-12; a deal filed before that shows no name rather than a
          fabricated one. */
       base.pro = d.title || null;
+      /* The raw slug alongside the label, so a surface can FILTER on the
+         category without parsing display text — the thing §9.1 warns about. */
+      base.serviceCategory = d.service_category || null;
       base.price = dollars(d.customer_price);
       base.normalRate = dollars(d.normal_price);
       base.verified = true;
