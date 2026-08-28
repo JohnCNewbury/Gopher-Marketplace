@@ -27,7 +27,24 @@ median. Not a policy problem today; the thing to watch is whether the release mo
 
 ## Gopher Request — `io.gophergoapp.requester`
 
-⚠️ NOT YET CAPTURED. Fill in from Monitor and improve → Android vitals → Overview before releasing.
+Live release at capture: **840 (3.8.0)**, full rollout since **Mar 24 2026**; bundle uploaded Mar 20
+3:17 AM (= Appflow build #240). Play app id `4973627178014258074`. Adoption 79.57 %.
+Internal testing track exists, last served 3.8.0/840 on Mar 19. Closed testing "Alpha" is on
+542 (3.0.0) from Aug 2024 — two years stale, ignore.
+
+### 🔴 EXCEEDS Google's bad-behaviour threshold
+
+| metric | value | threshold | state |
+|---|---|---|---|
+| **User-perceived crash rate** | **1.17 %** | 1.09 % | ⛔ **OVER — Play warns this makes the app less discoverable** |
+
+**This — not Go — is the "Android quality gap".** Go is at 0.85 % and under. Request is over, *today*,
+on a five-month-old build. Request has **no** Transistorsoft dependency, so its crashes are a
+different population from Go's; its top-crash list still needs capturing.
+
+Same three `targetSdk` actions flagged on 840 as on Go's 856 (edge-to-edge, orientation/resizability).
+
+⚠️ TODO: Request top-10 crashes, ANR rate, app size.
 
 ## Top crashes on 856 — 28 days (Jul 31 – Aug 28), Go
 
@@ -81,3 +98,17 @@ measured saving. Not release-blocking; recorded so post-release size change is a
 is mandatory and orientation/resizability restrictions are ignored on large screens. The pending
 release moves 35 → 36, so these three stop being advisory. **Highest-value thing to check in Internal
 QA:** content sliding under the status/navigation bars, and layout on a tablet or foldable.
+
+## Version arithmetic — verified 2026-08-28
+
+`versionCode = CI_BUILD_NUMBER + 600` (trapeze); `versionName = ANDROID_VERSION` from the Appflow
+`prod` environment.
+
+| app | live code | next build | new code | live name | `ANDROID_VERSION` | |
+|---|---|---|---|---|---|---|
+| Go | 856 | #264 | **864** | 3.9.0 | **3.9.1** | ✅ clean increment |
+| Request | 840 | #252 | **852** | 3.8.0 | **3.9.1** | ✅ valid, but ⚠️ **jumps 3.8.0 → 3.9.1** |
+
+Request's Android versionName skips 3.8.x and 3.9.0 entirely. Both apps' env vars read `3.9.1`, so this
+looks like a deliberate alignment of the two apps — **confirm it is intended** before release; Play
+accepts it either way since the versionCode rises.
