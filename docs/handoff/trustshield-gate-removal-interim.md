@@ -384,12 +384,24 @@ The copy is tuned for the expensive case: during a brief blip *"no need to keep 
 user almost nothing; post-cliff *"try again later"* costs them weeks. A comment in the source says
 so, because the old wording reads like better service and invites restoration.
 
-#### ⚠️ REMAINING GAP — the cliff arrives silently
+#### ⛔ NO ALARM — DECIDED 2026-08-29. Do not re-raise.
 
-`lib/idenfy_trustshield.js:91`'s `logger.error` is **the first and only place** that reports credit
-exhaustion — and it is **NOT registered in `docs/alert-markers.json`**, so **nothing alarms.** With
-the date now a two-point estimate (§1), the difference between knowing and guessing is one manifest
-entry plus a CloudWatch alarm. **Not built — outside what was asked for. Owner's call.**
+`lib/idenfy_trustshield.js:91`'s `logger.error` is the first and only place that reports credit
+exhaustion, and it is **not registered in `docs/alert-markers.json`**, so nothing alarms when the
+cliff arrives. I proposed registering it.
+
+**Owner ruled no, 2026-08-29:** *"no need for the alarm. we're going to hit our 9/4 deadline and beat
+the expiry."*
+
+**That is a decision, not an oversight — and it is sound arithmetic:** code complete **9/4**, cliff
+**~9/10–12** (§1), so the build has roughly **6–8 days** of runway. Recent store turnaround was ~1 day
+on Apple and hours on Play. An alarm that fires after the release has shipped detects nothing worth
+knowing.
+
+⚠️ **What makes it sound is the schedule holding.** The dependency is worth naming, not re-arguing:
+if the build slips past ~9/10, exhaustion becomes invisible — and §0's copy lever is already spent,
+so there is nothing left to pull. **If the release slips, revisit this line; until then it is
+closed.**
 
 ---
 
