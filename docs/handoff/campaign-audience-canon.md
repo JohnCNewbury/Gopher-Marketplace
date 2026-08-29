@@ -74,6 +74,37 @@ expressed in two languages will disagree, and the disagreement is silent.* When 
 rule, change `helpers/campaign_audience.js` — if you find yourself editing SQL in a controller,
 that is the regression.
 
+## Filters — the send must honour what the operator chose
+
+**Shipped 2026-08-29, MR !430.** `helpers/campaign_filters.js` is the single normaliser; both
+audience queries read their filters through it.
+
+Before it, HQ Campaigns showed a filtered count and then sent to a different, far larger set of
+people. A push targeting **Raleigh · Elite gophers · confirmed email** reached **136,265 role rows —
+every user on the platform**. It now reaches **36**. Three independent causes:
+
+1. **`get_filtered_users` (push/SMS) discarded most of its filters** — it destructured only
+   `{ role, device, age, interests, sourcing, custom }`, so city, state, ZIP, tier, email-confirmed,
+   Stripe and TrustShield were accepted from the caller and thrown away.
+2. **Key-name drift.** HQ sends `gopher_type` · `trustshield` · `stripe_verified`; the inbox query
+   reads `gopherType` · `trustshieldVerified` · `stripeVerified`.
+3. **Shape/case drift, which 500'd the send.** The server switches on the exact string `'Yes'`
+   inside `.forEach`, HQ sends the lowercase **scalar** `'yes'`. A string has no `.forEach`.
+
+> **The rule: a filter must be applied or visibly rejected.** Accepted-and-quietly-discarded is what
+> makes an operator trust a number that is not real, and spend money on it.
+
+The normaliser is **tolerant on input, canonical on output** — either spelling, scalar or array, any
+case — and returns `legacy`, shaped exactly as the older inbox switches expect, so the legacy admin
+panel keeps working unchanged. Tier is mapped by name and by id across both spellings of the gated
+rename: `Standard`→0, `Pro`/`Elite`→1, `Pro+`/`Elite+`→2.
+
+⚠️ **HQ-only filters are still not sent at all.** The search box, status, missing-fields,
+thresholds, deactivation dates and join dates are applied by `matchAudience()` against the
+Dashboard's client-side `USR` dataset and are never translated into the payload. `signUpDate` and
+`usage` exist server-side (inbox only) but HQ never sends them. Until that is closed, those filters
+narrow the PREVIEW only — treat a count produced with them as advisory.
+
 ## Still missing (not shipped)
 
 - **Bulk email has no unsubscribe and no suppression list.** Unsubscribe is a legal requirement for
