@@ -1,27 +1,40 @@
 # INTERIM — remove the TrustShield gate before the iDenfy credit cliff
 
-> # ⛔ STOP — THIS DOCUMENT'S PREMISE WAS REVERSED. READ §8 AND §8.1 BEFORE §3.
+> # ⛔ READ THIS FIRST — THIS DOCUMENT HAS DESCRIBED THREE DESIGNS. ONLY THE THIRD IS REAL.
 >
-> **The owner reversed the removal on 2026-08-24/25** and ruled the removed flow *not approved and
-> not correct*. The identity gate is **back on all three surfaces** and applies **at every age**
-> (canon v3.13). **§2 and §3 below are the ORIGINAL removal plan and must not be implemented as
-> written.** They are kept because §3.2's under-21 warning and §3.4's spinner fix are still correct
-> and still needed.
+> | date | design | status |
+> |---|---|---|
+> | 2026-08-23 | remove the gate; TrustShield voluntary, discoverable in My Profile | superseded |
+> | 2026-08-24/25 | gate restored at **every** age, satisfiable by TrustShield **or** a one-off ID submission | **abandoned — never built** |
+> | **2026-08-29** | **the owner's flow below — built, raised, and green** | **⭐ CURRENT** |
 >
-> **What the live-app work actually is (G40-410):** identity required for an age-restricted order at
-> every age, **satisfiable two ways** — TrustShield, **or** a one-off "Submit identification" (ID
-> front, ID back, live selfie; this order only; never touches iDenfy). The one-off is the
-> load-bearing half: it is what keeps "required for everyone" satisfiable after the credits die.
+> An earlier banner here described the middle row as current. It never shipped. **Do not build from
+> it, and do not treat its absence from the code as a regression.**
 >
-> ## ⛔ AND THE TWO HALVES SHIP IN ONE RELEASE. NEITHER GOES ALONE.
+> ## The current flow — owner, 2026-08-29, verbatim
 >
-> | ship alone | result |
-> |---|---|
-> | **Client only** | the app accepts an ID, then `trust_shield_required()` still 403s under-30 at order creation — the dead end moves one screen later, *after* the user handed over their ID |
-> | **Backend only** | server stops requiring the badge, app still demands it — **the 2026-08-06 outage in reverse** |
+> > *"ALL >21 customer who submit Delivery (Alcohol 0r Other Age-Restricted) proceed unrestricted. No
+> > mention at all regarding trust shield. Same pathway whether trustshield or not. ——> Once their
+> > gopher selects 'completed,' their is no change to the current experience (except a screen refresh
+> > for trustshield). The new trustshield experience is exclusively in the Account section of the
+> > request app. Instead of the idenfy dependency on populating the ID and Selfie, we are no
+> > capturing that info and populating the pics to the workers ID and Identity confirmation screen."*
 >
-> The client is the binding layer. Together, or backend after client — never before.
+> In four points:
 >
+> 1. **The request flow never mentions TrustShield.** A requester 21+ ordering age-restricted takes
+>    the identical path whether they hold the badge or not.
+> 2. **Under-21 is untouched.** Separate control, legal rather than policy — see §3.2.
+> 3. **TrustShield is voluntary and lives only in Account**, where **we** capture the three shots.
+>    **No vendor call**, so it outlives the credit cliff.
+> 4. **Those images populate the Gopher's at-door ID confirmation screen** — the screen that used to
+>    read from iDenfy.
+>
+> ## ⛔ §2 AND §3 BELOW ARE THE 2026-08-23 PLAN — read them through the table above.
+>
+> **§3.1 is the exception: it is REINSTATED, and it is the one piece of G40-410 that is in no merge
+> request and not yet done.** It is required at **21**, not `1`. See §3.1 and §4.
+
 > ## ⚠️ GENERATIONS — do not compare 4.0 canon against the 3.9.1 app
 >
 > **Owner, 2026-08-29:** *"NEW web and app (version 4.0) are different than app (version 3.9.1).
@@ -39,9 +52,23 @@
 > re-litigate the sentence.**
 
 
-**Status: SPEC, ready to build. Owner-approved 2026-08-23.**
-**⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week of September (~Sept 26–29)**
-and this cannot land without a store release. See §7.
+**Status: BUILT 2026-08-29 — two MRs raised and green, one env var outstanding.**
+
+| piece | where | state |
+|---|---|---|
+| Internal capture: columns, `POST /users/trustshield/enroll`, worker file resolution | `gopher-backend-api!433` · `bdbc6372` | ✅ green · awaiting merge (**merge auto-deploys**) |
+| Client: TrustShield moves to Account, request flow un-gated, 3-shot capture | `gopher-mobile-requester-capacitorjs!247` · `88674b0ca` | ✅ green · awaiting merge |
+| `idenfy.js` honest error state (standalone) | `!246` · `8acca5583` | ✅ **MERGED** into `production` as `fa21574d9`, unsquashed |
+| **`TRUSTSHIELD_MIN_AGE=21` on `Gopher-Production`** | env var — **in neither MR** | ⛔ **NOT DONE. Blocks the store release.** See §3.1. |
+
+⚠️ **Neither pipeline can catch the missing env var** — there is nothing to compile. It is the only
+part of this work that no automated check protects.
+
+*Originally: SPEC, owner-approved 2026-08-23. The spec below is kept for its detail — read it
+through the banner's table, not as a plan to execute.*
+
+**⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week
+of September (~Sept 26–29)** and this cannot land without a store release. See §7.
 
 ---
 
@@ -77,10 +104,20 @@ against the shipped build `release/android-852`:
 
 So post-cliff on 3.9.1 an under-30 requester gets: age-restricted tile → blocking modal → the one
 CTA → token fails → **infinite spinner**. The server dial changes none of it, because the client
-never asks the server whether the badge is required — both thresholds are hardcoded. **That is §4's
-warning running in the other direction.**
+never asks the server whether the badge is required — both thresholds are hardcoded. **That is the
+asymmetry §4 closes with: the server can be loosened without the app noticing; the app cannot be
+loosened without a store release.**
 
 **The contingency is shipping the build. There is no other one.**
+
+> ⚠️ **This does NOT contradict §3.1, and the distinction is the whole point.**
+>
+> | | |
+> |---|---|
+> | What this section denies | the env var as a **contingency** — it cannot rescue a slipped release, because the shipped 3.9.1 client gates on its own hardcoded threshold |
+> | What §3.1 requires | the env var as a **component of the release itself** — without it, the *new* client's un-gated flow reaches a 403 at submit |
+>
+> Same variable, opposite roles. **Set it — just never imagine it substitutes for shipping.**
 
 ### The one lever that DOES survive a slipped build
 
@@ -100,8 +137,9 @@ in a hurry.
 
 iDenfy is being retired. **Credits run out in the last week of September (~Sept 26–29)** — 218 remaining at a pinned
 **~6.0 approvals/day** (re-dated 2026-08-23 from clean 7/14/30-day windows; the earlier "~Sept 22"
-used a transient 6.6/day figure). **Plan to "late September", not to a day.** **A top-up was pursued and is not available
-at an acceptable price**, so the cliff is now certain rather than avoidable.
+used a transient 6.6/day figure). **Plan to "late September", not to a day.** ⛔ **Superseded by §0 — the owner ruled
+2026-08-29 "I will not be buying any new credits."** Earlier wording here said a top-up was "not
+available at an acceptable price", which reads as a negotiation that could still turn. It cannot.
 
 When credits hit zero, **new TrustShield enrollment stops**. Today the badge is *required* for
 age-restricted ordering by anyone under 30 — so without this change, every new under-30 requester who
@@ -116,7 +154,7 @@ wants age-restricted delivery is permanently unable to start.
   when token issuance fails. The symptom is an app that appears to hang.
 
 **Owner decision, 2026-08-23: remove the gate entirely.** TrustShield becomes **voluntary** — a trust
-badge and the $1 perk — discoverable by the user in **My Profile**. The age on file is what the
+badge and the $1 perk — discoverable by the user in **Account** (§3.5 — and now captured by us, not iDenfy). The age on file is what the
 platform holds, and **the Gopher's physical ID check at the door remains the compliance control**, as
 it always has been.
 
@@ -130,33 +168,79 @@ depends on credits.
 
 | # | Change | Where | Cost |
 |---|---|---|---|
-| 1 | Disable the server-side gate | `TRUSTSHIELD_MIN_AGE=1` | env var, no deploy |
+| 1 | Disable the server-side gate | `TRUSTSHIELD_MIN_AGE=`**`21`** — ⛔ **REINSTATED, still unset** | env var, no deploy |
 | 2 | Remove the client tap-gate — **keep the under-21 hide** | `RequestCategoryBlock.js` | store release |
 | 3 | Stop hiding the A/R toggle for under-30 | `togglebutton.js:139` | store release |
 | 4 | Error state instead of an infinite spinner | `idenfy.js` | store release |
-| 5 | TrustShield discoverable in **My Profile** | client | store release |
+| 5 | TrustShield in **Account** — and **captured by us**, not iDenfy | client | store release |
 
-**2–5 are one release.** #1 alone must **not** be shipped without them — see §4.
+**2–5 are one release.** #1 is safe to set at any time and **must** be set before that release
+ reaches a handset — see §4, whose original reasoning was wrong and is corrected there.
 
 ---
 
 ## 3. The changes in detail
 
-### 3.1 Backend — `TRUSTSHIELD_MIN_AGE=1`
+### 3.1 Backend — `TRUSTSHIELD_MIN_AGE=21` ⛔ REINSTATED 2026-08-29, AND STILL NOT SET
 
-`trust_shield_required()` returns `+requester_age < min_age()`. With `min_age = 1`, that is false for
-every requester holding a DOB, so the badge is never required.
+⛔ **This is the only part of the 2026-08-23 plan that came back, and the only part of G40-410 that
+lives in no merge request.** Verified 2026-08-29 by `git diff origin/production...HEAD` on `!433`:
+it touches `config/db.config.js`, `controllers/user/{index,trustshield}.js`,
+`docs/alert-markers.json`, `helpers/trustshield_files.js`, `models/trust_shield_users.model.js` and
+three test files — and **none** of `helpers/trustshield_policy.js`,
+`controllers/order/create.js`, `controllers/order/update.js`. The gate is untouched.
 
-> ⚠️ **It must be `1`, not `0`.** `min_age()` treats `configured <= 0` as invalid and **falls back to
-> the default of 30** — so setting `0` silently leaves the gate fully on while appearing to disable
-> it. The same guard rejects an empty string. This is a deliberate protection in the helper, not a
-> bug; work with it.
+**Live values on `Gopher-Production`, read first-hand 2026-08-29 via
+`aws elasticbeanstalk describe-configuration-settings`:**
+
+| variable | live | required | note |
+|---|---|---|---|
+| `TRUSTSHIELD_MIN_AGE` | **`30`** | **`21`** | the change |
+| `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` | `false` | `false` | **do not touch** — see the warning below |
+| `TRUSTSHIELD_GATE_MISSING_DOB` | *unset* (→ `false`) | leave unset | no-DOB users are already refused by the legal block |
+
+```bash
+aws elasticbeanstalk update-environment --application-name Gopher-Production --environment-name Gopher-Production --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=TRUSTSHIELD_MIN_AGE,Value=21
+```
+
+#### Why `21` and not the `1` this section used to specify
+
+`trust_shield_required()` returns `+requester_age < min_age()`. Both values make the gate
+unreachable, because **nobody under 21 ever reaches it** — `controllers/order/create.js:330` refuses
+age-restricted for `!Number.isFinite(age) || age < 21` first, and its character-identical twin does
+the same on the edit path.
+
+`21` is chosen because it states the truth — *this gate applies below the legal floor* — and stays
+correct if that floor ever moves. `1` is a magic off-switch that means nothing to the next reader.
+
+> ⚠️ **Never `0` or empty.** `min_age()` treats `configured <= 0` and unparseable values as invalid
+> and **falls back to the default of 30** — so `0` silently leaves the gate fully on while looking
+> disabled. Deliberate protection in the helper; work with it.
 
 > ⚠️ **`TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` must remain `false`.** Setting it `true` alongside a low
-> `MIN_AGE` produces an **empty eligible band** — exactly the configuration that caused the
+> `MIN_AGE` produces an **empty eligible band** — exactly the configuration behind the
 > **2026-08-06 four-day outage**, where the token endpoint refused everyone while the app still
-> demanded a badge. **Change one variable.** See `Documentation/TrustShield-Outage-2026-08-06.md` and
-> memory `age-gate-lives-in-three-layers`.
+> demanded a badge. **Change one variable.** See `Documentation/TrustShield-Outage-2026-08-06.md`
+> and memory `age-gate-lives-in-three-layers`.
+
+#### ⛔ What happens if this is forgotten
+
+The client MR removes three things at once — the under-30 toggle hide (`togglebutton.js`), the
+`calculateAge() < 30` pull-over, and **both** `navigate(… next: "idenfy")` entry points. So once a
+build carrying `!247` reaches handsets, a requester aged **21–29 without a badge**:
+
+1. sees the age-restriction toggle (previously hidden from them),
+2. completes the entire age-restricted delivery request with no mention of TrustShield,
+3. taps Submit, and gets **403** from `create.js:351`.
+
+`index.js:204` populates both `error` and `errors: [message]`, so the client's catch in
+`src/pages/summary.js:376` fires its first branch: a native `alert()` carrying the server's real
+sentence — *"In order to place an Age-Restricted Request, you must verify your identity with Gopher
+TrustShield."* — and the user stays on the summary screen. **Visible and honest, not a crash or a
+hang.** The defect is that there is no longer any remedy in reach: the badge now lives in Account,
+three screens away, and getting it means abandoning a completed form.
+
+**This band is not marginal — §1 measures 76.7% of new enrolments as 21–29.**
 
 ### 3.2 Client — remove the tap-gate, **KEEP the under-21 hide**
 
@@ -182,7 +266,8 @@ live in the **same component**, and only the gate may go:
 
 **Why this matters more than anything else here:** the outer branch is what stops under-21 requesters
 seeing Alcohol and Other Age-Restricted at all, driven by
-`can_request_restricted_items: +user_age >= 21` (`controllers/user/profile.js:124`). It is
+`can_request_restricted_items: +user_age >= 21` (`controllers/user/profile.js:238` — re-verified 2026-08-29; it was `:124` when this
+was written). It is
 **measured as working perfectly** — zero age-restricted orders from under-21 requesters in 2025 or
 2026, and zero under-21 TrustShield holders. Anyone "removing the TrustShield logic" wholesale takes
 that with it and silently reopens under-21 access. **Remove the gate; keep the hide.**
@@ -207,22 +292,65 @@ Replace the unconditional `<Loader/>` on token-issuance failure with an honest m
 *"Verification is temporarily unavailable"* — and a way out. **This is worth shipping on its own
 merits regardless of the rest**: a hang is never the correct response to a failed dependency.
 
-### 3.5 Client — discovery in My Profile
+### 3.5 Client — TrustShield in Account, captured by US
 
-With the gate gone, nothing surfaces TrustShield during a request. It needs an entry point in **My
-Profile** so a user can add it deliberately. Copy should describe it as what it now is — a trust
-badge and a perk — not a requirement.
+⚠️ **Built well beyond what this section originally asked for.** It said only "give it an entry point
+in My Profile". The owner's 2026-08-29 ruling replaced the vendor dependency outright.
+
+**As built** (`src/component/trustShieldEnroll.js`, Figma `g7DWLbI86O6SqiwITY7jeL` node
+`9268:6198`): intro → ID front → ID back → selfie → verified. Three live shots taken in-app via
+`IdCaptureBox.js`, posted as multipart to `POST /users/trustshield/enroll`, stored **private** in S3,
+badge set. **No iDenfy call anywhere in the path**, which is the entire point — it keeps working
+after the credits die.
+
+- `account.json` now routes `"path": "trustshield"` (was `"idenfy"`).
+- The worker's at-door screen resolves internal rows through `internal_keys_from_row()`, which
+  **never falls through to the vendor** — pinned by `test/trustshield-internal-capture.test.js` §4,
+  where even a *failed* signing must not produce a null-ref vendor lookup.
+- Enrolment refuses `meets_legal_min_age(...) !== true` — **stricter** than the iDenfy path, which
+  refused only on `=== false`. There is no `docDob` backstop when we capture the document ourselves.
+
+> ⚠️ **Manual capture is a ruling, not a shortfall (owner, 2026-08-29).** The Figma frames say *"It
+> will scan automatically"*; the owner chose manual and rewrote the instruction to *"Hold front of ID
+> here. Snap the pic."* If auto-capture is added later, **the copy must change with it** — "snap the
+> pic" over a camera that fires by itself is worse than either alone.
+
+⚠️ **Not device-verified.** `CameraPreview` is a native plugin; it does not run in a browser. Green
+CI proves this compiles and lints, not that a camera appears.
 
 ---
 
-## 4. Do NOT ship #1 alone
+## 4. Ordering — corrected 2026-08-29
 
-Flipping `TRUSTSHIELD_MIN_AGE` without the client changes **recreates the August 6th deadlock in
-reverse**: the server stops requiring the badge, the app still demands it (both thresholds are
-hardcoded and read no backend dial), and the user is stuck between them with no route forward.
+> ⚠️ **This section used to read "Do NOT ship #1 alone" and claimed that flipping
+> `TRUSTSHIELD_MIN_AGE` without the client changes "recreates the August 6th deadlock in reverse."
+> That reasoning was wrong, and it matters, because it argues against the one action still
+> outstanding.**
+>
+> The 2026-08-06 outage was **server demands a badge / app cannot obtain one**. The reverse —
+> **server permits / app still asks** — is not a deadlock at all. It is the status quo: today's
+> shipped 3.9.1 client blocks under-30 requesters on its own side and they never reach the server
+> gate, so lowering `MIN_AGE` alone changes nothing anyone can observe. It is **inert, not
+> dangerous.**
+>
+> The practical advice underneath was sound and survives: **the env var is not a substitute for the
+> release.** What was wrong was calling it harmful.
 
-**The client is the binding layer. The env var is a follow-on to the release, not a substitute for
-it.**
+**The corrected ordering:**
+
+| step | when | why |
+|---|---|---|
+| `!247` client merge | any time | merging ships nothing — no OTA; the store ships binaries |
+| `!433` backend merge | client first, or the same window | **merging auto-deploys** via CodePipeline |
+| **`TRUSTSHIELD_MIN_AGE=21`** | **any time — but before any store build carrying `!247`** | safe early (inert); catastrophic if forgotten (§3.1) |
+
+**The env var is the one that gets lost.** It is in no diff, no pipeline, and no ticket's definition
+of done. The two MRs can both merge green and the release can still refuse 76.7% of new enrolments.
+
+⚠️ **The client is still the binding layer.** Both client thresholds were hardcoded and read no
+backend dial — which is *why* there was no server-side contingency during the outage (§0). That
+asymmetry is unchanged: the server can be loosened without the app noticing, but the app cannot be
+loosened without a store release.
 
 ---
 
@@ -277,7 +405,7 @@ unverified population grows.
 > so the **normal** completion path (`/complete/v2`) has stored photos since 2024-10-24 (`4180cadb`).
 > Grepping `controllers/order/index.js` for `multer` returns 0 and is misleading.
 
-### 5.2 Live configuration baseline — verified 2026-08-28
+### 5.2 Live configuration baseline — verified 2026-08-28, **re-verified 2026-08-29 (unchanged)**
 
 Read directly from the `Gopher-Production` Beanstalk environment, not inherited from a ticket:
 
@@ -285,8 +413,11 @@ Read directly from the `Gopher-Production` Beanstalk environment, not inherited 
     TRUSTSHIELD_TOKEN_GATED_AGES_ONLY = false
     TRUSTSHIELD_GATE_MISSING_DOB      = (unset → false)
 
-**Nothing in this spec has shipped.** This is the known-good state restored on 2026-08-10 after the
-outage. ⚠️ EB config and the running process can disagree — this is the EB config; confirm against
+⛔ **Re-read first-hand on 2026-08-29 and IDENTICAL — `TRUSTSHIELD_MIN_AGE` is still `30`.** The
+gate is fully on, and neither `!433` nor `!247` changes it. See §3.1.
+
+**Nothing in this spec has shipped** beyond `!246` (the `idenfy.js` error state, merged as
+`fa21574d9`). This is the known-good state restored on 2026-08-10 after the outage. ⚠️ EB config and the running process can disagree — this is the EB config; confirm against
 the process when the change lands (AC 7).
 
 ---
@@ -299,16 +430,25 @@ the process when the change lands (AC 7).
    real under-21 account, not inferred.
 3. No screen anywhere demands TrustShield in order to proceed.
 4. Token-issuance failure shows an honest message; **no infinite spinner anywhere**.
-5. TrustShield is reachable from My Profile and reads as optional.
+5. TrustShield is reachable from **Account**, reads as optional, and is **never mentioned anywhere
+   in the request flow** (owner, 2026-08-29).
 6. Existing badge holders keep their badge and its $1 perk, and their ID/selfie still load (S3
    mirror).
-7. `TRUSTSHIELD_MIN_AGE=1` **and** `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` in the live
-   environment, confirmed by reading them back after the release ships.
+7. ⛔ **`TRUSTSHIELD_MIN_AGE=21`** *(not `1` — see §3.1)* **and**
+   `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` in the live environment, confirmed by reading them back.
+   **This must be true BEFORE the store build reaches anyone, not after** — AC 1 is unachievable
+   without it, and no pipeline can catch it.
 8. **`age_restricted_id_confirmed` is stored as a real boolean, not `null`,** for an age-restricted
    order completed by an unverified requester (§5.1 defect 1). This is the record the at-door control
    produces; without it the control evidences nothing for exactly the population this change creates.
 9. *(follow-on, not release-blocking)* The **no-show / ID-not-confirmed** completion persists its
    photo (§5.1 defect 2).
+10. ⛔ **On a real handset, both platforms:** the three-shot capture opens a camera, submits, and sets
+    the badge. `CameraPreview` is a native plugin — **CI cannot prove any part of this.**
+11. **A newly enrolled (internal) holder's ID and selfie render on the Gopher's at-door confirmation
+    screen**, served from our S3 — and **no iDenfy call is made** while doing so.
+12. **An existing iDenfy-era holder is completely undisturbed** — badge, perk, and images all still
+    resolve by the legacy path. This is the population that cannot be re-verified once credits die.
 
 ---
 
