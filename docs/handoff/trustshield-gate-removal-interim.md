@@ -37,6 +37,57 @@ and this cannot land without a store release. See §7.
 
 ---
 
+## 0. ⛔ OWNER RULING 2026-08-29 — NO CREDITS WILL BE BOUGHT. THE CLIFF IS CERTAIN.
+
+Owner, verbatim: **"I will not be buying any new credits."**
+
+This closes the last escape hatch. Earlier wording said a top-up "is not available at an acceptable
+price", which reads as a negotiation that could still turn. It cannot. **iDenfy enrolment ends when
+the credits do, ~late September 2026, and nothing will extend it.**
+
+### The sprint completes 9/4 — but 9/4 is not the deadline
+
+| | |
+|---|---|
+| Sprint "TrustShield" completes | **2026-09-04** — code complete and merged |
+| Credits exhausted | **~2026-09-26 to 09-29** |
+
+**Merged is not shipped.** There is no OTA, so submission and review sit between the merge and any
+user benefiting. The real margin is from the **store release**, not from 9/4 — call it ~2 weeks, not
+~3. Comfortable, and the expectation is that we beat it. But the thing to protect is the **build
+slot**, not the sprint end date.
+
+### ⛔ AND THERE IS NO SERVER-SIDE CONTINGENCY. Do not plan on one.
+
+The instinct is that `TRUSTSHIELD_MIN_AGE=1` un-gates iDenfy with no deploy — the original §3 plan
+held in reserve as an emergency brake. **It does not work on the app users actually have.** Verified
+against the shipped build `release/android-852`:
+
+- the `calculateAge() < 30` client gate **is** in it
+- its only exit is a single **"Add Gopher TrustShield"** CTA, straight into iDenfy
+- its `idenfy.js` has **zero** error handling
+
+So post-cliff on 3.9.1 an under-30 requester gets: age-restricted tile → blocking modal → the one
+CTA → token fails → **infinite spinner**. The server dial changes none of it, because the client
+never asks the server whether the badge is required — both thresholds are hardcoded. **That is §4's
+warning running in the other direction.**
+
+**The contingency is shipping the build. There is no other one.**
+
+### The one lever that DOES survive a slipped build
+
+Server copy. `controllers/user/trustshield.js:169` currently returns, on every token failure:
+
+> *"Gopher TrustShield is temporarily unavailable. Please try again later."*
+
+Post-cliff that is false in both halves — not temporary, and there is no later. It is delivered as a
+**200 soft failure**, so the app displays it verbatim and **it can be changed without a store
+release**. If the build slips, correcting this string is the only thing that stops users retrying
+daily against a dead vendor. Worth changing *before* the cliff regardless, so nobody has to notice
+in a hurry.
+
+---
+
 ## 1. What is happening and why this is the answer
 
 iDenfy is being retired. **Credits run out in the last week of September (~Sept 26–29)** — 218 remaining at a pinned
