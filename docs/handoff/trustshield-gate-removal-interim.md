@@ -58,6 +58,7 @@
 |---|---|---|
 | Internal capture: columns, `POST /users/trustshield/enroll`, worker file resolution | `gopher-backend-api!433` · `bdbc6372` | ✅ green · awaiting merge (**merge auto-deploys**) |
 | Client: TrustShield moves to Account, request flow un-gated, 3-shot capture | `gopher-mobile-requester-capacitorjs!247` · `88674b0ca` | ✅ green · awaiting merge |
+| Post-cliff message — the only mitigation that needs no store release | `!433` · `e51a8ac3` | ✅ **added 2026-08-29** · §3.6 |
 | `idenfy.js` honest error state (standalone) | `!246` · `8acca5583` | ✅ **MERGED** into `production` as `fa21574d9`, unsquashed |
 | **`TRUSTSHIELD_MIN_AGE=21` on `Gopher-Production`** | env var — **in neither MR** | ⛔ **NOT DONE. Blocks the store release.** See §3.1. |
 
@@ -68,7 +69,8 @@ part of this work that no automated check protects.
 through the banner's table, not as a plan to execute.*
 
 **⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week
-of September (~Sept 26–29)** and this cannot land without a store release. See §7.
+**~10–12 September** (re-measured
+2026-08-29 — see §1) and this cannot land without a store release. See §7.
 
 ---
 
@@ -78,7 +80,8 @@ Owner, verbatim: **"I will not be buying any new credits."**
 
 This closes the last escape hatch. Earlier wording said a top-up "is not available at an acceptable
 price", which reads as a negotiation that could still turn. It cannot. **iDenfy enrolment ends when
-the credits do, ~late September 2026, and nothing will extend it.**
+the credits do — **now measured at ~10–12 September 2026, roughly two weeks earlier than this
+document previously said** (§1) — and nothing will extend it.**
 
 ### The sprint completes 9/4 — but 9/4 is not the deadline
 
@@ -128,16 +131,49 @@ Server copy. `controllers/user/trustshield.js:169` currently returns, on every t
 Post-cliff that is false in both halves — not temporary, and there is no later. It is delivered as a
 **200 soft failure**, so the app displays it verbatim and **it can be changed without a store
 release**. If the build slips, correcting this string is the only thing that stops users retrying
-daily against a dead vendor. Worth changing *before* the cliff regardless, so nobody has to notice
-in a hurry.
+daily against a dead vendor.
+
+✅ **DONE 2026-08-29 — `e51a8ac3`, riding `gopher-backend-api!433`.** It rides that MR rather than a
+separate one because !433 already modifies this exact file, so it costs one deploy and no extra
+surface. **New copy and the reasoning: §3.6.**
+
+⚠️ **This lever is now spent.** It was the only mitigation available without a store release, so if
+the build slips past the cliff there is nothing further to pull — see §3.6's note on alerting for
+the one gap that remains.
 
 ---
 
 ## 1. What is happening and why this is the answer
 
-iDenfy is being retired. **Credits run out in the last week of September (~Sept 26–29)** — 218 remaining at a pinned
-**~6.0 approvals/day** (re-dated 2026-08-23 from clean 7/14/30-day windows; the earlier "~Sept 22"
-used a transient 6.6/day figure). **Plan to "late September", not to a day.** ⛔ **Superseded by §0 — the owner ruled
+iDenfy is being retired. ⛔ **RE-MEASURED 2026-08-29 — the cliff is ~10–12 SEPTEMBER, about two weeks
+earlier than every prior figure in this document.**
+
+| read | remaining | source |
+|---|---|---|
+| 2026-08-23 | 218 | the figure this doc previously used |
+| **2026-08-29** | **147** | owner's read of the iDenfy **Finance** page (`Count used 3223 / Service limit 3370`) |
+
+**71 credits in 6 days = ~11.8/day**, against the ~6.0/day this document modelled.
+
+**The old model was wrong systematically, not noisily.** It counted **APPROVED** verifications only,
+on the premise that DENIED and EXPIRED are not billed. The same dashboard reports **330 sessions per
+191 approvals** (330 = 191 + 15 denied + 124 expired, exactly). So:
+
+    6.0 approvals/day x (330/191 = 1.728)  =  10.4 sessions/day   vs   11.8/day observed
+
+10.4 beside 11.8 is close enough that **iDenfy most likely bills per SESSION, not per approval** —
+which makes the previous estimate ~1.7x low and means burn will **not** revert to 6/day.
+
+    147 / 11.8 = 12.4 days  ->  ~2026-09-10
+    147 / 10.4 = 14.2 days  ->  ~2026-09-12
+
+**Plan to a band, not a day.** ⚠️ **Provenance: the readings are the owner's, relayed via another
+session — INHERITED, not verified first-hand here.** The per-session inference is mine, from the
+dashboard's own ratio. ⚠️ **It is a TWO-POINT rate**, and it rests on both readings coming from the
+same Finance page; a third read around 1 Sept would settle it.
+
+⚠️ **The "Expiration date 2026-12-30" on the Finance page is the partner CONTRACT date, not the
+cliff.** Exhaustion arrives first and is what stops new enrolment. ⛔ **Superseded by §0 — the owner ruled
 2026-08-29 "I will not be buying any new credits."** Earlier wording here said a top-up was "not
 available at an acceptable price", which reads as a negotiation that could still turn. It cannot.
 
@@ -173,6 +209,7 @@ depends on credits.
 | 3 | Stop hiding the A/R toggle for under-30 | `togglebutton.js:139` | store release |
 | 4 | Error state instead of an infinite spinner | `idenfy.js` | store release |
 | 5 | TrustShield in **Account** — and **captured by us**, not iDenfy | client | store release |
+| 6 | Post-cliff message that does not send users into a retry loop | `trustshield.js` | ✅ done — backend deploy, **no store release** |
 
 **2–5 are one release.** #1 is safe to set at any time and **must** be set before that release
  reaches a handset — see §4, whose original reasoning was wrong and is corrected there.
@@ -318,6 +355,42 @@ after the credits die.
 ⚠️ **Not device-verified.** `CameraPreview` is a native plugin; it does not run in a browser. Green
 CI proves this compiles and lints, not that a camera appears.
 
+### 3.6 Backend — the post-cliff message ✅ DONE (`e51a8ac3`, in !433)
+
+`controllers/user/trustshield.js` returned, on **every** `generate_token` failure:
+
+> *"Gopher TrustShield is temporarily unavailable. Please try again later."*
+
+**Both halves become false at the cliff**, and `cannot_verify()` is a **200 soft failure** — the app
+prints it verbatim. This is the sentence that makes a requester retry daily against a dead vendor.
+
+**Now:**
+
+> *"Gopher TrustShield verification isn't available right now. We're working on it — there's no need
+> to keep retrying."*
+
+#### ⛔ Why ONE string and not two precise ones
+
+`lib/idenfy_trustshield.js:84` logs iDenfy's HTTP status and body, then throws a **generic**
+`Error('Somthing went Wrong')` — the status never reaches the caller. So this handler **cannot**
+distinguish credit exhaustion from a network blip.
+
+Branching on a **guessed** status code would emit a confidently wrong message, and exhaustion cannot
+be tested without exhausting credits. **A single honest string beats two precise-looking ones built
+on a guess.** If the vendor's exhaustion response is ever established first-hand, the branch becomes
+worth adding — not before.
+
+The copy is tuned for the expensive case: during a brief blip *"no need to keep retrying"* costs a
+user almost nothing; post-cliff *"try again later"* costs them weeks. A comment in the source says
+so, because the old wording reads like better service and invites restoration.
+
+#### ⚠️ REMAINING GAP — the cliff arrives silently
+
+`lib/idenfy_trustshield.js:91`'s `logger.error` is **the first and only place** that reports credit
+exhaustion — and it is **NOT registered in `docs/alert-markers.json`**, so **nothing alarms.** With
+the date now a two-point estimate (§1), the difference between knowing and guessing is one manifest
+entry plus a CloudWatch alarm. **Not built — outside what was asked for. Owner's call.**
+
 ---
 
 ## 4. Ordering — corrected 2026-08-29
@@ -458,7 +531,7 @@ the process when the change lands (AC 7).
 |---|---|
 | 2026-08-23 | Spec approved. ~30 days of credits left. |
 | **2026-08-31** | **Cutoff — this must be in the FIRST release after this date.** |
-| **~2026-09-26 – 09-29** | Credits exhausted (last week of September). Without this release, new under-30 enrollment dies into a hung app. |
+| **~2026-09-10 – 09-12** | Credits exhausted (**re-measured 2026-08-29, ~2 weeks earlier than previously recorded** — §1). Without this release, new under-30 enrolment dies. ⚠️ No longer "into a hung app" — `!246` shipped the error state — but into a message that must also be corrected; see §3.6. |
 
 **There is no OTA.** Every client change needs a store release, so submission and review time sit
 between the merge and the fix reaching users. **Missing the release after 8/31 means arriving after
