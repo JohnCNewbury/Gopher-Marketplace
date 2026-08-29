@@ -22,13 +22,21 @@
 >
 > The client is the binding layer. Together, or backend after client — never before.
 >
-> ## ⚠️ "TrustShield now runs internally" is TRUE OF WEB ONLY
+> ## ⚠️ GENERATIONS — do not compare 4.0 canon against the 3.9.1 app
 >
-> That sentence in `gopher-step-gates.js` is the stated reason the gate came back. It is correct for
-> web, which never called iDenfy. **It is false for the live apps** — verified on `origin/production`
-> 2026-08-28: `controllers/user/trustshield.js:162` still calls `idenfy.generate_token`, its own
-> comment calls that *"the call that spends an iDenfy credit"*, `lib/idenfy_trustshield.js` posts to
-> `ivs.idenfy.com`, and **zero** barcode/PDF417/AAMVA files exist. **The credit cliff is unchanged.**
+> **Owner, 2026-08-29:** *"NEW web and app (version 4.0) are different than app (version 3.9.1).
+> New web has a different flow and new app mirrors it. What we have now is not to be compared to or
+> it will definitely look like a divergence… in the mean time, comparisons are only distractions."*
+>
+> The line *"TrustShield now runs INTERNALLY"* in `Final/assets/js/gopher-step-gates.js:221` is
+> **4.0 canon and correct in its own frame.** An earlier version of this banner called it "false for
+> the live apps" — that was the comparison mistake, not a finding. **Withdrawn.**
+>
+> **What survives, and is the thing to carry:** the 3.9.1 app's enrolment *does* still call iDenfy —
+> `controllers/user/trustshield.js:162` → `idenfy.generate_token`, `lib/idenfy_trustshield.js` →
+> `ivs.idenfy.com`. So **the credit cliff is real for 3.9.1**, and anyone reading the 4.0 line while
+> triaging the 3.9.1 app could wrongly conclude it is handled. **Label the generation; do not
+> re-litigate the sentence.**
 
 
 **Status: SPEC, ready to build. Owner-approved 2026-08-23.**
