@@ -174,8 +174,8 @@ could not revert. Under approvals-only, **11.8/day is a genuine doubling of appr
 could fall back toward 6/day, or stay. **That makes the third reading more important, not less.**
 ⚠️ Approvals-only is also the floor: the date **cannot worsen** from this source.
 
-    147 / 11.8 = 12.4 days  ->  ~2026-09-10
-    147 / 10.4 = 14.2 days  ->  ~2026-09-12
+⛔ **SUPERSEDED 2026-08-30 by a first-hand production query — see below. The band is ~14–22
+September, not ~10–12.**
 
 **Plan to a band, not a day.** ⚠️ **Provenance: the readings AND the approvals-only ruling are the owner's, relayed via another
 session — INHERITED, not verified first-hand here.** Confirm the approvals-only ruling with the
@@ -195,7 +195,65 @@ build number.) ⚠️ **It is a TWO-POINT rate**, and it rests on both readings 
 same Finance page; a third read around 1 Sept would settle it.
 
 ⚠️ **The "Expiration date 2026-12-30" on the Finance page is the partner CONTRACT date, not the
-cliff.** Exhaustion arrives first and is what stops new enrolment. ⛔ **Superseded by §0 — the owner ruled
+cliff.** Exhaustion arrives first and is what stops new enrolment.
+
+---
+
+#### ⭐ MEASURED FIRST-HAND 2026-08-30 — production DB, not the dashboard
+
+Queried `trust_shield_users` on `gopher_prod` through the read-only SSM tunnel
+(`RUNBOOK-production-db-readonly.md`). **We store every verification's terminal status ourselves**
+(`status` = `APPROVED` / `DENIED` / `EXPIRED`), so the burn curve never needed a dashboard reading.
+
+**1 · The approvals-only ruling is CONFIRMED — independently, from our own data.**
+
+The dashboard says `Count used 3223`. Walking back our own `APPROVED` rows, the 3223rd is reached at
+**2025-12-22**, and approvals since that date total **3230** — agreement to **0.2%**, on a plausible
+contract-block start. If *every* session billed, 3223 would land on 2026-04-10, a date with no
+contractual meaning.
+
+⛔ **So my per-session theory was wrong and the withdrawal was right — this now verifies it rather
+than inheriting it.**
+
+**2 · The rate — no acceleration. The "doubling" was noise.**
+
+| window | approvals/day |
+|---|---|
+| trailing 6d | **10.00** |
+| trailing 7d | 9.71 |
+| trailing 14d | 7.50 |
+| trailing 30d | **6.43** |
+| trailing 90d | 9.03 |
+
+The 90-day rate is **higher** than the 30-day, so the recent period is slower than what preceded it,
+not faster. Daily counts over 21 days bounce between 2 and 14 with no trend.
+
+**3 · ⚠️ The "218 remaining on 2026-08-23" figure was WRONG, and it is what moved the date.**
+
+Our records show **49 approvals** between 08-23 and 08-29 — not the 71 the dashboard delta implied.
+Since our totals track the counter to 0.2% over eight months, the recent reading is not the suspect:
+**08-23 should have read ~196 remaining, not 218.** Treat that single figure as unreliable, not the
+counter.
+
+**4 · Revised band — 147 credits at the observed rates:**
+
+    147 / 10.00 (6d)  = 14.7 days  ->  ~14 September
+    147 /  9.03 (90d) = 16.3 days  ->  ~15 September
+    147 /  8.17 (measured 08-23→29) = 18.0 days -> ~17 September
+    147 /  6.43 (30d) = 22.9 days  ->  ~22 September
+
+**Plan to ~17 September, band ~14–22.** ⚠️ **This date has now moved three times** (26–29 Sept →
+10–12 Sept → 14–22 Sept). This revision is the only one measured from our own data with a
+cross-check, so it should be the stable one — but the honest summary is that the earlier tightening
+to 10–12 was an over-correction on a bad input.
+
+**5 · The funnel, for whoever owns adoption.** Last 30 days: **EXPIRED 51.7%**, APPROVED 45.0%,
+DENIED 3.3%. All-time: 9,680 expired against 6,871 approved. **More than half of everyone who starts
+TrustShield never finishes it.** Expiries are free, so this is not a cost — it is the baseline our
+own three-shot capture (§3.5) has to beat, and nothing currently measures it.
+
+**6 · The badge pipeline is healthy** — of 6,867 distinct users with an APPROVED row, only **4** lack
+`trust_shield_verified`. I had wondered whether billed approvals were failing to badge; they are not. ⛔ **Superseded by §0 — the owner ruled
 2026-08-29 "I will not be buying any new credits."** Earlier wording here said a top-up was "not
 available at an acceptable price", which reads as a negotiation that could still turn. It cannot.
 
