@@ -4975,7 +4975,7 @@ window.showNoAccount = function(){
           <p class="gbb-note">The leading bid for each category is shown openly. You bid on <b>your own category only</b> &mdash; as a Service Provider that&rsquo;s the <b>Service Providers</b> card. The single highest bid across all categories headlines as the Featured Deal.</p>
           <div class="gbb-board" id="gbbBoard"><!-- rendered from GopherBidBrain.board() --></div>
           <button class="gbb-cta" id="gbbStart" type="button">Place a bid &rarr;</button>
-          <p class="gbb-demo-note">Prototype demo &mdash; standings and bids live in this page&rsquo;s memory only and reset when you leave. Production settles the monthly auction server-side.</p>
+          <p class="gbb-demo-note" id="gbbDemoNote">Prototype demo &mdash; standings and bids live in this page&rsquo;s memory only and reset when you leave. Production settles the monthly auction server-side.</p>
         </div>
       </section>
 
@@ -5357,6 +5357,19 @@ window.showNoAccount = function(){
         <label for="gbbAmount">Your monthly bid</label>
         <input type="text" class="osf-input" id="gbbAmount" inputmode="numeric" placeholder="$0" autocomplete="off">
         <p class="osf-hint" id="gbbAmountHint"></p>
+      </div>
+      <!-- ⛔ THE COMMITMENT, SHOWN BEFORE IT IS MADE. Nothing is charged at bid
+           time — a card authorization lasts about 7 days and bidding runs to the
+           20th, so an early bid cannot hold one (Ruling 7). This acceptance is
+           what makes a win collectable, and the server refuses a bid without it
+           (422). It must be a thing the worker does, not a flag we send for them. -->
+      <div class="osf-field" id="gbbTermsField">
+        <label for="gbbTerms" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-weight:600">
+          <input type="checkbox" id="gbbTerms" style="margin-top:3px;flex:none">
+          <span>I understand a bid is a <b>commitment, not a charge</b>. Nothing is charged now.
+            If mine is the top bid on the Service Providers card when bidding closes on the 20th,
+            I agree to pay it for the following month&rsquo;s placement.</span>
+        </label>
       </div>
       <p class="osf-err" id="gbbErr" hidden></p>
       <button type="button" class="gc-modal-btn" id="gbbPlace">Place bid &rarr;</button>
@@ -8949,11 +8962,20 @@ window.showNoAccount = function(){
      ⚠️ FAILS CLOSED. Unknown eligibility or an unreachable deals endpoint
      leaves canBid false. !315 is not merged yet, so /deals/mine 404s today and
      this pane must read that as "no live deal", never as "go ahead". */
-  var GATE = { eligible:null, liveDeals:0, loaded:false };
+  /* boardLive is THREE-STATE on purpose: null = never attempted (signed out, the
+     showroom case), true = live standings loaded, false = the fetch failed and
+     bidding must close. A boolean would make "signed out" and "the server is
+     down" the same thing, and they are opposites. */
+  var GATE = { eligible:null, liveDeals:0, loaded:false, boardLive:null, boardError:null };
   function bidGate(){
     if(!GATE.loaded)   return { canBid:false, why:'Checking your Service Provider Deals\u2026' };
     if(!GATE.eligible) return { canBid:false, why:'Service Provider Deals unlock at Elite and 20+ completed service jobs, with a 4.75\u2605 average over your last 20. See what\u2019s needed \u2192', link:true };
     if(!GATE.liveDeals)return { canBid:false, why:'You can bid once your Service Provider Deal is live. Submit one, and bidding opens as soon as it\u2019s approved.' };
+    /* Checked LAST, so a worker who is simply not eligible gets the reason that
+       is actually about them rather than a server error they cannot act on. */
+    if(GATE.boardLive === false) return { canBid:false, why:'We could not load the live standings \u2014 '
+      + (GATE.boardError || 'the server did not answer')
+      + '. Bidding is closed until they load: bidding against numbers we cannot verify is worse than not bidding.' };
     return { canBid:true };
   }
 
@@ -9002,7 +9024,32 @@ window.showNoAccount = function(){
     /* The business name the deal will publish under — the same value the deal
        form uses, so the board and the deal agree on who is bidding. */
     syncViewerName();
-    return Promise.all([elig, mine]).then(function(){ GATE.loaded = true; });
+    /* ⛔ THE STANDINGS WERE THE LAST DEMO DATA ON THIS SCREEN. Eligibility and
+       the worker's own deals were already read from the server; the BOARD was
+       still the brain's seed, so a signed-in worker saw an invented auction —
+       and the Deals portal, reading the same brain, showed the merchant a
+       different invented one. Both windows now read the same settlement.
+
+       Failure LOCKS bidding rather than falling back: bidding against numbers we
+       cannot verify is worse than not bidding. GATE.boardLive carries that. */
+    var standings = GoAuth.apiCall('/users/deals/bids/board', { method:'GET' })
+      .then(function(r){
+        if(r.ok && r.body && Array.isArray(r.body.board)){
+          BB.setLive(r.body);
+          if(r.body.viewerCategory) VIEWER.category = r.body.viewerCategory;
+          GATE.boardLive = true;
+        } else {
+          GATE.boardLive = false;
+          GATE.boardError = (r.body && (r.body.message || r.body.error))
+            || ('the server answered ' + (r.status || 'an error'));
+        }
+      })
+      .catch(function(e){
+        GATE.boardLive = false;
+        GATE.boardError = 'the request did not complete'
+          + (e && e.message ? ' \u2014 ' + e.message : '');
+      });
+    return Promise.all([elig, mine, standings]).then(function(){ GATE.loaded = true; });
   }
 
   var youEl = document.getElementById('gbbYou'),
@@ -9042,7 +9089,38 @@ window.showNoAccount = function(){
   /* Standings board — same card semantics as the Deals portal, restyled onto
      gopher-go's tokens. Every badge/lock decision comes off the brain's card. */
   function renderBoard(){
+    /* ⛔ THE DEMO DISCLAIMER MUST NOT OUTLIVE THE DEMO. This note told the truth
+       while the standings were seeded in memory. Left standing on a live board it
+       becomes the opposite of the earlier defect: not a fake auction presented as
+       real, but a REAL one — a commitment to pay — presented as a throwaway
+       prototype. Either way the worker cannot tell what they are looking at. */
+    var note=document.getElementById('gbbDemoNote');
+    if(note){
+      if(BB.isLive()){
+        note.textContent='Live standings, settled server-side. Bidding closes on the 20th; '
+          + 'nothing is charged unless your bid is the top bid on your category card when it closes.';
+      } else {
+        note.innerHTML='Prototype demo \u2014 standings and bids live in this page\u2019s memory only and '
+          + 'reset when you leave. Production settles the monthly auction server-side.';
+      }
+    }
     board.innerHTML='';
+
+    /* ⛔ A FAILED LOAD MUST NOT PAINT THE SEED. Locking the buttons was not
+       enough: renderBoard() still fell through to BB.board(), which answers from
+       the demo seed when the brain is not live, so a worker saw invented
+       standings under a "Bidding locked" button. Non-actionable is not the same
+       as honest — those numbers are still presented as this month's auction. */
+    if(GATE.boardLive === false){
+      board.innerHTML='<div class="gbb-board-err" style="padding:14px 16px;border:1px solid #f3c6c6;'
+        + 'background:#fff5f5;border-radius:10px;color:#3a3a3a">'
+        + '<div style="font-weight:800;color:#a8071a">We could not load the live standings.</div>'
+        + '<div style="font-size:13px;margin-top:4px">' + esc(GATE.boardError || 'the server did not answer') + '.</div>'
+        + '<div style="font-size:13px;margin-top:6px">Your bids are safe \u2014 this is a display problem. '
+        + 'Bidding is closed until the real standings load.</div></div>';
+      return;
+    }
+
     BB.board(VIEWER).forEach(function(c){
       /* `mine` is the brain's single-viewer DEMO flag (its seed belongs to the
          Deals-portal viewer). On this page an entry only reads as "you" inside
@@ -9162,6 +9240,52 @@ window.showNoAccount = function(){
     if(!d){ showErr('Pick a deal to feature.'); return; }
     var amt=parseInt(String(amtField.value).replace(/[^0-9]/g,''),10);
     /* The brain owns acceptance: category lock + amount validation. */
+    if(!amt || amt<1){ showErr('Enter a bid amount.'); return; }
+    var terms=document.getElementById('gbbTerms');
+    if(terms && !terms.checked){
+      showErr('Please confirm you agree to pay if your bid wins \u2014 that commitment is what holds the spot, since nothing is charged at bid time.');
+      return;
+    }
+
+    /* \u26D4 A LIVE BID IS SETTLED SERVER-SIDE, ALWAYS. The browser records a
+       commitment to pay; only the server can rank it against everyone else's.
+       The brain refuses client math on a live board for exactly this reason, and
+       `leading` comes back from the same settlement that draws the cards, so the
+       toast and the board cannot say different things about one bid. */
+    if(BB.isLive()){
+      var btn=document.getElementById('gbbPlace');
+      if(btn) btn.disabled=true;
+      GoAuth.apiCall('/users/deals/bids', { method:'POST', body:{
+        amount_cents: amt*100,
+        accept_terms: true,
+        category: VIEWER.category,
+        deal_id: d.id
+        /* holder_name is NOT sent: the endpoint shows it publicly, so a
+           caller-set value would let a worker post under another business's
+           name. Server-side derivation is the proper fix and is not built. */
+      }}).then(function(r){
+        if(btn) btn.disabled=false;
+        if(!r.ok){
+          showErr('Your bid was not placed \u2014 '
+            + ((r.body && (r.body.message || r.body.error)) || ('the server answered ' + (r.status||'an error')))
+            + '. Nothing has been committed.');
+          return;
+        }
+        gbbToast(r.body && r.body.leading
+          ? 'Top bid on the '+VIEWER.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+          : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+VIEWER.category+' yet \u2014 only the leading bid wins.');
+        if(terms) terms.checked=false;
+        closeOv();
+        loadBidData().then(function(){ renderBoard(); renderYou(); });
+      }).catch(function(e){
+        if(btn) btn.disabled=false;
+        showErr('Your bid was not placed \u2014 the request did not complete'
+          + (e && e.message ? ' \u2014 ' + e.message : '') + '. Nothing has been committed.');
+      });
+      return;
+    }
+
+    /* Showroom (signed out). The brain owns acceptance: category lock + amount. */
     var res=BB.placeBid(VIEWER, VIEWER.category, amt);
     if(!res.ok){
       showErr(res.reason==='category-locked'
@@ -9169,6 +9293,7 @@ window.showNoAccount = function(){
         : 'Enter a bid amount.');
       return;
     }
+    if(terms) terms.checked=false;
     gbbToast(res.beatsTop
       ? 'Top bid on the '+VIEWER.category+' card — '+money(amt)+' 🏆'
       /* ⛔ Ruling 7 retired the every-bid-wins promise: one winner per category,
