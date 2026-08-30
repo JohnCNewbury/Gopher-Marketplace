@@ -40,11 +40,54 @@
     { category:'Age-Restricted',              amount:125, holder:'A nearby merchant',        mine:false }
   ];
 
+  /* ⛔ LIVE MODE — the seed above is a SHOWROOM, and showing it to a signed-in
+     merchant is the defect, not the fallback.
+
+     The owner signed in on 2026-08-30 and saw "You · My Way Tavern" leading
+     Restaurants at $410. None of it was his. On My Deals the same shape merely
+     showed the wrong list; here it is worse, because a merchant reads these
+     standings and decides what to bid. An invented $410 top bid is a number
+     someone spends real money to beat.
+
+     So: when setLive() has been called, EVERY read below answers from the
+     server's settlement and the seed is unreachable. The server computes
+     featured / leading / mine / canBid in helpers/placement_auction.js and
+     returns exactly the fields board() already produced, so nothing downstream
+     changes shape — see GET /users/deals/bids/board.
+
+     A page that cannot reach the API must show an error, NOT fall through to the
+     seed. isLive() exists so a caller can tell those apart. */
+  var LIVE = null;
+
+  function setLive(payload){
+    if(!payload || !Array.isArray(payload.board)) return false;
+    LIVE = {
+      board: payload.board.slice(),
+      viewerCategory: payload.viewerCategory || null,
+      month: payload.month || null,
+      closesOnDay: payload.closesOnDay || 20
+    };
+    return true;
+  }
+  function isLive(){ return !!LIVE; }
+  function viewerCategory(){ return LIVE ? LIVE.viewerCategory : null; }
+  function clearLive(){ LIVE = null; }
+
   function sorted(){ return placements.slice().sort(function(a,b){ return b.amount-a.amount; }); }
 
   function topOverall(){ return sorted()[0] || null; }
 
   function catTop(cat){
+    /* Live: the board already holds one card per category, top bid first, so
+       the answer is a lookup rather than a recomputation over a seed that is
+       no longer the truth. */
+    if(LIVE){
+      for(var k=0;k<LIVE.board.length;k++){
+        var c=LIVE.board[k];
+        if(c.category===cat) return { category:c.category, amount:c.amount, holder:c.holder, mine:c.mine };
+      }
+      return null;
+    }
     var top=null;
     placements.forEach(function(p){ if(p.category===cat && (!top || p.amount>top.amount)) top=p; });
     return top; /* null = no bids yet this month */
@@ -53,7 +96,7 @@
   function canBid(viewerCat, cat){ return !!viewerCat && viewerCat===cat; }
 
   function isLeading(viewer){
-    var t = catTop(viewer.category);
+    var t = catTop((LIVE && LIVE.viewerCategory) || viewer.category);
     return !!(t && t.mine);
   }
 
@@ -62,6 +105,7 @@
      the featured category is its second-highest, so ONLY that category shows
      twice. Lower placements stay off the board. */
   function board(viewer){
+    if(LIVE) return LIVE.board.slice();
     var list = sorted();
     if(!list.length) return [];
     var cards=[list[0]], seen={};
@@ -93,6 +137,16 @@
      TODO(backend): POST { dealId, category, amount, month } and settle the
      monthly auction server-side. */
   function placeBid(viewer, category, amount){
+    /* ⛔ NEVER SETTLE A LIVE AUCTION IN THE BROWSER. On a live board this refuses
+       rather than guessing: the server records the bid, decides whether it leads,
+       and is the only thing that can (POST /users/deals/bids). A client that
+       mutated its copy would show the merchant a lead they may not hold, and the
+       correction would arrive a month later as a lost month.
+
+       Refusing loudly beats returning a plausible object — a caller that has not
+       been updated to use the API fails visibly here instead of quietly
+       displaying arithmetic as fact. */
+    if(LIVE) return { ok:false, reason:'server-only' };
     amount = parseInt(amount,10);
     if(!canBid(viewer.category, category)) return { ok:false, reason:'category-locked' };
     if(!amount || amount<1) return { ok:false, reason:'amount' };
@@ -152,6 +206,10 @@
   }
 
   window.GopherBidBrain = {
+    setLive: setLive,
+    isLive: isLive,
+    clearLive: clearLive,
+    viewerCategory: viewerCategory,
     placementLabel: placementLabel,
     cycleLabel: cycleLabel,
     CATS: CATS.slice(),

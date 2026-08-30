@@ -6505,7 +6505,7 @@
             <span class="bid-month" id="bidMonth"></span>
             <button class="bid-cta" id="bidStart">Place a bid &rarr;</button>
           </div>
-          <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal. Every business bids on its own category card &mdash; yours is <b>Restaurants &amp; Food Trucks</b>.</p>
+          <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal. Every business bids on its own category card &mdash; yours is <b id="bidViewerCat">Restaurants &amp; Food Trucks</b>.</p>
           <div class="bid-layout">
             <div class="bid-left">
               <div class="bid-board" id="bidBoard"></div>
@@ -6548,6 +6548,22 @@
             <label for="bidAmount">Your monthly bid</label>
             <div class="bid-amount-row"><span class="bid-dollar">$</span><input type="number" id="bidAmount" min="1" step="5" placeholder="0"></div>
             <div class="nd-hint" id="bidAmountHint"></div>
+          </div>
+          <!-- ⛔ THE COMMITMENT, SHOWN BEFORE IT IS MADE. Nothing is charged at
+               bid time: a card authorization expires in about 7 days while
+               bidding runs across a month to the 20th, so an early bid could
+               not hold one (Ruling 7). What makes a win collectable instead is
+               this acceptance, recorded as placement_bids.terms_accepted_at.
+               The server REFUSES a bid without it (422) — so a merchant must be
+               shown what they are agreeing to, not have it sent on their
+               behalf. -->
+          <div class="nd-field bid-terms">
+            <label for="bidTerms" style="display:flex;gap:9px;align-items:flex-start;font-weight:600;cursor:pointer">
+              <input type="checkbox" id="bidTerms" style="margin-top:3px;flex:none">
+              <span>I understand a bid is a <b>commitment, not a charge</b>. Nothing is charged now.
+                If my bid is the top bid in my category when bidding closes on the 20th, I agree to
+                pay it for the following month&rsquo;s placement.</span>
+            </label>
           </div>
           <div class="biz-form-actions">
             <button class="nd-submit bid-place" id="bidPlace">Place bid &rarr;</button>
@@ -8141,6 +8157,7 @@ var PAY_BADGES = {
   function portalLiveEnter(){
     hydrateProfile();
     hydrateUsers();
+    if(typeof loadBidBoard === 'function') loadBidBoard();
   }
 
   function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
@@ -8152,10 +8169,97 @@ var PAY_BADGES = {
 
   if(bidMonthEl){ bidMonthEl.textContent = GopherBidBrain.closeLabel(); }
 
+  /* ⛔ A SIGNED-IN MERCHANT MUST NEVER SEE THE SHOWROOM AUCTION.
+
+     The board rendered from the demo seed for everyone, so the owner signed in
+     on 2026-08-30 and saw "You · My Way Tavern" holding Restaurants at $410 —
+     none of it his. On My Deals the same fallback showed the wrong list; here it
+     is worse, because these standings are what a merchant reads before deciding
+     what to bid. An invented top bid is a number someone spends real money to
+     beat.
+
+     Signed OUT is the one case the seed is correct for: a prospect looking at
+     the showroom. Signed IN, this loads the real settlement or says why it
+     could not — never both, and never neither. */
+  function _bidBoardError(msg){
+    if(!bidBoard) return;
+    bidBoard.innerHTML =
+      '<div style="grid-column:1/-1;padding:14px 16px;border:1px solid #ffccc7;background:#fff5f5;border-radius:10px">'
+      + '<div style="font-weight:700;color:#a8071a">We could not load the bid standings.</div>'
+      + '<div style="font-size:13px;color:#424242;margin-top:4px">' + mdEsc(msg) + '</div>'
+      + '<div style="font-size:13px;color:#424242;margin-top:6px">Your bids are safe \u2014 this is a display '
+      + 'problem. Bidding is closed on this screen until the real standings load, because bidding against '
+      + 'numbers we cannot verify is worse than not bidding.</div></div>';
+    if(bidForm) bidForm.hidden = true;
+  }
+
+  function loadBidBoard(){
+    if(typeof _authToken === 'undefined' || !_authToken) return;  /* showroom */
+    apiCall('/users/deals/bids/board', { method:'GET' }).then(function(r){
+      /* Not just !r.ok: a 200 whose body has no board is still a failure, and
+         the one that would silently leave the showroom on screen. */
+      if(!r.ok || !r.body || !Array.isArray(r.body.board)){
+        _bidBoardError(r.ok ? 'The server replied without any standings.' : apiMessage(r));
+        return;
+      }
+      GopherBidBrain.setLive(r.body);
+      /* The viewer's category is the server's answer, not a demo constant — the
+         category lock on every card is computed from it.
+
+         ⚠️ null is a REAL answer, not a missing one: a merchant with no approved
+         deal yet has no category and can bid nowhere. Leaving the demo value in
+         place would tell them "yours is Restaurants & Food Trucks", which is
+         simply untrue of them. */
+      BID_VIEWER.category = r.body.viewerCategory || null;
+      /* Drop the showroom name on a live session so nothing downstream can pick
+         it up and present a demo tavern as this merchant. */
+      BID_VIEWER.name = null;
+      /* ⚠️ THE PROSE HAS TO MOVE TOO. The intro paragraph named the demo
+         category in static markup, so a live board could read "Retail Merchants"
+         while the sentence above it insisted "yours is Restaurants & Food
+         Trucks" — caught on screen, not by any assertion. A rendered board and
+         the copy around it must come from the same source. */
+      var vcat = document.getElementById('bidViewerCat');
+      if(vcat){
+        if(BID_VIEWER.category){
+          vcat.textContent = BID_VIEWER.category;
+        } else {
+          /* No approved deal yet — there is no category to name, and inventing
+             one is how this went wrong in the first place. */
+          var note = vcat.parentNode;
+          if(note) note.innerHTML = 'Live standings \u2014 the leading bid for each category is shown '
+            + 'openly. Top bid in each category will be featured on all Gopher Marketplace app and web '
+            + 'platforms next month. Top bid overall will headline as our Featured Deal. '
+            + '<b>You can bid once one of your deals is approved</b> \u2014 a business bids on its own '
+            + 'category card.';
+        }
+      }
+      renderBidBoard();
+      if(typeof syncBidForm === 'function' && bidDeal && bidDeal.value) syncBidForm();
+    }).catch(function(e){
+      _bidBoardError('The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+    });
+  }
+
   function renderBidBoard(){
     if(!bidBoard) return;
     bidBoard.innerHTML='';
-    GopherBidBrain.board(BID_VIEWER).forEach(function(c){
+    var cards = GopherBidBrain.board(BID_VIEWER);
+    /* An empty board is a real state on a live auction — nobody has bid this
+       month yet — and an empty grid with no words reads as a broken page. Only
+       possible when live; the seed always has rows. */
+    if(!cards.length){
+      bidBoard.innerHTML =
+        '<div style="grid-column:1/-1;padding:14px 16px;border:1px dashed #d9d9d9;border-radius:10px;color:#424242">'
+        + '<div style="font-weight:700">No bids yet this month.</div>'
+        + '<div style="font-size:13px;margin-top:4px">'
+        + (BID_VIEWER.category
+            ? 'The first bid on the ' + mdEsc(BID_VIEWER.category) + ' card takes the lead.'
+            : 'Once one of your deals is approved you can bid on its category card.')
+        + '</div></div>';
+      return;
+    }
+    cards.forEach(function(c){
       var card=document.createElement('div');
       card.className='bid-card'+(c.featured?' featured':(c.leading?' leading':''))+(c.leading?' has-sticker':'');
       card.innerHTML=
@@ -8166,7 +8270,10 @@ var PAY_BADGES = {
         '<div class="bid-holder'+(c.mine?' mine':'')+'">'+(c.mine?'You hold this spot':'Held by '+esc(c.holder))+'</div>'+
         (c.canBid
           ? '<button class="bid-btn" data-cat="'+esc(c.category)+'">'+(c.mine?'Raise your bid':'Bid here')+'</button>'
-          : '<span class="bid-cat-lock" title="Businesses bid in their own category \u2014 yours is '+esc(BID_VIEWER.category)+'">Not your category</span>');
+          : '<span class="bid-cat-lock" title="'+(BID_VIEWER.category
+                ? 'Businesses bid in their own category \u2014 yours is '+esc(BID_VIEWER.category)
+                : 'Bidding opens on your own category once one of your deals is approved')
+             +'">'+(BID_VIEWER.category?'Not your category':'No category yet')+'</span>');
       bidBoard.appendChild(card);
     });
   }
@@ -8203,25 +8310,84 @@ var PAY_BADGES = {
     $('bidStart').addEventListener('click', function(){ openBidForm(); });
     bidDeal.addEventListener('change', syncBidForm);
     $('bidCancel').addEventListener('click', function(){ bidForm.hidden=true; });
+    function _bidToast(msg){
+      toast.textContent=msg;
+      toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 3000);
+    }
     $('bidPlace').addEventListener('click', function(){
       var d=dealById(bidDeal.value); if(!d){ alert('Pick a deal to feature.'); return; }
       var amt=parseInt(bidAmount.value,10);
       if(!amt || amt<1){ alert('Enter a bid amount.'); return; }
-      /* Deals are always the merchant's own category, so the brain's category
-         lock only rejects here if that invariant ever breaks. */
+      var terms=$('bidTerms');
+      if(terms && !terms.checked){
+        alert('Please confirm you agree to pay if your bid wins \u2014 that commitment is what holds the spot, since nothing is charged at bid time.');
+        return;
+      }
+
+      /* ⛔ A LIVE BID IS SETTLED SERVER-SIDE, ALWAYS. The browser does not get to
+         decide whether a bid leads: it records a commitment to pay, and the only
+         thing that can rank it against everyone else's is the server. The brain
+         refuses to do client math on a live board for exactly this reason.
+
+         `leading` comes back from the same settlement that draws the board, so
+         the toast and the card cannot tell the merchant different things. */
+      if(GopherBidBrain.isLive()){
+        var btn=this; btn.disabled=true;
+        apiCall('/users/deals/bids', { method:'POST', body:{
+          amount_cents: amt*100,
+          accept_terms: true,
+          category: d.category,
+          deal_id: d.id
+          /* ⛔ holder_name IS DELIBERATELY NOT SENT.
+
+             BID_VIEWER.name is the showroom constant 'My Way Tavern' and nothing
+             ever replaces it with the real business, so sending it would stamp
+             one demo tavern's name onto every real merchant's bid — the same
+             demo-leak that put fake deals in front of the owner on 2026-08-30,
+             except this one would be visible to OTHER merchants on the public
+             board.
+
+             It should not come from the client at all: the server displays this
+             name to everyone, so a caller-set value lets a merchant post under a
+             competitor's name. Omitted, `placement_bids.holder_name` stays null
+             and the board falls back to "A nearby merchant"; the merchant's own
+             card still reads "You hold this spot", which is computed from the
+             owner id. ⚠️ Deriving the real business name server-side from the
+             owner's account is the proper fix and is NOT built. */
+        }}).then(function(r){
+          btn.disabled=false;
+          if(!r.ok){
+            alert('Your bid was not placed \u2014 ' + apiMessage(r) + '\n\nNothing has been committed.');
+            return;
+          }
+          _bidToast(r.body && r.body.leading
+            ? 'Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+            : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.');
+          bidAmount.value=''; if(terms) terms.checked=false; bidForm.hidden=true;
+          loadBidBoard();   /* redraw from the server, never from the guess */
+        }).catch(function(e){
+          btn.disabled=false;
+          alert('Your bid was not placed \u2014 the request did not complete'
+            + (e && e.message ? ' \u2014 ' + e.message : '') + '. Nothing has been committed.');
+        });
+        return;
+      }
+
+      /* Showroom (signed out). Deals are always the merchant's own category, so
+         the brain's category lock only rejects here if that invariant breaks. */
       var res = GopherBidBrain.placeBid(BID_VIEWER, d.category, amt);
       if(!res.ok){ alert('You can only bid on your own category \u2014 '+BID_VIEWER.category+'.'); return; }
-      if(res.beatsTop){
-        toast.textContent='Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6';
-      } else {
-        /* ⛔ THIS SAID "Featured win locked in this month". Ruling 7 retired that
-           promise: one winner per category, plus the top overall bid as its own
-           Featured Deal. Telling a merchant their losing bid had won is a promise
-           the model cannot keep, and they would discover it a month later. */
-        toast.textContent='Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.';
-      }
-      toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 3000);
-      renderBidBoard(); syncBidForm(); bidAmount.value=''; bidForm.hidden=true;
+      /* ⛔ THIS SAID "Featured win locked in this month" on a losing bid. Ruling 7
+         retired that promise: the top bid takes the category card, plus the top
+         overall bid as its own Featured Deal. Telling a merchant their losing bid
+         had won is a promise the model cannot keep, and they would find out a
+         month later. */
+      _bidToast(res.beatsTop
+        ? 'Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+        : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.');
+      renderBidBoard(); syncBidForm(); bidAmount.value='';
+      if(terms) terms.checked=false;
+      bidForm.hidden=true;
     });
   }
 
