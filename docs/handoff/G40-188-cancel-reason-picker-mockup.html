@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>G40-188 — Cancellation reason picker · current vs proposed</title>
+<!--
+  G40-188 side-by-side. Built to G40-308 Guide B (native-app bottom sheet, .g-sheet),
+  canonical tokens only, ink-on-green = navy.
+  CURRENT panels are drawn from the live code, not from memory:
+    Requester  gopher-mobile-request/src/component/requestOrder.js:468 + :3853
+    Gopher     gopher-mobile-gopher/src/component/ordercard.js:6006 + :9607-9760
+-->
+<style>
+  :root{
+    --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
+    --ink-on-green:#002461;
+    --navy:#002461; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
+    --sand:#FBF3E4; --text:#424242; --muted:#6b7280;
+    --error:#C44257; --warn-bg:#fdeaec;
+    --sheet-radius:26px;
+    --scrim-b:rgba(3,16,43,.55);
+    --nunito:'Nunito','Trebuchet MS',Arial,sans-serif;
+    --body:'DM Sans',-apple-system,'Segoe UI',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--sand);color:var(--text);font-family:var(--body);padding:26px 16px 70px}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-family:var(--nunito);font-weight:900;color:var(--navy);font-size:21px;margin:0 0 6px;line-height:1.25}
+  .lede{color:var(--muted);font-size:13.5px;margin:0 0 8px;line-height:1.55}
+  .rule{background:#fff;border:1px solid #e6eaef;border-left:4px solid var(--green);border-radius:10px;
+    padding:11px 14px;font-size:12.5px;line-height:1.55;margin:16px 0 30px;color:var(--navy)}
+  h2{font-family:var(--nunito);font-weight:900;color:var(--navy);font-size:16px;margin:34px 0 3px}
+  .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px;line-height:1.5}
+
+  .pair{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+  .col{flex:1 1 300px;min-width:0;max-width:340px}
+  .tag{display:inline-block;font-family:var(--nunito);font-weight:900;font-size:10.5px;letter-spacing:.09em;
+    text-transform:uppercase;padding:4px 10px;border-radius:99px;margin-bottom:9px}
+  .tag.now{background:var(--warn-bg);color:var(--error)}
+  .tag.new{background:var(--green-light);color:var(--navy)}
+
+  .phone{position:relative;width:100%;max-width:300px;height:600px;margin:0;background:linear-gradient(160deg,#eaf7ef,#f7fbff);
+    border:10px solid #0d1a3e;border-radius:42px;overflow:hidden;box-shadow:0 20px 60px rgba(0,36,97,.25)}
+  .screen{position:absolute;inset:0;padding:22px 16px;overflow:hidden}
+  .scr-h{font-family:var(--nunito);font-weight:900;font-size:13px;color:var(--navy);margin:2px 0 12px}
+  .scr-card{background:#fff;border:1px solid #e6eaef;border-radius:14px;padding:12px;margin-bottom:9px}
+  .scr-card .t{font-family:var(--nunito);font-weight:800;font-size:12px;color:var(--navy)}
+  .scr-card .s{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .btn-cancel{width:100%;border-radius:50px;border:1px solid var(--error);background:#fff;color:var(--error);
+    font-family:var(--nunito);font-weight:800;font-size:12.5px;padding:11px;margin-top:8px}
+
+  .g-sheet-overlay{position:absolute;inset:0;z-index:90;background:var(--scrim-b);backdrop-filter:blur(2px)}
+  .g-sheet{position:absolute;left:0;right:0;bottom:0;z-index:91;background:#fff;
+    border-radius:var(--sheet-radius) var(--sheet-radius) 0 0;padding:14px 18px 16px;box-shadow:0 -10px 40px rgba(0,0,0,.25);
+    max-height:88%;overflow:auto}
+  .g-sheet .grab{width:42px;height:5px;border-radius:99px;background:#dfe4ee;margin:0 auto 14px}
+  .g-sheet h3{font-family:var(--nunito);font-weight:900;font-size:17px;color:var(--navy);text-align:center;
+    letter-spacing:-.3px;margin:0}
+  .g-sheet .sh-sub{font-size:12px;color:var(--muted);text-align:center;margin:6px 6px 14px;line-height:1.45}
+  .g-sheet .sh-cta{width:100%;background:linear-gradient(135deg,var(--green),var(--green-dark));color:var(--ink-on-green);
+    border:none;border-radius:14px;padding:13px;font-family:var(--nunito);font-weight:900;font-size:13.5px;cursor:pointer}
+  .g-sheet .sh-cta:disabled{background:#d8dee6;color:#9aa6b4;cursor:not-allowed}
+  .g-sheet .sh-close{width:100%;background:none;border:none;color:var(--muted);font-family:var(--nunito);
+    font-weight:800;font-size:12px;padding:10px;cursor:pointer;margin-top:2px}
+
+  .opt{display:flex;gap:10px;align-items:flex-start;background:#f7f9fc;border:1.5px solid #eef1f6;
+    border-radius:12px;padding:10px 11px;margin-bottom:7px;cursor:pointer}
+  .opt:hover{border-color:#d6dce6}
+  .opt input{margin:1px 0 0;accent-color:var(--green-dark);flex:0 0 auto}
+  .opt .ot{font-family:var(--nunito);font-weight:800;font-size:12.5px;color:var(--navy);line-height:1.3}
+  .opt.sel{border-color:var(--green);background:var(--green-light)}
+  .ta{width:100%;border:1.5px solid #dfe3ec;border-radius:12px;padding:10px;font-family:var(--body);
+    font-size:12.5px;min-height:64px;resize:vertical;margin:2px 0 10px}
+  .ta:focus{outline:none;border-color:var(--green)}
+  .cnt{font-size:10.5px;color:var(--muted);text-align:right;margin:-7px 2px 10px}
+  .hidden{display:none}
+
+  .ann{background:#fff;border:1px solid #e6eaef;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:12px;line-height:1.6}
+  .ann b{color:var(--navy);font-family:var(--nunito)}
+  .ann ul{margin:7px 0 0;padding-left:17px} .ann li{margin-bottom:5px}
+  .ann code{background:var(--navy-light);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--navy)}
+  .flag{border-left:4px solid var(--error);background:#fff}
+  .foot{margin-top:38px;background:#fff;border:1px solid #e6eaef;border-radius:14px;padding:18px 20px;font-size:12.5px;line-height:1.65}
+  .foot h3{font-family:var(--nunito);font-weight:900;color:var(--navy);font-size:14px;margin:0 0 8px}
+  .foot h3:not(:first-child){margin-top:20px}
+  .foot ul{margin:6px 0 0;padding-left:18px} .foot li{margin-bottom:6px}
+  @media (max-width:700px){ .col{max-width:100%} .phone{margin:0 auto} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>G40-188 — cancellation reason picker</h1>
+  <p class="lede">Current versus proposed, both apps. Built to <b>G40-308 Guide B</b> (native bottom sheet,
+  <code>.g-sheet</code>), canonical tokens only, navy ink on green. Nothing has been implemented — this is the
+  comparison first.</p>
+
+  <div class="rule">
+    <b>The “current” panels are drawn from the live code, not from memory.</b>
+    Requester — <code>requestOrder.js:468</code> and <code>:3853</code>.
+    Gopher — <code>ordercard.js:6006</code> and <code>:9607–9760</code>.
+  </div>
+
+  <!-- ============================ REQUESTER ============================ -->
+  <h2>1 · Requester cancels a scheduled request</h2>
+  <p class="sub">The path order #64954 took. A Gopher had held the slot for fourteen hours.</p>
+
+  <div class="pair">
+    <div class="col">
+      <div class="tag now">Current</div>
+      <div class="phone"><div class="screen">
+        <div class="scr-h">Your request</div>
+        <div class="scr-card"><div class="t">Home Services — Other</div>
+          <div class="s">Scheduled · Sun 11:30 AM<br />Gopher: George C.</div></div>
+        <div class="scr-card"><div class="t">Offer</div><div class="s">$40.00 · authorization held</div></div>
+        <button class="btn-cancel">Cancel Request</button>
+        <div style="text-align:center;font-size:11px;color:var(--error);margin-top:14px;
+          font-family:var(--nunito);font-weight:800">↑ one tap — cancelled</div>
+      </div></div>
+      <div class="ann flag">
+        <b>What happens today</b>
+        <ul>
+          <li>No confirmation step at all.</li>
+          <li><code>DELETE orders/:id</code> with an <b>empty body</b> — no reason is sent.</li>
+          <li>Order log records one line: <code>Order Cancelled by requestor</code>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="tag new">Proposed</div>
+      <div class="phone">
+        <div class="screen">
+          <div class="scr-h">Your request</div>
+          <div class="scr-card"><div class="t">Home Services — Other</div>
+            <div class="s">Scheduled · Sun 11:30 AM<br />Gopher: George C.</div></div>
+        </div>
+        <div class="g-sheet-overlay"></div>
+        <div class="g-sheet">
+          <div class="grab"></div>
+          <h3>Cancel this request?</h3>
+          <p class="sh-sub">George has held this time for you. Telling him why takes a second and it is free to
+          cancel before he starts.</p>
+
+          <label class="opt"><input type="radio" name="rq" /><span class="ot">No longer need it</span></label>
+          <label class="opt"><input type="radio" name="rq" /><span class="ot">Found another option / doing it myself</span></label>
+          <label class="opt"><input type="radio" name="rq" /><span class="ot">Wrong details in my request</span></label>
+          <label class="opt" data-resched="1"><input type="radio" name="rq" /><span class="ot">Scheduling conflict — need a different time</span></label>
+          <label class="opt"><input type="radio" name="rq" /><span class="ot">Concern about the Gopher</span></label>
+          <label class="opt" data-other="1"><input type="radio" name="rq" /><span class="ot">Other</span></label>
+
+          <textarea class="ta hidden" id="rqOther" maxlength="150" placeholder="Tell us what happened…"></textarea>
+          <div class="cnt hidden" id="rqCnt">0 / 150</div>
+
+          <button class="sh-cta" disabled id="rqCta">Cancel request</button>
+          <button class="sh-close">Keep my request</button>
+        </div>
+      </div>
+      <div class="ann">
+        <b>What changes</b>
+        <ul>
+          <li>Confirm step and reason in one sheet — no extra tap.</li>
+          <li>Primary action <b>disabled until a reason is chosen</b>. “Other” requires text.</li>
+          <li>Reason posts to the existing <code>cancellation_reason</code> column, and the worker’s
+              email — already live since 30 Aug — stops saying <i>“Not provided.”</i></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= RESCHEDULE INTERCEPT ======================= -->
+  <h2>2 · The one option that should not cancel</h2>
+  <p class="sub">“Scheduling conflict” is a booking you can keep. Selecting it offers Reschedule before Cancel.</p>
+
+  <div class="pair">
+    <div class="col">
+      <div class="tag new">Proposed — intercept</div>
+      <div class="phone">
+        <div class="screen"><div class="scr-h">Your request</div></div>
+        <div class="g-sheet-overlay"></div>
+        <div class="g-sheet">
+          <div class="grab"></div>
+          <h3>Change the time instead?</h3>
+          <p class="sh-sub">George is still available. Proposing a new time keeps your Gopher and your price —
+          cancelling puts the request back out to everyone.</p>
+          <button class="sh-cta">Propose a new time</button>
+          <button class="sh-close" style="color:var(--error)">No — cancel the request</button>
+        </div>
+      </div>
+      <div class="ann">
+        <b>Why this is nearly free to build</b>
+        <ul>
+          <li>The <b>“Reschedule Request” button already exists</b> on the Gopher’s scheduled screen —
+              <code>ordercard.js:5993</code>, wired to <code>onClick={() =&gt; {}}</code>. It does nothing today.</li>
+          <li>Reschedule is <b>G40-80</b>, which is open and In Progress.</li>
+          <li>⚠️ Out of scope unless you say otherwise — flagged because the picker is the natural
+              place to save a job rather than lose one.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== GOPHER ============================== -->
+  <h2>3 · Gopher cancels a scheduled request</h2>
+  <p class="sub">This one already asks for a reason. The problem is the shape of the answer.</p>
+
+  <div class="pair">
+    <div class="col">
+      <div class="tag now">Current</div>
+      <div class="phone">
+        <div class="screen"><div class="scr-h">Scheduled job</div></div>
+        <div class="g-sheet-overlay"></div>
+        <div class="g-sheet">
+          <div class="grab"></div>
+          <h3>Cancel Request</h3>
+          <textarea class="ta" style="min-height:86px" placeholder=""></textarea>
+          <p style="font-size:11px;color:var(--muted);text-align:center;line-height:1.45;margin:0 0 12px">
+            Must be at least 3 words. This will be shared with the Requestor and eligible for a rating
+            so please be professional and clear.</p>
+          <button class="sh-cta" disabled>Submit</button>
+          <button class="sh-close">Back</button>
+        </div>
+      </div>
+      <div class="ann flag">
+        <b>What happens today</b>
+        <ul>
+          <li>Free text, minimum <b>3 words</b>, 150 characters — every worker phrases it differently.</li>
+          <li><code>cxRecommend()</code> must tokenise that prose to suggest <i>fee / no-fee / excused</i>.
+              It is guarding a <b>$5 charge and a strike</b>.</li>
+          <li>⚠️ A second door bypasses this entirely: <code>requestOrder.js:423</code> in the Go app fires
+              <code>DELETE orders/:id</code> with <b>no reason</b>.</li>
+          <li>Live typo in the counter: <i>“Max charactors reached”</i>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="tag new">Proposed</div>
+      <div class="phone">
+        <div class="screen"><div class="scr-h">Scheduled job</div></div>
+        <div class="g-sheet-overlay"></div>
+        <div class="g-sheet">
+          <div class="grab"></div>
+          <h3>Cancel this job?</h3>
+          <p class="sh-sub">Your answer is shared with the Requestor and is used when a cancellation is
+          reviewed. Pick the closest match.</p>
+
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">Emergency or illness</span></label>
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">Can’t make the scheduled time</span></label>
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">Vehicle or equipment problem</span></label>
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">The request isn’t what was described</span></label>
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">Can’t reach the requester</span></label>
+          <label class="opt"><input type="radio" name="gp" /><span class="ot">Safety concern</span></label>
+          <label class="opt" data-other="1"><input type="radio" name="gp" /><span class="ot">Other</span></label>
+
+          <textarea class="ta hidden" id="gpOther" maxlength="150" placeholder="Tell us what happened…"></textarea>
+          <div class="cnt hidden" id="gpCnt">0 / 150</div>
+
+          <button class="sh-cta" disabled id="gpCta">Cancel job</button>
+          <button class="sh-close">Keep this job</button>
+        </div>
+      </div>
+      <div class="ann">
+        <b>What changes</b>
+        <ul>
+          <li>Seven options, not six — the extra precision is worth it where money is at stake.</li>
+          <li><b>1, 3, 6</b> read as presumptively excused. <b>4, 5</b> point at the requester or the listing,
+              not the worker. <b>2, 7</b> are the real review cases.</li>
+          <li>⚠️ A <b>recommendation to the reviewer, never an automatic outcome</b> — otherwise
+              “Emergency or illness” becomes the button everyone learns to press.</li>
+          <li>3-word minimum survives, applied only to “Other”. Typo fixed.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <h3>What I would change in code</h3>
+    <ul>
+      <li><b>Requester app</b> — <code>requestOrder.js</code> <code>onTappedCancel()</code> opens the sheet and
+          sends <code>cancellation_reason</code>; it currently sends an empty body.</li>
+      <li><b>Go app</b> — <code>ordercard.js</code> swaps the textarea for the picker, and
+          <code>requestOrder.js:423</code>’s reason-less cancel routes through the same sheet or loses its button.</li>
+      <li><b>Shared component</b> — <code>modals/CancelRequestReasonModal.js</code> already exists in the Go app
+          and is <b>imported by nothing</b>. It becomes the one implementation rather than a third.</li>
+      <li><b>Backend</b> — nothing. <code>cancellation_reason</code> already persists and the email already
+          renders it.</li>
+    </ul>
+
+    <h3>Two traps this design is built around</h3>
+    <ul>
+      <li>⚠️ <b>Keyboard occlusion.</b> A textarea at the bottom of a sheet is the exact shape of
+          <b>G40-421</b> — already open, ten instances. “Other” reveals the field <i>above</i> the buttons and the
+          sheet scrolls; it should still land on whatever shared fix 421 produces.</li>
+      <li>⚠️ <b>Fixed bottom controls covering content</b> is the pattern behind <b>G40-422/423/424</b> —
+          four screens, both apps. The option list scrolls inside the sheet; the buttons never overlay it.</li>
+    </ul>
+
+    <h3>Not decided here</h3>
+    <ul>
+      <li>Whether the reschedule intercept is in scope.</li>
+      <li>Whether the Gopher-side change ships in the same release as the requester’s.</li>
+      <li>⛔ <code>REACT_APP_VERSION</code> must be bumped in the Appflow prod environment for whichever
+          release carries this, or the server-side gate is inert.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.opt').forEach(function (o) {
+    o.addEventListener('click', function () {
+      var sheet = o.closest('.g-sheet');
+      sheet.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('sel'); });
+      o.classList.add('sel');
+      var input = o.querySelector('input'); if (input) input.checked = true;
+      var isOther = o.hasAttribute('data-other');
+      var ta = sheet.querySelector('.ta'), cnt = sheet.querySelector('.cnt');
+      if (ta && ta.id) { ta.classList.toggle('hidden', !isOther); cnt.classList.toggle('hidden', !isOther); }
+      var cta = sheet.querySelector('.sh-cta');
+      if (cta) cta.disabled = isOther && !(ta && ta.value.trim());
+    });
+  });
+  document.querySelectorAll('.ta').forEach(function (t) {
+    t.addEventListener('input', function () {
+      var sheet = t.closest('.g-sheet'), cnt = sheet.querySelector('.cnt');
+      if (cnt) cnt.textContent = t.value.length + ' / 150';
+      var cta = sheet.querySelector('.sh-cta');
+      if (cta && !t.classList.contains('hidden')) cta.disabled = !t.value.trim();
+    });
+  });
+</script>
+</body>
+</html>
