@@ -1654,6 +1654,26 @@ promised, and "top" is load-bearing.** Do not paraphrase it.
 on a failed capture, and runner-up promotion. `placement_bids.terms_accepted_at` records the
 commitment; nothing charges it.
 
+**The board is LIVE as of 2026-08-30.** `gopher-deals.html` reads
+`GET /users/deals/bids/board` and posts to `POST /users/deals/bids`; the shared brain
+(`assets/js/gopher-bid-brain.js`) gained a live mode in which the demo seed is unreachable and
+`placeBid()` **refuses** to settle client-side. Three things worth knowing before touching it:
+
+- **The seed used to reach signed-in merchants.** Every one of them saw *"You · My Way Tavern"*
+  leading Restaurants at $410. See memory `deals-portal-showroom-leaks-into-live-sessions`.
+- **A load failure closes bidding rather than falling back.** A 500, a network error, and a 200
+  whose body carries no board all render an honest message — bidding against unverifiable numbers
+  is worse than not bidding.
+- ⚠️ **`holder_name` is no longer sent by the client, and the server has no substitute.** The board
+  therefore shows *"A nearby merchant"* for everyone but the viewer, whose own card reads *"You hold
+  this spot"* (computed from the owner id). **Deriving the real business name server-side is not
+  built** — and it should never come from the client, because the endpoint displays it publicly, so
+  a caller-set value would let a merchant post under a competitor's name.
+
+⚠️ **`gopher-go.html`'s "Feature my deal" board still renders from the seed** — it calls
+`GopherBidBrain.board()` with no live load. It is the worker-side window onto the same auction, so
+it needs the same treatment; the brain already supports it.
+
 **Rejected on the owner's behalf: authorize-at-bid-time with release-on-outbid.** It cannot work on
 this calendar — card authorizations expire in roughly **7 days** (less on some networks) while
 bidding runs across a month to a cutoff on the 20th. A bid placed early could not hold an
