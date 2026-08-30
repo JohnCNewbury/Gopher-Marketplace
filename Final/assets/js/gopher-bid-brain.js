@@ -104,9 +104,17 @@
       placements.forEach(function(p,i){ if(p.category===category && p.amount>mx){ mx=p.amount; idx=i; } });
       if(idx>=0){ placements[idx]=entry; } else { placements.push(entry); }
     }
-    /* Non-leading bids still win a featured slot this month (guaranteed-win
-       copy) — the demo board only tracks category tops, so nothing to move. */
-    return { ok:true, beatsTop:beatsTop };
+    /* ⛔ THIS COMMENT USED TO READ: "Non-leading bids still win a featured slot
+       this month (guaranteed-win copy)". Ruling 7 (owner, 2026-08-05) retired
+       that promise as FALSE: one winner per category, plus the top overall bid
+       as its own Featured Deal. A losing bid is a losing bid.
+
+       `ok` means RECORDED, never WON — the caller must render `leading`, not
+       treat ok as a win. Production settles this server-side
+       (helpers/placement_auction.js) and the API answers with the same
+       `leading` flag, so the two cannot drift into telling a merchant different
+       things about the same bid. */
+    return { ok:true, beatsTop:beatsTop, leading:beatsTop };
   }
 
   /* Bidding closes on the 20th of each month — label the next close. */

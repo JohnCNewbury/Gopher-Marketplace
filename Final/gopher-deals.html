@@ -6092,7 +6092,7 @@
           <div class="ps-ico">📣</div>
           <div class="ps-body">
             <h4>Bid on the Deals Home Page category card</h4>
-            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind — and every bid earns you a featured month, no matter the amount.</p>
+            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind. There is <b>one winner per category</b>: whoever is leading when bidding closes on the 20th takes the placement for the following month. A bid is a commitment to pay if you win, and you are only charged if you do.</p>
           </div>
           <button class="ps-btn" data-jump="advertise">Learn more</button>
         </div>
@@ -8172,7 +8172,11 @@ var PAY_BADGES = {
       if(res.beatsTop){
         toast.textContent='Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6';
       } else {
-        toast.textContent='Bid placed \u2014 '+money(amt)+'. Featured win locked in this month \u2705';
+        /* ⛔ THIS SAID "Featured win locked in this month". Ruling 7 retired that
+           promise: one winner per category, plus the top overall bid as its own
+           Featured Deal. Telling a merchant their losing bid had won is a promise
+           the model cannot keep, and they would discover it a month later. */
+        toast.textContent='Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.';
       }
       toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 3000);
       renderBidBoard(); syncBidForm(); bidAmount.value=''; bidForm.hidden=true;
