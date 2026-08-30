@@ -155,21 +155,43 @@ earlier than every prior figure in this document.**
 
 **71 credits in 6 days = ~11.8/day**, against the ~6.0/day this document modelled.
 
-**The old model was wrong systematically, not noisily.** It counted **APPROVED** verifications only,
-on the premise that DENIED and EXPIRED are not billed. The same dashboard reports **330 sessions per
-191 approvals** (330 = 191 + 15 denied + 124 expired, exactly). So:
+⛔ **WITHDRAWN 2026-08-29 — my per-session explanation was wrong.** I inferred that iDenfy bills
+per SESSION, because `6.0 approvals/day x (330 sessions / 191 approvals = 1.728) = 10.4`, which sits
+beside the observed 11.8. **The owner settled it the other way: credits burn on APPROVALS ONLY.
+Denied and expired sessions are free.** *(Relayed via another session — inherited, not heard
+first-hand; see the flag at the end of this section.)*
 
-    6.0 approvals/day x (330/191 = 1.728)  =  10.4 sessions/day   vs   11.8/day observed
+**The agreement was a coincidence, and that is the lesson worth keeping: two numbers landing close
+together is not a mechanism.** It was persuasive precisely because it explained a 2x gap with a
+ratio drawn from the same dashboard, which is exactly the shape a spurious fit takes.
 
-10.4 beside 11.8 is close enough that **iDenfy most likely bills per SESSION, not per approval** —
-which makes the previous estimate ~1.7x low and means burn will **not** revert to 6/day.
+**What does NOT change: the date.** 71 credits in 6 days is a direct reading of the authoritative
+counter. It is 11.8/day whatever the billing unit is.
+
+**What DOES change: whether the rate holds.** Under the withdrawn theory the burn was structural and
+could not revert. Under approvals-only, **11.8/day is a genuine doubling of approvals over a
+6.30/day trailing-30-day rate** — which may be a busy week rather than a new normal. So the rate
+could fall back toward 6/day, or stay. **That makes the third reading more important, not less.**
+⚠️ Approvals-only is also the floor: the date **cannot worsen** from this source.
 
     147 / 11.8 = 12.4 days  ->  ~2026-09-10
     147 / 10.4 = 14.2 days  ->  ~2026-09-12
 
-**Plan to a band, not a day.** ⚠️ **Provenance: the readings are the owner's, relayed via another
-session — INHERITED, not verified first-hand here.** The per-session inference is mine, from the
-dashboard's own ratio. ⚠️ **It is a TWO-POINT rate**, and it rests on both readings coming from the
+**Plan to a band, not a day.** ⚠️ **Provenance: the readings AND the approvals-only ruling are the owner's, relayed via another
+session — INHERITED, not verified first-hand here.** Confirm the approvals-only ruling with the
+owner directly before relying on it for planning; it is the premise the whole "will the rate hold"
+question rests on.
+
+⚠️ **VERSION NAMES — the Request app is 3.8.1, NOT 3.9.1.** Store APIs, 2026-08-28 release:
+**Gopher Go iOS 3.9.1 / build 863** and **Gopher Request iOS 3.8.1 / build 851** (Play 864 / 852).
+G40-410's client half is the **Request** app, so "the shipped 3.9.1 client" elsewhere in this
+document means Go's version number applied to the wrong app — read it as **3.8.1**. The owner's
+GENERATIONS ruling says "version 3.9.1" as a label for the current shipped generation, and that
+usage stands; this note is about which binary you go and look at.
+⚠️ **Do not check the version in the repo.** `android/app/build.gradle` reads `versionName "3.0.3"`,
+`versionCode 63` on `production` in **both** apps — stale and unused, because Appflow injects the
+real version at build time. The store is the only instrument. (Appflow build number + 600 = store
+build number.) ⚠️ **It is a TWO-POINT rate**, and it rests on both readings coming from the
 same Finance page; a third read around 1 Sept would settle it.
 
 ⚠️ **The "Expiration date 2026-12-30" on the Finance page is the partner CONTRACT date, not the
