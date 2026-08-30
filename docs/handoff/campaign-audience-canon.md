@@ -105,6 +105,42 @@ Dashboard's client-side `USR` dataset and are never translated into the payload.
 `usage` exist server-side (inbox only) but HQ never sends them. Until that is closed, those filters
 narrow the PREVIEW only — treat a count produced with them as advisory.
 
+## The ledger — every send is recorded (2026-08-30)
+
+Owner: *"Every message we send should be logged and provide as much details as we have avaiable."*
+
+**Two tables, because the two halves have different truths available.**
+
+| Channel | Where the record lives | Open rate? |
+|---|---|---|
+| In-app | `inboxes` + one `inbox_users` row per recipient | **Yes** — `inbox_users.viewed` is a real read receipt |
+| Push · SMS | **`campaign_sends`**, one row per **send** | **No** — and it must not pretend otherwise |
+
+- **Read it at** `GET /admin/inbox_message/get_inbox_message` (in-app, MR !446) and
+  `GET /admin/campaign_sends` (push/SMS, MR !447). HQ's *Sent messages* card merges them into one
+  chronological table with a channel chip.
+- ⛔ **Push and SMS have no open rate and never will from these sources.** FCM reports
+  accepted-by-Google; Twilio reports accepted-for-delivery. Neither is "someone read it". The column
+  is left **empty** on those rows — a `0` there would read as "nobody opened it", which is a
+  measurement nobody took.
+- ⛔ **`campaign_sends.audience` stores the FILTERS, never the recipient ids.** 137,000 ids per
+  campaign is not a ledger, it is a second copy of the users table. A pasted custom-id list is
+  reduced to a **count**.
+- ⛔ **The writer cannot throw.** `helpers/campaign_log.js` runs *after* the messages have left, so
+  every path is caught and logged (`CAMPAIGN_LOG_FAILED`). A throw would turn a completed campaign
+  into a 500, and an operator seeing a 500 re-sends — the duplicate-send defect this document exists
+  to prevent, reintroduced by the audit trail meant to watch for it.
+- **Push now counts what it reached.** FCM returns `successCount`/`failureCount` on every multicast
+  and `sendPushNotif` was logging them and throwing them away, so a campaign whose every token was
+  rejected read as *"Sent Successfully"*. It reports `Sent to 812 of 900 devices`. **Devices, not
+  people** — one person running both apps is deliberately two (see *The rule*, above).
+- ⚠️ **Nothing before 2026-08-30 exists in the push/SMS half.** Those sends were never written down
+  anywhere; the four campaigns of 2026-08-30 (105,025 recipients) survive only as log lines. HQ says
+  so on screen.
+- ⛔ **`sent_by` is a `users_roles` id, not a `users` id.** Join through `users_roles`; joining
+  `users` directly returns a real, plausible, **wrong** person. See the memory
+  `admin-userid-is-a-users-roles-id`.
+
 ## Still missing (not shipped)
 
 - **Bulk email has no unsubscribe and no suppression list.** Unsubscribe is a legal requirement for
@@ -114,3 +150,7 @@ narrow the PREVIEW only — treat a count produced with them as advisory.
   numbers at its edge with error **21610**, which the send path logs as `SMS_BLOCKED_OPTOUT` — that
   log is currently the only way to harvest them. Roughly **16% of gophers** messaged on 2026-08-11
   were already opted out, versus 1.4% of requesters.
+- **`CAMPAIGN_LOG_FAILED` has no alarm.** It is registered in `docs/alert-markers.json` under
+  `acknowledgedUnalarmed` as an **alarm candidate**: creating the CloudWatch filter + alarm on
+  `Gopher-Prod-Alerts` is a production change and is the owner's to approve. Silence means one
+  campaign is missing from the ledger; the send itself still happened.

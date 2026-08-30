@@ -1147,11 +1147,35 @@ doc now carries the split, and everything below its "What was built" heading is 
 design, not shipped code**. It remains no evidence that admin deal-review, click tracking or CSV
 export exist today — the wired module is `deals-merchants.js`, which has none of them.
 
-### 9.3 Merchant deal actions are display-only
+### 9.3 Merchant deal actions — WIRED (corrected 2026-08-30)
 
-**PATHWAY** §Stage 4 and **G40-286** §DLM-3 both flag it: My Deals lists deals with status badges and
-view counts, but **edit / pause / delete are not wired**. `paused` therefore has no producer today.
-Not a conflict — a known gap, restated because §5.1 depends on it.
+> ⚠️ **This row said the opposite until 2026-08-30, and had been wrong for weeks.** It read: *"My
+> Deals lists deals with status badges and view counts, but **edit / pause / delete are not wired**.
+> `paused` therefore has no producer today."* That was true when **PATHWAY** §Stage 4 and **G40-286**
+> §DLM-3 were written. It stopped being true without this row learning — the exact failure this
+> document exists to prevent. §5.1 depends on this row, so it was propagating.
+
+**Verified against `origin/production` on 2026-08-30** (`controllers/user/index.js`,
+`controllers/user/deals.js`):
+
+| Action | Route | Handler |
+|---|---|---|
+| Edit | `PATCH /deals/:id` | `edit_deal` |
+| Pause | `PATCH /deals/:id/pause` | `pause_deal` |
+| Resume | `PATCH /deals/:id/resume` | `resume_deal` |
+
+All three sit behind `user_auth` **and** `require_email_verified()`.
+
+- **`paused` HAS a producer.** Two, in fact, and they are not the same thing: a merchant pausing
+  their own live deal (`paused_by_owner`) and an admin unpublishing one. **Resume is deliberately
+  not the mirror of pause** — it refuses a deal an admin unpublished. Same status, different
+  meaning.
+- **A merchant pause raises a deals@ alert** (`sendEmail` template 43/44). Those templates were dead
+  on arrival until 2026-08-26 and the body was hardcoded to *"A merchant paused their own live
+  deal"* even for service providers — fixed in MR !400.
+- **Delete is still NOT wired**, and that part of the original row stands. There is no merchant
+  delete route; the lifecycle is submit → live → paused/resumed, with admin reject as the terminal
+  decline.
 
 ### 9.4 `gopher-customer-deals.html` is not a publication surface
 
@@ -1606,11 +1630,29 @@ requires (memory `handoff-no-open-questions`).
 - **Payment is captured on the final day** (the cutoff), from winners only.
 - **Failed capture → the winner gets 24 hours to fix it, then the runner-up is promoted.**
 
-**⛔ This retires the "every bid wins a featured month" promise, which is currently LIVE on four
-surfaces and must be removed:** `gopher-deals-101.html`, three places in `gopher-go.html`, and the
-merchant-portal bid hint in `gopher-deals.html`. `placeBid()` must also stop returning success for a
-losing bid. **Follow-up ticket raised** — this is a live false promise to merchants and providers,
-not a documentation gap.
+**⛔ This retired the "every bid wins a featured month" promise.** ✅ **DONE 2026-08-30 — the copy is
+gone from all four surfaces and `placeBid()` no longer reports a losing bid as a win.**
+
+> ⚠️ **This paragraph read "currently LIVE on four surfaces and must be removed" until 2026-08-30.**
+> It was a live false promise to merchants and providers when written; it is not one now, and a doc
+> that keeps saying so sends the next session to fix something already fixed.
+
+**As deployed (verified in the working tree 2026-08-30):**
+
+| Surface | State |
+|---|---|
+| `gopher-deals-101.html` | false promise removed; the `#bidding` section now explains the real model — the top spot per category goes up for bid, standings are open, *"You always see the current top bid; nothing is blind."* |
+| `gopher-go.html` | false promise removed from all three places |
+| `gopher-deals.html` (merchant portal) | carries the owner's own wording: **"Every top bid earns you a featured month, no matter the amount"** |
+| `assets/js/gopher-bid-brain.js` | `placeBid()` returns `{ok, beatsTop, leading}`; a losing bid is recorded as a non-leading placement, not reported as a win |
+
+⚠️ **The owner wrote that sentence himself (2026-08-30)** — *"every top bid earns you a featured
+month, no matter the amount"* — replacing a drafted "one winner per category". **No amount is
+promised, and "top" is load-bearing.** Do not paraphrase it.
+
+**Still NOT built** (the money leg): capture on the cutoff day from winners only, the 24-hour grace
+on a failed capture, and runner-up promotion. `placement_bids.terms_accepted_at` records the
+commitment; nothing charges it.
 
 **Rejected on the owner's behalf: authorize-at-bid-time with release-on-outbid.** It cannot work on
 this calendar — card authorizations expire in roughly **7 days** (less on some networks) while
@@ -1624,6 +1666,12 @@ month. `placeBid()` honours it by returning success for a losing bid. But nothin
 records who is owed a slot, how many slots exist per category per month, or in what order they run —
 so the promise **cannot be implemented as written**, and a developer will either drop it silently or
 invent the rules.
+
+> ⚠️ **THE RECOMMENDATION BELOW WAS NOT ADOPTED — it is kept only as the reasoning the owner ruled
+> against.** He chose the simpler model at the top of this section: the top bid takes the category
+> card for the month, and there is no featured-day queue for the runners-up. Do not implement what
+> follows; it is superseded by the ruling above, and its closing line *"Needs your ruling"* is
+> answered.
 
 **Recommendation — make it a defined, bounded inventory rather than an open promise:** the
 **category-top bid wins the card for the whole month**; every other bidder in that category is
