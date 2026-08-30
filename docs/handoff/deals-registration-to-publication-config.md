@@ -1670,9 +1670,16 @@ commitment; nothing charges it.
   built** — and it should never come from the client, because the endpoint displays it publicly, so
   a caller-set value would let a merchant post under a competitor's name.
 
-⚠️ **`gopher-go.html`'s "Feature my deal" board still renders from the seed** — it calls
-`GopherBidBrain.board()` with no live load. It is the worker-side window onto the same auction, so
-it needs the same treatment; the brain already supports it.
+**`gopher-go.html`'s worker-side board is live too** (same day). It fetches the board alongside the
+eligibility and my-deals calls it already made, and a standings failure closes bidding via
+`GATE.boardLive` — three-state on purpose, because `null` (signed out) and `false` (the server is
+down) are opposites. Its demo disclaimer now follows the mode: left standing on a live board it
+would be the inverse of the original defect — a real commitment to pay presented as a throwaway
+prototype.
+
+⚠️ **Locking the bid button is not sufficient on a failed load** — `renderBoard()` still fell
+through to the seed, so a worker saw invented standings under a *"Bidding locked"* button.
+Non-actionable is not the same as honest. Both boards now paint the reason and no cards.
 
 **Rejected on the owner's behalf: authorize-at-bid-time with release-on-outbid.** It cannot work on
 this calendar — card authorizations expire in roughly **7 days** (less on some networks) while
