@@ -6092,7 +6092,7 @@
           <div class="ps-ico">📣</div>
           <div class="ps-body">
             <h4>Bid on the Deals Home Page category card</h4>
-            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind. There is <b>one winner per category</b>: whoever is leading when bidding closes on the 20th takes the placement for the following month. A bid is a commitment to pay if you win, and you are only charged if you do.</p>
+            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind. <b>Every top bid earns you a featured month, no matter the amount</b> — one winner per category, decided by whoever is leading when bidding closes on the 20th. A bid is a commitment to pay if you win, and you are only charged if you do.</p>
           </div>
           <button class="ps-btn" data-jump="advertise">Learn more</button>
         </div>
@@ -7794,10 +7794,50 @@ var PAY_BADGES = {
     });
   }
 
+  /* ⛔ A SIGNED-IN MERCHANT MUST NEVER SEE THE SHOWROOM.
+     Every failure path here used to `return` quietly — no token, a non-ok
+     response, or a throw — and each one left the d1/d2/d3 demo deals on screen.
+     The owner signed in on 2026-08-30 with a real account holding SIX real deals
+     (two live) and saw three fake restaurant offers, with nothing on screen
+     saying anything had gone wrong.
+
+     That is the same false-success shape as the campaign console reporting
+     "Sent" on a 500: the comfortable fallback is indistinguishable from success,
+     so the failure never gets investigated. A prospect who is signed OUT should
+     see the showroom; a merchant who is signed IN must see their deals or an
+     honest error naming why. */
+  function _myDealsError(msg){
+    MY_DEALS.length = 0;
+    _liveDealsCache = [];
+    /* The SAME host renderMyDeals writes to, and the same "keep the header"
+       rule — the "+ New deal" button in it already has a listener bound. */
+    var host = document.querySelector('[data-pane="mydeals"] .dash-block');
+    if(host){
+      Array.prototype.slice.call(host.children).forEach(function(n){
+        if(!n.classList.contains('dash-block-head')) host.removeChild(n);
+      });
+      var box = document.createElement('div');
+      box.style.cssText = 'padding:14px 16px';
+      box.innerHTML = '<div style="font-weight:700;color:#a8071a">We could not load your deals.</div>'
+        + '<div style="font-size:13px;color:#424242;margin-top:4px">' + mdEsc(msg) + '</div>'
+        + '<div style="font-size:13px;color:#424242;margin-top:6px">Your deals are safe \u2014 this is a display problem. '
+        + 'Reload the page, or reply to your Gopher email and we will sort it out.</div>';
+      host.appendChild(box);
+    }
+    if(typeof populateBidDeals === 'function') populateBidDeals();
+  }
+
   function loadMyDeals(){
-    if(typeof _authToken === 'undefined' || !_authToken) return;   // demo session: showroom stands
+    if(typeof _authToken === 'undefined' || !_authToken){
+      /* Signed OUT is the one case the showroom is correct for. */
+      return;
+    }
     apiCall('/users/deals/mine', { method: 'GET' }).then(function(r){
-      if(!r.ok) return;   // silent: a failed load must not blank a working page
+      if(!r.ok){
+        _myDealsError('The server answered ' + (r.status || 'an error')
+          + (r.body && r.body.message ? ' \u2014 ' + r.body.message : '') + '.');
+        return;
+      }
       var deals = (r.body && r.body.deals) || [];
       _liveDealsCache = deals;   // the modals prefill from this
       renderMyDeals(deals);
@@ -7813,7 +7853,9 @@ var PAY_BADGES = {
         });
       });
       if(typeof populateBidDeals === 'function') populateBidDeals();
-    }).catch(function(){ /* keep the showroom */ });
+    }).catch(function(e){
+      _myDealsError('The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+    });
   }
   /* ═══════════════════════════════════════════════════════════════════════
      PORTAL LIVE — the owner's real access (owner ruling 2026-08-25, all four:
