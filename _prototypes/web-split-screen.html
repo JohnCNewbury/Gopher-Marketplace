@@ -190,10 +190,11 @@
      swallow the first event of the new session. */
   var injected, offered, hired, countered, counterDecided, statusSeen,
       goMsgSeen, reqMsgSeen, goCancelSeen, reqCancelSeen, adjustSeen, counterPending,
-      startNarrated;
+      startNarrated, adjustPending, adjustDecided;
   function clearRelays(){
     injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
     startNarrated={}; orderSurface={}; offSurfaceWarned={};
+    adjustPending={}; adjustDecided={};
     goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
     counterPending={};
   }
@@ -475,7 +476,28 @@
     }catch(_){}
   }
 
-  /* ═══ Go → Web : the worker adjusts the agreed charge on site ═══════════ */
+  /* ═══ Go → Web : the worker adjusts the agreed charge on site ═══════════
+     ⚠️ This relay previously read `adj.offer` / `adj.cost` / `adj.note` — field
+     names that do not exist. The Go app writes `newOffer` / `newCost` /
+     `comment`, plus `origOffer` / `origCost` / `status` / `hasReceipt`
+     (gopher-go-prototype.html:3471). It would have relayed a $0 adjustment.
+     Second invented-vocabulary bug in this file; read the app, never guess.
+
+     It also ignored `status`, which carries a real product rule: an adjustment
+     that RAISES the total (or settles a dispute) is 'pending' and needs the
+     requester's approval, because Stripe cannot capture more than the original
+     authorization (G40-18). Same-or-lower outside a dispute is 'applied' and
+     takes effect immediately with no approval. Collapsing the two would have
+     put an approval gate in front of a price DROP. */
+  function feeShape(offer, cost, workers){
+    var cog=offer+cost, itf=Math.round(0.08*(cog+0.99)*100)/100, reqFee=Math.round((0.99+itf)*100)/100;
+    return { costOfItems:cost, workerPay:offer, workersNeeded:workers||1,
+             gopherFee:0.99, ageFee:0, instantTransfer:itf, requestFee:reqFee,
+             fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:itf, fullRequestFee:reqFee,
+             promo:null, promoDiscount:0, trustShieldDiscount:0,
+             cogOffer:cog, gmvTotal:Math.round((cog+reqFee)*100)/100 };
+  }
+
   function watchAdjust(){
     try{
       var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
@@ -483,20 +505,67 @@
         var job=w.__ptJobs[id];
         var adj=job && job.adjust; if(!adj || !adj.seq) continue;
         if(adjustSeen[id]===adj.seq) continue;
-        var raw=g.raw(id); if(!raw || !raw.reviewSnapshot) continue;    // no frozen deal to compare — retry
-        var pay=+adj.offer||0, cost=+adj.cost||0, cog=pay+cost;
-        var itf=0.08*(cog+0.99), reqFee=0.99+itf;
-        g.update(id, { pendingAdjustment:{
-          comment: adj.note || 'Costs came in different from the estimate.',
-          receipt: adj.receipt || null,
-          adjusted:{ costOfItems:cost, workerPay:pay, workersNeeded:+raw.workersNeeded||1,
-                     gopherFee:0.99, ageFee:0, instantTransfer:itf, requestFee:reqFee,
-                     fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:itf, fullRequestFee:reqFee,
-                     promo:null, promoDiscount:0, trustShieldDiscount:0,
-                     cogOffer:cog, gmvTotal:cog+reqFee }
-        }, needsAttention:true });
-        adjustSeen[id]=adj.seq;
-        status('Gopher requested a <b>cost adjustment</b> on '+id+' → approve or decline it on the request card.');
+        var raw=g.raw(id); if(!raw) continue;
+        /* Request never builds a reviewSnapshot for a user-created request (see
+           the bridge's note) — without one the web's adjustment card cannot
+           render, so create it before relaying rather than skipping forever. */
+        g.ensureSnapshot(id);
+        if(!raw.reviewSnapshot) continue;
+
+        var offer=+adj.newOffer||0, cost=+adj.newCost||0;
+        var A=feeShape(offer, cost, +raw.workersNeeded||1);
+
+        if(adj.status==='applied'){
+          /* Same or lower, outside a dispute — no re-authorization needed, so it
+             lands on the agreed price directly rather than asking permission. */
+          raw.reviewSnapshot.fee = A;
+          raw.reviewSnapshot.costOfItems=cost; raw.reviewSnapshot.workerPay=offer;
+          raw.reviewSnapshot.total=A.gmvTotal;
+          g.update(id, { perWorkerCost:offer, costOfItems:cost,
+                         amount:'$'+A.gmvTotal.toFixed(2)+' total' });
+          adjustSeen[id]=adj.seq;
+          status('Gopher <b>lowered the charge</b> on '+id+' to <b>$'+A.gmvTotal.toFixed(2)+'</b> — '
+            +'same or less than agreed, so it applied immediately with no approval needed.');
+        } else {
+          /* Receipt: the Go app tells us one is attached but not what it shows,
+             and the web card renders a real thumbnail. Carry the fact in the
+             note rather than fabricating an image. */
+          var note=(adj.comment||'').trim();
+          if(adj.hasReceipt) note = note ? (note+' (receipt attached)') : 'Receipt attached.';
+          g.update(id, { pendingAdjustment:{ comment:note, receipt:null, adjusted:A },
+                         needsAttention:true });
+          adjustPending[id]={ seq:adj.seq, total:A.gmvTotal, offer:offer, cost:cost };
+          adjustSeen[id]=adj.seq;
+          status('Gopher requested a <b>cost adjustment</b> on '+id+' — $'+A.gmvTotal.toFixed(2)
+            +(adj.dispute?' (dispute resolution)':' (raises the charge)')
+            +'. It needs your <b>approval</b> before the job continues.');
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web → Go : the requester's approve / decline on that adjustment ═════
+     resolveAdjustment() deletes r.pendingAdjustment for BOTH outcomes and only
+     APPROVE rewrites reviewSnapshot.total to the adjusted figure. So compare
+     the NUMBER, not a name — the same lesson the counter relay cost us. */
+  function watchAdjustDecision(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in adjustPending){
+        var pend=adjustPending[id]; if(!pend) continue;
+        if(adjustDecided[id]===pend.seq) continue;
+        var raw=g.raw(id); if(!raw) continue;
+        if(raw.pendingAdjustment) continue;                      // requester has not decided yet
+        if(!(w.__ptAdjustDecision && w.__ptJobs[id])) continue;   // Go not ready — retry
+        var snapTotal=(raw.reviewSnapshot && +raw.reviewSnapshot.total)||0;
+        var approved = Math.abs(snapTotal - pend.total) < 0.005;
+        try{ w.__ptAdjustDecision(id, approved, pend.offer, pend.cost); }catch(_){ continue; }
+        adjustDecided[id]=pend.seq;
+        adjustPending[id]=null;
+        status(approved
+          ? 'You <b>approved</b> the adjustment on '+id+' → the new total is <b>$'+pend.total.toFixed(2)
+            +'</b> and the Gopher was told they are clear to continue.'
+          : 'You <b>declined</b> the adjustment on '+id+' → the Gopher was notified; the agreed price stands.');
       }
     }catch(_){}
   }
@@ -521,18 +590,32 @@
     }catch(_){}
   }
 
-  /* ═══ Web → Go : the requester cancelled ═══════════════════════════════ */
+  /* ═══ Web → Go : the requester cancelled ═══════════════════════════════
+     ⚠️ This watched `g.all()` for a record with `cancelled` set — but the web
+     app does not FLAG a cancellation, it MOVES the record:
+     __cancelDashboardRequest lifts it out of activeRequests and into
+     cancelledRequests. So the request simply vanished from the list this loop
+     reads, the relay never fired, and the Gopher kept a dead job on their
+     board — still driving to a pickup the customer had called off.
+
+     Disappearance IS the signal. Guards, because a record can also vanish for
+     innocent reasons: only for jobs THIS page raised (a Connect id disappears
+     from view whenever you navigate to Request, which is not a cancellation),
+     and never for one the Go side already considers finished. */
   function watchReqCancel(){
     try{
       var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
-      var list=g.all()||[];
-      for(var i=0;i<list.length;i++){
-        var r=list[i];
-        if(!r || !r.cancelled || reqCancelSeen[r.order]===r.reqCancelSeq) continue;
-        if(!(w.__ptReqCancelled && w.__ptJobs[r.order])) continue;
-        try{ w.__ptReqCancelled(r.order, 'cancel'); }catch(_){ continue; }
-        reqCancelSeen[r.order]=r.reqCancelSeq;
-        status('You <b>cancelled</b> '+r.order+' → the Gopher was notified and the job left their board.');
+      for(var id in injected){
+        if(injected[id]===undefined) continue;
+        if(orderSurface[id]!==surface) continue;        // that page is not loaded — absence proves nothing
+        if(reqCancelSeen[id]) continue;
+        var job=w.__ptJobs[id]; if(!job) continue;
+        if(job.cancelled || job.substage==='completed') continue;   // already ended by the other side
+        if(g.get(id)) continue;                          // still live on the web — not cancelled
+        if(!w.__ptReqCancelled) continue;                // Go hook mid-reload — retry
+        try{ w.__ptReqCancelled(id, 'cancel'); }catch(_){ continue; }
+        reqCancelSeen[id]=true;
+        status('You <b>cancelled</b> '+id+' → the Gopher was notified and the job left their board.');
       }
     }catch(_){}
   }
@@ -692,7 +775,7 @@
        navigating away would lose them. */
     try{ var _g=W(); if(_g) _g.persist(); }catch(_){}
     watchCounter(); watchCounterDecision();
-    watchStatus(); watchAdjust(); watchMessages();
+    watchStatus(); watchAdjust(); watchAdjustDecision(); watchMessages();
     watchGoCancel(); watchReqCancel();
     setTimeout(tick, 600);
   }

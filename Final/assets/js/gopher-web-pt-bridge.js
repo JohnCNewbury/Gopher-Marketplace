@@ -371,6 +371,38 @@
       };
     }
 
+    /* ── reviewSnapshot ─────────────────────────────────────────────────────
+       ⚠️ FINDING, not just a bridge workaround. In Request, `reviewSnapshot`
+       exists ONLY on the five seeded demo records — `__createDashboardRequest`
+       never builds one. Two money features read through it and fail closed
+       without it: `buildAdjustmentCard()` returns '' (the cost-adjustment card
+       cannot render at all) and `acceptCounterOffer()` guards `if (C && snap)`
+       (an accepted counter does NOT update the price). So on the live Request
+       app both work for demo data and silently do nothing for a request a real
+       user created. Connect builds one in its capture payload; Request does not.
+
+       The playground cannot exercise either path without a snapshot, so it
+       synthesizes the minimum shape. That is a scaffold for the harness — the
+       underlying gap belongs to Request and is recorded in the handoff doc. */
+    function ensureSnapshot(rec) {
+      if (!rec || rec.reviewSnapshot) return rec && rec.reviewSnapshot;
+      var offer = +rec.perWorkerCost || 0, cost = +rec.costOfItems || 0;
+      var cog = offer + cost;
+      var itf = Math.round(0.08 * (cog + 0.99) * 100) / 100;
+      var reqFee = Math.round((0.99 + itf) * 100) / 100;
+      var total = Math.round((cog + reqFee) * 100) / 100;
+      rec.reviewSnapshot = {
+        costOfItems: cost, workerPay: offer, workersNeeded: +rec.workersNeeded || 1,
+        bidsMode: !!rec.bidsMode, total: total,
+        fee: { gopherFee: 0.99, ageFee: 0, instantTransfer: itf, requestFee: reqFee,
+               fullGopherFee: 0.99, fullAgeFee: 0, fullInstantTransfer: itf, fullRequestFee: reqFee,
+               promo: null, promoDiscount: 0, trustShieldDiscount: 0,
+               cogOffer: cog, gmvTotal: total },
+        __ptSynthesized: true
+      };
+      return rec.reviewSnapshot;
+    }
+
     function rawList() {
       return (D.activeRequests || []).filter(function (r) { return r.__ptOwn; });
     }
@@ -487,24 +519,7 @@
     function counter(id, co) {
       var rec = raw(id);
       if (!rec) return false;
-      /* acceptCounterOffer() applies the countered price by writing THROUGH
-         r.reviewSnapshot — with no snapshot it silently hires at the old price.
-         Request's capture payload does not always build one, so synthesize the
-         minimum shape here rather than letting the accept half-apply. */
-      if (!rec.reviewSnapshot) {
-        var cog = (+rec.costOfItems || 0) + (+rec.perWorkerCost || 0);
-        var itf = 0.08 * (cog + 0.99);
-        rec.reviewSnapshot = {
-          costOfItems: +rec.costOfItems || 0,
-          workerPay: +rec.perWorkerCost || 0,
-          workersNeeded: +rec.workersNeeded || 1,
-          bidsMode: !!rec.bidsMode,
-          total: cog + 0.99 + itf,
-          fee: { gopherFee: 0.99, ageFee: 0, instantTransfer: itf,
-                 requestFee: 0.99 + itf, cogOffer: cog, gmvTotal: cog + 0.99 + itf,
-                 promo: null, promoDiscount: 0, trustShieldDiscount: 0 }
-        };
-      }
+      ensureSnapshot(rec);
       rec.counterOffers = rec.counterOffers || [];
       rec.counterOffers.push({
         changed: co.changed || 'offer',
@@ -604,6 +619,7 @@
       gopherCancelled: gopherCancelled,
       reqCancel: reqCancel,
       reset: reset,
+      ensureSnapshot: function (id) { return ensureSnapshot(raw(id)); },
       purgeSeed: purgeSeed,
       world: world,
       persist: persist,
