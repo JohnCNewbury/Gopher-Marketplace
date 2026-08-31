@@ -435,6 +435,56 @@ after the credits die.
 ⚠️ **Not device-verified.** `CameraPreview` is a native plugin; it does not run in a browser. Green
 CI proves this compiles and lints, not that a camera appears.
 
+#### 3.5.1 ⛔ The entry point was DEAD on `production` for two days — fixed 2026-08-31 (!253)
+
+**The bullet above — "`account.json` now routes `"path": "trustshield"`" — shipped in !247 without
+the schema file it points at.** `src/json/requester/trustshield.json` did not exist. The entry point
+was dead from the moment !247 merged until !253 (`19117c9a1e7e`) fixed it.
+
+**What the owner saw**, testing on a real iPhone: tap **Account → Add TrustShield Verification** →
+land silently on **Home**. No error, no white screen, nothing user-visible at all.
+
+**Why it presented as a bounce rather than a crash.** `src/pages/renderForm.js` resolves a
+navigation target by *requiring* a file named for the path:
+
+```js
+require("../json/" + apptype + "/" + next + ".json")
+```
+
+A missing file **throws**, and the `try/catch` around it — commented WHITE SCREEN GUARD, ~line 297 —
+catches the throw and hands control back to `/`. The guard is correct and should stay: it stops a
+malformed schema white-screening the app. But it also converts *"this screen does not exist"* into
+*"you are on Home now"*, which is indistinguishable from a deliberate navigation.
+
+⚠️ **Why nothing caught it.** The JSON pointing at the missing file was valid. The
+`case "trustshield"` in `renderForm.js` existed. eslint, prettier and every contract job were green.
+**Nothing in the pipeline resolved a Navigate path** — so a broken navigation target was invisible
+to every automated check, and the guard that prevents the white screen also hides the defect.
+
+**This is the second defect in two days found by hands-on testing after automated checks passed
+it** — the other being the offer-floor message rendered twice (!252), where both individual lines
+were correct and three separate automated checks missed the duplication. The pattern is worth
+naming: *these checks verify the parts, and both defects lived in the composition.*
+
+**The check that now guards it:** `scripts/assert-navigate-targets.mjs` (in the request repo) walks
+every schema in `src/json/requester`, collects every `{"type":"Navigate","path":X}`, and asserts a
+matching `X.json` exists. A **control assertion runs first**, so a scan that silently finds nothing
+fails loudly instead of passing green.
+
+⭐ **It immediately found two more dead targets, both predating this work** — `add_card` and
+`add_payout`, from the two top-level elements of `payout.json`. Both render, both are tappable, both
+bounce to Home, in the flow workers use to get paid.
+
+> ⚠️ **Those two look like a typo. They are not — do not "fix" them by dropping the underscore.**
+> Near-miss files exist (`addcard.json`, `addpayout.json`), but they are **orphans**: they use
+> element types `addcard`, `addpayout` and `blueheader`, and `renderForm.js` has **no case for any
+> of the three** — checked against all 135 of its case labels. Correcting the path would move the
+> user from *bounced to Home* to *a blank screen whose header also fails to render*, which is
+> strictly worse. Nothing else navigates to `addcard`/`addpayout`, and nothing navigates to `payout`
+> either, so the whole cluster is probably legacy and the right fix is likely **removing the dead
+> buttons**. That is an owner call and is tracked separately; they are allowlisted in `KNOWN_DEAD`
+> with this reasoning recorded inline, and the check still fails on anything new.
+
 ### 3.6 Backend — the post-cliff message ✅ DONE (`e51a8ac3`, in !433)
 
 `controllers/user/trustshield.js` returned, on **every** `generate_token` failure:
