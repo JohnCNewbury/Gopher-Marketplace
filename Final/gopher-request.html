@@ -1820,6 +1820,9 @@
      harness asserts no surface re-implements it locally. -->
 <script src="assets/js/gopher-request-logic.js"></script>
 <script src="assets/js/gopher-step-gates.js"></script>
+<!-- PT playground bridge (_prototypes/web-split-screen.html). Publishes window.GWeb
+     ONLY under ?pt=1; completely inert on the live site. -->
+<script src="assets/js/gopher-web-pt-bridge.js"></script>
 <!-- Cross-device request drafts. The kernel defines the contract (what travels, what
      never does, how two devices reconcile); the store owns where it lives and when it
      moves. Kernel first — the store reads it. Both are UMD, so the same files are what
@@ -12200,7 +12203,12 @@
       perWorker = toNum(state.payAmount) * hours;
     }
     const workersNeeded = state.moreThanOneWorker ? (parseInt(state.numWorkers, 10) || 1) : 1;
-    const interestedWorkers = buildInterestedPool(state.category);
+    // PT (split-screen playground): broadcast to NOBODY. The demo pool would
+    // auto-hire a fake Gopher under 'first available' before the real worker on
+    // the Go phone ever saw the request — the harness could then never observe
+    // an acceptance, because one had already happened.
+    const interestedWorkers = (window.GopherWebPT && window.GopherWebPT.on())
+      ? [] : buildInterestedPool(state.category);
     const when = state.scheduleType === 'now'
       ? 'Just now · awaiting your selection'
       : state.scheduleType === 'flexible'
@@ -12231,6 +12239,12 @@
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      // Broadcast identity. These three were never carried into the request
+      // record, so anything reading it downstream (the Go app's category feed,
+      // the worker's cost-of-items, the job description) had nothing to read.
+      category: state.category || null,
+      costOfItems: state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
+      descriptionFull: (state.description || '').trim(),
       dupKey: computeRequestDupKey(),
       perWorkerCost: perWorker,
       workersNeeded,
@@ -14218,8 +14232,11 @@
       <div class="si-workers-band">
         <div class="si-workers-ico">👥</div>
         <div class="si-workers-text">
+          ${(window.GopherWebPT && window.GopherWebPT.on()) ? `
+          <h5>Broadcasting to Gophers nearby</h5>
+          <p>You'll be notified the moment a Gopher accepts.</p>` : `
           <h5>${workers.length} worker${workers.length!==1?'s':''} already interested</h5>
-          <p>Review profiles, hire, or consider workers from your dashboard.</p>
+          <p>Review profiles, hire, or consider workers from your dashboard.</p>`}
         </div>
         <button class="si-workers-btn attn-pulse" data-action="see-workers-dashboard">See workers in dashboard →</button>
       </div>`}
@@ -19523,7 +19540,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
     // surface the recommendation message in the Inbox (isolated to the
     // Inbox; not added to activeRequests). unshift → appears on top / opens first.
-    out.unshift(REC_SEED_THREAD());
+    // PT playground: the ONLY Gopher that may appear is the real worker on the Go
+    // phone. This seed introduces four fabricated ones, so it is skipped entirely.
+    if(!(window.GopherWebPT && window.GopherWebPT.on())) out.unshift(REC_SEED_THREAD());
     // hide conversations with a now-deactivated Gopher.
     return out.filter(th => !isDeactivatedGopher(th.worker && th.worker.name));
   }
@@ -20629,6 +20648,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       id,
       icon: data.icon || '📋',
       title: data.title || 'New request',
+      category: data.category || null,
+      costOfItems: +data.costOfItems || 0,
+      descriptionFull: data.descriptionFull || '',
       status: 'pending',            // ← ALWAYS pending at submit
       statusLabel: 'Pending',
       submittedAt: Date.now(),      // drives the <20-min early-cancel variant
@@ -20651,7 +20673,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       workersNeeded: needed,
       perWorkerCost: data.perWorkerCost || 0,
       multiIndividual: false,   // ALWAYS false in Request — see REQUEST HIRE RULE (Connect-only feature)
-      worker: `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
+      worker: (interested.length === 0 && window.GopherWebPT && window.GopherWebPT.on())
+        ? 'Broadcasting \u2014 no Gopher yet'
+        : `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
       amount: data.amountLabel || '',  // "$<total> total"
       when: data.when || 'Just now · awaiting your selection',
       dupKey: data.dupKey || null,
@@ -26020,6 +26044,32 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       g40RepostSeq = 200;   // demo order-number counter back to its base
     };
   })();
+
+  /* ── PT playground bridge ────────────────────────────────────────────────
+     Publishes window.GWeb — a GReq-shaped view of DASH_DATA — so
+     _prototypes/web-split-screen.html can run this web app against the Gopher
+     Go prototype. install() returns null without ?pt=1 and nothing is
+     published; the live site is untouched. A broken adapter THROWS rather
+     than degrading, so a silent half-bridge can never be mistaken for a
+     legitimately empty dashboard. */
+  try {
+    if (window.GopherWebPT) {
+      window.GopherWebPT.install({
+        surface: 'request',
+        DASH_DATA: DASH_DATA,
+        dashState: dashState,
+        startJob: startJob,
+        render: renderActiveRequests,
+        recount: function(){
+          try{ recountKpis(); }catch(_){}
+          try{ renderPrevRequests(); }catch(_){}
+          try{ updateInboxBadge(); }catch(_){}
+          try{ renderInbox(); }catch(_){}
+        },
+        cancel: window.__cancelDashboardRequest || null
+      });
+    }
+  } catch (e) { console.error('[GopherWebPT] request bridge failed to install:', e); }
 })();
 </script>
 <script>

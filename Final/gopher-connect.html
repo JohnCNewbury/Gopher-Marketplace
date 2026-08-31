@@ -41,6 +41,9 @@
      truth across Request web / Connect / the Request App prototype. -->
 <script src="assets/js/gopher-request-logic.js"></script>
 <script src="assets/js/gopher-step-gates.js"></script>
+<!-- PT playground bridge (_prototypes/web-split-screen.html). Publishes window.GWeb
+     ONLY under ?pt=1; completely inert on the live site. -->
+<script src="assets/js/gopher-web-pt-bridge.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -12354,8 +12357,11 @@ const PAY_BADGES = {
       <div class="see-workers-dashboard">
         <div class="swd-icon">👥</div>
         <div class="swd-text">
+          ${(window.GopherWebPT && window.GopherWebPT.on()) ? `
+          <strong>Broadcasting to Gophers nearby</strong>
+          <span>You'll be notified the moment a Gopher accepts.</span>` : `
           <strong>${interestedCount} worker${interestedCount!==1?'s':''} already interested</strong>
-          <span>Review profiles, hire, or consider workers from your dashboard.</span>
+          <span>Review profiles, hire, or consider workers from your dashboard.</span>`}
         </div>
         <button class="swd-cta" id="seeWorkersInDashboard">See workers in dashboard →</button>
       </div>
@@ -14013,7 +14019,12 @@ const PAY_BADGES = {
     // dashboard shows a connected request, not a pending 8-worker broadcast.
     const _svc = !!(state.fromDeal && state.dealKind === 'service');
     const _prov = state.dealProvider || null;
-    let interestedForDash = interestedWorkers;
+    // PT (split-screen playground): broadcast to NOBODY. The demo pool would
+    // auto-hire a fake Gopher under 'first available' before the real worker on
+    // the Go phone ever saw the request, so the harness could never observe an
+    // acceptance — one would already have happened.
+    let interestedForDash = (window.GopherWebPT && window.GopherWebPT.on())
+      ? [] : interestedWorkers;
     let whenForDash = when;
     if(_svc && _prov){
       interestedForDash = [{
@@ -14042,6 +14053,11 @@ const PAY_BADGES = {
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      // Broadcast identity. Neither was carried into the request record, so the
+      // Go app had no category slug to file the job under and no cost-of-items
+      // to show the worker.
+      category: state.category || null,
+      costOfItems: state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
       perWorkerCost: perWorker,
       workersNeeded,
       // Summary total = the canonical grand total (COG+Offer + post-discount connect
@@ -21076,6 +21092,8 @@ const PAY_BADGES = {
       id,
       icon: data.icon || '📋',
       title: data.title || 'New request',
+      category: data.category || null,
+      costOfItems: +data.costOfItems || 0,
       status: 'pending',
       statusLabel: 'Pending',
       submittedAt: Date.now(),           // drives the <20-min early-cancel variant
@@ -21085,7 +21103,9 @@ const PAY_BADGES = {
       workersNeeded: needed,
       perWorkerCost: data.perWorkerCost || 0,
       multiIndividual: needed > 1,
-      worker: `${interested.length} worker${interested.length!==1?'s':''} interested`,
+      worker: (interested.length === 0 && window.GopherWebPT && window.GopherWebPT.on())
+        ? 'Broadcasting \u2014 no Gopher yet'
+        : `${interested.length} worker${interested.length!==1?'s':''} interested`,
       amount: data.amountLabel || '',
       when: data.when || 'Just now · awaiting your selection',
       interestedWorkers: interested,
@@ -24527,6 +24547,33 @@ const PAY_BADGES = {
       g40RepostSeq = 500;
     };
   })();
+
+  /* ── PT playground bridge ────────────────────────────────────────────────
+     Publishes window.GWeb — a GReq-shaped view of DASH_DATA — so
+     _prototypes/web-split-screen.html can run Connect against the Gopher Go
+     prototype. install() returns null without ?pt=1 and nothing is published;
+     the live site is untouched. A broken adapter THROWS rather than degrading,
+     so a silent half-bridge can never be mistaken for an empty dashboard.
+     Connect has no recountKpis — the adapter treats it as optional. */
+  try {
+    if (window.GopherWebPT) {
+      window.GopherWebPT.install({
+        surface: 'connect',
+        DASH_DATA: DASH_DATA,
+        dashState: dashState,
+        startJob: startJob,
+        render: renderActiveRequests,
+        recount: function(){
+          try{ renderKpiCounts(); }catch(_){}
+          try{ renderPrevRequests(); }catch(_){}
+          try{ renderGophers(); }catch(_){}
+          try{ updateInboxBadge(); }catch(_){}
+          try{ renderInbox(); }catch(_){}
+        },
+        cancel: window.__cancelDashboardRequest || null
+      });
+    }
+  } catch (e) { console.error('[GopherWebPT] connect bridge failed to install:', e); }
 })();
 
 </script>

@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gopher — Web ↔ Go (live, shared PT bridge)</title>
+<style>
+  :root{ --navy:#002461; --green:#33D975; --green-deep:#1CB061; --muted:#5b6472; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; min-height:100%; }
+  body{ font-family:'Nunito','DM Sans',system-ui,sans-serif;
+        background:radial-gradient(1200px 600px at 50% -10%, #0b1b3f 0%, #060d22 60%, #04081a 100%);
+        color:#fff; }
+
+  /* ── top bar ─────────────────────────────────────────────────────────── */
+  .bar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:13px 20px;
+        background:rgba(255,255,255,.04); border-bottom:1px solid rgba(255,255,255,.08);
+        position:sticky; top:0; z-index:40; backdrop-filter:blur(6px); }
+  .bar h1{ font-size:15px; font-weight:900; margin:0; display:flex; align-items:center; gap:9px; }
+  .bar h1 .dot{ width:9px; height:9px; border-radius:50%; background:var(--green);
+                box-shadow:0 0 0 4px rgba(51,217,117,.25); }
+  .bar .spacer{ flex:1; }
+  .status{ width:100%; font-size:12.5px; color:rgba(255,255,255,.78);
+           font-family:'DM Sans',sans-serif; line-height:1.5; }
+  .status b{ color:var(--green); }
+  .status.warn{ color:#ffd9d9; } .status.warn b{ color:#ff9d9d; }
+
+  .btn{ font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; color:#cfe0ff;
+        background:rgba(120,170,255,.15); border:1px solid rgba(120,170,255,.38);
+        border-radius:99px; padding:7px 15px; cursor:pointer; white-space:nowrap;
+        transition:background .15s, opacity .15s; }
+  .btn:hover{ background:rgba(120,170,255,.30); }
+  .btn:active{ transform:translateY(1px); }
+  .btn[disabled]{ opacity:.5; cursor:default; }
+  .btn.deals-on{ color:#b9f4cf; background:rgba(51,217,117,.16); border-color:rgba(51,217,117,.45); }
+  .btn.deals-off{ color:#ffc9c9; background:rgba(233,90,90,.16); border-color:rgba(233,90,90,.45); }
+
+  /* ── stage ───────────────────────────────────────────────────────────── */
+  .stage{ display:flex; gap:34px; justify-content:center; align-items:flex-start;
+          padding:24px 20px 44px; flex-wrap:wrap; }
+  .col{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .col .label{ font-weight:900; font-size:12.5px; letter-spacing:.4px; text-transform:uppercase;
+               color:rgba(255,255,255,.75); display:flex; align-items:center; gap:8px; }
+  .col .label .pill{ font-size:10px; font-weight:800; padding:3px 9px; border-radius:99px; }
+  .col.web .pill{ background:rgba(51,217,117,.18); color:#8ff0b4; }
+  .col.go  .pill{ background:rgba(120,170,255,.18); color:#b9d2ff; }
+
+  /* Desktop browser chassis — the web apps are desktop surfaces, so they get a
+     browser window, not a phone. The iframe renders at a fixed logical desktop
+     size and is scaled down to fit; the app never sees a narrow viewport. */
+  .browser{ background:#1b2233; border-radius:14px; padding:0; overflow:hidden;
+            box-shadow:0 30px 90px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); }
+  .chrome{ display:flex; align-items:center; gap:8px; padding:9px 13px; background:#232c40;
+           border-bottom:1px solid rgba(255,255,255,.07); }
+  .chrome .lights{ display:flex; gap:6px; }
+  .chrome .lights i{ width:11px; height:11px; border-radius:50%; display:block; }
+  .chrome .lights i:nth-child(1){ background:#ff5f57; }
+  .chrome .lights i:nth-child(2){ background:#febc2e; }
+  .chrome .lights i:nth-child(3){ background:#28c840; }
+  .chrome .url{ flex:1; margin-left:6px; background:#141b2b; border-radius:7px; padding:5px 12px;
+                font-family:'DM Sans',sans-serif; font-size:11.5px; color:rgba(255,255,255,.55);
+                white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .viewport{ position:relative; overflow:hidden; background:#fff; }
+  .viewport iframe{ position:absolute; top:0; left:0; border:0;
+                    transform-origin:top left; background:#fff; }
+
+  /* Phone chassis — unchanged from split-screen.html so the Go side is identical. */
+  .phone{ position:relative; width:390px; height:844px; max-height:calc(100vh - 170px);
+          background:#000; border-radius:44px; padding:11px;
+          box-shadow:0 30px 90px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.06) inset; }
+  .screen{ position:relative; width:100%; height:100%; border-radius:34px;
+           overflow:hidden; overflow:clip; background:#fff; }
+  .screen iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .notch{ position:absolute; top:11px; left:50%; transform:translateX(-50%); width:150px; height:26px;
+          background:#000; border-radius:0 0 16px 16px; z-index:20; pointer-events:none; }
+
+  .hint{ max-width:1000px; margin:0 auto; padding:0 20px 44px; color:rgba(255,255,255,.55);
+         font-family:'DM Sans',sans-serif; font-size:12.5px; line-height:1.7; }
+  .hint b{ color:rgba(255,255,255,.8); }
+  .hint code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+              background:rgba(255,255,255,.07); padding:1px 5px; border-radius:4px; }
+  .hint .gap{ margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.09); }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1><span class="dot"></span> Gopher · Web ↔ Go — live</h1>
+  <span class="spacer"></span>
+  <button id="dealsLive" class="btn" type="button"
+    title="Launch gate — Gopher Deals is Raleigh-DMA-only at launch. This toggles the GO PHONE only; website gating was deferred by the owner (2026-07-16), so the web pane is unaffected.">Deals: …</button>
+  <button id="resetDemo" class="btn" type="button" title="Clear both panes and start fresh">↺ Reset demo</button>
+  <div class="status" id="status">Booting the web app and the Go phone…</div>
+</div>
+
+<div class="stage">
+  <div class="col web">
+    <div class="label">Requester <span class="pill" id="webPill">Request · web</span></div>
+    <div class="browser">
+      <div class="chrome">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="url" id="webUrl">gophergo.io/gopher-request.html</div>
+      </div>
+      <div class="viewport" id="webViewport"><iframe id="webFrame" title="Gopher web app"></iframe></div>
+    </div>
+  </div>
+  <div class="col go">
+    <div class="label">Gopher <span class="pill">Go app</span></div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen"><iframe id="goFrame" title="Gopher Go"></iframe></div>
+    </div>
+  </div>
+</div>
+
+<div class="hint">
+  <b>How it works —</b> there is no server and no fake bridge. The left pane is <b>the live web
+  site</b> — navigate it exactly as a requester would, including the site's own Connect ↔ Request
+  links; the harness re-applies <code>?pt=1</code> to whatever page lands there. The right pane is
+  the <b>real Gopher Go prototype</b>. Under that flag each web app publishes
+  <code>window.GWeb</code> — a GReq-shaped view of its own dashboard store — and the Go prototype
+  publishes the <code>__pt*</code> hooks it already had. This page is only the wire between them.
+  <br><br>
+  <b>Nothing here is demo data.</b> No seeded requests, no request history, no saved Gophers, no
+  recommended-Gopher inbox, and no pool of fake workers. Every request is one you submitted, and
+  the <b>only</b> Gopher who can ever appear is the real one on the Go phone — a request stays
+  <i>Broadcasting</i> until they actually accept it. What that acceptance then means is decided by
+  the request's own worker-selection mode: under <b>First available</b> the acceptance <i>is</i> the
+  hire; under <b>I'll select my worker</b> it arrives as a candidacy you must Hire. That difference
+  is the single most important thing this playground exists to prove.
+  <br><br>
+  Each page keeps its own requests across navigation, so you can leave Request, use Connect, and
+  come back to find your work intact. The Go phone holds jobs from both.
+  <div class="gap">
+    <b>Not yet relayed</b> — the Go app raises these, but the web dashboards have no surface that
+    can receive them, so they are deliberately <i>not</i> faked: no-show timer, dispute, turn-by-turn
+    navigation state, report-a-request, and Refer-Yourself. Cost adjustment is representable
+    (<code>r.pendingAdjustment</code>) and is wired.
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ═══ Constants ═════════════════════════════════════════════════════════ */
+  var GOPHER = 'Marcus Hale';          // the one Gopher on the Go phone
+  var SURFACES = {
+    request: { file:'../Final/gopher-request.html', url:'gophergo.io/gopher-request.html',
+               pill:'Request · web', open:'openRequestDashboard' },
+    connect: { file:'../Final/gopher-connect.html', url:'gophergo.io/gopher-connect.html',
+               pill:'Connect · web', open:'__openDashboard' }
+  };
+  var WEB_W = 1440, WEB_H = 900;       // logical desktop viewport handed to the web app
+
+  /* ═══ Elements ══════════════════════════════════════════════════════════ */
+  var webFrame = document.getElementById('webFrame'),
+      goFrame  = document.getElementById('goFrame'),
+      viewport = document.getElementById('webViewport'),
+      statusEl = document.getElementById('status'),
+      webPill  = document.getElementById('webPill'),
+      webUrl   = document.getElementById('webUrl'),
+      resetBtn = document.getElementById('resetDemo'),
+      dealsBtn = document.getElementById('dealsLive');
+
+  var surface = 'request';
+
+  function L(){ try{ return webFrame.contentWindow; }catch(_){ return null; } }
+  function R(){ try{ return goFrame.contentWindow;  }catch(_){ return null; } }
+  function W(){ var l=L(); try{ return (l && l.GWeb) || null; }catch(_){ return null; } }
+  function status(m, warn){ statusEl.innerHTML=m; statusEl.className='status'+(warn?' warn':''); }
+
+  /* ═══ Layout — scale the desktop viewport to fit the pane ═══════════════ */
+  function fitWeb(){
+    var avail = Math.max(360, Math.min(window.innerWidth - 390 - 130, 1180));
+    var availH = Math.max(400, window.innerHeight - 190);
+    var s = Math.min(avail / WEB_W, availH / WEB_H);
+    webFrame.style.width  = WEB_W + 'px';
+    webFrame.style.height = WEB_H + 'px';
+    webFrame.style.transform = 'scale(' + s + ')';
+    viewport.style.width  = Math.round(WEB_W * s) + 'px';
+    viewport.style.height = Math.round(WEB_H * s) + 'px';
+  }
+  window.addEventListener('resize', fitWeb);
+
+  /* ═══ Relay bookkeeping ═════════════════════════════════════════════════
+     Keyed by request id. Reset with the demo and on every surface swap — a
+     Connect id and a Request id can never collide (GC- vs GR-), but the Go
+     phone is rebooted on a swap, so stale "already relayed" marks would
+     swallow the first event of the new session. */
+  var injected, offered, hired, countered, counterDecided, statusSeen,
+      goMsgSeen, reqMsgSeen, goCancelSeen, reqCancelSeen, adjustSeen, counterPending,
+      startNarrated;
+  function clearRelays(){
+    injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
+    startNarrated={}; orderSurface={}; offSurfaceWarned={};
+    goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
+    counterPending={};
+  }
+  clearRelays();
+
+  /* ═══ Web record → Go order ═════════════════════════════════════════════
+     Byte-for-byte the same mapping split-screen.html uses, because GWeb is
+     published in the GReq shape precisely so this function does not fork.
+     A second, drifting copy of this map is exactly the failure the shared
+     modules exist to prevent. */
+  function orderFromReq(r){
+    return {
+      id:r.order, cat:r.cat, title:r.title,
+      bids:!!r.bids, topOffer:(r.offerBand==='generous'),
+      pay:+r.pay||0, cost:+r.cost||0, workers:+r.workers||1,
+      ageRestricted:!!r.ageRestricted, trustShield:!!r.trustShield,
+      deal:!!r.deal, dealMerchant:r.dealMerchant||'',
+      pickup:r.pickup||'', dropoff:r.dropoff?[r.dropoff]:[],
+      scope:r.scope||r.title, dist:r.dist||'2.4',
+      pickupStairs:+r.pickupStairs||0, destStairs:+r.destStairs||0,
+      serviceElevatorPickup:!!r.serviceElevatorPickup, serviceElevatorDest:!!r.serviceElevatorDest,
+      scheduled:!!r.scheduledForLater,
+      when:(r.scheduledForLater && r.timingLabel) ? r.timingLabel : (r.when||'Now · ASAP'),
+      requestor:r.requestor||'A requester',
+      directBooking:!!r.directBooking, provider:r.provider||'',
+      workerSelection:(function(v){ v=String(v||'first'); return v==='prioritize'?'my':v; })(r.workerSelection)
+    };
+  }
+
+  /* ═══ Web → Go : a submitted request becomes a live Available job ═══════ */
+  var orderSurface={};      // order id -> the page it was submitted on
+  var offSurfaceWarned={};  // narrated once per job, not once per tick
+
+  function watchNative(){
+    try{
+      var g=W(); if(!g) return;
+      var list=g.all()||[];
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(!r || r.stage!=='searching' || r.cancelled || r.gCancelled) continue;
+        if(r.directTo && r.directTo!==GOPHER) continue;     // a directed provider deal is not an open broadcast
+        var seq=r.resubmitSeq||0;
+        if(injected[r.order]===seq) continue;
+        var w=R(); if(!(w && w.__injectJob)) continue;      // Go mid-reload — retry next tick
+        var edited = injected[r.order]!==undefined;
+        injected[r.order]=seq;
+        orderSurface[r.order]=surface;
+        w.__injectJob(orderFromReq(r));
+        status(edited
+          ? 'Request <b>'+r.order+'</b> was <b>edited &amp; resubmitted</b> → the Go phone got a fresh notification.'
+          : 'Request <b>'+r.order+'</b> submitted on <b>'+surface+' web</b> → it is now a live job on the Go phone. '
+            +'Tap the banner → open the job → <b>Accept</b>.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : an acceptance, read through INV-ACCEPT ═════════════════
+     GWeb.offer() owns the rule (first / select / my) so it is decided in ONE
+     place and cannot drift from the app's own __createDashboardRequest logic.
+     The Go side is checked for readiness BEFORE the web side is mutated —
+     otherwise an auto-hire could land on the web while the Go phone, mid
+     reload, never learned it was approved. */
+  function watchAccept(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        if(!job || !job.accepted || offered[id]) continue;
+        if(job.bid || job.counter || job.bidAccepted || job.counterAccepted || job.approved) continue;
+        var rec=g.get(id);
+        if(!rec){
+          /* The Go phone holds jobs from BOTH pages; the web pane shows one at a
+             time. Acting on a job whose page is not loaded cannot be relayed —
+             say which page to go back to instead of retrying in silence. */
+          var from=orderSurface[id];
+          if(from && from!==surface && !offSurfaceWarned[id]){
+            offSurfaceWarned[id]=true;
+            status('The Gopher accepted <b>'+id+'</b>, which was submitted on <b>'+SURFACES[from].pill
+              +'</b>. Navigate the left pane back there to hire them — the acceptance is held until you do.');
+          }
+          continue;
+        }
+        if(!(w.__ptApprove && w.__ptBidResult)) continue;           // Go hooks not ready — retry
+
+        var res=g.offer(id, { name:GOPHER, tier:'elite+', dist:rec.dist });
+        if(!res) continue;
+        offered[id]=true;
+
+        if(res.hired){
+          var okd=false; try{ okd=!!w.__ptApprove(id); }catch(_){}
+          if(okd) hired[id]=true;
+          status('Gopher <b>accepted</b> '+id+' — the request is <b>'
+            +(res.mode==='my'?'Prioritize MY Gophers</b> and '+GOPHER+' is one of yours'
+                             :'first available</b>')
+            +', so he is hired on the spot. <b>Active</b> on both panes.');
+        }else{
+          status('Gopher <b>accepted</b> '+id+' → it is a <b>candidacy</b>, not a hire. '
+            +'Open the request in the web dashboard and press <b>Hire</b> — only then does it go Active on both panes.');
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web → Go : the requester pressed Hire on a candidacy ══════════════ */
+  function watchHire(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        if(hired[id]) continue;
+        var job=w.__ptJobs[id]; if(!job || !job.accepted) continue;
+        var rec=g.get(id); if(!rec || rec.hired!==GOPHER) continue;   // not hired on the web yet
+        if(!(w.__ptBidResult && w.__ptJobs[id])) continue;            // Go not ready — retry
+        try{ w.__ptBidResult(id, 'accepted', String(rec.pay||'')); }catch(_){ continue; }
+        hired[id]=true;
+        status('You <b>hired</b> '+GOPHER+' on '+id+' → the Go phone was notified and the job is now <b>Active</b> on both panes. 🎉');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web-only : the requester still has to press "Start job" ══════════
+     A REAL DIVERGENCE, not a harness gap. On web, Hire and Start are two
+     separate acts — startJob() is the single place status flips pending →
+     in-progress, and it fires from #startJobBtn, not from Hire. The Go app has
+     no equivalent gate: the moment the worker is hired it shows them as on the
+     job. So between Hire and Start the two panes genuinely disagree, and
+     without this narration the playground looks stalled when it is in fact
+     showing the seam accurately. Do NOT "fix" it by auto-starting — that would
+     hide the difference this playground exists to expose. */
+  function watchStart(){
+    try{
+      var g=W(); if(!g) return;
+      var list=g.all()||[];
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(!r || !r.hired) continue;
+        if(r.stage==='searching' && !startNarrated[r.order]){
+          startNarrated[r.order]='waiting';
+          status('⚠️ '+r.order+' is <b>hired but not started</b>. The web app needs the requester to press '
+            +'<b>Start job</b> — Hire and Start are two separate acts on web, and the Go app has no such gate. '
+            +'Until you press it the two panes disagree on purpose.');
+        } else if(r.stage!=='searching' && startNarrated[r.order]==='waiting'){
+          startNarrated[r.order]='started';
+          status('You pressed <b>Start job</b> → '+r.order+' is now <b>In Progress</b> with a live tracker. '
+            +'Advance it from the Go phone (Update request → Start the job → Items picked up → Mark job complete).');
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : a counter-offer lands on the dashboard's counter card ══ */
+  function watchCounter(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        if(!job || !job.counter || countered[id] || job.counterAccepted || job.counterDeclined) continue;
+        var rec=g.get(id); if(!rec) continue;
+        var c=job.counter;
+        var pay=+c.amt||0, cost=+rec.cost||0, cog=cost+pay;
+        var itf=0.08*(cog+0.99), reqFee=0.99+itf;
+        var ok=g.counter(id, {
+          changed:'offer', comment:c.note||null, worker:c.by||GOPHER, tier:'elite+', dist:rec.dist,
+          counter:{ costOfItems:cost, workerPay:pay, workersNeeded:+rec.workers||1,
+                    gopherFee:0.99, ageFee:0, instantTransfer:itf, requestFee:reqFee,
+                    fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:itf, fullRequestFee:reqFee,
+                    promo:null, promoDiscount:0, trustShieldDiscount:0,
+                    cogOffer:cog, gmvTotal:cog+reqFee }
+        });
+        if(!ok) continue;
+        countered[id]=true;
+        counterPending[id]=true;
+        status('Gopher <b>countered</b> '+id+' at <b>$'+c.amt+'</b> (you offered $'+c.was+') → '
+          +'a <b>counter-offer card</b> is on the request in the web dashboard. Open it and <b>Accept</b> or <b>Deny</b>.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web → Go : the requester's Accept / Deny on that counter ══════════
+     The web app's acceptCounterOffer()/deny both SPLICE the counter out of
+     r.counterOffers; only Accept also pushes the countering worker in as
+     'hired'. Reading the pair is sound here because this playground puts
+     exactly one counter in flight at a time — the Go phone has one Gopher. */
+  function watchCounterDecision(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in counterPending){
+        if(!counterPending[id] || counterDecided[id]) continue;
+        var raw=g.raw(id); if(!raw) continue;
+        var still=(raw.counterOffers||[]).some(function(co){ return co.fromGoApp; });
+        if(still) continue;                                           // requester has not decided yet
+        if(!(w.__ptDecision && w.__ptJobs[id])) continue;              // Go not ready — retry
+        var rec=g.get(id);
+        var accepted = rec && rec.hired===GOPHER;
+        var amt = accepted ? String(rec.pay||'') : '';
+        try{ w.__ptDecision(id, accepted?'accepted':'declined', amt); }catch(_){ continue; }
+        counterDecided[id]=true; counterPending[id]=false;
+        if(accepted){ offered[id]=true; hired[id]=true; }
+        status(accepted
+          ? 'You <b>accepted</b> the $'+amt+' counter → '+id+' is <b>Active</b> and the Gopher is hired at the new price. 🎉'
+          : 'You <b>denied</b> the counter → the Gopher was notified; '+id+' stays open.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : worker progress ticks the live tracker's step list ═════ */
+  var SUBSTAGE_STEP = { inprogress:'In-Progress', items:'Items Purchased', completed:'Completed' };
+  function watchStatus(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        if(!job || !job.accepted || !job.substage || job.noShow) continue;
+        if(statusSeen[id]===job.substage) continue;
+        var step=SUBSTAGE_STEP[job.substage]; if(!step) continue;
+        if(!g.substage(id, step)) continue;                            // no live tracker yet — retry
+        statusSeen[id]=job.substage;
+        var LB={ inprogress:'started the job', items:'secured the items', completed:'completed the job' };
+        status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
+          +(job.substage==='completed'?' The request now needs your <b>confirmation</b> before payout.':''));
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go ↔ Web : messaging, both directions ════════════════════════════ */
+  function watchMessages(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id]; var rec=g.get(id); if(!rec) continue;
+
+        var goMsgs=job.msgs||[], seen=goMsgSeen[id]||0;
+        if(seen < goMsgs.length){
+          for(var i=seen;i<goMsgs.length;i++){
+            g.message(id, GOPHER, goMsgs[i].text, { from:'worker', flagged:!!goMsgs[i].flagged });
+          }
+          goMsgSeen[id]=goMsgs.length;
+          status('New message from the Gopher on '+id+' → it is in the web <b>Inbox</b> thread. 🔔');
+        }
+
+        var reqMsgs=g.messagesFrom(id, GOPHER);
+        var rseen=reqMsgSeen[id]||0;
+        if(rseen < reqMsgs.length && w.__ptInboxDeliver){
+          for(var j=rseen;j<reqMsgs.length;j++){
+            try{ w.__ptInboxDeliver(id, reqMsgs[j].text, reqMsgs[j].flagged); }catch(_){}
+          }
+          reqMsgSeen[id]=reqMsgs.length;
+        }
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : the worker adjusts the agreed charge on site ═══════════ */
+  function watchAdjust(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        var adj=job && job.adjust; if(!adj || !adj.seq) continue;
+        if(adjustSeen[id]===adj.seq) continue;
+        var raw=g.raw(id); if(!raw || !raw.reviewSnapshot) continue;    // no frozen deal to compare — retry
+        var pay=+adj.offer||0, cost=+adj.cost||0, cog=pay+cost;
+        var itf=0.08*(cog+0.99), reqFee=0.99+itf;
+        g.update(id, { pendingAdjustment:{
+          comment: adj.note || 'Costs came in different from the estimate.',
+          receipt: adj.receipt || null,
+          adjusted:{ costOfItems:cost, workerPay:pay, workersNeeded:+raw.workersNeeded||1,
+                     gopherFee:0.99, ageFee:0, instantTransfer:itf, requestFee:reqFee,
+                     fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:itf, fullRequestFee:reqFee,
+                     promo:null, promoDiscount:0, trustShieldDiscount:0,
+                     cogOffer:cog, gmvTotal:cog+reqFee }
+        }, needsAttention:true });
+        adjustSeen[id]=adj.seq;
+        status('Gopher requested a <b>cost adjustment</b> on '+id+' → approve or decline it on the request card.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : the Gopher cancelled ══════════════════════════════════
+     Guarded on !cancelledByReq — a REQUESTER cancel also lands on the Go job
+     as `cancelled`, and echoing that back as "your Gopher cancelled" is the
+     bug that once resurrected cancelled requests through the recovery sheet. */
+  function watchGoCancel(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        if(!job || !job.cancelled || job.cancelledByReq || goCancelSeen[id]) continue;
+        if(!g.get(id)) continue;
+        g.gopherCancelled(id, job.cancelReason||'');
+        goCancelSeen[id]=true;
+        injected[id]=undefined; offered[id]=false; hired[id]=false;   // re-broadcastable
+        status('Gopher <b>cancelled</b> '+id+' → the request is back to <b>Pending</b> on the web '
+          +'and is broadcasting again.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web → Go : the requester cancelled ═══════════════════════════════ */
+  function watchReqCancel(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      var list=g.all()||[];
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(!r || !r.cancelled || reqCancelSeen[r.order]===r.reqCancelSeq) continue;
+        if(!(w.__ptReqCancelled && w.__ptJobs[r.order])) continue;
+        try{ w.__ptReqCancelled(r.order, 'cancel'); }catch(_){ continue; }
+        reqCancelSeen[r.order]=r.reqCancelSeq;
+        status('You <b>cancelled</b> '+r.order+' → the Gopher was notified and the job left their board.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Boot ══════════════════════════════════════════════════════════════ */
+  function bootFrames(){
+    /* Cache-bust: without it Safari/Chrome happily serve a stale ?pt=1 copy of
+       either pane, which reads as "the fix did not work" when it did. */
+    var v='&v='+Date.now();
+    webFrame.src = SURFACES[surface].file + '?pt=1' + v;
+    goFrame.src  = 'Go/gopher-go-prototype.html?pt=1' + v;
+    paintPane();
+    fitWeb();
+  }
+
+  function paintPane(){
+    webPill.textContent = SURFACES[surface].pill;
+    webUrl.textContent  = SURFACES[surface].url;
+  }
+
+  /* ═══ The left pane is THE SITE, not a fixed app ═════════════════════════
+     There is no Request/Connect switcher here: the site links the two pages to
+     each other, so the requester navigates the way a real one would. What the
+     harness owns is the pane, so it re-applies ?pt=1 to whatever page lands in
+     it — the site's own links carry no query string, and without the flag the
+     bridge would not install and the pane would go quietly dead.
+
+     PT stays non-sticky (never written to sessionStorage as a mode) precisely
+     because it is re-applied HERE, by the frame that owns the pane, rather than
+     remembered by the app. A stale sticky flag is how the prototype's own store
+     once contaminated an ordinary visit. */
+  function onWebLoad(){
+    var l=L(), loc;
+    try{ loc=l.location; var _probe=loc.pathname; }catch(_){ return; }   // cross-origin: not ours
+    if(new URLSearchParams(loc.search).get('pt')!=='1'){
+      var sep = loc.search ? '&' : '?';
+      try{ loc.replace(loc.pathname + loc.search + sep + 'pt=1&v=' + Date.now()); }catch(_){}
+      return;                                        // the replace fires load again, with the flag
+    }
+    var next = /connect/i.test(loc.pathname) ? 'connect' : 'request';
+    var moved = (next !== surface);
+    surface = next;
+    signedIn = false;
+    paintPane();
+    if(moved){
+      status('You navigated to <b>'+SURFACES[surface].pill+'</b>. Its own requests come back with it; '
+        +'the Go phone keeps every job from both.');
+    }
+  }
+  webFrame.addEventListener('load', onWebLoad);
+
+  /* The web dashboard only exists for a signed-in user — the flow's own
+     submitRequestAndCapture() returns null otherwise and NOTHING broadcasts.
+     Rather than leave that as a silent dead end, sign the demo user in as soon
+     as the pane is ready. */
+  var signedIn=false;
+  function autoSignIn(){
+    if(signedIn) return;
+    var l=L(); if(!l) return;
+    var fn=SURFACES[surface].open;
+    try{
+      if(typeof l[fn]!=='function') return;
+      l[fn]({ name:'John Newbury', email:'john.demo@gophergo.io', phone:'(919) 555-0124',
+              city:'Holly Springs, NC', dob:'01-01-1990', trustShield:true });
+      signedIn=true;
+      /* Opening the dashboard seeds demo requests. Drop them NOW, before the
+         first tick, or watchNative broadcasts the seed to the Go phone as if
+         somebody had submitted it. Twice: once immediately, once after the
+         dashboard's own deferred renders have settled. */
+      /* purgeSeed() also restores this page's saved requests, so it must run
+         AFTER the dashboard has seeded. Repeated because the dashboard's own
+         renders are deferred and the seed can land late. */
+      var purge=function(){ try{ if(l.GWeb) l.GWeb.purgeSeed(); }catch(_){} };
+      purge(); setTimeout(purge, 400); setTimeout(purge, 1400); setTimeout(purge, 3000);
+    }catch(_){}
+  }
+
+  /* ═══ Self-check — a quiet pane is not proof of a quiet system ══════════
+     Three things fail SILENTLY here and each one makes the playground look
+     healthy while proving nothing: a wrong document root (GopherIQData 404s),
+     a web app served without the bridge (no window.GWeb), and a Go pane that
+     came up without its PT hooks. Say so loudly instead. */
+  function selfCheck(){
+    var l=L(), w=R(), problems=[];
+    /* Document-root probe belongs on the GO pane, not the web pane. Go pulls
+       ../../Final/assets/js/gopher-iq-data.js — a relative hop that only
+       resolves when the server root is the repo root, so it is the reliable
+       canary. The web pane is NOT: gopher-connect.html never loads that module
+       at all (its three GopherIQData references are guarded), so asserting it
+       there reported a healthy Connect session as broken. */
+    try{ if(w && !w.GopherIQData) problems.push('the Go pane has no <b>GopherIQData</b> — serve from the REPO ROOT, not from <code>_prototypes/</code>'); }catch(_){}
+    try{ if(l && !l.GWeb) problems.push('the web pane published no <b>window.GWeb</b> — <code>gopher-web-pt-bridge.js</code> did not load or install'); }catch(_){}
+    try{ if(w && !w.__injectJob) problems.push('the Go pane has no <b>__injectJob</b> — it did not boot in <code>?pt=1</code> mode'); }catch(_){}
+    if(problems.length){
+      status('⚠️ <b>This playground is not wired.</b> '+problems.join('; ')+'. Nothing below proves anything until this is fixed.', true);
+      return false;
+    }
+    /* Prove the world is empty rather than assuming it — a stray demo record is
+       invisible until it broadcasts a job nobody asked for. */
+    var dirty=[];
+    try{
+      var wl=l.GWeb.world();
+      for(var k in wl){ if(k!=='activeRequests' && wl[k]>0) dirty.push(k+'='+wl[k]); }
+    }catch(_){}
+    if(dirty.length){
+      status('⚠️ <b>Demo data still present</b> ('+dirty.join(', ')+'). The playground must start from '
+        +'nothing — anything here was not created by a real interaction.', true);
+      return false;
+    }
+    status('Two real apps sharing one live bridge — <b>no demo data, no fake Gophers</b>. In the left pane '
+      +'(<b>'+SURFACES[surface].pill+'</b>) start a request and submit it; it appears as a live job on the '
+      +'<b>Go</b> phone. Nobody accepts it until the Gopher on the right actually does. '
+      +'Navigate the site freely — each page keeps its own requests.');
+    return true;
+  }
+
+  /* ═══ Controls ══════════════════════════════════════════════════════════ */
+  resetBtn.addEventListener('click', function(){
+    resetBtn.disabled=true;
+    try{ var g=W(); if(g) g.reset(); }catch(_){}
+    clearRelays(); signedIn=false;
+    bootFrames();
+    status('Resetting both panes…');
+    setTimeout(function(){ autoSignIn(); setTimeout(function(){ selfCheck(); resetBtn.disabled=false; }, 1400); }, 1200);
+  });
+
+  /* Deals launch gate — Raleigh-DMA-only at launch. This reboots the GO pane;
+     website gating was deferred by the owner (2026-07-16), so the web pane is
+     honestly left alone rather than half-gated. */
+  function dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
+  function paintDealsBtn(){
+    var on=dealsLive();
+    dealsBtn.textContent='Deals: '+(on?'LIVE':'OFF')+' (Go)';
+    dealsBtn.className='btn '+(on?'deals-on':'deals-off');
+  }
+  dealsBtn.addEventListener('click', function(){
+    dealsBtn.disabled=true;
+    try{ localStorage.setItem('gopherDealsLive', dealsLive()?'0':'1'); }catch(_){}
+    paintDealsBtn();
+    var v='&v='+Date.now();
+    goFrame.src='Go/gopher-go-prototype.html?pt=1'+v;
+    status('Gopher Deals '+(dealsLive()?'is <b>LIVE</b>':'is <b>gated OFF</b>')+' on the Go phone — '
+      +'the web pane is unchanged (website gating deferred, owner 2026-07-16).');
+    setTimeout(function(){ dealsBtn.disabled=false; }, 1200);
+  });
+  paintDealsBtn();
+
+  /* ═══ Tick ══════════════════════════════════════════════════════════════ */
+  function tick(){
+    autoSignIn();
+    /* Relays stay parked until the dashboard is open AND its demo seed has been
+       dropped. A tick that fires early broadcasts the seed. */
+    if(!signedIn){ setTimeout(tick, 600); return; }
+    watchNative(); watchAccept(); watchHire(); watchStart();
+    /* Hire, Start job and counter-accept all mutate the record from INSIDE the
+       app, where the bridge's own mutators never run — so snapshot every tick or
+       navigating away would lose them. */
+    try{ var _g=W(); if(_g) _g.persist(); }catch(_){}
+    watchCounter(); watchCounterDecision();
+    watchStatus(); watchAdjust(); watchMessages();
+    watchGoCancel(); watchReqCancel();
+    setTimeout(tick, 600);
+  }
+
+  bootFrames();
+  setTimeout(function(){ autoSignIn(); setTimeout(selfCheck, 1600); }, 1200);
+  tick();
+})();
+</script>
+</body>
+</html>

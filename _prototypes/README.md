@@ -3,6 +3,27 @@
 `Go/` and `Request/` are the two phone prototypes; `split-screen.html` runs both side by side
 against one shared in-browser database.
 
+**There are TWO split screens.** Same idea, different left-hand pane:
+
+| Page | Left pane | Right pane |
+|---|---|---|
+| `split-screen.html` | Request **prototype** (390px phone) | Go prototype |
+| `web-split-screen.html` | **The live web site** in a desktop browser chassis — navigate Connect ↔ Request with the site's own links | Go prototype |
+
+The web one exists to configure the web apps against the Go app. It talks to `window.GWeb`, a
+GReq-shaped bridge the web apps publish **only** under `?pt=1`
+(`Final/assets/js/gopher-web-pt-bridge.js`); the harness re-applies that flag to whatever page you
+navigate to.
+
+**It holds no demo data** (owner, 2026-08-31): no seeded requests, no history, no saved Gophers, no
+recommended-Gopher inbox, no fake worker pool. Every request is one you submitted, and the only
+Gopher that can appear is the real worker on the Go phone. Full notes, findings and relay coverage:
+[`docs/handoff/web-split-screen-playground.md`](../docs/handoff/web-split-screen-playground.md).
+
+⚠️ **Check the port is free and yours first** — `lsof -iTCP:<port> -sTCP:LISTEN`. On 2026-08-31
+port 8123 was already held by another session serving `Final/` as its root, which answers 200 while
+leaving `_prototypes/` unreachable. Never `pkill` a server you did not start.
+
 ## Serve from the REPO ROOT — not from this folder
 
 Both phones pull shared logic out of the live site tree with relative paths:
