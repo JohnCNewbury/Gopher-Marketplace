@@ -22838,9 +22838,27 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // (worker payout depends on it), so it is the first card on a completed request.
   // Returns '' for any non-completed request, leaving all other states unchanged.
   /* ── Requester no-show (G40-192) ──────────────────────────────────────────
-     The worker is standing at an age-restricted drop-off and the requester is
-     not there to show ID. The Go app starts a 10-minute countdown and KEEPS THE
-     "Report as No Show" BUTTON LOCKED for its full duration, precisely because
+     MODELLED ON THE LIVE WORKER APP, not on the prototype. In
+     gopher-mobile-gopher (`RequestDetailPullOver.js` / `ordercard.js`) the flow
+     is: the Gopher taps "customer not present" -> `POST orders/{id}/gopher_reached`
+     -> the backend TEXTS THE CUSTOMER -> the app stores `now + 10*60000` under
+     `localStorage['smsTriggerTime'+requestId]` and counts down against the wall
+     clock. On expiry the no-show can be reported, which completes the order with
+     `is_requester_no_show: true`; the app refuses to mark a no-show at all unless
+     those notifications went out first.
+
+     ⚠️ OPEN QUESTION FOR THE OWNER — do not resolve it in code. The prototype
+     and the live app disagree about whether the customer is TEXTED when the
+     Gopher reports them not present: live sends one (that is what
+     `smsTriggerTime` is named for), the prototype models none. Until that is
+     ruled on, this copy deliberately says nothing about a text — it is true
+     whichever way the ruling goes. If live is canonical, add "We've texted you
+     as well" so the card reads as the second channel rather than the only
+     warning.
+
+     Ten minutes IS agreed by both sides, so the window itself is safe to rely on.
+
+     The worker's "Report as No Show" stays LOCKED for the full window because
      the outcome affects pay — it can never fire early.
 
      The requester's half of that is this block, and its whole job is to be
@@ -22876,8 +22894,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     return `
       <div class="cmp-block cmp-dispute" id="noShowBlock">
         <div class="cmp-title">⏱ ${who} is waiting at your drop-off</div>
-        <div class="cmp-sub">They can't hand over age-restricted items without checking your ID in person.
-          Please come to the door — <b class="la-noshow-count" data-until="${r.noShowUntil}">10:00</b> left.</div>
+        <div class="cmp-sub">They can't hand over age-restricted items without checking your ID in
+          person — please come to the door.
+          <b class="la-noshow-count" data-until="${r.noShowUntil}">10:00</b> left.</div>
         <div class="cmp-disclaimer">If the window runs out they can report a no-show: the items are
           <b>not released</b> and they are paid in full for the trip. Message them if you need a moment.</div>
       </div>`;
