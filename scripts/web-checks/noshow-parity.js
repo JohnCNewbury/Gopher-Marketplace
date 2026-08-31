@@ -18,14 +18,24 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO = path.join(__dirname, '..', '..');
-// REPO is .../All New Gopher/Documentation/Claude Code Review:Cleanup/Code
-// so the sibling Dev/ tree is three levels up, not two.
-const LIVE = path.join(REPO, '..', '..', '..', 'Dev', 'gopher-mobile-request', 'src', 'helpers', 'noShow.js');
+/* The rule is read from the VENDORED byte-identical copy, never from a sibling
+   clone. Reading the clone made this test SKIP whenever it was absent — i.e. in
+   most checkouts, and exactly when someone edits the web port with no way to
+   notice drift. Parity is now unconditional; staleness is what degrades, and
+   noshow-freshness.js owns that. See vendor/PROVENANCE.md. */
+const RULE = path.join(__dirname, 'vendor', 'noShow.js');
 const WEB  = path.join(REPO, 'Final', 'gopher-request.html');
 
-function loadLive() {
-  if (!fs.existsSync(LIVE)) return null;                 // clone absent — see note below
-  const src = fs.readFileSync(LIVE, 'utf8').replace(/\bexport\s+/g, '');
+function loadRule() {
+  const src = fs.readFileSync(RULE, 'utf8').replace(/\bexport\s+/g, '');
+  /* ⚠️ BOUNDARY: the vendored helper takes `aasmState` as a PARAMETER; the
+     web→aasm mapping lives outside it, in gopher-request.html. If that mapping
+     is ever pushed in here the copy stops being upstream's and the sha check
+     becomes theatre — so assert the vendored file carries no web vocabulary. */
+  if (/in-progress|GWeb|reviewSnapshot|dashState/.test(src)) {
+    console.log('  ✗ vendored rule contains WEB vocabulary — the mapping has leaked inside it');
+    process.exit(1);
+  }
   return new Function(src + '\n;return {noShowStateFrom, NO_SHOW_WINDOW_MS};')();
 }
 
@@ -35,18 +45,13 @@ function loadWeb() {
   const sts = html.match(/const NO_SHOW_STATES = [^\n]+/);
   const fn  = html.match(/function noShowStateFrom\(reminded, remindedAt, aasmState, nowMs\)\{[\s\S]*?\n  \}/);
   if (!win || !sts || !fn) {
-    console.log('  ✗ could not extract the web port — did buildNoShowBlock change shape?');
+    console.log('  \u2717 could not extract the web port — did buildNoShowBlock change shape?');
     process.exit(1);
   }
   return new Function(`${win[0]}\n${sts[0]}\n${fn[0]}\n;return {noShowStateFrom, NO_SHOW_WINDOW_MS};`)();
 }
 
-const live = loadLive();
-if (!live) {
-  console.log('  ⚠ SKIPPED — gopher-mobile-request clone not found at ' + LIVE);
-  console.log('    The web port is unverified against live in this checkout. Not a pass.');
-  process.exit(0);
-}
+const live = loadRule();
 const web = loadWeb();
 
 const T0 = Date.UTC(2026, 7, 31, 12, 0, 0);
@@ -72,5 +77,5 @@ for (const c of CASES) {
 }
 console.log(bad
   ? `\nFAIL — ${bad} divergence(s) across ${CASES.length} cases. The web port no longer matches the live rule.`
-  : `PASS — ${CASES.length} cases, web port matches gopher-mobile-request/src/helpers/noShow.js exactly`);
+  : `PASS — ${CASES.length} cases, web port matches the vendored requester-app rule exactly`);
 process.exit(bad ? 1 : 0);
