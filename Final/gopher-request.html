@@ -22060,7 +22060,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
     const completionModals = buildCompletionModals(r);
-    body.innerHTML = buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    body.innerHTML = buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -22837,6 +22837,67 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // LEAD the request detail (rendered above the header). Confirming is time-sensitive
   // (worker payout depends on it), so it is the first card on a completed request.
   // Returns '' for any non-completed request, leaving all other states unchanged.
+  /* ── Requester no-show (G40-192) ──────────────────────────────────────────
+     The worker is standing at an age-restricted drop-off and the requester is
+     not there to show ID. The Go app starts a 10-minute countdown and KEEPS THE
+     "Report as No Show" BUTTON LOCKED for its full duration, precisely because
+     the outcome affects pay — it can never fire early.
+
+     The requester's half of that is this block, and its whole job is to be
+     ACTIONABLE while the clock is still running: the delivery is still savable
+     by walking to the door. So it leads the detail screen, states the deadline,
+     and says plainly what happens at zero. It is not a notification after the
+     fact.
+
+     Outcome, per the Go app: a reported no-show pays the worker IN FULL and does
+     not release the items. There is no cancellation fee involved — saying or
+     implying one here would be wrong.
+
+     `noShowUntil` (epoch ms) and `noShow` are written only by the Go app through
+     the web↔Go bridge, so on the live site neither is ever set and this renders
+     nothing. */
+  function buildNoShowBlock(r){
+    if(!r) return '';
+    if(r.noShow){
+      const who = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
+        || (r.worker || 'Your Gopher').replace(/\s*\(.*$/, '');
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">Completed as No Show</div>
+        <div class="cmp-sub">You weren't present at the drop-off to verify ID within the 10-minute window, so
+          <b>the items were not released</b>. ${who} waited the full window and was <b>paid in full</b>.</div>
+        <div class="cmp-disclaimer">Age-restricted items can only be handed over to the person who ordered them,
+          after an ID check — that rule is why the delivery could not be completed.</div>
+      </div>`;
+    }
+    if(!r.noShowUntil) return '';
+    const who = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
+      || (r.worker || 'Your Gopher').replace(/\s*\(.*$/, '');
+    return `
+      <div class="cmp-block cmp-dispute" id="noShowBlock">
+        <div class="cmp-title">⏱ ${who} is waiting at your drop-off</div>
+        <div class="cmp-sub">They can't hand over age-restricted items without checking your ID in person.
+          Please come to the door — <b class="la-noshow-count" data-until="${r.noShowUntil}">10:00</b> left.</div>
+        <div class="cmp-disclaimer">If the window runs out they can report a no-show: the items are
+          <b>not released</b> and they are paid in full for the trip. Message them if you need a moment.</div>
+      </div>`;
+  }
+
+  /* Ticks every visible no-show countdown in place. Deliberately updates only the
+     <b> element rather than re-rendering the detail screen — a full re-render
+     every second would fight scrolling and drop focus out of the message box the
+     requester is probably typing in. Self-stopping when no countdown is on screen. */
+  (function noShowTicker(){
+    setInterval(() => {
+      document.querySelectorAll('.la-noshow-count').forEach(el => {
+        const until = +el.getAttribute('data-until') || 0;
+        const left = Math.max(0, Math.round((until - Date.now()) / 1000));
+        el.textContent = Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2);
+        if(left <= 0) el.textContent = '0:00';
+      });
+    }, 1000);
+  })();
+
   function buildCompletionBlock(r){
     if(!r || !(r.confirmed || r.awaitingConfirmation)) return '';
     const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];

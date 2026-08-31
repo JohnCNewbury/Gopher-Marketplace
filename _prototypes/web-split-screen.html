@@ -190,11 +190,13 @@
      swallow the first event of the new session. */
   var injected, offered, hired, countered, counterDecided, statusSeen,
       goMsgSeen, reqMsgSeen, goCancelSeen, reqCancelSeen, adjustSeen, counterPending,
-      startNarrated, adjustPending, adjustDecided, disputeSeen, navSeen;
+      startNarrated, adjustPending, adjustDecided, disputeSeen, navSeen,
+      noShowSeen, noShowDone;
   function clearRelays(){
     injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
     startNarrated={}; orderSurface={}; offSurfaceWarned={};
     adjustPending={}; adjustDecided={}; disputeSeen={}; navSeen={};
+    noShowSeen={}; noShowDone={};
     goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
     counterPending={};
   }
@@ -436,7 +438,8 @@
       var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
       for(var id in w.__ptJobs){
         var job=w.__ptJobs[id];
-        if(!job || !job.accepted || !job.substage || job.noShow) continue;
+        if(!job || !job.accepted || !job.substage) continue;
+        if(job.noShow) continue;   // a no-show completion is narrated by watchNoShow, not as a normal finish
         if(statusSeen[id]===job.substage) continue;
         var step=SUBSTAGE_STEP[job.substage]; if(!step) continue;
         /* Completion carries the worker's drop-off photos with it. Relaying them
@@ -576,6 +579,61 @@
           ? 'You <b>approved</b> the adjustment on '+id+' → the new total is <b>$'+pend.total.toFixed(2)
             +'</b> and the Gopher was told they are clear to continue.'
           : 'You <b>declined</b> the adjustment on '+id+' → the Gopher was notified; the agreed price stands.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Go → Web : requester no-show at an age-restricted drop-off ═══════
+     G40-192. The worker is at the door and the requester is not there to show
+     ID. Go starts a 10-minute countdown (`noShowActive` increments) and keeps
+     its "Report as No Show" button LOCKED for the whole window because the
+     outcome affects pay.
+
+     The requester's half has to arrive WHILE THE CLOCK RUNS — the delivery is
+     still savable by walking to the door — so this relays the deadline, not just
+     the eventual result. The Go app owns the authoritative timer and the
+     decision; the web countdown is informational, which is why a second of drift
+     between them is harmless.
+
+     Three transitions, all of which matter:
+       start    noShowActive rises      -> deadline on the card
+       averted  noShowActive returns 0  -> clear it; the requester made it
+       reported job.noShow set          -> terminal: items NOT released, worker
+                                           paid in full (never a cancellation fee) */
+  var NO_SHOW_WINDOW_MS = 10*60*1000;
+  function watchNoShow(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        var rec=g.get(id); if(!rec) continue;
+
+        // terminal — reported
+        if(job.noShow && !noShowDone[id]){
+          noShowDone[id]=true;
+          g.update(id, { noShow:true, noShowUntil:0, needsAttention:true });
+          status('⏱ <b>Reported as a no-show</b> on '+id+'. You were not at the drop-off to verify ID '
+            +'within the window, so the <b>items were not released</b> — and the Gopher waited it out, '
+            +'so they are <b>paid in full</b>. No cancellation fee is involved.');
+          continue;
+        }
+        // started — a new countdown
+        var active=+job.noShowActive||0;
+        if(active && noShowSeen[id]!==active){
+          noShowSeen[id]=active;
+          g.update(id, { noShowUntil: Date.now()+NO_SHOW_WINDOW_MS, needsAttention:true });
+          status('⏱ Your Gopher is <b>at the drop-off and you are not there</b> to verify ID for '+id+'. '
+            +'You have <b>10 minutes</b> — the card is counting down. Go to the door and the delivery '
+            +'completes normally.');
+          continue;
+        }
+        // averted — the requester turned up before 0:00
+        if(!active && !job.noShow && noShowSeen[id] && g.raw(id) && g.raw(id).noShowUntil){
+          g.update(id, { noShowUntil:0 });
+          noShowSeen[id]=0;
+          status('You made it — the no-show window on '+id+' was <b>cleared</b> and the Gopher is '
+            +'verifying your ID now.');
+        }
       }
     }catch(_){}
   }
@@ -848,7 +906,7 @@
        navigating away would lose them. */
     try{ var _g=W(); if(_g) _g.persist(); }catch(_){}
     watchCounter(); watchCounterDecision();
-    watchStatus(); watchNavigate(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
+    watchStatus(); watchNoShow(); watchNavigate(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
     watchGoCancel(); watchReqCancel();
     setTimeout(tick, 600);
   }

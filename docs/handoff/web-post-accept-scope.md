@@ -76,9 +76,13 @@ Status is from driving both apps end to end in the playground (2026-08-31), not 
 1. **Dispute relay** — surface exists on both sides, only the wire is missing. Smallest change,
    completes the money-dispute loop that cost adjustment already half-covers.
 2. **Completion photos relay** — same shape, small.
-3. **No-show** — the largest, and the only one requiring genuinely new web UI. It is also the one
-   with real money consequences (cancellation fees, worker reliability), so it deserves the owner's
-   spec before any code.
+3. **No-show** — the largest, and the only one requiring genuinely new web UI.
+   *Corrected 2026-08-31: this does NOT involve a cancellation fee.* Under G40-192 a reported
+   no-show pays the worker **in full** and simply does not release the items — there is no charge to
+   argue about. And the behaviour does not need a fresh spec: the Go app already implements it, so
+   the canonical rules are read from there rather than invented.
+   (Separately, per the owner: cancellation-fee **policy** is real and its copy is correct — only
+   the mechanism that would collect a fee is deliberately not plugged in. Nothing to change.)
 4. **Navigation state** — smallest of the three new builds; a card state, not a screen.
 
 ## Two decisions still open for the owner

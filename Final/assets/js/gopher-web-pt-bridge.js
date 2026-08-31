@@ -365,6 +365,12 @@
         navTo: rec.navTo || null,
         navAddr: rec.navAddr || '',
 
+        /* No-show (G40-192). `noShowUntil` is the epoch-ms deadline of the Go
+           app's 10-minute countdown; `noShow` is the terminal outcome (items not
+           released, worker paid in full). Both written only by the Go app. */
+        noShow: !!rec.noShow,
+        noShowUntil: +rec.noShowUntil || 0,
+
         /* deals provenance */
         deal: !!rec.fromDeal || !!rec.dealKind,
         dealMerchant: rec.dealMerchant || '',
