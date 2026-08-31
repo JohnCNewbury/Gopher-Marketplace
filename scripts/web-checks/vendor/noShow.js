@@ -10,7 +10,26 @@
 
    The timestamp is REQUIRED and must parse: a reminded flag with no usable
    timestamp yields inactive (the same degradation as an older backend)
-   rather than an uncloseable clockless banner. */
+   rather than an uncloseable clockless banner.
+
+   ⛔ THIS FILE IS VENDORED ELSEWHERE. If you change the RULE — the window
+   length, the aasm-state gate, the clock format, or the degradation when the
+   timestamp is missing or unparseable — a byte-identical copy of this file
+   lives in the Code repo at:
+
+       scripts/web-checks/vendor/noShow.js   (+ .sha256, + PROVENANCE.md)
+
+   and the web requester banner in Final/gopher-request.html is tested for
+   behavioural parity against that copy over an 84-case matrix.
+
+   Its freshness check compares the vendored sha against THIS file, so it goes
+   red on any edit here — but only once someone has this repo checked out
+   beside it. Between those moments the link is this comment. That is why the
+   comment exists: the sha cannot see a change nobody pulls.
+
+   So: change the rule, then say so, so the copy is re-vendored and the web
+   port re-checked. A cosmetic edit here is harmless — it will report STALE,
+   they re-vendor, and parity confirms the rule did not move. */
 
 export const NO_SHOW_WINDOW_MS = 10 * 60000;
 

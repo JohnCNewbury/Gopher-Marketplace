@@ -4,7 +4,7 @@
 
     gopher-mobile-request/src/helpers/noShow.js
 
-vendored 2026-08-31 at sha256 `797ca3aadc6903ef0137036deb01f40733c183045cb3dbae2e9aafdf999a6512` (recorded in `noShow.js.sha256`).
+vendored 2026-08-31 at sha256 `fa395db281f4c3728ac804b925dd1a816d353fef1431b79c9cd5c9a3a7781dbf` (recorded in `noShow.js.sha256`).
 
 ## Why it is vendored rather than read from the clone
 
@@ -35,6 +35,13 @@ This helper takes `aasmState` as a **parameter**. The web→aasm mapping
 `Final/gopher-request.html` (`aasmStateForNoShow`). If that mapping is ever
 pushed inside this file, the copy stops being upstream's and the sha check
 becomes theatre. `noshow-parity.js` asserts the boundary explicitly.
+
+## Re-vendor log
+
+| date | sha256 | what changed upstream |
+|---|---|---|
+| 2026-08-31 | `797ca3aa…` | first vendoring |
+| 2026-08-31 | `fa395db2…` | **comment only** — upstream added a ⛔ block pointing back at this copy. Rule untouched, confirmed by the 84-case matrix passing unchanged after re-vendoring. First live exercise of the loop, raised deliberately by the Current Sprint - TrustShield session so its first firing would be on something harmless. |
 
 ## Updating
 

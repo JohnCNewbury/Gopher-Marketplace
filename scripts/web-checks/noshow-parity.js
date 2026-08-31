@@ -31,9 +31,19 @@ function loadRule() {
   /* ⚠️ BOUNDARY: the vendored helper takes `aasmState` as a PARAMETER; the
      web→aasm mapping lives outside it, in gopher-request.html. If that mapping
      is ever pushed in here the copy stops being upstream's and the sha check
-     becomes theatre — so assert the vendored file carries no web vocabulary. */
-  if (/in-progress|GWeb|reviewSnapshot|dashState/.test(src)) {
-    console.log('  ✗ vendored rule contains WEB vocabulary — the mapping has leaked inside it');
+     becomes theatre — so assert the vendored file carries no web vocabulary.
+
+     COMMENTS ARE STRIPPED FIRST, deliberately. Upstream's own header now points
+     BACK at this copy and names `Final/gopher-request.html`; documenting the
+     boundary must never trip the check that enforces it. Scanning raw text would
+     make the first person to describe the mapping in prose hit a hard failure
+     for doing the right thing — and a check that cries wolf gets deleted. Test
+     the CODE, not the commentary. */
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')   // block comments
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1'); // line comments (': //' in a URL survives)
+  if (/in-progress|GWeb|reviewSnapshot|dashState/.test(code)) {
+    console.log('  ✗ vendored rule contains WEB vocabulary IN CODE — the mapping has leaked inside it');
     process.exit(1);
   }
   return new Function(src + '\n;return {noShowStateFrom, NO_SHOW_WINDOW_MS};')();
