@@ -61,15 +61,33 @@ Status is from driving both apps end to end in the playground (2026-08-31), not 
   `img` tags) under "View pic(s) of completed request"; the section is omitted entirely when the
   array is empty.
 
-### Genuinely missing on the web — need building
-1. **No-show flow.** Go runs a no-show timer and completion path; neither web app has any surface
-   for it (`noShow` appears nowhere in either file). The requester currently cannot be told the
-   worker arrived and they did not.
-2. **Turn-by-turn navigation state.** Go raises `navigating`; the web has no `navTo` equivalent, so
-   the requester never sees "your Gopher is navigating — live location on". The prototype treats
-   this as a live-app invariant: navigation must never interrupt the location feed.
-3. **Report-a-request.** Go's `openReportRequest` sends to Gopher HQ, not to the requester — so
-   this is an **admin/HQ** surface, not a requester one. It belongs with the HQ Dashboard, not here.
+### Genuinely missing on the web — two BUILT 2026-08-31, one still open
+
+1. ✅ **No-show flow — BUILT** (`aed189a`). Requester's card leads with a live countdown while the
+   worker waits at an age-restricted drop-off, and becomes a terminal "Completed as No Show" block
+   if reported. Rules read from the Go app's own G40-192 implementation, not invented. Consequence
+   copy matches the age-restricted waiver already in the flow. **No cancellation fee is involved** —
+   a reported no-show pays the worker in full and withholds the items.
+
+2. ✅ **Turn-by-turn navigation — BUILT** (`650977c`). Renders inside the Live location section,
+   because the invariant is the point: navigation NEVER pauses the location feed, so the line states
+   both facts together. Clears the moment the worker advances the status.
+
+3. ⏳ **Report-a-request — OPEN, and it is the MIRROR that is missing.** Go's `openReportRequest` is
+   the **worker** flagging to trust & safety (`POST orders/<id>/flag`, reasons incl. "may be
+   illegal/suspicious", "unsafe request/location"); the requester is deliberately never told, which
+   is correct. The gap is the other direction: on Request web a requester can **Block** a Gopher
+   (`rqRelBlock`) but cannot **report** one, and Connect has neither. Blocking is a private
+   preference; reporting is a safety escalation to HQ. Today a requester who feels unsafe has no
+   escalation path on the web at all.
+
+   **Blocked on the owner for the reason taxonomy** — what a requester may report a Gopher for is
+   trust & safety policy, and a wrong list is worse than none. Once the reasons are set the build is
+   small and mirrors the Go side (same modal shape, same `POST orders/<id>/flag` seam).
+
+Neither built surface is `?pt=1`-gated, and neither needs to be: `navTo`, `noShowUntil` and `noShow`
+are written only by the Go app through the bridge, so on the live site none is ever set and both
+blocks render nothing. Inert by data rather than by flag.
 
 ## Suggested order
 
