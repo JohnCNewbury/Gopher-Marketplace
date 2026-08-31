@@ -488,8 +488,10 @@ bounce to Home, in the flow workers use to get paid.
 #### 3.5.2 ✅ Camera capture — DEVICE-VERIFIED 2026-08-31, after FOUR root causes
 
 The §3.5 warning *"Not device-verified — green CI proves this compiles and lints, not that a
-camera appears"* is now discharged. On the owner's **iPhone 15 Pro Max** the full path works:
-entry point → three live shots → upload → **TrustShield Verified** badge.
+camera appears"* is now discharged **on both platforms**. On the owner's **iPhone 15 Pro Max**
+and on **Android** the full path works: entry point → three live shots → upload →
+**TrustShield Verified** badge, preview filling its frame with the guide drawn over it.
+Shipped in **!254**.
 
 **The camera worked on the very first run.** Everything below is *placement*, and it took four
 distinct root causes — two upstream, one mine, one an interaction nobody documents.
@@ -500,10 +502,19 @@ distinct root causes — two upstream, one mine, one an interaction nobody docum
 | 2 | `previewLayer.frame = view.frame` — layer is view-local, so the origin applies twice | video offset again, and spilling outside the box | upstream plugin |
 | 3 | document made transparent to reveal the video | **entire screen black** — transparency reveals what is *behind* the webview, not the app | **mine** |
 | 4 | `contentInset:"automatic"` — DOM coords are inset-relative, the plugin's are window-relative | camera 59pt high, so it ends 59pt short — reads as a cropped bottom | Capacitor/plugin interaction |
+| 5 | `disableExifHeaderStripping` defaults to `true`, which skips **all** capture-orientation handling | **Android selfie captured 90° rotated** — preview upright | upstream plugin |
 
 1 and 2 are fixed at source in `patches/@capacitor-community+camera-preview+8.0.1.patch`
-(patch-package, applied by `postinstall`, which CI runs via `npm ci`). 3 and 4 are in
-`IdCaptureBox.js`. All are pinned by `scripts/assert-camera-preview-scale.mjs` — **30 checks**.
+(patch-package, applied by `postinstall`, which CI runs via `npm ci`). 3, 4 and 5 are in
+`IdCaptureBox.js`. All are pinned by `scripts/assert-camera-preview-scale.mjs` — **31 checks**.
+
+⛔ **Defect 5 is not cosmetic, and the option name reads backwards.** `CameraActivity.java`
+wraps the EXIF read, the rotation matrix *and* the front-camera mirror in a single
+`if (!disableExifHeaderStripping)`, and the option **defaults to `true`** — so by default none
+of it runs. Passing `disableExifHeaderStripping: false` means *do* normalise. These are
+**identity photos**: a rotated selfie reaches S3, the admin panel and a human reviewer, so the
+rotation is baked into the **pixels** rather than left to an EXIF tag some consumer may ignore.
+iOS never read the option (zero occurrences in the Swift), which is why iOS was unaffected.
 
 ⚠️ **The lesson worth keeping is about diagnosis, not cameras.**
 
@@ -537,10 +548,23 @@ sent1    43,178 344x215     <- with the +59 conversion
 pushed the very box it was measuring, corrupting its own numbers. The second was `position:
 fixed`.
 
-⚠️ **Android placement is UNVERIFIED on a device.** The conversion in 4 is iOS-gated and Android
-was never affected by 1 or 2, so it *should* be unaffected — but nobody has looked. If Android is
-tested and the preview sits low by the status-bar height, `domToWindowY()` is the first place to
-look.
+✅ **Android is verified** (2026-08-31). It was never affected by 1, 2 or 4 — it applies the DIP
+conversion to `x`, `y`, `width` and `height` alike, and the §4 conversion is iOS-gated. The
+layering change (`toBack`) and the backdrop **do** apply there and were confirmed by hand: no
+black screen, guide visible over the video, preview filling its frame. Android's own defect was
+5, which iOS did not have.
+
+⚠️ **Open, not investigated: the Android capture screen felt laggy to the owner.** It could not
+be separated from general device performance without measurement, and guessing would have meant
+shipping an unverified change to a screen that now works. If it is picked up, the first thing to
+rule out is the post-start re-check, which does a native `stop`/`start` when the box moves —
+though on iOS it reported `no restart (unmoved)`, so it is probably not firing.
+
+⚠️ **Local Android builds hit the update gate.** `GET /apiversion` requires `android_requester`
+≥ **3.8.0** and the committed `versionName` is **3.0.3** — eight minors behind the floor its own
+backend enforces. Harmless in CI (Appflow injects versions via trapeze), but every local build
+shows *"It's time to Update!"* until `android/app/build.gradle` is bumped locally. `ios_requester`
+has the same shape: floor 13.8.0. **Do not commit the bump.**
 
 ### 3.6 Backend — the post-cliff message ✅ DONE (`e51a8ac3`, in !433)
 
