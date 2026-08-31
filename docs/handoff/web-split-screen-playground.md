@@ -197,17 +197,48 @@ These are **live-app findings**, not harness quirks.
    under PT it claimed "8 workers already interested" for a request that had broadcast to nobody.
    Now reads "Broadcasting to Gophers nearby" under PT in both apps.
 
-6. **`gopher-connect.html` never loads `gopher-iq-data.js`.** It references `GopherIQData` three
+6. **⛔ An accepted counter-offer was relayed to the worker as a DECLINE — a money disagreement
+   across the two panes.** The requester accepted $42; the web charged **$46.43** and hired at $42,
+   while the Go phone showed *"A requester declined your counter"* and **"YOU'LL EARN $30"**.
+
+   Cause: the harness decided the outcome with `rec.hired === GOPHER`, a **display-name string
+   match** — and the Go prototype names this worker two different ways (below). One spelling
+   difference silently inverted a pricing decision. Fixed by reading the outcome from the record
+   (`!!rec.hired`) instead of comparing names; the same fragile pattern was removed from the hire
+   relay. **Rule: never let a money or state decision hang on a name match.**
+
+7. **⚠️ The Go prototype names its worker twice, differently.** Account state is `fn:'Marcus'`
+   `ln:'Hale'`, but the counter-offer payload hardcodes `by:'Marcus K.'`
+   (`gopher-go-prototype.html:3273`/`3276`) — so the requester meets one name on an accept and a
+   different one on a counter. This bridge normalises to the account identity rather than
+   propagating it. Note `_prototypes/split-screen.html` hid the same defect by hardcoding
+   `accBy='Marcus K.'` on its accept path — matching the bug rather than the account. **The
+   prototype fix belongs to the Go workstream.**
+
+8. **`gopher-connect.html` never loads `gopher-iq-data.js`.** It references `GopherIQData` three
    times (guarded, so nothing crashes), which means Connect's ZIP/city **coverage lookup silently
    never runs**. Pre-existing, out of scope here, and a live-site behaviour change — left for an
    owner decision.
 
 ## Relay coverage
 
-**Wired and verified live:** submit → broadcast · acceptance under all three `workerSelection`
-modes · requester Hire · Start job (narrated) · worker progress (in-progress → items → completed)
-→ live tracker · counter-offer → the dashboard's counter card · the requester's Accept/Deny on that
-counter · messaging both ways · cost adjustment · Gopher cancel · requester cancel.
+⚠️ **Verified and wired are not the same thing, and an earlier draft of this file conflated them.**
+Split explicitly:
+
+**WIRED AND DRIVEN END TO END** (clicked through both apps' own controls, 2026-08-31):
+submit → broadcast · acceptance under `first` (auto-hire) and `select` (candidacy) · requester Hire
+· Start job (narrated) · worker progress in-progress → items → completed → live tracker ·
+**counter-offer → the dashboard's counter card → the requester's Accept → relayed back to the Go
+phone at the agreed price.**
+
+**WIRED BUT NOT YET EXERCISED** — the code exists and is reviewed, but no one has driven these
+through the two panes, so treat them as unproven: acceptance under `my` (Prioritize MY Gophers) ·
+the requester's **Deny** on a counter · messaging both ways · cost adjustment · Gopher cancel ·
+requester cancel.
+
+The `my` path is the one most worth doing first: it is the only branch whose auto-hire decision
+depends on `__myGopherNames()`, and PT empties `myGophers` — so the "is this worker already one of
+mine" test runs against an empty list every time, and the branch may never fire at all.
 
 **Deliberately NOT wired** — the Go app raises these but the web dashboards have no surface that
 can receive them, so they are not faked: no-show timer · dispute · turn-by-turn navigation state ·

@@ -304,7 +304,12 @@
       for(var id in w.__ptJobs){
         if(hired[id]) continue;
         var job=w.__ptJobs[id]; if(!job || !job.accepted) continue;
-        var rec=g.get(id); if(!rec || rec.hired!==GOPHER) continue;   // not hired on the web yet
+        /* Same rule as watchCounterDecision: read the OUTCOME, not a name. The
+           web is the only place a hire can happen and there is one worker on
+           the Go phone, so "someone is hired" is unambiguous — whereas a name
+           comparison silently stops relaying the moment the two sides spell
+           the worker differently, which the Go prototype already does. */
+        var rec=g.get(id); if(!rec || !rec.hired) continue;           // not hired on the web yet
         if(!(w.__ptBidResult && w.__ptJobs[id])) continue;            // Go not ready — retry
         try{ w.__ptBidResult(id, 'accepted', String(rec.pay||'')); }catch(_){ continue; }
         hired[id]=true;
@@ -354,8 +359,17 @@
         var c=job.counter;
         var pay=+c.amt||0, cost=+rec.cost||0, cog=cost+pay;
         var itf=0.08*(cog+0.99), reqFee=0.99+itf;
+        /* ⚠️ The Go prototype names this worker TWICE, differently: its account
+           state is fn:'Marcus' ln:'Hale', but the counter-offer payload
+           hardcodes by:'Marcus K.' (gopher-go-prototype.html:3273/3276). Relaying
+           c.by verbatim would show the requester one name when he accepts and a
+           different one when he counters — the same person, twice. Normalise to
+           the account identity; the prototype's own hardcode is a defect for the
+           Go workstream, not something this bridge should propagate.
+           (_prototypes/split-screen.html hid it by hardcoding 'Marcus K.' on its
+           accept path to match — matching the bug rather than the account.) */
         var ok=g.counter(id, {
-          changed:'offer', comment:c.note||null, worker:c.by||GOPHER, tier:'elite+', dist:rec.dist,
+          changed:'offer', comment:c.note||null, worker:GOPHER, tier:'elite+', dist:rec.dist,
           counter:{ costOfItems:cost, workerPay:pay, workersNeeded:+rec.workers||1,
                     gopherFee:0.99, ageFee:0, instantTransfer:itf, requestFee:reqFee,
                     fullGopherFee:0.99, fullAgeFee:0, fullInstantTransfer:itf, fullRequestFee:reqFee,
@@ -386,7 +400,16 @@
         if(still) continue;                                           // requester has not decided yet
         if(!(w.__ptDecision && w.__ptJobs[id])) continue;              // Go not ready — retry
         var rec=g.get(id);
-        var accepted = rec && rec.hired===GOPHER;
+        /* ⛔ Detect the outcome from the RECORD, never from a name match.
+           This previously read `rec.hired === GOPHER`, and the Go prototype
+           writes its counter under a different name than its account
+           (`Marcus K.` vs `Marcus Hale`) — so an ACCEPTED $42 counter was
+           relayed to the worker as a DECLINE. The requester was charged $46.43
+           while the Gopher was told "your counter was declined, you'll earn
+           $30". A money disagreement across the two panes, produced by a string
+           comparison. acceptCounterOffer() is the only thing that sets a hired
+           worker here, so its presence IS the accept. */
+        var accepted = !!(rec && rec.hired);
         var amt = accepted ? String(rec.pay||'') : '';
         try{ w.__ptDecision(id, accepted?'accepted':'declined', amt); }catch(_){ continue; }
         counterDecided[id]=true; counterPending[id]=false;
