@@ -19988,7 +19988,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Demo auto-reply — once per thread per request. The flag is per-worker
     // when a crew thread, so other crew threads still get their own first reply.
     const replyFlag = crewName ? `_autoReplied_${crewName}` : '_autoReplied';
-    if(firstMessage && !r[replyFlag]){
+    // PT playground: NO canned worker reply. The only thing the Gopher "says"
+    // must be what was actually typed on the Go phone — an automated
+    // "just responding for demo purposes" is a fake worker speaking inside a
+    // real conversation.
+    const _ptNoAutoReply = !!(window.GopherWebPT && window.GopherWebPT.on());
+    if(firstMessage && !r[replyFlag] && !_ptNoAutoReply){
       r[replyFlag] = true;
       setTimeout(() => {
         thread.push({

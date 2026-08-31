@@ -262,7 +262,14 @@
       for(var id in w.__ptJobs){
         var job=w.__ptJobs[id];
         if(!job || !job.accepted || offered[id]) continue;
-        if(job.bid || job.counter || job.bidAccepted || job.counterAccepted || job.approved) continue;
+        /* Skip only while a counter is genuinely IN FLIGHT. `job.counter` stays
+           set after the requester decides, so testing it bare meant a DENIED
+           counter permanently disabled this relay: the Gopher could then press
+           Accept, see themselves accepted, and the requester would never learn
+           — the request sat "Broadcasting" forever. Decided counters (accepted
+           or declined) must not suppress a later plain acceptance. */
+        var counterPending = job.counter && !job.counterAccepted && !job.counterDeclined;
+        if(job.bid || counterPending || job.bidAccepted || job.counterAccepted || job.approved) continue;
         var rec=g.get(id);
         if(!rec){
           /* The Go phone holds jobs from BOTH pages; the web pane shows one at a

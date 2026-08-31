@@ -544,10 +544,16 @@
       return true;
     }
 
+    /* The app's own thread convention is `from:'me'` for the requester and
+       anything else for the worker (the Inbox renders `m.from === 'me' ? mine
+       : theirs`). This filtered on 'requester', a value the app never writes —
+       so requester replies were collected, rendered, and never relayed: the
+       Gopher's phone stayed silent while the requester watched their message
+       sit in the thread. Read the app's vocabulary, not an invented one. */
     function messagesFrom(id, workerName) {
       var rec = raw(id);
       if (!rec || !rec.threads || !rec.threads[workerName]) return [];
-      return rec.threads[workerName].filter(function (m) { return m.from === 'requester'; });
+      return rec.threads[workerName].filter(function (m) { return m.from === 'me'; });
     }
 
     function gopherCancelled(id, reason) {

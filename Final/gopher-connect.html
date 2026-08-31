@@ -19150,7 +19150,9 @@ const PAY_BADGES = {
 
     // Worker auto-reply — once, for demo perspective.
     const replyFlag = crewName ? `_autoReplied_${crewName}` : '_autoReplied';
-    if(firstMessage && !r[replyFlag]){
+    // PT playground: no canned worker reply — see the Request twin of this note.
+    const _ptNoAutoReply = !!(window.GopherWebPT && window.GopherWebPT.on());
+    if(firstMessage && !r[replyFlag] && !_ptNoAutoReply){
       r[replyFlag] = true;
       setTimeout(() => {
         thread.push({ from:'worker', text:'Hi there, just responding for demo purposes.',
