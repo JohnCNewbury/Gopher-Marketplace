@@ -200,7 +200,21 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .hint-wrap:hover .hint-pop,
 .hint-btn:focus-visible + .hint-pop,
 .hint-btn.open + .hint-pop{opacity:1;visibility:visible;transform:translateY(0);}
-@media (max-width:520px){ .hint-pop{left:auto;right:-10px;} .hint-pop::before{left:auto;right:16px;} }
+/* ⛔ The bubble hangs off an INLINE button that can sit anywhere on the line,
+   so anchoring it to that button (left:-10px, or right:-10px as this rule used
+   to) pushes it off whichever edge the button is nearest — at 375px the MY
+   Gophers bubble rendered at left:-78px, cut off (owner-reported 2026-08-26).
+   On phones it becomes a viewport-pinned sheet, which cannot overflow wherever
+   the button sits. The arrow is dropped because it no longer points at
+   anything. Verified no ancestor carries transform/filter, so position:fixed
+   resolves against the viewport here. */
+@media (max-width:520px){
+  .hint-pop{
+    position:fixed; left:12px; right:12px; top:auto; bottom:16px;
+    width:auto; max-height:60vh; overflow-y:auto;
+  }
+  .hint-pop::before{ display:none; }
+}
 
 /* mini mock UI elements (mirror the app) */
 .mock{margin-top:18px;background:linear-gradient(180deg,#fff,#fffdf8);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);}
