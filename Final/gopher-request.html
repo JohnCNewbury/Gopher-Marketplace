@@ -12236,9 +12236,49 @@
     const descHint = (state.description || '').trim();
     const shortDesc = descHint ? (descHint.length > 48 ? descHint.slice(0,45) + '…' : descHint) : '';
     const title = shortDesc ? `${c.name} · ${shortDesc}` : `${c.name} request`;
+    /* ── Frozen review snapshot (parity with Connect) ──────────────────────
+       Connect captures `toReviewSnapshot(buildReviewModel(state))` with every
+       request; Request captured nothing, so `reviewSnapshot` existed ONLY on the
+       five seeded demo records. Everything that reads it therefore fell back or
+       failed closed for a request a real person created:
+         • the Request recap rendered the minimal fallback card instead of the
+           canonical one (renderRequestDetail: `r.reviewSnapshot ? … : …`),
+         • buildAdjustmentCard() returns '' with no snapshot — the cost-adjustment
+           card cannot render at all,
+         • acceptCounterOffer() guards `if (C && snap)` — an accepted counter
+           does NOT move the price,
+         • Request-Again reads snapshot.category / .description for carry-over.
+       Neither counter-offers nor cost adjustments can currently REACH a
+       user-created request (both are written only onto the demo seed), so this
+       is latent today — but it becomes live the moment the Go app is wired in,
+       which is exactly what the web↔Go playground is prototyping.
+
+       The numbers are the ones Step 7 already foots for the confirmation screen
+       — computeRequestFee() on the same COG+offer base — so the frozen deal and
+       the screen the customer agreed on cannot disagree. Do NOT re-derive them. */
+    const snapCostItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
+    const snapWorkerPay = perWorker * workersNeeded;
+    const snapFee = computeRequestFee(snapCostItems + snapWorkerPay);
+    const reviewSnapshot = {
+      category: c.name,
+      description: (state.description || '').trim(),
+      urgency: state.scheduleType === 'now' ? 'Customer needs ASAP' : null,
+      pickup: state.noSpecificPickup
+        ? 'Any location'
+        : ((Array.isArray(state.pickupStops) && state.pickupStops[0]) || ''),
+      dropoff: (Array.isArray(state.dropoffStops) && state.dropoffStops[0]) || '',
+      costOfItems: snapCostItems,
+      workerPay: snapWorkerPay,
+      workersNeeded,
+      bidsMode: state.payMode !== 'set',
+      total: snapFee.gmvTotal,
+      fee: snapFee,
+    };
+
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      reviewSnapshot,
       // Broadcast identity. These three were never carried into the request
       // record, so anything reading it downstream (the Go app's category feed,
       // the worker's cost-of-items, the job description) had nothing to read.
@@ -20656,6 +20696,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       category: data.category || null,
       costOfItems: +data.costOfItems || 0,
       descriptionFull: data.descriptionFull || '',
+      reviewSnapshot: data.reviewSnapshot || null,   // frozen agreed deal — parity with Connect
       status: 'pending',            // ← ALWAYS pending at submit
       statusLabel: 'Pending',
       submittedAt: Date.now(),      // drives the <20-min early-cancel variant
