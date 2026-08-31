@@ -365,11 +365,15 @@
         navTo: rec.navTo || null,
         navAddr: rec.navAddr || '',
 
-        /* No-show (G40-192). `noShowUntil` is the epoch-ms deadline of the Go
-           app's 10-minute countdown; `noShow` is the terminal outcome (items not
-           released, worker paid in full). Both written only by the Go app. */
+        /* No-show (G40-192 / G40-419). Mirrors the live requester app's payload:
+           `requestor_reminded` + `requestor_reminded_at`, the SERVER's stamp of
+           when POST orders/:id/gopher_reached succeeded. The web block derives
+           the deadline from that stamp, exactly as helpers/noShow.js does —
+           never from this device's clock, which is the defect G40-192 records
+           against the shipped client. `noShow` is the terminal outcome. */
         noShow: !!rec.noShow,
-        noShowUntil: +rec.noShowUntil || 0,
+        noShowReminded: !!rec.noShowReminded,
+        noShowRemindedAt: rec.noShowRemindedAt || null,
 
         /* deals provenance */
         deal: !!rec.fromDeal || !!rec.dealKind,

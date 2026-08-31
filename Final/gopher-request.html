@@ -22837,82 +22837,105 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // LEAD the request detail (rendered above the header). Confirming is time-sensitive
   // (worker payout depends on it), so it is the first card on a completed request.
   // Returns '' for any non-completed request, leaving all other states unchanged.
-  /* ── Requester no-show (G40-192) ──────────────────────────────────────────
-     MODELLED ON THE LIVE WORKER APP, not on the prototype. In
-     gopher-mobile-gopher (`RequestDetailPullOver.js` / `ordercard.js`) the flow
-     is: the Gopher taps "customer not present" -> `POST orders/{id}/gopher_reached`
-     -> the backend TEXTS THE CUSTOMER -> the app stores `now + 10*60000` under
-     `localStorage['smsTriggerTime'+requestId]` and counts down against the wall
-     clock. On expiry the no-show can be reported, which completes the order with
-     `is_requester_no_show: true`; the app refuses to mark a no-show at all unless
-     those notifications went out first.
+  /* ── Requester no-show — G40-192 / G40-419 ────────────────────────────────
+     ⛔ THIS IS A PORT, NOT A NEW IMPLEMENTATION. The rule lives in the live
+     requester app at `gopher-mobile-request/src/helpers/noShow.js`
+     (`noShowStateFrom`), and G40-192 explicitly warns against writing another
+     copy: the requester-side banner was already built TWICE on surfaces the
+     requester never sees (`NoShowWatcher` — gated on a `localStorage.activeRequest`
+     that is never written; `ordercard.js` — not the screen in use), which is why
+     it had never rendered for anyone. Keep this byte-faithful to the helper; if
+     the helper changes, change this with it.
 
-     ⚠️ OPEN QUESTION FOR THE OWNER — do not resolve it in code. The prototype
-     and the live app disagree about whether the customer is TEXTED when the
-     Gopher reports them not present: live sends one (that is what
-     `smsTriggerTime` is named for), the prototype models none. Until that is
-     ruled on, this copy deliberately says nothing about a text — it is true
-     whichever way the ruling goes. If live is canonical, add "We've texted you
-     as well" so the card reads as the second channel rather than the only
-     warning.
+     THE CLOCK COMES FROM THE SERVER, NOT THIS DEVICE. The deadline is
+     `requestor_reminded_at` (stamped by the backend when
+     `POST orders/:id/gopher_reached` succeeded) + 10 minutes. An earlier draft
+     of this block captured `Date.now()` locally instead — which is the exact
+     defect G40-192 records against the shipped client: "the app computes the
+     deadline from the device clock — so a skewed clock shows 'window passed'
+     the instant the banner appears."
 
-     Ten minutes IS agreed by both sides, so the window itself is safe to rely on.
+     A missing or unparseable timestamp yields INACTIVE, deliberately: the
+     helper prefers no banner over "an uncloseable clockless banner".
 
-     The worker's "Report as No Show" stays LOCKED for the full window because
-     the outcome affects pay — it can never fire early.
+     Window is 10 minutes (`NO_SHOW_WINDOW_MS`), agreed by every source.
+     Only age-restricted orders have a no-show path at all (owner correction —
+     the control is gated on `age_restricted?` in the worker app). */
+  const NO_SHOW_WINDOW_MS = 10 * 60000;
+  function noShowStateFrom(reminded, remindedAt, nowMs){
+    const deadline = remindedAt ? new Date(remindedAt).getTime() + NO_SHOW_WINDOW_MS : NaN;
+    const active = Number.isFinite(deadline) && !!reminded;
+    const msLeft = active ? deadline - nowMs : null;
+    const expired = msLeft !== null && msLeft <= 0;
+    const clock = (msLeft !== null && msLeft > 0)
+      ? `${String(Math.floor(msLeft / 60000)).padStart(2,'0')}:${String(Math.floor((msLeft % 60000) / 1000)).padStart(2,'0')}`
+      : null;
+    return { active, expired, clock };
+  }
 
-     The requester's half of that is this block, and its whole job is to be
-     ACTIONABLE while the clock is still running: the delivery is still savable
-     by walking to the door. So it leads the detail screen, states the deadline,
-     and says plainly what happens at zero. It is not a notification after the
-     fact.
-
-     Outcome, per the Go app: a reported no-show pays the worker IN FULL and does
-     not release the items. There is no cancellation fee involved — saying or
-     implying one here would be wrong.
-
-     `noShowUntil` (epoch ms) and `noShow` are written only by the Go app through
-     the web↔Go bridge, so on the live site neither is ever set and this renders
-     nothing. */
   function buildNoShowBlock(r){
     if(!r) return '';
-    if(r.noShow){
-      const who = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
-        || (r.worker || 'Your Gopher').replace(/\s*\(.*$/, '');
-      return `
-      <div class="cmp-block cmp-dispute">
-        <div class="cmp-title">Completed as No Show</div>
-        <div class="cmp-sub">You weren't present at the drop-off to verify ID within the 10-minute window, so
-          <b>the items were not released</b>. ${who} waited the full window and was <b>paid in full</b>.</div>
-        <div class="cmp-disclaimer">Age-restricted items can only be handed over to the person who ordered them,
-          after an ID check — that rule is why the delivery could not be completed.</div>
-      </div>`;
-    }
-    if(!r.noShowUntil) return '';
     const who = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
       || (r.worker || 'Your Gopher').replace(/\s*\(.*$/, '');
+
+    /* ⛔ SETTLED NO-SHOW — owner ruling, 2026-08-30:
+         "I wasn't aware that the requester received a confirmation screen. That
+          is certainly going to lead to disputes. There should only be a pop-up
+          stating the no-show was executed and under review and to contact us if
+          they need to."
+       So this states what happened and points at support. It does NOT ask the
+       requester to confirm anything — confirming is what releases payment, and
+       inviting it on an order the Gopher has already reported is what produced
+       the live "Payment is already Paid!" alert (up to 12 duplicate confirm rows
+       on a single order). The completion block is suppressed alongside this.
+
+       It also does NOT claim the Gopher was paid: under G40-419 a no-show
+       reported away from the drop-off holds payout for up to 48 hours. */
+    if(r.noShow){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">No-show recorded</div>
+        <div class="cmp-sub">${who} reported that nobody was available to verify ID for this
+          age-restricted delivery, so <b>the items were not handed over</b>. This is
+          <b>under review</b> — there's nothing for you to confirm.</div>
+        <div class="cmp-disclaimer">If you believe this is wrong, contact us and we'll look into it.</div>
+      </div>`;
+    }
+
+    const st = noShowStateFrom(r.noShowReminded, r.noShowRemindedAt, Date.now());
+    if(!st.active) return '';
+
+    if(st.expired){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">⏱ The wait window has passed</div>
+        <div class="cmp-sub">${who} waited at your drop-off to verify your ID and the 10-minute
+          window has now run out. If you're there, go to the door — they may still be able to
+          complete the delivery.</div>
+      </div>`;
+    }
+
     return `
       <div class="cmp-block cmp-dispute" id="noShowBlock">
         <div class="cmp-title">⏱ ${who} is waiting at your drop-off</div>
-        <div class="cmp-sub">They can't hand over age-restricted items without checking your ID in
-          person — please come to the door.
-          <b class="la-noshow-count" data-until="${r.noShowUntil}">10:00</b> left.</div>
+        <div class="cmp-sub">We've messaged you as well. They can't hand over age-restricted items
+          without checking your ID in person — please come to the door.
+          <b class="la-noshow-count" data-until="${new Date(r.noShowRemindedAt).getTime() + NO_SHOW_WINDOW_MS}">${st.clock}</b> left.</div>
         <div class="cmp-disclaimer">If the window runs out they can report a no-show: the items are
-          <b>not released</b> and they are paid in full for the trip. Message them if you need a moment.</div>
+          <b>not released</b> and the delivery ends there. Message them if you need a moment.</div>
       </div>`;
   }
 
-  /* Ticks every visible no-show countdown in place. Deliberately updates only the
-     <b> element rather than re-rendering the detail screen — a full re-render
-     every second would fight scrolling and drop focus out of the message box the
-     requester is probably typing in. Self-stopping when no countdown is on screen. */
+  /* Ticks the visible countdown in place. Deliberately updates only the <b>
+     element rather than re-rendering the detail screen — a full re-render every
+     second would fight scrolling and drop focus out of the message box the
+     requester is likely typing in. Same MM:SS padding as the shared helper. */
   (function noShowTicker(){
     setInterval(() => {
       document.querySelectorAll('.la-noshow-count').forEach(el => {
         const until = +el.getAttribute('data-until') || 0;
-        const left = Math.max(0, Math.round((until - Date.now()) / 1000));
-        el.textContent = Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2);
-        if(left <= 0) el.textContent = '0:00';
+        const ms = Math.max(0, until - Date.now());
+        el.textContent = `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2,'0')}`;
       });
     }, 1000);
   })();

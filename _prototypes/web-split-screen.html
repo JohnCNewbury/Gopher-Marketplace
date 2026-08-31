@@ -611,7 +611,7 @@
         // terminal — reported
         if(job.noShow && !noShowDone[id]){
           noShowDone[id]=true;
-          g.update(id, { noShow:true, noShowUntil:0, needsAttention:true });
+          g.update(id, { noShow:true, noShowReminded:false, noShowRemindedAt:null, needsAttention:true });
           status('⏱ <b>Reported as a no-show</b> on '+id+'. You were not at the drop-off to verify ID '
             +'within the window, so the <b>items were not released</b> — and the Gopher waited it out, '
             +'so they are <b>paid in full</b>. No cancellation fee is involved.');
@@ -621,15 +621,19 @@
         var active=+job.noShowActive||0;
         if(active && noShowSeen[id]!==active){
           noShowSeen[id]=active;
-          g.update(id, { noShowUntil: Date.now()+NO_SHOW_WINDOW_MS, needsAttention:true });
+          /* Stamp the moment the Gopher tapped, and let the web derive the
+             deadline from it — the live contract is `requestor_reminded_at`
+             from POST gopher_reached, NOT a deadline computed on the reader's
+             device. Here the Go phone is that authority. */
+          g.update(id, { noShowReminded:true, noShowRemindedAt:new Date().toISOString(), needsAttention:true });
           status('⏱ Your Gopher is <b>at the drop-off and you are not there</b> to verify ID for '+id+'. '
             +'You have <b>10 minutes</b> — the card is counting down. Go to the door and the delivery '
             +'completes normally.');
           continue;
         }
         // averted — the requester turned up before 0:00
-        if(!active && !job.noShow && noShowSeen[id] && g.raw(id) && g.raw(id).noShowUntil){
-          g.update(id, { noShowUntil:0 });
+        if(!active && !job.noShow && noShowSeen[id] && g.raw(id) && g.raw(id).noShowReminded){
+          g.update(id, { noShowReminded:false, noShowRemindedAt:null });
           noShowSeen[id]=0;
           status('You made it — the no-show window on '+id+' was <b>cleared</b> and the Gopher is '
             +'verifying your ID now.');
