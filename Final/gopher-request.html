@@ -7304,6 +7304,19 @@
   .cmp-rate-now { width:100%; margin-top:10px; background:#1CB061; color:#fff; border:none; border-radius:12px; padding:12px; font-family:'Nunito'; font-weight:800; font-size:13.5px; cursor:pointer; animation:cmpRatePulse 1.5s ease-in-out infinite; }
   @keyframes cmpRatePulse { 0% { box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5); } 70% { box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } 100% { box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } }
   .cmp-detail-rows { margin-bottom:6px; }
+  /* Report a request — trust & safety. Deliberately plain: this is not a
+     promotional surface and the reasons must read as a list to choose from,
+     not as a menu of features. */
+  .req-detail-report { color:#C44257; border-color:#f0d5d8; }
+  .rep-copy { font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:var(--muted); margin:0 0 10px; }
+  .rep-list { display:flex; flex-direction:column; gap:8px; margin:14px 0 4px; }
+  .rep-opt { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+             color:var(--navy); background:#fff; border:1.6px solid #e6e2d6; border-radius:12px;
+             padding:12px 13px; cursor:pointer; transition:background .12s, border-color .12s, color .12s; }
+  .rep-opt:hover { border-color:#cfe3d6; }
+  .rep-opt.sel { background:#E8F5EE; border-color:#1CB061; color:#0a7d44; }
+  #reportSubmit[disabled] { opacity:.45; cursor:default; }
+
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
   .cmp-drow span:first-child { color:var(--muted); font-weight:600; }
   .cmp-drow span:last-child { color:var(--navy); font-weight:700; text-align:right; }
@@ -19235,7 +19248,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <section class="dash-section" data-rqsec="request-detail">
         <div class="req-detail-topbar">
           <button class="req-detail-back" data-rqjump="home">← Back to Dashboard</button>
-          <button class="req-detail-back req-detail-cancel" id="reqDetailCancelBtn">Cancel request</button>
+          <button class="req-detail-back req-detail-report" id="reqDetailReportBtn">⚑ Report</button>
+        <button class="req-detail-back req-detail-cancel" id="reqDetailCancelBtn">Cancel request</button>
         </div>
         <div id="reqDetailBody">
           <!-- Filled by JS based on dashState.requestDetailId -->
@@ -22060,7 +22074,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
     const completionModals = buildCompletionModals(r);
-    body.innerHTML = buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    body.innerHTML = buildReportModal(r) + buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -22104,6 +22118,39 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           paintRating(r); return;
         }
         if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) submitRating(r); return; }
+        // ── Report a request (see REPORT_REASONS above) ──
+        if(target.closest('[data-report-open]')){
+          const o = document.getElementById('reportOverlay'); if(o) o.hidden = false; return;
+        }
+        if(target.closest('[data-report-close]') || target.id === 'reportOverlay'){
+          const o = document.getElementById('reportOverlay'); if(o) o.hidden = true; return;
+        }
+        const repOpt = target.closest('[data-report-reason]');
+        if(repOpt){
+          /* Single-select, matching upstream's Selectpopup: exactly one reason
+             leaves with the report, and Submit stays disabled until one is
+             chosen — an empty description would reach the admin panel as a
+             flag nobody can action. */
+          document.querySelectorAll('.rep-opt.sel').forEach(b => b.classList.remove('sel'));
+          repOpt.classList.add('sel');
+          const sb = document.getElementById('reportSubmit'); if(sb) sb.disabled = false;
+          return;
+        }
+        if(target.closest('[data-report-submit]')){
+          const r = getR(); const picked = document.querySelector('.rep-opt.sel');
+          if(!r || !picked) return;
+          const description = REPORT_REASONS[+picked.dataset.reportReason];
+          /* BACKEND SEAM — the live requester app posts exactly this:
+                POST orders/<id>/flag { description }   (getOrders.js handleFlagReport)
+             It is the same endpoint the worker app uses, so both parties' flags
+             land in one place. Recorded on the request here; the POST is the
+             human-dev wiring. */
+          r.flagReport = { reason: description, at: Date.now() };
+          const o = document.getElementById('reportOverlay'); if(o) o.hidden = true;
+          if(typeof toast === 'function') toast('Report submitted — our team will investigate.');
+          renderRequestDetail();
+          return;
+        }
         if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
         if(target.closest('[data-dispute-submit]')){
           const r = getR(); if(!r) return;
@@ -22889,6 +22936,58 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
      scripts/web-checks/noshow-parity.js can hold the two to identical output. */
   function aasmStateForNoShow(r){
     return (r && r.status === 'in-progress') ? 'purchased' : (r && r.status) || '';
+  }
+
+  /* ── Report a request (trust & safety) ────────────────────────────────────
+     ⛔ PORTED, NOT INVENTED. Owner, 2026-08-31: this "already exists" — and it
+     does, in the live requester app at gopher-mobile-request
+     src/component/getOrders.js (the Selectpopup list at ~1421 and
+     handleFlagReport at ~350). The web had NO report surface at all: a requester
+     could Block a Gopher (rqRelBlock) but never escalate to Gopher HQ, so
+     someone who felt unsafe had nowhere to go.
+
+     Everything here is upstream's, verbatim:
+       • the SIX reasons, in upstream's order. Note it carries one the worker's
+         list does not — "Violates Age-Restricted Policies" — which is correct:
+         only the requester can know the order's contents were misrepresented.
+       • both paragraphs of copy, unedited.
+       • the seam: POST orders/{id}/flag { description }. The SAME endpoint the
+         worker app posts to, so one flag mechanism serves both parties and the
+         admin panel sees them identically.
+
+     Deliberately NOT a "report this Gopher" surface: upstream flags the ORDER,
+     not a person, and the admin panel links the flag to the order. Reporting a
+     named worker would be a different feature and a different decision. */
+  const REPORT_REASONS = [
+    'Inappropriate Request',
+    'Inappropriate Language',
+    'Inappropriate Picture',
+    'Request may be illegal/suspicious',
+    'Unsafe request/location',
+    'Violates Age-Restricted Policies',
+  ];
+
+  function buildReportModal(r){
+    if(!r) return '';
+    return `
+      <div class="gr-modal-overlay gr-mo--tall" id="reportOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Report a request">
+          <div class="ca-head"><h3>Report A Request</h3><button class="ca-x" data-report-close aria-label="Close">✕</button></div>
+          <div class="ca-body">
+            <p class="rep-copy">We strive to create a community of people who respect each other and feel
+              they are in a safe environment. If you feel like one of the listings is of inappropriate
+              nature, please use this page to report it.</p>
+            <p class="rep-copy">Our team will be notified, and we will investigate the issue as soon as
+              possible.</p>
+            <div class="rep-list" id="reportReasons">
+              ${REPORT_REASONS.map((t,i) => `<button type="button" class="rep-opt" data-report-reason="${i}">${t}</button>`).join('')}
+            </div>
+            <div class="ca-actions">
+              <button class="ca-approve" id="reportSubmit" data-report-submit disabled>Submit report</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
   }
 
   function buildNoShowBlock(r){
@@ -24444,6 +24543,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // in-progress flow). Deletes the request from DASH_DATA.activeRequests and
   // returns to home. Mirrors the [data-del-req] handler used by the home log's
   // red ✕ button, just from a different surface.
+  /* Report lives in the detail TOPBAR, a sibling of #reqDetailBody, so the
+     body's delegated handler cannot see it — the same reason Cancel request
+     below is wired directly. Same __wired guard, for the same reason: this
+     block re-runs and a second listener would open the modal twice. */
+  const reqDetailReportBtn = document.getElementById('reqDetailReportBtn');
+  if(reqDetailReportBtn && !reqDetailReportBtn.__wired){
+    reqDetailReportBtn.__wired = true;
+    reqDetailReportBtn.addEventListener('click', () => {
+      const o = document.getElementById('reportOverlay');
+      if(o) o.hidden = false;
+    });
+  }
+
   const reqDetailCancelBtn = document.getElementById('reqDetailCancelBtn');
   if(reqDetailCancelBtn && !reqDetailCancelBtn.__wired){
     reqDetailCancelBtn.__wired = true;

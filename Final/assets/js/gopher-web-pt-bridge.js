@@ -482,14 +482,32 @@
       if (autoHire) {
         entry.status = 'hired';
         entry.autoHired = true;
-        /* Deliberately NOT starting the job here. The web app's own
-           __createDashboardRequest auto-hires under 'first available' and still
-           leaves status 'pending' until the requester presses Start job — so
-           starting it from the bridge would paper over the very Start-job gate
-           that is the sharpest difference between web and the Go app. Both
-           acceptance paths therefore stop in the same place, and watchStart()
-           narrates the gate once, uniformly. */
-        rec.needsAttention = true;
+        /* ⛔ AUTO-START IS THE CANON, not a shortcut. Owner ruling 2026-08-31:
+           the First Available behaviour "already exists — use it". The live
+           requester app states it outright (gopher-mobile-request
+           src/component/modalContent.js, the `firstAvailable` modal):
+
+             "When selecting First Available, the first Gopher to accept your
+              request is off to the races to get what you need done!"
+             "This option requires little to no engagement on your part."
+
+           A Start-job gate contradicts that in plain words — it is engagement,
+           and it is required. The live requester app has NO start-job step at
+           all (zero hits for start job / startJob / start_job across its src),
+           so the button is a web-only artifact rather than a product step.
+
+           An earlier version of this bridge DID auto-start here; I removed it to
+           avoid "hiding a divergence". That was wrong: it was not a divergence
+           to preserve, it was web drift from a stated rule. `startJob` is also
+           what builds `rec.live` (tracker + crew cards), so calling it is how
+           the requester gets a live view at all — not merely a status flip.
+
+           NOTE this covers 'first' and the auto-hired half of 'my'. The
+           'select' path — where the requester deliberately picks a worker — is
+           NOT changed here: they are engaged by definition, and the owner scoped
+           today's ruling to First Available. Recorded in the scope doc. */
+        host.startJob(rec);
+        if (host.recount) host.recount();
       } else {
         rec.needsAttention = true;
         rec.worker = rec.interestedWorkers.length + ' worker'
