@@ -15,13 +15,18 @@
    `window.GWeb` — a GReq-SHAPED view of the dashboard store, so the harness
    can reuse split-screen.html's relay logic almost verbatim.
 
-   IT IS INERT WITHOUT `?pt=1`.
-   `install()` returns null when the flag is absent, nothing is published, and
-   not one line of app behaviour changes. The flag is read from
-   `location.search` ONLY — deliberately NOT sticky in sessionStorage. Sticky
-   PT is how the prototype's GReq store once cross-contaminated a normal visit
-   (see its comment); the web apps must never carry PT into an ordinary
-   session, because PT suppresses the demo worker pool.
+   IT CANNOT RUN IN PRODUCTION.
+   PT requires BOTH `?pt=1` AND a development host (localhost / 127.0.0.1 /
+   *.local / *.trycloudflare.com). On the three live hosts `install()` returns
+   null, nothing is published, and not one line of app behaviour changes — the
+   flag is not merely dormant there, it is unreachable. This matters because
+   `Final/` is rsynced to those hosts WHOLESALE, so this file ships whether or
+   not anyone intends to publish it.
+
+   The flag is read from `location.search` ONLY — deliberately NOT sticky in
+   sessionStorage. Sticky PT is how the prototype's GReq store once
+   cross-contaminated a normal visit (see its comment); the web apps must never
+   carry PT into an ordinary session, because PT empties the dashboard.
 
    HOST ADAPTER (all required unless marked optional)
    --------------------------------------------------
@@ -40,9 +45,28 @@
 (function (root) {
   'use strict';
 
-  /* ── PT flag ────────────────────────────────────────────────────────────
-     Query string only. See the header note on why this is not sticky. */
+  /* ── Where PT is allowed to exist at all ────────────────────────────────
+     `Final/` is rsynced to the live hosts WHOLESALE, so this file ships whether
+     or not anyone means to publish it. The ?pt=1 flag alone would then leave a
+     mode on a public site that anyone could enter by guessing a query
+     parameter — and entering it empties the visible dashboard. That is not a
+     mode a live site should have.
+
+     So PT additionally requires a DEVELOPMENT host. This is an ALLOWLIST, not a
+     denylist of the three known production hosts: fail-closed means a host
+     nobody thought of is denied rather than silently permitted. trycloudflare
+     is included because scripts/preview-tunnel.sh shares previews from there. */
+  function devHost() {
+    try {
+      var h = location.hostname;
+      return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]' || h === ''
+          || /\.local$/.test(h) || /(^|\.)trycloudflare\.com$/.test(h);
+    } catch (_) { return false; }
+  }
+
+  /* Query string only — see the header note on why this is not sticky. */
   function ptOn() {
+    if (!devHost()) return false;
     try { return new URLSearchParams(location.search).get('pt') === '1'; }
     catch (_) { return false; }
   }

@@ -118,13 +118,43 @@ The harness **self-checks** after boot and replaces the status line with a loud 
 pane is missing `GopherIQData` (wrong document root), the web pane published no `GWeb` (bridge did
 not install), or the Go pane has no `__injectJob` (did not boot in PT mode).
 
-## Safety of the `Final/` edits
+## Safety of the `Final/` edits — it cannot run in production
 
-The bridge is `?pt=1`-gated and reads the flag from `location.search` **only** — deliberately not
-sticky in sessionStorage, because sticky PT is how the prototype's own store once contaminated a
-normal visit. Without the flag `install()` returns `null`, nothing is published, and no app
-behaviour changes. A broken host adapter **throws** rather than degrading, so a silent half-bridge
-can never be mistaken for a legitimately empty dashboard.
+**The deploy is the reason this matters.** `scripts/deploy.sh` rsyncs `Final/` to the live hosts
+**wholesale** (`rsync -a --delete`, everything not explicitly excluded), so these three files ship
+on the next deploy *anyone* runs — and now that they are committed they will not even trip the
+preflight's dirty-tree warning. Shipping is therefore the default, not a decision.
+
+So PT requires **two** things: `?pt=1` **and** a development host — `localhost`, `127.0.0.1`,
+`*.local`, or `*.trycloudflare.com` (the tunnel `scripts/preview-tunnel.sh` shares previews from).
+It is an **allowlist, not a denylist** of the three known production hosts: fail-closed means a host
+nobody thought of is denied rather than silently permitted.
+
+Without the host gate, `?pt=1` alone would leave a mode on a public site that anyone could enter by
+guessing a query parameter — and entering it **empties the visible dashboard**. That is not a mode a
+live site should have. With it, the flag on a production host is not merely dormant, it is
+unreachable.
+
+Verified by unit test across 13 hostnames, including all three production hosts with the flag
+present (all `false`) and the spoofing near-misses `trycloudflare.com.evil.example` and
+`localhost.evil.example` (both `false`).
+
+The flag is read from `location.search` **only** — deliberately not sticky in sessionStorage,
+because sticky PT is how the prototype's own store once contaminated a normal visit. A broken host
+adapter **throws** rather than degrading, so a silent half-bridge can never be mistaken for a
+legitimately empty dashboard.
+
+**The harness itself never ships.** `_prototypes/` is deployed by an explicit `PROTO` allowlist in
+`scripts/deploy.sh`, and `web-split-screen.html` is not in it.
+
+### If you are the next person to deploy
+
+The dry-run diffstat will list `Final/gopher-request.html`, `Final/gopher-connect.html` and the new
+`Final/assets/js/gopher-web-pt-bridge.js`. Per the repo's own rule an unfamiliar file in that list is
+either someone's new work or something you are about to revert — these are the former, they are
+safe to carry, and they change nothing for a real visitor. **Do not pin the deploy behind this
+commit to avoid shipping them**: pinning at a point behind what is currently live silently rolls
+back everything shipped since, which is the more expensive mistake.
 
 Per web app: load the module, suppress the demo worker pool under PT, swap the Step-7 band and the
 card's worker line to PT copy, skip the fake-Gopher inbox seed (Request only), add the broadcast
