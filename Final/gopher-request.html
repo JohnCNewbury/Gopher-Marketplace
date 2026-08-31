@@ -22862,15 +22862,33 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
      Only age-restricted orders have a no-show path at all (owner correction —
      the control is gated on `age_restricted?` in the worker app). */
   const NO_SHOW_WINDOW_MS = 10 * 60000;
-  function noShowStateFrom(reminded, remindedAt, nowMs){
-    const deadline = remindedAt ? new Date(remindedAt).getTime() + NO_SHOW_WINDOW_MS : NaN;
-    const active = Number.isFinite(deadline) && !!reminded;
+  const NO_SHOW_STATES = ["purchased", "picked_up"];
+  function noShowStateFrom(reminded, remindedAt, aasmState, nowMs){
+    const deadline = remindedAt
+      ? new Date(remindedAt).getTime() + NO_SHOW_WINDOW_MS
+      : NaN;
+    const active =
+      Number.isFinite(deadline) &&
+      !!reminded &&
+      NO_SHOW_STATES.indexOf(aasmState) !== -1;
     const msLeft = active ? deadline - nowMs : null;
     const expired = msLeft !== null && msLeft <= 0;
-    const clock = (msLeft !== null && msLeft > 0)
-      ? `${String(Math.floor(msLeft / 60000)).padStart(2,'0')}:${String(Math.floor((msLeft % 60000) / 1000)).padStart(2,'0')}`
-      : null;
+    const clock =
+      msLeft !== null && msLeft > 0
+        ? `${String(Math.floor(msLeft / 60000)).padStart(2, "0")}:${String(
+            Math.floor((msLeft % 60000) / 1000),
+          ).padStart(2, "0")}`
+        : null;
     return { active, expired, clock };
+  }
+
+  /* The one place web vocabulary meets the mobile helper's. The helper gates on
+     the ORDER'S aasm_state, which the web app does not carry — its equivalent of
+     "worker is out on the job" is status 'in-progress'. Mapping here rather than
+     loosening the helper keeps the ported function byte-faithful, so
+     scripts/web-checks/noshow-parity.js can hold the two to identical output. */
+  function aasmStateForNoShow(r){
+    return (r && r.status === 'in-progress') ? 'purchased' : (r && r.status) || '';
   }
 
   function buildNoShowBlock(r){
@@ -22902,7 +22920,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       </div>`;
     }
 
-    const st = noShowStateFrom(r.noShowReminded, r.noShowRemindedAt, Date.now());
+    const st = noShowStateFrom(r.noShowReminded, r.noShowRemindedAt, aasmStateForNoShow(r), Date.now());
     if(!st.active) return '';
 
     if(st.expired){
