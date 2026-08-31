@@ -3658,9 +3658,50 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // the full countdown — it affects pay, so it can never fire prematurely — and unlocks at 0:00 (per the
     // designed screen, gopher-go-purchase-delivery-figma.html). On expiry the worker chooses: report the
     // no-show (paid in full, items not released) or keep waiting / confirm the requester arrived.
+    /* ⛔ WALL CLOCK, NOT TICKS. Do not go back to counting setInterval fires.
+
+       This previously read `let secs=600` and decremented once per tick, so it
+       measured TICKS THAT FIRED rather than time elapsed. Browsers throttle and
+       then suspend setInterval in a backgrounded webview, so it did not drift --
+       it STOPPED. Measured 2026-08-31 in the web/Go split-screen playground:
+       0.00 prototype-seconds per real second while not foreground, and a wall
+       clock reaching 0:00 while this still read 5:58.
+
+       It could never unlock EARLY, so no fraudulent early no-show was possible.
+       The harm was the opposite: a worker who backgrounds the app to take a call
+       or open maps returns to a clock that never moved and is held past 10
+       minutes with nothing saying why.
+
+       ⚠️ THE REASON THIS MATTERED MORE THAN A PROTOTYPE BUG: the G40-192
+       flow-scrub tells dev to build the native flow from THIS function. The live
+       worker app is already correct -- ordercard.js / RequestDetailPullOver.js
+       store a deadline under `smsTriggerTime<id>` and derive
+       `storedTime - currentTime`. So the prototype was a regression FROM live,
+       sitting inside the instruction that says "build from this". Fixing it
+       restores intent rather than changing product behaviour. Owner-approved
+       2026-08-31.
+
+       The deadline is stored on the job so redraws cannot restart it, mirroring
+       live's stored-deadline shape. */
+    const NO_SHOW_WINDOW_MS = 10 * 60000;
+
+    /* Pure, so it can be tested beside the other two implementations of this
+       same window (gopher-mobile-request src/helpers/noShow.js, and the web
+       requester banner which is already held to it by an 84-case matrix).
+       Returns ms rather than a formatted string deliberately: this prototype
+       renders M:SS and the mobile helper renders MM:SS, and that display
+       difference should not read as a rule difference. */
+    function noShowWindowFrom(deadlineMs, nowMs){
+      if(!deadlineMs || !isFinite(deadlineMs)) return {active:false,expired:false,msLeft:0};
+      const msLeft = deadlineMs - nowMs;
+      return msLeft<=0 ? {active:true,expired:true,msLeft:0}
+                       : {active:true,expired:false,msLeft:msLeft};
+    }
+
     function openNoShowTimer(){
       j.noShowActive=(j.noShowActive||0)+1;   // harness fires the requester banner + home-card countdown
-      let secs=600, tick=0;
+      let tick=0;
+      if(!j.noShowDeadline) j.noShowDeadline = Date.now() + NO_SHOW_WINDOW_MS;
       const fmt=s=>Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);
       const ov=showModal(
         '<h3>Requester not present</h3>'
@@ -3670,14 +3711,20 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         +'<button class="js-nsarrived" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Requester arrived</button>'
         +'<button class="js-nsreport" disabled style="width:100%;margin-top:9px;border:1.5px solid #e0dccb;background:#faf8f2;color:#b9b2a1;border-radius:12px;padding:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:not-allowed;">Report as No Show &middot; unlocks at 0:00</button>');
       const cd=ov.querySelector('.js-nscount'), rp=ov.querySelector('.js-nsreport'), hint=ov.querySelector('.js-nshint');
-      tick=setInterval(()=>{ secs--; if(cd) cd.textContent=fmt(Math.max(0,secs)); if(secs<=0){ clearInterval(tick); unlockReport(); } }, 1000);
+      /* Derived from the stored deadline every tick, so a missed or throttled
+         tick costs display latency, never elapsed time. */
+      const render=()=>{ const st=noShowWindowFrom(j.noShowDeadline, Date.now());
+        if(cd) cd.textContent=fmt(Math.max(0, Math.ceil(st.msLeft/1000)));
+        if(st.expired){ clearInterval(tick); unlockReport(); } };
+      render();
+      tick=setInterval(render, 1000);
       function unlockReport(){ if(cd) cd.textContent='0:00';
         rp.disabled=false; rp.textContent='Report as No Show';
         rp.style.border='1.5px solid #C44257'; rp.style.background='#fff'; rp.style.color='#C44257'; rp.style.cursor='pointer';
         if(hint) hint.innerHTML='Window expired — report the no-show (you&#8217;re paid in full, items not released) or keep waiting.'; }
-      function finishNoShow(){ clearInterval(tick); j.noShow=1; j.noShowActive=0; j.substage='completed'; if(!j.doneAt) j.doneAt=Date.now();  j.navigating=null; if(ov&&ov.remove) ov.remove(); draw();
+      function finishNoShow(){ clearInterval(tick); j.noShowDeadline=null; j.noShow=1; j.noShowActive=0; j.substage='completed'; if(!j.doneAt) j.doneAt=Date.now();  j.navigating=null; if(ov&&ov.remove) ov.remove(); draw();
         toast('Reported as no-show — you&#8217;re paid in full; items not released.'); }
-      ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
+      ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowDeadline=null; j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
       rp.onclick=()=>{ if(rp.disabled) return; finishNoShow(); };   // pay-affecting — unreachable before 0:00
     }
     // Completion photos (non-age-restricted delivery) — the Gopher shares up to 3 drop-off photos so the
