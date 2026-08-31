@@ -359,6 +359,12 @@
         timingLabel: workerWhen(rec),
         when: workerWhen(rec),
 
+        /* turn-by-turn navigation — set only by the Go app, cleared on a status
+           advance. Nothing on the live site writes it, so the web's nav line
+           renders only when a real worker app is connected. */
+        navTo: rec.navTo || null,
+        navAddr: rec.navAddr || '',
+
         /* deals provenance */
         deal: !!rec.fromDeal || !!rec.dealKind,
         dealMerchant: rec.dealMerchant || '',

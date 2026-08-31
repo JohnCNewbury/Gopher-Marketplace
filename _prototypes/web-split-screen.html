@@ -190,11 +190,11 @@
      swallow the first event of the new session. */
   var injected, offered, hired, countered, counterDecided, statusSeen,
       goMsgSeen, reqMsgSeen, goCancelSeen, reqCancelSeen, adjustSeen, counterPending,
-      startNarrated, adjustPending, adjustDecided, disputeSeen;
+      startNarrated, adjustPending, adjustDecided, disputeSeen, navSeen;
   function clearRelays(){
     injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
     startNarrated={}; orderSurface={}; offSurfaceWarned={};
-    adjustPending={}; adjustDecided={}; disputeSeen={};
+    adjustPending={}; adjustDecided={}; disputeSeen={}; navSeen={};
     goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
     counterPending={};
   }
@@ -580,6 +580,38 @@
     }catch(_){}
   }
 
+  /* ═══ Go → Web : the worker opened turn-by-turn navigation ═════════════
+     LIVE-APP INVARIANT, and the whole reason this relay exists: navigation
+     NEVER interrupts the live location feed. The worker is inside their maps
+     app; the requester's tracking keeps running. The web card therefore states
+     both facts in one line — "navigating to the pick-up · live location stays
+     on" — because "navigating" alone would imply tracking had paused.
+
+     `j.navigating = {to, addr, seq}` and the Go app clears it to null the moment
+     the worker advances the status, so the nav line must clear too — a stale
+     "is navigating" on a job that has already moved on is worse than none. */
+  function watchNavigate(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      for(var id in w.__ptJobs){
+        var job=w.__ptJobs[id];
+        var rec=g.get(id); if(!rec) continue;
+        var nav=job && job.navigating;
+        if(nav && nav.seq && navSeen[id]!==nav.seq){
+          navSeen[id]=nav.seq;
+          g.update(id, { navTo: nav.to||'stop', navAddr: nav.addr||'' });
+          status('Gopher opened <b>turn-by-turn navigation</b> to the '
+            +String(nav.to||'stop').toLowerCase()+' → the requester\'s card shows it, and their '
+            +'<b>live location feed stays ON</b>. Navigation never pauses tracking.');
+        }
+        // Worker advanced the status (or finished) — Go cleared it, so clear ours.
+        if(!nav && navSeen[id]!==undefined && g.raw(id) && g.raw(id).navTo){
+          g.update(id, { navTo:null, navAddr:'' });
+        }
+      }
+    }catch(_){}
+  }
+
   /* ═══ Web → Go : the requester disputed the completed job ══════════════
      The web owns a full state machine — 'entry' (reason box) → 'disputed'
      (submitted, `disputeReason` holds the requester's own words) — and the Go
@@ -816,7 +848,7 @@
        navigating away would lose them. */
     try{ var _g=W(); if(_g) _g.persist(); }catch(_){}
     watchCounter(); watchCounterDecision();
-    watchStatus(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
+    watchStatus(); watchNavigate(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
     watchGoCancel(); watchReqCancel();
     setTimeout(tick, 600);
   }

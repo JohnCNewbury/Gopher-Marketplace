@@ -22937,9 +22937,33 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <text x="14" y="-1" font-family="Nunito,sans-serif" font-weight="800" font-size="12" fill="#6b7280">📍 Gopher&apos;s choice</text>
           </g>` : '';
 
+    /* ── Turn-by-turn navigation state ────────────────────────────────────
+       INVARIANT (from the Go app, and the reason this line exists at all):
+       opening turn-by-turn navigation NEVER interrupts the live location feed.
+       The worker is inside their maps app; the requester's tracking keeps
+       running. Saying only "navigating" would imply tracking paused, so the
+       line always states BOTH facts together — that pairing is the point.
+
+       Set from `r.navTo` ('pickup' | 'dropoff' | 'stop'), written only by the
+       Go app via the web↔Go bridge and cleared the moment the worker advances
+       the status. Nothing else writes it, so on the live site — where no worker
+       app is connected — this renders nothing at all. */
+    const navLabel = r.navTo
+      ? (/pick/i.test(r.navTo) ? 'the pick-up' : /drop|dest/i.test(r.navTo) ? 'the drop-off' : 'the next stop')
+      : null;
+    const navHtml = navLabel ? `
+      <div class="la-nav-live" style="display:flex;align-items:center;gap:9px;margin:0 0 10px;padding:10px 12px;border:1px solid #cfe3d6;border-radius:12px;background:#f2faf5;font-family:'DM Sans',sans-serif;">
+        <span aria-hidden="true" style="font-size:15px;">🧭</span>
+        <span style="font-size:12.5px;line-height:1.45;color:#0a5c36;">
+          <b>${lead.name.replace(/\s*\(.*\)$/, '')} is navigating to ${navLabel}.</b>
+          <span style="color:#3a6b52;">Live location stays on — navigation doesn't pause tracking.</span>
+        </span>
+      </div>` : '';
+
     // ── Stylized live map (self-contained SVG; no external tiles) ──
     const mapHtml = (scheduled || r.awaitingConfirmation) ? '' : `
       <div class="la-section-title">Live location</div>
+      ${navHtml}
       <div class="live-map-wrap">
         <svg class="live-map-svg" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Live route map">
           <rect width="600" height="260" fill="#eef3f8"/>
