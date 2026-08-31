@@ -1941,9 +1941,13 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   **#7 ToS "Sections"** — found the scrim was `display:none` at EVERY width (base rule set it, the
   mobile block set position/inset/background but never restored `display`), so the backdrop never
   dimmed and tap-outside was dead; FAB bottom offset now clears `env(safe-area-inset-bottom)`.
-  ⚠️ **The reported "button isn't working" was NOT reproduced** — open/close logic is provably
-  correct and live is byte-identical to disk; the safe-area change is the best hypothesis, not a
-  confirmed fix. **#3 MY Gophers bubble** — reproduced at left:-78px; `.hint-pop` hangs off an
+  ✅ **CONFIRMED FIXED on the owner's handset after the deploy** — and that identifies the cause:
+  the scrim fix cannot affect whether a button RESPONDS, so it was the iOS home-indicator gesture
+  strip swallowing taps in the bottom band. Swept to every other bottom-pinned control in the 101
+  guides in `958d7b6` (Sections FABs, `.totop`, `.qr-toggle`, the hint sheet) — same
+  fix-the-pattern-not-the-file lesson as the G40 chip. **Any fixed control near the bottom edge
+  needs `bottom:calc(<n> + env(safe-area-inset-bottom, 0px))`;** the `, 0px` fallback keeps it a
+  no-op where there is no inset. **#3 MY Gophers bubble** — reproduced at left:-78px; `.hint-pop` hangs off an
   INLINE button so anchoring to the button overflows whichever edge it is nearest (the old mobile
   rule just flipped left↔right). Now a viewport-pinned sheet <520px; fixed on request-101 AND
   connect-101. **#4 Go tiers headline** — base `white-space:nowrap` survived into mobile, running
