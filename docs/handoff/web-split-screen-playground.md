@@ -225,24 +225,46 @@ These are **live-app findings**, not harness quirks.
 ⚠️ **Verified and wired are not the same thing, and an earlier draft of this file conflated them.**
 Split explicitly:
 
-**WIRED AND DRIVEN END TO END** (clicked through both apps' own controls, 2026-08-31):
-submit → broadcast · acceptance under `first` (auto-hire) and `select` (candidacy) · requester Hire
-· Start job (narrated) · worker progress in-progress → items → completed → live tracker ·
-**counter-offer → the dashboard's counter card → the requester's Accept → relayed back to the Go
-phone at the agreed price.**
+**EVERY RELAY HAS NOW BEEN DRIVEN END TO END** through both apps' own controls (2026-08-31).
+Nothing in the list below is inferred from code review:
 
-**WIRED BUT NOT YET EXERCISED** — the code exists and is reviewed, but no one has driven these
-through the two panes, so treat them as unproven: acceptance under `my` (Prioritize MY Gophers) ·
-the requester's **Deny** on a counter · messaging both ways · cost adjustment · Gopher cancel ·
-requester cancel.
+submit → broadcast · acceptance under all three modes — `first` (auto-hire), `select` (candidacy →
+requester Hire), `my` (auto-hire, after earning a MY Gopher) · Start job (narrated) · worker
+progress in-progress → items → completed → live tracker · completion → requester **confirm** →
+**rate** → **Add as MY Gopher** · counter-offer → counter card → **Accept** and **Deny**, both
+relayed · messaging **both ways** · cost adjustment → approval → relayed back · **Gopher cancel** ·
+**requester cancel**.
 
-The `my` path is the one most worth doing first: it is the only branch whose auto-hire decision
-depends on `__myGopherNames()`, and PT empties `myGophers` — so the "is this worker already one of
-mine" test runs against an empty list every time, and the branch may never fire at all.
+**Deliberately NOT wired** — see the list below; unchanged.
+
+⚠️ **Running them found seven more bugs, five of which made the two panes disagree.** Wired is not
+working: every one of these would have read as fine until it mattered. They are listed in the
+findings section.
 
 **Deliberately NOT wired** — the Go app raises these but the web dashboards have no surface that
 can receive them, so they are not faked: no-show timer · dispute · turn-by-turn navigation state ·
 report-a-request · Refer-Yourself.
+
+## The `my` (Prioritize MY Gophers) path — and why it was nearly untestable
+
+`my` is **locked in the UI** until you have favourited a Gopher from a completed job
+(`aria-disabled`, "Unlocks once you've favorited neighborhood Gophers from completed jobs"). PT
+empties `myGophers`, so it starts locked — correct behaviour, and the only honest unlock is to
+actually finish a job and favourite the worker.
+
+That route was **blocked by a bug in this bridge**: `buildCompletionBlock()` renders nothing unless
+the record carries `awaitingConfirmation`, and the completion relay never set it. So the Gopher
+could mark a job complete and the requester had no way to confirm, dispute, rate **or favourite** —
+the request sat "completed" while the detail screen still offered "Start job". One missing field
+closed off the confirm flow, the rating flow, and the entire `my` branch behind it.
+
+Fixed, then driven the whole way: complete on Go → **Confirm completion** → **Rate now** → tick
+**Add as MY Gopher** → MY Gophers = 1 → the option unlocks ("we'll notify your favs first") → new
+request under `my` → Marcus accepts on Go → **auto-hired** (`Marcus Hale:hired (auto)`), landing at
+the Start-job gate like every other acceptance path.
+
+Minor, recorded not fixed: the Go app's banner says *"first available, you're hired"* even under
+`my` — its copy does not distinguish the two auto-hire reasons.
 
 ## Verified end to end (2026-08-31)
 

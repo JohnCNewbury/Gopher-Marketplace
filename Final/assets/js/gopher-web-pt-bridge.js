@@ -509,6 +509,15 @@
         rec.status = 'completed';
         rec.statusLabel = 'Completed';
         rec.needsAttention = true;          // requester must confirm before payout
+        /* buildCompletionBlock() renders NOTHING unless the record carries
+           `awaitingConfirmation` (or `confirmed`). Without this the Gopher could
+           mark a job complete and the requester had no way to confirm, dispute,
+           rate, or favourite them — the request just sat "completed" while the
+           detail screen still offered "Start job". It also silently blocked the
+           only honest route to MY Gophers, which is earned by favouriting a
+           Gopher from a COMPLETED job — so "Prioritize MY Gophers" (locked until
+           you have one) could never be unlocked at all. */
+        rec.awaitingConfirmation = true;
       }
       host.render();
       return true;
