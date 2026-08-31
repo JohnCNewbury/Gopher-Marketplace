@@ -1,0 +1,105 @@
+diff --git a/scripts/trustshield-export-images.js b/scripts/trustshield-export-images.js
+index 460568b5..ebcb5395 100644
+--- a/scripts/trustshield-export-images.js
++++ b/scripts/trustshield-export-images.js
+@@ -66,6 +66,7 @@ const path = require('path');
+ const fs = require('fs');
+ const crypto = require('crypto');
+ const axios = require('axios').default;
++const { mirrored_keys } = require('../helpers/trustshield_files');
+ 
+ require('dotenv').config({ path: '.env' });
+ 
+@@ -85,6 +86,9 @@ const OUT = path.resolve(
+ const DELAY_MS = Number(arg('delay', 250));
+ const LIMIT = Number(arg('limit', 0));
+ const DRY_RUN = flag('dry-run');
++/* Escape hatch: force a refetch even where S3 already holds FRONT+FACE, for the
++   case where a mirrored object is suspected corrupt rather than missing. */
++const NO_S3_RESUME = flag('no-s3-resume');
+ 
+ const HEADER = 'user_id,scan_ref,image_type,s3_key,bytes,sha256,status\n';
+ 
+@@ -151,6 +155,47 @@ const csv = (v) => {
+   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+ };
+ 
++/* ⛔ RESUME FROM S3 AS WELL AS THE MANIFEST.
++
++   The manifest is the only resume state this script originally had, and it is a
++   LOCAL FILE. It runs where the backend runs, so the manifest lives on that box
++   and is routinely not the box you re-run from. Without it every scan ref is
++   refetched: on 2026-08-31 that was ~6,973 holders x ~3 images ~= 21,000 fetches
++   to recover 242 missing ones.
++
++   Free -- iDenfy bills approved verifications, not file reads -- but slow enough
++   that the re-run gets deferred, and this is the one step that becomes
++   IMPOSSIBLE when the vendor account lapses. A resume mechanism that is
++   expensive to use is one that does not get used in time.
++
++   So: ask S3 what we already hold. That is authoritative, survives losing the
++   manifest, and is the same store the app serves from.
++
++   ⚠️ "Already mirrored" means FRONT *and* FACE. Those are the two the worker's
++   at-door screen renders (licence + selfie); BACK is a bonus iDenfy may or may
++   not hold. Skipping on "any object present" would strand a holder who has only
++   FRONT -- exactly the half-mirrored case this is meant to close.
++
++   Uses mirrored_keys() from helpers/trustshield_files.js rather than rebuilding
++   the key layout, so the script and the serving path can never disagree about
++   where an image lives. */
++const REQUIRED_TYPES = ['FRONT', 'FACE'];
++
++const s3_already_complete = async (scan_ref) => {
++  if (NO_S3_RESUME) return false;
++  try {
++    const keys = await mirrored_keys(scan_ref);
++    return REQUIRED_TYPES.every((t) => keys[t]);
++  } catch (error) {
++    /* A listing failure must never be read as "already done" -- that would
++       silently skip a holder we do not hold. Fall through and fetch. */
++    console.log(
++      `  ! S3 check failed for ${scan_ref} (${error.message}) — fetching anyway`
++    );
++    return false;
++  }
++};
++
+ /** scan refs already exported successfully, so a re-run resumes. */
+ const already_done = () => {
+   const done = new Set();
+@@ -302,15 +347,30 @@ async function main() {
+     fs.appendFileSync(OUT, `${row.map(csv).join(',')}\n`);
+   };
+ 
++  let skipped_s3 = 0;
+   for (let i = 0; i < work.length; i++) {
+     /* eslint-disable-next-line no-await-in-loop */
+-    await export_holder(work[i], done, record);
+-    if ((i + 1) % 25 === 0) console.log(`  … ${i + 1}/${work.length} holders`);
+-    /* eslint-disable-next-line no-await-in-loop */
+-    if (DELAY_MS > 0) await sleep(DELAY_MS);
++    const held = await s3_already_complete(work[i].idenfy_scan_ref);
++    if (held) {
++      skipped_s3 += 1;
++      if (skipped_s3 % 250 === 0) {
++        console.log(`  … ${skipped_s3} already held in S3, skipped`);
++      }
++    } else {
++      /* eslint-disable-next-line no-await-in-loop */
++      await export_holder(work[i], done, record);
++      if ((i + 1) % 25 === 0)
++        console.log(`  … ${i + 1}/${work.length} holders`);
++      /* eslint-disable-next-line no-await-in-loop */
++      if (DELAY_MS > 0) await sleep(DELAY_MS);
++    }
+   }
+ 
+   console.log(`\nDone. ${work.length} holders processed.`);
++  console.log(
++    `  ${skipped_s3} skipped — already held in S3 (FRONT+FACE)\n` +
++      `  ${work.length - skipped_s3} needed fetching`
++  );
+   Object.keys(tally)
+     .sort()
+     .forEach((k) => console.log(`  ${k}: ${tally[k]}`));
