@@ -485,6 +485,63 @@ bounce to Home, in the flow workers use to get paid.
 > buttons**. That is an owner call and is tracked separately; they are allowlisted in `KNOWN_DEAD`
 > with this reasoning recorded inline, and the check still fails on anything new.
 
+#### 3.5.2 ✅ Camera capture — DEVICE-VERIFIED 2026-08-31, after FOUR root causes
+
+The §3.5 warning *"Not device-verified — green CI proves this compiles and lints, not that a
+camera appears"* is now discharged. On the owner's **iPhone 15 Pro Max** the full path works:
+entry point → three live shots → upload → **TrustShield Verified** badge.
+
+**The camera worked on the very first run.** Everything below is *placement*, and it took four
+distinct root causes — two upstream, one mine, one an interaction nobody documents.
+
+| # | Cause | Symptom | Where |
+|---|---|---|---|
+| 1 | `x`/`y` divided by `UIScreen.main.scale` while `width`/`height` are not | preview at 1/scale of its offset, collapsed toward the top-left | upstream plugin |
+| 2 | `previewLayer.frame = view.frame` — layer is view-local, so the origin applies twice | video offset again, and spilling outside the box | upstream plugin |
+| 3 | document made transparent to reveal the video | **entire screen black** — transparency reveals what is *behind* the webview, not the app | **mine** |
+| 4 | `contentInset:"automatic"` — DOM coords are inset-relative, the plugin's are window-relative | camera 59pt high, so it ends 59pt short — reads as a cropped bottom | Capacitor/plugin interaction |
+
+1 and 2 are fixed at source in `patches/@capacitor-community+camera-preview+8.0.1.patch`
+(patch-package, applied by `postinstall`, which CI runs via `npm ci`). 3 and 4 are in
+`IdCaptureBox.js`. All are pinned by `scripts/assert-camera-preview-scale.mjs` — **30 checks**.
+
+⚠️ **The lesson worth keeping is about diagnosis, not cameras.**
+
+**Each fix made the next bug visible, and the symptoms actively disguised the causes.** Defect 2
+was invisible until 1 was cancelled. The guide overlay looked *fine* while the preview was
+mispositioned — it only became obviously useless once the video landed in its frame, which is
+when the owner asked the decisive question: *"What is the point of the white borders if they're
+not even showing up."* And defect 4's symptom — a missing bottom quarter — pointed at **size**,
+when the camera was always exactly 344×215 and merely 59pt too high. Three builds chased the
+size. The bug was the origin.
+
+⚠️ **A ratio is not evidence of a scale.** 158/215 = 0.735 looked like a transform, and a
+transform guard was built for it. The real relationship was `215 − 59`, a subtraction. The guard
+is kept (it is correct and cheap) but is **documented in-code as never having fired here.**
+
+⛔ **The instrument has to stay in until the bug is fixed.** An on-screen readout was added,
+answered one question, and was removed — after which two builds were spent guessing. The
+`safe-area-top "59px"` that turned out to BE the answer was printed by the *first* readout, hours
+before it was used. When the readout came back, it settled the remaining question in one
+screenshot:
+
+```
+measured 43,119 344x215     <- getBoundingClientRect()
+offset   43,119 344x215     <- offsetWidth/offsetHeight (transform-proof)
+sent1    43,178 344x215     <- with the +59 conversion
+```
+
+`measured == offset` also disproved the transform hypothesis by measurement rather than argument.
+
+⚠️ **Position the instrument out of the layout flow.** The first readout sat in normal flow and
+pushed the very box it was measuring, corrupting its own numbers. The second was `position:
+fixed`.
+
+⚠️ **Android placement is UNVERIFIED on a device.** The conversion in 4 is iOS-gated and Android
+was never affected by 1 or 2, so it *should* be unaffected — but nobody has looked. If Android is
+tested and the preview sits low by the status-bar height, `domToWindowY()` is the first place to
+look.
+
 ### 3.6 Backend — the post-cliff message ✅ DONE (`e51a8ac3`, in !433)
 
 `controllers/user/trustshield.js` returned, on **every** `generate_token` failure:
