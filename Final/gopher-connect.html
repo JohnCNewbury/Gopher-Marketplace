@@ -24564,7 +24564,11 @@ const PAY_BADGES = {
         DASH_DATA: DASH_DATA,
         dashState: dashState,
         startJob: startJob,
-        render: renderActiveRequests,
+        // See the Request twin of this note: cards AND the open detail screen.
+        render: function(){
+          try{ renderActiveRequests(); }catch(_){}
+          try{ if(typeof renderRequestDetail==='function') renderRequestDetail(); }catch(_){}
+        },
         recount: function(){
           try{ renderKpiCounts(); }catch(_){}
           try{ renderPrevRequests(); }catch(_){}

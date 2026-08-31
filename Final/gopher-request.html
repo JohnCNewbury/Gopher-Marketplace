@@ -26190,7 +26190,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         DASH_DATA: DASH_DATA,
         dashState: dashState,
         startJob: startJob,
-        render: renderActiveRequests,
+        /* Repaint the CARDS **and** the open detail screen. renderActiveRequests
+           alone leaves a request the user is currently viewing showing stale
+           state — the no-show block survived its own window being cleared,
+           which is exactly the moment the requester is staring at it. The app's
+           own handlers always call these two together; so must we. */
+        render: function(){
+          try{ renderActiveRequests(); }catch(_){}
+          try{ renderRequestDetail(); }catch(_){}
+        },
         recount: function(){
           try{ recountKpis(); }catch(_){}
           try{ renderPrevRequests(); }catch(_){}

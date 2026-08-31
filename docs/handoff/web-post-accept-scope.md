@@ -63,7 +63,20 @@ Status is from driving both apps end to end in the playground (2026-08-31), not 
 
 ### Genuinely missing on the web — two BUILT 2026-08-31, one still open
 
-1. ✅ **No-show flow — BUILT** (`aed189a`). Requester's card leads with a live countdown while the
+1. ✅ **No-show flow — BUILT** (`aed189a`), with one caveat recorded below.
+
+   ⚠️ **The terminal "reported" outcome has NOT been driven end to end, and the reason is itself a
+   Go-app bug.** `openNoShowTimer()` counts down with `setInterval`, so it counts *ticks that fired*,
+   not time elapsed. Measured live: a wall-clock countdown started at the same instant reached
+   **0:00 while the Go countdown still read 5:58**, and over a 40-second sample with the app not
+   foreground the Go timer advanced **0.00 seconds per real second** — it does not drift, it stops.
+   Reaching 0:00 would take roughly 90 minutes of real time, so "Report as No Show" never unlocks
+   here. Started and averted are both driven and verified; reported is verified only to its relay
+   contract. Fix is filed against the Go workstream (deadline-based, not tick-based).
+
+   *(This is not purely a harness artifact: mobile OSes suspend timers in backgrounded apps, and a
+   worker standing at a door has every reason to switch apps — texting the customer, checking maps.
+   Each of those freezes their own window and holds them past the 10 minutes policy promises.)* Requester's card leads with a live countdown while the
    worker waits at an age-restricted drop-off, and becomes a terminal "Completed as No Show" block
    if reported. Rules read from the Go app's own G40-192 implementation, not invented. Consequence
    copy matches the age-restricted waiver already in the flow. **No cancellation fee is involved** —
