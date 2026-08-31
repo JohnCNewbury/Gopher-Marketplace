@@ -4827,6 +4827,19 @@
 
   @media(max-width:900px){
     .hero-inner,.getstarted-inner,.use-cases-grid,.features-grid,.testi-grid,.plans-grid { grid-template-columns:1fr; }
+    /* ⛔ Collapsing the grid to 1fr is NOT enough on its own. A grid item's
+       automatic minimum size is min-width:auto, i.e. its MIN-CONTENT width — so
+       the two-column .form-row and the 38px headline held both children at
+       454px inside a 375px viewport and the Enterprise copy + contact form ran
+       off the right edge (owner-reported 2026-08-26). The items must be allowed
+       to shrink, and the inner form grid has to stack too. */
+    .getstarted-inner > *, .form-card, .form-row, .form-group { min-width:0; }
+    .form-row { grid-template-columns:1fr; }
+    .form-card { padding:28px 20px; }
+    .getstarted-left h2 { font-size:30px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width:100%; min-width:0; box-sizing:border-box;
+    }
     .flow-layout { grid-template-columns:1fr; }
     .flow-steps { position:static; flex-direction:row; overflow-x:auto; gap:8px; padding-bottom:6px; }
     .flow-step { min-width:200px; }
