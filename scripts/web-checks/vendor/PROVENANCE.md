@@ -28,6 +28,24 @@ more visible failure: worst case you are pinned to a correct older rule, versus
 pinned to nothing at all. (Shape proposed by the Current Sprint - TrustShield
 session, mirroring how `gopher-step-gates.js` was vendored into the Request app.)
 
+## Three implementations, one rule
+
+As of 2026-08-31 there are three, and all three are held together by tests:
+
+| # | implementation | bound by |
+|---|---|---|
+| 1 | `vendor/noShow.js` (byte-identical mobile rule) | the reference |
+| 2 | `Final/gopher-request.html` — `noShowStateFrom` | `noshow-parity.js`, 84 cases |
+| 3 | `_prototypes/Go/gopher-go-prototype.html` — `noShowWindowFrom` | `noshow-three-way.js` |
+
+The prototype deliberately does NOT share the others' signature: it takes a
+deadline (it has no aasm state and no backend reminder — the Gopher opens the
+window by tapping "Customer not present") and returns `msLeft` rather than a
+formatted clock, because it renders `M:SS` and the mobile helper `MM:SS`. That is
+a display difference, not a rule difference. `noshow-three-way.js` therefore
+compares **expiry and the displayed second**, never formatting — so nobody is
+pushed to change the prototype's visuals to satisfy a test.
+
 ## ⚠️ The boundary that must not move
 
 This helper takes `aasmState` as a **parameter**. The web→aasm mapping
