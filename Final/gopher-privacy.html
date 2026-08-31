@@ -309,15 +309,23 @@
     body.legal-toc-open .privacy-toc { transform:translateX(0); }
     .legal-toc-fab {
       display:inline-flex; align-items:center; gap:8px;
-      position:fixed; left:18px; bottom:22px; z-index:1190;
+      /* bottom offset clears the iOS home-indicator / toolbar safe area — at a
+         flat 22px the tap can be swallowed by the system gesture strip on a
+         real handset, which reads as "the button does nothing". */
+      position:fixed; left:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:1190;
       background:var(--navy); color:#fff; border:none; border-radius:999px;
       padding:11px 18px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
       box-shadow:0 8px 24px rgba(0,36,97,.4); cursor:pointer;
     }
     .legal-toc-fab svg { width:16px; height:16px; }
     body.legal-toc-open .legal-toc-fab { display:none; }
-    .legal-toc-scrim {
-      position:fixed; inset:0; z-index:1150; background:rgba(13,21,52,.55);
+    /* ⛔ display MUST be restored here. The base rule above is
+       `.legal-toc-fab, .legal-toc-scrim { display:none; }`, and this block used
+       to set position/inset/background but NOT display — so the scrim was
+       display:none at every width, the backdrop never dimmed and tap-outside
+       could not close the panel. Found 2026-08-26. */
+    body.legal-toc-open .legal-toc-scrim {
+      display:block; position:fixed; inset:0; z-index:1150; background:rgba(13,21,52,.55);
     }
     .legal-toc-scrim[hidden] { display:none; }
     footer { padding:48px 24px 30px; }
