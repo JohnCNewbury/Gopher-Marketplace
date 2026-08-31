@@ -1936,6 +1936,44 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   triggered `Deploy to Tiger Tech` on `push` and went green, as did another session's `cb4b00e`.
   One-off blip, not a pattern; no longer worth watching.
 
+- **Owner UX pass, 7 items — 6 fixed + 1 designed (2026-08-26; commits `2f19978`, `c53b1bb`,
+  `acdd6e2`, `244f5f8`, `1774c1a`, `f4a0cb6`; deploy `993ad83`, live-verified both hosts).**
+  **#7 ToS "Sections"** — found the scrim was `display:none` at EVERY width (base rule set it, the
+  mobile block set position/inset/background but never restored `display`), so the backdrop never
+  dimmed and tap-outside was dead; FAB bottom offset now clears `env(safe-area-inset-bottom)`.
+  ⚠️ **The reported "button isn't working" was NOT reproduced** — open/close logic is provably
+  correct and live is byte-identical to disk; the safe-area change is the best hypothesis, not a
+  confirmed fix. **#3 MY Gophers bubble** — reproduced at left:-78px; `.hint-pop` hangs off an
+  INLINE button so anchoring to the button overflows whichever edge it is nearest (the old mobile
+  rule just flipped left↔right). Now a viewport-pinned sheet <520px; fixed on request-101 AND
+  connect-101. **#4 Go tiers headline** — base `white-space:nowrap` survived into mobile, running
+  to x=506 in a 375px viewport. **#2 Connect Enterprise + contact form** — the 900px block ALREADY
+  collapsed the grid to 1fr, which is why it looked fine; that cannot help while a grid item's
+  automatic minimum is `min-width:auto` = min-content, which pinned both columns at 454px. Fixed
+  the whole chain (min-width:0, .form-row stacks, inputs box-sizing). **#1 Go feed marks** — the
+  Connect/Deals source badges were TEXT wordmarks; now the real lockups on white pills, mirroring
+  the Go prototype's `.jc-badge.mark` (white because the lockups are full-colour and vanish on
+  navy; kept OUTSIDE `.lockwrap` because the finer Connect mark disappears at 45% grey).
+  **#6 address note** — owner asked if it was stale; it was **never true**: the autocomplete module
+  has ZERO geolocation calls, so "allow location access" could never have fixed it. Rewritten.
+  **#5 profile hero** — no mobile rules existed at all; owner approved a grid from a side-by-side.
+  Alongside it, **the demo worker is now Elite+, not Pro** (owner: "we have 0 Pros so far") — one
+  constant drives most surfaces but TWO hardcoded copies (the Verification row and a pre-JS
+  placeholder) would have contradicted it.
+  **Traps worth keeping:** (1) ⚠️ **An occluded/hidden preview pane does not composite, so CSS
+  TRANSITIONS FREEZE** — `getComputedStyle` keeps returning the pre-transition value, which made a
+  working slide-in panel look permanently stuck and even made inline `!important` appear not to
+  apply. Set `transition:none` before measuring transform-driven state in a hidden pane. (2) ⚠️
+  **NEVER `open(f,'w').write(open(f).read()...)`** — the write handle truncates before the read is
+  evaluated; this wrote request-101 and connect-101 as 0 bytes. Caught immediately, restored with
+  `git checkout --`, nothing lost, nothing broken deployed. Read into a variable, validate every
+  file, then write. (3) Python `len()` counts CHARACTERS and `wc -c` counts BYTES — on these
+  multi-byte pages the two differ by ~600 and briefly looked like lost work.
+  **Deploy scoping:** pinned at my own latest commit and additionally held THREE files at the live
+  version (`gopher-bid-brain.js`, `gopher-deals-feed.js`, `gopher-deals.html`) — the Deals session's
+  committed-but-unshipped bid-board work. Verified byte-identical across the deploy commit, so they
+  were neither shipped nor reverted; that session's uncommitted edits in the clone are untouched.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
