@@ -922,7 +922,13 @@
 
   @media (max-width:820px) {
     .ts-card { grid-template-columns:1fr; padding:36px 28px; gap:32px; }
-    .ts-left h2 { font-size:28px; }
+    /* ⛔ white-space MUST return to normal here. The base rule sets nowrap so the
+       desktop headline breaks only at its authored <br>; on a phone that forces
+       one unbreakable line and the tail ("...and your Customer's!") is clipped
+       past the right edge — owner-reported 2026-08-26 at 375px, where the <em>
+       ran to x=506 in a 375px viewport. `em.nowrap` still holds individual
+       phrases together where the markup asks for it. */
+    .ts-left h2 { font-size:28px; white-space:normal; }
     .ts-badges { gap:24px 20px; }
     .ts-logo { height:30px; }
   }
