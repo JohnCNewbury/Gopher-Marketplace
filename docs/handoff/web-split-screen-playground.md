@@ -215,7 +215,32 @@ These are **live-app findings**, not harness quirks.
    `accBy='Marcus K.'` on its accept path — matching the bug rather than the account. **The
    prototype fix belongs to the Go workstream.**
 
-8. **`gopher-connect.html` never loads `gopher-iq-data.js`.** It references `GopherIQData` three
+8. **Request now builds a `reviewSnapshot` — parity with Connect (FIXED, not deployed).**
+   Scope corrected first: an earlier note here implied this "silently breaks two money features for
+   every real user". **It does not, today.** `counterOffers` and `pendingAdjustment` are written
+   ONLY onto the five seeded demo records — nothing in the live app can put either on a
+   user-created request — so the snapshot gap was **latent**, not an active break. It becomes live
+   the moment the Go app is wired to Request, which is precisely what this playground prototypes.
+
+   What it *did* affect today: `renderRequestDetail()` gates the Request recap on
+   `r.reviewSnapshot`, so a real user's in-progress request rendered the **minimal fallback card**
+   (ID / description / worker / total) instead of the canonical recap. Request-Again also reads
+   `snapshot.category` / `.description` for carry-over.
+
+   Fixed by building the snapshot at capture from `computeRequestFee()` on the same COG+offer base
+   Step 7 already foots — the frozen deal and the screen the customer agreed on are computed once,
+   not twice, so they cannot drift. Verified: review screen showed offer $30.00 / Gopher Fee $0.99 /
+   ITF $2.48 / **Total $33.47**; the stored snapshot reads `workerPay 30, gopherFee 0.99,
+   instantTransfer 2.4792, total 33.4692` — identical. The recap now renders all ten canonical rows.
+
+   WARNING: **this is the one change in this workstream that is NOT `?pt=1`-gated**, because it is a
+   real parity fix rather than playground scaffolding. It changes what a live user sees on an
+   in-progress request: the canonical recap replaces the fallback card. Behaviour is otherwise
+   unchanged, the live page loads with no console errors, `window.GWeb` stays undefined, and the
+   bridge's `ensureSnapshot` scaffold is now a dormant fallback (the app's own snapshot is used —
+   verified by the absence of `__ptSynthesized`). **Not deployed — needs an owner decision.**
+
+9. **`gopher-connect.html` never loads `gopher-iq-data.js`.** It references `GopherIQData` three
    times (guarded, so nothing crashes), which means Connect's ZIP/city **coverage lookup silently
    never runs**. Pre-existing, out of scope here, and a live-site behaviour change — left for an
    owner decision.
