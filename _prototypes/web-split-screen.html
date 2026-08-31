@@ -190,11 +190,11 @@
      swallow the first event of the new session. */
   var injected, offered, hired, countered, counterDecided, statusSeen,
       goMsgSeen, reqMsgSeen, goCancelSeen, reqCancelSeen, adjustSeen, counterPending,
-      startNarrated, adjustPending, adjustDecided;
+      startNarrated, adjustPending, adjustDecided, disputeSeen;
   function clearRelays(){
     injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
     startNarrated={}; orderSurface={}; offSurfaceWarned={};
-    adjustPending={}; adjustDecided={};
+    adjustPending={}; adjustDecided={}; disputeSeen={};
     goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
     counterPending={};
   }
@@ -439,11 +439,21 @@
         if(!job || !job.accepted || !job.substage || job.noShow) continue;
         if(statusSeen[id]===job.substage) continue;
         var step=SUBSTAGE_STEP[job.substage]; if(!step) continue;
-        if(!g.substage(id, step)) continue;                            // no live tracker yet — retry
+        /* Completion carries the worker's drop-off photos with it. Relaying them
+           in the same call as the status change keeps them atomic — the
+           requester never sees "completed" with the photos arriving a tick later,
+           which would render the details modal empty and then repopulate it. */
+        var extra=(job.substage==='completed' && Array.isArray(job.completionPhotos))
+          ? { photos:job.completionPhotos } : null;
+        if(!g.substage(id, step, extra)) continue;                     // no live tracker yet — retry
         statusSeen[id]=job.substage;
         var LB={ inprogress:'started the job', items:'secured the items', completed:'completed the job' };
+        var nPhotos=(extra && extra.photos) ? extra.photos.length : 0;
         status('Gopher <b>'+(LB[job.substage]||('→ '+job.substage))+'</b> for '+id+'.'
-          +(job.substage==='completed'?' The request now needs your <b>confirmation</b> before payout.':''));
+          +(job.substage==='completed'
+             ? (nPhotos ? ' '+nPhotos+' drop-off photo'+(nPhotos>1?'s':'')+' came with it — ' : ' ')
+               +'the request now needs your <b>confirmation</b> before payout.'
+             : ''));
       }
     }catch(_){}
   }
@@ -566,6 +576,37 @@
           ? 'You <b>approved</b> the adjustment on '+id+' → the new total is <b>$'+pend.total.toFixed(2)
             +'</b> and the Gopher was told they are clear to continue.'
           : 'You <b>declined</b> the adjustment on '+id+' → the Gopher was notified; the agreed price stands.');
+      }
+    }catch(_){}
+  }
+
+  /* ═══ Web → Go : the requester disputed the completed job ══════════════
+     The web owns a full state machine — 'entry' (reason box) → 'disputed'
+     (submitted, `disputeReason` holds the requester's own words) — and the Go
+     app already has `__ptDisputed(id, note)`, which puts payment on hold, shows
+     the worker WHY, and opens the job. Only the wire between them was missing,
+     so a dispute stopped dead on the web: the requester was told "your Gopher
+     has been notified" and the Gopher was never told anything.
+
+     Relayed on the TRANSITION into 'disputed', and re-armed if the state leaves
+     it, so a dispute raised again after a failed resolution is not swallowed.
+     The reason is passed through verbatim — it is the requester's own text and
+     the worker is being asked to act on it. */
+  function watchDispute(){
+    try{
+      var w=R(), g=W(); if(!(w && w.__ptJobs && g)) return;
+      var list=g.all()||[];
+      for(var i=0;i<list.length;i++){
+        var r=list[i];
+        if(!r) continue;
+        if(r.disputeState!=='disputed'){ disputeSeen[r.order]=false; continue; }   // re-arm
+        if(disputeSeen[r.order]) continue;
+        if(!(w.__ptDisputed && w.__ptJobs[r.order])) continue;          // Go not ready — retry
+        try{ w.__ptDisputed(r.order, r.disputeReason||''); }catch(_){ continue; }
+        disputeSeen[r.order]=true;
+        status('You <b>disputed</b> '+r.order+' → the Gopher was notified with your reason, '
+          +'payment is on hold, and they can resolve it with a <b>cost adjustment</b> '
+          +'(which always needs your approval, even when it lowers the price).');
       }
     }catch(_){}
   }
@@ -775,7 +816,7 @@
        navigating away would lose them. */
     try{ var _g=W(); if(_g) _g.persist(); }catch(_){}
     watchCounter(); watchCounterDecision();
-    watchStatus(); watchAdjust(); watchAdjustDecision(); watchMessages();
+    watchStatus(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
     watchGoCancel(); watchReqCancel();
     setTimeout(tick, 600);
   }

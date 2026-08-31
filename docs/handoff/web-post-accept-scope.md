@@ -47,9 +47,19 @@ Status is from driving both apps end to end in the playground (2026-08-31), not 
 - acceptance under all three `workerSelection` modes
 
 ### Built on web, NOT yet fed by the Go app
-- **dispute** — the web has a full state machine (`entry` → `disputed` → confirm / unable to
-  resolve) and Go raises `__ptDisputed`; the relay is simply not written yet. Cheapest remaining win.
-- **completion photos** — web renders them, Go collects them, nothing carries them across.
+**Both wired and verified 2026-08-31 — this section is now empty.**
+- ~~**dispute**~~ — WIRED. Requester submits (`disputeState:'disputed'` + `disputeReason`) →
+  `__ptDisputed(id, note)` → the Go phone shows **PAYMENT ON HOLD** with the requester's reason
+  carried **verbatim** (asserted `disputeNote === disputeReason`), and the worker can resolve it
+  with a cost adjustment — which, being a dispute, always routes through the requester's approval
+  even when it lowers the price. Relayed on the transition INTO `disputed` and re-armed if the
+  state leaves it, so a re-raised dispute after a failed resolution is not swallowed.
+- ~~**completion photos**~~ — WIRED. Both sides speak the same dialect (a plain array of image
+  `src` strings), so it is a straight copy, carried in the SAME call as the status change: the
+  requester never sees "completed" with the photos arriving a tick later and the details modal
+  repopulating. Verified two photos render at their natural 140×140 (genuinely decoded, not broken
+  `img` tags) under "View pic(s) of completed request"; the section is omitted entirely when the
+  array is empty.
 
 ### Genuinely missing on the web — need building
 1. **No-show flow.** Go runs a no-show timer and completion path; neither web app has any surface

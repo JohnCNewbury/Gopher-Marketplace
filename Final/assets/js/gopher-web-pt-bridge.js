@@ -324,8 +324,13 @@
         cancelled: !!rec.__ptCancelled,
         gCancelled: !!rec.__ptGopherCancelled,
         cancelReason: rec.__ptCancelReason || null,
-        confirmed: !!rec.__ptConfirmed,
+        confirmed: !!rec.confirmed,
         rating: rec.__ptRating || null,
+        /* The web owns this state machine: 'entry' (reason box open) →
+           'disputed' (submitted). `disputeReason` is the requester's own words,
+           read straight from #disputeReason — do not paraphrase it onward. */
+        disputeState: rec.disputeState || null,
+        disputeReason: rec.disputeReason || '',
 
         /* money + crew */
         bids: !!rec.bidsMode,
@@ -497,7 +502,7 @@
 
     /* Worker progress → the live tracker's step list. Marks the named step and
        everything before it done, which is what the tracker renders from. */
-    function substage(id, stepKey) {
+    function substage(id, stepKey, opts) {
       var rec = raw(id);
       if (!rec || !rec.live || !Array.isArray(rec.live.statusSteps)) return false;
       var steps = rec.live.statusSteps;
@@ -518,6 +523,15 @@
            Gopher from a COMPLETED job — so "Prioritize MY Gophers" (locked until
            you have one) could never be unlocked at all. */
         rec.awaitingConfirmation = true;
+        /* Drop-off photos the worker took. Both sides speak the same dialect —
+           a plain array of image src strings (Go: `j.completionPhotos =
+           photos.slice()`; web: `photos.map(p => <img src="${p}">)`) — so this
+           is a straight copy, NOT a re-shaping. The completion-details modal
+           omits the section entirely when the array is empty, so an unphotographed
+           job stays clean rather than rendering an empty gallery. */
+        if (opts && Array.isArray(opts.photos) && opts.photos.length) {
+          rec.completionPhotos = opts.photos.slice();
+        }
       }
       host.render();
       return true;
