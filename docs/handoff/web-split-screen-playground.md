@@ -307,12 +307,34 @@ by the **app's own** `statusBucket()` (Submitted before acceptance, Active after
 the harness decides. A Gopher accepting on the Go phone lands in **both** panes while the App is the
 one on screen.
 
-⛔ **App → Web is NOT built.** The app can create its own requests (Home → a category →
-`gopher-request-flow.html` → `GReq.add`), and adopting those into the web's `DASH_DATA` is the other
-half. Until it lands, an app-created request is **left alone rather than half-mirrored** — a record
-the web pane cannot render is worse than one it does not show. ⚠️ `onAppLoad` currently WIPES the
-app store before re-mirroring, which is safe only while the mirror is one-way; that line has to
-become a targeted purge before app-side creation ships, or it will destroy the app's own work.
+**App → Web is live too, as of the same day.** A request submitted on the phone
+(Home → category → `gopher-request-flow.html` → `GReq.add`) is **adopted** into the web's
+`DASH_DATA` through `GWeb.adopt()`, which calls the web flow's own
+`__createDashboardRequest` rather than hand-building a record — so an adopted request gets the same
+shape, defaults and downstream behaviour as one typed into the browser. Hand-assembling it would
+have drifted the first time the web payload changed, which is the class of bug the parity work
+exists to catch. The id is forced to the app's own order number so the two stores cannot end up
+discussing different jobs under one name.
+
+**Provenance is stamped on the record, not held in the page** — `__ptAdopted` (came from the phone)
+and `__ptMirrored` (written by the harness) both live in GReq, because the app pane reloads on its
+own navigation and anything the harness remembers is gone by then. The rule is total:
+
+| GReq order | in GWeb? | tag | action |
+|---|---|---|---|
+| any | yes | — | nothing; the mirror owns it |
+| any | no | `__ptAdopted` or `__ptMirrored` | the web dropped it → remove |
+| any | no | untagged | the phone made it → adopt |
+
+⚠️ **Both tags are needed, and the missing one was a real bug.** With only `__ptAdopted`, a mirrored
+copy left in the app after a web reset was indistinguishable from a phone-created request — so the
+adoption pass faithfully adopted it back. Observed exactly that: reset the web, reload, and the
+deleted request reappeared in all three panes, resurrected by the round trip.
+
+⚠️ **`onAppLoad` no longer wipes the app store.** That line was safe only while the mirror was
+one-way; the moment the phone could create requests it became destructive, because the app reloads
+on the navigation that *follows submitting*. The warning left on it the day before said exactly
+that would happen — it was honoured rather than rediscovered.
 
 ⚠️ **There is no Connect app prototype** — `_prototypes/` has Request and Go only. So the switch
 covers the **Request** surface; on Connect the App side has nothing to show. Not a defect, a bound.

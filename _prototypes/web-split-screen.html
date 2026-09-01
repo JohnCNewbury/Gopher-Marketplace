@@ -848,6 +848,49 @@
     'scheduledForLater','noShow','noShowReminded','noShowRemindedAt','ageRestricted',
     'trustShield','deal','dealMerchant','requestor','workerSelection','navTo','navAddr'];
 
+  /* ── App → Web : adopt what the requester's PHONE created ───────────────
+     The app writes its own submissions straight into GReq
+     (gopher-request-flow.html -> buildPending -> GReq.add). Without this the
+     switch was one-way: the browser could never see what the phone submitted,
+     which is not "one requester, two clients" — it is two half-requesters.
+
+     ⚠️ PROVENANCE IS STAMPED ON THE RECORD, NOT HELD IN THIS PAGE. `__ptAdopted`
+     goes into GReq itself, because the app pane RELOADS on its own navigation
+     (home -> flow -> home) and anything this page remembers is gone by then.
+     With page-local memory a reload would re-adopt every order the web already
+     had, and the requester would watch their request duplicate itself.
+
+     So the rule reads off the record, and it is total:
+       GReq order, in GWeb                        -> nothing to do
+       GReq order, NOT in GWeb, tagged by either
+         direction (__ptAdopted / __ptMirrored)   -> the web dropped it: REMOVE
+       GReq order, NOT in GWeb, UNTAGGED          -> the phone made it: ADOPT
+     After adoption the order lives in BOTH stores and GWeb is the working copy
+     every relay mutates, so it goes back to flowing web -> app. Adoption happens
+     exactly once, which is why there is no echo to break. */
+  function adoptFromApp(){
+    var g=W(), gr=GR(); if(!(g && gr)) return;
+    var list=gr.all()||[];
+    for(var i=0;i<list.length;i++){
+      var r=list[i]; if(!r || !r.order) continue;
+      if(g.get(r.order)) continue;                    // both stores have it
+      /* The web does not have it. Provenance decides which way that cuts:
+         it came FROM here (adopted) or was WRITTEN here (mirrored) -> the web has
+         since dropped it, so follow. Neither tag -> the phone made it. */
+      if(r.__ptAdopted || r.__ptMirrored){
+        try{ gr.remove(r.order); }catch(_){}
+        delete mirrored[r.order];
+        continue;
+      }
+      var rec=null;
+      try{ rec=g.adopt(r); }catch(_){ rec=null; }
+      if(!rec) continue;                              // bridge not ready — retry next tick
+      try{ gr.update(r.order, { __ptAdopted:true }); }catch(_){}
+      status('Submitted on the <b>Request app</b> — <b>'+r.order+'</b> is now on the web dashboard too '
+        +'and broadcasting to the Go phone. One requester, both clients.');
+    }
+  }
+
   function mirrorToApp(){
     var g=W(), gr=GR(); if(!(g && gr)) return;
     var live=g.all()||[];
@@ -860,6 +903,14 @@
         var f=MIRROR_KEEP[k];
         if(r[f]!==undefined) flat[f]=r[f];
       }
+      /* ⛔ STAMP WHAT WE WROTE. Without this, a mirrored copy left in the app
+         after a web reset is INDISTINGUISHABLE from a request the phone created
+         — and the adoption pass, seeing an untagged order the web does not have,
+         faithfully adopts it back. Observed exactly that: reset the web, reload,
+         and the deleted request reappeared in all three panes, resurrected by the
+         round trip. Both directions have to leave a fingerprint or the rule
+         cannot tell "the phone made this" from "the browser used to have this". */
+      flat.__ptMirrored=true;
       var sig=JSON.stringify(flat);
       if(mirrored[r.order]===sig) continue;            // unchanged — leave the app alone
       mirrored[r.order]=sig;
@@ -927,22 +978,22 @@
       try{ loc.replace(loc.pathname + loc.search + sep + 'pt=1&v=' + Date.now()); }catch(_){}
       return;
     }
-    /* ⚠️ WIPE FIRST, THEN MIRROR. `mirrored` is page-local, so after a reload the
-       harness has no memory of what it wrote — and its own removal pass can only
-       drop orders it remembers writing. Without this, a Reset (or any reload
-       after one) left ORPHANS in the app: records the web store no longer had,
-       still sitting in the requester's phone under Submitted. Two clients
-       disagreeing is the one thing this feature must never do, and an orphan is
-       the most convincing possible way to do it.
+    /* ⛔ THIS USED TO WIPE THE APP STORE, AND THAT LINE IS NOW A BUG, NOT A
+       CLEANUP. While the mirror was one-way GReq held nothing but copies, so
+       wiping and re-mirroring was a safe way to clear orphans left by a reset.
+       The moment the phone could create its own requests the same line became
+       destructive: the app RELOADS on its own navigation (home -> flow -> home),
+       so a wipe here would delete a request the requester had just submitted, on
+       the very navigation that follows submitting it. The warning left on it
+       yesterday said exactly this would happen; it is being honoured rather than
+       discovered.
 
-       Safe TODAY only because the mirror is one-way, so GReq contains nothing
-       but copies. ⛔ The moment the app can create its own requests, this must
-       become a targeted purge of mirrored orders — a blanket wipe would destroy
-       the app's own work. Flagged here rather than in a doc because this is the
-       line that would do the destroying. */
-    var gr=GR();
-    if(gr){ try{ (gr.all()||[]).forEach(function(r){ if(r && r.order) gr.remove(r.order); }); }catch(_){} }
+       Orphans are handled by provenance now, in adoptFromApp(): an adopted order
+       the web no longer has is removed, an un-adopted one is the phone's own new
+       work and is adopted. Both decided from the record, not from what this page
+       remembers. */
     mirrored={};              // fresh page, fresh store view — re-mirror from scratch
+    adoptFromApp();
     mirrorToApp();
   }
   appFrame.addEventListener('load', onAppLoad);
@@ -1116,11 +1167,24 @@
     }catch(err){
       /* Swallowing this would recreate the very failure the guard exists for, so
          it is recorded and surfaced rather than ignored. The loop keeps going:
-         one bad pass must not take every relay down with it. */
-      window.__tick.lastError = (err && err.message) || String(err);
+         one bad pass must not take every relay down with it.
+
+         ⛔ EVEN READING THE ERROR IS WRAPPED. `err` can be a cross-realm object
+         from one of the iframes, and touching `.message` — or String()-ing it —
+         can itself throw. That is not hypothetical: it is what killed this loop
+         the first time, AFTER it had been "made unkillable". The handler threw,
+         so the reschedule below never ran, and the panes quietly stopped
+         agreeing again. */
+      try{ window.__tick.lastError = (err && err.message) || String(err); }
+      catch(_){ window.__tick.lastError = 'unreadable error object (cross-realm?)'; }
       try{ console.error('[playground] relay pass failed:', err); }catch(_){}
+    }finally{
+      /* ⛔ FINALLY, NOT AFTER THE CATCH. A reschedule that lives after the catch
+         block is only reached if the catch block itself completes — which is
+         exactly the assumption that failed. This is the line that makes the
+         "the tick cannot die" claim true rather than intended. */
+      setTimeout(tick, 600);
     }
-    setTimeout(tick, 600);
   }
   function tickBody(){
     watchNative(); watchAccept(); watchHire(); watchStart();
@@ -1133,7 +1197,10 @@
     watchGoCancel(); watchReqCancel();
     /* LAST, deliberately. Every relay above can move an order, and the app pane
        should show the state AFTER this tick's work rather than the state before
-       it — a one-tick lag is exactly what "they disagree" looks like to a human. */
+       it — a one-tick lag is exactly what "they disagree" looks like to a human.
+       Adoption runs FIRST so a phone-created request is in GWeb before the
+       outward mirror decides what the app should be showing. */
+    adoptFromApp();
     mirrorToApp();
   }
 

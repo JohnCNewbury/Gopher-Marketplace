@@ -84,6 +84,14 @@
     '💪': 'labor', '🪴': 'yard', '🌳': 'yard',
     '🚗': 'ride', '🚙': 'ride'
   };
+  /* The other direction, for a request ADOPTED from the requester's phone: the
+     app carries a category slug and no icon, and the web dashboard renders the
+     icon. One entry per slug — deliberately not derived by inverting ICON_CAT,
+     which is many-to-one and would pick whichever alias happened to be last. */
+  var CAT_ICON = {
+    delivery: '🚚', home: '🏠', junk: '🗑️', moving: '📮',
+    labor: '💪', yard: '🪴', ride: '🚗', other: '📋'
+  };
   function catOf(rec) {
     if (rec.category) return String(rec.category).toLowerCase();
     var byIcon = ICON_CAT[rec.icon];
@@ -424,6 +432,82 @@
       return rec.reviewSnapshot;
     }
 
+    /* ── ADOPT: a request the REQUESTER'S PHONE created ───────────────────
+       The requester exists on a phone and in a browser, and in production one
+       server serves both. The Request app prototype writes its own submissions
+       straight into GReq (gopher-request-flow.html -> buildPending -> GReq.add),
+       and until this existed the web pane simply could not see them: the toggle
+       mirrored web -> app and nothing came back.
+
+       ⚠️ IT GOES THROUGH THE REAL CREATE PATH, NOT A HAND-BUILT RECORD.
+       `__createDashboardRequest` is what the web flow itself calls, so an adopted
+       request gets the same shape, the same defaults and the same downstream
+       behaviour as one typed into the browser. Assembling a DASH_DATA object here
+       would have been quicker and would have drifted the first time the web
+       flow's payload changed — which is the entire class of bug the parity work
+       exists to catch.
+
+       ⚠️ THE ID IS FORCED TO THE APP'S OWN ORDER NUMBER. The two stores must
+       agree on identity or the panes end up discussing different jobs under one
+       name. The app numbers from GR-00128 up and the web from GR-0002, so they
+       cannot collide; re-keying is safe here because nothing has broadcast the
+       record yet (same reasoning, and the same move, as the clash re-key above).
+
+       ⚠️ `__ptAdopted` is stamped on the GReq side by the harness, not here —
+       provenance has to survive a page reload, and anything this module holds in
+       memory does not. */
+    function adopt(g) {
+      if (!g || !g.order) return null;
+      if (typeof root.__createDashboardRequest !== 'function') return null;
+      if (raw(g.order)) return raw(g.order);              // already adopted
+      var cat = String(g.cat || '').toLowerCase() || 'other';
+      var pay = +g.pay || 0, cost = +g.cost || 0, workers = +g.workers || 1;
+      var pickups  = g.pickup  ? [g.pickup]  : [];
+      var dropoffs = g.dropoff ? [g.dropoff] : [];
+      var id;
+      try {
+        id = root.__createDashboardRequest({
+          icon: CAT_ICON[cat] || '📋',
+          title: g.title || 'New request',
+          category: cat,
+          costOfItems: cost,
+          descriptionFull: (g.description || g.scope || '').trim(),
+          perWorkerCost: pay,
+          workersNeeded: workers,
+          amountLabel: pay ? ('$' + (pay * workers).toFixed(2) + ' total') : '',
+          when: g.when || g.timingLabel || '',
+          scheduledForLater: !!g.scheduledForLater,
+          ageRestricted: !!g.ageRestricted,
+          idRequiredAtCompletion: !!g.ageRestricted,
+          bidsMode: !!g.bids,
+          firstAvailable: (g.workerSelection || 'first') === 'first',
+          workerSelection: g.workerSelection || 'first',
+          hasPickup: !!g.pickup,
+          pickups: pickups,
+          dropoffs: dropoffs,
+          pickupStairs: +g.pickupStairs || 0,
+          destStairs: +g.destStairs || 0,
+          serviceElevatorPickup: !!g.serviceElevatorPickup,
+          serviceElevatorDest: !!g.serviceElevatorDest,
+          interestedWorkers: [],
+          dealKind: g.deal ? 'deal' : null,
+          providerName: null
+        });
+      } catch (_) { return null; }
+      var list = D.activeRequests || [];
+      var rec = list.filter(function (r) { return r.id === id; })[0];
+      if (!rec) return null;
+      rec.id = g.order;
+      rec.__ptOwn = true;
+      rec.__ptFromApp = true;      /* so the harness can narrate WHERE it came from */
+      /* TrustShield rides with ageRestricted and must never be separated from it
+         — the app's own record carries that warning for the same reason. */
+      rec.trustShield = !!g.trustShield;
+      ensureSnapshot(rec);
+      persist();
+      return rec;
+    }
+
     function rawList() {
       return (D.activeRequests || []).filter(function (r) { return r.__ptOwn; });
     }
@@ -677,6 +761,7 @@
       reqCancel: reqCancel,
       reset: reset,
       ensureSnapshot: function (id) { return ensureSnapshot(raw(id)); },
+      adopt: adopt,
       purgeSeed: purgeSeed,
       world: world,
       persist: persist,
