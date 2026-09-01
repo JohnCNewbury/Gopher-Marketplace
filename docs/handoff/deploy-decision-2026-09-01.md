@@ -6,6 +6,38 @@ This is that verification. **Nothing has been deployed.**
 
 ---
 
+## ⛔ CORRECTION, same day — it is SIX files, not four, and the rider cannot be cleanly excluded
+
+**Read this before the section below; it was written from an incomplete measurement.**
+
+I sized the payload by comparing `Final/` against live. That missed the deploy script's **prototype
+allowlist**, which publishes eleven `_prototypes/` files to the public site as well. Two of them
+changed:
+
+| Extra file | Whose | What it carries |
+|---|---|---|
+| `_prototypes/Go/gopher-go-prototype.html` | this session | **the money fix** — a typed `$61.40` no longer reads as `$6,140` |
+| `_prototypes/Request/gopher-request-home.html` | this session | the report port |
+
+So the real payload is **five files of mine plus the one rider**, and the authoritative scope check
+is `scripts/deploy.sh` (dry run), not my hand comparison. I had also told the owner the app
+prototypes have no public host. **That is wrong for the eleven allowlisted files** — they ship.
+
+**And the rider cannot be excluded cleanly.** The deploy is `rsync -a --delete`, so adding
+`assets/js/gopher-deals-feed.js` to `EXCLUDE` would **delete the live file**, which is far worse
+than shipping a newer version of it. Excluding it properly means hand-building the deploy tree and
+`git rm`-ing that one path — bypassing the tested script, which is its own risk.
+
+**No live Deals session exists to ask.** Both are retired — *"HQ Dashboard / Deals (retired 8/24)"*
+and *"Gopher Deals + Go (retired 8/27 3:06pm)"* — and the two commits are dated **2026-08-28**, so
+they post-date both. The commits touch that one file only, so there are no sibling paths to
+identify a lane from, and guessing has already caused a misattribution here before. Of the sessions
+running now, none is Deals.
+
+So the deploy is held on one question, in the section at the end.
+
+---
+
 ## The whole payload is FOUR files
 
 Established by comparing content against `origin/main` file by file — **not** by
@@ -92,12 +124,20 @@ ruling and their verification, not mine.
 
 ---
 
-## What I need from you
+## What I need from you — ONE question
 
-1. **Deploy these three files — yes or no?**
-2. **Include or exclude `gopher-deals-feed.js`?**
-3. If yes, I will re-verify by **content** on **both hosts** afterwards — GitHub Pages and
-   TigerTech, since a push to `main` publishes to both.
+You said proceed, and ping Deals. **Deals is retired, so there is nobody to ping**, and the rider
+cannot be cleanly excluded from the same push. That leaves one choice:
+
+- **A — ship all six**, rider included. It implements *your own* Ruling 9 (2026-08-27): a deal card
+  is headed by the `service_category` the provider chose, not their first keyword. It is committed,
+  ahead of live, and its lane is gone, so waiting waits for nobody. **This is what I would do.**
+- **B — hold the whole deploy** until you have looked at the deals-feed change yourself.
+- **C — hand-build the tree** and `git rm` that one path, bypassing the tested script. Possible,
+  and the least attractive: it trades a reviewed change for an unreviewed deploy mechanism.
+
+Either way I re-verify by **content** on **both hosts** afterwards — GitHub Pages and TigerTech,
+since a push to `main` publishes to both.
 
 ---
 
