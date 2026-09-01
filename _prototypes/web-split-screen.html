@@ -67,6 +67,17 @@
      Off-screen keeps both clients LIVE, which is also the honest model: in
      production the requester's phone does not stop existing while they are
      looking at the browser. */
+  .app-na{ position:absolute; inset:11px; border-radius:34px; z-index:30;
+           background:rgba(8,14,30,.93); backdrop-filter:blur(3px);
+           display:flex; flex-direction:column; align-items:center; justify-content:center;
+           text-align:center; padding:26px 24px; gap:9px; }
+  .app-na[hidden]{ display:none; }
+  .app-na .app-na-i{ font-size:34px; }
+  .app-na b{ font-family:'Nunito',sans-serif; font-size:14.5px; color:#fff; }
+  .app-na p{ font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.55;
+             color:rgba(255,255,255,.72); margin:0; }
+  .app-na code{ font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#b9d2ff; }
+  .app-na .app-na-s{ color:rgba(255,255,255,.5); }
   .col.web{ position:relative; }
   .col.web .chassis:not(.on){ position:absolute; left:-100000px; top:0; }
 
@@ -136,6 +147,17 @@
     <div class="phone chassis" id="chassisApp">
       <div class="notch"></div>
       <div class="screen"><iframe id="appFrame" title="Gopher Request app"></iframe></div>
+      <!-- Shown only while the web pane is on Connect. Saying nothing would leave
+           the Request phone on screen looking like Connect's app, which is the
+           misreading this whole gate exists to prevent. -->
+      <div class="app-na" id="appNA" hidden>
+        <div class="app-na-i">📵</div>
+        <b>There is no Connect app prototype</b>
+        <p><code>_prototypes/</code> holds <b>Request</b> and <b>Go</b> only, so Connect has no phone
+           counterpart to show. This is the <b>Request</b> phone and it still holds the requests made
+           on Request — it is deliberately not being fed Connect's business orders.</p>
+        <p class="app-na-s">Switch the pane back to <b>Web</b>, or navigate the site to Request.</p>
+      </div>
     </div>
   </div>
   <div class="col go">
@@ -848,6 +870,32 @@
     'scheduledForLater','noShow','noShowReminded','noShowRemindedAt','ageRestricted',
     'trustShield','deal','dealMerchant','requestor','workerSelection','navTo','navAddr'];
 
+  /* ⛔ THE APP PANE IS THE **REQUEST** APP. IT MUST NEVER HOLD CONNECT'S ORDERS.
+     `_prototypes/` has a Request app and a Go app. There is NO Connect app
+     prototype, so when the web pane is on Connect there is simply nothing on the
+     phone side to mirror into.
+
+     Without this gate both passes ran on whatever page was loaded, and both were
+     wrong in their own way — verified, not theorised:
+
+       · MIRROR: submitting on Connect put **GC-00201, "Pallet of printer paper
+         from the depot to our Durham office"** — a business order — inside the
+         consumer Request phone. Not a sync glitch; a category error. Connect is
+         the business surface and Request is the personal one, and the whole
+         point of this switch is that the two panes are the SAME requester.
+       · PRUNE: the mirror's removal pass drops GReq orders the web no longer
+         has. On Connect the web has only GC- orders, so navigating Request ->
+         Connect would have WIPED the phone of every Request order the person
+         actually made.
+       · ADOPT: and a request created on the phone would have been adopted into
+         Connect's dashboard, which is the first failure again, backwards.
+
+     So both passes are scoped to the surface the phone belongs to. On Connect
+     they do NOTHING — GReq is left exactly as it is, which is also the honest
+     model: your phone still holds your requests while you are looking at a
+     different site. */
+  function appSurfaceLive(){ return surface === 'request'; }
+
   /* ── App → Web : adopt what the requester's PHONE created ───────────────
      The app writes its own submissions straight into GReq
      (gopher-request-flow.html -> buildPending -> GReq.add). Without this the
@@ -869,6 +917,7 @@
      every relay mutates, so it goes back to flowing web -> app. Adoption happens
      exactly once, which is why there is no echo to break. */
   function adoptFromApp(){
+    if(!appSurfaceLive()) return;                    // see appSurfaceLive()
     var g=W(), gr=GR(); if(!(g && gr)) return;
     var list=gr.all()||[];
     for(var i=0;i<list.length;i++){
@@ -892,6 +941,7 @@
   }
 
   function mirrorToApp(){
+    if(!appSurfaceLive()) return;                    // see appSurfaceLive()
     var g=W(), gr=GR(); if(!(g && gr)) return;
     var live=g.all()||[];
     var seen={}, touched=false;
@@ -955,6 +1005,7 @@
        for the next tick — a switch that shows a stale screen for half a second
        reads as "they are out of sync", which is the exact claim this feature
        exists to disprove. */
+    paintAppAvailability();
     if(mode==='app'){ mirrorToApp(); repaintApp(); }
     status(mode==='app'
       ? 'Requester switched to the <b>Gopher Request app</b>. Same orders, same data — this is the '
@@ -1014,6 +1065,14 @@
   function paintPane(){
     webPill.textContent = SURFACES[surface].pill;
     webUrl.textContent  = SURFACES[surface].url;
+    paintAppAvailability();
+  }
+
+  /* Called from paintPane (surface changes) and setMode (pane changes), because
+     the notice depends on BOTH and either one moving alone can make it wrong. */
+  function paintAppAvailability(){
+    var na=document.getElementById('appNA');
+    if(na) na.hidden = appSurfaceLive();
   }
 
   /* ═══ The left pane is THE SITE, not a fixed app ═════════════════════════
@@ -1162,7 +1221,15 @@
       autoSignIn();
       /* Relays stay parked until the dashboard is open AND its demo seed has been
          dropped. A tick that fires early broadcasts the seed. */
-      if(!signedIn){ window.__tick.parked++; setTimeout(tick, 600); return; }
+      /* ⛔ NO setTimeout HERE. The `finally` below schedules the next pass — for
+         EVERY exit path, which is the whole point of it being a finally. An
+         earlier version scheduled here too, so a parked pass queued TWO ticks
+         and the loop doubled every 600ms: 1,369,180 passes in about a minute,
+         which starved the event loop badly enough that the web pane never
+         finished loading, and the empty pane read as "Connect's bridge is
+         broken". It was not; the loop was eating the page. Return, and let the
+         finally do its job. */
+      if(!signedIn){ window.__tick.parked++; return; }
       tickBody();
     }catch(err){
       /* Swallowing this would recreate the very failure the guard exists for, so

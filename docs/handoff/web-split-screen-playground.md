@@ -336,8 +336,21 @@ one-way; the moment the phone could create requests it became destructive, becau
 on the navigation that *follows submitting*. The warning left on it the day before said exactly
 that would happen — it was honoured rather than rediscovered.
 
-⚠️ **There is no Connect app prototype** — `_prototypes/` has Request and Go only. So the switch
-covers the **Request** surface; on Connect the App side has nothing to show. Not a defect, a bound.
+⛔ **There is no Connect app prototype, and the mirror is SCOPED to Request because of it.**
+`_prototypes/` has Request and Go only. Both passes now return early unless the web pane is on
+Request, and the App chassis shows an explicit notice on Connect rather than leaving the Request
+phone on screen looking like Connect's app.
+
+**Ungated, all three behaviours were wrong — verified, not theorised:**
+
+| | what happened |
+|---|---|
+| mirror | Submitting on Connect put **GC-00201, "Pallet of printer paper from the depot to our Durham office"** — a *business* order — inside the *consumer* Request phone. A category error, not a sync glitch. |
+| prune | The removal pass drops GReq orders the web no longer has. On Connect the web holds only `GC-` orders, so navigating Request → Connect would have **wiped the phone** of every Request order the person actually made. |
+| adopt | A request created on the phone would have been adopted into **Connect's** dashboard — the first failure again, backwards. |
+
+Confirmed fixed by driving it: on Connect the web pane holds `GC-00201`, the app still holds
+`GR-0002` and nothing else, and the notice is showing.
 
 ### Two things this shook out
 
