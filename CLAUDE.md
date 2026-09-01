@@ -3,8 +3,15 @@
 > ## ⛔ READ FIRST — this file can be out of date. The live rules are elsewhere.
 >
 > **The authoritative, current owner directives live in
-> `Dev/gopher-dev-handoff/STANDING-RULES.md`.** Read that file before acting on anything below,
-> and re-read it after any context carryover.
+> `Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md`.** Read that file before
+> acting on anything below, and re-read it after any context carryover.
+>
+> ⚠️ **Path corrected 2026-09-01.** This pointer read `Dev/gopher-dev-handoff/STANDING-RULES.md`
+> until today. That file **does not exist** — the handoff repo was restructured onto Astro/Starlight
+> (`01b47c4`) and the rules moved into `src/content/docs/`. So every session that followed this
+> banner to "the authoritative rules" found nothing, and proceeded on `CLAUDE.md` alone — which is
+> the exact failure the banner exists to prevent. Fixing the pointer is the whole fix; the rules
+> themselves were never lost.
 >
 > **Why this warning exists.** `CLAUDE.md` is *inside* this repo, so **every git worktree freezes
 > its own copy at the moment the worktree was created.** Rules the owner set afterwards are
@@ -12,9 +19,9 @@
 > 2026-08-10 three worktree copies were found still enforcing a scope rule the owner had
 > **retired on 2026-08-09**, and two live sessions had been blocking themselves on it for days.
 >
-> `STANDING-RULES.md` lives in a **different repository**, so a worktree cannot freeze it. It is
+> `standing-rules.md` lives in a **different repository**, so a worktree cannot freeze it. It is
 > always live for every session, whenever that session's tree was made. **Where the two disagree,
-> `STANDING-RULES.md` wins.**
+> `standing-rules.md` wins.**
 
 ## What this is
 
