@@ -100,6 +100,14 @@
          provider's job history enumerable. So the card carries the code it was
          already given. */
       dealCode: d.deal_code || null,
+      /* THE PAID PLACEMENT, if this deal won one. `featuredMonth` is the gate —
+         the pages compare it to the month being rendered, so last month's
+         winner stops being featured on its own without anything clearing it.
+         `featuredSlot` says WHICH slot: 'hero' is the single crowned Featured
+         Deal (highest bid across all categories), 'category' is the holder of
+         one category card. Both absent on every deal that never bid. */
+      featuredMonth: d.featured_month || null,
+      featuredSlot: d.featured_slot || null,
       offer: d.deal_text || '',
       dealSpecifics: d.deal_text || '',
       promo: d.promo_code || undefined

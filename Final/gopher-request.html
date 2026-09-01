@@ -25118,13 +25118,57 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // ═══════════════════════════════════════════════════════════════════════
   // GOPHER DEALS — bid-winners landing ("Deals Home")  [parity with Connect]
   // Each category card is the MONTH'S BID WINNER for that category; the Featured
-  // Deal hero is the top/dominant placement. Edit DEALS_HOME to change picks
-  // (ids must exist in DEALS_DATA).
+  // Deal hero is the top/dominant placement. Both are READ FROM THE SETTLED
+  // AUCTION by dealsHomePicks() below — there are no hand-edited picks.
   // ═══════════════════════════════════════════════════════════════════════
-  const DEALS_HOME = {
-    featured: 'r-myway',
-    winners: { localpro:'lp-house', restaurants:'r-buoy', favorites:'f-hatch', retail:'c-cardinal', age:'a-bombshell' }
-  };
+  /* ⛔ THE CROWN IS EARNED, NEVER SEEDED (owner decision 2026-09-01).
+     This was a hand-edited map — `featured:'r-myway'` plus a winner per category
+     — and every one of those ids is a SHOWROOM merchant. It shipped that way, so
+     a real customer in the Triangle saw a demo business wearing a crowned
+     "FEATURED DEAL" badge ABOVE real merchants' real live deals, and each
+     category card credited a demo name as its holder.
+
+     Both now come from the settled auction: a live deal wears the crown when its
+     `featuredSlot` is 'hero', and holds a category card when it is 'category' —
+     in both cases only while `featuredMonth` matches the month being rendered,
+     which is why last month's winner retires itself with nothing to clear.
+
+     ⚠ THE MONTH IS THE PREVIOUS ONE, AND IT IS UTC. Both halves are traps.
+
+     `featured_month` labels the AUCTION, not the run. §8.1 / Ruling 7: "Winners
+     own that placement on app and web for the entire FOLLOWING month", and the
+     Deals 101 says the same — bidding closes on the 20th, winners go live on
+     the 1st of the next month. So the placement running RIGHT NOW carries LAST
+     month's auction label. Comparing against the current calendar month lights
+     the crown during the month merchants are still BIDDING and blanks it for
+     the whole month they actually paid for.
+
+     UTC because the server computes placement months in UTC — a placement month
+     is a billing period, not a local calendar impression (see
+     helpers/placement_auction.js). A local-time comparison here disagrees with
+     settlement for part of every day around the boundary.
+
+     WHEN A CATEGORY GOES UNSOLD its card renders with NO badge and no holder;
+     when nothing wins overall the hero is omitted entirely. An unsold month
+     shows no crown at all. Crowning someone who did not pay is what devalues the
+     thing being sold — and a merchant who spots a competitor wearing a crown
+     they never bought has every reason to stop believing the auction. */
+  function dealsHomePicks(){
+    const now = new Date();
+    /* The auction whose winners are live NOW closed last month. Date.UTC with a
+       month of -1 rolls the year back correctly in January. */
+    const run = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const month = run.getUTCFullYear() + '-' + String(run.getUTCMonth() + 1).padStart(2, '0');
+    const picks = { featured: null, winners: {} };
+    (typeof DEALS_DATA !== 'undefined' ? DEALS_DATA : []).forEach(cat => {
+      ((cat && cat.merchants) || []).forEach(m => {
+        if(!m || m.featuredMonth !== month) return;
+        if(m.featuredSlot === 'hero') picks.featured = m.id;
+        else if(m.featuredSlot === 'category' && !picks.winners[cat.key]) picks.winners[cat.key] = m.id;
+      });
+    });
+    return picks;
+  }
   const DEALS_HOME_SUBS = { localpro:'Vetted local pros', restaurants:'Meals on the road', favorites:'Neighborhood picks', retail:'Quick stops', age:'21+ · ID at door' };
   const DEALS_FULLBLEED_LOGOS = new Set(['r-myway']);
   // Live URLs per merchant id — "Order online" loads `order`, "View menu" loads `menu`.
@@ -25162,7 +25206,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       return '<img class="deal-mascot-fb" src="assets/img/gopher-character-full.svg" alt="">';
     };
 
-    const fm = findDealMerchant(DEALS_HOME.featured);
+    const HOME_PICKS = dealsHomePicks();
+    const fm = HOME_PICKS.featured ? findDealMerchant(HOME_PICKS.featured) : null;
     const featCat   = fm ? dealCategoryKey(fm.id) : '';
     const featOffer = fm ? (fm.offer || '') : '';
     const featDesc  = fm ? (fm.sub || fm.portalTag || '') : '';
@@ -25179,13 +25224,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     const cats = DEALS_DATA.filter(c => !c.ageRestricted || (age != null && age >= 21));
     const catCardHTML = (c) => {
-      const winId = DEALS_HOME.winners[c.key];
+      const winId = HOME_PICKS.winners[c.key];
       const wm = winId ? findDealMerchant(winId) : null;
       const winLabel = wm ? wm.name : (DEALS_HOME_SUBS[c.key] || '');
       const winOffer = wm ? (wm.offer || '') : '';
       return '<button type="button" class="dh-cat" data-merchant="' + esc(wm ? wm.id : '') + '" data-cat="' + esc(c.key) + '">' +
         (c.ageRestricted ? '<span class="dh-cat-21">21+</span>' : '') +
-        '<span class="dh-cat-badge">FEATURED</span>' +
+        /* No paid holder this month => no badge. See dealsHomePicks(). */
+        (wm ? '<span class="dh-cat-badge">FEATURED</span>' : '') +
         '<div class="dh-cat-logo">' + logoHTML(wm, c.key) + '</div>' +
         '<div class="dh-cat-name">' + esc(c.title) + '</div>' +
         '<div class="dh-cat-win">' + esc(winLabel) + '</div>' +
