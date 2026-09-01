@@ -8035,19 +8035,248 @@ var PAY_BADGES = {
       var av = document.getElementById('ph-avatar-img');
       if(av){ if(d.profile_photo){ av.src = d.profile_photo; } else { av.removeAttribute('src'); } }
     });
-    /* Payment: the honest state. Billing exists when the placement auction
-       does; showing a real merchant fake cards would be worse than nothing. */
-    var pay = document.getElementById('payMethodsList');
-    if(pay){
-      pay.innerHTML = '<div class="deal-row"><div class="deal-meta">'
-        + '<div class="dm-title">No payment method on file yet</div>'
-        + '<div class="dm-sub">Billing starts with featured-placement bidding at launch. '
-        + 'Card entry connects to Stripe here — nothing is charged before you add one and win a bid.</div>'
-        + '</div></div>';
-      var addBtn = document.getElementById('addPayBtn');
-      if(addBtn){ addBtn.onclick = function(){ alert('Card entry opens at launch — this is where the Stripe form plugs in.'); }; }
-    }
+    /* Payment: real cards now. This pane showed the showroom's fake wallets to
+       signed-out prospects and, for a signed-in merchant, an honest placeholder
+       whose Add button opened an alert — while the copy above it promised
+       "winning bids are billed to your default method below". Bidding is now
+       refused without a card (backend MR !452), so this had to become real. */
+    loadPayMethods();
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PAYMENT METHODS — Stripe Elements, so the card never touches our servers.
+
+     ⛔ NOT the /users/add_card endpoint the mobile apps use. That one takes the
+     raw number, expiry and CVC in the request body and builds the PaymentMethod
+     server-side; the apps are inside PCI scope because of it. The same form on a
+     public web page would pull gophergo.io in with them — SAQ D instead of
+     SAQ A — for one card box on a merchant portal.
+
+     Here the browser confirms a SetupIntent straight against Stripe
+     (POST /users/cards/setup_intent, MR !453) and Stripe attaches the resulting
+     method to the customer. Nothing card-shaped is ever posted to our API.
+
+     ⚠️ stripe.js is loaded LAZILY, on the first click of Add payment method —
+     not on every portal page load. It is a third-party script on a page that
+     also renders merchant data, and most sessions never open this pane.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var _stripeJs = null;
+  function loadStripeJs(){
+    if(_stripeJs) return _stripeJs;
+    _stripeJs = new Promise(function(resolve, reject){
+      if(window.Stripe) return resolve(window.Stripe);
+      var sc = document.createElement('script');
+      sc.src = 'https://js.stripe.com/v3/';
+      sc.onload = function(){ window.Stripe ? resolve(window.Stripe) : reject(new Error('Stripe.js loaded but did not initialise')); };
+      /* A blocked or failed script must say so. Silence here reads as a frozen
+         button, and the merchant retries instead of telling us. */
+      sc.onerror = function(){ _stripeJs = null; reject(new Error('Could not load Stripe. An ad blocker or network filter may be blocking js.stripe.com.')); };
+      document.head.appendChild(sc);
+    });
+    return _stripeJs;
+  }
+
+  function payCardLabel(pm){
+    var c = pm && pm.card ? pm.card : {};
+    var brand = (c.brand || 'card').replace(/^./, function(x){ return x.toUpperCase(); });
+    var exp = (c.exp_month && c.exp_year) ? ('  ·  expires ' + c.exp_month + '/' + String(c.exp_year).slice(-2)) : '';
+    return { name: brand + ' \u2022\u2022\u2022\u2022 ' + (c.last4 || '****'), sub: 'Card on file' + exp };
+  }
+
+  /* A card Stripe still holds but that has lapsed is not a usable method — the
+     same rule the backend applies when it decides whether a bid may be placed
+     (helpers/merchant_billing.js). Shown, but flagged, so the merchant can see
+     WHY bidding is refused rather than being told only that it is. */
+  function payIsExpired(pm){
+    var c = pm && pm.card ? pm.card : {};
+    if(!c.exp_year || !c.exp_month) return false;
+    var now = new Date(), y = +c.exp_year, m = +c.exp_month;
+    return (y < now.getFullYear()) || (y === now.getFullYear() && m < (now.getMonth() + 1));
+  }
+
+  function renderLivePayMethods(methods, note){
+    var el = document.getElementById('payMethodsList'); if(!el) return;
+    if(note){
+      el.innerHTML = '<div class="deal-row"><div class="deal-meta">'
+        + '<div class="dm-title">' + mdEsc(note.title) + '</div>'
+        + '<div class="dm-sub">' + mdEsc(note.sub) + '</div></div></div>';
+      return;
+    }
+    if(!methods.length){
+      el.innerHTML = '<div class="deal-row"><div class="deal-meta">'
+        + '<div class="dm-title">No payment method on file</div>'
+        + '<div class="dm-sub">Add one to bid on featured placement. Nothing is charged when you '
+        + 'bid \u2014 only if your bid is the top bid in your category when bidding closes on the 20th.</div>'
+        + '</div></div>';
+      return;
+    }
+    el.innerHTML = methods.map(function(pm){
+      var L = payCardLabel(pm), dead = payIsExpired(pm);
+      return '<div class="pay-card' + (pm._default ? ' default' : '') + '">'
+        + '<span class="pc-icon card">' + mdEsc((pm.card && pm.card.brand ? pm.card.brand : 'card').slice(0,2).toUpperCase()) + '</span>'
+        + '<div class="pc-body"><div class="pc-name">' + mdEsc(L.name) + '</div>'
+        +   '<div class="pc-sub"' + (dead ? ' style="color:#a8071a"' : '') + '>'
+        +     mdEsc(L.sub) + (dead ? ' \u2014 expired, bids will be refused' : '') + '</div></div>'
+        + (pm._default ? '<span class="pc-default">Default</span>' : '')
+        + '<div class="pc-actions">'
+        +   (pm._default ? '' : '<button class="pc-action" type="button" data-pm-default="' + mdEsc(pm.id) + '">Set default</button>')
+        +   '<button class="pc-action" type="button" data-pm-remove="' + mdEsc(pm.id) + '">Remove</button>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  function loadPayMethods(){
+    if(typeof _authToken === 'undefined' || !_authToken) return;
+    var el = document.getElementById('payMethodsList');
+    if(el) el.innerHTML = '<div class="deal-row"><div class="deal-meta"><div class="dm-sub">Loading your payment methods\u2026</div></div></div>';
+    /* The list endpoint is keyed by the Stripe customer id, and the merchant may
+       not have one yet — setup_intent creates it on demand, so ask that first
+       and use the id it returns. */
+    apiCall('/users/cards/setup_intent', { method:'POST', body:{} }).then(function(r){
+      if(!r.ok || !r.body || !r.body.data || !r.body.data.customer_id){
+        renderLivePayMethods([], { title:'We could not load your payment methods.',
+          sub: apiMessage(r) + ' Your cards are safe \u2014 this is a display problem.' });
+        return;
+      }
+      _paySetup = r.body.data;   // client_secret + publishable_key, reused by the Add flow
+      return apiCall('/users/payment_methods/list/' + encodeURIComponent(r.body.data.customer_id), { method:'GET' })
+        .then(function(lr){
+          if(!lr.ok){
+            renderLivePayMethods([], { title:'We could not load your payment methods.',
+              sub: apiMessage(lr) + ' Your cards are safe \u2014 this is a display problem.' });
+            return;
+          }
+          var list = (lr.body && lr.body.data && lr.body.data.payment_methods) || [];
+          renderLivePayMethods(list);
+        });
+    }).catch(function(e){
+      renderLivePayMethods([], { title:'We could not load your payment methods.',
+        sub:'The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.' });
+    });
+  }
+  var _paySetup = null;
+
+  /* The Add flow. Mounts a Stripe card Element into the pane, confirms the
+     SetupIntent in the browser, then re-reads the list from Stripe rather than
+     assuming success — the source of truth is Stripe, not this page. */
+  function openAddCard(){
+    var host = document.getElementById('payMethodsList');
+    var btn = document.getElementById('addPayBtn');
+    if(!host) return;
+    if(!_paySetup || !_paySetup.client_secret){
+      toastPay('Still loading your billing profile — try again in a moment.');
+      loadPayMethods();
+      return;
+    }
+    if(btn){ btn.disabled = true; btn.textContent = 'Loading card form\u2026'; }
+
+    loadStripeJs().then(function(Stripe){
+      var stripe = Stripe(_paySetup.publishable_key);
+      var elements = stripe.elements();
+      host.insertAdjacentHTML('afterbegin',
+        '<div class="pay-card" id="payAddBox" style="display:block;padding:14px 16px">'
+        + '<div style="font-weight:700;margin-bottom:8px">Add a card</div>'
+        + '<div id="payCardEl" style="padding:11px 12px;border:1px solid var(--line,#e6eaee);border-radius:9px;background:#fff"></div>'
+        + '<div id="payCardErr" style="color:#a8071a;font-size:12.5px;margin-top:7px" hidden></div>'
+        + '<div style="font-size:11.5px;color:#666;margin-top:9px;line-height:1.5">'
+        +   'Your card details go straight to Stripe and are never sent to Gopher. '
+        +   'Nothing is charged now \u2014 only if your bid is the top bid in your category when bidding closes on the 20th.</div>'
+        + '<div style="margin-top:11px;display:flex;gap:8px">'
+        +   '<button class="nd-submit" id="payCardSave" type="button">Save card</button>'
+        +   '<button class="biz-cancel" id="payCardCancel" type="button">Cancel</button>'
+        + '</div></div>');
+      var card = elements.create('card', { hidePostalCode:false });
+      card.mount('#payCardEl');
+      if(btn){ btn.disabled = true; btn.textContent = '+ Add payment method'; }
+
+      var errEl = document.getElementById('payCardErr');
+      var showErr = function(m){ if(errEl){ errEl.textContent = m; errEl.hidden = false; } };
+      card.on('change', function(ev){ if(ev.error) showErr(ev.error.message); else if(errEl) errEl.hidden = true; });
+
+      document.getElementById('payCardCancel').onclick = function(){
+        card.unmount(); var b=document.getElementById('payAddBox'); if(b) b.remove();
+        if(btn){ btn.disabled = false; }
+      };
+      document.getElementById('payCardSave').onclick = function(){
+        var save = this; save.disabled = true; save.textContent = 'Saving\u2026';
+        if(errEl) errEl.hidden = true;
+        stripe.confirmCardSetup(_paySetup.client_secret, { payment_method:{ card:card } })
+          .then(function(res){
+            if(res.error){
+              /* Stripe's own message names the real problem (declined, expired,
+                 3DS failed). Ours would only be vaguer. */
+              showErr(res.error.message || 'That card could not be saved.');
+              save.disabled = false; save.textContent = 'Save card';
+              return;
+            }
+            card.unmount(); var b=document.getElementById('payAddBox'); if(b) b.remove();
+            if(btn){ btn.disabled = false; }
+            toastPay('Card saved. You can now bid on featured placement.');
+            /* ⛔ Re-read from Stripe rather than pushing the new card onto the
+               list optimistically. A SetupIntent that succeeds in the browser
+               but whose attach did not land would leave the merchant looking at
+               a card that will not be there on the 20th. */
+            _paySetup = null;
+            loadPayMethods();
+          })
+          .catch(function(e){
+            showErr('That card could not be saved' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+            save.disabled = false; save.textContent = 'Save card';
+          });
+      };
+    }).catch(function(e){
+      if(btn){ btn.disabled = false; btn.textContent = '+ Add payment method'; }
+      renderLivePayMethods([], { title:'Card entry could not start.',
+        sub:(e && e.message) || 'Stripe could not be reached.' });
+    });
+  }
+
+  function toastPay(msg){
+    var t = document.getElementById('toast');
+    if(!t){ alert(msg); return; }
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3200);
+  }
+
+  /* Delegated once on the pane — renderLivePayMethods replaces its innerHTML on
+     every reload, so per-button handlers would be discarded and re-added. */
+  (function bindPayPane(){
+    var pane = document.getElementById('payMethodsList');
+    if(!pane || pane.__payBound) return;
+    pane.__payBound = true;
+    pane.addEventListener('click', function(e){
+      var setBtn = e.target.closest && e.target.closest('[data-pm-default]');
+      var rmBtn  = e.target.closest && e.target.closest('[data-pm-remove]');
+      if(setBtn){
+        var pm = setBtn.getAttribute('data-pm-default');
+        setBtn.disabled = true; setBtn.textContent = 'Setting\u2026';
+        apiCall('/users/select_payment_method', { method:'POST', body:{ payment_method: pm } })
+          .then(function(r){
+            if(!r.ok){ toastPay('Could not set the default \u2014 ' + apiMessage(r)); setBtn.disabled=false; setBtn.textContent='Set default'; return; }
+            toastPay('Default payment method updated.');
+            _paySetup = null; loadPayMethods();
+          })
+          .catch(function(){ toastPay('Could not set the default.'); setBtn.disabled=false; setBtn.textContent='Set default'; });
+      }
+      if(rmBtn){
+        var pmid = rmBtn.getAttribute('data-pm-remove');
+        /* ⚠️ Confirmed, because removing the only card silently stops the
+           merchant being able to bid — and if they already hold a top bid, it
+           stops us billing it. */
+        if(!window.confirm('Remove this card? If it is your only one you will not be able to bid on featured placement.')) return;
+        rmBtn.disabled = true; rmBtn.textContent = 'Removing\u2026';
+        apiCall('/users/detach/' + encodeURIComponent(pmid), { method:'DELETE' })
+          .then(function(r){
+            if(!r.ok){ toastPay('Could not remove the card \u2014 ' + apiMessage(r)); rmBtn.disabled=false; rmBtn.textContent='Remove'; return; }
+            toastPay('Card removed.');
+            _paySetup = null; loadPayMethods();
+          })
+          .catch(function(){ toastPay('Could not remove the card.'); rmBtn.disabled=false; rmBtn.textContent='Remove'; });
+      }
+    });
+    var add = document.getElementById('addPayBtn');
+    if(add) add.onclick = openAddCard;
+  })();
 
   /* ── USERS & ACCESS: the demo array becomes the real roster ─────────────── */
   function hydrateUsers(){
