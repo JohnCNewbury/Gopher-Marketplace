@@ -1,3 +1,35 @@
+# Deploy decision — SHIPPED 2026-09-01
+
+> ## ✅ DEPLOYED. Owner: *"ship all six."* Commit `b63f744` -> `main`.
+>
+> Verified by **content on both hosts**, never by a 200 — and the production gate proved in a
+> browser rather than asserted.
+>
+> | Check | GitHub Pages | TigerTech |
+> |---|---|---|
+> | Report on Request | ✅ | ✅ |
+> | Report on Connect | ✅ | ✅ |
+> | `reviewSnapshot` at capture | ✅ | — |
+> | PT bridge `adopt()` | ✅ | ✅ |
+> | Deals `SERVICE_LABEL` (the rider) | ✅ | ✅ |
+> | Prototype money fix (`parseMoney`) | ✅ | — |
+> | Prototype report port | ✅ | — |
+>
+> **⛔ The safety claim, proved on the live host.** Loaded
+> `johncnewbury.github.io/Gopher-Marketplace/gopher-request.html?pt=1` and read the page:
+> `GopherWebPT` is present (the file shipped), `GopherWebPT.on()` is **false**, and `window.GWeb`
+> is **undefined**. The bridge is on production and the gate refused it. That was the one thing
+> worth checking in a browser rather than trusting, because it is the claim the whole
+> ship-the-bridge decision rested on.
+>
+> ⚠️ **HQ never answered on the rider.** The owner authorised it directly instead — it implements
+> his own Ruling 9. Not a substitute for the lane's sign-off, and recorded here so nobody later
+> reads the ping as having been answered.
+>
+> The pre-deploy analysis is kept below unchanged, including the parts I got wrong.
+
+---
+
 # Deploy decision — what would go live, and what it costs if it is wrong
 
 **Prepared 2026-09-01 for the owner.** Standing rule: *"Nothing is ever to be pushed to production
