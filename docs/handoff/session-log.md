@@ -1978,6 +1978,44 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   committed-but-unshipped bid-board work. Verified byte-identical across the deploy commit, so they
   were neither shipped nor reverted; that session's uncommitted edits in the clone are untouched.
 
+- **Go feed cards: the canonical corner rail (2026-08-26; commit `2d94a53`, deploy `58b016b`,
+  live-verified both hosts).** Owner's "outdated available request cards" turned out to be
+  STRUCTURAL, not content: the Go sample feed had never adopted the corner-rail pattern that
+  `Final/connect-courier-delivery.html` uses (rules in `assets/css/gopher-connect-uc.css`; the Go
+  prototype carries the same ones). It was still on an absolutely-positioned `.jc-ribbon` flush in
+  the card corner — which is why every attempt to seat a real lockup there looked cramped and sat
+  on top of `.jc-posted`. Owner's rule: the badge's SIZE AND FRAMING is the point, Deals gets the
+  identical treatment, and the rail is a column *"that way, IF a top pay badge is shown, it doesn't
+  impede on the connect or deal logo."*
+  Ported: `.jc-corner` (right-aligned COLUMN rail in `.jc-top`, gap:7px, TOP PAY stacks above the
+  mark); `.jc-badge.mark` (framed white pill — 15px lockup, 4px/8px padding, 9px radius, #e4e8f0
+  hairline, soft shadow, **same box for both marks**); TOP PAY as `.jc-badge.top`; `posted` moved to
+  a new `.jc-foot`; and on gated cards `.jc-top` lifted OUTSIDE `.lockwrap` so the mark is never
+  dimmed to 45% (the finer Connect lockup vanishes entirely at that opacity). Deleted the whole
+  `.jc-ribbon` block, the `.jc-source` chips, and a `has-mark` spacing hack that existed only to
+  work around the collision.
+  **Assets: use the paired alpha-trimmed MARKS, not the full lockups** — `connect-mark.png`
+  (177x48) existed; `deals-mark.png` (129x48) extracted from the prototype's `DEALS_LOGO` data URI,
+  same 48px source height so both render at 15px (55px / 40px wide). The full
+  `gopher-connect-logo.svg` / `gopher-deals-logo.svg` are the wrong asset for this slot.
+  ⚠️ **A GREP PROVES THE STRING YOU CHANGED IS GONE. IT CANNOT TELL YOU WHAT ELSE IS ON THE CARD.**
+  The first pass (`244f5f8`) passed every string check and still shipped a real logo sitting beside
+  a leftover `.jc-source` wordmark chip — two source marks, one still a wordmark, arguably worse
+  than before it was touched. Caught only by RENDERING the six cards headlessly. Render the thing.
+  ⚠️ **Cross-session:** `9a325ef` (Deals+Go) restored those chips, reading my deliberate removal as
+  an accidental revert — correct caution on their information, since the chips were live and a
+  dry-run diffstat cannot distinguish a rider from a revert. Their own conclusion, worth keeping:
+  *"live proves it shipped, not that it is still wanted — the check that would have settled it was
+  asking the other session, not asking the site."*
+  ⚠️ **Commit dates are unreliable in this environment right now** — the clock moved backwards
+  mid-session and `git log -- <path>` omits commits that `merge-base --is-ancestor` confirms are in
+  history. Verify by tree/live CONTENT, never by dates or ordering.
+  Also: a probe comparing `grep -c` (counts LINES) against Python `.count()` (counts OCCURRENCES)
+  reported a false FAIL on live verification. Compare like for like.
+  **Ownership now:** Go Business info moved to the **HQ** session; Deals+Go stood down. HQ inherited
+  an open bug in this file — the owner's business logo saves but its URL 404s, likely a missing
+  `encodeURIComponent` in `generate_image_url`. Route `gopher-go.html` coordination to HQ.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
