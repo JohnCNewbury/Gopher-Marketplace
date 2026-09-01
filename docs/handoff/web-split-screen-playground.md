@@ -245,6 +245,27 @@ These are **live-app findings**, not harness quirks.
    never runs**. Pre-existing, out of scope here, and a live-site behaviour change — left for an
    owner decision.
 
+10. **The cost-adjustment receipt was relayed as a SENTENCE, not a receipt (FIXED 2026-09-01).**
+    Owner ruled the G40-101 receipt gate is in play for the prototype. Both ends were already
+    built — Go blocks the submit without a receipt (`gopher-go-prototype.html:3461`), and the web
+    card renders `window.__receiptThumb(P.receipt && P.receipt.src)` on Request *and* Connect, in
+    the card and the breakdown modal. Only this harness dropped it, appending the words *"(receipt
+    attached)"* to the worker's note. That is the one form the requester cannot act on: the card
+    instructs them to *"zoom in and verify the line items and total before you approve."* The relay
+    now passes `receipt:{src:null}` — null deliberately, since the Go attach button records the
+    FACT of a receipt, not an image, and the component documents null as its stand-in. Same shape
+    as the reference App Prototype Split (`split-screen.html:488` relays the boolean;
+    `gopher-request-home.html:1577` draws the demo from it). Verified end to end, including the
+    negative case: submitting without a receipt is refused and relays nothing.
+
+11. **The Go prototype reads a decimal money value 100× too large (NOT fixed — shared surface).**
+    `parseInt(value.replace(/[^0-9]/g,''))` on `.js-upoffer` and `.js-upcost` strips the decimal
+    point, so a typed **$61.40 becomes $6,140**. Confirmed with real keystrokes: the requester's
+    approval card offered **$6,666.83** against an agreed $87.47. `inputmode="numeric"` is a
+    keyboard hint, not a filter, and there is no keystroke guard. Live is correct
+    (`gopher-mobile-gopher/src/component/ordercard.js:4709` — `type="number"` + `parseFloat`, with
+    `cost_of_goods` stored in cents). Details in `prototype-vs-live-findings.md` §4.
+
 ## Relay coverage
 
 ⚠️ **Verified and wired are not the same thing, and an earlier draft of this file conflated them.**

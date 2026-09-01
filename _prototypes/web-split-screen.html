@@ -542,12 +542,32 @@
           status('Gopher <b>lowered the charge</b> on '+id+' to <b>$'+A.gmvTotal.toFixed(2)+'</b> — '
             +'same or less than agreed, so it applied immediately with no approval needed.');
         } else {
-          /* Receipt: the Go app tells us one is attached but not what it shows,
-             and the web card renders a real thumbnail. Carry the fact in the
-             note rather than fabricating an image. */
-          var note=(adj.comment||'').trim();
-          if(adj.hasReceipt) note = note ? (note+' (receipt attached)') : 'Receipt attached.';
-          g.update(id, { pendingAdjustment:{ comment:note, receipt:null, adjusted:A },
+          /* Receipt — G40-101. Owner ruling 2026-09-01: the receipt gate on a
+             cost-of-goods INCREASE is in play for the prototype, so it has to
+             survive the relay as a RECEIPT, not as a sentence. It previously
+             arrived as the words '(receipt attached)' appended to the comment,
+             which is the one thing the requester cannot act on: the web card's
+             whole point is 'zoom in and verify the line items and total BEFORE
+             you approve'. Text cannot be zoomed into.
+
+             Both ends were already built — Go gates the submit on
+             `receiptAttached` (gopher-go-prototype.html:3461) and the web card
+             renders `window.__receiptThumb(P.receipt && P.receipt.src)` when
+             `P.receipt` is truthy (gopher-request.html:22446). Only this relay
+             dropped it.
+
+             `src` is null ON PURPOSE. The Go app's attach button records the
+             FACT of a receipt, not an image, so there is no URL to carry — and
+             the receipt component documents null as its stand-in: "When src is
+             null/undefined the demo receipt shows; pass the real URL and the
+             demo generator is never called." That is also exactly what the
+             reference App Prototype Split does (split-screen.html:488 relays
+             the boolean; gopher-request-home.html:1577 draws the demo from it),
+             so the two harnesses now behave identically. The seam for a real
+             image is `receipt.src` and nothing else changes. */
+          g.update(id, { pendingAdjustment:{ comment:(adj.comment||'').trim(),
+                                             receipt: adj.hasReceipt ? { src:null } : null,
+                                             adjusted:A },
                          needsAttention:true });
           adjustPending[id]={ seq:adj.seq, total:A.gmvTotal, offer:offer, cost:cost };
           adjustSeen[id]=adj.seq;
