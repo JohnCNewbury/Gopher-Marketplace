@@ -1820,6 +1820,9 @@
      harness asserts no surface re-implements it locally. -->
 <script src="assets/js/gopher-request-logic.js"></script>
 <script src="assets/js/gopher-step-gates.js"></script>
+<!-- PT playground bridge (_prototypes/web-split-screen.html). Publishes window.GWeb
+     ONLY under ?pt=1; completely inert on the live site. -->
+<script src="assets/js/gopher-web-pt-bridge.js"></script>
 <!-- Cross-device request drafts. The kernel defines the contract (what travels, what
      never does, how two devices reconcile); the store owns where it lives and when it
      moves. Kernel first — the store reads it. Both are UMD, so the same files are what
@@ -7301,6 +7304,22 @@
   .cmp-rate-now { width:100%; margin-top:10px; background:#1CB061; color:#fff; border:none; border-radius:12px; padding:12px; font-family:'Nunito'; font-weight:800; font-size:13.5px; cursor:pointer; animation:cmpRatePulse 1.5s ease-in-out infinite; }
   @keyframes cmpRatePulse { 0% { box-shadow:0 0 0 0 rgba(196,66,87,.55),0 8px 20px -8px rgba(28,176,97,.5); } 70% { box-shadow:0 0 0 13px rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } 100% { box-shadow:0 0 0 0 rgba(196,66,87,0),0 8px 20px -8px rgba(28,176,97,.5); } }
   .cmp-detail-rows { margin-bottom:6px; }
+  /* Report a request — trust & safety. Deliberately plain: this is not a
+     promotional surface and the reasons must read as a list to choose from,
+     not as a menu of features. */
+  .req-detail-report { color:#C44257; border-color:#f0d5d8; }
+  .rep-copy { font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:var(--muted); margin:0 0 10px; }
+  .rep-list { display:flex; flex-direction:column; gap:8px; margin:14px 0 4px; }
+  .rep-opt { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+             color:var(--navy); background:#fff; border:1.6px solid #e6e2d6; border-radius:12px;
+             padding:12px 13px; cursor:pointer; transition:background .12s, border-color .12s, color .12s; }
+  .rep-opt:hover { border-color:#cfe3d6; }
+  .rep-opt.sel { background:#E8F5EE; border-color:#1CB061; color:#0a7d44; }
+  .rep-done { text-align:center; padding:8px 4px 4px; }
+  .rep-done .rep-done-ico { font-size:30px; line-height:1; margin-bottom:8px; }
+  .rep-done h4 { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); margin:0 0 6px; }
+  #reportSubmit[disabled] { opacity:.45; cursor:default; }
+
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
   .cmp-drow span:first-child { color:var(--muted); font-weight:600; }
   .cmp-drow span:last-child { color:var(--navy); font-weight:700; text-align:right; }
@@ -12200,7 +12219,12 @@
       perWorker = toNum(state.payAmount) * hours;
     }
     const workersNeeded = state.moreThanOneWorker ? (parseInt(state.numWorkers, 10) || 1) : 1;
-    const interestedWorkers = buildInterestedPool(state.category);
+    // PT (split-screen playground): broadcast to NOBODY. The demo pool would
+    // auto-hire a fake Gopher under 'first available' before the real worker on
+    // the Go phone ever saw the request — the harness could then never observe
+    // an acceptance, because one had already happened.
+    const interestedWorkers = (window.GopherWebPT && window.GopherWebPT.on())
+      ? [] : buildInterestedPool(state.category);
     const when = state.scheduleType === 'now'
       ? 'Just now · awaiting your selection'
       : state.scheduleType === 'flexible'
@@ -12228,9 +12252,55 @@
     const descHint = (state.description || '').trim();
     const shortDesc = descHint ? (descHint.length > 48 ? descHint.slice(0,45) + '…' : descHint) : '';
     const title = shortDesc ? `${c.name} · ${shortDesc}` : `${c.name} request`;
+    /* ── Frozen review snapshot (parity with Connect) ──────────────────────
+       Connect captures `toReviewSnapshot(buildReviewModel(state))` with every
+       request; Request captured nothing, so `reviewSnapshot` existed ONLY on the
+       five seeded demo records. Everything that reads it therefore fell back or
+       failed closed for a request a real person created:
+         • the Request recap rendered the minimal fallback card instead of the
+           canonical one (renderRequestDetail: `r.reviewSnapshot ? … : …`),
+         • buildAdjustmentCard() returns '' with no snapshot — the cost-adjustment
+           card cannot render at all,
+         • acceptCounterOffer() guards `if (C && snap)` — an accepted counter
+           does NOT move the price,
+         • Request-Again reads snapshot.category / .description for carry-over.
+       Neither counter-offers nor cost adjustments can currently REACH a
+       user-created request (both are written only onto the demo seed), so this
+       is latent today — but it becomes live the moment the Go app is wired in,
+       which is exactly what the web↔Go playground is prototyping.
+
+       The numbers are the ones Step 7 already foots for the confirmation screen
+       — computeRequestFee() on the same COG+offer base — so the frozen deal and
+       the screen the customer agreed on cannot disagree. Do NOT re-derive them. */
+    const snapCostItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
+    const snapWorkerPay = perWorker * workersNeeded;
+    const snapFee = computeRequestFee(snapCostItems + snapWorkerPay);
+    const reviewSnapshot = {
+      category: c.name,
+      description: (state.description || '').trim(),
+      urgency: state.scheduleType === 'now' ? 'Customer needs ASAP' : null,
+      pickup: state.noSpecificPickup
+        ? 'Any location'
+        : ((Array.isArray(state.pickupStops) && state.pickupStops[0]) || ''),
+      dropoff: (Array.isArray(state.dropoffStops) && state.dropoffStops[0]) || '',
+      costOfItems: snapCostItems,
+      workerPay: snapWorkerPay,
+      workersNeeded,
+      bidsMode: state.payMode !== 'set',
+      total: snapFee.gmvTotal,
+      fee: snapFee,
+    };
+
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      reviewSnapshot,
+      // Broadcast identity. These three were never carried into the request
+      // record, so anything reading it downstream (the Go app's category feed,
+      // the worker's cost-of-items, the job description) had nothing to read.
+      category: state.category || null,
+      costOfItems: state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
+      descriptionFull: (state.description || '').trim(),
       dupKey: computeRequestDupKey(),
       perWorkerCost: perWorker,
       workersNeeded,
@@ -14218,8 +14288,11 @@
       <div class="si-workers-band">
         <div class="si-workers-ico">👥</div>
         <div class="si-workers-text">
+          ${(window.GopherWebPT && window.GopherWebPT.on()) ? `
+          <h5>Broadcasting to Gophers nearby</h5>
+          <p>You'll be notified the moment a Gopher accepts.</p>` : `
           <h5>${workers.length} worker${workers.length!==1?'s':''} already interested</h5>
-          <p>Review profiles, hire, or consider workers from your dashboard.</p>
+          <p>Review profiles, hire, or consider workers from your dashboard.</p>`}
         </div>
         <button class="si-workers-btn attn-pulse" data-action="see-workers-dashboard">See workers in dashboard →</button>
       </div>`}
@@ -19178,7 +19251,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <section class="dash-section" data-rqsec="request-detail">
         <div class="req-detail-topbar">
           <button class="req-detail-back" data-rqjump="home">← Back to Dashboard</button>
-          <button class="req-detail-back req-detail-cancel" id="reqDetailCancelBtn">Cancel request</button>
+          <button class="req-detail-back req-detail-report" id="reqDetailReportBtn">⚑ Report</button>
+        <button class="req-detail-back req-detail-cancel" id="reqDetailCancelBtn">Cancel request</button>
         </div>
         <div id="reqDetailBody">
           <!-- Filled by JS based on dashState.requestDetailId -->
@@ -19523,7 +19597,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     });
     // surface the recommendation message in the Inbox (isolated to the
     // Inbox; not added to activeRequests). unshift → appears on top / opens first.
-    out.unshift(REC_SEED_THREAD());
+    // PT playground: the ONLY Gopher that may appear is the real worker on the Go
+    // phone. This seed introduces four fabricated ones, so it is skipped entirely.
+    if(!(window.GopherWebPT && window.GopherWebPT.on())) out.unshift(REC_SEED_THREAD());
     // hide conversations with a now-deactivated Gopher.
     return out.filter(th => !isDeactivatedGopher(th.worker && th.worker.name));
   }
@@ -19969,7 +20045,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Demo auto-reply — once per thread per request. The flag is per-worker
     // when a crew thread, so other crew threads still get their own first reply.
     const replyFlag = crewName ? `_autoReplied_${crewName}` : '_autoReplied';
-    if(firstMessage && !r[replyFlag]){
+    // PT playground: NO canned worker reply. The only thing the Gopher "says"
+    // must be what was actually typed on the Go phone — an automated
+    // "just responding for demo purposes" is a fake worker speaking inside a
+    // real conversation.
+    const _ptNoAutoReply = !!(window.GopherWebPT && window.GopherWebPT.on());
+    if(firstMessage && !r[replyFlag] && !_ptNoAutoReply){
       r[replyFlag] = true;
       setTimeout(() => {
         thread.push({
@@ -20629,6 +20710,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       id,
       icon: data.icon || '📋',
       title: data.title || 'New request',
+      category: data.category || null,
+      costOfItems: +data.costOfItems || 0,
+      descriptionFull: data.descriptionFull || '',
+      reviewSnapshot: data.reviewSnapshot || null,   // frozen agreed deal — parity with Connect
       status: 'pending',            // ← ALWAYS pending at submit
       statusLabel: 'Pending',
       submittedAt: Date.now(),      // drives the <20-min early-cancel variant
@@ -20651,7 +20736,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       workersNeeded: needed,
       perWorkerCost: data.perWorkerCost || 0,
       multiIndividual: false,   // ALWAYS false in Request — see REQUEST HIRE RULE (Connect-only feature)
-      worker: `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
+      worker: (interested.length === 0 && window.GopherWebPT && window.GopherWebPT.on())
+        ? 'Broadcasting \u2014 no Gopher yet'
+        : `${interested.length} worker${interested.length!==1?'s':''} interested`, // COUNT, not a name
       amount: data.amountLabel || '',  // "$<total> total"
       when: data.when || 'Just now · awaiting your selection',
       dupKey: data.dupKey || null,
@@ -21990,7 +22077,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
     const completionModals = buildCompletionModals(r);
-    body.innerHTML = buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    body.innerHTML = buildReportModal(r) + buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -22034,6 +22121,55 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           paintRating(r); return;
         }
         if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) submitRating(r); return; }
+        // ── Report a request (see REPORT_REASONS above) ──
+        if(target.closest('[data-report-open]')){
+          const o = document.getElementById('reportOverlay'); if(o) o.hidden = false; return;
+        }
+        if(target.closest('[data-report-close]') || target.id === 'reportOverlay'){
+          const o = document.getElementById('reportOverlay'); if(o) o.hidden = true; return;
+        }
+        const repOpt = target.closest('[data-report-reason]');
+        if(repOpt){
+          /* Single-select, matching upstream's Selectpopup: exactly one reason
+             leaves with the report, and Submit stays disabled until one is
+             chosen — an empty description would reach the admin panel as a
+             flag nobody can action. */
+          document.querySelectorAll('.rep-opt.sel').forEach(b => b.classList.remove('sel'));
+          repOpt.classList.add('sel');
+          const sb = document.getElementById('reportSubmit'); if(sb) sb.disabled = false;
+          return;
+        }
+        if(target.closest('[data-report-submit]')){
+          const r = getR(); const picked = document.querySelector('.rep-opt.sel');
+          if(!r || !picked) return;
+          const description = REPORT_REASONS[+picked.dataset.reportReason];
+          /* BACKEND SEAM — the live requester app posts exactly this:
+                POST orders/<id>/flag { description }   (getOrders.js handleFlagReport)
+             It is the same endpoint the worker app uses, so both parties' flags
+             land in one place. Recorded on the request here; the POST is the
+             human-dev wiring. */
+          r.flagReport = { reason: description, at: Date.now() };
+          /* ⚠️ CONFIRMATION IN THE MODAL, NOT A TOAST — changed when Connect got
+             this feature, so the two web surfaces are identical rather than
+             merely similar. Connect has no toast at all, and inventing one for
+             this would have been a bigger change than the feature; a toast here
+             and an inline panel there is exactly the kind of near-parity that
+             reads as done and is not. It is also the better shape for a safety
+             action: the confirmation stays until the reporter dismisses it.
+
+             Upstream does neither — handleFlagReport just closes the modal on
+             success. That divergence is deliberate and is named in
+             prototype-vs-live-findings.md rather than left to be rediscovered. */
+          const body = document.getElementById('reportBody');
+          if(body){
+            body.innerHTML = '<div class="rep-done"><div class="rep-done-ico">\u2713</div>'
+              + '<h4>Report submitted</h4>'
+              + '<p class="rep-copy">Our team has been notified and will investigate as soon as possible.</p>'
+              + '<div class="ca-actions"><button class="ca-approve" data-report-close>Close</button></div></div>';
+          }
+          renderActiveRequests();
+          return;
+        }
         if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
         if(target.closest('[data-dispute-submit]')){
           const r = getR(); if(!r) return;
@@ -22767,6 +22903,179 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // LEAD the request detail (rendered above the header). Confirming is time-sensitive
   // (worker payout depends on it), so it is the first card on a completed request.
   // Returns '' for any non-completed request, leaving all other states unchanged.
+  /* ── Requester no-show — G40-192 / G40-419 ────────────────────────────────
+     ⛔ THIS IS A PORT, NOT A NEW IMPLEMENTATION. The rule lives in the live
+     requester app at `gopher-mobile-request/src/helpers/noShow.js`
+     (`noShowStateFrom`), and G40-192 explicitly warns against writing another
+     copy: the requester-side banner was already built TWICE on surfaces the
+     requester never sees (`NoShowWatcher` — gated on a `localStorage.activeRequest`
+     that is never written; `ordercard.js` — not the screen in use), which is why
+     it had never rendered for anyone. Keep this byte-faithful to the helper; if
+     the helper changes, change this with it.
+
+     THE CLOCK COMES FROM THE SERVER, NOT THIS DEVICE. The deadline is
+     `requestor_reminded_at` (stamped by the backend when
+     `POST orders/:id/gopher_reached` succeeded) + 10 minutes. An earlier draft
+     of this block captured `Date.now()` locally instead — which is the exact
+     defect G40-192 records against the shipped client: "the app computes the
+     deadline from the device clock — so a skewed clock shows 'window passed'
+     the instant the banner appears."
+
+     A missing or unparseable timestamp yields INACTIVE, deliberately: the
+     helper prefers no banner over "an uncloseable clockless banner".
+
+     Window is 10 minutes (`NO_SHOW_WINDOW_MS`), agreed by every source.
+     Only age-restricted orders have a no-show path at all (owner correction —
+     the control is gated on `age_restricted?` in the worker app). */
+  const NO_SHOW_WINDOW_MS = 10 * 60000;
+  const NO_SHOW_STATES = ["purchased", "picked_up"];
+  function noShowStateFrom(reminded, remindedAt, aasmState, nowMs){
+    const deadline = remindedAt
+      ? new Date(remindedAt).getTime() + NO_SHOW_WINDOW_MS
+      : NaN;
+    const active =
+      Number.isFinite(deadline) &&
+      !!reminded &&
+      NO_SHOW_STATES.indexOf(aasmState) !== -1;
+    const msLeft = active ? deadline - nowMs : null;
+    const expired = msLeft !== null && msLeft <= 0;
+    const clock =
+      msLeft !== null && msLeft > 0
+        ? `${String(Math.floor(msLeft / 60000)).padStart(2, "0")}:${String(
+            Math.floor((msLeft % 60000) / 1000),
+          ).padStart(2, "0")}`
+        : null;
+    return { active, expired, clock };
+  }
+
+  /* The one place web vocabulary meets the mobile helper's. The helper gates on
+     the ORDER'S aasm_state, which the web app does not carry — its equivalent of
+     "worker is out on the job" is status 'in-progress'. Mapping here rather than
+     loosening the helper keeps the ported function byte-faithful, so
+     scripts/web-checks/noshow-parity.js can hold the two to identical output. */
+  function aasmStateForNoShow(r){
+    return (r && r.status === 'in-progress') ? 'purchased' : (r && r.status) || '';
+  }
+
+  /* ── Report a request (trust & safety) ────────────────────────────────────
+     ⛔ PORTED, NOT INVENTED. Owner, 2026-08-31: this "already exists" — and it
+     does, in the live requester app at gopher-mobile-request
+     src/component/getOrders.js (the Selectpopup list at ~1421 and
+     handleFlagReport at ~350). The web had NO report surface at all: a requester
+     could Block a Gopher (rqRelBlock) but never escalate to Gopher HQ, so
+     someone who felt unsafe had nowhere to go.
+
+     Everything here is upstream's, verbatim:
+       • the SIX reasons, in upstream's order. Note it carries one the worker's
+         list does not — "Violates Age-Restricted Policies" — which is correct:
+         only the requester can know the order's contents were misrepresented.
+       • both paragraphs of copy, unedited.
+       • the seam: POST orders/{id}/flag { description }. The SAME endpoint the
+         worker app posts to, so one flag mechanism serves both parties and the
+         admin panel sees them identically.
+
+     Deliberately NOT a "report this Gopher" surface: upstream flags the ORDER,
+     not a person, and the admin panel links the flag to the order. Reporting a
+     named worker would be a different feature and a different decision. */
+  const REPORT_REASONS = [
+    'Inappropriate Request',
+    'Inappropriate Language',
+    'Inappropriate Picture',
+    'Request may be illegal/suspicious',
+    'Unsafe request/location',
+    'Violates Age-Restricted Policies',
+  ];
+
+  function buildReportModal(r){
+    if(!r) return '';
+    return `
+      <div class="gr-modal-overlay gr-mo--tall" id="reportOverlay" hidden>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Report a request">
+          <div class="ca-head"><h3>Report A Request</h3><button class="ca-x" data-report-close aria-label="Close">✕</button></div>
+          <div class="ca-body" id="reportBody">
+            <p class="rep-copy">We strive to create a community of people who respect each other and feel
+              they are in a safe environment. If you feel like one of the listings is of inappropriate
+              nature, please use this page to report it.</p>
+            <p class="rep-copy">Our team will be notified, and we will investigate the issue as soon as
+              possible.</p>
+            <div class="rep-list" id="reportReasons">
+              ${REPORT_REASONS.map((t,i) => `<button type="button" class="rep-opt" data-report-reason="${i}">${t}</button>`).join('')}
+            </div>
+            <div class="ca-actions">
+              <button class="ca-approve" id="reportSubmit" data-report-submit disabled>Submit report</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function buildNoShowBlock(r){
+    if(!r) return '';
+    const who = (r.live && r.live.crew && r.live.crew[0] && r.live.crew[0].name)
+      || (r.worker || 'Your Gopher').replace(/\s*\(.*$/, '');
+
+    /* ⛔ SETTLED NO-SHOW — owner ruling, 2026-08-30:
+         "I wasn't aware that the requester received a confirmation screen. That
+          is certainly going to lead to disputes. There should only be a pop-up
+          stating the no-show was executed and under review and to contact us if
+          they need to."
+       So this states what happened and points at support. It does NOT ask the
+       requester to confirm anything — confirming is what releases payment, and
+       inviting it on an order the Gopher has already reported is what produced
+       the live "Payment is already Paid!" alert (up to 12 duplicate confirm rows
+       on a single order). The completion block is suppressed alongside this.
+
+       It also does NOT claim the Gopher was paid: under G40-419 a no-show
+       reported away from the drop-off holds payout for up to 48 hours. */
+    if(r.noShow){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">No-show recorded</div>
+        <div class="cmp-sub">${who} reported that nobody was available to verify ID for this
+          age-restricted delivery, so <b>the items were not handed over</b>. This is
+          <b>under review</b> — there's nothing for you to confirm.</div>
+        <div class="cmp-disclaimer">If you believe this is wrong, contact us and we'll look into it.</div>
+      </div>`;
+    }
+
+    const st = noShowStateFrom(r.noShowReminded, r.noShowRemindedAt, aasmStateForNoShow(r), Date.now());
+    if(!st.active) return '';
+
+    if(st.expired){
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-title">⏱ The wait window has passed</div>
+        <div class="cmp-sub">${who} waited at your drop-off to verify your ID and the 10-minute
+          window has now run out. If you're there, go to the door — they may still be able to
+          complete the delivery.</div>
+      </div>`;
+    }
+
+    return `
+      <div class="cmp-block cmp-dispute" id="noShowBlock">
+        <div class="cmp-title">⏱ ${who} is waiting at your drop-off</div>
+        <div class="cmp-sub">We've messaged you as well. They can't hand over age-restricted items
+          without checking your ID in person — please come to the door.
+          <b class="la-noshow-count" data-until="${new Date(r.noShowRemindedAt).getTime() + NO_SHOW_WINDOW_MS}">${st.clock}</b> left.</div>
+        <div class="cmp-disclaimer">If the window runs out they can report a no-show: the items are
+          <b>not released</b> and the delivery ends there. Message them if you need a moment.</div>
+      </div>`;
+  }
+
+  /* Ticks the visible countdown in place. Deliberately updates only the <b>
+     element rather than re-rendering the detail screen — a full re-render every
+     second would fight scrolling and drop focus out of the message box the
+     requester is likely typing in. Same MM:SS padding as the shared helper. */
+  (function noShowTicker(){
+    setInterval(() => {
+      document.querySelectorAll('.la-noshow-count').forEach(el => {
+        const until = +el.getAttribute('data-until') || 0;
+        const ms = Math.max(0, until - Date.now());
+        el.textContent = `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2,'0')}`;
+      });
+    }, 1000);
+  })();
+
   function buildCompletionBlock(r){
     if(!r || !(r.confirmed || r.awaitingConfirmation)) return '';
     const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
@@ -22867,9 +23176,33 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <text x="14" y="-1" font-family="Nunito,sans-serif" font-weight="800" font-size="12" fill="#6b7280">📍 Gopher&apos;s choice</text>
           </g>` : '';
 
+    /* ── Turn-by-turn navigation state ────────────────────────────────────
+       INVARIANT (from the Go app, and the reason this line exists at all):
+       opening turn-by-turn navigation NEVER interrupts the live location feed.
+       The worker is inside their maps app; the requester's tracking keeps
+       running. Saying only "navigating" would imply tracking paused, so the
+       line always states BOTH facts together — that pairing is the point.
+
+       Set from `r.navTo` ('pickup' | 'dropoff' | 'stop'), written only by the
+       Go app via the web↔Go bridge and cleared the moment the worker advances
+       the status. Nothing else writes it, so on the live site — where no worker
+       app is connected — this renders nothing at all. */
+    const navLabel = r.navTo
+      ? (/pick/i.test(r.navTo) ? 'the pick-up' : /drop|dest/i.test(r.navTo) ? 'the drop-off' : 'the next stop')
+      : null;
+    const navHtml = navLabel ? `
+      <div class="la-nav-live" style="display:flex;align-items:center;gap:9px;margin:0 0 10px;padding:10px 12px;border:1px solid #cfe3d6;border-radius:12px;background:#f2faf5;font-family:'DM Sans',sans-serif;">
+        <span aria-hidden="true" style="font-size:15px;">🧭</span>
+        <span style="font-size:12.5px;line-height:1.45;color:#0a5c36;">
+          <b>${lead.name.replace(/\s*\(.*\)$/, '')} is navigating to ${navLabel}.</b>
+          <span style="color:#3a6b52;">Live location stays on — navigation doesn't pause tracking.</span>
+        </span>
+      </div>` : '';
+
     // ── Stylized live map (self-contained SVG; no external tiles) ──
     const mapHtml = (scheduled || r.awaitingConfirmation) ? '' : `
       <div class="la-section-title">Live location</div>
+      ${navHtml}
       <div class="live-map-wrap">
         <svg class="live-map-svg" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Live route map">
           <rect width="600" height="260" fill="#eef3f8"/>
@@ -24229,6 +24562,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // in-progress flow). Deletes the request from DASH_DATA.activeRequests and
   // returns to home. Mirrors the [data-del-req] handler used by the home log's
   // red ✕ button, just from a different surface.
+  /* Report lives in the detail TOPBAR, a sibling of #reqDetailBody, so the
+     body's delegated handler cannot see it — the same reason Cancel request
+     below is wired directly. Same __wired guard, for the same reason: this
+     block re-runs and a second listener would open the modal twice. */
+  const reqDetailReportBtn = document.getElementById('reqDetailReportBtn');
+  if(reqDetailReportBtn && !reqDetailReportBtn.__wired){
+    reqDetailReportBtn.__wired = true;
+    reqDetailReportBtn.addEventListener('click', () => {
+      const o = document.getElementById('reportOverlay');
+      if(o) o.hidden = false;
+    });
+  }
+
   const reqDetailCancelBtn = document.getElementById('reqDetailCancelBtn');
   if(reqDetailCancelBtn && !reqDetailCancelBtn.__wired){
     reqDetailCancelBtn.__wired = true;
@@ -26020,6 +26366,40 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       g40RepostSeq = 200;   // demo order-number counter back to its base
     };
   })();
+
+  /* ── PT playground bridge ────────────────────────────────────────────────
+     Publishes window.GWeb — a GReq-shaped view of DASH_DATA — so
+     _prototypes/web-split-screen.html can run this web app against the Gopher
+     Go prototype. install() returns null without ?pt=1 and nothing is
+     published; the live site is untouched. A broken adapter THROWS rather
+     than degrading, so a silent half-bridge can never be mistaken for a
+     legitimately empty dashboard. */
+  try {
+    if (window.GopherWebPT) {
+      window.GopherWebPT.install({
+        surface: 'request',
+        DASH_DATA: DASH_DATA,
+        dashState: dashState,
+        startJob: startJob,
+        /* Repaint the CARDS **and** the open detail screen. renderActiveRequests
+           alone leaves a request the user is currently viewing showing stale
+           state — the no-show block survived its own window being cleared,
+           which is exactly the moment the requester is staring at it. The app's
+           own handlers always call these two together; so must we. */
+        render: function(){
+          try{ renderActiveRequests(); }catch(_){}
+          try{ renderRequestDetail(); }catch(_){}
+        },
+        recount: function(){
+          try{ recountKpis(); }catch(_){}
+          try{ renderPrevRequests(); }catch(_){}
+          try{ updateInboxBadge(); }catch(_){}
+          try{ renderInbox(); }catch(_){}
+        },
+        cancel: window.__cancelDashboardRequest || null
+      });
+    }
+  } catch (e) { console.error('[GopherWebPT] request bridge failed to install:', e); }
 })();
 </script>
 <script>

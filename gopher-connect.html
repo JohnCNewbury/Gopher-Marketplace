@@ -41,6 +41,9 @@
      truth across Request web / Connect / the Request App prototype. -->
 <script src="assets/js/gopher-request-logic.js"></script>
 <script src="assets/js/gopher-step-gates.js"></script>
+<!-- PT playground bridge (_prototypes/web-split-screen.html). Publishes window.GWeb
+     ONLY under ?pt=1; completely inert on the live site. -->
+<script src="assets/js/gopher-web-pt-bridge.js"></script>
 <!-- Google Maps JS API — Places autocomplete + Distance Matrix for REAL trip mileage that
      feeds Gopher iQ ride pricing. Same referrer-locked browser key as gopher-deals; needs the
      Distance Matrix API enabled and this domain on the key’s HTTP referrers. Until then the
@@ -5413,6 +5416,21 @@
   .req-detail-topbar .req-detail-back { margin-bottom:0; }
   /* Cancel request — same shape/size as Back, but red text + red hover so the
      destructive action is unmistakable while staying visually consistent. */
+  /* Report a request — ported from Final/gopher-request.html, which ported the
+     taxonomy verbatim from the live requester app. Connect carries its own
+     prefix (.gc-*) for modal shells but the inner .ca-*/.rep-* classes are
+     shared vocabulary, so only the overlay classes differ between the two. */
+  .req-detail-report { color:#C44257; border-color:#f0d5d8; }
+  .rep-copy { font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.55; color:var(--muted); margin:0 0 10px; }
+  .rep-list { display:flex; flex-direction:column; gap:8px; margin:14px 0 4px; }
+  .rep-opt { text-align:left; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px;
+             color:var(--navy); background:#fff; border:1.5px solid #e7eaf2; border-radius:11px;
+             padding:12px 14px; cursor:pointer; transition:border-color .15s, background .15s; }
+  .rep-opt:hover { border-color:#cfe3d6; }
+  .rep-opt.sel { background:#E8F5EE; border-color:#1CB061; color:#0a7d44; }
+  .rep-done { text-align:center; padding:8px 4px 4px; }
+  .rep-done .rep-done-ico { font-size:30px; line-height:1; margin-bottom:8px; }
+  .rep-done h4 { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); margin:0 0 6px; }
   .req-detail-cancel { color:var(--error); }
   .req-detail-cancel:hover { border-color:var(--error); color:var(--error); background:rgba(196,66,87,0.06); }
   .interested-head {
@@ -9886,6 +9904,7 @@
         <div class="req-detail-topbar">
           <button class="req-detail-back" data-jump-section="home">← Back to Dashboard</button>
           <button class="req-detail-back req-detail-cancel" id="reqDetailCancelBtn" type="button">Cancel request</button>
+          <button class="req-detail-back req-detail-report" id="reqDetailReportBtn" type="button">⚑ Report</button>
         </div>
         <div id="reqDetailBody">
           <!-- Filled by JS based on state.dashRequestDetailId -->
@@ -12354,8 +12373,11 @@ const PAY_BADGES = {
       <div class="see-workers-dashboard">
         <div class="swd-icon">👥</div>
         <div class="swd-text">
+          ${(window.GopherWebPT && window.GopherWebPT.on()) ? `
+          <strong>Broadcasting to Gophers nearby</strong>
+          <span>You'll be notified the moment a Gopher accepts.</span>` : `
           <strong>${interestedCount} worker${interestedCount!==1?'s':''} already interested</strong>
-          <span>Review profiles, hire, or consider workers from your dashboard.</span>
+          <span>Review profiles, hire, or consider workers from your dashboard.</span>`}
         </div>
         <button class="swd-cta" id="seeWorkersInDashboard">See workers in dashboard →</button>
       </div>
@@ -14013,7 +14035,12 @@ const PAY_BADGES = {
     // dashboard shows a connected request, not a pending 8-worker broadcast.
     const _svc = !!(state.fromDeal && state.dealKind === 'service');
     const _prov = state.dealProvider || null;
-    let interestedForDash = interestedWorkers;
+    // PT (split-screen playground): broadcast to NOBODY. The demo pool would
+    // auto-hire a fake Gopher under 'first available' before the real worker on
+    // the Go phone ever saw the request, so the harness could never observe an
+    // acceptance — one would already have happened.
+    let interestedForDash = (window.GopherWebPT && window.GopherWebPT.on())
+      ? [] : interestedWorkers;
     let whenForDash = when;
     if(_svc && _prov){
       interestedForDash = [{
@@ -14042,6 +14069,11 @@ const PAY_BADGES = {
     const id = window.__createDashboardRequest({
       icon: c.icon || '📋',
       title,
+      // Broadcast identity. Neither was carried into the request record, so the
+      // Go app had no category slug to file the job under and no cost-of-items
+      // to show the worker.
+      category: state.category || null,
+      costOfItems: state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
       perWorkerCost: perWorker,
       workersNeeded,
       // Summary total = the canonical grand total (COG+Offer + post-discount connect
@@ -17748,7 +17780,7 @@ const PAY_BADGES = {
       : '';
     // Completion-confirmation details + rating modals (hidden until opened).
     const completionModals = buildCompletionModals(r);
-    document.getElementById('reqDetailBody').innerHTML = buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    document.getElementById('reqDetailBody').innerHTML = buildReportModal(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // Cost-adjustment wiring: open/close the breakdown modal and resolve approve/decline.
     // The "?" lives inside an .info-tip (with a hidden .info-popover) so the global
@@ -17799,6 +17831,43 @@ const PAY_BADGES = {
         s.addEventListener('click', () => { _rating = Number(s.dataset.star); paintStars(); renderOpts(); });
       });
     }
+    /* ── Report handlers. Connect wires per-render rather than delegating, so
+       these follow the page's own idiom rather than Request's. ── */
+    document.querySelectorAll('#reqDetailBody [data-report-close]').forEach(b => {
+      b.addEventListener('click', () => { const o = document.getElementById('reportOverlay'); if(o) o.hidden = true; });
+    });
+    document.querySelectorAll('#reqDetailBody [data-report-reason]').forEach(b => {
+      b.addEventListener('click', () => {
+        /* Single-select, matching upstream's Selectpopup: exactly one reason
+           leaves with the report, and Submit stays disabled until one is chosen
+           — an empty description reaches the admin panel as a flag nobody can
+           action. */
+        document.querySelectorAll('#reqDetailBody .rep-opt.sel').forEach(x => x.classList.remove('sel'));
+        b.classList.add('sel');
+        const sb = document.getElementById('reportSubmit'); if(sb) sb.disabled = false;
+      });
+    });
+    document.querySelectorAll('#reqDetailBody [data-report-submit]').forEach(b => {
+      b.addEventListener('click', () => {
+        const picked = document.querySelector('#reqDetailBody .rep-opt.sel');
+        if(!picked) return;
+        const description = REPORT_REASONS[+picked.dataset.reportReason];
+        /* BACKEND SEAM — the live requester app posts exactly this:
+              POST orders/<id>/flag { description }   (getOrders.js handleFlagReport)
+           Same endpoint the worker app uses, so both parties' flags land in one
+           place. Recorded on the request here; the POST is the human-dev wiring. */
+        r.flagReport = { reason: description, at: Date.now() };
+        const body = document.getElementById('reportBody');
+        if(body){
+          body.innerHTML = '<div class="rep-done"><div class="rep-done-ico">\u2713</div>'
+            + '<h4>Report submitted</h4>'
+            + '<p class="rep-copy">Our team has been notified and will investigate as soon as possible.</p>'
+            + '<div class="ca-actions"><button class="ca-approve" data-report-close>Close</button></div></div>';
+          const close = body.querySelector('[data-report-close]');
+          if(close) close.addEventListener('click', () => { const o = document.getElementById('reportOverlay'); if(o) o.hidden = true; });
+        }
+      });
+    });
     document.querySelectorAll('#reqDetailBody [data-confirm-complete]').forEach(b => {
       b.addEventListener('click', () => resolveCompletion(r));
     });
@@ -18417,6 +18486,64 @@ const PAY_BADGES = {
     renderActiveRequests();
     renderRequestDetail();
     if(typeof renderGophers === 'function' && favAdded) renderGophers();
+  }
+
+  /* ── Report a request ─────────────────────────────────────────────────────
+     Ported from Final/gopher-request.html, which ported it VERBATIM from the
+     live requester app (gopher-mobile-request/src/component/getOrders.js — the
+     Selectpopup list, both copy paragraphs, and handleFlagReport's endpoint).
+     Same six reasons, same order, same wording.
+
+     ⚠️ The sixth reason, "Violates Age-Restricted Policies", is on the
+     REQUESTER'S list and NOT the worker's. That asymmetry is upstream's and it
+     is right: only the person who placed the order knows the contents were
+     misrepresented. Do not "harmonise" the two lists.
+
+     It flags the ORDER, not a person — the same endpoint the worker app posts
+     to, so one flag mechanism serves both parties and the admin panel sees them
+     identically. "Report this Gopher" would be a different feature and a
+     different decision.
+
+     ⚠️ WHY CONNECT SHOWS A CONFIRMATION AND LIVE DOES NOT. Upstream's
+     handleFlagReport does `if (success) setReportModal(false)` — the modal just
+     closes, with nothing said. Both web surfaces show a short confirmation
+     instead. That is a DELIBERATE, NAMED divergence, not an oversight: a safety
+     report that vanishes silently gives the reporter no reason to believe it
+     went anywhere, and the modal's own copy has just promised "Our team will be
+     notified." Flagged for the owner in prototype-vs-live-findings.md. It is
+     also the reason this is an inline state rather than a toast — Connect has no
+     toast, and inventing one for this would have been a bigger change than the
+     feature. */
+  const REPORT_REASONS = [
+    'Inappropriate Request',
+    'Inappropriate Language',
+    'Inappropriate Picture',
+    'Request may be illegal/suspicious',
+    'Unsafe request/location',
+    'Violates Age-Restricted Policies',
+  ];
+
+  function buildReportModal(r){
+    if(!r) return '';
+    return `
+      <div class="gc-modal-overlay gc-mo--tall" id="reportOverlay" hidden>
+        <div class="gc-modal gc-m--flush" role="dialog" aria-modal="true" aria-label="Report a request">
+          <div class="ca-head"><h3>Report A Request</h3><button class="ca-x" data-report-close aria-label="Close">✕</button></div>
+          <div class="ca-body" id="reportBody">
+            <p class="rep-copy">We strive to create a community of people who respect each other and feel
+              they are in a safe environment. If you feel like one of the listings is of inappropriate
+              nature, please use this page to report it.</p>
+            <p class="rep-copy">Our team will be notified, and we will investigate the issue as soon as
+              possible.</p>
+            <div class="rep-list" id="reportReasons">
+              ${REPORT_REASONS.map((t,i) => `<button type="button" class="rep-opt" data-report-reason="${i}">${t}</button>`).join('')}
+            </div>
+            <div class="ca-actions">
+              <button class="ca-approve" id="reportSubmit" data-report-submit disabled>Submit report</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
   }
 
   function buildAdjustmentModal(r){
@@ -19134,7 +19261,9 @@ const PAY_BADGES = {
 
     // Worker auto-reply — once, for demo perspective.
     const replyFlag = crewName ? `_autoReplied_${crewName}` : '_autoReplied';
-    if(firstMessage && !r[replyFlag]){
+    // PT playground: no canned worker reply — see the Request twin of this note.
+    const _ptNoAutoReply = !!(window.GopherWebPT && window.GopherWebPT.on());
+    if(firstMessage && !r[replyFlag] && !_ptNoAutoReply){
       r[replyFlag] = true;
       setTimeout(() => {
         thread.push({ from:'worker', text:'Hi there, just responding for demo purposes.',
@@ -21076,6 +21205,8 @@ const PAY_BADGES = {
       id,
       icon: data.icon || '📋',
       title: data.title || 'New request',
+      category: data.category || null,
+      costOfItems: +data.costOfItems || 0,
       status: 'pending',
       statusLabel: 'Pending',
       submittedAt: Date.now(),           // drives the <20-min early-cancel variant
@@ -21085,7 +21216,9 @@ const PAY_BADGES = {
       workersNeeded: needed,
       perWorkerCost: data.perWorkerCost || 0,
       multiIndividual: needed > 1,
-      worker: `${interested.length} worker${interested.length!==1?'s':''} interested`,
+      worker: (interested.length === 0 && window.GopherWebPT && window.GopherWebPT.on())
+        ? 'Broadcasting \u2014 no Gopher yet'
+        : `${interested.length} worker${interested.length!==1?'s':''} interested`,
       amount: data.amountLabel || '',
       when: data.when || 'Just now · awaiting your selection',
       interestedWorkers: interested,
@@ -21949,6 +22082,21 @@ const PAY_BADGES = {
         const id = dashState.requestDetailId;
         if(!id) return;
         if(window.__openCancelModal) window.__openCancelModal(id);
+      });
+    }
+    /* ⚠️ The Report button lives in .req-detail-topbar, a SIBLING of
+       #reqDetailBody — so the per-render wiring above, which scopes to
+       #reqDetailBody, never sees it. That is exactly the trap that made the
+       Request build's Report button silently do nothing while every reason
+       rendered correctly underneath it. Wired directly here, beside its
+       neighbour, with the same __wired guard for the same reason: this block
+       re-runs and a second listener would open the modal twice. */
+    const reqDetailReport = document.getElementById('reqDetailReportBtn');
+    if(reqDetailReport && !reqDetailReport.__wired){
+      reqDetailReport.__wired = true;
+      reqDetailReport.addEventListener('click', () => {
+        const o = document.getElementById('reportOverlay');
+        if(o) o.hidden = false;
       });
     }
     // Visit Connect site — close dashboard so the marketing page is visible.
@@ -24527,6 +24675,37 @@ const PAY_BADGES = {
       g40RepostSeq = 500;
     };
   })();
+
+  /* ── PT playground bridge ────────────────────────────────────────────────
+     Publishes window.GWeb — a GReq-shaped view of DASH_DATA — so
+     _prototypes/web-split-screen.html can run Connect against the Gopher Go
+     prototype. install() returns null without ?pt=1 and nothing is published;
+     the live site is untouched. A broken adapter THROWS rather than degrading,
+     so a silent half-bridge can never be mistaken for an empty dashboard.
+     Connect has no recountKpis — the adapter treats it as optional. */
+  try {
+    if (window.GopherWebPT) {
+      window.GopherWebPT.install({
+        surface: 'connect',
+        DASH_DATA: DASH_DATA,
+        dashState: dashState,
+        startJob: startJob,
+        // See the Request twin of this note: cards AND the open detail screen.
+        render: function(){
+          try{ renderActiveRequests(); }catch(_){}
+          try{ if(typeof renderRequestDetail==='function') renderRequestDetail(); }catch(_){}
+        },
+        recount: function(){
+          try{ renderKpiCounts(); }catch(_){}
+          try{ renderPrevRequests(); }catch(_){}
+          try{ renderGophers(); }catch(_){}
+          try{ updateInboxBadge(); }catch(_){}
+          try{ renderInbox(); }catch(_){}
+        },
+        cancel: window.__cancelDashboardRequest || null
+      });
+    }
+  } catch (e) { console.error('[GopherWebPT] connect bridge failed to install:', e); }
 })();
 
 </script>
