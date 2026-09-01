@@ -299,6 +299,35 @@ asserts the call sites by name. All four mutations fail it:
 
 ---
 
+## 5. Named divergence — all three of our surfaces confirm a report; live says nothing
+
+**Not a defect either way. Recorded so it is a decision, not a drift.**
+
+Upstream's `handleFlagReport` (`gopher-mobile-request/src/component/getOrders.js`) does exactly this
+on success:
+
+```js
+if (pastRequestResponse?.data?.success) {
+  setReportModal(false);
+}
+```
+
+The modal closes. Nothing is said, nothing is shown. Our Request web, Connect web and Request app
+prototype all show a short confirmation panel instead — *"Report submitted. Our team has been
+notified and will investigate as soon as possible."*
+
+**Why we diverged, deliberately:** the modal's own copy has just promised *"Our team will be
+notified"*, and a safety report that vanishes silently gives the person no reason to believe it went
+anywhere. It is also what made one implementation possible across all three surfaces — Connect has
+no toast at all, so an inline panel was the only shape that could be identical everywhere. A toast
+on Request and a panel on Connect is the kind of near-parity that reads as done and is not.
+
+**Question:** keep the confirmation (and it should eventually go upstream too), or match live and
+close silently? Nothing depends on the answer today — it is copy and a panel, reversible in minutes
+on all three.
+
+---
+
 ## What is NOT changed
 
 Nothing in the live apps and nothing in the backend. Two code changes, neither of which reaches a

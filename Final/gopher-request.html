@@ -7315,6 +7315,9 @@
              padding:12px 13px; cursor:pointer; transition:background .12s, border-color .12s, color .12s; }
   .rep-opt:hover { border-color:#cfe3d6; }
   .rep-opt.sel { background:#E8F5EE; border-color:#1CB061; color:#0a7d44; }
+  .rep-done { text-align:center; padding:8px 4px 4px; }
+  .rep-done .rep-done-ico { font-size:30px; line-height:1; margin-bottom:8px; }
+  .rep-done h4 { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); margin:0 0 6px; }
   #reportSubmit[disabled] { opacity:.45; cursor:default; }
 
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
@@ -22146,9 +22149,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
              land in one place. Recorded on the request here; the POST is the
              human-dev wiring. */
           r.flagReport = { reason: description, at: Date.now() };
-          const o = document.getElementById('reportOverlay'); if(o) o.hidden = true;
-          if(typeof toast === 'function') toast('Report submitted — our team will investigate.');
-          renderRequestDetail();
+          /* ⚠️ CONFIRMATION IN THE MODAL, NOT A TOAST — changed when Connect got
+             this feature, so the two web surfaces are identical rather than
+             merely similar. Connect has no toast at all, and inventing one for
+             this would have been a bigger change than the feature; a toast here
+             and an inline panel there is exactly the kind of near-parity that
+             reads as done and is not. It is also the better shape for a safety
+             action: the confirmation stays until the reporter dismisses it.
+
+             Upstream does neither — handleFlagReport just closes the modal on
+             success. That divergence is deliberate and is named in
+             prototype-vs-live-findings.md rather than left to be rediscovered. */
+          const body = document.getElementById('reportBody');
+          if(body){
+            body.innerHTML = '<div class="rep-done"><div class="rep-done-ico">\u2713</div>'
+              + '<h4>Report submitted</h4>'
+              + '<p class="rep-copy">Our team has been notified and will investigate as soon as possible.</p>'
+              + '<div class="ca-actions"><button class="ca-approve" data-report-close>Close</button></div></div>';
+          }
+          renderActiveRequests();
           return;
         }
         if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
@@ -22973,7 +22992,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <div class="gr-modal-overlay gr-mo--tall" id="reportOverlay" hidden>
         <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Report a request">
           <div class="ca-head"><h3>Report A Request</h3><button class="ca-x" data-report-close aria-label="Close">✕</button></div>
-          <div class="ca-body">
+          <div class="ca-body" id="reportBody">
             <p class="rep-copy">We strive to create a community of people who respect each other and feel
               they are in a safe environment. If you feel like one of the listings is of inappropriate
               nature, please use this page to report it.</p>

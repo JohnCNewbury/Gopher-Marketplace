@@ -1161,7 +1161,8 @@ setInterval(function(){ try{
 document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
- if(act==='counter'){ if(order) openCounterReview(order); return; }
+ if(act==='report'){ if(order) openReqReport(order); return; }
+ else if(act==='counter'){ if(order) openCounterReview(order); return; }
  else if(act==='gcancel'){ if(order) openGopherCancelledSheet(order); return; }
  else if(act==='adjust'){ if(order) openAdjustReview(order); return; }
  else if(act==='bid'){ if(order) openBidsList(order); return; }
@@ -1752,6 +1753,82 @@ function __reqCancelAffordance(r){
     return '<button data-pending-action="reqcancel" data-order="'+r.order+'" style="width:100%;margin-top:14px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Cancel request</button>';
   return '';
 }
+/* ── Report a request — prototype counterpart of the web build ──────────────
+   Owner directive 2026-09-01 (standing rule 12b): web and prototype move in the
+   SAME pass. This surface was the debt that rule created — the web Request build
+   got Report a day earlier and the prototype did not.
+
+   The taxonomy is VERBATIM from the live requester app
+   (gopher-mobile-request/src/component/getOrders.js — the Selectpopup list, both
+   copy paragraphs, and handleFlagReport's endpoint). Same six reasons, same
+   order, same wording as Final/gopher-request.html and Final/gopher-connect.html.
+
+   ⚠️ The sixth reason, "Violates Age-Restricted Policies", is on the REQUESTER'S
+   list and NOT the worker's. That asymmetry is upstream's and it is right: only
+   the person who placed the order knows the contents were misrepresented. Do not
+   "harmonise" the two lists.
+
+   It flags the ORDER, not a person — the same endpoint the worker app posts to.
+
+   ⚠️ Confirmation shown on submit. Upstream just closes the modal; all three of
+   our surfaces show a confirmation instead. Deliberate and named in
+   prototype-vs-live-findings.md — a safety report that vanishes silently gives
+   the reporter no reason to believe it went anywhere. */
+var REPORT_REASONS=['Inappropriate Request','Inappropriate Language','Inappropriate Picture',
+  'Request may be illegal/suspicious','Unsafe request/location','Violates Age-Restricted Policies'];
+
+function __reqReportAffordance(r){
+  if(!r || r.cancelled) return '';
+  return '<button data-pending-action="report" data-order="'+r.order+'" style="width:100%;margin-top:9px;'
+    +'padding:12px;border:1.5px solid #f0d5d8;background:#fff;color:#C44257;border-radius:12px;'
+    +'font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">\u2691 Report a request</button>';
+}
+function openReqReport(order){
+  var r=GReq.get(order); if(!r) return;
+  var opts=REPORT_REASONS.map(function(t,i){
+    return '<button class="rep-opt" data-rep-i="'+i+'" style="text-align:left;width:100%;margin-top:8px;'
+      +'font-family:Nunito;font-weight:800;font-size:13px;color:#002461;background:#fff;'
+      +'border:1.5px solid #e7eaf2;border-radius:11px;padding:12px 14px;cursor:pointer;">'+__gcEsc(t)+'</button>';
+  }).join('');
+  var ov=gSheet('Report A Request',
+     '<div class="gs-b" id="repBody" style="padding:0 16px 18px;">'
+    +'<p class="gs-hint" style="margin-top:10px;">We strive to create a community of people who respect '
+    +'each other and feel they are in a safe environment. If you feel like one of the listings is of '
+    +'inappropriate nature, please use this page to report it.</p>'
+    +'<p class="gs-hint">Our team will be notified, and we will investigate the issue as soon as possible.</p>'
+    +opts
+    +'<button id="repSubmit" disabled style="width:100%;margin-top:14px;padding:13px;border:0;'
+    +'background:#1CB061;color:#fff;border-radius:12px;font-family:Nunito;font-weight:800;font-size:14px;'
+    +'cursor:pointer;opacity:.5;">Submit report</button></div>');
+  var picked=null;
+  ov.querySelectorAll('.rep-opt').forEach(function(b){
+    b.onclick=function(){
+      /* Single-select, matching upstream's Selectpopup: exactly one reason
+         leaves with the report, and Submit stays disabled until one is chosen —
+         an empty description reaches the admin panel as a flag nobody can action. */
+      ov.querySelectorAll('.rep-opt').forEach(function(x){ x.style.background='#fff'; x.style.borderColor='#e7eaf2'; x.style.color='#002461'; });
+      b.style.background='#E8F5EE'; b.style.borderColor='#1CB061'; b.style.color='#0a7d44';
+      picked=+b.getAttribute('data-rep-i');
+      var sb=ov.querySelector('#repSubmit'); if(sb){ sb.disabled=false; sb.style.opacity=''; }
+    };
+  });
+  var sub=ov.querySelector('#repSubmit');
+  if(sub) sub.onclick=function(){
+    if(picked==null) return;
+    /* BACKEND SEAM — the live requester app posts exactly this:
+          POST orders/<id>/flag { description }   (getOrders.js handleFlagReport) */
+    GReq.update(order,{ flagReport:{ reason:REPORT_REASONS[picked], at:Date.now() } });
+    var body=ov.querySelector('#repBody');
+    if(body) body.innerHTML='<div style="text-align:center;padding:14px 4px 4px;">'
+      +'<div style="font-size:30px;line-height:1;margin-bottom:8px;">\u2713</div>'
+      +'<h4 style="font-family:Nunito;font-weight:900;font-size:16px;color:#002461;margin:0 0 6px;">Report submitted</h4>'
+      +'<p class="gs-hint">Our team has been notified and will investigate as soon as possible.</p>'
+      +'<button class="gs-x-done" style="width:100%;margin-top:12px;padding:12px;border:1.5px solid #e0dccb;'
+      +'background:#fff;color:#5b6472;border-radius:12px;font-family:Nunito;font-weight:800;cursor:pointer;">Close</button></div>';
+    var c=ov.querySelector('.gs-x-done'); if(c) c.onclick=function(){ ov.remove(); };
+  };
+}
+
 function openReqCancel(order){
   var r=GReq.get(order); if(!r||r.cancelled) return;
   if(__reqStarted(r)){ gModal('<h3 class="gm-h">'+__gcEsc(r.hired||'Your Gopher')+' has started</h3><p class="gm-p">Cancelling is no longer available once your Gopher has started the job. Message them directly, or contact support if something’s wrong.</p><button class="gm-close">Got it</button>'); return; }
@@ -2153,7 +2230,7 @@ function openDetails(order){
     +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
     +row('Total', bids?'TBD after bid':(r.amount||money((+r.pay||0)+(+r.cost||0))))
     +'</div>';
-  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r));
+  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r)+__reqReportAffordance(r));
 }
 // Deals launch gate (Raleigh DMA only) \u2014 same flag the home Deals section honors.
 function __dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
