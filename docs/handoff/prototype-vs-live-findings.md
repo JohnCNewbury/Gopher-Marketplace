@@ -9,6 +9,7 @@ correct."*
 | 1 | Counter-offer cap: tier exemption | **Prototype is the new logic** | Live backend is behind ruled canon — see §1 |
 | 2 | Receipt required to raise cost of goods | **In play for the prototype** | Relay fixed, verified — see §2 |
 | 3 | The three acceptance modes have no backend representation | **"Need more info"** | **§3 was WRONG. The modes ARE represented.** |
+| 4 | *(found while verifying #2)* Go prototype reads a decimal money value 100× too large | **"Fix that"** | **Fixed and guarded** — see §4 |
 
 ---
 
@@ -207,39 +208,100 @@ intent — the way the counter-offer tier exemption turned out to be?
 
 ---
 
-## 4. New, found while verifying §2 — the Go prototype reads a decimal cost 100× too large
+## 4. FIXED — the Go prototype read a decimal money value 100× too large
 
-**Not a prototype-vs-live ambiguity. Live is unambiguously correct; the prototype has a money bug.**
+**Found while verifying §2; owner said fix it (2026-09-01). Not a prototype-vs-live ambiguity —
+live was unambiguously correct.**
 
-`gopher-go-prototype.html:3450, 3459-3460` reads both money fields as:
+Every money field in `gopher-go-prototype.html` was read as:
 
 ```js
 parseInt((el.value || '').replace(/[^0-9]/g, '')) || 0
 ```
 
-That strips the decimal point. **`61.40` becomes `6140`.**
+That does not *reject* a decimal point — it **deletes** it. **`61.40` became `6140`.**
 
 Confirmed with **real keystrokes**, not a programmatic value set: typed `61.40` into Cost of items
-→ field holds `"61.40"` → the app reads `6140` → the requester's approval card offered
-**$6,666.83** against an agreed **$87.47**. Screenshot in the session; the receipt row rendered
-correctly beside the wrong number.
+→ the field held `"61.40"` → the app read `6140` → the requester's approval card offered
+**$6,666.83** against an agreed **$87.47**. The inputs are `inputmode="numeric"`, which is **a
+keyboard hint, not a filter** — there is no `beforeinput`/`keypress` guard, so a period is typeable
+on desktop, on Android's numeric pad, and by paste.
 
-The inputs are `inputmode="numeric"`, which is **a keyboard hint, not a filter** — there is no
-`beforeinput`/`keypress` guard anywhere on either field. A period is typeable on desktop, on
-Android's numeric pad, and by paste. Both `.js-upoffer` and `.js-upcost` are affected.
+**Live has always been right:** `gopher-mobile-gopher/src/component/ordercard.js:4709` uses
+`type="number"` with `parseFloat(e.target.value)`, `cost_of_goods` is stored in **cents**, and live
+counter-offers are the same shape (`(offer/100).toFixed(2)`) — so cents are meaningful there too.
 
-**Live does this correctly.** `gopher-mobile-gopher/src/component/ordercard.js:4709` uses
-`type="number"` with `parseFloat(e.target.value)`, and `cost_of_goods` is stored in **cents**
-(`/100` on every display, `*100` on submit).
+### What changed
 
-**Not fixed** — `_prototypes/Go/gopher-go-prototype.html` is a shared surface and this is outside
-what was asked today. The fix is to match live: accept a decimal and parse with `parseFloat`. Say
-the word.
+Two named helpers at the top of the app script, and every money read routed through them:
+
+- `parseMoney(v)` → a Number rounded to cents. Tolerates `$`, spaces, commas and a stray second
+  `.` (keeps the first, drops the rest).
+- `fmtMoney(v)` → the display string. **Whole dollars stay bare** (`32`, not `32.00`) so no
+  existing copy changed; cents render `61.40`.
+
+⚠️ **NOT named `money()`.** A *different* `money()` already exists in this file — function-scoped
+inside the Service-Provider deal modal — and it returns **null** for zero because it is a
+validation helper. Two same-named money functions with opposite empty-value contracts is the same
+class of trap this fix was removing.
+
+⚠️ **Fixing the inputs alone would not have been enough**, and this is the part worth remembering.
+`j.amt` is a display **string** (`"$52"`), and two readers parsed it with the same digit-stripping
+idiom (`amtNum`, `curOffer`). Left alone, an adjustment applied at $61.40 would write `"$61.4"` and
+the next read would come back **614** — the same bug one hop later. The writers now normalise
+through `fmtMoney` and the readers go through `parseMoney`, so the round trip is closed.
+
+Sites changed: the cost-adjustment sheet (offer, item cost, running total, the +15-min button), the
+counter-offer amount, the two `j.amt` readers, and every writer the PT relay reaches
+(`__ptDecision`, `__ptAdjustDecision`, `__ptBidResult`, `__injectJob`).
+
+**Deliberately unchanged:** the bid fields (`.js-bidcost` / `.js-bidlabor`). They use `cleanAmt`,
+which **rewrites the field** to what it parsed, so a typed decimal is visibly corrected rather than
+silently multiplied — a different failure mode, and their whole-dollar behaviour is documented as
+intentional. Live does support cents on bids, so **whether bids should accept cents is a product
+question, not this bug.** Flagged, not decided.
+
+### Verified end to end, 2026-09-01
+
+Fresh request, no seeded data: COG $48 + offer $32 = **$87.47**, First Available, accepted on the
+Go phone (auto-hired and auto-started).
+
+| Step | Before | After |
+|---|---|---|
+| Item cost `61.40` submitted | read `6140` | reads **`61.40`** |
+| Requester's approval card | **$6,666.83** | **$101.94** (+$14.47) |
+| Receipt gate on first submit | blocked | still blocked (unchanged) |
+| Approve, then re-open the sheet | would read `origCost 614` | reads **`origCost 61.40`** — round trip holds |
+| Lower to `55.25` | — | `status: applied` (same-or-lower needs no approval), web shows **$95.30** |
+| Counter panel, `62.50` on a $52 offer | read `6250`, rejected as over cap | accepted, inside the $78 cap |
+| Counter cap message on a $41 offer | `$61` (floored) | **`$61.50`** — the cap is now reachable to the cent, as live allows |
+
+### And a regression guard that can actually fail
+
+`scripts/web-checks/go-money-parse.js`, wired in as step 9/9. It reads the **real file**, evaluates
+the **real helpers**, and covers parse, format, round-trip, the named call sites, and an
+anti-regression assertion that re-runs the OLD idiom and requires it to still be wrong — so a green
+here is never a green that could not have been red.
+
+⚠️ **Its first version was itself a guard that could not fail, and the mutation test is what caught
+it.** That version stripped comments and counted `replace(/[^0-9]/g,'')` occurrences; on a 2.8 MB
+single-file prototype full of embedded CSS, data URIs and `http://` links, the naive `//`
+line-comment regex ate **82% of the file** (2,871,768 → 533,085 chars) and took two of the three
+genuine matches with it. The mutation that reverted a call site to the old idiom **passed**. It now
+asserts the call sites by name. All four mutations fail it:
+
+| Mutation | Guard |
+|---|---|
+| `parseMoney` reverts to digit-stripping | ✅ fails |
+| One call site reverts to the old idiom | ✅ fails |
+| `fmtMoney` drops cents | ✅ fails |
+| Counter amount reverts to the old idiom | ✅ fails |
 
 ---
 
 ## What is NOT changed
 
-Nothing in the live apps, nothing in the backend, nothing in the Go prototype. The only code change
-from this pass is the receipt relay in `_prototypes/web-split-screen.html` (§2), which is
-`?pt=1`-gated and reaches no live host.
+Nothing in the live apps and nothing in the backend. Two code changes, neither of which reaches a
+live host: the receipt relay in `_prototypes/web-split-screen.html` (§2, `?pt=1`-gated) and the
+money parsing in `_prototypes/Go/gopher-go-prototype.html` (§4, a prototype with no public host).
+The §1 backend gap and the §3 web/live distance divergences are documented and untouched.

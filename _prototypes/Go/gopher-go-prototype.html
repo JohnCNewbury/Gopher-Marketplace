@@ -954,7 +954,7 @@ function renderJobCard(j){
   const biz=j.biz?'<div class="jc-biz"><span class="biz-nm">'+j.biz+'</span><span class="vbiz-chip"><span class="mi">'+IC.check+'</span>Verified Business</span></div>':'';
   const pay=j.mode==='bid'
     ? (j.bid && !j.bidDeclined
-        ? '<div class="jc-pay"><span class="bid-cta pending" style="background:#e7f7ec;color:#0a7d44;box-shadow:none;border:1px solid #bfe6cd;">$'+j.bid.amt+' bid pending</span></div>'
+        ? '<div class="jc-pay"><span class="bid-cta pending" style="background:#e7f7ec;color:#0a7d44;box-shadow:none;border:1px solid #bfe6cd;">$'+fmtMoney(j.bid.amt)+' bid pending</span></div>'
         : '<div class="jc-pay"><span class="bid-cta">Submit a Bid</span></div>')
     : '<div class="jc-pay"><span class="amt">'+(j.amt||'')+'</span>'+(j.per?'<span class="per">'+j.per+'</span>':'')+'</div>';
   const scope=j.scope?'<div class="jc-scope">'+j.scope+'</div>':'';
@@ -1296,6 +1296,51 @@ function openSPDeal(){
   renderChips();
 }
 
+/* ── Money entry: DECIMALS ARE REAL MONEY (fixed 2026-09-01) ─────────────────
+   ⛔ The idiom these replace was `parseInt(v.replace(/[^0-9]/g,''))`, which does
+   not REJECT a decimal point — it DELETES it. A worker who typed 61.40 into the
+   cost-adjustment sheet sent 6140, and the requester was asked to approve
+   $6,666.83 against an agreed $87.47. Confirmed with real keystrokes on
+   2026-09-01, not a scripted value set. `inputmode="numeric"` is a keyboard
+   HINT, not a filter: a period is typeable on desktop, on Android's numeric pad,
+   and by paste, and nothing here guarded the keystroke.
+
+   The live worker app has always been right — `type="number"` with
+   `parseFloat(e.target.value)` (gopher-mobile-gopher/src/component/ordercard.js,
+   the cost-adjustment field), with `cost_of_goods` stored in CENTS and divided
+   by 100 on every display. Live counter-offers are the same shape
+   (`(offer/100).toFixed(2)`), so cents are meaningful there too.
+
+   ⚠️ Fixing the INPUT alone would not have been enough. `j.amt` is a display
+   STRING ("$52"), and two readers parsed it with the same digit-stripping idiom
+   (amtNum, curOffer). Left as they were, an adjustment applied at $61.40 would
+   write "$61.4" and the next read would come back 614 — the same bug one hop
+   later. So the writers normalise through fmtMoney and the readers go through
+   parseMoney; the round-trip is closed, and that is the part to re-check if
+   anyone touches this again.
+
+   ⚠️ NOT named `money()` on purpose. A DIFFERENT `money()` already exists in
+   this file — function-scoped inside the Service-Provider deal modal — and it
+   returns **null** for zero/invalid because it is a validation helper. Two
+   same-named money functions with opposite empty-value contracts is exactly the
+   trap this fix was cleaning up, so these carry their own names.
+
+   parseMoney(v) -> a Number rounded to cents; 0 when there is nothing to read.
+                    Tolerates "$", spaces, commas and a stray second "." (keeps
+                    the first, drops the rest).
+   fmtMoney(v)   -> the display string. Whole dollars stay bare ("32", not
+                    "32.00") so existing copy is unchanged; cents show "61.40". */
+function parseMoney(v){
+  var s=String(v==null?'':v).replace(/[^0-9.]/g,'');
+  var i=s.indexOf('.');
+  if(i>-1) s=s.slice(0,i+1)+s.slice(i+1).replace(/\./g,'');
+  var n=parseFloat(s);
+  return isFinite(n)?Math.round(n*100)/100:0;
+}
+function fmtMoney(v){
+  var n=parseMoney(v);
+  return (Math.round(n*100)%100===0)?String(Math.round(n)):n.toFixed(2);
+}
 function showModal(html){ const ov=document.createElement('div'); ov.className='modal-overlay'; ov.innerHTML='<div class="modal-card">'+html+'</div>'; ov.addEventListener('click',e=>{ if(e.target===ov||e.target.classList.contains('mclose')) ov.remove(); }); const host=stage.querySelector('.host'); const root=host&&host.shadowRoot; const frame=root&&root.querySelector('.frame'); if(frame){ if(!root.querySelector('style[data-modal]')){ const st=document.createElement('style'); st.setAttribute('data-modal','1'); st.textContent=MODAL_CSS; root.appendChild(st); } ov.style.top=host.scrollTop+'px'; ov.style.bottom='auto'; ov.style.height=host.clientHeight+'px'; frame.appendChild(ov); } else { document.body.appendChild(ov); } return ov; }
 /* ── G40-308 worker modals (G40-309 survivors built for the Go app) ──────────
    Each is a G40-308-styled showModal(). Reachable now via the review launcher
@@ -2881,7 +2926,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     const fs=k=>stats.find(s=>s.i===k);
     const pin=fs('pin'), clock=fs('clock'), cal=fs('cal');
     const who=j.who||'A requester';
-    const amtNum=parseInt(String(j.amt||'').replace(/[^0-9]/g,''))||40;
+    const amtNum=parseMoney(j.amt)||40;
     const I={
       pin:'<path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>',
       clock:'<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>',
@@ -3081,9 +3126,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       if(lock==='connect'){ cta='For Gopher Elite &amp; Pros &mdash; Tier up &#8594;'; ccls=' lock'; }
       else if(lock==='deal'){ cta='Verify your account to unlock this Deal &#8594;'; ccls=' lock'; }
       else if(j.accepted){ cta=''; }   // once hired, the actions live in Job status + Message — no redundant bottom CTA
-      else if(j.mode==='bid' && j.bid && !j.bidDeclined){ cta='Bid submitted &middot; $'+j.bid.amt+' &mdash; pending'; ccls=' done'; }
+      else if(j.mode==='bid' && j.bid && !j.bidDeclined){ cta='Bid submitted &middot; $'+fmtMoney(j.bid.amt)+' &mdash; pending'; ccls=' done'; }
       else if(j.mode==='bid'){ cta='Submit a Bid &#8594;'; }
-      else if(j.counter && !j.counterAccepted && !j.counterDeclined){ cta='Counter sent &middot; $'+j.counter.amt+' &mdash; awaiting reply'; ccls=' done'; }
+      else if(j.counter && !j.counterAccepted && !j.counterDeclined){ cta='Counter sent &middot; $'+fmtMoney(j.counter.amt)+' &mdash; awaiting reply'; ccls=' done'; }
       else { cta='Accept Request'; ccls=' bidgo'; }   // green — matches the Submit-a-Bid CTA
       // priority banner
       const prio = j.priority ? '<div class="rq-prio"><span class="rq-ri">'+sv(I.star)+'</span><b>'+who+' prioritized you</b> &mdash; requested as their Gopher, details unlocked</div>' : '';
@@ -3092,9 +3137,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const coPending = !!(j.counter && !j.counterAccepted && !j.counterDeclined);
       const bidPending = !!(j.bid && !j.bidAccepted && !j.bidDeclined);
       const coBtn = coPending
-        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Counter sent &middot; $'+j.counter.amt+'</button>'
+        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Counter sent &middot; $'+fmtMoney(j.counter.amt)+'</button>'
         : bidPending
-        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Bid sent &middot; $'+j.bid.amt+'</button>'
+        ? '<button class="rq-2nd" disabled style="opacity:.65;"><span>'+sv(I.tag)+'</span>Bid sent &middot; $'+fmtMoney(j.bid.amt)+'</button>'
         : '<button class="rq-2nd'+(coOpen?' on':'')+' js-co"><span>'+sv(I.tag)+'</span>'+(j.mode==='bid'?(j.bidDeclined?'Bid again':'Place Bid'):(j.counterDeclined?'Counter again':'Counter-Offer'))+'</button>';
       // Message button sits directly under the requester card; the counter/bid action stays down by the pay.
       const msgBtn = '<div class="rq-acts" style="margin-top:11px;"><button class="rq-2nd js-ask" style="flex:1;"><span>'+sv(I.msg)+'</span>Message '+String(who||'requester').split(' ')[0]+'</button></div>';
@@ -3108,7 +3153,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(coOpen){
           bidSection = coPanel;
         } else if(j.bid && !j.bidDeclined){
-          bidSection = '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>$'+j.bid.amt+' bid pending</b> &mdash; waiting for '+who+' to review your bid</div>'
+          bidSection = '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>$'+fmtMoney(j.bid.amt)+' bid pending</b> &mdash; waiting for '+who+' to review your bid</div>'
             +'<div class="rq-acts" style="margin-top:9px;"><button class="rq-2nd js-bidchange" style="flex:1;"><span>'+sv(I.tag)+'</span>Change bid</button><button class="rq-2nd js-bidcancel" style="flex:1;border-color:#C44257;color:#C44257;"><span>'+sv(I.tag)+'</span>Cancel bid</button></div>';
         } else {
           bidSection = '<button class="rq-cta bidgo js-bidopen" style="margin-top:11px;">'+(j.bidDeclined?'Bid again':'Submit a Bid')+' &#8594;</button>';
@@ -3130,15 +3175,15 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       }
       // requester's verdict on a counter (set by the harness when they Accept/Decline)
       const coStatus = (j.counter && j.counterAccepted)
-        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+j.counter.amt+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
+        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' accepted your $'+fmtMoney(j.counter.amt)+' counter</b> &mdash; you&#8217;re hired at the new price</div>'
         : ((j.counter && j.counterDeclined)
-          ? '<div class="rq-hint">'+sv(I.tag)+who+' declined your $'+j.counter.amt+' counter &mdash; counter again or accept the '+(j.amt||'offer')+'.</div>'
+          ? '<div class="rq-hint">'+sv(I.tag)+who+' declined your $'+fmtMoney(j.counter.amt)+' counter &mdash; counter again or accept the '+(j.amt||'offer')+'.</div>'
           : '');
       // requester's verdict on a bid (open-to-bids job; set by the harness on Accept/Decline)
       const bidStatus = (j.bid && j.bidAccepted)
-        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' hired you at your $'+j.bid.amt+' bid</b> &mdash; you&#8217;re on the job</div>'
+        ? '<div class="rq-prio" style="background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>'+who+' hired you at your $'+fmtMoney(j.bid.amt)+' bid</b> &mdash; you&#8217;re on the job</div>'
         : ((j.bid && j.bidDeclined)
-          ? '<div class="rq-hint">'+sv(I.tag)+who+' passed on your $'+j.bid.amt+' bid &mdash; you can place a new bid.</div>'
+          ? '<div class="rq-hint">'+sv(I.tag)+who+' passed on your $'+fmtMoney(j.bid.amt)+' bid &mdash; you can place a new bid.</div>'
           : '');
       // Crew request (Gopher Request never splits a multi-worker job into per-worker broadcasts) —
       // the accepting Gopher is responsible for bringing the whole crew.
@@ -3242,7 +3287,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // cost_of_goods and disagrees with its own backend (legacy bug, superseded by the rebuild).
       const coTiered=false;
       const coCap=(j.mode==='bid'||coTiered)?Infinity:Math.max(20,amtNum*1.5);
-      const coCapMax=Number.isFinite(coCap)?Math.floor(coCap):Infinity;   // integer input → highest sendable value
+      const coCapNum=Number.isFinite(coCap)?Math.round(coCap*100)/100:Infinity;   // the real ceiling, to the cent
+      const coCapMax=Number.isFinite(coCap)?fmtMoney(coCapNum):Infinity;          // as shown: $97.50, not a floored $97
       const send=$('.js-cosend'), rule=$('.js-corule');
       // Live-app rules: block any counter at or below the offer, and (Standard) above the 150% ceiling;
       // keep the send state honest as they type.
@@ -3253,9 +3299,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
                          :high?('Standard cap — your counter can’t exceed $'+coCapMax+' (150% of the offer).')
                               :('Your counter must be higher than the '+(j.amt||'offer')+' offer.'); }
         return !bad; }
-      if(coin){ coin.oninput=()=>{ coVal=parseInt(coin.value.replace(/[^0-9]/g,''))||0; coValidate(); }; }
-      if(dec) dec.onclick=()=>{ coVal=Math.max(coMin,coVal-1); coin.value=coVal; coValidate(); };
-      if(inc) inc.onclick=()=>{ coVal=Math.min(coCapMax,coVal+1); coin.value=coVal; coValidate(); };
+      if(coin){ coin.oninput=()=>{ coVal=parseMoney(coin.value); coValidate(); }; }
+      if(dec) dec.onclick=()=>{ coVal=Math.max(coMin,parseMoney(coVal)-1); coin.value=fmtMoney(coVal); coValidate(); };
+      if(inc) inc.onclick=()=>{ coVal=Math.min(coCapNum,parseMoney(coVal)+1); coin.value=fmtMoney(coVal); coValidate(); };
       coValidate();
       // bid two-line-item inputs (expected cost + labor)
       const bidCostEl=$('.js-bidcost'), bidLaborEl=$('.js-bidlabor'), bidTotEl=$('.js-bidtotal');
@@ -3283,8 +3329,8 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const ctaBtn=$('.js-cta'); if(ctaBtn) ctaBtn.onclick=()=>{
         if(j.lock){ openTiers(); return; }
         if(j.accepted){ openGoMsgSheet(goConvoForJob(j)); return; }
-        if(j.mode==='bid' && j.bid && !j.bidDeclined){ toast('Your $'+j.bid.amt+' bid is in — waiting for '+who+' to decide.'); return; }
-        if(j.counter && !j.counterAccepted && !j.counterDeclined){ toast('Your $'+j.counter.amt+' counter is in — waiting for '+who+' to approve.'); return; }   // don't let a counter get accepted at the original price
+        if(j.mode==='bid' && j.bid && !j.bidDeclined){ toast('Your $'+fmtMoney(j.bid.amt)+' bid is in — waiting for '+who+' to decide.'); return; }
+        if(j.counter && !j.counterAccepted && !j.counterDeclined){ toast('Your $'+fmtMoney(j.counter.amt)+' counter is in — waiting for '+who+' to approve.'); return; }   // don't let a counter get accepted at the original price
         if(j.cat==='Ride Sharing' && !(state.ridePhotos&&state.ridePhotos.front&&state.ridePhotos.rear)){ showModal('<h3>Vehicle photos required</h3><p>Ride Sharing jobs require clear front and rear photos of your vehicle before you can accept. Add them in Work Settings under Ride sharing info.</p><button class="mclose">Got it</button>'); return; }
         if(j.mode==='bid'){ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); return; }
         // Purchase-needed gate (LIVE-app rule, mobile-gopher RequestDetailPullOver.js): a plain accept on a
@@ -3297,7 +3343,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       const bidOpen=$('.js-bidopen'); if(bidOpen) bidOpen.onclick=()=>{ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); };
       const bidChg=$('.js-bidchange'); if(bidChg) bidChg.onclick=()=>{ coOpen=true; draw(); const p=r.querySelector('.rq-co'); if(p) p.scrollIntoView({block:'center',behavior:'smooth'}); };
       const bidCxl=$('.js-bidcancel'); if(bidCxl) bidCxl.onclick=()=>{
-        const mv=showModal('<h3>Withdraw your bid?</h3><p>Your $'+(j.bid?j.bid.amt:'')+' bid will be removed. You can place a new bid anytime while the request is open.</p><button class="js-cxl-yes" style="width:100%;margin-top:4px;border:0;background:#C44257;color:#fff;border-radius:12px;padding:13px;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Withdraw bid</button><button class="mclose" style="width:100%;margin-top:9px;border:1.5px solid #e0dccb;background:#fff;color:#5b6472;border-radius:12px;padding:11px;font-family:Nunito;font-weight:800;cursor:pointer;">Keep my bid</button>');
+        const mv=showModal('<h3>Withdraw your bid?</h3><p>Your $'+(j.bid?fmtMoney(j.bid.amt):'')+' bid will be removed. You can place a new bid anytime while the request is open.</p><button class="js-cxl-yes" style="width:100%;margin-top:4px;border:0;background:#C44257;color:#fff;border-radius:12px;padding:13px;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Withdraw bid</button><button class="mclose" style="width:100%;margin-top:9px;border:1.5px solid #e0dccb;background:#fff;color:#5b6472;border-radius:12px;padding:11px;font-family:Nunito;font-weight:800;cursor:pointer;">Keep my bid</button>');
         const yes=mv&&mv.querySelector('.js-cxl-yes'); if(yes) yes.onclick=()=>{ j.bid=null; j.bidDeclined=false; coOpen=false; if(mv)mv.remove(); draw(); toast('Bid withdrawn'); };
       };
       const tosLink=$('.js-tos'); if(tosLink) tosLink.onclick=()=>showModal('<h3>Terms of Service</h3><p>By placing a bid or accepting a request, you agree to complete it as proposed. Unapproved cancellations after acceptance may incur a cancellation fee. Full terms are available on the Gopher website.</p><button class="mclose">Close</button>');
@@ -3349,7 +3395,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
     // the advance/cancel actions — the job is already complete; only the charge is in question.
     function openUpdateSheet(nk, adjOnly){
       const nextStep = STATUS_FLOW.find(s=>s.key===nk) || {label:'Next step', cta:'Continue'};
-      const curOffer = parseInt(String(j.amt||'').replace(/[^0-9]/g,'')) || amtNum || 0;
+      const curOffer = parseMoney(j.amt) || amtNum || 0;
       const curCost = (+j.cost||0);
       // A cost-of-items (delivery/ride) OR cost-of-materials (service) field is ALWAYS available — even if
       // it started at $0 — in case the requester and worker agree on something extra on site.
@@ -3448,17 +3494,17 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         if(panel) panel.style.display='block';
       }
       const offerEl=ov.querySelector('.js-upoffer'), totEl=ov.querySelector('.js-uptotal'), costEl=ov.querySelector('.js-upcost');
-      function syncTotal(){ const o=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0; if(totEl) totEl.textContent='$'+o; }
+      function syncTotal(){ const o=parseMoney(offerEl.value); if(totEl) totEl.textContent='$'+fmtMoney(o); }
       if(offerEl) offerEl.oninput=syncTotal;
-      const addhr=ov.querySelector('.js-addhr'); if(addhr) addhr.onclick=()=>{ offerEl.value=(parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0)+quarterRate; syncTotal(); };
+      const addhr=ov.querySelector('.js-addhr'); if(addhr) addhr.onclick=()=>{ offerEl.value=fmtMoney(parseMoney(offerEl.value)+quarterRate); syncTotal(); };
       const receiptReq=ov.querySelector('.js-receipt-req'), receiptOk=ov.querySelector('.js-receipt-ok');
-      if(costEl) costEl.oninput=()=>{ const c=parseInt((costEl.value||'').replace(/[^0-9]/g,''))||0;
+      if(costEl) costEl.oninput=()=>{ const c=parseMoney(costEl.value);
         if(receiptReq) receiptReq.style.display=(c>curCost)?'block':'none';   // G40-101 — only an INCREASE needs a receipt
         if(c<=curCost){ receiptAttached=false; if(receiptOk) receiptOk.textContent=''; } };
       const attach=ov.querySelector('.js-attach-receipt'); if(attach) attach.onclick=()=>{ receiptAttached=true; if(receiptOk) receiptOk.textContent='✓ Receipt attached'; };
       const saveBtn=ov.querySelector('.js-savecharge'); if(saveBtn) saveBtn.onclick=()=>{
-        const newOffer=parseInt((offerEl.value||'').replace(/[^0-9]/g,''))||0;
-        const newCost=costEl?(parseInt((costEl.value||'').replace(/[^0-9]/g,''))||0):curCost;
+        const newOffer=parseMoney(offerEl.value);
+        const newCost=costEl?parseMoney(costEl.value):curCost;
         if(newCost>curCost && !receiptAttached){ if(receiptReq) receiptReq.style.display='block'; toast('Attach a receipt to raise the item cost'); return; }   // G40-101 — receipt on COG increase
         const cmt=(((ov.querySelector('.js-upcomment')||{}).value)||'').trim();
         // Does this RAISE what the requester pays? If so it needs approval — Stripe can't capture more than
@@ -3475,7 +3521,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           comment:cmt, hasReceipt:!!receiptAttached, dispute:!!j.disputed,
           ageRestricted:!!j.ageRestricted, trustShield:!!j.trustShield
         };
-        if(!needsApproval){ j.amt='$'+newOffer; j.cost=newCost; }   // same/lower total outside a dispute → applies immediately (no re-auth needed)
+        if(!needsApproval){ j.amt='$'+fmtMoney(newOffer); j.cost=newCost; }   // same/lower total outside a dispute → applies immediately (no re-auth needed)
         ov.remove(); draw();
         toast(needsApproval ? ('Adjustment sent to '+who+' for approval')
                             : ('Charge updated — '+who+' now sees $'+newOffer));
@@ -4357,7 +4403,7 @@ if(PT){
     var job={ id:order.id, cat:pcat, posted:'just now',
       ar:!!order.ageRestricted,                 // age-restricted flag → under-21 gophers never see/get notified for it (owner 2026-07-23; jobsFor + Available count filter on j.ar)
       mode:(isBid?'bid':'pay'),                 // bid jobs render "Submit a Bid / You set your price"
-      amt:(isBid?'':('$'+((+order.pay||0)*crew))),   // crew total the accepter coordinates (per-worker × crew)
+      amt:(isBid?'':('$'+fmtMoney(parseMoney(order.pay)*crew))),   // crew total the accepter coordinates (per-worker × crew)
       per:((!isBid&&crew>1)?('$'+(+order.pay||0)+'/worker'):''),
       cost:costN, workers:crew, top:(!isBid && !!order.topOffer),   // TOP PAY only for a genuinely high (above-suggested) offer — never a low one; meaningless on bids
       ageRestricted:!!order.ageRestricted, trustShield:!!order.trustShield,   // age-restricted delivery → ID verification at drop-off (TrustShield = on file)
@@ -4396,7 +4442,7 @@ if(PT){
   window.__ptDecision=function(id,decision,amt){
     var job=window.__ptJobs[id]; if(!job) return;
     function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
-    if(decision==='accepted'){ job.counterAccepted=true; job.accepted=true; if(amt) job.amt='$'+amt;
+    if(decision==='accepted'){ job.counterAccepted=true; job.accepted=true; if(amt) job.amt='$'+fmtMoney(amt);
       toast('🎉 '+(job.who||'The requester')+' accepted your $'+amt+' counter — you’re hired');
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'Your Counter-Offer Was Accepted',sub:'Select here to view',onTap:openJob}); }
     else { job.counterDeclined=true; toast((job.who||'The requester')+' declined your counter');
@@ -4409,7 +4455,7 @@ if(PT){
     var job=window.__ptJobs[id]; if(!job) return;
     function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
     if(job.adjust){ job.adjust.status = approved ? 'approved' : 'declined'; }
-    if(approved){ if(newOffer!=null) job.amt='$'+newOffer; if(newCost!=null) job.cost=(+newCost||0);
+    if(approved){ if(newOffer!=null) job.amt='$'+fmtMoney(newOffer); if(newCost!=null) job.cost=parseMoney(newCost);
       job.disputed=0; job.disputeNote=null;   // an approved adjustment resolves an open dispute
       toast('✅ '+(job.who||'The requester')+' approved your cost adjustment');
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'Cost Adjustment Approved',sub:'Select here to view',onTap:openJob}); }
@@ -4437,7 +4483,7 @@ if(PT){
   window.__ptBidResult=function(id,decision,amt){
     var job=window.__ptJobs[id]; if(!job) return;
     function openJob(){ state.job=job; state.category=job.cat; state.jobCat=job.cat; load('job-detail'); }
-    if(decision==='accepted'){ job.bidAccepted=true; job.accepted=true; job.mode='pay'; if(amt) job.amt='$'+amt;
+    if(decision==='accepted'){ job.bidAccepted=true; job.accepted=true; job.mode='pay'; if(amt) job.amt='$'+fmtMoney(amt);
       toast('🎉 '+(job.who||'The requester')+' hired you at your $'+amt+' bid — you’re on the job');
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'You Have Been Chosen For Request #'+String(id).slice(-5),sub:'Select here to view',onTap:openJob}); }
     else { job.bidDeclined=true; toast((job.who||'The requester')+' passed on your bid — you can bid again'); }

@@ -258,13 +258,25 @@ These are **live-app findings**, not harness quirks.
     `gopher-request-home.html:1577` draws the demo from it). Verified end to end, including the
     negative case: submitting without a receipt is refused and relays nothing.
 
-11. **The Go prototype reads a decimal money value 100× too large (NOT fixed — shared surface).**
-    `parseInt(value.replace(/[^0-9]/g,''))` on `.js-upoffer` and `.js-upcost` strips the decimal
-    point, so a typed **$61.40 becomes $6,140**. Confirmed with real keystrokes: the requester's
-    approval card offered **$6,666.83** against an agreed $87.47. `inputmode="numeric"` is a
-    keyboard hint, not a filter, and there is no keystroke guard. Live is correct
-    (`gopher-mobile-gopher/src/component/ordercard.js:4709` — `type="number"` + `parseFloat`, with
-    `cost_of_goods` stored in cents). Details in `prototype-vs-live-findings.md` §4.
+11. **The Go prototype read a decimal money value 100× too large (FIXED 2026-09-01).**
+    `parseInt(value.replace(/[^0-9]/g,''))` on every money field strips the decimal point, so a
+    typed **$61.40 became $6,140**. Confirmed with real keystrokes: the requester's approval card
+    offered **$6,666.83** against an agreed $87.47. `inputmode="numeric"` is a keyboard hint, not a
+    filter. Live has always been right (`type="number"` + `parseFloat`, cents in the DB). Owner
+    ruled fix it. Replaced with `parseMoney` / `fmtMoney` — deliberately not named `money()`, since
+    a different function-scoped `money()` already exists in that file and returns **null** for zero.
+    ⚠️ The inputs alone were not enough: `j.amt` is a display STRING and two readers parsed it the
+    same broken way, so an applied $61.40 would write `"$61.4"` and read back **614**. The writers
+    now normalise and the readers parse — the round trip is closed and tested. Guarded by
+    `scripts/web-checks/go-money-parse.js` (step 9/9), which fails all four mutations. Full detail
+    in `prototype-vs-live-findings.md` §4.
+
+12. **"Reset demo" leaves the relay dead until a page reload (NOT fixed — reported).**
+    After pressing Reset demo, a newly submitted request never reaches the Go phone and the status
+    line never updates: `watchNative` and every other relay stop firing. A plain reload of the
+    harness restores everything, including relaying the persisted request. Found while re-verifying
+    the money fix — and it cost real time, because a dead relay looks exactly like a broken change.
+    Anyone testing after a Reset should reload before concluding a relay is broken.
 
 ## Relay coverage
 
