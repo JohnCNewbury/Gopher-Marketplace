@@ -278,6 +278,63 @@ These are **live-app findings**, not harness quirks.
     the money fix — and it cost real time, because a dead relay looks exactly like a broken change.
     Anyone testing after a Reset should reload before concluding a relay is broken.
 
+## Web | App — one requester, two clients (added 2026-09-01)
+
+**Owner's idea, and it is the right production analogue:** in production the requester is a person
+with a phone *and* a browser, and the same order has to render correctly in both. The left pane now
+carries a **Web | App** switch. It swaps the CHASSIS — desktop browser vs 390px phone — while the
+orders underneath stay put. It is not two demos; it is one requester, drawn twice.
+
+- **Web** → `Final/gopher-request.html` / `gopher-connect.html` (navigable, as before)
+- **App** → `_prototypes/Request/gopher-request-home.html?pt=1`, the same surface the reference
+  App Prototype Split mounts
+
+### Why this was cheap rather than a rewrite
+
+Four things already lined up, three of them on purpose:
+
+1. `GWeb.all()` has emitted **GReq-shaped** records since it was written — that was the point of
+   shaping it that way. The mirror is a field-for-field copy, not a translation layer.
+2. `GReq` is **sessionStorage-backed, and sessionStorage is per-TAB, shared by every iframe in
+   it** — the app's own store is already visible to the harness. No bridge invented.
+3. The app is PT-aware already (`?pt=1` → empty store, no demo seed).
+4. The Go phone is fed by relays that speak the same shape.
+
+### What it does today, and what it does not
+
+**Web → App is live and verified.** A request created in the web flow appears in the app, bucketed
+by the **app's own** `statusBucket()` (Submitted before acceptance, Active after) — not by anything
+the harness decides. A Gopher accepting on the Go phone lands in **both** panes while the App is the
+one on screen.
+
+⛔ **App → Web is NOT built.** The app can create its own requests (Home → a category →
+`gopher-request-flow.html` → `GReq.add`), and adopting those into the web's `DASH_DATA` is the other
+half. Until it lands, an app-created request is **left alone rather than half-mirrored** — a record
+the web pane cannot render is worse than one it does not show. ⚠️ `onAppLoad` currently WIPES the
+app store before re-mirroring, which is safe only while the mirror is one-way; that line has to
+become a targeted purge before app-side creation ships, or it will destroy the app's own work.
+
+⚠️ **There is no Connect app prototype** — `_prototypes/` has Request and Go only. So the switch
+covers the **Request** surface; on Connect the App side has nothing to show. Not a defect, a bound.
+
+### Two things this shook out
+
+13. **`display:none` on the inactive chassis STALLED EVERY RELAY.** With the pane switched to App, a
+    Gopher's Accept did not reach the requester at all — and landed the instant Web was shown again,
+    which reads exactly like a broken relay rather than a hidden one. An un-laid-out iframe is not a
+    reliable place to keep a running app (this repo already records a sibling: an occluded pane
+    freezing CSS transitions). The inactive chassis is now moved **off-screen** and stays live,
+    which is also the honest model — the requester's phone does not stop existing while they are
+    looking at the browser.
+
+14. **The tick could die silently, and did.** A stalled relay is indistinguishable from a broken
+    feature: the panes just stop agreeing. It cost **three separate investigations in one day**, two
+    of them diagnosed wrongly from the outside, because nothing distinguished *the loop threw and
+    stopped rescheduling* from *the loop is parked on `!signedIn`* from *the loop is fine and a
+    watcher is wrong*. Every pass is now guarded, the loop always reschedules, and it publishes
+    vitals at `window.__tick` (`n`, `parked`, `lastError`, `lastAt`) — a debugging seam, not a
+    feature. Read it; never drive from it.
+
 ## Relay coverage
 
 ⚠️ **Verified and wired are not the same thing, and an earlier draft of this file conflated them.**

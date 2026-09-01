@@ -45,6 +45,31 @@
   .col.web .pill{ background:rgba(51,217,117,.18); color:#8ff0b4; }
   .col.go  .pill{ background:rgba(120,170,255,.18); color:#b9d2ff; }
 
+  /* Web | App switch. The requester exists on BOTH in production, and the same
+     order has to render correctly in both, so the toggle swaps the CHASSIS while
+     the data underneath stays put. It is not two demos — it is one requester,
+     two clients. */
+  .modesw{ display:inline-flex; border:1px solid rgba(120,170,255,.38); border-radius:99px;
+           overflow:hidden; background:rgba(120,170,255,.10); }
+  .modesw button{ font-family:'DM Sans',sans-serif; font-size:11px; font-weight:800;
+                  letter-spacing:.3px; text-transform:uppercase; color:#cfe0ff;
+                  background:transparent; border:0; padding:5px 13px; cursor:pointer;
+                  transition:background .15s, color .15s; }
+  .modesw button.on{ background:var(--green); color:#04121f; }
+  .modesw button:not(.on):hover{ background:rgba(120,170,255,.22); }
+  /* ⛔ THE INACTIVE CHASSIS IS MOVED OFF-SCREEN, NEVER `display:none`.
+     display:none on the web chassis STALLED EVERY RELAY: with the pane switched
+     to App, a Gopher's Accept on the Go phone did not reach the requester at
+     all, and it landed the instant Web was shown again — which reads exactly
+     like a broken relay rather than a hidden one. An un-laid-out iframe is not a
+     reliable place to keep a running app; this repo has already recorded a
+     sibling of it (an occluded pane freezing CSS transitions).
+     Off-screen keeps both clients LIVE, which is also the honest model: in
+     production the requester's phone does not stop existing while they are
+     looking at the browser. */
+  .col.web{ position:relative; }
+  .col.web .chassis:not(.on){ position:absolute; left:-100000px; top:0; }
+
   /* Desktop browser chassis — the web apps are desktop surfaces, so they get a
      browser window, not a phone. The iframe renders at a fixed logical desktop
      size and is scaled down to fit; the app never sees a narrow viewport. */
@@ -95,13 +120,22 @@
 
 <div class="stage">
   <div class="col web">
-    <div class="label">Requester <span class="pill" id="webPill">Request · web</span></div>
-    <div class="browser">
+    <div class="label">Requester <span class="pill" id="webPill">Request · web</span>
+      <span class="modesw" id="modeSw">
+        <button type="button" data-mode="web" class="on">Web</button>
+        <button type="button" data-mode="app">App</button>
+      </span>
+    </div>
+    <div class="browser chassis on" id="chassisWeb">
       <div class="chrome">
         <div class="lights"><i></i><i></i><i></i></div>
         <div class="url" id="webUrl">gophergo.io/gopher-request.html</div>
       </div>
       <div class="viewport" id="webViewport"><iframe id="webFrame" title="Gopher web app"></iframe></div>
+    </div>
+    <div class="phone chassis" id="chassisApp">
+      <div class="notch"></div>
+      <div class="screen"><iframe id="appFrame" title="Gopher Request app"></iframe></div>
     </div>
   </div>
   <div class="col go">
@@ -155,6 +189,7 @@
 
   /* ═══ Elements ══════════════════════════════════════════════════════════ */
   var webFrame = document.getElementById('webFrame'),
+      appFrame = document.getElementById('appFrame'),
       goFrame  = document.getElementById('goFrame'),
       viewport = document.getElementById('webViewport'),
       statusEl = document.getElementById('status'),
@@ -167,6 +202,13 @@
 
   function L(){ try{ return webFrame.contentWindow; }catch(_){ return null; } }
   function R(){ try{ return goFrame.contentWindow;  }catch(_){ return null; } }
+  function A(){ try{ return appFrame.contentWindow; }catch(_){ return null; } }
+  /* The Request APP's own store. It is sessionStorage-backed and sessionStorage
+     is per-TAB and shared by every iframe in it, so this is not a second copy of
+     the data — it is the same tab-level store the reference App Prototype Split
+     already treats as the database. That is what makes one requester in two
+     clients possible without inventing a bridge. */
+  function GR(){ var a=A(); try{ return (a && a.GReq) || null; }catch(_){ return null; } }
   function W(){ var l=L(); try{ return (l && l.GWeb) || null; }catch(_){ return null; } }
   function status(m, warn){ statusEl.innerHTML=m; statusEl.className='status'+(warn?' warn':''); }
 
@@ -194,7 +236,7 @@
       noShowSeen, noShowDone;
   function clearRelays(){
     injected={}; offered={}; hired={}; countered={}; counterDecided={}; statusSeen={};
-    startNarrated={}; orderSurface={}; offSurfaceWarned={};
+    startNarrated={}; orderSurface={}; offSurfaceWarned={}; mirrored={};
     adjustPending={}; adjustDecided={}; disputeSeen={}; navSeen={};
     noShowSeen={}; noShowDone={};
     goMsgSeen={}; reqMsgSeen={}; goCancelSeen={}; reqCancelSeen={}; adjustSeen={};
@@ -777,13 +819,143 @@
     }catch(_){}
   }
 
+  /* ═══ Web ⇄ App : ONE requester, TWO clients ════════════════════════════
+     In production the requester is a person with a phone AND a browser, and the
+     server is the single truth both render. Nothing here should behave as if
+     "the web request" and "the app request" are different objects — they are
+     one order, drawn twice.
+
+     ⚠️ SO THIS IS A MIRROR, NOT A SECOND STORE. The web app owns DASH_DATA and
+     the app owns GReq; the harness keeps GReq equal to the web's projection of
+     the same orders. GWeb.all() has emitted GReq-SHAPED records since the day it
+     was written — that was the point of shaping it that way — so the mirror is a
+     field-for-field copy rather than a translation layer with its own opinions.
+
+     ⚠️ Written ONLY when the signature changes. Writing every tick would fight
+     the app's own renderer 1.6 times a second and make a typed sheet unusable;
+     it would also make an echo loop indistinguishable from a real change.
+
+     ⚠️ Direction is deliberate and currently ONE-WAY (web → app). The app can
+     create requests of its own (Home -> a category -> gopher-request-flow.html
+     writes GReq.add), and adopting those into the web's DASH_DATA is the other
+     half of the job — see the note on appOnly below. Until that lands, an
+     app-created request is left ALONE rather than half-mirrored: a record the
+     web pane cannot render is worse than one it does not show. */
+  var mirrored = {};                 // order -> signature of what we last wrote
+  var MIRROR_KEEP = ['order','cat','title','scope','stage','substage','hired','accepted',
+    'cancelled','gCancelled','cancelReason','confirmed','rating','disputeState','disputeReason',
+    'bids','pay','cost','workers','amount','pickup','dropoff','when','timingLabel','dist',
+    'scheduledForLater','noShow','noShowReminded','noShowRemindedAt','ageRestricted',
+    'trustShield','deal','dealMerchant','requestor','workerSelection','navTo','navAddr'];
+
+  function mirrorToApp(){
+    var g=W(), gr=GR(); if(!(g && gr)) return;
+    var live=g.all()||[];
+    var seen={}, touched=false;
+    for(var i=0;i<live.length;i++){
+      var r=live[i]; if(!r || !r.order) continue;
+      seen[r.order]=true;
+      var flat={};
+      for(var k=0;k<MIRROR_KEEP.length;k++){
+        var f=MIRROR_KEEP[k];
+        if(r[f]!==undefined) flat[f]=r[f];
+      }
+      var sig=JSON.stringify(flat);
+      if(mirrored[r.order]===sig) continue;            // unchanged — leave the app alone
+      mirrored[r.order]=sig;
+      touched=true;
+      if(gr.get(r.order)) gr.update(r.order, flat); else gr.add(flat);
+    }
+    /* A request the web no longer has (reset, or a purge) must not linger in the
+       app. An APP-CREATED order is not in `live` either, so it is excluded by
+       provenance — `mirrored` only ever contains orders this mirror wrote. */
+    for(var o in mirrored){
+      if(seen[o]) continue;
+      delete mirrored[o];
+      try{ gr.remove(o); }catch(_){}
+      touched=true;
+    }
+    if(touched) repaintApp();
+  }
+
+  /* The app renders from GReq on demand, so a store write is invisible until it
+     redraws. Both entry points are optional: this must never throw into the tick. */
+  function repaintApp(){
+    var a=A(); if(!a) return;
+    try{ if(typeof a.renderPending==='function') a.renderPending(); }catch(_){}
+    try{ if(typeof a.renderHome==='function') a.renderHome(); }catch(_){}
+  }
+
+  /* ═══ The Web | App switch ══════════════════════════════════════════════ */
+  var mode='web';
+  var modeSw=document.getElementById('modeSw'),
+      chassisWeb=document.getElementById('chassisWeb'),
+      chassisApp=document.getElementById('chassisApp');
+
+  function setMode(next){
+    if(next===mode) return;
+    mode=next;
+    chassisWeb.classList.toggle('on', mode==='web');
+    chassisApp.classList.toggle('on', mode==='app');
+    [].forEach.call(modeSw.querySelectorAll('button'), function(b){
+      b.classList.toggle('on', b.getAttribute('data-mode')===mode);
+    });
+    /* Bring the pane being revealed up to date IMMEDIATELY rather than waiting
+       for the next tick — a switch that shows a stale screen for half a second
+       reads as "they are out of sync", which is the exact claim this feature
+       exists to disprove. */
+    if(mode==='app'){ mirrorToApp(); repaintApp(); }
+    status(mode==='app'
+      ? 'Requester switched to the <b>Gopher Request app</b>. Same orders, same data — this is the '
+        +'phone the requester carries. The Go phone on the right is unchanged.'
+      : 'Requester switched back to the <b>web site</b>. Same orders — navigate it freely; '
+        +'Connect and Request both live here.');
+  }
+  modeSw.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-mode]'); if(b) setMode(b.getAttribute('data-mode'));
+  });
+
+  /* ⚠️ THE APP IS MULTI-PAGE TOO. Home links to gopher-request-flow.html to
+     create a request, and that link carries no query string — so ?pt=1 has to be
+     re-applied here exactly as it is for the web pane, or the app lands on the
+     flow with the DEMO SEED restored and the pane quietly stops being empty. */
+  function onAppLoad(){
+    var a=A(), loc;
+    try{ loc=a.location; var _probe=loc.pathname; }catch(_){ return; }
+    if(new URLSearchParams(loc.search).get('pt')!=='1'){
+      var sep = loc.search ? '&' : '?';
+      try{ loc.replace(loc.pathname + loc.search + sep + 'pt=1&v=' + Date.now()); }catch(_){}
+      return;
+    }
+    /* ⚠️ WIPE FIRST, THEN MIRROR. `mirrored` is page-local, so after a reload the
+       harness has no memory of what it wrote — and its own removal pass can only
+       drop orders it remembers writing. Without this, a Reset (or any reload
+       after one) left ORPHANS in the app: records the web store no longer had,
+       still sitting in the requester's phone under Submitted. Two clients
+       disagreeing is the one thing this feature must never do, and an orphan is
+       the most convincing possible way to do it.
+
+       Safe TODAY only because the mirror is one-way, so GReq contains nothing
+       but copies. ⛔ The moment the app can create its own requests, this must
+       become a targeted purge of mirrored orders — a blanket wipe would destroy
+       the app's own work. Flagged here rather than in a doc because this is the
+       line that would do the destroying. */
+    var gr=GR();
+    if(gr){ try{ (gr.all()||[]).forEach(function(r){ if(r && r.order) gr.remove(r.order); }); }catch(_){} }
+    mirrored={};              // fresh page, fresh store view — re-mirror from scratch
+    mirrorToApp();
+  }
+  appFrame.addEventListener('load', onAppLoad);
+
   /* ═══ Boot ══════════════════════════════════════════════════════════════ */
   function bootFrames(){
     /* Cache-bust: without it Safari/Chrome happily serve a stale ?pt=1 copy of
        either pane, which reads as "the fix did not work" when it did. */
     var v='&v='+Date.now();
     webFrame.src = SURFACES[surface].file + '?pt=1' + v;
+    appFrame.src = 'Request/gopher-request-home.html?pt=1' + v;
     goFrame.src  = 'Go/gopher-go-prototype.html?pt=1' + v;
+    mirrored={};
     paintPane();
     fitWeb();
   }
@@ -921,11 +1093,36 @@
   paintDealsBtn();
 
   /* ═══ Tick ══════════════════════════════════════════════════════════════ */
+  /* ⛔ THE TICK MUST NOT BE ABLE TO DIE, AND MUST SAY WHY IT IS IDLE.
+     A stalled relay is indistinguishable from a broken feature: the panes just
+     stop agreeing. It cost three separate investigations in one day before this
+     was instrumented — twice diagnosed wrongly from the outside (blamed on
+     "Reset demo", then on a hidden pane) because there was no way to tell
+       (a) the loop threw and stopped rescheduling,   from
+       (b) the loop is fine but PARKED on !signedIn,  from
+       (c) the loop is running and a watcher is wrong.
+     All three look identical from the panes. So: every pass is guarded, the loop
+     always reschedules, and it publishes its own vitals. `window.__tick` is a
+     debugging seam, not a feature — read it, never drive from it. */
+  window.__tick = { n:0, parked:0, lastError:null, lastAt:0 };
   function tick(){
-    autoSignIn();
-    /* Relays stay parked until the dashboard is open AND its demo seed has been
-       dropped. A tick that fires early broadcasts the seed. */
-    if(!signedIn){ setTimeout(tick, 600); return; }
+    window.__tick.n++; window.__tick.lastAt = Date.now();
+    try{
+      autoSignIn();
+      /* Relays stay parked until the dashboard is open AND its demo seed has been
+         dropped. A tick that fires early broadcasts the seed. */
+      if(!signedIn){ window.__tick.parked++; setTimeout(tick, 600); return; }
+      tickBody();
+    }catch(err){
+      /* Swallowing this would recreate the very failure the guard exists for, so
+         it is recorded and surfaced rather than ignored. The loop keeps going:
+         one bad pass must not take every relay down with it. */
+      window.__tick.lastError = (err && err.message) || String(err);
+      try{ console.error('[playground] relay pass failed:', err); }catch(_){}
+    }
+    setTimeout(tick, 600);
+  }
+  function tickBody(){
     watchNative(); watchAccept(); watchHire(); watchStart();
     /* Hire, Start job and counter-accept all mutate the record from INSIDE the
        app, where the bridge's own mutators never run — so snapshot every tick or
@@ -934,7 +1131,10 @@
     watchCounter(); watchCounterDecision();
     watchStatus(); watchNoShow(); watchNavigate(); watchAdjust(); watchAdjustDecision(); watchDispute(); watchMessages();
     watchGoCancel(); watchReqCancel();
-    setTimeout(tick, 600);
+    /* LAST, deliberately. Every relay above can move an order, and the app pane
+       should show the state AFTER this tick's work rather than the state before
+       it — a one-tick lag is exactly what "they disagree" looks like to a human. */
+    mirrorToApp();
   }
 
   bootFrames();
