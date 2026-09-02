@@ -223,9 +223,22 @@ Live, in a browser, not by inference:
   count went to 1, and a **Delivery / Errand** card appeared on the Go phone
 - the tick loop is healthy — `n=9` in 8s at the 600ms interval, `lastError: null`
 
-**Not re-tested on the twin:** the return leg (accepting on the Go phone and watching it land back
-in the web app). It needs tapping the card on the phone, and the harness files are byte-identical
-to the ones where it was verified before. Say so rather than implying it was checked.
+**The return leg IS now verified on the twin too** (2026-09-02, later the same day — the caveat
+that used to sit here said it had not been, and that was true when written). Driven by hand end to
+end, both directions:
+
+  web -> Go   submit GR-0002 -> phone shows Available 1, a Delivery / Errand card at **$52** with
+              the real description and **2.4 mi away** (a computed distance, not the 8-mile default)
+  Go  -> web  tap the card -> Request Details -> **Accept Request**
+
+and the web pane moved on its own: Pending **0**, Active **1**, the row flipped to **IN PROGRESS**
+naming Marcus, and the harness banner read *"Gopher accepted GR-0002 — the request is first
+available, so he is hired and on the job immediately."* On the phone, *"You're hired by A requester
+— addresses unlocked."*
+
+Two product rules were visible in passing and both behaved: the worker sees the FULL **$52** with
+no fee deducted ([[worker-payout-canon]]), and the requester's photo and exact addresses stay
+hidden until accept ([[counterparty-user-projection]]).
 
 ⚠️ **Two probes that lie here, both hit during this verification.** `iframe.contentDocument.body.innerText`
 returns **0** for the Go pane even while it is visibly rendering — use the screenshot, or the
