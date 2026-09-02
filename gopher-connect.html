@@ -15065,6 +15065,32 @@ const PAY_BADGES = {
       // own footed canonical price object. (GC-00123 is Day Labor with COG 0, so it
       // can't host an items-down counter — this delivery has both an offer and a COG so
       // all 3 variants render coherently.) Alerted like an acceptance: needsAttention.
+      /* ⚠️ FIXTURE — keeps a piece of copy honest, and mirrors GR-00141 on Request
+         (rule 12b, same rule, same pass). The worker card renders "auto-match
+         paused, needs your approval before hiring" only when a request is First
+         Available AND its accepter trips the distance rule. No seeded Connect
+         request set `firstAvailable`, and no seeded worker was further than 7 mi,
+         so that sentence rendered for nobody here.
+         ⛔ Priya is deliberately UNBADGED — no `tier`. The pause is a
+         STANDARD-tier rule (live gates on `gopher_type_id === 0`); an Elite or Pro
+         at the same distance is hired immediately and would demonstrate nothing.
+         Give her a tier and the fixture silently stops testing what it exists for.
+         Field set matches GC-00126, the neighbouring pending record — an earlier
+         attempt at this shipped a shorter object and rendered an empty detail
+         body, which looks like a broken page rather than a missing field. */
+      { id:'GC-00141', icon:'📦', title:'Parcel pickup from the Apex depot',
+        status:'pending', statusLabel:'Pending', needsAttention:true,
+        workersNeeded:1, perWorkerCost:34, multiIndividual:false, hasPickup:true,
+        pickups:['Gopher Depot, 1009 Center St, Apex'],
+        firstAvailable:true, workerSelection:'first',
+        worker:'1 worker accepted — approval needed', amount:'$34.00 total',
+        when:'Today, 5:15 PM · auto-match paused',
+        interestedWorkers:[
+          { name:'Priya N.', justAccepted:true, status:'interested', distanceMi:18,
+            photo:'assets/img/px-3727469-200x200.webp',
+            tagline:'Happy to run the longer routes — I cover the whole county.',
+            stats:['\u2b50 4.88 (64 jobs)','18 mi away','Available now'] },
+        ] },
       { id:'GC-00126', icon:'🛒', title:'Grocery + pharmacy run — purchase needed',
         status:'pending', statusLabel:'Pending', needsAttention:true,
         workersNeeded:1, perWorkerCost:18, multiIndividual:false, hasPickup:true,
@@ -17247,6 +17273,37 @@ const PAY_BADGES = {
   // Real data would arrive from the matching service; here we parse the existing
   // "⭐ 4.97 (218 jobs)" / "5 mi away" stat strings and fall back to a stable
   // spread so older seed workers (with no explicit numbers) still sort sensibly.
+    /* ── Who the long-distance approval applies to (owner ruling 2026-09-01) ────
+     "keep exact same as live app, this carries." Ported from
+     Final/gopher-request.html in the same pass (standing rule 12b).
+
+     ⛔ DEFINED AT THE TOP LEVEL ON PURPOSE. It was first written inside the
+     request-creation function, while the worker card calls it from
+     renderRequestDetail — siblings, not nested. That is a ReferenceError, and it
+     stayed INVISIBLE because the call site short-circuits:
+     `firstAvailable && needsDistanceApproval(w)` never evaluates the call while
+     no seeded request is First Available. The fixture below (GC-00141) is the
+     first one that is, and it surfaced the fault immediately. Same mistake as
+     Request's, hidden one layer deeper.
+
+     LIVE gates the >15 mi pause on `gopher_type_id === 0`. Despite the
+     variable being named isNonProGopher, 0 is STANDARD —
+     `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`, and the backend's own
+     claim-limits helper says "STANDARD GOPHERS ONLY ... Elite / Elite+ / Pro
+     are unaffected." A tiered worker is hired immediately however far out.
+
+     ⚠️ SUPERSEDES THE 2026-08-22 SHAPE, which paused every worker. Same
+     discriminator D-026 uses for the counter-offer cap: one tier test, two
+     rules. Live's extra app-build condition has no counterpart here. */
+  function isStandardTier(w){
+    const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
+    return !/^(elite|pro)/.test(t);
+  }
+  function needsDistanceApproval(w){
+    const d = w && w.distanceMi;
+    return isStandardTier(w) && d != null && Number(d) > 15;
+  }
+
   function ensureWorkerMeta(w, r, idx, bidsMode){
     if(!w.__meta){
       const stats = Array.isArray(w.stats) ? w.stats : [];
@@ -21254,27 +21311,6 @@ const PAY_BADGES = {
          - I'll select         -> always a candidacy.  ("MY" is capitalized because it
        names Michael Yorrie, the first Gopher Pro this feature was built for - see the
        green-heart tooltip in the 101 guides. It is a name, never a possessive.) */
-    /* ── Who the long-distance approval applies to (owner ruling 2026-09-01) ────
-       "keep exact same as live app, this carries." Ported from
-       Final/gopher-request.html in the same pass (standing rule 12b).
-
-       LIVE gates the >15 mi pause on `gopher_type_id === 0`. Despite the
-       variable being named isNonProGopher, 0 is STANDARD —
-       `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`, and the backend's own
-       claim-limits helper says "STANDARD GOPHERS ONLY ... Elite / Elite+ / Pro
-       are unaffected." A tiered worker is hired immediately however far out.
-
-       ⚠️ SUPERSEDES THE 2026-08-22 SHAPE, which paused every worker. Same
-       discriminator D-026 uses for the counter-offer cap: one tier test, two
-       rules. Live's extra app-build condition has no counterpart here. */
-    function isStandardTier(w){
-      const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
-      return !/^(elite|pro)/.test(t);
-    }
-    function needsDistanceApproval(w){
-      const d = w && w.distanceMi;
-      return isStandardTier(w) && d != null && Number(d) > 15;
-    }
     const _mode = data.workerSelection || (data.firstAvailable ? 'first' : 'select');
     if(_mode === 'first' && interested.length){
       const _w = interested[0];
