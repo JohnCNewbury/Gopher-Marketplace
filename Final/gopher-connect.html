@@ -17541,7 +17541,7 @@ const PAY_BADGES = {
         // First-available + > 15 mi out: per the request app's logic this match
         // stops auto-matching and behaves like "I'll select my worker" — it needs
         // the customer's approval before it can be hired.
-        const farApproval = (firstAvailable && distMi != null && distMi > 15)
+        const farApproval = (firstAvailable && needsDistanceApproval(w))
           ? `<div class="wcard-approval">⚠ ${Math.round(distMi)} mi out — auto-match paused, needs your approval before hiring</div>`
           : '';
         // Bid amount, shown clearly to the right on every "ask for bids" request.
@@ -21245,11 +21245,31 @@ const PAY_BADGES = {
          - I'll select         -> always a candidacy.  ("MY" is capitalized because it
        names Michael Yorrie, the first Gopher Pro this feature was built for - see the
        green-heart tooltip in the 101 guides. It is a name, never a possessive.) */
+    /* ── Who the long-distance approval applies to (owner ruling 2026-09-01) ────
+       "keep exact same as live app, this carries." Ported from
+       Final/gopher-request.html in the same pass (standing rule 12b).
+
+       LIVE gates the >15 mi pause on `gopher_type_id === 0`. Despite the
+       variable being named isNonProGopher, 0 is STANDARD —
+       `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`, and the backend's own
+       claim-limits helper says "STANDARD GOPHERS ONLY ... Elite / Elite+ / Pro
+       are unaffected." A tiered worker is hired immediately however far out.
+
+       ⚠️ SUPERSEDES THE 2026-08-22 SHAPE, which paused every worker. Same
+       discriminator D-026 uses for the counter-offer cap: one tier test, two
+       rules. Live's extra app-build condition has no counterpart here. */
+    function isStandardTier(w){
+      const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
+      return !/^(elite|pro)/.test(t);
+    }
+    function needsDistanceApproval(w){
+      const d = w && w.distanceMi;
+      return isStandardTier(w) && d != null && Number(d) > 15;
+    }
     const _mode = data.workerSelection || (data.firstAvailable ? 'first' : 'select');
     if(_mode === 'first' && interested.length){
       const _w = interested[0];
-      const _far = _w.distanceMi != null && Number(_w.distanceMi) > 15;
-      if(!_far){
+      if(!needsDistanceApproval(_w)){
         _w.status = 'hired'; _w.autoHired = true;
         interested.length = 1;           // one Gopher accepted; no candidate pool exists
       }

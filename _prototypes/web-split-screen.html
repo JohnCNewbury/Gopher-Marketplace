@@ -352,7 +352,15 @@
         }
         if(!(w.__ptApprove && w.__ptBidResult)) continue;           // Go hooks not ready — retry
 
-        var res=g.offer(id, { name:GOPHER, tier:'elite+', dist:rec.dist });
+        /* ⚠️ `distanceMi` AS WELL AS `dist`. The bridge's offer() reads
+           `worker.distanceMi`; this sent only `dist`, so distanceMi was ALWAYS
+           null and the >15 mi approval branch could never fire — a silent no-op,
+           not a rule that happened not to trigger. It was invisible because the
+           absence of a pause looks exactly like a nearby worker.
+           `dist` stays: the worker card's stats line renders it as a string. */
+        var _d = rec.dist != null && rec.dist !== '' ? Number(rec.dist) : null;
+        var res=g.offer(id, { name:GOPHER, tier:'elite+', dist:rec.dist,
+                              distanceMi: (isFinite(_d) ? _d : null) });
         if(!res) continue;
         offered[id]=true;
 
