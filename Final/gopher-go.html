@@ -6155,7 +6155,7 @@ window.showNoAccount = function(){
               <span class="inbox-row-time">${goEsc(x.time)}</span>
             </span>
             <span class="inbox-row-sub">${goEsc(x.req)}</span>
-            <span class="inbox-row-last">${goEsc((x.msgs[x.msgs.length-1]||{}).text || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
+            <span class="inbox-row-last">${goEsc(inboxPreview((x.msgs[x.msgs.length-1]||{}).text) || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
           </span>
         </button>`, x.id, goInboxTab === 'deleted') : '')).join('');
 
@@ -6169,6 +6169,18 @@ window.showNoAccount = function(){
          construct from the captured URL is ever unescaped, and the pattern
          admits nothing but http(s). A bare URL is linkified too — the token is
          the convention, not a guarantee every author uses it. */
+      /* The LIST PREVIEW is plain text — it cannot hold an anchor, and it is
+         clipped mid-sentence by design. But it must not show the raw link
+         delimiters either: the owner's screenshot had rows reading
+         "Testing @!www.gophergo.io!@ for a ..." while the bubble beside them
+         rendered the link correctly. Strip the token, keep the URL, collapse
+         newlines so a multi-line announcement previews on one line. */
+      function inboxPreview(text){
+        return String(text == null ? '' : text)
+          .replace(/@!([^\s!]+)!@/g, '$1')
+          .replace(/\s*\n+\s*/g, ' ')
+          .trim();
+      }
       function inboxBody(text){
         const safe = goEsc(text);
         const linkAs = (href, label) => '<a class="inbox-link" href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
