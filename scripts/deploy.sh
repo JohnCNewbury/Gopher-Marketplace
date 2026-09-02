@@ -259,13 +259,24 @@ for dp,_,fns in os.walk(root):
         if not fn.endswith(('.html','.js')): continue
         t=open(p,encoding='utf-8',errors='surrogateescape').read()
         o=t
-        t=t.replace('../../Final/','../../')
-        # The harness lives at _prototypes/web-split-screen.html - ONE level
-        # down, not two - so it reaches the web pages as ../Final/... . Order is
-        # load-bearing: '../../Final/' CONTAINS '../Final/' as a substring from
-        # index 3, so doing this replacement first would mangle the phones'
-        # paths. Longest prefix first, always.
-        t=t.replace('../Final/','../')
+        # ANCHORED TO A QUOTE, not a blind string replace. These files also
+        # DISCUSS Final/ paths in prose - the Go prototype has a comment saying
+        # "reach it via ../Final/assets/js/ (case-exact)", which is telling a
+        # reader about the REPO layout and is correct as written. A blind
+        # replace rewrites that sentence into a lie about a path that does not
+        # exist in the repo. It did exactly that when this rule was first
+        # added, and the live-site dry run caught it as a mystery 2-line delta.
+        #
+        # Requiring an opening quote means only real references move: HTML
+        # attributes (src="..." href="...") and JS string literals
+        # (file:'../Final/gopher-request.html'). Prose keeps its own path.
+        #
+        # The quote anchor also makes these two order-independent - inside
+        # '../../Final/' the shorter pattern is preceded by '/', not a quote -
+        # but they stay longest-first anyway, because the next person to add a
+        # third depth should not have to rediscover why that matters.
+        t=re.sub(r'(?<=["\'])\.\./\.\./Final/', '../../', t)
+        t=re.sub(r'(?<=["\'])\.\./Final/',        '../',    t)
         # Prototypes are a demo surface, not content. robots.txt cannot help
         # here: it is only honoured at the DOMAIN root, and this site is served
         # from /Gopher-Marketplace/. A meta tag is the mechanism that works.
