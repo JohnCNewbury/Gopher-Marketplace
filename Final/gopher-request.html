@@ -4995,7 +4995,16 @@
   }
   .os-hint {
     font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.4; margin-top:10px;
-    min-height:16px; color:var(--green-dark); padding:0 4px; white-space:nowrap;
+    /* No `white-space:nowrap`. It made this hint overflow the card at 375px —
+       the string is a full sentence ("Drag the slider either direction to find
+       the offer that works for you") and nowrap forbids the only thing that
+       could save it. `min-height` already reserves the single-line case, so
+       wrapping costs nothing when there is room.
+       Recovered from 95fce01 (2026-07-24), which fixed exactly this and was
+       never merged — it sat on an abandoned branch for five weeks while the bug
+       stayed live. A missing fix leaves no trace in the file; it was found by
+       asking git what had touched these paths outside my branch. */
+    min-height:16px; color:var(--green-dark); padding:0 4px;
   }
   .os-hint.warn { color:#b07400; }
   .os-hint.over { color:var(--green-dark); }
