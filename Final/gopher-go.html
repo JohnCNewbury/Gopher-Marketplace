@@ -5879,7 +5879,9 @@ window.showNoAccount = function(){
          Read-only was considered and rejected — a read-only view of invented
          conversations is worse than none, because it shows messages nobody
          sent about jobs that may not exist. */
-      inbox:   'Inbox',
+      /* `inbox` left this map 2026-09-01: the pane now reads the REAL server
+         inbox (GET /users/messages). Sending is still gated per-thread in the
+         composer, not by hiding the pane — see the locked-composer copy. */
       /* ⛔ THE GATE HERE IS LOAD-BEARING, not belt-and-braces. The logic is now
          real — eligibility, the worker's own live deals, the signed-in business
          name, the close-and-placement dates — but placeBid() still writes to an
@@ -5909,7 +5911,6 @@ window.showNoAccount = function(){
          endpoints. Block creation stays in the app's rating flow, per the
          owner's trigger rule. */
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
-      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
       /* `recovery` left both maps 2026-08-19: the backend shipped (!329) and
          the sign-in link now opens the real server-driven flow (GoRecovery). */
@@ -5985,6 +5986,101 @@ window.showNoAccount = function(){
         { from:'them', text:'Thanks again — you made that look easy.', time:'2:10 PM' },
         { from:'mine', text:'Anytime! Rate when you get a sec 🙏', time:'2:12 PM' } ] },
     ];
+    /* ── REAL INBOX (GET /users/messages) ─────────────────────────────────
+       ONE endpoint returns everything a worker's inbox holds, already merged
+       and ordered by created_at desc. For a gopher it unions TWO sources
+       (the third, refer_favorites, is disabled server-side for workers by
+       `1=:conditional`):
+
+         message_type 'gopher_support'  — HQ broadcast. inbox_users JOIN inboxes,
+                                          subject as title, body as content,
+                                          filtered to `now() < expired_on`.
+         message_type 'inbox_message'   — a JOB THREAD from orders_faqs: the
+                                          LATEST message per (sender,receiver,
+                                          order), with the order title, the
+                                          other party's name and profile image.
+
+       ⚠️ It is a thread LIST, not thread history — one row per conversation.
+       Full history is GET /orders/faq/v2/:orderId, wired in the next pass.
+       Until then a live job thread shows its latest message and the composer
+       stays locked, because a send that goes nowhere is the failure this pane
+       was gated for in the first place.
+
+       Demo threads stand until real data arrives (same contract as history):
+       null = not loaded, [] = loaded and genuinely empty. */
+    const GoInbox = (function(){
+      function esc(s){ return String(s == null ? '' : s); }
+      function initials(name){
+        return esc(name).trim().split(/\s+/).slice(0,2).map(w => (w[0]||'').toUpperCase()).join('') || '?';
+      }
+      function stamp(iso){
+        const d = new Date(iso);
+        if(isNaN(d)) return '';
+        const today = new Date();
+        const sameDay = d.toDateString() === today.toDateString();
+        return sameDay
+          ? d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+          : d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      }
+      /* `viewed` arrives as a real boolean on support rows and as the STRING
+         'true' on job rows (the SQL casts it: `CASE when of.from=:user_id then
+         'true' else of.viewed end`). Treat both as read. */
+      function isRead(v){ return v === true || v === 'true'; }
+      function toThread(row, me){
+        const support = row.message_type === 'gopher_support';
+        const when = stamp(row.created_at);
+        const body = esc(row.content);
+        if(support){
+          return {
+            id: 'sup-' + row.id, serverId: row.id, kind: 'support', live: true,
+            name: 'Gopher Support', init: 'GS',
+            req: esc(row.title) || 'Announcement', reqId: '',
+            state: 'active', accepted: false,
+            unread: isRead(row.viewed) ? 0 : 1, time: when,
+            msgs: [{ from: 'them', text: body, time: when }]
+          };
+        }
+        const mine = me != null && String(row.from) === String(me);
+        return {
+          id: 'ord-' + row.order_id + '-' + row.id, serverId: row.id, kind: 'job', live: true,
+          orderId: row.order_id,
+          name: esc(row.first_name) || 'Requester', init: initials(row.first_name),
+          req: esc(row.title) || 'Request', reqId: row.order_id ? '#' + row.order_id : '',
+          /* `blured` is the server's own flag for a thread with no gopher
+             assigned yet — the pre-acceptance case the G40-216 gate covers. */
+          state: 'active', accepted: false, preAccept: !!row.blured,
+          unread: isRead(row.viewed) ? 0 : 1, time: when,
+          msgs: [{ from: mine ? 'mine' : 'them', text: body, time: when }]
+        };
+      }
+      function load(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return Promise.resolve();
+        return GoAuth.apiCall('/users/messages', { method:'GET' }).then(function(r){
+          if(!r.ok) return;                       // silent: demo rows stand, nothing is claimed
+          const arr = (r.body && r.body.data && r.body.data.messages) || [];
+          if(!Array.isArray(arr)) return;
+          const me = (window.GoSession && GoSession.userId && GoSession.userId()) || null;
+          const mapped = arr.map(function(row){ return toThread(row, me); });
+          /* Replace CONTENTS, never the binding — renderGoInbox closes over
+             this exact array. Reassigning it would leave the renderer drawing
+             the demo set forever, silently. */
+          GO_INBOX.length = 0;
+          mapped.forEach(function(t){ GO_INBOX.push(t); });
+          goInboxActive = GO_INBOX.length ? GO_INBOX[0].id : null;
+          renderGoInbox(); goInboxBadge();
+        });
+      }
+      /* Mark a broadcast read server-side. Job threads are marked by opening
+         them (GET /orders/faq/v2/:id does it), so they are not sent here. */
+      function markRead(th){
+        if(!th || th.kind !== 'support' || !th.serverId) return;
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
+        GoAuth.apiCall('/users/inbox_message/' + th.serverId, { method:'PATCH' });
+      }
+      return { load: load, markRead: markRead };
+    })();
+    window.GoInbox = GoInbox;
+
     let goInboxActive = GO_INBOX[0].id;
     let goInboxPending = null;          // staged photo (data URL) awaiting send
     let goInboxTab = 'inbox';           // 'inbox' | 'deleted'  (G40-100)
@@ -6039,7 +6135,15 @@ window.showNoAccount = function(){
             <input type="text" class="inbox-composer-input" id="goInboxInput" placeholder="Message ${goEsc(t.name.split(' ')[0])}\u2026">
             <button type="button" class="inbox-composer-send" id="goInboxSend" aria-label="Send">&#10148;</button>
           </div>`
-        : `<div class="inbox-composer-locked">${!t ? '' : t.state==='active'
+        : `<div class="inbox-composer-locked">${!t ? ''
+              : t.kind === 'support'
+              ? 'Announcements from Gopher Support don\u2019t have a reply channel.'
+              : t.kind === 'job'
+              /* Honest about the real state: the thread is real and so is the
+                 message, but this surface cannot deliver a reply yet. Saying
+                 "once you're accepted" here would be a different lie. */
+              ? 'Replying from the web is coming \u2014 the Gopher Go app delivers messages on this request today.'
+              : t.state==='active'
               ? 'You can message and send photos once you\u2019ve been accepted onto this request.'
               : 'This request is ' + goEsc(t.state) + ' \u2014 messages stay here, but you can no longer send new ones.'}</div>`;
 
@@ -6082,7 +6186,8 @@ window.showNoAccount = function(){
       body.querySelectorAll('[data-go-thread]').forEach(btn => btn.addEventListener('click', () => {
         goInboxActive = btn.getAttribute('data-go-thread');
         goInboxPending = null;
-        const th = GO_INBOX.find(x => x.id === goInboxActive); if(th) th.unread = 0;
+        const th = GO_INBOX.find(x => x.id === goInboxActive);
+        if(th){ th.unread = 0; GoInbox.markRead(th); }
         renderGoInbox(); goInboxBadge();
       }));
 
@@ -7523,6 +7628,11 @@ window.showNoAccount = function(){
       /* Re-read when the worker enters the dashboard, for the same reason the
          identity load does: signing in mid-session must not leave demo rows. */
       document.addEventListener('go:entered', loadLive);
+      /* The inbox loads on the same event and for the same reason: signing in
+         mid-session must not leave demo threads on screen. */
+      document.addEventListener('go:entered', function(){
+        if(window.GoInbox && GoInbox.load) GoInbox.load();
+      });
       /* Work settings loads on the same event. READ ONLY for now — the save is
          deliberately not wired until the owner has confirmed the categories and
          radius come back right, because a wrong selectionMap key does not error,
