@@ -17443,10 +17443,12 @@ const PAY_BADGES = {
     r.counterOffers.splice(ci, 1);   // counter resolved → leave the list
     renderActiveRequests();          // dashboard summary card reflects the counter price
     renderRequestDetail();
-    // Same post-hire behavior as the Hire button: encourage Start once the crew is full.
+    // Same post-hire behaviour as the Hire button: a full crew starts the job.
+    // See the ⛔ note on the Hire handler — hiring is the commitment, and the
+    // live app has no start step to wait for.
     const needed = r.workersNeeded || 1;
     const hiredNow = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
-    if(hiredNow >= needed && typeof showStartEncourageModal === 'function'){ showStartEncourageModal(r, needed); }
+    if(hiredNow >= needed && typeof startJob === 'function'){ startJob(r); }
   }
 
   function renderRequestDetail(){
@@ -18024,11 +18026,18 @@ const PAY_BADGES = {
         }
         else return;
         renderRequestDetail(); // re-render to reflect the new status
-        // If hiring just filled every slot, encourage the customer to start.
+        // If hiring just filled every slot, the job starts.
         if(act === 'hire' || act === 'approve'){
+        /* ⛔ HIRING STARTS THE JOB. Owner ruling 2026-09-01, extending the
+           First Available ruling to the other modes. The live requester app has
+           NO start step in any mode — hiring IS the commitment. The modal this
+           replaces asked the requester to press "Start job", a step that exists
+           nowhere in the product, and the request sat in Pending until they did.
+           On Connect the gate is the FULL CREW (workersNeeded), not one lead —
+           that difference is Connect's and is preserved. */
           const needed = r.workersNeeded || 1;
           const hiredNow = list.filter(w => w.status === 'hired').length;
-          if(hiredNow === needed){ showStartEncourageModal(r, needed); }
+          if(hiredNow === needed){ startJob(r); }
         }
       });
     });

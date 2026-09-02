@@ -22310,7 +22310,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           if(act === 'hire' || act === 'approve'){
             const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
             const hiredNow = list.filter(w => w.status === 'hired').length;
-            if(hiredNow === needed){ showStartEncourageModal(r, needed); }
+            /* ⛔ HIRING STARTS THE JOB. Owner ruling 2026-09-01, extending the
+               First Available ruling of 2026-08-31 to the other modes: "yes".
+
+               THE LIVE REQUESTER APP HAS NO START STEP IN ANY MODE — zero hits
+               for start job / startJob / start_job across its src. Hiring IS the
+               commitment; there is nothing left for the requester to confirm.
+               This used to open showStartEncourageModal(), a prompt asking them
+               to press "Start job" — a step that exists nowhere in the product,
+               inviting a requester to do something a real one never does, and
+               leaving the request sitting in Pending until they did.
+
+               Applies to `approve` as well as `hire`: approving a worker the
+               distance rule paused is the same commitment by another name.
+
+               The Start-job BAR stays in the DOM for a crew that is not yet
+               complete — startJob() no-ops on zero hired — so nothing that
+               depended on it breaks; it simply is not the requester's homework
+               any more. */
+            if(hiredNow === needed){ startJob(r); }
           }
           return;
         }
