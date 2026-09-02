@@ -4171,6 +4171,12 @@ window.showNoAccount = function(){
   .inbox-msg.theirs .inbox-bubble { background:#eef2f8; color:var(--navy); border-bottom-left-radius:5px; }
   .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
   .inbox-msg-time { font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
+  /* Announcement links. word-break is load-bearing: an App Store URL is longer
+     than the bubble and would otherwise push it past the pane. */
+  .inbox-bubble .inbox-link { color:var(--green-dark); font-weight:700; text-decoration:underline;
+    text-underline-offset:2px; word-break:break-word; overflow-wrap:anywhere; }
+  .inbox-msg.mine .inbox-bubble .inbox-link { color:var(--navy); }
+  .inbox-bubble .inbox-link:hover { color:var(--navy); }
   /* Photo attachment (G40-216) */
   .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
   .inbox-msg.mine .inbox-photo { border-color:transparent; }
@@ -4919,7 +4925,7 @@ window.showNoAccount = function(){
       <section class="dash-section" data-dash-section="inbox">
         <div class="panel">
           <div class="panel-head"><h2>Inbox</h2></div>
-          <p class="panel-desc">Messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
+          <p class="panel-desc">Announcements from Gopher Support, and messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
           <div id="goInboxBody" class="inbox-grid"><!-- filled by renderGoInbox() --></div>
         </div>
       </section>
@@ -5955,6 +5961,12 @@ window.showNoAccount = function(){
       const name = b.dataset.dashSection;
       if(COMING_SOON[name]){ showComingSoon(name); return; }   /* pane never opens */
       show(name);
+      /* A message fired from HQ while the dashboard is open must not wait for a
+         reload to appear (owner-reported 2026-09-01). Re-read on entry, and
+         poll only while the pane is actually on screen — a background poll on
+         a marketing page is cost with no reader. */
+      if(name === 'inbox' && window.GoInbox && GoInbox.watch) GoInbox.watch();
+      else if(window.GoInbox && GoInbox.unwatch) GoInbox.unwatch();
     }));
 
     /* ░░ INBOX ░░ Built 2026-07-28 (owner: "Gopher-go dashboard needs a functional
@@ -6077,7 +6089,23 @@ window.showNoAccount = function(){
         if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
         GoAuth.apiCall('/users/inbox_message/' + th.serverId, { method:'PATCH' });
       }
-      return { load: load, markRead: markRead };
+      /* Poll while the Inbox pane is open. 45s is a deliberate compromise: an
+         announcement is not time-critical the way a job message is, and this
+         runs against production. Cleared the moment the pane is left, and
+         skipped entirely while the tab is hidden so a backgrounded dashboard
+         costs nothing. */
+      let timer = null;
+      function watch(){
+        load();
+        if(timer) return;
+        timer = setInterval(function(){
+          if(document.hidden) return;
+          if(!(window.GoSession && GoSession.token && GoSession.token())) return;
+          load();
+        }, 45000);
+      }
+      function unwatch(){ if(timer){ clearInterval(timer); timer = null; } }
+      return { load: load, markRead: markRead, watch: watch, unwatch: unwatch };
     })();
     window.GoInbox = GoInbox;
 
@@ -6118,10 +6146,28 @@ window.showNoAccount = function(){
           </span>
         </button>`, x.id, goInboxTab === 'deleted') : '')).join('');
 
+      /* ── @!URL!@ IS THE PLATFORM'S IN-APP LINK TOKEN, not stray punctuation.
+         HQ inbox campaigns wrap every link in it and the token is literal, so an
+         un-parsed announcement shows the raw delimiters and the link is dead —
+         owner-reported 2026-09-01 on a real "new version of Gopher Go" message.
+         ⛔ ESCAPE FIRST, THEN LINKIFY. The reverse order lets message content
+         inject markup: this text is written in HQ and rendered on a live
+         surface, so it is untrusted by definition. Only the href/label we
+         construct from the captured URL is ever unescaped, and the pattern
+         admits nothing but http(s). A bare URL is linkified too — the token is
+         the convention, not a guarantee every author uses it. */
+      function inboxBody(text){
+        const safe = goEsc(text);
+        const link = u => '<a class="inbox-link" href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>';
+        return safe
+          .replace(/@!(https?:\/\/[^\s!]+)!@/g, (_, u) => link(u))
+          .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_, pre, u) => pre + link(u))
+          .replace(/\n/g, '<br>');
+      }
       const msgs = (t ? t.msgs : []).map(m => `
         <div class="inbox-msg ${m.from==='mine'?'mine':'theirs'}">
           ${m.photo ? `<img class="inbox-photo" src="${goEsc(m.photo)}" alt="Photo attachment">`
-                    : `<div class="inbox-bubble">${goEsc(m.text)}</div>`}
+                    : `<div class="inbox-bubble">${inboxBody(m.text)}</div>`}
           <div class="inbox-msg-time">${goEsc(m.time)}</div>
         </div>`).join('');
 
@@ -6165,7 +6211,7 @@ window.showNoAccount = function(){
             <span class="inbox-convo-photo">${goEsc(t.init)}</span>
             <span class="inbox-convo-meta">
               <div class="inbox-convo-name">${goEsc(t.name)}</div>
-              <div class="inbox-convo-req">${goEsc(t.req)} &middot; ${goEsc(t.reqId)}</div>
+              <div class="inbox-convo-req">${goEsc(t.req)}${t.reqId ? ' &middot; ' + goEsc(t.reqId) : ''}</div>
             </span>
           </div>
           <div class="inbox-thread" id="goInboxThread">${msgs || '<div class="inbox-empty">No messages yet.</div>'}</div>
