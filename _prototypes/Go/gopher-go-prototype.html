@@ -1341,6 +1341,30 @@ function fmtMoney(v){
   var n=parseMoney(v);
   return (Math.round(n*100)%100===0)?String(Math.round(n)):n.toFixed(2);
 }
+/* ── Counter-offer budget (D-026) ─────────────────────────────────────────────
+   Standard Gophers get 5 counters per CALENDAR month, resetting on the 1st.
+   Elite / Elite+ / Pro are unlimited and never consult this.
+
+   ⚠️ Keyed by year-month, so the reset needs no timer and no cron — the key
+   simply stops matching. A countdown would have to survive a reload and would
+   drift; a key cannot.
+
+   ⛔ NOT ENFORCED ON LIVE. `controllers/order/counter_offer.js` implements
+   neither this limit nor the tier exemption, although D-026 says "caps are
+   enforced server-side". The prototype is ahead of production here on purpose —
+   it is the launch behaviour. The backend gap is recorded separately for the
+   owner; do not read this as a port of something that exists. */
+const CO_MONTHLY_LIMIT = 5;
+function coBudgetKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function coBudgetUsed(){
+  const b = state.counterBudget;
+  return (b && b.ym === coBudgetKey()) ? (+b.used || 0) : 0;
+}
+function coBudgetSpend(){
+  const ym = coBudgetKey();
+  if(!state.counterBudget || state.counterBudget.ym !== ym) state.counterBudget = { ym: ym, used: 0 };
+  state.counterBudget.used++;
+}
 function showModal(html){ const ov=document.createElement('div'); ov.className='modal-overlay'; ov.innerHTML='<div class="modal-card">'+html+'</div>'; ov.addEventListener('click',e=>{ if(e.target===ov||e.target.classList.contains('mclose')) ov.remove(); }); const host=stage.querySelector('.host'); const root=host&&host.shadowRoot; const frame=root&&root.querySelector('.frame'); if(frame){ if(!root.querySelector('style[data-modal]')){ const st=document.createElement('style'); st.setAttribute('data-modal','1'); st.textContent=MODAL_CSS; root.appendChild(st); } ov.style.top=host.scrollTop+'px'; ov.style.bottom='auto'; ov.style.height=host.clientHeight+'px'; frame.appendChild(ov); } else { document.body.appendChild(ov); } return ov; }
 /* ── G40-308 worker modals (G40-309 survivors built for the Go app) ──────────
    Each is a G40-308-styled showModal(). Reachable now via the review launcher
@@ -3285,7 +3309,25 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       // the Standard tier, so the cap applies here; coTiered lifts it when a tiered worker is depicted.
       // Do NOT copy the old worker app's client check — counterOfferMaxCheck keys the limit off
       // cost_of_goods and disagrees with its own backend (legacy bug, superseded by the rebuild).
-      const coTiered=false;
+      /* ⛔ D-026 IS NOW ENFORCED HERE, not asserted in a comment.
+         Standard: 5 counters per calendar month, floor $20, ceiling 150% of the
+         OFFER only. Elite / Elite+ / Pro: unlimited and uncapped. Owner ruling
+         2026-09-01: "this needs to be implemented in the PT because it is a
+         feature that will exist during launch."
+
+         ⚠️ THE TIER COMES FROM STATE. It used to be `const coTiered=false` — a
+         hardcoded Standard — while `state.work.tier` said "elite" and the home
+         header said "Pro tier". Three claims, three answers, and the one that
+         decided the money said Standard. So the prototype capped a worker it had
+         just called Pro. Work Settings is the only place the tier can actually be
+         changed, so that is the source of truth; flip it there and the cap
+         follows.
+
+         ⚠️ The display strings ("Pro tier · 4.9★") are NOT touched. Pro → Elite
+         is launch-gated and must not be swept; that mismatch is the owner's to
+         resolve, not a thing to tidy in passing. */
+      const coTierName = String((state.work && state.work.tier) || 'standard').toLowerCase();
+      const coTiered = coTierName !== 'standard';
       const coCap=(j.mode==='bid'||coTiered)?Infinity:Math.max(20,amtNum*1.5);
       const coCapNum=Number.isFinite(coCap)?Math.round(coCap*100)/100:Infinity;   // the real ceiling, to the cent
       const coCapMax=Number.isFinite(coCap)?fmtMoney(coCapNum):Infinity;          // as shown: $97.50, not a floored $97
@@ -3319,6 +3361,19 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           j.bid={cost:bidCost, labor:bidLabor, amt:bidCost+bidLabor, note:note, by:'Marcus K.'};   // two line items
         } else {
           if(!coValidate()){ if(coin) coin.focus(); return; }   // reject same/below-offer counter
+          /* D-026's OTHER half: 5 counters per calendar month for Standard,
+             resetting on the 1st. Tiered workers are unlimited, so the budget is
+             never consulted for them — same discriminator as the cap above.
+             Counted at SEND, not at open: opening the panel and changing your
+             mind must not cost you one of five. */
+          if(!coTiered){
+            const spent = coBudgetUsed();
+            if(spent >= CO_MONTHLY_LIMIT){
+              toast('You have used all '+CO_MONTHLY_LIMIT+' counter-offers this month &middot; they reset on the 1st');
+              return;
+            }
+            coBudgetSpend();
+          }
           j.counter={amt:coVal, was:amtNum, note:note, by:'Marcus K.'};
         }
         coOpen=false; draw();
