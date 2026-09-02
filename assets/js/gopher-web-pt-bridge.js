@@ -59,8 +59,26 @@
   function devHost() {
     try {
       var h = location.hostname;
-      return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]' || h === ''
-          || /\.local$/.test(h) || /(^|\.)trycloudflare\.com$/.test(h);
+      if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '[::1]' || h === ''
+          || /\.local$/.test(h) || /(^|\.)trycloudflare\.com$/.test(h)) return true;
+
+      /* The prototype twin — johncnewbury.github.io/Gopher-Marketplace-Prototype/.
+         HOSTNAME ALONE IS NOT ENOUGH, and this is the whole reason the rule looks
+         different from the others: PRODUCTION IS THE SAME HOSTNAME, served from
+         /Gopher-Marketplace/. Allowing the host outright would put ?pt=1 on the
+         live site, where entering it empties the visible dashboard. So this entry
+         is host + PATH PREFIX.
+
+         The two prefixes cannot collide in either direction — the slash after
+         "Marketplace" is what separates /Gopher-Marketplace/ from
+         /Gopher-Marketplace-Prototype/. Drop it and production opens up.
+
+         Iframed Final/ pages inherit the prefix (…-Prototype/gopher-request.html),
+         so no window.top check is needed and none should be added: top-frame
+         sniffing breaks the moment a pane is opened in its own tab, which is a
+         thing the harness deliberately supports. */
+      return h === 'johncnewbury.github.io'
+          && /^\/Gopher-Marketplace-Prototype\//.test(location.pathname);
     } catch (_) { return false; }
   }
 
