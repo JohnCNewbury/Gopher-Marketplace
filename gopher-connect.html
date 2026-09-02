@@ -1228,7 +1228,16 @@
   }
   .os-hint {
     font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.4; margin-top:10px;
-    min-height:16px; color:var(--green-dark); padding:0 4px; white-space:nowrap;
+    /* No `white-space:nowrap`. It made this hint overflow the card at 375px —
+       the string is a full sentence ("Drag the slider either direction to find
+       the offer that works for you") and nowrap forbids the only thing that
+       could save it. `min-height` already reserves the single-line case, so
+       wrapping costs nothing when there is room.
+       Recovered from 95fce01 (2026-07-24), which fixed exactly this and was
+       never merged — it sat on an abandoned branch for five weeks while the bug
+       stayed live. A missing fix leaves no trace in the file; it was found by
+       asking git what had touched these paths outside my branch. */
+    min-height:16px; color:var(--green-dark); padding:0 4px;
   }
   .os-hint.warn { color:#92580D; }
   .os-hint.over { color:var(--green-dark); }
@@ -17434,10 +17443,12 @@ const PAY_BADGES = {
     r.counterOffers.splice(ci, 1);   // counter resolved → leave the list
     renderActiveRequests();          // dashboard summary card reflects the counter price
     renderRequestDetail();
-    // Same post-hire behavior as the Hire button: encourage Start once the crew is full.
+    // Same post-hire behaviour as the Hire button: a full crew starts the job.
+    // See the ⛔ note on the Hire handler — hiring is the commitment, and the
+    // live app has no start step to wait for.
     const needed = r.workersNeeded || 1;
     const hiredNow = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
-    if(hiredNow >= needed && typeof showStartEncourageModal === 'function'){ showStartEncourageModal(r, needed); }
+    if(hiredNow >= needed && typeof startJob === 'function'){ startJob(r); }
   }
 
   function renderRequestDetail(){
@@ -17532,7 +17543,7 @@ const PAY_BADGES = {
         // First-available + > 15 mi out: per the request app's logic this match
         // stops auto-matching and behaves like "I'll select my worker" — it needs
         // the customer's approval before it can be hired.
-        const farApproval = (firstAvailable && distMi != null && distMi > 15)
+        const farApproval = (firstAvailable && needsDistanceApproval(w))
           ? `<div class="wcard-approval">⚠ ${Math.round(distMi)} mi out — auto-match paused, needs your approval before hiring</div>`
           : '';
         // Bid amount, shown clearly to the right on every "ask for bids" request.
@@ -18015,11 +18026,18 @@ const PAY_BADGES = {
         }
         else return;
         renderRequestDetail(); // re-render to reflect the new status
-        // If hiring just filled every slot, encourage the customer to start.
+        // If hiring just filled every slot, the job starts.
         if(act === 'hire' || act === 'approve'){
+        /* ⛔ HIRING STARTS THE JOB. Owner ruling 2026-09-01, extending the
+           First Available ruling to the other modes. The live requester app has
+           NO start step in any mode — hiring IS the commitment. The modal this
+           replaces asked the requester to press "Start job", a step that exists
+           nowhere in the product, and the request sat in Pending until they did.
+           On Connect the gate is the FULL CREW (workersNeeded), not one lead —
+           that difference is Connect's and is preserved. */
           const needed = r.workersNeeded || 1;
           const hiredNow = list.filter(w => w.status === 'hired').length;
-          if(hiredNow === needed){ showStartEncourageModal(r, needed); }
+          if(hiredNow === needed){ startJob(r); }
         }
       });
     });
@@ -21236,11 +21254,31 @@ const PAY_BADGES = {
          - I'll select         -> always a candidacy.  ("MY" is capitalized because it
        names Michael Yorrie, the first Gopher Pro this feature was built for - see the
        green-heart tooltip in the 101 guides. It is a name, never a possessive.) */
+    /* ── Who the long-distance approval applies to (owner ruling 2026-09-01) ────
+       "keep exact same as live app, this carries." Ported from
+       Final/gopher-request.html in the same pass (standing rule 12b).
+
+       LIVE gates the >15 mi pause on `gopher_type_id === 0`. Despite the
+       variable being named isNonProGopher, 0 is STANDARD —
+       `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`, and the backend's own
+       claim-limits helper says "STANDARD GOPHERS ONLY ... Elite / Elite+ / Pro
+       are unaffected." A tiered worker is hired immediately however far out.
+
+       ⚠️ SUPERSEDES THE 2026-08-22 SHAPE, which paused every worker. Same
+       discriminator D-026 uses for the counter-offer cap: one tier test, two
+       rules. Live's extra app-build condition has no counterpart here. */
+    function isStandardTier(w){
+      const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
+      return !/^(elite|pro)/.test(t);
+    }
+    function needsDistanceApproval(w){
+      const d = w && w.distanceMi;
+      return isStandardTier(w) && d != null && Number(d) > 15;
+    }
     const _mode = data.workerSelection || (data.firstAvailable ? 'first' : 'select');
     if(_mode === 'first' && interested.length){
       const _w = interested[0];
-      const _far = _w.distanceMi != null && Number(_w.distanceMi) > 15;
-      if(!_far){
+      if(!needsDistanceApproval(_w)){
         _w.status = 'hired'; _w.autoHired = true;
         interested.length = 1;           // one Gopher accepted; no candidate pool exists
       }

@@ -4995,7 +4995,16 @@
   }
   .os-hint {
     font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.4; margin-top:10px;
-    min-height:16px; color:var(--green-dark); padding:0 4px; white-space:nowrap;
+    /* No `white-space:nowrap`. It made this hint overflow the card at 375px —
+       the string is a full sentence ("Drag the slider either direction to find
+       the offer that works for you") and nowrap forbids the only thing that
+       could save it. `min-height` already reserves the single-line case, so
+       wrapping costs nothing when there is room.
+       Recovered from 95fce01 (2026-07-24), which fixed exactly this and was
+       never merged — it sat on an abandoned branch for five weeks while the bug
+       stayed live. A missing fix leaves no trace in the file; it was found by
+       asking git what had touched these paths outside my branch. */
+    min-height:16px; color:var(--green-dark); padding:0 4px;
   }
   .os-hint.warn { color:#b07400; }
   .os-hint.over { color:var(--green-dark); }
@@ -20391,6 +20400,30 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               promo:null, promoDiscount:0, trustShieldDiscount:0, cogOffer:81, gmvTotal:88.5492 } },
         ]
       },
+      // 1c) PENDING — FIRST AVAILABLE, and the accepter is too far to auto-match.
+      //     ⚠️ THIS FIXTURE EXISTS TO KEEP A PIECE OF COPY HONEST. The worker card
+      //     renders "auto-match paused, needs your approval before hiring" only when a
+      //     request is First Available AND its accepter trips the distance rule. No
+      //     seeded request set `firstAvailable` at all, and no seeded worker was
+      //     further than 6 mi — so that sentence rendered for nobody. It described a
+      //     state the demo could not reach, which is what the 2026-08-22 note calling
+      //     it "true rather than fiction" was trying to prevent.
+      //     ⛔ Dana is deliberately UNBADGED. The pause is a STANDARD-tier rule (live
+      //     gates on `gopher_type_id === 0`), so an Elite or Pro at the same distance
+      //     is hired immediately and would demonstrate nothing. If you give her a
+      //     badge, the fixture stops testing the thing it exists for.
+      {
+        id:'GR-00141', icon:'📦', title:'Pick up a parcel from the Apex depot',
+        status:'pending', statusLabel:'Pending', needsAttention:true, userCreated:false,
+        scheduledForLater:false, workersNeeded:1, perWorkerCost:34, multiIndividual:false,
+        firstAvailable:true, workerSelection:'first',
+        worker:'1 worker accepted — approval needed', amount:'$34.00 total',
+        when:'Today, 5:15 PM · auto-match paused',
+        interestedWorkers:[
+          Object.assign(makeSeedWorker('DK','Dana K.',''),
+            { distanceMi:18, stats:['\u2b50 4.88 (64 jobs)','18 mi away','Available now'] })
+        ]
+      },
       // 2) ACTIVE / In Progress — NON-age-restricted DELIVERY, purchase-needed
       //     (Cost of Items $35 + Offer $15). The Request analog of Connect's
       //     GC-00124: one assigned worker + a full `live` object, so the consolidated
@@ -20693,18 +20726,23 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
          - I'll select         -> always a candidacy.  ("MY" is capitalized because it
        names Michael Yorrie, the first Gopher Pro this feature was built for - see the
        green-heart tooltip in the 101 guides. It is a name, never a possessive.) */
+
+
     const _mode = data.workerSelection || (data.firstAvailable ? 'first' : 'select');
     if(_mode === 'first' && interested.length){
       const _w = interested[0];
-      const _far = _w.distanceMi != null && Number(_w.distanceMi) > 15;
-      if(!_far){
+      if(!needsDistanceApproval(_w)){
         _w.status = 'hired'; _w.autoHired = true;
         interested.length = 1;           // one Gopher accepted; no candidate pool exists
       }
     } else if(_mode === 'my' && interested.length){
       const _names = (typeof window.__myGopherNames === 'function') ? window.__myGopherNames() : [];
       const _mine = interested.find(w => w.isMyGopher || _names.indexOf(w.name) > -1);
-      if(_mine){ _mine.status = 'hired'; _mine.autoHired = true; }
+      /* Live requires `!distance_exceeded` before a hand-picked favourite is
+         auto-hired — assign_order's fav branch is inside the same guard. Our
+         `my` branch ignored distance entirely, so a far-away favourite was hired
+         where live would have asked first. */
+      if(_mine && !needsDistanceApproval(_mine)){ _mine.status = 'hired'; _mine.autoHired = true; }
     }
     const req = {
       id,
@@ -21415,6 +21453,34 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Ported from Connect. Stamps ratingNum / jobsNum / distanceMi (and, on bids
   // requests, a stable demo bidAmount) onto each worker behind w.__meta so
   // re-renders are cheap and values stay stable. Explicit fields are respected.
+  /* ── Who the long-distance approval applies to (owner ruling 2026-09-01) ────
+     "keep exact same as live app, this carries."
+
+     LIVE: controllers/order/update.js assign_order gates the >15 mi pause on
+     `isNonProGopher = +users_roles.gopher_type_id === 0`. Despite the variable's
+     name, 0 is STANDARD — constants/index.js has
+     `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`, and helpers/
+     gopher_claim_limits.js says it plainly: "STANDARD GOPHERS ONLY ... Elite /
+     Elite+ / Pro are unaffected." So the pause is a STANDARD-tier rule, and a
+     tiered worker is hired immediately however far out they are.
+
+     ⚠️ THIS SUPERSEDES THE 2026-08-22 SHAPE, which applied the pause to every
+     worker. That was the owner's decision too; this is the owner's later one,
+     and it is the same discriminator D-026 uses for the counter-offer cap —
+     Standard is capped, Elite/Elite+/Pro are not. One tier test, two rules.
+
+     Live also gates on the worker's app build supporting `long_distance_approval`.
+     There are no app versions here, so that condition has no counterpart and is
+     deliberately not simulated. */
+  function isStandardTier(w){
+    const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
+    return !/^(elite|pro)/.test(t);          // '', 'standard', anything unbadged
+  }
+  function needsDistanceApproval(w){
+    const d = w && w.distanceMi;
+    return isStandardTier(w) && d != null && Number(d) > 15;
+  }
+
   function ensureWorkerMeta(w, r, idx, bidsMode){
     if(!w.__meta){
       const stats = Array.isArray(w.stats) ? w.stats : [];
@@ -21776,7 +21842,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const distLine = (distMi != null && !isLive)
           ? `<span class="wcard-distance">📍 ${distMi.toFixed(1)} mi → ${distRef}</span>` : '';
         // First-available + > 15 mi out: auto-match pauses; needs approval to hire.
-        const farApproval = (firstAvailable && !isLive && distMi != null && distMi > 15)
+        const farApproval = (firstAvailable && !isLive && needsDistanceApproval(w))
           ? `<div class="wcard-approval">⚠ ${Math.round(distMi)} mi out — auto-match paused, needs your approval before hiring</div>`
           : '';
         // Bid amount, shown to the right on every "ask for bids" request.
@@ -22244,7 +22310,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           if(act === 'hire' || act === 'approve'){
             const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
             const hiredNow = list.filter(w => w.status === 'hired').length;
-            if(hiredNow === needed){ showStartEncourageModal(r, needed); }
+            /* ⛔ HIRING STARTS THE JOB. Owner ruling 2026-09-01, extending the
+               First Available ruling of 2026-08-31 to the other modes: "yes".
+
+               THE LIVE REQUESTER APP HAS NO START STEP IN ANY MODE — zero hits
+               for start job / startJob / start_job across its src. Hiring IS the
+               commitment; there is nothing left for the requester to confirm.
+               This used to open showStartEncourageModal(), a prompt asking them
+               to press "Start job" — a step that exists nowhere in the product,
+               inviting a requester to do something a real one never does, and
+               leaving the request sitting in Pending until they did.
+
+               Applies to `approve` as well as `hire`: approving a worker the
+               distance rule paused is the same commitment by another name.
+
+               The Start-job BAR stays in the DOM for a crew that is not yet
+               complete — startJob() no-ops on zero hired — so nothing that
+               depended on it breaks; it simply is not the requester's homework
+               any more. */
+            if(hiredNow === needed){ startJob(r); }
           }
           return;
         }

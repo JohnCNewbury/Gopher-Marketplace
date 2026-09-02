@@ -549,18 +549,38 @@
         distanceMi: worker.distanceMi != null ? worker.distanceMi : null,
         status: 'interested',
         justAccepted: true,
+        /* Carried, not dropped. The `my` branch below and the web's own
+           renderer both read `w.isMyGopher`; the entry never copied it, so the
+           field only ever worked through __myGopherNames(). A caller that
+           passed it got silence. */
+        isMyGopher: !!worker.isMyGopher,
         fromGoApp: true
       };
       if (!existing) rec.interestedWorkers.unshift(entry);
 
       var mode = String(rec.workerSelection || 'first');
       if (mode === 'prioritize') mode = 'my';
-      var far = entry.distanceMi != null && Number(entry.distanceMi) > 15;
+      /* ── The >15 mi pause is a STANDARD-TIER rule (owner, 2026-09-01: "keep
+         exact same as live app, this carries"). Live gates it on
+         `gopher_type_id === 0`, and 0 is STANDARD —
+         `GOPHER_TYPE = { STANDARD:0, PRO:1, PRO_PLUS:2 }`; the backend's own
+         claim-limits helper spells it out: "STANDARD GOPHERS ONLY ... Elite /
+         Elite+ / Pro are unaffected." A tiered worker is hired immediately
+         however far out they are.
+         ⚠️ Supersedes the flat 2026-08-22 rule that paused everyone. Same tier
+         test D-026 uses for the counter cap — one discriminator, two rules. */
+      var tierStr = String(entry.tier || entry.badge || '').toLowerCase();
+      var isStandard = !/^(elite|pro)/.test(tierStr);
+      var far = isStandard && entry.distanceMi != null && Number(entry.distanceMi) > 15;
       var autoHire = false;
       if (mode === 'first' && !far) autoHire = true;
       if (mode === 'my') {
         var mine = (typeof root.__myGopherNames === 'function') ? root.__myGopherNames() : [];
-        autoHire = entry.isMyGopher || mine.indexOf(name) > -1;
+        /* Live requires `!distance_exceeded` before a hand-picked favourite is
+           auto-hired — the fav branch sits inside the same guard in assign_order.
+           This ignored distance entirely, so a far Standard favourite was hired
+           where live would have asked the requester first. */
+        autoHire = (entry.isMyGopher || mine.indexOf(name) > -1) && !far;
       }
 
       if (autoHire) {
