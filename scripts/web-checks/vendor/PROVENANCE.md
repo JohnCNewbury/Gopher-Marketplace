@@ -91,6 +91,21 @@ and behind is expected; the lesson is to surface git's stderr rather than pipe p
 survives a branch switch. Not done here — `gopher-mobile-request` is a live app repo and the edit
 belongs to whoever owns that branch.
 
+## Re-vendored 2026-09-02 — COSMETIC, no rule change
+
+Upstream `noShow.js` gained the ⛔ three-implementations header block. That is **this file's own
+"Recommendation, not applied" from the previous entry, carried out by whoever owns
+`gopher-mobile-request`** — the human link now survives a branch switch, as recommended.
+
+`diff` against the old vendored copy was **`13c13` and `14a15,52` and nothing else**: the comment
+terminator moved down and 38 comment lines were inserted. Not one line of executable code changed.
+Re-vendored, and `noshow-parity.js` (84 cases) + `noshow-three-way.js` re-run green afterwards,
+which is the independent confirmation that the rule did not move — the sha alone could not tell a
+comment from a rule.
+
+Found by `noshow-freshness.js` going red during unrelated work (the prototype-twin Pages site), i.e.
+the watch fired exactly as designed on a change nobody in this workstream made.
+
 ## Updating
 
 Only when upstream's rule changes, and only as a whole file:

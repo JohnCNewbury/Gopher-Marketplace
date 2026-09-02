@@ -21,6 +21,25 @@
 #   --allow-dirty   deploy anyway with an unclean tree. Deliberately verbose;
 #                   you are shipping code that exists nowhere in git history.
 #
+#   --site prototype   publish the PROTOTYPE TWIN instead of the live site:
+#                   https://johncnewbury.github.io/Gopher-Marketplace-Prototype/
+#                   (repo Gopher-Marketplace-Prototype, remote `proto`).
+#
+# TWO SITES, ONE SCRIPT — deliberately. A forked copy of this file would drift,
+# and the half that drifts is the half with the safety guards in it. Every
+# difference between the two sites is a conditional below and nothing else:
+#
+#   live (default)          prototype twin
+#   --------------          --------------
+#   remote origin           remote proto
+#   11 allowlisted protos   + web-split-screen.html (the harness / "the TRUTH")
+#   indexable               noindex on EVERY page, sitemap.xml withheld
+#   PT off (fail-closed)    PT on — see the path rule in gopher-web-pt-bridge.js
+#
+# The twin is a PUBLIC COPY OF A LIVE, INDEXED SITE on the SAME hostname. That
+# is why the noindex is not optional: without it the copy competes with
+# production in search for every page it duplicates.
+#
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,15 +47,24 @@ SRC="$REPO/Final"
 BRANCH="main"
 WORKTREE="$(mktemp -d)/gopher-deploy"
 
-PUSH=false; ALLOW_DIRTY=false; MSG=""
+PUSH=false; ALLOW_DIRTY=false; MSG=""; SITE="live"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --push)        PUSH=true; shift ;;
     --allow-dirty) ALLOW_DIRTY=true; shift ;;
+    --site)        SITE="${2:-}"; shift 2 ;;
     -m)            MSG="${2:-}"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+case "$SITE" in
+  live)      REMOTE="origin"; SITE_URL="https://johncnewbury.github.io/Gopher-Marketplace/" ;;
+  prototype) REMOTE="proto";  SITE_URL="https://johncnewbury.github.io/Gopher-Marketplace-Prototype/" ;;
+  *) echo "--site must be 'live' or 'prototype' (got: '$SITE')" >&2; exit 2 ;;
+esac
+git -C "$REPO" remote get-url "$REMOTE" >/dev/null 2>&1 || {
+  echo "git remote '$REMOTE' does not exist — cannot deploy --site $SITE" >&2; exit 2; }
 
 # Files that live on `main` but NOT in Final/. rsync --delete would wipe these.
 # .nojekyll is load-bearing: without it Jekyll drops every underscore file
@@ -72,6 +100,19 @@ PROTO=(
 # named docs.html should still ship). CLAUDE.md has to stay in Final/ for
 # tooling, so it is excluded here rather than deleted.
 EXCLUDE=( "CLAUDE.md" "_backups" "docs" "draft-content" )
+
+# ------------------------------------------------- prototype-twin differences
+# The harness ("the TRUTH") ships only to the twin. It is a DEV TOOL: it drives
+# the real Final/ pages through ?pt=1 against the Go and Request prototypes, and
+# on the live site ?pt=1 empties the visible dashboard. It has no business there.
+#
+# sitemap.xml is WITHHELD from the twin rather than rewritten: it lists the
+# PRODUCTION urls, so shipping it would have the copy actively nominating the
+# original's pages for indexing from the copy's own path.
+if [[ "$SITE" == "prototype" ]]; then
+  PROTO+=( web-split-screen.html )
+  EXCLUDE+=( "sitemap.xml" )
+fi
 
 # Junk to drop at ANY depth — macOS scatters .DS_Store through the tree.
 EXCLUDE_ANY=( ".DS_Store" "Thumbs.db" "*.swp" )
@@ -178,10 +219,10 @@ echo "=== preflight passed ===================================================="
 
 # ------------------------------------------------------------------ stage it
 echo
-echo "staging $BRANCH in a worktree…"
+echo "staging $SITE site ($REMOTE/$BRANCH) in a worktree…"
 cd "$REPO"
-git fetch -q origin "$BRANCH"
-git worktree add -q --detach "$WORKTREE" "origin/$BRANCH"
+git fetch -q "$REMOTE" "$BRANCH"
+git worktree add -q --detach "$WORKTREE" "$REMOTE/$BRANCH"
 cleanup() { git worktree remove --force "$WORKTREE" 2>/dev/null || true; }
 trap cleanup EXIT
 
@@ -219,6 +260,12 @@ for dp,_,fns in os.walk(root):
         t=open(p,encoding='utf-8',errors='surrogateescape').read()
         o=t
         t=t.replace('../../Final/','../../')
+        # The harness lives at _prototypes/web-split-screen.html - ONE level
+        # down, not two - so it reaches the web pages as ../Final/... . Order is
+        # load-bearing: '../../Final/' CONTAINS '../Final/' as a substring from
+        # index 3, so doing this replacement first would mangle the phones'
+        # paths. Longest prefix first, always.
+        t=t.replace('../Final/','../')
         # Prototypes are a demo surface, not content. robots.txt cannot help
         # here: it is only honoured at the DOMAIN root, and this site is served
         # from /Gopher-Marketplace/. A meta tag is the mechanism that works.
@@ -226,6 +273,39 @@ for dp,_,fns in os.walk(root):
             t=re.sub(r'(<head[^>]*>)', r'\1\n'+NOINDEX, t, count=1, flags=re.I)
         if t!=o: open(p,'w',encoding='utf-8',errors='surrogateescape').write(t)
 PY
+
+# ------------------------------------------------------- twin: noindex it all
+# The twin duplicates a live, INDEXED site on the SAME hostname. robots.txt
+# cannot help: it is only honoured at the DOMAIN root (johncnewbury.github.io/),
+# which this project does not own - it is a user Pages host shared with the
+# production site. A meta tag on every page is the mechanism that works here.
+if [[ "$SITE" == "prototype" ]]; then
+python3 - "$WORKTREE" <<'NOIDX'
+import sys,os,re
+wt=sys.argv[1]
+NOINDEX='<meta name="robots" content="noindex,nofollow">'
+n=0
+for dp,_,fns in os.walk(wt):
+    if os.sep+'.git' in dp: continue
+    for fn in fns:
+        if not fn.endswith('.html'): continue
+        fp=os.path.join(dp,fn)
+        t=open(fp,encoding='utf-8',errors='surrogateescape').read()
+        if 'name="robots"' in t: continue
+        o=t
+        t=re.sub(r'(<head[^>]*>)', r'\1\n'+NOINDEX, t, count=1, flags=re.I)
+        if t==o: t=NOINDEX+'\n'+t   # no <head> to anchor to
+        open(fp,'w',encoding='utf-8',errors='surrogateescape').write(t); n+=1
+print('  noindex added to %d page(s) site-wide' % n)
+NOIDX
+# Fail loudly rather than publish an indexable copy of production. -L lists
+# files WITHOUT a match; an empty list is the pass condition.
+missing="$(cd "$WORKTREE" && grep -rL 'name="robots"' --include='*.html' . 2>/dev/null | head -5 || true)"
+if [[ -n "$missing" ]]; then
+  echo "  X pages without a robots meta tag would be indexed - aborting:"
+  echo "$missing" | sed 's/^/      /'; exit 1
+fi
+fi
 
 # Verify the rewrite: no LOADABLE Final/ reference may survive, and every path
 # the prototypes pull must actually exist at the flattened location. Matches
@@ -296,11 +376,11 @@ fi
 git -c user.name="$(git -C "$REPO" config user.name)" \
     -c user.email="$(git -C "$REPO" config user.email)" \
     commit -q -m "$MSG"
-git push -q origin "HEAD:$BRANCH"
+git push -q "$REMOTE" "HEAD:$BRANCH"
 
 echo
 echo "=== deployed ============================================================"
-echo "  $(git rev-parse --short HEAD) -> $BRANCH"
-echo "  https://johncnewbury.github.io/Gopher-Marketplace/"
+echo "  $(git rev-parse --short HEAD) -> $REMOTE/$BRANCH"
+echo "  $SITE_URL"
 echo "  (Pages takes ~1 min; hard-refresh to bypass cache)"
 echo
