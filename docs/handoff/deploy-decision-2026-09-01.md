@@ -185,3 +185,38 @@ since a push to `main` publishes to both.
   touched. Minutes, not a rollback plan.
 - **Not mine to decide** — the fourth file belongs to the Deals lane, and shipping another lane's
   work without their word is how a rider becomes a surprise.
+
+---
+
+## Second deploy, same day — the six rulings (`44cc3a0`)
+
+Owner ruled all six open findings and said deploy. **Four files, all this session's, no rider this
+time** — the Deals lane's file went out in the first deploy and nothing else was pending.
+
+| Shipped | |
+|---|---|
+| `gopher-request.html` | distance rule · hire starts the job · paused-state fixture · 375px hint |
+| `gopher-connect.html` | distance rule · hire starts the job (2 sites) · 375px hint |
+| `assets/js/gopher-web-pt-bridge.js` | Standard-tier distance gate · `isMyGopher` carried |
+| `_prototypes/Go/gopher-go-prototype.html` | D-026 caps + monthly budget · canonical card frames |
+
+**Verified by content on both hosts**, including the two checks whose *correct* answer is zero —
+`white-space:nowrap` must be **absent** from `.os-hint`, and it is, on Pages and TigerTech.
+
+**Then driven on the live site rather than only grepped:**
+
+- the paused fixture renders *"⚠ 18 mi out — auto-match paused, needs your approval before hiring"*
+- hiring on `GR-00123` goes straight to **In Progress** with **no Start prompt**
+- no JS errors
+
+**⛔ The production gate re-proved**, because the bridge changed in this deploy:
+`gopher-request.html?pt=1` on `johncnewbury.github.io` → module present, `on()` **false**,
+`window.GWeb` **undefined**, zero errors. The one thing not worth inferring.
+
+### Still not done, and not deployed
+
+- **The backend does neither half of D-026.** Production caps Elite/Elite+/Pro like Standard and
+  lets Standard counter without limit. The prototype is deliberately ahead — that is launch
+  behaviour, not a port.
+- **Connect's "auto-match paused" copy is still unreachable.** The rule is correct there; only the
+  demonstration is missing, and its seeds need a full fee/snapshot block I declined to fabricate.
