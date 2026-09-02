@@ -4154,8 +4154,19 @@ window.showNoAccount = function(){
   .inbox-row-top { display:flex; justify-content:space-between; gap:8px; }
   .inbox-row-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
   .inbox-row-time { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); flex-shrink:0; }
-  .inbox-row-sub { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:1px 0; }
-  .inbox-row-last { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ⛔ display:block is what MAKES the ellipsis work. Both of these are <span>s,
+     so they were inline boxes — text-overflow has no effect on an inline box, and
+     the truncation declared here was inert: long announcement bodies ran past the
+     list instead of clipping (owner-reported 2026-09-01). The nowrap/overflow/
+     ellipsis trio was already correct; only the box type was wrong. */
+  .inbox-row-sub { display:block; font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:1px 0; }
+  .inbox-row-last { display:block; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Gopher Support wears the Gopher, not initials (owner, 2026-09-01). White
+     ground, per the standing brand ruling that the mark sits on no background —
+     the full-colour character does not read on the green avatar circle. */
+  .inbox-row-photo.is-hq, .inbox-convo-photo.is-hq { background:#fff; border:1px solid #e4e8f0; }
+  .inbox-row-photo.is-hq img { width:74%; height:74%; object-fit:contain; display:block; }
+  .inbox-convo-photo.is-hq img { width:74%; height:74%; object-fit:contain; display:block; }
   .inbox-unread { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-left:6px; vertical-align:middle; }
   .inbox-convo { background:#fff; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
   .inbox-convo-head { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid #eef0f5; }
@@ -4171,6 +4182,12 @@ window.showNoAccount = function(){
   .inbox-msg.theirs .inbox-bubble { background:#eef2f8; color:var(--navy); border-bottom-left-radius:5px; }
   .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
   .inbox-msg-time { font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
+  /* Announcement links. word-break is load-bearing: an App Store URL is longer
+     than the bubble and would otherwise push it past the pane. */
+  .inbox-bubble .inbox-link { color:var(--green-dark); font-weight:700; text-decoration:underline;
+    text-underline-offset:2px; word-break:break-word; overflow-wrap:anywhere; }
+  .inbox-msg.mine .inbox-bubble .inbox-link { color:var(--navy); }
+  .inbox-bubble .inbox-link:hover { color:var(--navy); }
   /* Photo attachment (G40-216) */
   .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
   .inbox-msg.mine .inbox-photo { border-color:transparent; }
@@ -4919,7 +4936,7 @@ window.showNoAccount = function(){
       <section class="dash-section" data-dash-section="inbox">
         <div class="panel">
           <div class="panel-head"><h2>Inbox</h2></div>
-          <p class="panel-desc">Messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
+          <p class="panel-desc">Announcements from Gopher Support, and messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
           <div id="goInboxBody" class="inbox-grid"><!-- filled by renderGoInbox() --></div>
         </div>
       </section>
@@ -5879,7 +5896,9 @@ window.showNoAccount = function(){
          Read-only was considered and rejected — a read-only view of invented
          conversations is worse than none, because it shows messages nobody
          sent about jobs that may not exist. */
-      inbox:   'Inbox',
+      /* `inbox` left this map 2026-09-01: the pane now reads the REAL server
+         inbox (GET /users/messages). Sending is still gated per-thread in the
+         composer, not by hiding the pane — see the locked-composer copy. */
       /* ⛔ THE GATE HERE IS LOAD-BEARING, not belt-and-braces. The logic is now
          real — eligibility, the worker's own live deals, the signed-in business
          name, the close-and-placement dates — but placeBid() still writes to an
@@ -5909,7 +5928,6 @@ window.showNoAccount = function(){
          endpoints. Block creation stays in the app's rating flow, per the
          owner's trigger rule. */
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
-      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
       /* `recovery` left both maps 2026-08-19: the backend shipped (!329) and
          the sign-in link now opens the real server-driven flow (GoRecovery). */
@@ -5954,6 +5972,12 @@ window.showNoAccount = function(){
       const name = b.dataset.dashSection;
       if(COMING_SOON[name]){ showComingSoon(name); return; }   /* pane never opens */
       show(name);
+      /* A message fired from HQ while the dashboard is open must not wait for a
+         reload to appear (owner-reported 2026-09-01). Re-read on entry, and
+         poll only while the pane is actually on screen — a background poll on
+         a marketing page is cost with no reader. */
+      if(name === 'inbox' && window.GoInbox && GoInbox.watch) GoInbox.watch();
+      else if(window.GoInbox && GoInbox.unwatch) GoInbox.unwatch();
     }));
 
     /* ░░ INBOX ░░ Built 2026-07-28 (owner: "Gopher-go dashboard needs a functional
@@ -5985,6 +6009,117 @@ window.showNoAccount = function(){
         { from:'them', text:'Thanks again — you made that look easy.', time:'2:10 PM' },
         { from:'mine', text:'Anytime! Rate when you get a sec 🙏', time:'2:12 PM' } ] },
     ];
+    /* ── REAL INBOX (GET /users/messages) ─────────────────────────────────
+       ONE endpoint returns everything a worker's inbox holds, already merged
+       and ordered by created_at desc. For a gopher it unions TWO sources
+       (the third, refer_favorites, is disabled server-side for workers by
+       `1=:conditional`):
+
+         message_type 'gopher_support'  — HQ broadcast. inbox_users JOIN inboxes,
+                                          subject as title, body as content,
+                                          filtered to `now() < expired_on`.
+         message_type 'inbox_message'   — a JOB THREAD from orders_faqs: the
+                                          LATEST message per (sender,receiver,
+                                          order), with the order title, the
+                                          other party's name and profile image.
+
+       ⚠️ It is a thread LIST, not thread history — one row per conversation.
+       Full history is GET /orders/faq/v2/:orderId, wired in the next pass.
+       Until then a live job thread shows its latest message and the composer
+       stays locked, because a send that goes nowhere is the failure this pane
+       was gated for in the first place.
+
+       Demo threads stand until real data arrives (same contract as history):
+       null = not loaded, [] = loaded and genuinely empty. */
+    const GoInbox = (function(){
+      function esc(s){ return String(s == null ? '' : s); }
+      function initials(name){
+        return esc(name).trim().split(/\s+/).slice(0,2).map(w => (w[0]||'').toUpperCase()).join('') || '?';
+      }
+      function stamp(iso){
+        const d = new Date(iso);
+        if(isNaN(d)) return '';
+        const today = new Date();
+        const sameDay = d.toDateString() === today.toDateString();
+        return sameDay
+          ? d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+          : d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      }
+      /* `viewed` arrives as a real boolean on support rows and as the STRING
+         'true' on job rows (the SQL casts it: `CASE when of.from=:user_id then
+         'true' else of.viewed end`). Treat both as read. */
+      function isRead(v){ return v === true || v === 'true'; }
+      function toThread(row, me){
+        const support = row.message_type === 'gopher_support';
+        const when = stamp(row.created_at);
+        const body = esc(row.content);
+        if(support){
+          return {
+            id: 'sup-' + row.id, serverId: row.id, kind: 'support', live: true, hq: true,
+            name: 'Gopher Support', init: 'GS',
+            req: esc(row.title) || 'Announcement', reqId: '',
+            state: 'active', accepted: false,
+            unread: isRead(row.viewed) ? 0 : 1, time: when,
+            msgs: [{ from: 'them', text: body, time: when }]
+          };
+        }
+        const mine = me != null && String(row.from) === String(me);
+        return {
+          id: 'ord-' + row.order_id + '-' + row.id, serverId: row.id, kind: 'job', live: true,
+          orderId: row.order_id,
+          name: esc(row.first_name) || 'Requester', init: initials(row.first_name),
+          req: esc(row.title) || 'Request', reqId: row.order_id ? '#' + row.order_id : '',
+          /* `blured` is the server's own flag for a thread with no gopher
+             assigned yet — the pre-acceptance case the G40-216 gate covers. */
+          state: 'active', accepted: false, preAccept: !!row.blured,
+          unread: isRead(row.viewed) ? 0 : 1, time: when,
+          msgs: [{ from: mine ? 'mine' : 'them', text: body, time: when }]
+        };
+      }
+      function load(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return Promise.resolve();
+        return GoAuth.apiCall('/users/messages', { method:'GET' }).then(function(r){
+          if(!r.ok) return;                       // silent: demo rows stand, nothing is claimed
+          const arr = (r.body && r.body.data && r.body.data.messages) || [];
+          if(!Array.isArray(arr)) return;
+          const me = (window.GoSession && GoSession.userId && GoSession.userId()) || null;
+          const mapped = arr.map(function(row){ return toThread(row, me); });
+          /* Replace CONTENTS, never the binding — renderGoInbox closes over
+             this exact array. Reassigning it would leave the renderer drawing
+             the demo set forever, silently. */
+          GO_INBOX.length = 0;
+          mapped.forEach(function(t){ GO_INBOX.push(t); });
+          goInboxActive = GO_INBOX.length ? GO_INBOX[0].id : null;
+          renderGoInbox(); goInboxBadge();
+        });
+      }
+      /* Mark a broadcast read server-side. Job threads are marked by opening
+         them (GET /orders/faq/v2/:id does it), so they are not sent here. */
+      function markRead(th){
+        if(!th || th.kind !== 'support' || !th.serverId) return;
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
+        GoAuth.apiCall('/users/inbox_message/' + th.serverId, { method:'PATCH' });
+      }
+      /* Poll while the Inbox pane is open. 45s is a deliberate compromise: an
+         announcement is not time-critical the way a job message is, and this
+         runs against production. Cleared the moment the pane is left, and
+         skipped entirely while the tab is hidden so a backgrounded dashboard
+         costs nothing. */
+      let timer = null;
+      function watch(){
+        load();
+        if(timer) return;
+        timer = setInterval(function(){
+          if(document.hidden) return;
+          if(!(window.GoSession && GoSession.token && GoSession.token())) return;
+          load();
+        }, 45000);
+      }
+      function unwatch(){ if(timer){ clearInterval(timer); timer = null; } }
+      return { load: load, markRead: markRead, watch: watch, unwatch: unwatch };
+    })();
+    window.GoInbox = GoInbox;
+
     let goInboxActive = GO_INBOX[0].id;
     let goInboxPending = null;          // staged photo (data URL) awaiting send
     let goInboxTab = 'inbox';           // 'inbox' | 'deleted'  (G40-100)
@@ -6011,21 +6146,73 @@ window.showNoAccount = function(){
       const t = shown.find(x => x.id === goInboxActive) || shown[0] || null;
       const rows = shown.map(x => (D ? D.wrapRow(`
         <button type="button" class="inbox-row${t&&x.id===t.id?' active':''}" data-go-thread="${x.id}">
-          <span class="inbox-row-photo">${goEsc(x.init)}</span>
+          <span class="inbox-row-photo${x.hq?' is-hq':''}">${x.hq
+            ? '<img src="assets/img/gopher-character-full.svg" alt="Gopher Support">'
+            : goEsc(x.init)}</span>
           <span class="inbox-row-main">
             <span class="inbox-row-top">
               <span class="inbox-row-name">${goEsc(x.name)}${x.unread?'<span class="inbox-unread"></span>':''}</span>
               <span class="inbox-row-time">${goEsc(x.time)}</span>
             </span>
             <span class="inbox-row-sub">${goEsc(x.req)}</span>
-            <span class="inbox-row-last">${goEsc((x.msgs[x.msgs.length-1]||{}).text || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
+            <span class="inbox-row-last">${goEsc(inboxPreview((x.msgs[x.msgs.length-1]||{}).text) || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
           </span>
         </button>`, x.id, goInboxTab === 'deleted') : '')).join('');
 
+      /* ── @!URL!@ IS THE PLATFORM'S IN-APP LINK TOKEN, not stray punctuation.
+         HQ inbox campaigns wrap every link in it and the token is literal, so an
+         un-parsed announcement shows the raw delimiters and the link is dead —
+         owner-reported 2026-09-01 on a real "new version of Gopher Go" message.
+         ⛔ ESCAPE FIRST, THEN LINKIFY. The reverse order lets message content
+         inject markup: this text is written in HQ and rendered on a live
+         surface, so it is untrusted by definition. Only the href/label we
+         construct from the captured URL is ever unescaped, and the pattern
+         admits nothing but http(s). A bare URL is linkified too — the token is
+         the convention, not a guarantee every author uses it. */
+      /* The LIST PREVIEW is plain text — it cannot hold an anchor, and it is
+         clipped mid-sentence by design. But it must not show the raw link
+         delimiters either: the owner's screenshot had rows reading
+         "Testing @!www.gophergo.io!@ for a ..." while the bubble beside them
+         rendered the link correctly. Strip the token, keep the URL, collapse
+         newlines so a multi-line announcement previews on one line. */
+      function inboxPreview(text){
+        return String(text == null ? '' : text)
+          .replace(/@!([^\s!]+)!@/g, '$1')
+          .replace(/\s*\n+\s*/g, ' ')
+          .trim();
+      }
+      function inboxBody(text){
+        const safe = goEsc(text);
+        const linkAs = (href, label) => '<a class="inbox-link" href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+        const link = u => linkAs(u, u);
+        /* ⛔ THE TOKEN'S CONTENTS ARE NOT ALWAYS SCHEME-QUALIFIED. HQ authors
+           write @!www.gophergo.io!@ as readily as @!https://…!@, and requiring
+           https?:// left the bare-host form rendering as raw delimiters — the
+           SECOND time this link failed (owner, 2026-09-01). Resolve instead of
+           pattern-matching one shape:
+             · already http(s)      → use as-is
+             · ANY other scheme     → refuse (javascript:, data:, mailto: …)
+             · looks like a host    → assume https://
+             · anything else        → leave the text exactly as written
+           A refusal returns the original token rather than inventing a link. */
+        const resolve = raw => {
+          if(/^https?:\/\//i.test(raw)) return raw;
+          if(/^[a-z][a-z0-9+.\-]*:/i.test(raw)) return null;
+          if(/^[\w.\-]+\.[a-z]{2,}([\/?#]|$)/i.test(raw)) return 'https://' + raw;
+          return null;
+        };
+        /* Bare URLs run FIRST and require a boundary before the scheme, so they
+           cannot reach inside a token (the char before is '!'), and the token
+           pass that follows cannot re-wrap an anchor this pass created. */
+        return safe
+          .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_, pre, u) => pre + link(u))
+          .replace(/@!([^\s!]+)!@/g, (m, raw) => { const h = resolve(raw); return h ? linkAs(h, raw) : m; })
+          .replace(/\n/g, '<br>');
+      }
       const msgs = (t ? t.msgs : []).map(m => `
         <div class="inbox-msg ${m.from==='mine'?'mine':'theirs'}">
           ${m.photo ? `<img class="inbox-photo" src="${goEsc(m.photo)}" alt="Photo attachment">`
-                    : `<div class="inbox-bubble">${goEsc(m.text)}</div>`}
+                    : `<div class="inbox-bubble">${inboxBody(m.text)}</div>`}
           <div class="inbox-msg-time">${goEsc(m.time)}</div>
         </div>`).join('');
 
@@ -6039,7 +6226,15 @@ window.showNoAccount = function(){
             <input type="text" class="inbox-composer-input" id="goInboxInput" placeholder="Message ${goEsc(t.name.split(' ')[0])}\u2026">
             <button type="button" class="inbox-composer-send" id="goInboxSend" aria-label="Send">&#10148;</button>
           </div>`
-        : `<div class="inbox-composer-locked">${!t ? '' : t.state==='active'
+        : `<div class="inbox-composer-locked">${!t ? ''
+              : t.kind === 'support'
+              ? 'Announcements from Gopher Support don\u2019t have a reply channel.'
+              : t.kind === 'job'
+              /* Honest about the real state: the thread is real and so is the
+                 message, but this surface cannot deliver a reply yet. Saying
+                 "once you're accepted" here would be a different lie. */
+              ? 'Replying from the web is coming \u2014 the Gopher Go app delivers messages on this request today.'
+              : t.state==='active'
               ? 'You can message and send photos once you\u2019ve been accepted onto this request.'
               : 'This request is ' + goEsc(t.state) + ' \u2014 messages stay here, but you can no longer send new ones.'}</div>`;
 
@@ -6058,10 +6253,12 @@ window.showNoAccount = function(){
         <div class="inbox-convo">
           ${t ? `
           <div class="inbox-convo-head">
-            <span class="inbox-convo-photo">${goEsc(t.init)}</span>
+            <span class="inbox-convo-photo${t.hq?' is-hq':''}">${t.hq
+              ? '<img src="assets/img/gopher-character-full.svg" alt="Gopher Support">'
+              : goEsc(t.init)}</span>
             <span class="inbox-convo-meta">
               <div class="inbox-convo-name">${goEsc(t.name)}</div>
-              <div class="inbox-convo-req">${goEsc(t.req)} &middot; ${goEsc(t.reqId)}</div>
+              <div class="inbox-convo-req">${goEsc(t.req)}${t.reqId ? ' &middot; ' + goEsc(t.reqId) : ''}</div>
             </span>
           </div>
           <div class="inbox-thread" id="goInboxThread">${msgs || '<div class="inbox-empty">No messages yet.</div>'}</div>
@@ -6082,7 +6279,8 @@ window.showNoAccount = function(){
       body.querySelectorAll('[data-go-thread]').forEach(btn => btn.addEventListener('click', () => {
         goInboxActive = btn.getAttribute('data-go-thread');
         goInboxPending = null;
-        const th = GO_INBOX.find(x => x.id === goInboxActive); if(th) th.unread = 0;
+        const th = GO_INBOX.find(x => x.id === goInboxActive);
+        if(th){ th.unread = 0; GoInbox.markRead(th); }
         renderGoInbox(); goInboxBadge();
       }));
 
@@ -7523,6 +7721,11 @@ window.showNoAccount = function(){
       /* Re-read when the worker enters the dashboard, for the same reason the
          identity load does: signing in mid-session must not leave demo rows. */
       document.addEventListener('go:entered', loadLive);
+      /* The inbox loads on the same event and for the same reason: signing in
+         mid-session must not leave demo threads on screen. */
+      document.addEventListener('go:entered', function(){
+        if(window.GoInbox && GoInbox.load) GoInbox.load();
+      });
       /* Work settings loads on the same event. READ ONLY for now — the save is
          deliberately not wired until the owner has confirmed the categories and
          radius come back right, because a wrong selectionMap key does not error,
