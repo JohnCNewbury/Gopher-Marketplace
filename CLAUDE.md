@@ -272,6 +272,17 @@ Fuller narrative for each — the incident that produced it — is in
   until you copy them in from the clone.
 - ⚠️ **A push to `main` publishes to BOTH hosts** (Pages + the TigerTech FTPS workflow) — scope-check
   for two destinations, and content-verify on both.
+- ⚠️ **THERE ARE NOW TWO SITES, and `deploy.sh` defaults to the LIVE one.** `--site prototype`
+  publishes the **prototype twin** — `johncnewbury.github.io/Gopher-Marketplace-Prototype/`, repo
+  `Gopher-Marketplace-Prototype`, git remote **`proto`** — which serves the same pages plus the
+  web↔Go harness, with PT mode ON and every page `noindex`ed. Created 2026-09-02 so Matt has a URL.
+  **The twin does not track the live site automatically:** it is a separate `--site prototype` run,
+  so it can sit behind, and that is expected rather than drift to fix.
+  ⚠️ **The twin shares production's HOSTNAME**, so the PT allowlist entry for it is host **+ path
+  prefix** (`gopher-web-pt-bridge.js`). The slash after `Marketplace` is the only thing keeping
+  `?pt=1` off the live site — `/Gopher-Marketplace/` must never match. 23-case guard:
+  `scripts/web-checks/pt-production-gate.js`, and **every case there must carry a `pathname`** or
+  the production assertions pass for the wrong reason.
 - ⚠️ **`git` author does NOT identify a session** — every commit here is "John Newbury". To find
   which workstream owns a file, read the **sibling paths** in the same commit (a
   `docs/handoff/<x>/` directory usually names the lane), or search session transcripts. Guessing

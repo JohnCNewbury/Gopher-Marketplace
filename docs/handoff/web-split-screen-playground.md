@@ -1,6 +1,12 @@
 # Web ↔ Go playground — `_prototypes/web-split-screen.html`
 
-**Status:** built and verified live, 2026-08-31. Not deployed. Nothing here is on a live host.
+**Status:** built 2026-08-31. **Deployed 2026-09-02 — it IS on a live host now:**
+
+> ### https://johncnewbury.github.io/Gopher-Marketplace-Prototype/_prototypes/web-split-screen.html
+
+That is a **second GitHub Pages site** (repo `Gopher-Marketplace-Prototype`, git remote `proto`),
+not the production one. Anyone with the link can use it — no clone, no server, no tunnel. It was
+built for Matt.
 
 ## What it is
 
@@ -106,6 +112,9 @@ cd "/Users/johnnewbury/Desktop/All New Gopher/Documentation/Claude Code Review:C
 
 Then open `http://127.0.0.1:8477/_prototypes/web-split-screen.html`.
 
+**Or just use the hosted twin** (above) and skip all of this — same files, and Maps works there,
+which it does not on an unallowlisted local port.
+
 ⚠️ **Check the port is yours before trusting it.** `lsof -iTCP:<port> -sTCP:LISTEN` first — on
 2026-08-31 port **8123** (the README's usual port) was already held by another session serving
 `Final/` as its root, which makes `_prototypes/` unreachable while still answering 200. Never
@@ -126,26 +135,104 @@ on the next deploy *anyone* runs — and now that they are committed they will n
 preflight's dirty-tree warning. Shipping is therefore the default, not a decision.
 
 So PT requires **two** things: `?pt=1` **and** a development host — `localhost`, `127.0.0.1`,
-`*.local`, or `*.trycloudflare.com` (the tunnel `scripts/preview-tunnel.sh` shares previews from).
-It is an **allowlist, not a denylist** of the three known production hosts: fail-closed means a host
-nobody thought of is denied rather than silently permitted.
+`*.local`, `*.trycloudflare.com` (the tunnel `scripts/preview-tunnel.sh` shares previews from), or
+**the prototype twin's path** (below). It is an **allowlist, not a denylist** of the three known
+production hosts: fail-closed means a host nobody thought of is denied rather than silently
+permitted.
+
+### The twin's entry is host + PATH, and that is not a stylistic choice
+
+The twin is served from `johncnewbury.github.io` — **the same hostname as production**, one
+directory over. Allowing the host would therefore switch PT on for the live site. So this one entry
+tests `location.pathname` as well:
+
+```js
+return h === 'johncnewbury.github.io'
+    && /^\/Gopher-Marketplace-Prototype\//.test(location.pathname);
+```
+
+**The slash after `Marketplace` is the entire separation between the twin and production.** Remove
+it and `/Gopher-Marketplace/` matches too. Iframed `Final/` pages inherit the prefix, so no
+`window.top` check is needed — and none should be added, because top-frame sniffing breaks the
+moment a pane is opened in its own tab, which the harness supports on purpose.
 
 Without the host gate, `?pt=1` alone would leave a mode on a public site that anyone could enter by
 guessing a query parameter — and entering it **empties the visible dashboard**. That is not a mode a
 live site should have. With it, the flag on a production host is not merely dormant, it is
 unreachable.
 
-Verified by unit test across 13 hostnames, including all three production hosts with the flag
-present (all `false`) and the spoofing near-misses `trycloudflare.com.evil.example` and
-`localhost.evil.example` (both `false`).
+Verified by `scripts/web-checks/pt-production-gate.js` across **23 cases**, including all three
+production hosts with the flag present (all `false`), both path near-misses
+(`/Gopher-Marketplace-Prototype` with no trailing slash, and `/Gopher-Marketplace-Prototypex/`), a
+host spoof carrying the *right* path (`johncnewbury.github.io.evil.com`), and the classic
+`trycloudflare.com.evil.example` / `localhost.evil.example`.
+
+⚠️ **Every case in that guard must carry a `pathname`, and this is the subtle part.** Before the
+twin existed the cases had no pathname at all. Left that way, the twin rule tests the literal
+string `"undefined"`, returns `false`, and **every production assertion passes for the wrong
+reason** — a green that could never have gone red. Confirmed load-bearing by mutation: delete the
+path test and the production case flips to `true`.
+
+Also confirmed **in a real browser, on the real site**: `?pt=1` on
+`/Gopher-Marketplace/gopher-request.html` gives `GopherWebPT.on() === false` and
+`window.GWeb === undefined`.
 
 The flag is read from `location.search` **only** — deliberately not sticky in sessionStorage,
 because sticky PT is how the prototype's own store once contaminated a normal visit. A broken host
 adapter **throws** rather than degrading, so a silent half-bridge can never be mistaken for a
 legitimately empty dashboard.
 
-**The harness itself never ships.** `_prototypes/` is deployed by an explicit `PROTO` allowlist in
-`scripts/deploy.sh`, and `web-split-screen.html` is not in it.
+**The harness ships to the twin ONLY.** `_prototypes/` is deployed by an explicit `PROTO` allowlist
+in `scripts/deploy.sh`; `web-split-screen.html` is appended to that list **only** under
+`--site prototype`. A live deploy still stages 11 files and the harness is not among them.
+
+## The twin (added 2026-09-02)
+
+`scripts/deploy.sh --site prototype` publishes it. **One script, two sites, deliberately** — a
+forked copy would drift, and the half that drifts is the half holding the guards. Every difference
+is a conditional:
+
+| | live (default) | prototype twin |
+|---|---|---|
+| remote | `origin` | `proto` |
+| prototypes | 11 allowlisted | + `web-split-screen.html` |
+| indexing | indexable | **`noindex,nofollow` on every page**, `sitemap.xml` withheld |
+| PT | fail-closed | on, under the path rule above |
+
+**The noindex is not optional and not tidiness.** The twin is a public copy of a live, *indexed*
+site on the *same hostname*; without it the copy competes with the original in search for every
+page it duplicates. `robots.txt` cannot do this job — it is honoured only at the domain root, and
+`johncnewbury.github.io/` is a shared user-Pages root this project does not own. So the mechanism
+is a meta tag on all 141 pages, and the deploy **aborts** if any page lacks one.
+
+`sitemap.xml` is withheld rather than rewritten: it lists the *production* URLs, so shipping it
+would have the copy actively nominating the original's pages from the copy's own path.
+
+### Verified on the twin, 2026-09-02
+
+Live, in a browser, not by inference:
+
+- the harness boots; `GopherWebPT.on()` is `true`, `GWeb` is present, the Go pane has
+  `__injectJob` **and** `GopherIQData` (which is what proves the `Final/` path rewrite landed)
+- **Maps fully works on the new path** — this was the one thing that could not be settled by
+  reading code, since the key's referrer allowlist might have been scoped to `/Gopher-Marketplace/`.
+  It is not: Geocoder returns `OK` and Places autocomplete returns five real predictions.
+- a request driven through the **real 7-step flow** (description → First available → both addresses
+  → $45 offer → waiver → Submit) crossed the bridge: the harness banner read *"Request GR-0002
+  submitted on request web"*, the web pane went to *Broadcasting to Gophers nearby*, its dashboard
+  count went to 1, and a **Delivery / Errand** card appeared on the Go phone
+- the tick loop is healthy — `n=9` in 8s at the 600ms interval, `lastError: null`
+
+**Not re-tested on the twin:** the return leg (accepting on the Go phone and watching it land back
+in the web app). It needs tapping the card on the phone, and the harness files are byte-identical
+to the ones where it was verified before. Say so rather than implying it was checked.
+
+⚠️ **Two probes that lie here, both hit during this verification.** `iframe.contentDocument.body.innerText`
+returns **0** for the Go pane even while it is visibly rendering — use the screenshot, or the
+harness's own banner, as ground truth. And `textContent` on that frame returns **2.8 MB**, because
+it includes the inline `<script>` source, so any string you grep for will "match" whether or not it
+is on screen. A zero and a hit from those two probes are both worthless. See
+[[prove-the-probe-before-believing-a-zero]].
 
 ### If you are the next person to deploy
 
