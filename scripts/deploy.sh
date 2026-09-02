@@ -318,6 +318,50 @@ if [[ -n "$missing" ]]; then
 fi
 fi
 
+# ------------------------------------------- twin: the ROOT URL is the harness
+# The twin exists to BE the split screen. Landing on the marketing homepage is
+# the wrong destination for the one link that gets shared.
+#
+# FRAME-AWARE ON PURPOSE, and this is the whole subtlety. A plain redirect here
+# would also fire inside the harness's OWN left pane -- gopher-request.html and
+# gopher-connect.html each link "Home" to index.html, and the harness lets you
+# navigate the site freely -- so clicking Home would load the harness INSIDE
+# the harness. Guarding on window.top === window.self splits the two cases:
+# a top-level visit goes to the harness, an iframed visit renders the real
+# homepage, which is exactly what the pane wants.
+#
+# location.search is carried through so a future ?flag on the shared link is
+# not silently dropped at the redirect.
+if [[ "$SITE" == "prototype" ]]; then
+python3 - "$WORKTREE" <<'IDXR'
+import sys,os,re
+wt=sys.argv[1]; p=os.path.join(wt,'index.html')
+SNIP = """<script>
+/* Prototype twin: the root URL is the harness, not the marketing home.
+   Frame-aware -- see scripts/deploy.sh. A bare redirect would nest the
+   harness inside its own left pane when the user clicks Home. */
+if (window.top === window.self) {
+  location.replace('_prototypes/web-split-screen.html' + location.search);
+}
+</script>
+<noscript><p style="font:14px/1.5 system-ui;padding:20px">
+<a href="_prototypes/web-split-screen.html">Open the Web &#8596; Go harness &rarr;</a></p></noscript>"""
+t=open(p,encoding='utf-8',errors='surrogateescape').read()
+if 'web-split-screen.html' in t:
+    print('  ! index.html already carries the redirect - skipped'); sys.exit(0)
+t2,n=re.subn(r'(<head[^>]*>)', lambda m: m.group(1)+'\n'+SNIP, t, count=1, flags=re.I)
+if n!=1:
+    print('  X index.html has no <head> to anchor the redirect - aborting'); sys.exit(1)
+open(p,'w',encoding='utf-8',errors='surrogateescape').write(t2)
+print('  root index.html -> harness (frame-aware redirect)')
+IDXR
+# Prove it landed rather than trusting the writer above.
+grep -q "web-split-screen.html" "$WORKTREE/index.html" || {
+  echo "  X root redirect missing from index.html - aborting"; exit 1; }
+grep -q "window.top === window.self" "$WORKTREE/index.html" || {
+  echo "  X root redirect is not frame-aware - it would nest the harness - aborting"; exit 1; }
+fi
+
 # Verify the rewrite: no LOADABLE Final/ reference may survive, and every path
 # the prototypes pull must actually exist at the flattened location. Matches
 # attribute values and quoted JS literals only — these files also DISCUSS
