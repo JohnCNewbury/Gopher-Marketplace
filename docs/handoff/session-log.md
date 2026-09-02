@@ -2016,6 +2016,47 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   an open bug in this file — the owner's business logo saves but its URL 404s, likely a missing
   `encodeURIComponent` in `generate_image_url`. Route `gopher-go.html` coordination to HQ.
 
+- **Gopher Go dashboard, item #1 of 6 — the Inbox now READS the real server inbox (2026-09-01/02;
+  commits `d93bbc6`, `0867e9d`, `7752b87`, `086e440`; deploy `7b984fa`, live-verified both hosts).**
+  Owner directive: plug the Go dashboard in end to end, items 1-6 in order.
+  ⚠️ **MY AUDIT WAS WRONG AND IT OVERSIZED THE WORK.** I reported the Inbox needed a net-new
+  messaging API. In-app messaging is LIVE and is what the mobile apps use — I missed it because I
+  grepped `message|chat|thread|conversation` and **the table is `orders_faqs`**. A negative grep is
+  a hypothesis; I published it as a finding.
+  **What exists:** `GET /users/messages` returns the whole worker inbox in ONE call, already merged
+  and ordered — a UNION of `orders_faqs` job threads (`message_type='inbox_message'`, latest per
+  sender/receiver/order, with order title + counterparty + profile image) and HQ broadcasts
+  (`'gopher_support'`, from `inbox_users`/`inboxes`, filtered to `now() < expired_on`). The third
+  branch (`refer_favorites`) is disabled server-side for workers by `1=:conditional`. Mark-read is
+  `PATCH /users/inbox_message/:id`. Send/history (NOT yet wired) are
+  `POST /orders/faq/message_send`, `GET /orders/faq/v2/:id`, `POST /orders/faq/image_send`.
+  **Shipped:** load on `go:entered` + poll every 45s WHILE THE PANE IS OPEN (stops on leave, skips
+  while tab hidden); `viewed` normalised (**real boolean on broadcasts, the STRING `'true'` on job
+  rows** — the SQL casts it); GO_INBOX's CONTENTS replaced, never its binding, because the renderer
+  closes over that array; demo threads stand when signed out (public marketing surface).
+  ⛔ **NO FAKE SEND** — the endpoint is a thread LIST, not history, so live job threads show their
+  latest message with the composer LOCKED and honest copy. That fake-success state is why the pane
+  was gated originally; removing the gate without removing the lie would have been worse than the
+  gate.
+  **`@!URL!@` IS THE PLATFORM'S IN-APP LINK TOKEN** (literal, documented in the L&E outreach
+  scripts, used by every HQ campaign). Rendering it took TWO passes because the first only handled
+  scheme-qualified URLs and the owner writes `@!www.gophergo.io!@`. Final rule RESOLVES rather than
+  pattern-matches: http(s) as-is · any other scheme REFUSED (`javascript:`/`data:`/`mailto:`) ·
+  bare host gets `https://` · anything else left as typed. **Escape FIRST, then linkify** — verified
+  adversarially (an `<img onerror>` renders as text, a quote inside a URL stays inside the attribute
+  value) and on the legit case a naive fix breaks (`?t=X&src=go` round-trips, because the escaped
+  `&amp;` is decoded by the attribute parser). The list preview strips the token separately — it is
+  plain text and cannot hold an anchor.
+  ⚠️ **`text-overflow:ellipsis` DOES NOTHING ON AN INLINE BOX.** `.inbox-row-sub`/`.inbox-row-last`
+  already declared the full nowrap+overflow+ellipsis recipe and it was INERT because both are
+  `<span>`s. `display:block` was the entire fix.
+  ⚠️ **A MOCK IS ONLY AS GOOD AS THE STYLESHEET IT LOADS** — a verification harness pulled only the
+  FIRST `<style>` block; `gopher-go.html` has FOUR and the inbox CSS is in the last, so the render
+  came out as one giant gopher. The page was fine; the proof wasn't.
+  **Still open on #1:** thread history, sending, photos — all needing a real two-sided test order,
+  and all with genuine outbound consequences (a live push to a real requester). Owner is creating
+  one. Items #2-6 unstarted.
+
 ### Outstanding to-do
 
 - **NOT a to-do — the Netlify mirror (`gopher-deals.netlify.app`).** Owner ruling 2026-07-28:
