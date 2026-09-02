@@ -44,7 +44,10 @@ tail -1 /tmp/wc-sg.$$; rm -f /tmp/wc-sg.$$
 run node docs/handoff/request-app-parity/test-flow-rules.js >/tmp/wc-fr.$$ 2>&1
 tail -1 /tmp/wc-fr.$$; rm -f /tmp/wc-fr.$$
 
-step "9/10 Go prototype money parsing (a typed \$61.40 is \$61.40, not \$6,140)"
+step "9/10 shared worker helpers are in a scope BOTH call sites can see"
+run node scripts/web-checks/helper-scope.js
+
+step "10/10 Go prototype money parsing (a typed \$61.40 is \$61.40, not \$6,140)"
 run node scripts/web-checks/go-money-parse.js
 
 step "10/10 Deals home crowns the merchant who PAID, and nobody otherwise"
