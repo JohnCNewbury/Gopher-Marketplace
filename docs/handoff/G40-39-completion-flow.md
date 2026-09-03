@@ -138,19 +138,74 @@ it must land as a backend + client pair.
   merger rejects spaces in filenames; this killed three builds (one after 25 minutes). Clear
   `find android/app/src/main/res -name "* [0-9].*"` before building.
 
+## 2026-09-03 (later) — THE REAL ROOT CAUSE FOUND: a THIRD, unfixed completion path
+
+Everything above this section is still true and still shipped. It did not explain the owner's
+original report (order 65085, no photo prompt) because that report was never about the confirm
+screen or Request History — it was about the **worker never being offered the step at all**, on
+a real order, well after 08-28. Chasing that down the wrong way cost two withdrawn guesses
+(capture "regressed" on 08-28; 65085's Gopher was on a stale local build) before landing on the
+actual cause.
+
+**`RequestDetailPullOver.js` is the screen behind the live Active tab** (`getOrders.js` →
+`RequestDetailPullOver`, confirmed live on a real device: Active / Scheduled / Available tabs).
+`ordercard.js` — where G40-39's `photo_requirement` routing was written on 2026-08-20 — is
+**not** part of that flow; its only reachable use from `getOrders.js` is a past/no-longer-available
+request detail, not active-job completion.
+
+Both of `RequestDetailPullOver.js`'s completion handlers (`/complete` and `/complete/v2`)
+hardcoded `next: "grating"` — no `photo_requirement` check, no branch, straight to the rating
+screen — on every real completion, regardless of order type. This is the actual reason 65085 got
+no photo prompt. It would have happened on the App Store build too; it is not a build-freshness
+issue.
+
+**This is now the third time this exact rule has been implemented per-call-site and gone stale:**
+1. `grating.js` embedded its own "Add a pic" control at the rating screen — retired 2026-08-24
+   when rating was decoupled from completion (G40-331); picker and thumbnail strip are still in
+   the file, `display:none`, submitting nothing.
+2. `ordercard.js` got the real G40-39 fix, 2026-08-20 — two calls, both correct.
+3. `RequestDetailPullOver.js` had the same two calls and neither was ever touched.
+
+### The fix — MR !266, gopher-mobile-gopher
+
+* **`src/helpers/photoStepRouting.js`** (new) — `resolvePhotoStepTarget(photoRequirement, isAgeRestricted)`,
+  the branch that had been implemented twice independently in `ordercard.js`.
+* **`RequestDetailPullOver.js`** — both handlers now call it. Confirmed both are the
+  **same-named functions** as `ordercard.js`'s two (`onTapRequesterNotShow`, and the plain
+  `/complete/v2` handler) — mirrors an already-decided precedent (no-show completions get the
+  photo step) rather than a fresh product call.
+* **`ordercard.js`** — both existing sites now call the shared function too, so there is one
+  place this rule lives, not three.
+* **`scripts/assert-photo-step-routing.mjs`**, wired into `.gitlab-ci.yml` — scans the **whole**
+  `src/component` tree for any `/complete`/`/complete/v2` call site and fails if it doesn't route
+  through the shared helper. Deliberately not scoped to named files: naming files is exactly how
+  this path went unnoticed for two weeks. Verified both directions (passes fixed, fails with the
+  exact two offending offsets against the unmodified file) and confirmed **green on GitLab's own
+  CI runners**, not just locally — pipeline `2817970729`, jobs `photo-step-routing` and
+  `available-tab-after-complete` both `success`.
+
+**Client-only. Backend needs nothing** — it already serves `photo_requirement` on both endpoints;
+confirmed because `ordercard.js`'s pre-existing code already read it from the identical response.
+
+**Unresolved loose end, stated rather than guessed:** how order 64887 got its photos, given
+`ordercard.js` isn't reachable from the live Active-tab flow. Not blocking; noted so nobody
+re-derives the "which screen produced 64887" question from scratch.
+
 ## Still owed before this can go green
 
 1. ~~Merge !269 and !270~~ — **DONE 2026-09-03.** Both merged not-squashed to `production`
    (`3d2c357b2`, `8396a54f2`), source branches kept. Content-verified against
    `origin/production` immediately after — the merged files are byte-identical to the tested
    commits, no rebase drift.
-2. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
+2. **Merge !266** (gopher-mobile-gopher) — the actual fix for the reported defect. Owner action;
+   the merge call is classifier-gated for sessions, same as !269/!270 were.
+3. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
+   the real tab flow (not `ordercard.js`) — this is the walkthrough that actually matters now.
+4. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
    session.
-3. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
-   ancestors of the actual shipped tags (`release/ios-863`/`android-864` for the worker+rating
-   gate, `release/ios-851`/`android-852` for the requester confirmation photos) — not merely
-   merged to a branch — and no later commit has touched the completion/photo/rating files since.
-   That de-risks this item to a pure on-device behavioral walkthrough; still not done.
-4. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
+5. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
+   ancestors of the actual shipped tags — not merely merged to a branch — and no later commit has
+   touched the completion/photo/rating files since. Still not done on-device.
+6. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
    **store release**, when it becomes user-visible — not at merge, so this is not blocking yet.
 
