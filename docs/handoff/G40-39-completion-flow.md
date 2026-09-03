@@ -53,7 +53,7 @@ response serves `photo_requirement` from `completion_photo_policy`, !346):
 | Rating gate client half (waiting screen, banner tap, CTA) | worker !245 | `15b4a269` | store-gated |
 | **Request History photos (Scenario 8, added scope)** | requester **!269** | `241e0915e` — **MERGED to production** (`3d2c357b2`, 2026-09-03, content-verified) | store-gated |
 | **Confirm-screen poll (G40-427, AC1 only) — on the WRONG screen, see below** | requester **!270** | `5fd68b57f` — **MERGED to production** (`8396a54f2`, 2026-09-03, content-verified) | store-gated |
-| **`Orderdispute.js` — the ACTUAL live confirm screen — gets the fix** | requester **!271** | `ef3596b85` — **CI green (pipeline 2818375315), MR OPEN, awaiting merge** | store-gated |
+| **`Orderdispute.js` — the ACTUAL live confirm screen — gets the fix** | requester **!271** | `ef3596b85` — **MERGED to production** (`18cb0de0f`, 2026-09-03, content-verified) | store-gated |
 
 ## Traps that outlive this work
 
@@ -203,8 +203,10 @@ re-derives the "which screen produced 64887" question from scratch.
 2. ~~Merge !266~~ — **DONE 2026-09-03.** `aac27c76b` merged as `3a28f1c21`, not squashed, source
    kept. Content-verified: `RequestDetailPullOver.js`, `ordercard.js`, and the new
    `photoStepRouting.js` on `origin/production` are byte-identical to the commit CI passed.
-3. **Merge !271** — CI green (pipeline `2818375315`), awaiting the owner's merge click
-   (not-squashed, source kept, same as every other MR this session).
+3. ~~Merge !271~~ — **DONE 2026-09-03.** `ef3596b85` merged as `18cb0de0f`, not squashed, source
+   kept. Content-verified: `CompletionPhotosSection.js`, `orderConfirmation.js`, `Orderdispute.js`,
+   the new CI guard, and `.gitlab-ci.yml` on `origin/production` are byte-identical to the commit
+   CI passed and the commit screenshotted (below).
 4. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
    the real tab flow (not `ordercard.js`) — this is the walkthrough that actually matters now.
 5. **Re-run the requester-confirm device test — a THIRD real order — once !271 is merged.** The
@@ -268,4 +270,18 @@ it is very likely driven by a server-sent push-notification payload rather than 
 call. Not blocking — the render-site fix was confirmed correct against the file's own
 `props.state?.request?.id` pattern, and the live device evidence (order 65138) already proves
 this is the screen that matters.
+
+**MERGED 2026-09-03** — `ef3596b85` → `18cb0de0f` on `origin/production`, not squashed, source
+kept. Content-verified: `CompletionPhotosSection.js`, `orderConfirmation.js`, `Orderdispute.js`,
+`scripts/assert-confirm-screens-show-photos.mjs`, and `.gitlab-ci.yml` are byte-identical to the
+tested commit.
+
+**Rendered before merge, without spending a live order**: the exact unmodified `Orderdispute.js`
+and `CompletionPhotosSection.js` from this commit, mounted in a real dev server via a throwaway
+route + fixture data + a stubbed `/mobile-config` and `/orders/order_log` response — real code,
+fixture data, not an invented mockup. Confirmed "View pic(s) of completed request" renders above
+Confirm Completion, both thumbnails load, and tap-to-view opens the full-size dialog. All harness
+scaffolding (temp route, fetch stub, `.env.requestor.local`, `node_modules` symlink, the
+`launch.json` entry) was reverted immediately after — `git status` on the worktree came back
+clean, byte-identical to the pushed commit, before this was merged.
 
