@@ -2,7 +2,9 @@
 
 > **Reopened with added scope.** The seven scenarios below are unchanged and still merged. What
 > was missing is an **eighth surface** the original ACs never named — the requester's own Request
-> History card — plus a **race** on the confirm screen (G40-427). See "2026-09-02/03" at the end.
+> History card — plus **two separate confirm-screen defects** (G40-427): a race, and then a whole
+> screen (`Orderdispute.js`, the one a real push notification actually opens) that had never been
+> fixed at all. See "2026-09-02/03" and "2026-09-03 (later still)" at the end.
 > The 2026-08-20 resolution was correct for what it covered; it did not cover everything the
 > owner's design shows.
 
@@ -50,7 +52,8 @@ response serves `photo_requirement` from `completion_photo_policy`, !346):
 | Rating gate server half | backend !347 | `0112957e` | live |
 | Rating gate client half (waiting screen, banner tap, CTA) | worker !245 | `15b4a269` | store-gated |
 | **Request History photos (Scenario 8, added scope)** | requester **!269** | `241e0915e` — **MERGED to production** (`3d2c357b2`, 2026-09-03, content-verified) | store-gated |
-| **Confirm-screen poll (G40-427, AC1 only)** | requester **!270** | `5fd68b57f` — **MERGED to production** (`8396a54f2`, 2026-09-03, content-verified) | store-gated |
+| **Confirm-screen poll (G40-427, AC1 only) — on the WRONG screen, see below** | requester **!270** | `5fd68b57f` — **MERGED to production** (`8396a54f2`, 2026-09-03, content-verified) | store-gated |
+| **`Orderdispute.js` — the ACTUAL live confirm screen — gets the fix** | requester **!271** | `ef3596b85` — **CI green (pipeline 2818375315), MR OPEN, awaiting merge** | store-gated |
 
 ## Traps that outlive this work
 
@@ -200,13 +203,69 @@ re-derives the "which screen produced 64887" question from scratch.
 2. ~~Merge !266~~ — **DONE 2026-09-03.** `aac27c76b` merged as `3a28f1c21`, not squashed, source
    kept. Content-verified: `RequestDetailPullOver.js`, `ordercard.js`, and the new
    `photoStepRouting.js` on `origin/production` are byte-identical to the commit CI passed.
-3. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
+3. **Merge !271** — CI green (pipeline `2818375315`), awaiting the owner's merge click
+   (not-squashed, source kept, same as every other MR this session).
+4. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
    the real tab flow (not `ordercard.js`) — this is the walkthrough that actually matters now.
-4. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
+5. **Re-run the requester-confirm device test — a THIRD real order — once !271 is merged.** The
+   first attempt (order 65138, below) proved the fix that shipped 2026-09-03 (!270) never mattered
+   because it sat on `orderConfirmation.js`, a screen real requesters don't reach.
+6. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
    session.
-5. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
+7. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
    ancestors of the actual shipped tags — not merely merged to a branch — and no later commit has
    touched the completion/photo/rating files since. Still not done on-device.
-6. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
+8. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
    **store release**, when it becomes user-visible — not at merge, so this is not blocking yet.
+
+## 2026-09-03 (later still) — a SECOND unfixed completion path: `Orderdispute.js`
+
+The device test the "still owed" list above called for was run. It disproved !270 rather than
+confirming it.
+
+**Order 65138, `order_logs`, to the second:**
+
+| Event | Time | Offset |
+|---|---|---|
+| Order Completed | 21:07:45.036 | 0s |
+| 2 photos attached | 21:08:47.236 | +62s |
+| Requester Confirmed | 21:11:54.292 | +189s |
+
+The photos existed **127 seconds** before the requester confirmed. Nothing showed on screen.
+`orderConfirmation.js`'s poll fix (!270) had no bug in it — it was on the wrong component. The
+push notification for "Order Completed" opens **`Orderdispute.js`**, found by grepping the exact
+button text the device showed ("Confirm Completion", "will finalize your order", "cannot be
+cancelled"). That file had **zero** completion-photo code, on either of its two render sites
+(the primary post-completion flow, and a second one reachable after a dispute is resolved — both
+call the same `handleConfirmed` → `confirm_payout/:id`).
+
+**Same failure shape as `RequestDetailPullOver.js` the day before**: two screens do the same job,
+one gets fixed, because each was verified against the file already known about. `orderConfirmation.js`
+is real code and is reachable somehow — it was not deleted — but it is not what a real "Order
+Completed" push opens.
+
+### The fix — MR !271, gopher-mobile-request — CI green, awaiting merge
+
+* **`src/component/CompletionPhotosSection.js`** (new) — the fetch/poll/render logic pulled out
+  of `orderConfirmation.js` into a shared component, so it cannot be written a third time
+  independently. `orderConfirmation.js` now renders `<CompletionPhotosSection orderId={orderId} />`
+  instead of carrying its own poll `useEffect`.
+* **`Orderdispute.js`** — gets `<CompletionPhotosSection orderId={orderId} />` at **both**
+  `handleConfirmed` render sites.
+* **`scripts/assert-confirm-screens-show-photos.mjs`**, wired into `.gitlab-ci.yml` — scans the
+  **whole** `src/component` tree for any `confirm_payout` call site and fails if the file doesn't
+  render `CompletionPhotosSection` at least as many times as it calls `confirm_payout`. Verified
+  both directions: passes on the fixed tree; fails with the exact right diagnosis
+  (`Orderdispute.js — 1 confirm_payout call(s) but only 0 CompletionPhotosSection render(s)`)
+  against the unmodified file. Documented in-file limitation: this is a per-file count, not a
+  per-button-site check, so it would not catch a *partial* fix within an already-covered file —
+  it only guarantees no file has zero coverage, which is the failure mode both real incidents
+  shared.
+
+**Not yet resolved, stated rather than guessed:** the exact call site that navigates to
+`Orderdispute.js` was not found in source (no literal `navigate(..., {next:"orderdispute"})`);
+it is very likely driven by a server-sent push-notification payload rather than an in-app nav
+call. Not blocking — the render-site fix was confirmed correct against the file's own
+`props.state?.request?.id` pattern, and the live device evidence (order 65138) already proves
+this is the screen that matters.
 
