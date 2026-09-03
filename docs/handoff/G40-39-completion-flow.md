@@ -207,16 +207,20 @@ re-derives the "which screen produced 64887" question from scratch.
    kept. Content-verified: `CompletionPhotosSection.js`, `orderConfirmation.js`, `Orderdispute.js`,
    the new CI guard, and `.gitlab-ci.yml` on `origin/production` are byte-identical to the commit
    CI passed and the commit screenshotted (below).
-4. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
-   the real tab flow (not `ordercard.js`) — this is the walkthrough that actually matters now.
-5. **Re-run the requester-confirm device test — a THIRD real order — once !271 is merged.** The
-   first attempt (order 65138, below) proved the fix that shipped 2026-09-03 (!270) never mattered
-   because it sat on `orderConfirmation.js`, a screen real requesters don't reach.
-6. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
-   session.
+4. ~~Device-verify the Active-tab flow reaches `completion_photos` post-fix~~ — **DONE on iOS,
+   2026-09-03, order 65146** (below). Android leg still open (item 6).
+5. ~~Re-run the requester-confirm device test — a THIRD real order — once !271 is merged~~ —
+   **DONE 2026-09-03, order 65146.** This is the first test where BOTH fixes worked end to end on
+   real devices: the Go app correctly routed to the photo step (photo attached +33s after
+   Complete) and `Orderdispute.js` correctly showed "View pic(s) of completed request" before the
+   requester confirmed (+41s after the photo, +74s after Complete). Full timeline below.
+6. **Android leg of Scenario 8, and of this fix generally** — nothing in this session has been
+   tested on Android. The emulator clears the version gate now but needs a signed-in session.
+   This is the largest remaining gap: everything verified so far is iOS-only.
 7. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
-   ancestors of the actual shipped tags — not merely merged to a branch — and no later commit has
-   touched the completion/photo/rating files since. Still not done on-device.
+   ancestors of the actual shipped tags — not merely merged to a branch — and today's live test
+   (order 65146) ran on a **local Xcode build** of `origin/production`, not the App Store binary.
+   Still not done on the actual shipped build.
 8. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
    **store release**, when it becomes user-visible — not at merge, so this is not blocking yet.
 
@@ -284,4 +288,44 @@ Confirm Completion, both thumbnails load, and tap-to-view opens the full-size di
 scaffolding (temp route, fetch stub, `.env.requestor.local`, `node_modules` symlink, the
 `launch.json` entry) was reverted immediately after — `git status` on the worktree came back
 clean, byte-identical to the pushed commit, before this was merged.
+
+## 2026-09-03 (final) — order 65146: BOTH fixes confirmed live, end to end, on iOS
+
+Before this test, both physical test devices (iPhone 12 Pro, iPhone 15 Pro Max) were updated to
+fresh local builds of `origin/production` — Go app `13.9.1` (build 33, from `3a28f1c21`,
+carrying !266) and Requester app `13.9.1` (build 601, from `18cb0de0f`, carrying !269/!270/!271).
+Built and installed via `xcodebuild` + `xcrun devicectl` (never the Xcode GUI Run button — see
+"Tooling" trap below); both apps installed on both phones so either could play either role.
+Native version bumps (13.0.3→13.9.1 Go, 13.1.1→13.9.1 Requester) were made only in throwaway
+build worktrees, never committed.
+
+**Order 65146** (gopher = test account `1`, requestor = test account `82271` — both owner-held
+test accounts, confirmed by the owner, not a live customer). Timeline from `order_logs`, EDT:
+
+| Event | Time | Offset |
+|---|---|---|
+| Order Completed | 6:24:28.748 PM | 0s |
+| Photo attached | 6:25:01.688 PM | +33s |
+| Requester Confirmed | 6:25:42.382 PM | +74s (+41s after the photo) |
+
+Both halves of this fix worked correctly, verified from server-side timestamps rather than
+on-screen impression alone (the owner suspected the section had rendered "early" — i.e. before a
+photo existed — and asked for the logs rather than accepting the screen at face value):
+
+1. **The Go app's Active-tab flow (!266) routed to the photo step.** A photo exists for this
+   order at all, attached 33s after Complete — on a pre-fix build this order would have skipped
+   straight to the rating screen with zero attachments, per the `RequestDetailPullOver.js` defect.
+2. **`Orderdispute.js` (!271) showed the photo before the requester confirmed**, not after. The
+   photo was in the database a full 41 seconds before the confirm tap; `CompletionPhotosSection`'s
+   3-second poll would have surfaced it within a few seconds of it landing, around 6:25:04–05 —
+   comfortably before 6:25:42. Nothing about this order's timeline supports the "shown early"
+   theory; the photo upload was just fast.
+
+**Not yet covered by this test, and still open:**
+- **Android** — nothing this session has touched Android on either app. Everything verified so
+  far (Go app routing, requester display) is iOS-only.
+- **The App Store build.** This test ran a local `xcodebuild` build of `origin/production`, not
+  the binary actually distributed to users. The original seven scenarios still need verification
+  on-device against the shipped build, per item 7 above.
+- The 101-guide update, deferred to store release per standing rule.
 
