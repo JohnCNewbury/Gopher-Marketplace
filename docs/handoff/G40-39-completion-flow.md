@@ -49,8 +49,8 @@ response serves `photo_requirement` from `completion_photo_policy`, !346):
 | Requester confirmation photos | requester !234 | `b2108479` | store-gated |
 | Rating gate server half | backend !347 | `0112957e` | live |
 | Rating gate client half (waiting screen, banner tap, CTA) | worker !245 | `15b4a269` | store-gated |
-| **Request History photos (Scenario 8, added scope)** | requester **!269** | `241e0915e` — **UNMERGED** | store-gated |
-| **Confirm-screen poll (G40-427, AC1 only)** | requester **!270** | `5fd68b57f` — **UNMERGED** | store-gated |
+| **Request History photos (Scenario 8, added scope)** | requester **!269** | `241e0915e` — **MERGED to production** (`3d2c357b2`, 2026-09-03, content-verified) | store-gated |
+| **Confirm-screen poll (G40-427, AC1 only)** | requester **!270** | `5fd68b57f` — **MERGED to production** (`8396a54f2`, 2026-09-03, content-verified) | store-gated |
 
 ## Traps that outlive this work
 
@@ -140,12 +140,17 @@ it must land as a backend + client pair.
 
 ## Still owed before this can go green
 
-1. **Merge !269 and !270** — owner action; the merge call is classifier-gated for sessions.
+1. ~~Merge !269 and !270~~ — **DONE 2026-09-03.** Both merged not-squashed to `production`
+   (`3d2c357b2`, `8396a54f2`), source branches kept. Content-verified against
+   `origin/production` immediately after — the merged files are byte-identical to the tested
+   commits, no rebase drift.
 2. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
    session.
-3. **The original seven scenarios verified on the App Store build.** They are recorded as merged
-   and shipped 08-28, but shipped is not verified — and Scenario 1 is exactly what looked broken
-   on 65093.
+3. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
+   ancestors of the actual shipped tags (`release/ios-863`/`android-864` for the worker+rating
+   gate, `release/ios-851`/`android-852` for the requester confirmation photos) — not merely
+   merged to a branch — and no later commit has touched the completion/photo/rating files since.
+   That de-risks this item to a pure on-device behavioral walkthrough; still not done.
 4. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
-   **store release**, when it becomes user-visible — not at merge.
+   **store release**, when it becomes user-visible — not at merge, so this is not blocking yet.
 
