@@ -166,7 +166,7 @@ issue.
 2. `ordercard.js` got the real G40-39 fix, 2026-08-20 — two calls, both correct.
 3. `RequestDetailPullOver.js` had the same two calls and neither was ever touched.
 
-### The fix — MR !266, gopher-mobile-gopher
+### The fix — MR !266, gopher-mobile-gopher — ✅ MERGED to production 2026-09-03 (`3a28f1c21`, content-verified)
 
 * **`src/helpers/photoStepRouting.js`** (new) — `resolvePhotoStepTarget(photoRequirement, isAgeRestricted)`,
   the branch that had been implemented twice independently in `ordercard.js`.
@@ -197,8 +197,9 @@ re-derives the "which screen produced 64887" question from scratch.
    (`3d2c357b2`, `8396a54f2`), source branches kept. Content-verified against
    `origin/production` immediately after — the merged files are byte-identical to the tested
    commits, no rebase drift.
-2. **Merge !266** (gopher-mobile-gopher) — the actual fix for the reported defect. Owner action;
-   the merge call is classifier-gated for sessions, same as !269/!270 were.
+2. ~~Merge !266~~ — **DONE 2026-09-03.** `aac27c76b` merged as `3a28f1c21`, not squashed, source
+   kept. Content-verified: `RequestDetailPullOver.js`, `ordercard.js`, and the new
+   `photoStepRouting.js` on `origin/production` are byte-identical to the commit CI passed.
 3. Device-verify the Active-tab flow reaches `completion_photos` post-fix, on iOS and Android, via
    the real tab flow (not `ordercard.js`) — this is the walkthrough that actually matters now.
 4. Android leg of Scenario 8 — the emulator clears the version gate now but needs a signed-in
