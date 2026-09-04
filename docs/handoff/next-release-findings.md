@@ -270,6 +270,59 @@ distinction changes severity substantially:
 **Next step before or alongside the fix:** actually submit one and see. That is a five-minute test
 and it decides how hard this needs to be hit.
 
+**RESOLVED 2026-09-04 — the five-minute test, and the fix, for real this time.**
+
+**The severity question is answered: past dates WERE accepted and persisted.** Read
+`controllers/order/create.js`, `update.js` and `re_schedule.js` in `gopher-backend-api` directly —
+none of the three paths that can write `orders.request_schedule_time` (create, update, the Gopher's
+reschedule proposal, the requester's reschedule acceptance) compared it to `Date.now()` anywhere. A
+past `request_schedule_time` reaching any of them was copied straight into the DB and persisted.
+**High**, per this finding's own severity table.
+
+**Root cause on the client — one confirmed mechanism, one that could not be reproduced.**
+`src/component/datetimepicker.js` (`gopher-mobile-requester-capacitorjs`) computes `minDate` and the
+"no existing value" default fresh on every render (`moment().add(1, "hour")`) — that part was
+already correct and unchanged since January 2026, so the exact 28-August reproduction (23–27
+enabled, 23 pre-selected) could not be reproduced from current code alone; device clock skew on the
+test handset is a plausible, unfalsifiable candidate. **What WAS a confirmed, live bug**, diffed
+directly against the Gopher app's copy of the same component: this app's picker seeds its initial
+`value` from `props.formik.values?.request_schedule_time` **whenever that field is truthy, with no
+check that it is still in the future** — a pre-existing form value (this app's own
+`RequestDetailPullOver` reschedule sheet hands the picker one; any future draft-resume path would
+too) becomes the picker's silent default, and an effect a few lines down writes it straight back
+into the form on the very next render, no interaction required. The Gopher app's fork of this exact
+file has no such branch — it always defaults to `moment().add(1, "hour")` — which is why this is a
+Request-only defect (see AC5 below).
+
+**Fixed, both ends, defense in depth — the server fix is the one that actually closes the hole:**
+
+- **Server (`gopher-backend-api`, MR pending):** new `helpers/validate_schedule_time.js`, one
+  definition, wired into all four write sites — `create.js`, `update.js`'s `update_v2`,
+  `re_schedule.js`'s `request_reschedule` (the Gopher's proposal) AND `accept_reschedule` (the
+  requester's acceptance — re-validated separately, because a proposal that was future-dated when
+  raised can go stale before it's accepted). Rejects with a 400 (410 on a stale accept, since that
+  proposal was valid when made) before any Stripe side effect. This is the fix that matters
+  regardless of the client mechanism: it closes the hole for a skewed device clock, a tampered
+  request, or any client bug not yet found, not just this one.
+- **Client (`gopher-mobile-requester-capacitorjs`, MR pending):** the stale-seed branch above,
+  fixed — a pre-existing `request_schedule_time` is only honoured if it is still in the future;
+  otherwise the picker falls back to the same safe default used when there is no existing value.
+
+**AC4 — same-day past times: already handled correctly, now documented as a deliberate decision.**
+`filterTime={filterPassedTime}` requires the selected time to be more than **one hour** from the
+moment of selection, uniformly — so 09:00 is never selectable at 14:00 on the same day, and neither
+is 14:30 (inside the one-hour buffer). No separate same-day rule was needed; this is the existing
+lead-time rule doing double duty, confirmed by reading it rather than assumed.
+
+**AC5 — verified rather than assumed, per this finding's own warning that the two apps are diverged
+forks:** `gopher-mobile-gopher` (the Go app) carries its own copy of `datetimepicker.js`, diffed
+directly against the Request app's — confirmed simpler (no stale-seed branch) and not vulnerable to
+this specific defect, so no client fix was needed there. Both apps build against ONE JS bundle each
+via Capacitor (not separate Android/iOS source), so the Request-side client fix covers both
+platforms by construction — not verified on a physical device or simulator this round; build-verified
+only (`react-scripts build`, compiled clean, zero new warnings). **On-device confirmation on both
+platforms is still owed before this closes.**
+
 ### F5 — Favorite Gopher Referral: the referred gophers are hidden behind the action buttons ⚠️ POSSIBLE DEAD END
 
 **Where:** Gopher **Request** → Inbox → "You Have A Favorite Gopher Referral" message.
