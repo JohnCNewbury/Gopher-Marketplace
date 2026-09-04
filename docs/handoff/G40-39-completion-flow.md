@@ -225,6 +225,10 @@ re-derives the "which screen produced 64887" question from scratch.
    screen `RequestDetailPullOver.js` backs. **Still owed: one live order driven through Android**,
    which is the only way to exercise the native camera capture and multipart upload — the parts
    iOS testing cannot cover, since the React logic is byte-identical across both platforms.
+   ➡️ **Handed off 2026-09-04 to the session also reviewing related logs — everything that run
+   needs (prepared devices, pass condition, and the interpretation traps that have already bitten
+   people) is in [`G40-39-ANDROID-TEST-HANDOFF.md`](G40-39-ANDROID-TEST-HANDOFF.md).** That session
+   writes its result back into item 6 here.
 7. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
    ancestors of the actual shipped tags — not merely merged to a branch — and today's live test
    (order 65146) ran on a **local Xcode build** of `origin/production`, not the App Store binary.
