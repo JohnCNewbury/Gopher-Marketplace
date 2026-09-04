@@ -194,6 +194,12 @@ confirmed because `ordercard.js`'s pre-existing code already read it from the id
 `ordercard.js` isn't reachable from the live Active-tab flow. Not blocking; noted so nobody
 re-derives the "which screen produced 64887" question from scratch.
 
+> ➡️ **2026-09-05: read [`G40-39-SESSION-HANDOFF-2026-09-05.md`](G40-39-SESSION-HANDOFF-2026-09-05.md)
+> FIRST.** The notification half is fixed, merged, deployed and proven live (order 65185: photo at
+> +90s, requester notified at +91s). Two items are open: the confirm/dispute **screen** still fires
+> from order state before the photos exist (blocked on an owner decision), and the Go app did not
+> prompt for a rating after confirmation (cause not yet found; the Done-button change is ruled out).
+
 ## Still owed before this can go green
 
 1. ~~Merge !269 and !270~~ — **DONE 2026-09-03.** Both merged not-squashed to `production`
