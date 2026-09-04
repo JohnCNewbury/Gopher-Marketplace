@@ -214,15 +214,31 @@ re-derives the "which screen produced 64887" question from scratch.
    real devices: the Go app correctly routed to the photo step (photo attached +33s after
    Complete) and `Orderdispute.js` correctly showed "View pic(s) of completed request" before the
    requester confirmed (+41s after the photo, +74s after Complete). Full timeline below.
-6. **Android leg of Scenario 8, and of this fix generally** — nothing in this session has been
-   tested on Android. The emulator clears the version gate now but needs a signed-in session.
-   This is the largest remaining gap: everything verified so far is iOS-only.
+6. **Android** — *builds prepared and partially verified 2026-09-04; one live order still owed.*
+   Both apps built from the same production commits as the iOS builds and installed to the real
+   **Samsung Galaxy A50 (`R58N22N8QSM`)** and the `gopher-phone-36` emulator, at versionName
+   **3.9.1** / versionCode **901** (owner chose 3.9.1 for both, mirroring iOS). Verified so far:
+   the shipped Android bundles **contain both fixes** (`completion_photos` / `completion_waiting`
+   present in the Go bundle; `View pic(s) of completed request` and the `orders/order_log` fetch
+   present in the Requester bundle), the Go app **launches past the version gate** on the real
+   phone, is signed in, and lands on the **Active / Scheduled / Available** tab bar — the exact
+   screen `RequestDetailPullOver.js` backs. **Still owed: one live order driven through Android**,
+   which is the only way to exercise the native camera capture and multipart upload — the parts
+   iOS testing cannot cover, since the React logic is byte-identical across both platforms.
 7. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
    ancestors of the actual shipped tags — not merely merged to a branch — and today's live test
    (order 65146) ran on a **local Xcode build** of `origin/production`, not the App Store binary.
    Still not done on the actual shipped build.
-8. `gopher-request-101.html` says nothing about completion photos. The 101-guide rule bites at
-   **store release**, when it becomes user-visible — not at merge, so this is not blocking yet.
+8. **101 guides — copy WRITTEN, deliberately not published.** Both guides need changes, not just
+   `gopher-request-101.html`: the Go guide's Step 7 note calls a completion photo an optional
+   profile-booster "when relevant", which badly understates a step the app now walks every
+   non-A/R worker into. Paste-ready copy for both lives in
+   [`G40-39-101-guide-copy-STAGED.md`](G40-39-101-guide-copy-STAGED.md), **staged outside `Final/`
+   on purpose** — the deploy reads the working tree, so copy left in `Final/` can be published by
+   any other session's `--allow-dirty` run. ⛔ **It must not ship before a store release carrying
+   `3a28f1c21` + `18cb0de0f`:** on today's store build a worker completing from the Active tab is
+   never offered the photo step and a requester arriving via push never sees photos, so this copy
+   would describe behaviour most users cannot get — exactly what the 101 rule forbids.
 
 ## 2026-09-03 (later still) — a SECOND unfixed completion path: `Orderdispute.js`
 
