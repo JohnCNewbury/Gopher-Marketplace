@@ -169,7 +169,10 @@
           words is where the damage is: "weed" would start matching "weeds",
           and 4-letter wine words like "rose" would match "roses" (flowers).
      With both, the pass adds 27 titles and every one is a true positive.
-     Re-measure before relaxing either: scripts/age-normalization-eval.js. */
+     ⚠️ Do NOT relax either rule from intuition — the guards that forbid it are
+     asserted in docs/handoff/request-app-parity/test-age-normalization.js, and
+     the numbers above came from scoring all 64,071 production order titles in
+     Documentation/Dashboard/data/master/Orders.csv. Re-measure, don't re-argue. */
   var _ageNorm = null;
   function ageNormList(){
     if(_ageNorm) return _ageNorm;
