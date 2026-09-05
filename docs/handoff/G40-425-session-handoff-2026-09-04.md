@@ -312,6 +312,18 @@ lockfile mismatch appeared. Remove the worktrees with `git worktree remove` once
 >   when the instance was failed and removed at 17:33. Every future scale-out (and every "Rolling with
 >   additional batch" deploy) repeats it. Infrastructure decision, options on the ticket.
 > - The Retry-button feedback loop noted below still stands and is folded into G40-446's context.
+>
+> **G40-447 CORRECTED AND ACTED ON, same day.** The hourly storms of Aug 27–30 were a **NetworkOut**
+> scale-up alarm (>40 MB/5 min; the instance emits ~148 MB after every :00, source unidentified),
+> not RequestCount — 20–23 scale-outs a day, each breaking socket.io for every phone. Someone
+> switched both alarms to RequestCount at 19:27 UTC Aug 30 (unrecorded until now); zero alarm
+> scale-outs since. **ALB stickiness would be a no-op** for the apps (cross-origin web view, no
+> `withCredentials`, wildcard CORS → the cookie is never returned) — withdrawn. A second instance also
+> drops cross-instance emits (`io.emit` is local). CPU on the t2.xlarge: avg 2–3 %, max 18 %.
+> **Owner set MaxSize 4 → 1 at 12:20 UTC 2026-09-05**, verified Ready/Green, ASG 1/1/1, same
+> instance, API answering. Production is a single-instance app until the socket layer is made
+> multi-instance (client transport change = store release, plus a shared adapter). Rollback:
+> `MaxSize=4`.
 
 ## A global rate limiter is throttling the entire user base to 30 requests/second
 
