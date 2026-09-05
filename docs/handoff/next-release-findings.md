@@ -265,6 +265,22 @@ its real limits.**
   remaining screen or a slower per-component read of container/scroll CSS. Flagging the real state
   rather than reporting a clean sweep.
 
+  **The six remaining candidates above have since been individually checked and cleared** — none
+  match the occlusion shape: `fileUpload.js` and `Orderdispute.js`'s `position:absolute` hits are
+  unrelated loading-spinner overlays, several lines from the nearest input; `multipleCheckBox.js`'s
+  `<input>` is `type="checkbox"` (no keyboard involved at all); `locationSearchInput.js`'s absolute
+  element is its autocomplete *suggestions dropdown*, not the input itself — a different, lower-
+  priority risk (a keyboard could cover the suggestion list) not the same as covering the
+  input/Send button, worth a follow-up note but not a fresh instance of this bug; `verifyotp.js`'s
+  `bottom: 0` hits are `position: "relative"` (a no-op offset, not viewport-pinned) and its digit
+  inputs sit in plain flow on a short, single-screen form; `selectYes.js` (Request) follows the
+  same unrelated-absolute-spinner shape as the others. **This closes out the `position:fixed`/
+  `absolute` sweep entirely** — the two real findings from it remain `InAppMessage.js` (already
+  fixed, independently, via G40-377) and `CancelReasonSheet.js` (self-documented placeholder,
+  unverified). The second failure class (fixed-height/no-scroll containers with in-flow inputs —
+  the class the actual email-OTP bug belongs to) has not been swept at all; it isn't grep-able the
+  same way and would need a slower pass or device time.
+
 ---
 
 ### F3b — ⛔ F3 IS THE NINTH INSTANCE. Nine tickets, fourteen months, not one sweep.
