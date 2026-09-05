@@ -8,7 +8,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | ticket | covers | |
 |---|---|---|
 | **G40-420** | **F4b** — scheduling picker allows PAST dates | **CLOSED 9/5.** Client fix Requester !275 (`a15ce5cd9`, 9/4) + server guard backend !492 (`43ed0516`, live). Device-verified 9/5 on Android (902) and iOS (603): past dates greyed, today pre-selected, same-day times gated to now+1h; scheduled order 65201 round-tripped end to end. AC3 verified by code + deploy, not by a live past-dated request |
-| **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
+| **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | **CLOSED 9/5.** Both apps' Intercom composer fixed (Go `08ca974c0`, Requester !279 → `production`) and CI-guarded (!275/!279). Device-verified iOS both apps, owner-confirmed Android both apps (Galaxy A50). Remaining widened scope (real shared mechanism, second-failure-class sweep, email-OTP) spun into **G40-448** rather than reopened here |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **CLOSED 9/5.** F1a+F1b fixed (Go !276 → `production` `4c3b88ca8`, device-verified, store-gated). F2a–d **do not reproduce** on current `production` (build 905) on Android **or** iOS — verified with two live requests in the feed, at rest and mid-scroll; resolved by changes merged since build 864. Both open questions answered below. AC5 gap stated: F1 not re-checked on iOS |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | **CLOSED 9/5.** Fixed in Requester !256 (`0412fd5f8` → `production` `ca0fe9728`, 9/1; z-index scale + guard). Device-verified 9/5 on Android (902) and iOS (603): picker fully above the tab bar, Done clear, all rows reachable. AC4 answered: navigating away mid-compose loses the draft (by construction) — recorded, not changed |
 | **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | ✅ **CLOSED 9/5** — F5a + F5b shipped 9/1, **device-verified iOS + Android 9/5**; F5c **WILL NOT DO** (owner 9/4) |
@@ -362,6 +362,27 @@ its real limits.**
   unverified). The second failure class (fixed-height/no-scroll containers with in-flow inputs —
   the class the actual email-OTP bug belongs to) has not been swept at all; it isn't grep-able the
   same way and would need a slower pass or device time.
+
+**CLOSED 2026-09-05 — Request app fix merged and device-verified, Android confirmed both apps,
+remaining scope spun into G40-448.**
+
+- **Request app fix + CI guard**: MR !279 merged to `production`, verified by content
+  (`bindMessengerKeyboardFix` present, `intercom-keyboard-scope-contract` wired). **Device-verified
+  same day, real iPhone 15**: keyboard up on Message Support, composer/attachment/Send all visible,
+  text readable as typed — same pass criteria as the Go app.
+- **Go app CI guard**: MR !275 merged to `production`, verified by content.
+- **Android — owner-confirmed, Galaxy A50, both apps.** Not a fresh device-test session with
+  screenshots the way the iOS passes are recorded here; the owner ran both apps' Message Support on
+  this device and reported both working, consistent with the root-cause reasoning above
+  (`resizeOnFullScreen` genuinely resizes the Android webview, independent of Capacitor's `resize`
+  config).
+- **AC3 (one shared mechanism) — owner-accepted recommendation**: keep the proven pattern
+  duplicated per-repo for now rather than force shared infra into this ticket. Real unification
+  spun out to **G40-448**.
+- **AC2 (every text input) and the email-OTP field** — also spun out to **G40-448**, along with
+  the second-failure-class gap this pass surfaced but could not close. G40-421 closes against the
+  one reported, now twice-fixed screen; the wider audit continues there rather than reopening this
+  ticket later.
 
 ---
 
