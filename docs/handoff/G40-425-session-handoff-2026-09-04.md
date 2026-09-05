@@ -288,6 +288,28 @@ lockfile mismatch appeared. Remove the worktrees with `git worktree remove` once
 
 # PART 2 — THE BIGGEST OPEN FINDING (not a ticket yet, needs an owner decision)
 
+> ## ✅ UPDATE 2026-09-05 — ticketed, built, and up for the owner's merge; the Aug 30 cause is found
+>
+> - **G40-446** — the shared-bucket limiter. Fix built on `gopher-backend-api` branch
+>   `fix/rate-limiter-per-client-ip` (`ad59815e`, cut from `production` `acde84af`), **MR !498 →
+>   `production`, squash no, delete source no.** CI pipeline 2822720044 green on all six jobs.
+>   `trust proxy` is set to **`['loopback', 'uniquelocal']`** — an address list, not `true` (forgeable)
+>   and not a hop count (wrong by one if nginx's header handling differs; the live nginx config could
+>   not be read because SSM was blocked for the session, so the fix was made independent of it). The
+>   muted library validation is removed. Consumers re-checked on production: Twilio uses
+>   `SERVER_BASE_URL`; the two hand-rolled `x-forwarded-for` parsers never touch `req.ip`; nothing
+>   reads `req.protocol`/`req.hostname`. 14 new tests drive the real middleware over real HTTP.
+>   **Merging auto-deploys to live.** Ceiling (30/s) deliberately unchanged — separate decision.
+> - **G40-447** — **what Aug 30 17:20 UTC actually was.** Not abuse. EB autoscaling (trigger:
+>   RequestCount 20000/4000) added a second instance at 17:18:36; **ALB stickiness is OFF**
+>   (`StickinessEnabled=false`) and socket.io runs the in-memory adapter, so long-polling clients
+>   hit the new instance, got `400 Session ID unknown`, and re-polled in a loop — **~110,000
+>   `/socket.io/` hits in five minutes** from the apps' web views, which fed the RequestCount trigger
+>   that caused it. The API calls riding alongside tripped the shared bucket → the 429s. Storm ended
+>   when the instance was failed and removed at 17:33. Every future scale-out (and every "Rolling with
+>   additional batch" deploy) repeats it. Infrastructure decision, options on the ticket.
+> - The Retry-button feedback loop noted below still stands and is folded into G40-446's context.
+
 ## A global rate limiter is throttling the entire user base to 30 requests/second
 
 This is **bigger than G40-425** and is **server-side — no store release needed.**
