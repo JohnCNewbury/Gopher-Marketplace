@@ -9,7 +9,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 |---|---|---|
 | **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
-| **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **F1a + F1b FIXED 9/5 — MR !276 (Go) MERGED to `production` `4c3b88ca8` (not squashed, source kept, content-verified), device-verified on the A50; store-gated.** F2a–d not fixed, not in the MR: cosmetic, and the owner's 9/5 direction was to touch nothing that is not broken — see F1 below for the ruling still owed on F2 |
+| **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **CLOSED 9/5.** F1a+F1b fixed (Go !276 → `production` `4c3b88ca8`, device-verified, store-gated). F2a–d **do not reproduce** on current `production` (build 905) on Android **or** iOS — verified with two live requests in the feed, at rest and mid-scroll; resolved by changes merged since build 864. Both open questions answered below. AC5 gap stated: F1 not re-checked on iOS |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
 | **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | **F5a + F5b SHIPPED 9/1**; **F5c WILL NOT DO** (owner 9/4) |
 
@@ -121,11 +121,51 @@ there** — deleting it is a separate cleanup.
 ⚠️ **The Samsung A50 now runs Go 3.9.1 (904), a local build of this branch, not `production`.**
 Reinstall from `production` before using it to reproduce anything else on the Go side.
 
-**Still owed on this ticket:** the owner's ruling on F2a–F2d. They were not reproduced (the Available
-feed was empty and posting requests just to see cosmetic clipping was declined), and the 9/5 direction
-argues for "will not do" until a real user reports them. The ticket cannot close until that is written
-here. iOS was not checked for F1 — on iOS the link was already 3vw and this change only makes the
-Android layout match it, so the iOS screen is expected to be unchanged.
+**The ticket's two open questions — answered 2026-09-05, not assumed:**
+
+1. *Can a business name reach the face-match field?* **No separate field exists.** `users` carries
+   only `first_name` / `last_name` (no business or company column, on `users` or `users_roles`), and
+   the ID screen prints exactly those two fields for the requester. "Selfie of Gopher Inc" was the
+   test account 31677 whose name fields literally read "Gopher" / "Inc". Today's screen read "Selfie
+   of Test TrustShield" for the same reason. A business name appears there only if someone typed
+   it as their own name. Not a defect; nothing to ticket.
+2. *Why was a 09:45 job still in Available at 10:10?* **Because nothing ages scheduled jobs out of
+   the feed.** `get_gopher_active_and_available_orders` lists every `pending`/`scheduled` order
+   within the radius with no comparison against `request_schedule_time`; the "Find expired orders
+   and update their status" comment sits above a loop that expires nothing. The only expiry path on
+   `production` is `helpers/order_expiration_helper.js`, which runs **on a decline** (bid or
+   counter-offer) and only for `pending` orders whose `delivery_eta` has passed with nothing else
+   outstanding — no cron, no schedule-time check. So an unaccepted scheduled job stays listed until
+   someone accepts it, the requester cancels it, or a decline trips that helper. **This is how the
+   product behaves today, by construction — whether it *should* is an owner decision, and would be
+   its own ticket, not part of G40-422.** G40-420 (server rejects past schedule times on write)
+   does not touch this: it stops new past-dated jobs, it does not retire ones that age past.
+
+**F2a–F2d — NOT REPRODUCIBLE on current `production`, 2026-09-05 07:11–07:17 EDT.** Checked the
+way the ticket asked, not by reading code: two live requests posted from the Requester app (65201,
+scheduled + "I'll select my Gopher"; 65202, need-it-now First Available) so the Available feed had
+real cards, then the feed captured **at rest and mid-scroll** on **both** platforms —
+Samsung A50 on Go **3.9.1 (905)** = `production` `4c3b88ca8` (adb captures, in this session's
+scratchpad), and iPhone 12 Pro on Go **13.9.1 (34)** = `3a28f1c21`, which renders identical list
+code (`getOrders.js`, `GopherOrderCardView.js`, `bottomRoutes.js`, `src/css/` are byte-identical
+between that commit and `production`; owner-supplied screenshots 07:17 EDT). Result, same on both:
+"Select My Gopher" renders in full on two lines (F2b); the folder icon sits clear above "Tap to
+view" (F2c); the Scheduled pill has a gap to the icon (F2d); and when scrolled the card clips
+cleanly at the edge of an **opaque white** filter row — nothing draws on top of the chips (F2a).
+The defects were real on build 864 (owner screenshots 8/28); something merged between 864 and 905
+removed them — which commit was not chased, because there is nothing left to fix. Owner's
+direction 9/5: *"i dont want to fix things that arent broken."* Closed as not reproducible, with
+the captures as the evidence. The two test orders were completed rather than cancelled (owner's
+choice, to protect the completion rate) — 65202 and 65201 both delivered, paid out to 31677.
+
+**AC5 — stated deviation, not silently met.** "Checked on iOS as well as Android": the Available
+list (F2) **was** checked on iOS, above. The ID screen (F1) **was not** — it needs an
+age-restricted order driven to drop-off with an iPhone as the *gopher*, i.e. a second paid order
+with the roles swapped, and it was not spent. The reasoning for accepting that: on iOS the link was
+already 3vw (the change makes Android match it), the header size 4 is the value the sibling
+"Not Confirmed" title already used on both platforms, and the body box change only alters what
+happens when content overflows — which on iOS it did not. Expected iOS result: unchanged screen.
+If the next iOS age-restricted order shows otherwise, reopen against this section.
 
 ### F2 — Gopher GO "Available" request list: four overlapping/clipping defects on one screen
 

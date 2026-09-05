@@ -145,8 +145,8 @@ in [`G40-39-completion-flow.md`](G40-39-completion-flow.md), section "2026-09-04
 
 | Device | Go app | Requester app |
 |---|---|---|
-| Samsung A50 `R58N22N8QSM` | ⚠️ 3.9.1 **(904)** — local build of G40-422 branch (MR !276), installed 2026-09-05 06:38 EDT; NOT `production` | 3.9.1 **(902)** |
-| iPhone 12 Pro `92BE0D3B-…` | 13.9.1 **(34)** — Go signed OUT 2026-09-05 | 13.9.1 **(603)** — carries !278, installed 2026-09-05 04:52 EDT |
+| Samsung A50 `R58N22N8QSM` | 3.9.1 **(905)** — local build of `production` `4c3b88ca8` (carries !276), installed 2026-09-05 07:05 EDT; signed in as gopher **31677** | 3.9.1 **(902)** |
+| iPhone 12 Pro `92BE0D3B-…` | 13.9.1 **(34)** — signed in as 31677 briefly 07:15 EDT for the G40-422 iOS list check, then signed OUT | 13.9.1 **(603)** — carries !278, installed 2026-09-05 04:52 EDT |
 | iPhone 15 Pro Max `4FE8ACA1-…` | ⚠️ **99.0.0 (31) — NOT ours** | 13.9.1 **(602)** |
 
 - **Build number is the only reliable marker.** `versionName` is unchanged at 13.9.1/3.9.1 across

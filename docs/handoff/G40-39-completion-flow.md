@@ -665,6 +665,13 @@ says the hand-picked MY Gopher accepting must behave exactly like First Availabl
 **G40-445** (sprint "Payment Options"); the server-side two-step is the mechanism, the reason for
 it is unread.
 
+**Skip-path datapoints, 2026-09-05 07:20 EDT (orders 65202, 65201; gopher 31677 on Go 905 =
+`production`; requester 141548 on Requester 603 = `!278`):** both orders were completed with the
+photo step **skipped**; `Gopher skipped the completion photo step` and `Requester notified to
+confirm completion` were written in the same second, and the requester confirmed 5 s and 3 s
+later. So the skip leg resolves the photo step and opens the confirm screen on the `!278` build
+exactly as the photo leg did on 65198. Two more live orders, same result.
+
 **What this does NOT close:** item 7 (the seven scenarios on the actual store build) waits on the
 Appflow release the owner reports is being built now, carrying `3a28f1c21` (Go) and `18cb0de0f` +
 `b6530ac39` (Requester). Item 8 (101 copy) was pasted 2026-09-05 on the owner's ruling that the
