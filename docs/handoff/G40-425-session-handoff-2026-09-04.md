@@ -15,6 +15,8 @@ could not be done separately, see §1.4.
 **Sprint:** moved TrustShield → **Payment Options** (id 743, Sept 9–16) by owner decision 2026-09-04.
 **Status:** To Do. **Merge is HELD by the owner until the iOS half of AC6 passes.**
 
+> ## ✅ MERGED 2026-09-05 (owner instruction, same session). Request !276 → `production` merge commit `5fe5927a0`; Go !273 → `production` merge commit `39dd80358`. Squash no, source branches deleted. Verified by content: `src/services/mobileConfigCache.js` present on `origin/production` in both repos. **Client-only — not live until a store release.** Worktrees removed.
+>
 > ## ✅ UPDATE 2026-09-05 — the iOS half of AC6 PASSED. AC6 is complete. Merge is no longer held.
 >
 > Run by the owner on his **iPhone 15 Pro Max (iOS 26.6.1)**, driven from this Mac by the G40-425
