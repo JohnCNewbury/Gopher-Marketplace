@@ -7,7 +7,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 
 | ticket | covers | |
 |---|---|---|
-| **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
+| **G40-420** | **F4b** — scheduling picker allows PAST dates | **CLOSED 9/5.** Client fix Requester !275 (`a15ce5cd9`, 9/4) + server guard backend !492 (`43ed0516`, live). Device-verified 9/5 on Android (902) and iOS (603): past dates greyed, today pre-selected, same-day times gated to now+1h; scheduled order 65201 round-tripped end to end. AC3 verified by code + deploy, not by a live past-dated request |
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **CLOSED 9/5.** F1a+F1b fixed (Go !276 → `production` `4c3b88ca8`, device-verified, store-gated). F2a–d **do not reproduce** on current `production` (build 905) on Android **or** iOS — verified with two live requests in the feed, at rest and mid-scroll; resolved by changes merged since build 864. Both open questions answered below. AC5 gap stated: F1 not re-checked on iOS |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | **CLOSED 9/5.** Fixed in Requester !256 (`0412fd5f8` → `production` `ca0fe9728`, 9/1; z-index scale + guard). Device-verified 9/5 on Android (902) and iOS (603): picker fully above the tab bar, Done clear, all rows reachable. AC4 answered: navigating away mid-compose loses the draft (by construction) — recorded, not changed |
@@ -556,6 +556,34 @@ via Capacitor (not separate Android/iOS source), so the Request-side client fix 
 platforms by construction — not verified on a physical device or simulator this round; build-verified
 only (`react-scripts build`, compiled clean, zero new warnings). **On-device confirmation on both
 platforms is still owed before this closes.**
+
+**F4b — CLOSED 2026-09-05, device-verified.** The 9/4 comment on G40-420 left one item owed: an
+on-device pass on both platforms plus a scheduled request round-tripping. Done this morning as a
+by-product of the G40-423 check, on builds that carry the client fix (`a15ce5cd9` is an ancestor of
+both the Samsung's Requester 902 = `e0399336c` and the iPhone 12's Requester 603 = `b6530ac39`):
+
+- **Android** (Galaxy A50, status bar 07:31 EDT): picker default **08:31**, i.e. now + 1 h; dates
+  30 Aug–4 Sep greyed, **5 Sep pre-selected**, 6–19 Sep enabled, 20 Sep onward greyed (14-day
+  window); same-day times before 08:35 greyed. Owner screenshot 07:31.
+- **iOS** (iPhone 12, status bar 07:29 EDT): default **08:29**; identical date and time gating.
+  Owner screenshot 07:29.
+- **Round trip:** order **65201** created 07:08 EDT scheduled for 2026-09-06 09:00, persisted as
+  exactly that, accepted, and completed by the gopher the same morning (owner chose to run it
+  early rather than cancel). No past datetime reached the server.
+
+**AC status:** 1 ✅ (no date before today selectable, both platforms) · 2 ✅ (default is now + 1 h,
+never past) · 3 ✅ **by code and deploy, not by a live probe** — `helpers/validate_schedule_time.js`
+rejects `parsed.getTime() <= Date.now()` at all four write sites and `43ed0516` is an ancestor of
+`production`; nobody sent a past-dated request at the API to watch it bounce, and doing so needs an
+authenticated client the session does not hold · 4 ✅ same-day past times are greyed and the lead
+time is a deliberate **one hour** (`filterPassedTime`, `minDate = now + 1 h`), matching what both
+screenshots show · 5 ✅ both platforms; the Go app's copy of the picker was diffed on 9/4 and has no
+seed-from-stale-value branch.
+
+**Correction to the 8/28 finding, for the record:** the exact "23–27 enabled, 23 pre-selected"
+shape was never reproduced from current code (9/4 comment) and is most consistent with the seed
+bug plus a stale form value on that handset; the 9/5 screens show the bound landing where the code
+says it should.
 
 ### F5 — Favorite Gopher Referral: the referred gophers are hidden behind the action buttons ⚠️ POSSIBLE DEAD END
 
