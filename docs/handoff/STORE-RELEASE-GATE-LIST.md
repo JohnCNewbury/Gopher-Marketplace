@@ -67,9 +67,15 @@ delivered** — but **since 2026-01-01 it is 2 of 104**. Largely historical, not
 4. Merge — **target `production` · squash NO · delete source NO**.
 5. Close **G40-415 AC 6**.
 
-**Still open on G40-415 regardless of the release — AC 5:** `validateRequire` in
-`src/helpers/validation.js:11` has **zero callers**. Wire it or delete it. A correct validator
-attached to nothing is the original bug in miniature.
+✅ **AC 5 is NOT open — corrected 2026-09-05.** It was already satisfied on 2026-08-29 by
+`c67c482aa` (an ancestor of `production`): `src/helpers/validation.js` no longer exists in the
+requester app and `validateRequire` has **zero occurrences** anywhere in the repo. The ticket's
+2026-09-01 comment said otherwise and was stale; that stale line is what made this look open, and
+it was repeated here before being checked. **G40-415 is down to AC 6 alone.**
+
+⚠️ The identical dead file **does** still exist one repo over, in `gopher-mobile-gopher`
+(`src/helpers/validation.js`, 0 importers). Out of scope, flagged not fixed, and deliberately
+left until the current release is out of the way.
 
 ---
 
