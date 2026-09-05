@@ -11,7 +11,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **CLOSED 9/5.** F1a+F1b fixed (Go !276 → `production` `4c3b88ca8`, device-verified, store-gated). F2a–d **do not reproduce** on current `production` (build 905) on Android **or** iOS — verified with two live requests in the feed, at rest and mid-scroll; resolved by changes merged since build 864. Both open questions answered below. AC5 gap stated: F1 not re-checked on iOS |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | **CLOSED 9/5.** Fixed in Requester !256 (`0412fd5f8` → `production` `ca0fe9728`, 9/1; z-index scale + guard). Device-verified 9/5 on Android (902) and iOS (603): picker fully above the tab bar, Done clear, all rows reachable. AC4 answered: navigating away mid-compose loses the draft (by construction) — recorded, not changed |
-| **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | **F5a + F5b SHIPPED 9/1**; **F5c WILL NOT DO** (owner 9/4) |
+| **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | ✅ **CLOSED 9/5** — F5a + F5b shipped 9/1, **device-verified iOS + Android 9/5**; F5c **WILL NOT DO** (owner 9/4) |
 
 Grouped by repo rather than one-ticket-per-finding: the two apps are diverged forks, so tickets
 spanning both create double work, and several findings are one fix.
@@ -686,8 +686,40 @@ spacing scale. Treat F5b/F5c as one design pass, not as separate tweaks.
 > duplicates the button stack's height, so adding a third button or wrapping a label silently
 > re-breaks it. Recorded in `bottom-anchored-controls-audit.md`; not actioned.
 
-⚠️ **Not yet checked on iOS** — AC6 remains open for the whole of G40-424, and is gated on an
-Appflow build (in progress 2026-09-04). Everything shipped so far is build/test-verified only.
+> ### ✅ AC6 CLOSED — verified on BOTH platforms on real handsets, 2026-09-05
+>
+> The last open criterion. Confirmed by the owner on device, with screenshots, and the ticket
+> closed the same morning.
+>
+> | platform | handset | build | result |
+> |---|---|---|---|
+> | **iOS** | iPhone 12 Pro, iOS 26.6.1 | Request app | ✅ pass |
+> | **Android** | Samsung A50 (SM-A505U), Android 11 | `io.gophergoapp.requester` **3.9.1 (902)** | ✅ pass |
+>
+> **What the screenshots show, on each platform — an unscrolled and a scrolled frame:**
+> unscrolled, the list is clipped mid-row at its `maxHeight` bound, which is the intended
+> "there is more below" affordance rather than the old dead end. **Scrolled, the list moves
+> independently** and every referral row renders in full — four rows on each device, each with
+> its avatar, name, checkbox and divider intact — followed by clear white space before the
+> **Accept Referrals** button. The last row is fully readable, not merely tappable, which is
+> exactly what the 180px reservation was changed to buy.
+>
+> **AC4 was upgraded from inferred to observed in the same pass.** The subject had only been
+> verified server-side (read off the running instance). Both screenshots show
+> **"Subject: Favorite Gopher Referral" on a single line with the label correctly aligned** — so
+> the orphaned `l` and the mis-aligned baseline are confirmed gone on real screens, both OSes.
+>
+> **Build provenance was proven, not assumed.** Before testing, the installed APK was pulled off
+> the A50 and its compiled web bundle grepped: `maxHeight:45*A/100` present, `overflowY:"auto"`
+> present, `marginBottom:"180px"` present, and the old `*12/100` reservation **absent — zero
+> occurrences anywhere in the bundle**. So the handset was running the fixed code, and the Android
+> half needed no Appflow wait at all; the fix had already shipped to the phone on 9/4.
+>
+> ⚠️ **One thing deliberately NOT tested:** neither **Accept Referrals** nor **Decline** was
+> pressed. Both are real writes that change who gets offered work. AC6 asks only that the rows are
+> reachable and legible, and that is what was verified.
+
+**G40-424 is CLOSED (Done, 2026-09-05).** ACs 1–4 and 6 met; AC5 retired by the ruling above.
 
 **Pattern — this is the FOURTH instance in one session** of a fixed/bottom-anchored element
 covering content that the user needs (F1b, F2c, F4a, F5a). Four screens, two apps. This is no
