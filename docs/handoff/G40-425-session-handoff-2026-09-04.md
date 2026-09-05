@@ -15,6 +15,49 @@ could not be done separately, see §1.4.
 **Sprint:** moved TrustShield → **Payment Options** (id 743, Sept 9–16) by owner decision 2026-09-04.
 **Status:** To Do. **Merge is HELD by the owner until the iOS half of AC6 passes.**
 
+> ## ✅ UPDATE 2026-09-05 — the iOS half of AC6 PASSED. AC6 is complete. Merge is no longer held.
+>
+> Run by the owner on his **iPhone 15 Pro Max (iOS 26.6.1)**, driven from this Mac by the G40-425
+> follow-on session. Builds were local Xcode Debug builds of the pushed branch heads (`b5b7f84d1`
+> Request, `5ec6ad99c` Go), installed with `devicectl`. Nothing on the branches changed.
+>
+> | | cached config + airplane mode | control: device-level uninstall → reinstall → airplane mode ON before first open |
+> |---|---|---|
+> | Request | past config → session prompt → **full home screen** (offline banner, all four request buttons) | **"Failed to load configuration"** |
+> | Go | **full Go home screen** (tabs, order list waiting on network) | **"Failed to load configuration"** |
+>
+> Step 5 (resume after airplane off) confirmed: no loading flash. Same build, same network state,
+> only the cache differed — so WKWebView `localStorage` **does** survive a full process kill, which
+> was the one question iOS could genuinely fail.
+>
+> **⚠️ The first control attempt was VOID, and the reason matters for anyone repeating this.** The
+> owner deleted both apps from the Home Screen, I reinstalled, airplane mode on, and both apps
+> **reached sign-in** — i.e. the cache was still there. A device-level `devicectl device uninstall`
+> (which removes the data container), reinstall, then airplane mode produced the correct failure on
+> both. Either the Home Screen removal did not purge the container or an app was launched for an
+> instant before airplane mode; I could not distinguish. **Always run the iOS control with a
+> device-level uninstall**, not a Home Screen delete.
+>
+> **Two corrections to §1.9 (iOS local build):**
+> - `MARKETING_VERSION` is **NOT** 13.9.0 in either Xcode project — it is **13.1.1 (Request) and
+>   13.0.3 (Go)** on the branch heads. Appflow injects `IOS_VERSION` at build time; the projects do
+>   not carry it. The live endpoint returns `requiresUpdate: true` for both project values and
+>   `false` at 13.9.0, so a local device build **needs the bump** (I used 13.9.1) exactly as Android
+>   did. **Reverted, verified against the pushed refs.**
+> - Xcode could not reach either iPhone for ~40 minutes ("Connection was invalidated",
+>   `tunnelState: unavailable`, "previously reported preparation errors") despite replug, Trust and a
+>   phone restart. The Mac-side **`remotepairingd` and `CoreDeviceService`** (user-owned XPC
+>   services, up since boot) were the stuck party — `kill`ing both brought **both** phones online in
+>   seconds. They are not `launchctl` services; `kickstart` does not find them.
+>
+> Also observed: after dismissing the session prompt, a signed-in Request user gets the **home screen**
+> offline, not just the prompt. §1.7's caveat stands (the data behind the buttons still needs the
+> network) but the app is more usable offline than §1.7 describes.
+>
+> **Merge hand-off (unchanged):** target **`production`** · squash **no** · delete source branch
+> **yes**. Per the owner's 2026-09-04 ruling, recorded in `standing-rules.md` (`b024ae2`), mobile MRs
+> target `production` while the owner is the sole author; **do not retarget to `next`.**
+
 ## 1.1 What is on the branches right now
 
 | repo | branch | HEAD | MR |
