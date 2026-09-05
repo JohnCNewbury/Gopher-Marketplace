@@ -130,13 +130,51 @@ configuration also returns `IDENFY_API_KEY`, `IDENFY_SECRET_KEY` and
 | 5 | TrustShield in **Account**, captured by us not iDenfy | client | store release |
 | 6 | post-cliff message that does not send users into a retry loop | `trustshield.js` | ✅ done, backend only |
 
-### ⚠️ The one genuinely irreversible deadline on this ticket
+### ✅ CORRECTED 2026-09-05 — the "irreversible" iDenfy item is largely DONE
 
-The worker's ID-confirmation screen **hotlinks the requester's selfie and licence from iDenfy,
-live, at completion time.** When the iDenfy account lapses those images are gone and **the
-completion flow breaks for every existing holder.** Mirroring them is only possible *while the
-account is alive*. See `trustshield-gate-removal-interim.md` §5 item 4. This is not gated on the
-store release — it is gated on the vendor account, and it is the item with a hard stop.
+This section previously said the worker's ID-confirmation screen hotlinks the requester's selfie
+and licence live from iDenfy, and that mirroring them was the one thing that becomes impossible.
+**That was written from the ticket, not the code, and it is out of date.** Verified today:
+
+| | |
+|---|---|
+| `scripts/trustshield-export-images.js` | ran **2026-08-07/08** |
+| objects under `uploads/trustshield/` | **20,391** |
+| serve path | **mirror FIRST, iDenfy as fallback** — `helpers/trustshield_files.js`, live on `production` |
+| self-repair | a mirror miss iDenfy *can* still answer is copied into the mirror in the background |
+| internal capture | takes precedence over both |
+
+So existing holders are **not** waiting on anything here, and the completion flow does not go blank
+the day iDenfy stops answering.
+
+### ⚠️ What IS still open — small, real, and time-bounded
+
+**122 of 7,004 active scan refs have no mirror.** Measured 2026-09-05 by set-differencing the
+distinct active `idenfy_scan_ref` values against the S3 prefixes: 6,882 covered, **0 orphans**.
+
+About 98 of those were already unrecoverable when the export ran (that run found roughly that many
+scan refs iDenfy would no longer answer — see the header of `helpers/trustshield_files.js`). The
+remainder — roughly two dozen — **enrolled after the snapshot** and are covered only by the
+self-repair path, which works **only while iDenfy still answers**.
+
+**Fix: re-run the same script before the account lapses.**
+
+```bash
+node scripts/trustshield-export-images.js --dry-run   # count first
+node scripts/trustshield-export-images.js             # full run
+```
+
+**Idempotent and resumable** — it skips every scan ref already recorded OK, so a re-run costs only
+the stragglers. SELECT-only on our DB, file reads on iDenfy (billed on approved verifications, not
+file reads — confirmed in writing by the vendor 2026-08-03), writes only to our own private S3.
+
+⚠️ **It does `require('../models')`, so it runs the production boot DDL** — the same trap as
+`lib/sendPushNotif.js`. Read `api_version` back with raw `pg` afterwards.
+
+⚠️ **The credit balance is the clock, and the last reading is stale.** 147 credits on 2026-08-29 at
+~11.8/day projects to exhaustion around **10 September**. Re-read from **Finance → Identification**,
+never the Overview — the Overview renders `used / limit` and has already been misread once as
+`remaining / total`, wrong by a factor of twenty.
 
 **Owner constraint (2026-08-04):** everyone who already holds TrustShield **keeps it**, and their
 completion protocol behaves identically end to end. Only *new* enrolment is shut off. The
