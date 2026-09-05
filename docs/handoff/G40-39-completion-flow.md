@@ -661,8 +661,9 @@ went to 31677's one registered socket (the Samsung), the prompt appeared, and th
 **Observed transient, outside G40-39 (logged in the 2026-09-05 handoff, report-don't-fix):** for
 the 2.84 s between *Accepted* and *Assigned* the requester saw the "I'll select" state ("(!) New
 Request Info (!)") before it corrected to "Request Accepted by". Canon (`three-acceptance-paths-canon`)
-says the hand-picked MY Gopher accepting must behave exactly like First Available. Needs its own
-ticket; the server-side two-step is the mechanism, the reason for it is unread.
+says the hand-picked MY Gopher accepting must behave exactly like First Available. Ticketed as
+**G40-445** (sprint "Payment Options"); the server-side two-step is the mechanism, the reason for
+it is unread.
 
 **What this does NOT close:** item 7 (the seven scenarios on the actual store build) waits on the
 Appflow release the owner reports is being built now, carrying `3a28f1c21` (Go) and `18cb0de0f` +

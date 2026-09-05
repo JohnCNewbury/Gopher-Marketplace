@@ -236,8 +236,9 @@ classifies the acceptance before it knows the accepting Gopher is the hand-picke
 server emits a generic "new bid" event before the auto-connect state lands). Which of those it
 is has not been checked.
 
-**Not part of G40-39.** Do not fold it into the completion-flow ticket. It needs its own ticket
-and a session that reads: the requester's acceptance/bid socket handling in
+**Not part of G40-39.** Ticketed as **G40-445** (Bug, sprint "Payment Options", 9–16 Sep,
+created 2026-09-05 at the owner's instruction; the ticket points back here). It needs a session
+that reads: the requester's acceptance/bid socket handling in
 `gopher-mobile-requester-capacitorjs` (the poll or event that flips to "New Request Info"), and
 the backend accept path for `notify_fav_gopher` orders (whether the order is moved to the
 connected state in the same transaction as the acceptance, or after a follow-up step).
