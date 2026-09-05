@@ -288,6 +288,9 @@ lockfile mismatch appeared. Remove the worktrees with `git worktree remove` once
 
 # PART 2 — THE BIGGEST OPEN FINDING (not a ticket yet, needs an owner decision)
 
+> ## ✅ G40-446 MERGED AND LIVE 2026-09-05 (owner instruction). MR !498 → `production` merge commit `87b532e2`, unsquashed, source branch kept. Deployed by CodePipeline/EB at 11:57:58 UTC (version label `code-pipeline-…-87b532e2…`), environment Green, zero 5xx after deploy, no limiter validation errors in the app log.
+> **Live proof from this Mac (64.99.216.171):** before deploy, `RateLimit-Remaining` started at 28 and skipped numbers mid-window (other users drawing on the shared bucket); after deploy it decrements by exactly one per request. A 45-request parallel burst at 12:00:04 UTC: **30 × 200, 15 × 429**, and the next request after the window admitted. Log attribution of those 15 to this address alone is pending CloudWatch's ~20-min lag (recorded on G40-446 when read). **AC5 (Twilio non-keyword inbound) is the owner's to run.**
+>
 > ## ✅ UPDATE 2026-09-05 — ticketed, built, and up for the owner's merge; the Aug 30 cause is found
 >
 > - **G40-446** — the shared-bucket limiter. Fix built on `gopher-backend-api` branch
