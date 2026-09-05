@@ -52,25 +52,24 @@
 > re-litigate the sentence.**
 
 
-**Status: BUILT 2026-08-29 — two MRs raised and green, one env var outstanding.**
+**Status: DEVICE-QA'd 2026-09-04 — all backend/client work merged and deployed; env var confirmed
+live; 11 of 12 acceptance criteria device-verified today. Only the store release itself remains.**
 
 | piece | where | state |
 |---|---|---|
-| Internal capture: columns, `POST /users/trustshield/enroll`, worker file resolution | `gopher-backend-api!433` · `bdbc6372` | ✅ green · awaiting merge (**merge auto-deploys**) |
-| Client: TrustShield moves to Account, request flow un-gated, 3-shot capture | `gopher-mobile-requester-capacitorjs!247` · `88674b0ca` | ✅ green · awaiting merge |
-| Post-cliff message — the only mitigation that needs no store release | `!433` · `e51a8ac3` | ✅ **added 2026-08-29** · §3.6 |
-| `idenfy.js` honest error state (standalone) | `!246` · `8acca5583` | ✅ **MERGED** into `production` as `fa21574d9`, unsquashed |
-| **`TRUSTSHIELD_MIN_AGE=21` on `Gopher-Production`** | env var — **in neither MR** | ⛔ **NOT DONE. Blocks the store release.** See §3.1. |
+| Internal capture: columns, `POST /users/trustshield/enroll`, worker file resolution | `gopher-backend-api!433` · `bdbc6372` | ✅ **merged AND deployed** — confirmed 2026-09-04: `a8be532c` is an ancestor of the live EB version label |
+| Client: TrustShield moves to Account, request flow un-gated, 3-shot capture | `gopher-mobile-requester-capacitorjs!247` · `88674b0ca` | ✅ **merged to `production`** — device-QA'd 2026-09-04 |
+| Post-cliff message — the only mitigation that needs no store release | `!433` · `e51a8ac3` | ✅ live in production |
+| `idenfy.js` honest error state (standalone) | `!246` · `8acca5583` | ✅ **MERGED** into `production` as `fa21574d9` |
+| **`TRUSTSHIELD_MIN_AGE=21` on `Gopher-Production`** | env var | ✅ **CONFIRMED LIVE 2026-09-04** (read directly via `aws elasticbeanstalk describe-configuration-settings`), alongside `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` |
 
-⚠️ **Neither pipeline can catch the missing env var** — there is nothing to compile. It is the only
-part of this work that no automated check protects.
+⚠️ **Store release still hasn't shipped.** All of the above is merged/deployed/device-tested against
+a locally-built (non-Appflow) install pointed at production — real users on the currently-live app
+build (tags unchanged since 3.9.1, 2026-08-28) do not have any of this yet. See §6 for the device-QA
+results and §7 for the credit-cliff timing that makes the release itself the remaining urgency.
 
 *Originally: SPEC, owner-approved 2026-08-23. The spec below is kept for its detail — read it
 through the banner's table, not as a plan to execute.*
-
-**⚠️ URGENT — must ship in the first release after 2026-08-31.** The credit cliff is the **last week
-**~10–12 September** (re-measured
-2026-08-29 — see §1) and this cannot land without a store release. See §7.
 
 ---
 
@@ -282,9 +281,21 @@ depends on credits.
 
 ## 2. What changes
 
+> ✅ **Env-var state re-verified 2026-09-05.** This section's table used to say
+> `TRUSTSHIELD_MIN_AGE` was *"REINSTATED, still unset"*, contradicting line ~64 which said
+> confirmed live. **Line 64 was right.** Read directly off `Gopher-Production`:
+> `TRUSTSHIELD_MIN_AGE=21` and `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false`, with a control showing
+> 64 environment variables visible — so the reading is real, not an empty result from an expired
+> session. An earlier attempt the same day *did* return empty and that was the session, not the
+> configuration ([[aws-cli-session-expiry-reads-as-zero-results]]).
+>
+> ⚠️ **Filter that query to the two variable names.** A broad `grep -iE "TRUSTSHIELD|IDENFY"`
+> over the EB configuration also returns `IDENFY_API_KEY`, `IDENFY_SECRET_KEY` and
+> `IDENFY_CALLBACK_SIGNING_KEY`. Do not paste that output into a doc, a ticket, or a transcript.
+
 | # | Change | Where | Cost |
 |---|---|---|---|
-| 1 | Disable the server-side gate | `TRUSTSHIELD_MIN_AGE=`**`21`** — ⛔ **REINSTATED, still unset** | env var, no deploy |
+| 1 | Disable the server-side gate | `TRUSTSHIELD_MIN_AGE=`**`21`** — ✅ **LIVE. Re-read off Gopher-Production 2026-09-05** (alongside `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false`), with a 64-var control proving the probe. The "still unset" this row used to carry was stale and contradicted line 64. | env var, no deploy |
 | 2 | Remove the client tap-gate — **keep the under-21 hide** | `RequestCategoryBlock.js` | store release |
 | 3 | Stop hiding the A/R toggle for under-30 | `togglebutton.js:139` | store release |
 | 4 | Error state instead of an infinite spinner | `idenfy.js` | store release |
@@ -734,17 +745,51 @@ the process when the change lands (AC 7).
    `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` in the live environment, confirmed by reading them back.
    **This must be true BEFORE the store build reaches anyone, not after** — AC 1 is unachievable
    without it, and no pipeline can catch it.
-8. **`age_restricted_id_confirmed` is stored as a real boolean, not `null`,** for an age-restricted
-   order completed by an unverified requester (§5.1 defect 1). This is the record the at-door control
-   produces; without it the control evidences nothing for exactly the population this change creates.
+8. ⚠️ **STALE — superseded, not fixed.** Originally: "`age_restricted_id_confirmed` is stored as a
+   real boolean, not `null`, for an age-restricted order completed by an unverified requester."
+   **This was never fixed as written.** The no-show path (`order_pick_up_complete` v1) still never
+   writes the field — confirmed 2026-08-31 (100% NULL across all recent no-show completions).
+   Writing `false` would overload a value that already means "TrustShield-verified, no tap happened."
+   **The actual resolution:** `completed_via_no_show`, shipped in `!444`, answers what this criterion
+   was reaching for through a different, unambiguous field. Treat this criterion as satisfied by that
+   field's existence, not by the boolean it originally asked for.
 9. *(follow-on, not release-blocking)* The **no-show / ID-not-confirmed** completion persists its
-   photo (§5.1 defect 2).
+   photo (§5.1 defect 2). Not chased further — still open, still non-blocking.
 10. ⛔ **On a real handset, both platforms:** the three-shot capture opens a camera, submits, and sets
     the badge. `CameraPreview` is a native plugin — **CI cannot prove any part of this.**
 11. **A newly enrolled (internal) holder's ID and selfie render on the Gopher's at-door confirmation
     screen**, served from our S3 — and **no iDenfy call is made** while doing so.
 12. **An existing iDenfy-era holder is completely undisturbed** — badge, perk, and images all still
     resolve by the legacy path. This is the population that cannot be re-verified once credits die.
+
+### Device QA — 2026-09-04, owner-run, independently verified
+
+Run against a **locally-built (Xcode, not Appflow) install pointed at production** — real device,
+not simulator/browser. Backend state (env vars, deployed SHA) re-confirmed first-hand immediately
+before testing began.
+
+| # | Result | Notes |
+|---|---|---|
+| 1 | ✅ PASS | 21–29, no TrustShield, full order completed, iPhone |
+| 2 | ✅ PASS | Real under-21 account, Alcohol/Other A/R not visible |
+| 3 | ✅ PASS | covered by #1 |
+| 4 | ⚠️ **Not live-triggered — closed on code proof.** Confirmed the currently-live client's `alert(idenfyTokenResponse.data.data.message)` fallback (in `idenfy.js`, present on `release/android-852`, the tag actually in the field) matches the backend's `cannot_verify` response shape (`{success:false, data:{message}}` at 200) exactly, by design — the backend comment states this was built to require no store release. No safe way to trigger a genuine vendor-side failure against production without either burning real credits or briefly breaking real API credentials, so this was accepted on code-level proof rather than live-repro'd. |
+| 5 | ✅ PASS | Account entry point, optional framing, no TrustShield mention in request flow |
+| 6 | ✅ PASS | Existing badge + $1 perk confirmed. DB-verified separately (see below) |
+| 7 | ✅ CONFIRMED | Read directly from `Gopher-Production` — see status table above |
+| 8 | see #8 above | superseded by `completed_via_no_show`, not independently re-tested today |
+| 9 | not tested | non-blocking follow-on, unchanged |
+| 10 | ✅ PASS, both platforms | iPhone 12 + iPhone 15 (front/back/selfie capture, upload, badge set); Android confirmed separately by owner. No coordinate/rotation defects observed. |
+| 11 | ✅ PASS | Go app's Age-Restricted ID Confirmation screen rendered the newly-captured images for a fresh internal enrollment (test account 31677's images, order 65168) |
+| 12 | ✅ PASS | Tested live (order 65168, account 31677 — verified 2024-01-15 via legacy iDenfy, `capture_source=null`) **and** DB-verified: 6,995 `trust_shield_verified=true` today vs 6,715 baseline (2026-08-07) — up, not down. The only 4 verified→unverified accounts predate this sprint by weeks-to-months (a separate, already-recorded 2026-08-03 owner-ruled under-21 correction) |
+
+⚠️ **One benign observation during #12 (order 65168):** the Age-Restricted ID Confirmation screen
+briefly appeared then animated closed before the tester could act on it; completing the order
+normally afterward worked with no issue. Checked Sentry (both mobile and backend projects, 24h
+window) and the full backend request log for order 65168 — zero errors, zero duplicate/retried
+calls, a single clean `PATCH /orders/65168/complete/v2` (200, 360ms). No server-side trace exists to
+chase; if this recurs, it needs a screen recording, not a log dig — there is nothing in the logs to
+find.
 
 ---
 

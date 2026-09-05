@@ -95,33 +95,35 @@ so the server setting cannot loosen anything for an installed app. The env var's
 stop the **new** client's un-gated flow hitting a 403 at submit — so it must be correct **at the
 moment the release goes live**, neither before as a rescue nor after as a fix-up.
 
-### ⛔ Settle this contradiction FIRST — the interim doc disagrees with itself
+### ✅ Contradiction SETTLED 2026-09-05 — the env var IS live
 
-| where | claim |
+The interim doc disagreed with itself: line ~64 said `TRUSTSHIELD_MIN_AGE=21` was confirmed live,
+its §3 table said *"REINSTATED, still unset"*. **Line 64 was right.** Read directly off
+`Gopher-Production`:
+
+| variable | value |
 |---|---|
-| `trustshield-gate-removal-interim.md` line ~64 | `TRUSTSHIELD_MIN_AGE=21` **CONFIRMED LIVE 2026-09-04**, alongside `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY=false` |
-| same doc, §3 table line ~286 | `TRUSTSHIELD_MIN_AGE=21` — **"REINSTATED, still unset"** |
+| `TRUSTSHIELD_MIN_AGE` | **21** |
+| `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` | **false** |
 
-Both cannot be true. **Read the live configuration and correct the doc before the release lands** —
-this is a two-value setting that decides whether under-30 requesters can submit at all.
+Control: 64 environment variables visible, so this is a real reading rather than an empty result.
+An earlier attempt the same day returned nothing and **that was an expired AWS session, not the
+configuration** — the trap in `aws-cli-session-expiry-reads-as-zero-results`. `aws sts
+get-caller-identity` first, every time.
 
-```bash
-aws elasticbeanstalk describe-configuration-settings \
-  --application-name <app> --environment-name Gopher-Production \
-  --query "ConfigurationSettings[0].OptionSettings[?Namespace=='aws:elasticbeanstalk:application:environment'].[OptionName,Value]" \
-  --output text | grep -iE "TRUSTSHIELD|IDENFY"
-```
+The stale table row in `trustshield-gate-removal-interim.md` has been corrected.
 
-⚠️ **An expired AWS session returns EMPTY, not an error, through some paths** — memory
-`aws-cli-session-expiry-reads-as-zero-results`. **Prove the probe before believing a zero:** run
-`aws sts get-caller-identity` first. An attempt on 2026-09-05 returned nothing and it was the
-session, not the configuration.
+⚠️ **Filter the query to those two names.** A broad `grep -iE "TRUSTSHIELD|IDENFY"` over the EB
+configuration also returns `IDENFY_API_KEY`, `IDENFY_SECRET_KEY` and
+`IDENFY_CALLBACK_SIGNING_KEY`. Never paste that output into a doc, a ticket or a transcript.
+
+**So item 1 below is done. What remains on G40-350 is the store release itself.**
 
 ### Also on this ticket, from the interim doc's own table
 
 | # | item | where | needs |
 |---|---|---|---|
-| 1 | disable the server-side gate | `TRUSTSHIELD_MIN_AGE=21` | env var — **verify, see above** |
+| 1 | disable the server-side gate | `TRUSTSHIELD_MIN_AGE=21` | ✅ **done — verified live 2026-09-05** |
 | 2 | remove the client tap-gate, **keep the under-21 hide** | `RequestCategoryBlock.js` | store release |
 | 3 | stop hiding the A/R toggle for under-30 | `togglebutton.js:139` | store release |
 | 4 | error state instead of an infinite spinner | `idenfy.js` | store release |
