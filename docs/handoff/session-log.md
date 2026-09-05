@@ -2234,3 +2234,104 @@ green-reading-as-success, an invented non-brand colour, a 14px inset, a top-heav
 to the content below. **Every one passed the DOM assertions.** Functional tests proved the
 mechanism; only a picture showed the product. Related: a peer's repro found a real data-loss bug
 my own comment claimed was impossible.
+
+## 2026-09-02 — G40-9 built, device-tested, and BLOCKED on a payments seam
+
+Full detail: `docs/handoff/trustshield-sprint-handoff-2026-09-02.md`.
+Transcript: `0d5ce217-5441-4841-aba0-693014154200.jsonl`.
+
+**Shipped and device-verified:** the header safe-area double-count (BOTH apps — a 6vh bar
+padded by a 59px inset under global `border-box` collapsed its content box to zero, so the
+title drew below its own background); G40-421 Go-app Intercom keyboard; and G40-9's release
+path, requester sheet, notification, and reason capture.
+
+**⛔ G40-9 CANNOT SHIP.** A released order sits in `pending` while its Stripe intent is still
+`requires_capture`. Every downstream path assumes `pending` means no authorisation yet — so
+`charge.confirm()` on accept fails, the catch treats it as a declined card, and it sets
+`REQUIRE_PAYMENT_METHOD`, a hard-coded "User's bank denied transaction", deletes counter
+offers/bids, and **flags the requester's card bad** (order 65073). `GOPHER_RELEASE_ENABLED`
+is `false` and must stay off. See memory `released-order-carries-a-live-authorization`.
+
+**Three traps worth the whole day's cost, all now in memory:** the caller identity is
+`req.body.decoded` and `check-route-authz` cannot catch the wrong spelling; a component
+defined inside a component that ticks on a timer remounts its buttons every second and eslint
+sees nothing; and a bundle grep is not proof a fix is committed — the `statuses[]` poll fix
+lived only in a working tree and in one commit on an MR closed as superseded, and every
+rebuilt bundle looked correct until a `checkout -B` wiped it.
+
+
+## 2026-09-05 — ten tickets closed, the 28 Aug screenshot series cleared, Appflow build cut
+
+**Closed today:** G40-39 · G40-420 · G40-421 · G40-422 · G40-423 · G40-424 · G40-425 ·
+G40-426 · G40-427 · G40-446. **Raised and still open:** G40-445 · G40-447 · G40-448.
+
+Several lanes ran in parallel; the notes below are the ones that cost time to learn, not a
+per-ticket tally. Ticket comments carry the AC-by-AC detail, and
+`docs/handoff/next-release-findings.md` carries the F-series rulings.
+
+### The 28 Aug F-series is fully closed — G40-420, 422, 423, 424
+
+All four defects from the owner's 28 Aug screenshots are shipped and **device-verified on
+Android and iOS**. G40-424 is the one worth reading: the referral list had `overflowY:"auto"`
+with **no height bound**, and overflow with nothing to overflow does nothing — the element
+grew to fit, so a scrollbar could never exist. That made the screen a **dead end**, not merely
+ugly: the per-gopher checkboxes that enable Accept/Decline sat under the fixed buttons with no
+way to reach them. A second, different bug followed — the space reserved for those buttons was
+a **percentage** while the stack it clears is anchored in **pixels**, so what got cleared
+depended on screen height and short handsets lost.
+
+**AC5 (a layout pass) was retired by owner ruling** — *"dont change the existing layout, that
+was not the issue"* — and the hand-computed `marginBottom: "180px"` clearance was deliberately
+left in place with it, because fixing that means touching the layout. The four-root-cause
+analysis behind this ticket's own "bottom-anchored controls are systemic" warning is in
+`docs/handoff/bottom-anchored-controls-audit.md`; the remedy (**measure the bar, don't restate
+it**) is a future ticket, not work on any of these.
+
+### ⭐ A web-layer fix may already be on the phone — check before waiting for a build
+
+G40-424's Android half was gated on "the Appflow build", and it did not need one. The
+installed APK was pulled off the A50 and its compiled web bundle grepped: `maxHeight:45*A/100`
+present, `overflowY:"auto"` present, `marginBottom:"180px"` present, old `*12/100` reservation
+**absent, zero occurrences**. The fix had reached the handset in build **902 on 9/4**.
+
+**How to apply:** `adb shell pm path <pkg>` → `adb pull` → `unzip 'assets/public/*'` → grep the
+`main.*.js` bundle for a string unique to the fix. Two minutes, and it converts "we think this
+build has it" into proof. It only works for **web-layer** changes; a native fix needs the dex
+(see below).
+
+### G40-426 AC4 — the push tap, verified on real hardware at last
+
+This ticket closed 9/4 with AC4 explicitly **unverified**, because the native fix had never
+executed. It has now. Native provenance was proven the dex way — `unzip 'classes*.dex'` and
+`strings | grep` for **`gopherPushTap`** and the **`gopher_`** channel prefix, both present in
+build 905. One real `order.payout` sent through the production `sendPushNotif`; the app moved
+from **Available Requests** to the **Request tab**.
+
+⭐ **The channel name is a second, independent proof, and it is the cheaper check.** The
+notification posted on `channel=gopher_payout_and_cost_adjustments` — the fix's own
+`CHANNEL_ID = "gopher_" + sound`. **Miscellaneous means the legacy path and an invalid test.**
+Read it out of `adb shell dumpsys notification --noredact` before trusting any tap result.
+
+⚠️ **Firing a test push runs the production boot DDL.** `lib/sendPushNotif.js:8` is
+`require('../models')` (it needs the DB for `clearDeadTokens`), so an ad-hoc send triggered
+`162 queries succeeded, 0 skipped` plus an `Updating API version` write. `api_version` was read
+back immediately with raw `pg` and was **unchanged**. Using the real helper is still right for
+payload fidelity — an invented FCM call proves less — but **read that table back every time**:
+it is the force-update floor for every handset in the field.
+
+**A crowded shade is not a delivery failure.** The notification took ~6 scrolls to reach on a
+device holding 60+ posted notifications, including Download Manager entries from 2024. It
+rendered normally at `importance=4`. "I can't see it" was read as suppression and stated as
+such before `dumpsys` was consulted — that claim was wrong and had to be withdrawn.
+
+### Two process notes
+
+**Read the findings doc before assuming a ticket is untouched.** The summary-table rows for
+G40-420, G40-422 and G40-423 had already been written as CLOSED by other lanes before this
+lane looked at them. Same shape as the G40-420 duplication on 9/4 — see memory
+`check-for-parallel-work-before-starting-a-ticket`. Git and the doc lead; Jira lags.
+
+**Production rotated its EB instance mid-morning** (`i-0728cd7f…` → `i-0b6b9269…`, 07:54 ET,
+almost certainly the G40-425 deploy landing). An SSM command against the old id returned
+`InvalidInstanceId — Instances not in a valid state`, which reads like a permissions fault and
+is not one. Re-query `describe-instances` rather than debugging the error.
