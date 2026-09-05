@@ -10,7 +10,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **CLOSED 9/5.** F1a+F1b fixed (Go !276 → `production` `4c3b88ca8`, device-verified, store-gated). F2a–d **do not reproduce** on current `production` (build 905) on Android **or** iOS — verified with two live requests in the feed, at rest and mid-scroll; resolved by changes merged since build 864. Both open questions answered below. AC5 gap stated: F1 not re-checked on iOS |
-| **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
+| **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | **CLOSED 9/5.** Fixed in Requester !256 (`0412fd5f8` → `production` `ca0fe9728`, 9/1; z-index scale + guard). Device-verified 9/5 on Android (902) and iOS (603): picker fully above the tab bar, Done clear, all rows reachable. AC4 answered: navigating away mid-compose loses the draft (by construction) — recorded, not changed |
 | **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | **F5a + F5b SHIPPED 9/1**; **F5c WILL NOT DO** (owner 9/4) |
 
 Grouped by repo rather than one-ticket-per-finding: the two apps are diverged forks, so tickets
@@ -443,6 +443,36 @@ This is the **third** instance tonight of a primary action overlapping another c
 F4a). Three separate screens, same failure shape: a bottom-anchored sheet or row that does not
 account for what is beneath it. Worth considering whether these get one structural fix rather
 than three patches.
+
+**F4a — RESOLVED, closed 2026-09-05.** Fixed in `gopher-mobile-requester-capacitorjs` MR !256
+(`0412fd5f8`, merged to `production` as `ca0fe9728` on 2026-09-01 13:26 EDT; also on `next`). Cause
+was systemic, not local: the picker sheet is a MUI drawer at its default z-index 1200 and the tab bar
+is raised to 2000 while a pull-over is open, so the *bar* drew over the *sheet*. Nothing arbitrated
+z-index anywhere in the app. Fix: `src/helpers/zIndex.js` (MUI drawer 1200 < raised tab bar 2000 <
+modal sheet 2100), consumed by `popup.js` and `bottomRoutes.js`; guard `scripts/assert-layer-order.mjs`
+(8 checks, mutation-proved, still green on `production` 9/5). The ticket sat in To Do with no comment
+until 9/5 — the fix was merged but never closed out; this entry is the close.
+
+**Device-verified 2026-09-05, both platforms, on builds that carry `ca0fe9728`** (Samsung A50 on
+Requester 3.9.1 (902) = `e0399336c`; iPhone 12 on Requester 13.9.1 (603) = `b6530ac39`): new Grocery
+request → Schedule For Specific Date/Time → picker open. On both, the picker renders as a popover
+anchored under the date field, entirely above the tab bar — Done fully visible, no tab under it,
+every date row and time entry reachable (owner screenshots 07:29 and 07:31 EDT). AC1–AC3 met
+literally; the commit's caveat that "the sheet wins the overlap rather than avoiding it" does not
+arise in the rendering seen today, so no owner ruling on cosmetic overlap was needed.
+
+**AC4 — answered, recorded, not changed.** With a Grocery draft open (picker closed via Done), tapping
+the **Inbox** tab and then **Request** lands on the "How can we help you today?" home screen — **the
+in-progress request is lost.** Verified on the iPhone 12, 07:35 EDT; matches the code (nothing is
+persisted; form state is per-screen Formik values, see memory `cross-device-request-resume`). What
+!256 closes is the *mis-tap* route to that loss: while the picker is open the tab bar sits under the
+sheet's backdrop and is unreachable. Every deliberate navigation away still costs the draft. That is
+the product gap the draft-resume work (`feat/g40-request-drafts`, unmerged) exists for — its own
+item, not this ticket's.
+
+**AC5** met: checked on iOS and Android. The second picker host (`deletePopup.js`, a centred MUI
+`Modal`, used by `renderMenu.js` and `renderForm.js`) is not a bottom sheet and was not the
+photographed path; not changed.
 
 **F4b — ⚠️ OPEN QUESTION, possibly serious, NOT asserted: are past dates selectable?**
 In the screenshot, **23 is selected** (blue) and **23–27 are enabled** (black, tappable), while
