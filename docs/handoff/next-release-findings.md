@@ -202,6 +202,69 @@ screen (Intercom support composer, Gopher Go, iOS). Not yet verified: Android on
 equivalent surfaces, and the email-OTP "Not your email? Change it" screen named in the ticket title
 (owner ruled 2026-08-28 this one is **not a blocker** for this release — see F3b below).
 
+**UPDATE 2026-09-05 — Request app ported, CI guard gap found and fixed, real audit progress and
+its real limits.**
+
+- **Gopher Request app**: `intercom.ts` had never received this fix at all (confirmed: zero hits
+  for `bindMessengerKeyboardFix` in the pre-fix file). Ported identically —
+  `gopher-mobile-requester-capacitorjs` MR
+  [!279](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/279),
+  commit `1f868db2d`, CI green. **Built, not yet device-verified, not yet merged** — the phone
+  test that would close this is the next thing this doc needs updated with a result.
+- ⛔ **The CI guard was never actually a guard.** `scripts/assert-intercom-keyboard-scope.mjs`
+  shipped with the original merge (`08ca974c0`) and passes cleanly when run by hand, but **neither
+  app's `.gitlab-ci.yml` ever invoked it** — confirmed by grep, zero mentions of "intercom" in
+  either pipeline config before today. A revert to the global `resize:"native"` one-liner this
+  script exists to catch would have shipped clean through CI in both apps. Fixed in
+  `gopher-mobile-gopher-capacitorjs` MR
+  [!275](https://gitlab.com/gophergo/gopher-mobile-gopher-capacitorjs/-/merge_requests/275) and
+  folded into Request's !279 — both add an `intercom-keyboard-scope-contract` job, no install step
+  needed (the script imports only Node builtins). **Neither MR merged yet.**
+- **AC3 ("ONE shared mechanism"), checked directly, not assumed:** both apps' `package.json` name
+  is literally `"my-app"` — no shared package, no monorepo, no workspace. A real shared mechanism
+  means standing up a new shared package and wiring both CI pipelines to consume it — infra work,
+  not a same-morning fix. Worse than "not shared yet": **the codebase already has three
+  independent, non-unified answers to this exact problem**, found by reading, not guessed:
+    1. **Intercom messenger** (this finding) — toggles `Keyboard.setResizeMode` globally while open.
+    2. **`InAppMessage.js`**, the apps' own requester↔Gopher chat composer — a completely separate,
+       already-working fix from **G40-377**: tracks `keyboardHeight` via
+       `Keyboard.addListener("keyboardWillShow"/"keyboardWillHide", ...)` locally in the component
+       and sets `bottom: keyboardHeight + "px"` directly. Confirmed equivalent in both apps (diff is
+       mostly unrelated feature drift — image attachments, permission handling — the keyboard logic
+       itself, comment included, is line-for-line identical).
+    3. **`CancelReasonSheet.js`** (G40-188, byte-identical in both apps) — a third technique again:
+       no keyboard listener at all, just an "Other" textarea placed *above* the action buttons
+       inside a scrolling sheet body, relying on the scroll to keep it clear. **This file's own
+       header comment already names G40-421 by number**: *"When G40-421 lands its shared fix, this
+       should adopt it rather than keep its own arrangement."* So this was a deliberate, reasoned
+       placeholder left by whoever wrote G40-188 — not an unflagged bug — and it is exactly as
+       device-unverified as the other two. Left alone rather than given a fourth bespoke arrangement
+       under this morning's deadline.
+  **Recommendation for owner sign-off:** accept per-repo duplication of a proven pattern as the
+  answer for now (what exists), and treat "build one real shared mechanism" as its own follow-on
+  infra ticket — not something to force into a same-morning close. This finding, not a shipped
+  unification, is the AC3 deliverable the ticket itself allows for ("if a shared fix is genuinely
+  not possible, that finding is itself the deliverable").
+- ⚠️ **AC2 ("every text input enumerated"), attempted, and its methodology gap surfaced by the
+  ticket's own named bug.** Grepped both apps for `position:fixed`/`position:absolute` combined
+  with an input-like element in the same file — real counts: Go app 74 `<input>` + 16 `<textarea>`
+  + 5 `<TextField>/<Field>` (95 total); Request app 75 + 14 + 5 (94 total). This surfaced
+  `InAppMessage.js` and `CancelReasonSheet.js` above, plus several files not yet individually
+  checked with the same rigor: `fileUpload.js`, `Orderdispute.js`, `multipleCheckBox.js`,
+  `locationSearchInput.js` (both apps), `verifyotp.js` (Go only), `selectYes.js` (Request only).
+  **But this method has a proven blind spot**: checked `pages/verifyEmail.js` — the exact
+  email-OTP "Change it" field named in this ticket's own title, already owner-verified as broken
+  on-device — and its input sits in **plain document flow, no `position:fixed` or `absolute`
+  anywhere near it**. The occlusion there almost certainly comes from a *different* mechanism this
+  grep cannot see: a fixed-height, non-scrolling screen container (computed from the same
+  frozen-`innerHeight` pattern) leaving nothing for WebKit's native focus-scroll to scroll within —
+  not viewport-pinned positioning at all. **A grep for `position:fixed/absolute` will structurally
+  miss this class of bug wherever else it exists.** Concretely: AC2 as a fully rigorous
+  "every input, both classes of risk checked" enumeration is not something this pass completed, and
+  I don't think it's honestly completable by grep alone — it needs either device-testing each
+  remaining screen or a slower per-component read of container/scroll CSS. Flagging the real state
+  rather than reporting a clean sweep.
+
 ---
 
 ### F3b — ⛔ F3 IS THE NINTH INSTANCE. Nine tickets, fourteen months, not one sweep.
