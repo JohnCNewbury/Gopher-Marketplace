@@ -11,7 +11,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
 | **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | F1b carries mis-tap risk on an age-restricted decision |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
-| **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | F5a may be a dead end |
+| **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | **F5a + F5b SHIPPED 9/1**; **F5c WILL NOT DO** (owner 9/4) |
 
 Grouped by repo rather than one-ticket-per-finding: the two apps are diverged forks, so tickets
 spanning both create double work, and several findings are one fix.
@@ -158,6 +158,49 @@ rather than a patch.
 
 ⚠️ **Check the same path on Android** before ticketing — if it reproduces there too, it is one
 ticket, not two.
+
+**RESOLVED 2026-09-01, device-verified 2026-09-04 — root cause established, scoped fix merged, now confirmed on a real handset.**
+
+**Root cause: ours, not Intercom's.** `@intercom/messenger-js-sdk` is the **web SDK** — the messenger
+renders inside this app's own webview, so no native Intercom SDK is involved and this app's own
+Capacitor keyboard config governs it. `capacitor.config.ts` sets `Keyboard.resize: "body"`, and the
+plugin's own definition of that mode is explicit: only the CSS `body` element is resized — **the
+viewport itself never changes**. Intercom's composer is bottom-anchored `position: fixed`, which
+positions against the viewport, so a viewport that never moves leaves it under the keyboard. Android
+was unaffected because `resizeOnFullScreen` resizes the Android webview by a separate, OS-level
+mechanism (`windowSoftInputMode="adjustResize"`) that Capacitor's `resize` config doesn't even
+control on that platform — confirmed by reading `@capacitor/keyboard`'s own Android implementation,
+not assumed from the "iOS fails, Android is fine" symptom alone (Intercom ships separate iOS/Android
+SDKs, so a native-SDK bug could just as easily have been one-sided).
+
+⚠️ **Why the fix is NOT a global `resize: "native"` switch** — that is the obvious one-line change,
+and it would break far more than it fixes: this codebase hard-codes `height: innerHeight` from a
+**module-scope capture frozen at load**, across thousands of call sites in both apps. Under `"body"`
+the viewport never changes, so those frozen values stay valid. Under `"native"` the webview actually
+shrinks while the frozen values do not, so every keyboard-adjacent screen in both apps would lay out
+against a height that no longer exists — a far larger blast radius than the one screen this finding
+is about.
+
+**The actual fix** (`src/intercom.ts`, `gopher-mobile-gopher`, merged `08ca974c0` → `production`
+2026-09-01): switch to `resize: "native"` **only while the Intercom messenger is open**, reading and
+restoring whatever mode was active before (not hardcoding back to `"body"`, so a future config
+change isn't silently overridden) — restored on the messenger closing **and** on app pause, so a
+crash or backgrounding mid-chat can't leave the whole app mis-laid-out for the rest of the session.
+Guarded by `scripts/assert-intercom-keyboard-scope.mjs`, which is specifically built to fail if
+someone later "simplifies" this back to the tempting global one-liner.
+
+**Device-verified 2026-09-04**, closing the one gap the merge itself flagged as open ("NOT
+device-verified" in its own commit message): real iPhone 15, current build. With the keyboard up on
+the Message Support composer, the text field, attachment icon and Send button are all visible and
+typed text is readable as entered — the exact inverse of the original two-screenshot repro (blank
+white down to the keyboard, text typed blind). Screenshot on file.
+
+**Still open, not covered by this fix:** the ticket this finding maps to (G40-421) was widened to
+"audit every text input in both apps," which this fix does not do — it closes the one reported
+screen (Intercom support composer, Gopher Go, iOS). Not yet verified: Android on a real device
+(reasoning above is established from source, not handset-tested), the Gopher **Request** app's
+equivalent surfaces, and the email-OTP "Not your email? Change it" screen named in the ticket title
+(owner ruled 2026-08-28 this one is **not a blocker** for this release — see F3b below).
 
 ---
 
@@ -345,6 +388,27 @@ action the referral at all.**
 
 **Test that first.** It is one swipe and it decides the severity.
 
+> ### ✅ ANSWERED, then FIXED — owner on device 2026-09-01: *"There was no ability to scroll at all."*
+>
+> **So this was the HIGH branch: a genuine dead end.** A referral arrived in the Inbox, the user
+> opened it, and no sequence of taps could accept or decline it.
+>
+> **Root cause was one missing property, not a sizing mistake.** `SupportMessage.js` declared
+> `overflowY: "auto"` with **no height bound** — `overflow-y` with nothing to overflow *does
+> nothing*, because the element simply grows to fit its content, so a scrollbar can never exist.
+> Fixed in **`dbfc088a2`**.
+>
+> **A second, different bug surfaced immediately after** (owner: *"I can tap it but it's poor UI.
+> I just need a little more room."*): the space reserved for the fixed buttons was expressed as a
+> **percentage**, while the button stack it had to clear is anchored in **px** — a unit mismatch,
+> so the reservation drifted with viewport height instead of tracking the thing it was clearing.
+> Fixed in **`f24492247`**. Both merged to `production` via **`4e6359952`**.
+>
+> ⚠️ **AC3 is NOT closed by this.** Making the rows reachable does not address the ticket's sharper
+> point below — **Select All** remains the easiest control to hit, so the path of least resistance
+> is still to accept every referral without seeing who they are. That is a design decision, and it
+> is still open.
+
 **Second-order problem even if it does scroll:** **Select All** *is* reachable while the individual
 rows are not. So the path of least resistance is to accept **every** referral without being able to
 see who they are. Favorite Gophers affect who gets offered work — accepting blind is not a neutral
@@ -365,6 +429,17 @@ The net effect is that the **headline of the message looks like a rendering fail
 words: *"look at subject"* — it is the most visible defect on the screen even though F5a is the
 more consequential one.
 
+> ### ✅ FIXED 2026-09-01 — `f33d1b54`, merged to `production` via `f43a147d`
+>
+> **Shortened to "Favorite Gopher Referral"** on the owner's instruction, rather than widening the
+> column. The value column is **shared by every inbox message type**, so widening it to fit this
+> one 35-character title would have re-laid-out all of them. The title is computed per query, not
+> stored, so existing messages picked it up with **no migration**.
+>
+> ⚠️ **The same user-facing string lived in two places and had already drifted** — `"You have A"`
+> in the push notification against `"You Have A"` in the inbox query. Changing one and not the
+> other would have left a push and the message it opens disagreeing. Both were changed together.
+
 **F5c — the screen has no coherent spacing system (owner: "overall poor UI").**
 Beyond the two specific defects, the composition itself is the problem:
 - the subject row is cramped against both the divider above and the text below
@@ -375,7 +450,25 @@ Beyond the two specific defects, the composition itself is the problem:
 This is not a list of pixels to nudge — the screen needs laying out again with a consistent
 spacing scale. Treat F5b/F5c as one design pass, not as separate tweaks.
 
-⚠️ **Not yet checked on iOS.**
+> ### ⛔ CLOSED — WILL NOT DO. Owner ruling 2026-09-04, verbatim:
+> ### *"dont change the existing layout, that was not the issue"*
+>
+> **F5c is retired, and AC5 with it.** The defect on this screen was the **dead end** — the list
+> could not scroll, so the checkboxes that enable Accept/Decline were unreachable. That is fixed
+> (F5a). The spacing observations below stand as a description of what was seen on 2026-08-28;
+> they are **not** a work item, and the screen is not to be re-laid-out.
+>
+> ⚠️ **Do not re-raise this.** The "overall poor UI" note in the original finding reads like an
+> open invitation to a design pass; the owner has now explicitly declined one. Same shape as the
+> scrim and white-on-green sweeps — the observation being fair is not a licence to act on it.
+>
+> **One latent risk is deliberately being left alone**, because fixing it would mean touching the
+> layout: the F5a clearance is a hand-computed `marginBottom: "180px"` (65 + 90 + 25) that
+> duplicates the button stack's height, so adding a third button or wrapping a label silently
+> re-breaks it. Recorded in `bottom-anchored-controls-audit.md`; not actioned.
+
+⚠️ **Not yet checked on iOS** — AC6 remains open for the whole of G40-424, and is gated on an
+Appflow build (in progress 2026-09-04). Everything shipped so far is build/test-verified only.
 
 **Pattern — this is the FOURTH instance in one session** of a fixed/bottom-anchored element
 covering content that the user needs (F1b, F2c, F4a, F5a). Four screens, two apps. This is no
