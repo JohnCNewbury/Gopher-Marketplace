@@ -9,7 +9,7 @@ All five are type **Bug**, status **To Do**, labelled `release-testing-2026-08`.
 |---|---|---|
 | **G40-420** | **F4b** — scheduling picker allows PAST dates | ⛔ functional; ranks first |
 | **G40-421** | **F3 + F3b** — keyboard occlusion: **WIDENED 8/28 to the audit + shared fix** | ⛔ functional; 9th instance in 14 months, none ever swept |
-| **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | F1b carries mis-tap risk on an age-restricted decision |
+| **G40-422** | **F1a, F1b, F2a–d** — Gopher Go overlap/clipping (6 defects) | **F1a + F1b FIXED 9/5 — MR !276 (Go) MERGED to `production` `4c3b88ca8` (not squashed, source kept, content-verified), device-verified on the A50; store-gated.** F2a–d not fixed, not in the MR: cosmetic, and the owner's 9/5 direction was to touch nothing that is not broken — see F1 below for the ruling still owed on F2 |
 | **G40-423** | **F4a** — Request scheduling picker Done overlaps Inbox tab | mis-tap navigates away mid-compose |
 | **G40-424** | **F5a–c** — Favorite Gopher Referral: list buried, subject broken, needs layout pass | **F5a + F5b SHIPPED 9/1**; **F5c WILL NOT DO** (owner 9/4) |
 
@@ -84,6 +84,48 @@ rather than assume one edit covers it. See memory `two-id-capture-components`,
 `check-every-consumer-before-changing-a-shared-value`.
 
 ⚠️ **Not yet checked on iOS.** Text wraps differently; the clipping may be better, worse, or absent.
+
+#### F1 — RESOLVED 2026-09-05 (MR !276, `gopher-mobile-gopher`, `f2329dae4` merged to `production` as `4c3b88ca8` at ~06:50 EDT on the owner's "You merge please. Go!"; not squashed, source branch kept; all four files byte-identical to the tested commit) — store-gated
+
+**Re-verified first on the current build before anything was touched** (owner's rule, 9/5: *"i dont
+want to fix things that arent broken"*). On Go **3.9.1 (902)** — `production` at `df5b3100b`, which
+already carried the 9/2 header-inset fix and the 9/4 G40-419 pop-up — a live age-restricted order
+driven to the ID screen on the Galaxy A50 showed **both defects still present**:
+[before](G40-422-id-screen-902-before.png). F1a had changed shape: the title no longer touched
+Back, but its second line sat on the subtitle.
+
+**Cause (read in code, then measured on the screenshot):** the screen's body is a **fixed-height
+box (65% of `innerHeight`) with centred flex children**. On Android the "not present" link is drawn
+at 4vw (iOS 3vw), wraps to three lines, and the stack is ~35 px taller than the box. Centred
+overflow spills out **both** ends — the link's last line under the Confirm button that sits
+directly below the box, the subtitle up into the header. No `position`, no z-index; that is why the
+9/1 investigation found nothing to blame. F1a is separate: the header bar is one line tall and the
+title at size 5 wraps to two.
+
+**Fix, on the two live TrustShield copies** (`ordercard.js`, `RequestDetailPullOver.js`): the box
+keeps its height but becomes a scroll container with `justifyContent: "safe center"` (centred when
+it fits, top-aligned and scrollable when it does not, never spilling); the link uses 3vw on both
+platforms with its extra margins removed and the wrapper's top gap 30→20 px, so the stack fits the
+A50 with **no** scrolling; header size 5→4 on all six age-restricted headers (the value the sibling
+"Not Confirmed" title already used). **Camera variants got the header change only** — their body
+hosts the native camera preview, positioned in screen coordinates; it must not scroll.
+
+**Verified on the same phone, same order type:** build 903 (box + font) left the link's second line
+clipped at the box edge — not good enough; build **904** (plus the spacing trim) shows the whole link
+with clear space above Confirm and the title on one line:
+[after](G40-422-id-screen-904-after.png). Guard `scripts/assert-id-screen-no-overlap.mjs` (CI job
+`id-screen-no-overlap`): passes on the branch, fails on `production` with 13 findings and under three
+mutations, skips the block-commented dead copy. **The dead copy at `ordercard.js:7912` is still
+there** — deleting it is a separate cleanup.
+
+⚠️ **The Samsung A50 now runs Go 3.9.1 (904), a local build of this branch, not `production`.**
+Reinstall from `production` before using it to reproduce anything else on the Go side.
+
+**Still owed on this ticket:** the owner's ruling on F2a–F2d. They were not reproduced (the Available
+feed was empty and posting requests just to see cosmetic clipping was declined), and the 9/5 direction
+argues for "will not do" until a real user reports them. The ticket cannot close until that is written
+here. iOS was not checked for F1 — on iOS the link was already 3vw and this change only makes the
+Android layout match it, so the iOS screen is expected to be unchanged.
 
 ### F2 — Gopher GO "Available" request list: four overlapping/clipping defects on one screen
 
