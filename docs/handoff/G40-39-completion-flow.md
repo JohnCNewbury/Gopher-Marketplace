@@ -54,6 +54,8 @@ response serves `photo_requirement` from `completion_photo_policy`, !346):
 | **Request History photos (Scenario 8, added scope)** | requester **!269** | `241e0915e` — **MERGED to production** (`3d2c357b2`, 2026-09-03, content-verified) | store-gated |
 | **Confirm-screen poll (G40-427, AC1 only) — on the WRONG screen, see below** | requester **!270** | `5fd68b57f` — **MERGED to production** (`8396a54f2`, 2026-09-03, content-verified) | store-gated |
 | **`Orderdispute.js` — the ACTUAL live confirm screen — gets the fix** | requester **!271** | `ef3596b85` — **MERGED to production** (`18cb0de0f`, 2026-09-03, content-verified) | store-gated |
+| **`photo_step_resolved` served on `/orders/:id`, `/orders/order_log/:id`, `/orders/v3`** | backend **!495** | `7b5b021e` + `7bbbeb98` — **MERGED to production** (`5813d416`, 2026-09-04 19:55 EDT, owner's "Merge both", content-verified; deploy verified below) | **live** |
+| **Confirm/dispute screen waits for the photo step (owner ruling, option a, no timeout)** | requester **!278** | `b6530ac39` — **MERGED to `next`** (`9b595b414`, 2026-09-04 19:55 EDT, content-verified; `next` is now 2 ahead of `production`, the intended direction) | store-gated |
 
 ## Traps that outlive this work
 
@@ -199,6 +201,16 @@ re-derives the "which screen produced 64887" question from scratch.
 > +90s, requester notified at +91s). Two items are open: the confirm/dispute **screen** still fires
 > from order state before the photos exist (blocked on an owner decision), and the Go app did not
 > prompt for a rating after confirmation (cause not yet found; the Done-button change is ruled out).
+>
+> ➡️ **2026-09-04 evening — both open items characterised first-hand, the owner ruled, and both
+> halves of the screen fix are MERGED; see the last section, "2026-09-04 (evening)".** Backend
+> **!495** (`photo_step_resolved`) is on `production` and **live**; requester **!278** is on `next`,
+> store-gated: the confirm/dispute screen is not reachable until the photos are in or the Gopher
+> skips, and nothing else happens meanwhile — **no timeout, by ruling.** The rating prompt was
+> **delivered by the server** to the device last signed in as gopher 1 (the iPhone 15's `99.0.0(31)`
+> build, not the Samsung); the owner rated through the history card's CTA, so the catch-all worked and
+> that item is **closed**. ⚠️ The handoff's "02:31 ET" timestamps are UTC; the order ran at
+> **18:30–18:34 EDT on 2026-09-04**.
 
 ## Still owed before this can go green
 
@@ -220,35 +232,40 @@ re-derives the "which screen produced 64887" question from scratch.
    real devices: the Go app correctly routed to the photo step (photo attached +33s after
    Complete) and `Orderdispute.js` correctly showed "View pic(s) of completed request" before the
    requester confirmed (+41s after the photo, +74s after Complete). Full timeline below.
-6. **Android** — *builds prepared and partially verified 2026-09-04; one live order still owed.*
-   Both apps built from the same production commits as the iOS builds and installed to the real
-   **Samsung Galaxy A50 (`R58N22N8QSM`)** and the `gopher-phone-36` emulator, at versionName
-   **3.9.1** / versionCode **901** (owner chose 3.9.1 for both, mirroring iOS). Verified so far:
-   the shipped Android bundles **contain both fixes** (`completion_photos` / `completion_waiting`
-   present in the Go bundle; `View pic(s) of completed request` and the `orders/order_log` fetch
-   present in the Requester bundle), the Go app **launches past the version gate** on the real
-   phone, is signed in, and lands on the **Active / Scheduled / Available** tab bar — the exact
-   screen `RequestDetailPullOver.js` backs. **Still owed: one live order driven through Android**,
-   which is the only way to exercise the native camera capture and multipart upload — the parts
-   iOS testing cannot cover, since the React logic is byte-identical across both platforms.
-   ➡️ **Handed off 2026-09-04 to the session also reviewing related logs — everything that run
-   needs (prepared devices, pass condition, and the interpretation traps that have already bitten
-   people) is in [`G40-39-ANDROID-TEST-HANDOFF.md`](G40-39-ANDROID-TEST-HANDOFF.md).** That session
-   writes its result back into item 6 here.
+6. ~~**Android** — one live order still owed~~ — **DONE 2026-09-05, order 65198.** The gopher side
+   ran entirely on the real **Samsung Galaxy A50** (Go `3.9.1 (902)`, signed in as test gopher
+   31677): In-Progress, Purchased, Complete, the native camera capture and the multipart upload
+   (`Gopher added 1 completion photo(s)` at 05:25:33 EDT, one `Complete_Job_Attachment` row), then
+   the rating prompt arrived on that phone and was used (`ratings` holds 31677 → 141548, score 5).
+   That is the part iOS testing could not cover, now covered. The requester side was the iPhone 12
+   on Requester `13.9.1 (603)`, a local build of `next` carrying !278 — see item 9 and the
+   2026-09-05 section at the end.
 7. **The original seven scenarios verified on the App Store build.** Their commits are confirmed
    ancestors of the actual shipped tags — not merely merged to a branch — and today's live test
    (order 65146) ran on a **local Xcode build** of `origin/production`, not the App Store binary.
    Still not done on the actual shipped build.
-8. **101 guides — copy WRITTEN, deliberately not published.** Both guides need changes, not just
-   `gopher-request-101.html`: the Go guide's Step 7 note calls a completion photo an optional
-   profile-booster "when relevant", which badly understates a step the app now walks every
-   non-A/R worker into. Paste-ready copy for both lives in
-   [`G40-39-101-guide-copy-STAGED.md`](G40-39-101-guide-copy-STAGED.md), **staged outside `Final/`
-   on purpose** — the deploy reads the working tree, so copy left in `Final/` can be published by
-   any other session's `--allow-dirty` run. ⛔ **It must not ship before a store release carrying
-   `3a28f1c21` + `18cb0de0f`:** on today's store build a worker completing from the Active tab is
-   never offered the photo step and a requester arriving via push never sees photos, so this copy
-   would describe behaviour most users cannot get — exactly what the 101 rule forbids.
+8. ~~**101 guides — copy WRITTEN, deliberately not published.**~~ — **PASTED 2026-09-05.** Owner
+   ruling 2026-09-05: *"101 is NOT waiting on a store build. That doc is part of the new gopher
+   marketplace and not public yet."* All five blocks from
+   [`G40-39-101-guide-copy-STAGED.md`](G40-39-101-guide-copy-STAGED.md) are now in
+   `Final/gopher-go-101.html` (stepper step 3, photo-step note) and `Final/gopher-request-101.html`
+   (confirm intro + photo step, "No photos there?" note, history line). Exact-match paste, verified
+   at 375px. Uncommitted in the working tree, like the rest of this session's doc edits.
+9. ~~**Confirm screen waits for the photo step — MERGED, not device-verified**~~ — **DEVICE-VERIFIED
+   2026-09-05, order 65198.** Backend **!495** is on `production` (`5813d416`, still an ancestor of
+   today's head `acde84af`, all four files byte-identical) and **live**; requester **!278** is on
+   `next` (`9b595b414`) and was exercised on the iPhone 12 as a local build (`13.9.1 (603)`). Result:
+   Complete at 05:24:21 EDT → the requester app polled the order **30 times over 73 seconds and
+   never opened the confirm screen** (zero `order_log` reads, versus +5 s on the old build) →
+   photo at 05:25:33 → notify marker 0.4 s later → confirm screen opened with the photo → Confirm
+   at 05:27:59 → payout, and `rateYourRequestor` emitted to the Samsung's socket at 05:28:02.
+   **Still store-gated**: the shipped requester app does not carry !278 and behaves exactly as
+   before until a release ships it.
+10. ~~Rating prompt on order 65185~~ — **CLOSED 2026-09-04 evening.** The server delivered the
+    prompt to the device last signed in as gopher 1 (the iPhone 15 build); the owner rated 65185
+    from the Request History card's rating CTA ("the all red gopher holes"), which is exactly the
+    Scenario 5 catch-all. Not a product defect. The multi-device weakness is recorded in the last
+    section as report-don't-fix.
 
 ## 2026-09-03 (later still) — a SECOND unfixed completion path: `Orderdispute.js`
 
@@ -355,3 +372,299 @@ photo existed — and asked for the logs rather than accepting the screen at fac
   on-device against the shipped build, per item 7 above.
 - The 101-guide update, deferred to store release per standing rule.
 
+
+## 2026-09-04 (evening) — order 65185: both open items characterised first-hand
+
+Everything in this section was read from `origin/production` source, the production **reader**
+replica (SSM port-forward, `pg_is_in_recovery = true`), the production `web.stdout.log` in
+CloudWatch, and the Samsung A50 over USB. Inherited claims are marked inherited.
+
+### Correction — the 2026-09-05 handoff's times are UTC, not ET
+
+| Event (order 65185, gopher = 1, requester = test account 141548) | UTC | **EDT** |
+|---|---|---|
+| Order created | 22:30:06 | 18:30:06 |
+| Order Completed (`/complete/v2`, `defer_completion_notify` honoured) | 22:31:04 | 18:31:04 |
+| **Requester's confirm screen starts polling `order_log`** (3s cadence = `CompletionPhotosSection`) | **22:31:09** | **18:31:09** — **+5s** |
+| Gopher added 1 completion photo | 22:32:34 | 18:32:34 — +90s |
+| Requester notified to confirm (SMS + push, one-shot marker written) | 22:32:35 | 18:32:35 — +91s |
+| Gopher skipped (owner went back and tapped Skip; **no second notification**) | 22:34:02 | 18:34:02 |
+| Requester Confirmed → capture → transfer → instant payout | 22:34:06–09 | 18:34:06–09 |
+| `Sending rateYourRequestor` **then `EMITTING TO SOCKET ID: eqzzeaZMjkwwjjqMAAKb`** | 22:34:09 | 18:34:09 |
+
+Side note, not G40-39: the server raised a **fraud alert** on this order ("completion logged 3.3 km
+from the delivery address") and texted/emailed the owner. Expected for a desk test.
+
+### OPEN #1 — the confirm/dispute screen: the exact path, and why the app cannot wait today
+
+**Proven by the log:** `GET /orders/order_log/65185` began at +5s and repeated every 3 seconds
+until the first photo landed. That cadence is `CompletionPhotosSection`'s poll, so `Orderdispute.js`
+was mounted and its **Confirm Completion** button was live 85 seconds before any photo existed.
+
+**The code path (requester app, `origin/production`):**
+
+1. `requestOrder.js` (the tracking screen) polls `GET /orders/:id` every 7.5s and, on
+   `aasm_state === 'delivered' && !disputed`, navigates to `/request` — the Request list.
+2. `requestHeader.js` renders the list; a `delivered` card turns red. Tapping it calls
+   `getOrderbyId`, which on `delivered && !unable_to_dispute` navigates with
+   `next: "startDispute"` → `renderForm.js` case `orderdispute` → **`Orderdispute.js`**.
+3. `Orderdispute.js` re-polls `GET /orders/:id` every 7.5s and renders `CompletionPhotosSection`,
+   which polls `order_log` 3s × 30 and renders **nothing** while the array is empty.
+4. `PushTapListener.js` acts only on `requestor.payment_action_needed` and `no_show_warning`; the
+   "Order Completed" push just opens the app. It is not the trigger.
+
+**Nothing on that path consults the photo step.** `aasm_state` is the only gate, and it flips the
+instant the Gopher taps Complete — before the Go app has even shown the photo screen. The requester
+app is never served `photo_requirement` (Gopher-only), so "still uploading" and "the Gopher skipped"
+are indistinguishable to it. G40-427's own comment (2026-09-03) recorded exactly this as the reason
+AC2/AC3 were left unbuilt: "a truthful in-flight state is a separate backend ticket".
+
+**That backend piece is now built — `gopher-backend-api` MR !495 (unmerged).** Branch
+`G40-39-expose-photo-step-resolved`, commit `7b5b021e`. It adds **`photo_step_resolved`** to
+`GET /orders/order_log/:id` (the read the screen already polls) and to `GET /orders/:id` while
+`delivered` (for a list-level gate). Rule, in the new dependency-free
+`helpers/photo_step_resolution.js`: resolved when the one-shot completion-notify marker exists
+(photos in / skipped / shipped app without the defer flag / A/R), **or** a completion photo is
+stored, **or** the requester has already confirmed. The marker string moved into
+`completion_notify_capability.js` so both sides import one constant; the older one-shot test now
+executes it instead of grepping it. 11 new checks, proven to fail under two mutations; full suite
+green apart from `admin-jwt-v8-contract`, which fails identically on unmodified `production` with
+this machine's `node_modules`. **Additive — merging it changes nothing for any shipped client.**
+Merge options: target `production`, squash **NO**, delete source **NO**.
+
+**⛔ The client half is blocked on the owner's decision, asked a third time today.** The two shapes,
+now costed against real code:
+
+- **(a) Do not open the confirm screen until the step resolves.** Gate `requestHeader.getOrderbyId`
+  (and the card's red state) on `photo_step_resolved` from `GET /orders/:id`; while false, the tap
+  opens the ordinary `requestorder` view with a "your Gopher is adding photos" line. Touches the
+  list, the tracking screen's `delivered` branch, and `Orderdispute.js` (for the push/deep-link
+  case). Requester can still find Dispute only once the screen opens.
+- **(b) Open the screen, hold Confirm.** `CompletionPhotosSection` (already shared by both confirm
+  screens, already polling `order_log`) reports `photo_step_resolved` up; `Orderdispute.js` and
+  `orderConfirmation.js` disable **Confirm Completion** and show "Your Gopher is adding photos…"
+  while false; **Dispute stays enabled**. One shared component plus two buttons; the existing CI
+  guard (`assert-confirm-screens-show-photos.mjs`) already forces every confirm screen through
+  that component. **Recommended** — matches G40-427 AC2/AC3 as written, smallest change, and the
+  requester keeps an exit.
+- **A third question either shape must answer:** the server deliberately has **no fallback timer**
+  (owner, 2026-09-04). If the Gopher's app dies after Complete, `photo_step_resolved` stays false
+  until the 48h auto-confirm. Under (a) the requester never reaches Confirm; under (b) Confirm stays
+  held. Does the **client** fail open after some minutes (Confirm re-enabled with "no photos were
+  added"), or hold until auto-confirm? That is a product call, not something to bury in a poll.
+
+Both shapes are client-only and therefore **store-gated**; !495 is the only part that can reach
+users before a release.
+
+### OPEN #2 — the rating prompt: the server delivered it; the phone in the owner's hand was not the registered one
+
+**Verified first-hand:**
+
+- `ratings` for 65185 holds one row: `rater_id 141548 → rated_id 1, score 5` — the **requester
+  rating the Gopher**. No gopher-side row, so the handoff's "maybe a rating already existed" is
+  ruled out; the guard passed and the emit ran.
+- Production log at 22:34:09Z: `Sending rateYourRequestor {…"id":"65185"}` followed by
+  **`EMITTING TO SOCKET ID: eqzzeaZMjkwwjjqMAAKb for rateYourRequestor`**. That line is written only
+  on the success branch of `emitToSocket`, so the server **delivered** the event and, by design,
+  wrote no `pending_notifications` row. (The handoff's inference — no row ⇒ the backend believed it
+  delivered — was correct. ⚠️ A `"65185"` filter hides the EMITTING line because it carries no order
+  id; read the `rateYourRequestor` filter instead.)
+- `socket/socket_config.js` keeps **one socket per `(user_id, gopher)`** in memory, replaced on
+  every new connection for that key. `users_roles` keeps **one `fcm_token` / `device_type` /
+  `app_version` per role**, overwritten at sign-in (`controllers/user/profile.js` ~2036).
+- **`users_roles` for user 1, role 2 (gopher) reads `device_type = ios`, `app_version =
+  99.0.0(31)`** — the iPhone 15's local build from the handoff's device table, not the Samsung.
+  The "Payday!!" push therefore went to that iOS token.
+- Samsung A50: Go `3.9.1 (902)` and Requester `3.9.1 (902)` installed; the Go process has been
+  running since **18:02:33 EDT**, was in the foreground at 18:34, and its console logged no socket
+  reconnect during the test. The DB rows for the *requester* test account 141548 also carry a gopher
+  role stamped `android 3.9.1(901)` — i.e. the Samsung's Go app was signed in as 141548 at some
+  point on 2026-09-03/04, which is consistent with the shared devices being re-signed-in across
+  sessions.
+
+**✅ Proven from the socket registry (after the owner re-authenticated the AWS CLI, 19:50 EDT):**
+
+| UTC | EDT | Registry line |
+|---|---|---|
+| 22:12:45–46 | 18:12 | gopher 1 registers, replaced within a second (double connect) |
+| 22:13:32, 22:21:18, 22:23:42 | 18:13–18:23 | user 1 registers as **requester** (`is_gopher: false`), several times |
+| 22:24:46 | 18:24:46 | gopher 1 registers (`zgsKwxPTsShjL_MqAAKZ`) |
+| **22:24:47** | **18:24:47** | that socket removed; **`Socket connected: eqzzeaZMjkwwjjqMAAKb`** → `SOCKET: updated user user_id: 1 & is_gopher: true` |
+| 22:34:09 | 18:34:09 | `EMITTING TO SOCKET ID: eqzzeaZMjkwwjjqMAAKb for rateYourRequestor` |
+| 22:34:10 | 18:34:10 | `GET /mobile-config?p=ios&a=gopher&v=13.9.1` — an **iOS** Go app woke at that second; push sent to token `f643ujNJ_…` (iOS, per `users_roles`) |
+| **23:01:51** | **19:01:51** | `Socket disconnected: eqzzeaZMjkwwjjqMAAKb` → removed for user 1 |
+
+Three facts pin it to an iPhone, not the Samsung: the socket was created by a **connect-replace-connect
+within one second**, which is the iOS `appStateChange` reconnect in `bottomMenu.js`/`getOrders.js`
+(`isIOS && …getSocketConnect()`) — Android never reconnects on resume; it **disconnected at 19:01:51
+EDT while the Samsung's Go app was continuously in the foreground until after 19:30** (usagestats,
+logcat); and the only Go app that touched `mobile-config` at the emit second reported `p=ios`. Which
+iPhone (12 at 13.9.1(34), or 15 at 99.0.0(31)) the server cannot say and it does not matter. The
+Samsung's own socket had been displaced from the one-slot registry at 18:24:47 and never received
+the event. The remaining unverified item — what the Samsung stored locally — was refused by the
+session classifier and not worked around; it is moot now.
+
+⚠️ **Two probe corrections, recorded so nobody repeats them:** (1) every "0 results" I first
+reported for fixed CloudWatch windows was a hand-computed epoch **four days in the future**, not
+the log — compute epochs with code, never by hand; (2) `logger.error` lines (e.g. `Socket not
+found`) **do not reach `web.stdout.log` at all** — 0 in 40 hours despite four provable failed
+emits that day — so their absence there is never evidence.
+
+**What it means:**
+
+- **Not a product defect for a worker with one phone.** It is a test-setup artefact: the owner's
+  gopher account is signed into the Go app on three handsets, and every confirm-time signal
+  (`rateYourRequestor`, `DisputeResolved`, `favoriteGopher`, the Payday push) lands on exactly one
+  of them. The designed catch-all still applies: the confirmed history card for 65185 should show the
+  pulsing **"Rate now →"** CTA on any device (`gopher_rated === false` from `/orders/v3`).
+- **A real, secondary weakness worth a ticket, not a fix now:** multi-device accounts get
+  confirm-time socket events on one device only, and the `GET /pending_alert` drain also emits to the
+  registry's socket rather than the caller's — so even the fallback cannot reach a second device.
+  Low priority; report-don't-fix.
+- **The client pipeline reads sound** (`bottomMenu.js`: listener → `pendingAlertKey` → `fireAlert`
+  → `grating`; `isAppActive` initialises `true`; `BottomMenu` mounts on every completion screen). It
+  has not been exercised on a single-device gopher since G40-331 shipped, so if the re-test below
+  still shows nothing, *that* is where to look next — not the server.
+
+**How to close it (owner, ~5 minutes):** either open the iPhone 15's `99.0.0(31)` Go app and look
+for the 65185 rating prompt / Payday banner, or check the Samsung's Request History card for 65185
+shows "Rate now →". Then, for the real proof: sign the gopher account into **one** Go device, run a
+confirm, and the prompt must open on that device.
+
+### Blocked / not verified this session — stated, not worked around
+
+- **AWS CLI session expired** mid-investigation (`aws login`, owner). CloudWatch reads after that
+  point returned an error line that parses as "0 results"; every zero from that window was
+  discarded. The already-open SSM tunnel kept working for DB reads.
+- **Samsung WebView DevTools read** (localStorage only) refused by the classifier — no first-hand
+  view of what the Samsung stored.
+- **`admin-jwt-v8-contract.test.js`** fails on this machine on unmodified `production`
+  (`expressjwt is not a function` — installed `express-jwt` shape). Not touched, not related.
+
+### Owner rulings, 2026-09-04 evening — and what was built on them
+
+Asked directly, with the mechanism above in front of him, the owner ruled (verbatim):
+
+1. **On the confirm screen while the photo step is unresolved:** *"Nothing should happen, there
+   is no point in notifying a customer and then having them wait. When the photos are either
+   skipped or submitted, that triggers the screen with pics added/confirm/dispute."* → **option
+   (a)**. Not (b): no "Confirm held" state, no in-flight message on the confirm screen.
+2. **On a client fail-open timer if the Gopher never resolves the step:** *"This is moot, if the
+   gopher doesn't skip or submit pics, nothing is triggered, so their screen still shows items
+   picked up."* → **no timeout anywhere.** Stated consequence, so nobody re-derives it: in that
+   case the requester reaches neither Confirm nor Dispute until the 48h auto-confirm; the money is
+   protected by that auto-confirm and nothing else. Do not add a client fail-open without going
+   back to the owner.
+3. **On the rating prompt (OPEN #2):** *"i already rated it by going into the request history and
+   tapping the all red gopher holes representing the rating was still needed."* → the Scenario 5
+   catch-all worked; **closed**, no build.
+
+**Built on rulings 1–2 — `gopher-mobile-requester-capacitorjs` MR !278** (branch
+`G40-39-hold-confirm-screen-until-photo-step`, commit `b6530ac39`, **target `next`**, squash NO,
+delete source NO; `next` was byte-identical to `production` when cut, so nothing to rebase):
+
+- `src/helpers/photoStep.js` (new) — the one rule: `delivered && photo_step_resolved === false &&
+  !disputed`. **Strict `false`**: an older backend, or !495 unmerged, omits the field and every
+  gate passes exactly as today. Nothing is ever held on a missing value.
+- `requestOrder.js` — the tracking screen's `delivered → /request` hand-off now also requires the
+  step resolved; its existing 7.5s poll carries the flag, so the hand-off happens on its own when
+  the photos land or the Gopher skips. Meanwhile the screen keeps showing the last step ("items
+  picked up"), which is what the owner described.
+- `requestHeader.js` — the Request list card stays **green** while unresolved (red means "act
+  now"), and its tap opens the ordinary order view instead of `startDispute`.
+- `Orderdispute.js` / `orderConfirmation.js` — if reached anyway (stale navigation state, deep
+  link, a push tapped early) they send the requester back to the order view, from the same
+  `/orders/:id` read they already make (`Orderdispute` re-polls it every 7.5s).
+- `CompletionPhotosSection.js` — stops its bounded poll on "resolved, no photos" (the Gopher
+  skipped) instead of 30 more calls.
+- `scripts/assert-confirm-screens-wait-for-photo-step.mjs`, wired into `.gitlab-ci.yml` —
+  executes the helper against real inputs (including "field absent ⇒ no hold") and asserts every
+  `confirm_payout` screen, every `next: "startDispute"` route, the tracking hand-off and the list
+  card consult it. Proven to fail under three separate reverts (`requestHeader.js`,
+  `requestOrder.js`, `Orderdispute.js`). eslint `--max-warnings=0` and `prettier --check` clean;
+  the two existing confirm-screen guards still pass.
+
+**Backend MR !495 gained a second commit** (`7bbbeb98`): `photo_step_resolved` **per delivered
+row on `GET /orders/v3` for requester lists** (two batched reads over the delivered ids only), so
+the list card can hold. The Gopher's list is untouched. Test now 12 checks; the v3 check proven to
+fail with the addition reverted.
+
+**Merge order:** !495 first (auto-deploys, changes nothing for any shipped client), then !278
+(store-gated). The client is inert until the backend is live, by construction.
+
+**✅ MERGED AND DEPLOYED, 2026-09-04 (owner: "Merge both", 19:55 EDT).** Both merged via the
+GitLab API with `squash=false`, `should_remove_source_branch=false`; both source branches confirmed
+still on the remote; every changed file on `origin/production` (!495 → `5813d416`) and `origin/next`
+(!278 → `9b595b414`) is byte-identical to the tested commit. Backend deploy verified first-hand, not
+from the pipeline badge: CodePipeline Source `5813d416…` Succeeded → Deploy Succeeded; the
+environment's `VersionLabel` ends in `5813d416`; `describe-instances-health` shows a single
+instance `Ok / Deployed` on that label after the rolling batch retired the old one (the transient
+Red/Degraded during the batch is the known rollout shape, not a failure); `GET /api/v1/apiversion`
+200 at 21:05 EDT. `next` is now 2 commits ahead of `production` — the intended direction under the
+`next` rule; do not reconcile it.
+
+**✅ Device-verified 2026-09-05 on order 65198** — see the section below. The 101 copy stays
+staged: it must describe the released app, and it now says the requester is asked to confirm
+**only after** the photos arrive or are skipped.
+
+**Report-don't-fix (owner rule), recorded here so it is not lost:** a gopher account signed into
+the Go app on several phones receives every confirm-time socket event and the Payday push on the
+**last-signed-in** device only, and the `pending_alert` drain emits to that same registry socket
+rather than the caller's. Real workers have one phone; test accounts do not. Low priority.
+
+## 2026-09-05 (morning) — order 65198: !278 device-verified, Android leg closed, rating prompt proven
+
+**Setup (all verified on the server before the order was created):** requester test account
+141548 on the **iPhone 12** running Requester **13.9.1 (603)** — a local `xcodebuild` of the `!278`
+tree (`b6530ac39`, tree-identical to `next` `9b595b414`; bundle carries `photo_step_resolved`, the
+old 602/902 bundles do not — the marker was proven against both). Gopher test account **31677**
+("Gopher, Inc") on the **Samsung A50** running Go **3.9.1 (902)**; its `users_roles` row read
+`android 3.9.1(902)` after a fresh sign-in, and the socket registry showed one connect for 31677 at
+05:23:10 EDT, 25 s before In-Progress. The order used **Notify MY Gophers** with 31677 hand-picked
+(`notify_fav_gopher = true`, one `notify_first_orders` row) — the owner's way of running a live
+test without broadcasting to the network. Delivery / General Errand, not age-restricted.
+
+⚠️ The gopher was **31677, not user 1**. User 1's gopher row still reads `ios 99.0.0(31)` (the
+iPhone 15) and was irrelevant to this order. The Samsung's Go app holds `"id":"31677"` in its web
+storage; that is how the account was identified, not from the owner's recollection.
+
+**Timeline, from `order_logs` (EDT, `created_at` is UTC in the table — convert, do not trust a bare
+`at time zone`):**
+
+| Time | Event | Offset |
+|---|---|---|
+| 05:04:16.620 | Order Created | |
+| 05:04:30.768 | Order Accepted by Fav- Gopher#31677 | |
+| 05:04:33.609 | Order Assigned to Fav Gopher#31677 | +2.84 s after accept — see the transient below |
+| 05:23:35.176 | Order In-Progress | |
+| 05:24:11.255 | Item is Purchased | |
+| **05:24:21.039** | **Order Completed** | 0 s |
+| **05:25:33.925** | **Gopher added 1 completion photo(s)** (Samsung, native camera + upload) | **+73 s** |
+| 05:25:34.307 | Requester notified to confirm completion | +0.4 s after the photo |
+| 05:27:59.682 | Requester Confirmed for Order Completion | |
+| 05:28:02.881 | Paid out to gopher 31677 (instant); Payout Completed | |
+| 05:28:02 | `Sending rateYourRequestor` → `EMITTING TO SOCKET ID: pKIPUPX1r75EinmnAABs` | success branch, no `pending_notifications` row |
+
+**What the requester app did during the 73 s, from the production access log** (filter `65198`,
+window 05:23:30 → 05:25:20 EDT): **30 × `GET /api/v1/orders/65198`** (the tracking screen's poll,
+`requestOrder.js`) and **0 × `GET /api/v1/orders/order_log/65198`** (the confirm screen's poll,
+`CompletionPhotosSection`). On order 65185 (old build) the `order_log` poll began **+5 s** after
+Complete. The confirm screen therefore did not mount until the photo step resolved — which is
+the whole of the owner's 2026-09-04 ruling, observed on a handset. Owner, on the requester side:
+*"Nothing changed on the requester side"* during the wait, then *"requester app triggered"* on
+photo submit, then *"confirm/dispute screen is good!"*, then *"Test successful."*
+
+**Rating prompt (OPEN #2, now proven on a single-device account, not only inferred):** the emit
+went to 31677's one registered socket (the Samsung), the prompt appeared, and the gopher rated —
+`ratings` for 65198: (141548 → 31677, 5) and (31677 → 141548, 5).
+
+**Observed transient, outside G40-39 (logged in the 2026-09-05 handoff, report-don't-fix):** for
+the 2.84 s between *Accepted* and *Assigned* the requester saw the "I'll select" state ("(!) New
+Request Info (!)") before it corrected to "Request Accepted by". Canon (`three-acceptance-paths-canon`)
+says the hand-picked MY Gopher accepting must behave exactly like First Available. Needs its own
+ticket; the server-side two-step is the mechanism, the reason for it is unread.
+
+**What this does NOT close:** item 7 (the seven scenarios on the actual store build) waits on the
+Appflow release the owner reports is being built now, carrying `3a28f1c21` (Go) and `18cb0de0f` +
+`b6530ac39` (Requester). Item 8 (101 copy) was pasted 2026-09-05 on the owner's ruling that the
+Pages site the guides live on is unlaunched and a working doc, not a store-gated surface. Owner moved G40-39 and G40-427 to Done on 2026-09-05.
