@@ -22,8 +22,32 @@ The stores ship binaries. A client merge changes what a *future* build contains 
 **nothing** for anyone holding today's app. Every item below is a server-side change that would
 misbehave against the currently-installed client.
 
-**Current position, 2026-09-05: an Appflow build was cut and submitted.** That is row 2. Nothing
-on this list is unblocked yet.
+**Current position, 2026-09-05 (evening): iOS is LIVE, Play is awaiting approval.**
+
+| surface | state |
+|---|---|
+| App Store GO **3.9.2** | `READY_FOR_SALE`, phased release **day 1** |
+| App Store Request **3.8.2** | `READY_FOR_SALE`, phased release **day 1** |
+| Play GO **866** | staged **20%**, in review |
+| Play Request **854** | staged **20%**, in review |
+
+⛔ **OWNER DECISION 2026-09-05 — nothing on this list moves until 100% rollout on BOTH stores.**
+Verbatim: *"we'll leave both until we're 100% launched on both stores."*
+
+**That is a stricter bar than this document's own "release LIVE" row, and deliberately so.** At
+phased day 1 with Play unpublished, effectively every user is still on **3.9.1** — so "iOS is live"
+unblocks nothing here. It applies to **both** items below: the `!436` offer floor and the
+TrustShield / iDenfy work.
+
+⚠️ **On `!436` specifically, one thing verified today that sharpens why waiting is right.** The
+shipped 3.9.1 client's offer submit ends in `catch (error) { Sentry.captureException(error); }` and
+clears `onSubmitLoading` **only** in the success branch. So a guarded server does not merely fail
+silently — it leaves the **button stuck in its loading state**. The user cannot tell an invalid
+offer from a broken app, which is why "they can contact support" does not hold: nothing tells them
+there is anything to contact anyone about. *(Verified on the `makeAnOffer` path; the exact
+order-create call was not isolated, and this file's earlier citation of `requestOrder.js:312` is in
+fact the polling function, not a submit.)* `!436` also still needs its rebase — 150 commits behind
+and conflicted — so the waiting period is not idle time.
 
 ---
 
