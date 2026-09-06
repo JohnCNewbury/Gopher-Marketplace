@@ -225,6 +225,39 @@ unique to the fix. For a **native** fix, grep `classes*.dex` instead.
 
 ---
 
+## 4. The in-app "update is available" announcement
+
+**Owner asked 2026-09-05 to send it through HQ, as after the last release. Held, and the reason is
+not caution — it is a contradiction with the rollout that was chosen the same day.**
+
+**⛔ Two independent blockers, either one sufficient:**
+
+1. **Android cannot act on it.** Play had not published at the time of asking — 3.9.2 is not
+   downloadable by any of the **5,483** Android installs. The message would simply be false for
+   them. iOS was already `READY_FOR_SALE`, so an iOS-only send would have been accurate.
+2. **⛔ The announcement defeats the staged rollout.** iOS phased release and Play's 20% throttle
+   **automatic** updaters only. A mass "update now" notice drives **manual** updates, which bypass
+   phasing entirely — so a broad send puts the release at effectively 100% within a day, discarding
+   the exposure cap set an hour earlier. **You can have the staged rollout or the announcement, not
+   both.**
+
+**Send it when both stores are at 100% and Sentry has been clean.** It also does more good then:
+adoption on these apps is slow — Request's `3.9.1` reached only **26.15%** of its install base a
+week after *full* rollout — so the nudge is worth more later than now.
+
+**How to send it, when the time comes.** HQ mass send → `get_filtered_users` →
+`send_new_app_alert` (push/SMS) or `send_inbox_mail` (in-app inbox). Audience is built by
+`helpers/campaign_audience.js`.
+
+- **Platform targeting exists**: `ur.device_type = 'ios' | 'android'` (`admin.controller.js` ~460),
+  so a split send is possible if the stores ever go live at different times again.
+- **Deactivated and deleted are suppressed by the helper** — not something to remember per send.
+- **In-app inbox is the only channel with a real read receipt.** Push and SMS have none, deliberately.
+- ⚠️ **If it goes by push, the Android tap will not route** — `F-037`, confirmed on the release
+  builds. Fine for a message with nothing to open; broken if it is meant to deep-link.
+
+---
+
 ## How this file ends
 
 Delete it. When items 1 and 2 are done, this file has no reason to exist, and leaving it behind is
