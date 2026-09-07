@@ -1,123 +1,248 @@
-# G40-38 — New payment options for Requestors (Stripe)
+# G40-38 — New payment options for Requesters (Apple Pay · Google Pay · Cash App Pay · Link — PayPal/Venmo excluded 2026-09-06)
 
-**Jira:** G40-38 (Task, High) · Epic **G40-1 Bug Fixes & Polish** · Label `pay` · Fix version *Phase 1 — Bug Fixes & Polish*
-**Assignee:** John Newbury
-**Surface (Requestor / customer side):** Request web `Final/gopher-request.html` + Connect `Final/gopher-connect.html` (canonical flow). Same in the native Gopher Request/Connect apps.
-**Scope of this branch:** FRONT-END reference is **already complete** (prototype v115, ported from Connect). No Stripe/payment code — reserved for the human dev per `Final/CLAUDE.md`.
-
----
-
-## TL;DR for the developer
-
-The **payment-method UX is fully built as a reference** in the prototype and matches the three
-product decisions locked below. Your work is the **Stripe + native-SDK backend** that makes it
-real: Payment Element + Express Checkout Element, server-side webhook confirmation, a real
-surcharge line, native card scan, and standalone Venmo via Braintree. **No open questions — build
-to this contract.**
-
-### Locked decisions (John, this session)
-1. **Standalone Venmo → BUILD IT** via **Braintree** (PayPal's platform), in addition to Venmo
-   coming free through the PayPal-via-Stripe path. US-only, business fee **1.9% + $0.10**, and it
-   **must not** run in a WebView (Safari View Controller on iOS / Chrome Custom Tabs on Android).
-2. **Fees → PASS THROUGH as a surcharge.** PayPal / Cash App / Venmo (and Braintree Venmo) carry
-   higher processing fees; the Requestor pays the difference as a **surcharge disclosed before
-   confirm.** (This matches the prototype's "small fee" tags — see *Fee surcharge* below.)
-3. **Card scan → KEEP IN SCOPE.** Photo-to-register stays; dev confirms current Stripe mobile-SDK
-   card-scan availability (it has narrowed in recent SDK versions) and wires it to the existing
-   affordance.
+**Jira:** G40-38 (Task, High) · Epic G40-1 · Label `pay` · Assignee John Newbury · Status In Progress
+**This document is the source of truth for the ticket. The ticket points here.**
+**Rewritten 2026-09-06** after a first-hand technical discovery of the live backend, the live Requester
+app, and the live Stripe account. The 2026-07-02 front-end reference (§9) still stands; the
+*premises* the July hand-off inherited from the ticket do not, and §0 corrects them.
 
 ---
 
-## ✅ DONE in the prototype (front-end reference — no further FE work needed)
+## 0 · Corrections to the ticket's premises (verified 2026-09-06)
 
-Built in **`gopher-request.html`** and **`gopher-connect.html`** (parity; Connect is canonical),
-tagged `G40-38`. Session-only, no real Stripe calls. What's there:
+Every item below was checked against the live code (`origin/production` of both repos, fetched
+today), the live Stripe account (read-only via the Stripe API), or Stripe's current documentation.
 
-- **One shared in-session store** `window.__payStore` driving **both** the checkout pay-picker
-  **and** the account "Payment Info" screen — add/edit/default/remove in one reflects in the other.
-  Helpers: `__addPayMethod / __updatePayMethod / __removePayMethod / __setDefaultPayMethod /
-  __setSelectedPayKey / __renderPayMethods / __openAddPaymentModal(editKey)`. Entry shape:
-  `{key,brand,shortLabel,name,cardholder,nick,sub,isDefault,last4,exp,wallet}`.
-- **All target methods present:** Apple Pay, Google Pay, PayPal, Cash App, Venmo + cards (Visa/
-  Amex/MC/Discover) and ACH. Wallets carry a `fee` flag (`paypal/cashapp/venmo = true`).
-- **Fee disclosure before confirm:** "small fee" tags render on PayPal/Cash App/Venmo at the
-  checkout step **before** the Requestor confirms — the placeholder for the real surcharge line.
-- **Device-linked note** on Apple/Google Pay ("Linked to your device") — placeholder for Stripe's
-  real device-aware presentation.
-- **Add-Payment modal that "acts real":** live brand detection (Visa `^4` · Amex `^3[47]` · MC
-  `51-55/2221-2720` · Discover `6011/65/64[4-9]/622`), brand-aware formatting (Amex 4-6-5 + 4-digit
-  CVC; others 4-4-4-4 + 3), live 1.586:1 card preview, and a **"Scan" demo autofill** for the
-  card-scan affordance.
-
-**No front-end gaps** for the ticket's ACs. The one intentional placeholder is the *exact*
-surcharge number (below), which depends on live Stripe pricing + finance.
-
----
-
-## 🔧 TO BUILD (developer / backend — this is the real ticket)
-
-### 1. Core integration — Payment Element + Express Checkout Element
-- Implement Stripe's **Payment Element** + **Express Checkout Element** via the **iOS and Android
-  SDKs** for in-app payments (and Elements on web for Request web/Connect).
-- **Enable Dynamic Payment Methods** in the Stripe Dashboard so methods toggle without code changes;
-  Stripe auto-orders by conversion probability.
-- **Device-aware display is automatic** via Express Checkout Element: **Apple Pay only on Apple
-  devices, Google Pay only on Android/Chrome.** Do not hand-roll detection.
-- **Accordion layout** for 4+ methods (top 3–4 + "More"). **Enable Stripe Link** for one-click
-  returning-user checkout.
-
-### 2. Server-side confirmation (never trust the client)
-- **All data tokenized through Stripe** before it reaches Gopher servers (PCI DSS). No raw card
-  data server-side.
-- **Webhooks confirm success/failure/cancellation** for every method. A request is **activated
-  only after** the webhook confirms payment success — never on client-side confirmation alone.
-
-### 3. Fee surcharge (PASS THROUGH — decision #2)
-- For fee-bearing methods (PayPal, Cash App, Venmo, Braintree Venmo), compute the **surcharge** and
-  show it as a **line item before confirm** (the prototype's "small fee" tag is the placeholder).
-- **Confirm the exact fee structure with finance before go-live** (e.g., Braintree Venmo 1.9% +
-  $0.10; PayPal/Cash App per current Stripe pricing). Surface the real number, not "small fee."
-
-### 4. Card scan (KEEP — decision #3)
-- Wire **Stripe mobile-SDK card scanning** to the existing "Scan" affordance; tokenize via the SDK
-  (no raw PAN stored). **Confirm card-scan is available in the current Stripe SDK version** — it has
-  been narrowed/deprecated in recent releases; if unavailable, raise it (do not silently drop).
-
-### 5. Standalone Venmo via Braintree (BUILD — decision #1)
-- Integrate **Braintree** (PayPal's platform) iOS/Android SDKs for standalone Venmo (users without a
-  linked PayPal). **US-only, requires a US business entity, 1.9% + $0.10.**
-- **Must launch in Safari View Controller (iOS) / Chrome Custom Tabs (Android) — never a WebView/
-  iframe.** (Venmo will reject WebView.)
-- Also: **enabling PayPal through Stripe unlocks Venmo for linked accounts** — do both paths.
-
----
-
-## Acceptance criteria → where it lives
-
-| Scenario | Front-end reference (done) | Backend (to build) |
+| Ticket / July hand-off said | What is actually true | Consequence |
 |---|---|---|
-| 1 — all eligible methods shown, device-aware | pay-picker w/ all methods + device note | Express Checkout Element auto-presents Apple/Google Pay per device |
-| 2 — complete payment via each method | method selectable + confirm flow | real Stripe/Braintree processing + webhook-confirmed submit |
-| 3 — card scan registers a card | "Scan" demo autofill affordance | Stripe SDK card scan → tokenize → register |
-| 4 — fee differences shown before confirm | "small fee" tags before confirm | computed pass-through surcharge line (finance-verified) |
+| "PayPal via Stripe … also unlocks Venmo for linked accounts" | **PayPal through Stripe is only available to Stripe accounts in the EU/UK/CH/NO/LI.** Gopher's account is **US** (`country: US`). The "PayPal custom payment method" Stripe offers US accounts is an adapter for **your own PayPal merchant integration** — Stripe does not process it. Venmo is not a Stripe payment method at all. | **PayPal and Venmo cannot be delivered through Stripe.** Both require PayPal's own platform (Braintree) — a **second payment processor**, see §2 and Decision 1. |
+| "Express Checkout Element handles Apple Pay / Google Pay automatically … minimal code" | True on a **website**. The Requester app is a **Capacitor 8 app** running Stripe.js *inside a WKWebView / Android WebView*. Apple Pay JS is disabled in a WKWebView that injects user scripts (Capacitor's bridge does), and Android WebView has no Payment Request API. **Web Express Checkout will never show Apple Pay or Google Pay in the app.** | Wallets in the app require the **native Stripe iOS/Android SDKs**, reached from Capacitor through `@capacitor-community/stripe` (v8.2.1, published 2026-08-13, Capacitor 8). This is a **native dependency + store release**, not a Dashboard toggle. |
+| "PayPal, Venmo, Cash App carry slightly higher processing fees — pass through as a surcharge" (Decision 2, 2026-07-02) | Stripe US pricing: **Cash App Pay, Apple Pay, Google Pay and Link are all 2.9% + 30¢ — identical to cards.** Braintree Venmo is 1.9% + 10¢, i.e. **cheaper** than a card. | **There is no fee to pass through.** The prototype's "small fee" tags are wrong for every method. AC 4 collapses to "no cost difference to disclose". Decision 2 needs re-ruling (Decision 3 below). |
+| "Activate the request only on `payment_intent.succeeded` via webhook" | Gopher uses **manual capture**: the order is *authorized* at bid-accept and *captured* at completion. `payment_intent.succeeded` fires at **capture** (job done), not at authorization. Gating activation on it would block every order until it was finished. | The correct webhook signal for "funds secured" is `payment_intent.amount_capturable_updated`, which the backend **already subscribes to and handles** (`controllers/admin/stripe_payment_intent_webhook.js`, G40-18). The scaffold `product-docs/Jira Tickets/paymentWebhook.js` is wrong for this architecture — do not mount it. |
+| "Card scan — confirm availability in the Stripe SDK" | **iOS:** built into the native PaymentSheet; needs only `NSCameraUsageDescription` (already present, though its text only mentions request photos). **Android:** available through the Google Pay card-recognition API, which requires the app to be **registered in the Google Pay & Wallet Console with production access**, or via Stripe's `stripecardscan` library (public preview). | In scope and cheap on iOS; on Android it is an **owner console action** plus a build flag. |
+| "Backend/payments reserved for the human developer" | Retired 2026-08-09 (`standing-rules.md` §3). | Build it; the gate is owner consent before production. |
 
-## QA (from ticket) — test on iOS **and** Android
-Each method end-to-end (Apple/Google Pay, PayPal, Cash App, Venmo) → success + request submitted.
-Apple Pay only on iOS, Google Pay only on Android/Chrome. Card scan populates + registers. Simulate
-per-method failures → graceful return to payment screen. Fee disclosures show before confirm.
-Success verified **server-side via webhook** before activation. Venmo launches in Safari View
-Controller / Chrome Custom Tabs, **not** a WebView.
+---
 
-## Dependencies / notes
-- Enable Dynamic Payment Methods in the Stripe Dashboard.
-- PayPal via Stripe (unlocks linked-account Venmo) **and** Braintree for standalone Venmo.
-- Confirm processing-fee structure with **finance** before go-live (surcharge is pass-through).
-- Confirm Stripe SDK card-scan availability in the pinned SDK version.
-- Configure webhooks for success/failure/cancellation across all methods.
-- Evaluate/enable Stripe Link.
-- Figma UI: https://www.figma.com/design/H6THlatWvwT6ESI2j4MPTi/Final-Flows?node-id=1149-3711
+## 1 · What is live today (first-hand, `origin/production` as of 2026-09-06)
 
-## Prototype limitations (don't mistake for real behavior)
-Session-only, resets on reload; no Stripe/Braintree calls; "Scan" is a demo autofill; fee tags are
-qualitative placeholders for the real computed surcharge. It exists to lock methods, states, copy,
-fee-disclosure placement, and the store seam — build the real pipeline against the contract above.
+### Backend — `gopher-backend-api` (`790474d1`)
+- **Only file that talks to Stripe:** `lib/payment.stripe.js` (`stripe@^17.3.1`, API version from `STRIPE_API_VERSION`).
+- **Order payment lifecycle:** `controllers/order/create.js:520` → `charge.create` (`payment.stripe.js:1617`) builds a PaymentIntent with `capture_method:'manual'`, `confirm:false`, amount = total + 20% cushion (`cal_charges` `:1409`). **Authorization happens later** at `charge.confirm` (`:1770`, bid accept / cost adjust), **capture at completion** (`:1919`), then transfer → payout to the worker's connected account.
+- **Which payment method is charged:** `fetch_pay_method` (`:1505`) reads the Stripe customer's `default_source`, else `invoice_settings.default_payment_method`, else **the last card in `paymentMethods.list({type:'card'})`**. The app's picker sets the default via `POST /users/select_payment_method` (`set_default_payment_method` `:225`). So **the picker already drives the charge** — the July note "replace the single-default-card assumption" is already how it works; what is card-only is the *fallback* and the *listing*.
+- **Listing is card-only and card-shaped:** `list_payment_methods` (`:218`) filters `type:'card'`; `list_requestor_payment_methods` (`controllers/user/payment.js:982`) reads `method.card.exp_year` on every entry. A `cashapp` PaymentMethod would be **invisible** to the list and would **throw** inside the expiry loop if it ever got in.
+- **Saving a method:** the app builds a card PaymentMethod client-side with Stripe.js and calls `PUT /users/attach/:pm` → `attach_payment_method` (`:335`), which confirms a SetupIntent and **rejects 3DS-required cards with a 422**. A web-only `start_card_setup` (`payment.js:1149`) already returns a SetupIntent `client_secret` + publishable key (built for the Deals merchant portal). **`create_setup_intent` (`:325`) hard-codes `payment_method_types:['card']`.**
+- **Mobile-SDK plumbing already exists:** `POST /users/generate_key` → `create_ephermeral_key(stripe_sdk_version, customer)` (`payment.js:93`, `payment.stripe.js:464`) — the ephemeral-key endpoint a native PaymentSheet needs. Publishable key is served by `GET /mobile-config` (`controllers/common/mobileconfig.js:68`).
+- **Off-session charges exist:** `charge_placement` (`:286`, Deals placement settlement, `off_session:true, confirm:true`).
+- **Webhooks:** signature-verified route `POST /api/v1/admin/endpoint/stripe_account` (`middleware/stripe_webhook_auth.js`, two signing secrets: env + SSM). Handler dispatch: `account.updated` → `stripe_account_webhook.js`; `payment_intent.canceled` / `payment_intent.amount_capturable_updated` → `stripe_payment_intent_webhook.js` (trust model: re-read the intent, never trust the body). Raw body captured only for URLs containing `stripe_account` (`index.js:87`). Legacy unsigned `POST /endpoint/payout_error` still mounted.
+- **Reauth machinery (G40-18):** rolling cron keyed on `payment_auth_expires_at`; a roll cancels the old intent and builds a new hold with the customer's *current default* PM, `off_session`. Any new method must be **reusable off-session** or the reauth cron cannot rebuild its hold.
+
+### Requester app — `gopher-mobile-request` (`7031a06e1`)
+- Capacitor **8.0**, React 18, `@stripe/stripe-js ^4.10`, `@stripe/react-stripe-js ^2.9`. Stripe loaded in `src/App.js:72` from `mobileConfig.stripePublishableKey`; the whole app sits inside `<Elements>`.
+- Add-card = `src/component/cardComponent.js` (`CardNumberElement` → `stripe.createPaymentMethod` → `PUT users/attach/:pm`). Picker = `src/component/paymentcard.js` + `cardView.js` (renders `card.card.brand/last4` — card-shaped). Checkout = `src/pages/summary.js` (`CardPaymentMethod` row at `:1708`; copy at `:1742` "Your card will be pre-authorized for an additional 20%").
+- **No native Stripe plugin, no Apple Pay entitlement, no Apple merchant ID, no Google Pay manifest flag** (`ios/App/gopher-requester.entitlements`, `android/app/src/main/AndroidManifest.xml`). Bundle ids: iOS `gopher.gopher-requester-ios`, Android `io.gophergoapp.requester`.
+- The Go (worker) app uses Stripe only for payouts — out of scope.
+
+### Stripe account (live, read-only, 2026-09-06)
+- `acct_1CzkxJCQp3eawbpn`, **country US**, MCC 7299, standard account, charges + payouts enabled.
+- **Capabilities active:** `card_payments`, `cashapp_payments`, `link_payments`, `affirm_payments`, `klarna_payments`, `amazon_pay_payments`, `us_bank_account_ach_payments`, `transfers`.
+- **Payment-method configuration "Default":** card **on**, Apple Pay **on**, Google Pay **on**, Link **on**, **Cash App Pay off**, PayPal **not available**. → Cash App is a **Dashboard toggle** (capability already granted); PayPal cannot be toggled on.
+- **Webhook destinations:** `we_1U6TWp…` platform events (`amount_capturable_updated`, `canceled`) and `we_1U48wR…` connected-account `account.updated`, both → `/admin/endpoint/stripe_account`; legacy `payout.failed` → `/admin/endpoint/payout_error`. **No `payment_intent.succeeded` / `payment_failed` subscription today.**
+- ⚠️ **Side finding, unrelated to this ticket:** `requirements.past_due = ["person_DQcBFROcC7Tqq4.id_number"]` — Stripe is asking for a person's ID number and it is **past due**. `disabled_reason` is null today, so nothing is restricted yet. Owner should clear it in the Dashboard before Stripe escalates.
+- Not readable through the tooling used: registered Apple Pay **web** domains (only matters for the launch website, not the app).
+
+---
+
+## 2 · Method-by-method feasibility
+
+| Method | Processor | Available to Gopher (US)? | Manual capture (the hold model) | Reusable off-session (reauth cron, cost-adjust re-hold) | Works in the Capacitor app via | Fee (Stripe US) |
+|---|---|---|---|---|---|---|
+| **Apple Pay** | Stripe | Yes — already on | Yes (card rails, 7-day window) | Yes — saved as a `card` PM with `wallet.type=apple_pay` | Native PaymentSheet (`@capacitor-community/stripe`), Apple merchant ID + Stripe iOS certificate + Apple Pay entitlement | 2.9% + 30¢ |
+| **Google Pay** | Stripe | Yes — already on | Yes (card rails) | Yes — saved `card` PM, `wallet.type=google_pay` | Native PaymentSheet + `com.google.android.gms.wallet.api.enabled` manifest flag; production access in Google Pay & Wallet Console | 2.9% + 30¢ |
+| **Cash App Pay** | Stripe | **Yes — capability active, Dashboard toggle is off**; Gopher's MCC 7299 is on neither the prohibited nor the restricted list | **Yes** — 7-day window; partial capture ✓; **incremental auth ✗, over-capture ✗, re-authorizations ✗** (corrected 2026-09-06 from the live Stripe page — an earlier search snippet said ✓; the backend never increments anyway, it cancels and re-holds) | **Yes** — `SetupIntents` ✓, `setup_future_usage` ✓, off-session with mandate; ⚠️ Stripe shifts consumer-fraud liability to Gopher for **off-session** Cash App charges | Native PaymentSheet (app-switch to Cash App and back). **Not** in Express Checkout Element (web) | 2.9% + 30¢ |
+| **Link** | Stripe | Yes — already on | Yes (card rails) | Yes | Native PaymentSheet (email prefill) | 2.9% + 30¢ |
+| **PayPal** | **Not Stripe** (US) | Only via PayPal/Braintree directly | Braintree: auth + capture supported | Braintree vaulting | Braintree iOS/Android SDKs (native), or the Stripe "custom payment method" adapter which still requires a PayPal merchant integration | PayPal's own pricing |
+| **Venmo** | **Not Stripe** | Only via Braintree | Braintree: auth + delayed capture supported for standard Venmo (not QR-code Venmo) | Braintree vaulting | Braintree SDK; **must** open in Safari View Controller / Chrome Custom Tabs (Venmo rejects WebViews) | 1.9% + 10¢ |
+
+**What a second processor actually costs Gopher** (why Decision 1 is the big one): every downstream step assumes funds in the *Stripe* balance — capture → `transfers.create` to the worker's connected account → instant payout → the HQ Dashboard's `stripe_sync` and the monthly Stripe↔Orders reconciliation → refunds/disputes → cost-adjustment re-holds → the G40-18 reauth cron → the fraud alarms. Braintree money never enters that balance. Adding it means a parallel authorize/capture/refund/reauth implementation, a separate merchant account and vault, two reconciliation books, and worker payouts funded from a balance the Braintree receipts do not top up. That is a programme, not a ticket.
+
+---
+
+## 3 · How the Stripe methods fit the existing model (no redesign of the hold)
+
+The current design already has the right shape: **a payment method is saved on the Stripe customer once; every order then charges the customer's default PM server-side (manual-capture hold at order/bid-accept, capture at completion, off-session re-holds when needed).** Wallets and Cash App slot into that model as *saved payment methods* — nothing about `cal_charges`, the 20% cushion, capture, transfer or reauth has to change for them.
+
+So the integration is **not** "put a Payment Element on the checkout screen". It is:
+
+1. **Replace the add-card screen with the native PaymentSheet in SetupIntent mode** (customer + ephemeral key). The sheet offers card (with scan), Apple Pay, Google Pay, Link and Cash App Pay according to the Dashboard configuration; the result is a PM attached to the customer.
+2. **Make the backend method-agnostic** where it is card-shaped today (list, expiry sweep, picker rendering, copy).
+3. **Keep the charge path** — `charge.create` / `confirm` / `capture` — and mark intents `off_session` where a saved non-card method is confirmed without the customer present (Cash App requires it; for cards it is already effectively merchant-initiated).
+
+Two constraints to carry into the build:
+
+- **Cash App + the hold:** the requester sees a **pending 120% hold in Cash App**, exactly as they see it on a card statement today. The 20% copy on the summary screen must become method-neutral. Off-session Cash App charges move consumer-fraud liability to Gopher (Stripe doc, "Liability for consumer fraud") — worth a line in the risk section for the owner.
+- **⛔ Cash App order rule (owner, 2026-09-06 — canonical):** when a requester **selects Cash App Pay** for a request, the app shows a **pop-up before they continue** that says, in plain words: (1) the **cost of items must be enough to cover the total in full**; (2) a **cost adjustment upward is NOT an option** on a Cash App order; (3) an **easy control to increase the cost of items** right there, if applicable; (4) **the gopher will enter a cost adjustment for the actual amount** at completion (downward, to what was really spent). Why: Cash App Pay supports **no incremental authorization and no re-authorization** (§2), so the only money Gopher can capture on a Cash App order is what was held at accept — the requester has to over-estimate up front, and the true-up is always downward. The server enforces the same rule (B7) so a client that predates the release cannot create an over-hold adjustment on a Cash App order. *Design note for the build, not a change to the rule:* the 20% cushion means a small upward adjustment would technically fit inside the existing hold; the owner has chosen the simpler, honest rule — **no upward adjustment on Cash App orders at all** — rather than "up to 20%".
+
+- **`off_session` and card auth windows:** flagging an intent `off_session` makes Visa treat it as merchant-initiated (5-day window, not 7). The reauth cron already assumes ≤7 days and rolls at "expires within 1 day"; confirm with a sandbox Visa that `capture_before` still lands inside the cron's window before shipping the flag for cards (only Cash App strictly needs it).
+
+---
+
+## 4 · Build plan (Stripe methods: Apple Pay · Google Pay · Cash App Pay · Link · card scan)
+
+### 4a · Backend (`gopher-backend-api`, feature branch → MR → `production`; deploy first, backward-compatible)
+
+**✅ BUILT 2026-09-06, MERGED + LIVE 2026-09-07 — MR [!507](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/507)** (`G40-38-stripe-wallets` → `production`, squash **no**, delete source **no**; merged on the owner's instruction, merge commit `e3777061`). **Deployment reality: LIVE on Gopher-Production** — version label `code-pipeline-1788779661371-e3777061…` on the single serving instance, verified by content: `GET /users/payment_methods/list/v2/:id` and `POST /users/payment_sheet/start` returned **404 before** the rollout and the API's no-token **440 after** (same code as the existing v1 route); `GET /api/v1/apiversion` 200 throughout. The webhook handlers stay inert until O4; Cash App stays off until O1. Six commits, 10 files, 47 new checks passing; read-route-authz / route-authz / user-privacy / secret guards pass. Merging deploys to live immediately (CodePipeline). What each row below became:
+
+| # | Built as |
+|---|---|
+| B1 | `POST /users/payment_sheet/start` → `{setup_intent_client_secret, ephemeral_key_secret, customer_id, publishable_key}`; new `create_wallet_setup_intent` (`automatic_payment_methods`, `usage: off_session`). The merchant portal's card-only `create_setup_intent` is untouched. |
+| B2 | `GET /users/payment_methods/list/v2/:stripe_id` → `{payment_methods: raw[], normalized: [...]}` via new `lib/payment_method_shape.js`; **v1 stays card-only** for the shipped clients (no appversion arithmetic needed — the new client calls v2). `fetch_pay_method` falls back to any saved type **only when the customer has no card at all**. `/orders/summary` `default_payment_method` is now a superset of the card fields. |
+| B3 | `cal_charges` pins `payment_method_types` to the saved method's type **when it is not a card**; `charge.create` returns `payment_method_type`; `charge.confirm` passes `off_session: true` **for non-card intents only** — cards confirm exactly as before, so the Visa 5-day MIT question in §3 is moot for cards. `metadata.order_id` was **not** added (the order id does not exist yet when the hold is created at order placement; G40-335 stays separate). |
+| B4 | Partial: the confirm log line now names the method type; the `requires_action` → `StripeCardError` throw is unchanged. |
+| B5 | `mandate.updated` → new `controllers/admin/stripe_mandate_webhook.js` (re-read; if not active: flag bad + detach); `payment_intent.payment_failed` → order log with Stripe's code/message, no state change. Both **inert until O4**. |
+| B6 | `test/g40-38-payment-method-shape.test.js` (18), `test/g40-38-cash-app-order-rule.test.js` (18), `test/g40-38-mandate-webhook.test.js` (11). |
+| B7 | **Design change from the plan above:** no new column and no migration. The rule reads the funding type off the PaymentIntent (`payment_method_types`, pinned by B3) — one Stripe read per cost adjustment, and only when the new total exceeds the hold. Enforced in `create_cog` (gopher gets the message on submit, `errors[0].code = 'cash_app_rule'`) and `accept_cog`. Fails **open** on a Stripe read error (logged), because an over-hold Cash App adjustment that slips through is still refused by Stripe at the new-authorisation step. |
+
+*Environment note for whoever runs the suite locally:* the shared clone's `node_modules` is stale (express-jwt 6, no `@sentry/node`), so `admin-jwt-v8-contract` fails and `npm run check` reports one unresolved import there. Neither is this MR; CI installs fresh.
+
+| # | Change | Where |
+|---|---|---|
+| B1 | `create_setup_intent`: drop `payment_method_types:['card']`, use `automatic_payment_methods:{enabled:true}`, `usage:'off_session'`; add a requester endpoint `POST /users/payment_sheet/start` that returns `{setup_intent_client_secret, ephemeral_key_secret, customer_id, publishable_key}` — compose existing `start_card_setup` (`payment.js:1149`) with `create_ephermeral_key` (`:93`), reading `stripe_sdk_version` from the body as `generate_key` does. | `lib/payment.stripe.js:325`, `controllers/user/payment.js` |
+| B2 | `list_payment_methods`: list all types (`customer.listPaymentMethods` / no `type` filter, or `card` + `cashapp` + `link`). `list_requestor_payment_methods`: run the expiry sweep **only** when `method.card` exists; return a normalised `{id, type, brand, last4, wallet, label, metadata}` alongside the raw object so the app stops reading `card.*` blindly. `fetch_pay_method` fallback: last PM of *any* type, not `type:'card'`. | `payment.stripe.js:218`, `:1505`; `payment.js:982` |
+| B3 | `charge.create` / `charge.update`: pass `off_session:true` when the resolved PM is not a card (read `paymentMethods.retrieve(pm).type` once — it is already retrieved in `fetch_payment_method`). Add `metadata.order_id` on create (closes the G40-335 wart at the same time). | `payment.stripe.js:1617`, `:1409` |
+| B4 | `charge.confirm`: a Cash App PI can come back `requires_action` if the mandate was not saved; today that throws `StripeCardError` and the decline SMS/push fire — keep, but log the PM type so support can tell "declined card" from "Cash App mandate missing". | `payment.stripe.js:1811` |
+| B5 | Webhook: subscribe the platform destination to `payment_intent.payment_failed` and `mandate.updated`; on `mandate.updated` → inactive, detach the PM and mark it bad (`set_bad_card_to_payment_method`) so a revoked Cash App authorisation is caught the day it happens, not at the next re-hold. Extend the existing dispatch — do **not** mount the July scaffold. | `controllers/admin/stripe_payment_intent_webhook.js`, `routes/admin.routes.js:392` |
+| B6 | Tests: unit tests for B2's normaliser (card / apple_pay wallet / cashapp / link fixtures), B3's `off_session` selection, B5's mandate handler; mocked Stripe as in `test/stripe-account-webhook.test.js`. | `test/` |
+| B7 | **Cash App order rule (server half).** In cost adjustment, when the order's payment method type is `cashapp` and the adjusted total would **exceed the held amount** (`orders.adjustable_amount`), reject with a 4xx and a message the Go app can show. Downward adjustments and adjustments at or below the hold proceed as today. The reauth cron is untouched (Decision 4). ~~Record the PM type on the order at hold time~~ **Built without a column** — see the status table above. | `controllers/order/cost_adjustment.js`, `helpers/cash_app_order_rule.js` |
+
+### 4b · Requester app (`gopher-mobile-request`, feature branch → MR → `production`; needs a store release)
+
+**✅ BUILT 2026-09-06 — MR [!280](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/280)** (`G40-38-stripe-wallets` → `production`, squash **no**, delete source **no**). **Deployment reality: OPEN, NOT MERGED; and a merge is not a release — this ships only in the next store build (Decision 5).** Five commits. **CI green on all 11 jobs** (lint + the ten contract guards; the G40-266 submit-routing guard now stubs the Cash App gate and has a case asserting no endpoint is reached while the rule is unacknowledged). 46/46 jest (two new suites), `react-scripts build` compiles, `cap sync` output committed. ⚠️ The MR carries a **formatting-only** fix to `src/mobileconfig.tsx` and `mobileConfigCache.test.js` — production's own lint job had been red on those two files since the G40-425 merge (2026-09-05); prettier trailing commas and line wraps, nothing else. **Not exercised on a device** — that is the Appflow build + §8 runbook step. Plus a **one-commit follow-up branch `G40-38-apple-pay-entitlement`** (pushed, no MR yet): the Apple Pay entitlement + `APPLE_PAY_ENABLED = true`, to be merged **only after O2** (the build fails to sign until the merchant ID exists). What each row became:
+
+| # | Built as |
+|---|---|
+| A1 | `@capacitor-community/stripe@8.2.1`; `@stripe/stripe-js` 4→8 and `@stripe/react-stripe-js` 2→5 (peer ranges; same Elements API, `cardComponent.js` untouched). Podfile / Podfile.lock / `capacitor.build.gradle` / `capacitor.settings.gradle` from `cap sync`. |
+| A2 | `src/services/paymentSheet.js` `initialiseNativeStripe()` called from `App.js` with `/mobile-config`'s key; no-op on web. |
+| A3 | `presentAddPaymentMethodSheet()` — SetupIntent mode via `POST /users/payment_sheet/start`; resolves `unavailable / completed / canceled / failed`, never throws. Wired into the summary's add controls and the account list; after `completed` the newest method is set default via the existing `select_payment_method`. **Fallback is the existing card form**, not a flag — it is used on web and whenever the sheet is `unavailable`/`failed`. |
+| A4 | `src/services/paymentMethodShape.js` joins the v2 list's normalised rows to the raw objects (and derives rows for a v1 answer). `paymentcard.js`, `cardlist.js`, `cardView.js`, `CardPaymentMethod.jsx` render from the row: cards as before, wallet cards say "Apple Pay"/"Google Pay", Cash App/Link show their label. **Brand marks:** text labels for now; official Cash App / Link / Apple Pay / Google Pay marks are an owner-supplied asset (Apple's mark requires accepting Apple's licence). |
+| A5 | "Your payment method will be pre-authorized…"; "Add a payment method" (both add controls; account header "Payment Methods"); camera-permission string mentions card scanning (both Info.plists). |
+| A6 | Android: `com.google.android.gms.wallet.api.enabled` meta-data. iOS: entitlement on the follow-up branch (above). |
+| A7 | **Not done** — needs an Appflow build. §8 runbook applies. |
+| A8 | `src/component/modals/CashAppOrderRuleModal.js`: the four points, an inline "Increase" control (re-prices via `orders/summary`, updates `cost_of_goods` in dollars and the stored summary), "Got it, continue with Cash App". Triggered on picking Cash App in the picker, on a Cash App default at summary load, and by `submitOrder` if not yet acknowledged (single choke point per G40-266). |
+
+*Build note:* `react-scripts build` prints missing-sourcemap warnings for the plugin's `src/*.ts` (the package ships maps without sources). Cosmetic, not ours.
+
+| # | Change | Where |
+|---|---|---|
+| A1 | `npm i @capacitor-community/stripe@8` (+ its peer `@stripe/stripe-js ^8.4`, so `@stripe/react-stripe-js` moves to a matching major). `npx cap sync`. | `package.json`, `ios/App/Podfile`, Android gradle |
+| A2 | Initialise once with `mobileConfig.stripePublishableKey` (`Stripe.initialize`). | `src/App.js` |
+| A3 | Replace the `CardComponent` add-card modal (`summary.js:1878`, `cardlist.js` "add") with `Stripe.createPaymentSheet({ setupIntentClientSecret, customerId, customerEphemeralKeySecret, enableApplePay, applePayMerchantId, enableGooglePay, currencyCode:'usd', merchantDisplayName:'Gopher' })` → `presentPaymentSheet` → on `Completed` re-fetch the list and set the new PM as default via the existing `select_payment_method`. Keep `CardComponent` behind a flag for one release as the fallback if the sheet fails to load. | `src/component/cardComponent.js`, `summary.js`, `cardlist.js` |
+| A4 | Picker + account screens render by `type`: card → brand/last4 (unchanged), `wallet` → brand + "Apple Pay"/"Google Pay", `cashapp` → Cash App logo + `$cashtag`, `link` → Link. | `paymentcard.js`, `cardView.js`, `CardPaymentMethod.jsx`, `cardseperateview.js` |
+| A5 | Copy: `summary.js:1742` "Your card will be pre-authorized…" → "Your payment method will be pre-authorized…"; camera-permission string to mention card scanning. Add Cash App's required off-session authorisation text on first save (PaymentSheet shows the mandate; verify in sandbox). | `summary.js`, `gopher-requester-Info.plist` |
+| A6 | iOS: Apple Pay capability in Xcode with the merchant ID; Android: `<meta-data android:name="com.google.android.gms.wallet.api.enabled" android:value="true"/>`. | `ios/App/App.xcodeproj`, `AndroidManifest.xml` |
+| A8 | **Cash App order rule (client half).** On selecting a Cash App Pay method in the checkout picker (and when the default is Cash App at the summary step), show the pop-up in §3 with an inline "Increase cost of items" control that writes back to the order's cost-of-goods field and re-runs the summary calculation; "Continue" only after acknowledgement. Copy to be reviewed against the Style Guide; modal per the popup/modal standards tracker. | `src/pages/summary.js`, `paymentcard.js`, a new modal component |
+| A7 | Device QA on both platforms per §8. | — |
+
+### 4c · Owner console actions (cannot be done by a session — pause-and-wait items)
+| # | Action | Where |
+|---|---|---|
+| O1 | Turn **Cash App Pay on** in the payment-method configuration. | Stripe Dashboard → Settings → Payment methods |
+| O2 | Create an **Apple Merchant ID** (`merchant.gopher.gopher-requester-ios` suggested) and generate the **Apple Pay certificate** from the CSR Stripe issues. | Apple Developer → Identifiers; Stripe Dashboard → Settings → iOS certificates |
+| O3 | Register `io.gophergoapp.requester` and request **production access** for Google Pay (also unlocks Android card scanning). **Not blocking the release** — owner ruled 2026-09-06 that Android ships without scan until this is done. ⚠️ Google Pay itself works in test/development without production access but **requires it for live users**, so O3 is still needed before Google Pay is live on Android — only the *scan* part is deferred. | Google Pay & Wallet Console |
+| O4 | Add `payment_intent.payment_failed` + `mandate.updated` to the platform webhook destination `we_1U6TWp…`. | Stripe Dashboard → Developers → Webhooks |
+| O5 | Clear the past-due `id_number` requirement (§1 side finding). | Stripe Dashboard → account notifications |
+| O6 | If Decision 1 = build PayPal/Venmo: open a **Braintree** merchant account, US business entity, Venmo enablement. | braintreepayments.com |
+
+---
+
+## 5 · Decisions the owner must make before build starts
+
+1. **PayPal + Venmo — scope. ✅ RULED 2026-09-06 (owner): EXCLUDED from G40-38.** Not deliverable through Stripe for a US account (§0). The options were **(a)** drop both from G40-38 and re-ticket "PayPal/Venmo via Braintree" as its own epic with the second-processor cost in §2 written into it; **(b)** keep them in scope and accept that cost now. Owner chose **(a)**. Deployment reality: nothing built on either rail; no follow-up ticket has been opened — Appendix A is the brief if one is. The July 2 "standalone Venmo → BUILD via Braintree" ruling is **superseded** by this one. **Recommendation was (a).** The July "standalone Venmo → BUILD via Braintree" ruling was made on the premise that PayPal-via-Stripe would carry the bulk of the Venmo audience; that premise is gone. **Full option analysis for this decision: Appendix A** (added 2026-09-06 at the owner's request; the owner is taking the decisions one at a time, starting here).
+2. **Deliverable. ✅ RULED 2026-09-06 (owner): Apple Pay + Google Pay + Cash App Pay + Link + card scan, all through Stripe on the existing hold model.** Two sub-rulings: **Link stays on** (it is already enabled in the Stripe configuration and will appear in the native sheet); **Android ships without card scan for now** — iOS gets the sheet's built-in scanner, Android card entry stays manual until the owner completes O3 (Google Pay & Wallet Console production access), at which point scan appears with no code change. Deployment reality: nothing built yet. The work is a native plugin in the app, the backend edits in §4a, and console actions O1/O2/O4 (O3 deferred, not blocking).
+3. **Surcharge. ✅ RULED 2026-09-06 (owner): NO SURCHARGE.** Supersedes the July 2 "fees → pass through as a surcharge" ruling. Canonical rule: Cash App Pay, Apple Pay, Google Pay and Link cost Gopher the same 2.9% + 30¢ as a card — the fee is the *same* fee, not an additional one — so there is no cost difference to disclose and no fee line to build. AC 4 is satisfied by absence. Deployment reality: the prototype (`Final/gopher-request.html`, `Final/gopher-connect.html`, `_prototypes/Request/gopher-pay-store.js`) still carries "small fee" tags on PayPal / Cash App / Venmo — **to be removed** as part of this ticket's front-end clean-up (§9). No surcharge code exists on the backend and none is to be added.
+4. **Off-session Cash App liability. ✅ RULED 2026-09-06 (owner): ACCEPTED.** Canonical rule: a saved Cash App Pay account is treated exactly like a saved card — the hold at bid-accept, reauth-cron re-holds and cost-adjustment re-holds all run off-session against it, with no fallback-to-card rule and no card-on-file requirement. Why: Stripe shifts consumer-fraud dispute liability to Gopher for off-session Cash App charges (on-session ones stay with Cash App), which is the same exposure Gopher already carries on card-not-present charges against stored cards; the alternatives (first-hold-only with card fallback; card required alongside) add reauth machinery and cost conversion. Disputes are handled in the Stripe Dashboard with the same order-log / completion-photo / message evidence as card disputes. Deployment reality: nothing built; the reauth cron needs no change for this ruling.
+   **Dispute mechanics (Stripe's Cash App Pay page, read 2026-09-06):** a Cash App Pay payment can be disputed **once only, in full only** (no partial disputes), within **120 days**; Stripe withholds the amount plus a non-refundable dispute fee immediately; Gopher has **13 calendar days** to submit evidence; **Cash App, not a card network, adjudicates**, within 58 days. If the payment was funded from the customer's **linked debit card**, the customer can also dispute with their bank; if from Cash App balance, only with Cash App. **Radar does not apply** to Cash App Pay. Cash App sets per-customer sending limits and Stripe advises keeping orders under about $2,000. **No public data was found comparing Cash App Pay dispute or fraud rates with cards** — Stripe, Adyen and the chargeback-industry write-ups all describe the process and none publish a rate; the only structural signals are that on-session Cash App payments are authenticated by a Cash App login (Cash App carries that fraud) and that a Cash App dispute cannot be partial or repeated. Treat the rate as *unknown, same order as cards* until Gopher's own Stripe dispute analytics (filter by payment method) say otherwise after launch.
+5. **Store release vehicle. ✅ RULED 2026-09-06 (owner): the next planned release** (the one after the build submitted 2026-09-05). Backend MR merges first and must be backward-compatible with the shipped client (§6). Add this ticket to the release runsheet when that release is cut.
+
+---
+
+## 6 · Risk / reward (for the production-consent conversation)
+
+- **Reward.** Wallets are the top conversion lever the ticket cites and are the cheapest half of it: capabilities are already granted, pricing is identical, and the backend's hold/capture/transfer chain is untouched. Cash App reaches the un-banked segment the ticket names. Card scan on iOS is free with the sheet.
+- **Risk — backend (deploys to live on merge).** B2 changes what `payment_methods/list` returns to the *shipped* app: keep the raw Stripe object shape intact and only *add* fields, and keep the response filtered to `card` for `appversion` below the release that understands other types (server guards must be appversion-gated, see memory). Roll back = revert MR, ~40 s. B3's `off_session` flag on cards could shorten Visa's auth window from 7 to 5 days; gate it to non-card PMs unless the sandbox check in §3 passes.
+- **Risk — app.** A native plugin in the payment path: if the sheet fails to load, the requester cannot add a method. Mitigation is A3's fallback flag and phased rollout on both stores. Cannot be hot-fixed; rollback = another store build.
+- **Risk — money.** Off-session Cash App fraud liability (Decision 4). A revoked Cash App mandate surfaces as a failed re-hold days later unless B5 lands with it — ship B5 in the same MR.
+- **What is *not* at risk.** No change to amounts, cushion, capture, transfer, payout, refund or reconciliation logic for Stripe methods.
+
+---
+
+## 7 · Acceptance criteria → what actually satisfies them
+
+| Scenario | Status after §4 | Note |
+|---|---|---|
+| 1 — all eligible methods shown, device-aware | PaymentSheet shows Apple Pay only on iOS, Google Pay only on Android (native SDK rule), Cash App/Link/card on both | PayPal/Venmo per Decision 1 |
+| 2 — complete payment via each new method | Save via sheet → default → existing hold/capture path; test each end-to-end with a real order in sandbox and one live $0.50-floor order per method | Venmo/PayPal: not via Stripe |
+| 3 — card scan registers a card | iOS: sheet's built-in scanner; **Android: deferred by owner ruling 2026-09-06** — appears once O3 is done, no code change | camera string A5 |
+| 4 — fee differences shown before confirm | **No fee differences exist**; satisfied by removing the placeholder tags | Decision 3 |
+| Business rule "confirm server-side via webhook before activation" | Already true for authorisation (`amount_capturable_updated` handler); B5 adds failure + mandate events | not `succeeded` |
+| **New (owner 2026-09-06)** — Cash App order rule | Pop-up on selecting Cash App (A8) + server rejection of over-hold adjustments (B7) | see §3 |
+
+## 8 · QA (device, both platforms — the current G40-426/G40-420 device runbook format)
+Add a method of each type → appears in list with the right label → set default → place a request → hold visible in Stripe as `requires_capture` with `wallet.type` / `cashapp` on the charge → worker accepts → cost-adjust beyond 20% → re-hold succeeds off-session → complete → capture/transfer/payout as today. **Cash App order rule:** select Cash App → pop-up appears with the four points and the increase control → increase cost of items → summary total updates → continue; as the gopher, enter a cost adjustment **above** the hold → rejected with the message; enter one **below** → accepted and captured at the lower amount. Revoke the Cash App mandate in the Cash App app → `mandate.updated` → PM marked bad → picker shows it as such. Kill the network during `presentPaymentSheet` → sheet fails → fallback card form reachable. Old app version against new backend → list still card-only, nothing crashes.
+
+---
+
+## 9 · Front-end reference (2026-07-02, unchanged) — `Final/gopher-request.html` + `Final/gopher-connect.html`
+
+`window.__payStore` drives both the checkout pay-picker and the account "Payment Info" screen; all target methods present; Add-Payment modal with brand detection and a "Scan" demo; split prototype at parity via `_prototypes/Request/gopher-pay-store.js`. **Two edits it now needs (both ruled 2026-09-06):** remove the "small fee" tags (Decision 3 — no surcharge) and drop the PayPal/Venmo rows (Decision 1 — excluded). **101 guide (standing rule 5) — WRITTEN 2026-09-06, then HELD 2026-09-07 (reverted from the working tree, NOT live).** The ToS session caught it while deploying: the guide is public and read by real users on three hosts, and Apple Pay / Google Pay / Link / Cash App are **not live on the Request app** until the next store release ships (and Apple Pay / Cash App until the console steps are done). The guide describes what the product does, not what it will do — so the edit waits. **Re-apply when !280's build is live in both stores** (the exact text, to paste back into `Final/gopher-request-101.html`):
+
+> *Payment method paragraph:* "You won't need this until your first request. When you're ready, your payment method is added securely through **Stripe**, our trusted payment partner — a debit or credit card, **Apple Pay**, **Google Pay**, **Link**, or **Cash App**. Every method costs you the same; there are no processing surcharges. You pick it (and apply a promo code) right on the Review step."
+> *Tip box (💵 "Paying with Cash App?"):* "Make sure the **cost of items** covers the total in full before you submit. A Cash App request can't be cost-adjusted *upward* later — your Gopher enters the actual amount spent when the request is complete, and the total only comes down. If you're not sure, increase the cost of items when you pick Cash App; the app will prompt you."
+> *Pre-authorisation note (💳):* "When a Gopher accepts, your payment method is pre-authorized (typically the total plus ~20%). The final amount is charged only after you confirm. If a request expires unaccepted, there's **no charge — not even an authorization.** On a **Cash App** request the pre-authorized amount is the ceiling: cost adjustments can only bring the total down."
+
+Trim the method list to what the release actually carries on the day (Apple Pay only if the entitlement MR shipped; Cash App only if O1 is done). The Go guide has no gopher-side sentence yet for the rejection message — add when the Go app surfaces it. **Prototype clean-up DONE 2026-09-06, committed 2026-09-07:** `Final/gopher-request.html`, `Final/gopher-connect.html` and `_prototypes/Request/gopher-pay-store.js` — PayPal/Venmo rows removed, every `fee:true` gone, the "small fee" note replaced by the Cash App no-upward-adjustment note, and the iQ FAQ answer on payment methods rewritten (no PayPal/Venmo, no surcharges, Cash App rule). All inline scripts parse-checked. ⚠️ *Attribution note:* the two `Final/` pages were swept into the ToS session's iDenfy commit `d16da0e` (a `git add` of the whole file while my hunks sat uncommitted) — the content is correct and ruled, only the commit is not mine; `gopher-pay-store.js` and this doc were committed separately by this session. These are prototype/blueprint pages, which have always shown unlaunched functionality; the *101 guide* is the one that must not, see above. ⚠️ **Out of this ticket's lane but the same truth:** `Final/gopher-deals.html` (merchant billing picker, ~L7346–7357) still seeds PayPal and Venmo as billing methods — the Deals session should drop them for the same reason. This is the **launch web product's** reference; the live surface this ticket changes first is the native Requester app. When the web product is built, Apple Pay on the web needs the `gophergo.io` domain registered in Stripe (not checked — see §10).
+
+## 10 · Verified vs inherited
+- **Verified first-hand today:** everything in §0, §1, §2's Stripe rows (Stripe docs + live account), the plugin's version/options (npm registry + plugin docs), Braintree auth/capture support for Venmo (Braintree docs).
+- **Inherited / not exercised:** that PaymentSheet in SetupIntent mode surfaces Apple Pay and Cash App exactly as it does in PaymentIntent mode (Stripe docs say yes; confirm in sandbox on device — first QA step); the Visa 5-day MIT window interaction in §3; Apple Pay web-domain registration status; whether the `@capacitor-community/stripe` sheet exposes iOS card scanning without extra config (it wraps the native sheet, which does).
+- **Superseded:** `product-docs/Jira Tickets/CheckoutPaymentMethods.jsx` (web Express Checkout — not usable in the app) and `paymentWebhook.js` (`succeeded` gate — wrong for manual capture) in `gopher-dev-handoff`. Left in place as history; not to be built from.
+
+## References
+- Stripe: [PayPal business locations](https://docs.stripe.com/payments/paypal) · [Cash App Pay](https://docs.stripe.com/payments/cash-app-pay) · [Place a hold](https://docs.stripe.com/payments/place-a-hold-on-a-payment-method) · [iOS in-app payments](https://docs.stripe.com/payments/accept-a-payment?payment-ui=mobile&platform=ios) · [Apple Pay pricing](https://support.stripe.com/questions/pricing-for-apple-pay-with-stripe) · [Google Pay pricing](https://support.stripe.com/questions/pricing-for-google-pay-with-stripe)
+- Plugin: [@capacitor-community/stripe](https://www.npmjs.com/package/@capacitor-community/stripe) · [PaymentSheet options](https://docs.rdlabo.dev/projects/capacitor-stripe/docs/payment-sheet/)
+- Apple: [WKWebView user scripts vs Apple Pay](https://developer.apple.com/forums/thread/696572)
+- Braintree: [Transaction lifecycle](https://developer.paypal.com/braintree/articles/get-started/transaction-lifecycle) · [Venmo via Braintree](https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/venmo-braintree)
+- Figma UI reference: https://www.figma.com/design/H6THlatWvwT6ESI2j4MPTi/Final-Flows?node-id=1149-3711
+
+---
+
+## Appendix A · Decision 1 — every way to offer PayPal and/or Venmo (2026-09-06)
+
+**The constraint every option has to answer.** Gopher's order money model is *hold at accept → capture at completion*, with a 20% cushion, cost adjustments that can exceed it, scheduled orders that need re-holds, and worker payouts drawn from the **Stripe** balance. Neither PayPal nor Venmo can be processed by Stripe for a US account, so any route puts money on a second rail (PayPal/Braintree), and on that rail:
+
+- **Venmo merchant-initiated (vaulted) authorizations expire in 24 hours** (Braintree docs, verified). The 7-day hold-and-roll model does not survive that; a Venmo hold placed at accept for a job on Thursday is gone by Wednesday.
+- **PayPal keeps its processing fee on refunds** (verified, US policy since 2019). Any design that charges then refunds pays that fee on the refunded part.
+- **Venmo must not open in a WebView** — Safari View Controller / Chrome Custom Tabs or the Venmo app (Braintree docs). The Requester app is a WebView, so Venmo needs either a native bridge or a system-browser hand-off with a return deep link (the app already carries `applinks:api.gophergo.io`).
+- **Stripe's account setting `debit_negative_balances: true` is on**, so if charge volume moves off Stripe, worker transfers still clear — Stripe debits the Truist account. Mechanically fine; it means **Gopher floats worker payouts** until PayPal settles (1–3 days).
+
+| # | Route | What it takes | What it gives | What it costs / breaks | Verdict |
+|---|---|---|---|---|---|
+| A1 | **Braintree, native SDKs, full hold model** — vault + authorize at accept + capture at completion, mirrored from the Stripe path | Braintree account (US entity ✓) + Venmo enablement; a **Capacitor bridge to the Braintree iOS/Android SDKs** (no maintained community plugin found — custom Swift/Kotlin work, *unverified*); backend twin of `charge.create/confirm/capture/refund/reauth` for Braintree; Braintree webhooks; dual reconciliation in HQ Dashboard and the monthly Stripe↔Orders recon | PayPal + Venmo + PayPal-linked Venmo, native UX, holds like today | Weeks of work; the **24-hour Venmo MIT window** forces a daily re-hold cron for Venmo (7× the roll rate, 7× the decline exposure); PayPal MIT needs PayPal "reference transactions" approval; two books of money | Most complete, most expensive. Only if PayPal/Venmo volume justifies a permanent second rail. |
+| A2 | **Braintree via system-browser hand-off** — app opens `gophergo.io/pay/<order>` in SFSafariViewController / Custom Tabs; page runs Braintree JS (PayPal + Venmo buttons); returns by universal link | Same backend as A1; **no native SDK** — a hosted page + Capacitor App-Launcher/Browser (both already in the app) + a return route | Everything A1 gives except the in-app feel; satisfies Venmo's no-WebView rule | Context switch out of the app (conversion hit vs native); same 24-hour Venmo MIT problem; same dual ledger | The cheap client shape for any Braintree option. Pair it with A4 or A5 below. |
+| A3 | **Stripe "PayPal custom payment method" adapter** — Stripe shows PayPal inside its own element; Gopher hosts Stripe's adapter that calls Gopher's PayPal merchant account | Preview access (email `merchant-hosted-adapter@stripe.com`); a PayPal merchant account; the adapter service; **Stripe charges its own fee on top of PayPal's** (verified) | One payment UI, PayPal shows in Stripe reporting | Documented for **web Checkout/Elements only** — not the mobile sheet (*unverified for mobile*); no Venmo button; no Stripe-side holds — the money is still PayPal's; an extra fee | Wrong fit for the app. Worth one email to Stripe to learn the price and roadmap; a candidate for the launch **website** later. |
+| A4 | **Prepaid Gopher balance ("Gopher Cash") funded by PayPal/Venmo** — user tops up credits with a plain PayPal/Venmo *sale*; orders draw down credits; the Stripe path is untouched | A credit ledger (table + debit at accept / release at cancel / settle at completion / cost-adjust debit); one Braintree "sale" endpoint; top-up UI via A2's hand-off; refunds go **to credit**, not back to Venmo | Sidesteps holds, re-auths, cost adjustments and the 24-hour window entirely; confines PayPal/Venmo to one simple call; refund-fee leakage avoided | **Stored-value / money-transmission question — needs legal review before build** (prepaid balances can trigger state money-transmitter rules); "load money first" UX; balance-out-of-funds mid-order fallback to card needed | Cleanest technically; the legal question decides it. |
+| A5 | **Sale at placement, settle the difference at completion** — charge the 120% cushion as a real sale on Braintree; at completion refund the unused part; on cancel refund all | Braintree sale + partial refund + vault for cost adjustments above the cushion; A2's hand-off client; a small "is this a Braintree order" branch in `create`, `cost_adjustment`, completion and cancel; **excluded from the reauth cron by rule** | The most direct "pay this order with Venmo"; no holds to expire; **cost is small**: fee retained on the refunded 20% ≈ 1.9% × 20% ≈ **0.4% of order value** for Venmo (Venmo 1.9% + 10¢ on 120% ≈ 2.3% + 10¢ all-in — still below card at 2.9% + 30¢); PayPal ≈ 3.5% × 20% ≈ 0.7% | User sees money leave, then a refund days later (support load); cancellations cost the whole fee; cost adjustments above the cushion are a second charge (vaulted MIT, 24-hour window irrelevant since it is captured immediately) | **Recommended shape if PayPal/Venmo must ship.** Cheapest per order, no hold-model surgery. |
+| A6 | **Vault now, charge once at completion** — no money moves until the job is done | Braintree vault (Venmo `multi_use`, PayPal billing agreement — approval needed); one MIT sale at completion; risk rules | Zero refund churn, best UX | Gopher and the worker carry **non-payment risk** after goods are bought; a failed MIT at completion leaves an unpaid worker; PayPal reference-transaction approval | Only for a risk-scoped subset (no cost of goods, small offers, verified requesters). Not a general answer. |
+| A7 | **Ask Stripe, build nothing yet** — email the account team: US PayPal roadmap, adapter pricing, any Venmo plan | One email | Might remove the second rail entirely if Stripe opens US PayPal | Unknown timeline; Venmo is not on any Stripe surface | Do this regardless — it is free and bounds every other option. |
+| A8 | **Move everything to Braintree** | Re-platform cards, wallets, Connect payouts (Braintree Marketplace is gone; Hyperwallet migration for every worker), TrustShield, reauth… | One processor | Months; breaks every payment doc, memory and dashboard | Rejected. |
+| A9 | **Payment orchestrator (Primer / Spreedly / Gr4vy) in front of Stripe + Braintree** | New vendor, per-transaction fee, integration of both processors behind it | Vaulting/routing abstraction bought rather than built | Adds a third party for one extra rail; does not unify the money | Overkill for one extra processor. |
+
+**PayPal vs Venmo, separately.** Braintree gives both, and PayPal checkout itself offers Venmo as a funding source to users who linked it — so "PayPal only" still reaches linked-Venmo users. Standalone Venmo is the part that needs Venmo's own enablement and the no-WebView rule; it is also the audience the ticket is really after (young, un-banked). Cash App Pay (shipping through Stripe in the main G40-38 build) already covers most of that audience with no second rail.
+
+**Owner's choice set for Decision 1:**
+- **(a) Defer PayPal/Venmo**; ship the Stripe methods; send A7's email; re-ticket as its own epic with this appendix as its brief. *(Recommended.)*
+- **(b) Build A5 on A2** (Braintree sale-and-settle, system-browser hand-off), after the Stripe methods ship, as a separate MR set and store release.
+- **(c) Build A4** (prepaid balance) — only after legal clears stored value.
+- **(d) Build A1** (full native Braintree with holds) — only if PayPal/Venmo is expected to carry a large share of volume permanently.
+
+**Unverified in this appendix:** the Venmo *customer-present* authorization window (only the vaulted/MIT 24-hour figure is verified); whether any maintained Capacitor plugin wraps the Braintree native SDKs; the stored-value legal position for A4; the Stripe adapter's mobile support and fee.

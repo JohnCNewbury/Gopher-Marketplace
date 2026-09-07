@@ -1,23 +1,23 @@
 /* Gopher payment-method store + UI (G40-38) — shared by the account "Payment methods" screen
    AND the checkout/review pay-picker. Front-end reference only (no Stripe); mirrors the canonical
    __payStore in Final/gopher-request.html + gopher-connect.html. Session-persisted so the two split
-   pages (home + flow) stay in sync. Wallets that carry a higher processing fee (PayPal/Cash App/
-   Venmo) show a fee-disclosure tag BEFORE confirm — the placeholder for the real pass-through
-   surcharge the dev wires from Stripe. Card entry supports a demo "Scan card" affordance.
+   pages (home + flow) stay in sync. G40-38 owner rulings 2026-09-06: PayPal and Venmo are
+   excluded (not available through Stripe for a US account) and NO method carries a fee different
+   from a card, so the fee tag is gone. A Cash App request can never be cost-adjusted upward (Cash
+   App Pay has no incremental authorization) — the picker says so. Card entry supports a demo
+   "Scan card" affordance.
    Handoff contract: docs/handoff/G40-38-payment-methods.md */
 (function(){
   if(window.GopherPay) return;
   var LS='gopher_paystore_v1';
 
-  // Wallets / alternative methods. fee:true → carries a small processing fee (disclosed before confirm).
+  // Wallets / alternative methods. No method carries a fee different from a card (owner, 2026-09-06).
   var WALLETS=[
     {brand:'applepay', name:'Apple Pay',  fee:false, device:'apple',   sub:'Linked to your device'},
     {brand:'googlepay',name:'Google Pay', fee:false, device:'android', sub:'Linked to your device'},
-    {brand:'paypal',   name:'PayPal',     fee:true,  sub:'Connected account'},
-    {brand:'cashapp',  name:'Cash App',   fee:true,  sub:'Connected account'},
-    {brand:'venmo',    name:'Venmo',      fee:true,  sub:'Connected account'}
+    {brand:'cashapp',  name:'Cash App',   fee:false, sub:'Cover the cost of items in full \u00b7 no upward adjustment'}
   ];
-  var FEE_BRANDS={paypal:1,cashapp:1,venmo:1};
+  var FEE_BRANDS={};
   var BRAND_NAME={visa:'Visa',mastercard:'Mastercard',amex:'American Express',discover:'Discover'};
 
   function seed(){ return [
@@ -139,7 +139,7 @@
     function draw(){
       var anyFee=store.some(function(m){ return feeFor(m.brand); });
       sheet.innerHTML='<div class="gp-hd"><div class="gp-h">Payment method</div><button class="gp-x">&times;</button></div>'
-        +'<p class="gp-sub">Choose how to pay for this request.'+(anyFee?' Methods marked <b>Small fee</b> add a small processing surcharge, shown before you confirm.':'')+'</p>'
+        +'<p class="gp-sub">Choose how to pay for this request.'+(anyFee?' Methods marked <b>Small fee</b> add a small processing surcharge, shown before you confirm.':'')+(store.some(function(m){ return m.brand==='cashapp'; })?' <b>Cash App:</b> cover the cost of items in full — a Cash App request can only be adjusted down, never up.':'')+'</p>'
         +store.map(function(m){ return methodRow(m,{pick:true}); }).join('')
         +'<button class="gp-add" data-add>+ New payment method</button>'
         +'<button class="gp-cta" data-use>Use this method</button>';
