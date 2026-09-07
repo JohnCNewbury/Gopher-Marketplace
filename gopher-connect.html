@@ -2798,7 +2798,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .ts-promo-icon img.ts-promo-logo { height:42px; width:auto; display:block; }
   /* v75 — real TrustShield mark inside the modal header */
   .ts-modal-shield img.ts-modal-logo { height:72px; width:auto; display:block; }
-  /* v75 — "app-only + iDenfy live selfie" callout in the TrustShield modal */
+  /* v75 — "app-only + live selfie" callout in the TrustShield modal */
   .ts-modal-note {
     text-align:left;
     background:#f3f6fc;
@@ -10138,12 +10138,12 @@ const PAY_BADGES = {
       return out.join(' ');
     }
 
+    // G40-38 owner rulings 2026-09-06: PayPal/Venmo excluded (not available through Stripe for
+    // a US account); no wallet carries a fee different from a card, so no fee tag.
     const wallets = [
       { key:'applepay',  note:'One-tap with Face ID / Touch ID' },
       { key:'googlepay', note:'One-tap on Android & Chrome' },
-      { key:'paypal',    note:'Includes Venmo for linked accounts', fee:true },
-      { key:'cashapp',   note:'Pay from your Cash App balance', fee:true },
-      { key:'venmo',     note:'US only \u00b7 opens the Venmo app', fee:true },
+      { key:'cashapp',   note:'Pay from your Cash App balance \u00b7 cover the cost of items in full: a Cash App request can\'t be adjusted upward' },
     ];
     const walletRows = wallets.map(function(w){
       var m = PAY_METHODS[w.key]; var badge = PAY_BADGES[w.key] || m.shortLabel;
@@ -15282,8 +15282,6 @@ const PAY_BADGES = {
       { key:'visa',  shortLabel:'VISA',  name:'Visa', cardholder:'Marcus Hale', sub:'Ending in 4242 · Exp 09/27', isDefault:true },
       { key:'amex',  shortLabel:'AMEX',  name:'American Express', cardholder:'Marcus Hale', sub:'Ending in 1004 · Exp 03/28' },
       { key:'ach',   shortLabel:'ACH',   name:'Bank ACH · Wells Fargo', cardholder:'Marcus Hale', sub:'Checking •••• 6781' },
-      { key:'paypal',    shortLabel:'PP',  name:'PayPal', sub:'business@acmelogistics.com' },
-      { key:'venmo',     shortLabel:'VEN', name:'Venmo', sub:'@acme-logistics' },
       { key:'applepay',  shortLabel:'AP',  name:'Apple Pay', sub:'Visa •••• 4242' },
       { key:'googlepay', shortLabel:'GP',  name:'Google Pay', sub:'Mastercard •••• 8830' },
       { key:'cashapp',   shortLabel:'CA',  name:'Cash App', sub:'$AcmeLogistics' },
@@ -21847,7 +21845,7 @@ const PAY_BADGES = {
     { match:['worker','matched','match','rating','rated','elite','pros','my gophers','select worker'],
       answer:`<b>How workers are matched:</b> we match based on proximity, category specialty, ratings, and your preferences. You can restrict each request to <b>MY Gophers</b>, <b>Gopher Elite + Pros</b>, or open it to the full workforce. After each completed request, you'll rate your Gopher and can add them to MY Gophers from the request detail screen.` },
     { match:['payment method','add card','credit card','ach','paypal','venmo','apple pay','google pay','cash app'],
-      answer:`<b>Payment methods:</b> add or change methods from the <b>Payment info</b> section in the sidebar. We support Visa, Mastercard, AmEx, ACH, PayPal, Venmo, Apple Pay, Google Pay, and Cash App. Set any method as default; you can also override per-request at the review screen.` },
+      answer:`<b>Payment methods:</b> add or change methods from the <b>Payment info</b> section in the sidebar. We support Visa, Mastercard, AmEx, ACH, Apple Pay, Google Pay, and Cash App. Every method costs you the same — there are no processing surcharges. Set any method as default; you can also override per-request at the review screen. <b>Paying with Cash App?</b> Make sure the cost of items covers the total in full: a Cash App request can't be cost-adjusted upward, so your Gopher enters the actual amount spent and the total only comes down.` },
     { match:['my gopher','preferred worker','favorite worker'],
       answer:`<b>MY Gophers</b> is your list of preferred workers. When you mark a completed request's worker as MY Gopher, future requests can be sent to your MY Gophers first before opening to the wider network — giving the people you trust first chance at the job.` },
     { match:['account','user','admin','users & access','invite'],

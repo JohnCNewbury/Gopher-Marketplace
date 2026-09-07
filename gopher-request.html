@@ -82,8 +82,9 @@
                    formatting (Amex 4-6-5 + 4-digit CVC, others 4-4-4-4 + 3), live card preview at
                    1.586:1 (chip · DEFAULT badge · brand mark · masked number+last4 · holder · MM/YY),
                    fields Name/Number(+Scan demo autofill)/Exp(auto MM/YY)/CVC/nickname/Set-default;
-                   e-wallets (Apple/Google Pay, PayPal, Cash App, Venmo) with "small fee" tags on
-                   PayPal/Cash App/Venmo shown before confirm + device-aware note. Edit shows a last-4
+                   e-wallets (Apple/Google Pay, Cash App; PayPal/Venmo removed and the "small fee"
+                   tags dropped 2026-09-06 per the G40-38 owner rulings) + device-aware note and the
+                   Cash App no-upward-adjustment notice. Edit shows a last-4
                    placeholder (no PAN stored); Remove promotes the next default. Checkout picker +
                    account screen both rewired to the store (old fixed PAY_METHODS lookup retired).
                    Session-only; real Stripe wiring is out of scope per the ticket.
@@ -723,7 +724,7 @@
                    2) TrustShield modal: real mark injected into #trustShieldShield
                       (inline SVG kept as graceful fallback). Added an app-only
                       callout — TrustShield verification is only available in the
-                      Gopher Request app, and the iDenfy identity partner captures
+                      Gopher Request app, and the identity-verification step captures
                       a live selfie — plus real App Store + Play Store badges
                       (#trustShieldApple / #trustShieldGoogle) linking to the
                       Request listings. [Both the app-only callout and those two
@@ -1692,7 +1693,7 @@
                    assurance, not just the reverse. New headline "The only
                    platform that has your back — and your Gopher's." Added a
                    real 4-badge verification ladder grounded in the Terms:
-                   TrustShield™ (free iDenfy ID verification, EVERYONE — the
+                   TrustShield™ (free ID verification, EVERYONE — the
                    mutual one, visually flagged navy), Gopher Elite (Yardstik
                    background screen), Gopher Elite+ (adds DMV), Gopher Pro
                    (licensed/bonded/insured). Fixed the old badge ladder which
@@ -4697,7 +4698,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .ts-promo-icon img.ts-promo-logo { height:42px; width:auto; display:block; }
   /* v75 — real TrustShield mark inside the modal header */
   .ts-modal-shield img.ts-modal-logo { height:72px; width:auto; display:block; }
-  /* v75 — "app-only + iDenfy live selfie" callout in the TrustShield modal */
+  /* v75 — "app-only + live selfie" callout in the TrustShield modal */
   .ts-modal-note {
     text-align:left;
     background:#f3f6fc;
@@ -9464,7 +9465,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       return '';
     };
     /* Canonical Gopher Request store listings (used by the TrustShield modal,
-       since TrustShield verification is app-only / iDenfy live-selfie). */
+       since TrustShield verification is app-only / live-selfie). */
     window.GR_APP_LINKS = {
       apple:  'https://apps.apple.com/us/app/gopher-request/id1438150218',
       google: 'https://play.google.com/store/apps/details?id=io.gophergoapp.requester'
@@ -11046,13 +11047,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     };
     function brandMark(b){ return MARKS[b] || '<span class="pm-mark">' + String(b||'').toUpperCase() + '</span>'; }
 
-    // E-wallets (PayPal/Cash App/Venmo carry a small processing fee — shown before confirm)
+    // E-wallets. G40-38 owner rulings 2026-09-06: PayPal and Venmo are excluded (not available
+    // through Stripe for a US account); no wallet carries a fee different from a card, so there is
+    // no fee tag. A Cash App order can never be cost-adjusted UPWARD (the "Paying with Cash App"
+    // notice below) because Cash App Pay supports no incremental authorization.
     const WALLETS = [
       { brand:'applepay',  name:'Apple Pay',  fee:false, sub:'Linked to your device' },
       { brand:'googlepay', name:'Google Pay', fee:false, sub:'Linked to your device' },
-      { brand:'paypal',    name:'PayPal',     fee:true,  sub:'Connected account' },
-      { brand:'cashapp',   name:'Cash App',   fee:true,  sub:'Connected account' },
-      { brand:'venmo',     name:'Venmo',      fee:true,  sub:'Connected account' }
+      { brand:'cashapp',   name:'Cash App',   fee:false, sub:'Connected account' }
     ];
 
     // ── The store (single source of truth) ──
@@ -11144,7 +11146,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         +   '</div>'
         +   '<div class="pay-or"><span>or connect a wallet</span></div>'
         +   '<div class="pay-wallets">' + walletHTML + '</div>'
-        +   '<div class="pay-wallet-note">' + note + ' Wallets with a <b>small fee</b> show it before you confirm.</div>'
+        +   '<div class="pay-wallet-note">' + note + ' <b>Cash App:</b> cover the cost of items in full — a cost adjustment can only bring a Cash App request\'s total down, never up.</div>'
         + '</div>';
       document.body.appendChild(ov);
 
@@ -17573,8 +17575,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <!-- ⛔ WAS "Verify in the Gopher Request app" (owner, 2026-08-25 — AR Flow.pptx
          slide 4: "Remove this - no longer accurate. TrustShield available on the
          spot."). Two claims died at once: web CAN complete enrolment now (it runs
-         the same 3-shot live capture as the one-off path), and the iDenfy line
-         named a vendor being retired. Replaced with what the badge actually does. -->
+         the same 3-shot live capture as the one-off path), and the vendor line
+         named a third-party vendor being retired. Replaced with what the badge actually does. -->
     <div class="ts-modal-note">
       <strong>How it works</strong>
       <span>Save your ID and Selfie in your profile so each qualified order saves you time and money.</span>
@@ -24777,7 +24779,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     { match:['worker','matched','match','rating','rated','elite','pros','my gophers','select worker'],
       answer:`<b>How workers are matched:</b> we match based on proximity, category specialty, ratings, and your preferences. You can restrict each request to <b>MY Gophers</b>, <b>Gopher Elite + Pros</b>, or open it to the full workforce. After each completed request, you'll rate your Gopher and can add them to MY Gophers from the request detail screen.` },
     { match:['payment method','add card','credit card','ach','paypal','venmo','apple pay','google pay','cash app'],
-      answer:`<b>Payment methods:</b> add or change methods from the <b>Payment info</b> section in the sidebar. We support Visa, Mastercard, AmEx, ACH, PayPal, Venmo, Apple Pay, Google Pay, and Cash App. Set any method as default; you can also override per-request at the review screen.` },
+      answer:`<b>Payment methods:</b> add or change methods from the <b>Payment info</b> section in the sidebar. We support Visa, Mastercard, AmEx, ACH, Apple Pay, Google Pay, and Cash App. Every method costs you the same — there are no processing surcharges. Set any method as default; you can also override per-request at the review screen. <b>Paying with Cash App?</b> Make sure the cost of items covers the total in full: a Cash App request can't be cost-adjusted upward, so your Gopher enters the actual amount spent and the total only comes down.` },
     { match:['my gopher','preferred worker','favorite worker'],
       answer:`<b>MY Gophers</b> is your list of preferred workers. When you mark a completed request's worker as MY Gopher, future requests can be sent to your MY Gophers first before opening to the wider network — giving the people you trust first chance at the job.` },
     { match:['account','user','profile','invite'],
