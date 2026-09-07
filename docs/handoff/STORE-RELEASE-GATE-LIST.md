@@ -22,32 +22,59 @@ The stores ship binaries. A client merge changes what a *future* build contains 
 **nothing** for anyone holding today's app. Every item below is a server-side change that would
 misbehave against the currently-installed client.
 
-**Current position, 2026-09-05 (evening): iOS is LIVE, Play is awaiting approval.**
+**Current position, 2026-09-07: ALL FOUR SURFACES AT 100%. The owner's gate condition is MET.**
 
-| surface | state |
-|---|---|
-| App Store GO **3.9.2** | `READY_FOR_SALE`, phased release **day 1** |
-| App Store Request **3.8.2** | `READY_FOR_SALE`, phased release **day 1** |
-| Play GO **866** | staged **20%**, in review |
-| Play Request **854** | staged **20%**, in review |
+| surface | state | verified |
+|---|---|---|
+| App Store GO **3.9.2** | `READY_FOR_SALE`, `phasedReleaseState: COMPLETE` | 2026-09-07, ASC API |
+| App Store Request **3.8.2** | `READY_FOR_SALE`, `phasedReleaseState: COMPLETE` | 2026-09-07, ASC API |
+| Play GO **866** | `status: completed`, no `userFraction` | 2026-09-07, Play API |
+| Play Request **854** | `status: completed`, no `userFraction` | 2026-09-07, Play API |
 
-⛔ **OWNER DECISION 2026-09-05 — nothing on this list moves until 100% rollout on BOTH stores.**
-Verbatim: *"we'll leave both until we're 100% launched on both stores."*
+The owner rolled Play from 20% to 100% and ended both Apple phased releases early (they were on
+**day 1 of 7**, ~1% auto-updating) after Sentry showed the release clean. **Both items below are
+now unblocked.**
 
-**That is a stricter bar than this document's own "release LIVE" row, and deliberately so.** At
-phased day 1 with Play unpublished, effectively every user is still on **3.9.1** — so "iOS is live"
-unblocks nothing here. It applies to **both** items below: the `!436` offer floor and the
-TrustShield / iDenfy work.
+⚠️ **Verify a rollout by CONTENT, never by report.** Play at 100% reads as `status: "completed"`
+with **no `userFraction` key at all**, and the superseded release drops off the track entirely.
+Apple reads `phasedReleaseState: COMPLETE`. Both were re-read on fresh edits/requests above.
 
-⚠️ **On `!436` specifically, one thing verified today that sharpens why waiting is right.** The
-shipped 3.9.1 client's offer submit ends in `catch (error) { Sentry.captureException(error); }` and
-clears `onSubmitLoading` **only** in the success branch. So a guarded server does not merely fail
-silently — it leaves the **button stuck in its loading state**. The user cannot tell an invalid
-offer from a broken app, which is why "they can contact support" does not hold: nothing tells them
-there is anything to contact anyone about. *(Verified on the `makeAnOffer` path; the exact
-order-create call was not isolated, and this file's earlier citation of `requestOrder.js:312` is in
-fact the polling function, not a submit.)* `!436` also still needs its rebase — 150 commits behind
-and conflicted — so the waiting period is not idle time.
+⚠️ **Store API credentials are READ-ONLY and that is deliberate** — the Play service account is
+literally `claude-readonly@gopher-inc.iam.gserviceaccount.com`, and the ASC key returns
+`403 FORBIDDEN_ERROR` on any write. Rollout ramps and phased-release completion are **owner-only,
+in the consoles**. Do not propose widening either credential. See memory
+`store-credentials-are-read-only` for the exact console paths.
+
+**Superseded, kept so the reasoning is not re-litigated:** the 2026-09-05 owner decision — *"we'll
+leave both until we're 100% launched on both stores"* — was the stricter bar this file waited on,
+and at phased day 1 with Play unpublished it was correct that "iOS is live" unblocked nothing.
+
+### Sentry at the moment of the ramp, 2026-09-07
+
+The evidence the ramp was taken on, so a later reader can judge it rather than trust it:
+
+- **Zero fatal events on any 3.9.2 build in 7 days.** All 11 fatals in the window sit on
+  13.9.1 (5), 13.9.0 (2), 3.9.1 (2), 3.9.0 (2).
+- **No new issue types on 3.9.2.** Only two issues org-wide were first seen in 48h; neither on 3.9.2.
+- **Events per affected user (48h)** — the only comparison not distorted by cohort size, since
+  3.9.2 was on ~20% of Android and ~1% of iOS: `gopher@3.9.1` **15.0** and `gopher@13.9.0` **14.5**
+  are the two worst on the board, against `gopher@13.9.2` 4.5 · `requester@13.9.2` 4.5 ·
+  `gopher@3.9.2` 3.9 · `requester@3.9.2` **2.4**. The new builds are at the low end.
+- **The largest cluster in the project is fixed and stays fixed:** `locationTrackingService.initialize`
+  → `this.currentOrder.requestor.id` undefined, **5,691 events / 376 users over 7 days, every one on
+  3.9.0 / 13.9.0.** Zero on 3.9.1, zero on 3.9.2.
+- ⚠️ **Still to watch:** `LocationUnavailableError` on Android GO — 1,639 events / 67 users on
+  3.9.1, about **24 events per user**, a loop. On 3.9.2 it was 14 events / 1 user: directionally
+  better but n=1. **This is the headline fix in the GO release notes — re-check it now that the
+  population is real.**
+- ⚠️ Play's own crash/ANR rate was **`Data unavailable`** at ramp time — its freshness window had
+  not passed. Sentry did that job. Re-read the Play vitals once they populate.
+
+⚠️ **`NSMicrophoneUsageDescription` is missing from all four iOS `Info.plist` files** across both
+repos, and is **still missing in 3.9.2** (checked in the working tree). It produces a hard SIGABRT.
+Low volume so far — 1 user / 2 events on 13.9.1 — but deterministic. The obvious suspect, the Inbox
+voice-search button, was **checked and ruled out**: `speech.start()` is never called, so that
+control is dead code. **The trigger is unidentified.** Needs a ticket, not a guess.
 
 ---
 
@@ -65,7 +92,10 @@ the owner against production: `$0.00` blocked with the reason shown, `$0.01` sub
 with the bid toggle on still submits** (the row that matters — a naive implementation silently
 kills the bids product).
 
-### ⚠️ Why it must not merge before the release is live
+### ⚠️ Why it must not merge before the release is live — CONDITION NOW SATISFIED 2026-09-07
+
+*Kept because it is the reasoning, not the status. Both stores are at 100%, so the objection
+below no longer applies — it explains what the wait was buying.*
 
 `src/component/requestOrder.js:312` in the **shipped** client is an empty `else` block. A live
 requester submitting `$0` against a guarded server gets a **403 and sees nothing at all** — no
@@ -79,17 +109,39 @@ gets done at a real price. A swallowed 403 is recoverable by nobody. This is exa
 **Scale, so the urgency is weighed honestly:** 282 zero-offer non-bid orders all-time, **71
 delivered** — but **since 2026-01-01 it is 2 of 104**. Largely historical, not a current bleed.
 
-### When the release is live, in this order
+### ✅ Step 1 DONE 2026-09-06 — rebased, verified, pushed. Only the merge remains.
 
-1. **Rebase** `fix/offer-must-be-nonzero` onto `production`. It was **150 commits behind and
-   conflicted** as of 2026-09-05.
-2. ⚠️ **Re-verify placement — a clean rebase proves nothing about it.** `create.js` must fire
-   **before** `payment_actions.charge.create` (no Stripe token yet); `update.js` must fire
-   **after** the order lookup and both state checks, so a dead or claimed order still reports as
-   dead or claimed rather than as a bad offer.
-3. Run `test/offer-floor.test.js` and the full suite.
-4. Merge — **target `production` · squash NO · delete source NO**.
-5. Close **G40-415 AC 6**.
+**Branch: `rebase/offer-floor-2026-09-06`** (in `gopher-backend-api`), rebased from
+`fix/offer-must-be-nonzero` onto `production`, zero behind.
+
+⛔ **Pushed as a NEW branch, deliberately NOT force-pushed over `fix/offer-must-be-nonzero`,**
+because **MR !436 points at that branch** and force-updating it rewrites shared history.
+**Open owner decision: repoint !436 at the rebased branch, or force-update the original.**
+
+**One conflict, in `controllers/order/update.js`** — production had added the G40-9 released-order
+guard in the same place. **Both kept**, with the offer floor placed **after** it, on the branch's
+own logic: a released order should report as released, not as a pricing problem.
+
+**Verification, all first-hand:**
+
+| check | result |
+|---|---|
+| placement — `create.js` floor L242 vs `payment_actions.charge.create` L536 | ✅ fires **before** the charge |
+| placement — `update.js` state checks L274/L296, released guard L334, floor **L355** | ✅ fires **after** all three |
+| `test/offer-floor.test.js` | **13/13** |
+| `node --check`, prettier | clean |
+| `$0.00` · absent · negative | blocked |
+| `$0.00` **with `offer_by_gopher`** (boolean *and* string) · `$0.01` · `$10.00` | allowed |
+
+⚠️ **A near-miss worth keeping, because it nearly became a false alarm on a payments guard.** An
+ad-hoc probe first reported `$10 → BLOCKED`. That was the harness, not the code: the field is
+**`gopher_offering`, in DOLLARS**, not `offer` in cents, so every case read as absent. Read
+`helpers/offer_floor.js` before writing any test against this path.
+
+### Remaining steps
+
+1. Decide the MR pointer (above), then merge — **target `production` · squash NO · delete source NO**.
+2. Close **G40-415 AC 6**.
 
 ✅ **AC 5 is NOT open — corrected 2026-09-05.** It was already satisfied on 2026-08-29 by
 `c67c482aa` (an ancestor of `production`): `src/helpers/validation.js` no longer exists in the
@@ -171,34 +223,41 @@ and licence live from iDenfy, and that mirroring them was the one thing that bec
 So existing holders are **not** waiting on anything here, and the completion flow does not go blank
 the day iDenfy stops answering.
 
-### ⚠️ What IS still open — small, real, and time-bounded
+### ✅ RE-MEASURED 2026-09-06 — the coverage gap is **ONE ROW**, not 122
 
-**122 of 7,004 active scan refs have no mirror.** Measured 2026-09-05 by set-differencing the
-distinct active `idenfy_scan_ref` values against the S3 prefixes: 6,882 covered, **0 orphans**.
+The "122 of 7,004" figure above was superseded the next day by a direct measurement against the
+production **reader** (`pg_is_in_recovery = true`; control query returned 61,598 `role_id=2` rows
+against the runbook's 61,463 baseline, so the probe was real).
 
-About 98 of those were already unrecoverable when the export ran (that run found roughly that many
-scan refs iDenfy would no longer answer — see the header of `helpers/trustshield_files.js`). The
-remainder — roughly two dozen — **enrolled after the snapshot** and are covered only by the
-self-repair path, which works **only while iDenfy still answers**.
+| | |
+|---|---|
+| distinct `scan_ref` prefixes under `uploads/trustshield/` in S3 | **6,937** |
+| APPROVED holders carrying a vendor `scan_ref` | **6,915** |
+| …mirrored | **6,914** |
+| …**not mirrored** | **1** |
+| APPROVED with internal capture (nothing to mirror) | 9 |
 
-**Fix: re-run the same script before the account lapses.**
+**And the single gap was that night's newest verification** — `id=17682`, `user_id=143556`,
+`updated_on 2026-09-07 00:03:48`, the most recent APPROVED row in the whole table. Nobody had
+viewed that holder's ID yet.
 
-```bash
-node scripts/trustshield-export-images.js --dry-run   # count first
-node scripts/trustshield-export-images.js             # full run
-```
+**That confirms the mechanism rather than revealing a backlog:** the write-through backfill fires
+**on first view**, so the gap is a rolling window of one or two of the newest verifications, never
+an accumulation. The images are effectively already ours.
 
-**Idempotent and resumable** — it skips every scan ref already recorded OK, so a re-run costs only
-the stragglers. SELECT-only on our DB, file reads on iDenfy (billed on approved verifications, not
-file reads — confirmed in writing by the vendor 2026-08-03), writes only to our own private S3.
+### The severance sequence
 
-⚠️ **It does `require('../models')`, so it runs the production boot DDL** — the same trap as
-`lib/sendPushNotif.js`. Read `api_version` back with raw `pg` afterwards.
+1. **Set `TRUSTSHIELD_IDENFY_ENROLMENT_DISABLED`** so no new unmirrored rows can appear. The kill
+   switch is merged (`c86875bb` → `b75b4ac3`) and inert until the var is set. **This is the step
+   that must come first** — a final sweep is worthless while enrolment is still writing.
+2. Let the handful in flight settle, or force them.
+3. **Re-run the sweep and confirm zero**, using the same S3-prefix ÷ DB set-difference as above.
+4. Sever.
 
-⚠️ **The credit balance is the clock, and the last reading is stale.** 147 credits on 2026-08-29 at
-~11.8/day projects to exhaustion around **10 September**. Re-read from **Finance → Identification**,
-never the Overview — the Overview renders `used / limit` and has already been misread once as
-`remaining / total`, wrong by a factor of twenty.
+⚠️ **The credit balance is the clock and the last reading is stale.** 147 credits on 2026-08-29 at
+~11.8/day projects to exhaustion around **10 September** — i.e. possibly already gone. Re-read from
+**Finance → Identification**, never the Overview, which renders `used / limit` and has already been
+misread once as `remaining / total`, wrong by a factor of twenty.
 
 **Owner constraint (2026-08-04):** everyone who already holds TrustShield **keeps it**, and their
 completion protocol behaves identically end to end. Only *new* enrolment is shut off. The
@@ -227,34 +286,64 @@ unique to the fix. For a **native** fix, grep `classes*.dex` instead.
 
 ## 4. The in-app "update is available" announcement
 
-**Owner asked 2026-09-05 to send it through HQ, as after the last release. Held, and the reason is
-not caution — it is a contradiction with the rollout that was chosen the same day.**
+### ✅ UNBLOCKED 2026-09-07 — both blockers are gone
 
-**⛔ Two independent blockers, either one sufficient:**
+Both reasons this was held have been removed by the 100% rollout recorded at the top of this file:
 
-1. **Android cannot act on it.** Play had not published at the time of asking — 3.9.2 is not
-   downloadable by any of the **5,483** Android installs. The message would simply be false for
-   them. iOS was already `READY_FOR_SALE`, so an iOS-only send would have been accurate.
-2. **⛔ The announcement defeats the staged rollout.** iOS phased release and Play's 20% throttle
-   **automatic** updaters only. A mass "update now" notice drives **manual** updates, which bypass
-   phasing entirely — so a broad send puts the release at effectively 100% within a day, discarding
-   the exposure cap set an hour earlier. **You can have the staged rollout or the announcement, not
-   both.**
+1. **Android can now act on it.** 3.9.2 is downloadable by every Android install. Until the ramp it
+   was not — a staged Play rollout gives users outside the cohort **no Update button at all**, so
+   the message would have been simply false for ~80% of them.
+2. **There is no staged rollout left to defeat.** The tension was real while it existed: phasing
+   throttles *automatic* updaters only, and a mass "update now" notice drives *manual* updates that
+   bypass it entirely. With both stores at 100% the conflict does not exist.
 
-**Send it when both stores are at 100% and Sentry has been clean.** It also does more good then:
-adoption on these apps is slow — Request's `3.9.1` reached only **26.15%** of its install base a
-week after *full* rollout — so the nudge is worth more later than now.
+⚠️ **Apple was never the constraint, and this was nearly got wrong.** Phased release throttles only
+automatic updates — anyone tapping the App Store link could always update manually. **Only the two
+Play messages ever needed to wait.**
 
-**How to send it, when the time comes.** HQ mass send → `get_filtered_users` →
-`send_new_app_alert` (push/SMS) or `send_inbox_mail` (in-app inbox). Audience is built by
-`helpers/campaign_audience.js`.
+### Sending it — four messages, one per app per store
 
-- **Platform targeting exists**: `ur.device_type = 'ios' | 'android'` (`admin.controller.js` ~460),
-  so a split send is possible if the stores ever go live at different times again.
-- **Deactivated and deleted are suppressed by the helper** — not something to remember per send.
-- **In-app inbox is the only channel with a real read receipt.** Push and SMS have none, deliberately.
-- ⚠️ **If it goes by push, the Android tap will not route** — `F-037`, confirmed on the release
-  builds. Fine for a message with nothing to open; broken if it is meant to deep-link.
+Owner drafted four: GO/Play, Request/Play, GO/Apple, Request/Apple. Audience is `ur.role_id` +
+`ur.device_type`: **role 2 = Gopher (GO app), role 3 = Requester (Request app)**.
+
+⛔ **Each send needs EXACTLY ONE role and EXACTLY ONE device ticked.** In
+`controllers/admin/inbox_message.js` the role filter applies only when `role.length === 1`, and the
+device filter only when exactly one of ios/android is chosen (`if (ios && !android) … else if
+(android && !ios)`). **Tick both, or neither, and that filter is silently dropped and the message
+goes to everyone.** No error, no warning.
+
+⚠️ **The SUBJECT becomes the push notification title.** The push body is hardcoded to
+`"Check your Gopher Inbox here"` (`send_inbox_mail`), so the subject is what every recipient reads
+on their lock screen. Three of the four drafts had no headline at all.
+
+⚠️ **Proofread the app name against the link.** The GO/Play draft read *"A new version of **Gopher
+Request** is available"* above the `io.gophergoapp.go` URL.
+
+**Links do work, and the mechanism is not obvious.** HQ auto-wraps bare URLs into the `@!url!@`
+markup (`_autoLinkMarkup` in the portal), and `SupportMessage.js` renders that as a real
+`<a href target="_blank">` in both apps. The **list preview** uses a different renderer
+(`inbox.js` → `formatMessage`) which strips the markup to plain text and truncates at 70 chars —
+that is the preview, not the opened message.
+
+- **In-app inbox is the only channel with a real read receipt** (`inbox_users.viewed`). Push and
+  SMS have none, deliberately — see memory `campaign-recipient-reporting`.
+- **Deactivated and deleted are suppressed by `helpers/campaign_audience.js`** — not something to
+  remember per send.
+
+### ⛔ Do NOT treat this send as a G40-426 AC#4 verification
+
+**`F-037` is OPEN: "Tapping an Android push still does not open the right order" — shipped
+knowingly 2026-09-05, confirmed on these exact release builds.** A session proposed using the
+announcement push as a free confirmation of G40-426 AC#4 and **that was wrong**; it is already
+known broken here.
+
+⚠️ **§3 of this file contradicts that** — it records G40-426 as *"closed — AC4 tap routing verified
+on the A50, build 905."* Both cannot describe the same thing. **Flagged, not resolved:** build 905
+may not be the release build, or the verification may not have held. **F-037 is the later and more
+specific finding and it is marked OPEN**, so treat Android push tap as broken until someone
+reconciles the two on a real handset.
+
+Fine for this message, which has nothing to deep-link to. Not fine for anything that does.
 
 ---
 
