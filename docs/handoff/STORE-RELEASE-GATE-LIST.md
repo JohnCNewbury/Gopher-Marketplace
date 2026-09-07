@@ -335,6 +335,23 @@ unique to the fix. For a **native** fix, grep `classes*.dex` instead.
 
 ## 4. The in-app "update is available" announcement
 
+### ✅ SENT AND CLOSED 2026-09-07 — all four went out
+
+**Owner sent all four in-app notifications** (GO/Play, GO/Apple, Request/Play, Request/Apple) after
+both stores reached 100%. Delivery and push both confirmed. **Item 4 is done — do not re-send.**
+
+⛔ **Owner ruling: no further announcement.** *"not sending 4 more announcement… not disrupting user
+again."* If a later session finds this section and reads it as outstanding, it is not.
+
+**Before sending, a scoped self-test was run** (Custom user-ID filter, live count of 1) with the real
+Play URL as the body: push received, message opened, link tapped, Play Store reached. That closed the
+one silent-failure risk — an unwrapped URL would have shipped as dead plain text with every other
+signal looking healthy.
+
+⚠️ **"Pushes work" here means DELIVERY works.** It does not touch **F-037** (tapping an Android push
+does not open the right *order*), which remains OPEN — see the G40-426 note. An inbox campaign has
+nothing to deep-link to, so it could never have tested that.
+
 ### ✅ UNBLOCKED 2026-09-07 — both blockers are gone
 
 Both reasons this was held have been removed by the 100% rollout recorded at the top of this file:
