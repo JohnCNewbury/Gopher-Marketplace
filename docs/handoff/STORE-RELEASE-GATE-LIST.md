@@ -330,6 +330,35 @@ that is the preview, not the opened message.
 - **Deactivated and deleted are suppressed by `helpers/campaign_audience.js`** — not something to
   remember per send.
 
+### ✅ VERIFIED IN PRODUCTION 2026-09-07 — the link chain works end to end
+
+Owner sent a scoped test to himself (Custom user-ID filter, live count **1** before sending) with
+the real Play URL as the body. Result: **push received · message opened · link tapped · landed on
+the Play Store listing.**
+
+**That closes the silent-failure risk on this whole campaign.** Both halves are confirmed on the
+deployed HQ and the shipped apps:
+
+1. **HQ wraps bare URLs** into `@!url!@` on the way in (`_autoLinkMarkup` in the campaigns portal).
+2. **`SupportMessage.js` renders that markup as a real `<a href target="_blank">`**, and the tap
+   reaches the store.
+
+⚠️ **Why this needed testing at all:** if step 1 had failed, the send would still have succeeded —
+delivered, pushed, logged in the ledger — and every recipient would have received a **dead
+plain-text URL**. Nothing anywhere would have reported a problem. **A bare URL that HQ fails to
+wrap does not linkify**; the app recognises the markup and nothing else.
+
+⚠️ **Judge the link from the OPENED message, never the list preview.** They are different
+renderers: the list uses `inbox.js` → `formatMessage`, which strips the markup back to plain text
+and truncates at 70 chars. Only `SupportMessage.js` produces the anchor.
+
+**Test-scoping recipe, reusable:** Custom = your `users.id` (**not** the role-row id — the audience
+query aliases `users_roles.id` away as `role_id`), one Role ticked, **Device left unticked**.
+Device is per role row and reflects the *last device signed in for that role*, so an Android filter
+silently matches **zero** if you last opened that app on an iPhone. ⛔ **Confirm the live count
+reads 1 before sending** — that number comes from the server's own audience query, and a silently
+dropped filter shows up there as thousands.
+
 ### ⛔ Do NOT treat this send as a G40-426 AC#4 verification
 
 **`F-037` is OPEN: "Tapping an Android push still does not open the right order" — shipped
@@ -342,6 +371,21 @@ on the A50, build 905."* Both cannot describe the same thing. **Flagged, not res
 may not be the release build, or the verification may not have held. **F-037 is the later and more
 specific finding and it is marked OPEN**, so treat Android push tap as broken until someone
 reconciles the two on a real handset.
+
+### ⚠️ 2026-09-07 observation — "the banner tap opened the app" proves NOTHING about routing
+
+During the test above, tapping the Android push **opened the app with the inbox badge lit**. Do not
+let that be read as AC#4 passing.
+
+**Android launches the app from a notification by default, via the native content intent — with or
+without `pushNotificationActionPerformed` firing in the JS layer.** See memory
+`android-push-delivery-architecture`: that handler never fires on this stack. So "the app opened"
+is entirely consistent with the handler being dead, and F-037 is about the **routing** failing, not
+the tap being inert.
+
+**Record it as "opens the app, routing unproven."** It neither confirms nor contradicts §3's
+"AC4 verified on the A50, build 905" — the contradiction there is still open and still needs a real
+handset with a deep-linkable payload.
 
 Fine for this message, which has nothing to deep-link to. Not fine for anything that does.
 
