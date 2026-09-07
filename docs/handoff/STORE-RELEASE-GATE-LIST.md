@@ -261,6 +261,39 @@ self-heal-on-first-view category and are still recoverable **while iDenfy credit
 ✅ **With enrolment now disabled the gap is bounded** — no new unmirrored rows can appear, so 6 is a
 ceiling that can only shrink as the two recent ones are viewed.
 
+### ✅ CLOSED 2026-09-07 — the two recoverable holders are mirrored. Owner accepted the other four.
+
+**Owner ruling 2026-09-07:** *"mirror the 2 and those old 4 are accepted casualties. leave them behind."*
+
+**Done, and verified by content:**
+
+| | before | after |
+|---|---|---|
+| S3 prefixes under `uploads/trustshield/` | 6,937 | **6,939** |
+| unmirrored APPROVED scan refs | 6 | **4** |
+
+Both new prefixes carry the full set — `FRONT.png`, `BACK.png`, `FACE.png` at realistic sizes,
+matching a known-good holder used as a control. Users **143556** and **143586**.
+
+⭐ **No script was run, and that was the point.** `scripts/trustshield-export-images.js` says in its
+own usage note that it *"runs where the backend runs, not from a laptop"*, and it does
+`require('../models')` — so it executes the **production boot DDL** as a side effect of mirroring
+two files.
+
+**Instead the existing self-heal path was triggered.** `GET /admin/user/:id/trustshield_files`
+(`controllers/admin/user.js:1543`) goes through `helpers/trustshield_files.js`, which serves
+mirror-first, falls back to iDenfy on a miss, and **copies the images into the mirror in the
+background**. HQ already wires that endpoint in its user-detail view (`app_part4.js:4557`), so the
+owner simply opened the two holders. No script, no DDL, no credentials on a laptop, and it exercised
+the production path rather than a parallel one.
+
+⚠️ **The backfill is deliberately not awaited** — it must never add latency to the serve path — so
+allow a moment before verifying, and verify against **S3**, not against the HTTP response.
+
+**The four left behind:** users 55102, 39760, 44613, 45002 — all March–June 2024, and consistent with
+the ~98 scan refs the August export found iDenfy would no longer answer for. Accepted as lost by
+owner ruling; severance destroys nothing here that was still recoverable.
+
 ### The severance sequence
 
 1. **Set `TRUSTSHIELD_IDENFY_ENROLMENT_DISABLED`** so no new unmirrored rows can appear. The kill
