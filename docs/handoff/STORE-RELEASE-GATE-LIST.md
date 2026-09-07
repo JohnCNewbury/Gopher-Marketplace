@@ -223,27 +223,43 @@ and licence live from iDenfy, and that mirroring them was the one thing that bec
 So existing holders are **not** waiting on anything here, and the completion flow does not go blank
 the day iDenfy stops answering.
 
-### ✅ RE-MEASURED 2026-09-06 — the coverage gap is **ONE ROW**, not 122
+### ⛔ RE-MEASURED 2026-09-07 — the gap is **6 scan refs**. The "ONE ROW" figure below was WRONG.
 
-The "122 of 7,004" figure above was superseded the next day by a direct measurement against the
-production **reader** (`pg_is_in_recovery = true`; control query returned 61,598 `role_id=2` rows
-against the runbook's 61,463 baseline, so the probe was real).
+**Correction.** On 2026-09-06 this file recorded the gap as **1 row**. A clean re-run on 2026-09-07,
+after `TRUSTSHIELD_IDENFY_ENROLMENT_DISABLED=true` was set, finds **6**. Four of the six are from
+**March–June 2024** — they were not new arrivals, they were **missed by the earlier measurement**.
+Treat the 09-06 number as retracted, and the commit that carried it (`20271a1`) as wrong on this point.
+
+⚠️ **The likely cause is a `comm` on inputs that were not identically sorted** — it fails silently
+and produces a plausible-looking smaller number. **Sort both sides explicitly and run the difference
+in BOTH directions**, as a control. This run's reverse difference returned 27 S3 prefixes with no
+APPROVED row (non-approved statuses), which is the sanity check that the comparison works at all.
 
 | | |
 |---|---|
-| distinct `scan_ref` prefixes under `uploads/trustshield/` in S3 | **6,937** |
-| APPROVED holders carrying a vendor `scan_ref` | **6,915** |
-| …mirrored | **6,914** |
-| …**not mirrored** | **1** |
-| APPROVED with internal capture (nothing to mirror) | 9 |
+| S3 prefixes under `uploads/trustshield/` | **6,937** |
+| APPROVED rows carrying a vendor `scan_ref` (all legacy, `capture_source` NULL) | **6,916** |
+| **unmirrored** | **6** |
+| S3 prefixes with no APPROVED row (control) | 27 |
 
-**And the single gap was that night's newest verification** — `id=17682`, `user_id=143556`,
-`updated_on 2026-09-07 00:03:48`, the most recent APPROVED row in the whole table. Nobody had
-viewed that holder's ID yet.
+Probe controls: `pg_is_in_recovery = true`, and `role_id=2` read **61,606** against 61,598 earlier
+the same day — live data, not a cached or empty result.
 
-**That confirms the mechanism rather than revealing a backlog:** the write-through backfill fires
-**on first view**, so the gap is a rolling window of one or two of the newest verifications, never
-an accumulation. The images are effectively already ours.
+### The six, and why they are two different problems
+
+**Four are from 2024 and are almost certainly already unrecoverable** — users 55102 (2024-06-03),
+39760 (2024-03-28), 44613 (2024-03-27), 45002 (2024-03-27). The export run of 2026-08-07/08 found
+roughly 98 scan refs iDenfy would **no longer answer for**; these fit that population. Severing does
+not destroy anything here that is not already gone.
+
+**Two are recent** (`17c46d56…`, user 143556, 2026-09-07 00:03, and `13f1b3a8…`). These are the live
+self-heal-on-first-view category and are still recoverable **while iDenfy credits last**.
+
+⚠️ **Note the row/ref distinction: 6 distinct scan refs span 9 rows** — several users hold duplicate
+`trust_shield_users` rows with the same ref. Count refs, not rows, or the number inflates.
+
+✅ **With enrolment now disabled the gap is bounded** — no new unmirrored rows can appear, so 6 is a
+ceiling that can only shrink as the two recent ones are viewed.
 
 ### The severance sequence
 
