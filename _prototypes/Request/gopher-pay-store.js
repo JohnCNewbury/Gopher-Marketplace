@@ -155,7 +155,34 @@
   function openAddModal(onSaved){
     var ov=overlay();
     var sheet=document.createElement('div'); sheet.className='gp-sheet'; ov.appendChild(sheet);
-    var num='',exp='',cvc='',nm='';
+    var num='',exp='',cvc='',nm='',addr1='',city='',st='',zip='';
+    // G40-11: billing address is required and the card is saved only after the SMS code
+    var otpSecs=300, otpTimer=null, otpResent=false;
+    function billingValid(){ return !!(addr1.trim()&&city.trim()&&st.trim().length===2&&/^\d{5}(-\d{4})?$/.test(zip.trim())); }
+    function formValid(){ var d=String(num).replace(/\D/g,''); return d.length>=15&&/^\d{2}\/\d{2}$/.test(exp)&&cvc.length>=3&&!!nm.trim()&&billingValid(); }
+    function drawOtp(){
+      clearInterval(otpTimer); otpSecs=300;
+      sheet.innerHTML='<div class="gp-hd"><div class="gp-h">Add a payment method</div><button class="gp-x">&times;</button></div>'
+        +'<div style="text-align:center;font-weight:800;font-size:17px;color:#002461;padding-top:8px;">Confirm it\'s you</div>'
+        +'<div style="text-align:center;padding:6px 4px 0;font-size:13px;color:#74777C;line-height:1.45;">We sent a 6-digit code to the phone on your account (<b>***-***-1234</b>). Enter it to save this card. The card is not saved until the code is confirmed. <em>(Demo: any 6 digits work.)</em></div>'
+        +'<div style="display:flex;gap:8px;justify-content:center;margin:14px 0 8px;" id="gp-otp">'+'<input class="gp-in" style="width:38px;height:46px;text-align:center;font-size:20px;font-weight:700;padding:0;" inputmode="numeric" maxlength="1">'.repeat(6)+'</div>'
+        +'<div id="gp-otp-meta" style="text-align:center;font-size:12px;color:#74777C;">Code expires in 5:00</div>'
+        +'<button class="gp-cta" data-verify disabled style="opacity:.5;">Verify and save card</button>'
+        +'<button data-resend style="background:none;border:none;color:#1CB061;font-weight:800;text-decoration:underline;margin-top:6px;">'+(otpResent?'Code already resent once':'Resend code')+'</button>'
+        +'<button data-otpcancel style="background:none;border:none;color:#74777C;font-size:12px;margin-top:4px;">Cancel \u2014 don\'t save this card</button>';
+      var boxes=Array.prototype.slice.call(sheet.querySelectorAll('#gp-otp input'));
+      var code=function(){ return boxes.map(function(b){return b.value;}).join(''); };
+      var cta=sheet.querySelector('[data-verify]');
+      boxes.forEach(function(b,i){ b.oninput=function(){ b.value=b.value.replace(/\D/g,'').slice(0,1); if(b.value&&boxes[i+1]) boxes[i+1].focus(); var ok=code().length===6&&otpSecs>0; cta.disabled=!ok; cta.style.opacity=ok?'1':'.5'; };
+        b.onkeydown=function(e){ if(e.key==='Backspace'&&!b.value&&boxes[i-1]) boxes[i-1].focus(); }; });
+      otpTimer=setInterval(function(){ otpSecs=Math.max(0,otpSecs-1); var m=Math.floor(otpSecs/60),s=otpSecs%60; var meta=sheet.querySelector('#gp-otp-meta'); if(!meta){ clearInterval(otpTimer); return; }
+        meta.textContent=otpSecs?('Code expires in '+m+':'+(s<10?'0':'')+s):('That code has expired.'+(otpResent?' Add the card again to get a new code.':' Send a new one.')); meta.style.color=otpSecs?'#74777C':'#D0342C'; if(!otpSecs){ cta.disabled=true; cta.style.opacity='.5'; } },1000);
+      sheet.querySelector('.gp-x').onclick=function(){ clearInterval(otpTimer); ov.remove(); };
+      cta.onclick=function(){ if(code().length!==6) return; clearInterval(otpTimer); saveCard(); ov.remove(); if(onSaved)onSaved(); };
+      sheet.querySelector('[data-resend]').onclick=function(){ if(otpResent) return; otpResent=true; drawOtp(); };
+      sheet.querySelector('[data-otpcancel]').onclick=function(){ clearInterval(otpTimer); otpResent=false; draw(); };
+      boxes[0].focus();
+    }
     function walletBtns(){
       return WALLETS.map(function(w){
         return '<button class="gp-wbtn" data-wallet="'+w.brand+'">'+brandMark(w.brand)
@@ -173,15 +200,28 @@
         +'<div style="display:flex;gap:10px;"><div class="gp-fld" style="flex:1;"><label class="gp-lb">Expiry</label><input class="gp-in" id="gp-exp" inputmode="numeric" placeholder="MM/YY" value="'+exp+'"></div>'
         +'<div class="gp-fld" style="flex:1;"><label class="gp-lb">CVC</label><input class="gp-in" id="gp-cvc" inputmode="numeric" placeholder="'+(brand==='amex'?'4 digits':'3 digits')+'" value="'+cvc+'"></div></div>'
         +'<div class="gp-fld"><label class="gp-lb">Cardholder name</label><input class="gp-in" id="gp-nm" placeholder="Name on card" value="'+nm+'"></div>'
-        +'<button class="gp-cta" data-savecard>Add card</button>';
+        +'<div class="gp-sec">Billing address (as on the card statement)</div>'
+        +'<div class="gp-fld"><label class="gp-lb">Street address</label><input class="gp-in" id="gp-addr1" placeholder="Street address" value="'+addr1+'"></div>'
+        +'<div style="display:flex;gap:8px;"><div class="gp-fld" style="flex:2;"><label class="gp-lb">City</label><input class="gp-in" id="gp-city" placeholder="City" value="'+city+'"></div>'
+        +'<div class="gp-fld" style="flex:1;"><label class="gp-lb">State</label><input class="gp-in" id="gp-st" placeholder="NC" maxlength="2" value="'+st+'"></div>'
+        +'<div class="gp-fld" style="flex:1;"><label class="gp-lb">ZIP</label><input class="gp-in" id="gp-zip" inputmode="numeric" placeholder="27601" maxlength="10" value="'+zip+'"></div></div>'
+        +'<div style="font-size:11.5px;color:#74777C;line-height:1.45;padding:0 2px 8px;">Your bank checks this address against the card. After you tap Add card, we text a 6-digit code to the phone on your account to confirm it\'s you before the card is saved.</div>'
+        +'<button class="gp-cta" data-savecard'+(formValid()?'':' disabled style="opacity:.5;"')+'>Add card</button>';
       sheet.querySelector('.gp-x').onclick=function(){ ov.remove(); };
       sheet.querySelectorAll('[data-wallet]').forEach(function(b){ b.onclick=function(){ connectWallet(b.getAttribute('data-wallet')); ov.remove(); if(onSaved)onSaved(); }; });
       var ni=sheet.querySelector('#gp-num'); ni.oninput=function(){ num=ni.value; var b=detectBrand(num)||'visa'; var caret=ni.selectionStart; ni.value=fmtNum(num,b); redraw(ni); };
       var ei=sheet.querySelector('#gp-exp'); ei.oninput=function(){ var v=ei.value.replace(/[^0-9]/g,'').slice(0,4); if(v.length>=3) v=v.slice(0,2)+'/'+v.slice(2); exp=v; ei.value=v; };
       var ci=sheet.querySelector('#gp-cvc'); ci.oninput=function(){ cvc=ci.value.replace(/[^0-9]/g,'').slice(0,brand==='amex'?4:3); ci.value=cvc; };
-      var mi=sheet.querySelector('#gp-nm'); mi.oninput=function(){ nm=mi.value; };
+      var mi=sheet.querySelector('#gp-nm'); mi.oninput=function(){ nm=mi.value; refreshCta(); };
+      var a1=sheet.querySelector('#gp-addr1'); a1.oninput=function(){ addr1=a1.value; refreshCta(); };
+      var ci2=sheet.querySelector('#gp-city'); ci2.oninput=function(){ city=ci2.value; refreshCta(); };
+      var si=sheet.querySelector('#gp-st'); si.oninput=function(){ si.value=si.value.replace(/[^a-z]/gi,'').toUpperCase().slice(0,2); st=si.value; refreshCta(); };
+      var zi=sheet.querySelector('#gp-zip'); zi.oninput=function(){ zi.value=zi.value.replace(/[^0-9-]/g,'').slice(0,10); zip=zi.value; refreshCta(); };
+      ni.addEventListener('input', refreshCta); ei.addEventListener('input', refreshCta); ci.addEventListener('input', refreshCta);
+      function refreshCta(){ var c=sheet.querySelector('[data-savecard]'); if(!c) return; var ok=formValid(); c.disabled=!ok; c.style.opacity=ok?'1':'.5'; }
       sheet.querySelector('[data-scan]').onclick=function(){ num='4242424242424242'; exp='09/27'; cvc='123'; nm=nm||'Jamie Lopez'; draw(); };
-      sheet.querySelector('[data-savecard]').onclick=function(){ saveCard(); ov.remove(); if(onSaved)onSaved(); };
+      // G40-11: a new card is saved only after the SMS code is confirmed
+      sheet.querySelector('[data-savecard]').onclick=function(){ if(!formValid()) return; otpResent=false; drawOtp(); };
       function redraw(active){ /* keep the preview live without losing focus on the number field */
         var b=detectBrand(num)||'visa';
         var prev=sheet.querySelector('.gp-prev'); if(prev){ prev.style.background=MARK_BG[b]||'#002461';
@@ -190,7 +230,7 @@
     }
     function saveCard(){ var digits=String(num).replace(/\D/g,''); if(digits.length<12){ return; }
       var b=detectBrand(num)||'visa'; var last4=digits.slice(-4);
-      add({brand:b, name:BRAND_NAME[b]||'Card', last4:last4, exp:exp||'', sub:'Ending in '+last4+(exp?(' · Exp '+exp):'')}, false);
+      add({brand:b, name:BRAND_NAME[b]||'Card', last4:last4, exp:exp||'', cardholder:nm, billing:{line1:addr1.trim(),city:city.trim(),state:st.trim().toUpperCase(),zip:zip.trim()}, sub:'Ending in '+last4+(exp?(' · Exp '+exp):'')}, false);
     }
     draw();
   }
