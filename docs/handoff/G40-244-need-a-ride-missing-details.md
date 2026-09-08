@@ -190,12 +190,54 @@ distance caller, so changing it would decide for all of them. Recorded, not touc
 
 ---
 
+## The Go prototype — item 4 of the ticket's own remaining-work list
+
+The 2026-07-19 flow scrub listed four remaining items. Items 1–3 are the app work above; **item 4
+was "add the three structured rows to the Go job detail"**, and it is done in the same pass — the
+owner's 2026-09-01 rule is that the prototype moves *with* the change, never as a follow-up ticket,
+because the relay is what loses work.
+
+**What it was:** rider count existed only as prose inside the job's `scope` string — literally
+`"1 passenger + 2 bags"` — the single `pin` stat was labelled just `distance`, and there was no trip
+distance and no instructions section anywhere on the job detail.
+
+**What it is now** (`_prototypes/Go/gopher-go-prototype.html`):
+
+- `riders`, `tripMi` and `special` are **structured fields** on the ride jobs, not prose.
+- The job-detail quick-facts block shows **five** facts for a ride: `to pickup` · `trip distance` ·
+  `riders` · `est. time` · `posted`.
+- ⚠️ **The `pin` stat was relabelled `distance` → `to pickup` for rides only.** A ride carries *two*
+  distances — how far away the pick-up is, and pick-up → drop-off — and leaving both called
+  "distance" would be worse than showing one. Every other category still reads `distance`.
+- **Special instructions get their own section**, in full, omitted entirely when absent.
+- `String(j.riders)` for the same reason as the app: a `0` must print rather than vanish.
+- CSS is scoped to a `.rf-ride` modifier so **no other category's grid moves**.
+
+**Verified in the running prototype, not asserted** (served at `localhost:8517`, launch config
+`g40244proto`):
+
+| Case | Result |
+|---|---|
+| Ride **with** instructions | grid `rq-facts rf-ride`, 5 facts, instructions section present |
+| Ride **without** instructions (2nd ride job, deliberately) | 5 facts, instructions section **absent** — Scenario 2, live |
+| Delivery / Errand | grid `rq-facts`, **3** facts, label `distance`, no instructions section — unchanged |
+| Junk Removal · Hourly / Day Labor | unchanged |
+
+Fact-card widths measured 114/114/114 then 175/175 — both rows full width, no ragged trailing row.
+
+⚠️ **This change is on disk only and git cannot see it** — `_prototypes/` is gitignored, so there is
+no commit carrying it and no diff to review. Backup of the pre-change file was taken before editing
+and the edit was applied under an mtime guard, because another session had written to this file
+**during** this one (17:32) and gitignored files have no stash or diff to fall back on.
+
 ## Files
 
 - `src/component/layoutComponent/RequestDetailPullOver.js` — Riders row; instructions caption + layout
 - `src/component/ordercard.js` — same two changes on the accepted-order screen
 - `scripts/assert-ride-details-visible.js` — new contract guard
 - `.gitlab-ci.yml` — guard wired in with `needs: []`
+- `_prototypes/Go/gopher-go-prototype.html` — **gitignored, disk only** — structured ride fields,
+  five-fact grid, `to pickup` relabel, special-instructions section
 
 ## Merge hand-off
 
