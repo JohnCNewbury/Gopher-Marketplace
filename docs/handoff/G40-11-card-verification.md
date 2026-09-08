@@ -12,6 +12,21 @@
 
 ## 0 · Where it stands (2026-09-08)
 
+> ⛔ **INCIDENT 2026-09-08 17:29 ET — the gate refused the STORE app.** The floor defaulted to
+> `appversion >= 43` on the premise that the store build sends 42 (the repo's
+> `.env.requestor.production`). **It sends 45** — Appflow's prod environment bakes
+> `REACT_APP_VERSION=45` into both store builds (iOS #253, Android #254, 2026-09-05). Verified
+> first-hand from the installed Play APK (`e.headers.appversion="45"`, `users/attach/` still
+> called). Caught by the G40-38 session within the hour. **Fix:** [`gopher-backend-api!529`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/529)
+> — no default floor; the gate is off until `CARD_VERIFICATION_REQUIRED_FROM_VERSION` is set on
+> Gopher-Production (target `production`, squash no, delete no). **Damage:** CloudWatch nginx +
+> web.stdout, 21:25Z → 22:02Z, probe proven on 3.7k+ lines: **zero** `PUT /users/attach` requests
+> and zero 409s — nobody added a card in the window, so nobody was refused. ⚠️ Consequence for
+> release: **the env var must be set to the G40-11 build's real `REACT_APP_VERSION` when that build
+> is in the stores, or the gate never turns on.** Lesson recorded in memory
+> `store-app-appversion-is-45-not-the-env-file`; every "appversion 42/43" statement below is
+> superseded by this note.
+
 | Piece | State | Where |
 |---|---|---|
 | Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
