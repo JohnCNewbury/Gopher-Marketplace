@@ -41,7 +41,14 @@
 
   // ── brand marks (compact, brand-coloured) ──
   var MARK_BG={visa:'#1a1f71',mastercard:'#1a1f2b',amex:'#006fcf',discover:'#e86100',applepay:'#000',googlepay:'#fff',paypal:'#003087',cashapp:'#00c244',venmo:'#3d95ce'};
+  // Real marks for the wallet / alternative rows (owner 2026-09-08): the same
+  // official artwork the app ships in public/assets/marks — Apple's Apple Pay
+  // mark, Google's Google Pay mark, Cash App Pay's colour-on-white lockup, and
+  // the Link mark Stripe ships. Card networks keep the compact text badge.
+  var MARK_IMG={applepay:['apple-pay.svg',1.56,'Apple Pay'],googlepay:['google-pay.svg',1.47,'Google Pay'],cashapp:['cash-app-pay.svg',5.62,'Cash App Pay'],link:['link.svg',3,'Link']};
   function brandMark(b){
+    var mi=MARK_IMG[b];
+    if(mi){ var h=28; return '<img src="../../Final/assets/marks/'+mi[0]+'" alt="'+mi[2]+'" height="'+h+'" width="'+Math.round(h*mi[1])+'" style="display:block;flex:0 0 auto;">'; }
     var bg=MARK_BG[b]||'#5b6472', fg='#fff', txt=({visa:'VISA',mastercard:'MC',amex:'AMEX',discover:'DISC',applepay:' Pay',googlepay:'G Pay',paypal:'PayPal',cashapp:'Cash',venmo:'venmo'})[b]||String(b||'?').slice(0,4).toUpperCase();
     if(b==='googlepay') fg='#5f6368';
     return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:28px;padding:0 7px;border-radius:6px;background:'+bg+';color:'+fg+';font-family:Nunito,sans-serif;font-weight:900;font-size:11px;letter-spacing:.3px;flex:0 0 auto;'+(b==='googlepay'?'border:1px solid #dadce0;':'')+'">'+txt+'</span>';
