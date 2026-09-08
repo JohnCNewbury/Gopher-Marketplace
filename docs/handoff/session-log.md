@@ -2245,6 +2245,11 @@ padded by a 59px inset under global `border-box` collapsed its content box to ze
 title drew below its own background); G40-421 Go-app Intercom keyboard; and G40-9's release
 path, requester sheet, notification, and reason capture.
 
+> **Superseded (2026-09-04 fix, 2026-09-07 launch, recorded 2026-09-08 under G40-304):** both blockers
+> below were fixed on 2026-09-04 (`43eee125`; `order_gophers.released_at`), proven on real Stripe
+> 2026-09-06 (order 65229), and `GOPHER_RELEASE_ENABLED` has been **`true`** since 2026-09-07. Kept
+> as the record of why the seam existed.
+
 **⛔ G40-9 CANNOT SHIP.** A released order sits in `pending` while its Stripe intent is still
 `requires_capture`. Every downstream path assumes `pending` means no authorisation yet — so
 `charge.confirm()` on accept fails, the catch treats it as a declined card, and it sets
@@ -2335,3 +2340,56 @@ lane looked at them. Same shape as the G40-420 duplication on 9/4 — see memory
 almost certainly the G40-425 deploy landing). An SSM command against the old id returned
 `InvalidInstanceId — Instances not in a valid state`, which reads like a permissions fault and
 is not one. Re-query `describe-instances` rather than debugging the error.
+
+
+## 2026-09-08 — G40-304 closed out against the SHIPPED G40-9 release model
+
+**What the ticket asked for vs what production does.** G40-304 (written 2026-07-02) specified a
+close-and-repost rail: close the original order, mint a new order #, carry the Stripe authorization
+across, durable 15-min auto-cancel, admin repost (AC6), server-side order-# generation, and an
+edit-as-new form without a Notes field. G40-9 shipped (backend 2026-09-02..05, client in 3.9.2 on
+2026-09-07, flag `true` 2026-09-07) with the **owner's reframing of 2026-09-01: the requester is the
+only party who cancels; a gopher leaving DETACHES and the request returns to the marketplace under
+the SAME order #, authorization untouched.** Verified first-hand on `origin/production` before
+touching anything:
+
+| G40-304 bullet | Shipped as | Where |
+|---|---|---|
+| Reassignment with no new authorization | Release keeps the same PaymentIntent; accept skips re-confirm on `requires_capture` (`43eee125`); proven live 2026-09-06, order 65229 | `controllers/order/cancel.js`, `lib/payment.stripe.js` |
+| Lifecycle + cancellation logging (gopher id + timestamp) | `order_logs` "Gopher N released…", `order_gophers.released_at`, `orders.gopher_released_at` | `cancel.js`, models |
+| Re-broadcast on Assign New Gopher | `PATCH /orders/:id/keep_listed` → compressed 0/15/30s ladder | `controllers/order/keep_listed.js` |
+| Re-broadcast on Edit-as-new | **Deliberately not built** — edit refused while released (owner ruling 2026-09-02, option B; Stripe will not change the amount on a held intent) | `controllers/order/update.js` |
+| Durable 15-min auto-cancel | `close_expired_gopher_releases` cron (window OR auth-margin, whichever first), wired by !491 | `middleware/cronTasks.js` |
+| Admin repost (AC6) | **Was unbuilt — built today**, see below | — |
+| Server-side unique order # | **Moot** — same order # by design | — |
+| Notes omitted from edit-as-new | **Moot** — no edit while released | — |
+| Tests travel with this ticket | 5 release suites already on production + the new AC6 suite | `test/g40-9-*`, `test/gopher-release-*`, `test/g40-304-*` |
+
+**Built today (AC6):** `PATCH /admin/orders/:id/repost` — `controllers/admin/repost_order.js`. Under
+the release model "repost on the requester's behalf" is the requester's own Assign New Gopher done by
+support: an attached gopher (accepted / picked_up / purchased / scheduled) is detached with the same
+writes as their own release (`released_at` stamped so the three readers keep them off the order), the
+order stays under its number with the authorization untouched, `delivery_eta` is recomputed the way
+create.js computes it (standing rule 17 — an admin repost is by definition an aged order), and the
+same compressed re-broadcast fires. Pending-with-window closes the window for them; pending-listed
+re-broadcasts only. **Cancelled / expired / delivered are refused (409)** — the authorization is gone
+and a repost would mean a new charge on a card with nobody present. The re-broadcast itself was
+extracted from `keep_listed.js` into `helpers/order_rebroadcast.js` so both callers fire the identical
+thing. Two push types appended (`requestor.reposted_by_admin`, `gopher.removed_by_admin`), string-
+matched. Buttons: admin panel `BookingView.js` ("Release Gopher & Repost" / "Repost to Marketplace")
+and HQ `_renderOrderActions`.
+
+⚠️ **AC6 deviation, flagged not buried:** the AC literally says *"an admin navigates to a **cancelled**
+order… the request is reposted… under a new Order #."* That is the old close-and-repost model. A
+cancelled order has been refunded; reposting it means re-authorizing the requester's card without
+them present. Not built; owner decision. The owner's own stated use case (2026-02-13: *"a new gopher
+accepts a request and then completely ignores it"*) is a LIVE order, and that is what shipped.
+
+**Docs swept (rule 14):** `PRODUCTION-FEATURE-FLAGS.md` (flag is `true`, seam fixed), the 09-02 and
+09-04 handoffs, this log's 09-02 entry, `G40-9-PR.md` (supersede header), the flow-scrub ledger row,
+both canonical flow masters, the Go 101 and Request 101 guides. **Prototypes NOT yet touched:** the
+recovery modules in `Final/gopher-request.html`, `Final/gopher-connect.html` and
+`_prototypes/Request/gopher-request-home.html` still show the three-option / new-order-# design; per
+the side-by-side-first rule the proposed alignment is in
+`docs/handoff/G40-304-recovery-prototype-side-by-side.html` awaiting the owner, and all three move in
+one commit once approved (rule 12b).

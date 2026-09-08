@@ -59,6 +59,10 @@ else in TrustShield territory belongs to that session or to code-f3 (Appflow).
 > `CONFIRM SKIPPED`, with zero `bank denied` / card-flag events across both live tests. Order
 > **65135** then traced the whole chain end to end on real devices (iOS and Android).
 >
+> ⚠️ **Superseded again 2026-09-08 (G40-304): the flag is now `true` in production** — flipped
+> 2026-09-07 once the recovery sheet was confirmed in the 3.9.2 store builds. The paragraph below
+> was correct on 2026-09-04 and is kept as the record of the sequence.
+>
 > ⚠️ **`GOPHER_RELEASE_ENABLED` is still `false`, and should stay false — but NOT for the reason
 > given below.** Re-verified `false` today with a control. The accept path no longer damages
 > anyone's payment state. It stays off because **the client half needs a store release**: the

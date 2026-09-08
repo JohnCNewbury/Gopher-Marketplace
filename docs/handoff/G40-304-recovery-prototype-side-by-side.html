@@ -1,0 +1,96 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>G40-304 — Recovery modal: prototype today vs production (proposed alignment)</title>
+<style>
+:root{--navy:#002461;--green:#33D975;--green-deep:#178A4E;--muted:#6B7280;--ink:#12203a;
+--card:#fff;--bg:#f4f6f9;--line:#e3e8ef;--warn:#b45309;--warnbg:#fff7ed;--okbg:#ecfdf5;--danger:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Nunito,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
+h1{font-size:22px;margin:0 0 4px;color:var(--navy);letter-spacing:-.3px}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 18px}
+.note{background:var(--warnbg);border:1px solid #fed7aa;border-left:4px solid var(--warn);padding:13px 15px;border-radius:9px;margin:0 0 22px;font-size:13.5px}
+.note b{color:var(--warn)}
+.ok{background:var(--okbg);border:1px solid #a7f3d0;border-left:4px solid var(--green-deep);padding:13px 15px;border-radius:9px;margin:0 0 22px;font-size:13.5px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:860px){.cols{grid-template-columns:1fr}}
+.col>h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;margin:0 0 9px;color:var(--muted)}
+.col.new>h2{color:var(--green-deep)}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:0 8px 26px rgba(0,36,97,.09)}
+.col.new .modal{border-color:#a7f3d0}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.mhead h3{margin:0;font-size:16px;color:var(--ink)}
+.x{color:var(--muted);font-size:16px}
+.mbody{padding:14px 16px 18px}
+.copy{font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 12px}
+.timer{font-size:12.5px;color:var(--muted);text-align:center;margin:0 0 12px}
+.timer b{color:var(--ink)}
+.demo{display:block;font-size:11px;color:var(--warn);margin-top:2px}
+.reason{border:1px solid var(--ink);border-radius:4px;padding:10px 12px;margin:0 0 14px;font-size:13.5px;text-align:center}
+.opt{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;background:#fff}
+.opt.rec{border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.22)}
+.opt.danger{border-color:#f3c9c4}
+.ico{font-size:18px;width:26px;text-align:center}
+.t{font-weight:800;font-size:14px}
+.t .badge{display:inline-block;margin-left:8px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--green-deep);background:var(--okbg);border:1px solid #a7f3d0;border-radius:999px;padding:1px 7px;vertical-align:middle}
+.s{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:2px}
+.opt.danger .t{color:var(--danger)}
+.arrow{margin-left:auto;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:22px 0 0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#f8fafc;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+td.del{color:var(--danger)} td.keep{color:var(--green-deep)}
+code{font-size:12px;background:#eef2f7;padding:1px 5px;border-radius:4px}
+.files{font-size:13px;color:var(--muted);margin-top:18px}
+</style></head><body><div class="wrap">
+<h1>G40-304 — Recovery modal: the prototype today vs what production shows</h1>
+<p class="sub">Side-by-side FIRST, per the 2026-08-19 rule. Nothing in the prototypes has been changed. Left is what <code>Final/gopher-request.html</code>, <code>Final/gopher-connect.html</code> and <code>_prototypes/Request/gopher-request-home.html</code> render today; right is the sheet that shipped in the Request app 3.9.2 (device-verified by you on 2026-09-02/03, live behind <code>GOPHER_RELEASE_ENABLED=true</code> since 2026-09-07), rendered in the prototype's own modal chrome.</p>
+
+<div class="note"><b>Why this is being proposed.</b> Standing rule 12: where a prototype disagrees with shipped behaviour, <b>the prototype is the bug</b>. The July prototype offers three options, mints a <b>new order #</b>, and has an edit-as-new form. Production keeps the <b>same order #</b>, refuses edits while released (Stripe will not change the amount on a held authorization — your option B, 2026-09-02), shows the Gopher's stated reason, and runs the clock from the server. Anyone building from the prototype today builds the dead model.</div>
+
+<div class="cols">
+<div class="col now"><h2>Today — prototype (July design)</h2>
+<div class="modal">
+ <div class="mhead"><h3>Your Gopher cancelled</h3><span class="x">✕</span></div>
+ <div class="mbody">
+  <p class="copy">Alex R. cancelled request #GR-00127 — "Car trouble". Choose what happens next.</p>
+  <div class="timer">Auto-cancels in <b>15:00</b> if no action<span class="demo">Demo timer — production needs a durable server-side job</span></div>
+  <div class="opt rec"><span class="ico">🔄</span><div><div class="t">Assign New Gopher ASAP</div><div class="s">Repost with the same details &amp; price under a <b>new order #</b> — straight back to the marketplace. No edits.</div></div><span class="arrow">›</span></div>
+  <div class="opt"><span class="ico">📝</span><div><div class="t">Edit request</div><div class="s">Adjust the details, cost of items, or payment, then repost under a <b>new order #</b>.</div></div><span class="arrow">›</span></div>
+  <div class="opt danger"><span class="ico">⭐</span><div><div class="t">Cancel request</div><div class="s">Don't repost. Rate the Gopher who cancelled and close this request.</div></div><span class="arrow">›</span></div>
+ </div>
+</div>
+</div>
+
+<div class="col new"><h2>Proposed — matches production (3.9.2 sheet)</h2>
+<div class="modal">
+ <div class="mhead"><h3>Your Gopher released your request</h3><span class="x">✕</span></div>
+ <div class="mbody">
+  <p class="copy">Your funds are still held — nothing is re-charged.</p>
+  <div class="reason"><b>Reason</b>: Car trouble</div>
+  <div class="opt rec"><span class="ico">🔄</span><div><div class="t">Assign New Gopher<span class="badge">Recommended</span></div><div class="s">Goes straight back to the marketplace with your original offer and terms. Nothing is re-charged.</div></div><span class="arrow">›</span></div>
+  <div class="opt danger"><span class="ico">✕</span><div><div class="t">Cancel Request</div><div class="s">Closes this request and releases your funds straight away. To change any details, cancel and submit a new request.</div></div><span class="arrow">›</span></div>
+  <div class="timer">Auto-cancels in <b>14:52</b> if you don't choose</div>
+ </div>
+</div>
+</div>
+</div>
+
+<table>
+<tr><th>Element</th><th>Prototype today</th><th>Production (proposed)</th></tr>
+<tr><td>Title</td><td class="del">"Your Gopher cancelled"</td><td class="keep">"Your Gopher released your request" — nothing was cancelled; the order is live again</td></tr>
+<tr><td>Options</td><td class="del">Three: Assign / Edit / Cancel</td><td class="keep">Two: Assign New Gopher (recommended) / Cancel Request</td></tr>
+<tr><td>Order #</td><td class="del">Repost mints a <b>new</b> # (<code>GR-00201</code>…), "reposted from #orig"</td><td class="keep"><b>Same</b> # throughout; the log carries the release and the requester's choice</td></tr>
+<tr><td>Edit</td><td class="del">Edit-as-new form (pre-filled, Notes omitted)</td><td class="keep">No edit while released; Cancel copy says "cancel and submit a new request"</td></tr>
+<tr><td>Gopher's reason</td><td class="del">Folded into the intro sentence</td><td class="keep">Its own box — the owner's stated basis for releasing a PURCHASED order at all</td></tr>
+<tr><td>Clock</td><td class="del">Client 15:00 countdown labelled "demo"</td><td class="keep">Server deadline (<code>release_expires_at</code>): earlier of 15 min and the authorization's safety margin</td></tr>
+<tr><td>Cancel path</td><td class="del">Rating overlay for the cancelling Gopher, then closed</td><td class="keep">Cancel refunds immediately; rating the departed Gopher is not offered on this sheet in 3.9.2 (open question — see below)</td></tr>
+<tr><td>Payment copy</td><td class="del">"Backend seam: no new card authorization…"</td><td class="keep">"Your funds are still held — nothing is re-charged."</td></tr>
+</table>
+
+<div class="ok" style="margin-top:22px"><b>What changes if you approve.</b> One commit touching the three recovery modules (web Request, web Connect, Request phone prototype) so they render the right-hand sheet: two options, same order #, reason box, no edit form, the countdown reading from a "server" deadline in the demo. The Go prototype already releases rather than cancels (2026-07-17), so it is unchanged. Rule 12b: web and prototype in the same pass.</div>
+
+<div class="note"><b>One thing only you can rule on.</b> The July prototype let the requester <b>rate the Gopher who cancelled</b> on the Cancel path (G40-9 AC4). The shipped 3.9.2 sheet does not — Cancel refunds and closes. The canonical flow doc has carried this as an open question since Jul 12 ("whether this flow may skip rating needs an owner ruling"). If rating the departed Gopher should exist, it is a client change and its own ticket; the prototype should then keep a rating step. If not, the prototype drops it, matching production.</div>
+
+<p class="files">Files that would change on approval: <code>Final/gopher-request.html</code> (initG40RecoveryUX, ~26105–26540), <code>Final/gopher-connect.html</code> (initG40RecoveryUX, ~24377–24800), <code>_prototypes/Request/gopher-request-home.html</code> (__gopherCancelled / gc-* sheet, ~1625–1720). Source of the production copy: <code>gopher-mobile-request/src/component/ReleaseRecoveryWatcher.js</code> on <code>production</code>.</p>
+</div></body></html>

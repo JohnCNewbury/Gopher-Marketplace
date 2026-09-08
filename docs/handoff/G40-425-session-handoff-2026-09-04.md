@@ -414,6 +414,9 @@ Stripe, orders 65079/65080, `CONFIRM SKIPPED`, zero card-flag events) and the br
 (`order_gophers.released_at`). That doc is now marked superseded (commit `2dbe19b` in the Code repo);
 its next-steps list no longer sends anyone to redo merged work.
 
+> **Superseded 2026-09-08 (G40-304):** the flag is now **`true`** in production, flipped 2026-09-07
+> after the 3.9.2 store release carried the recovery sheet. The line below is the 2026-09-04 state.
+
 ⚠️ **`GOPHER_RELEASE_ENABLED` is still `false` and should stay false — but NOT for the reason that
 handoff gives.** Re-verified `false` today with a control. The accept path no longer damages payment
 state. It stays off because **the client half needs a store release**.

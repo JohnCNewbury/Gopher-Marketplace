@@ -31,7 +31,19 @@ variable is unset." That has already produced one wrong answer on this project
 
 ## The flags
 
-### ⛔ `GOPHER_RELEASE_ENABLED` — currently **`false`**, deliberately
+### `GOPHER_RELEASE_ENABLED` — currently **`true`** (LIVE since 2026-09-07)
+
+> **Superseded 2026-09-08 (G40-304).** Everything below this box described the flag while it was
+> held `false`; it is kept as the record of *why* it was held. **Current state, read off
+> `Gopher-Production` on 2026-09-08:** `true`. The owner flipped it on 2026-09-07 once every
+> recovery-sheet commit was verified present in the 3.9.2 store builds (`release/android-854`,
+> `release/ios-853`) — the precondition the code comment in `controllers/order/cancel.js` names.
+> The "payments seam" the paragraph below sends you to fix under G40-304 was fixed on 2026-09-02
+> (`43eee125`, `charge.confirm()` skips an intent already in `requires_capture`) and proven on real
+> Stripe on 2026-09-06 (order 65229: same PaymentIntent across release and re-accept, zero
+> card-flag events). **G40-304 is the admin-repost endpoint and the doc sweep, not a payments
+> fix.** Rollback is still one variable, but orders released in the meantime are not un-released.
+> ⚠️ Only the exact lowercase string `true` enables it.
 
 **Gates:** the **G40-9 auto-repost / release flow**. With it `true`, a Gopher cancelling an active
 request offers the requester a recovery-and-repost path. With it `false`, the requester is offered
@@ -48,8 +60,9 @@ while its Stripe intent is still `requires_capture`. Every downstream path assum
 card, sets `REQUIRE_PAYMENT_METHOD` and a hard-coded *"User's bank denied transaction"*, deletes
 counter offers and bids, and **flags the requester's card bad**. Observed on order 65073.
 
-**To test the repost flow** you must either fix the payments seam first (**G40-304**) or flip it on
-**under supervision**, run the test, and flip it straight back. It is an owner decision every time.
+**To test the repost flow** *(historical — see the box above; the seam is fixed and the flag is on)* you
+must either fix the payments seam first (**G40-304**) or flip it on **under supervision**, run the
+test, and flip it straight back. It is an owner decision every time.
 Call sites: `controllers/order/cancel.js:127` and three others.
 
 ### `TRUSTSHIELD_MIN_AGE` — currently **`21`**
