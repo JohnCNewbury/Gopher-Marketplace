@@ -147,7 +147,7 @@ rather than the MR status: it carries `helpers/offer_floor.js` (new), the guard 
 (before any Stripe token is created) and in `update.js`, `constants/index.js`, and the 161-line
 `test/offer-floor.test.js` — 5 files, 272 insertions, 0 deletions.
 
-⛔ **`rebase/offer-floor-2026-09-06` IS NOW A TRAP — do not merge it, delete it.** It was rebased on
+✅ **`rebase/offer-floor-2026-09-06` — DELETED 2026-09-08.** Recovery handle if it is ever wanted back: its tip was **`267f13717fbaf756fce76b10e4a77b2e4d350334`** (`git branch <name> 267f1371`). It was a trap: rebased on
 2026-09-06 and `production` has moved a long way since. Its diff against `production` today is
 **3,990 deletions against 92 insertions** — merging it would revert the payout-stock sweep, the
 Stripe wallets work, the address null-guards, the refresh-token diagnosis, the release-resets-ETA
@@ -157,7 +157,12 @@ same offer-floor change that shipped by the other route.
 ### Remaining steps
 
 1. ~~Decide the MR pointer, then merge.~~ **DONE — `!436` merged 2026-09-07 (`3bdd0f98`).**
-2. Delete `rebase/offer-floor-2026-09-06` in `gopher-backend-api` (see the trap box above).
+2. ~~Delete `rebase/offer-floor-2026-09-06`.~~ **DONE 2026-09-08.** Checked before deleting, not
+   after: `helpers/offer_floor.js` and `test/offer-floor.test.js` are **byte-identical** between the
+   branch and `production`, and every one of the branch's edits to the other three files is present
+   there — `require('../../helpers/offer_floor')` and `offer_floor.offerFloorError(req.body)` in
+   **both** `order/create` and `order/update`, plus `MIN_GOPHER_OFFER_CENTS = 1` in
+   `constants/index.js`. Nothing unique was lost, and no open MR pointed at it.
 3. ~~Close **G40-415 AC 6**.~~ **ALREADY CLOSED — verified in Jira 2026-09-07:** G40-415 is
    `status: Done`, `resolution: Done`. AC 6 was *"the server guard merges in the same release, or
    after the app can display a create error — never before"*, and `!436` merging behind a live
