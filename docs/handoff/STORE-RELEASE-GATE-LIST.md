@@ -419,7 +419,7 @@ currently stored as `activeRequest`.
 Android — the routing table above sits above the delivery layer, and iOS runs the same `handleTap`
 through the Capacitor event. Correct it for both platforms in 3.9.3, not Play alone.
 
-⛔ **Separate live defect found while reconciling — FIX IN FLIGHT, still dead in production.** The
+✅ **Separate live defect found while reconciling — FIXED AND MERGED 2026-09-08 (`7d64b899`).** The
 Request app's card-list deep link is dead: `notification.js` notif_types[36] sent
 `type: 'payment_action_needed'` while `PushTapListener` compares against
 `'requestor.payment_action_needed'`. Confirmed dead on `origin/production` and on both shipped tags
@@ -430,8 +430,17 @@ calls the notifier from the live `re_authorize_token` cron behind no feature fla
 field on deploy; the client fix would have waited on a store release. Shipped as
 [!514](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/514) (branch
 `fix/payment-action-needed-deeplink-type`, one string plus two guards — no payments or authorization
-logic). **This does NOT clear until !514 merges AND deploys**; until then the tap still does nothing
-for every user.
+logic). **Merged to `production` 2026-09-08 as `7d64b899`**, which auto-deploys via CodePipeline →
+Elastic Beanstalk (a merge to `production` IS the deploy; ~40s). Re-verified against the merged
+production code, not the branch: both guards pass there, including the runtime check that the type
+leaving the server is now the prefixed form, and the full suite is 241/242 (the one failure is the
+known stale-`node_modules` `express-jwt` false red). Production API answers **301** on
+`/api/v1/app/requester`, the documented liveness signature.
+
+⚠️ **Liveness is not version proof.** The 301 says the app is up, not that it is running
+`7d64b899`. Nobody has confirmed the CodePipeline execution or the deployed version label, so
+treat "users can now tap through to the card list" as **expected, not verified**, until someone
+reads the EB version or taps a real push on a handset.
 
 *Checked while fixing:* three of the four hand-written `extra_data.type` values diverge from their
 dispatch key, so there is **no file-wide convention** — `no_show_warning` is *correctly* short
