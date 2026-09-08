@@ -44,7 +44,19 @@
 > Gopher-Production Ready on `fb27e3fd`, `apiversion` 200, EB Red ~2 min (rolling-batch
 > transient, no 5xx). **Damage, 21:29Z → 22:49Z, probe proven on both log groups: zero
 > `card_verification_required` refusals, zero `PUT /users/attach` calls.** Nobody was refused.
-> Proven on the device so far:
+> ✅ **DEVICE TEST PASSED — 2026-09-08 18:51 ET, owner's Samsung, sheet path, after `fb27e3fd`.**
+> Add a payment method → sheet (name + home address prefilled, Card / Cash App Pay, Samsung Pass on
+> the card field) → owner typed the card → Set up → server: `card verification started …
+> path=payment_sheet avs_postal=pass cvc=pass` → code SMS (896761, read over adb) → owner entered
+> it → server: `card verified and saved pm=pm_1UDXqtCQp3eawbpnCIb3Q4cf` → nginx: `verify/start`
+> 200, `verify/confirm` 200 → Stripe: customer `cus_OVbpKctbuDozvt`
+> `invoice_settings.default_payment_method = pm_1UDXqt…` → app list refreshed with the new card as
+> default. AC1–AC5 proven on Android via the sheet; AC6 by the server's "started"/"saved" lines
+> (the row itself not read — no DB tunnel tonight). **Not proven:** iOS; the Stripe.js card-form
+> fallback (web / sheet-unavailable); wrong-code / resend / expiry paths on a device (unit-tested
+> only). App branch rebased onto production `313befd8d` (G40-38's !290 + !291) — services suite
+> 77/77.
+> Earlier in the evening, before the fix:
 > sheet config (name + full address, no Bank/Link on Android), Samsung Pass autofill on the card
 > field, name + home-address prefill, customer-less SetupIntent, AVS/CVC screening, audit row +
 > SMS. Not yet proven: code entry → attach → default.
