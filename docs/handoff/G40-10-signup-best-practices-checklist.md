@@ -35,14 +35,14 @@ preserved only in the quarantined archive.
 
 **Title:** Best practices
 **Intro:** Confirm you've read and understood all of the below before taking your first request.
-**CTA:** Understood & Ready To Go!   ·   **Version:** `2026-09-gg-bp-v2`
+**CTA:** Understood & Ready To Go!   ·   **Version:** `2026-09-gg-bp-v3`
 
 1. Review your **[How To Use Gopher Go](https://gophergo.io/become-a-gopher/gopher-go-support/)** tutorial before taking your 1st request.
 2. Set your **[Work Settings & Radius](https://youtu.be/tQiBo8NCNUs?si=VCe4pikwoFCfiEp0)** responsibly to avoid delayed orders due to travel.
 3. If you're not clear on a request's details, message the Requester **before** accepting.
-4. **Need ASAP** requests should always be completed within an hour unless agreed otherwise — food deliveries closer to 30 min.
+4. **Need it Now** requests should always be completed within an hour unless agreed otherwise — food deliveries closer to 30 min.
 5. When you accept a request, send a quick **intro message** to your customer.
-6. Always **update your task progress** accurately and in the correct location(s).
+6. Always **update your task progress** timely, accurately, and in the correct location(s).
 7. Be courteous when communicating.
 8. **Age-Restricted** deliveries are always in-person — no contactless deliveries are ever permitted.
 9. When you accept a request, **you must complete it**. Cancellations hurt the customer and the platform.
@@ -53,8 +53,11 @@ uses the **current** tutorial, "How To Use Gopher Go". Everywhere else on this s
 prototype's wording is canon (item 3's "Requester", for instance). Revisit item 1 when
 Marketplace ships.
 
-⚠️ **"Need ASAP", never the legacy "Need It Now".** Two items link out; a link must open
-externally **without** toggling its checkbox.
+⚠️ **Item 4 says "Need it Now" — the APP's current language, corrected 2026-09-08.** The
+2026-07-03 rename to "Need ASAP" reached Jira, the prototype and the web but was **never swept
+into the apps**: Go says "Need it Now" 14 times, Request 57 times, and "Need ASAP" appeared
+exactly once — in v2 of this checklist. Flip it back **when** the app-wide sweep lands, not
+before. Two items link out; a link must open externally **without** toggling its checkbox.
 
 ## Backend — persist the acknowledgment
 There is no best-practices field today. Add:
