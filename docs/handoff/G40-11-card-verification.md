@@ -16,10 +16,17 @@
 |---|---|---|
 | Backend — three endpoints, appversion gate, audit table | **Built, tested (93 checks), MR open** | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
 | Requester app — card form + native sheet + code step | **Built, lint-clean, unit-tested, Draft MR** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) (Draft) · branch `G40-11-card-verification` · target `production` · squash **no** · delete source **no** |
-| Prototypes — Request web, Connect, Request app prototype | **Built as an apply-on-approval patch; `Final/` NOT edited** | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) — `patch -p1 < docs/handoff/G40-11-prototype.patch` after the ruling |
+| Prototypes — Request web, Connect, Request app prototype | **UI approved by the owner 2026-09-08 ("good to go"); patch APPLIED and committed** (`91c7692`) — deploy pending the owner's OK on three rider files (§0a) | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
 | Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
-| 101 guides | **Held until the app ships** (rule 5: the guide describes what the product does) | copy ready in §7 |
+| 101 guides + Terms of Service | **Written, per the owner's 2026-09-08 directive** — Request 101, Connect 101, rebuild ToS §19; live gophergo.io Terms = owner paste | §7 |
+
+**0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
+three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
+(+5, the G40-9 "if you have to back out" section), `gopher-request-101.html` (one sentence, G40-9
+"details can't be changed while you decide"), and `_prototypes/Go/gopher-go-prototype.html` (+38,
+G40-10 divergence pins). All three are additions relative to `origin/main` — riders, not reverts.
+Per the deploy rules the owner OKs riders before `--push`; nothing is pushed until then.
 
 **Why it is blocked, in the owner's own terms:** a new UI screen (the billing block + the code step,
 on the app, Request web and Connect) needs his approval before it is applied, and the code step
@@ -267,17 +274,34 @@ page in the pane — **pause and wait**, not guessed).
 
 ---
 
-## 7 · 101 guide copy — apply when the build ships (rule 5)
+## 7 · 101 guides and Terms of Service — owner directive 2026-09-08
 
-`Final/gopher-request-101.html`, "Payment method" section, and `Final/gopher-connect-101.html`,
-"Payment Methods" under Account — add, once the store build with this is live:
+**Owner, 2026-09-08 (after approving the UI): "This info is important to add to the 101 docs and
+ToS."** That overrides the earlier "hold the guides until the build ships" reading of rule 5.
 
-> **Adding a card.** Enter the card number, expiry and security code, the name on the card and the
-> billing address on your card statement. We text a 6-digit code to the phone on your account —
-> enter it and the card is saved. The code expires in 5 minutes and can be resent once. The card is
-> not saved until the code is confirmed.
+**Done in the Code repo (same commit as this doc):**
 
-Do **not** add this before the build is live: the guide describes what the product does.
+- `Final/gopher-request-101.html` — new "Adding a card" under *Payment method*: the five fields,
+  the bank's address check, the 6-digit code to the phone on the account, 5-minute expiry, one
+  resend, "the card is not saved until the code is confirmed", and a *Why the extra step?* tip.
+- `Final/gopher-connect-101.html` — same section under *Account & users*, plus who can add a card
+  (Owner / Admin; a User seat cannot).
+- `Final/gopher-terms-of-service.html` (the rebuild ToS) — new **§19 · Payment Method
+  Verification** subsection, text below.
+
+**Live gophergo.io Terms — owner paste (WordPress).** `docs/handoff/gophergo-io-terms-CORRECTED.html`
+is another session's in-flight file (uncommitted edits in the tree), so it was not touched. Paste
+this after the *Fraudulent Chargebacks and Restitution* paragraphs:
+
+```html
+<p style="font-weight: 400;"><strong>Payment Method Verification</strong></p>
+<p style="font-weight: 400;">When you add a card to your Gopher account we collect the name on the card and the billing address on your card statement and pass them to our payment processor, Stripe, so your card issuer can verify them. We then send a one-time code by text message to the phone number on your account; the card is not saved until that code is entered. You agree that entering the code is your authorization to save the card and to charge it for requests you place under these Terms.</p>
+<p style="font-weight: 400;">Gopher, Inc. keeps a record of each card verification — including the card brand and last four digits, the result of the issuer’s address and security-code checks, the phone number the code was sent to (masked), the device and network address used, and the time — for as long as needed to prevent fraud and to respond to payment disputes and chargebacks. This record forms part of the evidence described under Fraudulent Chargebacks and Restitution.</p>
+```
+
+⚠️ **Honesty note.** The 101 text describes the flow the owner approved on 2026-09-08. It goes live
+on the website ahead of the store build that ships it in the app. That was the owner's call; do
+not "correct" the guides back.
 
 ---
 
