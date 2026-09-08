@@ -300,6 +300,17 @@ page in the pane — **pause and wait**, not guessed).
      entitlement merge, or the device has no card in Wallet — `canMakePayments` is false).
    - *Link* ("Pay with Link", "Save my info for faster checkout with Link") is Stripe's own
      saved-card wallet across merchants; it is on by owner decision (G40-38).
+   **Verified on the Samsung (Android 11, 2026-09-08 evening), G40-11 test build:** tapping *Card
+   number* in the sheet raised the phone's autofill service — Samsung Pass — offering "Add card
+   using camera" (this phone has no card saved in Samsung Pass; one that does gets a one-tap fill).
+   Google Pay was the top button. So OS autofill + wallet are live on the sheet with no code.
+   **Added the same evening (owner: "The younger generation especially is NOT a fan of manual
+   entry"):** both surfaces now start from the account's **name + saved home address**
+   (`billingPrefillFromProfile` → the sheet's `defaultBillingDetails`; the card form's billing
+   block), editable, so a typical add is card number + expiry + CVC. Commit `9ef3999f9` on the app
+   branch.
+   **Bank tile, Android half (for G40-38):** with `email:'never'` the Android sheet showed *Card*
+   and *Cash App Pay* only — no Bank tile, no Link — matching what !518 wanted. iOS half is G40-38's.
    **So the answer is: make the native sheet the only path on a device.** It already is when the
    plugin initialises; the card form remains only as the web / init-failure fallback. Note what
    the screenshot also shows: the sheet in that build asks for *Country + ZIP* only (Stripe's
