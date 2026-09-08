@@ -253,8 +253,14 @@ but rebasing first removes the question. Same hazard shape as branching off `nex
 
 ### Remaining
 
-1. Review `gopher-go-101.html` (owner rule 2026-08-05). Now more pointed: that guide is the
-   *Marketplace* tutorial, and the shipped checklist deliberately points somewhere else.
+1. ~~Review `gopher-go-101.html`~~ **DONE 2026-09-08 — patch written, deliberately NOT applied.**
+   The guide is live and linked from every page's header/footer, and the checklist is in no
+   shipped build, so publishing it now would document a screen no worker can reach — the exact
+   thing the 2026-08-05 rule forbids. Three edits staged in
+   `docs/handoff/G40-10-101-guide-patch.md`; **apply on release day**, same gate as closing this
+   ticket. That file also flags two things left alone: two public tutorials now exist and are not
+   the same page (someone should decide what the Tutorials menu points at), and the guide's
+   payout-before-work-settings ordering, which I did not verify either way.
 2. Regenerate the screen spec once the pin is merged, so the published `best-practices.html`
    stops contradicting its own note. Owned by the screen-spec session.
 3. **Ship in a store release.** Still the only thing that closes this.
