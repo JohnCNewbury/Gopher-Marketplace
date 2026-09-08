@@ -1,55 +1,172 @@
-# G40-244 — "Need a Ride" details (riders / instructions / trip distance) missing on the Gopher view — DEV HANDOFF
+# G40-244 — "Need a Ride" details on the Gopher's view — BUILT, awaiting UI ruling + device test
 
-**Type:** Bug (`worker`) · **Priority:** Medium · Gopher Go app (+ possible backend). Verified against the 2026-06-12 `gopher-mobile-gopher-` export.
+**Type:** Bug (`worker`) · **Priority:** Medium · Sprint "Payment Options" (2026-09-07 → 09-16)
+**Branch:** `G40-244-need-a-ride-details` in `gopher-mobile-gopher`, off `origin/production`
+**Commit:** `ac77eb10f` · **Side-by-side:** [`G40-244-side-by-side.html`](G40-244-side-by-side.html)
 
-> ⚠️ **Scope correction (verify-before-build):** the ticket says all three are missing, but in the current export **only rider count is truly missing from the UI.** Trip distance and special instructions are **already coded** on the available-request details view — so those two are most likely a **data/field-mapping gap**, not missing UI. Don't re-implement what's already there; verify data first.
+> **Status, honestly stated.** The code is written, builds, lints, passes all eleven contract
+> guards and is measured at 375px. **Two things are outstanding and neither is mine to close:**
+> the owner's ruling on the visible UI change (standing rule: side-by-side first), and a device
+> test against a real ride order. Nothing here has run on a phone.
 
-## The Gopher "request details view" = `src/component/layoutComponent/RequestDetailPullOver.js`
-This is the pullover the gopher sees for an **available** request (rendered from `src/component/getOrders.js:1474`; it owns accept / make-an-offer / pickup / complete). That's the surface the ticket means. (The list *card* `GopherOrderCardView.js` is a separate summary — see note at end.)
+---
 
-## Field-by-field current state (in `RequestDetailPullOver.js`)
+## What was actually wrong — the ticket overstated it, and that matters
 
-### 1. Rider count — ❌ genuinely missing → ADD
-No `noof_rider` / "Riders" anywhere in this component (confirmed: grep count 0). The requester submits it as **`order_info.noof_rider`** (see `counterbox.js`), and it's already rendered in the *other* view `requestOrder.js:2489` — copy that pattern here:
-```jsx
-{props.request?.category_type === "Need a Ride" ? (
-  <KeyValueDisplay Caption="Riders" Value={props.request?.order_info?.noof_rider} ... />
-) : null}
+The ticket says three fields are missing. **One was.**
+
+| Field | Ticket says | Verified state on `origin/production` | Action taken |
+|---|---|---|---|
+| **Rider count** | missing | ❌ **genuinely absent** — no `noof_rider` anywhere in either Gopher-facing view | **Added** |
+| **Trip Distance** | missing | ✅ coded, `RequestDetailPullOver.js:3045`, `${tripDistance} mi` | none needed |
+| **Special Instructions** | missing | ✅ coded, but captioned **"Details:"** | **Renamed + relaid out** |
+
+**Why two working fields read as missing.** Both render inside
+`display: <value> ? "flex" : "none"`. When the value is empty they do not error, do not warn and
+do not log — they vanish, and the screen looks deliberately designed without them. That is the
+whole explanation for a one-row bug being filed as three, and for it standing from 2025-12-30 to
+2026-09-08.
+
+---
+
+## The data path — verified first-hand, not inherited
+
+The 2026-07-07 and 2026-07-19 comments both ended at "verify the payload." It was verified, and
+**the payload was never the problem.**
+
+| Link | Evidence |
+|---|---|
+| Ride form collects all three | `gopher-mobile-request` `src/json/requester/needaride.json` — `noof_rider` (counter, default 1) mapped to `order_info`; `special_instructions` (textarea) mapped top-level; pickup + dropoff address fields |
+| Riders persisted | `controllers/order/order_info.js:58` — `set_order_info` writes `noof_rider` |
+| Instructions persisted | `special_instructions` is a column on `models/orders.model.js:17` |
+| **Which endpoint feeds the pullover** | every open path in `getOrders.js` calls `getOrderById()` → `API.get("orders/" + id)` → **`order_view`** (`controllers/order/retrieve.js:2479`) |
+| `order_view` returns what's needed | `order_info` via `get_order_info(id)`, plus `response.pickup_address` / `response.dropoff_address` with lat/lng |
+| Miles, not a locale guess | `helpers/functions.js:672` calls Google Distance Matrix with **`units=imperial`** and parses only the `mi` form |
+
+⚠️ **A trap worth recording:** the **available-orders feed**
+(`get_gopher_active_and_available_orders`, `:1741`) does **not** carry these — `get_order_details`
+in `services/orders.services.js` returns `orders` rows + attachments + ratings only, **no
+`order_info`**, and the feed sets `address`/`addresses`, never `pickup_address`/`dropoff_address`.
+So a future change that renders this pullover straight from the list payload instead of
+re-fetching by id would silently blank all three rows again. **The `orders/:id` re-fetch is
+load-bearing.**
+
+---
+
+## What changed
+
+**1. Riders row** — `RequestDetailPullOver.js` (pre-accept) **and** `ordercard.js` (accepted
+order). Gated to `category_type === "Need a Ride"` and the presence of `order_info`; always shown
+for rides.
+
+*Why both screens:* the ticket scopes to pre-accept, but adding it only there leaves the Gopher
+who is **driving to collect the riders** unable to see how many are coming — the same defect on
+the screen where the number is finally acted on.
+
+*Why `String(x ?? 0)`:* `DetailBlock` gates its value as `{props.valueText && <p style=…>}`.
+**Rendered** (not read) through `react-dom/server`, that gate fails two different ways:
+
 ```
-Per AC: **always** shown for Need a Ride (required at submit, value ≥ 1). Place it near the trip-distance/details blocks (~L3100-3130).
+valueText={undefined|null|""}  ->  <p>Riders:</p>                    (no value at all)
+valueText={0}                  ->  <p>Riders:</p>  0                 (RAW unstyled text node)
+valueText={String(0)}          ->  <p>Riders:</p> <p style=…> 0</p>  (correct)
+```
 
-### 2. Trip Distance — ✅ already implemented → VERIFY, don't rebuild
-`RequestDetailPullOver.js:3107` renders `Trip Distance: ${localFormProps.tripDistance} mi`, with display gated on **`pickup_address.latitude && dropoff_address.latitude`** (`:3099-3102`). `tripDistance` is fetched from the `get_distance?origin=…&destination=…` API (`:656`). For a ride (always has pickup+dropoff) it **should** show. If it doesn't:
-- Confirm the available-ride payload includes **pickup & dropoff `latitude`/`longitude`** (the display hides silently without them).
-- Confirm the `get_distance` call succeeds for the ride's coords.
-So: a **data/coords** check, not a UI change. (Note: the sibling `requestOrder.js:2673` uses the same value with an inverted-looking `!tripDistance ? <empty> : <show>` ternary — that one is correct; just be consistent.)
+A first draft of this work asserted "a 0 vanishes" for both cases. **That was wrong** — a 0
+renders, just outside the styled `<p>`, in the wrong font with no leading space. Corrected against
+actual render output.
 
-### 3. Special Instructions — ✅ already implemented → VERIFY DATA + relabel
-`RequestDetailPullOver.js:3946` renders `props.request?.special_instructions` (display gated on it being present), but under the caption **`Details:`**. The requester submits top-level `special_instructions` (Request app `helpers/orderObject.js:124`, `pages/summary.js:919`). If it's not appearing on a ride:
-- Verify the **available-request payload carries `special_instructions`** for Need-a-Ride orders (backend order retrieve for the gopher available list — `controllers/order/retrieve.js`). If the ride form stored instructions under a different key (e.g. `order_info.*`), fix the mapping so the view reads the populated field.
-- Per AC (full text, no truncation; omit row when empty) the current `display: special_instructions ? flex : none` already omits-when-empty and shows full text — good. Consider **relabeling `Details:` → `Special Instructions`** to match the AC wording (and to disambiguate from the separate `description` block at ~L3123).
+**2. `Details:` → `Special Instructions:`** on both screens. Every requester form that collects
+this field asks for it under **"SPECIAL REQUESTS / Any special instructions?"**
+(`needaride.json`, `grocery.json`, `restaurant.json`, `generalerrand.json`, `courier.json` …), so
+`Details:` named it as nothing the requester was ever asked — and collided with the separate
+`Description:` row directly above it.
 
-## Why the ticket likely reported all three
-Rider count is absent (real), and trip distance + special instructions **hide silently** when their data is missing (`display: … ? flex : none`) — so a ride whose payload lacks coords or `special_instructions` shows *nothing* for those rows, reading as "missing." Root for 2 & 3 is almost certainly the **payload**, not the view.
+**3. The instructions row moved to the `Description:` row's two-inline-spans shape.** This is not
+cosmetic and it is the non-obvious part:
 
-## Recommended work
-1. **Add the Riders row** to `RequestDetailPullOver.js` (Need-a-Ride only, `order_info.noof_rider`, always shown). ← the only certain UI change.
-2. **Verify the gopher available-request payload** (backend `controllers/order/retrieve.js` available-orders query) returns, for Need-a-Ride: `order_info.noof_rider`, `special_instructions`, and pickup/dropoff `latitude`/`longitude`. Add any that are stripped.
-3. **Relabel** `Details:` → `Special Instructions` for the `special_instructions` block.
-4. Regression: Delivery + Service views unchanged (Scenario 6).
+> `DetailBlock`'s `title`/`valueText` props render caption and value as **separate flex items**, so
+> the caption's width is subtracted from the value's. Measured in a browser at 375px, the longer
+> `Special Instructions:` caption left the text a **227px** column — **narrower than the 302px the
+> old `Details:` caption allowed.** The rename on its own would have made long instructions *harder*
+> to read while appearing to satisfy AC #5. As inline spans the value flows beneath the caption
+> across the full **337px** row.
 
-## QA (from the ticket, plus the scope correction)
-- Submit a Need-a-Ride with riders + instructions + valid pickup/dropoff → all three show on the gopher pullover.
-- Submit without special instructions → the row is omitted (already the behavior).
-- Long instructions → full text (already the behavior).
-- Trip distance matches a known route in **miles**.
-- Confirm on a real device the two "already-coded" fields render once the payload is confirmed — if they do, the remaining code change is just the Riders row.
-- iOS + Android; regress Delivery/Service.
+---
 
-## Note — the list card (secondary)
-`src/component/GopherOrderCardView.js` (the available-list card) shows trip distance (`:884`, gated on coords) but not riders/instructions. If you want the summary card to surface riders too, add it there as well — but the ticket's "details view" is the pullover above.
+## Deliberate deviations — flagged, not silent
+
+1. **The rename is global, not ride-only.** AC Scenario 6 says Delivery/Service behaviour is
+   "unchanged — no regression." A caption correction *is* visible on those types. It was applied
+   globally because the label was wrong for **every** category, not just rides. **If the owner
+   wants it ride-only, say so — it is a one-line gate.**
+2. **`ordercard.js` (accepted-order screen) is outside the ticket's stated surface.** Both changes
+   were applied there because a Gopher would otherwise see the same field under two different names
+   before and after accepting. Per the owner's 2026-08-27 rule this is fixed here rather than filed
+   as a new ticket.
+
+---
+
+## Verification — what is proven and what is not
+
+**Proven:**
+- Production build compiles. `Riders:` and `Special Instructions:` present in the emitted bundle;
+  `"Details:"` absent (0 occurrences).
+- `eslint ./src/ --max-warnings=0` and `prettier . --check` clean (repo-pinned eslint 8.57.1 /
+  prettier 3.6.2 — **not** a stray npx download; that mistake was made once here and caught).
+- All **eleven** contract guards pass, including the new one.
+- `DetailBlock` runtime behaviour rendered via `react-dom/server` against the real component:
+  unwrapped `0` escapes the styled `<p>`; unwrapped `undefined` renders nothing; `String(0)` renders
+  correctly; empty instructions produce a zero-height row (AC #2); a 175-character value renders
+  verbatim with no truncation and no see-more (AC #5).
+- Measured in a browser at **375px**: no horizontal overflow, instructions value **337px across 4
+  lines**, empty row zero-height.
+
+**NOT proven — do not record as verified:**
+- **Nothing has run on a real device against a real ride order.** AC Scenarios 1, 3 and 4 and the
+  ticket's own QA note ("test on both iOS and Android", "validate Trip Distance against a known
+  route") need a live ride.
+- **Delivery/Service regression (Scenario 6) is argued, not observed** — the Riders row is gated on
+  `category_type`, and the caption change is intentional and visible.
+
+---
+
+## New CI guard
+
+`scripts/assert-ride-details-visible.js`, wired into `.gitlab-ci.yml` with `needs: []`. Asserts
+both screens against a **comment-free** copy of the source, because the blocks carry prose naming
+the very captions being asserted.
+
+**Every check was mutation-tested — twelve deliberate regressions, twelve failures.** One early
+"pass" was a mutation that never applied (prettier had wrapped the target across lines); the test
+was vacuous, not the guard. A guard that has never failed proves nothing.
+
+⚠️ The first draft of the guard's comment-stripper tried to match `{/* … */}` as one unit and
+**silently ate 2,800 lines** — a plain block comment after an unrelated `{` starts the match, and
+the non-greedy tail runs to the next `*/` followed by `}`. Every assertion still "passed", against
+a file the stripper had deleted the subject from. It now strips block comments, then line comments,
+then leftover `{}` — the same two-step the sibling guards use.
+
+---
+
+## Known edge case — left alone deliberately
+
+`get_distance_origin_to_destination` parses only the `mi` form of Google's imperial response. Under
+~0.1 mile Google returns feet (`"400 ft"`), the parse misses, and the distance falls through as `0`
+→ the view shows **"0 mi"**. Not reachable for a real ride, and the helper is shared by every
+distance caller, so changing it would decide for all of them. Recorded, not touched.
+
+---
 
 ## Files
-- `src/component/layoutComponent/RequestDetailPullOver.js` — add Riders row (~L3100-3130); relabel special-instructions caption (~L3946).
-- `controllers/order/retrieve.js` (backend) — verify Need-a-Ride available payload includes `order_info.noof_rider`, `special_instructions`, pickup/dropoff coords.
-- (optional) `src/component/GopherOrderCardView.js` — riders on the list card.
+
+- `src/component/layoutComponent/RequestDetailPullOver.js` — Riders row; instructions caption + layout
+- `src/component/ordercard.js` — same two changes on the accepted-order screen
+- `scripts/assert-ride-details-visible.js` — new contract guard
+- `.gitlab-ci.yml` — guard wired in with `needs: []`
+
+## Merge hand-off
+
+- **Target branch:** `production` — `next` is dead (0 ahead / 12 behind, drained 2026-09-04)
+- **Squash:** *owner's call.* No SHA pins reference this branch, so squashing is safe here
+- **Delete source branch:** *owner's call.* Suggest **no** until the device test passes
