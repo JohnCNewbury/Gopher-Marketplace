@@ -2,7 +2,7 @@
 
 **Type:** Bug (`worker`) · **Priority:** Medium · Sprint "Payment Options" (2026-09-07 → 09-16)
 **Branch:** `G40-244-need-a-ride-details` in `gopher-mobile-gopher`, off `origin/production`
-**Commit:** `ac77eb10f` · **Side-by-side:** [`G40-244-side-by-side.html`](G40-244-side-by-side.html)
+**Commits:** `ac77eb10f`, `1235747bb` · **Side-by-side:** [`G40-244-side-by-side.html`](G40-244-side-by-side.html)
 
 > **Status, honestly stated.** The code is written, builds, lints, passes all eleven contract
 > guards and is measured at 375px. **Two things are outstanding and neither is mine to close:**
@@ -109,6 +109,39 @@ cosmetic and it is the non-obvious part:
 
 ## Verification — what is proven and what is not
 
+**Scenario 6 — Delivery / Service unaffected — PROVEN (no device needed):**
+
+- **What those types actually see:** every hunk this branch adds to `src/` was enumerated — three
+  per file, six in total (the Riders row; the instructions block). Nothing else is touched. So a
+  Delivery or Service request has **exactly one** visible difference: the instructions caption and
+  its wrapping. That is the only open question for the owner, and §2 of the side-by-side now shows
+  a Delivery request before and after.
+- **The gate is evaluated, not restated.** The guard pulls the Riders row's `display:` expression
+  **out of the shipped source** and runs it against fixtures. Restating the rule inside the test
+  would only test the test's copy of it.
+
+  | Fixture | Riders row | Both screens |
+  |---|---|---|
+  | `Need a Ride` + `order_info` | shown | ✅ |
+  | `Delivery` · `Home Services` · `Junk Removal` · `Hourly / Day Labor` | hidden | ✅ |
+  | `Need a Ride`, `order_info` absent **or** `null` | hidden — no bare caption | ✅ |
+
+- Measured at 375px: Riders row **height 0** in the Delivery pane, **height 15** in the ride pane.
+- Five further mutations, five failures (ungate the row; widen it to Delivery on each screen; drop
+  the `order_info` check; invert the category test).
+
+⚠️ **On `new Function` in that guard** — deliberate, and *not* what `assert-safe-eval.mjs` forbids.
+That guard protects the **app runtime on a user's phone** evaluating expressions carrying
+**server-supplied** values (G40-284). This runs at build time on a string read from a file in this
+repo at the commit CI is testing, and never reaches the bundle.
+
+**Also checked — no defect found.** The available-list card (`GopherOrderCardView.js`) gates trip
+distance on `bodyProps.pickupAddress.latitude` while the component holds `pickupAddress` as an
+**array** — which looked like a permanently dead row, given the available feed carries no
+`pickup_address`/`dropoff_address` either. **It is not a bug:** `:262` unwraps the array to element
+`[0]` before passing it down, and the card sources addresses from the feed's `addresses` list.
+Recorded so nobody re-investigates the shape mismatch.
+
 **Proven:**
 - Production build compiles. `Riders:` and `Special Instructions:` present in the emitted bundle;
   `"Details:"` absent (0 occurrences).
@@ -126,8 +159,7 @@ cosmetic and it is the non-obvious part:
 - **Nothing has run on a real device against a real ride order.** AC Scenarios 1, 3 and 4 and the
   ticket's own QA note ("test on both iOS and Android", "validate Trip Distance against a known
   route") need a live ride.
-- **Delivery/Service regression (Scenario 6) is argued, not observed** — the Riders row is gated on
-  `category_type`, and the caption change is intentional and visible.
+**Scenario 6 is now CLOSED** — see below. Only Scenarios 1, 3 and 4 need a device.
 
 ---
 
@@ -137,7 +169,7 @@ cosmetic and it is the non-obvious part:
 both screens against a **comment-free** copy of the source, because the blocks carry prose naming
 the very captions being asserted.
 
-**Every check was mutation-tested — twelve deliberate regressions, twelve failures.** One early
+**Every check was mutation-tested — seventeen deliberate regressions, seventeen failures.** One early
 "pass" was a mutation that never applied (prettier had wrapped the target across lines); the test
 was vacuous, not the guard. A guard that has never failed proves nothing.
 

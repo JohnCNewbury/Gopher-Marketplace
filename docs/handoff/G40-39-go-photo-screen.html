@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40-39 — Gopher photo-capture screen</title>
+<style>
+  :root{
+    --ink:#292929; --muted:#74777C; --green:#01B85B; --dash:#C7CBD1; --prep:#5A6472;
+    --page:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 20px 48px;background:var(--page);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink)}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 26px;max-width:1100px;line-height:1.55}
+  .sub code{background:#dfe4ea;padding:1px 5px;border-radius:4px;font-size:12px}
+  .row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .col{width:375px;flex:0 0 auto}
+  .tag{font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
+  .note b{color:var(--ink)}
+
+  .phone{width:375px;background:#fff;border:1px solid #c9d0d8;border-radius:14px;overflow:hidden;
+    box-shadow:0 6px 20px rgba(16,24,40,.10);min-height:520px;position:relative}
+  .hero{height:44px;background:#000;display:flex;align-items:center;justify-content:center}
+  .hero span{color:#fff;font-size:11px;letter-spacing:.08em;opacity:.6}
+
+  /* exact source math @ innerWidth=375 */
+  .body{padding:18.75px;display:flex;flex-direction:column;align-items:center}
+  .title{font-weight:700;font-size:20.625px;text-align:center;margin-top:22.5px;line-height:1.3}
+  .subtitle{font-weight:400;font-size:13.5px;color:var(--muted);text-align:center;margin-top:7.5px;width:88%;line-height:1.4}
+  .grid{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:11.25px;margin-top:22.5px;width:100%}
+  .tile{width:90px;height:90px;border-radius:7.5px;position:relative}
+  .photoTile{background:#b9c0c9 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90"><rect width="90" height="90" fill="%23b9c0c9"/></svg>');
+    object-fit:cover;display:flex;align-items:center;justify-content:center;color:#7d8792;font-size:9px}
+  .removeBtn{position:absolute;top:-5.6px;right:-5.6px;width:22.5px;height:22.5px;border-radius:50%;
+    background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+  .prepTile{border:2px dashed var(--dash);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--prep);font-weight:700;font-size:11.25px;text-align:center;gap:5.6px}
+  .spinner{width:22.5px;height:22.5px;border-radius:50%;border:3px solid #d7dce2;border-top-color:var(--prep);animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .addTile{border:2px dashed var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--green);font-weight:700;font-size:30px;line-height:1;cursor:pointer}
+  .addTile span{font-size:11.25px;margin-top:2px}
+
+  .submitBtn{margin-top:30px;width:88%;height:45px;border-radius:22.5px;border:none;color:#fff;font-weight:700;font-size:15px}
+  .submitOff{background:var(--dash)}
+  .submitOn{background:var(--green)}
+  .skipLink{margin-top:15px;color:var(--muted);font-weight:700;font-size:14.25px;text-decoration:underline}
+
+  /* picker sheet */
+  .sheetWrap{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center}
+  .sheet{width:70%;margin-bottom:60px;background:#fff;border-radius:18.75px;padding:11.25px;
+    display:flex;flex-direction:column;align-items:center;box-shadow:0 -4px 24px rgba(0,0,0,.18)}
+  .sheetTitle{font-weight:700;font-size:13.125px;margin:11.25px 0;color:var(--ink)}
+  .sheetOpt{font-size:13.125px;color:var(--ink);margin:9px 0;cursor:pointer}
+
+  /* skip dialog */
+  .dialogWrap{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+  .dialog{width:80%;background:#fff;border-radius:15px;padding:15px}
+  .dialogTitle{font-weight:700;font-size:16.875px}
+  .dialogBody{font-weight:400;font-size:13.5px;color:var(--muted);margin-top:7.5px;line-height:1.45}
+  .dialogPrimary{margin-top:18.75px;width:100%;height:41.25px;border-radius:20.625px;border:none;
+    background:var(--green);color:#fff;font-weight:700;font-size:14.25px}
+  .dialogSecondary{margin-top:11.25px;text-align:center;color:var(--muted);font-weight:700;font-size:13.5px;
+    text-decoration:underline;padding-bottom:3.75px}
+
+  .legend{margin-top:30px;padding:15px 17px;background:#fff;border:1px solid #dbe1e8;border-radius:10px;
+    max-width:1200px;font-size:13px;line-height:1.65}
+  .legend h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .legend code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>Step 1 — the Gopher's photo-capture screen (G40-39)</h1>
+<p class="sub">
+  Source: <code>gopher-mobile-gopher/src/component/completionPhotos.js</code>, confirmed
+  <b>byte-identical to <code>origin/production</code></b> — this is what the shipped app runs, not a feature
+  branch. Reached from <code>ordercard.js</code> immediately after a Gopher marks a non-age-restricted job
+  Complete. Sizes are the file's own <code>innerWidth</code> percentage math evaluated at 375. This is a
+  reconstruction from source, not a device capture — Step 3/4 will get you the real screenshots.
+</p>
+
+<div class="row">
+
+  <!-- A: empty state -->
+  <div class="col">
+    <div class="tag">A · On arrival — zero photos</div>
+    <div class="phone">
+      <div class="hero"><span>GOPHER GO</span></div>
+      <div class="body">
+        <div class="title">Add photos of the completed request</div>
+        <div class="subtitle">The requester sees these on their confirmation screen — and they are your proof the job was done. Up to 3 photos.</div>
+        <div class="grid">
+          <div class="tile addTile">+<span>Add photo</span></div>
+        </div>
+        <button class="submitBtn submitOff" disabled>Submit</button>
+        <div class="skipLink">Skip</div>
+      </div>
+    </div>
+    <p class="note">
+      <b>No back button anywhere on this screen</b> — the completion already happened server-side; <b>Skip</b>
+      is the one honest exit. Submit is grey and disabled until at least one photo exists.
+    </p>
+  </div>
+
+  <!-- B: two photos + preparing -->
+  <div class="col">
+    <div class="tag">B · Mid-capture — 2 taken, 1 converting</div>
+    <div class="phone">
+      <div class="hero"><span>GOPHER GO</span></div>
+      <div class="body">
+        <div class="title">Add photos of the completed request</div>
+        <div class="subtitle">The requester sees these on their confirmation screen — and they are your proof the job was done. Up to 3 photos.</div>
+        <div class="grid">
+          <div class="tile photoTile">PHOTO<div class="removeBtn">✕</div></div>
+          <div class="tile photoTile">PHOTO<div class="removeBtn">✕</div></div>
+          <div class="tile prepTile"><div class="spinner"></div>Adding photo…</div>
+        </div>
+        <button class="submitBtn submitOn">Submit</button>
+        <div class="skipLink">Skip</div>
+      </div>
+    </div>
+    <p class="note">
+      The dashed "preparing" tile occupies the slot the photo is about to fill — added specifically because
+      the owner reported the upload "updates very slow" with nothing on screen between picker-close and
+      thumbnail. <code>convertToJpeg()</code> redraws onto a 1024×1024 canvas on the main thread; this tile is
+      what fills that silence. At <code>max_photos</code> (3) the "+ Add photo" tile disappears — no fourth slot.
+    </p>
+  </div>
+
+  <!-- C: image picker sheet -->
+  <div class="col">
+    <div class="tag">C · Tapping "+ Add photo"</div>
+    <div class="phone">
+      <div class="hero"><span>GOPHER GO</span></div>
+      <div class="body">
+        <div class="title">Add photos of the completed request</div>
+        <div class="subtitle">The requester sees these on their confirmation screen — and they are your proof the job was done. Up to 3 photos.</div>
+        <div class="grid">
+          <div class="tile addTile">+<span>Add photo</span></div>
+        </div>
+      </div>
+      <div class="sheetWrap">
+        <div class="sheet">
+          <div class="sheetTitle">Select Image</div>
+          <div class="sheetOpt">Take Photo...</div>
+          <div class="sheetOpt">Choose from Library...</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      <code>ImageSelectionModal</code> — a slide-up sheet, not a native action sheet. Two options only:
+      camera or library. Each checks its own OS permission first; a denial routes to the device Settings app
+      rather than failing silently.
+    </p>
+  </div>
+
+  <!-- D: skip confirmation -->
+  <div class="col">
+    <div class="tag">D · Tapping "Skip" on a Delivery</div>
+    <div class="phone">
+      <div class="hero"><span>GOPHER GO</span></div>
+      <div class="body">
+        <div class="title">Add photos of the completed request</div>
+        <div class="subtitle">The requester sees these on their confirmation screen — and they are your proof the job was done. Up to 3 photos.</div>
+        <div class="grid">
+          <div class="tile addTile">+<span>Add photo</span></div>
+        </div>
+      </div>
+      <div class="dialogWrap">
+        <div class="dialog">
+          <div class="dialogTitle">Skip the photo?</div>
+          <div class="dialogBody">If you left this delivery unattended, the photo is your proof it arrived. Without it you have nothing to point to if the customer says it never showed up.</div>
+          <button class="dialogPrimary">Take a photo</button>
+          <div class="dialogSecondary">Skip anyway</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">
+      Only fires when the server (or the category-type fallback) says the order is a <b>Delivery</b>.
+      "Take a photo" is deliberately the <b>easy, primary</b> button — the friction is the point, so the
+      button roles are never swapped. Copy is server-served (<code>photo_requirement.skip_warning</code>);
+      this is the bundled fallback, which is what renders on an older backend response.
+    </p>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h2>What determines whether this screen appears at all</h2>
+  <code>ordercard.js</code> routes here only when <code>photo_requirement.applies</code> (server) or,
+  absent that field, <code>!age_restricted?</code> (client fallback) — see the memory of this session for the
+  full trace. If neither condition holds, or if the Gopher's app build predates <code>c6afb936e</code>
+  (2026-08-20), this screen is never reached and the flow goes straight to the waiting screen instead.
+</div>
+
+</body>
+</html>

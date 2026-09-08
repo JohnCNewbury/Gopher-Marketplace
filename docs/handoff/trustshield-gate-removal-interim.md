@@ -309,7 +309,7 @@ depends on credits.
 
 ## 3. The changes in detail
 
-### 3.1 Backend — `TRUSTSHIELD_MIN_AGE=21` ⛔ REINSTATED 2026-08-29, AND STILL NOT SET
+### 3.1 Backend — `TRUSTSHIELD_MIN_AGE=21` ✅ SET AND LIVE (re-read 2026-09-05)
 
 ⛔ **This is the only part of the 2026-08-23 plan that came back, and the only part of G40-410 that
 lives in no merge request.** Verified 2026-08-29 by `git diff origin/production...HEAD` on `!433`:
@@ -318,14 +318,29 @@ it touches `config/db.config.js`, `controllers/user/{index,trustshield}.js`,
 three test files — and **none** of `helpers/trustshield_policy.js`,
 `controllers/order/create.js`, `controllers/order/update.js`. The gate is untouched.
 
-**Live values on `Gopher-Production`, read first-hand 2026-08-29 via
-`aws elasticbeanstalk describe-configuration-settings`:**
+> ⛔ **This heading and table said "STILL NOT SET" and showed a live `30` until 2026-09-05.** That
+> was true when written on 08-29 and stale afterwards, and it is the half of the contradiction §2
+> already corrected — the two halves of one document disagreed for a week about the single value
+> that decides whether a 21–29 requester can submit. **Both halves now agree, and both were read
+> the same way.** The 08-29 reading is kept below as history, not as state.
 
-| variable | live | required | note |
+**Live values on `Gopher-Production`, re-read first-hand 2026-09-05 via
+`aws elasticbeanstalk describe-configuration-settings` — 64 environment variables returned, which
+is the control proving the probe was not an expired-session empty:**
+
+| variable | live 2026-09-05 | required | note |
 |---|---|---|---|
-| `TRUSTSHIELD_MIN_AGE` | **`30`** | **`21`** | the change |
-| `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` | `false` | `false` | **do not touch** — see the warning below |
+| `TRUSTSHIELD_MIN_AGE` | ✅ **`21`** | **`21`** | **done** — was `30` on 08-29 |
+| `TRUSTSHIELD_TOKEN_GATED_AGES_ONLY` | ✅ `false` | `false` | **do not touch** — see the warning below |
 | `TRUSTSHIELD_GATE_MISSING_DOB` | *unset* (→ `false`) | leave unset | no-DOB users are already refused by the legal block |
+| `TRUSTSHIELD_IDENFY_ENROLMENT_DISABLED` | ⛔ *unset* | owner decision | **the enrolment kill switch is merged but inert.** New iDenfy sessions can still be issued today, and every approval spends a credit against the ~17 Sept exhaustion date. |
+
+⚠️ **`PAYOUT_TOKEN_REQUIRED_FROM_VERSION` is also unset on `Gopher-Production`** (same read). Not a
+TrustShield variable, recorded here because the same query answers it: with no override, the code
+default of **46** in `controllers/user/payment.js:218` applies, so a GO client reporting
+`appversion >= 46` must send a payout token. GO's `production` tree tokenizes first —
+`scripts/assert-payout-token-contract.js` passes 8/8 — so bumping GO's `REACT_APP_VERSION` to 46
+is safe in the build that carries that code.
 
 ```bash
 aws elasticbeanstalk update-environment --application-name Gopher-Production --environment-name Gopher-Production --option-settings Namespace=aws:elasticbeanstalk:application:environment,OptionName=TRUSTSHIELD_MIN_AGE,Value=21

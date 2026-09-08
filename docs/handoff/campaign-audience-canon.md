@@ -141,6 +141,46 @@ Owner: *"Every message we send should be logged and provide as much details as w
   `users` directly returns a real, plausible, **wrong** person. See the memory
   `admin-userid-is-a-users-roles-id`.
 
+## Sends made OUTSIDE the backend — recorded here by hand (2026-09-04)
+
+The two tables above only see what the backend sends. Email sent through **Intercom** never touches
+`inboxes` or `campaign_sends`, so "every send is recorded" holds for those only if someone writes
+the row. This is that row.
+
+| Sent (ET) | Channel | Audience | Recipients | Content | Unsubscribe / postal address |
+|---|---|---|---|---|---|
+| 2026-09-04 ~11:45 AM | Intercom email "Fee Free - September", from `promo@gophergo.io` | Triangle customers, `completed_requests>0`, no worked jobs (`Source = triangle-referral-2026-09-customers`). ⚠️ The **whole** 780 list, not the planned 154-person wave 1 — Intercom sent 708, the other ~72 pre-suppressed | **708** | `Marketing/triangle-referral-push/EMAIL-triangle-customers.html` — September referral offer, `Gopherit!` (id 7) carried by the invitation | ⛔ **NEITHER.** Verified from the owner's seed-test PDF: the delivered email ends at the terms paragraph. Intercom did **not** append its footer, and the template had none. |
+| 2026-09-05 ~10:00 AM (seed test 9:55, live send right after) | Intercom email "Who else on the planet pays you to get paid?", from `promo@gophergo.io`, audience **Fixed** | Triangle Gophers, `received_orders>0`, active ≤730 days (`Source = triangle-referral-2026-09-gophers`). List is 339; **328 imported** (11 rows rejected — see import note below); audience preview 328, Intercom's Outbound page reports **327 sent** (one dropped at send: bounce or unsubscribe) | **327** | `Marketing/triangle-referral-push/EMAIL-triangle-gophers.html` — **$10 per referral** paid to the Gopher's payout (manual Stripe transfer, `transfer_group=referral-sept-2026`), refer by **Sep 30**, referred person completes a first request by **Oct 31**, no cap, one payout per referred person. Copy names **Refer by Email / Refer by SMS only** — the other paths do not record a referral ([referral-qr-spec](../../../../Dev/gopher-dev-handoff/src/content/docs/platform/referral-qr-spec.md)) | ✅ **BOTH, verified on the delivered artifact.** Seed-test PDF shows `Gopher, Inc · PO Box 595, Holly Springs, NC 27540-0595` and an Unsubscribe link; owner clicked it, landed on Intercom's confirmation page, re-subscribed. |
+
+**Intercom import note (2026-09-05):** the first upload of the Gopher list landed only **145 of 339**.
+The CSV carried a `User ID` column mapped to Intercom's user ID; Intercom **rejects any row whose
+email already belongs to a contact with a different user ID and never overwrites one by import**.
+Today's apps and backend all register the same internal `users.id`, so the conflicts are historical
+contacts from the old native apps — long-tenured Gophers, which is why this list lost 57% and the
+customer list only 9%. Re-importing the same rows **with the `User ID` column removed** (email as the
+only matcher: `audience/INTERCOM-triangle-gophers-REIMPORT-email-match.csv`) brought it to 328.
+**Resolved 2026-09-07 from an Intercom export of the segment: all 339 are in Intercom with the
+Source.** There were no import failures. The gap to 327 is email suppression — **5 unsubscribed,
+7 hard-bounced**, none marked spam — listed in
+`Marketing/triangle-referral-push/audience/INTERCOM-gophers-suppressed-2026-09-07.csv`. The
+unsubscribed stay out. The 7 bounces are dead addresses; the only way to reach those Gophers is
+SMS or push. ⚠️ **Whether the `User ID` column caused the initial 145 is unproven** — the errors
+file was never read, and the count may simply have been an import still processing. The
+email-only rule stands as the safe practice, not as a diagnosed cause.
+
+**Results at +16h (Intercom, 2026-09-05):** opened **25% (179)** · clicked — · replied — · **Issues (bounces/complaints): none reported.** The deliverability gate this doc's wave plan existed for did not trip. The number that decides whether it *worked* is Triangle sign-ups and new invites against the pre-send baseline, read from the referral export over the following two weeks.
+
+⛔ **Lesson, so it is not repeated:** the *Still missing* section below already said bulk marketing
+email cannot go out without an unsubscribe. That was read as a statement about the backend path
+and the Intercom send was assumed to be covered by an Intercom default. It was not verified, and it
+was not true for this message. **A legal requirement on a send is verified on the delivered
+artifact, not inferred from the platform.** The template now hardcodes the postal address and uses
+Intercom's unsubscribe token; **no further wave goes out until a seed test shows the link present
+and clickable.** ~~Waves 2 (264) and 3 (362) and the Gopher list (339) are held on that.~~
+**Resolved 2026-09-05:** waves 2 and 3 are moot (the whole customer list went in one send); the
+Gopher send passed the seed-test gate — link present, clicked, Intercom confirmation page reached —
+and went out to 328. The gate stands for every future send.
+
 ## Still missing (not shipped)
 
 - **Bulk email has no unsubscribe and no suppression list.** Unsubscribe is a legal requirement for
