@@ -34,7 +34,17 @@
 > rows; create does not) and the response spread the instance, not its columns. Fixed by
 > flattening the created row; the test stub is now instance-shaped and fails against the unfixed
 > controller. **The device test resumes once !529 is merged** — until then the app cannot open the
-> code screen even though the backend does everything else right. Proven on the device so far:
+> **Timeline (all 2026-09-08, UTC in brackets):** 17:29 ET [21:29Z] `aa499b27` live with the
+> gate at 43 · ~18:05 ET G40-38 session flags that the store app sends 45 · 18:12 ET store APK
+> pulled over adb, `appversion="45"` confirmed first-hand · 18:20 ET `!529` opened (gate off by
+> default) · 18:40 ET [22:40Z] first device run: sheet → screening `avs_postal=pass cvc=pass` →
+> code SMS sent → app showed "Verification did not start" (instance-spread bug) · 18:45 ET second
+> fix pushed into `!529` · 18:47 ET [22:47:16Z] `!529` merged as `fb27e3fd` on the owner's
+> "Proceed" (an unrelated G40-19 merge `dcfbf1b7` deployed just before it) · 18:49 ET [22:49:38Z]
+> Gopher-Production Ready on `fb27e3fd`, `apiversion` 200, EB Red ~2 min (rolling-batch
+> transient, no 5xx). **Damage, 21:29Z → 22:49Z, probe proven on both log groups: zero
+> `card_verification_required` refusals, zero `PUT /users/attach` calls.** Nobody was refused.
+> Proven on the device so far:
 > sheet config (name + full address, no Bank/Link on Android), Samsung Pass autofill on the card
 > field, name + home-address prefill, customer-less SetupIntent, AVS/CVC screening, audit row +
 > SMS. Not yet proven: code entry → attach → default.
