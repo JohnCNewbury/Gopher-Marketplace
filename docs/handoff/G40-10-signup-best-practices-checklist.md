@@ -142,3 +142,80 @@ version returns the original timestamp.
 Not Done at the merge. The AC is a screen at the end of sign-up — met only when a build
 carrying it is **live in both stores**. This ticket previously went green on a sprint close
 (2026-09-07 00:07), not on the work.
+
+---
+
+## Owner decisions — 2026-09-08
+
+**Copy: set A** (the prototype's wording), **with one amendment**, and **no 101 gate**.
+
+### The amendment — the tutorial is the CURRENT one
+
+Owner ruling: the checklist points at **"How To Use Gopher Go"**,
+`https://gophergo.io/become-a-gopher/gopher-go-support/`. **Not** "Gopher Go 101" — that name
+and guide are **New Gopher Marketplace, for launch**, and get revised when Marketplace ships.
+
+⚠️ This cuts *against* the prototype, whose item 1 reads "Review your **Gopher Go 101**
+tutorial". **The prototype is ahead of the app here and the app must not follow it.** Five of
+the prototype's seven "Gopher Go 101" strings are on this screen; the other two are on the
+Help Center screen and are out of G40-10's scope.
+
+### The gate is dropped
+
+The prototype disables the CTA until the worker opens the guide — it can do that because the
+guide is **embedded** in the prototype as base64. Pointed at a live gophergo.io URL, the app
+can observe a **tap** and nothing more, so the gate would assert something it cannot see.
+Nine ticks enable the CTA, per the AC as written. **Revisit at Marketplace launch**, when the
+guide is in-app again and opening it is observable.
+
+### ✅ Done — `!247` reconciled (`b05391cf9`)
+
+Copy set A + the amendment; version bumped **`2026-07-gg-bp-v1` → `2026-09-gg-bp-v2`** (the
+backend is idempotent per version — copy and version move together or nobody is re-prompted);
+`min-height: 100dvh` → `var(--app-vh)` per G40-371.
+
+Verified by compiling the file with the repo's own babel and driving the **real component** in
+a browser at 390pt: 9 rows, item 3 reads "Requester", tapping the tutorial link opens the
+gophergo.io URL and leaves that row unticked, 8/9 leaves the CTA disabled and the 9th enables
+it, confirm emits `POST /users/ack_best_practices {"version":"2026-09-gg-bp-v2"}` → `/`, and a
+simulated 500 shows the error, does not navigate, and stays retryable.
+
+### ⛔ Two verdicts from the 2026-09-07 audit are RETRACTED
+
+That audit's diff table said the prototype should win on **ground colour** and **CTA colour**.
+Both are wrong — they were recorded before checking the app:
+
+- Cream `#FBF7EF` appears **nowhere** in the Go app; its sign-up screens are white.
+- `.act` — green background, navy text — is the prototype's **shared button class across every
+  screen**, so green is its whole design language, not a decision about this screen. Every
+  sign-up CTA in the shipped app is navy.
+
+Adopting either would make this the only cream, green-buttoned screen in the funnel. **Chrome
+follows the surrounding screens; only the words follow the prototype.** That distinction is
+the rule for the rest of the reskin too.
+
+### ⚠️ BLOCKED — the prototype still needs updating, and the repo state prevents it
+
+Under the web-and-prototype-together rule the prototype's `best-practices` screen should now
+lose its 101 gate and adopt the "How To Use Gopher Go" label + live URL. **Not done**, because
+the Code repo's branches have forked:
+
+| ref | prototype blob | this screen |
+|---|---|---|
+| local `main` (and this worktree) | `add9546` | **stale** — still says "Requestor" |
+| `origin/main` | `e3448315` | current |
+| local `feature/deals-google-maps-audience` (main checkout sits here) | `5a82593` | current |
+
+Local `main` is **297 commits behind `origin/main` and ~200 ahead** — a genuine fork, not a
+lag. Editing a 2.7 MB single-file prototype from the stale side would fork it again.
+**Owner needs to say which branch is canonical for `_prototypes/` before this edit lands.**
+
+### Remaining
+
+1. **Owner: which branch for the prototype edit?** Then apply the label + gate removal there.
+2. Review `gopher-go-101.html` (owner rule 2026-08-05) — note the *current* tutorial is the
+   gophergo.io support page, so check what that guide claims about naming.
+3. Correct the Jira description — stale copy, the dead `/api/v1/gopher/ack-best-practices`
+   path, and the "neither artifact exists" claim.
+4. Push `feat/g40-10-best-practices-checklist` and merge (targets **`next`**, not production).
+5. **Ship in a store release.** Still the only thing that closes this.
