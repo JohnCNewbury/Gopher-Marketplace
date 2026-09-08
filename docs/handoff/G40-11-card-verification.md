@@ -1,111 +1,308 @@
-# G40-11 — Payment method: required identifying info + OTP + dispute log
+# G40-11 — Verified card add: billing address + AVS/CVC/Radar, SMS code before save, dispute audit log
 
 **Type:** Task (child of Epic G40-1 "Bug Fixes & Polish") · **Priority:** Medium · **Assignee:** John Newbury
-**Status set:** groomed to dev-ready (unparked) — 2026-07-02
-**Owner of build:** unassigned. ⚠️ *Superseded 2026-08-09* — this read *"human developer (payments + security are fenced off from AI work per CLAUDE.md)"*. That fence is retired; the gate is now owner consent before production. Card verification still touches payments and real user data, so it wants a stated risk/reward and a verification plan before it ships — but it is no longer waiting on a person who does not exist.
+**Sprint:** Payment Options (2026-09-07 → 09-16) · **Status:** In Progress — **BUILT, blocked on the owner** (UI approval + device QA)
+**Groomed:** 2026-07-02 · **Built:** 2026-09-08 (this doc rewritten the same day; the July spec survives as §1)
 
-This doc is the authoritative, no-open-questions spec. Where it conflicts with the
-original 2024 ticket body, **this doc wins.** Product decisions below were confirmed
-by John Newbury on 2026-07-02.
+> **Read this first.** Everything in §2 was verified first-hand on 2026-09-08 against the live Stripe
+> account, the backend `production` branch and the requester app's `production` branch. Nothing in
+> this doc is inherited from the July ticket text except the owner's product decisions in §1.
 
 ---
 
-## Goal (one line)
-Every new card added must collect **five verifiable fields + billing address**, pass
-name/address to Stripe for **AVS + Radar**, require an **SMS OTP** to the account phone
-before the card is saved, and **log the verification event** so we have evidence to appeal
-chargeback disputes.
+## 0 · Where it stands (2026-09-08)
 
-## Resolved decisions (were the open questions — now closed)
+| Piece | State | Where |
+|---|---|---|
+| Backend — three endpoints, appversion gate, audit table | **Built, tested (93 checks), MR open** | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
+| Requester app — card form + native sheet + code step | **Built, lint-clean, unit-tested, Draft MR** | `gopher-mobile-requester-capacitorjs` branch `G40-11-card-verification` (Draft MR — see ticket comment) · target `production` · squash **no** · delete source **no** |
+| Prototypes — Request web, Connect, Request app prototype | **Built as an apply-on-approval patch; `Final/` NOT edited** | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) — `patch -p1 < docs/handoff/G40-11-prototype.patch` after the ruling |
+| Side-by-side (current vs proposed, all three surfaces) | **Published** | link in the Jira comment and in the session hand-off |
+| Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
+| 101 guides | **Held until the app ships** (rule 5: the guide describes what the product does) | copy ready in §7 |
 
-| # | Decision | Answer (John, 2026-07-02) |
-|---|----------|---------------------------|
-| 1 | Ticket status (was parked pending Stripe Connect R&D) | **Unparked — build it.** |
-| 2 | Which surfaces enforce this | **Native Gopher Request app + Gopher Request (web) + Gopher Connect (business).** Gopher Deals is **out of scope** for this ticket. |
-| 3 | OTP after card add | **Required on EVERY card add** — even though the account phone is already OTP-verified at signup. No "skip if already verified." |
-| 4 | Dispute evidence | **Log each card-add verification event** (see "Dispute audit log" below) so disputes can be appealed with more info. |
-| 5 | Prototype UI | **Do not build UI in the prototype.** Build during production rebuild; use the existing prototype screens below as visual reference only. |
+**Why it is blocked, in the owner's own terms:** a new UI screen (the billing block + the code step,
+on the app, Request web and Connect) needs his approval before it is applied, and the code step
+sends a real SMS so it needs a real handset. Both are his. The backend MR is safe to merge on its
+own and changes nothing for any installed build (§3).
 
-## Required card-entry fields (all mandatory — Submit disabled until all valid)
-1. **Full Name** — as it appears on the card
-2. **Card Number**
-3. **Expiration Date**
-4. **CVC**
-5. **Billing Address** — street, city, state, ZIP (as issued to the card)
+---
 
-## Stripe handling
-- Use Stripe tokenization; **raw PAN never touches Gopher servers.**
-- Pass full name + billing address in the **`billing_details`** object so Stripe can run
-  **AVS** (address match) and **Radar** fraud scoring, and so we retain that data as
-  dispute evidence.
-- Enable AVS + CVC checks and Radar rules in the Stripe Dashboard (block/review on AVS or
-  CVC mismatch). Refs: <https://docs.stripe.com/disputes/prevention> ·
-  <https://docs.stripe.com/radar>
-- **Engineering choice left to dev (not a product question):** the 2024 ticket named
-  `CardElement`; the modern equivalent is **Payment Element + SetupIntent** for saving a
-  card off-session. Either is acceptable as long as `billing_details` (name + address) is
-  populated and AVS/Radar are active. Recommend Payment Element + SetupIntent.
+## 1 · The owner's decisions (2026-07-02) — unchanged
 
-## OTP step (required on every card add)
-- After the card details are submitted, send a **6-digit SMS OTP** to the phone number
-  **already on the account** (no new phone input). Reuse the existing signup OTP provider
-  (Twilio / current SMS provider).
-- Card is **not saved** until the OTP is verified.
-- **Expiry: 5 minutes. Resend: allowed once.**
-- Incorrect/expired OTP → card not saved, user prompted to resend or retry.
+| # | Decision | Answer |
+|---|---|---|
+| 1 | Status (was parked pending Stripe Connect R&D) | **Unparked — build it.** |
+| 2 | Surfaces | Native Request app + Request web + Connect. **Deals out of scope.** |
+| 3 | OTP on card add | **Required on EVERY card add.** No skip. |
+| 4 | Dispute evidence | **Log every card-add verification event.** |
+| 5 | Prototype UI | *"Do not build UI in the prototype"* — **superseded by standing rule 12/12b (owner, 2026-08-11 / 09-01):** a completed ticket updates the front ends and the prototypes in the same pass. Built as a patch, applied on approval (rule: side-by-side first). |
 
-## Dispute audit log (NEW — John's requirement)
-On each card-add attempt, persist an **auditable, retained** record for chargeback appeals.
-Capture at minimum:
-- Account/user id and the Stripe **payment method id** (+ card brand / last4)
-- **Timestamp** (UTC) of the verification
-- **Phone number** the OTP was sent to (store per data-policy — masked or hashed as
-  appropriate) and **OTP outcome** (sent / verified / failed / expired / resent)
-- **IP address and device/user-agent** of the session adding the card
-- Stripe result codes returned: **AVS result, CVC result, Radar risk score/outcome**
+Required fields: Full Name · Card Number · Expiration · CVC · **Billing address (street, city,
+state, ZIP)**. OTP: 6 digits, to the **account** phone, **5-minute expiry, one resend**.
 
-Store in a dedicated, retained audit table (not overwritten on card edit/removal) so the
-full trail survives for dispute response. Retention should meet the chargeback dispute
-window (typically ~120+ days after the transaction; confirm against card-network / Stripe
-timelines during build).
+---
 
-## Acceptance criteria (updated)
-1. Submit stays disabled until all five fields (incl. billing address) are valid.
-2. On submit, an SMS OTP is sent to the account phone; card is not saved pre-verification.
-3. Correct OTP → card saved and available.
-4. Incorrect/expired OTP → card not saved; resend (once) / retry offered.
-5. Name + billing address are present on the Stripe payment method object (AVS + Radar).
-6. **A dispute audit record is written for every card-add attempt** with the fields above.
-7. Behavior holds on native Request app (iOS + Android), Request web, and Connect.
+## 2 · What was actually true on 2026-09-08 (first-hand)
 
-## Front-end reference in the prototype (visual blueprint only — do NOT edit)
-The go-forward web prototypes already contain the card modal and a reusable phone-OTP UI.
-Mirror these; note the two gaps to add during the rebuild.
+**The card add never asked the issuer anything.** On the live Stripe account, the five most
+recent SetupIntents and the five most recent charges all show `billing_details` with every field
+`null`, `address_line1_check: null` and `address_postal_code_check: null`. `cvc_check` is `pass`
+only on the first charge after a card is added (Stripe keeps the CVC result from setup) and
+`null` after. `radar_options` is `{}` on every charge — no Radar session. Every charge is
+`risk_level: normal`.
 
-**Gopher Request web — `Final/gopher-request.html`**
-- Add-payment modal: `ensureModal()` / `window.__openAddPaymentModal` (~lines 10792–10937).
-  Field ids: `payName`, `payNum`, `payExp`, `payCvc`, save button `paySave`, error `payErr`.
-  Collects Name/Number/Exp/CVC only — **no billing address, no OTP step** (both must be added).
-- Reusable signup phone-OTP component: `rqSuPhoneOtpBtn`, label `rqOtpLabel`, copy
-  "We sent a 6-digit code to your phone" (~line 16316, 16398). Reuse this pattern for the
-  card-add OTP screen.
+**Why:** the store build's card form (`src/component/cardComponent.js`) calls Stripe.js
+`createPaymentMethod({ type:'card', card, metadata:{ name } })` — the cardholder name goes into
+*metadata* as a nickname, not into `billing_details`, and no address is collected at all. The
+method is then handed to `PUT /users/attach/:pm`, which confirms a SetupIntent **with the
+customer** — so the card is saved at that moment — and attaches it.
 
-**Gopher Connect — `Final/gopher-connect.html`**
-- Same add-payment modal ("Add a payment method" ~line 9468, "Name on card" ~9474,
-  `__openAddPaymentModal` ~9573) — also lacks billing address + card-add OTP.
-- Same signup phone-OTP ("We sent a 6-digit code" ~line 7290). A street/city/state address
-  input pattern already exists elsewhere in the page (~7097) to mirror for the billing block.
+**The disputes this is for.** The last 15 disputes on the account (Sep 2025 → Jun 2026):
 
-**Figma (from ticket):**
+| | |
+|---|---|
+| Reason `fraudulent` (Visa 10.4 / MC 4837 — card-absent fraud) | 13 of 15 |
+| Reason `product_not_received` | 2 of 15 |
+| Lost | 13 · Won 2 |
+| Evidence submitted | 5 of 15 (the two wins both had evidence; 8 had none at all) |
+| `evidence.billing_address` on file | 2 of 15 — and only because the owner typed it in |
+| Repeat disputers | 4 people account for 9 of the 15 |
+| Dispute fee | $15 each, on top of the reversal |
+
+**The G40-38 sheet did not change this.** The native PaymentSheet merged for G40-38
+(`!280`/`!284`, unreleased) creates the SetupIntent *with* the customer (saves on completion) and
+does not configure billing-details collection, so a card added through it would also carry no
+address.
+
+**Two facts that shaped the design:**
+
+- A PaymentMethod's `billing_details` can only be updated once it is attached to a customer — so
+  the name and address must be on the method **when the client creates it**; the server can refuse
+  a method that lacks them but cannot repair it.
+- A SetupIntent confirmed **without** a customer runs the same issuer checks (AVS, CVC) and Radar
+  screening, attaches nothing, and the method can be attached afterwards — the pattern Stripe
+  documents for Checkout setup mode without a customer. That is what makes "code before save"
+  possible.
+
+---
+
+## 3 · What was built
+
+### 3.1 Backend (`gopher-backend-api`, MR !525)
+
+Three endpoints, all behind `user_auth`, requester role only:
+
+| Endpoint | Does |
+|---|---|
+| `POST /users/payment_methods/verify/start` `{ payment_method \| setup_intent, set_default }` | Refuses a method without name + street + city + state + 5-digit ZIP (`422 billing_details_incomplete`, names the missing fields). **Card-form path:** confirms a customer-less SetupIntent so AVS + CVC + Radar run and nothing is saved; a decline is `402` with the `decline_code`, 3DS-required is `422 requires_action` (same stance as `/attach`). **Sheet path:** reads back the SetupIntent the sheet confirmed; refuses one that already has a customer. Writes the audit row, then texts a 6-digit code to the **account** phone (`users.telephone` — never a number in the request). Returns `{ verification_id, phone_masked, expires_in_seconds, resend_allowed, attempts_left }`. |
+| `POST …/verify/resend` `{ verification_id }` | Once. New code, new 5 minutes. `429 resend_limit` after that. |
+| `POST …/verify/confirm` `{ verification_id, code, set_default }` | Right code → `paymentMethods.attach` to the customer, default unless `set_default:false`, re-arms exhausted re-authorization exactly as `/attach` does (G40-402), row `outcome: saved`. Wrong code → `400 incorrect` with `attempts_left`; fifth wrong → `423 locked`, row `failed`. Expired → `410 expired` (`resend_allowed` says whether a resend still revives it). A closed row → `410 closed`. Another user's id → `404`. |
+
+Structured error payloads ride as `data` on the global error response (additive, only when a
+thrower sets `error.payload`).
+
+**The appversion gate (memory `server-guard-must-be-appversion-gated`).** `PUT /users/attach/:pm`
+now refuses callers with `appversion >= CARD_VERIFICATION_REQUIRED_FROM_VERSION` (env; **default
+43**) with `409 card_verification_required`. The store build sends `appversion: 42`
+(`.env.requestor.production`), and header-less callers are treated as legacy — both keep the old
+path, **logged with user_id + appversion**. Raise the env var to retire the exemption; delete the
+block to end it. ⚠️ **The build that ships this must be 43** (or the env var set to what it ships
+as) or the new client will be refused by its own server.
+
+`POST /users/payment_sheet/start` with `card_verification: true` creates the SetupIntent **without
+a customer** (`create_unattached_wallet_setup_intent`, same named types `card` / `cashapp` /
+`link`) and returns `setup_intent_id` + `card_verification: true`. The merged sheet code does not
+send the flag → byte-identical behaviour.
+
+**The audit table — `card_verification_events`** (model + `CREATE TABLE IF NOT EXISTS` on boot,
+like every table here). One row per attempt, **never deleted, never overwritten by a card edit or
+removal**:
+
+| Column group | Columns |
+|---|---|
+| Who / what | `user_id`, `stripe_customer_id`, `payment_method_id`, `setup_intent_id`, `entry_path` (`card_form` \| `payment_sheet`), `card_brand`, `card_last4`, `card_funding`, `card_country`, `billing_name`, `billing_postal_code` |
+| Issuer checks | `avs_line1_check`, `avs_postal_code_check`, `cvc_check`, `radar_risk_level` (**null until Stripe enables setup-attempt risk data** — §6), `stripe_error_code` |
+| Phone + code | `phone_masked` (`***-***-0111`), `phone_hash` (sha256 of digits), `otp_code_hash` (sha256 of token:code — the code is never stored), `otp_status` (`sent → resent → verified \| failed \| expired`), `otp_sent_at`, `otp_expires_at`, `otp_verified_at`, `otp_attempts`, `otp_resends` |
+| Session | `ip_address` (first X-Forwarded-For hop — `trust proxy` is off on this app), `user_agent`, `app_version`, `device_type` |
+| Outcome | `outcome` (`pending → saved \| declined \| failed \| expired`), `created_at`, `updated_at` |
+
+Retention: indefinite by design. Visa and Mastercard allow ~120 days from the **transaction**, and
+the transaction can be months after the add, so a time-boxed purge would delete the evidence
+exactly when it is needed. At today's volume this is kilobytes a month.
+
+Codes live in this table, not in `otps`, for the reason `recovery_attempts` gives: a card-add code
+must never satisfy a sign-in and vice versa.
+
+**Files:** `helpers/card_verification_policy.js` (pure rules) · `controllers/user/card_verification.js`
+· `models/card_verification_events.model.js` · `config/db.config.js` (DDL) · `controllers/user/index.js`
+(routes) · `controllers/user/payment.js` (gate, sheet flag, `rearm_exhausted_auth` export) ·
+`lib/payment.stripe.js` (5 appended helpers) · `index.js` (error `data` passthrough) ·
+`test/g40-11-card-verification.test.js`.
+
+**Tests:** 93 checks — the policy; the controller against raw-row stubs (production sets
+`query:{raw:true}`) with a Stripe stub that records every call so the suite asserts **attach is
+NOT called** until the code is right; decline / 3DS / resend-once / expiry / lockout / ownership /
+sheet path; the `/attach` gate; routes; every DDL column present in the model. Full suite 244/245 —
+the one failure is `admin-jwt-v8-contract`, identical on untouched `production` (the shared clone's
+stale `express-jwt`, memory `shared-clone-node-modules-is-stale`).
+
+### 3.2 Requester app (`gopher-mobile-requester-capacitorjs`, branch `G40-11-card-verification`)
+
+- **Card form** (`cardComponent.js` — the store build's screen, and the web / sheet-unavailable
+  fallback): new *NAME AND BILLING ADDRESS* block (name, street, apt optional, city, state, ZIP).
+  **Save is disabled** until the three Stripe elements report `complete` and the five fields pass
+  (AC1). `createPaymentMethod` carries `billing_details`. The form calls `verify/start`, swaps to
+  the code step, and the server attaches the card only on a confirmed code; the post-save
+  bookkeeping (summary refresh, default, confirmation screen) is unchanged. `PUT /attach` is gone
+  from this screen.
+- **Native sheet** (`paymentSheet.js`): asks for the customer-less SetupIntent and configures
+  `billingDetailsCollectionConfiguration { name:'always', address:'full', email:'never',
+  phone:'never' }`; `completed` returns `setup_intent_id`. `cardlist.js` and `summary.js` open
+  `SheetVerifyModal` after completion and run their existing "newest method becomes default" logic
+  only after the code. An older backend that ignores the flag → old behaviour.
+- **Code step** (`CardVerifyOtp.js`): six boxes mirroring sign-in (`css/otp.css`), auto-advance,
+  paste/autofill into box 1, 5:00 countdown from the server's `expires_in_seconds`, **Resend once**,
+  attempts-left, "Verify and save card", "Cancel — don't save this card". Terminal errors (locked,
+  closed, expired-with-no-resend) close the step and the user adds the card again.
+- **New:** `services/cardVerification.js` (+9 tests) · `CardVerifyOtp.js` · `SheetVerifyModal.js`.
+  `paymentSheet.test.js` gains 4 G40-11 cases. ⚠️ The 6 pre-existing G40-38 cases in that file fail
+  in this checkout **with the untouched service too** (CRA's `resetMocks` strips the factory mocks;
+  the sibling worktree cannot even load `setupTests.js`) — not a regression; the new cases re-install
+  their mocks in `beforeEach` so they do not depend on that setting.
+
+### 3.3 Prototypes (Code repo — `docs/handoff/G40-11-prototype.patch`, apply on approval)
+
+Same change on all three, mirroring the app: billing block under the CVC row, Save/Add disabled
+until the five fields are valid, and a code panel (six boxes, 5:00 countdown, Resend once,
+Cancel) that replaces the form after Save and adds the card only on "Verify and save card". Demo:
+any six digits verify. The saved entry carries `billing` so a later edit pre-fills it.
+
+- `Final/gopher-request.html` — `ensureModal()` modal (`payAddr1/payCity/payState/payZip`, `#payOtp`)
+- `Final/gopher-connect.html` — `openAddPaymentModal` (`addpayAddr1/…`, `#addpayOtp`)
+- `_prototypes/Request/gopher-pay-store.js` — `openAddModal` (`gp-addr1/…`, `drawOtp()`)
+
+Every inline `<script>` parse-checks clean; the flow was driven in the browser (form → disabled
+Save → filled → code panel). ⚠️ One trap, fixed in the patch: the modal's children are
+`display:flex`, which beats the UA's `[hidden]` rule — `.pay-modal-card [hidden]` /
+`.addpay-modal [hidden]` are pinned to `display:none !important`.
+
+**Not edited:** `Final/gopher-deals.html` (Deals is out of scope, decision 2) and `_prototypes/Go/`
+(no worker-side card add). There is no Connect app prototype (rule 12b known bound).
+
+---
+
+## 4 · Risk / reward — for the merge decision
+
+**Backend MR !525**
+
+- **Solves:** every new card carries a name and an AVS-checked address, is phone-verified before it
+  exists on the customer, and leaves an evidence row — the day the next Requester build ships.
+- **Risk:** low. No installed build changes behaviour (§3.1 gate). New table only. New routes only.
+  If wrong: revert the merge; one pipeline (~3 min). The audit table stays, inert.
+- **Reward:** the dispute pack for every future chargeback starts with AVS result + phone
+  verification + device/IP; Radar's postal-code and CVC block rules (§6) finally have something to
+  act on.
+
+**App MR (Draft)**
+
+- **Risk:** a UI the owner has not approved, and a flow that has not touched a device. Held as
+  Draft so it cannot be merged by accident. Store-gated regardless (no OTA).
+- **Reward:** the actual user-facing change. Nothing in the backend does anything for real users
+  until this ships.
+
+**One product consequence to state plainly:** adding a card gets longer — five more fields and a
+text message. That is the owner's decision 3 ("required on every card add, no skip"), reaffirmed
+in the 2026-09-08 brief.
+
+---
+
+## 5 · Honest limits — what this does and does not stop
+
+The fraud pattern in the dispute list is **card-absent fraud on an account the fraudster controls**
+(stolen card, own phone). What each layer does against it:
+
+| Layer | Stops | Does not stop |
+|---|---|---|
+| Billing address + AVS | a stolen number without the billing ZIP (the common case for skimmed / breached numbers) — **only if a Radar rule blocks the failed check** (§6) | a fraudster who has the full statement address |
+| CVC at setup | numbers without the physical card | a physically stolen card |
+| SMS code to the account phone | account takeover adding a card to someone else's account; it also puts *"the account holder confirmed by phone"* into the dispute pack | the account owner themself using a stolen card — they own the phone |
+| Audit row | nothing by itself — it wins **disputes**, it does not prevent them | — |
+
+So the honest expectation: fewer successful adds of skimmed numbers, and a dispute pack that can
+actually be argued. Not a stop to the repeat-disputer pattern by itself — that is §6's third item.
+
+---
+
+## 6 · Additional fraud measures (the owner's side question) — owner actions and follow-ups
+
+Verified against Stripe's docs on 2026-09-08; the Dashboard state itself could not be read (login
+page in the pane — **pause and wait**, not guessed).
+
+1. **Radar rules — Dashboard → Radar → Rules** (owner). Enable *"Block if postal code verification
+   fails based on risk score"* and *"Block if CVC verification fails based on risk score"*. These
+   rules **also apply to attaching a card to a customer** — with this ticket they block at the
+   code step, before anything is saved. Without an address collected they have nothing to check,
+   which is why they were pointless until now.
+2. **Radar risk data on setup attempts** (owner → Stripe support). By default Radar does not return
+   a risk outcome for SetupIntent attempts; support enables it on request. `radar_risk_level` in
+   the audit table waits for it.
+3. **Block repeat disputers** (Radar rule, owner). 4 people account for 9 of the last 15 disputes.
+   Radar can block a card, and a customer, with a prior dispute on this account — the Radar
+   Assistant builds it from *"block payments from customers who have disputed before"*. Cheap,
+   immediate, and the only item here that targets the pattern in the data.
+4. **Radar Session** (code, small, follow-up). `stripe.createRadarSession()` on the client and
+   `radar_options.session` on `createPaymentMethod` gives Radar device signals at setup time;
+   `radar_options` is `{}` on every charge today. Not in this MR — it needs the Stripe.js call in
+   the card form and a plugin option check for the native sheet.
+5. **3DS on setup** (design question). Today a 3DS-required card is **refused** on the card form
+   (`422`, both old and new path). The native sheet handles 3DS itself. Adaptive 3DS on
+   SetupIntents shifts liability for authenticated cards — worth turning on once the sheet is the
+   main path.
+6. **Submit evidence every time** (process). 8 of 15 disputes had no evidence submitted; both wins
+   had it. The audit row plus the order's delivery log is the pack. Stripe Smart Disputes can
+   auto-assemble it.
+7. **Block prepaid cards** (Radar rule, judgement). `:card_funding: = 'prepaid'` — common for
+   fraud, but also for legitimate low-income users; review-not-block is the safer start.
+
+---
+
+## 7 · 101 guide copy — apply when the build ships (rule 5)
+
+`Final/gopher-request-101.html`, "Payment method" section, and `Final/gopher-connect-101.html`,
+"Payment Methods" under Account — add, once the store build with this is live:
+
+> **Adding a card.** Enter the card number, expiry and security code, the name on the card and the
+> billing address on your card statement. We text a 6-digit code to the phone on your account —
+> enter it and the card is saved. The code expires in 5 minutes and can be resent once. The card is
+> not saved until the code is confirmed.
+
+Do **not** add this before the build is live: the guide describes what the product does.
+
+---
+
+## 8 · QA (device — owner)
+
+1. Card form: with any field empty, Save is grey. Fill all five → Save is navy.
+2. Save → the code step appears; a text arrives on the account phone within seconds.
+3. Wrong code → "Incorrect code. N attempts left." Right code → "Your card has been added!" and the
+   card is in the list, default if the toggle was on.
+4. Resend → second text, "Code already resent once" afterwards.
+5. Let a code expire (5 min) → "That code has expired. Send a new one." Resend revives it.
+6. Five wrong codes → the step closes, "The card was not saved"; the card is **not** in the list.
+7. Stripe Dashboard → the new payment method shows name + billing address, and
+   `address_postal_code_check: pass` (or `fail`, if you use a wrong ZIP on purpose).
+8. `card_verification_events` has one row per attempt above with the matching `otp_status` /
+   `outcome`, IP and user-agent.
+9. Native sheet (Account → Payment Methods → Add): the sheet asks for name + full address; after
+   it closes, the code step appears; the card is listed only after the code.
+10. An old build (appversion 42) can still add a card the old way (log line
+    `G40-11: unverified card attach allowed for legacy build`).
+
+---
+
+## 9 · Figma references (from the ticket)
+
 - Card entry screen 1 — <https://www.figma.com/design/g7DWLbI86O6SqiwITY7jeL/%E2%9C%8F%EF%B8%8F-Gopher-UI_UX?node-id=5945-10274>
 - Card entry screen 2 — <https://www.figma.com/design/g7DWLbI86O6SqiwITY7jeL/%E2%9C%8F%EF%B8%8F-Gopher-UI_UX?node-id=5945-10275>
-
-## QA
-- Missing any required field (incl. billing address) → Submit disabled.
-- Complete entry → OTP sent to account phone; wrong OTP → not saved + retry/resend; expired
-  OTP → not saved + resend; correct OTP → saved.
-- Stripe Dashboard shows name + billing address on the payment method; AVS mismatch triggers
-  the configured Radar action.
-- Confirm a dispute audit record is written with all listed fields.
-- No raw card data stored on Gopher servers.
-- Test native iOS + Android, Request web, and Connect.
+- Stripe: <https://docs.stripe.com/disputes/prevention/verification> · <https://docs.stripe.com/radar/rules>
