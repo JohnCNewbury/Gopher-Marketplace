@@ -9210,6 +9210,26 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--navy); }
   .pay-form-row { display:flex; gap:10px; }
   .pay-form-row .pay-lbl { flex:1; }
+  /* G40-11: billing address + SMS-code step on every card add. The modal's
+     children are display:flex, which beats the UA's [hidden] rule — pin it. */
+  .pay-modal-card [hidden] { display:none !important; }
+  .pay-billing-hd { font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+  .pay-billing-note { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); line-height:1.5; }
+  .pay-save:disabled { background:#c9ccd6; cursor:not-allowed; }
+  .pay-save:disabled:hover { background:#c9ccd6; }
+  .pay-otp { display:flex; flex-direction:column; gap:12px; align-items:center; text-align:center; }
+  .pay-otp h5 { margin:0; font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; color:var(--navy); }
+  .pay-otp p { margin:0; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); line-height:1.5; }
+  .pay-otp-boxes { display:flex; gap:8px; }
+  .pay-otp-boxes input { width:40px; height:48px; text-align:center; font-family:'DM Sans',sans-serif; font-size:22px; font-weight:700;
+    border:1.5px solid var(--navy-light); border-radius:10px; color:var(--text); }
+  .pay-otp-boxes input:focus { border-color:var(--green); outline:none; }
+  .pay-otp-meta { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
+  .pay-otp-meta.expired { color:var(--terracotta); font-weight:600; }
+  .pay-otp-link { background:none; border:none; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; color:var(--green); text-decoration:underline; }
+  .pay-otp-link:disabled { color:var(--muted); cursor:default; text-decoration:none; }
+  .pay-otp-cancel { background:none; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); }
   .pay-default-row { display:flex; align-items:center; justify-content:space-between;
     font-family:'Nunito',sans-serif; font-weight:700; font-size:12.5px; color:var(--navy); padding:4px 0 2px; }
   .pay-save { background:var(--green); color:#fff; border:none; border-radius:11px; padding:13px;
@@ -11139,10 +11159,30 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         +       '<label class="pay-lbl">Exp date<input id="payExp" type="text" inputmode="numeric" autocomplete="off" placeholder="MM / YY" maxlength="7"></label>'
         +       '<label class="pay-lbl">Security code<input id="payCvc" type="text" inputmode="numeric" autocomplete="off" placeholder="CVC" maxlength="4"></label>'
         +     '</div>'
+        // G40-11: billing address is required — the issuer checks it against the card (AVS)
+        +     '<div class="pay-billing-hd">Billing address <span class="pay-opt">(as on your card statement)</span></div>'
+        +     '<label class="pay-lbl">Street address<input id="payAddr1" type="text" autocomplete="billing address-line1" placeholder="Street address"></label>'
+        +     '<div class="pay-form-row">'
+        +       '<label class="pay-lbl" style="flex:2">City<input id="payCity" type="text" autocomplete="billing address-level2" placeholder="City"></label>'
+        +       '<label class="pay-lbl">State<input id="payState" type="text" autocomplete="billing address-level1" placeholder="NC" maxlength="2"></label>'
+        +       '<label class="pay-lbl">ZIP<input id="payZip" type="text" inputmode="numeric" autocomplete="billing postal-code" placeholder="27601" maxlength="10"></label>'
+        +     '</div>'
+        +     '<div class="pay-billing-note">Your bank checks this address against the card. After you save, we text a 6-digit code to the phone on your account to confirm it\'s you before the card is saved.</div>'
         +     '<label class="pay-lbl">Name your card <span class="pay-opt">(optional)</span><input id="payNick" type="text" autocomplete="off" placeholder="e.g. Personal Visa"></label>'
         +     '<div class="pay-default-row"><span>Set as default</span><button type="button" class="toggle-switch" id="payDefaultToggle" aria-label="Set as default"></button></div>'
-        +     '<button type="button" class="pay-save" id="paySave">Save card</button>'
+        +     '<button type="button" class="pay-save" id="paySave" disabled>Save card</button>'
         +     '<div class="pay-err" id="payErr" hidden></div>'
+        +   '</div>'
+        // G40-11: the SMS-code step — shown after the card details, before the card is saved
+        +   '<div class="pay-form pay-otp" id="payOtp" hidden>'
+        +     '<h5>Confirm it\'s you</h5>'
+        +     '<p>We sent a 6-digit code to the phone on your account (<b id="payOtpPhone">***-***-1234</b>). Enter it to save this card. The card is not saved until the code is confirmed. <em>(Demo: any 6 digits work.)</em></p>'
+        +     '<div class="pay-otp-boxes" id="payOtpBoxes">' + '<input type="tel" inputmode="numeric" maxlength="1" aria-label="Digit">'.repeat(6) + '</div>'
+        +     '<div class="pay-otp-meta" id="payOtpMeta">Code expires in 5:00</div>'
+        +     '<div class="pay-err" id="payOtpErr" hidden></div>'
+        +     '<button type="button" class="pay-save" id="payOtpVerify" disabled>Verify and save card</button>'
+        +     '<button type="button" class="pay-otp-link" id="payOtpResend">Resend code</button>'
+        +     '<button type="button" class="pay-otp-cancel" id="payOtpCancel">Cancel — don\'t save this card</button>'
         +   '</div>'
         +   '<div class="pay-or"><span>or connect a wallet</span></div>'
         +   '<div class="pay-wallets">' + walletHTML + '</div>'
@@ -11174,6 +11214,68 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         setBrandUI(); refreshPreview();
       });
       $('payName').addEventListener('input', refreshPreview);
+      // G40-11: Save stays disabled until all five fields are valid (name, number, expiry, CVC, billing address)
+      function billingValid(){
+        return !!($('payAddr1').value.trim() && $('payCity').value.trim() && $('payState').value.trim().length === 2
+                  && /^\d{5}(-\d{4})?$/.test($('payZip').value.trim()));
+      }
+      function formValid(){
+        const num = $('payNum').value.replace(/\D/g,'');
+        const exp = $('payExp').value.replace(/\s/g,'');
+        const cvc = $('payCvc').value.replace(/\D/g,'');
+        if(editKey) return !!$('payName').value.trim();
+        return !!$('payName').value.trim() && !!formBrand && num.length === maxDigits(formBrand)
+               && /^\d{2}\/\d{2}$/.test(exp) && cvc.length === cvcLen(formBrand) && billingValid();
+      }
+      function refreshSave(){ $('paySave').disabled = !formValid(); }
+      ['payName','payNum','payExp','payCvc','payAddr1','payCity','payState','payZip'].forEach(id => $(id).addEventListener('input', refreshSave));
+      $('payState').addEventListener('input', () => { $('payState').value = $('payState').value.replace(/[^a-z]/gi,'').toUpperCase().slice(0,2); });
+      $('payZip').addEventListener('input', () => { $('payZip').value = $('payZip').value.replace(/[^\d-]/g,'').slice(0,10); });
+
+      // ---- G40-11: SMS-code step (demo). In production the server texts the ACCOUNT phone and
+      //      attaches the card only after POST /users/payment_methods/verify/confirm succeeds.
+      let otpPending = null, otpTimer = null, otpSecs = 300, otpResent = false;
+      const otpBoxes = () => Array.from($('payOtpBoxes').querySelectorAll('input'));
+      function otpCode(){ return otpBoxes().map(b => b.value).join(''); }
+      function otpTick(){
+        otpSecs = Math.max(0, otpSecs - 1);
+        const m = Math.floor(otpSecs/60), s = otpSecs%60;
+        $('payOtpMeta').textContent = otpSecs ? ('Code expires in ' + m + ':' + (s<10?'0':'') + s) : 'That code has expired.' + (otpResent ? ' Add the card again to get a new code.' : ' Send a new one.');
+        $('payOtpMeta').classList.toggle('expired', !otpSecs);
+        if(!otpSecs){ clearInterval(otpTimer); $('payOtpVerify').disabled = true; }
+      }
+      function otpStart(){
+        otpSecs = 300; clearInterval(otpTimer); otpTimer = setInterval(otpTick, 1000);
+        otpBoxes().forEach(b => { b.value=''; b.disabled=false; }); $('payOtpErr').hidden = true; $('payOtpVerify').disabled = true;
+        $('payOtpResend').disabled = otpResent; $('payOtpResend').textContent = otpResent ? 'Code already resent once' : 'Resend code';
+        $('payOtpMeta').classList.remove('expired'); $('payOtpMeta').textContent = 'Code expires in 5:00';
+        ov.querySelector('.pay-form:not(.pay-otp)').hidden = true; $('payOtp').hidden = false;
+        ov.querySelector('.pay-or').hidden = true; ov.querySelector('.pay-wallets').hidden = true; ov.querySelector('.pay-wallet-note').hidden = true;
+        otpBoxes()[0].focus();
+      }
+      function otpEnd(){
+        clearInterval(otpTimer); otpPending = null; otpResent = false;
+        ov.querySelector('.pay-form:not(.pay-otp)').hidden = false; $('payOtp').hidden = true;
+        ov.querySelector('.pay-or').hidden = false; ov.querySelector('.pay-wallets').hidden = false; ov.querySelector('.pay-wallet-note').hidden = false;
+      }
+      otpBoxes().forEach((b, i, all) => {
+        b.addEventListener('input', () => {
+          const v = b.value.replace(/\D/g,'');
+          if(v.length > 1){ v.slice(0,6).split('').forEach((c,j) => { if(all[j]) all[j].value = c; }); all[Math.min(v.length,6)-1].focus(); }
+          else { b.value = v; if(v && all[i+1]) all[i+1].focus(); }
+          $('payOtpErr').hidden = true; $('payOtpVerify').disabled = !(otpCode().length === 6 && otpSecs > 0);
+        });
+        b.addEventListener('keydown', e => { if(e.key === 'Backspace' && !b.value && all[i-1]) all[i-1].focus(); });
+      });
+      $('payOtpVerify').addEventListener('click', () => {
+        if(otpCode().length !== 6 || !otpPending) return;
+        const p = otpPending;                          // demo: any 6 digits verify
+        otpEnd();
+        if(p.editKey){ window.__updatePayMethod(p.editKey, p.entry, p.makeDef); } else { window.__addPayMethod(p.entry, p.makeDef); }
+        close();
+      });
+      $('payOtpResend').addEventListener('click', () => { if(otpResent) return; otpResent = true; otpStart(); });
+      $('payOtpCancel').addEventListener('click', () => { otpEnd(); });
       $('payExp').addEventListener('input', () => {
         let v = $('payExp').value.replace(/[^\d]/g,'').slice(0,4);
         if(v.length >= 3) v = v.slice(0,2) + ' / ' + v.slice(2);
@@ -11201,16 +11303,19 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         if(!formBrand || num.length !== need){ err.textContent = 'Enter a valid card number.'; err.hidden = false; return; }
         if(!/^\d{2}\/\d{2}$/.test(exp)){ err.textContent = 'Enter the expiry as MM/YY.'; err.hidden = false; return; }
         if(cvc.length !== cvcLen(formBrand)){ err.textContent = 'Enter the ' + cvcLen(formBrand) + '-digit security code.'; err.hidden = false; return; }
+        if(!billingValid()){ err.textContent = 'Enter the billing address on the card statement (street, city, state, 5-digit ZIP).'; err.hidden = false; return; }
         err.hidden = true;
         const last4 = num.slice(-4);
         const nick = $('payNick').value.trim();
         const makeDef = $('payDefaultToggle').classList.contains('on');
+        const billing = { line1:$('payAddr1').value.trim(), city:$('payCity').value.trim(), state:$('payState').value.trim().toUpperCase(), zip:$('payZip').value.trim() };
         const entry = { brand:formBrand, shortLabel:(formBrand==='amex'?'AMEX':formBrand.toUpperCase().slice(0,4)),
-                        name:BRAND_NAME[formBrand] || 'Card', cardholder:name, nick:nick, last4:last4, exp:exp,
+                        name:BRAND_NAME[formBrand] || 'Card', cardholder:name, nick:nick, last4:last4, exp:exp, billing:billing,
                         sub:'Ending in ' + last4 + ' · Exp ' + exp };
-        if(editKey){ window.__updatePayMethod(editKey, entry, makeDef); }
-        else { window.__addPayMethod(entry, makeDef); }
-        close();
+        if(editKey){ window.__updatePayMethod(editKey, entry, makeDef); close(); return; }
+        // G40-11: a NEW card is not saved until the SMS code is confirmed
+        otpPending = { entry:entry, makeDef:makeDef, editKey:null };
+        otpStart();
       });
       ov.querySelectorAll('.pay-wallet[data-wallet]').forEach(b => {
         b.addEventListener('click', () => {
@@ -11224,15 +11329,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       });
       ov.__reset = function(){
         editKey = null; formBrand = '';
-        ['payName','payNum','payExp','payCvc','payNick'].forEach(id => { $(id).value = ''; });
+        ['payName','payNum','payExp','payCvc','payNick','payAddr1','payCity','payState','payZip'].forEach(id => { $(id).value = ''; });
         $('payDefaultToggle').classList.remove('on'); $('ppDefault').hidden = true;
         $('payErr').hidden = true; $('payModalTitle').textContent = 'Add a payment method';
         $('paySave').textContent = 'Save card';
+        otpEnd(); refreshSave();
         setBrandUI(); refreshPreview();
       };
       ov.__loadEdit = function(m){
         editKey = m.key; formBrand = m.brand;
         $('payName').value = m.cardholder || ''; $('payNick').value = m.nick || '';
+        const bl = m.billing || {}; $('payAddr1').value = bl.line1 || ''; $('payCity').value = bl.city || ''; $('payState').value = bl.state || ''; $('payZip').value = bl.zip || '';
+        setTimeout(refreshSave, 0);
         $('payExp').value = m.exp ? (m.exp.replace('/',' / ')) : '';
         $('payNum').value = m.last4 ? ('\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 ' + m.last4) : '';  // PAN not stored — show last-4 placeholder
         $('payCvc').value = '';
