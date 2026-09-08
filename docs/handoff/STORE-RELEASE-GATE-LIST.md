@@ -409,9 +409,24 @@ with `putExtra`, then a `gopherPushTap` window event, then `react-router` `navig
 declares **both** `io.gophergoapp.go` and `io.gophergoapp.requester`, 3 fingerprints each). The two
 Firebase Dynamic Links hosts — `gophergoapp.page.link` and `gopherrequestapp.page.link` — publish
 assetlinks declaring **only `io.gophergoapp.requester`**; `io.gophergoapp.go` is absent. That is
-exactly *"2 deep links may be failing"* on the **GO** listing. ⚠️ FDL was sunset in 2025, so these
-two are probably dead weight that should be removed from the manifest — **its own small ticket, and
-unrelated to push routing.**
+exactly *"2 deep links may be failing"* on the **GO** listing.
+
+⛔ **CORRECTION 2026-09-08 — I first called those two hosts "probably dead weight" on the assumption
+FDL was sunset. Wrong: I asserted it instead of checking.** Both URLs are **live**, each answering
+**302 → `https://lnk.gophergo.io/`**. Two things follow, and neither changes the AC#4 conclusion:
+
+1. **The likelier cause of the Play warning is simpler than assetlinks.** Both entries read
+   `android:host="gophergoapp.page.link/PZXe"` — **a path jammed into `android:host`**, which takes
+   a hostname only. It cannot match a URL and cannot verify. The three `api.gophergo.io` entries
+   beside them correctly use `host` + `pathPrefix`.
+2. ⭐ **`lnk.gophergo.io` is claimed by nothing.** Its assetlinks is **correctly** configured — both
+   packages, 3 fingerprints each — yet it appears in **neither** Android manifest and **neither**
+   iOS entitlement. A link on it opens the **browser**, not the app.
+
+⚠️ **Not user-facing today** — nothing in any repo generates a `page.link` or `lnk.gophergo.io` URL;
+referral SMS uses `api.gophergo.io/self-referral/`, a 200 landing page by design. It is a latent trap
+for whoever starts using that domain. **Raised as [G40-457](https://gopherapp.atlassian.net/browse/G40-457);
+still unrelated to push routing.**
 
 ⭐ **A third record agrees, and it is the authoritative procedure:**
 `docs/handoff/G40-426-G40-420-device-qa-runbook.md` §1 states the pass criterion in as many words —
@@ -476,6 +491,14 @@ job."*), App Store Request 3.8.2, Play GO and Play Request — not on Play alone
 dashboard's bottomMenu owns the pending-alert pipeline, so navigating straight to an order would
 need a second order fetch and a second routing path that can drift from the pipeline's. If it is
 ever wanted, it is a new ticket and a store release, not a correction to this one.
+
+⭐ **The corrected copy is now written out in full, once, in
+`gopher-dev-handoff/public/release/RELEASE-NOTES-3.9.3-CORRECTIONS.md`** — replacement wording for
+all three owed lines, which surfaces each is wrong on, and the read-back check. **Paste all four
+store surfaces from that one file, in one sitting.** The reusable
+`RELEASE-EXECUTION-CHECKLIST.html` now carries the two rules behind it: *quote the AC, never
+paraphrase it* (Phase 0) and *write the copy once, paste four, read back* (Phase 3). The sprint test
+sheet's **E5** has been reworded at source, since the next sheet is written by copying it.
 
 ✅ **Separate live defect found while reconciling — FIXED AND MERGED 2026-09-08 (`7d64b899`).** The
 Request app's card-list deep link is dead: `notification.js` notif_types[36] sent
