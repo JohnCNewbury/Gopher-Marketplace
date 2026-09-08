@@ -27,6 +27,18 @@
 > `store-app-appversion-is-45-not-the-env-file`; every "appversion 42/43" statement below is
 > superseded by this note.
 
+> ⚠️ **Second device finding, same evening (18:40 ET), same MR !529 (`de45cdf6`):** on the Samsung
+> the sheet completed, the server screened the card and **texted the code** (read over adb), and
+> the app then said *"Verification did not start"*. `verify/start`'s response carried
+> `verification_id: undefined` — `create()` returns a Sequelize instance (finders return raw
+> rows; create does not) and the response spread the instance, not its columns. Fixed by
+> flattening the created row; the test stub is now instance-shaped and fails against the unfixed
+> controller. **The device test resumes once !529 is merged** — until then the app cannot open the
+> code screen even though the backend does everything else right. Proven on the device so far:
+> sheet config (name + full address, no Bank/Link on Android), Samsung Pass autofill on the card
+> field, name + home-address prefill, customer-less SetupIntent, AVS/CVC screening, audit row +
+> SMS. Not yet proven: code entry → attach → default.
+
 | Piece | State | Where |
 |---|---|---|
 | Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
