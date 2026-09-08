@@ -322,8 +322,109 @@ store-release dependency that does not exist.
 | ticket | state |
 |---|---|
 | G40-424 | ✅ closed — device-verified iOS + Android 2026-09-05 |
-| G40-426 | ✅ closed — AC4 tap routing verified on the A50, build 905 |
+| G40-426 | ✅ closed — AC4 verified on the A50, build 905. ⚠️ **AC4 means "the tap reaches the handler and routes", NOT "opens the specific order"** — clarified 2026-09-07, see note below. |
 | G40-420 | ✅ closed — device-verified both platforms |
+
+⛔ **G40-426 / F-037 reconciled 2026-09-07 — BOTH RECORDS ARE TRUE. The row above was incomplete,
+not wrong.** It read *"✅ closed — AC4 tap routing verified on the A50, build 905"* and appeared to
+contradict **F-037** in `TESTING-FINDINGS-LEDGER.html` (*"tapping an Android push still does not
+open the right order"*, OPEN, device-confirmed on GO 866 / Request 854). Read against the shipped
+source, **they assert different success criteria, and F-037's is the one that no code implements.**
+
+⭐ **The build-905 test record itself proves this**, and it was sitting in the session memory the
+whole time: the tap *"moved the app from **Available Requests** to the **Request tab**."* That is
+`navigate("/request")` — the GO **dashboard**. The build-905 verification was real, correctly run
+(APK provenance proven by grepping the installed dex, notification channel read back out of
+`dumpsys`), and it verified **exactly what the code does**. It never claimed to open a specific
+order, and it could not have.
+
+⭐ **A third record agrees, and it is the authoritative procedure:**
+`docs/handoff/G40-426-G40-420-device-qa-runbook.md` §1 states the pass criterion in as many words —
+*"PASS — the app opens **on the Request tab**."* ⚠️ **That file is currently UNTRACKED in this
+checkout** — commit it, because it is the only place the correct test is written down.
+
+⛔ **Where the drift actually came from — fix this before the next test sheet is written.** The
+2026-09-05 sprint test sheet phrased E5 as *"Tapping a push notification opens the right **order** —
+Android."* That is not AC#4, and it is not what any build does. **Copying that wording forward will
+manufacture the same false contradiction again.** Phrase it as the runbook does: name the push type,
+name the destination screen.
+
+**What the shipped builds actually do.** `src/component/PushTapListener.js` is the single routing
+authority in both apps (mounted in each `router.js`; the `index.tsx` listener is the legacy
+empty-body one). At `release/android-866` / `release/android-854` its complete rule set is:
+
+| app | `data.type` | where the tap lands |
+|---|---|---|
+| GO | `order.payout` | `/request` — the **dashboard**, deliberately: the dashboard's bottomMenu owns the rating pipeline |
+| GO | anything else | nowhere — early `return` |
+| Request | `requestor.payment_action_needed` | the card list — **but this branch is dead**, see below |
+| Request | `no_show_warning` | the order screen, **only** when `localStorage.activeRequest.id === data.order_id` |
+| Request | anything else | nowhere — early `return` |
+
+**`no_show_warning` in the Request app is the only push in the product that opens a specific
+order.** A test phrased *"tapping a push opens the right order"* therefore cannot pass on GO on any
+build, and cannot pass on Request unless the push is a no-show warning for the order that is
+currently stored as `activeRequest`.
+
+**Three of the four hypotheses are dead, on evidence:**
+
+1. ❌ *"build 905 predates the fix / the fix is not in the release."* `1464eeb47` is an ancestor of
+   tag `release/android-866`; `933d0aa56` is an ancestor of `release/android-854` **and**
+   `release/ios-853`. The fix shipped on all three.
+2. ❌ *"the native delivery chain is broken."* All three links are present and correct at the
+   release tags — the FCM service puts the data on the intent, `MainActivity` reads it back and
+   dispatches `gopherPushTap`, `PushTapListener` feeds it to the same handler as the Capacitor
+   event. `MainActivity` is `launchMode="singleTask"`, so a tap on a **backgrounded** app arrives
+   via `onNewIntent` with extras intact — no activity recreation, no cold-start race.
+3. ❌ *"the payload carries no `type` / `order_id`."* `controllers/order/notification.js` attaches
+   `{type, order_id}` to every push (generic block, ~line 1064), and `lib/sendPushNotif.js`
+   string-coerces it and merges it into `data` for **both** the new-app and old-app payloads.
+4. ✅ *"the two describe different payload paths."* This is the survivor — and it is stronger than
+   that: they assert **different success criteria**. *"AC4 tap routing verified"* is fully
+   consistent with an `order.payout` tap landing on the GO dashboard, which is what the code is
+   built to do and what `scripts/assert-push-tap-delivery.js` guards. *"Opens the right order"* is a
+   different claim, and nothing in GO implements it.
+
+⚠️ **F-037 stays OPEN, and its release-notes debt is understated, not overstated.** The line
+*"Tapping a notification opens that specific order / job"* is false on **iOS as well**, not only
+Android — the routing table above sits above the delivery layer, and iOS runs the same `handleTap`
+through the Capacitor event. Correct it for both platforms in 3.9.3, not Play alone.
+
+⛔ **Separate live defect found while reconciling — FIX IN FLIGHT, still dead in production.** The
+Request app's card-list deep link is dead: `notification.js` notif_types[36] sent
+`type: 'payment_action_needed'` while `PushTapListener` compares against
+`'requestor.payment_action_needed'`. Confirmed dead on `origin/production` and on both shipped tags
+(`release/android-854`, `release/ios-853`), and **reachable, not latent** — `middleware/crons.js:1123`
+calls the notifier from the live `re_authorize_token` cron behind no feature flag.
+
+**Owner decision 2026-09-07: the BACKEND moves**, because it reaches every handset already in the
+field on deploy; the client fix would have waited on a store release. Shipped as
+[!514](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/514) (branch
+`fix/payment-action-needed-deeplink-type`, one string plus two guards — no payments or authorization
+logic). **This does NOT clear until !514 merges AND deploys**; until then the tap still does nothing
+for every user.
+
+*Checked while fixing:* three of the four hand-written `extra_data.type` values diverge from their
+dispatch key, so there is **no file-wide convention** — `no_show_warning` is *correctly* short
+because that is what its own shipped client rule matches, `order.payout` matches its key, and
+`gopher_released` is short only because nothing routes on it. Only notif_types[36] had a client rule
+written against the form the backend did not send. The `g40-18` invariant test pinned the old string
+and moved with the fix; it now also **rejects** the short form.
+
+### The handset test is now ONE decisive check, not an exploration
+
+- Android, **Gopher Request** build 854, two or more orders in progress.
+- Confirm which order is stored as `activeRequest` first. The rule only fires on a match, so a
+  warning for the *other* order correctly does nothing — **that is a pass, not a failure.**
+- Trigger a real `no_show_warning` push for the order that IS the stored `activeRequest`, background
+  the app, tap it.
+- Expect: the order screen for **that** order.
+- Separately on **GO** 866: tap an `order.payout` push and expect the **dashboard**. That is AC#4 as
+  built — record it that way, not as "the specific order."
+- Record whether `pushNotificationActionPerformed` fired (on Android it should **not**) and whether
+  `gopherPushTap` fired (it should). Neither firing means the native chain broke.
+
+---
 
 ⭐ **A web-layer fix may already be on the handset.** G40-424 waited on "the Appflow build" it did
 not need — the fix had shipped in build 902 on 9/4, proven by pulling the installed APK and
@@ -432,11 +533,16 @@ knowingly 2026-09-05, confirmed on these exact release builds.** A session propo
 announcement push as a free confirmation of G40-426 AC#4 and **that was wrong**; it is already
 known broken here.
 
-⚠️ **§3 of this file contradicts that** — it records G40-426 as *"closed — AC4 tap routing verified
-on the A50, build 905."* Both cannot describe the same thing. **Flagged, not resolved:** build 905
-may not be the release build, or the verification may not have held. **F-037 is the later and more
-specific finding and it is marked OPEN**, so treat Android push tap as broken until someone
-reconciles the two on a real handset.
+✅ **RESOLVED 2026-09-07 — see the reconciliation note in §3. No handset was needed.** §3 appeared to
+contradict this, recording G40-426 as *"closed — AC4 tap routing verified on the A50, build 905."*
+**Both records are true**: they assert different success criteria, and the build-905 test record
+says so itself — the tap *"moved the app from Available Requests to the Request tab,"* i.e. the
+dashboard, which is what GO's only routing rule does. The fix is in
+the release builds (`1464eeb47` → `release/android-866`; `933d0aa56` → `release/android-854` and
+`release/ios-853`) and the native delivery chain is intact — but **`no_show_warning` in the Request
+app is the only push in the product that opens a specific order.** GO's only rule sends an
+`order.payout` tap to the dashboard, deliberately. So "AC4 tap routing verified" can be true while
+F-037 is also true. **F-037 stays OPEN** — and it is understated: the claim is false on iOS too.
 
 ### ⚠️ 2026-09-07 observation — "the banner tap opened the app" proves NOTHING about routing
 
