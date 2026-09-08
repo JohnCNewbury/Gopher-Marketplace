@@ -207,28 +207,54 @@ Adopting either would make this the only cream, green-buttoned screen in the fun
 follows the surrounding screens; only the words follow the prototype.** That distinction is
 the rule for the rest of the reskin too.
 
-### ⚠️ BLOCKED — the prototype still needs updating, and the repo state prevents it
+### The prototype is NOT edited — the divergence is pinned instead (`83e07f2`)
 
-Under the web-and-prototype-together rule the prototype's `best-practices` screen should now
-lose its 101 gate and adopt the "How To Use Gopher Go" label + live URL. **Not done**, because
-the Code repo's branches have forked:
+⛔ **Two earlier conclusions here were wrong. Both are corrected below.**
 
-| ref | prototype blob | this screen |
+**There is no branch fork.** `main` in this repo is the **GitHub Pages deploy branch** —
+`scripts/deploy.sh` flattens `Final/` to its root, which is why `origin/main`'s tree is a site
+root (`.nojekyll`, `Beer-Delivery.mp4`, `1-engine-css-block.html` at top level) and why
+`_prototypes/` appears there only as the published twin via deploy.sh's `PROTO[]` allowlist.
+Local `main` was simply a **stale 19 July ref of that deploy branch**. Source lives on the
+working branch (`feature/deals-google-maps-audience`). The "297 behind / ~200 ahead fork" read
+was a deploy branch being compared to a source branch. **Nothing was blocked and there was
+nothing for the owner to decide.**
+
+**The prototype should not adopt the app's wording either.** The prototype *is* the New Gopher
+Marketplace app. In that era the guide is in-app, so "Gopher Go 101" is right there, and the
+gate genuinely works — `open101()` renders `DOC101`, embedded in the file, so opening it is
+observable. Neither is a defect. Editing them would drag the future design back to today's
+naming and delete the launch-state design.
+
+So the screen carries a **pinned comment** instead, stating that both divergences are
+deliberate and why. This follows the standing rule: *an intentional divergence must be pinned
+by an assertion saying so, or the next person closes it.* It was not hypothetical — this audit
+read both as defects and was part-way to "fixing" them.
+
+| point | prototype (Marketplace era) | shipped app today |
 |---|---|---|
-| local `main` (and this worktree) | `add9546` | **stale** — still says "Requestor" |
-| `origin/main` | `e3448315` | current |
-| local `feature/deals-google-maps-audience` (main checkout sits here) | `5a82593` | current |
+| tutorial | "Gopher Go 101", embedded guide | "How To Use Gopher Go" → gophergo.io support page |
+| 101 gate | present, and honest — opening is observable | dropped — a live URL yields a tap, nothing more |
+| everything else | **the reference** | follows the prototype |
 
-Local `main` is **297 commits behind `origin/main` and ~200 ahead** — a genuine fork, not a
-lag. Editing a 2.7 MB single-file prototype from the stale side would fork it again.
-**Owner needs to say which branch is canonical for `_prototypes/` before this edit lands.**
+### ⚠️ `!247` targets the wrong branch
+
+The MR was raised against **`next`**, citing a "2026-08-21 branching change" — it was written
+2026-08-22, a day later, and never retargeted. That convention is gone: the last 15 merges all
+went to **`production`**, and `next` is **0 ahead of production and 12 behind** — drained into
+production by `chore/carry-next-clean-commits` on 2026-09-04 and abandoned. Merging to `next`
+today would land the screen nowhere.
+
+Correct target is **`production`**. Rebased onto it and verified: clean, no conflicts, true
+delta **3 files / +337 / −1**. Before the rebase the branch's tree differed from production by
+~3,900 deletions (`AppErrorBoundary`, `CancelReasonSheet`, `mobileConfigCache`,
+`activeRequestPin`, six `assert-*` CI guards) — a normal merge would not have dropped those,
+but rebasing first removes the question. Same hazard shape as branching off `next`.
 
 ### Remaining
 
-1. **Owner: which branch for the prototype edit?** Then apply the label + gate removal there.
-2. Review `gopher-go-101.html` (owner rule 2026-08-05) — note the *current* tutorial is the
-   gophergo.io support page, so check what that guide claims about naming.
-3. Correct the Jira description — stale copy, the dead `/api/v1/gopher/ack-best-practices`
-   path, and the "neither artifact exists" claim.
-4. Push `feat/g40-10-best-practices-checklist` and merge (targets **`next`**, not production).
-5. **Ship in a store release.** Still the only thing that closes this.
+1. Review `gopher-go-101.html` (owner rule 2026-08-05). Now more pointed: that guide is the
+   *Marketplace* tutorial, and the shipped checklist deliberately points somewhere else.
+2. Regenerate the screen spec once the pin is merged, so the published `best-practices.html`
+   stops contradicting its own note. Owned by the screen-spec session.
+3. **Ship in a store release.** Still the only thing that closes this.
