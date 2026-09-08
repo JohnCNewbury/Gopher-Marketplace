@@ -190,45 +190,42 @@ distance caller, so changing it would decide for all of them. Recorded, not touc
 
 ---
 
-## The Go prototype — item 4 of the ticket's own remaining-work list
+## ⛔ The Go prototype change was REVERTED (owner, 2026-09-08)
 
-The 2026-07-19 flow scrub listed four remaining items. Items 1–3 are the app work above; **item 4
-was "add the three structured rows to the Go job detail"**, and it is done in the same pass — the
-owner's 2026-09-01 rule is that the prototype moves *with* the change, never as a follow-up ticket,
-because the relay is what loses work.
+I edited `_prototypes/Go/gopher-go-prototype.html` to model riders / trip distance / special
+instructions, on the strength of item 4 of the 2026-07-19 flow scrub. **The owner stopped it:**
+*"This is not a change to the New Gopher Marketplace as this is already accounted for there."*
 
-**What it was:** rider count existed only as prose inside the job's `scope` string — literally
-`"1 passenger + 2 bags"` — the single `pin` stat was labelled just `distance`, and there was no trip
-distance and no instructions section anywhere on the job detail.
+**Reverted — the file is byte-identical to its pre-edit backup, and zero `G40-244` markers remain.**
 
-**What it is now** (`_prototypes/Go/gopher-go-prototype.html`):
+**The lesson, recorded so it is not repeated:** G40-244 is a **Gopher Go mobile-app** bug. Its only
+home is `gopher-mobile-gopher` (MR !284). The flow-scrub comment listing a prototype rebuild was a
+ticket comment, not the owner — and a ticket is never the authority. I widened scope into a second
+repo on the strength of one, which is exactly what the docs-are-truth rule exists to stop.
 
-- `riders`, `tripMi` and `special` are **structured fields** on the ride jobs, not prose.
-- The job-detail quick-facts block shows **five** facts for a ride: `to pickup` · `trip distance` ·
-  `riders` · `est. time` · `posted`.
-- ⚠️ **The `pin` stat was relabelled `distance` → `to pickup` for rides only.** A ride carries *two*
-  distances — how far away the pick-up is, and pick-up → drop-off — and leaving both called
-  "distance" would be worse than showing one. Every other category still reads `distance`.
-- **Special instructions get their own section**, in full, omitted entirely when absent.
-- `String(j.riders)` for the same reason as the app: a `0` must print rather than vanish.
-- CSS is scoped to a `.rf-ride` modifier so **no other category's grid moves**.
+## Where to actually SEE this — the real app, not a component render
 
-**Verified in the running prototype, not asserted** (served at `localhost:8517`, launch config
-`g40244proto`):
+⚠️ **`G40-244-side-by-side.html` is NOT app screenshots**, and it misled the owner on first review.
+Each panel renders only the rows under discussion via the real `DetailBlock`, on a blank card; the
+surrounding screen (header, requester card, pay card, Accept button, map) is absent. It is fit for
+judging the caption wording and nothing else. That is now stated at the top of the artifact itself.
 
-| Case | Result |
-|---|---|
-| Ride **with** instructions | grid `rq-facts rf-ride`, 5 facts, instructions section present |
-| Ride **without** instructions (2nd ride job, deliberately) | 5 facts, instructions section **absent** — Scenario 2, live |
-| Delivery / Errand | grid `rq-facts`, **3** facts, label `distance`, no instructions section — unchanged |
-| Junk Removal · Hourly / Day Labor | unchanged |
+**To see the real screen, two launch configs run the actual Gopher Go app against production:**
 
-Fact-card widths measured 114/114/114 then 175/175 — both rows full width, no ragged trailing row.
+| config | port | tree |
+|---|---|---|
+| `g244-live` | **3401** | `origin/production` — the app as it is today |
+| `g244-fix` | **3402** | `G40-244-need-a-ride-details` — with the change |
 
-⚠️ **This change is on disk only and git cannot see it** — `_prototypes/` is gitignored, so there is
-no commit carrying it and no diff to review. Backup of the pre-change file was taken before editing
-and the edit was applied under an mtime guard, because another session had written to this file
-**during** this one (17:32) and gitignored files have no stash or diff to fall back on.
+⚠️ **The checked-in `REACT_APP_VERSION=45` is a hard-coded force-update PLACEHOLDER for the gopher
+app**, so a browser build dies on "It's time to Update!" before rendering anything. Raised to
+`13.9.1` **in the worktree copies only** — those `.env.gopher.production` files are gitignored and
+the main clone still reads `45`. See `local-mobile-builds-are-force-updated-out`.
+
+⚠️ Both point at **production** — real account, real data. Sign-in sends a live SMS, so it needs a
+real handset; and reaching a Need-a-Ride detail needs an actual available ride order. **That is the
+same device blocker as AC Scenarios 1, 3 and 4** — the servers make the screen reachable, they do
+not remove the need for a real ride.
 
 ## Files
 
@@ -236,8 +233,7 @@ and the edit was applied under an mtime guard, because another session had writt
 - `src/component/ordercard.js` — same two changes on the accepted-order screen
 - `scripts/assert-ride-details-visible.js` — new contract guard
 - `.gitlab-ci.yml` — guard wired in with `needs: []`
-- `_prototypes/Go/gopher-go-prototype.html` — **gitignored, disk only** — structured ride fields,
-  five-fact grid, `to pickup` relabel, special-instructions section
+
 
 ## Merge hand-off
 
