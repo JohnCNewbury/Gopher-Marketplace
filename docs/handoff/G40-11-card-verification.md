@@ -344,7 +344,12 @@ page in the pane — **pause and wait**, not guessed).
    block), editable, so a typical add is card number + expiry + CVC. Commit `9ef3999f9` on the app
    branch.
    **Bank tile, Android half (for G40-38):** with `email:'never'` the Android sheet showed *Card*
-   and *Cash App Pay* only — no Bank tile, no Link — matching what !518 wanted. iOS half is G40-38's.
+   and *Cash App Pay* only — no Bank tile **and no Link**. G40-38 pointed out (correctly) that Link
+   is a decided deliverable (Decision 2, 2026-09-06), so `'never'` was trading Link away.
+   **Changed the same night:** the sheet now collects email `'automatic'`; Link returns, and the
+   Bank tile is hidden by the owner's Dashboard toggle (Link → Instant Bank Payments OFF, still an
+   owner action). If the owner prefers to drop Link, that is a Decision 2 change and belongs in
+   the G40-38 doc §5, not here.
    **So the answer is: make the native sheet the only path on a device.** It already is when the
    plugin initialises; the card form remains only as the web / init-failure fallback. Note what
    the screenshot also shows: the sheet in that build asks for *Country + ZIP* only (Stripe's
