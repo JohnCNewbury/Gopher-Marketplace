@@ -437,10 +437,21 @@ leaving the server is now the prefixed form, and the full suite is 241/242 (the 
 known stale-`node_modules` `express-jwt` false red). Production API answers **301** on
 `/api/v1/app/requester`, the documented liveness signature.
 
-⚠️ **Liveness is not version proof.** The 301 says the app is up, not that it is running
-`7d64b899`. Nobody has confirmed the CodePipeline execution or the deployed version label, so
-treat "users can now tap through to the card list" as **expected, not verified**, until someone
-reads the EB version or taps a real push on a handset.
+✅ **DEPLOYED AND VERIFIED 2026-09-08 17:43 UTC — this is now fixed for users.** Read from Elastic
+Beanstalk, not inferred: `Gopher-Production` is `Status: Ready`, `Health: Green`, running version
+`code-pipeline-1788889257651-7d64b899c9f7914d130b946f66f7d943dd95eb28` — whose SHA is a
+**character-for-character match** for the merge commit on `production`. Events confirm *"New
+application version was deployed to running EC2 instances"* and *"Environment update completed
+successfully."*
+
+⚠️ **The `Degraded` warning at 17:44 was the rollout, not a fault.** EB briefly ran **2 instances**
+during the deploy, so one was still on the old version — *"Incorrect application version found on 1
+out of 2 instances."* It terminated the excess instance and health went `Degraded → Ok` at 17:45.
+**Confirmed back to a single instance** (`i-0a34fadcbbf20dbff`), which matters here: two instances
+break socket.io in this environment. Do not read that WARN in the event log as a failed deploy.
+
+The only thing still unproven is the handset experience itself — the server now emits the string the
+shipped client matches, but nobody has tapped a real push.
 
 *Checked while fixing:* three of the four hand-written `extra_data.type` values diverge from their
 dispatch key, so there is **no file-wide convention** — `no_show_warning` is *correctly* short
