@@ -14,19 +14,19 @@
 
 | Piece | State | Where |
 |---|---|---|
-| Backend — three endpoints, appversion gate, audit table | **Built, tested (93 checks), MR open** | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
+| Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
 | Requester app — card form + native sheet + code step | **Built, lint-clean, unit-tested, Draft MR** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) (Draft) · branch `G40-11-card-verification` · target `production` · squash **no** · delete source **no** |
-| Prototypes — Request web, Connect, Request app prototype | **UI approved by the owner 2026-09-08 ("good to go"); patch APPLIED and committed** (`91c7692`) — deploy pending the owner's OK on three rider files (§0a) | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
+| Prototypes — Request web, Connect, Request app prototype | **DEPLOYED 2026-09-08** — deploy `609fd81` → `origin/main`; content-verified on Pages AND TigerTech (`payOtpBoxes` ×2 in gopher-request.html, `addpayOtpBoxes` ×2 in gopher-connect.html); the three riders were HELD BACK per the owner ("exclude them") and are NOT live | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
 | Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
-| 101 guides + Terms of Service | **Written, per the owner's 2026-09-08 directive** — Request 101, Connect 101, rebuild ToS §19; live gophergo.io Terms = owner paste | §7 |
+| 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
 
 **0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
 three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
 (+5, the G40-9 "if you have to back out" section), `gopher-request-101.html` (one sentence, G40-9
 "details can't be changed while you decide"), and `_prototypes/Go/gopher-go-prototype.html` (+38,
 G40-10 divergence pins). All three are additions relative to `origin/main` — riders, not reverts.
-Per the deploy rules the owner OKs riders before `--push`; nothing is pushed until then.
+Owner ruled "exclude them": the three files were held at their `origin/main` content in the working tree for an `--allow-dirty` deploy (the script has no exclude option), the diffstat was checked to carry only this ticket's six files, then pushed as `609fd81`; the working tree was restored to HEAD afterwards. **The G40-9 / G40-10 changes remain committed and undeployed — whoever deploys next carries them.**
 
 **Why it is blocked, in the owner's own terms:** a new UI screen (the billing block + the code step,
 on the app, Request web and Connect) needs his approval before it is applied, and the code step
