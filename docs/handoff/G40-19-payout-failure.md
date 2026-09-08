@@ -1,5 +1,71 @@
 # G40-19 — Payout-card management: failed-transfer recovery + last-card protection
 
+> ## ✅ BUILT 2026-09-08 — this file is no longer a "to build" brief. Read this box first.
+>
+> Everything under **"🔧 TO BUILD"** below was written in July, when the scope rule reserved
+> payments for a human developer who does not exist. That rule was retired 2026-08-09. The work
+> has now been done, and **the sections below are kept for their reasoning, not their status.**
+> Where this box and anything lower down disagree, this box is right.
+>
+> ### What is already LIVE in production
+>
+> | Ticket AC | State | Where |
+> |---|---|---|
+> | **AC2 — payout-failure email** | **LIVE since 2026-07-30** | G40-343, `6e4b08f9`. Dispatcher type **35**, `views/payout-failed-2026.ejs`. Sent from `support@gophergo.io` (`SENDGRID_EMAIL` is unset), **not** `admin@gophergo.io` as the 2024 ticket text says — the branded 2026 template was owner-approved on its own terms. Raise it if the address matters. |
+> | **G40-194 — last payout card cannot be deleted** | **LIVE** | Server: `lib/payment.stripe.js delete_payout_card` throws **422** when it is the only card, counting all cards regardless of health. Client: `cardseperateview.js` hides Delete and shows *"Add a new eligible card to remove this one."* Both halves shipped; G40-194 is Canceled and linked as a duplicate. |
+> | **The debit-card update screen** | **LIVE** | `PAYOUT_CARD_ROUTE` = `/form` with `state.next = "payout"` (`src/helpers/payoutAttentionCopy.js`). The deep-link target the ticket asks for already exists; nothing new was designed. |
+>
+> ### What was built on 2026-09-08 — two MRs, both awaiting the owner's merge
+>
+> **`gopher-backend-api!528`** — branch `G40-19-payout-truth` → `production`, squash **no**, delete source **no**.
+> **`gopher-mobile-gopher-capacitorjs!282`** — branch `G40-19-payout-failed-push-tap` → `production`, squash **no**, delete source **no**.
+>
+> | AC | What was wrong in production | What now does it |
+> |---|---|---|
+> | **AC4** | `Payout Completed` was written the moment `stripe.payouts.create()` **resolved** — Stripe *accepting* a payout, not depositing it. An instant payout to a dead card is accepted and fails minutes later. | `payout.paid`, and only `payout.paid`, writes it (`controllers/admin/stripe_payout_webhook.js`). The two creation sites now write **`Payout Initiated`**. |
+> | **AC5** | That write happened in the **same handler** that had written `Requester Confirmed for Order Completion` seconds earlier. | The two events now come from two different sources; one of them is Stripe. |
+> | **AC3** | `payout.failed` wrote only `Payout Failed : <reason>` — a row the worker **never sees**, because `controllers/order/retrieve.js` filters worker order-log notes through an exact-match allowlist it is not in. | A second, worker-facing row in the ticket's exact words: **`PAYOUT FAILED (Please add a new debit card)`**, added to the allowlist. The support row is deliberately left out of it. |
+> | **AC1, push** | Nothing was pushed on a payout failure at all. | New notif type **`gopher.payout_failed`**; the Go app's `PushTapListener` routes the tap to `PAYOUT_CARD_ROUTE`. |
+> | **AC1, in-app popup** | `users/payment_account/check` keys **only** off `requirements.currently_due`. After a failed payout Stripe flips the *card* to `status: 'errored'` and often leaves `payouts_enabled` true and `currently_due` empty — so the endpoint answered `action: null` and **no modal fired at the one moment it mattered.** | `helpers/payout_attention_policy.unusable_default_card_attention` — one shared verdict now used by **both** `get_gopher_cards` and `payout_account_check`. **No store release needed:** shipped builds already render this modal and already route on `action === 'add_payout_card'`. |
+> | **AC2, completeness** | The email carried no card last 4. | It does now, when the card can be read; the sentence still reads correctly when it cannot. |
+>
+> ### ⛔ Three things the next person must not undo
+>
+> 1. **The note strings are allowlisted by EXACT MATCH.** `Payout Initiated`, `Payout Completed` and
+>    `PAYOUT FAILED (Please add a new debit card)` are compared literally in
+>    `controllers/order/retrieve.js`. Reword any of them and the entry **silently disappears from
+>    every worker's request history** — no error, no failing test except
+>    `test/g40-19-payout-truth.test.js`, which pins each string to its writer for this reason.
+>    They were **added, never swapped**: `Payout Completed` stays so years of historical rows keep
+>    rendering.
+> 2. **`gopher.payout_failed` is one value in two repositories** — the `case` label in
+>    `controllers/order/notification.js` and the literal comparison in the Go app's
+>    `PushTapListener.js`. The requester app shipped a shortened form its client never matched and
+>    the deep link was dead in production. `scripts/assert-push-tap-delivery.js` now fails if they
+>    drift.
+> 3. **The reconciliation sweep is not optional scaffolding.** `confirm_payout_deposits`
+>    (`middleware/cronTasks.js`) reads the payout back from the Stripe API for anything unresolved
+>    after 45 minutes. It is what makes "Payout Completed" correct **with zero Stripe dashboard
+>    configuration**, and therefore what makes the deploy and the console change safe in either
+>    order. Remove it and the feature depends on a setting nobody can see from the code.
+>
+> ### Two owner actions in the Stripe dashboard, after the merge (neither is a blocker)
+>
+> 1. Add **`payout.paid`** and **`payout.failed`** to the connected-accounts destination
+>    **`we_1U48wRCQp3eawbpnIytySy6n`** → `/api/v1/admin/endpoint/stripe_account`. That is the
+>    **signature-verified** endpoint. Until this is done the sweep does the work within ~45 minutes.
+> 2. Then disable **`we_1Q43GzCQp3eawbpnMqmqsfsc`** → `/endpoint/payout_error`, which is mounted
+>    with **no signature verification at all** — anything on the internet can post a fabricated
+>    payout event to it. That predates G40-19 and is not widened by it (no money moves on the
+>    event), and this work is what makes the move possible without a further deploy.
+>
+> ### Still not verified, and honestly so
+>
+> No real failed payout has been driven end to end. Every claim above is from reading the live code
+> and the live Stripe webhook configuration, plus 31 automated checks — **not** from watching a
+> worker's card decline. The handset half of AC1 (the tap) additionally needs a store release.
+
+
 > **Umbrella note (2026-07-07):** G40-19 now **absorbs G40-194** ("Prevent deletion of the last payout card").
 > Both are the same worker payout-card recovery flow — a payout fails → the Gopher must add a replacement,
 > and they must never be able to delete their only card mid-recovery and orphan the Stripe account. G40-194
