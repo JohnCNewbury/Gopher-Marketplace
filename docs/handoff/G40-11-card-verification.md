@@ -15,9 +15,9 @@
 | Piece | State | Where |
 |---|---|---|
 | Backend — three endpoints, appversion gate, audit table | **Built, tested (93 checks), MR open** | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
-| Requester app — card form + native sheet + code step | **Built, lint-clean, unit-tested, Draft MR** | `gopher-mobile-requester-capacitorjs` branch `G40-11-card-verification` (Draft MR — see ticket comment) · target `production` · squash **no** · delete source **no** |
+| Requester app — card form + native sheet + code step | **Built, lint-clean, unit-tested, Draft MR** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) (Draft) · branch `G40-11-card-verification` · target `production` · squash **no** · delete source **no** |
 | Prototypes — Request web, Connect, Request app prototype | **Built as an apply-on-approval patch; `Final/` NOT edited** | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) — `patch -p1 < docs/handoff/G40-11-prototype.patch` after the ruling |
-| Side-by-side (current vs proposed, all three surfaces) | **Published** | link in the Jira comment and in the session hand-off |
+| Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
 | 101 guides | **Held until the app ships** (rule 5: the guide describes what the product does) | copy ready in §7 |
 
