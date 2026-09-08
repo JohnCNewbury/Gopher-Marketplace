@@ -109,7 +109,7 @@ gets done at a real price. A swallowed 403 is recoverable by nobody. This is exa
 **Scale, so the urgency is weighed honestly:** 282 zero-offer non-bid orders all-time, **71
 delivered** — but **since 2026-01-01 it is 2 of 104**. Largely historical, not a current bleed.
 
-### ✅ Step 1 DONE 2026-09-06 — rebased, verified, pushed. Only the merge remains.
+### ✅ MERGED 2026-09-07 — item 1 is DONE. The rebased branch is now a TRAP; read the box below.
 
 **Branch: `rebase/offer-floor-2026-09-06`** (in `gopher-backend-api`), rebased from
 `fix/offer-must-be-nonzero` onto `production`, zero behind.
@@ -138,10 +138,27 @@ ad-hoc probe first reported `$10 → BLOCKED`. That was the harness, not the cod
 **`gopher_offering`, in DOLLARS**, not `offer` in cents, so every case read as absent. Read
 `helpers/offer_floor.js` before writing any test against this path.
 
+### ✅ MERGED — verified from the merge commit, not from the MR's word
+
+**`!436` merged to `production` 2026-09-07 18:35 UTC** as `3bdd0f98`, **from the ORIGINAL branch
+`fix/offer-must-be-nonzero`** — so the "repoint or force-update" decision above resolved itself by
+merging the original, and the rebased branch was never used. Confirmed by reading the merge commit
+rather than the MR status: it carries `helpers/offer_floor.js` (new), the guard in `create.js`
+(before any Stripe token is created) and in `update.js`, `constants/index.js`, and the 161-line
+`test/offer-floor.test.js` — 5 files, 272 insertions, 0 deletions.
+
+⛔ **`rebase/offer-floor-2026-09-06` IS NOW A TRAP — do not merge it, delete it.** It was rebased on
+2026-09-06 and `production` has moved a long way since. Its diff against `production` today is
+**3,990 deletions against 92 insertions** — merging it would revert the payout-stock sweep, the
+Stripe wallets work, the address null-guards, the refresh-token diagnosis, the release-resets-ETA
+fix and their tests. It carries nothing production does not already have: its one commit is the
+same offer-floor change that shipped by the other route.
+
 ### Remaining steps
 
-1. Decide the MR pointer (above), then merge — **target `production` · squash NO · delete source NO**.
-2. Close **G40-415 AC 6**.
+1. ~~Decide the MR pointer, then merge.~~ **DONE — `!436` merged 2026-09-07 (`3bdd0f98`).**
+2. Delete `rebase/offer-floor-2026-09-06` in `gopher-backend-api` (see the trap box above).
+3. Close **G40-415 AC 6**.
 
 ✅ **AC 5 is NOT open — corrected 2026-09-05.** It was already satisfied on 2026-08-29 by
 `c67c482aa` (an ancestor of `production`): `src/helpers/validation.js` no longer exists in the
