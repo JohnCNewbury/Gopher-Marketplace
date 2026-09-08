@@ -269,6 +269,27 @@ page in the pane — **pause and wait**, not guessed).
 6. **Submit evidence every time** (process). 8 of 15 disputes had no evidence submitted; both wins
    had it. The audit row plus the order's delivery log is the pack. Stripe Smart Disputes can
    auto-assemble it.
+8. **Card scanning and native saved cards** (owner question, 2026-09-08, with a TestFlight screenshot
+   of the G40-38 sheet). Both come from the **native PaymentSheet**, not from the card form:
+   - *Scan card* is already there — the owner's screenshot shows Stripe's "📷 Scan card" link on
+     iOS. It is the Stripe iOS SDK's built-in camera scanner (no extra dependency, no config);
+     the Android SDK's sheet has the same scanner. The Stripe.js card form in the WebView cannot
+     scan and never will.
+   - *Saved cards from the OS* — iOS Keychain / Safari AutoFill and Android Autofill (Google's
+     saved cards): the sheet's card field is a native text field with the credit-card content
+     type, so the keyboard offers "AutoFill Card" from the phone's saved cards behind Face ID /
+     fingerprint. Again native-sheet only; a WKWebView form gets no card autofill.
+   - *Apple Pay / Google Pay* is the other meaning of "saved cards" — the wallet. Already on the
+     sheet when the device has a card in Wallet and the build carries the entitlement (the
+     screenshot shows Link but no Apple Pay button: either that TestFlight build predates the
+     entitlement merge, or the device has no card in Wallet — `canMakePayments` is false).
+   - *Link* ("Pay with Link", "Save my info for faster checkout with Link") is Stripe's own
+     saved-card wallet across merchants; it is on by owner decision (G40-38).
+   **So the answer is: make the native sheet the only path on a device.** It already is when the
+   plugin initialises; the card form remains only as the web / init-failure fallback. Note what
+   the screenshot also shows: the sheet in that build asks for *Country + ZIP* only (Stripe's
+   default `address: 'automatic'`) and offers *Bank* — both pre-date this ticket and !518. The
+   G40-11 build asks for the **full** billing address (`address: 'full'`) and !518 removed Bank.
 7. **Block prepaid cards** (Radar rule, judgement). `:card_funding: = 'prepaid'` — common for
    fraud, but also for legitimate low-income users; review-not-block is the safer start.
 
