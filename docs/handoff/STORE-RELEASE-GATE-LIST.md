@@ -386,6 +386,28 @@ whole time: the tap *"moved the app from **Available Requests** to the **Request
 `dumpsys`), and it verified **exactly what the code does**. It never claimed to open a specific
 order, and it could not have.
 
+⛔ **THE TICKET'S OWN WORDING SETTLES IT — read 2026-09-08 from Jira.** G40-426 AC#4 is, verbatim:
+
+> **4. A push tap routes to the right screen on Android, verified on a handset.**
+
+**"the right screen" — not "the specific order."** Build 905 moved the app from Available Requests to
+the Request tab. That *is* the right screen, and it is the only screen GO's rule set can produce.
+**AC#4 was met.** F-037/E5 tested a different sentence and correctly failed it.
+
+⛔ **The App Links lead in the reopen comment is a DEAD END for AC#4 — do not spend time on it.**
+The push tap path contains **no deep link at all**: an explicit `Intent(this, MainActivity.class)`
+with `putExtra`, then a `gopherPushTap` window event, then `react-router` `navigate()`. No URI, no
+`VIEW` action, no domain verification anywhere in it. Android App Links cannot affect it.
+
+⭐ **But the Play Console warning is real and now identified — it is just a different thing.** The
+`autoVerify` intent-filter lists five hosts. `api.gophergo.io` is correctly configured (assetlinks
+declares **both** `io.gophergoapp.go` and `io.gophergoapp.requester`, 3 fingerprints each). The two
+Firebase Dynamic Links hosts — `gophergoapp.page.link` and `gopherrequestapp.page.link` — publish
+assetlinks declaring **only `io.gophergoapp.requester`**; `io.gophergoapp.go` is absent. That is
+exactly *"2 deep links may be failing"* on the **GO** listing. ⚠️ FDL was sunset in 2025, so these
+two are probably dead weight that should be removed from the manifest — **its own small ticket, and
+unrelated to push routing.**
+
 ⭐ **A third record agrees, and it is the authoritative procedure:**
 `docs/handoff/G40-426-G40-420-device-qa-runbook.md` §1 states the pass criterion in as many words —
 *"PASS — the app opens **on the Request tab**."* ⚠️ **That file is currently UNTRACKED in this
@@ -433,10 +455,22 @@ currently stored as `activeRequest`.
    built to do and what `scripts/assert-push-tap-delivery.js` guards. *"Opens the right order"* is a
    different claim, and nothing in GO implements it.
 
-⚠️ **F-037 stays OPEN, and its release-notes debt is understated, not overstated.** The line
-*"Tapping a notification opens that specific order / job"* is false on **iOS as well**, not only
-Android — the routing table above sits above the delivery layer, and iOS runs the same `handleTap`
-through the Capacitor event. Correct it for both platforms in 3.9.3, not Play alone.
+## ✅ OWNER DECISION 2026-09-08 — the COPY moves, not the code. F-037 is release-note debt.
+
+**AC#4 is met; F-037 stays OPEN purely as a copy correction.** The apps route a tap to a *screen*,
+deliberately, and that behaviour is not changing for 3.9.3. The live release notes promise something
+the product does not do, so **the promise is what gets corrected.**
+
+⚠️ **The scope is wider than the debt row below records: the claim is false on iOS too.** The
+routing table above sits **above** the delivery layer, and iOS runs the same `handleTap` via the
+Capacitor event. So *"Tapping a notification opens that specific order / job"* must be corrected on
+**all four surfaces** — App Store GO 3.9.2 (*"Tapping a banner notification opens that specific
+job."*), App Store Request 3.8.2, Play GO and Play Request — not on Play alone.
+
+**Per-order routing was considered and not taken.** GO's own code comment argues against it: the
+dashboard's bottomMenu owns the pending-alert pipeline, so navigating straight to an order would
+need a second order fetch and a second routing path that can drift from the pipeline's. If it is
+ever wanted, it is a new ticket and a store release, not a correction to this one.
 
 ✅ **Separate live defect found while reconciling — FIXED AND MERGED 2026-09-08 (`7d64b899`).** The
 Request app's card-list deep link is dead: `notification.js` notif_types[36] sent
