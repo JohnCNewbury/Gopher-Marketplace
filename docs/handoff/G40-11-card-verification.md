@@ -356,8 +356,13 @@ not "correct" the guides back.
    `outcome`, IP and user-agent.
 9. Native sheet (Account → Payment Methods → Add): the sheet asks for name + full address; after
    it closes, the code step appears; the card is listed only after the code.
-10. An old build (appversion 42) can still add a card the old way (log line
-    `G40-11: unverified card attach allowed for legacy build`).
+10. An old build can still add a card the old way. ⚠️ With the gate OFF (no env floor) the legacy
+    path is simply allowed and logs nothing; the "unverified card attach allowed for legacy build"
+    line appears only once the floor is set and an older build calls `/attach`.
+11. **Bank tile (G40-38 ask):** with `email:'never'` the iOS SDK hides Link's "Bank" tab
+    (Instant Bank Payments). Check the sheet on **both** platforms — Android's SDK may gate it
+    differently — and write the finding into the G40-38 doc's "iOS device QA on build #260"
+    block as well as here. This session has the Android; the iPhone is G40-38's QA device.
 
 ---
 
