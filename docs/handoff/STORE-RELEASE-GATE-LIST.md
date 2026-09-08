@@ -332,10 +332,29 @@ owner ruling; severance destroys nothing here that was still recoverable.
 3. **Re-run the sweep and confirm zero**, using the same S3-prefix ÷ DB set-difference as above.
 4. Sever.
 
-⚠️ **The credit balance is the clock and the last reading is stale.** 147 credits on 2026-08-29 at
-~11.8/day projects to exhaustion around **10 September** — i.e. possibly already gone. Re-read from
-**Finance → Identification**, never the Overview, which renders `used / limit` and has already been
-misread once as `remaining / total`, wrong by a factor of twenty.
+### ⏱️ The credit clock, re-read 2026-09-08 — **86 credits left, and the old date was wrong**
+
+**`Count used 3284 · Service limit 3370` ⇒ 86 remaining**, read from **Finance → Identification**
+(never the Overview, which renders `used / limit` and has already been misread once as
+`remaining / total`, wrong by a factor of twenty).
+
+⛔ **The "~10 September" cliff this file carried did not happen, and the 11.8/day slope behind it
+halved.** Three points now:
+
+| Date | Remaining | leg | burn |
+|---|---|---|---|
+| 2026-08-23 | 218 | — | — |
+| 2026-08-29 | 147 | 6 days, 71 used | **11.83/day** |
+| 2026-09-08 | **86** | 10 days, 61 used | **6.10/day** |
+
+16-day average **8.25/day**. From 86 remaining that projects **~22 Sept** at the latest leg,
+**~18 Sept** at the average. **The honest window is mid-to-late September** — and G40-410's original
+*"22–25 Sept"* was closer than the 11.8/day alarm that displaced it.
+
+⚠️ **Do not re-harden this into a date.** A two-point burn rate on a number driven by signup volume
+is a hypothesis; the previous one over-predicted by about a factor of two. Whether 6.10/day holds is
+now the open question. **There is roughly a fortnight of margin, not "possibly already gone" — but
+re-read before acting on any date above.**
 
 **Owner constraint (2026-08-04):** everyone who already holds TrustShield **keeps it**, and their
 completion protocol behaves identically end to end. Only *new* enrolment is shut off. The
