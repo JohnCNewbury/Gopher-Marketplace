@@ -158,7 +158,15 @@ same offer-floor change that shipped by the other route.
 
 1. ~~Decide the MR pointer, then merge.~~ **DONE — `!436` merged 2026-09-07 (`3bdd0f98`).**
 2. Delete `rebase/offer-floor-2026-09-06` in `gopher-backend-api` (see the trap box above).
-3. Close **G40-415 AC 6**.
+3. ~~Close **G40-415 AC 6**.~~ **ALREADY CLOSED — verified in Jira 2026-09-07:** G40-415 is
+   `status: Done`, `resolution: Done`. AC 6 was *"the server guard merges in the same release, or
+   after the app can display a create error — never before"*, and `!436` merging behind a live
+   client half is exactly that. **Nothing to do here.**
+
+⚠️ **The ticket's DESCRIPTION is stale even though its status is right** — it still reads *"TODO —
+NOT SHIPPED"* and *"the server guard is built and pushed but deliberately NOT merged."* Left alone
+deliberately: the ticket is closed, and this file plus `offer-floor-2026-08-26.md` are the
+authority. Do not reopen it to tidy the prose.
 
 ✅ **AC 5 is NOT open — corrected 2026-09-05.** It was already satisfied on 2026-08-29 by
 `c67c482aa` (an ancestor of `production`): `src/helpers/validation.js` no longer exists in the
@@ -166,9 +174,13 @@ requester app and `validateRequire` has **zero occurrences** anywhere in the rep
 2026-09-01 comment said otherwise and was stale; that stale line is what made this look open, and
 it was repeated here before being checked. **G40-415 is down to AC 6 alone.**
 
-⚠️ The identical dead file **does** still exist one repo over, in `gopher-mobile-gopher`
-(`src/helpers/validation.js`, 0 importers). Out of scope, flagged not fixed, and deliberately
-left until the current release is out of the way.
+✅ **CORRECTED 2026-09-07 — the GO app's copy is gone too, so there is nothing left to do.** This
+file previously said the identical dead file *"does still exist one repo over."* It does not:
+`src/helpers/validation.js` was removed from `gopher-mobile-gopher` by `9813549cf` (*"Remove a
+validator that nothing has ever called"*), which is on `origin/production`, and `validateRequire`
+has **zero occurrences** in `src`. The only copy still on disk is an untracked leftover in a local
+working tree checked out on an older branch — **repo truth is that both apps are clean**, which is
+what satisfies G40-415 AC 5 on both sides rather than one.
 
 ---
 
