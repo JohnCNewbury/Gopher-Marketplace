@@ -66,11 +66,27 @@
 | Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
 | Requester app — card form + native sheet + code step | **MERGED into mobile `production` 2026-09-08 (merge `7f39edca`, owner's "Proceed"), device-tested on Android; ships in the NEXT STORE BUILD — merged ≠ released** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) · squash no · source kept · rebased on `313befd8d` (carries G40-38's !290 + !291) |
 | Prototypes — Request web, Connect, Request app prototype | **DEPLOYED 2026-09-08** — deploy `609fd81` → `origin/main`; content-verified on Pages AND TigerTech (`payOtpBoxes` ×2 in gopher-request.html, `addpayOtpBoxes` ×2 in gopher-connect.html); the three riders were HELD BACK per the owner ("exclude them") and are NOT live | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
-| Saved-method tile — white bubble card, brand marks, Verified pill (2026-09-09) | **OPEN, awaiting the owner** — pushed, CI green locally (services suite 129, 32 logo assertions) | [`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293) · branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
-| Backend — the `verified` flag the pill reads (2026-09-09) | **OPEN, awaiting the owner** — 18 checks; full suite 251/252 (known `admin-jwt-v8-contract` baseline), all four security guards PASS | [`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch `feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Saved-method tile — white bubble card, brand marks, Verified pill (2026-09-09) | **MERGED into mobile `production` 2026-09-09 13:0xZ on the owner's "Merge both MRs"** — merge commit `3dce3964`, pipeline green, source branch kept. ⚠️ **Merged ≠ released: it ships in the NEXT STORE BUILD.** | [`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293) · branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Backend — the `verified` flag the pill reads (2026-09-09) | **MERGED + LIVE 2026-09-09** — merge commit `1c5812b7`; all six CI jobs ran and passed (none skipped); EB version `code-pipeline-…-1c5812b7…` deployed, `Environment update completed successfully` 13:07:50Z, `apiversion` 200 on 9/9 probes | [`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch `feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
 | Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
 | 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
+
+**0b · The 2026-09-09 merge, and the one thing that looked alarming but was not.** Both MRs merged
+on the owner's "Merge both MRs". The backend merge deploys, and Elastic Beanstalk went **Degraded**
+during it — which is worth reading carefully, because it was **not** this change.
+
+The causes are an AWS capacity failure, not an application fault: the *Rolling with Additional
+Batch* policy tried to launch one extra `t2.xlarge`, and **AWS had no `t2.xlarge` capacity in
+`us-east-1a`**. The Auto Scaling group's minimum is 2 while one instance is running, so EB reports
+*"No data received from 1 out of 2 instances"*. **The same condition existed 14 minutes BEFORE the
+deploy** (12:49:13Z: *"1 instance online is below Auto Scaling group minimum size 2"*), so it is
+pre-existing and is the scale-out condition already recorded against **G40-447**, whose
+recommendation is `MaxSize 1` — this environment is single-instance in practice.
+
+What the deploy itself did: `Environment update completed successfully` at **13:07:50Z**, the new
+version label carries the merge SHA `1c5812b7`, and the API answered **200 on every one of 9
+probes**, in under 100 ms. No 5xx attributable to the merge.
 
 **0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
 three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
