@@ -382,11 +382,24 @@ logged in `docs/handoff/G40-309-modal-dispositions.md` under *"New — built to 
 
 ---
 
-# Jira actions (pending — apply when the Atlassian connection is back)
+# Jira actions — ✅ ALL APPLIED (do not re-do)
 
-The Atlassian MCP was disconnected when this merge was done, so these ticket ops are **staged, not yet applied**:
-1. **G40-19** — append the "Merged: G40-194" + modals content to the description (or link this handoff); note it
-   absorbs G40-194; keep In Progress / assigned to John.
-2. **G40-194** — **Cancel** ("no longer necessary"), link **duplicates → G40-19**, comment: *"Merged into G40-19
-   (payout-card management umbrella) — same worker payout-card recovery flow; full backend fix + Attention! modal
-   carried into G40-19; modals built to G40-308 (kit + G40-309 tracker)."*
+*This section was written in July as a staged to-do while the Atlassian MCP was disconnected. Both
+items were applied long ago; it is kept only so nobody re-raises them.*
+
+1. **G40-19** — done. The G40-194 merge and the modals are recorded on the ticket.
+   ⚠️ **It said "keep In Progress". That is now WRONG** — G40-19 was moved to **Done** on
+   2026-09-09, after all four MRs merged and deployed.
+2. **G40-194** — done. **Canceled**, linked *duplicates → G40-19*, comment applied.
+
+**Current status: G40-19 = Done.** One piece rides a store release and must not be forgotten
+because the ticket is closed: `gopher-mobile-gopher-capacitorjs!282` (`138bab55a`) is merged to
+`production` but reaches **no handset until a build is cut** — that is the *tap* on the payout push.
+Everything else in this ticket is live.
+
+⚠️ **Strictly, the owner's 2026-08-22 ruling wants "Ready for Release", not Done,** for anything
+waiting on a build (*"Done to me is backend done and waiting on nothing"*). That status is **not in
+G40-19's available transitions** — only Code Review, Done, Blocked, To Do, Canceled — and no G40
+issue currently holds it. Done matches what every comparable store-gated ticket used (G40-192,
+G40-39, G40-331, G40-419). **If the ruling is to be applicable, Ready for Release needs to exist in
+this workflow**; that is a board change, not a ticket one.
