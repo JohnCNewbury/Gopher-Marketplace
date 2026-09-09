@@ -100,13 +100,31 @@ not a standing condition, and not an application fault. **Zero load-balancer 5xx
 dimension returns 790 / 617 / 647 / 217 requests per 5-minute bucket, so the metric stream is live
 and the absence is real rather than a query that was never going to return anything.
 
-⚠️ **The one thing worth carrying forward, from G40-38 (their finding, not re-measured here).**
-Because `RollingWithAdditionalBatch` launches an extra instance, **every deploy runs two instances
-for roughly four minutes**, and that window *is* the socket.io scale-out condition from G40-447.
-With a single instance the alternative is downtime, so it is a deliberate trade rather than a
-defect — but if anyone ever debugs socket drops that correlate with a deploy, that is the mechanism.
-They report two 502s inside that window; the ALB 5xx metric shows none at minute granularity, so
-those likely came from a different layer. Not resolved here, and flagged rather than smoothed over.
+✅ **The 502 discrepancy is CLOSED, and the answer is zero user impact.** Two readings disagreed:
+G40-38 saw two 502s in the deploy window, and the ALB 5xx metrics showed none. Both were right, and
+they were measuring different layers. Queried the nginx access log directly — **1,464 request lines
+across 13:03–13:12Z, exactly two of them 502**:
+
+```
+13:06:38.192  i-0433df531b936d705  "GET / HTTP/1.1" 502 150 "-" "ELB-HealthChecker/2.0"
+13:06:42.201  i-0433df531b936d705  "GET / HTTP/1.1" 502 150 "-" "ELB-HealthChecker/2.0"
+```
+
+Both are **`ELB-HealthChecker/2.0`**, and both are on **`i-0433df531b936d705`** — the extra-batch
+instance added at 13:05:13Z, still booting its node upstream. The load balancer probed a starting
+instance, nginx answered 502, and the balancer correctly kept traffic off it until it passed. **No
+client request was ever routed there**, which is exactly why `HTTPCode_ELB_5XX_Count` and
+`HTTPCode_Target_5XX_Count` have no datapoints while `RequestCount` shows 790/617/647/217. **A
+failed health check is not a client 5xx.** Two rules fall out, both bigger than this deploy: read
+the **user agent and the log stream** before calling a deploy-window 502 an incident, and **never
+quote a 5xx count without naming the layer**, because instance nginx and the ALB metric legitimately
+disagree.
+
+⚠️ **The one thing still worth carrying forward, from G40-38.** Because `RollingWithAdditionalBatch`
+launches an extra instance, **every deploy runs two instances for roughly four minutes**, and that
+window *is* the socket.io scale-out condition from G40-447. With a single instance the alternative
+is downtime, so it is a deliberate trade rather than a defect — but if anyone ever debugs socket
+drops that correlate with a deploy, that is the mechanism.
 
 **0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
 three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
