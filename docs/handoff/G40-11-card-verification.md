@@ -368,7 +368,27 @@ fires when a human runs the suite. **Provenance is documented and locally testab
 assurance that stops the next person checking. It converts an open risk into a closed one in
 everybody's head without changing anything in the world.
 
-**Fix in flight:** a services-suite job for the pipeline, §3.5.
+**Fix built and proven, awaiting the owner:**
+[!295](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/295) adds one
+`services-tests` job (`npm ci` + `npm run test:services`, contract stage, `needs: []`). Whole suite
+rather than a provenance-only guard, because the gap is that **no jest runs at all** — a narrow
+guard would leave the payment-sheet and card-verification suites as unenforced as they are now.
+
+**Proven in CI in both directions, not locally**, precisely because the error being corrected was
+asserting enforcement without checking it:
+
+| | `services-tests` |
+|---|---|
+| branch unmodified | **success**, 1m18s, all 12 jobs green |
+| same branch, one mark altered by 46 bytes | **failed**, 1m20s |
+
+…and it failed for the *right* reason — the job log names the assertion and prints both hashes
+(`Expected 8445bbeb… / Received 159152db…`, `1 failed, 141 passed`). The negative-control branch has
+been deleted; it survives only as that evidence.
+
+⚠️ **This is a decision, not a review:** it changes what the pipeline gates for **every** session, so
+a broken services test would block merges repo-wide. Green today (142/142), 1m18s, `needs: []` so it
+cannot cascade, removable in one line.
 
 **The merge itself stands** ([!294](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294),
 merge commit `e5cde3948`, not squashed, source branch kept; 142 tests green locally on merged
