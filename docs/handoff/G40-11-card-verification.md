@@ -616,9 +616,14 @@ deploy.
 
 ---
 
-✅ **DEPLOYED 2026-09-09.** EB version label
-`code-pipeline-…-8ce3d0f43ef9d8725f77f7d281991affbbba3b90` (deployment 550), `Application update
-completed`, API 200 on every probe throughout. **Verified by CONTENT, not by SHA alone:**
+✅ **DEPLOYED AND SETTLED 2026-09-09.** EB version label
+`code-pipeline-…-8ce3d0f43ef9d8725f77f7d281991affbbba3b90` (deployment 550); health back to
+**Ok / Green with no causes outstanding**; API 200 on every probe throughout. **Zero load-balancer
+5xx** across the deploy window, on a *proven* probe — `RequestCount` over the identical window and
+dimension returns 931 / 59, so the metric stream is live and the absence is real. Health passed
+through Red on the way, first *"incorrect application version on 1 of 2 instances"* then *"no data
+from 1 of 2"* — both the `RollingWithAdditionalBatch` extra instance being deployed and torn down,
+the four-minute window described above, not a fault. **Verified by CONTENT, not by SHA alone:**
 `git show 8ce3d0f4:controllers/user/payment.js` carries the retirement markers.
 
 **Route reachability confirmed by contrast:** `POST /users/add_card` answers **440** (sign-in
