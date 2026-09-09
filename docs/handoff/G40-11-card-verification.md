@@ -2,7 +2,7 @@
 
 **Type:** Task (child of Epic G40-1 "Bug Fixes & Polish") · **Priority:** Medium · **Assignee:** John Newbury
 **Sprint:** Payment Options (2026-09-07 → 09-16) · **Status:** In Progress — **BUILT, blocked on the owner** (UI approval + device QA)
-**Groomed:** 2026-07-02 · **Built:** 2026-09-08 (this doc rewritten the same day; the July spec survives as §1)
+**Groomed:** 2026-07-02 · **Built:** 2026-09-08 · **Tile + `verified` flag added 2026-09-09 (§3.4)**
 
 > **Read this first.** Everything in §2 was verified first-hand on 2026-09-08 against the live Stripe
 > account, the backend `production` branch and the requester app's `production` branch. Nothing in
@@ -66,6 +66,8 @@
 | Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
 | Requester app — card form + native sheet + code step | **MERGED into mobile `production` 2026-09-08 (merge `7f39edca`, owner's "Proceed"), device-tested on Android; ships in the NEXT STORE BUILD — merged ≠ released** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) · squash no · source kept · rebased on `313befd8d` (carries G40-38's !290 + !291) |
 | Prototypes — Request web, Connect, Request app prototype | **DEPLOYED 2026-09-08** — deploy `609fd81` → `origin/main`; content-verified on Pages AND TigerTech (`payOtpBoxes` ×2 in gopher-request.html, `addpayOtpBoxes` ×2 in gopher-connect.html); the three riders were HELD BACK per the owner ("exclude them") and are NOT live | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
+| Saved-method tile — white bubble card, brand marks, Verified pill (2026-09-09) | **OPEN, awaiting the owner** — pushed, CI green locally (services suite 129, 32 logo assertions) | [`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293) · branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Backend — the `verified` flag the pill reads (2026-09-09) | **OPEN, awaiting the owner** — 18 checks; full suite 251/252 (known `admin-jwt-v8-contract` baseline), all four security guards PASS | [`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch `feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
 | Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
 | 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
@@ -226,6 +228,69 @@ stale `express-jwt`, memory `shared-clone-node-modules-is-stale`).
   in this checkout **with the untouched service too** (CRA's `resetMocks` strips the factory mocks;
   the sibling worktree cannot even load `setupTests.js`) — not a regression; the new cases re-install
   their mocks in `beforeEach` so they do not depend on that setting.
+
+### 3.4 The saved-method tile, and the badge behind it (2026-09-09)
+
+The verification only means something if a person can see which of their cards actually took it.
+That is what this pair of MRs adds, and the redesign the owner asked for on 2026-09-09 rides with
+it because it is the same surface.
+
+**Backend — the `verified` flag** ([`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch
+`feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no**).
+`list_requestor_payment_methods_v2` joins the ids it is about to return against
+`card_verification_events` — this user, `outcome='saved'`, one query for the whole list — and
+stamps `verified` on each normalised row. Stripe holds no record of the G40-11 check, so without
+this the client would have to guess; a badge that is always on is worse than no badge, because it
+tells someone their card passed a check it never took. The lookup is wrapped and logged rather
+than fatal: if the table is missing or the query fails, every row returns `verified:false` and the
+screen still renders. **18 checks** (`test/g40-11-verified-flag.test.js`) — scoped to the caller,
+to `saved` only (pending / failed / declined / expired earn nothing), and to the ids in this list;
+another user's row never leaks across; the failed-lookup path returns the full list with nothing
+flagged.
+
+**App — the tile** ([`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293)
+· branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no**).
+The old tile was a navy-to-green gradient with white type. Style guide §3.4 lists white on
+Shamrock at 2.0:1 as a **FAIL** — *"not a style preference, an accessibility requirement"* — and
+the last four sat on the green half of that gradient; and five saved methods rendered as five
+identical green rectangles. The replacement is a white bubble card (the owner picked the
+elevation) that answers three questions before a word is read: **which method** (the brand mark,
+full size, top left), **is it usable** (the spine down the left edge, Shamrock healthy / Lava
+declined), **is it trusted** (the Verified pill). All type is Midnight Blue on white, 15.6:1.
+The list screen also loses its two centred headings: "Default Payment Method" now duplicates the
+tile's Default pill, and "Available for use" labelled an empty list whenever only one card was
+saved.
+
+⚠️ **Three logo bugs are fixed here, and all three shipped a tile that looked finished.** Worth
+carrying, because the next person to add a mark will hit them again:
+
+| Symptom | Cause | Rule that now holds |
+|---|---|---|
+| Google Pay drew **nothing** | its file declares no `width`/`height`, so `width:auto + max-height` had nothing to scale from | every mark carries an explicit width AND height |
+| Google Pay drew **1.85x smaller** than every other logo | its file is a white pill with the artwork inset — the ink fills **54%** of the file's height | size by INK, not by box: `boxHeight = inkHeight / fills` (`markBox`) |
+| Cash App Pay and Link drew as **an empty space and a lone badge** | the shipped files were the REVERSED (white) variants, and the tile is white | `src` is the light-ground file, `srcOnDark` the other one |
+
+The ink fractions are **measured, not assumed** — each file rendered on white at 400px and scanned
+for the bounding box of every pixel darker than the ground. `markBleed` then pulls Google Pay's
+taller box back into the row as a negative margin, so a mixed list keeps one tile height:
+**verified in a browser at 390px, seven tiles, every one 178px, no broken images.**
+
+**Assets added** to `public/assets/marks/`: `cash-app-pay-on-light.svg` (developers.cash.app),
+`link-on-light.svg` (the light variant Stripe ships in its own SDK), `gopher-peek.svg` (the
+owner's `GopherLogo-Hero-Peek-RGB.svg` — the logo, never the wordmark), `powered-by-stripe.svg`.
+
+**Back-compat:** the payout screens pass `cardName` / `cardlastdigit` with no normalised row and
+still work, the logo falling back to the brand string. `payoutlist.js` passes a **boolean** as
+`onClickCard`, which the old tile called — and threw on; that tile was inert, and still is,
+without the exception.
+
+**Tests:** `src/services/paymentMethodLogos.test.js`, 32 assertions anchored to the real files on
+disk. Services suite **129 passed**.
+
+**Risk:** the app side is visual only — no network call, no payment path, no state change; the
+worst case is a tile that looks wrong, seen immediately, and it reverts by reverting one commit.
+The backend side adds one indexed read per list call and cannot fail the response. The Verified
+pill needs both MRs; with only the app merged the pill never shows and nothing else changes.
 
 ### 3.3 Prototypes (Code repo — `docs/handoff/G40-11-prototype.patch`, apply on approval)
 
