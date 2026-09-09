@@ -1002,9 +1002,22 @@ Plus card scanning and the `verified` badge.
 
 **NOT RUN (3), and each for a stated reason:**
 
-- **Check 1** — the Stripe.js **card-form fallback** (Save greys out until five fields are valid).
-  Unreachable while the native sheet works, which it does on both platforms. It is the web /
-  sheet-unavailable path only.
+- ✅ **Check 1 — COVERED 2026-09-09**, merge `907e55364`
+  ([!299](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/299)),
+  though **not by a device run**, and the distinction matters. The check has two halves. The RULE
+  (`billingDetailsValid`) was already unit-tested and, since !295, those tests actually run in CI.
+  The WIRING — whether the button consults the rule — was covered by nothing, and *a perfect
+  validator nothing consults is worth nothing*. `scripts/assert-card-form-save-gating.js` now
+  asserts both, plus that the submit **handler** refuses independently, because a disabled button is
+  a UI hint while the handler is the real gate. **10 checks, proven against three separate
+  breakages** (disconnect the button → 2 fail; drop the billing rule → 1; remove the handler's
+  refusal → 1).
+
+  ⚠️ **Why not a real run:** the form appears only when the native sheet is unavailable, so it is
+  unreachable on a device; and in a browser it sits behind a production sign-in (there is **only**
+  `.env.requestor.production` — no dev or stage env exists), which would mean handling the owner's
+  credentials. **So the pixel-level "is it actually grey" is still unobserved.** The logic and its
+  wiring are proven; the rendering is not.
 - **Check 8** — one audit row per attempt with IP and user-agent. Needs the production DB, which is
   **SG-to-SG only**. The log lines are consistent with the rows being written, but *the rows
   themselves have not been read by anyone.*
