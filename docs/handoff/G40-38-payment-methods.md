@@ -15,7 +15,7 @@ Detail for each is in the section named. Nothing below is blocked on a session.
 | # | Waiting on | What it is | Where |
 |---|---|---|---|
 | 1 | **Google — answer to our reply** | 🔴 **REJECTED 2026-09-09 on brand guidelines; owner REPLIED the same day** (draft written by this session, sent by the owner on the support thread — not resubmitted through the console, deliberately: see the block below). Now waiting on Google again, with no SLA.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which screen the reviewer was looking at. **Measured against the published Android brand guidelines** — read 2026-09-09, not paraphrased from the email — the submitted screenshot **passes every rule**: PayButton API used, 369 dp wide (min 90), clear space 9.1/21.7/21.3 dp (min 8), and the Google Pay button is the tallest button on the sheet. ⚠️ The earlier guess that the reviewer saw our own broken Google Pay mark is **retracted** — all five screenshots have now been opened and none contains it. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
-| 2 | **Owner — Stripe Dashboard** | Turn **Link → Instant Bank Payments OFF** to hide the "Bank" tile. Ruled 2026-09-08, still not done. Account-level, both platforms, no build. | Bank-tile block |
+| 2 | **Owner — decision (the Dashboard route does not exist)** | ⚠️ **The 2026-09-08 ruling cannot be executed as written.** There is **no Instant Bank Payments toggle.** Read first-hand from the live account: `pmc_1KrBFuCQp3eawbpnBIyZQigF` has `link: on`, `us_bank_account: off`, and **no `instant_bank_payments` key at all** — Stripe's docs confirm IBP "are automatically enabled when you turn on Link". Hiding the Bank tile means either **turning Link off entirely** (loses the "Pay with link" button too) or **one option in our own `createPaymentSheet` call** — which is a build change, not a Dashboard change. See the Bank-tile block. | Bank-tile block |
 | 3 | **Owner — decision** | 🔴 **Release gate, now materially more likely to bite:** if the store build ships before Google approves, live Android users tapping Google Pay hit `OR_BIBED_11`. The 2026-09-09 rejection (row 1) adds at least one more review round-trip, so **"approval lands first" can no longer be assumed.** Recommend deciding now to hide Google Pay behind a flag for this release (one line, reversible) rather than holding the release on Google. | §4b build #261 block |
 | 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
 | ~~5~~ | ✅ **DONE** | App **!295 MERGED** 2026-09-09 on the owner's instruction (merge `e7dd4fab7`, squash no, source kept). Verified on the **production** pipeline that followed, not just the MR: 12 jobs, `services-tests` **ran and passed in 82 s**. The six services suites — including the brand-mark SHA-256 pins and the G40-38 payment-sheet tests — are now actually enforced, and `npm ci` runs on **node:22 / npm 10.9.8**, which reproduces the Appflow runner's lockfile check that failed build #257. ⚠️ A failing services test now blocks every merge. | — |
@@ -336,6 +336,48 @@ use only — they are not to be raised with Google unless Google raises them fir
 ---
 
 ⚠️ **ADJACENT, and an owner decision: `POST /users/add_card` still takes a RAW card number and bypasses everything this ticket built (found by the G40-11 session 2026-09-09, verified here).** That route reads `{card_no, card_exp_month, card_exp_year, card_cvc}` from the request body and builds the PaymentMethod server-side — the opposite of the G40-38 sheet, where the SDK tokenises on the device. It consults no verification gate, writes no audit row, and setting `CARD_VERIFICATION_REQUIRED_FROM_VERSION` does **not** close it (that gate is checked only on `/attach`). **Dormant, not leaking:** zero requests in 7 days across 1.29 M nginx lines on a proven probe, and a static search across **every repo on this disk** — backend, admin frontend, dev-handoff, the worker app and my `Final/` + `_prototypes/` — finds **no caller**; the look-alikes are `addCardModalVisible` (UI state, both apps), requester `payout.json` `"path": "add_card"` (navigation) and `addCardBtn`/`addCardForm` (prototype DOM ids). **The PCI point was already known and written into our own live code:** `Final/gopher-deals.html` line 8049 says in terms that this endpoint is why *"the apps are inside PCI scope"*, and that the Deals card box was built on `POST /users/cards/setup_intent` (MR !453) precisely to keep gophergo.io out of SAQ D. So the web was routed around it months ago and the route was never closed. **Recommendation put to the owner: RETIRE, not gate** — two modern replacements are already live (`/users/cards/setup_intent` and the G40-38 native sheet), and it is the only handler in `controllers/` / `lib/` / `helpers/` touching `card_no`/`card_cvc`, so retiring removes raw-PAN handling from the API entirely. Safe order: 410 + a log line naming caller/appversion/user, watch a week, then delete — reversible, and it catches any consumer that a 7-day window and an on-disk search would both miss. Gating by appversion is strictly worse: it leaves raw-PAN handling in place for old builds, and PCI scope does not care which version sent the card. **Owner decision, not taken; the G40-11 session carries it.**
+
+### Bank tile / Instant Bank Payments — what is actually true (verified 2026-09-09)
+
+**There is no merchant-facing Instant Bank Payments toggle in the payment method configuration.**
+Read first-hand from the live account (`acct_1CzkxJCQp3eawbpn`, read-only), configuration
+`pmc_1KrBFuCQp3eawbpnBIyZQigF`: `link` **on**, `us_bank_account` (ACH Direct Debit) **off**,
+`apple_pay` / `google_pay` / `cashapp` / `card` **on** — and **no `instant_bank_payments` key
+exists on the object at all**. Stripe's docs: *"Instant Bank Payments are automatically enabled when
+you turn on Link."*
+
+⚠️ **What that does and does not prove (owner's point, 2026-09-09).** It proves there is no
+merchant-controllable switch **on that object**. It does **not** prove Stripe has no account-level
+control of its own — a control invisible to merchants would look exactly like this. Two things worth
+trying before concluding the Dashboard route is dead:
+- **`dashboard.stripe.com/settings/link`** is a *different page* from Settings → Payment methods,
+  and Stripe's own IBP documentation points at it for at least one IBP-related control ("You can
+  configure whether to show cash back offers in your Link settings"). It has no API representation,
+  so a session cannot read it — **owner action to look.**
+- **Stripe support** can change account-level behaviour that the Dashboard does not expose. If the
+  Link settings page has nothing, this is the next ask.
+
+**The lever that is definitely ours: one option in `createPaymentSheet`.** Verified against Stripe's
+Android source (`AddPaymentMethodRequirement.kt`), not inferred: the Bank tab needs
+`InstantDebits`, which needs `supportsMobileInstantDebitsFlow`, which needs `canShowBankForm` —
+and `canShowBankForm` is true when **`billingDetailsCollectionConfiguration.email != CollectionMode.Never`**
+OR (`attachDefaultsToPaymentMethod` AND `defaultBillingDetails.email` is non-blank). So setting email
+collection to `never`, with no default billing email, removes the Bank tab. `@capacitor-community/stripe`
+exposes exactly that: `billingDetailsCollectionConfiguration.email` as `'automatic' | 'always' | 'never'`.
+
+⚠️ **Three caveats before anyone ships that.**
+1. **It is a build change**, so it cannot take effect before the next store release either way.
+2. **Verified on Android only.** Stripe keeps the two SDKs in parity but `stripe-ios` was not read;
+   do not claim iOS until it is, or until a device shows it.
+3. **`email: 'never'` changes what the sheet collects for every method, and Link itself is an
+   email-based product.** Whether suppressing email collection degrades the Link express button is
+   **not known** and must be checked on a device before this ships.
+
+**And the case for simply keeping it, since the 2026-09-08 ruling was made believing a toggle
+existed:** Instant Bank Payments confirm instantly, settle on the same 2-day timeline as cards, are
+guaranteed by Stripe against bank-initiated returns, and support manual capture (which our
+authorisation-then-capture hold model needs), off-session charges and refunds. It only appears under
+7,500 USD, which every Gopher order is. The Bank tile is not a defect; removing it is a preference.
 
 ## 5 · Decisions the owner must make before build starts
 
