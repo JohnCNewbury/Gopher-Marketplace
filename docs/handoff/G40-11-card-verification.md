@@ -912,8 +912,22 @@ needs the owner's Dashboard or a key with read scope. Check **8** (one audit row
 IP and user-agent) needs the DB, which is SG-to-SG only. Check **10** is moot while the gate is off.
 Check **11** (Bank tile) is not run.
 
-⚠️ **Housekeeping:** the owner now has **7 test cards** on `cus_OVbpKctbuDozvt` from this session,
-plus 2 abandoned verification attempts. Worth pruning.
+⛔ **CORRECTION — DO NOT PRUNE THOSE CARDS. They are the owner's REAL payment methods.** This
+section first called them "7 test cards … worth pruning"; that was wrong, and acting on it would
+have deleted live cards off a live account. The owner deliberately re-added his **actual** cards
+through the new flow.
+
+**That makes the QA stronger, not weaker.** Seven real cards from different networks and wallets
+went through address screening, security-code screening and an SMS code on a production account —
+not fabricated test numbers. The `avs_postal=pass` results are real address matches against real
+issuers.
+
+**Nothing needs cleaning up.** The two verifications that started and never saved are not attached
+to anything: one is the deliberate five-wrong-codes lockout, the other an abandoned attempt. An
+unattached PaymentMethod is inert.
+
+⚠️ **The general rule this earns:** on a live account, never describe a user's data as test data,
+and never recommend deleting anything you did not create. Ask what it is first.
 
 ---
 
