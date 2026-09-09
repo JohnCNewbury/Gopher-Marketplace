@@ -1,0 +1,93 @@
+G40-203 — 101-guide copy, HELD until the in-app screen ships
+=============================================================
+
+WHAT THIS IS
+  The two 101-guide edits for the self-service phone-number change. They are
+  correct and reviewed, and they are NOT in the working tree on purpose.
+
+WHY IT IS A PATCH AND NOT AN EDIT
+  `gopher-go-101.html` currently tells users their phone number "can't be
+  changed". That is TRUE today and becomes false the moment the app build
+  ships. The guide describes what the product does, not what it will do
+  (standing rule 5), so the copy cannot land early.
+
+  ⚠️ AND "just leave it uncommitted" IS NOT A HOLD — that is what this file
+  exists to correct. `scripts/deploy.sh` reads the WORKING TREE: a dirty
+  `Final/` BLOCKS every clean site deploy for every session, and the only way
+  past that refusal is `--allow-dirty`, which SHIPS the dirty file. Held
+  uncommitted, these two files were simultaneously blocking everyone's deploys
+  and one `--allow-dirty` away from publishing copy about a screen users cannot
+  reach. Another session came within one flag of doing exactly that on
+  2026-09-08. The standing-rules table lists "uncommitted in the working tree"
+  as genuinely held; on this repo that is misleading, and out-of-tree is the
+  real hold.
+
+WHEN TO APPLY
+  After the store build carrying G40-203 ships — i.e. when Account → Change
+  Phone Number actually exists in the live apps.
+
+      git apply docs/handoff/G40-203-101-guides.patch
+
+  It applies on top of G40-304's guide edits (different sections; verified
+  non-overlapping — theirs are #active / the safety list, these are #profile).
+
+WHAT IT CONTAINS
+  gopher-go-101.html      — corrects the false "phone number can't be changed"
+                            claim, and adds a "Changing your phone number"
+                            subsection under #profile.
+  gopher-request-101.html — the parallel subsection.
+
+Both were rendered and verified at 375x812 before being held.
+
+diff --git a/Final/gopher-go-101.html b/Final/gopher-go-101.html
+index 50b165b..85f371a 100644
+--- a/Final/gopher-go-101.html
++++ b/Final/gopher-go-101.html
+@@ -419,7 +419,7 @@ body.nav-open .sections-fab{opacity:0;pointer-events:none;}
+       <h3>New here?</h3>
+       <p>Tap <b>Create an account</b> and add your name, phone, email, address, and date of birth. We'll verify your phone and email with the same quick code step.</p>
+       <div class="note tip"><span class="nico">↗</span><div><span class="h">Were you referred? Add their code</span>If another Gopher (or a friend already on the app) brought you here, there's an optional <b>"Referral Info"</b> step during sign-up — enter the <b>Gopher ID of whoever referred you</b> and you'll see their name pop up to confirm. It's optional and skippable, but adding it is how they get credit for referring you. Arrived by scanning someone's QR or link? It's filled in for you — just confirm.</div></div>
+-      <div class="note tip"><span class="nico">✓</span><div><span class="h">Use your legal first &amp; last name</span>This has to match the name on your bank account or it'll break your payout setup. Your <b>name, birthday, and phone number can't be changed</b> once saved, so double-check before tapping save. Email, address, and bio you can update anytime.</div></div>
++      <div class="note tip"><span class="nico">✓</span><div><span class="h">Use your legal first &amp; last name</span>This has to match the name on your bank account or it'll break your payout setup. Your <b>name and birthday can't be changed</b> once saved, so double-check before tapping save. Email, address, and bio you can update anytime — and your <b>phone number</b> you can change yourself from <b>Account → Change Phone Number</b> (see below).</div></div>
+     </section>
+ 
+     <!-- PROFILE -->
+@@ -438,6 +438,16 @@ body.nav-open .sections-fab{opacity:0;pointer-events:none;}
+         <li>If your business is <b>licensed, bonded, and/or insured</b>, upload your verified credentials here.</li>
+         <li><b>Upload photos of completed jobs.</b> Trust us on this one — a portfolio is one of the biggest drivers of getting requested by name.</li>
+       </ul>
++      <h3>Changing your phone number</h3>
++      <p>Your number is how you sign in, so changing it takes two codes — one to the number you have now, one to the number you're moving to. Open <b>Account → Change Phone Number</b>.</p>
++      <ol class="brand">
++        <li>Enter the new number and tap <b>Send code to my current number</b>.</li>
++        <li>Type the 6-digit code we text to your <b>current</b> number. That proves it's still you.</li>
++        <li>Type the 6-digit code we then text to your <b>new</b> number. Your number changes when this one is confirmed — not before.</li>
++      </ol>
++      <div class="note tip"><span class="nico">✓</span><div><span class="h">Your jobs, tier and payout account come with you</span>Changing your number moves your sign-in, not your account. Your history, your tier, your ratings and your Stripe payout account all stay exactly where they are. <b>This is the right way to do it</b> — creating a second account with your new number leaves all of that stranded on the old one.</div></div>
++      <div class="note warn"><span class="nico">⚠️</span><div><span class="h">Two things to expect</span>Codes expire after <b>5 minutes</b>, and you get <b>one resend per step</b>. And because your sign-in credential just changed, <b>you'll be signed out on every device</b> — including this one — and we'll text your old number to say the change happened. Sign back in with the new number.</div></div>
++      <div class="note info"><span class="nico">📵</span><div><span class="h">Already lost the old phone?</span>Then you can't receive that first code, so this isn't the path. Tap <b>"Lost access to this number?"</b> on the sign-in screen instead — that route verifies you by the email on your account.</div></div>
+       <div class="note info"><span class="nico">🔒</span><div>Everything is stored securely and only used to set up payouts and match you with the right work.</div></div>
+     </section>
+ 
+diff --git a/Final/gopher-request-101.html b/Final/gopher-request-101.html
+index 819e385..fe0b742 100644
+--- a/Final/gopher-request-101.html
++++ b/Final/gopher-request-101.html
+@@ -426,6 +426,17 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
+       <span class="eyebrow">Getting started</span>
+       <h2>Complete your profile</h2>
+       <p>From your dashboard, open <b>Account → Personal Info</b> to review everything on file: your name, email, phone, address, date of birth, and how you found Gopher.</p>
++      <h3>Changing your phone number</h3>
++      <p>Your number is how you sign in, so changing it takes two codes — one to the number you have now, one to the number you're moving to. Open <b>Account → Change Phone Number</b>.</p>
++      <ol class="brand">
++        <li>Enter the new number and tap <b>Send code to my current number</b>.</li>
++        <li>Type the 6-digit code we text to your <b>current</b> number. That proves it's still you.</li>
++        <li>Type the 6-digit code we then text to your <b>new</b> number. Your number changes when this one is confirmed — not before.</li>
++      </ol>
++      <div class="note tip"><span class="nico">✓</span><div><span class="h">Your saved cards and request history come with you</span>Changing your number moves your sign-in, not your account. Your saved payment methods, your <b>Previous requests</b>, and your Gophers all stay exactly where they are. <b>This is the right way to do it</b> — creating a second account with your new number leaves all of that behind on the old one.</div></div>
++      <div class="note warn"><span class="nico">⚠️</span><div><span class="h">Two things to expect</span>Codes expire after <b>5 minutes</b>, and you get <b>one resend per step</b>. And because your sign-in credential just changed, <b>you'll be signed out on every device</b> — including this one — and we'll text your old number to say the change happened. Sign back in with the new number.</div></div>
++      <div class="note info"><span class="nico">📵</span><div><span class="h">Already lost the old phone?</span>Then you can't receive that first code, so this isn't the path. Tap <b>"Lost access to this number?"</b> on the sign-in screen instead — that route verifies you by the email on your account.</div></div>
++
+       <h3>Payment method</h3>
+       <p>You won't need this until your first request. When you're ready, your card is added securely through <b>Stripe</b>, our trusted payment partner — you can pick it (and apply a promo code) right on the Review step.</p>
+       <h3>Adding a card</h3>
