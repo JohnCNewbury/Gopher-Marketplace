@@ -275,9 +275,36 @@ for the bounding box of every pixel darker than the ground. `markBleed` then pul
 taller box back into the row as a negative margin, so a mixed list keeps one tile height:
 **verified in a browser at 390px, seven tiles, every one 178px, no broken images.**
 
-**Assets added** to `public/assets/marks/`: `cash-app-pay-on-light.svg` (developers.cash.app),
-`link-on-light.svg` (the light variant Stripe ships in its own SDK), `gopher-peek.svg` (the
-owner's `GopherLogo-Hero-Peek-RGB.svg` — the logo, never the wordmark), `powered-by-stripe.svg`.
+**Assets added** to `public/assets/marks/`: `cash-app-pay-on-light.svg`, `link-on-light.svg`,
+`gopher-peek.svg` (the owner's `GopherLogo-Hero-Peek-RGB.svg` — the logo, never the wordmark) and
+`powered-by-stripe.svg`.
+
+⚠️ **Provenance, because "don't alter the mark" is a licence term.** All four marks are third-party
+trademarks used unaltered, and a replacement file has to name its source. `link-on-light.svg` is
+**byte-identical (shasum)** to Stripe's own iOS SDK asset
+`StripePaymentSheet.xcassets/Link/link_logo.imageset/Light.svg`, and the reversed `link.svg`
+matches `Dark.svg` the same way. `cash-app-pay-on-light.svg` is byte-identical to the file
+downloaded 2026-09-09 from the Cash App Pay Kit path
+`cash-images-f.squarecdn.com/cash-app-pay-kit/cashapppay-color-black-32.svg` — **but that path now
+answers 403 to curl and to a browser, so it cannot be re-verified against the source today.** What
+is verified is that nothing altered it here; the claim is not that it was re-checked live. The
+other two are G40-38's originals: Apple's `Apple_Pay_Mark_RGB_041619.svg` and Google's
+`google-pay-mark_800.svg`.
+
+**Correction to the history, raised by the G40-38 session (2026-09-09).** The reversed white files
+were **not a mistake when they were added** on 2026-09-08. The tile was then a navy-to-green
+gradient, where white ink reads and the *light* files would have been the invisible ones. They
+became wrong only when the owner picked the white bubble a day later. So `src` / `srcOnDark` is a
+**pairing, not a fix** — keep both, and point each surface at the one matching its ground.
+
+**The web mirror was corrected too, before it could ship (commit `d598460`).** The same four files
+are mirrored at `Final/assets/marks/` and drawn by `_prototypes/Request/gopher-pay-store.js`, whose
+`.gp-row` and `.gp-wbtn` are `background:#fff` — so Cash App Pay and Link would have been invisible
+there as well, and Google Pay undersized. **It was never a live defect:** curl on the deployed
+prototype JS finds no `MARK_IMG` and every `marks/` path 404s on Pages, so the marks are
+committed-but-undeployed. Verified by calling the real `window.GopherPay.brandMark` against the
+real files at 390px — four marks, none broken, every row 54px. ⚠️ **Not deployed. Whoever runs the
+next deploy carries it; it needs no deploy of its own.**
 
 **Back-compat:** the payout screens pass `cardName` / `cardlastdigit` with no normalised row and
 still work, the logo falling back to the brand string. `payoutlist.js` passes a **boolean** as
