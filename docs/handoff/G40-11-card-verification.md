@@ -519,6 +519,45 @@ in the 2026-09-08 brief.
 
 ---
 
+## 4b · ⛔ THE GATE HAS A DOOR BESIDE IT — `POST /users/add_card` (found 2026-09-09)
+
+**Setting `CARD_VERIFICATION_REQUIRED_FROM_VERSION` does not close this, and that is the point of
+recording it before the gate is switched on.** The floor is checked in exactly one place —
+`attach_payment_method_to_customer` (`controllers/user/payment.js:1585`, the `/attach` route). A
+**second live route saves cards and never consults it**:
+
+```
+router.post('/add_card',
+  middleware.user_auth,
+  middleware.require_email_verified({ allowUnverified: true }),
+  payment.add_card_and_attach_to_customer)      // controllers/user/index.js:201
+```
+
+`add_card_and_attach_to_customer` (line 1476) calls `create_payment_method` then
+`attach_payment_method` directly. **No `caller_must_verify`, no billing-details check, no audit
+row.** Any signed-in requester can save a card through it at any appversion, gate on or off.
+
+⚠️ **And it is worse than a bypass — it takes the RAW PAN.** The body is
+`{ card_no, card_exp_month, card_exp_year, card_cvc }`, so the full card number and CVC transit our
+API and are handled server-side. The whole modern path exists to avoid that: the Stripe SDK and the
+payment sheet tokenise on the device, and the number never reaches our backend. This route reverses
+that, which is a **PCI scope** question separate from, and larger than, the verification gap.
+
+**Sized, not assumed — it is DORMANT, not leaking.** CloudWatch Logs Insights on
+`/aws/elasticbeanstalk/Gopher-Production/var/log/nginx/access.log`, 7 days: **zero** requests
+matching `/add_card` across **1,287,981 scanned lines**. The probe is proven — the identical filter
+shape on `payment_methods` returns **21,402 hits** over 1,382,396 lines, so the zero is a real
+absence and not a query that could never match. No caller in the requester app (its `payout.json`
+`"add_card"` is a client-side *navigation* path, not this endpoint) and none in any Gopher-app
+checkout.
+
+**Recommendation, for the owner:** route it through `caller_must_verify` or retire it, **before**
+the gate is switched on. A gate with an ungated door beside it is not a gate, and the PAN handling
+is worth closing on its own merits. It is a small backend change; it is not done, because it is a
+production change on a payments surface and that is the owner's call.
+
+---
+
 ## 5 · Honest limits — what this does and does not stop
 
 The fraud pattern in the dispute list is **card-absent fraud on an account the fraudster controls**
