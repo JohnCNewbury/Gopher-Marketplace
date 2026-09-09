@@ -287,6 +287,9 @@ without the exception.
 **Tests:** `src/services/paymentMethodLogos.test.js`, 32 assertions anchored to the real files on
 disk. Services suite **129 passed**.
 
+**See it:** [`G40-11-tile-built.html`](G40-11-tile-built.html) — seven cases at 390px, rendered
+from `cardView.js` itself rather than mocked up, with the assets inlined.
+
 **Risk:** the app side is visual only — no network call, no payment path, no state change; the
 worst case is a tile that looks wrong, seen immediately, and it reverts by reverting one commit.
 The backend side adds one indexed read per list call and cannot fail the response. The Verified
