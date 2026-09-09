@@ -587,33 +587,32 @@ so an unknown consumer would have to be something that produced **no** request i
 nginx. **Step (1) is exactly what catches that before the delete** — that is why it is three steps
 and not one.
 
-⛔ **STEP 1 IS MERGED BUT NOT LIVE — the production deploy pipeline is BROKEN, and it is not this
-change.** `gopher-prod-codepipeline` **Source** stage failed at **15:06:43Z**, seconds after the
-merge, with:
+⚠️ **THE DEPLOY FAILED ONCE, AND THE CAUSE IS WORTH KEEPING — IT WAS A TOKEN RACE, NOT A BROKEN
+CONNECTION.** `gopher-prod-codepipeline`'s **Source** stage failed at **15:06:43.8Z**, seconds after
+the merge, with *"[GitLab] Unable to use Connection … Ensure your source provider account has access
+to the repository"*. That reads like a revoked authorisation, and it is not.
 
-> *"[GitLab] Unable to use Connection: arn:aws:codeconnections:…/5edf4215-4fcd-463d-885d-e49901ffc697.
-> Ensure your source provider account has access to the repository [gophergo/gopher-backend-api]."*
+**What the GitLab side actually showed** (owner opened `/-/user_settings/applications`): the **AWS
+Connector for GitLab** grant is present, carries `read_repository` / `write_repository`, and is
+stamped **`Authorized At 2026-09-09 15:06:42 UTC`** — **1.8 seconds BEFORE the failure.** So the
+token was being refreshed at the moment the Source action ran, and the action took the old one.
 
-⚠️ **This blocks EVERY backend deploy, not just this one.** Any session merging to `production`
-right now will see a green MR and no deploy. The same connection is used by
-`gopher-prod-admin-codepipeline`.
+**Resolution: `Release change` on the pipeline. Source succeeded on the first retry, no
+configuration touched.** Nothing was revoked, no new connection was created, nothing repointed.
 
-**Confusing detail worth recording:** `aws codeconnections get-connection` reports the connection
-**AVAILABLE**. That reflects the OAuth handshake, not repository access — so *"AVAILABLE" is not
-evidence the pipeline can read the repo*, and it is the reason this needs a human in the GitLab/AWS
-console rather than a retry.
+⛔ **THE TRAP, FOR NEXT TIME.** The error message names *repository access*, which sends you to
+GitLab permissions and to the connection's status — and `aws codeconnections get-connection` reports
+**AVAILABLE**, which looks like a contradiction and is not: AVAILABLE describes the handshake
+record, not a live repo read. **Both signals point away from the real cause.** Check the grant's
+`Authorized At` on
+`https://gitlab.com/-/user_settings/applications` first: if it is within seconds of the failure, it
+is a refresh race and a plain re-run fixes it. ⚠️ **Do NOT revoke that grant to "force a refresh"** —
+five AWS connections hang off it, so revoking turns one stuck pipeline into five.
 
-**It broke inside a two-hour window:** the previous execution **succeeded at 13:03Z** (the
-card-tiles deploy, `1c5812b7`), and the next one failed at 15:06Z.
-
-**Production is HEALTHY and unaffected**, running the previous code: `Ready / Green`, version label
-`…1c5812b7…`, `apiversion` 200. Nothing is degraded — the new code simply is not there.
-
-**OWNER ACTION REQUIRED (access blocker — not routed around, per the standing rule).** Re-authorise
-the GitLab connection so `gopher-prod-codepipeline` can read `gophergo/gopher-backend-api`, then
-re-run the pipeline. Until then `/users/add_card` is **still live and still accepting raw card
-numbers**. A single retry was attempted and was itself refused by this session's permissions, so
-even that is owner-side.
+**Blast radius while it was down** (real, and worth knowing for next time): the same connection
+`5edf4215…` backs **`gopher-prod-admin-codepipeline`** for `gophergo/gopher-admin-frontend` on
+`production`. Backend *and* admin-frontend deploys were both dead, silently — a green MR and no
+deploy.
 
 ---
 
