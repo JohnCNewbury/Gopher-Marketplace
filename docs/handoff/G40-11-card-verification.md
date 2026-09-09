@@ -947,7 +947,43 @@ reliably, and a lot return a mismatch for a correct address.
 Android session. The requester account used here is **`cus_KVBbNaJCCMF3wA`**
 (johncnewbury@gmail.com, customer since 2021-10-30, 148 transactions). Check the id before querying.
 
-⚠️ **STILL OPEN.** Check **4 (resend)** is not run. Check **7** is only half
+✅ **CHECK 4 (resend) PASSES** — owner, iOS: second text arrived, and a further resend was refused,
+matching `OTP_MAX_RESENDS = 1`. He then **cancelled** rather than completing, which exercises the
+abandon path for free.
+
+**All three of the session's incomplete attempts are accounted for**, from the production log —
+none of them left a card on the account:
+
+| Started | Method | Outcome | Screening |
+|---|---|---|---|
+| 17:35:05Z | `pm_1UDpOj…` | **not saved** — five wrong codes (check 6) | `avs=pass` |
+| 17:38:43Z | `pm_1UDpSF…` | **saved** — attached 17:38:50Z, now the default | `avs=pass` |
+| 17:57:47Z | `pm_1UDpkg…` | **not saved** — resend, then cancelled (check 4) | `avs=pass` |
+
+⚠️ **A lag artifact worth knowing:** `pm_1UDpSF…` first read as "started, never saved" because
+CloudWatch was ~20 minutes behind; Stripe's own log showed the attach at 17:38:50Z. **Do not read a
+missing save line as a failure inside the lag window** — cross-check Stripe before concluding.
+
+---
+
+### iOS device QA — where it stands
+
+**PASSED (7):** 2 code step + SMS · 3 wrong-then-right code · 4 resend + cancel · 5 expiry ·
+6 **five-wrong-codes lockout** · 7 billing details and checks on the PaymentMethod · 9 native sheet.
+Plus card scanning and the `verified` badge.
+
+**NOT RUN (3), and each for a stated reason:**
+
+- **Check 1** — the Stripe.js **card-form fallback** (Save greys out until five fields are valid).
+  Unreachable while the native sheet works, which it does on both platforms. It is the web /
+  sheet-unavailable path only.
+- **Check 8** — one audit row per attempt with IP and user-agent. Needs the production DB, which is
+  **SG-to-SG only**. The log lines are consistent with the rows being written, but *the rows
+  themselves have not been read by anyone.*
+- **Check 11** — the Link "Bank" tile on both platforms. Belongs with G40-38.
+
+**Check 10** (an old build can still add a card the old way) is **moot** while the gate is off, and
+is a §0 item to re-test once the floor is set. Check **7** is only half
 covered: the AVS/CVC half is proven from logs, but *"the Stripe Dashboard shows name + billing
 address on the PaymentMethod"* is **not verified** — this session's Stripe key is read-restricted
 (`GetPaymentMethodsPaymentMethod` and `GetCustomersCustomerPaymentMethods` both refused), so it
