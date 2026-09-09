@@ -446,6 +446,31 @@ Add a method of each type → appears in list with the right label → set defau
 | **Card tile / brand marks** | ✅ Both platforms, approved "good to go" 2026-09-09. |
 | **Google Pay** | ⛔ Not verifiable until Google grants production access. |
 
+**First live money path through a wallet — Cash App, order #65330, 2026-09-09 (verified in Stripe by
+this session, not reported second-hand).** `pi_3UDre6CQp3eawbpn0eULFkg2` / charge
+`py_3UDre6CQp3eawbpn0X0bijql`:
+
+| Field | Value |
+|---|---|
+| `payment_method_details.type` | **`cashapp`** (cashtag `$gopherllc`) |
+| `capture_method` / `status` | `manual` / **`requires_capture`** |
+| `amount` / `amount_capturable` | **1425** / **1425** |
+| `captured` / `amount_captured` | **false** / **0** |
+| `outcome` | `authorized`, `approved_by_network`, risk `normal`, "Payment complete." |
+
+**The 20% authorization buffer applies to a wallet exactly as it does to a card:** `ceil(1187 × 1.20)`
+= **1425**. That was the open question — whether wallet holds went down the same path as card holds —
+and they do. `transfer_group` is null, which is the known G40-335 state, not a new defect.
+
+⚠️ **The Cash App half that matters most is STILL untested**, because upward adjustment is blocked on
+this method: the gopher's cost adjustment for the actual amount, an adjustment **above** the hold being
+refused with the right message, and then capture at the lower amount, transfer and payout. The order
+was at `connected` when this was written.
+
+🐛 **Cosmetic, found on the owner's device 2026-09-09:** in the Cash App order-rule pop-up, the
+cost-of-items input placeholder is clipped by the field width — it reads `Increase to (more than $0.`
+with the cents and closing parenthesis cut off. Not worth a build on its own; fold into the next one.
+
 ⚠️ **Still unexercised, and not to be recorded as passed:** everything after *adding* the method —
 placing a request against a wallet or Link method, the `requires_capture` hold showing the right
 `wallet.type` on the charge, the off-session re-hold after a cost adjustment beyond 20%, capture,
