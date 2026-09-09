@@ -68,6 +68,7 @@
 | Prototypes — Request web, Connect, Request app prototype | **DEPLOYED 2026-09-08** — deploy `609fd81` → `origin/main`; content-verified on Pages AND TigerTech (`payOtpBoxes` ×2 in gopher-request.html, `addpayOtpBoxes` ×2 in gopher-connect.html); the three riders were HELD BACK per the owner ("exclude them") and are NOT live | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
 | Saved-method tile — white bubble card, brand marks, Verified pill (2026-09-09) | **MERGED into mobile `production` 2026-09-09 13:0xZ on the owner's "Merge both MRs"** — merge commit `3dce3964`, pipeline green, source branch kept. ⚠️ **Merged ≠ released: it ships in the NEXT STORE BUILD.** | [`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293) · branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
 | Backend — the `verified` flag the pill reads (2026-09-09) | **MERGED + LIVE 2026-09-09** — merge commit `1c5812b7`; all six CI jobs ran and passed (none skipped); EB version `code-pipeline-…-1c5812b7…` deployed, `Environment update completed successfully` 13:07:50Z, `apiversion` 200 on 9/9 probes | [`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch `feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Brand-artwork provenance pinned by checksum (2026-09-09) | **MERGED** — merge commit `e5cde3948`; every mark's SHA-256 asserted after comparison against the vendor's own copy, guard proven to fail on a 10-byte change. ⚠️ The four card-network PNGs are pinned for DRIFT only — their origin is unknown and that is open work, §3.4 | [`gopher-mobile-requester-capacitorjs!294`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294) · branch `G40-11-mark-provenance` · target `production` · squash **no** · delete source **no** |
 | Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
 | 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
@@ -348,7 +349,8 @@ path.* The other two marks are G40-38's originals: Apple's `Apple_Pay_Mark_RGB_0
 Google's `google-pay-mark_800.svg`.
 
 **Provenance is now enforced, not asserted** ([!294](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294),
-open). Every mark carries its SHA-256 in `paymentMethodLogos.test.js`, taken after comparing it
+**MERGED 2026-09-09**, merge commit `e5cde3948`, not squashed, source branch kept; 142 tests re-run
+green on merged `production`). Every mark carries its SHA-256 in `paymentMethodLogos.test.js`, taken after comparing it
 against the vendor's own copy, so a swapped file fails CI instead of sliding in on a comment nobody
 re-read. The guard was proven before being trusted: ten bytes appended to one mark fails the suite.
 ⚠️ **The four card-network PNGs are pinned on a weaker claim, and the test says so:** they predate
