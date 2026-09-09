@@ -495,7 +495,38 @@ this session, not reported second-hand).** `pi_3UDre6CQp3eawbpn0eULFkg2` / charg
 = **1425**. That was the open question — whether wallet holds went down the same path as card holds —
 and they do. `transfer_group` is null, which is the known G40-335 state, not a new defect.
 
-⚠️ **The Cash App half that matters most is STILL untested**, because upward adjustment is blocked on
+✅ **CLOSED 2026-09-09 — the §8 money path ran end to end on Cash App Pay, verified in Stripe.**
+Order #65330's complete ledger, read from balance transactions rather than from a screen:
+
+| Entry | Amount | Reporting category |
+|---|---|---|
+| Charge | **+1425** | `charge` — Stripe fee **71**, net 1354 |
+| Buffer released | **−22** | `partial_capture_reversal` |
+| Transfer to the gopher | **−1200** | `transfer`, `tr_1UDrqpCQp3eawbpnrWBrLAHe`, **available** |
+
+Final: PI `succeeded`, `amount` 1425, **`amount_received` 1403**, `amount_capturable` 0. The requester
+paid **$14.03**, Stripe took **$0.71**, the gopher received **$12.00**, Gopher Inc kept **$1.32**.
+**The $12.00 is the proof that matters**: $10.00 labour + the $2.00 of goods reimbursed, so the cost
+adjustment flowed all the way through to the worker's transfer — the step that had never been
+exercised on a wallet.
+
+Every stage now verified: add method → hold with the 20% buffer → over-hold adjustment **refused** →
+within-hold adjustment **accepted** → **partial capture** at the real amount → buffer released →
+transfer. **Partial capture works on Cash App Pay**, and Cash App drew the owner's **linked Visa
+Debit** with a $0 Cash App balance, exactly as Stripe documents.
+
+📌 **Stripe's fee was 71 on 1425 = 2.9% + 30¢ — Cash App Pay is priced identically to a card.**
+§0's correction to Decision 2 ("there is no fee to pass through") now rests on a live transaction,
+not a pricing page. `transfer_group` remains null (known G40-335), not caused by this run.
+
+⚠️ *Still untested even now:* the Cash App **mandate-revocation** case (revoke in Cash App →
+`mandate.updated` → PM marked bad → picker shows it) and the **network-kill during
+`presentPaymentSheet`** fallback. Also unproven: the connected-account **payout** to the gopher's
+debit card, which is a separate `stripe.payouts.create` — the platform-side transfer is confirmed
+available, the payout leg was not read (the session's Stripe key has no `GetTransfers`/payout scope
+on connected accounts).
+
+⚠️ **Superseded note — this had said the Cash App half was untested:**, because upward adjustment is blocked on
 this method: the gopher's cost adjustment for the actual amount, an adjustment **above** the hold being
 refused with the right message, and then capture at the lower amount, transfer and payout. The order
 was at `connected` when this was written.
