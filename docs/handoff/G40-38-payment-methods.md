@@ -467,6 +467,26 @@ this method: the gopher's cost adjustment for the actual amount, an adjustment *
 refused with the right message, and then capture at the lower amount, transfer and payout. The order
 was at `connected` when this was written.
 
+🐛 **REAL DEFECT, found on the owner's device 2026-09-09 — the gopher's cost-adjustment sheet
+contradicts the Cash App rule.** The server guard is correct and fired correctly: the gopher's
+over-hold adjustment on order #65330 was refused with `cash_app_order_rule.js`'s message verbatim
+("…cost adjustments on Cash App requests can only bring the total down"), enforced at both
+`create_cog` and `accept_cog`, deployed on `production`. **But the sheet underneath it is card copy,
+rendered unconditionally.** `gopher-mobile-gopher/src/component/ordercard.js:8874` computes
+`adjustable_amount - total_charge` and tells the gopher *"Anything greater than $2.38 will require an
+additional temporary authorization for the entire new amount on their end"* — which is true for a
+card and **false for Cash App, where no re-authorisation exists.** The sheet knows nothing about the
+payment method. Same copy also at `RequestDetailPullOver.js:9642`.
+
+So the lived sequence on a Cash App order is: read that going higher is possible → type a higher
+number → submit → get refused. **No money is at risk** (the guard holds at both entry points), but it
+reads as a bug to the worker and will generate a support contact on every Cash App order where the
+gopher overspends. **Fix:** carry the Cash App flag on the gopher's order payload and branch those two
+paragraphs. Client change, so it rides the next build regardless. ✅ Checked, because it would have
+been serious: the "Do not show me this again" checkbox belongs to the **sheet**, not the alert — it
+cannot suppress the server message. *Incidental corroboration: the sheet's $2.38 = 1425 − 1187, so
+the order total was $11.87 and the buffer $2.38, matching the hold exactly.*
+
 🐛 **Cosmetic, found on the owner's device 2026-09-09:** in the Cash App order-rule pop-up, the
 cost-of-items input placeholder is clipped by the field width — it reads `Increase to (more than $0.`
 with the cents and closing parenthesis cut off. Not worth a build on its own; fold into the next one.
