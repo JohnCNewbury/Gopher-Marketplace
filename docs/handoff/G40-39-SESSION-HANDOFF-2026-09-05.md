@@ -319,20 +319,55 @@ against a `^8` dependency), not this change. `eslint` and `prettier --check` cle
 |---|---|
 | 1. Never shows "(!) New Request Info (!)", its banner, or the approve/decline flow — even transiently | **Done in code**, proven by the mid-charge snapshot test + negative control |
 | 2. Another Gopher accepting the same order still shows "I'll select" | **Done**, covered by test 2 |
-| 3. Verified on device on a live order, `order_logs` rows recorded here | ⛔ **BLOCKED — needs the owner.** Not merged, and a device run needs a real handset |
+| 3. Verified on device on a live order, `order_logs` rows recorded here | ⛔ **BLOCKED — needs the owner.** Neither MR merged, and a device run needs a real handset. The worker half is store-gated on top |
 | 4. Doc row written before the ticket closes | **This section** |
 
-### ⚠️ Two things found on the way that are NOT G40-445, reported not fixed
+### The worker's half — FIXED TOO (owner: *"fix both here"*, 2026-09-09)
 
-1. **The worker is told the opposite of what happened.** `gopher-mobile-gopher`
-   `RequestDetailPullOver.js` branches on `props.request.selectgopher` alone, so the hand-picked MY
-   Gopher who was just **auto-connected** gets the Select-My-Gopher success modal
-   (`ordercard.js` ~8250): *"Your Select My Gopher offer has been sent to the Requestor for
-   approval… The Requestor can accept or decline your offer."* Permanent, not transient, and the
-   mirror image of the requester-side defect. `retrieve.js` already exposes `is_you_fav_gopher` on
-   the order, so the client has what it needs to branch. **Worker-side and store-gated**, so it is
-   a separate ticket, not a rider on this one.
-2. **The ticket and the section above quote a banner as "New Request Information Available".**
+Found while tracing the above, and it is the mirror image of the requester defect. Both accept
+handlers in `gopher-mobile-gopher` branched on `props.request.selectgopher` **alone** — and order
+creation forces that flag true whenever `notify_fav_gopher` is set (`create.js`), so **it is true
+for both halves of the split and cannot tell them apart.** Consequences, both **permanent**, not
+transient:
+
+- `RequestDetailPullOver.onAcceptRequest` — the hand-picked Gopher, *already hired*, got the
+  Select-My-Gopher modal (`ordercard.js` ~8250): *"Your Select My Gopher offer has been sent to the
+  Requestor for approval… The Requestor can accept or decline your offer."* Nothing was sent
+  anywhere and nobody could decline it.
+- `ordercard.onAcceptRequest` — the same missing distinction called `navigate(-1)`, sending them
+  **back to the request queue** on a job they had just been given.
+
+**The client cannot re-derive the answer** — my first instinct, `is_you_fav_gopher`, is wrong.
+Auto-connection also depends on **`distance_exceeded`**, computed inside `assign_order` and never
+returned as a field; a client that re-derives skips a modal the Requestor is genuinely waiting on
+when the Gopher is far away. So !549 adds **`auto_connected`** to the claim response — **purely
+additive, no shipped client reads it**, so the backend deploy alone changes nothing on any handset
+— and both handlers read it. An older server omits the key and both behave exactly as today.
+
+The auto-connected Gopher now gets the First Available treatment: no approval modal, the existing
+**"Time to go!"** send-off, routing into the job. **No new screen or asset.**
+
+⚠️ **`data` in the claim response is deliberately left stale.** On this path `get_order` is the
+pre-update row (`gopher_id` null, `aasm_state` `'pending'`) because `orders.update` never assigns
+its result back. Making it honest server-side would silently change what **already-shipped**
+handsets do with `data.aasm_state` — which gates location tracking — with no way to device-test
+first. The clients set their own state off `auto_connected` instead. **Fix the staleness and the
+clients together, or not at all.**
+
+**MR: `gopher-mobile-gopher-capacitorjs` !295** → `production`, branch
+`G40-445-worker-auto-connect-modal`, commit `ab49e18ee`. Guard
+`scripts/assert-fav-auto-connect-modal.mjs` + a `contract` CI job pin the wiring *and* that the
+flag comes from the server. Verified in three states: **passes** patched, **fails 7 of 8** on
+unpatched `production` source, and **fails on its control** (rather than passing vacuously) if the
+handler is renamed. Lint + prettier clean. ⚠️ **Source assertion only** — this repo's CI runs lint
+plus node guards and **no jest**, so nothing here proves handset behaviour.
+
+**Merge !549 first.** !295 is inert without it — the key is simply absent — so there is no ordering
+that breaks anything; the other way round it just would not do anything.
+
+### ⚠️ One thing found on the way that is NOT G40-445
+
+1. **The ticket and the section above quote a banner as "New Request Information Available".**
    That string exists in **no** repo — not in `gopher-mobile-requester-capacitorjs` (any branch,
    any point in its history), not in `gopher-backend-api`. The two real strings on this path are
    the in-app row **"(!) New Request Info (!)"** and the push **"Gopher Interested In Your
