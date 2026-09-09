@@ -414,33 +414,34 @@ it against the vendor's own copy. The guard was proven before being trusted: ten
 this work and nobody recorded their source, so the hash catches silent drift but does **not**
 establish that they are the networks' own unaltered artwork.
 
-**OPEN — and now specific enough to decide on.** The G40-38 session dug out the history; re-checked
-here against git and the files themselves. **Nobody knows where these came from, and the files
-testify to it:**
+✅ **CLOSED 2026-09-09 — the owner reviewed a sandbox rendered from the real component and said
+build it.** Merge `60591a4e3`
+([!300](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/300)), not
+squashed, source branch kept.
 
-| File | Added | Commit message |
-|---|---|---|
-| `Visa.png`, `masterCard.png` | `784b10fca`, 2023-09-22 | "stripe" |
-| `amex.png` | `c9b24da36`, 2024-06-04 | "payoutlist" |
-| `discover.png` | `203878f80`, 2024-06-12 | **"env change"** |
+**All four unknown-origin PNGs are gone from the repo** (`git ls-tree` on `production` returns
+zero), replaced by **seven** marks byte-identical to Stripe's own SDK —
+`StripePaymentsUI.xcassets/CardsNoPadding/stp_card_unpadded_<brand>` — verified per file with
+`diff`, not by eye. Same basis as the Link mark. They are pinned on **provenance** now rather than
+drift, and the pins were proven to fire by altering one file.
 
-Four different geometries — 381×241, 379×237, 360×227 and **84×58** — and `masterCard.png` is 57 KB
-against `amex.png`'s 4 KB at almost the same dimensions. A brand kit does not produce that spread;
-ad-hoc web sourcing does, and the 84×58 / 1.8 KB Discover file is small enough to be a scrape. Its
-artwork arrived inside a commit called *"env change"*. No `.md` in either repo records a source, and
-**none of the four exist in the Code repo** — `Final/` has no card-network artwork, so this is
-app-only and not a web-mirror concern.
+⭐ **Diners Club, JCB and UnionPay drew NOTHING before this** — `logoForTile` returned null and those
+tiles rendered no mark at all.
 
-**The option, for the owner — not taken, because swapping trademark artwork on a payments surface is
-his call.** Stripe's SDK, which we already install, ships all four as **SVG at a uniform 24×16 with
-intrinsic width/height declared** (`StripePaymentsUI.xcassets/CardsNoPadding/
-stp_card_unpadded_{visa,mastercard,amex,discover}.imageset`, verified on disk). That is the **same
-basis as the Link mark**: artwork the vendor redistributes for use inside its own integration. It
-would fix three things at once — a defensible origin instead of an unknown one, vector instead of
-four mismatched rasters, and coverage for **diners / jcb / unionpay**, which `logoForTile` currently
-draws as nothing. It is a *defensible* basis rather than a certain one, which is exactly why it is a
-decision rather than a cleanup. The alternative is four brand portals, each wanting terms accepted
-by the account holder.
+⭐ **The real defect was underneath, and it is the part worth carrying: TWO PLACES DECIDED WHICH LOGO
+TO SHOW.** `CardPaymentMethod.jsx` (the summary and dispute screens) kept its own brand→filename
+mapping, so the same network could render one way on the tile and another at checkout. Both read the
+same `BRAND_MARKS` now. That screen also forced every logo into `height="20" width="40"` — aspect
+**2.0** — while the files ranged 1.45–1.60, so **every brand was stretched**, unnoticed because they
+were all stretched by different amounts. It sizes by the mark's real aspect now.
+
+⚠️ **An existing assertion changed and was REWRITTEN, not deleted.** The suite used JCB as its
+example of *a brand we have no artwork for*. That became false and failed correctly. The replacement
+asserts the three formerly-blank brands **do** draw, and that a genuinely unknown brand (`elo`,
+`cartes_bancaires`) still draws nothing.
+
+**Verified in CI, not just locally:** 159 services tests (was 142), both contract guards, eslint and
+prettier.
 
 **Correction to the history, raised by the G40-38 session (2026-09-09).** The reversed white files
 were **not a mistake when they were added** on 2026-09-08. The tile was then a navy-to-green
