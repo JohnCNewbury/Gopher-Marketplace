@@ -616,6 +616,25 @@ deploy.
 
 ---
 
+✅ **DEPLOYED 2026-09-09.** EB version label
+`code-pipeline-…-8ce3d0f43ef9d8725f77f7d281991affbbba3b90` (deployment 550), `Application update
+completed`, API 200 on every probe throughout. **Verified by CONTENT, not by SHA alone:**
+`git show 8ce3d0f4:controllers/user/payment.js` carries the retirement markers.
+
+**Route reachability confirmed by contrast:** `POST /users/add_card` answers **440** (sign-in
+required — `user_auth` runs before the handler, which is correct) while a nonsense sibling path
+answers **404**. So the route is registered and reachable, exactly as intended: 410 for an
+authenticated caller, never 404.
+
+⚠️ **HONEST LIMIT — the live 410 is NOT directly observed.** Reaching the handler requires an
+authenticated request, and nothing calls this endpoint (that is the whole point). So the refusal is
+proven by **24 unit tests plus two negative controls plus the CI unit-tests job**, not by a
+production observation. Stated plainly rather than implied: *deployed and reachable* is verified;
+*returns 410 in production* is inferred from the tests. **The first real caller, if one exists, is
+what will prove it — and that is exactly what step 2 is watching for.**
+
+---
+
 **What the merge itself contains — done and green, waiting only on the deploy** (merged on the
 owner's "Do step 1", 2026-09-09).
 [`gopher-backend-api!540`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/540),
