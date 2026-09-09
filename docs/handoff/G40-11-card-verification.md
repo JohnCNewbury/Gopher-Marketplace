@@ -904,7 +904,50 @@ result of the session.
 `avs_postal=null cvc=null` — the network does not return those checks for a tokenised wallet
 credential, so **null there is not a failure** and must not be read as one.
 
-⚠️ **STILL OPEN.** Checks **4 (resend)** and **5 (expiry)** are not run. Check **7** is only half
+✅ **CHECK 5 (expiry) PASSES** — owner, iOS, 2026-09-09.
+
+✅ **CHECK 7 PASSES, from the Stripe Dashboard** (owner pasted it; this session's key is
+read-restricted). On `pm_1UDogGCQp3eawbpnDtXKxm3B` (Visa 7494, the card added at 16:49:08Z):
+
+| Field | Value |
+|---|---|
+| Name | John Newbury |
+| Billing address | 405 Shorehouse Way, Holly Springs, NC, 27540, US |
+| CVC check | **Passed** |
+| Zip check | **Passed** |
+| **Street check** | **FAILED** |
+
+So the billing details G40-11 collects **do land on the PaymentMethod**, and Stripe **does** run the
+checks against them. That is the whole point of the feature and it is now proven end to end on a
+real card.
+
+⭐ **CHECK 6, RE-CONFIRMED FROM STRIPE ITSELF.** The locked-out `pm_1UDpOjCQp3eawbpnOYaWp2iF` does
+**not** appear anywhere in the customer's payment methods. Five wrong codes, no card — now proven
+from the payment processor's own records, not just our logs.
+
+⛔ **THE STREET CHECK FAILED ON THE OWNER'S OWN REAL ADDRESS — DO NOT BUILD A RADAR RULE ON IT.**
+405 Shorehouse Way is his actual address, typed correctly, prefilled from his account. Truist
+reported **street mismatch, zip match**. This is normal: many issuers do not verify the street line
+reliably, and a lot return a mismatch for a correct address.
+
+**Consequences, both concrete:**
+
+1. **§6's Radar recommendation is right as written** — *"block if **postal code** verification
+   fails"*. **Never widen it to `address_line1_check`.** Had that rule existed today it would have
+   declined the owner's own card. This is the strongest possible argument for the narrower rule and
+   it should be quoted when the rule is actually created.
+2. **Nothing in G40-11 blocks on AVS or CVC**, verified in code: `stripe_checks` **records**
+   `avs_line1_check`, `avs_postal_code_check` and `cvc_check` into the audit row and the start log
+   prints postal + cvc, but **no branch anywhere acts on the result**. The gate is the SMS code; the
+   AVS/CVC values are *evidence*. Blocking is deliberately Radar's job, and Radar is still an
+   unstarted owner action. **So today a card that fails every check still saves if the code is
+   right** — that is by design, and it is worth stating plainly rather than leaving implied.
+
+⚠️ **Customer id correction:** this doc previously carried `cus_OVbpKctbuDozvt` from the 2026-09-08
+Android session. The requester account used here is **`cus_KVBbNaJCCMF3wA`**
+(johncnewbury@gmail.com, customer since 2021-10-30, 148 transactions). Check the id before querying.
+
+⚠️ **STILL OPEN.** Check **4 (resend)** is not run. Check **7** is only half
 covered: the AVS/CVC half is proven from logs, but *"the Stripe Dashboard shows name + billing
 address on the PaymentMethod"* is **not verified** — this session's Stripe key is read-restricted
 (`GetPaymentMethodsPaymentMethod` and `GetCustomersCustomerPaymentMethods` both refused), so it
