@@ -401,6 +401,39 @@ way to recover. They just haven't gotten around to it yet."* The population swee
 **declined**. Do not open a ticket for this, do not count the backlog, and do not send these workers
 anything from the Stripe Dashboard.
 
+### Cash App Pay mechanics — read from Stripe's docs 2026-09-09, three things we did not know
+
+**Funding: a zero Cash App balance is irrelevant.** Stripe, verbatim: *"Cash App Pay uses the
+customer's **stored balance or linked debit card** to fund the payment."* The owner authorised
+order #65330 with $0 in Cash App; it will draw on his linked debit card at capture, and appears on
+the card statement with a `CashApp*` prefix. Manual capture *"instructs Stripe to only authorize the
+amount on the customer's Cash App Pay account"* — no money moves until we capture.
+
+⚠️ **1. A Cash App hold DIES after 7 days.** *"Stripe cancels the PaymentIntent and sends a
+`payment_intent.canceled` event if the payment isn't captured during the 7-day window."* Cards roll
+via the reauth cron; **Cash App cannot** (see 3). Any Cash App order uncaptured for a week loses its
+authorisation outright. ✅ The `payment_intent.canceled` webhook is already armed on the platform
+destination (§4c O4, 2026-09-07), so we are told — but nothing currently *acts* on it for this case.
+**Matters most for scheduled requests dated more than a week out, and for anything that stalls.**
+
+⚠️ **2. Saving Cash App Pay moves consumer-fraud liability ONTO US.** On-session, the customer logs
+in to Cash App and *"Cash App takes financial liability for any losses because of customer fraud."*
+For saved, on-file use: *"Cash App has less visibility to monitor and manage customer fraud on these
+types of transactions, and Cash App allocates liability to you for customer fraud as a result."*
+**Our model is the on-file path** — we save the method and re-hold off-session after a cost
+adjustment. This is a commercial exposure, not a defect, and it grows with Cash App volume. The
+owner should know it exists before it does.
+
+⚠️ **3. "Upward is impossible on Cash App" is true of OUR implementation, not of Cash App.** Stripe's
+capability table for Cash App Pay: **incremental authorizations ✓**, over-capture ✓, partial capture
+✓ — but **re-authorizations ✗**. Our upward block exists because our re-hold works by creating a
+**new charge**, which is the one thing Cash App does not support. An increment path exists and we do
+not use it. **Not to be changed in this release**, but it is a second reason the guard copy needs
+rewriting: the rule is narrower than the sentence claims.
+
+Other facts worth having: submission window 90 days, processing time 10 business days, disputes full
+only (no partial) with a 120-day window, and Radar is **not** supported for Cash App Pay.
+
 ## 5 · Decisions the owner must make before build starts
 
 1. **PayPal + Venmo — scope. ✅ RULED 2026-09-06 (owner): EXCLUDED from G40-38.** Not deliverable through Stripe for a US account (§0). The options were **(a)** drop both from G40-38 and re-ticket "PayPal/Venmo via Braintree" as its own epic with the second-processor cost in §2 written into it; **(b)** keep them in scope and accept that cost now. Owner chose **(a)**. Deployment reality: nothing built on either rail; no follow-up ticket has been opened — Appendix A is the brief if one is. The July 2 "standalone Venmo → BUILD via Braintree" ruling is **superseded** by this one. **Recommendation was (a).** The July "standalone Venmo → BUILD via Braintree" ruling was made on the premise that PayPal-via-Stripe would carry the bulk of the Venmo audience; that premise is gone. **Full option analysis for this decision: Appendix A** (added 2026-09-06 at the owner's request; the owner is taking the decisions one at a time, starting here).
