@@ -41,7 +41,34 @@
 
   // ── brand marks (compact, brand-coloured) ──
   var MARK_BG={visa:'#1a1f71',mastercard:'#1a1f2b',amex:'#006fcf',discover:'#e86100',applepay:'#000',googlepay:'#fff',paypal:'#003087',cashapp:'#00c244',venmo:'#3d95ce'};
+  // Real marks for the wallet / alternative rows (owner 2026-09-08): the same
+  // official artwork the app ships in public/assets/marks — Apple's Apple Pay
+  // mark, Google's Google Pay mark, the Cash App Pay lockup, and the Link mark
+  // Stripe ships. Card networks keep the compact text badge.
+  //
+  // FOUR FIELDS, and the last one is not optional (G40-11, 2026-09-09). Entries
+  // are [file, fileAspect, alt, inkFillsHeight].
+  //
+  //   * Sized by the FILE, Google Pay draws 1.85x smaller than everything
+  //     beside it: its file is a white pill with the artwork inset, and the ink
+  //     fills only 0.54 of the file's height. Measured by rendering each file
+  //     on white and scanning for the bounding box of every non-white pixel —
+  //     not eyeballed. So the box is grown to inkHeight / fills.
+  //   * The mark must match its GROUND. .gp-row and .gp-wbtn are background:#fff,
+  //     and cash-app-pay.svg / link.svg are the REVERSED (white-ink) variants —
+  //     correct on the app's old navy→green tile, invisible here. The
+  //     -on-light files are the ones for a white row. Same pairing as the app's
+  //     src / srcOnDark in src/services/paymentMethodShape.js.
+  var MARK_IMG={applepay:['apple-pay.svg',1.56,'Apple Pay',1],googlepay:['google-pay.svg',1.47,'Google Pay',0.54],cashapp:['cash-app-pay-on-light.svg',5.63,'Cash App Pay',1],link:['link-on-light.svg',3,'Link',1]};
   function brandMark(b){
+    var mi=MARK_IMG[b];
+    if(mi){
+      var ink=28, fills=mi[3]||1;
+      var bh=Math.round(ink/fills), bw=Math.round(bh*mi[1]);
+      // the grown box overhangs the row rather than making this one row taller
+      var bleed=Math.round((bh-ink)/2);
+      return '<img src="../../assets/marks/'+mi[0]+'" alt="'+mi[2]+'" height="'+bh+'" width="'+bw+'" style="display:block;flex:0 0 auto;margin:'+(-bleed)+'px 0;">';
+    }
     var bg=MARK_BG[b]||'#5b6472', fg='#fff', txt=({visa:'VISA',mastercard:'MC',amex:'AMEX',discover:'DISC',applepay:' Pay',googlepay:'G Pay',paypal:'PayPal',cashapp:'Cash',venmo:'venmo'})[b]||String(b||'?').slice(0,4).toUpperCase();
     if(b==='googlepay') fg='#5f6368';
     return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:28px;padding:0 7px;border-radius:6px;background:'+bg+';color:'+fg+';font-family:Nunito,sans-serif;font-weight:900;font-size:11px;letter-spacing:.3px;flex:0 0 auto;'+(b==='googlepay'?'border:1px solid #dadce0;':'')+'">'+txt+'</span>';
