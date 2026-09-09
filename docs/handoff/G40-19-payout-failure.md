@@ -87,7 +87,9 @@
 >
 > ### 🔎 FOUND WHILE VERIFYING — orphan automatic payouts
 >
-> **8 `payout.failed` events in 6 hours carry no `metadata.order_id`, and nobody is told.**
+> **`payout.failed` events that carry no `metadata.order_id` reach no order, and nobody is told.**
+> ⚠️ **This is a support-cost problem, not a silently-unpaid-worker problem** — see the owner's
+> ruling in "Open for the owner" below before ranking it as severe.
 >
 > - `charge.payout` is the **only** payout creator here (one call site) and always stamps
 >   `metadata.order_id`. So these are not ours.
@@ -142,8 +144,14 @@
 >    unsigned route is unreachable from Stripe. Disabled rather than deleted, so it is one click to
 >    restore. ⚠️ The Disable control is the **•••** beside "Edit destination" — not on the overview
 >    page, not inside Edit; and **Delete** sits directly beneath it in red.
-> 2. **Notify-or-not on orphan automatic payout failures** (above) — needs a throttle and a view on
->    who is genuinely uninformed.
+> 2. ~~Notify-or-not on orphan automatic payout failures~~ **✅ CLOSED — do not build it.** Owner,
+>    2026-09-09: there are no known unsettled payout cases, and **payout is the one channel workers
+>    do not wait on — they report it immediately.** An unnotified failure is therefore not a worker
+>    quietly going unpaid; it is a worker about to call. And because pre-2026 cases were settled
+>    **manually off-platform with the Stripe balance left in place**, some of those accounts are
+>    retrying against a dead card for money that was paid long ago — so a blind notification would
+>    tell already-settled people their payout failed. `!537`'s log line is a **triage** tool: when a
+>    worker does call, the answer is one query instead of a hand-dig through the Stripe dashboard.
 > 3. **The wording `PAYOUT DID NOT ARRIVE (Please add a new debit card)`** is live and worker-facing.
 >    One string in one place. Change it freely; do **not** collapse it back into `PAYOUT FAILED`.
 > 4. **Store release** for the Gopher Go push-tap.
