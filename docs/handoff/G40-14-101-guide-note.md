@@ -48,21 +48,38 @@ assigned to them, but opening any *unassigned* request fails. The guide must
 say so plainly; a worker told "nothing to fix" who then cannot open a single
 request will conclude the app is broken.
 
-🚩 **Related defect, deliberately NOT fixed in G40-14 — needs an owner
-decision.** The 420 above carries the message **"No payout account found.
-Please add one to continue."** That is the *same* wrong instruction this ticket
-removes from the payout screen, still live on a different surface: the worker
-has a payout account, and adding another card will not clear it. G40-14's AC is
-scoped to `Account → Payout Account`, and changing this gate touches the money
-path, so it is raised rather than quietly widened. Two options, both the owner's
-call:
+✅ **That related defect is now BUILT — G40-458, not this ticket.** The 420 above
+carried "No payout account found. Please add one to continue." — the same wrong
+instruction, one screen later. It was raised out of G40-14 rather than widened
+into it, picked up as G40-458, and is on branch
+`G40-458-order-view-payout-pending`. The gate now reads `payout_account_pending`
+from the *same* `is_payout_pending_verification` this ticket added, so the two
+surfaces cannot drift.
 
-- **Copy only** (small): when `payout_account_pending` holds, return "Your payout
-  account is still being set up. This usually clears on its own — you will be able
-  to accept requests as soon as it does." Behaviour unchanged.
-- **Behaviour** (large, and a genuine product decision): let a pending worker
-  accept. This risks accepting work that cannot be paid out, which is precisely
-  what the gate exists to prevent. **Recommend against.**
+⚠️ **And G40-458 found something that changes the wording below.** Verified
+first-hand 2026-09-08:
+
+> **"Pending" is two Stripe states wearing one shape.** Stripe-not-finished
+> (`currently_due` empty, clears itself) and **paused for dormancy**
+> (`currently_due` empty — *identical*, and it **never** clears; only we can
+> lift it, via "Mark as active"). The discriminator, `paused.inactivity`, exists
+> only on the **transfers capability** — never on the account object — so
+> `is_payout_pending_verification` matches **both** by design.
+
+Confirmed against live Stripe on 2026-09-08: `paused` appears on **0 of 322**
+account objects, and **no** account with a card currently carries
+`transfers → paused.inactivity` (all 43 blocked accounts checked). So this is a
+**latent** hazard today, not an active one — but the copy must not bet on it.
+
+**What that forbids:** any promise of a timeline. *"This usually clears on its
+own"* and *"check back shortly"* are true for one half of the population and
+false forever for the other. G40-458 deliberately gives both states the same
+copy, promising nothing, and fires an internal
+`REQUIRES SUPPORT - PAYOUT ACCOUNT PAUSED` alert for the paused case — because
+what the *worker* must do is identical (nothing); what *we* must do differs.
+
+The snippet below has been corrected accordingly. **An earlier draft of it said
+"check back shortly". Do not restore that.**
 
 ## The snippet
 
@@ -72,7 +89,7 @@ after the existing `<div class="note warn">…</div>` (currently
 `note info` with a `nico` glyph and a bolded `span.h` lead-in.
 
 ```html
-      <div class="note info"><span class="nico">⏳</span><div><span class="h">If you see &ldquo;Payout Account pending&hellip;&rdquo;</span>Right after you add your card, Stripe sometimes needs a little longer to finish setting your account up. That message means <b>everything we need from you is in</b> &mdash; there is nothing to fix, and adding another card will not speed it up. <b>You will not be able to accept new requests until it clears</b>, so check back shortly; jobs you have already accepted are unaffected. If instead you see a message asking you to <b>add a card</b> or telling you your account <b>needs attention</b>, that one is real: tap the card and follow the steps.</div></div>
+      <div class="note info"><span class="nico">⏳</span><div><span class="h">If you see &ldquo;Payout Account pending&hellip;&rdquo;</span>Stripe is still finishing your payout account. That message means <b>everything we need from you is in</b> &mdash; there is nothing for you to fix, and adding another card will not help. <b>You will not be able to accept new requests until it is sorted</b>; jobs you have already accepted are unaffected. Most accounts clear by themselves, but a few need us to step in &mdash; so if it is still there the next time you open the app, message support and we will take it from there. If instead you see a message asking you to <b>add a card</b> or telling you your account <b>needs attention</b>, that one is real: tap the card and follow the steps.</div></div>
 ```
 The last sentence is the load-bearing half. The three states now read differently
 on purpose, and a worker who cannot tell them apart is exactly the person this
@@ -82,8 +99,7 @@ ticket was raised for.
 
 1. Confirm the store release containing the G40-14 app change is actually live —
    not merely merged. A merge is not a release.
-2. Decide the 420-message question above. If the copy-only option ships in the
-   same release, the snippet needs no change; if it does not, the snippet is
+2. Check G40-458 has shipped in the same release. If it has not, the snippet is
    still correct — it already warns the worker they cannot accept yet.
 3. Paste the snippet into `Final/gopher-go-101.html` §payout.
 4. Mobile-verify at 375px before publishing (the notes wrap differently there).
