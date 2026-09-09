@@ -242,3 +242,107 @@ that reads: the requester's acceptance/bid socket handling in
 `gopher-mobile-requester-capacitorjs` (the poll or event that flips to "New Request Info"), and
 the backend accept path for `notify_fav_gopher` orders (whether the order is moved to the
 connected state in the same transaction as the acceptance, or after a follow-up step).
+
+---
+
+## G40-445 — DIAGNOSED AND FIXED IN CODE, 2026-09-09 (awaiting the owner's merge + a device run)
+
+Closes out the "why" the section above deliberately left open (*"what is not yet known is why the
+assign is a second step rather than the same transaction"*). All of the below was read first-hand
+in `gopher-backend-api` at `origin/production` `dfd4fd40`, not inherited.
+
+### Why the assign is a second step
+
+It isn't, really — the two `order_logs` rows are two writes inside **one** request to
+`assign_order`, and what sits between them is an **awaited Stripe call**. In
+`controllers/order/update.js`, the `selectgopher` branch runs in this order:
+
+1. `order_logs` ← `Order Accepted by Fav- Gopher#…`
+2. `db.OrderGophers.create({ order_id, gopher_id })` — **`accepted=false`, `declined=false`**
+3. *(fav gopher only)* `await ChargeToken(…)` → `payment_actions.charge.confirm()` — **the 2.84 s**
+4. `db.orders.update({ gopher_id, aasm_state: accepted })`
+5. `order_logs` ← `Order Assigned to Fav Gopher#…`
+6. `InvalidateSelectMyGophers(order_gopher.id, …)` → flips that row to `accepted=true`
+
+Step 2 is what the requester's screen reads. `retrieve.js` builds `select_my_gopher` from
+`order_gophers` rows where **`accepted=false AND declined=false AND deleted=false`**
+(`retrieve.js`, the `selectmygopher` raw query), and `requestOrder.js` renders *any* such row as
+the red **"(!) New Request Info (!) / View Here"** block — the condition is literally
+`localFormProps.selectMyGopher.length || localFormProps.counterOffers.length`. The requester polls
+`getOrderbyId()` on a **7.5 s interval** (`requestOrder.js:360`). So between steps 2 and 6 the row
+is a bona-fide pending bid and the client is right to draw it: **the client was never guessing, and
+there is nothing to fix on the client.** The end state corrected itself because step 6 removed the
+row from the query, not because the app changed its mind.
+
+### The fix — `G40-445-fav-accept-no-transient-bid`, commit `6999b254`
+
+Backend only.
+
+- The row is created **`accepted: true`** on the auto-connect path (hand-picked MY Gopher +
+  `notify_fav_gopher` + not distance-exceeded), so it is never selected by the
+  `select_my_gopher` query at any instant. End state is unchanged —
+  `InvalidateSelectMyGophers` still runs and still declines every other gopher's row.
+- The auto-connect block is wrapped so that **if `ChargeToken` throws** (the usual cause is the
+  requester's card declining) the row is put back to `accepted:false` and the error is rethrown.
+  That preserves today's behaviour on failure exactly: it degrades into an ordinary pending bid
+  the requester can still approve.
+- **The requester's push was also wrong, and permanently — not only for the 2.84 s.** The
+  auto-connect path sent `gopherorder.submitted` = *"Gopher Interested In Your Request / Click
+  here to view details"*, which is the notification for a bid awaiting approval. Canon says a
+  hand-picked MY Gopher accepting behaves exactly like First Available, and First Available sends
+  `order.claim` = *"Your Request Was Accepted!"*. It now sends `order.claim`. Same requester
+  payload, same `requestAccepted` sound, and neither type carries `extra_data`, so no deep link
+  changes. `docs/handoff/G40-306-banner-notifications.html` already described the intended trigger
+  correctly ("*A Gopher accepts an 'I'll select my worker' request or makes a bid*") — the code was
+  the thing that deviated.
+
+### Test
+
+`test/g40-445-fav-accept-never-a-pending-bid.test.js` (14 assertions) **executes** `assign_order`
+against a stubbed db and **snapshots the `order_gophers` table from inside the Stripe call** — the
+exact instant the old code was wrong — then applies `retrieve.js`'s own predicate to that snapshot.
+It asserts the user-visible property (*is there a bid on the requester's screen right now?*), not
+the shape of the fix. It also covers the other half of the split, the toggle-off case, and the
+charge-failure fallback.
+
+⚠️ **Negative control run, and it matters:** against unpatched `origin/production` the suite fails
+on exactly two assertions — the mid-charge snapshot (printing the live row
+`{"id":501,"accepted":false,"order_id":65198,"gopher_id":31677}`, which *is* the defect the owner
+saw) and the push type. Everything else passes on both. Full suite: **261 suites, 1 failure**, and
+that one (`admin-jwt-v8-contract.test.js`, `expressjwt is not a function`) **fails identically on
+pristine `origin/production`** — it is the known stale shared-clone `node_modules` (express-jwt 6
+against a `^8` dependency), not this change. `eslint` and `prettier --check` clean.
+
+### AC status
+
+| AC | State |
+|---|---|
+| 1. Never shows "(!) New Request Info (!)", its banner, or the approve/decline flow — even transiently | **Done in code**, proven by the mid-charge snapshot test + negative control |
+| 2. Another Gopher accepting the same order still shows "I'll select" | **Done**, covered by test 2 |
+| 3. Verified on device on a live order, `order_logs` rows recorded here | ⛔ **BLOCKED — needs the owner.** Not merged, and a device run needs a real handset |
+| 4. Doc row written before the ticket closes | **This section** |
+
+### ⚠️ Two things found on the way that are NOT G40-445, reported not fixed
+
+1. **The worker is told the opposite of what happened.** `gopher-mobile-gopher`
+   `RequestDetailPullOver.js` branches on `props.request.selectgopher` alone, so the hand-picked MY
+   Gopher who was just **auto-connected** gets the Select-My-Gopher success modal
+   (`ordercard.js` ~8250): *"Your Select My Gopher offer has been sent to the Requestor for
+   approval… The Requestor can accept or decline your offer."* Permanent, not transient, and the
+   mirror image of the requester-side defect. `retrieve.js` already exposes `is_you_fav_gopher` on
+   the order, so the client has what it needs to branch. **Worker-side and store-gated**, so it is
+   a separate ticket, not a rider on this one.
+2. **The ticket and the section above quote a banner as "New Request Information Available".**
+   That string exists in **no** repo — not in `gopher-mobile-requester-capacitorjs` (any branch,
+   any point in its history), not in `gopher-backend-api`. The two real strings on this path are
+   the in-app row **"(!) New Request Info (!)"** and the push **"Gopher Interested In Your
+   Request"**. Recorded so the next reader does not go hunting for a string that was a paraphrase.
+
+### Dependency worth knowing
+
+**G40-449** (hand-picked workers are never recorded — the checkboxes render pre-ticked, so tapping
+a name *deselects* it) sits directly upstream. `is_notify_first()` reads `notify_first_orders`, so
+with no hand-pick row recorded the auto-connect branch never runs at all and *every* acceptance on
+a Notify MY Gophers order behaves like "I'll select". Order 65198 did have its row, which is why
+this defect was observable. **A device verification of G40-445 has to confirm the hand-pick
+actually landed** — otherwise a pass here proves nothing.
