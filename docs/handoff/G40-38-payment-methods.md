@@ -16,11 +16,11 @@ Detail for each is in the section named. Nothing below is blocked on a session.
 |---|---|---|---|
 | 1 | **Google — answer to our reply** | 🔴 **REJECTED 2026-09-09 on brand guidelines; owner REPLIED the same day** (draft written by this session, sent by the owner on the support thread — not resubmitted through the console, deliberately: see the block below). Now waiting on Google again, with no SLA.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which screen the reviewer was looking at. **Measured against the published Android brand guidelines** — read 2026-09-09, not paraphrased from the email — the submitted screenshot **passes every rule**: PayButton API used, 369 dp wide (min 90), clear space 9.1/21.7/21.3 dp (min 8), and the Google Pay button is the tallest button on the sheet. ⚠️ The earlier guess that the reviewer saw our own broken Google Pay mark is **retracted** — all five screenshots have now been opened and none contains it. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
 | 2 | **Owner — decision (the Dashboard route does not exist)** | ⚠️ **The 2026-09-08 ruling cannot be executed as written.** There is **no Instant Bank Payments toggle.** Read first-hand from the live account: `pmc_1KrBFuCQp3eawbpnBIyZQigF` has `link: on`, `us_bank_account: off`, and **no `instant_bank_payments` key at all** — Stripe's docs confirm IBP "are automatically enabled when you turn on Link". Hiding the Bank tile means either **turning Link off entirely** (loses the "Pay with link" button too) or **one option in our own `createPaymentSheet` call** — which is a build change, not a Dashboard change. See the Bank-tile block. | Bank-tile block |
-| 3 | **Owner — decision** | 🔴 **Release gate, now materially more likely to bite:** if the store build ships before Google approves, live Android users tapping Google Pay hit `OR_BIBED_11`. The 2026-09-09 rejection (row 1) adds at least one more review round-trip, so **"approval lands first" can no longer be assumed.** Recommend deciding now to hide Google Pay behind a flag for this release (one line, reversible) rather than holding the release on Google. | §4b build #261 block |
+| 3 | ✅ **DECIDED 2026-09-09 (owner)** | **Game-time decision at the release cut.** If Google has not approved by then, **exclude Google Pay from the release or delay the release** — owner's call at the moment of the cut, not a standing pre-commitment. No flag work is to be done speculatively ahead of that decision. | §4b build #261 block |
 | 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
 | ~~5~~ | ✅ **DONE** | App **!295 MERGED** 2026-09-09 on the owner's instruction (merge `e7dd4fab7`, squash no, source kept). Verified on the **production** pipeline that followed, not just the MR: 12 jobs, `services-tests` **ran and passed in 82 s**. The six services suites — including the brand-mark SHA-256 pins and the G40-38 payment-sheet tests — are now actually enforced, and `npm ci` runs on **node:22 / npm 10.9.8**, which reproduces the Appflow runner's lockfile check that failed build #257. ⚠️ A failing services test now blocks every merge. | — |
 | 6 | **Owner — decision, low priority** | Replace the four unsourced card-network PNGs with the artwork Stripe already ships (SVG, 8 brands, fixes Diners/JCB/UnionPay drawing no logo). **Recommended NOT in this release.** | marks block |
-| 7 | **Owner — next build** | The rebuilt card tile (G40-11 !293) has **never been seen on a phone**. It ships with the next build and wants a look before the store release. | marks block |
+| ~~7~~ | ✅ **DONE 2026-09-09** | The rebuilt card tile (G40-11 !293) was put on a device and **approved by the owner on BOTH iOS and Android** — "good to go". This closes the marks work: the Google Pay mark sizing defect I shipped is confirmed fixed on real hardware, not just in a side-by-side page I made myself. | marks block |
 | 8 | **Owner — release cut** | Bump `IOS_VERSION`/`ANDROID_VERSION` **above 13.9.3/3.9.2** and `REACT_APP_VERSION` **above 45** in the Appflow `prod` env, and set backend `CARD_VERIFICATION_REQUIRED_FROM_VERSION` to that same number, or the G40-11 legacy-attach refusal stays inert. | §4b + G40-11 doc |
 
 **Done and needing nothing:** backend live (`!507`, `!518`, `!525`, `!529`, `!538`); app on `production` (`!280`–`!284`, `!285`, `!286`, `!290`, `!291`, `!293`, `!294`); Apple Pay verified on iPhone; Cash App Pay verified on **both** platforms; build #261 (13.9.3/861) in TestFlight.
@@ -378,6 +378,28 @@ existed:** Instant Bank Payments confirm instantly, settle on the same 2-day tim
 guaranteed by Stripe against bank-initiated returns, and support manual capture (which our
 authorisation-then-capture hold model needs), off-session charges and refunds. It only appears under
 7,500 USD, which every Gopher order is. The Bank tile is not a defect; removing it is a preference.
+
+### Adjacent, and CLOSED by owner ruling — gophers with no payout method
+
+While looking for a test account, one live gopher (`acct_1UD7LmC5P1wQn6K3`, signed up 2026-09-07)
+was found with `requirements.currently_due: ["external_account"]`, past due, payouts paused. Stripe's
+Dashboard offers two fixes and **neither is right for us**: "Submit to us directly" wants a routing
+and account number we never collect, and "Request information" sends Stripe's hosted onboarding link,
+which for these Custom accounts *"collects personal details only… and never takes a debit card"* —
+the exact loop commit `77820566d` was written to break. The in-app path is the one that works:
+`payoutAttentionCopy.js` (worker app, on `production` since 2026-08-02) plus `/payment_account/check`
+and `/payment_account/card/v2` on the backend.
+
+⚠️ **Also do not let a bank account be attached this way as a workaround.** Payouts are created with
+`payment_options.method = 'instant'` against the account's default external account, and the code
+around it is entirely card-shaped (expiry checks, "the card a payout would actually go to", Stripe's
+"Instant eligible" badge). A checking account clears Stripe's block while pointing payouts somewhere
+the instant path was not built for. *Not tested — flagged as a risk, not a finding.*
+
+**Owner ruling 2026-09-09: NOT a problem, and not to be re-raised.** *"They're not blocked and have a
+way to recover. They just haven't gotten around to it yet."* The population sweep was offered and
+**declined**. Do not open a ticket for this, do not count the backlog, and do not send these workers
+anything from the Stripe Dashboard.
 
 ## 5 · Decisions the owner must make before build starts
 
