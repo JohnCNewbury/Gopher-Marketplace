@@ -99,8 +99,14 @@ ticket was raised for.
 
 1. Confirm the store release containing the G40-14 app change is actually live —
    not merely merged. A merge is not a release.
-2. Check G40-458 has shipped in the same release. If it has not, the snippet is
-   still correct — it already warns the worker they cannot accept yet.
+2. ⛔ **Confirm G40-458 shipped in the SAME release. If it did not, do not paste
+   this yet.** The two are release-mates, not neighbours (G40-458 session,
+   2026-09-09). G40-14 alone makes the payout *screen* say "Payout Account
+   pending…", and then the very next screen the worker taps still tells them to
+   add a card — G40-458's `!531` + `!285` are what fix that. Publishing the
+   guide against G40-14 alone would describe a coherent journey that does not
+   exist, and it would send the worker to the exact screen that contradicts it.
+   Same reason G40-14 must not be described to a user as fixed on its own.
 3. Paste the snippet into `Final/gopher-go-101.html` §payout.
 4. Mobile-verify at 375px before publishing (the notes wrap differently there).
 5. Deploy is owner-gated. Scope-check the dry-run file list first — it shows
