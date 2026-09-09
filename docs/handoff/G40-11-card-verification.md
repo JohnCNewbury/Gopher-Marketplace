@@ -551,10 +551,43 @@ absence and not a query that could never match. No caller in the requester app (
 `"add_card"` is a client-side *navigation* path, not this endpoint) and none in any Gopher-app
 checkout.
 
-**Recommendation, for the owner:** route it through `caller_must_verify` or retire it, **before**
-the gate is switched on. A gate with an ungated door beside it is not a gate, and the PAN handling
-is worth closing on its own merits. It is a small backend change; it is not done, because it is a
-production change on a payments surface and that is the owner's call.
+⛔ **THIS IS NOT A NEW DISCOVERY — WE ALREADY WROTE IT DOWN, ON THE LIVE SITE, AND ROUTED AROUND
+IT.** `Final/gopher-deals.html` line 8049, in the payment-methods block (G40-38's Deals card work,
+MR !453), verbatim:
+
+> *"⛔ NOT the /users/add_card endpoint the mobile apps use. That one takes the raw number, expiry
+> and CVC in the request body and builds the PaymentMethod server-side; **the apps are inside PCI
+> scope because of it**. The same form on a public web page would pull gophergo.io in with them —
+> **SAQ D instead of SAQ A** — for one card box on a merchant portal."*
+
+That is the only `add_card` string anywhere in the web surface, and it exists to say *do not use
+this*. So the conclusion was reached months ago, the web was deliberately built around it, and the
+route was never closed.
+
+**RECOMMENDATION: RETIRE IT, don't gate it** — and the evidence supports retiring rather than merely
+preferring it.
+
+- **It is the ONLY raw-PAN handler left.** `grep card_no|card_cvc|card_number` across
+  `controllers/`, `lib/`, `helpers/`, `middleware/` returns this one route (the only other hit is
+  the string `'invalid_card_number'`, an error-code comparison). So retiring it removes raw card
+  numbers from the API **entirely**, rather than shaving one of several.
+- **Two modern replacements are already in production:** `POST /users/cards/setup_intent`
+  (`controllers/user/index.js:192` — the browser confirms straight to Stripe, MR !453) and the
+  native payment sheet from G40-38.
+- **Gating by appversion is strictly worse here.** It leaves raw-PAN handling in the API for old
+  builds, and the PCI question does not care which version sent the card.
+
+**Safe order, because this is production and payments** (G40-38's shape, and it is the right one):
+**(1)** make it refuse — `410` plus a log line naming caller, appversion and user id. Fully
+reversible, and at zero traffic the blast radius is zero. **(2)** watch a week. **(3)** delete the
+handler.
+
+⚠️ **State the coverage limit when proposing it:** the static search covers the repos on this disk,
+so an unknown consumer would have to be something that produced **no** request in seven days of
+nginx. **Step (1) is exactly what catches that before the delete** — that is why it is three steps
+and not one.
+
+**Not done.** It is a production change on a payments surface, so it is the owner's call.
 
 ---
 
