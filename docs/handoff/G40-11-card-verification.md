@@ -457,6 +457,25 @@ ruling did **not** carry, and the owner was asked again rather than assumed. Eac
 against the live page before pushing to confirm it **adds** rather than reverts (both 101s are
 larger than what is live), because the dry-run diffstat displays riders and reverts identically.
 
+**CONTENT-VERIFIED ON BOTH HOSTS**, not by status code and not by SHA:
+
+| | GitHub Pages | TigerTech `/preview/` |
+|---|---|---|
+| `cash-app-pay-on-light.svg` | 200, **8,746 b, 11 dark fills** | 200, **8,746 b** |
+| `link-on-light.svg` | 200, 1,457 b, 7 dark / 0 white | — |
+| `gopher-pay-store.js` | 200, `MARK_IMG` present, **3** `on-light` refs | 200, 25,996 b |
+| `gopher-request-101.html` (rider) | — | 200, **78,954 b — matches the local file exactly** |
+
+⭐ **The deploy's path rewrite is confirmed live**: the served JS contains
+`../../assets/marks/`, not `../../Final/assets/marks/`. From a prototype page at
+`/preview/_prototypes/Request/…` that resolves to `/preview/assets/marks/…`, which returns 200. So
+the marks resolve rather than merely existing — the failure mode G40-38 warned about is closed.
+
+⚠️ **A probe trap worth recording: `gophergo.io` answers 200 for URLs that do not exist.** It is the
+WordPress marketing site and serves a catch-all — `index.html` and `gopher-request-101.html` both
+returned ~136 KB of the *same* page. **A 200 there proves nothing.** The real mirror is
+`gophergo.io.customers.tigertech.net/preview/`, where the byte counts match the source files.
+
 **The web mirror was corrected before it could ship (commit `d598460`).** The same four files
 are mirrored at `Final/assets/marks/` and drawn by `_prototypes/Request/gopher-pay-store.js`, whose
 `.gp-row` and `.gp-wbtn` are `background:#fff` — so Cash App Pay and Link would have been invisible
