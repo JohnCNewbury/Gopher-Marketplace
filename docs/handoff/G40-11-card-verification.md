@@ -299,13 +299,23 @@ taller box back into the row as a negative margin, so a mixed list keeps one til
 trademarks used unaltered, and a replacement file has to name its source. `link-on-light.svg` is
 **byte-identical (shasum)** to Stripe's own iOS SDK asset
 `StripePaymentSheet.xcassets/Link/link_logo.imageset/Light.svg`, and the reversed `link.svg`
-matches `Dark.svg` the same way. `cash-app-pay-on-light.svg` is byte-identical to the file
-downloaded 2026-09-09 from the Cash App Pay Kit path
-`cash-images-f.squarecdn.com/cash-app-pay-kit/cashapppay-color-black-32.svg` — **but that path now
-answers 403 to curl and to a browser, so it cannot be re-verified against the source today.** What
-is verified is that nothing altered it here; the claim is not that it was re-checked live. The
-other two are G40-38's originals: Apple's `Apple_Pay_Mark_RGB_041619.svg` and Google's
-`google-pay-mark_800.svg`.
+matches `Dark.svg` the same way. ⚠️ **RETRACTION, same day.** This section first said the Cash App artwork *"cannot be re-verified
+against the source today"*, because the Pay Kit path
+`cash-images-f.squarecdn.com/cash-app-pay-kit/…` answers 403. **That was wrong, and the fix came
+from the G40-38 session:** developers.cash.app actually links
+`static.afterpaycdn.com/en-US/integration/logo/lockup/cashapppay-color-{black,white}-32.svg`, which
+answers 200. Both Cash App files are **byte-identical** to those, re-fetched and compared
+2026-09-09. Only the squarecdn path is dead. *A 403 from one path is not "unverifiable" — it is one
+path.* The other two marks are G40-38's originals: Apple's `Apple_Pay_Mark_RGB_041619.svg` and
+Google's `google-pay-mark_800.svg`.
+
+**Provenance is now enforced, not asserted** ([!294](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294),
+open). Every mark carries its SHA-256 in `paymentMethodLogos.test.js`, taken after comparing it
+against the vendor's own copy, so a swapped file fails CI instead of sliding in on a comment nobody
+re-read. The guard was proven before being trusted: ten bytes appended to one mark fails the suite.
+⚠️ **The four card-network PNGs are pinned on a weaker claim, and the test says so:** they predate
+this work and nobody recorded their source, so the hash catches silent drift but does **not**
+establish that they are the networks' own unaltered artwork. That remains open work.
 
 **Correction to the history, raised by the G40-38 session (2026-09-09).** The reversed white files
 were **not a mistake when they were added** on 2026-09-08. The tile was then a navy-to-green
