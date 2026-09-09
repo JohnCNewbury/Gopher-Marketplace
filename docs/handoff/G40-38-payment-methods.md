@@ -14,7 +14,7 @@ Detail for each is in the section named. Nothing below is blocked on a session.
 
 | # | Waiting on | What it is | Where |
 |---|---|---|---|
-| 1 | **Gopher — reply to Google** | 🔴 **REJECTED 2026-09-09, and the wait is no longer on Google.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which of the five uploaded buyflow screenshots the reviewer was looking at. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
+| 1 | **Gopher — reply to Google** | 🔴 **REJECTED 2026-09-09, and the wait is no longer on Google.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which screen the reviewer was looking at. **Measured against the published Android brand guidelines** — read 2026-09-09, not paraphrased from the email — the submitted screenshot **passes every rule**: PayButton API used, 369 dp wide (min 90), clear space 9.1/21.7/21.3 dp (min 8), and the Google Pay button is the tallest button on the sheet. ⚠️ The earlier guess that the reviewer saw our own broken Google Pay mark is **retracted** — all five screenshots have now been opened and none contains it. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
 | 2 | **Owner — Stripe Dashboard** | Turn **Link → Instant Bank Payments OFF** to hide the "Bank" tile. Ruled 2026-09-08, still not done. Account-level, both platforms, no build. | Bank-tile block |
 | 3 | **Owner — decision** | 🔴 **Release gate, now materially more likely to bite:** if the store build ships before Google approves, live Android users tapping Google Pay hit `OR_BIBED_11`. The 2026-09-09 rejection (row 1) adds at least one more review round-trip, so **"approval lands first" can no longer be assumed.** Recommend deciding now to hide Google Pay behind a flag for this release (one line, reversible) rather than holding the release on Google. | §4b build #261 block |
 | 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
@@ -227,17 +227,64 @@ this email.*
 pass `buttonSizeMode` to it through `@capacitor-community/stripe`.** That is precisely the case the
 last paragraph of Google's email carves out.
 
-**Two live possibilities, and they need different answers:**
+**Measured against the PUBLISHED rules, not the email's three phrases (added 2026-09-09 after
+reading `developers.google.com/pay/api/android/guides/brand-guidelines`).** ⚠️ The first version of
+this section checked the screenshot against the three words in Google's email — "size", "contrast",
+"clear space" — which is not the same as checking it against the guideline. The published rules are:
+**PayButton API required**; **minimum width 90 dp** (152 dp for "Buy with Google Pay"); **minimum
+clear space 8 dp on all sides**; **"the size of the Google Pay buttons remains equal to or larger
+than the other buttons"**; dark button on light backgrounds; and a prohibition on building your own
+button or altering its font, colour, radius or padding.
 
-1. **The reviewer was looking at one of our five uploaded buyflow screenshots** rather than at the
-   sheet — most likely the **saved-method tile**, where the Google Pay mark sits on a white card.
-   ⚠️ Worth noting against ourselves: that mark shipped with a **real rendering defect** (`google-pay.svg`
-   declares no intrinsic width/height and is ~46% white padding, so it drew blank or 1.85× small).
-   It was fixed in G40-11 !293 — **but !293 has never been seen on a phone**, and the screenshots
-   uploaded on 2026-09-08 came from build **#256**, which predates it. If the reviewer saw the broken
-   mark, "size" and "clear space" describe it exactly.
-2. **It is boilerplate** fired by the same automatic check that raised the unexplained "potential
-   issue" at submission time (recorded in O3 above).
+Slot 3 of the submitted set (`3-payment-method-screen.png`, 1080×2340) re-measured pixel-wise, with
+density calibrated off the Samsung One UI navigation bar (126 px ÷ 48 dp = **2.625 px/dp**):
+
+| Rule | Requirement | Measured | |
+|---|---|---|---|
+| PayButton API used | required | Stripe's `stripe_google_pay_button.xml` instantiates `com.google.android.gms.wallet.button.PayButton` | ✅ |
+| Minimum width | ≥ 90 dp | 968 px = **369 dp** | ✅ |
+| Clear space, below | ≥ 8 dp | 24 px = **9.1 dp** to the Link button | ✅ **by 1.1 dp** |
+| Clear space, above | ≥ 8 dp | 57 px = **21.7 dp** to the sheet's close ✕ | ✅ |
+| Clear space, sides | ≥ 8 dp | 56 px = **21.3 dp** to the screen edge | ✅ |
+| Size vs other buttons | equal or larger | GPay **131 px / 49.9 dp** tall; Link 130 px; Stripe's "Set up" CTA 124 px — GPay is the **tallest** button on the sheet. Width 369 dp vs 370–371 dp, i.e. **1–2 dp narrower** | ✅ (the width delta is ~1 dp per side and is Stripe's own rendering) |
+| Contrast | dark button on light background | black `#1F1F1F`-family button on a white sheet | ✅ |
+
+**So the submitted screenshot satisfies every published rule.** The tightest number is the bottom
+clear space, which clears the 8 dp floor by 1.1 dp — worth knowing, since it is the only measurement
+anywhere near a limit, and it is Stripe's spacing, not ours.
+
+⚠️ **RETRACTED — the "reviewer saw our broken Google Pay mark" hypothesis is dead.** The first
+version of this section floated that the reviewer might have been looking at our saved-method tile,
+whose `google-pay.svg` had no intrinsic size before !293. **All five submitted screenshots have now
+been opened.** None of them contains our Google Pay mark: slot 1 item selection, slot 2 "Review My
+Request" (whose payment row shows a **VISA** mark, not Google Pay), slot 3 Stripe's sheet, slot 4
+Google's own sheet, slot 5 post-purchase. The only Google Pay button or mark in the whole set is
+Stripe's PayButton in slot 3. That possibility should not be repeated.
+
+**Two things found by actually reading the email's links:**
+
+1. ⚠️ **The Android link in Google's own email is dead.**
+   `developers.google.com/pay/api/android/guides/resources/update-to-new-payment-button` now serves
+   the generic **"Tutorial | Google Pay API for Android"** page — payment configuration, API version,
+   gateway tokenization, a gateway table — with no button-migration content at all. Confirmed twice
+   (direct fetch, and a site-scoped search returning that exact URL under the title "Tutorial").
+2. ⚠️ **The email's one concrete remedy is a WEB API, and we submitted an ANDROID package.**
+   It says to "adjust the size using the `buttonSizeMode` option of the createButton API".
+   `createButton` / `buttonSizeMode` belong to the **Web** `PaymentsClient` — the "Customize your
+   button" page they link sits under the Web section of the docs. Android has no `createButton`; it
+   has `PayButton` + `ButtonOptions`, and the Android brand guidelines describe its customisation as
+   "theme, shape and corner roundness". *Partially verified:* the Web/Android split is confirmed from
+   the guidelines and the customize page; the exact Android `ButtonOptions` field list could **not**
+   be read first-hand because Google's API-reference pages render client-side and return an index
+   shell to a fetch. Do not state the field list to Google as fact without opening that page in a
+   browser.
+
+**One thing in the submitted set that Google did NOT cite but which a reviewer could react to:**
+slot 4 (`4-google-pay-payment-screen.png`) shows Google's own sheet carrying the red banner **"Your
+payment method won't be charged because you're in a test environment."** That is a test-environment
+buyflow submitted for production access. It was a known, deliberate part of the submission (O3
+records the test-group setup), but it is the most visible "this integration is not finished" signal
+in the pack, and it is a plausible trigger for a generic remediation reply.
 
 **Recommended next step — a reply, not a code change.** Ask Google which screen and which element
 failed, and state that the in-app button is Stripe's PaymentSheet rendering `PayButton`. Do not
