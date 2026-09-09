@@ -14,9 +14,9 @@ Detail for each is in the section named. Nothing below is blocked on a session.
 
 | # | Waiting on | What it is | Where |
 |---|---|---|---|
-| 1 | **Google** | Google Pay production access, submitted 2026-09-08, no answer. Google publishes **no SLA**. Until it lands, tapping Google Pay on Android returns `OR_BIBED_11`, and Android card scan stays off. Nothing to build; it is a Google-side flip. | §4b build #261 block |
+| 1 | **Gopher — reply to Google** | 🔴 **REJECTED 2026-09-09, and the wait is no longer on Google.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which of the five uploaded buyflow screenshots the reviewer was looking at. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
 | 2 | **Owner — Stripe Dashboard** | Turn **Link → Instant Bank Payments OFF** to hide the "Bank" tile. Ruled 2026-09-08, still not done. Account-level, both platforms, no build. | Bank-tile block |
-| 3 | **Owner — decision** | 🔴 **Release gate:** if the store build ships before Google approves, live Android users tapping Google Pay hit the error. Either approval lands first, or the release hides Google Pay behind a flag (one line, reversible). | §4b build #261 block |
+| 3 | **Owner — decision** | 🔴 **Release gate, now materially more likely to bite:** if the store build ships before Google approves, live Android users tapping Google Pay hit `OR_BIBED_11`. The 2026-09-09 rejection (row 1) adds at least one more review round-trip, so **"approval lands first" can no longer be assumed.** Recommend deciding now to hide Google Pay behind a flag for this release (one line, reversible) rather than holding the release on Google. | §4b build #261 block |
 | 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
 | ~~5~~ | ✅ **DONE** | App **!295 MERGED** 2026-09-09 on the owner's instruction (merge `e7dd4fab7`, squash no, source kept). Verified on the **production** pipeline that followed, not just the MR: 12 jobs, `services-tests` **ran and passed in 82 s**. The six services suites — including the brand-mark SHA-256 pins and the G40-38 payment-sheet tests — are now actually enforced, and `npm ci` runs on **node:22 / npm 10.9.8**, which reproduces the Appflow runner's lockfile check that failed build #257. ⚠️ A failing services test now blocks every merge. | — |
 | 6 | **Owner — decision, low priority** | Replace the four unsourced card-network PNGs with the artwork Stripe already ships (SVG, 8 brands, fixes Diners/JCB/UnionPay drawing no logo). **Recommended NOT in this release.** | marks block |
@@ -196,10 +196,53 @@ Side note from the pod run: FirebaseCore is deprecated on CocoaPods — new Fire
 |---|---|---|
 | O1 | ✅ **DONE 2026-09-07** — Cash App Pay turned on in the account-level configuration `pmc_1KrBFuCQp3eawbpnBIyZQigF` (Dashboard shows Enabled). | Stripe Dashboard → Settings → Payment methods |
 | O2 | ✅ **DONE 2026-09-07** — merchant ID `merchant.gopher.gopher-requester-ios` ("Gopher Requester") registered; Apple Pay Payment Processing certificate issued (Active, expires **2028-10-06**) from Stripe's CSR and uploaded to Stripe → iOS certificates; App ID `gopher.gopher-requester-ios` has Apple Pay Payment Processing with that merchant ID (1); App Store profile **Gopher-Requester-Provision-2026** regenerated (UUID `6daef639-dda5-47be-8db6-1bec38efa14f`, created 14:36 UTC, carries `com.apple.developer.in-app-payments`) and uploaded to Appflow signing profile `prod_requester_2026` — read back via API: one provisioning entry, entitlement present, cert fingerprint `df6edbd3…` unchanged. The Apple **web** terms were NOT accepted (not needed for in-app). ⚠️ Side finding: Apple lists **Gopher-Go-Provision-2026** (the Go app's App Store profile) as **Invalid** — not caused by this work; the next Go iOS build fails to sign until it is regenerated the same way. | Apple Developer → Identifiers / Profiles; Stripe Dashboard → Settings → iOS certificates; Appflow → Signing Certificates |
-| O3 | ✅ **SUBMITTED TO GOOGLE 2026-09-08.** Console: merchant ID **`BCR2DN6DVK7KFER5`**, payments profile **8212-5330-2601** (Organization, Gopher, Inc.), business profile complete and through Google's review; integration for **`io.gophergoapp.requester`** = Gateway; five buyflow screenshots uploaded and the integration **submitted for production access** (Google's automatic check raised a generic "potential issue" with no pointer — submitted anyway on the owner's decision; if the manual reviewer objects, swap slot 5 for an immediate post-submit screen and/or slot 4 for `4b-google-pay-error.png`). Screenshots + the extra error shot live in `~/Desktop/google-pay-screenshots/`. **How they were made:** app MR !282 made `GooglePayIsTesting` a build-time variable; Appflow build **#256** (Android debug, `prod` environment + `REACT_APP_GOOGLE_PAY_TESTING=true`, commit `f37baf898`) side-loaded over USB onto the owner's Samsung A50; Google Pay only appeared after the phone's primary Google account had a **fully registered** card in Google Wallet **and** was joined to Google's test-cards group (`googlepay-test-mode-stub-data`). Google's sheet showed the tokenized test Visa 4242; the save then failed with Google's `OR_BIBED_06` ("merchant having trouble"), which is the expected live-keys-vs-test-token failure and is exactly what production access removes. The variable was **removed from `prod` afterwards and verified absent via the API** in all three environments. Build #255 (dev environment) was a dead end: DevGopher-Dev runs July-31 code, 817 commits behind. ⚠️ Google Pay itself stays hidden for live Android users until Google approves; card scan on Android arrives with the same approval. Still to do in the console: add a second admin (Google's own warning). | Google Pay & Wallet Console |
+| O3 | 🔴 **SUBMITTED 2026-09-08 — REJECTED BY GOOGLE 2026-09-09 on brand guidelines; see the block under this table.** Console: merchant ID **`BCR2DN6DVK7KFER5`**, payments profile **8212-5330-2601** (Organization, Gopher, Inc.), business profile complete and through Google's review; integration for **`io.gophergoapp.requester`** = Gateway; five buyflow screenshots uploaded and the integration **submitted for production access** (Google's automatic check raised a generic "potential issue" with no pointer — submitted anyway on the owner's decision; if the manual reviewer objects, swap slot 5 for an immediate post-submit screen and/or slot 4 for `4b-google-pay-error.png`). Screenshots + the extra error shot live in `~/Desktop/google-pay-screenshots/`. **How they were made:** app MR !282 made `GooglePayIsTesting` a build-time variable; Appflow build **#256** (Android debug, `prod` environment + `REACT_APP_GOOGLE_PAY_TESTING=true`, commit `f37baf898`) side-loaded over USB onto the owner's Samsung A50; Google Pay only appeared after the phone's primary Google account had a **fully registered** card in Google Wallet **and** was joined to Google's test-cards group (`googlepay-test-mode-stub-data`). Google's sheet showed the tokenized test Visa 4242; the save then failed with Google's `OR_BIBED_06` ("merchant having trouble"), which is the expected live-keys-vs-test-token failure and is exactly what production access removes. The variable was **removed from `prod` afterwards and verified absent via the API** in all three environments. Build #255 (dev environment) was a dead end: DevGopher-Dev runs July-31 code, 817 commits behind. ⚠️ Google Pay itself stays hidden for live Android users until Google approves; card scan on Android arrives with the same approval. Still to do in the console: add a second admin (Google's own warning). | Google Pay & Wallet Console |
 | O4 | ✅ **DONE 2026-09-07** — platform destination `we_1U6TWpCQp3eawbpnwNazBAlG` now listens to `payment_intent.amount_capturable_updated`, `payment_intent.canceled`, `payment_intent.payment_failed`, `mandate.updated` (read back via the API; signing secret unchanged). The two G40-38 webhook handlers are therefore **live and armed** on production. | Stripe Dashboard → Workbench → Webhooks |
 | O5 | Clear the past-due `id_number` requirement (§1 side finding). | Stripe Dashboard → account notifications |
 | O6 | If Decision 1 = build PayPal/Venmo: open a **Braintree** merchant account, US business entity, Venmo enablement. | braintreepayments.com |
+
+---
+
+#### Google's 2026-09-09 answer on `io.gophergoapp.requester` — a brand-guidelines rejection, not an approval
+
+**What Google said.** The submission was not approved. Google asked us to "review and adjust the
+Google Pay Button" against their payment-button brand guidelines, citing three things generically —
+**size** (proportional to similar elements; use `buttonSizeMode`), **colour contrast** against the
+surrounding background, and **clear space** around the button — and pointed at the **createButton /
+PayButton API** as the way to be compliant automatically. It named no screen, no screenshot and no
+specific measurement. It ends by naming the PSP case: *if you're using a dedicated plugin or hosted
+checkout solution from your Payment Service Provider and cannot implement these changes, reply to
+this email.*
+
+**Why that is odd here, verified rather than assumed.** We do not draw a Google Pay button anywhere.
+
+| Claim | How it was checked | Result |
+|---|---|---|
+| The checkout button is Google's own component | unzipped `~/.gradle/…/com.stripe/paymentsheet/23.15.0/paymentsheet-23.15.0.aar`, read `res/layout/stripe_google_pay_button.xml` | it instantiates **`com.google.android.gms.wallet.button.PayButton`** — the createButton API Google recommends — layered over a hidden `PrimaryButton` |
+| That component is actually on the classpath | `node_modules/@capacitor-community/stripe/android/build.gradle` | `implementation "com.google.android.gms:play-services-wallet:$playServicesWalletVersion"`; the only exclusion on `com.stripe:stripe-android` (`23.15.+`) is bouncycastle |
+| We draw no Google Pay button of our own, native or web | `git grep` on `origin/production -- src` for `PaymentRequestButtonElement`, `ExpressCheckoutElement`, `paymentRequest(`, `createButton` | **no matches** |
+| The only Google Pay artwork we draw | `src/component/cardView.js` + `METHOD_MARKS.google_pay` in `paymentMethodShape.js` | the **acceptance mark** on a saved-payment-method list row. A mark on a list row, not a payment button — a different section of Google's guidelines |
+
+**So the button Google is describing is Stripe's, and its geometry is Stripe's to set — we cannot
+pass `buttonSizeMode` to it through `@capacitor-community/stripe`.** That is precisely the case the
+last paragraph of Google's email carves out.
+
+**Two live possibilities, and they need different answers:**
+
+1. **The reviewer was looking at one of our five uploaded buyflow screenshots** rather than at the
+   sheet — most likely the **saved-method tile**, where the Google Pay mark sits on a white card.
+   ⚠️ Worth noting against ourselves: that mark shipped with a **real rendering defect** (`google-pay.svg`
+   declares no intrinsic width/height and is ~46% white padding, so it drew blank or 1.85× small).
+   It was fixed in G40-11 !293 — **but !293 has never been seen on a phone**, and the screenshots
+   uploaded on 2026-09-08 came from build **#256**, which predates it. If the reviewer saw the broken
+   mark, "size" and "clear space" describe it exactly.
+2. **It is boilerplate** fired by the same automatic check that raised the unexplained "potential
+   issue" at submission time (recorded in O3 above).
+
+**Recommended next step — a reply, not a code change.** Ask Google which screen and which element
+failed, and state that the in-app button is Stripe's PaymentSheet rendering `PayButton`. Do not
+resubmit blind: a second rejection costs another round-trip. **Owner action** (the console and the
+mailbox are both his); a session can draft the reply.
 
 ---
 
