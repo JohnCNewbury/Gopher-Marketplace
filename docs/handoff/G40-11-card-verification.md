@@ -872,6 +872,51 @@ than assumed either way. If Android is wanted, it is an added dependency, not a 
 
 ---
 
+## 7d · iOS DEVICE QA — results, 2026-09-09 (owner on iPhone, server side verified here)
+
+Run on the local build (§7b). **Owner drove the phone; every result below was then checked against
+production logs rather than taken from the screen.**
+
+| # | Check | Result |
+|---|---|---|
+| 2 | Save → code step appears, text arrives | **PASS** — phone masked to last 4, "the card is not saved until the code is confirmed", 5:00 countdown running |
+| 3 | wrong code → "N attempts left"; right code → saved | **PASS** — *"Incorrect code. 4 attempts left"*, matching `OTP_MAX_ATTEMPTS = 5`; card then saved and listed |
+| 6 | **five wrong codes → step closes, card NOT in the list** | **PASS** — see below |
+| 9 | native sheet: name + full address, code step after it closes | **PASS** — name and home address **prefilled**, card saved only after the code |
+| — | card scanning | **PASS** — §7c |
+| — | the `verified` badge | **PASS** — 7 methods added new, 7 verification rows, 7 badges; and it discriminated on Android where 2 pre-G40-11 cards showed none |
+
+⭐ **CHECK 6 IS THE ONE THAT MATTERS, AND IT PASSED FOR THE RIGHT REASON.** The owner entered five
+wrong codes; the app showed a lockout and did not add the card. Verified server-side, not from the
+screen: exactly **one** verification in the window **started and never saved** —
+`pm_1UDpOjCQp3eawbpnOYaWp2iF`, started 17:35:05Z. `attach_verified_payment_method` is the only path
+that attaches in this flow and it is the same path that logs *"card verified and saved"*; no such
+line exists for that method.
+
+**And the part worth underlining:** that card logged **`avs_postal=pass cvc=pass`**. It was a
+perfectly good card that passed address and security-code screening, and it was still refused
+because the SMS code was wrong five times. **So the code step is load-bearing on its own** — it is
+not decoration on top of a card Stripe would have rejected anyway. That is the single most valuable
+result of the session.
+
+**AVS/CVC screening is recorded on every attempt**, visible in the `card verification started` line:
+`path=payment_sheet avs_postal=pass cvc=pass`. ⚠️ Wallet methods (Apple Pay / Link) legitimately log
+`avs_postal=null cvc=null` — the network does not return those checks for a tokenised wallet
+credential, so **null there is not a failure** and must not be read as one.
+
+⚠️ **STILL OPEN.** Checks **4 (resend)** and **5 (expiry)** are not run. Check **7** is only half
+covered: the AVS/CVC half is proven from logs, but *"the Stripe Dashboard shows name + billing
+address on the PaymentMethod"* is **not verified** — this session's Stripe key is read-restricted
+(`GetPaymentMethodsPaymentMethod` and `GetCustomersCustomerPaymentMethods` both refused), so it
+needs the owner's Dashboard or a key with read scope. Check **8** (one audit row per attempt with
+IP and user-agent) needs the DB, which is SG-to-SG only. Check **10** is moot while the gate is off.
+Check **11** (Bank tile) is not run.
+
+⚠️ **Housekeeping:** the owner now has **7 test cards** on `cus_OVbpKctbuDozvt` from this session,
+plus 2 abandoned verification attempts. Worth pruning.
+
+---
+
 ## 8 · QA (device — owner)
 
 1. Card form: with any field empty, Save is grey. Fill all five → Save is navy.
