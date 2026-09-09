@@ -8,6 +8,25 @@ app, and the live Stripe account. The 2026-07-02 front-end reference (§9) still
 
 ---
 
+## OPEN — everything waiting on the owner (as of 2026-09-09 end of day)
+
+Detail for each is in the section named. Nothing below is blocked on a session.
+
+| # | Waiting on | What it is | Where |
+|---|---|---|---|
+| 1 | **Google** | Google Pay production access, submitted 2026-09-08, no answer. Google publishes **no SLA**. Until it lands, tapping Google Pay on Android returns `OR_BIBED_11`, and Android card scan stays off. Nothing to build; it is a Google-side flip. | §4b build #261 block |
+| 2 | **Owner — Stripe Dashboard** | Turn **Link → Instant Bank Payments OFF** to hide the "Bank" tile. Ruled 2026-09-08, still not done. Account-level, both platforms, no build. | Bank-tile block |
+| 3 | **Owner — decision** | 🔴 **Release gate:** if the store build ships before Google approves, live Android users tapping Google Pay hit the error. Either approval lands first, or the release hides Google Pay behind a flag (one line, reversible). | §4b build #261 block |
+| 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
+| 5 | **Owner — merge** | App **!295** — CI job running the six services suites AND reproducing the Appflow `npm ci` check on node:22. Green, 12 jobs. Cost: a failing test blocks everyone's merges. | — |
+| 6 | **Owner — decision, low priority** | Replace the four unsourced card-network PNGs with the artwork Stripe already ships (SVG, 8 brands, fixes Diners/JCB/UnionPay drawing no logo). **Recommended NOT in this release.** | marks block |
+| 7 | **Owner — next build** | The rebuilt card tile (G40-11 !293) has **never been seen on a phone**. It ships with the next build and wants a look before the store release. | marks block |
+| 8 | **Owner — release cut** | Bump `IOS_VERSION`/`ANDROID_VERSION` **above 13.9.3/3.9.2** and `REACT_APP_VERSION` **above 45** in the Appflow `prod` env, and set backend `CARD_VERIFICATION_REQUIRED_FROM_VERSION` to that same number, or the G40-11 legacy-attach refusal stays inert. | §4b + G40-11 doc |
+
+**Done and needing nothing:** backend live (`!507`, `!518`, `!525`, `!529`, `!538`); app on `production` (`!280`–`!284`, `!285`, `!286`, `!290`, `!291`, `!293`, `!294`); Apple Pay verified on iPhone; Cash App Pay verified on **both** platforms; build #261 (13.9.3/861) in TestFlight.
+
+---
+
 ## 0 · Corrections to the ticket's premises (verified 2026-09-06)
 
 Every item below was checked against the live code (`origin/production` of both repos, fetched
