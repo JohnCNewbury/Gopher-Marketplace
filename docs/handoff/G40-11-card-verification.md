@@ -587,7 +587,33 @@ so an unknown consumer would have to be something that produced **no** request i
 nginx. **Step (1) is exactly what catches that before the delete** — that is why it is three steps
 and not one.
 
-**Not done.** It is a production change on a payments surface, so it is the owner's call.
+✅ **STEP 1 DONE — merged on the owner's "Do step 1", 2026-09-09.**
+[`gopher-backend-api!540`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/540),
+merge commit `8ce3d0f4`, target `production`, squash **no**, source kept. All six CI jobs green
+including the full unit suite. The route now returns **410** with
+`{ code: 'add_card_retired' }` and logs the caller by user id, apptype, appversion, os, user agent
+and IP. **The route stays registered on purpose:** 410 says *this is gone*, 404 would be
+indistinguishable from a typo.
+
+⚠️ **An existing guard caught a real consequence, and it was NOT silenced.**
+`g40-402-rearm-on-card-fix` asserted that **all three** card-fix endpoints re-arm exhausted
+authorizations before `res.send`. A retired endpoint cannot fix a card, so it must **not** re-arm —
+doing so would zero a live order's retry budget and expiry on a call that saved nothing, which is
+*worse* than the bug G40-402 exists to fix. The list was narrowed to the two live endpoints **with
+the reason written into the test**, and the retired one is now asserted **as retired** (no re-arm,
+410, never reaches Stripe). **AC6's loop is unaffected:** a requester updating their card lands on
+`attach_payment_method_to_customer` or `set_default_payment_methods`, and both still re-arm — both
+re-proven by deleting each call in turn and watching the guard fail.
+
+**Tests:** `test/g40-11-add-card-retired.test.js`, 24 checks — refuses with a branchable code, never
+reaches Stripe or the DB, names the caller, and **the PAN, CVC and expiry are asserted NOT logged**
+(a retirement that logs the card number would be worse than the endpoint it replaces). Two negative
+controls prove the suite can fail: logging the PAN fires 2 checks, returning success fires 5.
+
+**→ STEP 2 IS NOW OPEN AND IS THE OWNER'S TO CLOSE: watch for a week.** Search CloudWatch for
+`RETIRED ENDPOINT CALLED` in `/aws/elasticbeanstalk/Gopher-Production/var/log/web.stdout.log`. **A
+hit is not a failure — it is the point of the step**, and it names who to migrate. Silence for a
+week clears step 3, deleting the handler and the route.
 
 ---
 
