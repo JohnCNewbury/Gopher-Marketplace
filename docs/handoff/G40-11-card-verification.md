@@ -375,9 +375,23 @@ ToS."** That overrides the earlier "hold the guides until the build ships" readi
 - `Final/gopher-terms-of-service.html` (the rebuild ToS) — new **§19 · Payment Method
   Verification** subsection, text below.
 
-**Live gophergo.io Terms — owner paste (WordPress).** `docs/handoff/gophergo-io-terms-CORRECTED.html`
-is another session's in-flight file (uncommitted edits in the tree), so it was not touched. Paste
-this after the *Fraudulent Chargebacks and Restitution* paragraphs:
+**Live gophergo.io Terms — DONE by the ToS session (commit `632f31f`, 2026-09-08 evening), paste
+still the owner's.** The clause sits after *Fraudulent Chargebacks and Restitution* in BOTH copies:
+`gophergo-io-terms-CORRECTED.html` (readable) and `gophergo-io-terms-CORRECTED-ascii.html` — **the
+ASCII file is the WordPress paste copy** (0 bytes > 127; em dashes and curly quotes as `&mdash;` /
+`&rsquo;`, because raw ones produced mojibake in Elementor on 2026-09-07). Paste from the ASCII
+file, never from the snippet below, which is kept for the record only.
+
+⚠️ **Flag for the owner before he pastes (raised by the ToS session, agreed here):** the second
+paragraph tells a customer that the verification record "forms part of the evidence" in a
+chargeback. The record exists only for cards added through the verified flow — i.e. after the app
+build ships and the env floor is set. For any card added before that (every card on file today),
+there is no such record, and a contested chargeback from that window would be argued without it.
+Two ways out, the owner's call: (a) paste as written and accept that the sentence describes the
+flow going forward; (b) soften to *"where a verification was performed, its record forms part of
+the evidence"*. Neither changes the app.
+
+Original snippet (readable form; entity-encode before any paste):
 
 ```html
 <p style="font-weight: 400;"><strong>Payment Method Verification</strong></p>
