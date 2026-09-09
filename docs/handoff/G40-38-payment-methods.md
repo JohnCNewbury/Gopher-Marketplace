@@ -542,7 +542,35 @@ this method: the gopher's cost adjustment for the actual amount, an adjustment *
 refused with the right message, and then capture at the lower amount, transfer and payout. The order
 was at `connected` when this was written.
 
-🐛 **MY COPY IS WRONG, disproved on the owner's device 2026-09-09.** The guard message I wrote in
+⛔ **RETRACTED 2026-09-10 — I HAD THIS BACKWARDS, AND THE CODE IS THE THING THAT DEVIATES.**
+I wrote below that my guard copy stated the wrong rule and the logic was right. **The opposite is
+true.** The canonical owner ruling in §3 of this doc (2026-09-06) reads, verbatim: *"the 20% cushion
+means a small upward adjustment would technically fit inside the existing hold; **the owner has
+chosen the simpler, honest rule — no upward adjustment on Cash App orders at all — rather than 'up
+to 20%'.**"* The build row **B7 in §4a describes something more permissive** — reject only when the
+total *"would exceed the held amount (`orders.adjustable_amount`)"*, with *"adjustments at or below
+the hold proceed as today"* — and `cash_app_order_rule.js` implements **B7**, not the ruling
+(`return total > held;` where `held` is `adjustable_amount`).
+
+**So the copy matches the owner's rule and the CODE does not.** Proved live on order #65330
+(2026-09-09): the owner raised a Cash App total from $11.87 to $13.87 and it was **accepted**. Under
+his own ruling it should have been refused.
+
+**Why this is more than a discrepancy:** the requester's pre-payment pop-up tells them *"A cost
+adjustment upward is not an option on a Cash App request."* The code then captured **$14.03** on an
+order the requester was told would not go up. That is a consent gap, not a copy gap — small in
+dollars, and it was the owner's own test card, but it is the wrong direction of error.
+
+⚠️ **OWNER DECISION REQUIRED — do not "fix" either side until it is taken.** Either (1) the ruling
+stands and the comparison changes from `adjustable_amount` to the order's total at authorisation, and
+all three copy surfaces stay as they are; or (2) B7 stands, the code is right, and three copy
+surfaces need rewriting (the requester pop-up, the guard message, and the gopher's sheet). **The one
+thing that must not remain is today's state**, where the gopher is told "only down", tries higher,
+and it silently works or fails depending on a cushion nobody has told them about.
+
+🔻 *The superseded, incorrect entry is kept below so the reasoning error stays visible:*
+
+🐛 ~~MY COPY IS WRONG, disproved on the owner's device 2026-09-09.~~ The guard message I wrote in
 `cash_app_order_rule.js` ends *"cost adjustments on Cash App requests can only bring the total down."*
 **That is not the rule.** The rule is one line — `return total > held;` where `held` is
 `orders.adjustable_amount` — so the real constraint is **"the total may not exceed the hold"**, and
