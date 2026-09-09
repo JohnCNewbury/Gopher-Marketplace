@@ -845,6 +845,33 @@ back to FirebaseCore 12.17.0 / CocoaPods 1.16.2, `Podfile` untouched. `git statu
 
 ---
 
+## 7c · CARD SCANNING WORKS ON iOS — the owner's 2026-09-08 question, answered (2026-09-09)
+
+**Owner-observed on the iPhone, on the local build**, and traced here to what makes it work:
+
+- **The scanner is built into Stripe's PaymentSheet** —
+  `StripePaymentSheet/…/CardSection/CardSectionWithScannerView.swift`. **The separate
+  `StripeCardScan` pod is NOT installed** (0 present), so this needs no extra dependency and no
+  configuration on our side. It arrives with the sheet we already ship for G40-11.
+- **The camera permission string already anticipates it**, in
+  `ios/App/App/gopher-requester-Info.plist`, verbatim from the built app on the phone:
+  *"We use your camera to take photos to attach to your requests, and to scan a card when you add a
+  payment method."* So nothing had to change to enable it — which is why it appeared the moment the
+  sheet did.
+
+**It composes correctly with G40-11:** scanning fills the card number, and the sheet still collects
+name and full billing address (`billingDetailsCollectionConfiguration`), so a scanned card goes
+through the same AVS/CVC screening and the same SMS code as a typed one. **Scanning is an input
+convenience, not a bypass** — worth stating, because it looks like a shortcut.
+
+⚠️ **NOT verified on Android, and there is a concrete reason to doubt parity.** Android's
+`CAMERA` permission is declared, but **`stripecardscan` does not appear in `android/app/build.gradle`
+at all** — on Android that scanner is a *separate* dependency rather than part of the payment sheet.
+So the likely position is **iOS yes, Android no**, and it should be checked on the Samsung rather
+than assumed either way. If Android is wanted, it is an added dependency, not a config flag.
+
+---
+
 ## 8 · QA (device — owner)
 
 1. Card form: with any field empty, Save is grey. Fill all five → Save is navy.
