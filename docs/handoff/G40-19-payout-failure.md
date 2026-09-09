@@ -15,10 +15,18 @@
 > | **G40-194 — last payout card cannot be deleted** | **LIVE** | Server: `lib/payment.stripe.js delete_payout_card` throws **422** when it is the only card, counting all cards regardless of health. Client: `cardseperateview.js` hides Delete and shows *"Add a new eligible card to remove this one."* Both halves shipped; G40-194 is Canceled and linked as a duplicate. |
 > | **The debit-card update screen** | **LIVE** | `PAYOUT_CARD_ROUTE` = `/form` with `state.next = "payout"` (`src/helpers/payoutAttentionCopy.js`). The deep-link target the ticket asks for already exists; nothing new was designed. |
 >
-> ### What was built on 2026-09-08 — two MRs, both awaiting the owner's merge
+> ### ✅ SHIPPED 2026-09-08/09 — all four MRs merged to `production` and deployed
 >
-> **`gopher-backend-api!528`** — branch `G40-19-payout-truth` → `production`, squash **no**, delete source **no**.
-> **`gopher-mobile-gopher-capacitorjs!282`** — branch `G40-19-payout-failed-push-tap` → `production`, squash **no**, delete source **no**.
+> | MR | What | Merge commit |
+> |---|---|---|
+> | `gopher-backend-api!528` | the payout-truth core + AC1's in-app popup | `dcfbf1b77` |
+> | `gopher-mobile-gopher-capacitorjs!282` | the push tap → add-card screen | `138bab55a` |
+> | `gopher-backend-api!532` | a payout can fail AFTER it was reported paid | `a4a6a0b4d` |
+> | `gopher-backend-api!537` | an orphan payout failure now names the worker | `0b13550ad` |
+>
+> Each backend merge auto-deployed via CodePipeline and was verified by `VersionLabel` ending in
+> the merge SHA, a serving instance at `Ok`, and a 200 on `/api/v1/apiversion`. **The mobile merge
+> reaches no user until a store release is cut.**
 >
 > | AC | What was wrong in production | What now does it |
 > |---|---|---|
@@ -59,11 +67,72 @@
 >    payout event to it. That predates G40-19 and is not widened by it (no money moves on the
 >    event), and this work is what makes the move possible without a further deploy.
 >
+> ### 🔬 VERIFIED IN PRODUCTION, 2026-09-09 (first-hand, not inherited)
+>
+> - **AC1's in-app popup, on four real workers.** `G40-19: payout attention for user 17917 /
+>   75517 / 56604 / 74469 -- default card expired`. Every one of those calls previously returned
+>   `action: null` and rendered no modal.
+> - **AC4 and AC5, on real order 65308.** The reconciliation sweep logged
+>   `checking Stripe for 1 payout(s) initiated but not yet confirmed`. That query selects **only**
+>   orders carrying a `Payout Initiated` row **and no** `Payout Completed` row — so its firing is
+>   proof that the creation site stopped claiming the money had arrived. The order then resolved
+>   at 04:01 with `deposit verified ... (deposit sweep)`.
+> - **⚠️ That confirmation came from the SWEEP, not the webhook** — the source tag says so. Do not
+>   read a `deposit verified` line as proof the webhook works; both sources write it.
+> - **The webhook is nonetheless proven**, by different evidence: `payout.paid` and `payout.failed`
+>   both reached `/endpoint/stripe_account` and ran the handler, which they could not have done
+>   without passing signature verification.
+> - **65308 was a `standard` payout** (gopher 141956, first completed job, so inside the
+>   first-ten-orders probation). It settled in ~2 hours, not the 1–2 business days assumed.
+>
+> ### 🔎 FOUND WHILE VERIFYING — orphan automatic payouts
+>
+> **8 `payout.failed` events in 6 hours carry no `metadata.order_id`, and nobody is told.**
+>
+> - `charge.payout` is the **only** payout creator here (one call site) and always stamps
+>   `metadata.order_id`. So these are not ours.
+> - `try_enable_payouts_for_account` puts every connected account on Stripe's own **daily
+>   automatic** schedule. Measured live: **600 of 600** sampled accounts are on
+>   `interval: daily, delay_days: 2`. Automatic payouts carry no metadata.
+> - **4 of those 600** have a daily schedule *and* an expired default card — the shape that retries
+>   and fails every day. Extrapolated: ~80 accounts. Observed ~32 orphan failures/day is the same
+>   order of magnitude.
+> - **Pre-existing, not shipped this week** — the old handler had the identical
+>   `if (metadata.order_id)` guard and logged nothing at all.
+>
+> `!537` makes each one name the payout, the account, the amount, Stripe's reason, whether it was
+> `automatic`, and the **`user_id`** (via `users_roles.stripe_id`). It deliberately does **not**
+> notify: these retry daily, so telling the worker each time is a daily "your payout failed" email.
+> **That is an open product decision, not a bug.**
+>
+> ### ⛔ DO NOT "optimise" the reconciliation sweep's cadence
+>
+> A note was raised mid-session that the sweep re-polls Stripe every 5 minutes for a standard payout
+> and should skip anything whose `arrival_date` is still in the future. **The arithmetic behind it
+> was wrong and it is retracted.** It assumed the full 1–2 business day window; the one real
+> standard payout measured took ~2 hours, i.e. **~24 polls, not ~550**. There is no meaningful waste
+> to reclaim, and the change would add a branch to money-path code for nothing.
+>
 > ### Still not verified, and honestly so
 >
-> No real failed payout has been driven end to end. Every claim above is from reading the live code
-> and the live Stripe webhook configuration, plus 31 automated checks — **not** from watching a
-> worker's card decline. The handset half of AC1 (the tap) additionally needs a store release.
+> **No real payout FAILURE has been driven end to end.** Everything about the failure path — the
+> worker-visible `PAYOUT FAILED` row, the push, the last-4 in the email, and `!532`'s
+> `PAYOUT DID NOT ARRIVE` — rests on 44 automated checks and on reading the live code, **not** on
+> watching a real worker's card decline. The success path *is* verified end to end on order 65308.
+>
+> The handset half of AC1 (the tap) additionally needs a store release, and has never been run on a
+> device.
+>
+> ### 📌 Open for the owner
+>
+> 1. **Disable the old Stripe destination `we_1Q43GzCQp3eawbpnMqmqsfsc`** → `/endpoint/payout_error`,
+>    which is mounted with **no signature verification at all**. Now safe: `payout.paid` and
+>    `payout.failed` are proven to reach the signed endpoint. Disable, do not delete.
+> 2. **Notify-or-not on orphan automatic payout failures** (above) — needs a throttle and a view on
+>    who is genuinely uninformed.
+> 3. **The wording `PAYOUT DID NOT ARRIVE (Please add a new debit card)`** is live and worker-facing.
+>    One string in one place. Change it freely; do **not** collapse it back into `PAYOUT FAILED`.
+> 4. **Store release** for the Gopher Go push-tap.
 
 
 > **Umbrella note (2026-07-07):** G40-19 now **absorbs G40-194** ("Prevent deletion of the last payout card").
