@@ -335,7 +335,35 @@ against the vendor's own copy, so a swapped file fails CI instead of sliding in 
 re-read. The guard was proven before being trusted: ten bytes appended to one mark fails the suite.
 ⚠️ **The four card-network PNGs are pinned on a weaker claim, and the test says so:** they predate
 this work and nobody recorded their source, so the hash catches silent drift but does **not**
-establish that they are the networks' own unaltered artwork. That remains open work.
+establish that they are the networks' own unaltered artwork.
+
+**OPEN — and now specific enough to decide on.** The G40-38 session dug out the history; re-checked
+here against git and the files themselves. **Nobody knows where these came from, and the files
+testify to it:**
+
+| File | Added | Commit message |
+|---|---|---|
+| `Visa.png`, `masterCard.png` | `784b10fca`, 2023-09-22 | "stripe" |
+| `amex.png` | `c9b24da36`, 2024-06-04 | "payoutlist" |
+| `discover.png` | `203878f80`, 2024-06-12 | **"env change"** |
+
+Four different geometries — 381×241, 379×237, 360×227 and **84×58** — and `masterCard.png` is 57 KB
+against `amex.png`'s 4 KB at almost the same dimensions. A brand kit does not produce that spread;
+ad-hoc web sourcing does, and the 84×58 / 1.8 KB Discover file is small enough to be a scrape. Its
+artwork arrived inside a commit called *"env change"*. No `.md` in either repo records a source, and
+**none of the four exist in the Code repo** — `Final/` has no card-network artwork, so this is
+app-only and not a web-mirror concern.
+
+**The option, for the owner — not taken, because swapping trademark artwork on a payments surface is
+his call.** Stripe's SDK, which we already install, ships all four as **SVG at a uniform 24×16 with
+intrinsic width/height declared** (`StripePaymentsUI.xcassets/CardsNoPadding/
+stp_card_unpadded_{visa,mastercard,amex,discover}.imageset`, verified on disk). That is the **same
+basis as the Link mark**: artwork the vendor redistributes for use inside its own integration. It
+would fix three things at once — a defensible origin instead of an unknown one, vector instead of
+four mismatched rasters, and coverage for **diners / jcb / unionpay**, which `logoForTile` currently
+draws as nothing. It is a *defensible* basis rather than a certain one, which is exactly why it is a
+decision rather than a cleanup. The alternative is four brand portals, each wanting terms accepted
+by the account holder.
 
 **Correction to the history, raised by the G40-38 session (2026-09-09).** The reversed white files
 were **not a mistake when they were added** on 2026-09-08. The tile was then a navy-to-green
