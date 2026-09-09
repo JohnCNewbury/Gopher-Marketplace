@@ -587,7 +587,38 @@ so an unknown consumer would have to be something that produced **no** request i
 nginx. **Step (1) is exactly what catches that before the delete** — that is why it is three steps
 and not one.
 
-✅ **STEP 1 DONE — merged on the owner's "Do step 1", 2026-09-09.**
+⛔ **STEP 1 IS MERGED BUT NOT LIVE — the production deploy pipeline is BROKEN, and it is not this
+change.** `gopher-prod-codepipeline` **Source** stage failed at **15:06:43Z**, seconds after the
+merge, with:
+
+> *"[GitLab] Unable to use Connection: arn:aws:codeconnections:…/5edf4215-4fcd-463d-885d-e49901ffc697.
+> Ensure your source provider account has access to the repository [gophergo/gopher-backend-api]."*
+
+⚠️ **This blocks EVERY backend deploy, not just this one.** Any session merging to `production`
+right now will see a green MR and no deploy. The same connection is used by
+`gopher-prod-admin-codepipeline`.
+
+**Confusing detail worth recording:** `aws codeconnections get-connection` reports the connection
+**AVAILABLE**. That reflects the OAuth handshake, not repository access — so *"AVAILABLE" is not
+evidence the pipeline can read the repo*, and it is the reason this needs a human in the GitLab/AWS
+console rather than a retry.
+
+**It broke inside a two-hour window:** the previous execution **succeeded at 13:03Z** (the
+card-tiles deploy, `1c5812b7`), and the next one failed at 15:06Z.
+
+**Production is HEALTHY and unaffected**, running the previous code: `Ready / Green`, version label
+`…1c5812b7…`, `apiversion` 200. Nothing is degraded — the new code simply is not there.
+
+**OWNER ACTION REQUIRED (access blocker — not routed around, per the standing rule).** Re-authorise
+the GitLab connection so `gopher-prod-codepipeline` can read `gophergo/gopher-backend-api`, then
+re-run the pipeline. Until then `/users/add_card` is **still live and still accepting raw card
+numbers**. A single retry was attempted and was itself refused by this session's permissions, so
+even that is owner-side.
+
+---
+
+**What the merge itself contains — done and green, waiting only on the deploy** (merged on the
+owner's "Do step 1", 2026-09-09).
 [`gopher-backend-api!540`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/540),
 merge commit `8ce3d0f4`, target `production`, squash **no**, source kept. All six CI jobs green
 including the full unit suite. The route now returns **410** with
