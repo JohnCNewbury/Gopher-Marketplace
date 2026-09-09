@@ -100,6 +100,18 @@
 > - **Pre-existing, not shipped this week** — the old handler had the identical
 >   `if (metadata.order_id)` guard and logged nothing at all.
 >
+> **A real one, captured 2026-09-09 from the Stripe delivery log** (`evt_1UDZzsCR82FxdhQAAysrmlW6`):
+> `automatic: true`, `metadata: {}`, **$71.00**, `failure_code: lost_or_stolen_card`, account
+> `acct_1POgoDCR82FxdhQA`. Our endpoint answered **200 OK** and did nothing. That account reports
+> **`payouts_enabled: true`** while its card is `status: errored` — the shape where the platform's
+> own flag says payout-ready and the card underneath is dead. **Its in-app half is already closed**
+> by `!528`: an `errored` card returns `add_payout_card`, so that worker now gets the modal on their
+> next orders-screen mount. Only the email side is open.
+>
+> ⚠️ **Rate, from Stripe's delivery counts rather than log lines:** 33 in a week (8 + 8 + 1 + 1 on
+> four separate days) — ~5/day average but **bursty**, clustered when the daily automatic payouts
+> run. An earlier ~32/day figure was a linear extrapolation from a 6-hour burst and is **wrong**.
+>
 > `!537` makes each one name the payout, the account, the amount, Stripe's reason, whether it was
 > `automatic`, and the **`user_id`** (via `users_roles.stripe_id`). It deliberately does **not**
 > notify: these retry daily, so telling the worker each time is a daily "your payout failed" email.
@@ -125,9 +137,11 @@
 >
 > ### 📌 Open for the owner
 >
-> 1. **Disable the old Stripe destination `we_1Q43GzCQp3eawbpnMqmqsfsc`** → `/endpoint/payout_error`,
->    which is mounted with **no signature verification at all**. Now safe: `payout.paid` and
->    `payout.failed` are proven to reach the signed endpoint. Disable, do not delete.
+> 1. ~~Disable the old Stripe destination `we_1Q43Gz…`~~ **✅ DONE 2026-09-09** — verified
+>    `status: disabled` via the API. Nothing points at `/endpoint/payout_error` any more, so the
+>    unsigned route is unreachable from Stripe. Disabled rather than deleted, so it is one click to
+>    restore. ⚠️ The Disable control is the **•••** beside "Edit destination" — not on the overview
+>    page, not inside Edit; and **Delete** sits directly beneath it in red.
 > 2. **Notify-or-not on orphan automatic payout failures** (above) — needs a throttle and a view on
 >    who is genuinely uninformed.
 > 3. **The wording `PAYOUT DID NOT ARRIVE (Please add a new debit card)`** is live and worker-facing.
