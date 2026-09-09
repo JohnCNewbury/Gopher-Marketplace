@@ -263,21 +263,41 @@ Stripe's PayButton in slot 3. That possibility should not be repeated.
 
 **Two things found by actually reading the email's links:**
 
-1. ⚠️ **The Android link in Google's own email is dead.**
-   `developers.google.com/pay/api/android/guides/resources/update-to-new-payment-button` now serves
-   the generic **"Tutorial | Google Pay API for Android"** page — payment configuration, API version,
-   gateway tokenization, a gateway table — with no button-migration content at all. Confirmed twice
-   (direct fetch, and a site-scoped search returning that exact URL under the title "Tutorial").
+1. ⚠️ **The Android link in Google's email does not go where its URL says.**
+   `developers.google.com/pay/api/android/guides/resources/update-to-new-payment-button` — a slug
+   promising a migration guide — serves the general **"Tutorial | Google Pay API for Android"**
+   page. ⚠️ *Correction to the first version of this row, which said the page had "no button content
+   at all": it does.* **Step 4, "Add a Google Pay payment button"**, is on it. What is **not** on it
+   is anything about migrating from a deprecated button, any deprecation date, or any size control.
+   And its own sample sizes the button from the host layout — Compose `Modifier.fillMaxWidth()`,
+   XML a `PayButton` in the checkout layout — with `ButtonOptions` in the sample setting only
+   `setAllowedPaymentMethods`. **Full-width is Google's own documented example**, which is exactly
+   what Stripe does (`android:layout_width="match_parent"`).
 2. ⚠️ **The email's one concrete remedy is a WEB API, and we submitted an ANDROID package.**
    It says to "adjust the size using the `buttonSizeMode` option of the createButton API".
-   `createButton` / `buttonSizeMode` belong to the **Web** `PaymentsClient` — the "Customize your
-   button" page they link sits under the Web section of the docs. Android has no `createButton`; it
-   has `PayButton` + `ButtonOptions`, and the Android brand guidelines describe its customisation as
-   "theme, shape and corner roundness". *Partially verified:* the Web/Android split is confirmed from
-   the guidelines and the customize page; the exact Android `ButtonOptions` field list could **not**
-   be read first-hand because Google's API-reference pages render client-side and return an index
-   shell to a fetch. Do not state the field list to Google as fact without opening that page in a
-   browser.
+   `createButton` / `buttonSizeMode` belong to the **Web** `PaymentsClient`; the "Customize your
+   button" page they link sits under the Web section of the docs. Android has no `createButton` —
+   it has `PayButton` + `ButtonOptions`, whose customisation the brand guidelines describe as
+   "theme, shape and corner roundness", and whose tutorial sample exposes no size option at all.
+   *Still not read first-hand:* the `ButtonOptions` API-reference page itself, because Google's
+   reference pages render client-side and hand a fetch an index shell. Do not quote a field list to
+   Google as fact without opening it in a browser.
+
+**The integration checklist is what a reviewer actually scores, and all four branding items pass**
+(`.../android/guides/test-and-deploy/integration-checklist`, read 2026-09-09):
+
+| Checklist branding test | Status | Evidence |
+|---|---|---|
+| "Create the Google Pay payment button using the PayButton API" | ✅ | `stripe_google_pay_button.xml` instantiates `com.google.android.gms.wallet.button.PayButton`; `GooglePayButtonKt` builds it with `ButtonTheme`, `ButtonType`, a corner-radius `Dp` and `allowedPaymentMethods` |
+| "…button only appears after your app has confirmed the user's ability to pay through `isReadyToPay()`" | ✅ | `payments-core-23.15.0`'s `DefaultGooglePayAvailabilityClient` calls `IsReadyToPayRequest` / `isReadyToPay` and gates the button on it |
+| "Confirm that the displayed Google Pay payment button dimensions match similar buttons and elements on the page" | ✅ | measured above — tallest button on the sheet, width within 1–2 dp of the others |
+| "Choose an appropriate button based on the background color of the area where it's intended to appear" | ✅ | dark button on a white sheet |
+
+⚠️ **But the checklist also documents the test-environment behaviour**, and this is the part worth
+weighing: `WalletConstants.ENVIRONMENT_TEST` returns no chargeable token, and **"an 'Unrecognized
+App' error displays until production access is granted."** That is the `OR_BIBED_06` we captured in
+slot 4b — expected, not a defect. It also means the reviewer knows a test-environment buyflow when
+they see one.
 
 **One thing in the submitted set that Google did NOT cite but which a reviewer could react to:**
 slot 4 (`4-google-pay-payment-screen.png`) shows Google's own sheet carrying the red banner **"Your
