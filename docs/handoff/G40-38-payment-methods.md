@@ -436,6 +436,22 @@ anything from the Stripe Dashboard.
 ## 8 · QA (device, both platforms — the current G40-426/G40-420 device runbook format)
 Add a method of each type → appears in list with the right label → set default → place a request → hold visible in Stripe as `requires_capture` with `wallet.type` / `cashapp` on the charge → worker accepts → cost-adjust beyond 20% → re-hold succeeds off-session → complete → capture/transfer/payout as today. **Cash App order rule:** select Cash App → pop-up appears with the four points and the increase control → increase cost of items → summary total updates → continue; as the gopher, enter a cost adjustment **above** the hold → rejected with the message; enter one **below** → accepted and captured at the lower amount. Revoke the Cash App mandate in the Cash App app → `mandate.updated` → PM marked bad → picker shows it as such. Kill the network during `presentPaymentSheet` → sheet fails → fallback card form reachable. Old app version against new backend → list still card-only, nothing crashes.
 
+### Device QA — what has actually been done on hardware (owner, 2026-09-07 → 09-09)
+
+| Method | Result |
+|---|---|
+| **Apple Pay** | ✅ iOS. Entitlement → signed IPA → Wallet card → saved and set Default as "VISA · Apple Pay · Ending in 7494". |
+| **Cash App Pay** | ✅ **Both platforms.** Onboarding completed on iOS (needed the `returnURL` fix, MR !290) and on Android. |
+| **Link** | ✅ **2026-09-09, owner:** *"I already added link and it connected to my debit card i already had connected to Link. Added fine."* Link recognised the existing Link account and attached the debit card already held there — i.e. the returning-customer path, not first-time enrolment. |
+| **Card tile / brand marks** | ✅ Both platforms, approved "good to go" 2026-09-09. |
+| **Google Pay** | ⛔ Not verifiable until Google grants production access. |
+
+⚠️ **Still unexercised, and not to be recorded as passed:** everything after *adding* the method —
+placing a request against a wallet or Link method, the `requires_capture` hold showing the right
+`wallet.type` on the charge, the off-session re-hold after a cost adjustment beyond 20%, capture,
+transfer and payout. **Adding a payment method is the first line of §8's runbook, not the whole of
+it.** The Cash App mandate-revocation case and the network-kill case are also untested.
+
 ---
 
 ## 9 · Front-end reference (2026-07-02, unchanged) — `Final/gopher-request.html` + `Final/gopher-connect.html`
