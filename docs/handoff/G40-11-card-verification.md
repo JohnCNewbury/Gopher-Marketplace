@@ -386,8 +386,24 @@ asserting enforcement without checking it:
 (`Expected 8445bbeb… / Received 159152db…`, `1 failed, 141 passed`). The negative-control branch has
 been deleted; it survives only as that evidence.
 
+**The image is `node:22` on purpose, and it makes the job worth more than the tests it runs**
+(G40-38's contribution). Every other job is `node:24`; the reason to differ is not jest, which runs
+on both — it is the `npm ci`. **Appflow's stack is Node 22.22.2 / npm 10.9.7, and `node:24` bundles
+npm 11** (verified: `node v24.18.0` ships `npm 11.16.0`). npm 11 installs lockfiles npm 10.9.7
+**rejects**, which is what killed Appflow build #257 — *"Missing: canvas@2.11.2 from lock file"*,
+twenty minutes into a store build. On `node:24` that desync passes CI and surfaces later as a failed
+store build; on `node:22` the same `npm ci` reproduces the runner's check and the MR goes red. So
+one job enforces six suites **and** closes the lockfile trap.
+
+Recorded from the CI log, because the script now echoes the versions on every run rather than
+relying on the comment: **`v22.23.2` / npm `10.9.8`**, 1,833 packages installed in 40s, **142 tests /
+6 suites passed**, job 1m21s, pipeline green across 13 jobs. ⚠️ Precise rather than rounded: that is
+npm **10.9.8**, one patch ahead of Appflow's 10.9.7 — same major.minor so the same lockfile check,
+but not literally identical. `package.json` declares **no `engines`**, so the image tag is the only
+thing pinning it; **if Appflow's stack moves, move this with it.**
+
 ⚠️ **This is a decision, not a review:** it changes what the pipeline gates for **every** session, so
-a broken services test would block merges repo-wide. Green today (142/142), 1m18s, `needs: []` so it
+a broken services test would block merges repo-wide. Green today (142/142), 1m21s, `needs: []` so it
 cannot cascade, removable in one line.
 
 **The merge itself stands** ([!294](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294),
