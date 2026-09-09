@@ -448,7 +448,16 @@ gradient, where white ink reads and the *light* files would have been the invisi
 became wrong only when the owner picked the white bubble a day later. So `src` / `srcOnDark` is a
 **pairing, not a fix** — keep both, and point each surface at the one matching its ground.
 
-**The web mirror was corrected too, before it could ship (commit `d598460`).** The same four files
+✅ **DEPLOYED 2026-09-09** — `60633fa` → `origin/main`, publishing to **both** hosts (GitHub Pages
+and the TigerTech FTPS workflow). Ten files: this ticket's seven (the corrected
+`gopher-pay-store.js` plus six brand marks, none of which had ever been live) and **three riders the
+owner confirmed are new Gopher Marketplace items and should ship** — the Go prototype (+38), the Go
+101 (+5) and one line in the Request 101. ⚠️ Those same three were **held back** on 2026-09-08; that
+ruling did **not** carry, and the owner was asked again rather than assumed. Each was checked
+against the live page before pushing to confirm it **adds** rather than reverts (both 101s are
+larger than what is live), because the dry-run diffstat displays riders and reverts identically.
+
+**The web mirror was corrected before it could ship (commit `d598460`).** The same four files
 are mirrored at `Final/assets/marks/` and drawn by `_prototypes/Request/gopher-pay-store.js`, whose
 `.gp-row` and `.gp-wbtn` are `background:#fff` — so Cash App Pay and Link would have been invisible
 there as well, and Google Pay undersized. **It was never a live defect:** curl on the deployed
