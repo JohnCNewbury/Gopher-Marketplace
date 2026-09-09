@@ -72,21 +72,41 @@
 | Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
 | 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
 
-**0b · The 2026-09-09 merge, and the one thing that looked alarming but was not.** Both MRs merged
-on the owner's "Merge both MRs". The backend merge deploys, and Elastic Beanstalk went **Degraded**
-during it — which is worth reading carefully, because it was **not** this change.
+**0b · The 2026-09-09 merge, and a wrong diagnosis I have to withdraw.** Both MRs merged on the
+owner's "Merge both MRs". Backend `1c5812b7` is live; app `3dce3964` ships in the next store build.
+The deploy itself: `Environment update completed successfully` at **13:07:50Z**, version label
+carries the merge SHA, health back to **Ok/Green at 13:11:13Z** with no causes outstanding.
 
-The causes are an AWS capacity failure, not an application fault: the *Rolling with Additional
-Batch* policy tried to launch one extra `t2.xlarge`, and **AWS had no `t2.xlarge` capacity in
-`us-east-1a`**. The Auto Scaling group's minimum is 2 while one instance is running, so EB reports
-*"No data received from 1 out of 2 instances"*. **The same condition existed 14 minutes BEFORE the
-deploy** (12:49:13Z: *"1 instance online is below Auto Scaling group minimum size 2"*), so it is
-pre-existing and is the scale-out condition already recorded against **G40-447**, whose
-recommendation is `MaxSize 1` — this environment is single-instance in practice.
+⛔ **What I first wrote here was wrong, and the way it was wrong is the useful part.** Elastic
+Beanstalk went Degraded during the deploy. I checked the event log, found a Degraded 14 minutes
+earlier that also said *"below Auto Scaling group minimum size 2"*, concluded the condition
+pre-dated my deploy, and filed it as the known G40-447 scale-out issue. **Both halves were wrong**,
+and the G40-38 session caught it. Verified first-hand against the event log and the live ASG:
 
-What the deploy itself did: `Environment update completed successfully` at **13:07:50Z**, the new
-version label carries the merge SHA `1c5812b7`, and the API answered **200 on every one of 9
-probes**, in under 100 ms. No 5xx attributable to the merge.
+| I claimed | Actually |
+|---|---|
+| the condition pre-dated the deploy (12:49:13Z) | that Degraded was the **drain from the previous deploy**, which completed 12:47:56Z — excess instance removed at 12:49:13Z — and it **cleared at 12:50:13Z**. The first `t2.xlarge` capacity message is **13:04:25Z**, 30 seconds *after* my own rolling batch launched. Different cause, same-looking text. |
+| this is G40-447, recommendation `MaxSize 1` | `aws:autoscaling:asg` already reads **MinSize 1 / MaxSize 1**. The "minimum size 2" in the health text is the **deploy-time temporary minimum** `RollingWithAdditionalBatch` sets while launching the extra instance — not the standing config. Nothing is misconfigured and no recommendation is outstanding. |
+
+**I matched on the wording of a symptom instead of reading what caused each one** — and two unrelated
+events produce near-identical Degraded text here. The conclusion happened to survive (the deploy was
+fine), which is exactly what makes it dangerous: a right answer reached through a broken chain reads
+as confirmation. See memory `a-correction-invalidates-the-whole-inference-chain`.
+
+**What is actually true**, re-derived: the Degraded was AWS having no `t2.xlarge` capacity in
+`us-east-1a` when *this* deploy's additional batch asked for one. It is a transient of this deploy,
+not a standing condition, and not an application fault. **Zero load-balancer 5xx across
+13:00–13:20Z** — and that zero is on a *proven probe*: `RequestCount` over the identical window and
+dimension returns 790 / 617 / 647 / 217 requests per 5-minute bucket, so the metric stream is live
+and the absence is real rather than a query that was never going to return anything.
+
+⚠️ **The one thing worth carrying forward, from G40-38 (their finding, not re-measured here).**
+Because `RollingWithAdditionalBatch` launches an extra instance, **every deploy runs two instances
+for roughly four minutes**, and that window *is* the socket.io scale-out condition from G40-447.
+With a single instance the alternative is downtime, so it is a deliberate trade rather than a
+defect — but if anyone ever debugs socket drops that correlate with a deploy, that is the mechanism.
+They report two 502s inside that window; the ALB 5xx metric shows none at minute granularity, so
+those likely came from a different layer. Not resolved here, and flagged rather than smoothed over.
 
 **0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
 three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
