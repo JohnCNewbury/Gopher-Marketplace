@@ -803,6 +803,48 @@ not "correct" the guides back.
 
 ---
 
+## 7b · iOS is now testable — a LOCAL Xcode build, on both handsets (2026-09-09)
+
+**iOS had none of G40-11 until today**: the store/TestFlight build predates the merge, so every
+check in §8 was unrunnable on iPhone. It is runnable now. A **development** build of merged
+`production` (`e5cde3948`) is installed on **both** the iPhone 12 Pro and the iPhone 15 Pro Max, at
+`13.9.4` (build 600). The 15 was driven by the owner from Xcode; the 12 was installed over the wire.
+
+⚠️ **"The build worked" is NOT "the QA passed."** What is proven is that the app builds, signs,
+installs and launches on iOS with this code in it. **None of §8's eleven checks are recorded as
+passed on iOS** until someone runs them and writes the result here.
+
+**⛔ This is NOT the build the ticket needs.** It is dev-signed and local. The ticket still needs a
+distribution build in the stores, because that is what the `CARD_VERIFICATION_REQUIRED_FROM_VERSION`
+floor is set against, and a local build's version is not a store version.
+
+**Why Xcode cannot replace Appflow from this machine** (checked 2026-09-09, not assumed): the
+keychain holds exactly one signing identity — `Apple Development: John Newbury` — and **no Apple
+Distribution certificate**; and there is **no App Store Connect API key** in any of the usual
+locations. So Xcode here can build for owned devices and cannot archive for distribution or upload.
+Either fix Appflow (its last failures were the npm-10 lockfile pin, a known cause), or the owner
+archives and uploads from Xcode Organizer signed in as himself.
+
+**Traps hit while doing this, all recoverable, recorded so nobody repeats them:**
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `cap sync ios` throws in `capacitor.config.ts` | env vars not passed | use `npm run sync:ios:requestor_production`, never bare `npx cap sync ios` |
+| `pod install` dies in `unicode_normalize` | no UTF-8 locale under Ruby 4 | `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install` |
+| Build fails at `[CP] Check Pods Manifest.lock` | `Podfile.lock` reverted **before** the build; it must match `Pods/Manifest.lock` | revert the lockfile **after** the build, never before |
+| Firebase silently moved 12.17 → 12.18 | I used `pod install --repo-update` | **never** `--repo-update` here; plain `pod install` honours the pin |
+| App would force-update itself out | repo `MARKETING_VERSION` is `13.1.1`, floor is `13.8.0` | raise it locally for the build, revert after |
+
+⚠️ `cap sync` also rewrites `ios/App/Podfile` to point at whichever worktree's `node_modules` it
+finds, exactly as it rewrites `android/capacitor.settings.gradle`. **Both are local build artifacts
+and must be reverted.** Running `pod install` against the *clean* Podfile avoids the rewrite
+entirely when the worktree has its own `node_modules`.
+
+**Tree state after:** all local edits reverted — `MARKETING_VERSION` back to `13.1.1`, `Podfile.lock`
+back to FirebaseCore 12.17.0 / CocoaPods 1.16.2, `Podfile` untouched. `git status` clean.
+
+---
+
 ## 8 · QA (device — owner)
 
 1. Card form: with any field empty, Save is grey. Fill all five → Save is navy.
