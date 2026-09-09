@@ -467,6 +467,23 @@ this method: the gopher's cost adjustment for the actual amount, an adjustment *
 refused with the right message, and then capture at the lower amount, transfer and payout. The order
 was at `connected` when this was written.
 
+🐛 **MY COPY IS WRONG, disproved on the owner's device 2026-09-09.** The guard message I wrote in
+`cash_app_order_rule.js` ends *"cost adjustments on Cash App requests can only bring the total down."*
+**That is not the rule.** The rule is one line — `return total > held;` where `held` is
+`orders.adjustable_amount` — so the real constraint is **"the total may not exceed the hold"**, and
+anywhere under it is fine in either direction. The owner proved it on order #65330: he moved the
+total **UP**, $11.87 → $13.87 (cost of items $0 → $2), and it was correctly accepted, having been
+correctly refused above $14.25 minutes earlier. The logic is right; the sentence explaining it is
+wrong.
+
+**Fix it to name the ceiling**, which the current message never does: *"the total can't go above
+$14.25, the amount authorized for this request."* `adjustable_amount` is available at the call site,
+so the figure can be interpolated rather than left abstract. ⚠️ **This one is BACKEND copy — a deploy
+fixes it for every app version already installed**, unlike the sheet defect below, which needs a
+build. In the rule's favour, deliberately: it **fails open** on a Stripe read error (a Stripe blip
+must not freeze every cost adjustment in the system) and an over-hold adjustment that slips through
+is still caught at accept time when Stripe refuses the new authorisation.
+
 🐛 **REAL DEFECT, found on the owner's device 2026-09-09 — the gopher's cost-adjustment sheet
 contradicts the Cash App rule.** The server guard is correct and fired correctly: the gopher's
 over-hold adjustment on order #65330 was refused with `cash_app_order_rule.js`'s message verbatim
