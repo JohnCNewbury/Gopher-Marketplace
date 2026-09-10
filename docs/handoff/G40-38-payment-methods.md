@@ -14,9 +14,9 @@ Detail for each is in the section named. Nothing below is blocked on a session.
 
 | # | Waiting on | What it is | Where |
 |---|---|---|---|
-| 1 | **Google — internal team, no SLA** | 🔴 **REJECTED 2026-09-09 on brand guidelines; owner REPLIED the same day** (draft written by this session, sent by the owner on the support thread — not resubmitted through the console, deliberately: see the block below). Now waiting on Google again, with no SLA.** Google answered the `io.gophergoapp.requester` submission asking us to bring the **Google Pay button** in line with their brand guidelines (size · colour contrast · clear space) and resubmit through the console. ⚠️ **We render no Google Pay button of our own.** Verified first-hand in the Stripe artifact the app actually ships (`paymentsheet-23.15.0.aar` → `res/layout/stripe_google_pay_button.xml`): the sheet instantiates **`com.google.android.gms.wallet.button.PayButton`** — Google's own createButton component, the exact remedy the email recommends — and `@capacitor-community/stripe` 8.2.1 pulls `play-services-wallet` in, so it is present. Nothing in `src/` draws a Google Pay button (`grep` for `PaymentRequestButtonElement`/`ExpressCheckoutElement`/`createButton` on `origin/production` returns nothing); the only Google Pay artwork we draw is the **acceptance mark on a saved-method tile** in `cardView.js`, which is a mark, not a button. **So the next step is the reply path Google's own email names** ("If you're using a dedicated plugin or hosted checkout solution from your Payment Service Provider and cannot implement these changes… reach out to us by replying"), plus finding out which screen the reviewer was looking at. **Measured against the published Android brand guidelines** — read 2026-09-09, not paraphrased from the email — the submitted screenshot **passes every rule**: PayButton API used, 369 dp wide (min 90), clear space 9.1/21.7/21.3 dp (min 8), and the Google Pay button is the tallest button on the sheet. ⚠️ The earlier guess that the reviewer saw our own broken Google Pay mark is **retracted** — all five screenshots have now been opened and none contains it. Until this clears, Google Pay on Android still returns `OR_BIBED_11` and Android card scan stays off. | §4c O3 |
+| ~~1~~ | ✅ **APPROVED 2026-09-10** | **Google Pay production access GRANTED** for `io.gophergoapp.requester` — *"has been cleared for launch"*. The brand-guidelines rejection of 09-09 was withdrawn without us changing anything, which is consistent with it having been boilerplate from a marketing reviewer. Google Pay now works on Android **in release-signed builds**, and **Android card scan arrives with it**. See the approval block below for the two conditions Google attached. | §4c O3 |
 | 2 | **Owner — decision (the Dashboard route does not exist)** | ⚠️ **The 2026-09-08 ruling cannot be executed as written.** There is **no Instant Bank Payments toggle.** Read first-hand from the live account: `pmc_1KrBFuCQp3eawbpnBIyZQigF` has `link: on`, `us_bank_account: off`, and **no `instant_bank_payments` key at all** — Stripe's docs confirm IBP "are automatically enabled when you turn on Link". Hiding the Bank tile means either **turning Link off entirely** (loses the "Pay with link" button too) or **one option in our own `createPaymentSheet` call** — which is a build change, not a Dashboard change. See the Bank-tile block. | Bank-tile block |
-| 3 | ✅ **DECIDED 2026-09-09 (owner)** | **Game-time decision at the release cut.** If Google has not approved by then, **exclude Google Pay from the release or delay the release** — owner's call at the moment of the cut, not a standing pre-commitment. No flag work is to be done speculatively ahead of that decision. | §4b build #261 block |
+| ~~3~~ | ✅ **MOOT 2026-09-10** | The release gate **dissolved** — Google approved before the cut, so there is nothing to exclude and nothing to delay. No flag work was done ahead of it, which is why there is now nothing to unwind. | — |
 | 4 | **Owner — decision** | **Retire `POST /users/add_card`** (raw PAN, no gate, no caller, only such handler left). Recommended: 410 + log, watch a week, delete. G40-11 session carries it. | block above §5 |
 | ~~5~~ | ✅ **DONE** | App **!295 MERGED** 2026-09-09 on the owner's instruction (merge `e7dd4fab7`, squash no, source kept). Verified on the **production** pipeline that followed, not just the MR: 12 jobs, `services-tests` **ran and passed in 82 s**. The six services suites — including the brand-mark SHA-256 pins and the G40-38 payment-sheet tests — are now actually enforced, and `npm ci` runs on **node:22 / npm 10.9.8**, which reproduces the Appflow runner's lockfile check that failed build #257. ⚠️ A failing services test now blocks every merge. | — |
 | 6 | **Owner — decision, low priority** | Replace the four unsourced card-network PNGs with the artwork Stripe already ships (SVG, 8 brands, fixes Diners/JCB/UnionPay drawing no logo). **Recommended NOT in this release.** | marks block |
@@ -444,6 +444,35 @@ rewriting: the rule is narrower than the sentence claims.
 
 Other facts worth having: submission window 90 days, processing time 10 business days, disputes full
 only (no partial) with a 120-day window, and Radar is **not** supported for Cash App Pay.
+
+### Google Pay — APPROVED 2026-09-10, and the two conditions attached to it
+
+*"io.gophergoapp.requester has been cleared for launch; congratulations on your integration."*
+— The Google Pay API Team. Submitted 09-08, rejected on brand guidelines 09-09, replied same day,
+acknowledged 09-10, **approved 09-10**. ⚠️ **Nothing in our integration changed between the rejection
+and the approval.** That is the strongest evidence yet that the "marketing review" feedback was
+boilerplate rather than a finding — the measurements in the reply held up, and the reviewer withdrew.
+
+**Google's two launch conditions, and where we actually stand — checked, not assumed:**
+
+| Condition | Our position |
+|---|---|
+| *"Your existing risk checks and controls for non-Google Pay card or PAN transactions are also applied to Google Pay transactions."* | ✅ **Satisfied by construction.** `git grep` across `lib/`, `controllers/`, `helpers/` on `origin/production` finds **no bespoke risk or Radar logic at all** — there is no code path that treats a Google Pay charge differently from any other card charge, because there is no per-method branching to begin with. Any Radar rules are account-level in the Stripe Dashboard and apply to every card charge including Google Pay PAN_ONLY. |
+| *"…criteria to selectively trigger 3D Secure (step-up authentication) for normal card transactions… are also applied to Google Pay PAN PAN_ONLY transactions."* | ✅ **Satisfied by construction.** No `request_three_d_secure` is set anywhere in the backend, so every card PaymentIntent carries Stripe's default — confirmed live on production intents read 2026-09-09: `payment_method_options.card.request_three_d_secure: "automatic"`. A Google Pay PAN_ONLY token becomes an ordinary card PaymentMethod and takes the identical path. |
+
+⚠️ **Say this accurately if it is ever asked again:** both conditions hold because **we have no
+per-method logic**, not because controls were deliberately applied to Google Pay. It is the same
+answer either way, but the reason matters if anyone later adds a card-only risk rule — **it would
+have to be applied to Google Pay too, and nothing in the code would remind them.**
+
+⚠️ **What must still be true before anyone sees it:** Google Pay (and Android card scan) appear only
+in a build **signed with the release key registered in the Wallet Console**. The debug APK on the
+owner's Samsung does **not** qualify — do not test Google Pay on it and conclude anything. The next
+Appflow `prod_requester_android` build is the first one that can show it.
+
+📌 **Radar not readable this session** — the Stripe MCP disconnected 2026-09-10. Whether any Radar
+rules exist on the account is unverified here; it does not change the answer above, since whatever
+exists applies to all card charges alike.
 
 ## 5 · Decisions the owner must make before build starts
 
