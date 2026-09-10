@@ -97,9 +97,24 @@ holding a window that has been told to render nothing.
 
 Vivid version: launching Request while Go was in front showed **Go's screen** for four seconds.
 
-## Options
+## ✅ FIXED 2026-09-10 — option 1, built and verified
 
-1. **Give Android a real native splash — `values-v31/styles.xml`.** Set
+`values-v31/styles.xml` + `splash_icon.png` at five densities, both apps. Verified on a
+cold-booted API 36 emulator: **white ground, mark centred, ~3.4 s, fading into the redesigned
+sign-in screen.** No launcher stare, no GIF.
+
+| Repo | MR |
+|---|---|
+| `gopher-mobile-gopher-capacitorjs` | [!304](https://gitlab.com/gophergo/gopher-mobile-gopher-capacitorjs/-/merge_requests/304) |
+| `gopher-mobile-requester-capacitorjs` | [!316](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/316) |
+
+⚠️ **`/android` is in `.gitignore`, but 128 files under `android/` are already tracked.** New files
+there are invisible to `git status` and skipped by a plain `git add` — these needed `git add -f`.
+Anything else added under `android/` must be too, or it will silently never ship.
+
+## Options as they stood before the fix
+
+1. **Give Android a real native splash — `values-v31/styles.xml`.** ← done Set
    `windowSplashScreenBackground` to `#ffffff`, `windowSplashScreenAnimatedIcon` to the approved
    mark, `postSplashScreenTheme` to `AppTheme.NoActionBar`, and drop `windowIsTranslucent`.
    Android 12+ masks that icon to a circle on a flat ground — **which is exactly the mark-on-white
