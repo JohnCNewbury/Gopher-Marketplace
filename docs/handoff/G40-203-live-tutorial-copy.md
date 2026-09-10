@@ -136,3 +136,65 @@ current while you can still sign in.
 - **Two other surfaces carry the same tutorial content** and will drift once this is published:
   the in-app **Help Center** (under *More Stuff*) and the **YouTube** walkthroughs, both
   referenced at the top of these pages. Worth a note for whoever owns them.
+
+---
+
+## ✅ Placement, verified against the LIVE pages — 2026-09-10
+
+Both pages were fetched and their heading trees read, so the placements below are
+against what is actually published today, not against a remembered structure. Every
+sentence marked for replacement was found **word for word**, including the typo.
+
+### Gopher Go Tutorial — `gophergo.io/become-a-gopher/gopher-go-support/`
+
+Live heading order around the insertion point:
+
+```
+h2  Welcome to Gopher Go!
+h2  Complete your profile.
+    h3  Personal Info
+        h4  Helpful Tips:          ← §1 correction goes INSIDE this list
+h2  Ride Sharing & Business Info (Optional)      ← §2 new section goes ABOVE this
+h2  Payout Account
+```
+
+- **§1 (correction).** Inside *Personal Info → Helpful Tips*. The live sentence is:
+  *"Your name, birthday and phone number can't be changed once submitted so please
+  double check before saving."* It is followed by *"Your email, physical address and
+  bio can be updated at anytime."* — so when you paste the replacement, **delete that
+  following sentence too**, or the page will say the same thing twice.
+- **§2 (new section).** A new Elementor **section** between `Complete your profile.`
+  and `Ride Sharing & Business Info (Optional)`. Heading style: **h2**, to match its
+  neighbours — not h3, which is the *Personal Info* level.
+
+### Gopher Request Tutorial — `gophergo.io/hire-a-gopher/gopher-request-support/`
+
+```
+h2  Welcome to Gopher Request!
+h2  Complete your profile.
+    h3  Personal Info
+        h4  Helpful Tips:          ← §1 correction + the typo fix go INSIDE this list
+h2  Payment Account                ← §3 new section goes ABOVE this
+h2  The following info will help you find exactly what you're looking for!
+```
+
+- **§1 (correction) and the second sentence.** Both live, back to back, inside
+  *Personal Info → Helpful Tips*. The typo sentence reads exactly:
+  *"If after singing up, your name and/or number change, please email
+  support@gophergo.io or use the contact us feature in the app and/or website."*
+  **"singing up" is live on the page right now.**
+- **§3 (new section).** A new Elementor **section** between `Complete your profile.`
+  and `Payment Account`. Heading style: **h2**.
+
+### ⚠️ These two pages just became far more load-bearing
+
+The Help Center rebuild (2026-09-10, MRs !301 / !312) makes
+**"Gopher Go Tutorial" / "Gopher Request Tutorial" the FIRST button on the Help Center
+screen in both apps**, pointing at exactly these two URLs. Until now the Go page was
+reachable only from a Best Practices link at sign-up and the Request page from nowhere
+in the app at all. Once that store build ships, these pages are the front door of
+in-app help — which is the same event that unblocks publishing §2 and §3 above.
+
+**The order to do it in:** publish §1 (and the typo) whenever you like — those are
+corrections to text that is wrong today. Publish §2 and §3 **on the day the store build
+lands**, not before, because they describe a button that is not yet in anyone's app.
