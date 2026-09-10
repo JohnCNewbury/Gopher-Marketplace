@@ -381,3 +381,50 @@ with no hand-pick row recorded the auto-connect branch never runs at all and *ev
 a Notify MY Gophers order behaves like "I'll select". Order 65198 did have its row, which is why
 this defect was observable. **A device verification of G40-445 has to confirm the hand-pick
 actually landed** — otherwise a pass here proves nothing.
+
+### Re-verified against a moved production, 2026-09-10 — still unmerged, still needed
+
+Both branches sat overnight while `production` advanced under them (**backend +12 commits, Go app
++18**). Re-checked rather than assumed, because "no conflict" is not "still correct".
+
+**The defect is still live on today's tip.** The suite run against unpatched `origin/production`
+`811e84bf` still fails, printing the offending row
+`{"id":501,"accepted":false,"order_id":65198,"gopher_id":31677}`. This ticket has not been overtaken
+by anything.
+
+**What the drift could have broken, and did not:**
+
+- `controllers/order/update.js` — **untouched** by anything merged since. My hunks survive the merge
+  intact.
+- `controllers/order/notification.js` — **G40-188 (`f9f8de1b`) added 129 lines to it.** That file
+  carries a documented index-shift hazard (its own comment: *"index-matched cases in this file have
+  already been re-pointed once by an insertion"*), and this fix depends on two of those mappings.
+  Checked explicitly: **`order.claim` is still `notif_types[0]` → "Your Request Was Accepted!"**, and
+  **`gopherorder.submitted` is still `notif_types[11]` → "Gopher Interested In Your Request"**.
+  G40-188 appended at the end. ⚠️ **Re-check this pair after any future change to that file** — the
+  fix reads correct and does the wrong thing if the array shifts.
+- Go app — 4 merged commits touched `RequestDetailPullOver.js` / `ordercard.js` / `.gitlab-ci.yml`.
+  The guard still passes on the branch, still **fails on current unpatched production source**, and
+  still **fails on its control** if the handler is renamed.
+
+**Both branches now carry a merge of `origin/production`:** backend `0e7b34ad`, Go `6df671679`.
+The original commits (`6999b254`, `17a22221`, `ab49e18ee`) are unchanged and still cited above —
+nothing was rebased, so no SHA in this doc has gone stale. Both pipelines green, both mergeable.
+
+⚠️ **The backend baseline moved from 1 failure to 4, and none of it is this change.** Corrects the
+"261 suites, 1 failure" figure above, which was true on 2026-09-09 and is not today.
+
+| Suite | Why it fails | Mine? |
+|---|---|---|
+| `admin-jwt-v8-contract` | stale shared-clone `node_modules` (express-jwt 6 against a `^8` dep) | no |
+| `deal-approved-email-carries-the-deal` | needs Postgres at `127.0.0.1:55432`; refuses to pretend to pass without one | no |
+| `g40-419-no-show-location-gate.db` | same — `ECONNREFUSED 127.0.0.1:55432` | no |
+| `g40-9-broadcast-exclusion.db` | same — `ECONNREFUSED 127.0.0.1:55432` | no |
+
+**265 suites, the same 4 failures on my branch and on pristine `production`.** Three are this box
+having no local Postgres, not a defect; they are new only because the suites themselves are new.
+
+**Method note.** GitLab briefly reported !295 as `conflict` on its pre-merge SHA. It was not one —
+merging `ab49e18ee` into `origin/production` by hand exits 0 with no unmerged paths. That reading
+was an unsettled `detailed_merge_status`, and it would have become a tidy false claim that this pass
+rescued a conflicting MR. **Poll it until it settles; a transient status is not a finding.**
