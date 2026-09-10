@@ -428,3 +428,57 @@ having no local Postgres, not a defect; they are new only because the suites the
 merging `ab49e18ee` into `origin/production` by hand exits 0 with no unmerged paths. That reading
 was an unsettled `detailed_merge_status`, and it would have become a tidy false claim that this pass
 rescued a conflicting MR. **Poll it until it settles; a transient status is not a finding.**
+
+### MERGED AND DEPLOYED, 2026-09-10 (owner instruction: *"Merge both now"*)
+
+Both halves are on `production`. **AC 3 is still open** — see the bottom of this section.
+
+| | Repo | Merge commit | Verified |
+|---|---|---|---|
+| Requester | `gopher-backend-api` !549 | **`31707fc5`** | content-read off `origin/production`: all five hunks present |
+| Worker | `gopher-mobile-gopher-capacitorjs` !295 | **`dd66eb4da`** | `auto_connected` present in both handlers; guard script on `production` |
+
+Neither was squashed and neither source branch was deleted, as agreed.
+
+**Backend deploy — verified, not assumed.** CodePipeline `gopher-prod-codepipeline` Source +
+Deploy both **Succeeded**; Elastic Beanstalk `Gopher-Production` **Green / Ok**; `api.gophergo.io`
+answering **200**.
+
+⚠️ **The environment read `Red / Degraded` for a few minutes and it was NOT this change.** The EB
+event log is unambiguous: my version deployed at 16:44 EDT, went `Info → Degraded` at 16:46 with
+*"Incorrect application version found on 1 out of 2 instances"* — the ordinary rolling-batch
+window — and back to **Ok at 16:48**. The Red seen afterwards belonged to the *next* deploy
+(`595eb7bb`, `feat/tier-email-readiness-wiring`, another lane) still rolling, which then settled
+Green too. **Read the events before attributing a post-deploy Red to your own merge**; the
+timestamps separate two deploys that a single health reading merges into one.
+
+**The Go merge needed a conflict resolved.** G40-450 (`live-refresh`) merged into `production`
+between the refresh above and the merge, and both branches had **appended a CI job at the end of
+`.gitlab-ci.yml`** — an append/append conflict, nothing semantic. Resolved by keeping **both**
+jobs in full. Checked afterwards: G40-450's job block is byte-identical to production's copy, and
+the whole-file diff against production is **27 added lines and 0 removed**. Neither handler file
+conflicted; the guard still passes on the merged tree and still fails against current unpatched
+production source.
+
+### What is live, and what is NOT
+
+- **Requester side is live now.** The backend deployed, so the transient "(!) New Request Info (!)"
+  window is closed and the requester's push on that path is now *"Your Request Was Accepted!"*.
+- **Worker side is NOT live.** `gopher-mobile-gopher` is a store-released app: merging to
+  `production` ships nothing to a handset. It reaches Gophers only in the next release build.
+  Until then the auto-connected Gopher still sees *"…sent to the Requestor for approval"* — the
+  server now sends `auto_connected`, but no shipped build reads it. **That is expected**, not a
+  regression, and it is why the flag was made additive.
+
+### ⛔ AC 3 REMAINS OPEN — the ticket is NOT Done
+
+*"Verified on device on a live order, with the `order_logs` accept/assign rows recorded in the
+doc."* Nothing above is a device run. What is proven is that the code is deployed and the service
+is healthy; what is **not** proven is what a handset shows. The ticket stays **In Progress**.
+
+To close it: place a live request with **Notify MY Gophers** on and one Gopher hand-picked, have
+that Gopher accept, and watch the requester's screen through the accept.
+⚠️ **First confirm the hand-pick actually recorded** — check for a `notify_first_orders` row on the
+order. **G40-449** (the checkboxes render pre-ticked, so tapping a name *deselects* it) means an
+order with no such row never enters the auto-connect branch at all, and a "pass" would prove
+nothing. Then paste the `order_logs` accept/assign rows into this section.
