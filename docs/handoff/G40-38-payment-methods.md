@@ -474,6 +474,43 @@ Appflow `prod_requester_android` build is the first one that can show it.
 rules exist on the account is unverified here; it does not change the answer above, since whatever
 exists applies to all card charges alike.
 
+### Google Pay on a device — VERIFIED 2026-09-10, and the one defect it exposed
+
+**Google Pay added, Verified, set as Default** on the owner's Samsung A50, on Appflow build
+`cd65aa3df` (Android, Release, `prod_requester_android`, env `prod`, no Play destination). That is
+Decision 2 complete on real hardware for **all four methods**.
+
+⚠️ **The debug APK could never have shown this.** The build already on the phone was `DEBUGGABLE`
+(versionCode 63, signature `92f0a118`); Google's production environment rejects a debug key outright.
+Proven rather than assumed: `adb install -r` refused the release APK with
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE … signatures do not match`, which is itself the evidence the new
+build carries a different key. After uninstall + install: versionCode **862**, signature
+**`5e5a8f68`**, flags **no longer DEBUGGABLE**. **Never conclude anything about Google Pay from a
+debug build.**
+
+🐛 **DEFECT FOUND AND FIXED — the Google Pay mark sat 12px right of every other logo.** Owner, on the
+device: *"however placement of GPay logo off."* Cause, measured by rasterising the file and taking
+the bounds of what actually draws: Google's **G Pay Acceptance Mark centres its artwork inside a
+padded box** — the drawing fills **54%** of the file's height (exactly the `fills: 0.54` the code
+carried) but only **69%** of its width. `markBox` divides by `fills` so the ink lands at `inkHeight`,
+and `markBleed` cancels the vertical overhang; **nothing cancelled the horizontal padding**, and
+`markBox` scales the whole box up 1.85× to do its job, so the padding was magnified with it.
+Fixed by `markInsetX`, the horizontal twin of `markBleed`, as a negative margin on both sides so the
+element's footprint equals the visible ink. **No size changes.** App MR **!311**, merged `0257cb594`
+to `production`, squash no, source deleted. CI: **17 jobs green including `services-tests`** — 186
+tests vs 181 on the unmodified tree, exactly the five new ones.
+
+⛔ **Google Pay ONLY, and the reason matters.** `google-pay.svg` is the **one** mark file with no
+intrinsic `width`/`height`, so it is the only one a rasteriser scales to fit — and therefore the only
+one that measurement is honest about. The other three rendered at natural size and produced numbers
+that looked usable and were not (`apple-pay` 0.55/0.55, `cash-app-pay` 0.11, `link` 0.08 — all
+artefacts of the renderer, not properties of the files). `markInsetX` returns **0** for any mark
+without `fillsX`, so every other logo keeps today's position. **Do not add `fillsX` to the others
+from that same measurement** — a comment on the mark and a test both say so.
+
+⚠️ **Not yet seen on a device.** The arithmetic is verified and the 12px it removes matches what was
+photographed, but the fix itself wants a look on the next build.
+
 ## 5 · Decisions the owner must make before build starts
 
 1. **PayPal + Venmo — scope. ✅ RULED 2026-09-06 (owner): EXCLUDED from G40-38.** Not deliverable through Stripe for a US account (§0). The options were **(a)** drop both from G40-38 and re-ticket "PayPal/Venmo via Braintree" as its own epic with the second-processor cost in §2 written into it; **(b)** keep them in scope and accept that cost now. Owner chose **(a)**. Deployment reality: nothing built on either rail; no follow-up ticket has been opened — Appendix A is the brief if one is. The July 2 "standalone Venmo → BUILD via Braintree" ruling is **superseded** by this one. **Recommendation was (a).** The July "standalone Venmo → BUILD via Braintree" ruling was made on the premise that PayPal-via-Stripe would carry the bulk of the Venmo audience; that premise is gone. **Full option analysis for this decision: Appendix A** (added 2026-09-06 at the owner's request; the owner is taking the decisions one at a time, starting here).
