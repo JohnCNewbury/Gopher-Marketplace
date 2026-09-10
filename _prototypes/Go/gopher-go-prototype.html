@@ -3241,7 +3241,18 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
           ? '<button class="rq-cta js-update" data-next="'+next.key+'" style="margin-top:11px;">Update request &#8594;</button>'
           : ((j.confirmed
               ? '<div class="rq-prio" style="margin-top:11px;background:#e7f7ec;border-color:#bfe6cd;"><span class="rq-ri">'+sv(I.check)+'</span><b>Confirmed by '+who+'</b> &mdash; '+(j.amt||'your payout')+' paid out.</div>'
-              : '<div class="rq-prio" style="margin-top:11px;background:#FDECE6;border-color:#e3a5ae;color:#C44257;"><span class="rq-ri">'+sv(I.clock)+'</span><b>Pending confirmation</b> &mdash; your part is done, but '+who+' controls the payout until they confirm. Message '+String(who||'them').split(' ')[0]+' anytime to ask them to confirm. You’ll rate them once they do.</div>')
+              // G40-452: a no-show ends here too, and on that ending this note was
+              // false in three ways at once - it named the person who did NOT turn up,
+              // said they "control the payout" when they have no release authority at
+              // all (live: confirm_order_payout throws 409 while the dispute is open),
+              // and read as pending when the payout is BLOCKED. Live returns
+              // status:"pending_review" + disputed + payout_blocked on this path; the
+              // Go app now branches on it (gopher-mobile-gopher-capacitorjs!293) and so
+              // does this. No rating line either: nothing rates before the payout is real,
+              // and on this ending the confirm may never come.
+              : (j.noShow
+                ? '<div class="rq-prio" style="margin-top:11px;background:#FFF4E5;border-color:#e8cfa3;color:#8a5a12;"><span class="rq-ri">'+sv(I.clock)+'</span><b>Payout on hold</b> &mdash; because '+who+' wasn’t there to confirm it, Gopher HQ reviews this request before your payout is released. It’s held until that review is done, and we’ll email you the decision.</div>'
+                : '<div class="rq-prio" style="margin-top:11px;background:#FDECE6;border-color:#e3a5ae;color:#C44257;"><span class="rq-ri">'+sv(I.clock)+'</span><b>Pending confirmation</b> &mdash; your part is done, but '+who+' controls the payout until they confirm. Message '+String(who||'them').split(' ')[0]+' anytime to ask them to confirm. You’ll rate them once they do.</div>'))
             // Two-way ratings stay (canonical) — the Gopher still rates the requester; the score is
             // recorded for the system but not shown back to either side. The rating GATES on the
             // requester's confirm: confirm is what releases the payout, so a rating taken before it
@@ -3808,7 +3819,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
         '<h3>Requester not present</h3>'
         +'<p>You&#8217;re at the drop-off but <b>'+who+'</b> isn&#8217;t here to verify ID. They have <b>10 minutes</b> to arrive — stay in range.</p>'
         +'<div class="js-nscount" style="text-align:center;font-family:Nunito;font-weight:900;font-size:40px;color:#C44257;margin:8px 0 4px;letter-spacing:1px;">10:00</div>'
-        +'<div class="js-nshint" style="text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-bottom:14px;line-height:1.5;">If they don&#8217;t arrive, <b>Report as No Show</b> unlocks at 0:00 — you&#8217;re paid in full and items are not released.</div>'
+        +'<div class="js-nshint" style="text-align:center;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-bottom:14px;line-height:1.5;">If they don&#8217;t arrive, <b>Report as No Show</b> unlocks at 0:00 &mdash; items are not released, and the request is submitted for the full amount. The payout goes to review first, not straight to your bank.</div>'
         +'<button class="js-nsarrived" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:12px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Requester arrived</button>'
         +'<button class="js-nsreport" disabled style="width:100%;margin-top:9px;border:1.5px solid #e0dccb;background:#faf8f2;color:#b9b2a1;border-radius:12px;padding:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:not-allowed;">Report as No Show &middot; unlocks at 0:00</button>');
       const cd=ov.querySelector('.js-nscount'), rp=ov.querySelector('.js-nsreport'), hint=ov.querySelector('.js-nshint');
@@ -3822,9 +3833,9 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
       function unlockReport(){ if(cd) cd.textContent='0:00';
         rp.disabled=false; rp.textContent='Report as No Show';
         rp.style.border='1.5px solid #C44257'; rp.style.background='#fff'; rp.style.color='#C44257'; rp.style.cursor='pointer';
-        if(hint) hint.innerHTML='Window expired — report the no-show (you&#8217;re paid in full, items not released) or keep waiting.'; }
+        if(hint) hint.innerHTML='Window expired &mdash; report the no-show (items not released; the payout is reviewed before it is released) or keep waiting.'; }
       function finishNoShow(){ clearInterval(tick); j.noShowDeadline=null; j.noShow=1; j.noShowActive=0; j.substage='completed'; if(!j.doneAt) j.doneAt=Date.now();  j.navigating=null; if(ov&&ov.remove) ov.remove(); draw();
-        toast('Reported as no-show — you&#8217;re paid in full; items not released.'); }
+        toast('Reported as no-show &mdash; items not released. Payout goes to review.'); }
       ov.querySelector('.js-nsarrived').onclick=()=>{ clearInterval(tick); j.noShowDeadline=null; j.noShowActive=0; ov.remove(); openAgeIdConfirm(); };
       rp.onclick=()=>{ if(rp.disabled) return; finishNoShow(); };   // pay-affecting — unreachable before 0:00
     }
