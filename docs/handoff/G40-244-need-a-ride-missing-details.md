@@ -1,13 +1,32 @@
-# G40-244 — "Need a Ride" details on the Gopher's view — BUILT, awaiting UI ruling + device test
+# G40-244 — "Need a Ride" details on the Gopher's view — MERGED to `production`; AC 1/3/4 deliberately deferred
 
 **Type:** Bug (`worker`) · **Priority:** Medium · Sprint "Payment Options" (2026-09-07 → 09-16)
 **Branch:** `G40-244-need-a-ride-details` in `gopher-mobile-gopher`, off `origin/production`
-**Commits:** `ac77eb10f`, `1235747bb` · **Side-by-side:** [`G40-244-side-by-side.html`](G40-244-side-by-side.html)
+**Merged:** MR !284 → `production`, merge commit **`f19bffd2d`** (2026-09-10), carrying
+`ba2a276f9` + `dcecf9366`. Not squashed; source branch kept.
+**Side-by-side:** [`G40-244-side-by-side.html`](G40-244-side-by-side.html)
 
-> **Status, honestly stated.** The code is written, builds, lints, passes all eleven contract
-> guards and is measured at 375px. **Two things are outstanding and neither is mine to close:**
-> the owner's ruling on the visible UI change (standing rule: side-by-side first), and a device
-> test against a real ride order. Nothing here has run on a phone.
+> **Status, 2026-09-10 — MERGED, with three ACs deliberately left open.**
+>
+> Verified by **CONTENT** on `origin/production`, not by the merge report: `Riders:` and
+> `Special Instructions:` present in both changed files, ``title={`Details:`}`` gone from both,
+> guard file present.
+>
+> ⚠️ **AC Scenarios 1, 3 and 4 are NOT met.** They are **deferred by decision** — the owner chose
+> to merge on the code-level evidence rather than spend a real card authorisation to manufacture a
+> ride. **They are not "passed".** No Need-a-Ride request has ever rendered on this code. Whoever
+> picks this up: do not tick them off the back of the merge.
+>
+> **Rebasing before the merge mattered.** The branch was **52 commits behind** and all three touched
+> files had moved underneath it (6 / 4 / 6 commits). Rebased first; `.gitlab-ci.yml` conflicted
+> append-vs-append, resolved by rebuilding from production's copy and re-appending the job so
+> `large-screen-deferral`, `available-list-survives-location-failure`, `fav-auto-connect-modal` and
+> `completion-review-copy` all survive. Post-rebase diff was exactly 4 files, every deletion inside
+> a row deliberately replaced. All **14** guards + lint + prettier green locally; full pipeline
+> green on `dcecf9366`.
+>
+> **Merging is not shipping.** This is on the `production` branch; it reaches phones only via an
+> Appflow build and a store release.
 
 ---
 
