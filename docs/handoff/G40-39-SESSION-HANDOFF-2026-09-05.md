@@ -482,3 +482,83 @@ that Gopher accept, and watch the requester's screen through the accept.
 order. **G40-449** (the checkboxes render pre-ticked, so tapping a name *deselects* it) means an
 order with no such row never enters the auto-connect branch at all, and a "pass" would prove
 nothing. Then paste the `order_logs` accept/assign rows into this section.
+
+### ✅ AC 3 CLOSED — device-verified on live order 65352, 2026-09-10
+
+Owner ran it on a real order and reported: *"worker as expected. no select my gopher lag. immediate
+connection."* Everything below was then read first-hand from production — CloudWatch and the
+production DB — not inherited from that report.
+
+**⚠️ Times below are UTC. `order_logs.created_at` stores a NAIVE UTC timestamp.** My first query
+aliased `created_at AT TIME ZONE 'America/New_York'` as `t_edt` and it was **wrong by +4h** — that
+expression treats the naive value as New York wall time and converts *to* UTC, the opposite of what
+was wanted. Caught by comparing against the CloudWatch epoch (`1789062998553` = 17:56:38.553 UTC =
+13:56:38 EDT), which is authoritative because it is an epoch, not a rendered string. The correct
+conversion is `created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York'`. **This is the second
+time this exact trap has bitten this document** — see the "corrected 2026-09-04 evening" note near
+the top. Subtract 4h from any UTC time here for EDT.
+
+**Order 65352** — requester **31677**, gopher **1** (roles reversed vs 65198), `Need a Ride`,
+`selectgopher = true`, `notify_fav_gopher = true`, `request_schedule_later = false`.
+
+**The G40-449 gate passed — this run actually proves something.** `notify_first_orders` row
+**13486** → `notify_gopher_id = 1`, corroborated independently by the broadcast log:
+`G40-44: order 65352 scheduled 4 tier(s) — my_gophers@0s(1) …` then
+`tier my_gophers fired to 1 Gopher(s)`. The hand-pick recorded, so the order really did enter the
+auto-connect branch.
+
+**`order_logs`, the rows AC 3 asks for (UTC):**
+
+| Time (UTC) | `order_logs.notes` |
+|---|---|
+| 17:56:38.201 | Order Created (Need a Ride-null) |
+| **17:56:57.047** | **Order Accepted by Fav- Gopher#1** |
+| **17:56:58.050** | **Order Assigned to Fav Gopher#1** |
+| 17:56:58.603 | AUTH LIFECYCLE: authorization holding $15.04 (`pi_3UECDCCQp3eawbpn19k38IoQ`) |
+
+**Accept → Assign is still a gap — 1.003 s here, 2.84 s on 65198 — and that is the point.** The fix
+never removed the gap; it removed what was *visible* during it. Proof, from the same order:
+
+**`order_gophers` has exactly ONE row, id 10541, `accepted = true`, `declined = false`.** Under the
+old code that row was written `accepted = false` and only flipped ~1 s later, and for that second it
+was selected by `retrieve.js`'s `select_my_gopher` query and drawn as "(!) New Request Info (!)".
+It was never selectable here.
+
+**The push half, proven by the log line the fix added:**
+
+```
+17:56:57  info: Creating select my gopher record and back
+17:56:58  info: Sending Select My Gopher Auto-Connected Push Notification (order.claim)
+17:56:58  info: SUCCESS: push notif sent to fcm (new app): fhyv_GYVScyem9VjBBrPsa:APA91b…
+```
+
+That one line carries three facts at once: the `selectgopher` branch ran, **`auto_connect_fav`
+evaluated true** (which it cannot do without an `is_notify_first` hit, so it re-proves the G40-449
+gate), and the push sent was **`order.claim` = "Your Request Was Accepted!"**. Pre-fix, the same
+line would have read `Submitted … (gopherorder.submitted)` = "Gopher Interested In Your Request".
+The FCM SUCCESS line confirms it was actually delivered.
+
+### AC status — final
+
+| AC | State |
+|---|---|
+| 1. Never shows "(!) New Request Info (!)", its banner, or the approve/decline flow, even transiently | ✅ **Device-verified** (owner: "no select my gopher lag, immediate connection") **and** server-verified (`order_gophers` never pending; push is `order.claim`) |
+| 2. Another Gopher accepting the same order still shows "I'll select" | ⚠️ **NOT device-exercised** — see below |
+| 3. Verified on device on a live order, `order_logs` rows recorded here | ✅ order 65352, rows above |
+| 4. Doc row written before the ticket closes | ✅ this section |
+
+**⚠️ AC 2 was not exercised on a device, and I am not going to pretend it was.** No second,
+non-hand-picked Gopher accepted 65352. What supports it instead: the code path for a non-hand-picked
+Gopher is **provably unchanged** — `accepted: auto_connect_fav` is `accepted: false` for them,
+byte-for-byte today's behaviour — and test 2 of
+`g40-445-fav-accept-never-a-pending-bid.test.js` asserts that acceptance still produces a visible
+bid, no assignment, and the "Gopher Interested" push. **Judgement, stated openly rather than
+silently: that is sufficient and a second device run is not worth a third live account and a real
+charge.** If the owner disagrees, the run is: same order shape, have a Gopher who was *not*
+hand-picked accept, and confirm the approve/decline row appears.
+
+**Still outstanding, and NOT part of these ACs: the worker half is store-gated.** The Go app change
+is merged (`dd66eb4da`) but ships to no handset until the next release build. On 65352 the owner
+reported the worker "as expected" — that is the *pre-fix* behaviour, correctly, because no shipped
+build reads `auto_connected` yet. **It wants a line on the next release's test pass**, not a
+reopening of this ticket.
