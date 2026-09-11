@@ -20,6 +20,56 @@ the flow changes a live row, which is yours.
 
 ---
 
+## ⛔ OWNER RULINGS 2026-09-11 — read before re-raising either of these
+
+### 1. "That number is already registered" — FIXED, and the wording is deliberate
+
+Owner found it on the live flow: he moved his sign-in to a number that already had an account,
+passed the email code and the DOB, and **"received a generic error."**
+
+Two causes, both now merged to `production`:
+
+- **The client threw the message away.** The axios interceptor resolved `data.error`,
+  `data.errors[]` and `data.meta.message` — but **not `data.message`**, which is the shape this
+  API uses. Counted on the backend's `origin/production`: **97** app-facing 4xx responses in
+  `controllers/user`, `/order` and `/common` return a top-level `message`, against **16** anywhere
+  returning `error`. Go !312 / Request !325.
+- **The copy sent them to a dead end.** It said *"Use a number that isn't registered"* — the one
+  thing this population cannot do, because the blocking account is usually the orphan they created
+  themselves. Backend !581 now points at **More → Help Center → Message Support**, with different
+  wording when the blocking account carries an `onboarding-…@placeholder.gophergo.io` email.
+
+Owner: *"We have hundreds of users who tried to do this in the 'trapped email' era and we need to
+assume that. So the error needs to point them to help and we'll delete the new user once we verify
+the match."*
+
+⚠️ **The placeholder branch is WORDING, never OUTCOME.** Same status, same refusal, same next step.
+Auto-merging or auto-deleting an account is a human decision on evidence, per that ruling. Do not
+turn it into a different outcome.
+
+⚠️ **Not an enumeration oracle, and this was checked rather than assumed.** Both call sites sit
+after the email code *and* the DOB; a decoy row never advances past `verify_email`, so only someone
+who already controls the account's inbox and knows its birthdate can reach either message. The
+uniform-response rule still governs `start` and `verify_email` — the steps anyone can reach — and
+nothing in that change touches them.
+
+### 2. Placeholder-email accounts cannot start recovery at all — DEFERRED, do not re-raise
+
+Recovery sends its code to the email **on file**. An account whose email is a
+`@placeholder.gophergo.io` has nowhere to send it, and `recovery_start` correctly treats it as
+non-recoverable. So part of the population this flow exists for cannot enter it — which overlaps
+with the population in (1).
+
+**Owner, 2026-09-11, asked whether to size it against the database:** *"No need to size it. Once we
+get more bug fixes under our belt, we'll reach out to those specific users and work on the solution
+then."*
+
+So this is **a known, accepted gap with a decided plan** — direct outreach to the affected users
+once the current bug-fix run lands — **not an open defect and not something to re-measure.** Leave
+it alone until the owner reopens it.
+
+---
+
 ## Phase 0 — the baseline, before anything
 
 **Count `recovery_attempts`.** Expected: **0 rows, ever.** That is the direct confirmation that
