@@ -223,16 +223,21 @@ not re-derive the wrong ones:
    | Claim | Status |
    |---|---|
    | `reminder_autopay_senton` holds **1,239** non-null timestamps | **INHERITED.** Not measured in this session. Sole source: a code comment at `middleware/cronTasks.js:1127`, committed **`117cc6ce`, 2026-08-16**, whose own latest data point is **2026-08-14**. |
-   | `1,241` non-null, most recent 2026-09-09 | **INHERITED** by the G40-304 session from memory `sequelize-now-is-a-type-not-a-value`. They did not measure it either and said so. |
+   | `1,241` non-null, most recent **2026-09-09 05:57**, against 64,274 total orders | **A SECOND, LATER SOURCE — not a copy of the comment.** Its most-recent data point post-dates the comment's by 25 days, so it cannot have been read off it. Self-described as a direct measurement, carried in memory `sequelize-now-is-a-type-not-a-value`. **Unconfirmed and not re-runnable from either session** — neither of us has DB access from here, and neither worked around it. |
    | `orders.updated_at IS NULL` = 0, column is NOT NULL | **INHERITED**, same 2026-08-16 comment. **NOT provable from the repo** — `models/orders.model.js:80-82` declares only `updated_at: { type: 'TIMESTAMP' }` with **no `allowNull`**. Confirming it needs the production DB. |
    | `updated_at` is a raw-string `'TIMESTAMP'` column | **VERIFIED first-hand** 2026-09-11, `models/orders.model.js:81`. |
    | The mechanism (wrong layer: `queryGenerator.updateQuery` vs `Model.update`) | **The strongest part, and it needs no count** — it is checkable by reading either layer. |
 
-   **An earlier draft of this document said "two independent counts hours apart." That was wrong.**
-   There were never two measurements — there is one figure from one 25-day-old comment, and one
-   from memory. Two sessions agreeing on an inherited number is not corroboration; it is the same
-   number arriving twice. If anyone wants certainty, re-measuring is a **production DB** access
-   item for the owner, not something to work around.
+   **Two drafts of this document got this wrong in opposite directions, and the second error is
+   the instructive one.** Draft 1 said "two independent counts hours apart" — false; neither
+   session ran a query. Draft 2 said "neither of us measured anything" — **also false, and worse**,
+   because it quietly promoted an unverified claim to a disproven one. The 1,241 figure is a real,
+   distinct, later source that simply cannot be re-run from here.
+
+   **The safe formulation is: ONE unconfirmed measurement, plus one 25-day-old comment — not two
+   independent counts, and not zero.** What neither session did is measure anything *in these
+   sessions*. If anyone wants certainty, re-running it is a **production DB** access item for the
+   owner, not something to work around.
 
    ⛔ **The systemic finding, which matters more than the bug.** Commit `117cc6ce` (2026-08-16) is
    titled *"Correct a wrong explanation I shipped: Sequelize.NOW is NOT broken."* **The correction
