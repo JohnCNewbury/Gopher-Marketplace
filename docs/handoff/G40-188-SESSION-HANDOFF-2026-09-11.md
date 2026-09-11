@@ -21,7 +21,7 @@ and live server-side. **G40-469** (review-hold stall alert) is built, green, and
 |---|---|
 | **G40-188** | Server side **complete and proven on live traffic**. Client side merged but **reaches nobody until an Appflow build** — that is the whole remaining critical path, and it is the owner's to run. |
 | **G40-469** | Live and working as of 10:49:01Z today — **after shipping broken and being hotfixed**. §3 has the arc; read it before touching that file. |
-| **Your first job** | ~~§3 open defect~~ **DONE 2026-09-11 — `gopher-backend-api!579` awaits the owner's merge.** Next: content-verify the deploy (`git show origin/production:middleware/cronTasks.js \| grep auth_expires_at`) and update the doc row. |
+| **Your first job** | ~~§3 open defect~~ **DONE 2026-09-11 — `gopher-backend-api!579` merged `8e87e40b`, deployed 12:23Z, content-verified; doc row updated.** Nothing open on G40-469 except the owner's call on the `in_progress` phantom state (§5 item 6). |
 | **Do not** | Re-litigate §1 (settled owner rulings), or trust any number in §6 without re-reading its provenance row. |
 | **Repo state** | This repo has **unpushed commits belonging to other sessions. Do not push.** See §7. |
 
@@ -170,6 +170,8 @@ environment back to **Ok**, 0 Severe.
 
 #### ⛔ THE OPEN DEFECT — the query is over-broad. This is the next session's main job.
 
+> ✅ **MERGED AND LIVE — owner said "Merge it for me"; merged as `8e87e40b` at 12:17:19Z, CodePipeline `e38be3f8` Succeeded, EB version label carries the SHA (12:23:25Z), content-verified on `origin/production`, no `CRON FAILED` after the deploy.** The block below is the pre-merge record.
+>
 > ✅ **RESOLVED IN CODE, NOT MERGED — successor session, 2026-09-11 ~12:15Z.**
 > **`gopher-backend-api!579`** (`fix/g40-469-review-hold-auth-bound`, commit `0dd5786b`, cut from
 > `origin/production` @ `4538d7b0`; target `production` · squash **no** · delete source **no**).
@@ -302,7 +304,7 @@ owner action or a decision already made.
 | # | Item | Owner | Notes |
 |---|---|---|---|
 | 1 | ~~Merge !573~~ ~~confirm the deploy~~ **BOTH DONE** — see §3 for the arc | — | Live, verified in CloudWatch at 10:49:01Z. |
-| 1b | ~~Bound the review-hold query~~ **BUILT — `gopher-backend-api!579`, NOT merged** | **John** (merge click) | Bound is the authorisation clock, not a fixed ceiling; `delivered` kept. Count answered from CloudWatch: 45865 was the only row. See §3. |
+| 1b | ~~Bound the review-hold query~~ **LIVE — `gopher-backend-api!579` merged `8e87e40b`, deployed 12:23Z** | — | Bound is the authorisation clock, not a fixed ceiling; `delivered` kept. Count answered from CloudWatch: 45865 was the only row. See §3. |
 | 2 | Cut the **Appflow build** (GO !294, Request !309 + !313) | **John** | Store creds are READ-ONLY; rollout is owner-only in the console. |
 | 3 | Publish both **101 branches** with that build | next session | Only after the build is live, never before. |
 | 4 | **Device re-test** of the fork | **John** | Smallest Android first — the sheet has **18px** headroom at 360×640. |
@@ -423,7 +425,7 @@ tree was touched.
 tests. It is **not Done** until the build ships and the 101s publish — *Done means waiting on
 nothing*.
 
-**G40-469** — built and green; **not Done** until !573 merges.
+**G40-469** — !573 + !575 + !579 all merged and live; the doc row is written. **Done-eligible: waiting on nothing** (the `in_progress` phantom state is §5 item 6, a separate owner call). Status transition is the owner's.
 
 ⚠️ A ticket is never the source of truth. The canon lives in the cancellation doc and in memory
 `g40-188-cancellation-design-canon`; the ticket points at them.
