@@ -210,13 +210,38 @@ not re-derive the wrong ones:
 
 1. **`Sequelize.NOW` does NOT bind NULL via `Model.update`.** The opposite was repeated all day
    and propagated to the HQ session before being caught. Production evidence:
-   `reminder_autopay_senton` is written only with `db.Sequelize.NOW` and holds **~1,239-1,241
-   non-null timestamps** (two independent counts hours apart; the column is still being written,
-   so both are right). `orders.updated_at IS NULL` = **0**, and the column is NOT NULL besides —
-   silent blanking is not a state it can be in. The bad claim came from testing
-   `queryGenerator.updateQuery` instead of `Model.update`. **Do not "fix" healthy call sites** —
-   the same pattern lives in `cost_adjustment.js` and `update.js`, which are payments paths, and a
-   drive-by change on a false alarm is the real risk. Memory entry rewritten.
+   the bad claim came from testing
+   `queryGenerator.updateQuery` — the low-level SQL generator — instead of `Model.update`, which
+   normalises values first. Wrong layer. **Do not "fix" healthy call sites** — the same pattern
+   lives in `cost_adjustment.js` and `update.js`, which are payments paths, and a drive-by change
+   on a false alarm is the real risk. Memory entry rewritten.
+
+   ⛔ **PROVENANCE — read this before citing any number in support of the retraction.**
+   Corrected 2026-09-11 after the G40-304 session challenged the chain, and the challenge proved
+   larger than either of us thought:
+
+   | Claim | Status |
+   |---|---|
+   | `reminder_autopay_senton` holds **1,239** non-null timestamps | **INHERITED.** Not measured in this session. Sole source: a code comment at `middleware/cronTasks.js:1127`, committed **`117cc6ce`, 2026-08-16**, whose own latest data point is **2026-08-14**. |
+   | `1,241` non-null, most recent 2026-09-09 | **INHERITED** by the G40-304 session from memory `sequelize-now-is-a-type-not-a-value`. They did not measure it either and said so. |
+   | `orders.updated_at IS NULL` = 0, column is NOT NULL | **INHERITED**, same 2026-08-16 comment. **NOT provable from the repo** — `models/orders.model.js:80-82` declares only `updated_at: { type: 'TIMESTAMP' }` with **no `allowNull`**. Confirming it needs the production DB. |
+   | `updated_at` is a raw-string `'TIMESTAMP'` column | **VERIFIED first-hand** 2026-09-11, `models/orders.model.js:81`. |
+   | The mechanism (wrong layer: `queryGenerator.updateQuery` vs `Model.update`) | **The strongest part, and it needs no count** — it is checkable by reading either layer. |
+
+   **An earlier draft of this document said "two independent counts hours apart." That was wrong.**
+   There were never two measurements — there is one figure from one 25-day-old comment, and one
+   from memory. Two sessions agreeing on an inherited number is not corroboration; it is the same
+   number arriving twice. If anyone wants certainty, re-measuring is a **production DB** access
+   item for the owner, not something to work around.
+
+   ⛔ **The systemic finding, which matters more than the bug.** Commit `117cc6ce` (2026-08-16) is
+   titled *"Correct a wrong explanation I shipped: Sequelize.NOW is NOT broken."* **The correction
+   already existed in the codebase, with the right root cause, 25 days before three sessions
+   independently re-derived the false claim on 2026-09-10 and shipped it into two more production
+   comments.** The comment was doing its job — it was simply never read. A correction buried at
+   line 1127 of a 1,200-line cron file does not defend itself. That is the argument for fixing the
+   two sites in §5 item 7 rather than leaving a third generation of this to be re-derived in
+   October.
 
    ⚠️ **The one genuinely fatal case is NOT disproven:** `Sequelize.DATE` columns given
    `"Invalid date"` still produce `invalid input syntax for type timestamp` → HTTP 500. That is
