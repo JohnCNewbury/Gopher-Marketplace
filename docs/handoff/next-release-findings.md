@@ -444,6 +444,76 @@ from email-OTP on a picture-less account dead-ends on an empty profile; recovery
 owner: not a blocker) belong to the release-QA session and live in
 `Dev/gopher-dev-handoff/release/TESTING-FINDINGS-LEDGER.html` @ `51e662e`.
 
+### F3c — ⛔ THE TENTH INSTANCE, AND THE FIRST ONE ROOT-CAUSED. Fixed 2026-09-11 for every schema screen.
+
+**Owner report, 2026-09-11:** on the signup **Confirmation** screen the keyboard covered the Email
+field while it was being typed into, and the form could not be scrolled clear of it.
+
+**The root cause F3b's nine tickets never named** — and the one G40-448 predicted:
+
+`renderForm` sizes its scroll container to 95% of a **module-scope `innerHeight`**, read once at
+import and never updated. Measured at 393×852 on Confirmation:
+
+| app | scroll travel, entire form | Email field | keyboard top |
+|---|---|---|---|
+| Gopher Go | **20px** | y=509–541 | y=516 |
+| Gopher Request | **0px** | bottom y=584 | y=516 |
+
+There was **nowhere to scroll to**. Every one of the nine previous fixes moved a field; none asked
+whether the screen could scroll at all. `personal_detail` had it too (email 79px under the keyboard).
+
+**Fixed — Go !308 / Request !322, merged to `production`:**
+
+- The keyboard spacer was rendered as a **sibling after** the scroll container. Height added outside
+  a scroll container adds no scrollable room inside it — it only appeared to half-work because
+  flex-shrink squeezed the container. It now sits **inside** the scroller with `flexShrink: 0`
+  (a flex column collapses an empty child back to zero otherwise). Travel **20px → 356px** (Go),
+  **0px → 313px** (Request).
+- `useKeyboardSpace` now **computes** the scroll — field bottom 44px above whichever is higher, the
+  scroller bottom or the keyboard top — replacing a 100ms-delayed smooth
+  `scrollIntoView({block:"center"})` that fired only on `keyboardWillShow`, and so did nothing when
+  moving between fields with the keyboard already up.
+
+**Also fixed — Go !310 / Request !324:** `Keyboard.removeAllListeners()` is **app-wide, not
+component-scoped**, and `bottomMenu.js`, `Orderdispute.js` and `SignUp.js` all called it in cleanup
+while rendered alongside `useKeyboardSpace`. `SignUp.js`'s effect is deleted outright — its listeners
+only set an `iskey` state nothing read, with `[iskey]` as the dependency array, so **every keyboard
+show and hide tore down every Capacitor keyboard listener in the app**.
+
+Both are **store-gated**: merged, but they reach nobody until the next Appflow build.
+
+#### What is still open — G40-448 owns it (G40-472 was raised for this and CANCELLED, owner 2026-09-11: "use 448 then")
+
+**1. `Orderdispute.js` is the last component rolling its own keyboard handling** (iOS-only
+`keyboardDidShow` → bare `scrollIntoView`). It is rendered **by** `renderForm`, so `useKeyboardSpace`
+is already mounted above it. Acceptance:
+
+- `Orderdispute.js` registers no keyboard listeners of its own, in either app.
+- With the keyboard open every text input on the dispute screen is fully visible — iOS **and**
+  Android, **both** apps.
+- The screen has real scroll travel with the keyboard up — **state the measured number**, do not
+  assert it. Its containers use the same frozen pattern (`height: isIOS ? innerHeight :
+  innerHeight * 0.89`), so it may need the treatment `renderForm` got.
+- No `Keyboard.removeAllListeners()` anywhere in either app — currently true, keep it true.
+- Verified on device, not only in a harness.
+
+⚠️ `Orderdispute.js` appears in G40-421's "already checked and cleared" list. That clearance was
+against the `position:fixed`/`absolute` class **only**, explicitly not this one. It does not cover it.
+
+**2. Five hand-built screens are safe by layout luck, not by design.** `SignUp.js`,
+`verifyEmail.js`, `verifyotp.js`, `recoverNumber.js`, `inbox.js` all pin the same stale
+`innerHeight` and none mounts `useKeyboardSpace`. Measured 2026-09-11: none is occluded today —
+tightest is `recoverNumber`'s phone field at **33px** of clearance, and `inbox`'s only input is a
+search box near the top. **Any field added lower on any of them is occluded**, with no scroll room
+to recover.
+
+⚠️ **How this was measured, and its limit.** A browser harness at a phone viewport, driving the real
+React state and the real DOM: dead API port so the axios interceptor cannot log you out, a seeded
+`gopher.mobileConfig.v1`, `history.pushState` for the router state `/form` needs, and
+`fiber.memoizedState.queue.dispatch` to drive `keyboardHeight`. The keyboard is simulated by
+resizing `document.body` exactly as the plugin does in `resize: "body"` mode. **Faithful for
+geometry; it proves nothing about native event delivery.**
+
 ### F4 — Android Request: the scheduling picker's "Done" button collides with the tab bar
 
 **Where:** Gopher Request → new Grocery request → schedule (date/time picker).
