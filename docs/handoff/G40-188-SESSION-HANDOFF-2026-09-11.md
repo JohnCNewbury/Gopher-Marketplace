@@ -15,6 +15,27 @@ and live server-side. **G40-469** (review-hold stall alert) is built, green, and
 
 ---
 
+## ⏱ START HERE — the 60-second version
+
+| | |
+|---|---|
+| **G40-188** | Server side **complete and proven on live traffic**. Client side merged but **reaches nobody until an Appflow build** — that is the whole remaining critical path, and it is the owner's to run. |
+| **G40-469** | Live and working as of 10:49:01Z today — **after shipping broken and being hotfixed**. §3 has the arc; read it before touching that file. |
+| **Your first job** | ⛔ **§3, "THE OPEN DEFECT"** — the review-hold query has no upper age bound, so it alerts on 392-day-old delivered orders. |
+| **Do not** | Re-litigate §1 (settled owner rulings), or trust any number in §6 without re-reading its provenance row. |
+| **Repo state** | This repo has **unpushed commits belonging to other sessions. Do not push.** See §7. |
+
+**Two habits this session learned the hard way, both worth inheriting:**
+
+1. **A green test suite proved nothing** — every assertion was about source text, none executed
+   the code. CloudWatch caught the bug, twelve failures in. When you add a guard, break the code
+   deliberately and watch it fail before you trust it.
+2. **Verify by content, never by a report.** "✓ Merged!", a green pipeline number, a passing
+   suite, and a peer's message are all claims. Each one here was checked at source, and three of
+   them turned out to need correcting.
+
+---
+
 ## 1. Owner's canonical design (settled — do not re-litigate)
 
 Recorded in memory `g40-188-cancellation-design-canon` and in the cancellation canon doc.
@@ -86,7 +107,7 @@ The "Other" textarea is revealed **above** the keyboard (G40-421 occlusion fix).
 
 ---
 
-## 3. State of play — what is NOT live
+## 3. G40-469 — shipped, broken, fixed — and what is still NOT live
 
 ### ✅ G40-469 — MERGED, SHIPPED BROKEN, HOTFIXED, NOW WORKING. Read the whole arc.
 
