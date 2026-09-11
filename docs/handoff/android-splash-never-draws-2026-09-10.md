@@ -97,6 +97,59 @@ holding a window that has been told to render nothing.
 
 Vivid version: launching Request while Go was in front showed **Go's screen** for four seconds.
 
+## 🎚️ Shortening the Android hold — the mechanism, and what it cannot do (2026-09-11)
+
+Owner on the first debug figure: *"6.6 is way too long."* Decision, same day: **an Android hold of
+1500 ms, GO only.** Implemented by the release-desk session, not here — recorded here because this
+doc is the home for the mechanism.
+
+### The shape, and why it is this shape
+
+- `launchShowDuration` stays **2500** — it is global (no per-platform key, see option 2 above), and
+  2.5 s on iOS is what the owner asked for.
+- `launchAutoHide` stays **true**.
+- **Android-only `SplashScreen.hide()`**, gated on `Capacitor.getPlatform()`, fired at **1500 ms of
+  DOCUMENT-elapsed time**.
+
+⛔ **`launchAutoHide: false` was proposed and rejected — it can strand the splash forever.** The
+keep-on-screen condition is `(isVisible || isHiding)`, and with autoHide off nothing clears
+`isVisible` except an explicit `hide()` from the web layer. A JS bundle that fails to boot — the
+F-023 / F-025 white-screen class this app has actually shipped — would then freeze on the splash with
+no exit but force-quit. Today that same failure still lands the user *in* the app. The backstop must
+survive the web layer dying.
+
+**It is not needed anyway.** An explicit `hide()` can only cut the splash *short* of the natural
+dismissal (`firstOnPreDraw + 2500`), and every value worth setting is below that — so `hide()` always
+fires first and autoHide never has to be turned off. Same result, no hang.
+
+⚠️ **"Elapsed since launch" is not measurable from the web layer.** `performance.timeOrigin` is when
+the WebView *document* started, not when the process did, and the gap between them is precisely the
+startup term. Capacitor exposes no process-start time. Any code claiming to floor on time-since-launch
+is silently flooring on document time. Document-elapsed is the honest unit — and it is close enough
+to `firstOnPreDraw` that **a platform-gated `hide()` at X ms is, near enough, "an Android-only
+`launchShowDuration` of X"**: the knob `declarations.d.ts` refuses to expose, reached a supported way.
+
+### Measured on the owner's SM-A505U (API 30), release-config builds
+
+| condition | D (start → first draw) | splash total |
+|---|---|---|
+| GO, warm cache | ~0.55 s | **3.3 s** at the 2500 hold |
+| GO, first run after install | **~2.65 s** | `am start -W` TotalTime 5391 COLD |
+| GO, 1900 ms hold (proxy, ×2) | — | 3.4 s / 3.0 s — **0.4 s run-to-run variance on one build** |
+| REQUEST, first run after install | ~1.95 s | 4.7 s |
+
+⛔ **The 1500 figure is a target, not a guarantee — and first-run cannot meet it at any hold value.**
+With D ≈ 2.65 s on first run after install, that launch exceeds 3.5 s **even at a hold of zero**. That
+is app boot cost, not splash config, and no value of this knob touches it. Expect ~2.6–3.0 s on a warm
+launch and longer on first run; do not read 1500 as a promise of a fixed total. The totals stay
+device-dependent because the startup term varies and nothing in the web layer can absorb it.
+
+⚠️ **REQUEST IS NOT COVERED.** The instruction was "1500 GO". Request's D is ~1.95 s against GO's on
+the same handset, so the same number does not produce the same result. Its value is a separate
+owner decision.
+
+---
+
 ## ⏱️ Splash DURATION on Android — how it actually adds up (2026-09-11)
 
 **Total splash time = time to the first `onPreDraw` + `launchShowDuration`.** It is additive, not
