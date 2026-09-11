@@ -191,6 +191,7 @@ owner action or a decision already made.
 | 4 | **Device re-test** of the fork | **John** | Smallest Android first — the sheet has **18px** headroom at 360×640. |
 | 5 | Drop *"Added ability to choose a set reason when you cancel a job"* from App Store GO notes | **John** | **Permanently** — it is false on iOS too. Release-note debt, not a code bug. |
 | 6 | `in_progress` phantom state — its own ticket? | **John's call** | Recorded in G40-469. See below. |
+| 7 | Correct two false code comments on production | **John's call** | `cancel.js` + `keep_listed.js`. Comments only, code is healthy. Zero runtime risk; needs a merge that auto-deploys. See §6. |
 
 ### On item 6 — the finding, stated plainly
 
@@ -209,9 +210,34 @@ not re-derive the wrong ones:
 
 1. **`Sequelize.NOW` does NOT bind NULL via `Model.update`.** The opposite was repeated all day
    and propagated to the HQ session before being caught. Production evidence:
-   `reminder_autopay_senton` is written only with `db.Sequelize.NOW` and holds **1,239 non-null
-   timestamps**. The bad claim came from testing `queryGenerator.updateQuery` instead of
-   `Model.update`. **Do not "fix" healthy call sites.** Memory entry rewritten.
+   `reminder_autopay_senton` is written only with `db.Sequelize.NOW` and holds **~1,239-1,241
+   non-null timestamps** (two independent counts hours apart; the column is still being written,
+   so both are right). `orders.updated_at IS NULL` = **0**, and the column is NOT NULL besides —
+   silent blanking is not a state it can be in. The bad claim came from testing
+   `queryGenerator.updateQuery` instead of `Model.update`. **Do not "fix" healthy call sites** —
+   the same pattern lives in `cost_adjustment.js` and `update.js`, which are payments paths, and a
+   drive-by change on a false alarm is the real risk. Memory entry rewritten.
+
+   ⚠️ **The one genuinely fatal case is NOT disproven:** `Sequelize.DATE` columns given
+   `"Invalid date"` still produce `invalid input syntax for type timestamp` → HTTP 500. That is
+   what broke `dispute_resolved_at` on order **#64672** (fixed in !496). Only the raw-string
+   `'TIMESTAMP'` + `Model.update` combination was wrong. Do not over-correct in the other
+   direction.
+
+   ⛔ **The false claim is SHIPPED ON PRODUCTION, in two code comments — and one of them is
+   mine.** Verified 2026-09-11 on `origin/production`:
+   - `controllers/order/cancel.js:~232-237` — shipped by **!572, this session**. It asserts "every
+     release so far has blanked updated_at" and miscites the dispute_resolution 500 as the same
+     defect, when that was the `Sequelize.DATE` case above.
+   - `controllers/order/keep_listed.js:~93-98` — asserts "every 'Assign New Gopher' tap has been
+     BLANKING updated_at". Flagged independently by the G40-304 session.
+
+   **The code in both files is correct** (`new Date()` is fine) — only the comments lie. So there
+   is zero runtime risk and zero urgency. But a false claim sitting in a comment is exactly how
+   this one propagated across three sessions in the first place, and the next person to read
+   `cancel.js` will inherit it. **Deliberately not fixed tonight**: it would mean a merge to
+   `production`, which auto-deploys, for a comment — at the end of a long day, on a payments-
+   adjacent file. It is item 7 in §5, owner's call.
 2. **#65360 was not "wedged by a bug".** It stays at `purchased` **by design** (G40-454's AC7);
    HQ is the *intended* exit, not a workaround.
 3. **A `purchased` order does not "settle itself in 48h".** `confirm_auto_payout` selects
