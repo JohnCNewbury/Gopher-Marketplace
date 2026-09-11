@@ -35,7 +35,7 @@ Recorded in memory `g40-188-cancellation-design-canon` and in the cancellation c
 
 ## 2. State of play — what is LIVE
 
-### Backend — `gophergo/gopher-backend-api`, `origin/production` @ `7beffa86`
+### Backend — `gophergo/gopher-backend-api`, `origin/production` @ `4538d7b0`
 
 **VERIFIED 2026-09-11** by reading `origin/production` after an unsuppressed fetch:
 
@@ -88,68 +88,90 @@ The "Other" textarea is revealed **above** the keyboard (G40-421 occlusion fix).
 
 ## 3. State of play — what is NOT live
 
-### ✅ !573 (G40-469) — MERGED 2026-09-11 10:23 UTC, VERIFIED BY CONTENT
+### ✅ G40-469 — MERGED, SHIPPED BROKEN, HOTFIXED, NOW WORKING. Read the whole arc.
 
-**Owner said "merge 573" on 2026-09-11.** Merged as `fce5e0e7`
-(`Merge branch 'G40-469-review-hold-alert' into 'production'`), `squash_commit_sha: None`.
+**Do not read this as "!573 landed cleanly." It did not.** The sequence is the useful part.
 
-**Deviation from the terms stated in an earlier draft, declared rather than done quietly:** that
-draft said *squash **yes** · delete source **yes***. Both were **wrong for this repo** and were
-NOT followed. Evidence: `origin/production` carries `d6545abc` as its own commit under merge
-`7beffa86`, i.e. !572 was **not** squashed, and its source branch `G40-9-release-countdown-null`
-**still exists on the remote**. The convention here is *merge commit, no squash, source branch
-kept*, and squashing would also break the SHA pins CLAUDE.md warns about. Merged to match the
-convention.
+| Time (UTC) | Event |
+|---|---|
+| 10:23:02 | **!573 merged** as `fce5e0e7`. CI green on head SHA `accdd4f9`, six jobs. |
+| 10:25:24 | Deployed. CodePipeline `519ca1da` Succeeded, EB version label matched the SHA. |
+| 10:26:01 | **`CRON FAILED: review_hold_stall_alert -- rows is not iterable`** — and every minute after. |
+| 10:37 | Caught in CloudWatch. **12 of 12 ticks had failed.** |
+| 10:44 | Owner: *"fix forward."* |
+| 10:46 | **!575** raised. CI green on `3ea889a2`. |
+| 10:47 | **Merged** as `4538d7b0`, deployed 10:48:24. |
+| 10:49:01 | Sweep ran clean and reported. `CRON FAILED` count: **0**. |
 
-**Verified by content on `origin/production` after the merge** — the same three probes that read
-zero beforehand:
+#### The defect
 
-| Probe | Before | After |
-|---|---|---|
-| `review_hold_stall_alert` in `middleware/cronTasks.js` | 0 | **3** |
-| email type `52` registered in `lib/sendEmail.js` | 0 | **1** |
-| `test/review-hold-alert.test.js` | absent | **present** |
+```js
+const [rows] = await db.sequelize.query(`…`, {
+  type: db.Sequelize.QueryTypes.SELECT,   // returns the ROW ARRAY directly
+});
+```
 
-⚠️ **Both cron registration points confirmed** — `middleware/crons.js:1335` (the `task_lists` map
-entry) **and** `:1502` (the `runCron(...)` call). One without the other registers nothing.
+Under `QueryTypes.SELECT`, Sequelize resolves to the array **itself**, not the
+`[results, metadata]` pair. The destructuring bound the **first row object**. It is truthy and has
+no `.length`, so `rows.length === 0` was `undefined === 0` → false — **the guard I wrote to catch
+an empty result is what waved the bad value through** — and `for...of` threw.
 
-**CI re-confirmed first-hand before merging**, against the *current head SHA* `accdd4f91098` —
-pipeline `2839213672`, six jobs green (lint-job, unit-tests, admin-auth-guard, secret-scan,
-route-authz-guard, user-router-privacy-guard). A green pipeline on a stale SHA would have proven
-nothing, which is why the SHA was matched rather than the pipeline number.
+Every other sweep in that file (~254, ~316, ~389, ~506) assigns without destructuring. This one
+broke the local convention and nothing caught it.
 
-**Still to confirm:** this merge **auto-deploys** via CodePipeline. Deployment was not verified in
-this session — see §5 item 1.
+#### ⛔ Why the test suite passed a function that could not run
 
-<details>
-<summary>Original pre-merge record (kept — it is the evidence the state was read correctly)</summary>
+**Every assertion in `test/review-hold-alert.test.js` was a claim about SOURCE TEXT.** It read the
+file, stripped comments and ran regexes. **Nothing ever executed the sweep**, so the return shape
+was never exercised. Eleven confident green checks against code that threw on its first real tick.
 
-#### !573 was NOT merged — VERIFIED 2026-09-10/11</details>
+The fix deliberately did **not** add a mock of `sequelize.query` — a mock returning `[rows, meta]`
+would have asserted the wrong assumption straight back. Instead !575 adds:
 
-**MR:** https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/573
+1. **A census** over all of `cronTasks.js`: no `QueryTypes.SELECT` result may be destructured,
+   anywhere. **It fails if it matches zero SELECTs**, so it cannot pass by finding nothing.
+2. **An executable proof** of the JS semantics — binds the first row, shows it is truthy, shows
+   `.length` is `undefined`, asserts the `for...of` actually throws `is not iterable`.
 
-Proven by content on `origin/production`, because the GitLab token lookup was blocked by the
-permission classifier and was **not** routed around:
+Both verified by deliberate breakage: restoring `const [rows] =` fails the census; the fix passes.
 
-- `review_hold_stall_alert` in `middleware/cronTasks.js` → **0 occurrences**
-- email type `52` in `lib/sendEmail.js` → **0 occurrences**
-- branch head is the !572 merge, with nothing after it
+#### Verified working, 10:49:01Z
 
-**What it does:** a read-only cron sweep that emails an admin alert when an order sits on a
-review hold past the point where its authorization is about to lapse. **It cannot change state,
-capture, refund or pay out** — that is asserted by a guard, proven by deliberately breaking it
-(pointing the sweep at `db.orders.update` made the "ALERT ONLY" assertion fail).
+```
+info:  G40-469: 1 review hold(s) unresolved for over 24h
+error: REQUIRES ADMIN DECISION - REVIEW HOLD UNRESOLVED:
+       order_id: 45865; held_hours: 9419; auth_days_left: 0;
+       aasm_state: delivered; gopher_id: null
+```
 
-**Why it exists:** order **#65360** sat at `purchased` with a fraud/age flag and nobody was told.
-`AUTHORIZATION_WINDOW_DAYS = 7`; `confirm_auto_payout` selects `aasm_state = 'delivered'`, so a
-`purchased` order is **never** swept and does **not** "settle itself in 48h" — an earlier claim in
-this session that was wrong and is corrected here.
+`CRON FAILED` → 0 · alert fired **once**, not per-tick, so the claim-before-send marker works ·
+environment back to **Ok**, 0 Severe.
 
-**Merge hand-off:** target **`production`** · squash **yes** · delete source **yes**.
-⚠️ Merging **auto-deploys live**. Owner consent required before it moves.
+#### ⛔ THE OPEN DEFECT — the query is over-broad. This is the next session's main job.
 
-**CI:** pipeline `2839213672` passed (lint, unit-tests, admin-auth-guard, secret-scan) — this is
-**inherited**, dated 2026-09-10, and should be re-confirmed on the MR page before merging.
+**9,419 hours is 392 days.** The sweep exists to catch a hold **inside** the 7-day authorisation
+window so a human can act before Stripe lets go. Its first real find was a **thirteen-month-old
+`delivered` order with `gopher_id: null` and `auth_days_left: 0`** — the window shut roughly a year
+ago. Nothing is at risk on it and no decision remains to be made.
+
+Two faults in the `WHERE` clause, both mine:
+
+- **No upper age bound.** "Older than `REVIEW_HOLD_ALERT_HOURS`" has no ceiling, so the entire
+  order history qualifies.
+- **No terminal-state exclusion.** `delivered` with a null gopher is not an unresolved hold in any
+  sense the ticket means.
+
+**Direction, not a decision:** something like `AND raised_at > now() - interval '14 days'` plus
+excluding terminal states. ⚠️ **The ceiling is a product judgement and is the owner's**, and
+sizing it needs a count of matching historical rows — a **production DB** question, which is owner
+access, not something to work around.
+
+⚠️ **The alert already sent for 45865 is noise, and noise is the failure mode that matters here.**
+An alert that cries about 2025 teaches its reader to ignore the one that matters. The marker row
+means it will not repeat for that order, but other historical rows may surface on later ticks.
+
+**Deliberately not fixed in the originating session** — owner's call, recorded rather than
+bolted on after a night that had already produced one shipped defect in ninety minutes.
 
 ### The store build — the whole remaining critical path for G40-188
 
@@ -221,7 +243,8 @@ owner action or a decision already made.
 
 | # | Item | Owner | Notes |
 |---|---|---|---|
-| 1 | ~~Merge **!573**~~ **DONE** 2026-09-11 — confirm the **deploy** landed | next session | Merged `fce5e0e7`, content-verified. CodePipeline `gopher-prod-codepipeline` auto-deploys; **the deploy itself was not verified here.** CloudWatch lags ~20 min. |
+| 1 | ~~Merge !573~~ ~~confirm the deploy~~ **BOTH DONE** — see §3 for the arc | — | Live, verified in CloudWatch at 10:49:01Z. |
+| 1b | ⛔ **Bound the review-hold query** (age ceiling + terminal-state exclusion) | **next session**, ceiling is **John's** | The live alert currently matches 392-day-old delivered orders. See §3. Needs a production-DB count to size it. |
 | 2 | Cut the **Appflow build** (GO !294, Request !309 + !313) | **John** | Store creds are READ-ONLY; rollout is owner-only in the console. |
 | 3 | Publish both **101 branches** with that build | next session | Only after the build is live, never before. |
 | 4 | **Device re-test** of the fork | **John** | Smallest Android first — the sheet has **18px** headroom at 360×640. |
@@ -309,6 +332,11 @@ not re-derive the wrong ones:
 3. **A `purchased` order does not "settle itself in 48h".** `confirm_auto_payout` selects
    `aasm_state = 'delivered'`.
 4. **The fork shipped on the wrong screen first** (§2). Caught by the owner on a real order.
+5. **"There is a real unresolved review hold on a live authorisation right now" — FALSE.** Said
+   while the cron was failing, reasoning: *it throws only when rows exist, therefore something
+   qualifies.* That step was sound. The next one — *therefore something is at risk* — was never
+   supported, and order 45865 disproved it (`auth_days_left: 0`, `delivered`, 392 days old). Same
+   shape as the other errors here: a correct inference followed by an unearned extension of it.
 
 Grep produced **four separate false negatives** in this session — comments matching negative
 assertions, copy split across JSX by `{" "}` and a `<span>`, and a symbol surviving only inside a
