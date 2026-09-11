@@ -88,7 +88,43 @@ The "Other" textarea is revealed **above** the keyboard (G40-421 occlusion fix).
 
 ## 3. State of play — what is NOT live
 
-### ⛔ !573 (G40-469) is NOT merged — VERIFIED, and this corrects the record
+### ✅ !573 (G40-469) — MERGED 2026-09-11 10:23 UTC, VERIFIED BY CONTENT
+
+**Owner said "merge 573" on 2026-09-11.** Merged as `fce5e0e7`
+(`Merge branch 'G40-469-review-hold-alert' into 'production'`), `squash_commit_sha: None`.
+
+**Deviation from the terms stated in an earlier draft, declared rather than done quietly:** that
+draft said *squash **yes** · delete source **yes***. Both were **wrong for this repo** and were
+NOT followed. Evidence: `origin/production` carries `d6545abc` as its own commit under merge
+`7beffa86`, i.e. !572 was **not** squashed, and its source branch `G40-9-release-countdown-null`
+**still exists on the remote**. The convention here is *merge commit, no squash, source branch
+kept*, and squashing would also break the SHA pins CLAUDE.md warns about. Merged to match the
+convention.
+
+**Verified by content on `origin/production` after the merge** — the same three probes that read
+zero beforehand:
+
+| Probe | Before | After |
+|---|---|---|
+| `review_hold_stall_alert` in `middleware/cronTasks.js` | 0 | **3** |
+| email type `52` registered in `lib/sendEmail.js` | 0 | **1** |
+| `test/review-hold-alert.test.js` | absent | **present** |
+
+⚠️ **Both cron registration points confirmed** — `middleware/crons.js:1335` (the `task_lists` map
+entry) **and** `:1502` (the `runCron(...)` call). One without the other registers nothing.
+
+**CI re-confirmed first-hand before merging**, against the *current head SHA* `accdd4f91098` —
+pipeline `2839213672`, six jobs green (lint-job, unit-tests, admin-auth-guard, secret-scan,
+route-authz-guard, user-router-privacy-guard). A green pipeline on a stale SHA would have proven
+nothing, which is why the SHA was matched rather than the pipeline number.
+
+**Still to confirm:** this merge **auto-deploys** via CodePipeline. Deployment was not verified in
+this session — see §5 item 1.
+
+<details>
+<summary>Original pre-merge record (kept — it is the evidence the state was read correctly)</summary>
+
+#### !573 was NOT merged — VERIFIED 2026-09-10/11</details>
 
 **MR:** https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/573
 
@@ -185,7 +221,7 @@ owner action or a decision already made.
 
 | # | Item | Owner | Notes |
 |---|---|---|---|
-| 1 | Merge **!573** | **John** | Auto-deploys. Consent required. Re-confirm CI on the MR page first. |
+| 1 | ~~Merge **!573**~~ **DONE** 2026-09-11 — confirm the **deploy** landed | next session | Merged `fce5e0e7`, content-verified. CodePipeline `gopher-prod-codepipeline` auto-deploys; **the deploy itself was not verified here.** CloudWatch lags ~20 min. |
 | 2 | Cut the **Appflow build** (GO !294, Request !309 + !313) | **John** | Store creds are READ-ONLY; rollout is owner-only in the console. |
 | 3 | Publish both **101 branches** with that build | next session | Only after the build is live, never before. |
 | 4 | **Device re-test** of the fork | **John** | Smallest Android first — the sheet has **18px** headroom at 360×640. |
