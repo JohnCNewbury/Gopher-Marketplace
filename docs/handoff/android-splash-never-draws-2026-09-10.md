@@ -97,6 +97,36 @@ holding a window that has been told to render nothing.
 
 Vivid version: launching Request while Go was in front showed **Go's screen** for four seconds.
 
+## ⏱️ Splash DURATION on Android — how it actually adds up (2026-09-11)
+
+**Total splash time = time to the first `onPreDraw` + `launchShowDuration`.** It is additive, not
+overlapping. `SplashScreen.java:134-149` starts the timer *inside* the first pre-draw callback, not
+at process start:
+
+```java
+if (!isVisible && !isHiding) {
+    isVisible = true;
+    new Handler(...).postDelayed(() -> { ... }, settings.getShowDuration());
+}
+```
+
+Measured totals for the same code:
+
+| build | device | total splash | note |
+|---|---|---|---|
+| release-config | API 36 emulator | **~3.4 s** | cold start ~0.9 s + 2.5 s |
+| debug | SM-A505U, API 30 | **~6.6 s** | `am start -W TotalTime 6376 COLD` |
+
+Owner on the 6.6 s figure: *"6.6 is way too long."* ⚠️ But that is a **debug** build — dev JS bundle,
+no R8, no baseline profile. **The release-build number on a slow handset has not been measured**, and
+it is the one that decides whether the 2.5 s hold is the problem or app startup is.
+
+⚠️ `launchShowDuration: 0` is not "no hold" — `showOnLaunch()` returns at line 63 *before*
+`installSplashScreen()` is called, so on API ≤30 the compat library never installs and there is **no
+splash at all**. Any Android-side reduction must stay above 0.
+
+---
+
 ## ⚠️ CORRECTED 2026-09-11 — the 2026-09-10 fix covered API 31+ ONLY, and that was not enough
 
 **API 24–30 was left with no splash at all.** `minSdkVersion` is 24. The owner raised it on his own
@@ -189,9 +219,16 @@ Anything else added under `android/` must be too, or it will silently never ship
    icon, but the mark inside it can. This is what makes Android match iOS at 2.5 s.
    ⚠️ Confirm the icon canvas and safe-zone sizes against Android's current docs at implementation
    time rather than trusting a remembered number.
-2. **Stopgap — an Android-only `launchShowDuration`.** Capacitor takes a per-platform override, so
-   iOS keeps 2.5 s and Android drops to ~0. Removes the blank stare, but leaves Android with no
-   splash at all: a fast, unbranded launch. One line, no artwork.
+2. ~~**Stopgap — an Android-only `launchShowDuration`.**~~ ⛔ **WRONG, corrected 2026-09-11 — there
+   is no such override.** `@capacitor/cli/dist/declarations.d.ts` shows the `android` config block
+   accepting `path, overrideUserAgent, appendUserAgent, backgroundColor, zoomEnabled,
+   allowMixedContent, captureInput, webContentsDebuggingEnabled, loggingBehavior, includePlugins,
+   flavor, initialFocus, minWebViewVersion, minHuaweiWebViewVersion, buildOptions, useLegacyBridge,
+   resolveServiceWorkerRequests` — and **no `plugins` key**. `launchShowDuration` is global; lowering
+   it for Android lowers it for iOS too. To vary by platform, call `SplashScreen.hide()` from the web
+   layer gated on `Capacitor.getPlatform()`. Also note `launchShowDuration: 0` makes `showOnLaunch()`
+   return before `installSplashScreen()` runs, which on API ≤30 removes the splash entirely — so 0 is
+   not "no hold", it is "no splash".
 3. **Do NOT simply restore the GIF.** It fixes Android and re-breaks what the owner asked for: it
    reappears on every logout, it is old branding, and on iOS it puts two different marks on screen
    within two seconds. If a web splash is ever wanted again it must be gated on a process-lifetime
