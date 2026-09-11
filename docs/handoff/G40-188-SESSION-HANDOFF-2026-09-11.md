@@ -21,7 +21,7 @@ and live server-side. **G40-469** (review-hold stall alert) is built, green, and
 |---|---|
 | **G40-188** | Server side **complete and proven on live traffic**. Client side merged but **reaches nobody until an Appflow build** — that is the whole remaining critical path, and it is the owner's to run. |
 | **G40-469** | Live and working as of 10:49:01Z today — **after shipping broken and being hotfixed**. §3 has the arc; read it before touching that file. |
-| **Your first job** | ⛔ **§3, "THE OPEN DEFECT"** — the review-hold query has no upper age bound, so it alerts on 392-day-old delivered orders. |
+| **Your first job** | ~~§3 open defect~~ **DONE 2026-09-11 — `gopher-backend-api!579` awaits the owner's merge.** Next: content-verify the deploy (`git show origin/production:middleware/cronTasks.js \| grep auth_expires_at`) and update the doc row. |
 | **Do not** | Re-litigate §1 (settled owner rulings), or trust any number in §6 without re-reading its provenance row. |
 | **Repo state** | This repo has **unpushed commits belonging to other sessions. Do not push.** See §7. |
 
@@ -170,6 +170,43 @@ environment back to **Ok**, 0 Severe.
 
 #### ⛔ THE OPEN DEFECT — the query is over-broad. This is the next session's main job.
 
+> ✅ **RESOLVED IN CODE, NOT MERGED — successor session, 2026-09-11 ~12:15Z.**
+> **`gopher-backend-api!579`** (`fix/g40-469-review-hold-auth-bound`, commit `0dd5786b`, cut from
+> `origin/production` @ `4538d7b0`; target `production` · squash **no** · delete source **no**).
+> The merge is the owner's click.
+>
+> **What it does:** the `held` CTE computes
+> `auth_expires_at = COALESCE(payment_auth_expires_at, created_at + AUTHORIZATION_WINDOW_DAYS)` and
+> the outer `WHERE` adds `AND auth_expires_at > NOW()`; the email's "days left" now reads that same
+> column instead of recomputing `created_at + 7d`. `AUTHORIZATION_WINDOW_DAYS` is imported from
+> `helpers/payment_auth_helper` (⚠️ under `exports.CONSTANTS`, not top-level).
+>
+> **Two deliberate deviations from the direction below, stated loudly:** (1) **no fixed
+> `raised_at` ceiling** — a hold is never re-authorised after it is raised, so the auth clock IS the
+> exact bound and "14 days" would be a guess at it; (2) **`delivered` is NOT excluded** — a no-show
+> hold on an age-restricted order sits at `delivered` with a live auth, and that is the case to
+> alert on. 45865 is excluded by its clock (`payment_auth_expires_at` NULL pre-2025-12 → fallback),
+> not by its state.
+>
+> **The production-DB count the paragraph below calls for was answered from CloudWatch instead,
+> first-hand:** the 10:49:01Z tick logged `1 review hold(s)` and no `G40-469` line appears on any
+> later tick (checked through 12:11Z, allowing the 20-minute lag). 45865 was the entire historical
+> population; it has alerted once and its marker row prevents a repeat. Nothing else will surface.
+>
+> **Proof is executed, not grepped:** new `test/g40-469-review-hold-sweep.db.test.js` runs the REAL
+> sweep against a real Postgres (CI's PostGIS service; locally a throwaway `embedded-postgres` on
+> 127.0.0.1:55432 — see memory `run-backend-db-tests-locally-with-embedded-postgres`). 14/14; broken
+> deliberately twice, 8/14 and 2/14 fail with named assertions. **It caught a defect the first cut
+> shipped** — the top-level destructure of `AUTHORIZATION_WINDOW_DAYS` is `undefined` and threw
+> `Named replacement ":auth_days" has no entry` on the first executed run, after all 16 source
+> checks had passed it. Habit 1 above, vindicated within the hour.
+>
+> Doc row written: `gopher-dev-handoff/src/content/docs/request/production-flow.md` (as-built,
+> committed locally — that repo also carries other sessions' unpushed commits). Jira G40-469 has a
+> pointer comment. Full local suite 273/281 with the 8 failures reproduced identically on pristine
+> `origin/production` in the same worktree (stale `tz-lookup` install ×6, no PostGIS in the
+> throwaway DB ×2); read the `unit-tests` job on !579 for the true count.
+
 **9,419 hours is 392 days.** The sweep exists to catch a hold **inside** the 7-day authorisation
 window so a human can act before Stripe lets go. Its first real find was a **thirteen-month-old
 `delivered` order with `gopher_id: null` and `auth_days_left: 0`** — the window shut roughly a year
@@ -265,7 +302,7 @@ owner action or a decision already made.
 | # | Item | Owner | Notes |
 |---|---|---|---|
 | 1 | ~~Merge !573~~ ~~confirm the deploy~~ **BOTH DONE** — see §3 for the arc | — | Live, verified in CloudWatch at 10:49:01Z. |
-| 1b | ⛔ **Bound the review-hold query** (age ceiling + terminal-state exclusion) | **next session**, ceiling is **John's** | The live alert currently matches 392-day-old delivered orders. See §3. Needs a production-DB count to size it. |
+| 1b | ~~Bound the review-hold query~~ **BUILT — `gopher-backend-api!579`, NOT merged** | **John** (merge click) | Bound is the authorisation clock, not a fixed ceiling; `delivered` kept. Count answered from CloudWatch: 45865 was the only row. See §3. |
 | 2 | Cut the **Appflow build** (GO !294, Request !309 + !313) | **John** | Store creds are READ-ONLY; rollout is owner-only in the console. |
 | 3 | Publish both **101 branches** with that build | next session | Only after the build is live, never before. |
 | 4 | **Device re-test** of the fork | **John** | Smallest Android first — the sheet has **18px** headroom at 360×640. |
