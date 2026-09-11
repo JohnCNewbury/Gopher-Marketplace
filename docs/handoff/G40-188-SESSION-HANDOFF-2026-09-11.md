@@ -425,7 +425,7 @@ tree was touched.
 tests. It is **not Done** until the build ships and the 101s publish — *Done means waiting on
 nothing*.
 
-**G40-469** — !573 + !575 + !579 all merged and live; the doc row is written. **Done-eligible: waiting on nothing** (the `in_progress` phantom state is §5 item 6, a separate owner call). Status transition is the owner's.
+**G40-469** — !573 + !575 + !579 all merged and live; the doc row is written. **Set to Done 2026-09-11 ~13:20Z on the owner's instruction** (via In Progress → "Work does not need to be reviewed"; the workflow required an assignee first, set to the owner). Total SOW Priorities and App/Play Store Release Notes sessions notified; ledger note filed. The `in_progress` phantom state is §5 item 6, a separate owner call. **This successor session retired at that point.**
 
 ⚠️ A ticket is never the source of truth. The canon lives in the cancellation doc and in memory
 `g40-188-cancellation-design-canon`; the ticket points at them.
