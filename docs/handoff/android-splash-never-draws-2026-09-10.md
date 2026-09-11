@@ -97,7 +97,74 @@ holding a window that has been told to render nothing.
 
 Vivid version: launching Request while Go was in front showed **Go's screen** for four seconds.
 
-## ✅ FIXED 2026-09-10 — option 1, built and verified
+## ⚠️ CORRECTED 2026-09-11 — the 2026-09-10 fix covered API 31+ ONLY, and that was not enough
+
+**API 24–30 was left with no splash at all.** `minSdkVersion` is 24. The owner raised it on his own
+handset, an Android 11 (API 30) Samsung SM-A505U:
+
+> *"I would not want a different experience for users based on their device. I HAD a splash on my
+> A50 and there is no reason i can have the new one."*
+
+He is describing the GIF he used to see. **As it stood, 3.9.3 would have shipped LESS splash to
+those users than 3.9.2 did.**
+
+### The false claim, and where it was written
+
+`values-v31/styles.xml` justified its own scope like this:
+
+> *"Resource qualifiers REPLACE, so this whole style is redefined for v31+ and API ≤30 keeps the old
+> translucent theme — where the legacy splash.png path still works."*
+
+The first clause is true. **The second is false**, for two reasons neither established on 2026-09-10:
+
+1. **Capacitor calls the Android-12 API path on every API level.** `SplashScreen.showOnLaunch()` →
+   `showWithAndroid12API()`, with no `SDK_INT` branch (`SplashScreen.java:62-79`). The legacy
+   ImageView/dialog route is only its catch-block fallback. So the 26 `splash.png` drawables are
+   dead on the launch path on **every** Android version — the finding in this doc was never
+   API-31-specific, and reading it that way is what produced the gap.
+2. **`androidx.core:core-splashscreen` backports the whole mechanism through UNPREFIXED
+   attributes**, and forwards them to the platform ones on 31+. From the library's own
+   `res/values-v31/values-v31.xml`:
+   `<item name="android:windowSplashScreenAnimatedIcon">?windowSplashScreenAnimatedIcon</item>`.
+   The base `values/styles.xml` alone would always have covered API 24 through 36, and
+   `values-v31/styles.xml` was **redundant from the start**, not merely incomplete.
+
+### The fix
+
+`values/styles.xml`, `AppTheme.NoActionBarLaunch`, one file per app: drop
+`android:windowIsTranslucent`, add `windowSplashScreenBackground` /
+`windowSplashScreenAnimatedIcon` / `postSplashScreenTheme` **unprefixed**.
+
+**No `MainActivity` change** — Capacitor already calls `installSplashScreen()`, so adding one there
+would be a duplicate. No new dependency. `launchShowDuration` untouched.
+
+| Repo | MR |
+|---|---|
+| `gopher-mobile-gopher-capacitorjs` | [!309](https://gitlab.com/gophergo/gopher-mobile-gopher-capacitorjs/-/merge_requests/309) |
+| `gopher-mobile-requester-capacitorjs` | [!323](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/323) |
+
+Verified by resource linking on both apps — `aapt2 dump` of the linked `.ap_` shows the unprefixed
+attributes resolving to real library attr IDs in the default config (not silently dropped), with the
+v31 platform attrs still applying above it:
+
+```
+() default config   postSplashScreenTheme(0x7f0303e8)=@style/AppTheme.NoActionBar
+                    windowSplashScreenAnimatedIcon(0x7f03057a)=@drawable/splash_icon
+                    windowSplashScreenBackground(0x7f03057c)=@0x0106000b
+(v31) config        0x0101062c=@0x0106000b
+```
+
+⚠️ **Not yet verified on an API 30 runtime** — built and resource-verified, not yet *seen to draw*.
+The release-notes session is running an API 30 emulator.
+
+⚠️ **The lesson, because it is the second time on this same defect.** The 2026-09-10 fix was scoped
+from a remembered platform rule (`android:windowSplashScreen*` is API 31+) without checking what the
+already-present compat library did, and the scope decision was then written into a code comment as
+if established. A measurement on ONE API level does not license a conclusion about the others.
+
+---
+
+## ✅ FIXED 2026-09-10 — option 1, built and verified (API 31+ only — see the correction above)
 
 `values-v31/styles.xml` + `splash_icon.png` at five densities, both apps. Verified on a
 cold-booted API 36 emulator: **white ground, mark centred, ~3.4 s, fading into the redesigned
