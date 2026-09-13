@@ -803,6 +803,30 @@ controls prove the suite can fail: logging the PAN fires 2 checks, returning suc
 hit is not a failure — it is the point of the step**, and it names who to migrate. Silence for a
 week clears step 3, deleting the handler and the route.
 
+### ✅ STEP 2 INTERIM — measured 2026-09-13, CLEAN at 4 of 7 days
+
+CloudWatch Insights, 8-day window, **3,434,292 lines scanned**. (AWS session was expired and renewed
+first — an expired session returns *empty results rather than an error*, so this was run only after
+`sts get-caller-identity` came back clean.)
+
+| Signal | Count |
+|---|---|
+| `RETIRED ENDPOINT CALLED` | **0** |
+| any line matching `/add_card/` | **11** — all accounted for, below |
+
+⚠️ **The 11 were chased rather than waved through, and that is the point of recording this.** A raw
+zero on the first signal beside a non-zero on the second is exactly where a watch gets called clear
+too early. **All 11 fall in 2026-09-09 15:07–16:06Z** — the retirement's own deployment-day
+verification probes — and one of them is literally `add_card_nonexistent`, the documented negative
+control that proved a nonsense sibling answers 404 while the real route answers 440. **No real
+caller, and nothing whatsoever in the ~4 days since.**
+
+That they logged no `RETIRED ENDPOINT CALLED` is itself consistent: those probes were
+unauthenticated, `user_auth` runs before the handler, so the handler never executed and never logged.
+
+**Status: on track, NOT yet clear.** Watch opened 2026-09-09; **it clears 2026-09-16**, after which
+step 3 deletes the handler and the route. Re-run this query on that date before deleting anything.
+
 ---
 
 ## 5 · Honest limits — what this does and does not stop
@@ -851,7 +875,15 @@ page in the pane — **pause and wait**, not guessed).
    ever outstanding. Half of a recommendation being already-done is exactly the kind of thing that
    makes the other half look done too.
 
-   **The single action: enable "Block if Postal code verification fails based on risk score."**
+   ✅ **DONE 2026-09-13 — the owner enabled it.** Together with the CVC rule already on since 2024,
+   both issuer checks now have a blocking rule behind them. ⚠️ **It has never been exercised against
+   real data** — Stripe's backtest matched `$0.00` precisely because no card on this account has ever
+   carried an address, so its false-positive rate here is genuinely unknown until the builds ship and
+   real addresses start arriving. **Watch the first week** (§8a). Reassurance, not proof: the rule is
+   the risk-weighted variant, and the owner's own card passed the ZIP check (it was the *street* check
+   that failed, and no street rule exists).
+
+   **The action was: enable "Block if Postal code verification fails based on risk score."**
    Pick the risk-score variant, not the plain one — it matches the CVC rule already enabled, so the
    posture stays consistent, and it carries fewer false positives. ⛔ **Never enable a street/line1
    rule** (§7d — the owner's own correct address failed the street check).
@@ -875,6 +907,13 @@ page in the pane — **pause and wait**, not guessed).
 2. **Radar risk data on setup attempts** (owner → Stripe support). By default Radar does not return
    a risk outcome for SetupIntent attempts; support enables it on request. `radar_risk_level` in
    the audit table waits for it.
+
+   ✅ **REQUEST SENT 2026-09-13 by the owner.** ⚠️ **Until Stripe confirms, the state is unknown, not
+   done** — and it matters for item 1: the postal rule is the *risk-weighted* variant, so if Radar
+   still does not score setup attempts, that rule **may not fire at card-add** (it will still apply to
+   charges). **The observable that settles it is `radar_risk_level` in `card_verification_events`:
+   null on every row means scoring is still off; a value means Stripe enabled it.** That column has
+   never been read by anyone (§8 check 8), so this closes only when someone with DB access looks.
 3. ⛔ **Block repeat disputers — RULED OUT BY THE OWNER 2026-09-13. Do not build it.** This doc
    previously called it *"the only item here that targets the pattern in the data"*. **That rested on
    a misreading of the data, and the owner supplied the domain fact that corrects it.**
@@ -1234,6 +1273,84 @@ and never recommend deleting anything you did not create. Ask what it is first.
     (Instant Bank Payments). Check the sheet on **both** platforms — Android's SDK may gate it
     differently — and write the finding into the G40-38 doc's "iOS device QA on build #260"
     block as well as here. This session has the Android; the iPhone is G40-38's QA device.
+
+---
+
+## 8b · ⭐ PRE-RELEASE BASELINE — measured from production, 2026-09-13
+
+**The first time anyone has counted this.** CloudWatch Logs Insights on
+`/aws/elasticbeanstalk/Gopher-Production/var/log/web.stdout.log`, 7 days
+(2026-09-06 16:38Z → 2026-09-13 16:38Z). ⚠️ The AWS session was **expired** and had to be renewed
+first — an expired session returns *empty results rather than an error*, so this was run only after
+`sts get-caller-identity` came back clean.
+
+| Signal | 7-day count |
+|---|---|
+| Total log lines scanned (**probe control**) | **3,484,886** |
+| `unverified card attach allowed for legacy build` | **69** |
+| `card verification started` | 21 |
+| `card verified and saved` | 18 |
+
+**Broken down by the caller's appversion** (second query, 2,989,263 lines scanned):
+
+| appversion | count | who |
+|---|---|---|
+| **45** | **68** | the **currently installed** Request store build |
+| 44 | 1 | an older Request build |
+| **46** | **0** | the pending Request build — not released yet ✅ consistent |
+| **47** | **0** | **Gopher GO — no GO user added a card in 7 days** |
+
+The two queries agree (68 + 1 = 69), and the zero is on a **proven probe**: the same query returned
+69 hits, so it was capable of matching.
+
+### What this sizes
+
+**~68 unverified card adds per week.** Every one carries no billing address, no AVS check, no SMS
+confirmation and no audit row. That is exactly what the release converts — it is the value of this
+ticket, stated as a number for the first time.
+
+### ⚠️ It also SOFTENS the Gopher GO warning above, and that must be said plainly
+
+The ruling block at the top of this doc argues that a floor of 46 would refuse Gopher GO. **The
+structure of that claim is unchanged and still verified** — GO sends 47, the route is live and
+mounted, GO has no verified flow. **But the measured exposure over 7 days is ZERO.** Run the numbers
+against a floor of 46:
+
+| appversion | `v >= 46` | outcome |
+|---|---|---|
+| 45 (68 adds) | false | exempt — keeps working |
+| 44 (1 add) | false | exempt |
+| 46 (pending build) | true | must verify — and it can |
+| 47 (GO) | true | **would be refused — but 0 observed attempts** |
+
+**So setting the floor today would have broken nobody in this window.** I framed that risk at its
+worst case without having measured it, and the measurement is milder than the framing.
+
+**What does not change:** the exposure is *rare, not absent*. The GO code path is live, and a GO user
+who did add a card would hit a wall with **no update that fixes it**. Low frequency, total breakage,
+no remedy — and 7 days is one window, not a guarantee. **The owner's ruling stands on its own terms**
+(*"as long as they can make payments"*), and nothing here asks for it to be revisited. This is
+recorded so the decision rests on the measured number rather than on my worst case.
+
+---
+
+## 8a · POST-RELEASE WATCH — the only checks left, and none can run before the builds go live
+
+As of 2026-09-13 every owner action is done except the store release itself (Apple/Google, not ours).
+**Nothing below is actionable until the builds are released**, and every remaining unknown in this
+doc closes here. Written now so it is not reconstructed later.
+
+| # | Check | Where | What good looks like |
+|---|---|---|---|
+| 1 | **Verified adds are actually flowing** | `web.stdout.log`: `G40-11 card verification started` / `card verified and saved` | Count rises from zero once 3.9.4 is in hands. If it stays at zero after release, the client is not calling `verify/start` and something is wrong. |
+| 2 | **Who is still using the legacy door** | `web.stdout.log`: `G40-11: unverified card attach allowed for legacy build … appversion=` | ⭐ **This line prints the caller's appversion and fires on every legacy attach, gate on or off.** After release the only appversions here should be **47 (Gopher GO — expected and permanent)** and **≤45 (un-updated Request)**. ⛔ **A `46` in this list means a released Request build still reached `/attach`, which should be impossible — the call site was deleted.** That is the one result that would reopen the design. |
+| 3 | **Postal rule false positives** | Stripe → Radar → Reviews / blocked payments | The rule went live never having been exercised — its backtest matched `$0.00` only because no card had an address (§6.1). **Its real false-positive rate is unknown.** Watch the first week; a legitimate customer blocked on a correct address is the failure mode. ⛔ Do not respond by adding a street rule (§7d). |
+| 4 | **Did Stripe enable setup-attempt risk data?** | `card_verification_events.radar_risk_level` | All-null = still off, and §6.1's rule is not firing at card-add. Any value = Stripe actioned the 2026-09-13 request. **This is the observable that closes §6.2.** |
+| 5 | **AC6 rows — never once read** | `card_verification_events` | One row per attempt with IP, user-agent, `otp_status`, `outcome`, and the AVS/CVC results. ⛔ **Nobody has read a single row.** AC6 is "schema correct, contents unobserved" until this runs. Needs DB access (SG-to-SG only). |
+
+⚠️ **Checks 4 and 5 are the same blocker** — both need someone who can query the production DB, which
+no session on this machine can. They are the last two open items in the ticket and neither is a code
+question.
 
 ---
 
