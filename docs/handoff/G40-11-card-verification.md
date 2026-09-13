@@ -1,12 +1,117 @@
 # G40-11 — Verified card add: billing address + AVS/CVC/Radar, SMS code before save, dispute audit log
 
 **Type:** Task (child of Epic G40-1 "Bug Fixes & Polish") · **Priority:** Medium · **Assignee:** John Newbury
-**Sprint:** Payment Options (2026-09-07 → 09-16) · **Status:** In Progress — **BUILT, blocked on the owner** (UI approval + device QA)
+**Sprint:** carried from Payment Options (743) into **Cost Adjustment Receipt (776)**, 2026-09-13 · **Status:** Ready for QA — **BUILT and LIVE; the appversion gate is deliberately OFF** (owner ruling 2026-09-13, below)
 **Groomed:** 2026-07-02 · **Built:** 2026-09-08 · **Tile + `verified` flag added 2026-09-09 (§3.4)**
 
 > **Read this first.** Everything in §2 was verified first-hand on 2026-09-08 against the live Stripe
 > account, the backend `production` branch and the requester app's `production` branch. Nothing in
 > this doc is inherited from the July ticket text except the owner's product decisions in §1.
+
+---
+
+## ⛔ OWNER RULING 2026-09-13 — DO NOT SET `CARD_VERIFICATION_REQUIRED_FROM_VERSION`
+
+**This supersedes every instruction below that treats setting the env var as a remaining task or a
+condition of Done.** Read this before acting on §0, §3.1, §4b or §8.
+
+**The owner's condition, in his own words (2026-09-13):** *"I'm ok with users adding either AS LONG
+AS they can but make payments. whether from a 'verified' card or not."* And, on scope: *"Go was not
+included in the payment options. nothing was changed with gopher go payments."*
+
+**The ruling: the floor stays unset. Indefinitely, as a decision — not as an outstanding to-do.**
+Unset means `null` means disabled (`helpers/card_verification_policy.js:46`).
+
+### Why — the gate would reach into Gopher GO, which is out of scope
+
+Both statements are true at once: **G40-11 shipped no GO code, and setting the floor would still
+change GO's behaviour.** That is the hazard — nothing in GO has to change for GO to break.
+
+Verified first-hand on `origin/production` of each repo, 2026-09-13:
+
+| Fact | Evidence |
+|---|---|
+| The gate is on the **server**, on a route **both apps call** | `controllers/user/payment.js:1645`, inside `attach_payment_method_to_customer` — the **only** `caller_must_verify` call site in the backend |
+| It discriminates on **version only** — no app or role check | Route middleware is `user_auth` + `require_email_verified` only (`controllers/user/index.js:219-222`); the `role_id: 3` lookup happens **after** the gate |
+| The comparison is **`>=` inclusive** | `helpers/card_verification_policy.js:62` — `return Number.isFinite(v) && v >= floor;` |
+| **GO calls that route**, and it is live code, not dead | `gopher-mobile-gopher-capacitorjs` → `src/component/cardComponent.js:88` — `PUT users/attach/${paymentMethodId}` |
+| GO's card-add is **mounted on the paying path** | imported by `src/pages/summary.js`, `src/pages/renderForm.js` (case `"cardComponent"`), `src/component/popup.js` |
+| It is GO's **only** card-save route | no `cards/setup_intent`, no payment sheet, no `verify/start` anywhere in GO's `src/` |
+| **GO has none of the verified flow** | `cardVerification.js`, `CardVerifyOtp.js`, `SheetVerifyModal.js` all **absent** from GO's tree |
+
+**So:** GO sends appversion **47**, a floor of **46** makes `47 >= 46` true, and every GO user adding
+a card gets `409 card_verification_required` — *"Please update the app and add the card again"* —
+with **no update that fixes it**, because verification was never built for GO and is out of scope.
+
+✅ **The 46 / 47 figures are CONFIRMED first-hand — read from the Appflow API, 2026-09-13.** They
+cannot be read from any repo (`.env*` is gitignored, `.gitignore:24`; `REACT_APP_VERSION` is baked at
+build time, `src/component/getOrders.js:62`) — the authority is the Appflow **prod** environment of
+each app:
+
+| App | Appflow app id | env | `REACT_APP_VERSION` | `REACT_APP_APPTYPE` |
+|---|---|---|---|---|
+| Request (`requester-capacitorjs`) | `8f3b0c3f` | prod (17573) | **46** | `requester` |
+| Gopher GO (`gopher-capacitorjs`) | `515da0a1` | prod | **47** | `gopher` |
+
+So `47 >= 46` is confirmed arithmetic on confirmed values, not an inference. **The GO refusal is real.**
+
+### Why the feature still works without the gate
+
+**The gate is not what delivers G40-11 — the client is.** The merged Request app has **zero**
+`/attach` callers (the legacy call was deliberately removed; the only hit in `src/` is the comment at
+`src/component/cardComponent.js:164`), and `POST /users/add_card` is retired (§4b). So once the
+Request builds ship, those users are on the verified flow **by construction**, with no server switch.
+
+The gate's only remaining effect would be to refuse **incapable** builds — GO, and Request ≤ 45,
+neither of which has the verified flow. That is a **forced-upgrade wall**, not verification
+enforcement, and the owner has ruled against blocking people from adding a card.
+
+### The owner's condition is already met by the live code — verified, not assumed
+
+| Check | Result |
+|---|---|
+| Does the v2 list **filter** on verification? | **No — it stamps.** `controllers/user/payment.js:1484-1512` returns `methods` in full and adds `verified: true\|false` per normalised row. Best-effort: if the lookup throws, every row reads `verified:false` and the list still returns. |
+| Does any **charge** path read the audit table? | **No.** `card_verification_events` is touched only by `controllers/user/card_verification.js` (writes), that one list stamp (read), and a comment in `lib/payment_method_shape.js:74`. (`lib/payment.stripe.js:2499`'s "no verified captured payment" is the **worker-payout** hold — unrelated.) |
+| Does the app **disable** an unverified card? | **No.** `src/component/cardView.js:275` — `verified` decides only whether a `<Pill>Verified</Pill>` renders. No gating of selection or use. |
+
+**An unverified card is listed, selectable and chargeable exactly like a verified one.** The flag is
+informational end to end.
+
+### What this changes about "Done"
+
+⛔ **Setting the env var is no longer a condition of Done for G40-11.** The 2026-09-10 status
+comment on the ticket made it one; that is superseded. What remains:
+
+1. **Ship the Request iOS + Android store builds** (in review as of 2026-09-13) — this is what
+   delivers AC1–AC6 to real users.
+2. **Stripe Radar rules** (§6, owner, Dashboard) — **postal code only, never `address_line1`**
+   (§7d: the street check failed on the owner's own correctly-entered address). This is the only
+   remaining item that actually *blocks* a bad card; today G40-11 records AVS/CVC but acts on neither.
+3. Three QA checks still unrun — the card-form **rendering**, the Link **Bank tile**, and **reading an
+   actual `card_verification_events` row** (production DB is SG-to-SG only; **nobody has read one**).
+
+⚠️ **If the gate is ever revisited**, it cannot be an env var alone — it must exclude GO.
+
+⛔ **CORRECTION, same day, and the error is mine.** This section first said `apptype` could **not**
+carry that discrimination safely, on the grounds that "shipped builds send an empty `apptype`". **That
+was wrong on both halves**, and it matters because it wrote off the one clean fix.
+
+| I claimed | Actually |
+|---|---|
+| shipped builds send an **empty** `apptype` | the header is **omitted entirely** when the value is falsy — `src/axios/axios.js:32-34`: `if (apptype) { config.headers["apptype"] = apptype; }`. Never an empty string. |
+| so gating on it fails open or repeats the outage | omission **fails safe here**: no header → not `requester` → exempt → an old build keeps the legacy path, which is exactly what you want, since it has no verified flow either |
+| `REACT_APP_APPTYPE` is often missing | **both prod environments set it** — Request `requester`, GO `gopher` (Appflow, verified above) |
+
+**Where the error came from, since that is the reusable part:** `helpers/appType.js` really does
+document an empty-apptype hazard — but on the **sign-in** path, reading `req.body.apptype`, where
+falling through told a real user they had no account. That is a different code path with a different
+failure mode, and I carried its warning onto a header check where the failure direction is reversed.
+**A caveat is only valid on the path it was written about.**
+
+**So a correct gate is available if it is ever wanted:** require verification only when the caller is
+`apptype === 'requester'` **and** `appversion >= 46`. Request prod is captured, GO prod is exempt,
+and anything older is exempt by omission. It is a small backend change, not an env var, and it stays
+**unbuilt** unless the owner reverses the ruling above.
 
 ---
 
@@ -722,18 +827,73 @@ actually be argued. Not a stop to the repeat-disputer pattern by itself — that
 Verified against Stripe's docs on 2026-09-08; the Dashboard state itself could not be read (login
 page in the pane — **pause and wait**, not guessed).
 
-1. **Radar rules — Dashboard → Radar → Rules** (owner). Enable *"Block if postal code verification
-   fails based on risk score"* and *"Block if CVC verification fails based on risk score"*. These
-   rules **also apply to attaching a card to a customer** — with this ticket they block at the
-   code step, before anything is saved. Without an address collected they have nothing to check,
-   which is why they were pointless until now.
+1. **Radar rules — Dashboard → Radar → Rules** (owner). These rules **also apply to attaching a card
+   to a customer** — with this ticket they block at the code step, before anything is saved. Without
+   an address collected they had nothing to check, which is why they were pointless until now.
+
+   ✅ **DASHBOARD STATE READ 2026-09-13** (owner pasted both tabs; this session cannot read Radar —
+   it is not exposed in Stripe's API). **The rules already exist as Stripe built-ins — this is a
+   toggle, not an authoring job.** Transaction rules, 8 total:
+
+   | Rule | Status |
+   |---|---|
+   | Block if payment matches default Stripe block lists | **Enabled** |
+   | **Block if CVC verification fails based on risk score** | ✅ **ALREADY ENABLED** (Nov 5 2024) |
+   | **Block if Postal code verification fails based on risk score** | ⬜ **Disabled — this is the ask** |
+   | Block if Postal code verification fails (plain) | ⬜ Disabled — blunt fallback |
+   | Block if CVC verification fails (plain) | ⬜ Disabled — superseded by the risk-score one |
+   | Block if `:risk_level: = 'highest'` | ⬜ Disabled |
+   | Review if `:risk_level: = 'elevated'` | ⬜ Disabled |
+   | Request 3DS if 3D Secure is supported | ⬜ Disabled (see item 5) |
+
+   ⛔ **CORRECTION: this doc has been asking the owner to enable the CVC rule, and it has been on
+   since 2024-11-05** — nearly a year before this ticket existed. Only the **postal-code** half was
+   ever outstanding. Half of a recommendation being already-done is exactly the kind of thing that
+   makes the other half look done too.
+
+   **The single action: enable "Block if Postal code verification fails based on risk score."**
+   Pick the risk-score variant, not the plain one — it matches the CVC rule already enabled, so the
+   posture stays consistent, and it carries fewer false positives. ⛔ **Never enable a street/line1
+   rule** (§7d — the owner's own correct address failed the street check).
+
+   ⚠️ **Caveat carried from item 2:** the risk-weighted variant depends on Radar scoring the attempt,
+   and Radar does not score SetupIntent attempts by default. If item 2 is not done first, the rule
+   may not fire at card-add. The plain postal rule would fire regardless but is blunter. **Do item 2
+   and item 1 together.**
+
+   ⚠️ **No repeat-disputer rule exists** — none of the 8 transaction rules references disputes. That
+   is now **correct and deliberate**: the owner ruled it out on 2026-09-13 (item 3 below), because
+   the disputes arrive in batches rather than sequentially and a history-based rule cannot catch
+   them. **Do not add one.**
+
+   ✅ **Stripe's own backtest on the postal rule, read from the Dashboard 2026-09-13:** `$0.00 total
+   matched`, *"No payments match this rule in this date range"* (Aug 14 – Sep 13, all screened
+   payment methods). **That zero is expected and is the evidence the rule is safe to enable** — no
+   card on this account has ever carried an address, so `address_postal_code_check` is null on every
+   charge (§2) and the rule has had nothing to match. Enabling it before the builds ship arms it with
+   zero blast radius; it starts mattering the moment addresses begin arriving.
 2. **Radar risk data on setup attempts** (owner → Stripe support). By default Radar does not return
    a risk outcome for SetupIntent attempts; support enables it on request. `radar_risk_level` in
    the audit table waits for it.
-3. **Block repeat disputers** (Radar rule, owner). 4 people account for 9 of the last 15 disputes.
-   Radar can block a card, and a customer, with a prior dispute on this account — the Radar
-   Assistant builds it from *"block payments from customers who have disputed before"*. Cheap,
-   immediate, and the only item here that targets the pattern in the data.
+3. ⛔ **Block repeat disputers — RULED OUT BY THE OWNER 2026-09-13. Do not build it.** This doc
+   previously called it *"the only item here that targets the pattern in the data"*. **That rested on
+   a misreading of the data, and the owner supplied the domain fact that corrects it.**
+
+   **Owner, 2026-09-13:** *"disputes come week to a month later and in batches typically, that's why
+   4 people of 9 (they submitted 2-4 each at once) nothing you can do about that with radar."*
+
+   **Why the recommendation was wrong.** "4 people account for 9 of the last 15 disputes" was read as
+   *repeat offenders over time* — someone disputes, comes back, pays again, disputes again. Radar's
+   prior-dispute rule blocks exactly that. But the real shape is **one person batch-filing 2–4
+   disputes at once**, weeks after the payments. At the moment each of those payments was screened,
+   the customer had **no prior dispute** — so the rule would have had nothing to match on, for any of
+   the nine. It cannot prevent a batch; it can only react after the first one lands, by which time
+   the whole batch is already filed.
+
+   **The reusable lesson:** a count of "N people produced M events" says nothing about whether the
+   events were *sequential*. Only sequence makes a history-based rule work, and the concentration
+   statistic looks identical either way. **Check the timing before recommending a rule that keys on
+   history.**
 4. **Radar Session** (code, small, follow-up). `stripe.createRadarSession()` on the client and
    `radar_options.session` on `createPaymentMethod` gives Radar device signals at setup time;
    `radar_options` is `{}` on every charge today. Not in this MR — it needs the Stripe.js call in
