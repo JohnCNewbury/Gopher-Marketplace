@@ -514,6 +514,82 @@ React state and the real DOM: dead API port so the axios interceptor cannot log 
 resizing `document.body` exactly as the plugin does in `resize: "body"` mode. **Faithful for
 geometry; it proves nothing about native event delivery.**
 
+#### ⛔ STATUS UPDATE 2026-09-14 — G40-448 built all four items. NOTHING here is verified on device.
+
+Both apps, four commits each, **unpushed**. Written by the release desk from the G40-448 session's
+report; every claim below is that session's unless marked otherwise.
+
+**1 · `Orderdispute.js` — done, and it was TWO defects, not one.** Commits `d6e336152` (Go) /
+`da01b22b8` (Request). The iOS-only `keyboardDidShow` → bare `scrollIntoView` listener is gone.
+
+⭐ **The larger defect was structural and is the one this entry underestimated.** The component wrapped
+its content in a div declaring `overflowY:auto` with `height: isIOS ? innerHeight : innerHeight * 0.89`
+off a **module-scope** `innerHeight` — making it **a nested scroller inside `renderForm`'s scroller**.
+`useKeyboardSpace` scrolls the **nearest** scrollable ancestor, so on any dispute form long enough to
+overflow it found the inner container, **which has no spacer, and had nowhere to scroll to.** Removing
+the listener alone would have left the screen broken. The div stays for `.formContainer` padding but is
+plain flow now, handing the focused input back to `renderForm`'s scroller. Consumers checked first:
+exactly one per app (`renderForm` case `"orderdispute"`); `.formContainer` itself untouched (~130 call
+sites).
+
+⚠️ **SCROLL TRAVEL: UNMEASURED.** The acceptance above says *state the measured number, do not assert
+it.* There is no number. **That criterion is NOT met** and is not being quietly treated as met.
+
+**2 · The five hand-built screens — FOUR of five.** Commits `f0e3ea3af` / `e73131e1d`. `SignUp.js`,
+`verifyEmail.js`, `verifyotp.js`, `recoverNumber.js` each now mount `useKeyboardSpace` and render the
+spacer as the **last child of their own scroll container** (`flexShrink: 0`).
+
+⛔ **`inbox.js` is EXCLUDED, deliberately, and the exclusion is itself a finding.** Its Search input is
+at line 266; both of the file's scroll containers open at **318 and 338 — below it.** The input has
+**no scrollable ancestor at all**, so `useKeyboardSpace` returns early and a spacer in either container
+does nothing for it. Fixing it means **moving where that input sits** — a layout change to a live
+screen, a different size of change from adding a spacer. Raised rather than half-done, because a spacer
+there would have *looked* like the same fix, passed the same checks, and changed nothing for the user.
+Recorded as parking-lot **PL-019**.
+
+✅ **The frozen `innerHeight` was deliberately left alone.** In `resize: "body"` mode `innerHeight`
+stays full-screen height while the keyboard is up, **so staleness was never the cause — missing scroll
+travel was.** Changing the height calculation on four live auth screens is a much larger change aimed
+at a different defect.
+
+⚠️ **The 33px figure above remains INHERITED and was NOT re-measured.** The commits say so explicitly,
+so nobody repeats it as confirmed.
+
+**3 · Two NEW defects found, in scope, fixed.** Commits `7eaca5c06` / `64b27a6fb`.
+`referInputEmail.js` and `referInputMobile.js`, **both apps**, registered native keyboard listeners **in
+the component body — outside any `useEffect`, with no cleanup**: two new listeners per render, never
+removed, reachable from `popup.js`. Now in `useEffect` with cleanup removing only their own handles.
+
+⛔ **And the point that outlives the fix:** *the grep-based G40-421 audit could not structurally have
+found these.* It searched for inputs in `position:fixed`/`absolute` containers; these are loose
+statements in a function body. **So a previous "the keyboard audit is complete" was clean over a scope
+that silently excluded an entire shape of the bug** — four listeners across two apps. An audit that
+greps for a pattern proves things about the pattern, **not about the defect class.** Recorded as **PL-014**.
+
+**4 · A CI guard, mutation-proved.** Commits `e6c3d375f` / `acc382b76` —
+`scripts/assert-keyboard-listener-hygiene.mjs` + `keyboard-listener-hygiene-contract`, `fs`/`path` only
+so it runs in a bare worktree. Every mutation run was a **bare invocation with `$?` read directly,
+never through a pipe**: a stray body-scope `addListener` fails; a live `removeAllListeners()` fails;
+both at once fails; a missing `src/` fails; and — the one that matters — **`src/` present but empty,
+zero matches, FAILS.** It cannot pass vacuously. Re-run after `prettier --write` to confirm formatting
+had not altered a matcher. `No Keyboard.removeAllListeners()` is now enforced rather than merely true.
+
+**5 · The shared package (item 1 of the ticket) was NOT built** — and that is the owner's call, not the
+desk's. `useKeyboardSpace.js` is **byte-identical across both apps** (same md5), there is **exactly one
+consumer per app**, the other `@capacitor/keyboard` importers solve three unrelated problems, and a
+package changes the install step of **the pipeline that builds every store release**. The session's
+verdict: *"the consolidation is riskier than the duplication."* ⛔ Declining a ticket's headline item is
+a scope change, so it is recorded for the owner as **PL-015** rather than closed.
+
+### ⛔ WHAT IS STILL OWED — none of the above is Done
+- **Nothing is device-verified.** Parse-clean, lint-clean and guard-green are not "works", and keyboard
+  behaviour is device-only. Items 1 and 2 touch the **dispute screen** and the **sign-in / OTP /
+  email-verify / phone-recovery** screens — **a layout regression there locks users out.**
+- **The scroll-travel measurement is still owed** (item 1's own acceptance).
+- ⚠️ **The already-merged fixes are store-gated and reach no handset until the next Appflow build**, and
+  these commits are unmerged on top of that. **Verification needs a build carrying all of it** — confirm
+  that before sending anyone to a device, or they will test code that is not on the phone.
+
 ### F4 — Android Request: the scheduling picker's "Done" button collides with the tab bar
 
 **Where:** Gopher Request → new Grocery request → schedule (date/time picker).
