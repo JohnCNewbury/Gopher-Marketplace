@@ -10,10 +10,43 @@
 
 ---
 
-## ⛔ OWNER RULING 2026-09-13 — DO NOT SET `CARD_VERIFICATION_REQUIRED_FROM_VERSION`
+## ✅ UPDATE 2026-09-15 — THE VARIABLE IS NOW SET. Read this before the ruling below.
+
+**`CARD_VERIFICATION_REQUIRED_FROM_VERSION=46` is live on `Gopher-Production`.** Confirmed by reading
+the EB configuration directly (`describe-configuration-settings`), not inferred: `OptionName:
+CARD_VERIFICATION_REQUIRED_FROM_VERSION, Value: "46"`. EB event log times the configuration update
+to **2026-09-15 13:46:09Z** (`Environment update completed successfully`). This is an **owner-only**
+action — EB mutations are blocked for sessions — so it was the owner's own change, not this session's.
+
+**This does not retract the 2026-09-13 ruling below; it supersedes the *instruction*, not the
+reasoning.** The ruling explains exactly why this was dangerous (GO shares the gated route, has no
+verified flow, sends appversion 47) — that analysis stands and is why the first 16 minutes were
+checked immediately rather than assumed safe:
+
+| Signal, floor-set (13:46:09Z) → +16 min | Count |
+|---|---|
+| Lines scanned | 6,724 |
+| **`card_verification_required` refusals** | **0** |
+| Legacy attach allowed (exempt) | 1 |
+| Verify started / saved | 1 / 1 |
+
+**The one legacy-allowed hit is `appversion=45`** (Request, exempt as designed) — not 46, not 47.
+No refusal in the window and no Gopher GO traffic through `/attach` in it either. ⚠️ **16 minutes is
+not a clearance — it is a first check.** Re-run §8a check 2 (the legacy-attach appversion breakdown)
+after real volume has passed, and watch specifically for a `47` (a refused GO user) or an unexpected
+`46` (a released Request build still reaching the legacy route, which should be impossible).
+
+---
+
+## ⛔ OWNER RULING 2026-09-13 — DO NOT SET `CARD_VERIFICATION_REQUIRED_FROM_VERSION` (historical — see update above)
 
 **This supersedes every instruction below that treats setting the env var as a remaining task or a
 condition of Done.** Read this before acting on §0, §3.1, §4b or §8.
+
+⚠️ **2026-09-15: the owner set the variable anyway, after this ruling.** Left as written below because
+the underlying analysis — why GO is at risk — is still correct and is exactly what the update above
+checks against production for. Only the instruction "do not set it" has been overtaken by the owner's
+own action.
 
 **The owner's condition, in his own words (2026-09-13):** *"I'm ok with users adding either AS LONG
 AS they can but make payments. whether from a 'verified' card or not."* And, on scope: *"Go was not
@@ -826,6 +859,18 @@ unauthenticated, `user_auth` runs before the handler, so the handler never execu
 
 **Status: on track, NOT yet clear.** Watch opened 2026-09-09; **it clears 2026-09-16**, after which
 step 3 deletes the handler and the route. Re-run this query on that date before deleting anything.
+
+### ✅ STEP 2 CLEAR — full 7-day window measured, 2026-09-16
+
+Re-ran across the whole watch, **2026-09-09 00:00Z → 2026-09-16, 2,412,784 lines scanned**: **0**
+`RETIRED ENDPOINT CALLED`. ⚠️ **Probe proven before trusting the zero** — a same-day check found the
+7-day total lower than the earlier 8-day figure above, so rather than assume the log group was
+healthy the identical filter shape (the surrounding G40-11 log lines) was run day-by-day across the
+window: **15–23 hits every single day, including today.** The pipe is live; the zero is real.
+
+**Step 3 is now unblocked** — delete the handler and the route, per `docs/handoff/G40-11-step2-watch.md`.
+Not done here; deleting a live (if unused) production route is the owner's or the desk's call, not a
+doc-update action.
 
 ---
 
