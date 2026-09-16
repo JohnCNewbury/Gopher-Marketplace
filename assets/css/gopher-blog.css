@@ -259,6 +259,47 @@
   .takeaways li::before{ content:"→"; position:absolute; left:0; top:6px; color:var(--green-dark); font-weight:900; font-family:'Nunito',sans-serif; }
   .takeaways li b{ color:var(--navy); }
 
+  /* ─────────────── MAP INVITATION (high on the marketplace explainer) ───────────────
+     Owner, 2026-09-16: the end-of-post CTA is the most impactful thing on that page
+     and it was "almost hidden". Two causes, both fixed:
+       1. It sat at the very bottom, after the whole article.
+       2. It paired .btn--navy with .cta-card.navy — a #002461 button on a #002461
+          card, i.e. ZERO contrast, so it rendered as plain text rather than a button.
+          That page was the only one in the set pairing those two classes; the other
+          two navy cards correctly use .btn--primary.
+     This block is the invitation moved up, directly under Key takeaways. The whole
+     band is the link, so the tap target is the card, not just the button. */
+  .map-lead{
+    display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap;
+    position:relative; overflow:hidden; text-decoration:none;
+    background:linear-gradient(135deg,#03316f,var(--navy) 62%);
+    border-radius:16px; padding:26px 28px; margin:0 0 32px;
+    box-shadow:0 22px 44px -28px rgba(0,36,97,.65);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .map-lead:hover{ transform:translateY(-2px); box-shadow:0 26px 52px -24px rgba(0,36,97,.75); }
+  .map-lead::after{ content:""; position:absolute; right:-40px; bottom:-52px; width:170px; height:170px;
+    border-radius:50%; background:var(--green); opacity:.16; }
+  /* flex:1 1 320px rather than a fixed max-width — at a 760px column a fixed
+     430px copy block plus the button overflowed by a few pixels and wrapped,
+     leaving the right half of the band empty. */
+  .ml-copy{ position:relative; z-index:1; flex:1 1 320px; min-width:0; }
+  .ml-kicker{ display:block; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--green-light); margin-bottom:7px; }
+  .ml-title{ display:block; font-family:'Nunito',sans-serif; font-weight:900; font-size:22px;
+    line-height:1.15; letter-spacing:-.015em; color:#fff; margin-bottom:7px; }
+  .ml-sub{ display:block; font-size:14.5px; line-height:1.5; color:rgba(255,255,255,.82); }
+  .ml-go{ position:relative; z-index:1; flex:0 0 auto; display:inline-flex; align-items:center; gap:10px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; color:var(--navy);
+    background:var(--green); padding:15px 26px; border-radius:10px; white-space:nowrap;
+    box-shadow:0 8px 20px -8px rgba(0,0,0,.45); transition:background .15s ease, gap .15s ease; }
+  .map-lead:hover .ml-go{ background:var(--green-light); gap:15px; }
+  @media(max-width:600px){
+    .map-lead{ padding:22px; }
+    .ml-title{ font-size:20px; }
+    .ml-go{ width:100%; justify-content:center; }
+  }
+
   .related{ border-top:1px solid var(--rule); margin-top:40px; padding-top:26px; }
   .related h2{ font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; letter-spacing:.12em;
     text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
