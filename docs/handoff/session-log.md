@@ -1743,12 +1743,18 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   - **Ambiguous terms were held back and FLAGGED rather than silently forced into 21+** — bare `rig`
     (oil rig) · `banger` · `bubbler` (water fountain) · `percolator` (coffee) · `steamroller` ·
     `glass piece` · `lighter fluid` (charcoal starter).
-    ✅ **OWNER RULED 2026-09-17: include them all** (commit `9da97dc`), consistent with
-    bias-to-over-match on a compliance gate — a false positive is one needless ID check, a false
-    negative is an untracked 21+ handoff. **Measured before applying: exactly ONE additional flag
-    across all 64,491 order titles** ("Need Lighter Fluid", itself genuinely ambiguous). The caution
-    was worth raising and cheap to drop. `rigs` is carried explicitly because `rig` normalises to 3
+    ✅ **OWNER RULED 2026-09-17: include SIX of the seven** — bias-to-over-match on a compliance
+    gate, where a false positive is one needless ID check and a false negative is an untracked 21+
+    handoff. ⛔ **`lighter fluid` was EXCLUDED by the owner, same day:** *"lighter fluid is not a
+    risk, that is used more for BBQ than age-restricted."* He was right, and it was the only one of
+    the seven that matched anything real — dropping it takes the **measured cost of this ruling to
+    ZERO additional flags across all 64,491 order titles.** The other six matched nothing
+    historical; they are forward cover. `rigs` is carried explicitly because `rig` normalises to 3
     chars, under the 6-char plural floor. **Do not reinstate the exclusions without re-measuring.**
+  - ⚠️ **On lighters, the line is the LIGHTER, not the fluid.** `zippo fluid` still gates (on
+    `zippo`), as do `torch lighter`, `butane refill` and `cigarette lighter` — a generic can of BBQ
+    starter does not. Asserted in the test; **do not "tidy" this into a blanket `lighter fluid`
+    keyword**, which is exactly the edit the owner rejected.
   - ⛔ **That ruling did NOT relax the two normalisation guards, and the test says so explicitly.**
     Those are artefacts of stripping punctuation and tolerating plurals — not vocabulary choices —
     so `on!`→`on`, `rose`→`roses` and `weed`→`weeds` stay guarded. Bare `pipe`, `grinder`, `pouch`
