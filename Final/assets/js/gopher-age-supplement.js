@@ -173,7 +173,6 @@ window.GopherAgeSupplement = [
   "l-d red",
   "lager",
   "levi garrett",
-  "lighter fluid",
   "liquor",
   "liquor run",
   "liquor store",

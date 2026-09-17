@@ -79,10 +79,17 @@ ok('bong-from-a-smoke-shop question gates',
    gate: a false positive is one needless ID check, a false negative is an
    untracked 21+ handoff.
 
-   MEASURED COST OF THE RULING, over all 64,491 production order titles:
-   exactly ONE additional flag — "Need Lighter Fluid" — which is itself
-   genuinely ambiguous and defensible to gate. The caution was cheap to hold and
-   cheaper to drop. Do not reinstate the exclusions without re-measuring. */
+   ⛔ SIX of the seven, NOT "lighter fluid" — owner, same day: "lighter fluid is
+   not a risk, that is used more for BBQ than age-restricted." He is right, and
+   it was the ONLY one of the seven that flagged anything real: removing it takes
+   the measured cost of this ruling to ZERO additional flags across all 64,491
+   production order titles. The other six matched nothing historical; they are
+   forward cover for wording that has not appeared yet.
+
+   ⚠️ The line is the LIGHTER, not the fluid: "zippo fluid" still gates (on
+   "zippo"), as do "torch lighter", "butane refill" and "cigarette lighter". A
+   generic can of BBQ starter does not. Asserted below — do not "tidy" this into
+   a blanket lighter-fluid keyword. */
 console.log('\n  now gating BY RULING (were excluded until 2026-09-17):');
 [
   ['oil rig equipment', 'bare "rig"'],
@@ -91,8 +98,13 @@ console.log('\n  now gating BY RULING (were excluded until 2026-09-17):');
   ['water bubbler for the office', 'bare "bubbler"'],
   ['coffee percolator', 'bare "percolator"'],
   ['glass piece', ''],
-  ['lighter fluid for the grill', 'the one real-world cost of the ruling'],
 ].forEach(([t]) => { const f = flags(t); ok(`"${t}" gates`, f.hit); });
+
+console.log('\n  the lighter is restricted, the BBQ fluid is not (owner, 2026-09-17):');
+[['zippo fluid'], ['torch lighter'], ['butane refill'], ['cigarette lighter']]
+  .forEach(([t]) => { const f = flags(t); ok(`"${t}" gates`, f.hit); });
+[['Need Lighter Fluid'], ['lighter fluid for the grill'], ['charcoal and lighter fluid']]
+  .forEach(([t]) => { const f = flags(t); ok(`"${t}" stays quiet`, !f.hit, `matched ${JSON.stringify(f.r)}`); });
 
 /* ---- the guards that REMAIN. Without the two rules in findAgeRestrictedKeyword
    these fail, and each is a needless ID check on an ordinary delivery. The
