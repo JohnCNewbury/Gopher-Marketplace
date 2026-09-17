@@ -676,3 +676,42 @@ anchors*, not about whether the link works. A fragment that matches no element i
 that something is broken — the page's own JavaScript is where that hypothesis gets tested.
 
 Nothing was changed. The correct action here was to look, then not touch.
+
+---
+
+## 16. Published to a branch — `blog-split-seo-aeo-2026-09-16`
+
+Owner, 2026-09-17: *"can we push your commits so nothing is left from this session. I don't like
+retiring session with loose ends."*
+
+⚠️ **A plain `git push` was NOT the right move, and this is the reason to check first.** At that
+moment the shared branch had **14 unpushed commits and only 2 were this session's** — the count had
+gone 9 → 11 → 14 within the hour, because the age-gate session was committing while this one worked.
+Pushing the branch would have published another session's in-flight work (its own message says
+*"before this session compacts"*) plus the G40-448 commit whose message says an acceptance criterion
+is **not** met. Neither is this session's to publish.
+
+**What was done instead**, on the owner's choice: the two commits were cherry-picked onto a branch
+cut from `origin/feature/deals-google-maps-audience` and that branch was pushed.
+
+| | |
+|---|---|
+| Branch | `blog-split-seo-aeo-2026-09-16` |
+| Commits | `7390359` (blog split) · `cfac028` (iQ engine) |
+| Carries | 36 files, **all of them this session's** |
+| Leaves alone | all 12 other commits, still local, untouched |
+
+**Checked before pushing, because the repo is PUBLIC:** no `sk_live` / `sk_test` / `AKIA` / private
+keys / passwords / tokens / SSN- or phone-shaped strings anywhere in the 36 files. The only personal
+address is one **pre-existing** line in `session-log.md` that itself states the address has been
+public for years; it already appears in 4 files on the published branch, so nothing new was exposed.
+
+**Proved identical after the push, not assumed:** `git patch-id --stable` over the local range
+`0598ccc..6f21fe0` and over the pushed branch both give `667cf7df3d87…`, and the individual blob
+SHAs match file by file.
+
+⚠️ **The SHAs differ, deliberately — and that matters on this project.** A cherry-pick creates new
+commits, so `0598ccc` / `6f21fe0` remain local-only and the feature branch still counts 14 unpushed.
+**The content is backed up; those two SHAs are not the ones on the remote.** Cite `7390359` /
+`cfac028` when referring to the published copies. Nothing deploys from this branch — the site ships
+via `scripts/deploy.sh` to `main`, and everything here has been live since `62d2f55`.
