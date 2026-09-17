@@ -508,72 +508,171 @@ Two practical notes only:
 
 ---
 
-## 12. Surfaced, NOT started — five live pages each inline a drifted copy of the AI engine
+## 12. The AI-engine copies — investigated 2026-09-17, and my first account OVERSTATED it
 
-Found 2026-09-16 while checking flag 3. **Not acted on: it is outside this task, it touches the
-homepage and Gopher Request, and it needs the owner's decision and a proper scoping pass first.**
+⚠️ **Correcting §12 as first written.** It said *"four distinct versions are live… nothing says which
+copy is canonical"* and implied neglect. **That is wrong, and the git history says so:** commit
+`3e3a5b6` (2026-09-10) updated the external file **and all five pages in the same commit**, and
+`477317b` (2026-07-24) is titled *"…(all 7 copies)"*. The copies are **deliberately hand-synced**.
+It is a maintenance cost, not an unmanaged mess. I also implied per-page answers could differ — they
+cannot: the 295 KB FAQ corpus is already external and shared (`assets/js/gopher-iq-data.js`).
 
-`assets/js/gopher-ai-engine.js` exists as an external, cacheable file (301 KB). **Five live pages
-ignore it and inline their own copy instead** — and the copies have drifted apart:
+### What is actually true
 
-| Page | Page size | Inline engine | sha256 (12) |
-|---|---|---|---|
-| `assets/js/gopher-ai-engine.js` | — | 300,921 | `1600b0c7a0c4` |
-| `index.html` | 455 KB | 301,846 | `95f61dfe2883` |
-| `gopher-services.html` | 392 KB | 301,846 | `95f61dfe2883` |
-| `gopher-faqs.html` | 394 KB | 301,895 | `803123d97367` |
-| `gopher-iq-sandbox-standalone.html` | 510 KB | 302,500 | `f1609d6db0b7` |
-| `gopher-request.html` | 1.84 MB | 403,730 | `9001bccfa305` |
+`assets/js/gopher-ai-engine.js` (301 KB) is the Gopher iQ "AI Pill" engine — matching logic and
+lookup tables (`FAQS`, `SYNONYMS`, `CATEGORIES`, `STEM_KEEP`, `CAT_THRESH`…), 1,280 very long lines.
+Five pages inline their own copy of it:
 
-**Four distinct versions of the engine are live, and the external file matches none of them.**
+| Page | Inline engine | Links shared corpus? | `requestDemo` anchor | iframe-safe nav |
+|---|---|---|---|---|
+| `assets/js/gopher-ai-engine.js` (external) | 301,586 | n/a | `#flow-demo` (old) | **no** |
+| `index.html` | 301,843 | yes | `#demo` | yes |
+| `gopher-services.html` | 301,843 (identical to index) | yes | `#demo` | yes |
+| `gopher-faqs.html` | 301,892 | yes | **`#flow-demo` (old)** | yes |
+| `gopher-iq-sandbox-standalone.html` | 302,497 | **no** (standalone by design) | `#demo` | yes |
+| `gopher-request.html` | 302,956 | yes | `#demo` | yes |
 
-**Why it matters:** a fix to the AI engine today has to be applied in five places, and nothing says
-which copy is canonical — the external file's name makes it *look* canonical while being used by
-nobody. That is the same shape as a stale doc: authoritative-looking and wrong. Secondary cost:
-~300 KB re-downloaded per page instead of cached once.
+Diffs against the external file are **41–59 lines** out of 1,280 — small, but behavioural.
 
-⚠️ **This is NOT a mechanical swap to `<script src=…>`.** The copies differ, so a swap would change
-behaviour on the homepage and on Request. It needs a diff of the four versions, a decision on which
-is canonical, and a real verification pass per page. CLAUDE.md already names the page-weight half of
-this under Known issues; the *divergence* half is new here.
+### The two findings that are worth something
 
-**Recommendation: scope it as its own piece of work with the owner, do not fold it into anything.**
+**1. The external file is DEAD CODE that looks canonical.** Nothing links it — verified by grepping
+every `.html` in `Final/` and `_prototypes/` for `src="…gopher-ai-engine.js"`: zero hits. And it is
+**behind** the pages: it lacks the iframe-safe `_go()` the inline copies have, and still carries the
+old anchor. **The named module in `assets/js/` — the thing that looks authoritative — is stale and
+used by nobody.** Someone will eventually edit it and nothing will happen. That is the same shape as
+a stale doc, and it is the real hazard here.
+
+**2. `gopher-faqs.html` has drifted, and it is user-visible.** Its copy points "See how it works" at
+`gopher-request.html#flow-demo` — the section element — while the other four use **`#demo`**, a
+purpose-built anchor carrying `scroll-margin-top:88px` that exists precisely to stop the 66px sticky
+header covering the content. So from the FAQs page that link lands under the header. Small, and
+exactly the drift you would predict from hand-syncing six copies.
+
+### ⚠️ WITHDRAWN: "`#login` does not exist" — see §15. It works, and it is deliberate.
+
+### If it is consolidated
+
+**Not a mechanical swap.** The copies genuinely differ, so it needs: pick the canonical version
+(likely an inline one — iframe-safe nav plus `#demo`), fold in anything unique, replace five inline
+blocks with `<script src>`, and drive the pill on each page. **Load order matters** — the engine runs
+inline at parse time today, and `defer` changes when it attaches. It touches `index.html` and
+`gopher-request.html`, the two highest-traffic surfaces.
+
+**Reward:** one place to fix instead of six; ~300 KB off each of five pages; cached once instead of
+downloaded five times. **Risk:** behaviour change on the homepage and Request if a difference is
+missed. **Cheap wins available today without any of that:** sync the FAQs anchor to `#demo`, and
+either refresh or retire the dead external file so it stops reading as authoritative.
 
 ---
 
-## 13. The two Elementor paste sources were removed from the site — `0e5749e`
+## 14. The two cheap wins from §12 — DEPLOYED `62d2f55`, verified both hosts
 
-Owner, 2026-09-16: *"remove the two txt files."*
+Owner, 2026-09-17: *"do the two cheap wins."*
 
-`Final/gopher-privacy-policy-elementor.txt` and `-html.txt` were **moved to `docs/handoff/`, not
-deleted.** They are the only copies on disk and their purpose is to be pasted into Elementor, so they
-are still to hand; the deploy drops both public URLs either way. Both are committed (`61b3124`,
-`eea66f1`), so the content is recoverable regardless.
+### Win 1 — `gopher-faqs.html` synced to the other copies
 
-`Final/gopher-privacy-policy-stores.md` was **left live** — the owner named only the two `.txt`
-files, and that one is the store-submission URL, which plausibly needs to stay reachable.
+One line, in the engine's `GOPHER_LINKS` table:
 
-Dry run and deploy were **2 files, both deletions, nothing else**.
+```
+- requestDemo: 'gopher-request.html#flow-demo', // ... (matches the section id on gopher-request.html)
++ requestDemo: 'gopher-request.html#demo',     // See how it works -> Demo section
+```
 
-**Verified after the push, on both hosts:**
+`#demo` is a purpose-built anchor carrying `scroll-margin-top:88px`, so the 66px sticky header does
+not cover the target; `#flow-demo` is the raw section. The comment was matched to index's **exactly**
+— a longer, more explanatory comment would have reintroduced a byte-level difference and defeated
+the point of the exercise.
+
+**Result: `index.html`, `gopher-services.html` and `gopher-faqs.html` now carry a byte-identical
+engine copy** (sha `95f61dfe2883`, 301,843 bytes) where before only the first two matched.
+
+### Win 2 — the dead reference file refreshed and labelled
+
+`assets/js/gopher-ai-engine.js` was **behind** the live pages (old anchor, no iframe-safe `_go()`)
+while looking canonical. Refreshed from the index/services/faqs copy — their shared body now matches
+it byte for byte — and given a header that states plainly that **nothing loads this file**, which
+five pages inline their own copy, and that editing it alone changes nothing on the site.
+`gopher-request.html` and `gopher-iq-sandbox-standalone.html` are noted there as carrying deliberate
+page-specific extensions (a `GopherCategoryClassifier` export, a no-pill bail-out guard, an in-page
+`submitRequest`) rather than drift.
+
+### Verification, and an honest limit
+
+| | |
+|---|---|
+| Every inline `<script>` on the edited page still parses (`vm.Script`) | 2/2 on faqs, 3/3 index, 4/4 services, 0 failures |
+| The refreshed external file parses | yes |
+| Engine still attaches on all three pages — `.ai-bar` present, `aiInput`/`aiScope` hooked | yes |
+| JS errors at runtime | **0** on all three |
+
+⚠️ **What could NOT be proved, stated rather than glossed:** the harness never got the pill to render
+an answer — `#aiResults` stayed empty after typing and pressing Enter. **That result reproduces
+identically on `index.html` and `gopher-services.html`, which are byte-identical to production and
+which this change never touched** (verified by hashing them against the live host). So it is a
+property of the harness or of the pill's existing behaviour, **not** something this change
+introduced. It is not evidence of a regression, and it is equally not a clean bill of health for the
+pill itself — that belongs to whoever owns the iQ lane.
+
+The probe is kept at `scripts/web-checks/blog-split/iq_probe.py`. Note it was tightened mid-run: its
+first version "passed" by checking whether the page text contained *fee|price|cost|free*, which the
+FAQs page contains anyway — a check that cannot fail is not a check.
+
+### Verified live after the push — deploy `62d2f55`
 
 | | GitHub Pages | TigerTech |
 |---|---|---|
-| `gopher-privacy-policy-elementor.txt` | **404** | **404** |
-| `gopher-privacy-policy-elementor-html.txt` | **404** | **404** |
-| `gopher-privacy-policy-stores.md` (kept) | 200 | 200 |
-| `assets/css/gopher-blog.css`, a post page, the retitled post, the index, `feed.xml`, `sitemap.xml` | all 200 | all 200 |
+| `gopher-faqs.html` / `index.html` / `gopher-services.html` engine copies | **all three sha `95f61dfe2883`, 301,843 bytes — byte-identical** | same |
+| `#flow-demo` on the FAQs page | **0 occurrences** | 0 |
+| `#demo` on the FAQs page | 1 | 1 |
+| reference file carries the "nothing loads this" header | yes | yes |
+| reference file body matches the live inline copy | yes | yes |
+| `gopher-blog.html` shim · SP-Deals `FAQPage` · `gopher-blog.css` `.map-lead` · `feed.xml` | all present | all present |
 
-⚠️ **Worth knowing: a DELETION propagates to TigerTech, not just a publish.** The two hosts reach the
-site by different mechanisms — Pages serves `main` directly, TigerTech is fed by an FTPS workflow —
-and "the file uploaded" and "the file was removed" are different operations. This was checked
-explicitly rather than assumed. It held: both hosts returned 404.
+**And the engine provably still executes on the page whose JS was edited.** `aiResults` does not
+exist in the raw source of `gopher-faqs.html` (0 occurrences) but **is present in the rendered DOM**
+(1), and `aiInput` goes 1 → 2 — hooks the engine injects at runtime. Finding them live is proof it
+ran, and needs no probe injected into the page. `index.html` behaves the same as a control.
 
-### Deploy history for this work
+### Risk on deploy
 
-| Deploy | What |
+**Very low.** The faqs change sets one link constant to the value four other pages already ship in
+production today. The external file is loaded by nobody, verified by grep across `Final/` and
+`_prototypes/`, so changing it cannot affect any page. No URLs move.
+
+**The `#login` item is withdrawn — see §15.** It is not a dead anchor; it is a working JS contract.
+
+---
+
+## 15. ⚠️ WITHDRAWN: the "`#login` is a dead anchor" finding was WRONG
+
+Raised by this session on 2026-09-17 and **retracted the same day**, before anything was changed.
+Recorded in full because acting on it would have broken working product.
+
+**What I claimed:** `gopher-request.html` has no `id="login"`, no `name="login"` and nothing creates
+one at runtime, so the hash used by every iQ engine copy and by `gopher-header.js` site-wide lands at
+the top of the page instead of at sign-in. I extended it to all four targets — Request (114 inbound
+links), Connect (13), Go (7), Deals (2) — none of which has an `id="login"`.
+
+**The element ids genuinely do not exist. The conclusion drawn from that was still wrong.**
+`#login` is not a scroll anchor. It is a **JavaScript trigger**, and all four pages already read it:
+
+| Page | Evidence |
 |---|---|
-| `99f9217` | state before any of this — rollback point for the whole split |
-| `2bf8ecd` | the blog split: 14 post pages, feed, shared CSS, teaser index, sitemap rows |
-| `11927d7` | flag 2 corrected, the Go post retitled, the marketplace map CTA rebuilt |
-| `0e5749e` | the two Elementor paste sources removed from the published site |
+| `gopher-connect.html` | **Proven at runtime.** With no hash, no sign-in visible; with `#login`, `signinOverlay` and `signinView` both visible. Control run included. |
+| `gopher-deals.html` | **Proven at runtime.** Same shape: `loginScreen` and `signinView` become visible only with `#login`. |
+| `gopher-request.html` | Carries a block commented *"Open the sign-in portal when the header (or any link) arrives with #login"*, which clears the hash the instant it acts on it — citing an **owner-reported bug, 2026-08-25**: *"tapping login is not transitioning to the dashboard… I was already logged in."* |
+| `gopher-go.html` | Handles `#login` and `replaceState`s it to `#app` for a remembered worker, with a comment describing the bug that module exists to fix. |
+
+**So the hash is deliberately engineered, and has already been refined in response to the owner.**
+Had it been "fixed" — by adding `id="login"` elements or repointing 136 links — it would have
+overwritten behaviour that specifically handles the remembered-session case. That is worse than the
+imaginary bug it was meant to cure.
+
+**Why the error happened, since it is the second of the same shape in two days** (the other being
+the `gopher-services.html` word count in §4 flag 3): **I proved the absence of one mechanism and
+concluded the absence of the behaviour.** `grep id="login"` returning zero is evidence about *scroll
+anchors*, not about whether the link works. A fragment that matches no element is a **hypothesis**
+that something is broken — the page's own JavaScript is where that hypothesis gets tested.
+
+Nothing was changed. The correct action here was to look, then not touch.
