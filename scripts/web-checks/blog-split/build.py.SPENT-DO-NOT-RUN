@@ -1,0 +1,538 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Split Final/gopher-blog.html into 14 post pages + a teaser index.
+
+Post copy is MOVED by text slice, never re-rendered.
+"""
+import datetime
+import html
+import json
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from meta import POSTS, ORDER  # noqa: E402
+
+ROOT = "/Users/johnnewbury/Desktop/All New Gopher/Documentation/Claude Code Review:Cleanup/Code"
+FINAL = os.path.join(ROOT, "Final")
+SRC = os.path.join(FINAL, "gopher-blog.html")
+HERE = os.path.dirname(os.path.abspath(__file__))
+SITE = "https://gophergo.io/"
+
+src = open(SRC, encoding="utf-8").read()
+cards = {c["id"]: c for c in json.load(open(os.path.join(HERE, "cards.json"), encoding="utf-8"))}
+assert set(cards) == set(POSTS) == set(ORDER), (set(cards) ^ set(POSTS))
+
+report = {"desc_len": {}, "words": {}}
+
+# ── shared blocks lifted from the index ────────────────────────────────────
+band_start = src.index('<!-- ═══════════════════ CLOSING BAND')
+foot_end = src.index("</footer>") + len("</footer>")
+FOOTER_BLOCK = src[band_start:foot_end]
+# gopher-footer.css is linked from every new page's <head>; drop the mid-body copy
+FOOTER_BLOCK = FOOTER_BLOCK.replace(
+    '<link rel="stylesheet" href="assets/css/gopher-footer.css">\n', "")
+assert "gopher-footer" in FOOTER_BLOCK and "<section class=\"band\">" in FOOTER_BLOCK
+
+# Post pages carry no .reveal elements, so the index's entrance-animation
+# script is deliberately not copied onto them.
+
+
+def txt(h):
+    """Visible text of an HTML fragment."""
+    h = re.sub(r"(?is)<(script|style).*?</\1>", " ", h)
+    h = re.sub(r"(?s)<!--.*?-->", " ", h)
+    h = re.sub(r"(?s)<[^>]+>", " ", h)
+    return re.sub(r"\s+", " ", html.unescape(h)).strip()
+
+
+def words(h):
+    return len(txt(h).split())
+
+
+def plain(s):
+    """Entity-bearing HTML string -> plain text for JSON-LD / feed."""
+    return html.unescape(re.sub(r"(?s)<[^>]+>", "", s)).strip()
+
+
+def attr(s):
+    """Plain text -> safe for a double-quoted HTML attribute."""
+    return (s.replace("&", "&amp;").replace('"', "&quot;")
+             .replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def iso(d):
+    return d
+
+
+def rfc822(d):
+    dt = datetime.datetime.strptime(d, "%Y-%m-%d").replace(hour=9)
+    return dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
+
+
+def pretty(d):
+    dt = datetime.datetime.strptime(d, "%Y-%m-%d")
+    return dt.strftime("%b ") + str(dt.day) + dt.strftime(", %Y")
+
+
+def catclass(data_cat):
+    return {"marketplace": "cat-marketplace", "neighbors": "cat-neighbors",
+            "workers": "cat-workers", "business": "cat-business",
+            "merchants": "cat-merchants"}[data_cat]
+
+
+def url_for(pid):
+    return POSTS[pid]["slug"] + ".html"
+
+
+def abs_url(pid):
+    return SITE + url_for(pid)
+
+
+def abs_img(src_path):
+    return SITE + src_path
+
+
+# fragment -> new page, used by both the shim and the in-body link rewrite
+FRAGMAP = {pid: url_for(pid) for pid in ORDER}
+
+
+# ── body preparation ───────────────────────────────────────────────────────
+def prep_body(pid):
+    c = cards[pid]
+    b = c["body"]
+    b = re.sub(r'\s*<div class="divider"></div>', "", b, count=1)
+    b = re.sub(r'\s*<div class="pc-hero-img">.*?</div>', "", b, count=1, flags=re.S)
+    # in-body cross-links to other posts' old fragments become real page links
+    def sub_href(m):
+        frag = m.group(1)
+        if frag in FRAGMAP:
+            return 'href="%s"' % FRAGMAP[frag]
+        raise SystemExit("unmapped in-body fragment #%s in %s" % (frag, pid))
+    b = re.sub(r'href="#([a-z0-9-]+)"', sub_href, b)
+    return b.strip()
+
+
+def body_wordcount(pid):
+    """Words in the moved copy only — dek and takeaways excluded."""
+    return words(prep_body(pid))
+
+
+# ── JSON-LD ────────────────────────────────────────────────────────────────
+def ld(obj):
+    return json.dumps(obj, indent=2, ensure_ascii=False)
+
+
+def blogposting(pid, stub=False):
+    c, m = cards[pid], POSTS[pid]
+    o = {
+        "@type": "BlogPosting",
+        "headline": plain(c["title"]),
+        "url": abs_url(pid),
+        "datePublished": iso(m["published"]),
+        "image": abs_img(c["thumb_src"]),
+    }
+    if stub:
+        return o
+    o = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": plain(c["title"]),
+        "description": plain(m["desc"]),
+        "image": abs_img(c["thumb_src"]),
+        "datePublished": iso(m["published"]),
+        "dateModified": iso(m["modified"]),
+        "author": {"@type": "Organization", "name": "Gopher", "url": SITE},
+        "publisher": {
+            "@type": "Organization",
+            "name": "Gopher",
+            "url": SITE,
+            "logo": {"@type": "ImageObject",
+                     "url": SITE + "assets/img/og-default.jpg"},
+        },
+        "mainEntityOfPage": {"@type": "WebPage", "@id": abs_url(pid)},
+        "url": abs_url(pid),
+        "articleSection": plain(c["cat_label"]),
+        "wordCount": body_wordcount(pid),
+        "inLanguage": "en-US",
+    }
+    return o
+
+
+def breadcrumb(pid):
+    c = cards[pid]
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": SITE},
+            {"@type": "ListItem", "position": 2, "name": "Gopher Blog",
+             "item": SITE + "gopher-blog.html"},
+            {"@type": "ListItem", "position": 3, "name": plain(c["title"]),
+             "item": abs_url(pid)},
+        ],
+    }
+
+
+def faqpage(pid):
+    qs = POSTS[pid]["faq"]
+    if not qs:
+        return None
+    return {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {"@type": "Question", "name": q,
+             "acceptedAnswer": {"@type": "Answer", "text": a}}
+            for q, a in qs
+        ],
+    }
+
+
+# ── post page ──────────────────────────────────────────────────────────────
+POST_TMPL = """<!DOCTYPE html>
+<!--
+  GOPHER BLOG POST  ·  {file}
+  One post, one URL. Split out of gopher-blog.html on 2026-09-16 so each post
+  can rank and be cited on its own. Copy is moved verbatim from that page; the
+  meta description, key takeaways and any FAQ answers are derived from it.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{title_tag}</title>
+  <!-- SEO -->
+  <link rel="canonical" href="{canonical}">
+  <meta name="description" content="{desc}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Gopher">
+  <meta property="og:title" content="{og_title}">
+  <meta property="og:description" content="{desc}">
+  <meta property="og:url" content="{canonical}">
+  <meta property="og:image" content="{og_image}">
+  <meta property="article:published_time" content="{published}">
+  <meta property="article:modified_time" content="{modified}">
+  <meta property="article:section" content="{section}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{og_title}">
+  <meta name="twitter:description" content="{desc}">
+  <meta name="twitter:image" content="{og_image}">
+<link rel="alternate" type="application/rss+xml" title="Gopher Blog" href="feed.xml">
+<link rel="stylesheet" href="assets/css/gopher-fonts.css">
+<link rel="stylesheet" href="assets/css/gopher-blog.css">
+<link rel="stylesheet" href="assets/css/gopher-footer.css">
+
+<script type="application/ld+json">
+{ld_post}
+</script>
+<script type="application/ld+json">
+{ld_crumb}
+</script>{ld_faq}
+</head>
+<body>
+
+<!-- canonical header mounts here -->
+<div id="gopher-header"></div>
+
+<article class="post-page {catclass}">
+  <div class="post-wrap">
+
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">&rsaquo;</span><a href="gopher-blog.html">Blog</a><span class="sep">&rsaquo;</span><span class="cur">{section}</span>
+    </nav>
+
+    <header class="post-head">
+      <span class="pc-cat">{section}</span>
+      <h1 class="post-title">{title}</h1>
+      <div class="pc-byline"><img src="assets/img/shared-mh-sub.svg" alt=""><span class="who">Gopher Team</span><span class="sep">&middot;</span><span>{date_pretty}</span><span class="sep">&middot;</span><span>{readtime}</span></div>
+    </header>
+
+    <figure class="post-hero">
+      <img src="{hero_src}" alt="{hero_alt}" loading="eager" width="1024" height="430">
+    </figure>
+
+{body}
+
+    <aside class="related">
+      <h2>Related reading</h2>
+      <ul>
+{related}
+      </ul>
+    </aside>
+
+    <p class="back-all"><a href="gopher-blog.html">&larr; All posts</a></p>
+
+  </div>
+</article>
+
+{footer}
+
+<script src="assets/js/gopher-header.js" defer></script>
+</body>
+</html>
+"""
+
+
+def takeaways_html(pid):
+    lis = "\n".join("            <li>%s</li>" % t for t in POSTS[pid]["takeaways"])
+    return ('        <aside class="takeaways">\n'
+            '          <h2>Key takeaways</h2>\n'
+            '          <ul>\n%s\n          </ul>\n'
+            '        </aside>' % lis)
+
+
+def build_post(pid):
+    c, m = cards[pid], POSTS[pid]
+    body = prep_body(pid)
+    lead = '        <p class="post-lead">%s</p>' % c["dek"]
+    marker = '<div class="reading">'
+    assert marker in body, pid
+    i = body.index(marker) + len(marker)
+    body = body[:i] + "\n" + lead + "\n" + takeaways_html(pid) + body[i:]
+    # indent the whole block two more levels so it sits inside .post-wrap
+    body = "\n".join(("  " + ln) if ln.strip() else ln for ln in body.split("\n"))
+    body = "    " + body.lstrip()
+
+    rel = []
+    for rid in m["related"]:
+        rel.append('        <li><a href="%s"><span class="rl-cat">%s</span>%s</a></li>'
+                   % (url_for(rid), cards[rid]["cat_label"], cards[rid]["title"]))
+
+    faq = faqpage(pid)
+    ld_faq = ('\n<script type="application/ld+json">\n%s\n</script>' % ld(faq)) if faq else ""
+
+    title_plain = plain(c["title"])
+    page = POST_TMPL.format(
+        file=url_for(pid),
+        title_tag=attr(title_plain + " – Gopher"),
+        canonical=abs_url(pid),
+        desc=attr(plain(m["desc"])),
+        og_title=attr(title_plain + " – Gopher"),
+        og_image=abs_img(c["thumb_src"]),
+        published=m["published"],
+        modified=m["modified"],
+        section=c["cat_label"],
+        ld_post=ld(blogposting(pid)),
+        ld_crumb=ld(breadcrumb(pid)),
+        ld_faq=ld_faq,
+        catclass=catclass(c["data_cat"]),
+        title=c["title"],
+        date_pretty=pretty(m["published"]),
+        readtime=c["readtime"],
+        hero_src=c["thumb_src"],
+        hero_alt=attr(html.unescape(c["thumb_alt"] or "")),
+        body=body,
+        related="\n".join(rel),
+        footer=FOOTER_BLOCK,
+    )
+    open(os.path.join(FINAL, url_for(pid)), "w", encoding="utf-8").write(page)
+    report["desc_len"][pid] = len(plain(m["desc"]))
+    report["words"][pid] = body_wordcount(pid)
+
+
+# ── index ──────────────────────────────────────────────────────────────────
+def build_index():
+    out = src
+
+    # 0. the file comment described the old collapsing-<details> feed
+    old_comment = """  Canonical Gopher header (self-injecting) + canonical solid-navy footer,
+  dropped in verbatim. Content-first blog index: compact masthead, category
+  filters, a featured story, and an editorial feed. Each story is collapsed
+  by default and opens on "Read the story →" (accessible <details>). Every
+  article ends with a topical CTA pathway to the relevant product page."""
+    new_comment = """  Canonical Gopher header (self-injecting) + canonical solid-navy footer,
+  dropped in verbatim. Content-first blog INDEX: compact masthead, category
+  filters, a featured story, and an editorial feed of teaser cards.
+
+  2026-09-16 — the 14 posts moved to one page each (blog-<slug>.html) so each
+  could rank and be cited on its own. The full text of a post now lives on
+  exactly one URL: its own. These cards link out; they no longer expand. The
+  old #anchor ids are kept on the cards and a shim in <head> forwards them."""
+    assert old_comment in out
+    out = out.replace(old_comment, new_comment, 1)
+    out = out.replace("  <!-- FEATURED · REALTORS -->\n", "  <!-- FEATURED -->\n", 1)
+
+    # 1. inline <style> -> shared stylesheet
+    out = re.sub(r"<style>\n.*?\n</style>",
+                 '<link rel="stylesheet" href="assets/css/gopher-blog.css">',
+                 out, count=1, flags=re.S)
+
+    # 2. feed link + JSON-LD + fragment shim in <head>
+    blog_ld = {
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        "name": "Gopher Blog",
+        "description": "Stories, plain-English guides, and the local way to get "
+                       "things done. Real problems, straight answers, and how "
+                       "neighbors get them handled with Gopher.",
+        "url": SITE + "gopher-blog.html",
+        "inLanguage": "en-US",
+        "publisher": {"@type": "Organization", "name": "Gopher", "url": SITE,
+                      "logo": {"@type": "ImageObject",
+                               "url": SITE + "assets/img/og-default.jpg"}},
+        "blogPost": [blogposting(pid, stub=True) for pid in ORDER],
+    }
+    crumb_ld = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": SITE},
+            {"@type": "ListItem", "position": 2, "name": "Gopher Blog",
+             "item": SITE + "gopher-blog.html"},
+        ],
+    }
+    shim = """<script>
+/* Fragment redirect shim — the 14 posts moved to their own URLs on 2026-09-16.
+   GitHub Pages cannot serve a 301, so old #anchor links, bookmarks and any
+   indexed fragment are sent on in JS. The teaser cards keep their ids, so with
+   JS off the link still lands on the right card. */
+(function(){
+  var MAP = %s;
+  function go(){
+    var h = (location.hash || '').replace(/^#/, '');
+    if (h && Object.prototype.hasOwnProperty.call(MAP, h)) { location.replace(MAP[h]); }
+  }
+  go();
+  window.addEventListener('hashchange', go);
+})();
+</script>""" % json.dumps(FRAGMAP, indent=4, sort_keys=True).replace("\n", "\n  ")
+
+    head_add = (
+        '<link rel="alternate" type="application/rss+xml" title="Gopher Blog" href="feed.xml">\n'
+        '<link rel="stylesheet" href="assets/css/gopher-blog.css">\n'
+        '\n<script type="application/ld+json">\n%s\n</script>\n'
+        '<script type="application/ld+json">\n%s\n</script>\n'
+        '%s\n' % (ld(blog_ld), ld(crumb_ld), shim)
+    )
+    out = out.replace('<link rel="stylesheet" href="assets/css/gopher-blog.css">',
+                      head_add, 1)
+
+    # 3. cards become teasers
+    for pid in ORDER:
+        c = cards[pid]
+        full = None
+        pat = re.compile(r'<details class="post-card[^"]*"[^>]*\sid="%s"[^>]*>.*?</details>'
+                         % re.escape(pid), re.S)
+        m = pat.search(out)
+        assert m, pid
+        full = m.group(0)
+        classes = c["classes"]
+        summary = c["summary"]
+        teaser = summary.replace("<summary>", '<div class="pc-teaser">', 1)
+        teaser = teaser.replace("</summary>", "</div>", 1)
+        # title -> link
+        teaser = teaser.replace(
+            '<h2 class="pc-title">%s</h2>' % c["title"],
+            '<a class="pc-titlelink" href="%s"><h2 class="pc-title">%s</h2></a>'
+            % (url_for(pid), c["title"]), 1)
+        # read-more -> link
+        teaser = re.sub(
+            r'<span class="pc-readmore">.*?</span>\s*</div>',
+            '<a class="pc-readmore" href="%s">Read the story <span class="arrow">&rarr;</span></a>\n      </div>'
+            % url_for(pid),
+            teaser, count=1, flags=re.S)
+        # thumbnail links too
+        teaser = teaser.replace(
+            '<div class="pc-thumb">', '<div class="pc-thumb">', 1)
+        new = ('<article class="%s" id="%s" data-cat="%s">\n    %s\n  </article>'
+               % (classes, pid, c["data_cat"], teaser.strip()))
+        out = out[:m.start()] + new + out[m.end():]
+
+    # 4. the filter JS toggled `open` on <details>; nothing is open any more
+    out = out.replace("          if(!match) card.removeAttribute('open');\n", "")
+    # 5. the "ease an opened story into view" block has no <details> left to watch
+    ease = re.compile(r"\n  /\* ease an opened story into view \*/\n  \(function\(\)\{.*?\n  \}\)\(\);\n", re.S)
+    assert ease.search(out)
+    out = ease.sub("\n", out)
+
+    open(SRC, "w", encoding="utf-8").write(out)
+
+
+# ── feed.xml ───────────────────────────────────────────────────────────────
+def build_feed():
+    items = []
+    for pid in ORDER:
+        c, m = cards[pid], POSTS[pid]
+        items.append(
+            "    <item>\n"
+            "      <title>%s</title>\n"
+            "      <link>%s</link>\n"
+            "      <guid isPermaLink=\"true\">%s</guid>\n"
+            "      <pubDate>%s</pubDate>\n"
+            "      <category>%s</category>\n"
+            "      <description>%s</description>\n"
+            "    </item>"
+            % (esc(plain(c["title"])), abs_url(pid), abs_url(pid),
+               rfc822(m["published"]), esc(plain(c["cat_label"])),
+               esc(plain(c["dek"]))))
+    feed = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        '  <channel>\n'
+        '    <title>Gopher Blog</title>\n'
+        '    <link>%sgopher-blog.html</link>\n'
+        '    <atom:link href="%sfeed.xml" rel="self" type="application/rss+xml" />\n'
+        '    <description>Stories, plain-English guides, and the local way to get things done. '
+        'Real problems, straight answers, and how neighbors get them handled with Gopher.</description>\n'
+        '    <language>en-us</language>\n'
+        '    <lastBuildDate>%s</lastBuildDate>\n'
+        '%s\n'
+        '  </channel>\n'
+        '</rss>\n' % (SITE, SITE, rfc822(POSTS[ORDER[0]]["modified"]), "\n".join(items)))
+    open(os.path.join(FINAL, "feed.xml"), "w", encoding="utf-8").write(feed)
+
+
+def esc(s):
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+# ── sitemap ────────────────────────────────────────────────────────────────
+def build_sitemap():
+    p = os.path.join(FINAL, "sitemap.xml")
+    sm = open(p, encoding="utf-8").read()
+    assert "blog-" not in sm, "sitemap already has blog entries — rerun on a clean file"
+    rows = "".join(
+        "  <url><loc>%s</loc><lastmod>%s</lastmod></url>\n"
+        % (abs_url(pid), POSTS[pid]["modified"])
+        for pid in sorted(ORDER, key=lambda x: POSTS[x]["slug"]))
+    anchor = "  <url><loc>https://gophergo.io/blinds-curtains.html</loc></url>\n"
+    assert anchor in sm
+    sm = sm.replace(anchor, anchor + rows, 1)
+    # feed.xml is not a page; it does not belong in the sitemap.
+    open(p, "w", encoding="utf-8").write(sm)
+
+
+# ── inbound links elsewhere in Final/ ──────────────────────────────────────
+def fix_inbound():
+    changed = []
+    for name in sorted(os.listdir(FINAL)):
+        if not name.endswith(".html") or name == "gopher-blog.html":
+            continue
+        p = os.path.join(FINAL, name)
+        t = open(p, encoding="utf-8").read()
+        new = t
+        for pid, target in FRAGMAP.items():
+            new = new.replace('href="gopher-blog.html#%s"' % pid, 'href="%s"' % target)
+        if new != t:
+            open(p, "w", encoding="utf-8").write(new)
+            changed.append(name)
+    return changed
+
+
+if __name__ == "__main__":
+    for pid in ORDER:
+        build_post(pid)
+    build_index()
+    build_feed()
+    build_sitemap()
+    ch = fix_inbound()
+    print("inbound links updated in:", ch or "(none)")
+    print("\nmeta description lengths (target 120-155):")
+    for pid in ORDER:
+        n = report["desc_len"][pid]
+        print("  %-22s %3d %s" % (pid, n, "" if 120 <= n <= 155 else "  <-- OUT OF RANGE"))
+    print("\nbody word counts (moved copy):")
+    for pid in ORDER:
+        print("  %-22s %4d" % (pid, report["words"][pid]))

@@ -16,6 +16,32 @@ repo-root `docs/handoff/` folder, one level above this file._
 
 ### Done
 
+- **Blog split — one page per post, for SEO/AEO (2026-09-16).** `gopher-blog.html` carried all 14
+  posts on one URL, so no post could rank or be cited on its own. Split into 14 flat
+  `blog-<slug>.html` pages at the site root (flat, because `assets/js/gopher-header.js` hard-codes
+  page-relative links and a `blog/` folder would break header nav). Each post page: unique
+  title/meta/canonical, Open Graph `article` with its own image, **BlogPosting + BreadcrumbList**
+  JSON-LD, **FAQPage** on the five posts that already answer concrete questions, breadcrumbs, a
+  Key-takeaways box and Related reading. `gopher-blog.html` became a teaser index with `Blog`
+  JSON-LD and a **fragment shim** mapping all 14 old `#id`s to their new pages (Pages cannot serve a
+  301); the teaser cards keep their old ids, so a JS-off visitor still lands on the right card. The
+  index's inline `<style>` moved verbatim to `assets/css/gopher-blog.css`, now shared by all 15
+  pages. Added `feed.xml` (RSS 2.0, 14 items) and 14 `sitemap.xml` rows; repointed
+  `gopher-go.html#refer-yourself`. Copy was **moved by text slice, never re-rendered** — word-count
+  parity came out **exact, 0-word drift on all 14 posts**. Three deploys: **`2bf8ecd`** the split,
+  **`11927d7`** the copy fixes and CTA, **`0e5749e`** removing two Elementor paste sources from the
+  published site. Content-verified by string on **both** hosts each time.
+  Two corrections this produced, both worth knowing: the brief's claim that **`gopher-services.html`
+  has "the same one-URL problem, ~45k words" is FALSE** — measured, it is 1,091 visible words
+  linking 107 leaf pages that all exist and all already carry JSON-LD, i.e. it is already the
+  pattern, not the problem; and **`blog-gopher-marketplace-on-one-page.html` had an invisible CTA
+  button** — `.btn--navy` on `.cta-card.navy`, the same `#002461` on both, the only page in the set
+  pairing those classes. Fixed to green and moved from 64% to 34% down the page at the owner's
+  instruction. Also surfaced but **not started**: five live pages each inline a *drifted* copy of
+  `gopher-ai-engine.js` — four distinct versions, none matching the external file.
+  Full record, including the verification traps: `docs/handoff/blog-split-seo-aeo-2026-09-16.md`.
+  Reusable checks: `scripts/web-checks/blog-split/`.
+
 - **Image optimization (content images).** 19 base64-embedded images were externalized
   to `assets/img/`, removing **~4.9 MB of base64** from the HTML across `index.html`,
   `gopher-blog.html`, `gopher-customer-deals.html`, `gopher-request.html`, and
