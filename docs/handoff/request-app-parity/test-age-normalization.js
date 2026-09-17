@@ -71,19 +71,40 @@ console.log('\n  the sentence that prompted this (already worked — keep it wor
 ok('bong-from-a-smoke-shop question gates',
   flags('Can a delivery driver be able to deliver a bong from a smoke shop?').hit);
 
-/* ---- the guards. Without the two rules in findAgeRestrictedKeyword these fail,
-   and each represents a needless ID check on an ordinary delivery. ---- */
-console.log('\n  MUST STAY QUIET — ambiguity guards (see AMBIGUOUS_REQUIRE_CONTEXT):');
+/* ---- OWNER RULING 2026-09-17: the ambiguous terms are IN. ----------------
+   These seven were held back on 09-04 as too ambiguous (bare "rig" = oil rig,
+   "percolator" = coffee, "bubbler" = water fountain, "lighter fluid" = charcoal
+   starter) and flagged to the owner rather than silently forced into the 21+
+   flow. He ruled include, consistent with bias-to-over-match on a compliance
+   gate: a false positive is one needless ID check, a false negative is an
+   untracked 21+ handoff.
+
+   MEASURED COST OF THE RULING, over all 64,491 production order titles:
+   exactly ONE additional flag — "Need Lighter Fluid" — which is itself
+   genuinely ambiguous and defensible to gate. The caution was cheap to hold and
+   cheaper to drop. Do not reinstate the exclusions without re-measuring. */
+console.log('\n  now gating BY RULING (were excluded until 2026-09-17):');
+[
+  ['oil rig equipment', 'bare "rig"'],
+  ['dab rigs', '"rigs" carried explicitly — "rig" is under the 6-char plural floor'],
+  ['quartz banger', 'bare "banger" now in too'],
+  ['water bubbler for the office', 'bare "bubbler"'],
+  ['coffee percolator', 'bare "percolator"'],
+  ['glass piece', ''],
+  ['lighter fluid for the grill', 'the one real-world cost of the ruling'],
+].forEach(([t]) => { const f = flags(t); ok(`"${t}" gates`, f.hit); });
+
+/* ---- the guards that REMAIN. Without the two rules in findAgeRestrictedKeyword
+   these fail, and each is a needless ID check on an ordinary delivery. The
+   ruling above did NOT relax these — they are normalisation artefacts, not
+   vocabulary choices. ---- */
+console.log('\n  MUST STAY QUIET — normalisation guards (NOT affected by the ruling):');
 [
   ['deliver a dozen roses', 'plural of the wine word "rose" — flowers, not wine'],
   ['weeds in the yard', 'plural of "weed"'],
   ['On-call driver, 9am-5pm, 7/31-8/02', 'the nicotine brand is "on!" — the punctuation IS the keyword'],
   ['pipe fitting for the sink', 'bare "pipe" is held back by the generator'],
-  ['kitchen grinder', 'bare "grinder" is held back; only qualified forms were added'],
-  ['coffee percolator', 'deliberately NOT added — too ambiguous'],
-  ['oil rig equipment', 'bare "rig" deliberately NOT added'],
-  ['water bubbler for the office', 'deliberately NOT added'],
-  ['lighter fluid for the grill', 'deliberately NOT added — charcoal starter'],
+  ['kitchen grinder', 'bare "grinder" is held back; only qualified forms are in'],
   ['mixing bowl', 'bare "bowl" never added'],
 ].forEach(([t, why]) => { const f = flags(t); ok(`"${t}" stays quiet`, !f.hit, `matched ${JSON.stringify(f.r)} — ${why}`); });
 
