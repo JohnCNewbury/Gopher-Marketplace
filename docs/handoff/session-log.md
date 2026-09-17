@@ -1740,12 +1740,20 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     where non-xlsx vocabulary belongs (`gopher-age-keywords.js` is generated — *do not hand-edit*).
     Base forms only, because normalisation now covers plurals/hyphens/spacing; the exceptions are
     words under the 6-char floor (`bongs`, `zippos`) which are carried as data.
-  - ⛔ **AMBIGUOUS TERMS DELIBERATELY EXCLUDED — flagged to the owner, not silently forced into 21+:**
-    bare `rig` (oil rig) · `banger` · `bubbler` (water fountain) · `percolator` (coffee) ·
-    `steamroller` · `glass piece` · `lighter fluid` (charcoal starter). Qualified forms ARE in
-    (`quartz banger`, `herb grinder`), matching how the generator already holds bare
-    `grinder`/`pipe`/`pouch`/`dip` back in **`AMBIGUOUS_REQUIRE_CONTEXT`** — a settled policy that
-    predates this work. **Owner's call if he wants any of these forced; still open.**
+  - **Ambiguous terms were held back and FLAGGED rather than silently forced into 21+** — bare `rig`
+    (oil rig) · `banger` · `bubbler` (water fountain) · `percolator` (coffee) · `steamroller` ·
+    `glass piece` · `lighter fluid` (charcoal starter).
+    ✅ **OWNER RULED 2026-09-17: include them all** (commit `9da97dc`), consistent with
+    bias-to-over-match on a compliance gate — a false positive is one needless ID check, a false
+    negative is an untracked 21+ handoff. **Measured before applying: exactly ONE additional flag
+    across all 64,491 order titles** ("Need Lighter Fluid", itself genuinely ambiguous). The caution
+    was worth raising and cheap to drop. `rigs` is carried explicitly because `rig` normalises to 3
+    chars, under the 6-char plural floor. **Do not reinstate the exclusions without re-measuring.**
+  - ⛔ **That ruling did NOT relax the two normalisation guards, and the test says so explicitly.**
+    Those are artefacts of stripping punctuation and tolerating plurals — not vocabulary choices —
+    so `on!`→`on`, `rose`→`roses` and `weed`→`weeds` stay guarded. Bare `pipe`, `grinder`, `pouch`
+    and `dip` also remain held back by the generator's **`AMBIGUOUS_REQUIRE_CONTEXT`**, a separate
+    and older decision the ruling did not touch.
   - **MEASURED over all 64,071 production order titles** (`Dashboard/data/master/Orders.csv`):
     22,127 → 22,162 flagged. **+35 gained, 0 LOST**, every gain a true positive. Test proven to FAIL
     on the pre-fix code first (21 failures):
