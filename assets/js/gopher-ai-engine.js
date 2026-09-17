@@ -1,15 +1,27 @@
 /* ================================================================
    gopher-ai-engine.js — Gopher AI Pill engine
-   ----------------------------------------------------------------
-   Pair with gopher-ai-engine.css. Link both into any page that has
-   the .ai-bar markup; on DOM-ready, the boot adapter finds the pill,
-   adds the missing hooks, and the engine attaches.
 
-   THINGS TO WIRE BEFORE LAUNCH (search this file for "TODO"):
-     - window.bookService     — route to your real request flow
-     - window.contactSupport  — route to your real support page
-     - analyzeUpload(file)    — the "+" upload analyzer is a STUB;
-                                replace with your vision/DB backend.
+   ⚠️ NOTHING CURRENTLY LOADS THIS FILE. Checked 2026-09-17 by grepping
+   every .html in Final/ and _prototypes/ for src="...gopher-ai-engine.js":
+   zero hits. Five pages inline their own copy of the engine instead:
+
+       index.html · gopher-services.html · gopher-faqs.html
+       gopher-request.html · gopher-iq-sandbox-standalone.html
+
+   Those copies are hand-synced together (see 3e3a5b6, and 477317b — "all
+   7 copies"). THIS FILE IS THE REFERENCE COPY, NOT A LIVE ONE: editing it
+   changes nothing on the site unless you also edit the five pages.
+
+   It had silently fallen BEHIND them — it still had the old
+   'gopher-request.html#flow-demo' link and lacked the iframe-safe _go().
+   Refreshed 2026-09-17 from the index.html / gopher-services.html /
+   gopher-faqs.html copy, which are byte-identical to each other and are
+   the common baseline. gopher-request.html and
+   gopher-iq-sandbox-standalone.html add page-specific code on top (a
+   GopherCategoryClassifier export, a no-pill bail-out guard, an in-page
+   submitRequest) — deliberate extensions, not drift.
+
+   Full context: docs/handoff/blog-split-seo-aeo-2026-09-16.md §12.
    ================================================================ */
 
 (function() {
@@ -1049,8 +1061,8 @@ window.openAnswer=function(i){
    iQ educates and encourages a request; it does NOT route to contact-us.
    ---------------------------------------------------------------- */
 const GOPHER_LINKS = {
-  request:     'gopher-request.html#login',     // Submit a request -> gopher-request sign-in
-  requestDemo: 'gopher-request.html#flow-demo',     // See how it works -> Demo section
+  request:     'gopher-request.html#login',    // Submit a request -> login / sign-up
+  requestDemo: 'gopher-request.html#demo',     // See how it works -> Demo section
   business:     'gopher-connect.html#login',   // "Explore Gopher Connect" (business intent)
   businessDemo: 'gopher-connect-101.html',      // business "See how it works" explainer
   worker:       'gopher-go.html#login',         // "Become a Gopher" (worker sign-up intent)
@@ -1066,16 +1078,29 @@ const GOPHER_LINKS = {
 };
 function requestHref(slug){
   if(!slug) return GOPHER_LINKS.request;
-  // Insert ?category=<slug> BEFORE any #hash so a login/section anchor still works
-  // e.g. 'gopher-request.html#login' -> 'gopher-request.html?category=delivery#login'
-  var base = GOPHER_LINKS.request, hash = '';
-  var hi = base.indexOf('#');
-  if(hi >= 0){ hash = base.slice(hi); base = base.slice(0, hi); }
-  var sep = base.indexOf('?') >= 0 ? '&' : '?';
-  return base + sep + 'category=' + encodeURIComponent(slug) + hash;
+  // Insert ?category=... BEFORE any #hash, so e.g. gopher-request.html#login
+  // becomes gopher-request.html?category=moving#login (query before fragment).
+  const hashAt = GOPHER_LINKS.request.indexOf('#');
+  const path = hashAt>=0 ? GOPHER_LINKS.request.slice(0,hashAt) : GOPHER_LINKS.request;
+  const hash = hashAt>=0 ? GOPHER_LINKS.request.slice(hashAt) : '';
+  const sep  = path.indexOf('?')>=0 ? '&' : '?';
+  return path + sep + 'category=' + encodeURIComponent(slug) + hash;
 }
 function servicesHref(slug){ return GOPHER_LINKS.services + (GOPHER_LINKS.serviceSections[slug]||''); }
-function _go(url){ try{ window.location.href = url; }catch(e){ console.log('[Gopher iQ] nav', url); } }
+function _go(url){
+  // On a normal hosted page this navigates directly. Inside a sandboxed or
+  // embedded preview the same-frame nav can be blocked, so we try the top
+  // frame, then fall back to a new tab, before giving up quietly.
+  try {
+    if (window.top && window.top !== window.self) {
+      try { window.top.location.href = url; return; } catch(_) {}
+    }
+    window.location.assign(url);
+  } catch(e) {
+    try { window.open(url, '_blank', 'noopener'); }
+    catch(_) { console.log('[Gopher iQ] navigation blocked ->', url); }
+  }
+}
 // Submit a request (optionally pre-selecting the matched category).
 window.submitRequest=function(slug){ _go(requestHref(slug)); };
 // See how it works -> request page, Demo section.
@@ -1092,6 +1117,12 @@ window.findMyGopher=function(){ _go(GOPHER_LINKS.findGopher); };
 // mid-click detaches the clicked chip and the outside-click handler closes the box.
 window.iqSearch=function(text){ setTimeout(function(){ var el=document.getElementById('aiInput'); if(el){ el.value=text; el.dispatchEvent(new Event('input',{bubbles:true})); try{ el.focus(); }catch(e){} } }, 0); };
 window.iqPickState=function(city,state){ window.iqSearch('do you have service in '+city+' '+state); };
+// "You might also be looking for" -> services page, relevant section.
+window.openServices=function(slug){ _go(servicesHref(slug)); };
+// Back-compat: any older bookService call now starts a request.
+window.bookService=function(slug,label){ window.submitRequest(slug); };
+// Retained but unused by default — iQ no longer routes people to contact-us.
+window.contactSupport=function(){ console.log('[Gopher iQ] contactSupport (unused)'); };
 // "You might also be looking for" -> services page, relevant section.
 window.openServices=function(slug){ _go(servicesHref(slug)); };
 // Back-compat: any older bookService call now starts a request.
