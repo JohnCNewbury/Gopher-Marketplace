@@ -1732,6 +1732,59 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     dimension, so even a perfect parse could not answer this. The number exists in **Promo Codes**
     (baked from `Coupons.csv` with `order_count` per code); the two datasets are simply never joined.
 
+- **Age gate: the matcher was LITERAL, so real 21+ orders passed ungated even though the keyword
+  WAS in the corpus (owner request 2026-09-04; commits `968ef12` + `96530ef`, live on Pages +
+  TigerTech, content-verified).** Prompted by a support question — *"can a delivery driver deliver a
+  bong from a smoke shop?"* — relayed as "expand the Age-Restricted Key Words, add as many words as
+  possible."
+  - ⚠️ **THE BRIEF WAS WRONG, AND ACTING ON IT WOULD HAVE MISSED THE DEFECT.** The relay said the
+    corpus had **zero** matches for `bong` / `paraphernalia` / `water pipe` / `smoke shop` and that
+    the sentence flowed through with no 21+ gate. Measured: **`smoke shop` is in the corpus exactly**,
+    so are `head shop`, `vape shop`, `hookah`, `shisha`, `rolling papers`, `waterpipe`,
+    `torch lighter`, `butane lighter` — and **that sentence already flagged**, on `smoke`. The search
+    had hit the **moderation** corpus in `Documentation/Dashboard`; the age gate is a *different
+    brain*: `Final/assets/js/gopher-age-keywords.js`, **1,658 keywords**, generated from four xlsx
+    under `Dashboard/Gopher iQ/Age-Restricted Key Words/`, plus the hand-maintained
+    `gopher-age-supplement.js`. **Two keyword systems, easily confused — name which one you searched.**
+  - **The real defect, and it is worse than the reported one.** `findAgeRestrictedKeyword` matched
+    LITERALLY, so a trailing plural, a moved space or a dropped hyphen defeated it *even when the
+    keyword was already present*. Real production order titles that did **not** age-gate:
+    `Other - Black and milds` (corpus had "black and mild") · `Other - American spirits` ("american
+    spirit") · `White Claws` / `whiteclaw` ("white claw") · `Other - Airbar` · `Other - Two geekbars`
+    · `Other - X3 Mavericks`. Each is an untracked 21+ handoff — no ID check, no waiver, no gate.
+    **Adding words would never have found these. The words were already there.**
+  - **Fix 1 — a normalised second pass** that strips all but letters/digits on both sides, keeping an
+    index map so the caller still gets the customer's own characters back. **Purely additive** (runs
+    only when the literal pass finds nothing), so it cannot drop a true positive.
+  - ⛔ **TWO RULES IN THAT PASS ARE LOAD-BEARING — without them it adds 66 FALSE positives.**
+    **(a) Skip keywords ending in punctuation.** Normalising collapses `on!` → `on` and `bread &` →
+    `bread`; the punctuation *is* the keyword. `on!` alone matched **42** titles ("On-call driver,
+    9am-5pm"), `bread &` matched 11. Only 6 keywords are affected: `bon &` `bread &` `moet &` `on!`
+    `rosé`. **(b) Skip normalised keywords under 6 chars** — plural tolerance on short words is the
+    damage: `weed`→`weeds`, and the wine word `rose`→`roses` (flowers).
+  - **Fix 2 — +44 paraphernalia terms into the HAND-MAINTAINED `gopher-age-supplement.js`**, which is
+    where non-xlsx vocabulary belongs (`gopher-age-keywords.js` is generated — *do not hand-edit*).
+    Base forms only, because normalisation now covers plurals/hyphens/spacing; the exceptions are
+    words under the 6-char floor (`bongs`, `zippos`) which are carried as data.
+  - ⛔ **AMBIGUOUS TERMS DELIBERATELY EXCLUDED — flagged to the owner, not silently forced into 21+:**
+    bare `rig` (oil rig) · `banger` · `bubbler` (water fountain) · `percolator` (coffee) ·
+    `steamroller` · `glass piece` · `lighter fluid` (charcoal starter). Qualified forms ARE in
+    (`quartz banger`, `herb grinder`), matching how the generator already holds bare
+    `grinder`/`pipe`/`pouch`/`dip` back in **`AMBIGUOUS_REQUIRE_CONTEXT`** — a settled policy that
+    predates this work. **Owner's call if he wants any of these forced; still open.**
+  - **MEASURED over all 64,071 production order titles** (`Dashboard/data/master/Orders.csv`):
+    22,127 → 22,162 flagged. **+35 gained, 0 LOST**, every gain a true positive. Test proven to FAIL
+    on the pre-fix code first (21 failures):
+    `docs/handoff/request-app-parity/test-age-normalization.js`. Parity harness OK, category matrix
+    98/98, step-gates + flow-rules green.
+  - ⚠️ **Known PRE-EXISTING false positive, asserted in the test so it is not mistaken for a
+    regression:** `bread and butter pickles` matches the *wine brand* "bread and butter". Verified
+    against `HEAD` as pre-existing. Untouched — removing it is a corpus decision.
+  - **Method note worth keeping:** the first run of that new test reported **0 failures on the old
+    code** — because the script was **crashing on a bad path** (`__dirname` two levels up, not
+    three) and the grep counted zero `[FAIL]` lines. A crashing test reads exactly like a passing
+    one. Cite the **printed summary**, never the absence of failures.
+
 - **Split-screen harness: "⟳ Reset demo" now clears EVERY seen-map — the second demo run was
   broken (2026-08-11/12, commit `505ac28`, deploy `3a31b0b`, live on Pages + TigerTech).**
   _(Scope: `_prototypes/split-screen.html` + one new test + one doc correction. No app, backend,
