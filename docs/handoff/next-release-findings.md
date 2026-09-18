@@ -590,6 +590,189 @@ a scope change, so it is recorded for the owner as **PL-015** rather than closed
   these commits are unmerged on top of that. **Verification needs a build carrying all of it** — confirm
   that before sending anyone to a device, or they will test code that is not on the phone.
 
+### F3d — ⛔ THE SECOND FAILURE CLASS, NAMED: a fixed-height container with NO SCROLL TRAVEL makes the shared hook a silent no-op (G40-477)
+
+**Written for AC9 of G40-477. The detection and the remedy are the point of this row — the next
+person who adds a standalone page needs to find this without reading a Jira ticket.**
+
+**The class.** F3c named *missing scroll travel* as the root cause. This is the sharper statement of
+it, and the one that catches the next instance:
+
+> A container can declare `overflowY: auto|scroll` and still have **zero** scroll travel. If its
+> height is pinned (a module-scope `innerHeight`, or a percentage of one) **and** it is a flex
+> column, the flex algorithm shrinks its children to fit, so `scrollHeight === clientHeight`. There
+> is nothing to scroll, and nothing reports an error.
+
+**Why that is worse than an ordinary layout bug.** `useKeyboardSpace` reveals a field by scrolling
+`scrollableAncestor(field)`, which requires **both**:
+
+```
+overflowY is auto|scroll     AND     scrollHeight > clientHeight + 1
+```
+
+Fail the second and `scrollableAncestor` returns `null`, `reveal()` returns early, and **the hook
+does nothing at all** — while the code reads as fully fixed. Mounting the hook is not the fix;
+mounting the hook is what makes the screen *look* fixed.
+
+**The detection.** `scrollHeight > clientHeight` on the container that owns the focused field, with
+the keyboard up. Not "does it mount the hook", not "is there a spacer" — both were true in the first
+attempt at G40-477 and the screen was still inert.
+
+**The remedy — all three, none of them optional:**
+
+1. **Mount the hook** — `const keyboardHeight = useKeyboardSpace();`
+2. **Spacer INSIDE the scroll container**, last child, `aria-hidden`, `flexShrink: 0`. Outside adds
+   no room inside; without `flexShrink: 0` a flex column collapses an empty child back to nothing.
+3. **Relax the pinned height and release the centring.** `height: X` → `minHeight: X` on the block
+   that would otherwise shrink to absorb the spacer, and
+   `justifyContent: keyboardHeight ? "flex-start" : "center"` — a centred column re-centres the
+   taller content instead of letting it scroll from the top.
+
+Step 3 is the one that gets missed, because steps 1 and 2 are the visible half of F3c's fix.
+
+#### ⛔ COLLISION: G40-448's sweep already touched these screens, and it did steps 1 and 2 ONLY
+
+`G40-448-keyboard-sweep` (**unmerged**, on `origin` in both apps — `f0e3ea3af` Go / `e73131e1d`
+Request, 2026-09-13) adds the hook and the inside-spacer to **`SignUp.js`, `verifyEmail.js`,
+`verifyotp.js`, `recoverNumber.js`** in both apps. It does **not** do step 3 on any of them: every
+one still carries its fixed `height: (innerHeight * N) / 100` inside a flex column, and the commit
+message says so deliberately — *"The frozen innerHeight in these containers is deliberately left
+alone… the staleness is not what caused the occlusion. The missing scroll travel was."*
+
+⚠️ **That reasoning is right about staleness and incomplete about travel.** Whether those four
+screens end up with real travel now rests on flexbox's *automatic minimum size* (`min-height: auto`
+floors a flex item at its content height) rather than on anything the diff states. It may well hold
+on some of them — but it is **unmeasured, unasserted, and not what the code says it is doing**. That
+is the same "looks fixed, proves nothing" shape F3b is about.
+
+**Raised, not swept.** Fixing it across four screens × two apps is a bigger change than G40-477's
+scope and belongs to G40-448, which owns the sweep. **Recommended parking-lot item.**
+
+**Merge order matters:** G40-477's branches and `G40-448-keyboard-sweep` **both modify
+`src/pages/verifyEmail.js` in both apps** and will conflict. Land one and rebase the other; do not
+merge both blind.
+
+**Desk verification, 2026-09-17**: confirmed independently at source, not taken on report — both
+branches exist on `origin` at the cited SHAs, both touch exactly `SignUp.js`, `verifyEmail.js`,
+`verifyotp.js`, `recoverNumber.js` (18 insertions each, 4 files, 72 total), and step 3 is genuinely
+absent from that diff.
+
+#### ⛔ A SECOND DIVERGENCE, AND IT BLOCKS AC3 FOR THE REQUEST APP
+
+`useKeyboardSpace.js` is **no longer byte-identical across the two apps** (F3c item 5 recorded that
+it was, and used it to argue against a shared package — that premise has since expired):
+
+| app | lines | keyboard top |
+|---|---|---|
+| `gopher-mobile-gopher` | 209 | gated on a measured `viewportShrinks` |
+| `gopher-mobile-request` | 147 | unconditional `window.innerHeight - keyboardHeight` |
+
+On **Android** the webview is resized by `adjustResize`, so `innerHeight` **already excludes** the
+keyboard and subtracting it again double-counts — the Go app fixed this after a Galaxy A50 report
+(field scrolled ~300px off the top); **the Request app never received the port.** AC3 asks for
+Android on both apps, so **expect the Request app to over-scroll on Android regardless of G40-477's
+change.** Out of scope for G40-477 (shared hook, `renderForm` is its other consumer) — raised, not
+silently patched.
+
+**Desk verification, 2026-09-17**: the table above is confirmed at source — `gopher-mobile-gopher`'s
+hook is 209 lines on `origin/production`, `gopher-mobile-request`'s is 147. **The Request app's
+missing Android port is real and stands.**
+
+⛔ **DESK RETRACTION, same day.** An earlier version of this note claimed that merging
+`G40-448-keyboard-sweep` would strip Go's `viewportShrinks` gate (a "209 → 147 un-port"). **That was
+wrong and is withdrawn.** The error: the desk compared the file's *snapshot at the branch tip* (147
+lines) against production (209) and read the difference as a change the merge would apply. It isn't
+— **zero commits on that branch touch the hook at all**
+(`git log origin/production..origin/G40-448-keyboard-sweep -- src/hooks/useKeyboardSpace.js` → empty,
+both repos). The branch's 147-line copy is just inherited staleness from an old merge-base; in a
+three-way merge production changed the file and the branch didn't, so production's version wins.
+
+**Proven by simulating the merge, not by reasoning about it:**
+`git merge-tree --write-tree origin/production origin/G40-448-keyboard-sweep` → exit **0** (clean, no
+conflicts), tree `e8553f25`; the hook in the merge result is **209 lines with all 4 `viewportShrinks`
+occurrences intact.** Go loses nothing. Caught by G40-477's session and re-verified independently by
+the desk — identical tree SHA from two separate runs.
+
+**This is the `shared-branch-stale-snapshot-hazard` rule biting the desk itself**: a snapshot
+difference is not a diff, and a branch holding an older copy of a file it never edited is staleness,
+not intent. Recorded rather than quietly deleted, because the retraction is the more useful artifact.
+
+**What the collision actually is, now located precisely:** not 448-vs-production (that merge is
+clean). It is **448 vs G40-477's own branch** —
+`git merge-tree --write-tree origin/G40-448-keyboard-sweep G40-477-otp-change-email-keyboard` → exit
+**1**, `CONFLICT (content): src/pages/verifyEmail.js`, one file, both apps. So the merge-order point
+stands but is a **one-file rebase between two feature branches**, not a risk to production. Whoever
+lands second rebases.
+
+#### ✅ CLOSED BY G40-478 — the Request app has the port. MRs open, device pass outstanding.
+
+**Both MRs open and `mergeable`, 2026-09-18:** Request
+[!355](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/355)
+(the port) and Go
+[!344](https://gitlab.com/gophergo/gopher-mobile-gopher-capacitorjs/-/merge_requests/344)
+(the guard only — no production code change). Squash + delete-source set and read back as real
+API fields on both.
+
+**The hook is byte-identical across the two apps again** — both now
+`md5 def1538463179d03abb74a75da8069fe`, 209 lines. The divergence recorded above is resolved.
+
+⛔ **The reason a `G40-478` grep found nothing: the Go fix was filed under G40-485.** It landed
+2026-09-14 in `3016e0175`, merged `73650c409`, because the work happened on the
+`G40-485-go-my-profile` branch. This is the same limit the desk hit with G40-448-vs-G40-477 —
+**the standing "grep for the ticket key before building" check cannot see work filed under
+another key.** Two instances in two days; the check needs a second leg (grep the *subject*, not
+just the key).
+
+⚠️ **A file-copy of the hook was NOT sufficient, and this is the part worth carrying forward.**
+The gate seeds from `isAndroid` in `src/helpers/index.ts` — TypeScript. The Request app's jest
+transform was `^.+\.jsx?$`, so porting the hook alone turned its pipeline **red**: `verifyEmail`,
+`verifyotp` and `recoverNumber` all died with *"Cannot use import statement outside a module"*.
+Go already carried the `^.+\.[jt]sx?$` widening. **Two apps described as "byte-identical" had
+diverged in their test config too**, invisibly, and only the port surfaced it.
+
+**A mutation-proved guard now exists in both apps** (`src/hooks/useKeyboardSpace.android.test.js`).
+It asserts the *arithmetic*, which the page suites structurally cannot: they assert the spacer's
+shape, which stayed correct throughout the defect, so **they pass identically with the bug
+present**. Reverting the hook's line fails 4 of 6 with the overshoot equal to exactly one keyboard
+height (expected 22, received 332, keyboard 310) and leaves iOS green.
+
+⛔ **DEVICE PASS IS STILL OUTSTANDING — AC3 IS NOT DISCHARGED BY THIS.** What is and is not in hand:
+
+| | status |
+|---|---|
+| Diagnosis confirmed on device | ✅ Go's reading, A50, 2026-09-14, cited in `3016e0175`: `innerHeight` **812** down / **520** up. **Confirmed, not disproven.** |
+| Fresh A50 baseline, 2026-09-18 | ✅ `innerHeight` **860** keyboard-down (411×860 @ dpr 2.625, SM-A505U, Android 11) |
+| Keyboard-open half, 2026-09-18 | ❌ **device is locked** (`isKeyguardShowing=true`) — needs the owner |
+| Request app on that device | **not installed** (`io.gophergoapp.requester` absent) |
+
+✅ **Installing a Request debug build on the A50 destroys nothing** — verified via
+`pm list packages`. The standing "uninstalling the owner's real app destroys its data" warning
+(§1.10) applies to the **Go** app, which is installed; it does **not** apply to the Request app.
+That materially lowers the cost of the Request-side device pass.
+
+⚠️ The Go app currently on that device is a **debuggable dev build, `versionName 13.9.9`** — not
+the store app and not the 13.9.4 bundle version this sprint's briefs cite. Noted for whoever takes
+the hardware pass, since it is not what a reviewer would assume is installed.
+
+
+#### What G40-477 discharged, and what it did not
+
+- ✅ Steps 1–3 applied to `verifyEmail.js`, **both apps**, with the reasoning recorded in the file.
+- ✅ **AC8 guard**, `src/pages/verifyEmail.keyboard.test.js` in both apps: mounts the **real** page,
+  fires the **real** `keyboardWillShow`/`keyboardWillHide`, asserts the spacer is inside the
+  scroller, carries `flexShrink: 0` and the full keyboard height, that the OTP block is floored with
+  `minHeight` and not `height`, and that the centring is released. **Mutation-proved** — reverting
+  any one of the three remedies fails the suite; the unmutated tree passes 5/5 and is byte-identical
+  afterwards.
+- ⚠️ **AC8's literal `scrollHeight > clientHeight` assertion is NOT discharged and is not pretended
+  to be.** jsdom performs no layout: both values are always `0`. The only way to make that assertion
+  green in a unit test is to define the metrics by hand, which is asserting on invented numbers and
+  is exactly the stubbing AC8 forbids. The suite asserts the three structural causes instead and
+  says so in its header. **The inequality itself is device-only.**
+- ❌ **AC1–AC7 are device ACs and none is met.** Not verified on any handset, iOS or Android, either
+  app. Keyboard behaviour is device-only and this screen is the account-recovery escape hatch — a
+  layout regression here locks users out.
+
 ### F4 — Android Request: the scheduling picker's "Done" button collides with the tab bar
 
 **Where:** Gopher Request → new Grocery request → schedule (date/time picker).
