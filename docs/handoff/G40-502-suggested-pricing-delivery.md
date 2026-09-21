@@ -290,15 +290,80 @@ $50 would pass on a ladder with the hole moved to $45.
 - **The low-offer notice re-arms on edit.** An acknowledgement applies to the
   offer that was acknowledged, not to whatever is typed next.
 
-## 6 · Overlap to resolve: G40-122
+## 6 · Overlap — corrected 2026-09-21
 
-`G40-122 — Suggested Pricing: ML/context enhancement` (Priority **Lowest**) already owns
-`get_smart_price` and already specifies the day-of-week / time-of-day / holiday /
-distance factors and the logging needed to train a model. **G40-502 and G40-122 touch the
-same function.** If D1 resolves to (a), G40-502 should absorb G40-122's near-term
-deterministic section rather than both tickets editing the same seam. Owner call.
+> ⚠️ **G40-122 IS NOT ON THE BOARD.** An earlier draft of this doc named
+> `G40-122 — Suggested Pricing: ML/context enhancement` as the overlapping
+> ticket, citing `docs/handoff/G40-122-smart-pricing-ml-enhancement.md`. A JQL
+> sweep of the whole G40 project for pricing/suggested returns **no G40-122**,
+> and fetching it by key returns "does not exist or you do not have permission."
+>
+> **The doc outlived its ticket**, which is the fossil this project's standing
+> rule is about — a truth read out of a dead ticket still reads as authoritative
+> to whoever finds it next. The doc's *technical* content is still correct and
+> was independently re-verified here (the $50 fallthrough, the COGS-only
+> algorithm). Its *ticket* reference is not. Treat
+> `G40-122-smart-pricing-ml-enhancement.md` as a design note, not a work item.
 
----
+The real overlap is two **live** tickets.
+
+### 6.1 G40-361 — instrument the feedback loop · To Do · **High**
+
+*"PHASE II — Gopher iQ suggested pricing: instrument the feedback loop (store
+the suggestion, preserve the price events)."* It asks for `iq_suggested_offer`,
+`iq_tier`, `iq_tier_source`, `iq_model_version`, `customer_initial_offer`, a
+`price_events` append log, and match outcomes **including the unmatched
+requests**. Its own scope line: *"No pricing behaviour changes in this ticket;
+it is purely capture."*
+
+Two lines in it bear directly on G40-502:
+
+- *"Validating Junk / Delivery / Ride, **none of which have ever been checked
+  against outcomes**."*
+- Moving's anchors went through **four revisions in one day**, every one
+  corrected by measuring something, and *"the next recalibration will be the
+  same guesswork unless the loop is instrumented."*
+
+**That is G40-502's §5a blocker, described from the other end.** The reason the
+distance constants cannot be settled is the reason G40-361 exists.
+
+**Recommendation: keep the tickets separate, but carve ONE slice of G40-361
+into G40-502's backend MR** — write `iq_suggested_offer` and `iq_model_version`
+at the moment the suggestion is produced.
+
+- *Separate*, because G40-361 is capture-only and G40-502 changes prices. One MR
+  that does both is the hardest possible thing to revert on a repo that
+  auto-deploys to live on merge.
+- *But one slice together*, because **without `iq_model_version` the calibration
+  data is ambiguous forever.** The moment §5a is resolved the curve changes, and
+  if orders priced by the placeholder constants are indistinguishable from
+  orders priced by the measured ones, the first real Delivery dataset is
+  contaminated at birth. It is ~3 lines, and `get_smart_price` — the one place
+  that knows the answer — is already being rewritten by this ticket.
+
+### 6.2 G40-113 — "Suggested Offer Used" Yes/No · **In Progress** · Low
+
+⛔ **This one is already touched by the work above, and the touch is inert.**
+`smartPriceSuggestion.js` sets `suggested_offer_used` when the requester takes
+the suggestion. Grepped across both repos on 2026-09-21: **the field exists
+nowhere else** — not in `formatOrderObjcet`'s payload, not in the create
+controller, not as a column on `orders`. The value is set on the form and
+dropped on submit.
+
+It is written anyway, and annotated in place as inert, because that moment is
+the only one that knows the answer: once the amount is in the field, "typed it"
+and "took the suggestion" are indistinguishable.
+
+⚠️ **And it is not yet the rule G40-113 asks for.** Per
+`docs/handoff/G40-113-suggested-offer-used.md`, the flag must flip back to
+**false** if the requester hand-edits the pay field afterwards — the question is
+where the *submitted* offer came from, not whether iQ was opened. The component
+only ever sets true. **Do not record G40-113 as satisfied by this.**
+
+**Recommendation: finish G40-113's wiring inside this ticket** — the payload
+field, the controller, the column, and the flip-back-on-edit rule. It is small,
+the ticket is already In Progress, and the alternative is a flag that looks
+implemented and measures nothing.
 
 ## 7 · Risk / reward, stated plainly (pre-consent, per the standing rule)
 
