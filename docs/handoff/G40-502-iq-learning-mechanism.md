@@ -1,303 +1,351 @@
 # Gopher iQ — how the suggested offer learns
 
-**Status:** specification. Nothing built. **Read `G40-502-suggested-pricing-delivery.md` first** —
-this describes how the curve *moves*; that describes the curve it starts from.
-**Scope: Delivery, Triangle only, to begin with.**
+**Status:** specification, revised 2026-09-21. Nothing built.
+**Read `G40-502-suggested-pricing-delivery.md` first** — that describes the curve this
+starts from; this describes how it moves. **Scope: Delivery.**
 
-> **Everything below is measured from two exports the owner pulled on 2026-09-21** —
-> `Counter_Offer_21_09_2026.csv` (8,322 counters) and `Orders_21_09_2026.csv`
-> (64,777 orders) — plus the completed-order fee columns. Where a number is an
-> assumption rather than a measurement, it says so.
+> Every number below is measured from `Orders_21_09_2026.csv` (64,777 orders),
+> `Counter_Offer_21_09_2026.csv` (8,322 counters) and the ZIP coverage table in
+> `Final/assets/js/gopher-iq-data.js`. Where something is a judgement rather than
+> a measurement, it says so. **The owner has confirmed this data is queryable
+> directly from the production DB** — the exports are a convenience, not the
+> source.
 
 ---
 
 ## 1 · What it is trying to find
 
-**The lowest offer at which a request reliably gets picked up.** Not the highest
-a requester will tolerate, not the average accepted price, and never revenue.
+**The lowest offer at which a request reliably gets picked up.** Never the most a
+requester will tolerate, never revenue.
 
-The reason it is the *lowest* such offer is the owner's ruling of 2026-09-21:
+Owner ruling, 2026-09-21:
 
 > *"The thing data doesn't do is 'feel', and the people making the offer that do
 > 'feel' have expressed they're NOT going to pay a lot for a little. I'd rather
 > not suggest too high yet."*
 
-So the model's job is to climb **only as far as the evidence forces it**, from a
-floor the owner set, under a ceiling the owner sets.
+The model climbs **only as far as evidence forces it**, from a floor he set,
+under a ceiling he sets.
 
 ---
 
-## 2 · The measured picture it starts from
+## 2 · ⚠️ What changed in this revision, and why
 
-### 2.1 Fill rate is driven by the OFFER, not by basket size
+The first draft learned a separate curve per cost-of-goods band, restricted to
+the Triangle. **Both were wrong, and measurably so.**
 
-Delivery requests in served Triangle ZIPs that either filled or expired
-(n = 12,073; overall fill **79.6%**, against 48.1% platform-wide — supply
-density outside the Triangle swamps everything, which is why scope is the
-Triangle):
+**The Triangle restriction cost 85% of the data.** It was chosen to remove the
+supply confound, but the Triangle is only **14.9% of recent** Delivery
+resolutions — 116 a month. At that rate the busiest band earned one move every
+four months and the thinnest one every 3.5 years. It would have visibly done
+nothing for a quarter.
 
-| offer | $0–15 COG | $15–35 | $35–60 | $60–90 | $90+ |
+*(An earlier estimate of 36% was wrong: that share is all-time, and the Triangle
+was a much larger fraction of early volume than of current volume. Applying an
+all-time ratio to a recent window overstated the cadence roughly fourfold.)*
+
+**Per-band learning was unnecessary.** Once supply and offer are fixed, cost of
+goods moves fill by only **6–7 points** — against **19 points** for moving the
+offer one bucket. Basket size is a second-order effect being given first-order
+machinery.
+
+**The fix is to control for supply instead of filtering on it**, and to learn one
+level parameter rather than a matrix. That recovers **748 resolutions a month**
+instead of 116.
+
+---
+
+## 3 · The measured picture
+
+### 3.1 Supply density is the dominant variable
+
+Delivery resolutions with a known drop-off ZIP (n = 31,504), tiered by **active
+Gophers within 10 miles** (`gopher-iq-data.js`, `activeLast3mo`):
+
+| tier | active Gophers | orders | fill rate |
+| --- | --- | ---: | ---: |
+| none | 0 | 9,720 | **19%** |
+| thin | 1–2 | 5,739 | **39%** |
+| ok | 3–9 | 4,875 | **52%** |
+| dense | 10+ | 11,170 | **81%** |
+
+Nothing else in the dataset comes close to this as a predictor.
+
+### 3.2 Within a tier, the offer drives fill — basket size barely does
+
+Dense tier, fill rate by offer × cost-of-goods band:
+
+| offer | COG $0–15 | $15–35 | $35–60 | $60+ | **spread** |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| under $10 | 35% | 25% | 33% | — | — |
-| $10–$13 | 79% | 72% | 63% | 82% | — |
-| $13–$16 | 86% | 83% | 86% | 91% | 91% |
-| $16–$20 | 91% | 95% | 92% | — | — |
-| $20–$25 | 89% | 93% | 90% | 93% | 98% |
-| $25+ | 89–92% | 93% | 92–98% | 96–97% | 96% |
+| $10–$13 | 81% | 74% | 65% | 83% | 18 pts |
+| $13–$16 | 88% | 85% | 88% | 92% | **7 pts** |
+| $16–$20 | 91% | 97% | 93% | — | **6 pts** |
+| $20–$25 | 91% | 93% | 93% | 97% | **6 pts** |
+| $25–$35 | 90% | 95% | 93% | 97% | **7 pts** |
 
-**The knee sits in the same place — around $13–$16 — at every basket size**, and
-above roughly $20 more money buys almost nothing. That is the single most useful
-fact in this document: the model is looking for one knee per band, and it knows
-roughly where to expect it.
+Moving the offer from $10–13 to $16–20 is worth ~19 points. Moving across the
+entire range of basket sizes at a fixed offer is worth 6–7. **This is the finding
+the whole design rests on.**
 
-⚠️ **Observational, not causal.** Requesters who offer more may differ in other
-ways. The relationship is monotone across every band and the mechanism is
-obvious (Gophers choose by offer), but this is correlation and the model must be
-able to be wrong about it — hence §5's rollback.
+### 3.3 ⛔ Money buys fill in every tier — but supply sets the ceiling
 
-### 2.2 What workers ask for when they push back
-
-6,282 Delivery counters with amounts. Median counter is **1.50×** the original
-offer; **91%** of counters come in above it.
-
-| COG band | counters | median offer | median ask | ask ÷ offer |
+| offer | none | thin | ok | dense |
 | --- | ---: | ---: | ---: | ---: |
-| $0–$15 | 2,080 | $10 | $20 | 2.00× |
-| $15–$35 | 2,571 | $10 | $20 | 2.00× |
-| $35–$60 | 914 | $15.25 | $23 | 1.51× |
-| $60–$90 | 351 | $22 | $30 | 1.36× |
-| $90–$125 | 237 | $28 | $40 | 1.43× |
-| $125+ | 129 | $30 | $50 | 1.67× |
+| $10–$13 | 11% | 25% | 35% | 78% |
+| $16–$20 | 20% | 33% | 54% | 94% |
+| $25–$35 | 31% | 56% | 77% | 94% |
+| $35+ | **52%** | 64% | 75% | 94% |
 
-And what the requester does about it:
+| tier | $10–13 → $20–25 | lift for ~$10 more |
+| --- | --- | ---: |
+| none | 11% → 28% | +17 pts |
+| thin | 25% → 48% | +23 pts |
+| ok | 35% → 66% | **+30 pts** |
+| dense | 78% → 93% | +16 pts |
 
-| counter asks… | n | requester accepts |
+**In a ZIP with no active Gophers, $35+ still fills only 52%.** Raising the
+suggestion there charges the requester 3.5× for a coin flip. That is not a
+pricing problem and the model must never treat it as one — see §6.4.
+
+Note also that **dense saturates early**: it is already at 78% by $10–$13 and
+94% by $16–$20. There is very little the model should do there.
+
+### 3.4 Cadence — every tier can move monthly
+
+Last 180 days, Delivery, known ZIP: **4,485 resolutions = 748/month.**
+
+| tier | per month | days to 100 resolutions |
 | --- | ---: | ---: |
-| ≤1.15× | 684 | 42% |
-| 1.15–1.35× | 1,059 | 42% |
-| 1.35–1.6× | 1,963 | 37% |
-| 1.6–2.1× | 1,605 | 26% |
-| >2.1× | 899 | 12% |
+| dense | 107 | 29 |
+| ok | 149 | 20 |
+| thin | 179 | 17 |
+| none | 313 | 10 |
 
-**There is a shoulder at about 1.35×** — below it the requester does not flinch;
-past 1.6× acceptance collapses. That shoulder is the corroborating signal in §4.
+A **monthly** review is supportable on every tier, with a 100-resolution minimum.
 
-### 2.3 Unit economics, so the cost of being wrong is known
+### 3.5 Unit economics, so the cost of being wrong is known
 
-6,037 completed Delivery orders: **$341,723 GMV · $24,201 net · 7.1% take rate ·
-$4.01 average net contribution per completed order.** Net per order rises with
-basket size ($2.70 → $14.62) while take rate falls (9.8% → 5.4%), because the
-Gopher fee is a flat $0.99 and only the ~7.4% instant-transfer fee scales.
+6,037 completed Delivery orders: **$341,723 GMV · $24,201 net · 7.1% take ·
+$4.01 average net contribution per completed order.**
 
-⛔ **Which is exactly why the objective is not revenue.** Every extra $1 of
-suggested offer adds about **$0.08** of platform revenue through the ITF. A
-model optimising anything revenue-shaped drifts upward forever with a
-defensible-looking reason. Fill rate and time-to-fill only.
+⛔ Every extra $1 of suggested offer adds about **$0.08** of platform revenue via
+the instant-transfer fee. **Which is exactly why revenue is banned from the
+objective** — anything revenue-shaped drifts upward forever with a reason that
+always sounds defensible.
 
 ---
 
-## 3 · The signals — and the two that must never be used
+## 4 · What is actually learned
+
+**Four numbers.** One level multiplier per supply tier, applied to the owner's
+anchor curve:
+
+```
+suggested(cog, tier) = clamp( anchor(cog) * k[tier], anchor(cog), ceiling[tier] )
+```
+
+- `anchor(cog)` is the owner's curve — $10 → $10, $100 → $20, $200 → $30.
+- `k[tier]` starts at **1.00** and is the only thing that learns.
+- The **shape** of the owner's curve is never touched, only its level, and only
+  per supply tier.
+
+Why this shape:
+
+- **It is interpretable.** "In thin-supply areas we are running at 1.15× the base
+  curve" is a sentence the owner can accept or reject. A learned matrix is not.
+- **Each parameter is well-evidenced.** 107–313 resolutions per month behind each
+  of four numbers, rather than a handful behind each of thirty cells.
+- **It cannot violate the existing invariants.** Multiplying a monotone,
+  ratio-tapering curve by a positive constant leaves both properties intact, so
+  the tests already written still hold after every update.
+- **The floor is structural.** `k >= 1.00` by construction, so the model can
+  climb from the owner's anchors and return toward them, but never go below.
+
+The 6–7 point cost-of-goods effect from §3.2 is **deliberately ignored for now**.
+It is real but second order, and folding it in costs an order of magnitude more
+evidence per parameter. Revisit once the four multipliers have settled.
+
+---
+
+## 5 · The update rule
+
+Per tier, monthly:
+
+```
+fill(tier, offerBucket) = (filled + α·priorFill) / (resolved + α)
+
+target(tier)  = the LOWEST offer bucket whose smoothed fill >= TARGET_FILL
+kTarget(tier) = target(tier) / medianAnchorOffer(tier)
+
+k[tier] <- clamp(
+    k[tier] + 0.25 * (kTarget - k[tier]),      // quarter of the gap
+    k[tier] - MAX_STEP, k[tier] + MAX_STEP,    // MAX_STEP = 0.05 (5% of base)
+    1.00, kCeiling[tier]                        // owner floor and ceiling
+)
+```
+
+**`α` is prior strength in equivalent orders** — the dial the owner described. At
+α = 1500 one order moves the estimate by 2¢; at α = 15 it moves it $1.88. Seed at
+**α = 300** per tier: roughly three months of that tier's volume, so a tier needs
+sustained evidence, not one good week. ⚠️ *Judgement, not measurement — first
+thing to tune once live.*
+
+**Proportional steps, not flat.** Moving a quarter of the remaining gap converges
+fast when far off and slows to nothing as it approaches — self-damping, and it
+cannot overshoot. The first draft's flat $0.50 was the reason it would have taken
+two years to close a $5 gap.
+
+**`TARGET_FILL`** is owner-set. **90%** is the suggested start. ⚠️ It is only
+reachable in the **dense** tier; in thin and none it is unreachable at any price
+(§3.3), which §6.4 handles.
+
+**Counters corroborate; they never initiate.** If a tier's counter rate is high
+*and* counters cluster below **1.35×** — the shoulder where requesters demonstrably
+do not resist (42% acceptance at ≤1.35×, collapsing to 12% above 2.1×) — that
+raises confidence in a move the fill data already supports. Counters alone are a
+self-selected population (only workers who thought it was too low bother) and are
+biased high in the same way accepted prices are biased low.
+
+---
+
+## 6 · Guardrails
+
+1. **Hard ceiling per tier, owner-set.** The model can never exceed it. This is
+   what makes *"I'd rather not suggest too high yet"* a property of the code
+   rather than an intention.
+2. **Floor is the owner's anchor curve** — `k >= 1.00`, always.
+3. **Max 5% of base per tier per month**, and no move without **100 new
+   resolutions** in that tier.
+4. ⛔ **Marginal fill per dollar, not fill.** A tier may only be raised if the
+   evidence shows the increase actually converts. In the **none** tier it does
+   not — 11% → 52% for 3.5× the money. **The none tier's ceiling is `k = 1.00`:
+   it does not learn upward at all.** When it is starving, the output is an
+   alert that the area needs Gophers, not a higher price for the requester.
+   Same test applies to any tier: if a raise does not move fill, it is reverted.
+5. **It can move down.** Not ratcheted. Two periods without improvement walks it
+   back.
+6. **Every change is logged with its evidence** — tier, counts, before/after,
+   triggering signal — and is revertible to any prior version.
+7. **`iq_model_version` is written with every suggestion**, or orders priced by
+   different curves become indistinguishable and the dataset is contaminated at
+   birth.
+8. **Supply tier is computed at request time** from the drop-off ZIP, so the
+   suggestion is reproducible after the fact.
+
+---
+
+## 7 · The signals — and the two that must never be used
 
 ### ✅ Used
 
-| Signal | Why it is admissible | Status |
+| Signal | Why admissible | Status |
 | --- | --- | --- |
-| **Expiry** — posted, offered $X, nobody took it | The unbiased read on "too low." iQ did not author the outcome. | **Captured today** (`AASM = expired`, 20,038 orders) |
-| **Counter** — a Gopher asked for $Y instead | The revealed supply curve: direct observation of a worker's floor. | **Captured today** (`Counter_Offer` export: amount, gopher, status, timestamp, free-text reason) |
-| **Counter outcome** — accepted or declined | The demand-side response. Gives the §2.2 shoulder. | **Captured today** |
-| **Time-to-accept** | Separates "filled" from "filled fast." | Derivable from `CREATED AT` → `ORDER IN PROGRESS` |
-| **Abandonment after the card opens** | The counterweight. See §6. | ⛔ **NOT captured — must be built** |
+| **Expiry** — posted, offered $X, nobody took it | The unbiased read on "too low." iQ did not author it. | ✅ 20,038 orders |
+| **Counter** — a Gopher asked for $Y | The revealed supply curve. | ✅ amount, worker, status, timestamp, reason |
+| **Counter outcome** | The demand-side response; gives the 1.35× shoulder. | ✅ |
+| **Time-to-accept** | Separates "filled" from "filled fast." | ✅ derivable |
+| **Supply tier at request time** | The dominant covariate (§3.1). | ✅ from ZIP coverage |
+| **Abandonment after the card opens** | The counterweight. | ⛔ **NOT captured — §8** |
 
 ### ⛔ Never used
 
-**Accepted offers.** If the model learns from prices requesters accepted, it
-learns its own suggestions. iQ says $20, the requester taps "Use this offer," iQ
-observes $20 and grows more confident in $20. That is an echo, not learning, and
-it would freeze the anchors permanently while appearing to work.
+**Accepted offers.** A model fed them learns its own suggestions: iQ says $20,
+the requester taps "Use this offer," iQ grows more confident in $20. An echo, not
+learning, and it would freeze the anchors while appearing to work.
 
-**Any revenue measure.** §2.3.
+**Any revenue measure.** §3.5.
 
-> ### ⛔ And the reason this matters more as the platform grows
+> ### ⛔ And the reason the accepted-offer ban matters more as you grow
 >
 > An accepted price is the **minimum reservation price** among the workers who
 > saw the request — a first-order statistic, biased low by construction. **The
 > bias deepens as supply grows**, because the minimum of 50 draws is lower than
-> the minimum of 5. A model trained on accepted prices would therefore push
-> suggestions *down* as the Gopher network got healthier — reading success as
-> evidence that the work is worth less. This is the single worst failure mode
-> available here and it is silent.
+> the minimum of 5. A model trained on accepted prices would push suggestions
+> *down* as the network got healthier, reading success as evidence that the work
+> is worth less. Silent, and the worst failure available here.
 
 ---
 
-## 4 · The update rule
+## 8 · ⛔ The missing signal, and why it is the important one
 
-### 4.1 Shape
-
-Per **band** (the §2.1 COG bands) and per **offer bucket**, keep a rolling
-window of resolutions. The estimated fill rate is smoothed toward the band's
-prior so a thin bucket cannot swing it:
-
-```
-fillRate(band, offer) = (filled + α · priorFill) / (resolved + α)
-```
-
-`α` is prior strength **in equivalent orders**. This is the dial the owner
-described: at α = 1500 one order moves the estimate by 2¢; at α = 15 it moves it
-$1.88.
-
-**Seed `α` from the real evidence behind each band** (Triangle, filled-or-expired):
-
-| band | orders | seed α |
-| --- | ---: | ---: |
-| $0–$15 | 5,188 | 500 |
-| $15–$35 | 4,182 | 500 |
-| $35–$60 | 1,348 | 250 |
-| $60–$90 | 608 | 150 |
-| $90+ | 747 | 150 |
-
-⚠️ **The α column is a judgement, not a measurement** — chosen so a band needs
-roughly 10% of its historical volume in new evidence before it moves materially.
-It is the first thing to tune once the model is live.
-
-### 4.2 The target
-
-```
-target(band) = the LOWEST offer bucket whose smoothed fill rate >= TARGET_FILL
-```
-
-`TARGET_FILL` is owner-set. **90%** is the suggested start — §2.1 shows it is
-reachable in every band by $16–$20, and chasing the last few points costs real
-money for almost no fill.
-
-Corroboration from §2.2: if a band's counter rate is high **and** counters
-cluster below 1.35× (the shoulder, where requesters do not resist), that is
-independent evidence the band is underpriced. It may **raise confidence** in a
-move the fill data already supports. **It may not initiate one** — counters are
-a self-selected population (only workers who thought it was too low bother), so
-alone they are biased high in the same way accepted prices are biased low.
-
-### 4.3 Movement
-
-```
-suggested(band) <- clamp(
-   suggested(band) + sign(target - suggested) * min(STEP, |target - suggested|),
-   floor(band),      // the owner's anchor curve — never goes below
-   ceiling(band)     // owner-set, hard
-)
-```
-
-Then **re-project the whole curve** so the two invariants the tests already
-enforce still hold: the offer never falls as cost rises, and the offer-to-cost
-ratio never rises. A band cannot be moved in isolation into a shape that
-contradicts its neighbours.
-
----
-
-## 5 · Guardrails
-
-1. **Hard ceiling per band, owner-set.** The model cannot exceed it, ever. This
-   is what makes *"I'd rather not suggest too high yet"* a property of the code
-   rather than an intention.
-2. **Floor = the owner's anchor curve.** $10 → $10, $100 → $20, $200 → $30. The
-   model may climb from it; it may never go below it.
-3. **STEP cap.** No band moves more than **$0.50** per review period. A wrong
-   move is visible for one period and costs cents per order.
-4. **Minimum evidence.** No move without at least **200 new resolutions** in
-   that band since its last move.
-5. **It can move down.** If a raise does not improve fill within two periods, it
-   walks back. Movement is not ratcheted.
-6. **Triangle only, to start.** §2.1 — supply density outside the served area
-   dominates fill and would teach the model that everything is underpriced.
-7. **Every change is logged with its evidence** — the band, the counts, the
-   before/after, the triggering signal — and is revertible to any prior version.
-8. **`iq_model_version` is written with every suggestion**, or orders priced by
-   different curves become indistinguishable and the dataset is contaminated at
-   birth.
-
----
-
-## 6 · ⛔ The one signal that is missing, and why it is the important one
-
-**Fill rate can only see requests that were submitted.** If a suggestion is high
-enough that someone closes the app, that never becomes an expired order — it
-becomes nothing at all. So the fill signal is *structurally incapable* of
-detecting the failure the owner is worried about, and a model driven by fill
-alone only ever hears the argument for a higher number.
+**Fill rate can only see requests that were submitted.** Someone who closes the
+app because the suggestion looked absurd never becomes an expired order — they
+become nothing at all. The fill signal is *structurally incapable* of detecting
+the failure the owner is worried about, so a model driven by fill alone only ever
+hears the argument for a higher number.
 
 On a $20 basket the difference is concrete: an $11 suggestion means paying about
-**$33** for $20 of groceries; a $16 suggestion means about **$39**. The fill data
-prefers $39. The requester may simply leave.
+**$33** for $20 of groceries; $16 means about **$39**. Fill rate prefers $39. The
+requester may simply leave.
 
-**Capture needed:** when the suggestion card is opened, record whether the
-request was subsequently submitted or abandoned, with the suggested amount.
+**Capture needed:** when the suggestion card opens, record whether the request was
+subsequently submitted or abandoned, with the amount shown.
 
-Then add the brake:
+Then add the brake: `if abandonRate(tier) rises after a raise -> roll back`.
 
-```
-if abandonRate(band) rises materially after a raise -> roll the band back
-```
-
-**Until that exists, the model must not be given authority to raise a band on
-fill evidence alone.** It can propose; the owner approves. That is not a
-temporary inconvenience — it is the correct behaviour while the evidence is
-one-sided.
+**Until that exists the model proposes; the owner approves.** Not a temporary
+inconvenience — the correct behaviour while the evidence argues in one direction
+only.
 
 ---
 
-## 7 · What must be captured before any of this runs
+## 9 · What must be captured
 
-| # | Field | Where | Exists? |
-| --- | --- | --- | --- |
-| 1 | `iq_suggested_offer` — what iQ displayed | order | ❌ |
-| 2 | `iq_model_version` | order | ❌ |
-| 3 | `customer_initial_offer` — what they actually submitted | order | ❌ |
-| 4 | `suggestion_opened` / `suggestion_used` / `abandoned_after_suggestion` | event | ❌ |
-| 5 | counters with amount, worker, status, timestamp | — | ✅ |
-| 6 | expiries | — | ✅ |
-| 7 | time-to-accept | — | ✅ (derivable) |
+| # | Field | Exists? |
+| --- | --- | --- |
+| 1 | `iq_suggested_offer` — what iQ displayed | ❌ |
+| 2 | `iq_model_version` and `iq_supply_tier` | ❌ |
+| 3 | `customer_initial_offer` — what they submitted | ❌ |
+| 4 | `suggestion_opened` / `suggestion_used` / `abandoned_after_suggestion` | ❌ |
+| 5 | counters with amount, worker, status, timestamp | ✅ |
+| 6 | expiries | ✅ |
+| 7 | time-to-accept | ✅ |
 
-**1–3 are small.** 4 is the one that matters most and is the only genuinely new
-instrumentation.
-
----
-
-## 8 · Acceptance criteria
-
-1. Per band and offer bucket, a smoothed fill rate is computed from **expiries
-   and fills only**, restricted to served Triangle ZIPs.
-2. No accepted-offer value and no revenue measure appears anywhere in the
-   objective. A test asserts this.
-3. A band moves at most `STEP` per period, never below the owner's anchor floor,
-   never above the owner's ceiling, and only with `MIN_EVIDENCE` new
-   resolutions.
-4. After any move the full curve is re-projected: monotone in cost, tapering in
-   ratio. The existing tests must still pass against the moved curve.
-5. Downward movement is exercised by a test, not only upward.
-6. Every move is logged with its evidence and is revertible.
-7. Until §6's abandonment capture exists, moves are **proposed, not applied**.
+1–3 are small. **4 is the one that matters and is the only genuinely new
+instrumentation.**
 
 ---
 
-## 9 · Risk / reward
+## 10 · Acceptance criteria
+
+1. Fill rate is computed per supply tier and offer bucket from **expiries and
+   fills only**, with supply tier resolved from the drop-off ZIP at request time.
+2. No accepted-offer value and no revenue measure appears in the objective. **A
+   test asserts this.**
+3. `k[tier]` moves at most 5% of base per month, never below 1.00, never above
+   the owner's ceiling, and only with ≥100 new resolutions.
+4. **The `none` tier never learns upward.** A test asserts it.
+5. A raise that does not improve fill within two periods is reverted. Exercised
+   by a test, not only the upward path.
+6. After any update the curve is still monotone in cost and tapering in ratio —
+   the existing pricing tests pass against the moved curve.
+7. Every move is logged with its evidence and is revertible.
+8. Until §8's capture exists, moves are **proposed, not applied**.
+
+---
+
+## 11 · Risk / reward
 
 **What it solves.** The starting curve is a judgement made under uncertainty —
-deliberately below historical behaviour, on the owner's read of customers
-arriving from marketplaces that trained them to pay almost nothing. That
-judgement will be partly wrong in ways nobody can see today. This is the
-mechanism that finds out which parts, from evidence, without anyone having to
-re-litigate it from instinct.
+deliberately below historical behaviour, on the owner's read of customers arriving
+from marketplaces that trained them to pay almost nothing. Parts of it will be
+wrong in ways nobody can see today. This finds out which parts, from evidence,
+without anyone re-litigating it from instinct.
 
-**The reward.** In the Triangle, requests at $10–$13 fill at 72–79% while those
-at $16–$20 fill at 91–95%. If the marketplace proves that gap is real and
-causal, closing it on the $15–$35 band alone is roughly 960 additional completed
-orders across the historical sample, about **$3,200** of contribution at $3.35
-net per order. The mechanism earns that only if the evidence supports it.
+**The reward.** The **ok** tier converts money into fill better than anywhere else
+— +30 points for ~$10 — and sits at 52% fill today. That is the tier where a
+correct suggestion is worth the most, and it is invisible without the supply
+dimension. At $4.01 net per completed order, moving that tier's 149 monthly
+resolutions from 52% to 70% is roughly 27 additional completed orders a month.
 
 **The risk.** A model that raises suggestions on one-sided evidence drives
-requesters away invisibly — the exact thing the owner's instinct is protecting
-against, and the thing fill rate cannot see. §5's caps and §6's brake exist for
-that and nothing else. If it is wrong, one period of $0.50 on one band is the
-maximum exposure, and every move is logged and revertible.
+requesters away invisibly — precisely what the owner's instinct is protecting
+against, and precisely what fill rate cannot see. §6's caps and §8's brake exist
+for that. Maximum exposure from a wrong move is one month at 5% of base on one
+tier, logged and revertible.
 
-**What is NOT verified.** The fill-to-offer relationship is observational. The
-`α` values are judgement. No part of this has been run against live traffic.
+**What is NOT verified.** The fill-to-offer relationship is observational, not
+causal. `α`, `TARGET_FILL` and the tier boundaries are judgement. The ZIP coverage
+table is a static snapshot derived from July 2026 exports and **must be refreshed
+from the live database** before it drives pricing. No part of this has run against
+live traffic.
