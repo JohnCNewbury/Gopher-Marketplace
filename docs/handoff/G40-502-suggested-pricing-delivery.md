@@ -2,7 +2,8 @@
 
 **Jira:** G40-502 · Task · Priority **Highest** · **sprint headliner** · Epic context: Gopher iQ
 **Surface:** `gopher-mobile-request` (live Request app) + `gopher-backend-api` (`orders/smart_price`)
-**Status:** built on two branches, **NOT merged.** One blocker remains (§5a).
+**Status:** built, tested, driven on a handset, **UI approved by the owner 2026-09-21.**
+Both branches are rebased on current `production` and ready to merge. **Not merged.**
 **This doc is the source of truth. The ticket references it, not the other way round.**
 
 > **Verification note.** Every claim in §1–§3 was read first-hand against
@@ -507,3 +508,63 @@ clean checkout:** `paymentSheet.test.js` (missing `@capacitor-community/stripe`)
 and 9 backend suites that need a database or absent modules — `order-timezone`
 and `deals-geo-gating` were both run on the untouched main clone and fail there
 in exactly the same way.
+
+---
+
+## 12 · Where this lives — corrected 2026-09-21
+
+The owner's understanding was *"the iQ engine mechanics are in GitHub but the
+live app repos are in GitLab."* Half right. Actual remotes:
+
+| Repo | Remote |
+| --- | --- |
+| `gopher-mobile-requester-capacitorjs` | **GitLab** `gophergo/` |
+| `gopher-mobile-gopher-capacitorjs` | **GitLab** `gophergo/` |
+| `gopher-backend-api` | **GitLab** `gophergo/` (`origin`) — plus a **stale GitHub mirror** |
+| `Gopher-Marketplace` (prototype + iQ engine) | GitHub `JohnCNewbury/` |
+| `gopher-dev-handoff` | GitHub `The-Gopher-Marketplace/` |
+
+⚠️ **The backend has two remotes and only one is alive.** GitLab `origin/production`
+was at `39f34a4f` (2026-09-21); GitHub `github/production` was at `77dc872b`
+(**2026-08-10**) — six weeks behind. **GitLab is the live backend.** Anyone who
+reads the GitHub copy as current is reading six weeks of missing commits.
+
+**So iQ's production home is GitLab**, in `gopher-backend-api`. The GitHub
+marketplace repo holds the *design reference* — the calibrated tables, the iQ
+engine, the flow prototypes — and is where this model was derived from, but it
+is not where it runs. The split is: **GitHub designs it, GitLab runs it.**
+
+---
+
+## 13 · The 101 guide — reviewed, and one pre-existing defect found
+
+Standing rule: a user-facing change is not done until its 101 guide is updated,
+and the guide is **reviewed, not string-matched**.
+
+`Final/gopher-request-101.html` §Step 5 already says:
+
+> *"On **Delivery** and **Ride Sharing**, tap the **Gopher iQ** suggestion to get
+> a fair-rate estimate built from thousands of similar requests in your area. You
+> always have the final say on the amount."*
+
+**That remains accurate for this change** — it matches the restored card's own
+sub-line, the entry point is still a tap, and the requester still has final say.
+No edit is required by G40-502, and making a token one would be theatre.
+
+⛔ **But the review found a defect the guide already had: "Ride Sharing" is
+false.** `needaride.json` on `origin/production` contains **zero** references to
+`smart_price` — iQ has never been wired into Ride Sharing in the live app. The
+guide promises a feature that does not exist there.
+
+**Out of scope for this ticket** (G40-502 is Delivery), and deliberately not
+fixed here rather than quietly widening the diff. It needs either the sentence
+narrowed to Delivery, or Ride Sharing actually wired up. Owner's call which.
+
+---
+
+## 14 · Retraction
+
+An earlier note in this session said the submit button clips behind the bottom
+tab bar. **It does not.** That was read off a screenshot taken mid-scroll;
+scrolled to the end, the button sits fully clear with space beneath it. Recorded
+because the claim was made twice and someone would otherwise go looking for it.
