@@ -193,6 +193,104 @@ low ones. Not reachable in Delivery today, but the guard travels with the compon
 | D2 | Pure delivery, nothing purchased | **Add the distance component now.** |
 | D3 | Below-suggested treatment | **Inline banner + "Send as-is".** No blocking modal. |
 
+## 5c · The Gopher iQ pricing corpus — where it is, and what has reached the apps
+
+**Location:** `Documentation/Dashboard/Gopher iQ/Suggested Pricing/` (16 files).
+Five categories are modelled: **Delivery · Ride Share · Junk Removal · Moving ·
+Yard Work/Landscaping**.
+
+### ⛔ None of it has reached the live apps. Not one table.
+
+`git grep` for `OFFER_TABLE|suggestedOffer|RIDE_MILE|JUNK_TIER|MOVING_TIER`
+across `origin/production` in **all three** live repos, 2026-09-21:
+
+| Repo | Result |
+| --- | --- |
+| `gopher-backend-api` | **nothing** |
+| `gopher-mobile-gopher` | **nothing** |
+| `gopher-mobile-request` | one hit — `smartPriceSuggestion.js`, which contains no table; it calls the backend's tier ladder |
+
+Where the models actually live today:
+
+| Category | Workbook | Prototype | Live apps |
+| --- | :---: | :---: | :---: |
+| Delivery | ✅ | ✅ `gopher-request-logic.js` | ❌ |
+| Junk Removal | ✅ | ✅ `gopher-request-logic.js` | ❌ |
+| Moving | ✅ | ✅ `gopher-request-logic.js` | ❌ |
+| Ride Share | ✅ | ✅ `gopher-request.html` | ❌ |
+| Yard / Landscaping | ✅ | ❌ | ❌ |
+
+**The G40-502 branch is the first time any of this reaches a live repo**, and it
+carries **Delivery only**. Yard/Landscaping (2026-08-10, the newest workbook)
+has never been coded anywhere.
+
+### The Delivery table was verified against the workbook, not against the prototype
+
+`Claude.AI_Suggested_Pricing_Model_Update.xlsx` → sheet **Recommended Model**,
+`NC Suggested` column. Diffed point by point against
+`helpers/suggested_pricing.js`: **40 of 40 exact, zero mismatches**, and the
+workbook's own `NC Low` / `NC Generous` columns are exactly ±25% on every row —
+the same band the component and the low-offer notice use.
+
+**On 9,147 vs 9,306** — both appear in the workbook and both are true, with
+different definitions. 9,306 is after removing 3 zero-offer rows; 9,147 is after
+excluding the 1.7% of outliers above 3× item cost, and is the model-fitting set
+(6,070 NC + 3,077 US). The code cites 9,147, which is the right one.
+
+### Two workbook findings that bear on this ticket
+
+- **The US column is deliberately not carried.** Non-NC requesters offer
+  **25–40% more** for the same item cost — median on a ~$45 item is $20 NC vs
+  $30 US. NC-only pricing is the standing policy, but that gap is the single
+  biggest source of variance the moment the platform leaves NC.
+- **NC plateaus around $25 above ~$75 of goods**, and the workbook names why:
+  *"heavily tobacco/vape/age-restricted 'commodity runs' where users cap the tip
+  regardless of cost."* That is the Age-Restricted form — one of the six in scope
+  and the screen the owner screenshotted.
+
+---
+
+## 5d · ⚠️ The distance component may apply to far fewer requests than assumed
+
+The raw workbook (`Suggested Pricing Raw Data - Delivery.xlsx`, 18,143 rows)
+carries `PICKUP ZIP` and `DROPOFF ZIP`, so it looked like it could settle §5a
+without the production DB. **It cannot, and the reason is the finding.**
+
+| | rows |
+| --- | ---: |
+| Total delivery rows | 18,143 |
+| With a **drop-off** ZIP | 5,879 |
+| With a **pick-up** ZIP | **942** |
+| With **both** | 910 |
+| Both, and resolvable to an NC ZIP centroid | 615 |
+| Of those, **same ZIP at both ends** | **380 (62%)** |
+
+Median centroid-to-centroid distance came out at **0.00 miles** — which is not a
+distance, it is ZIP-centroid resolution failing on same-ZIP trips. So the
+workbook does not calibrate `BASELINE_MILES`, and §5a still needs the production
+DB.
+
+**But the 942 is the real signal: ~84% of delivery requests that record a
+drop-off have no pick-up at all.** These are `purchase_anywhere` runs — the
+Gopher buys wherever the item is. **For the majority of Delivery requests there
+is no pickup point to measure from at the moment the requester is setting their
+offer.** The origin only exists once a Gopher picks a store, which is after the
+price is set.
+
+**This reopens D2.** A distance component that can only fire on ~1 request in 6
+is not the fix for the zero-COGS pure-delivery case it was chosen for. Options
+worth putting back in front of the owner:
+
+1. **Drop-off distance from the requester**, not pickup→drop-off — always known,
+   and it is what actually predicts whether a Gopher nearby will take it.
+2. **Keep pickup→drop-off but only when a pickup exists**, and fall back to the
+   cost curve alone otherwise. Honest, but leaves the Courier case exactly as
+   thin as it is today.
+3. **Price pure delivery on local coverage instead of distance** — `gopher-iq-data.js`
+   already carries worker counts per ZIP at a 10-mile radius.
+
+---
+
 ### 5a · ⛔ THE ONE REMAINING BLOCKER — two uncalibrated constants
 
 D2 was taken, and the structure is built and tested. **The two numbers inside it
