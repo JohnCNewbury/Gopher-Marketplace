@@ -84,5 +84,31 @@ console.log('\nDISCRIMINATION — the OLD implementation must fail these');
      'old code returned 0 for the single-worker record — so this suite can go red');
 }
 
+// ── The DELIVERY half, which the bridge unit tests above cannot see ──────────
+// Relaying a message is only half the job: the Go app still has to accept it.
+// It used to `return` silently when the Gopher had not yet opened the chat --
+// no conversation existed to put the message in -- while the harness marked it
+// delivered, so the message was lost permanently. Both halves are asserted
+// structurally because the Go prototype is a 2.8 MB single-file app.
+console.log('\nDELIVERY — the Go app must not silently drop, and the harness must not lie');
+{
+  const go = fs.readFileSync(path.join(__dirname,'..','..','_prototypes','Go','gopher-go-prototype.html'),'utf8');
+  const i = go.indexOf('window.__ptInboxDeliver=');
+  const body = i>-1 ? go.slice(i, i+1800) : '';
+  ok(i>-1, '__ptInboxDeliver is present');
+  ok(/goConvoForJob\(/.test(body),
+     'it CREATES the conversation when none exists (instead of dropping the message)');
+  ok(/return false/.test(body) && /return true/.test(body),
+     'it reports success or failure to the caller');
+
+  const h = fs.readFileSync(path.join(__dirname,'..','..','_prototypes','web-split-screen.html'),'utf8');
+  const j = h.indexOf('function watchMessages');
+  const wm = j>-1 ? h.slice(j, j+2600) : '';
+  ok(/if\(!landed\) break;/.test(wm),
+     'the harness stops at the first failed delivery');
+  ok(!/reqMsgSeen\[id\]=reqMsgs\.length;/.test(wm),
+     'and never jumps the seen-marker to the end regardless of what landed');
+}
+
 console.log(bad?`\nFAIL — ${bad} check(s)`:'\nPASS');
 process.exit(bad?1:0);

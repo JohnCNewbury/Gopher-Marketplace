@@ -4619,12 +4619,24 @@ if(PT){
   window.__ptSendMsg=function(id,text,flagged){ var job=window.__ptJobs[id]; if(!job) return; job.msgs=job.msgs||[]; job.msgs.push({text:text, flagged:flagged?1:0}); };
   window.__ptInboxDeliver=function(id,text,flagged){
     try{ var convos=state.inboxConvos||[]; var c=convos.filter(function(x){return x.__order===id;})[0];
-      if(!c){ return; }
+      if(!c){
+        /* NO CONVERSATION YET. This used to `return` — silently — and the
+           harness marked the message delivered anyway, so a requester who
+           wrote before the Gopher had ever opened the chat lost the message
+           permanently. That is the normal order of events: you are hired,
+           the requester messages you, your phone should light up. Build the
+           thread the same way opening the sheet does. */
+        var j=(window.__ptJobs||{})[id];
+        if(!j) return false;
+        c=goConvoForJob(j);
+        if(!c) return false;
+      }
       if(c.__appendIncoming){ c.__appendIncoming(text, flagged); }   // message sheet is open → drop it straight in
       else { c.msgs.push({s:'them',t:text,f:flagged?1:0}); c.unread=(c.unread||0)+1; if(current==='inbox') load('inbox'); }
       toast('💬 '+(c.name||'The requester')+': '+String(text).slice(0,40));
       if(window.GopherBanner) GopherBanner.show({app:'go',title:'New Message Available',sub:'Click here to view',onTap:function(){ openGoMsgSheet(c); }});
-    }catch(_){}
+      return true;
+    }catch(_){ return false; }
   };
   // (h) requester confirms completion — their star rating rides along, relayed by the harness.
   //     Policy: the received rating is NEVER shown to the worker (retaliation risk when the parties
