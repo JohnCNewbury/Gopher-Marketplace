@@ -1,9 +1,76 @@
 # NO SLIDER IN THE REQUEST APP CAN BE DRAGGED ON iOS
 
+> ## ✅ RESOLVED 2026-09-23 (second session) — root cause found, fixed, device-verified. NOT yet merged.
+>
+> **Cause: touches landed ~54pt below the finger.** `capacitor.config.ts` set
+> `ios.contentInset: "automatic"` (since `a16bb3fa1`, 2024-03-28). That drew the page
+> 59pt down, below the status bar, while touches reached WebKit as if the page started
+> at the top of the screen. WebKit starts a native range drag **only** if the touch
+> lands inside the thumb (`SliderThumbElement::handleTouchStart`, 48pt minimum hit
+> box), so every thumb was missed, silently: no `touchcancel` and no `preventDefault`.
+> Taps worked because a tap on a range only uses X. Buttons survived because they are
+> tall. It affects **GO too**: Work Settings & Radius (`work_radius.js`), which the
+> owner says has been broken for a long time.
+>
+> **How it was proven (all readings are screenshots of the owner's 15 Pro Max, read
+> first-hand):**
+> 1. The §4 probe read `tgt:INPUT/range prevented:no cancelable:y`. None of the three
+>    branches in §4 applied.
+> 2. A v4 probe showed `elementFromPoint` at the finger returning the card panel, not
+>    the slider.
+> 3. A v5 probe showed every slider's own thumb centre hit-tests to **itself**, and all
+>    34 other MUI dialog/drawer roots are `visibility:hidden`. Nothing covers the thumb.
+> 4. A v6 red dot drawn at `touch.clientX/Y` sat **~54pt below** a finger held on the
+>    thumb.
+> 5. Changing **only** `contentInset` to `"never"` fixed it: a native range went 5→15
+>    in one drag, and the red dot sat under the finger.
+>
+> ⚠️ An earlier reading in this session wrongly concluded "the finger was on the thumb"
+> because it did not subtract the 59pt webview origin. It was corrected by step 4.
+>
+> **Fix** (`"never"` alone slides the page under the status bar):
+> - `ios/App/App/SafeAreaBridgeHostViewController.swift` pins Capacitor's web view
+>   between the safe-area top and bottom, so layout is unchanged. Measured at 3×: a
+>   uniform 1pt shift down (the old inset used 58pt; the safe area is 59pt).
+> - It passes its safe area to the web view as `additionalSafeAreaInsets`, so
+>   `--safe-area-inset-top/bottom` still read **59px/34px**, measured on the device.
+>   `IdCaptureBox`'s camera offset and all bottom paddings are unchanged.
+> - `contentInset: "never"`. ⚠️ Putting it back to `"automatic"` with the controller in
+>   place insets the page **twice**.
+>
+> **Branches (local, not yet pushed):**
+>
+> | repo | branch | commit | what |
+> |---|---|---|---|
+> | `gopher-mobile-requester-capacitorjs` | `fix/ios-slider-touch-offset` | `f1b1bfa2b` | the touch fix |
+> | `gopher-mobile-requester-capacitorjs` | `G40-502-slider-dollar-domain` | `d722f833c` | §5 dollar-domain fix, rebased onto `94501ef65`; conflict with G40-535's tests resolved (both kept) |
+> | `gopher-mobile-gopher` | `fix/ios-slider-touch-offset` | `295b5780f` | the touch fix, GO |
+>
+> **Verified (device = owner's 15 Pro Max, iOS 26.6.2):**
+> - The Gopher iQ rail and a native range drag (Request).
+> - The Work Settings & Radius thumb follows the finger and the miles value updates
+>   (GO, as reported by the owner).
+> - The keyboard over a form field is unchanged, and the request photo picker works.
+> - Safe-area values are 59/34.
+> - CI contract scripts pass: 25/25 in each repo.
+> - jest: Request 501/501 (touch branch) and 504/504 (dollar branch); GO 204/204.
+>   eslint 0, prettier clean.
+> - The dollar-domain guards are mutation-checked on the new base: exactly 3 fail
+>   without the fix.
+>
+> **NOT verified on a device:**
+> - The TrustShield ID-capture camera preview. Only its inputs (59px) were measured.
+> - The Stripe payment sheet. It presents from `window.rootViewController`, which is
+>   now the container.
+> - Android. It is unaffected: the change is iOS-native plus an iOS-only config key.
+>
+> The sections below are the first session's record. §3's five dead hypotheses and §5
+> still stand. §4's decision tree was exhausted by the reading above.
+
 **Handoff from the G40-502 session, 2026-09-23.** Confirmed by the owner on his
-**iPhone 15 Pro Max** across **five** sliders. **UNRESOLVED.** Five hypotheses
-tested and killed. This note exists so the next session starts from evidence
-instead of repeating them.
+**iPhone 15 Pro Max** across **five** sliders. ~~UNRESOLVED~~ — see the resolution
+above. Five hypotheses tested and killed. This note exists so the next session
+starts from evidence instead of repeating them.
 
 > ⛔ **THIS IS NOT A G40-502 DEFECT AND MUST NOT BE FILED AS ONE.**
 > A bare, unstyled, uncontrolled `<input type="range">` placed on the form
