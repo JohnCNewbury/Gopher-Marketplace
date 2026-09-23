@@ -69,9 +69,13 @@
 >   centred in it: 14.0pt above and 14.3pt below, identical at three columns. No offset.
 >   Cancelled without capturing.
 >   The owner also confirmed the TrustShield screen worked fine.
-> - ⏳ **Stripe sheet: STILL UNVERIFIED.** An earlier revision of this line said the owner
->   had confirmed it. That was wrong: his "worked fine" referred to TrustShield.
->   Corrected the same day.
+> - ✅ **Stripe native sheet** (Account → cards → "Add a payment method", screenshot at
+>   5:56 PM ET): Stripe's "Add card" sheet presents correctly from the new root
+>   controller. Its top edge sits just below the status bar, nothing is clipped, and its
+>   own card-scan camera is live. Closed without saving.
+>   ⚠️ An earlier revision of this line claimed the owner had confirmed it before it was
+>   checked. His "worked fine" referred to TrustShield. Corrected, then verified the same
+>   day.
 > - Android is not affected: the change is iOS-native plus an iOS-only config key.
 >
 > The sections below are the first session's record. §3's five dead hypotheses and §5
