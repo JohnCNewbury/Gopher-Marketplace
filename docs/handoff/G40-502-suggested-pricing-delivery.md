@@ -676,3 +676,85 @@ leaking *in* and removing a guard. Reported to that session with file and line.
   path 533 then replaces, and the QA record is stale on arrival. The numbers are
   provably identical either way (§15.2); what is at stake is whether the
   verification still means anything afterwards.
+
+---
+
+## 16 · QA PASSED — device-verified 2026-09-23. Ready for Release.
+
+**Run by the owner on his iPhone 15 Pro Max**, on a build made from Request
+`production` **`d764361fe`** (version `13.9.6 / 1396`, debug-signed, installed
+via `devicectl`). Not a simulator, not a unit test.
+
+| check | result |
+|---|---|
+| **Offer field survives the purchase toggle — all six Delivery sub-categories** | ✅ **all six pass** |
+| **$50 cost of goods suggests $14** (was `$10.00` — the `sc === 50` hole, §3.1) | ✅ **shows $14** |
+| Suggested-offer card sits below "Payment to your Gopher" | ✅ |
+| The rail drags under the finger | ✅ (see §16.2) |
+
+Six forms, not a sample: the visibility fix is schema-wide, so sampling could
+not have proven it. Corroborated statically — all seven requester schemas were
+parsed as JSON and walked, and **the only action any Delivery form takes on
+`gopher_offering` is `setVisible` (true)**. Nothing on a Delivery form can hide
+it.
+
+**Jira:** `Ready for QA` → `In Review / QA` → **`Ready for Release`**
+(transitions `13` then `14`; the workflow does not allow skipping the middle
+state).
+
+### 16.1 ⛔ The slider-drag defect was NOT this ticket's
+
+The owner found on the handset that the rail's thumb would not follow his
+finger — tap-to-position only. **It was a platform defect, not G40-502.** A
+bare, unstyled, uncontrolled `<input type="range">` placed on the form outside
+any modal failed identically; no slider in either app could be dragged on iOS.
+
+**Cause:** `ios.contentInset: "automatic"` drew the page ~59pt below the status
+bar while touches still arrived as though it began at the top, so every touch
+landed ~54pt below the finger. WebKit only starts a range drag when the touch
+lands **on the thumb**, so a tap still resolved to a click while a drag never
+began. Fixed by another session in
+`SafeAreaBridgeHostViewController.swift` + `contentInset: "never"` —
+**G40-543**, Request `d764361fe` (!384), GO `9df42466d` (!365).
+
+⚠️ **Do not set `contentInset` back to `"automatic"`** — with the new
+controller it double-insets the page.
+
+Five hypotheses were tested and killed before the real cause was found; the
+full record, including the probe harness and the build-loop traps, is in
+[`ios-slider-drag-platform-defect-2026-09-23.md`](ios-slider-drag-platform-defect-2026-09-23.md).
+
+### 16.2 ⭐ What this ticket DID have, and it was real
+
+Chasing the drag report uncovered a genuine defect **in this component**: the
+rail's domain was **percent** while its value was stored in **whole dollars**,
+so every drag round-tripped through two roundings. On a narrow track —
+`TRACK_SPREAD 1.6` makes the track only ~0.8× the suggestion — **88 of 101
+positions resolved to a different percent than the finger was on**, worst at
+the low end where Delivery lives ($10 → 90/101).
+
+Fixed by making the domain dollars: `min={trackMin} max={trackMax} step={1}`,
+value straight through, no arithmetic in the handler. Merged as **!385**
+(`d722f833c`), rebased onto `94501ef65`, conflict with G40-535's appended tests
+resolved keeping both blocks.
+
+**Three guard tests, mutation-proved** (a sweep, not a sample — a test pinned to
+one value passes with the quantisation merely moved): `min`/`max` are the dollar
+bounds; every integer position round-trips at the $14 band; and again at the
+**$10 floor**, the narrowest track on the platform.
+
+⚠️ **This fix did not make the slider draggable** — the safe-area bug did. It
+shipped because it is correct, not because it solved the report. Recording that
+distinction so nobody later reads the two as the same fix.
+
+### 16.3 Still open, and deliberately so
+
+- **Distance component** — `DISTANCE.CALIBRATED = false`, contributes $0,
+  prints a calibration warning by design. Tabled by the owner 2026-09-22; the
+  SQL that settles it is written and delivered. **Not a defect; do not file it.**
+- **iQ learning mechanism** — spec only (§ `G40-502-iq-learning-mechanism.md`),
+  correctly waiting on captured data rather than running against an empty table.
+  The capture columns are live and recording from today.
+- **Whole-dollar stepping** — the rail now moves in $1 increments, ~12 positions
+  on a $50 basket. Owner has felt it and raised no objection; revisit only if he
+  does.
