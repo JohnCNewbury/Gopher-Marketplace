@@ -1,6 +1,6 @@
 # NO SLIDER IN THE REQUEST APP CAN BE DRAGGED ON iOS
 
-> ## ✅ RESOLVED 2026-09-23 (second session) — root cause found, fixed, device-verified. NOT yet merged.
+> ## ✅ RESOLVED 2026-09-23 (second session) — root cause found, fixed, device-verified, MERGED (not yet released).
 >
 > **Cause: touches landed ~54pt below the finger.** `capacitor.config.ts` set
 > `ios.contentInset: "automatic"` (since `a16bb3fa1`, 2024-03-28). That drew the page
@@ -38,8 +38,11 @@
 > - `contentInset: "never"`. ⚠️ Putting it back to `"automatic"` with the controller in
 >   place insets the page **twice**.
 >
-> **MRs (opened 2026-09-23; target `production`, squash No, delete source branch No; not
-> merged).** Tracked by **G40-543**, which points back here.
+> **MRs — MERGED to `production` 2026-09-23 on the owner's GO** (squash No, source branches
+> kept). The merge commits were content-verified and their `production` pipelines passed:
+> Request `d764361fe` (!384 `8d30d7c67`, then !385 `d764361fe`) and GO `9df42466d` (!365).
+> **Merged is not released:** these ship with the next store build of each app. Tracked by
+> **G40-543**, which points back here.
 >
 > | repo | MR | branch | commit | what |
 > |---|---|---|---|---|
