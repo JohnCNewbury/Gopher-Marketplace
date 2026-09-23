@@ -209,40 +209,88 @@ G40-361 feedback loop, and `iq_model_version` (§6) is what makes it possible.
 
 ---
 
-## 5 · ⛔ PARKING LOT — the fee and ITF are counted twice
+## 5 · ⛔ THE FEE AND ITF ARE COUNTED TWICE — on the LIVE path
 
-**Not fixed here. Out of scope, and fee-engine changes are human-developer
-work.** Recorded because it is larger than anything else in this document.
+**Not fixed here. Fee-engine work, human-developer only.** Recorded because it
+is larger than anything else in this document.
 
-**VERIFIED in the prototype:**
+⚠️ **SCOPE CORRECTION, 2026-09-23.** The first version of this section cited
+`Final/gopher-request.html` and was scoped to **the prototype**. That was too
+narrow and it understated the finding. The same double-count is true of the
+**live** request app and the **deployed** backend, verified first-hand against
+`origin/production` after G40-535 merged. Line references below are the live
+ones; the prototype exhibits the identical shape.
 
-- `rideSuggestedOffer` returns `(fee + variable) × (1 + itf)` — the platform fee
-  and the instant-transfer fee are **inside** the suggested number.
-- The offer modal's Submit writes that number to **`state.payAmount`** — the
-  *worker pay* field.
-- `computeRequestFee(cogOffer)` then adds `GOPHER_FEE.ride` **plus 8% of
-  (cogOffer + fee)** on top of it.
+### The path, read as arithmetic rather than by field name
 
-Worked through on the workbook's own 4.3-mile validation route, which is priced
-against a **$14.30** Uber fare:
+**The suggestion already contains the fee and the ITF:**
+
+| | |
+| --- | --- |
+| `helpers/suggested_pricing.js:916-940` | `base = MAX(FLAT_FEE + variable×mult, MIN_RIDE_FLOOR)`, returns `base × (1 + ITF)` — `FLAT_FEE` 2.99, `ITF` 0.08 |
+| `src/component/smartPriceSuggestion.js:320` | `setFieldValue("gopher_offering", v.toFixed(2))` — the **worker-pay** field |
+
+**Checkout then applies both again** — `controllers/order/create.js`,
+`exports.summary`:
 
 | line | |
-| --- | ---: |
-| suggested (worker pay) | $12.66 |
-| + Gopher fee | $2.99 |
-| + ITF 8% × (12.66 + 2.99) | $1.25 |
-| **rider pays** | **$16.90** |
+| --- | --- |
+| `:69` | `combined_offering = ceil(offer) + ceil(cost_of_goods)` |
+| `:80` | `application_fee = getServiceFee(category_type, appversion)` |
+| `:94` | `transaction_fee = ceil((combined_offering + application_fee + trustshield_fee) × PAYOUT_FEE)` |
+| `:124` | `total_charge = combined_offering + application_fee + trustshield_fee + transaction_fee − discount` |
 
-≈ **18% above the Uber quote the model was validated against**, and the gap
-widens with distance. The workbook compares against Uber/Lyft **all-in rider
-fares**, so the model is producing a rider-facing fare and the app is putting it
-in the worker's column.
+Constants, not inferred from names: `constants/index.js:48`
+`APPLICATION_FEE_NEED_A_RIDE: 299` · `:53` `PAYOUT_FEE: 0.08` ·
+`helpers/functions.js:285` routes `needaride` → that fee.
+
+### Worked example — the workbook's own 4.3 mi / 13 min validation route
+
+Benchmarked at an **Uber/Lyft average of $14.295**:
+
+| | |
+| --- | ---: |
+| model suggests, written into `gopher_offering` | **$13.00** |
+| checkout `application_fee` | +$2.99 ← second time |
+| checkout `transaction_fee` | +$1.28 ← second time |
+| **`total_charge`** | **$17.27** |
+| vs the Uber benchmark | **+$2.97 (+21%)** |
+| vs the model's own intended all-in fare ($12.66) | **+$4.61 (+36%)** |
+
+### ⛔ No order has been charged twice, and structurally none could have been
+
+**This is a reading of the code, not an observed transaction.**
+
+`src/pages/renderForm.js:313` does
+`require("../json/" + apptype + "/" + next + ".json")` — a **dynamic require
+resolved by webpack at build time**, so the schemas are **bundled into the app
+binary, not fetched**. *(Scope: every non-test file under `src/` on
+`origin/production`; there is no remote schema fetch.)*
+
+`smart_price` reached `needaride.json` on **2026-09-23**, so no build predating
+that can contain it. No shipped app renders the Ride iQ card, nothing posts
+`request_type: "Need a Ride"` to `orders/smart_price`, and no requester has been
+shown a ride suggestion.
+
+⚠️ **So this is live-on-deploy the moment the client half ships — not a live
+overcharge today.** The backend is deployed and will do this the first time a
+released app asks it. The one thing to confirm is that no Request build cut
+after the merge has shipped.
+
+⚠️ **Boundary of what was verified:** the arithmetic in `exports.summary`, which
+produces the `totalCharge` the requester is shown and pays. **The Stripe
+PaymentIntent amount was not traced** — that is one further hop.
+
+### Which of two things is wrong — the owner's call
+
+Either **(a)** the model's output is the all-in rider fare, in which case it
+must not populate the worker-pay field; or **(b)** it is meant to be worker pay,
+in which case the fee and ITF do not belong inside it. ⚠️ **Either way the
+workbook's Uber/Lyft validation is invalid as published**, because Uber quotes
+are all-in rider fares and the model is being compared to them.
 
 ⚠️ **This does not change the fee decision in §2** — whichever fee sits inside
-the model is the one being counted twice. It is a separate question about where
-the model's output belongs, and it needs the owner.
-
----
+the model is the one being counted twice.
 
 ## 6 · How it is wired
 
