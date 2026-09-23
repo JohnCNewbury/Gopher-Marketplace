@@ -62,11 +62,15 @@
 > - The dollar-domain guards are mutation-checked on the new base: exactly 3 fail
 >   without the fix.
 >
-> **NOT verified on a device:**
-> - The TrustShield ID-capture camera preview. Only its inputs (59px) were measured.
-> - The Stripe payment sheet. It presents from `window.rootViewController`, which is
->   now the container.
-> - Android. It is unaffected: the change is iOS-native plus an iOS-only config key.
+> **Post-merge device checks (2026-09-23, owner's 15 Pro Max, combined build of the
+> merged code):**
+> - ✅ **TrustShield ID-capture camera** (measured from a screenshot at 3×): the preview
+>   fills its 215pt box (178.0–392.7pt) with clean edges, and the white frame sits
+>   centred in it: 14.0pt above and 14.3pt below, identical at three columns. No offset.
+>   Cancelled without capturing.
+> - ✅ **Stripe sheet** opens and lays out correctly. This is the owner's report; it was
+>   not screenshotted.
+> - Android is not affected: the change is iOS-native plus an iOS-only config key.
 >
 > The sections below are the first session's record. §3's five dead hypotheses and §5
 > still stand. §4's decision tree was exhausted by the reading above.
