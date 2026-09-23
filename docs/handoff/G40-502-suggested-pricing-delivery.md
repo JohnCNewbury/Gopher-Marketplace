@@ -568,3 +568,111 @@ An earlier note in this session said the submit button clips behind the bottom
 tab bar. **It does not.** That was read off a screenshot taken mid-scroll;
 scrolled to the end, the button sits fully clear with space beneath it. Recorded
 because the claim was made twice and someone would otherwise go looking for it.
+
+---
+
+## 15 · Re-verified 2026-09-23 — Delivery still holds after two other tickets merged into it
+
+Between G40-502 reaching **Ready for QA** and QA actually running, two other
+sessions changed the exact module and component this ticket shipped. The claims
+below are **VERIFIED first-hand today**, not inherited from their commit
+messages — a claim about this ticket's surface, written by someone else, is
+still second-hand.
+
+### 15.1 What moved
+
+| ticket | where | state |
+|---|---|---|
+| **G40-534** Junk Removal | backend `b2276df5` → `production` `577f1b88`; Request `dea802493` | **already live** |
+| **G40-533** Moving + category routing | `origin/G40-533-moving-suggested-pricing` | **unmerged** |
+
+- G40-534 added 259 lines to `helpers/suggested_pricing.js` and edited the
+  visibility guard in `src/component/smartPriceSuggestion.js`.
+- G40-533 **rewires the Delivery dispatch**: `get_smart_price` no longer calls
+  `suggestedOffer` directly, it calls a new `priceForCategory` router.
+
+### 15.2 The Delivery numbers are unchanged — 28/28
+
+`priceForCategory({service_cost})` with no `request_type` (the Delivery default
+path) against current `origin/production` `suggestedOffer`, across
+`undefined, null, '', 0, '0', 5, 9.99, 10, '10', 10.01, 25, 49.99, 50, '50',
+50.01, 75, 99.99, 100, '100', 100.01, 150, 199.99, 200, 200.01, 350, 500, 1000,
+'abc'`:
+
+**28/28 identical, 0 differ** — including the owner's three anchors
+($10→$10, $100→$20, $200→$30) and the $50→**$14** case he asked about by name.
+`model_version` still reads `g40-502-owner-anchors-2026-09-21`.
+
+⚠️ **One difference that is NOT a behaviour change, stated so nobody re-finds it
+and thinks it is one.** The router passes **raw** `body.service_cost` where this
+ticket's controller passed the **validated, normalized** `sc`. That looks like a
+regression and is not: `costComponent` does `Number(costOfGoods)` on entry
+(`helpers/suggested_pricing.js:82`), so `''`, `null`, `'50'` and `'abc'` all
+resolve identically either way. The controller's 400 guards still run for
+Delivery because Delivery is not a registry key.
+
+### 15.3 Test evidence
+
+| suite | branch | result |
+|---|---|---|
+| `test/suggested-pricing-curve.test.js` | G40-533 | **40/40** |
+| `test/iq-capture-is-recorded.test.js` | G40-533 | **25/25** (was 22; 533 added 3) |
+| `src/component/smartPriceSuggestion.test.js` | Request `production` | **49/49** (mine 34 + 534's 15) |
+
+⚠️ These backend files are **plain node scripts, not jest suites** — they call
+`process.exit`. Run them with `node`, not `npx jest`; under jest they report
+*"A jest worker process crashed"* and **0 tests run**, which reads as a failure
+and is not one. Cite the printed `N/N checks passed` line.
+
+### 15.4 G40-534's visibility guard cannot fire on Delivery
+
+534 changed `bidMode` to also suppress the card when
+`formik.values.gopher_offeringvisible === false`. That is a genuine fix, but it
+touches Delivery's code path, so it was checked rather than assumed.
+
+Every requester schema was **parsed as JSON** and walked for any
+`setHide`/`setVisible` targeting `gopher_offering` — not grepped in a line
+window, which would have missed an action further down an array:
+
+| schema | actions targeting `gopher_offering` |
+|---|---|
+| `courier`, `cbd`, `conveniencestore`, `generalerrand`, `grocery`, `restaurant` | **1 each — `need_purchase.on_uncchecked_actions[3]`, `setVisible` (true)** |
+| `junkremoval` | 3, including `price_offer.on_uncchecked_actions[0]` **`setHide`** |
+
+**Delivery's only writer sets the key to `true`.** Nothing on a Delivery form
+ever writes `false`, so `offerFieldHidden` cannot become true and the card's
+behaviour on all six sub-categories is unchanged.
+
+### 15.5 ⛔ A latent trap handed to the G40-533 session
+
+`controllers/order/create.js:225` on that branch makes the cost guard
+conditional on registry membership:
+
+```js
+if (!CATEGORY_MODELS[categoryKey(request_type)]) {  // ← Delivery falls in here
+```
+
+Correct today, because Delivery is unregistered. But that guard is the fix for a
+real defect — the old handler let an absent or non-numeric cost through as `NaN`
+and the app rendered **`"$NaN"`** on the offer button (§3). The day anyone adds a
+`delivery:` entry to `CATEGORY_MODELS` (`helpers/suggested_pricing.js:504`) — a
+one-line registration in an unrelated ticket, exactly the affordance that
+registry advertises — **the guard silently stops running for Delivery and
+`"$NaN"` comes back.** Nothing looks broken; the registration looks ordinary.
+
+Same shape as 533's own `MIN_SUGGESTION` finding, pointed the other way: there,
+Delivery's floor leaking *out* onto other categories; here, a later registration
+leaking *in* and removing a guard. Reported to that session with file and line.
+**Not fixed here — it is their branch.**
+
+### 15.6 Where this leaves the release
+
+- **No store build carries this work.** Request testers are on **Play 3.9.3 /
+  864** and **App Store 3.8.3 / 865** (release desk, verified 2026-09-21).
+  3.9.4 / 867 sits at 50% `inProgress` and has never published. The backend
+  formula is live for every requester; the new card is not.
+- **Sequencing, owner-approved 2026-09-23:** G40-533 merges **before** G40-502's
+  QA runs, and the two are QA'd together — otherwise QA signs off on a dispatch
+  path 533 then replaces, and the QA record is stale on arrival. The numbers are
+  provably identical either way (§15.2); what is at stake is whether the
+  verification still means anything afterwards.
