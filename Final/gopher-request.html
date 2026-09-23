@@ -21927,7 +21927,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // workers they'd hired. Now in-progress/scheduled/active requests still
     // show their hired workers with Review profile + Message (Hire/Consider/
     // Deny don't apply once the job is running, so those buttons are hidden).
-    const isLive = r.status === 'in-progress' || r.status === 'active' || r.status === 'scheduled';
+    /* "Has the job started?" - NOT "is it running right now?". 'completed' was
+       missing, and because every branch below asks `!isLive` to decide whether
+       HIRING-time controls belong on screen, a finished job fell all the way back
+       to the hiring view: the worker row grew its "Remove" button again and the
+       start-job bar reappeared with the pre-start labour figure, directly under a
+       banner reading "Request Completed by ...". All six readers of this flag want
+       post-start to include post-completion. */
+    const isLive = r.status === 'in-progress' || r.status === 'active'
+                || r.status === 'scheduled'   || r.status === 'completed';
 
     // If the open profile belongs to a different request (user navigated away
     // and into another), drop it so we never show the wrong worker.

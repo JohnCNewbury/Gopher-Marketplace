@@ -957,12 +957,27 @@ function renderJobCard(j){
         ? '<div class="jc-pay"><span class="bid-cta pending" style="background:#e7f7ec;color:#0a7d44;box-shadow:none;border:1px solid #bfe6cd;">$'+fmtMoney(j.bid.amt)+' bid pending</span></div>'
         : '<div class="jc-pay"><span class="bid-cta">Submit a Bid</span></div>')
     : '<div class="jc-pay"><span class="amt">'+(j.amt||'')+'</span>'+(j.per?'<span class="per">'+j.per+'</span>':'')+'</div>';
+  /* Chips that describe a job NOBODY HAS TAKEN YET. The card stripped them on
+     accept and the DETAIL did not, so a finished job still advertised itself as
+     "New - Time-sensitive" on the screen the worker actually reads. One filter,
+     two callers, so they cannot drift apart again. */
+  /* ON `window` DELIBERATELY. The two callers live in DIFFERENT scopes in this
+     file - the card renders in one, the job detail in another - so a plain
+     `function goLiveFlags(){}` here is invisible to the detail and throws
+     "goLiveFlags is not defined", blanking the whole phone pane. That is not a
+     guess: I shipped exactly that a few minutes ago and the Go pane went white. */
+  window.goLiveFlags = function goLiveFlags(j){
+    var list=((j&&j.flags)||[]).slice();
+    if(j&&j.accepted) list=list.filter(function(f){
+      return f.t!=='New' && f.t!=='Time-sensitive' && f.t!=='First available' && f.t!=='Requester picks';
+    });
+    return list;
+  };
   const scope=j.scope?'<div class="jc-scope">'+j.scope+'</div>':'';
   const stats=(j.stats&&j.stats.length)?'<div class="jc-stats">'+j.stats.map(jcStat).join('')+'</div>':'';
   // A completed job awaiting the requester's confirm stays on the Active list with a red badge —
   // the requester controls the payout at this point, so the worker must see it's still pending.
-  let flagList=(j.flags||[]).slice();
-  if(j.accepted) flagList=flagList.filter(f=>f.t!=='New' && f.t!=='Time-sensitive' && f.t!=='First available' && f.t!=='Requester picks');   // available-feed chips are stale once accepted
+  let flagList=goLiveFlags(j);   // available-feed chips are stale once accepted
   // Accepted requests stay visible in the Available feed so the worker can see they've already
   // taken it (and remove it from the detail). A clean green "Accepted" pill marks the card — shown
   // until the job progresses to a later state (which brings its own badge below).
@@ -2968,7 +2983,7 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
        requester (orderFromReq -> trustShield:!!r.trustShield), which is the path the demo
        normally uses; this only covers opening job-detail directly. */
     const j=state.job||{cat:'Delivery / Errand',mode:'pay',amt:'$52',per:'~$35/hr',who:'John N.',trustShield:true,ageRestricted:true,scope:'Pick up 4 catering trays + drinks, deliver across town.',stats:[{i:'pin',t:'3.2 mi'},{i:'clock',t:'~1.5 hr'},{i:'cal',t:'Now'}],flags:[{t:'Time-sensitive',k:'warn'},{t:'No heavy lift',k:'good'}]};
-    const stats=j.stats||[], flags=j.flags||[];
+    const stats=j.stats||[], flags=goLiveFlags(j);   // same staleness rule as the card
     const fs=k=>stats.find(s=>s.i===k);
     const pin=fs('pin'), clock=fs('clock'), cal=fs('cal');
     const who=j.who||'A requester';
@@ -3298,7 +3313,15 @@ business:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
                  hand-off did another. Both now read the same flag, so they cannot disagree. */
                 '<div class="rq-id"><div class="rq-nm">'+who+'</div>'
                 +(j.trustShield?'<div class="rq-badge"><img src="../../Final/assets/img/trustshield-logo.svg" alt="TrustShield" style="height:14px;width:auto;display:block;flex:0 0 auto;">TrustShield Verified</div>':'')
-                +'<div class="rq-rate">'+sv(I.star,'st')+'4.9 &middot; 212 requests</div></div>'
+                /* The seeded demo jobs carry a plausible requester reputation.
+                   THE PT WORLD HAS NO DEMO DATA - the only requester is the real
+                   person on the web pane - so "4.9 / 212 requests" invents a
+                   reputation for them and breaks the harness's own promise of no
+                   fake anybody. PT is read locally: the `PT` const is declared
+                   further down this file and is not in scope here. */
+                +((function(){try{return new URLSearchParams(location.search).get('pt')==='1';}catch(_){return false;}})()
+                    ? ''
+                    : '<div class="rq-rate">'+sv(I.star,'st')+'4.9 &middot; 212 requests</div>')+'</div>'
           +'<span class="rq-pill '+timing.c+'">'+timing.t+'</span>'
         +'</div>'
         +(rv?'':'<div class="rq-hint">'+sv(I.lock)+(picRv?'Exact addresses unlock when you accept':'Requester photo &amp; exact addresses unlock when you accept'+(j.priority?'':' &mdash; or when they Prioritize you'))+'</div>')
