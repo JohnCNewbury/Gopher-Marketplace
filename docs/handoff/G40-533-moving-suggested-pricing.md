@@ -297,11 +297,29 @@ max $390. That agreement is what licenses the rest of the comparison.
   and their median is **exactly $100** — confirming `truck` as the right fallback.
 - **Monotonic on real data:** $100 ≤ $100 < $175 < $260.
 
-⛔ **THE GAP, STATED PLAINLY AND NOT SILENTLY CORRECTED.** The upper two anchors
-(`home_small` $225, `home_large` $375) are **unvalidated** — n=4 and n=1 — and both sit
-well above the little history there is. **The anchors are the owner's.** This is
-reported for his decision, not adjusted. If he wants them moved, that is a one-line
-change plus a `MOVING_MODEL_VERSION` bump.
+> # ✅ D11 — THE UPPER TWO ANCHORS ARE APPROVED AS THEY STAND (owner, 2026-09-23)
+>
+> `home_small` **$225** and `home_large` **$375** are **ruled correct and stay**, with the
+> n=4 / n=1 evidence gap reported to the owner in full and in front of him when he ruled.
+>
+> **This is a decision, not an oversight.** The thin history is exactly why the labour
+> model carries these two tiers rather than the data — the same reasoning D8 used to set
+> `few` *below* its own historical mean. Do not "correct" either toward the observed
+> medians on the strength of n=4 and n=1.
+>
+> **No code changed.** The values were already shipped, so there is no
+> `MOVING_MODEL_VERSION` bump and every order priced to date stays directly comparable in
+> the capture. That is the point of not moving them.
+>
+> ⛔ **Do not re-open this from the data alone.** What would reopen it is *evidence*: once
+> `home_small` and `home_large` carry a meaningful number of completed orders, re-run
+> `g40-533-moving-anchors-vs-production.py` and take the result back to the owner. Until
+> then the anchors are his ruling, not a placeholder.
+
+**The gap, recorded because the ruling was made in full knowledge of it.** The upper two
+anchors were **unvalidated** — n=4 and n=1 — and both sit well above the little history
+there is. That was reported rather than silently corrected, the owner read it, and he
+approved the anchors unchanged.
 
 > ⚠️ **What this number measures, and what it excludes.** Completed orders are what
 > *cleared*, on a marketplace where only ~47–50% of Moving requests ever match
