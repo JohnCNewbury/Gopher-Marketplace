@@ -272,6 +272,11 @@ Fuller narrative for each — the incident that produced it — is in
   until you copy them in from the clone.
 - ⚠️ **A push to `main` publishes to BOTH hosts** (Pages + the TigerTech FTPS workflow) — scope-check
   for two destinations, and content-verify on both.
+- ⚠️ **SHIP BOTH SITES: `scripts/deploy.sh --site both --push`.** The twin does not
+  track production, so a one-sided deploy is a silent drift you only find when a
+  screenshot disagrees with the code. It sat three weeks behind that way, and went
+  behind again *within the hour* of the owner asking how to prevent it. A live-only
+  run now prints a warning naming the twin.
 - ⚠️ **THERE ARE NOW TWO SITES, and `deploy.sh` defaults to the LIVE one.** `--site prototype`
   publishes the **prototype twin** — `johncnewbury.github.io/Gopher-Marketplace-Prototype/`, repo
   `Gopher-Marketplace-Prototype`, git remote **`proto`** — which serves the same pages plus the

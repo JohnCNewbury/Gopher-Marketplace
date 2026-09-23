@@ -21,6 +21,11 @@
 #   --allow-dirty   deploy anyway with an unclean tree. Deliberately verbose;
 #                   you are shipping code that exists nowhere in git history.
 #
+#   --site both        publish BOTH, live first then the twin. Use this by
+#                   default — the twin does not track production, and a
+#                   one-sided deploy is invisible until a screenshot disagrees
+#                   with the code.
+#
 #   --site prototype   publish the PROTOTYPE TWIN instead of the live site:
 #                   https://johncnewbury.github.io/Gopher-Marketplace-Prototype/
 #                   (repo Gopher-Marketplace-Prototype, remote `proto`).
@@ -47,7 +52,7 @@ SRC="$REPO/Final"
 BRANCH="main"
 WORKTREE="$(mktemp -d)/gopher-deploy"
 
-PUSH=false; ALLOW_DIRTY=false; MSG=""; SITE="live"
+PUSH=false; ALLOW_DIRTY=false; MSG=""; SITE="live"; ARGS=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --push)        PUSH=true; shift ;;
@@ -58,10 +63,28 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# ── --site both ────────────────────────────────────────────────────────────
+# The twin does not track production, so shipping one and not the other is a
+# silent drift you only notice when a screenshot disagrees with the code. It
+# sat three weeks behind that way, and then went behind AGAIN within the hour
+# of being asked how to stop it happening. One command ships both.
+if [[ "$SITE" == "both" ]]; then
+  FWD=(); skip=false
+  for a in "${ARGS[@]}"; do
+    if $skip; then skip=false; continue; fi
+    if [[ "$a" == "--site" ]]; then skip=true; continue; fi
+    FWD+=("$a")
+  done
+  echo; echo "=== --site both: LIVE first, then the prototype twin ==================="
+  "$0" --site live "${FWD[@]}" || exit $?
+  echo; echo "=== --site both: now the twin =========================================="
+  exec "$0" --site prototype "${FWD[@]}"
+fi
+
 case "$SITE" in
   live)      REMOTE="origin"; SITE_URL="https://johncnewbury.github.io/Gopher-Marketplace/" ;;
   prototype) REMOTE="proto";  SITE_URL="https://johncnewbury.github.io/Gopher-Marketplace-Prototype/" ;;
-  *) echo "--site must be 'live' or 'prototype' (got: '$SITE')" >&2; exit 2 ;;
+  *) echo "--site must be 'live', 'prototype' or 'both' (got: '$SITE')" >&2; exit 2 ;;
 esac
 git -C "$REPO" remote get-url "$REMOTE" >/dev/null 2>&1 || {
   echo "git remote '$REMOTE' does not exist — cannot deploy --site $SITE" >&2; exit 2; }
@@ -436,6 +459,10 @@ git push -q "$REMOTE" "HEAD:$BRANCH"
 echo
 echo "=== deployed ============================================================"
 echo "  $(git rev-parse --short HEAD) -> $REMOTE/$BRANCH"
+if [[ "$SITE" == "live" ]] && git -C "$REPO" remote get-url proto >/dev/null 2>&1; then
+  printf '\033[33m  ! the prototype TWIN was not touched by this run.\033[0m\n'
+  printf '    It does not track production. Ship it too:  scripts/deploy.sh --site both --push\n'
+fi
 echo "  $SITE_URL"
 echo "  (Pages takes ~1 min; hard-refresh to bypass cache)"
 echo
