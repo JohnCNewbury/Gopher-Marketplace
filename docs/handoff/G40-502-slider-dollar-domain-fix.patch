@@ -1,0 +1,228 @@
+diff --git a/src/component/smartPriceSuggestion.js b/src/component/smartPriceSuggestion.js
+index 0fe99b46e..7b6c22db6 100644
+--- a/src/component/smartPriceSuggestion.js
++++ b/src/component/smartPriceSuggestion.js
+@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/capacitor";
+ import * as API from "../axios/axios";
+ import "../css/home.css";
+ import "../css/style.css";
++import "../css/smart-price-slider.css";
+ import CustomModal from "./modals/CustomModal";
+ import { formatOrderObjcet } from "../helpers/orderObject";
+ import gopherIqLogo from "../img/gopher-iq.png";
+@@ -381,15 +382,55 @@ const SmartPriceSuggestion = (props) => {
+   const trackMax = band ? Math.round(band.suggested + half) : 100;
+ 
+   const draftNum = toNum(draft);
+-  const sliderPct =
++
++  /* ⛔ THE SLIDER'S DOMAIN IS DOLLARS, NOT PERCENT. Do not "simplify" this back
++     to 0..100 — that was a real defect, found on a handset.
++
++     It used to be `min=0 max=100`, with the handler converting percent to
++     dollars and this expression converting dollars back to percent. Both sides
++     rounded, and the track is narrow: with TRACK_SPREAD 1.6 on a +/-25% band the
++     track is only ~0.8x the suggestion. For a $50 basket (suggested $14) that is
++     $8–$20 — TWELVE dollars across 101 slider steps, so one dollar is 8.3% of
++     the track. A drag shorter than that rounded to the same dollar, the
++     controlled `value` then snapped the thumb back, and **88 of the 101
++     positions resolved to a different percent than the finger was on.** The
++     thumb fought the finger; only a jump large enough to cross a dollar
++     boundary held. That is why tap-to-position appeared to work while dragging
++     did not (owner, iPhone 15 Pro Max, 2026-09-23).
++
++     ⚠️ SEVERITY IS INVERSE TO TRACK WIDTH, so it was WORST on Delivery — the
++     narrowest tracks on the platform. Measured across the curve:
++       $10 -> track $5–$15, 90/101 (89%)      $30 -> $17–$43, 74/101
++       $14 -> track $8–$20, 88/101 (87%)      $44 -> $26–$62, 64/101
++       $20 -> track $12–$28, 84/101 (83%)
++     Independently reproduced by the G40-534 session from this file's own maths.
++
++     ⚠️ IF YOU RE-DERIVE THIS TABLE IN PYTHON YOU WILL GET $7–$13 / 94-of-101 FOR
++     THE $10 ROW, AND THE TABLE ABOVE IS STILL THE CORRECT ONE. Python's
++     `round()` is banker's rounding — `round(12.5) == 12` — while JS
++     `Math.round(12.5) === 13`. The $10 band is `10 * 1.25 = 12.5` exactly, so
++     generous comes out 12 in Python and 13 in JS, moving the half-width from
++     3.2 to 4.8. JS is authoritative here: this component is JS, and the live
++     server returns `generous: 13` for that band. Only rows containing a .5
++     diverge, which is why the other four reproduce identically under either
++     language — and .5 lands precisely on the tidy anchors a pricing model is
++     most likely to use (x1.25 and x0.75 of a round number). Found by the
++     G40-534 session, 2026-09-23, after I mis-attributed the discrepancy to a
++     missing TRACK_SPREAD — a guess from a symptom, which it was not.
++
++     ⚠️ An earlier revision of this comment said "$6–$22 / sixteen dollars /
++     84 of 101". That was computed with TRACK_SPREAD = 2, a placeholder in a
++     scratch script, not the real 1.6. Corrected the same day. The defect and
++     the fix were unaffected; only the figures were wrong.
++
++     In dollars there is no conversion and nothing to round: one step is one
++     dollar, and the value the browser holds is the value React renders. */
++  const sliderValue =
+     trackMax === trackMin
+-      ? 50
++      ? trackMin
+       : Math.max(
+-          0,
+-          Math.min(
+-            100,
+-            Math.round(((draftNum - trackMin) / (trackMax - trackMin)) * 100),
+-          ),
++          trackMin,
++          Math.min(trackMax, Number.isFinite(draftNum) ? draftNum : trackMin),
+         );
+ 
+   /* ⭐ THE MARKETPLACE'S OWN FOUR STATES, and deliberately no more than that
+@@ -536,22 +577,13 @@ const SmartPriceSuggestion = (props) => {
+               </div>
+               <input
+                 type="range"
+-                min={0}
+-                max={100}
++                min={trackMin}
++                max={trackMax}
+                 step={1}
+-                value={sliderPct}
++                value={sliderValue}
+                 aria-label="Suggested offer amount"
+-                style={styles.slider}
+-                onChange={(e) => {
+-                  const pct = Number(e.target.value);
+-                  setDraft(
+-                    String(
+-                      Math.round(
+-                        trackMin + (pct / 100) * (trackMax - trackMin),
+-                      ),
+-                    ),
+-                  );
+-                }}
++                className="gopher-iq-slider"
++                onChange={(e) => setDraft(e.target.value)}
+               />
+               <div style={styles.railVals}>
+                 <span style={styles.railValLow}>${band.low}</span>
+@@ -801,7 +833,9 @@ const styles = {
+      difference. Measured on an A50: FAIR sat at x=482 against a rail centre of
+      539.5, off by 57px, which is (190-75)/2. Equal columns put the middle
+      label's centre on the rail's centre regardless of word length. */
+-  slider: { width: "100%", accentColor: COLORS.green, margin: `${w(2)}px 0` },
++  /* `slider` removed: the rail is styled by css/smart-price-slider.css, because
++     ::-webkit-slider-thumb cannot be expressed as an inline React style. An
++     inline style here would also outrank that sheet. */
+   /* Same grid, so $low / dash / $generous sit directly under LOW / FAIR /
+      GENEROUS instead of drifting independently. */
+   railVals: {
+diff --git a/src/component/smartPriceSuggestion.test.js b/src/component/smartPriceSuggestion.test.js
+index b5c2adb4a..d5147511f 100644
+--- a/src/component/smartPriceSuggestion.test.js
++++ b/src/component/smartPriceSuggestion.test.js
+@@ -889,3 +889,109 @@ describe("SmartPriceSuggestion — bids path (G40-534 AC8)", () => {
+     expect("smart_pricevisible" in bag.values).toBe(false);
+   });
+ });
++
++/* ══════════════════════════════════════════════════════════════════════════
++   G40-502 — THE RAIL'S DOMAIN IS DOLLARS, NOT PERCENT.
++
++   The defect these guard: the slider ran `min=0 max=100` while the value was
++   held in whole dollars, so each drag round-tripped percent -> dollars ->
++   percent through two roundings. On a narrow track most drags rounded back to
++   a DIFFERENT percent, React re-rendered the thumb away from the finger, and
++   only a jump large enough to cross a dollar boundary held. The owner hit it on
++   an iPhone 15 Pro Max: "I have to tap to a spot on the slider to move it."
++
++   ⛔ WHY A SWEEP AND NOT A SAMPLE. A test pinned to one or two values passes
++   happily with the quantisation merely moved somewhere else on the track —
++   which is exactly how this shipped in the first place. Same reasoning as the
++   monotonicity sweep on the cost curve: assert the property across the whole
++   domain, not at points that happen to be clean.
++
++   ⚠️ The failure is tactile, and jsdom cannot feel a thumb fighting a finger.
++   These tests pin the CAUSE (a lossy value domain); the effect still needs a
++   handset. Do not read a green run here as "the drag is smooth".
++   ══════════════════════════════════════════════════════════════════════════ */
++describe("G40-502 — the suggested-offer rail is driven in dollars", () => {
++  /* ⚠️ This block is a SIBLING of the main describe, so it does not inherit its
++     beforeEach. Without fake timers the 350ms debounced fetch never fires, the
++     band never arrives, and the entry row never renders — the first draft of
++     these tests failed on `entryRow()` being undefined, which looks like a
++     product bug and is not one. Mirror the setup rather than nesting, so these
++     stay readable as a group. */
++  beforeEach(() => {
++    jest.clearAllMocks();
++    jest.useFakeTimers();
++  });
++  afterEach(async () => {
++    if (root) await unmount();
++    jest.useRealTimers();
++  });
++
++  const rail = () => document.querySelector('input[type="range"]');
++
++  /* React 18 tracks the input's value internally, so assigning `.value` is
++     ignored. Go through the prototype's native setter, then fire `input` —
++     the same trick the rest of this file uses for text entry. */
++  async function dragTo(el, value) {
++    const setter = Object.getOwnPropertyDescriptor(
++      window.HTMLInputElement.prototype,
++      "value",
++    ).set;
++    // eslint-disable-next-line testing-library/no-unnecessary-act
++    await act(async () => {
++      setter.call(el, String(value));
++      el.dispatchEvent(new Event("input", { bubbles: true }));
++    });
++  }
++
++  it("min/max are the dollar track bounds, never 0..100", async () => {
++    API.post.mockResolvedValue(priced(14, 11, 18));
++    await mount({ cost_of_goods: 50 });
++    await click(entryRow());
++
++    const r = rail();
++    expect(r).toBeTruthy();
++    /* TRACK_SPREAD 1.6, band 11/14/18 -> half = max(3,4,1)*1.6 = 6.4
++       -> trackMin round(7.6)=8, trackMax round(20.4)=20. */
++    expect(r.getAttribute("min")).toBe("8");
++    expect(r.getAttribute("max")).toBe("20");
++    expect(r.getAttribute("step")).toBe("1");
++  });
++
++  it("EVERY integer position round-trips to itself", async () => {
++    API.post.mockResolvedValue(priced(14, 11, 18));
++    await mount({ cost_of_goods: 50 });
++    await click(entryRow());
++
++    const r = rail();
++    const min = Number(r.getAttribute("min"));
++    const max = Number(r.getAttribute("max"));
++    expect(max).toBeGreaterThan(min);
++
++    const drifted = [];
++    for (let v = min; v <= max; v += 1) {
++      await dragTo(rail(), v);
++      const landed = Number(rail().value);
++      if (landed !== v) drifted.push({ asked: v, landed });
++    }
++    expect(drifted).toEqual([]);
++  });
++
++  it("holds on the narrowest track on the platform — the $10 floor", async () => {
++    /* Severity was inverse to track width, so the floor is the worst case:
++       band 8/10/13 -> half = max(2,3,1)*1.6 = 4.8 -> $5..$15. */
++    API.post.mockResolvedValue(priced(10, 8, 13));
++    await mount({ cost_of_goods: 0 });
++    await click(entryRow());
++
++    const r = rail();
++    const min = Number(r.getAttribute("min"));
++    const max = Number(r.getAttribute("max"));
++
++    const drifted = [];
++    for (let v = min; v <= max; v += 1) {
++      await dragTo(rail(), v);
++      if (Number(rail().value) !== v) drifted.push(v);
++    }
++    expect(drifted).toEqual([]);
++  });
++});
