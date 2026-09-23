@@ -13,53 +13,56 @@ fail=0
 step(){ printf '\n\033[1m── %s\033[0m\n' "$1"; }
 run(){ if "$@"; then :; else fail=1; printf '\033[31m   ^ FAILED\033[0m\n'; fi; }
 
-step "1/14 inline JS parses (both live web apps)"
+step "1/15 inline JS parses (both live web apps)"
 run node scripts/web-checks/parse-inline-js.js Final/gopher-request.html
 run node scripts/web-checks/parse-inline-js.js Final/gopher-connect.html
 run node --check Final/assets/js/gopher-web-pt-bridge.js && echo "  ✓ bridge module parses"
 
-step "2/14 PT cannot activate on a production host"
+step "2/15 PT cannot activate on a production host"
 run node scripts/web-checks/pt-production-gate.js
 
-step "3/14 the Maps callback shim (the ride-distance race)"
+step "3/15 the Maps callback shim (the ride-distance race)"
 run node scripts/web-checks/maps-callback-shim.js
 
-step "4/14 requester <-> Gopher messaging crosses the PT bridge"
+step "4/15 requester <-> Gopher messaging crosses the PT bridge"
 run node scripts/web-checks/pt-message-relay.js
 
-step "5/14 the age gate: flavour + product form (the context pass)"
+step "5/15 the age gate: flavour + product form (the context pass)"
 run node scripts/web-checks/age-context-pass.js
 
-step "6/14 web no-show port vs the VENDORED requester rule (never skips)"
+step "6/15 one lifecycle definition — Request and Connect both delegate"
+run node scripts/web-checks/lifecycle-parity.js
+
+step "7/15 web no-show port vs the VENDORED requester rule (never skips)"
 run node scripts/web-checks/noshow-parity.js
 
-step "7/14 all THREE no-show implementations agree (mobile / web / prototype)"
+step "8/15 all THREE no-show implementations agree (mobile / web / prototype)"
 run node scripts/web-checks/noshow-three-way.js
 
-step "8/14 is the vendored rule still upstream's? (skips without the clone)"
+step "9/15 is the vendored rule still upstream's? (skips without the clone)"
 run node scripts/web-checks/noshow-freshness.js
 
-step "9/14 Request/Connect/prototype parity harness"
+step "10/15 Request/Connect/prototype parity harness"
 run python3 docs/handoff/request-app-parity/run_parity_harness.py >/tmp/wc-parity.$$ 2>&1
 tail -1 /tmp/wc-parity.$$; rm -f /tmp/wc-parity.$$
 
-step "10/14 Go parity harness"
+step "11/15 Go parity harness"
 run python3 docs/handoff/go-app-parity/run_go_parity_harness.py >/tmp/wc-go.$$ 2>&1
 tail -1 /tmp/wc-go.$$; rm -f /tmp/wc-go.$$
 
-step "11/14 shared-module unit tests"
+step "12/15 shared-module unit tests"
 run node docs/handoff/request-app-parity/test-step-gates.js >/tmp/wc-sg.$$ 2>&1
 tail -1 /tmp/wc-sg.$$; rm -f /tmp/wc-sg.$$
 run node docs/handoff/request-app-parity/test-flow-rules.js >/tmp/wc-fr.$$ 2>&1
 tail -1 /tmp/wc-fr.$$; rm -f /tmp/wc-fr.$$
 
-step "12/14 shared worker helpers are in a scope BOTH call sites can see"
+step "13/15 shared worker helpers are in a scope BOTH call sites can see"
 run node scripts/web-checks/helper-scope.js
 
-step "13/14 Go prototype money parsing (a typed \$61.40 is \$61.40, not \$6,140)"
+step "14/15 Go prototype money parsing (a typed \$61.40 is \$61.40, not \$6,140)"
 run node scripts/web-checks/go-money-parse.js
 
-step "14/14 Deals home crowns the merchant who PAID, and nobody otherwise"
+step "15/15 Deals home crowns the merchant who PAID, and nobody otherwise"
 run node scripts/web-checks/deals-featured-picks.js
 
 if [ "$fail" = "0" ]; then printf '\n\033[32m✅ ALL WEB CHECKS PASS\033[0m\n'; else printf '\n\033[31m❌ SOMETHING FAILED — do not commit\033[0m\n'; fi
