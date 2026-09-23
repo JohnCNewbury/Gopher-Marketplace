@@ -1304,8 +1304,15 @@
                    zero structural change. Pricing math: tapered per-mile
                    tiers ($2.40→$1.80→$1.35→$1.05), $0.55/min, average of the
                    two = variable portion, ±25% band applied to variable only,
-                   $4.99 Gopher fee held constant, $8 floor protects Low, 8%
-                   instant-transfer fee on top, ×1.15 if scheduled. RIDE_RATES.fee
+                   Gopher fee held constant, $8 floor protects Low, 8%
+                   instant-transfer fee on top, ×1.15 if scheduled.
+                   [corrected 2026-09-23, G40-535: this line read "$4.99 Gopher fee"
+                   while the code has always used GOPHER_FEE.ride = $2.99. The $4.99
+                   is the Gopher CONNECT starter-plan fee the source workbook priced
+                   at; this is the REQUEST app and its schedule is $2.99. The code was
+                   right and the comment was wrong — but the two disagreeing is what
+                   made the fee ambiguous when the model was ported to the backend.]
+                   RIDE_RATES.fee
                    reads from GOPHER_FEE.ride and RIDE_RATES.itf reads from
                    INSTANT_TRANSFER_RATE so the platform fee + ITF stay in sync
                    automatically. Routed in __openOfferSuggest(): when
@@ -10986,25 +10993,15 @@
   //   ITF     = 8% of Base
   // The Low/Generous rail applies ±25% to the VARIABLE portion only; the fixed
   // $4.99 Gopher fee stays constant across all three and the $8 floor protects Low.
-  const RIDE_RATES = {
-    fee: GOPHER_FEE.ride,   // 2.99 — kept in sync with the platform fee table above
-    perMin: 0.55,           // $ per trip minute
-    itf: INSTANT_TRANSFER_RATE, // 8% on top of base (kept in sync with the global rate)
-    minRide: 8.00,          // minimum ride floor
-    band: 0.25,             // Low/Generous rail ±25% (same band as delivery)
-    schedUplift: 0.15       // scheduled-ride uplift
-  };
-
-  // Tapered per-mile tiers: more per mile up close, less far out (matches market).
-  const RIDE_MILE_TIERS = [ [0,5,2.40], [5,15,1.80], [15,40,1.35], [40,Infinity,1.05] ];
-
-  function rideMileageCost(miles){
-    let c = 0;
-    for(const [lo,hi,rate] of RIDE_MILE_TIERS){
-      c += Math.max(0, Math.min(miles, hi) - lo) * rate;
-    }
-    return c;
-  }
+  // RIDE_RATES / RIDE_MILE_TIERS / rideMileageCost / rideSuggestedOffer moved to the
+  // SHARED module assets/js/gopher-request-logic.js (G40-535) — the same lift Delivery's
+  // OFFER_TABLE had in 2026-07-14, and the same model the live backend now runs in
+  // helpers/suggested_pricing.js. Spec: docs/handoff/ride-suggested-pricing.md.
+  // The two page-local rates below are still the page's own, and are PASSED IN rather
+  // than duplicated in the shared module, so the prototype's checkout fee table and the
+  // pricing model cannot drift apart.
+  const RIDE_RATE_OVERRIDES = { fee: GOPHER_FEE.ride, itf: INSTANT_TRANSFER_RATE };
+  function rideMileageCost(miles){ return window.GopherRequestLogic.rideMileageCost(miles); }   // SHARED
 
   // Trip distance/time for ride pricing. Uses REAL Google Distance Matrix miles+minutes between
   // the pickup and drop-off once Maps is wired (see refreshTripDistance below); falls back to a
@@ -11143,20 +11140,10 @@
   document.addEventListener('mousedown', function(e){ if(_savedPickerEl && !_savedPickerEl.contains(e.target) && !(e.target.matches && e.target.matches('input[data-locedit]'))) hideSavedPicker(); }, true);
   window.addEventListener('scroll', hideSavedPicker, true);
 
+  // SHARED — tapered tiers, the ±25%-on-the-variable-portion band, the $8 floor and the
+  // scheduled uplift all live in assets/js/gopher-request-logic.js now.
   function rideSuggestedOffer(miles, minutes, scheduled){
-    const r = RIDE_RATES;
-    const variable = (rideMileageCost(miles) + minutes * r.perMin) / 2;
-    const calc = (mult) => {
-      let base = Math.max(r.fee + variable * mult, r.minRide);
-      if(scheduled) base *= (1 + r.schedUplift);
-      return base * (1 + r.itf);
-    };
-    return {
-      low:       Math.round(calc(1 - r.band)),
-      suggested: Math.round(calc(1)),
-      generous:  Math.round(calc(1 + r.band)),
-      miles, minutes
-    };
+    return window.GopherRequestLogic.rideSuggestedOffer(miles, minutes, scheduled, RIDE_RATE_OVERRIDES);
   }
 
   // Shared fair-range model for the categories we price (Delivery + Ride Share).

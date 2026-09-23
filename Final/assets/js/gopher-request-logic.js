@@ -161,6 +161,77 @@
     s = Math.round(s);
     return { low: Math.round(s*0.75), suggested: s, generous: Math.round(s*1.25) };
   }
+  /* ── RIDE SHARING suggested-offer model (distance + time based) ───────────
+     G40-535. LIFTED OUT OF `gopher-request.html`, where it was page-local
+     while Delivery, Junk and Moving all lived here. That asymmetry is why the
+     Ride model was the one nobody could import: porting it to the backend
+     meant reading it out of a 20,000-line page.
+
+     Calibrated against 1,226 real "Need a Ride" orders plus Uber/Lyft
+     benchmarks (Gopher_RideShare_Suggested_Offer_Analysis_2.xlsx). This is the
+     SAME model the live backend now runs in helpers/suggested_pricing.js; the
+     two are kept identical on purpose, and the full write-up — including why
+     the flat fee is the Request $2.99 and not the workbook's Connect $4.99 —
+     is in docs/handoff/ride-suggested-pricing.md.
+
+         Mileage Cost = sum of (miles in each tier x that tier's rate)
+         Time Cost    = trip minutes x per-minute rate
+         Average      = (Mileage Cost + Time Cost) / 2
+         Base         = MAX(Flat Fee + Average, Minimum Ride Floor)
+         if scheduled:  Base = Base x (1 + Scheduled Uplift)
+         SUGGESTED    = Base x (1 + ITF)
+
+     ⛔ The +/-25% band applies to the AVERAGED mile+time cost ONLY. The flat
+     fee is identical across low/suggested/generous and the $8 floor is applied
+     after the band, so it protects Low. `low = suggested * 0.75` is the
+     obvious wrong implementation and it discounts the platform fee. */
+  var RIDE_DEFAULTS = {
+    fee: 2.99,          /* Request schedule — Gopher_Connect_Pricing "Gopher App" column */
+    perMin: 0.55,
+    itf: 0.08,
+    minRide: 8.00,
+    band: 0.25,
+    schedUplift: 0.15
+  };
+
+  /* Tapered per-mile: more per mile close in, less far out. A FLAT rate ran
+     $10-$19 above Uber/Lyft on 19-39 mile trips (workbook finding 4). */
+  var RIDE_MILE_TIERS = [[0,5,2.40],[5,15,1.80],[15,40,1.35],[40,Infinity,1.05]];
+
+  function rideMileageCost(miles){
+    var m = Number(miles), c = 0;
+    if(!isFinite(m) || m <= 0) return 0;
+    for(var i = 0; i < RIDE_MILE_TIERS.length; i++){
+      var lo = RIDE_MILE_TIERS[i][0], hi = RIDE_MILE_TIERS[i][1], rate = RIDE_MILE_TIERS[i][2];
+      c += Math.max(0, Math.min(m, hi) - lo) * rate;
+    }
+    return c;
+  }
+
+  /* `opts` overrides any rate. The page passes its own GOPHER_FEE.ride and
+     INSTANT_TRANSFER_RATE so the prototype's checkout fee table and this model
+     cannot drift apart — the behaviour the page-local version had, preserved
+     rather than replaced by a second hard-coded copy of the same two numbers. */
+  function rideSuggestedOffer(miles, minutes, scheduled, opts){
+    var r = {}, k;
+    for(k in RIDE_DEFAULTS) if(Object.prototype.hasOwnProperty.call(RIDE_DEFAULTS,k)) r[k] = RIDE_DEFAULTS[k];
+    if(opts) for(k in opts) if(Object.prototype.hasOwnProperty.call(opts,k) && opts[k] != null) r[k] = opts[k];
+
+    var mins = Math.max(0, Number(minutes) || 0);
+    var variable = (rideMileageCost(miles) + mins * r.perMin) / 2;
+    function calc(mult){
+      var base = Math.max(r.fee + variable * mult, r.minRide);
+      if(scheduled) base *= (1 + r.schedUplift);
+      return base * (1 + r.itf);
+    }
+    return {
+      low:       Math.round(calc(1 - r.band)),
+      suggested: Math.round(calc(1)),
+      generous:  Math.round(calc(1 + r.band)),
+      miles: miles, minutes: minutes
+    };
+  }
+
   function regionIsNC(){
     /* Owner directive 2026-07-09: NC pricing platform-wide. Restore address-based
        detection (regionStateFromAddress over dropoff, fallback pickup) when
@@ -183,6 +254,11 @@
     suggestedOffer: suggestedOffer,
     regionIsNC: regionIsNC,
     regionStateFromAddress: regionStateFromAddress,
-    OFFER_TABLE: OFFER_TABLE
+    OFFER_TABLE: OFFER_TABLE,
+    /* Ride Sharing (G40-535) — lifted out of gopher-request.html */
+    RIDE_DEFAULTS: RIDE_DEFAULTS,
+    RIDE_MILE_TIERS: RIDE_MILE_TIERS,
+    rideMileageCost: rideMileageCost,
+    rideSuggestedOffer: rideSuggestedOffer
   };
 })();
