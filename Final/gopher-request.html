@@ -11000,7 +11000,10 @@
   // The two page-local rates below are still the page's own, and are PASSED IN rather
   // than duplicated in the shared module, so the prototype's checkout fee table and the
   // pricing model cannot drift apart.
-  const RIDE_RATE_OVERRIDES = { fee: GOPHER_FEE.ride, itf: INSTANT_TRANSFER_RATE };
+  // ⛔ No fee/ITF override any more: the ride model returns WORKER PAY, and
+  // computeRequestFee() below adds GOPHER_FEE.ride + INSTANT_TRANSFER_RATE at
+  // checkout. Passing them into the model charged both twice (fixed 2026-09-23).
+  const RIDE_RATE_OVERRIDES = {};
   function rideMileageCost(miles){ return window.GopherRequestLogic.rideMileageCost(miles); }   // SHARED
 
   // Trip distance/time for ride pricing. Uses REAL Google Distance Matrix miles+minutes between

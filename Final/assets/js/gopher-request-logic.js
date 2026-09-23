@@ -185,11 +185,16 @@
      fee is identical across low/suggested/generous and the $8 floor is applied
      after the band, so it protects Low. `low = suggested * 0.75` is the
      obvious wrong implementation and it discounts the platform fee. */
+  /* ⛔ NO FEE AND NO ITF HERE. This returns WHAT THE GOPHER IS PAID.
+     Owner, 2026-09-23: "the number is what the gopher gets AND the rider pays
+     (+fees). Our pricing always hinges off what the worker is offered."
+     The source workbook computes `(Fee + Average) x (1 + ITF)`, which is the
+     RIDER'S ALL-IN — correct for comparing against Uber/Lyft, wrong for the
+     offer field. computeRequestFee() adds the platform fee and the 8% at
+     checkout; a model carrying them charged both twice. */
   var RIDE_DEFAULTS = {
-    fee: 2.99,          /* Request schedule — Gopher_Connect_Pricing "Gopher App" column */
     perMin: 0.55,
-    itf: 0.08,
-    minRide: 8.00,
+    minRide: 8.00,      /* floors WORKER PAY, not the rider's total */
     band: 0.25,
     schedUplift: 0.15
   };
@@ -220,9 +225,10 @@
     var mins = Math.max(0, Number(minutes) || 0);
     var variable = (rideMileageCost(miles) + mins * r.perMin) / 2;
     function calc(mult){
-      var base = Math.max(r.fee + variable * mult, r.minRide);
-      if(scheduled) base *= (1 + r.schedUplift);
-      return base * (1 + r.itf);
+      /* Floor AFTER the band so it protects Low; uplift after the floor. */
+      var pay = Math.max(variable * mult, r.minRide);
+      if(scheduled) pay *= (1 + r.schedUplift);
+      return pay;
     }
     return {
       low:       Math.round(calc(1 - r.band)),
