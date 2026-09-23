@@ -38,13 +38,14 @@
 > - `contentInset: "never"`. ⚠️ Putting it back to `"automatic"` with the controller in
 >   place insets the page **twice**.
 >
-> **Branches (local, not yet pushed):**
+> **MRs (opened 2026-09-23; target `production`, squash No, delete source branch No; not
+> merged).** Tracked by **G40-543**, which points back here.
 >
-> | repo | branch | commit | what |
-> |---|---|---|---|
-> | `gopher-mobile-requester-capacitorjs` | `fix/ios-slider-touch-offset` | `f1b1bfa2b` | the touch fix |
-> | `gopher-mobile-requester-capacitorjs` | `G40-502-slider-dollar-domain` | `d722f833c` | §5 dollar-domain fix, rebased onto `94501ef65`; conflict with G40-535's tests resolved (both kept) |
-> | `gopher-mobile-gopher` | `fix/ios-slider-touch-offset` | `295b5780f` | the touch fix, GO |
+> | repo | MR | branch | commit | what |
+> |---|---|---|---|---|
+> | `gopher-mobile-requester-capacitorjs` | !384 | `fix/ios-slider-touch-offset` | `f1b1bfa2b` | the touch fix |
+> | `gopher-mobile-requester-capacitorjs` | !385 | `G40-502-slider-dollar-domain` | `d722f833c` | §5 dollar-domain fix, rebased onto `94501ef65`; conflict with G40-535's tests resolved (both kept) |
+> | `gopher-mobile-gopher-capacitorjs` | !365 | `fix/ios-slider-touch-offset` | `295b5780f` | the touch fix, GO |
 >
 > **Verified (device = owner's 15 Pro Max, iOS 26.6.2):**
 > - The Gopher iQ rail and a native range drag (Request).
