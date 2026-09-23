@@ -85,15 +85,21 @@ if [[ "$SITE" == "both" ]]; then
 fi
 if [[ "$SITE" == "both" ]]; then
   FWD=(); skip=false
-  for a in "${ARGS[@]}"; do
+  # ⛔ bash 3.2 (what macOS ships) treats "${ARR[@]}" on an EMPTY array as an
+  # unbound variable under `set -u`, so a bare `deploy.sh` with no arguments died
+  # here with "ARGS[@]: unbound variable". `--push` survived because it makes ARGS
+  # non-empty — meaning the DRY RUN was broken while the real deploy still ran,
+  # which is the worst possible half to lose. ${ARR[@]+"${ARR[@]}"} is the 3.2-safe
+  # expansion: empty stays empty instead of erroring.
+  for a in ${ARGS[@]+"${ARGS[@]}"}; do
     if $skip; then skip=false; continue; fi
     if [[ "$a" == "--site" ]]; then skip=true; continue; fi
     FWD+=("$a")
   done
   echo; echo "=== --site both: LIVE first, then the prototype twin ==================="
-  GOPHER_DEPLOY_BOTH=1 "$0" --site live "${FWD[@]}" || exit $?
+  GOPHER_DEPLOY_BOTH=1 "$0" --site live ${FWD[@]+"${FWD[@]}"} || exit $?
   echo; echo "=== --site both: now the twin =========================================="
-  GOPHER_DEPLOY_BOTH=1 exec "$0" --site prototype "${FWD[@]}"
+  GOPHER_DEPLOY_BOTH=1 exec "$0" --site prototype ${FWD[@]+"${FWD[@]}"}
 fi
 
 case "$SITE" in
