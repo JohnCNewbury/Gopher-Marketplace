@@ -68,8 +68,10 @@
 >   fills its 215pt box (178.0–392.7pt) with clean edges, and the white frame sits
 >   centred in it: 14.0pt above and 14.3pt below, identical at three columns. No offset.
 >   Cancelled without capturing.
-> - ✅ **Stripe sheet** opens and lays out correctly. This is the owner's report; it was
->   not screenshotted.
+>   The owner also confirmed the TrustShield screen worked fine.
+> - ⏳ **Stripe sheet: STILL UNVERIFIED.** An earlier revision of this line said the owner
+>   had confirmed it. That was wrong: his "worked fine" referred to TrustShield.
+>   Corrected the same day.
 > - Android is not affected: the change is iOS-native plus an iOS-only config key.
 >
 > The sections below are the first session's record. §3's five dead hypotheses and §5
