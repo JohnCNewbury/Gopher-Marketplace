@@ -63,6 +63,39 @@ GENERIC_STOPLIST = {
 # Multi-word forms are unaffected -- "marlboro reds" stays even though bare "reds" goes,
 # "blunt wraps" stays while bare "wraps" goes. The terms remain in the canonical xlsx;
 # a production context-aware matcher should use them WITH a co-occurring signal.
+# ── The co-occurring signal the Implementation Guide asks for ────────────────
+# A flavour alone must not flag ("wintergreen mints"). A product FORM alone must
+# not flag ("a pouch of coffee"). Together, within a few words of each other,
+# they are unambiguous -- "grizzly wintergreen pouches", "Zyn coffee 6mg".
+#
+# MEASURED, not chosen: scoring all 64,668 production order titles in
+# Documentation/Dashboard/data/master/Orders.csv, flavour+form within 3 tokens
+# newly flags 12 titles (0.019%) and every one is a true positive, including two
+# real orders reading "a can of Gizzly wintergreen pouches". A window of 4 adds
+# nothing; a window of 2 loses "Pack of crowns menthol 100" and "2 Cans of Zyn
+# Coffee". Unwindowed, "Can someone bring me a coffee please" false-positives on
+# can+coffee. Re-measure before widening.
+# Flavour words that are ALSO ordinary groceries. A nicotine pouch really does
+# come in coffee and cherry, but "a pouch of coffee beans" and "a can of peaches"
+# are shopping, not tobacco -- and the form list contains pouch/can/tin, so those
+# would pair. Excluding them costs nothing measurable: every production title
+# they would have caught is already caught by a brand literal ("2 Cans of Zyn
+# Coffee" matches `zyn`). "tropical" is deliberately NOT here -- it is the only
+# signal on seven real orders reading "12 pack tropical trully", where the brand
+# is misspelt past the literal pass.
+FLAVOUR_TOO_COMMON = {
+    "coffee", "tea", "cream", "butter", "honey", "chocolate", "vanilla",
+    "cherry", "apple", "grape", "banana", "lemon", "lime", "orange",
+    "watermelon", "strawberry", "blueberry", "raspberry", "peach", "mango",
+    "melon", "cola", "soda", "sugar", "ginger", "pepper", "cinnamon", "caramel",
+}
+
+CONTEXT_FORMS = [
+    "pouch", "pouches", "dip", "chew", "snuff", "snus", "tin", "tins",
+    "can", "cans", "carton", "pack", "packs", "pod", "pods",
+    "vape", "juice", "wrap", "wraps", "cone", "cones", "pipe", "cig", "cigs",
+]
+
 AMBIGUOUS_REQUIRE_CONTEXT = {
     # everyday nouns / verbs
     "ace", "acid", "azure", "burn", "chew", "cones", "cougar", "dart", "dip",
@@ -136,6 +169,33 @@ def collect_taxonomy(fname, acc):
     print("  taxonomy: kept %d | skipped %d context-dependent | skipped %d pattern templates"
           % (kept, skipped_ctx, skipped_tpl))
 
+def collect_flavours(fname, auto):
+    """The Context Dependent rows -- the half collect_taxonomy() throws away.
+
+    They are not noise: the Implementation Guide says to use them WITH a
+    co-occurring signal, and until now nothing did, so every flavour-led
+    phrasing ("grizly wintergreen pouches") passed the age gate silently.
+    Single words only -- the multi-word rows are already literal keywords when
+    they qualify -- and nothing that is already an auto-flag term.
+    """
+    wb = openpyxl.load_workbook(os.path.join(SRC, fname), read_only=True, data_only=True)
+    ws = wb["Engine Import"]
+    out = set()
+    for i, row in enumerate(ws.iter_rows(values_only=True)):
+        if i == 0 or not row or row[0] is None:
+            continue
+        term = norm(row[0])
+        age  = norm(row[3]) if len(row) > 3 and row[3] is not None else ""
+        if age == "yes" or "[" in term or "]" in term:
+            continue
+        if " " in term or len(term) < 4 or term in auto or term in FLAVOUR_TOO_COMMON:
+            continue
+        out.add(term)
+    wb.close()
+    print("  flavours (context-dependent, single word): %d" % len(out))
+    return sorted(out)
+
+
 def main():
     kws = set()
     collect("Age_Restricted_Tobacco_Keywords.xlsx",   "Keywords",         0, kws)
@@ -165,7 +225,14 @@ def main():
            "       in the generator. Multi-word forms are kept ('blunt wraps', 'marlboro reds').\n"
            "   %d unique keywords. Do NOT hand-edit — regenerate: python3 docs/handoff/regen-age-keywords.py\n"
            "   Consumed by findAgeRestrictedKeyword() in the Request flow + Final apps. */\n" % len(arr))
-    js = hdr + "window.GopherAgeKeywords=" + json.dumps(arr, ensure_ascii=False, separators=(",", ":")) + ";\n"
+    flav = collect_flavours("Gopher_iQ_Tobacco_Nicotine_Taxonomy_with_Flavors.xlsx", kws)
+    ctx = ("\n/* CONTEXT PASS — a flavour and a product form within 3 tokens of each other.\n"
+           "   Neither list auto-flags on its own; findAgeRestrictedKeyword() requires BOTH.\n"
+           "   See CONTEXT_FORMS in the generator for the measurement behind the window. */\n")
+    js = (hdr + "window.GopherAgeKeywords=" + json.dumps(arr, ensure_ascii=False, separators=(",", ":")) + ";\n"
+          + ctx
+          + "window.GopherAgeFlavors=" + json.dumps(flav, ensure_ascii=False, separators=(",", ":")) + ";\n"
+          + "window.GopherAgeForms=" + json.dumps(CONTEXT_FORMS, ensure_ascii=False, separators=(",", ":")) + ";\n")
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(js)
     print("wrote %s | %d keywords | %d bytes" % (OUT, len(arr), len(js)))
