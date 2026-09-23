@@ -21,10 +21,16 @@
 #   --allow-dirty   deploy anyway with an unclean tree. Deliberately verbose;
 #                   you are shipping code that exists nowhere in git history.
 #
-#   --site both        publish BOTH, live first then the twin. Use this by
-#                   default — the twin does not track production, and a
-#                   one-sided deploy is invisible until a screenshot disagrees
-#                   with the code.
+#   BOTH SITES ARE THE DEFAULT (owner, 2026-09-23). A bare run ships the live
+#   site and then the prototype twin, because the twin does not track
+#   production and a one-sided deploy is invisible until a screenshot
+#   disagrees with the code — it drifted three weeks that way, then again
+#   within the hour of the owner asking how to stop it.
+#
+#   --site live        the LIVE site only. Deliberate opt-out; you are choosing
+#                   to leave the twin stale, and the run says so.
+#   --site prototype   the TWIN only — the usual choice while iterating on
+#                   something that is not ready for the live site.
 #
 #   --site prototype   publish the PROTOTYPE TWIN instead of the live site:
 #                   https://johncnewbury.github.io/Gopher-Marketplace-Prototype/
@@ -52,7 +58,7 @@ SRC="$REPO/Final"
 BRANCH="main"
 WORKTREE="$(mktemp -d)/gopher-deploy"
 
-PUSH=false; ALLOW_DIRTY=false; MSG=""; SITE="live"; ARGS=("$@")
+PUSH=false; ALLOW_DIRTY=false; MSG=""; SITE="both"; ARGS=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --push)        PUSH=true; shift ;;
@@ -69,6 +75,15 @@ done
 # sat three weeks behind that way, and then went behind AGAIN within the hour
 # of being asked how to stop it happening. One command ships both.
 if [[ "$SITE" == "both" ]]; then
+  # A checkout without the twin remote must still be able to deploy the live
+  # site. Only reachable when nobody asked for "both" by name, so fall back
+  # quietly rather than failing a production deploy over a missing remote.
+  if ! git -C "$REPO" remote get-url proto >/dev/null 2>&1; then
+    echo "  ! no 'proto' remote here — deploying the LIVE site only."
+    SITE="live"
+  fi
+fi
+if [[ "$SITE" == "both" ]]; then
   FWD=(); skip=false
   for a in "${ARGS[@]}"; do
     if $skip; then skip=false; continue; fi
@@ -76,9 +91,9 @@ if [[ "$SITE" == "both" ]]; then
     FWD+=("$a")
   done
   echo; echo "=== --site both: LIVE first, then the prototype twin ==================="
-  "$0" --site live "${FWD[@]}" || exit $?
+  GOPHER_DEPLOY_BOTH=1 "$0" --site live "${FWD[@]}" || exit $?
   echo; echo "=== --site both: now the twin =========================================="
-  exec "$0" --site prototype "${FWD[@]}"
+  GOPHER_DEPLOY_BOTH=1 exec "$0" --site prototype "${FWD[@]}"
 fi
 
 case "$SITE" in
@@ -459,9 +474,15 @@ git push -q "$REMOTE" "HEAD:$BRANCH"
 echo
 echo "=== deployed ============================================================"
 echo "  $(git rev-parse --short HEAD) -> $REMOTE/$BRANCH"
-if [[ "$SITE" == "live" ]] && git -C "$REPO" remote get-url proto >/dev/null 2>&1; then
-  printf '\033[33m  ! the prototype TWIN was not touched by this run.\033[0m\n'
-  printf '    It does not track production. Ship it too:  scripts/deploy.sh --site both --push\n'
+# Only when someone CHOSE live-only. The --site both run re-execs this script
+# with an explicit --site live, so it sets GOPHER_DEPLOY_BOTH to say "the twin
+# is coming next" — without it that run would warn about a staleness it is in
+# the middle of fixing.
+if [[ "$SITE" == "live" && "${ARGS[*]}" == *"--site"* && -z "${GOPHER_DEPLOY_BOTH:-}" ]] \
+   && git -C "$REPO" remote get-url proto >/dev/null 2>&1; then
+  printf '\033[33m  ! --site live was explicit, so the prototype TWIN is now BEHIND.\033[0m\n'
+  printf '    Both sites are the default; ship the twin when you are ready:\n'
+  printf '      scripts/deploy.sh --site prototype --push\n'
 fi
 echo "  $SITE_URL"
 echo "  (Pages takes ~1 min; hard-refresh to bypass cache)"
