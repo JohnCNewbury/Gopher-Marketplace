@@ -230,6 +230,98 @@
         }
       }
     }
+    /* Nothing literal and nothing normalised. Last pass: CONTEXT. */
+    return findAgeContextPair(orig);
+  }
+
+  /* ── "Has the hiring stage ended?" — ONE definition for every surface ─────
+     Request web, Connect and the Request App all render a request detail, and
+     all three had their own copy of this test. They disagreed:
+
+       request web   in-progress | active | scheduled              (no completed)
+       connect       in-progress | active                (no scheduled, no completed)
+       connect card  no test at all — "Remove" showed at every stage
+
+     Every reader wants the same thing: once a job has started, the HIRING
+     controls are over. Missing 'completed' is why a finished request grew its
+     "Remove" button back and re-showed the start-job bar under a banner reading
+     "Request Completed by ...". Fixing it in one file and not the other is
+     exactly the drift this module exists to prevent, so the list lives here and
+     the surfaces call in. Add a status here, not in an HTML file. */
+  var JOB_STARTED_STATUSES = ['in-progress', 'active', 'scheduled', 'completed'];
+
+  /* "Is cancelling still on the table?" — a DIFFERENT list, deliberately.
+     A SCHEDULED request can still be cancelled; one that is underway or already
+     finished cannot. Both surfaces carried this as
+       r.status === 'in-progress' || r.status === 'active'
+     which omits 'completed', so a FINISHED request kept offering "Cancel
+     request" in its header — visible in the owner's own screenshot, beside a
+     banner reading "Request Completed by …". Cancelling a delivered order is
+     not a thing; the receipt has already been emailed. */
+  var CANCEL_BLOCKED_STATUSES = ['in-progress', 'active', 'completed'];
+  function jobBlocksCancel(r){
+    if(!r) return false;
+    var st = String(r.status || '');
+    for(var i = 0; i < CANCEL_BLOCKED_STATUSES.length; i++){
+      if(st === CANCEL_BLOCKED_STATUSES[i]) return true;
+    }
+    return false;
+  }
+  function jobHasStarted(r){
+    if(!r) return false;
+    var st = String(r.status || '');
+    for(var i = 0; i < JOB_STARTED_STATUSES.length; i++){
+      if(st === JOB_STARTED_STATUSES[i]) return true;
+    }
+    return false;
+  }
+
+  /* ── CONTEXT PASS — a flavour next to a product form ──────────────────────
+     The taxonomy ships 522 "Context Dependent" rows (flavours: wintergreen,
+     menthol, mint…) and the generator holds back the ambiguous product forms
+     (pouch, dip, can, pack…). BOTH lists were inert: nothing ever combined
+     them, so "grizly wintergreen pouches" — a flavour, a form and a misspelt
+     brand — walked through the age gate in silence and the requester was never
+     asked. The taxonomy's own Implementation Guide asked for this pass by name:
+     "Combine it with a tobacco/nicotine product, brand, store, purchase,
+     delivery, or usage signal."
+
+     Requires BOTH, WITHIN 3 TOKENS. Measured, not chosen: scored against all
+     64,668 production order titles in Orders.csv — 12 newly flagged (0.019%),
+     every one a true positive, including two real orders reading "a can of
+     Gizzly wintergreen pouches". A window of 4 adds nothing. A window of 2
+     loses "Pack of crowns menthol 100". UNWINDOWED it false-positives on "Can
+     someone bring me a coffee please" (can + coffee), which is exactly why the
+     window exists. Re-measure before widening — do not re-argue. */
+  var AGE_CTX_WINDOW = 3;
+  var _ageCtx = null;
+  function ageCtxSets(){
+    if(_ageCtx) return _ageCtx;
+    var F = {}, G = {}, i;
+    var flav = window.GopherAgeFlavors || [], forms = window.GopherAgeForms || [];
+    for(i = 0; i < flav.length; i++)  F[String(flav[i]).toLowerCase()] = 1;
+    for(i = 0; i < forms.length; i++) G[String(forms[i]).toLowerCase()] = 1;
+    _ageCtx = { f: F, g: G, ok: flav.length > 0 && forms.length > 0 };
+    return _ageCtx;
+  }
+  function findAgeContextPair(orig){
+    var C = ageCtxSets();
+    if(!C.ok) return null;                                  // lists absent — stay silent
+    var toks = String(orig || '').toLowerCase().match(/[a-z0-9]+/g);
+    if(!toks) return null;
+    var fi = [], gi = [], t;
+    for(t = 0; t < toks.length; t++){
+      if(C.f[toks[t]]) fi.push(t);
+      if(C.g[toks[t]]) gi.push(t);
+    }
+    for(var a = 0; a < fi.length; a++){
+      for(var b = 0; b < gi.length; b++){
+        if(Math.abs(fi[a] - gi[b]) <= AGE_CTX_WINDOW){
+          var lo = Math.min(fi[a], gi[b]), hi = Math.max(fi[a], gi[b]);
+          return toks.slice(lo, hi + 1).join(' ');          // the phrase, for the modal
+        }
+      }
+    }
     return null;
   }
 
@@ -623,6 +715,10 @@
   }
 
   window.GopherRequestLogic = {
+    jobHasStarted: jobHasStarted,
+    jobBlocksCancel: jobBlocksCancel,
+    CANCEL_BLOCKED_STATUSES: CANCEL_BLOCKED_STATUSES,
+    JOB_STARTED_STATUSES: JOB_STARTED_STATUSES,
     detectCategoryMismatch: detectCategoryMismatch,
     emitCategoryCheck: emitCategoryCheck,
     uiToSlug: function(key){ return UI_TO_SLUG[key] || key; },
