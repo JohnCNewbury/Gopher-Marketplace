@@ -40,7 +40,7 @@
     { key: 'labor',    slug: 'hourly_day_labor',           label: 'Hourly / Day Labor' },
     { key: 'yard',     slug: 'yard_work_outdoor_projects', label: 'Yard / Outdoor Projects' },
     { key: 'home',     slug: 'home_services',              label: 'Home / Office Services' },
-    { key: 'other',    slug: 'other',                      label: 'Other' }
+    { key: 'other',    slug: 'other',                      label: 'Custom Task' }
   ];
   var CATEGORY_KEYS = CATEGORIES.map(function (c) { return c.key; });
 

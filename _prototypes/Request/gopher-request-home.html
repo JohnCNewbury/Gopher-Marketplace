@@ -694,10 +694,10 @@ const ICON={
 const CATS=[
   ['delivery','Delivery / Errand','ERRAND'],['junk','Junk Removal','HAULING'],['moving','Moving','RELOCATION'],
   ['home','Home / Office','SERVICES'],['labor','Hourly / Day Labor','LABOR'],['yard','Yard / Outdoor','OUTDOOR'],
-  ['ride','Ride Sharing','RIDE'],['other','Other','CUSTOM']
+  ['ride','Ride Sharing','RIDE'],['other','Custom Task','CUSTOM']
 ];
 const CAT_POPNAME={delivery:'Delivery / Errand',junk:'Junk Removal',moving:'Moving',home:'Home / Office Services',
-  labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Other'};
+  labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Custom Task'};
 const CAT_EXAMPLES={
   delivery:['Beer & liquor run','Groceries dropped off','Pharmacy pickup','Tobacco, vape and nicotine delivery (21+ only)','Takeout delivered'],
   junk:['Haul an old couch','Garage cleanout','Mattress to the dump','Construction debris','Scrap metal pickup'],
@@ -992,7 +992,7 @@ const PENDING_GOPHERS=[
   {n:'Marcus K.',tier:'elite+',pro:false,tag:'Available now · 4.9 (508 jobs)'}
 ];
 const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
-const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
+const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Custom Task'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
 function statusBucket(r){
@@ -3220,7 +3220,7 @@ html+='<div class="rd-sec">Your Crew</div>';
     var t=((REQ&&REQ.title)||'')+'';
     if(/ride|airport|chauffeur|need a ride/i.test(t)) return 'Need A Ride';
     if(/deliver|errand|grocery|food|courier|package|pharmacy|retail/i.test(t)) return 'Delivery';
-    if(/\bother\b/i.test(t)) return 'Other';
+    if(/\bother\b/i.test(t)) return 'Custom Task';
     return 'Service';
   }
   function demoJobs(){
