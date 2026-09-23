@@ -73,7 +73,7 @@ const NAVMAP = {"account": "home", "requests": "requests", "rewards": "tracker",
 const META   = [["Sign up (canonical)", [["splash", "Splash", "new"], ["signin", "Sign in (phone)", "new"], ["phone-otp", "Phone OTP", "new"], ["onboarding", "Personal info", "new"], ["email-otp", "Email OTP", "new"], ["business", "Register as Business (opt)", "new"], ["work-settings", "Work Settings & Radius", "new"], ["payout", "Payout setup", "new"], ["best-practices", "Best Practices", "new"]]], ["Browse & accept", [["home", "Home", ""], ["jobs-list", "Available Jobs (by category)", "new"], ["job-detail", "Job Detail", "new"], ["inbox", "Inbox", "new"], ["requests", "Requests", ""], ["worker-flow", "Available Jobs / Detail", "flow"], ["counter-offer", "Job Detail / Counter-Offer", "flow"], ["purchase-disclaimer", "Purchase Disclaimer", ""], ["purchase-delivery", "Purchase / Delivery", "flow"], ["completion-flow", "Job Completion / Rating", "flow"]]], ["After / other", [["request-history", "Request History", ""], ["tracker", "Points & Activity", ""], ["account", "Account", ""], ["job-card-states", "Job-Card States", "flow"], ["refer-signup-flow", "Refer to Signup (customer)", "flow"], ["refer-self", "Refer Yourself", "new"], ["profile", "My Profile", ""], ["help", "Help Center", ""], ["blocked", "Blocked Requestors", ""], ["gopher-contact-us", "Contact Us", ""], ["gopher-faqs", "FAQs", ""]]]];
 
 /* ===== shared state (carries across the canonical sign-up) ===== */
-const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false, viewed101:false, blocked:[{name:'R. Daughtry', date:'Feb 18', reason:'Repeated no-shows at pickup'}], work:{cats:["Delivery / Errand","Ride Sharing","Home / Office Services","Junk Removal","Moving","Hourly / Day Labor","Yard / Outdoor","Other"],tier:"elite",radii:[25,50]}, ridePhotos:{front:false,rear:false}, fields:{} };
+const state = { category:"", job:null, jobCat:"", phone:"(919) 555-0142", email:"marcus@email.com", address:"412 Maple Ave", city:"Fuquay-Varina", st:"NC", zip:"27526", sourcing:"Referral", fn:"", ln:"", dob:"", ref:"", other:"", userId:"", status:"", emailVerified:false, viewed101:false, blocked:[{name:'R. Daughtry', date:'Feb 18', reason:'Repeated no-shows at pickup'}], work:{cats:["Delivery / Errand","Ride Sharing","Home / Office Services","Junk Removal","Moving","Hourly / Day Labor","Yard / Outdoor","Custom Task"],tier:"elite",radii:[25,50]}, ridePhotos:{front:false,rear:false}, fields:{} };
 
 /* ===== native screen styling (shadow-isolated) ===== */
 const NATIVE_CSS = `
@@ -776,9 +776,9 @@ const JOBS={
   {cat:'Ride Sharing',posted:'5 min ago',mode:'pay',amt:'$38',top:true,scope:'Airport drop to RDU, 1 passenger + 2 bags.',stats:[{i:'pin',t:'0.8 mi',s:'pickup'},{i:'clock',t:'~35 min'},{i:'cal',t:'5:30 PM'}],flags:[{t:'Sedan OK',k:'good'}]},
   {cat:'Ride Sharing',posted:'20 min ago',mode:'pay',amt:'$26',scope:'Cross-town round trip, wait time paid.',stats:[{i:'pin',t:'1.5 mi',s:'pickup'},{i:'clock',t:'~1 hr'}],flags:[{t:'Wait paid',k:'neu'}]}
  ],
- 'Other':[
-  {cat:'Other',posted:'10 min ago',mode:'bid',scope:'Custom task \u2014 see customer notes.',stats:[{i:'pin',t:'2.0 mi',s:'away'}],flags:[{t:'Read details',k:'warn',i:'alert'}]},
-  {cat:'Other',posted:'Sun PM',mode:'pay',amt:'$50',scope:'Photography assist, ~2 hr.',stats:[{i:'pin',t:'4.4 mi',s:'away'},{i:'clock',t:'~2 hr'}],flags:[]}
+ 'Custom Task':[
+  {cat:'Custom Task',posted:'10 min ago',mode:'bid',scope:'Custom task \u2014 see customer notes.',stats:[{i:'pin',t:'2.0 mi',s:'away'}],flags:[{t:'Read details',k:'warn',i:'alert'}]},
+  {cat:'Custom Task',posted:'Sun PM',mode:'pay',amt:'$50',scope:'Photography assist, ~2 hr.',stats:[{i:'pin',t:'4.4 mi',s:'away'},{i:'clock',t:'~2 hr'}],flags:[]}
  ]
 };
 function isBlocked(n){ return !!(n && state.blocked && state.blocked.find(b=>b.name===n)); }
@@ -1288,7 +1288,7 @@ onboarding:{ html:`<div class="frame"><div class="rib">NEW</div>${SBAR}
    <div data-cat="Moving"><div class="crow"><span class="cl">Moving</span><span class="sw"></span></div></div>
    <div data-cat="Hourly / Day Labor"><div class="crow"><span class="cl">Hourly / Day Labor</span><span class="sw"></span></div></div>
    <div data-cat="Yard / Outdoor"><div class="crow"><span class="cl">Yard / Outdoor</span><span class="sw"></span></div></div>
-   <div data-cat="Other"><div class="crow" style="border-bottom:none"><span class="cl">Other</span><span class="sw"></span></div></div>
+   <div data-cat="Custom Task"><div class="crow" style="border-bottom:none"><span class="cl">Custom Task</span><span class="sw"></span></div></div>
 
    <div class="sec">Travel radius</div>
    <div class="seg"><button class="on" data-tier="standard">Standard</button><button data-tier="elite">Elite</button></div>
@@ -2702,7 +2702,7 @@ if(PT){
     }
   }
   // (d) Request category -> prototype JOBS key
-  var PT_CATMAP={delivery:'Delivery / Errand',home:'Home / Office Services',junk:'Junk Removal',moving:'Moving',labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Other'};
+  var PT_CATMAP={delivery:'Delivery / Errand',home:'Home / Office Services',junk:'Junk Removal',moving:'Moving',labor:'Hourly / Day Labor',yard:'Yard / Outdoor Projects',ride:'Ride Sharing',other:'Custom Task'};
   window.__ptJobs={};   // id -> live job object (harness watches .accepted)
   // (e) inject a real submitted request into the live feed + fire the notification
   window.__injectJob=function(order){
