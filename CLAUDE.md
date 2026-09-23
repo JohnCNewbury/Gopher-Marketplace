@@ -279,12 +279,12 @@ Fuller narrative for each — the incident that produced it — is in
   behind that way, then drifted again *within the hour* of the owner asking how to
   prevent it. `--site live` and `--site prototype` remain as deliberate opt-outs, and
   an explicit `--site live` says out loud that it has left the twin behind.
-- ⚠️ **THERE ARE NOW TWO SITES, and `deploy.sh` defaults to the LIVE one.** `--site prototype`
+- ⚠️ **THERE ARE TWO SITES.** `--site prototype`
   publishes the **prototype twin** — `johncnewbury.github.io/Gopher-Marketplace-Prototype/`, repo
   `Gopher-Marketplace-Prototype`, git remote **`proto`** — which serves the same pages plus the
   web↔Go harness, with PT mode ON and every page `noindex`ed. Created 2026-09-02 so Matt has a URL.
-  **The twin does not track the live site automatically:** it is a separate `--site prototype` run,
-  so it can sit behind, and that is expected rather than drift to fix.
+  **The twin does not track the live site by itself** — which is why a bare run now ships both (see
+  the bullet above). A one-sided deploy leaves it behind silently.
   ⚠️ **The twin shares production's HOSTNAME**, so the PT allowlist entry for it is host **+ path
   prefix** (`gopher-web-pt-bridge.js`). The slash after `Marketplace` is the only thing keeping
   `?pt=1` off the live site — `/Gopher-Marketplace/` must never match. 23-case guard:
