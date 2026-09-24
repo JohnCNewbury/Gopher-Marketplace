@@ -84,7 +84,7 @@ only a short **eligibility funnel** (the deal is created later, in the Gopher Go
 | Owner **Personal Info** (First, Last, DOB, Phone, Email, Address) | `owner_first_name` `owner_last_name` `owner_dob` `owner_phone` `owner_email` `owner_address` | **2026-07-14: exact parity with standard-signup Personal Info** (seam #10 front-end DONE). Photo excluded — prompted at first sign-in to any Gopher platform |
 | Source — How did you discover Gopher? | `discovery_source` | Canonical signup list + **"Gopher Deals"** added platform-wide. (`source` was taken by channel attribution) |
 | Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; skippable. ⚠️ **NOT 6-digit — corrected 2026-08-09.** The Gopher ID is **opaque and variable-length**; **70% of production accounts (97,977 of 139,272) are 1–5 digits** and IDs run 1 → 141,303. A 6-digit validation rejects most real users. Never length-validate it. See `deals-registration-to-publication-config.md` Ruling 6. |
-| **Phone verified** | `phone_verified` (hidden) | OTP affordance — **currently simulated**, see backend seams |
+| ~~**Phone verified**~~ ⚠️ **2026-09-24: `phone_verified` does not exist** | — | The hidden field is **gone from the file** (0 occurrences; control: `business_name` returns 7). Phone verification now runs through `apiCall('/otp/get')` (`:4473`, `:6908`). Whether that sends a real SMS is **contradictory in the sources — see backend seams item 6** |
 
 
 ### Service Provider (DLP) — a two-entry model
@@ -225,14 +225,33 @@ from their Gopher Go account; see Stage 1 Entry B.)*
 | **Google Distance Matrix API** | Request/Connect ride-pricing seam (`getRideTripEstimate`) | When a merchant deal **parlays into a Gopher Request**, real mileage → delivery price | Same Google project | Wired in the customer apps, not the Deals page itself |
 | ~~**Google Apps Script Web App**~~ ⛔ **REMOVED** | ~~`GOPHER_FORM_ENDPOINT`~~ — severed 2026-08-21, note at `:5314` | ⚠️ **No longer a dependency.** Was lead/eligibility persistence → Google Sheet | — | **Do not reintroduce.** Merchant deals now `POST /users/deals`; SP funnel reads `GET /users/deals/eligibility` |
 | **Gopher internal API** | `GOPHER_API` `:5274` → `apiCall()` `:5286` | Merchant deal submission, My Deals read + edit/pause/resume, org roles, eligibility | Bearer `access-token` header from sign-in | Replaced the Apps Script (verified against production 2026-08-10, `:5439`) |
-| **SMS / OTP provider** | Phone-verify affordance, `phone_verified` hidden field | Verify owner phone at merchant registration | **None yet — simulated** | Needs a real provider (Twilio/etc.) in production |
+| **SMS / OTP provider** | `apiCall('/otp/get')` `:4473` / `:6908`; email OTP `/users/email_otp/send` `:4850` + `/verify` `:4868` | Verify owner phone at merchant registration | ⚠️ **Contradictory — see backend seams item 6.** The call is wired to the internal API; whether SMS actually sends is unsettled | `phone_verified` no longer exists in the file |
 
-**The audience map uses NO live data API.** The "X customers · Y workers in radius" figure comes from
-a **baked static dataset** — `Final/assets/js/gopher-deals-audience.js`, an `AUDIENCE_POINTS` array
-of `[lat, lng, role]` tuples (role 0 = customer, 1 = worker), generated offline from the user +
-orders CSVs jittered onto GeoNames ZIP centroids. `viewAudienceAt()` / `eachInRadius()` /
-`setRadiusMiles()` filter it **client-side**. Production swaps this file for a live
-`GopherIQData.lookup(zip, radius)` query behind the same seam — the map code doesn't change.
+> ⛔ **CORRECTED 2026-09-24 — reversed by a change that landed on 2026-09-23, one day before this
+> pass.** This section read: *"**The audience map uses NO live data API.** The figure comes from a
+> **baked static dataset** — `assets/js/gopher-deals-audience.js` … filtered **client-side**.
+> Production swaps this file for a live query."* **That is now backwards — the swap already
+> happened.**
+
+**The audience map reads LIVE counts from the production API.** Owner, 2026-09-23, quoted in-code at
+`gopher-deals.html:3743`: *"It needs to read all real live data now."* The map calls
+**`GET https://api.gophergo.io/api/v1/deals/audience?lat=..&lng=..`** (`AUD_API`, `:3760`), served by
+`gopher-backend-api` `helpers/deals_audience.js` (MRs !638, !640).
+
+**It returns COUNTS ONLY** — deliberately, because the old baked file served ~1 m coordinates
+publicly:
+- `rings.customers` / `rings.workers` — people within 1..25 mi, **exact**, so the slider never
+  refetches.
+- `cells [[lat,lng,customers,workers,size]]` — groups of **3 or more, never an individual**; ~1 km
+  where dense, rolled up to ~5 / ~10 km in thin markets. Dots are scattered within their own cell
+  from a seed of that cell's coordinates, so they hold still on redraw. **Counts come only from
+  `rings`; the dots are illustration.**
+
+**Who counts (owner ruling):** every account that can open an app, whatever its status; **deleted
+accounts do not**; someone with both roles counts **once, as a Requester**.
+
+⚠️ The retired baked file held **26,133 points, North Carolina only, frozen in July** — an address in
+Sherman Oaks returned zero. If you see that symptom, you are on an old build, not a data gap.
 
 > **Note on provider reach:** it is no longer set on a public map. Deal reach is a **1–50 mi slider in
 > the in-app deal form** (Stage 1 Entry B); the general work radius lives in the Gopher Go **Work
@@ -401,19 +420,62 @@ parlay + provider-directed).
 5. **Re-gate customer Deals** — restore `isDealsEligible()` in **both** apps
    (`gopher-request.html:24603` **and** `gopher-connect.html:22701` — identical stubs) once
    accounts are real.
-6. **OTP** — real SMS provider behind the `phone_verified` affordance.
-7. **Live audience data** — swap the baked `gopher-deals-audience.js` for a live query.
+6. **OTP** — ⚠️ **CONTRADICTORY, and it needs a handset to settle. Do not record either way from
+   reading alone.** This previously read *"real SMS provider behind the `phone_verified`
+   affordance"* — but `phone_verified` **does not exist in the file** (0 occurrences; control:
+   `business_name` returns 7), and the OTP call **is** wired to the internal API
+   (`apiCall('/otp/get')` `:4473`, `:6908`).
+
+   The two sources disagree about whether a real SMS is sent:
+   - **In-code comment `:5036`:** *"the simulated OTP 'Verify' is NOT required to submit — it's
+     front-end theater until Twilio is wired."*
+   - **`CLAUDE.md`:** `/otp/get` **sends a live SMS**, and merchant-portal sign-in is *"still
+     unverified … needs a real code on a real handset."*
+
+   ⛔ **Weigh the comment carefully: it is demonstrably stale in its own sentence.** The same comment
+   block says the *"Funnel = all 5 fields"* — the funnel has had **one** field since 2026-08-21. A
+   comment wrong about the thing beside it is weak evidence about Twilio.
+
+   **What is NOT in dispute:** the `/otp/get` call is real and `phone_verified` is gone. **What
+   remains unknown:** whether SMS delivers, which cannot be settled by reading — it needs someone to
+   request a code on a real handset. Left open deliberately rather than guessed.
+7. ~~**Live audience data**~~ — ✅ **DONE 2026-09-23, removed from the remaining-work list.** The
+   audience map now reads `GET /api/v1/deals/audience` from the production API (counts only; see
+   Stage 3). The baked `gopher-deals-audience.js` is retired. **Nothing to wire here.**
 8. **Provider eligibility + two-entry flow (DLP)** — Service Provider is **not a separate role**;
    it's an eligibility tier of Worker. Auto-eligible when a Gopher is **Elite / Elite+ / Pro · 20+
    completed SERVICE jobs · 4.75★ over the last 20 completed SERVICE jobs** (admin manual-override
    allowed; **Delivery, Ride Sharing, and Other jobs count toward NEITHER the 20 NOR the rating
    window** — founder amendment 2026-07-23, service categories piloted first); each posted
-   deal is **manually reviewed** before going live. The dev wires: the **Gopher-ID → eligibility
-   lookup** behind the public funnel, the real **email + Gopher Go inbox** notification, and the real
-   **eligibility gate** on the in-app "Offer My Service" button (simulated by the `ELIGIBLE` demo
-   toggle today). (Source: `Gopher — Intended/Gopher-Roles-Capability-Matrix.md`.)
+   deal is **manually reviewed** before going live.
+
+   > ⛔ **CORRECTED 2026-09-24 — this item contradicted this doc's own Stage 1 Entry B, and it is the
+   > *remaining-work list* that was wrong.** It read: *"The dev wires: the **Gopher-ID → eligibility
+   > lookup** behind the public funnel, the real **email + Gopher Go inbox** notification, and the
+   > real **eligibility gate** on the in-app 'Offer My Service' button (simulated by the `ELIGIBLE`
+   > demo toggle today)."* **All three sub-claims are stale** — a dev reading only this list would
+   > build three things that already exist or no longer apply:
+   >
+   > 1. **There is no Gopher-ID lookup to wire.** The public funnel has no Gopher-ID field since
+   >    2026-08-21; it verifies a phone and calls `GET /users/deals/eligibility`.
+   > 2. **There is no email / inbox notification to wire *here*.** The funnel answers on the spot in
+   >    `#spResult`; the old "we'll email you terms" copy is gone from the file.
+   > 3. **The client-side gate is already wired.** `refreshEligibility()` (`gopher-go.html:8531`)
+   >    calls `GoAuth.fetchEligibility()` (`:8533`) and sets `ELIGIBLE` from the server verdict
+   >    (`:8534`), on sign-in and on session restore. The demo toggle (`:8527`) survives only for the
+   >    signed-out demo.
+   >
+   > **What actually remains is server-side:** the verdict behind `GoAuth.fetchEligibility()` /
+   > `GET /users/deals/eligibility` — i.e. computing tier + 20 SERVICE jobs + the 4.75★ window, plus
+   > the admin manual override and the manual deal-review queue. The front end consumes it already.
+
+   (Source: `Gopher — Intended/Gopher-Roles-Capability-Matrix.md`.)
 9. ~~**Gopher-ID tooltip asset**~~ — **DONE**: captured from `gopher-go.html`'s Refer & Earn panel to
-   `assets/img/gopher-id-refer.webp` (shows "the Refer & Earn QR code"). Reconciled the tooltip/placeholder
+   `assets/img/gopher-id-refer.webp` (shows "the Refer & Earn QR code"). ⚠️ **Scope narrowed
+   2026-09-24:** this tooltip applies **only to the merchant form's `referred_by_gopher_id`** (the
+   *referrer*). The SP funnel's own Gopher-ID field was removed on 2026-08-21, so there is nothing to
+   hang it on there — see Stage 1 Entry B, including the name trap (`gopher_id` = the applicant's own
+   ID; `referred_by_gopher_id` = the referrer). Reconciled the tooltip/placeholder
    example from the figma's `MARCUS-4F9` to the built app's numeric `820083`. *Open design question for the
    dev/owner: the referral-code format differs between the figma (`MARCUS-4F9`, name-based) and the built app
    (`820083`, numeric) — pick one as canonical for the real "Gopher ID."*
@@ -466,7 +528,7 @@ CUSTOMER APPS (request / connect / Go)
 APIS: Google Maps JS · Places · Geocoding (merchant audience map) · Distance Matrix (parlay pricing)
       Gopher internal API (api.gophergo.io) = persistence · Apps Script REMOVED 2026-08-21
       SMS/OTP (needed, not built)
-      Audience = baked static dataset, NOT a live API (yet)
+      Audience = LIVE counts from GET /api/v1/deals/audience (since 2026-09-23)
 ```
 
 ---
