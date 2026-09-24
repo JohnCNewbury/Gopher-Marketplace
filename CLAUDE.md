@@ -34,8 +34,24 @@ step, no framework.
 > working platform… no backend"* — is stale in the dangerous direction: it invites treating live
 > surfaces as a sandbox. In fact:
 >
-> - **`gopher-deals.html`'s merchant registration POSTs to a live Google Apps Script** that writes a
->   real Sheet and emails the owner. That is a backend, and it is the **real merchant-intake path**.
+> - ⚠️ **CORRECTED 2026-09-24 — this bullet was STALE for over a month and was propagating into
+>   every session's brief.** It read: *"`gopher-deals.html`'s merchant registration POSTs to a live
+>   Google Apps Script that writes a real Sheet and emails the owner."* ⛔ **That has been false
+>   since 2026-08-21.**
+>   **What is true now, desk-verified first-hand in `Final/gopher-deals.html`:** merchant
+>   registration **`POST /users/deals`** on the internal API (`apiCall('/users/deals', …)`, ~line
+>   5531), and the service-provider funnel **reads `GET /users/deals/eligibility`** and submits
+>   nothing. The owner's own words are in the code at ~line 5314: *"GOPHER_FORM_ENDPOINT (Google
+>   Apps Script) REMOVED 2026-08-21 — I wanted to sever App Scripts and EVERYTHING is internal now.
+>   Deals and GO → HQ and soon HQ → Connect and Request."*
+>   ⛔ **The prohibition is unchanged and still binding: do NOT reintroduce `GOPHER_FORM_ENDPOINT`
+>   or anything that posts to `script.google.com`.** (This was always consistent with the deals@
+>   wiring rule further down — that rule was right; **this bullet was the one contradicting it.**)
+>   ⭐ **Why it mattered enough to correct rather than quietly edit:** this file loads into *every
+>   request of every session*, so anyone reasoning about **where merchant data lands** — blast
+>   radius, what is at risk if Deals breaks, who to notify — was reasoning about a system that no
+>   longer exists. It was found by a seat reading the code instead of the brief. **It is still a
+>   real backend and still the real merchant-intake path; only the destination changed.**
 > - The site is **live on three hosts** — GitHub Pages, TigerTech, and the Netlify mirror — indexed,
 >   with a sitemap.
 > - The **101 guides are public** and read by real merchants and workers.
