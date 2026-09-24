@@ -65,8 +65,13 @@ last deal at that location.
 
 **"My Deals" is a live authenticated pane, no longer a display list.** `loadMyDeals()` (7896) fetches
 `GET /users/deals/mine` and `renderMyDeals()` (7793) draws the merchant's real rows — status badge
-(**Live / In review / Paused / Not approved / Expired**, mapped at `DEAL_STATUS_LABEL` 7778), the
-rejection reason when there is one, and the pause / edit-in-review state. The four hardcoded rows and
+(**Live / In review / Paused / Not approved / Expired**), the rejection reason when there is one
+(7822 — the one status a merchant cannot act on), and the pause / edit-in-review state.
+
+⚠️ **The badges are table-driven, not literal markup.** `DEAL_STATUS_LABEL` (defined 7778) and
+`DEAL_STATUS_BADGE` (7782) are applied at the render sites 7858 / 7857. The demo-data status strings
+in `MY_DEALS` (7755–7758, e.g. `status:'In review'`) *look* like the badge source and are not — they
+feed only the signed-out showroom. Change a label in the tables, not in the demo rows. The four hardcoded rows and
 the `MY_DEALS` array (7755) are the **signed-out showroom only**; the in-code comment at 7745 records
 why they were kept. ⚠️ The old **"+ view counts"** claim was also wrong — `renderMyDeals` renders no
 views counter.

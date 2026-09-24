@@ -107,6 +107,8 @@ deal submission — it gates first.
 
 Today it captures **one field — mobile (SMS)** (`name="sms"`, `:3580`) with a send-code / verify pair
 (`sendOtp()` `:3581` → `workerCheckOtp()` `:3587`, the OTP input `name="otp_code_sms"` at `:3586`).
+*(`:3587` is the in-modal `onclick` **call site**; `:4737` below is the **function definition** —
+two different lines, both correct, cited deliberately.)*
 Verification answers **on the spot**: `workerCheckOtp` (`:4737`) calls
 **`GET /users/deals/eligibility`** and renders `eligible` / `ineligible` / `notgopher` / `error` into
 `#spResult` (`:3593`). `submitForm` has exactly one caller, the merchant form — this funnel submits
@@ -248,7 +250,7 @@ Owner setup walkthrough: `Final/SETUP-Google-Maps-Steps.html`.
 
 **Merchant portal** — built inside `gopher-deals.html` (left nav: Dashboard, My Deals, Inbox,
 Business Info, Personal Info, Payment, Users & Access, Refer Gopher, Feature My Business; nav at
-`:6037`–`:6069`, panes at `:6105`–`:6628`, section-title map at `:7034`), with a live-preview
+`:6037`–`:6069`, panes at `:6105`–`:6628`, section-title map at `:7034`, router `showSection()` `:7039`), with a live-preview
 phone that mirrors how the deal will appear in the customer apps.
 
 - **My Deals** — ⛔ **CORRECTED 2026-09-24 — this is no longer a display list.** It previously read:
@@ -268,7 +270,8 @@ phone that mirrors how the deal will appear in the customer apps.
   → DLM-3.
 - **Business Info** — status "Active / Verified" (`pi-status`, `:6407`); the account/identity surface
   SPINE-1 will own.
-- **Feature My Business** — an **open-bid** placement auction (`advertise` pane, `:6536`): top bid per category is
+- **Feature My Business** — an **open-bid** placement auction (`advertise` pane `:6536`; the bid form `#bidForm` `:6580`, wired
+  at `:8579`, live-standings copy `:6558`): top bid per category is
   featured across the app/web platforms next month; top overall becomes the Featured Deal.
 - **Live preview** — a `sandbox`ed `<iframe>` (`pvFrame`, `:6307`) renders the merchant's own ordering
   site inside the branded page (the same embed technique the customer redemption uses).
