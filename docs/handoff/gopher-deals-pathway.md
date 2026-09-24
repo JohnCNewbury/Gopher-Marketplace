@@ -15,6 +15,25 @@ and the worker tutorial (`gopher-go-101.html`). Companion to
 > `gopher-connect.html` 25,498 · `gopher-go.html` 9,581 · `gopher-go-101.html` 1,005.
 > **Numbers rot — the backticked symbol beside each one is the durable anchor; grep that first.**
 >
+> ⚠️ **Which "main" you mean decides whether these numbers hold — and the two disagree.**
+> `main` is the **deploy** branch: it publishes `Final/`'s contents at its **root**, with no `Final/`
+> prefix and no `CLAUDE.md`.
+>
+> - **`origin/main` — numbers HOLD.** Its `gopher-deals.html` is the same 9,408 lines and was
+>   byte-identical to `feature/deals-google-maps-audience:Final/gopher-deals.html` on 2026-09-24;
+>   `populateLocationSelect()` is `:7483` there too. But the path differs:
+>   `git show "origin/main:Final/gopher-deals.html"` returns **empty**, because it lives at
+>   `origin/main:gopher-deals.html`. That empty answer reads as "untracked" and is the most
+>   convincing wrong answer available.
+> - **A local `main` or a session worktree — numbers DO NOT hold.** These sit far behind (625b0ae,
+>   19 Jul, **6,044** lines), where `populateLocationSelect()` is `:5407`, not `:7483` — a ~2,000-line
+>   drift, which is how this doc's citations rotted in the first place.
+>
+> So: read the source at `feature/deals-google-maps-audience:Final/<file>` (or `origin/main:<file>`
+> for what is deployed) — **never from a worktree checkout**, and never from bare `main` without
+> checking which one you have. **A cited line number past the file's own `wc -l` is a wrong-ref
+> alarm, not a typo.**
+>
 > Three claims were wrong in **substance**, not just position, and are flagged inline where they
 > appear — each would have sent a dev to build something that already exists or was deliberately
 > removed:
@@ -74,18 +93,36 @@ A provider deal can only be offered by an *eligible Worker*, so the public page 
 deal submission — it gates first.
 
 **Entry A · public eligibility funnel** — the "Offer your service on Gopher" modal in
-`gopher-deals.html` (the "I'm a Service Provider" card opens it). A short form captures only identity:
-**First, Last, SMS, Email, Gopher ID** (`first_name` / `last_name` / `sms` / `email` / `gopher_id`,
-in `#modal-worker`, `gopher-deals.html:3524`–`:3572`). The Gopher-ID field has an info tooltip pointing to **Refer &
-Earn** in the Gopher Go app (the referral code, e.g. `820083`), with a screen-grab captured from that
-panel at `assets/img/gopher-id-refer.webp` (rendered from `gopher-go.html`'s Refer & Earn section).
-⚠️ **CORRECTED 2026-09-24.** This used to read *"Submit posts through the same
-`submitForm('worker')` lead plumbing (`:3013`)"*. **It does not any more.** Since the Apps Script was
-severed (2026-08-21) the SP funnel **submits nothing**: it verifies a phone and reads the live verdict
-from **`GET /users/deals/eligibility`** (`workerCheckOtp`). `submitForm` has exactly one caller, the
-merchant form. The thank-you copy — *"we'll check your eligibility, email you terms + next steps, and
-message your Gopher Go inbox"* — still stands. No deal, no price, no reach here; this only determines
-eligibility.
+`gopher-deals.html` (the "I'm a service provider" card opens it).
+
+> ⛔ **REWRITTEN 2026-09-24 — this funnel was rebuilt on 2026-08-21 when Apps Script was severed, and
+> the old description would have a rebuild re-create five fields the code explicitly forbids.**
+> It previously read: *"a short form captures only identity: **First, Last, SMS, Email, Gopher ID**
+> … Submit posts through the same `submitForm('worker')` lead plumbing"*, plus a Gopher-ID tooltip.
+> **All of that is gone.** Enumerated on `a26a476`, `#modal-worker` (opens `:3524`) contains exactly
+> **two** named inputs. Per the in-code note (`:3560`–`:3575`): once the phone is OTP-verified the
+> platform already knows which account this is, so name, email and Gopher ID were redundant *and*
+> were being "collected and would have gone nowhere". Verbatim: **"Do not re-add an input this form
+> does not send."**
+
+Today it captures **one field — mobile (SMS)** (`name="sms"`, `:3580`) with a send-code / verify pair
+(`sendOtp()` `:3581` → `workerCheckOtp()` `:3587`, the OTP input `name="otp_code_sms"` at `:3586`).
+Verification answers **on the spot**: `workerCheckOtp` (`:4737`) calls
+**`GET /users/deals/eligibility`** and renders `eligible` / `ineligible` / `notgopher` / `error` into
+`#spResult` (`:3593`). `submitForm` has exactly one caller, the merchant form — this funnel submits
+nothing. No deal, no price, no reach here; this only determines eligibility.
+
+⚠️ The old thank-you copy — *"we'll check your eligibility, email you terms + next steps…"* — **no
+longer exists in the file** (zero matches; the answer is now inline). An earlier draft of this
+correction said it "still stands"; it does not.
+
+> ⚠️ **Name trap for the rebuild.** The old `name="gopher_id"` on *this* form meant the applicant's
+> **own** ID. The merchant form's `referred_by_gopher_id` means the **referrer**. Near-identical
+> names, opposite meanings; `applyReferralPrefill` is merchant-scoped and must stay that way. The
+> only `gopher_id` string left near this modal is inside that warning comment at `:3572` — **it is
+> not a field**, and a grep that treats it as one will reintroduce the bug. (The Refer & Earn
+> tooltip and `assets/img/gopher-id-refer.webp` now pertain only to the merchant form's
+> `referred_by_gopher_id`.)
 
 **Entry B · in-app deal form** — `Final/gopher-go.html`, the worker dashboard. An eligible worker
 gets a green **"Offer My Service →"** button above the Profile nav item (`gopher-go.html:4515`); it
@@ -316,8 +353,19 @@ schedule" copy (`:14295`). Redemption also pre-selects the "Within 2 weeks" timi
 
 ### The customer-side eligibility gate (temporary)
 
-`isDealsEligible()` at `gopher-request.html:24603` currently **returns `true` for all users** — the
-Deals gate is intentionally open in the prototype so anyone can demo it. Production restores the real
+`isDealsEligible()` currently **returns `true` for all users** — the Deals gate is intentionally open
+in the prototype so anyone can demo it. ⚠️ **It is stubbed in BOTH customer apps**, not just one:
+`gopher-request.html:24603` **and** `gopher-connect.html:22701` are the identical stub; re-gating one
+and not the other leaves the gate open.
+
+⚠️ **Consequence worth knowing before you test.** The "Coming soon to your area" overlay
+(`#dealsTitle`, request `:17649`) sits on the **else** branch of the Deals-tab handler
+(request `:26194`, connect `:16965`), which reads
+`if (isDealsEligible() && host) { renderDealsHome() } else { overlay.hidden = false }`. With the stub
+always true, that else branch is reached **only if the host element is missing** — so in normal use
+the coming-soon notice is effectively unreachable from the Deals tab. A reviewer who sees
+"Coming soon" is looking at a different surface, or at a page where `dashDealsHost` failed to
+render. Production restores the real
 check (`return !!_sessionUserProfile;`) once accounts exist. *(This is the customer's access to the
 Deals surface — distinct from the provider-posting eligibility in Stage 1 Entry B.)*
 
@@ -347,7 +395,8 @@ parlay + provider-directed).
    (`TODO(backend)`, `gopher-deals.html:7555`).
 4. **Provider-directed routing** — real directed routing + real accept (currently a simulated
    connect), plus the flexible-2-week scheduling handoff → matching logic.
-5. **Re-gate customer Deals** — restore `isDealsEligible()` (`gopher-request.html:24603`) once
+5. **Re-gate customer Deals** — restore `isDealsEligible()` in **both** apps
+   (`gopher-request.html:24603` **and** `gopher-connect.html:22701` — identical stubs) once
    accounts are real.
 6. **OTP** — real SMS provider behind the `phone_verified` affordance.
 7. **Live audience data** — swap the baked `gopher-deals-audience.js` for a live query.
