@@ -79,3 +79,78 @@ both apps.
 - Admin message with near-future `expired_on` → sits in Inbox until expiry, then auto-moves to Deleted.
 - Referral notice (recommend-a-fav) is deletable the same way.
 - No "silence" affordance. iOS + Android, both apps.
+
+---
+
+## AS-BUILT — updated 2026-09-24
+
+> Everything above this line was written **2026-07-02** and describes the BACKEND design plus a
+> standalone front-end reference. It is still correct as a backend spec, but it predates the
+> 2026-07-28 owner directive that widened this ticket to all platforms, so on its own it reads as
+> though nothing has shipped. It has.
+
+### Surface state (verified 2026-09-24 unless marked inherited)
+
+| Surface | State | Evidence |
+| --- | --- | --- |
+| Gopher Request / Connect / Go / Deals (web) | ✅ Built, live | **INHERITED** — built 2026-07-28, verified in-browser by that session. Not re-driven by me. |
+| Go app prototype | ✅ Built + defect fixed 2026-09-24 | Verified first-hand, see below |
+| Request app prototype | ✅ Built | Verified first-hand, see below |
+| Native iOS / Android | ⛔ Deferred by owner 2026-07-28 | Sequencing gate — a store release, not a deploy. Specifying is allowed; building is held. |
+
+### Shared implementation
+
+`Final/assets/js/gopher-inbox-delete.js` (`window.GopherInboxDelete`) +
+`Final/assets/css/gopher-inbox-delete.css` (`.ibx-*`). Each surface supplies a small adapter.
+`confirmPermanent()` is reused everywhere so the destructive copy cannot drift.
+
+**⚠️ The stylesheet has a CONTRACT and it is easy to miss.** The CSS slides
+`.ibx-rowwrap > .inbox-row` — the row you pass into `wrapRow()` **must carry the class
+`inbox-row`**, whatever else it is called. A row without it is never positioned, never opaque and
+never moves, which means the red delete bed sits **exposed and tappable at rest** and swipe-left
+does nothing. The four web portals carry the class; the Go prototype did not (fixed `d86d267`).
+On touch the desktop `×` is `display:none`, so on a phone that exposed bed is the *only* delete
+affordance — a stray tap deletes.
+
+### Verified behaviour — Go + Request prototypes, 2026-09-24
+
+Driven on the running pages, not read from source:
+
+- Two-stage delete: stage 1 moves to Deleted with no confirm; stage 2 from Deleted is permanent.
+- Confirm copy byte-exact on both: **"Delete permanently?" / "This cannot be undone."** /
+  **Cancel** (secondary, white+border) then **Delete** (primary destructive, `#C44257`), `aria-modal`.
+  Cancel aborts and leaves the message.
+- No restore affordance; no silence affordance. (The only `silen` match anywhere is the word
+  "silently" in a code comment.)
+- **Scenario 9** — a permanently deleted item stays gone across 10 re-renders, in **both** tabs.
+- **Scenario 10** — deleting every conversation still renders the tabs, and Deleted stays reachable.
+- **Empty thread does not throw** — the Request prototype survives deleting every message in the
+  thread with zero console errors; composer and tabs remain.
+
+### The 90-day clock — exercised in `node` against the real module
+
+22 assertions, all green, and **proved by mutation** (three mutants, all killed):
+
+- Purge boundary is `>=` 90 days: 89d not purged, 90d purged, 90d−1ms not purged.
+- `daysLeft` never goes negative.
+- `applyAdminExpiry` stamps `deletedAt` **at the expiry instant, not at the moment it is noticed** —
+  a message that expired 30 days ago reads 60 days left, not 90, and re-running the check 10 times
+  does not re-stamp it. An admin message that expired 91 days ago is purged on first sight.
+- A user's own `deletedAt` is never clobbered by a later expiry evaluation.
+
+> Mutants used: stamp-at-now (the clock-restart bug) → 3 failures; `>` instead of `>=` → 1 failure;
+> dropping the already-deleted guard → 3 failures. A green run that cannot go red proves nothing.
+
+### Prototype boundary (unchanged)
+
+Deletion state is in memory and does not survive a reload. Purge and admin-expiry are
+**check-on-read**, which this ticket's Implementation Considerations explicitly permit. Production
+still needs the real `deleted_at` / `purged_at` columns, the sweep job, and server-side `expires_at`
+evaluation — all as specced above this line.
+
+### Measurement note for whoever verifies this next
+
+The Browser pane reports `document.visibilityState === "hidden"`, and **CSS transitions do not
+advance in a hidden document**. A transitioned `transform` therefore reads its START value forever
+and a perfectly good rule looks dead. Disable the transition to observe the target value. This
+cost a full diagnostic detour and nearly produced a false "the fix didn't work" finding.
