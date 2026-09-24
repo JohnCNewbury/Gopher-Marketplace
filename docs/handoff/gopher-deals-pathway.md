@@ -362,7 +362,7 @@ in the prototype so anyone can demo it. ⚠️ **It is stubbed in BOTH customer 
 and not the other leaves the gate open.
 
 ⚠️ **Consequence worth knowing before you test.** The "Coming soon to your area" overlay
-(`#dealsTitle`, request `:17649`) sits on the **else** branch of the Deals-tab handler
+(`#dealsTitle` — request `:17649`, connect `:8209`) sits on the **else** branch of the Deals-tab handler
 (request `:26194`, connect `:16965`), which reads
 `if (isDealsEligible() && host) { renderDealsHome() } else { overlay.hidden = false }`. With the stub
 always true, that else branch is reached **only if the host element is missing** — so in normal use
