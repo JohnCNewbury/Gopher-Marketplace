@@ -7,6 +7,23 @@ seam below cites the real file + line. Now spans three surfaces: the public/merc
 and the worker tutorial (`gopher-go-101.html`). Companion to
 `G40-286-deals-frontend-consolidated-handoff.md` (ticket-level verdicts).
 
+> 📍 **Citation + accuracy refresh — 2026-09-24 (G40-288 close-out).** Every `file:line` citation in
+> this doc was written against the July files and had gone stale by ≈2,000 lines on
+> `gopher-deals.html` alone (e.g. the old `:5037` landed on a Twilio comment). **All have been
+> re-derived by content** and re-pinned to branch `feature/deals-google-maps-audience` @ `a26a476`
+> (2026-09-24): `gopher-deals.html` 9,408 lines · `gopher-request.html` 28,082 ·
+> `gopher-connect.html` 25,498 · `gopher-go.html` 9,581 · `gopher-go-101.html` 1,005.
+> **Numbers rot — the backticked symbol beside each one is the durable anchor; grep that first.**
+>
+> Three claims were wrong in **substance**, not just position, and are flagged inline where they
+> appear — each would have sent a dev to build something that already exists or was deliberately
+> removed:
+> 1. **My Deals edit/pause** (Stage 4) — described as unwired; **shipped and API-wired**.
+> 2. **The Apps Script / Google Sheet pipeline** (Stage 1, Stage 3, Stage 4, summary map) —
+>    described as current persistence; **severed by owner decision 2026-08-21**.
+> 3. **The provider eligibility gate** (Stage 1 Entry B) — described as demo-toggle only;
+>    the **live verdict read is wired**.
+
 **Two tracks in one system.** Everything below has a *merchant* (DLM) path and a *service-provider*
 (DLP) path. They share the customer browse surface and much of the dashboard shell, but they diverge
 in **how you register**, **what a deal is**, and **what redemption does**. The merchant registers and
@@ -26,11 +43,11 @@ from **inside the Gopher Go app**:
 ## Stage 1 — Registration (where it starts)
 
 **Merchant surface:** `Final/gopher-deals.html` — the public page has two entry cards: "I'm a
-Business" (DLM) and "I'm a Service Provider" (DLP, card at `gopher-deals.html:2380`). They behave
+Business" (DLM) and "I'm a Service Provider" (DLP, card at `gopher-deals.html:2780` — the on-page heading is sentence-case, *"I'm a service provider"*). They behave
 differently: the **merchant** card opens a full registration + deal form; the **provider** card opens
 only a short **eligibility funnel** (the deal is created later, in the Gopher Go app).
 
-### Merchant (DLM) — fields at `gopher-deals.html:2679`–`2786`
+### Merchant (DLM) — `#modal-merchant` at `gopher-deals.html:3058`, fields `:3097`–`:3271`
 
 | Field | Form name | Notes |
 |---|---|---|
@@ -47,7 +64,7 @@ only a short **eligibility funnel** (the deal is created later, in the Gopher Go
 | **Searchable Keywords** | up to 3 chips | **These become the customer keyword-search index** (Stage 5) |
 | Owner **Personal Info** (First, Last, DOB, Phone, Email, Address) | `owner_first_name` `owner_last_name` `owner_dob` `owner_phone` `owner_email` `owner_address` | **2026-07-14: exact parity with standard-signup Personal Info** (seam #10 front-end DONE). Photo excluded — prompted at first sign-in to any Gopher platform |
 | Source — How did you discover Gopher? | `discovery_source` | Canonical signup list + **"Gopher Deals"** added platform-wide. (`source` was taken by channel attribution) |
-| Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; 6-digit ID; skippable |
+| Referred by — Gopher User ID | `referred_by_gopher_id` | Shown only when Source = Referral; skippable. ⚠️ **NOT 6-digit — corrected 2026-08-09.** The Gopher ID is **opaque and variable-length**; **70% of production accounts (97,977 of 139,272) are 1–5 digits** and IDs run 1 → 141,303. A 6-digit validation rejects most real users. Never length-validate it. See `deals-registration-to-publication-config.md` Ruling 6. |
 | **Phone verified** | `phone_verified` (hidden) | OTP affordance — **currently simulated**, see backend seams |
 
 
@@ -59,55 +76,77 @@ deal submission — it gates first.
 **Entry A · public eligibility funnel** — the "Offer your service on Gopher" modal in
 `gopher-deals.html` (the "I'm a Service Provider" card opens it). A short form captures only identity:
 **First, Last, SMS, Email, Gopher ID** (`first_name` / `last_name` / `sms` / `email` / `gopher_id`,
-at `gopher-deals.html:2991`–`3010`). The Gopher-ID field has an info tooltip pointing to **Refer &
+in `#modal-worker`, `gopher-deals.html:3524`–`:3572`). The Gopher-ID field has an info tooltip pointing to **Refer &
 Earn** in the Gopher Go app (the referral code, e.g. `820083`), with a screen-grab captured from that
 panel at `assets/img/gopher-id-refer.webp` (rendered from `gopher-go.html`'s Refer & Earn section).
-Submit posts through the same `submitForm('worker')` lead plumbing (`:3013`) → thank-you: *"we'll
-check your eligibility, email you terms + next steps, and message your Gopher Go inbox."* No deal, no
-price, no reach here — this only determines eligibility.
+⚠️ **CORRECTED 2026-09-24.** This used to read *"Submit posts through the same
+`submitForm('worker')` lead plumbing (`:3013`)"*. **It does not any more.** Since the Apps Script was
+severed (2026-08-21) the SP funnel **submits nothing**: it verifies a phone and reads the live verdict
+from **`GET /users/deals/eligibility`** (`workerCheckOtp`). `submitForm` has exactly one caller, the
+merchant form. The thank-you copy — *"we'll check your eligibility, email you terms + next steps, and
+message your Gopher Go inbox"* — still stands. No deal, no price, no reach here; this only determines
+eligibility.
 
 **Entry B · in-app deal form** — `Final/gopher-go.html`, the worker dashboard. An eligible worker
-gets a green **"Offer My Service →"** button above the Profile nav item (`gopher-go.html:2478`); it
-opens the real **Deal + Earning** form (`offerServiceOverlay`, `:2777`) *minus personal*
+gets a green **"Offer My Service →"** button above the Profile nav item (`gopher-go.html:4515`); it
+opens the real **Deal + Earning** form (`offerServiceOverlay`, `:5283`) *minus personal*
 (name/phone/email/Gopher ID already on the account):
 
 - Deal you're offering + **Searchable Keywords** (1–3 chips)
 - **What you want to earn** → **Customer will pay** = `earn × 1.10` (the 10% Deal Boost, live-calc)
 - **What you'd normally charge** → struck-through value anchor at `normal × 1.10`
-- **Deal reach** — a **1–50 mi** slider (capped at 50), separate from the worker's general work radius
-- Submit (`osfSubmit`, `:2828`) → a "Deal submitted for review" state (honoring the manual-review gate)
+- **Deal reach** — a **1–50 mi** slider (`#osfReach`, `gopher-go.html:5369`), separate from the
+  worker's general work radius
+- Submit (`osfSubmit`, `:5374`) → a "Deal submitted for review" state (honoring the manual-review gate)
 
 If the worker is **not** eligible, the button is locked and taps open a pop-up
-(`offerIneligibleOverlay`, `:2765`) that redirects to the eligibility terms in Gopher Go 101
-(`gopher-go-101.html#offer-deals`, `:745`). Eligibility is **automatic** at the bar; each posted deal
+(`offerIneligibleOverlay`, `:5271`) that redirects to the eligibility terms in Gopher Go 101
+(`gopher-go-101.html#offer-deals`, `:746`). Eligibility is **automatic** at the bar; each posted deal
 is **manually reviewed** before it goes live. In the prototype the gate is simulated with a demo
-toggle (the `ELIGIBLE` flag, `gopher-go.html:3705`); production reads it from the worker's tier + the
-Gopher-ID lookup.
+toggle (the `ELIGIBLE` flag, `gopher-go.html:8466`; the toggle itself at `:8527`). ⚠️ **CORRECTED
+2026-09-24 — the live read is now wired**: `refreshEligibility()` (`:8531`) calls
+`GoAuth.fetchEligibility()` and sets `ELIGIBLE` from the server verdict after a real sign-in and on
+session restore. The demo toggle survives only for the signed-out demo.
 
 ### Where the information goes (today)
 
-`submitForm(type)` at `gopher-deals.html:3664`:
+> ⛔ **CORRECTED 2026-09-24 — the Apps Script pipeline described here no longer exists.**
+> This section used to say the form **"POSTs to a Google Apps Script Web App (`GOPHER_FORM_ENDPOINT`)"**
+> and that **"the Sheet *is* the pipeline."** Both are now false, and acting on them would rebuild
+> something the owner deliberately removed. **`GOPHER_FORM_ENDPOINT` was severed on 2026-08-21** —
+> owner, quoted in-code at `gopher-deals.html:5314`: *"I wanted to sever App Scripts and EVERYTHING
+> is internal now."* The comment adds: **"Do not reintroduce this constant or anything that posts to
+> `script.google.com`."**
+
+`submitForm(type)` at `gopher-deals.html:5356` — **as built today**:
 
 1. Serializes every named field in the modal to a `data` object.
-2. **Writes a local backup** — appends to `localStorage['gopherLeads']` (`:3702`), so nothing is lost
-   even if the network call fails.
-3. **POSTs to a Google Apps Script Web App** — `GOPHER_FORM_ENDPOINT` (`:3662`), sent as
-   `text/plain;charset=utf-8` (`:3710`) so it counts as a CORS-"simple" request and works from any
-   origin without a preflight. The Apps Script appends the row to the backing Google Sheet.
-4. Console export escape hatch — `downloadGopherLeads()` (`:3719`) dumps the localStorage backup as a
-   CSV for manual recovery.
+2. **Writes a local backup** — appends to `localStorage['gopherLeads']` (`:5433`), so nothing is lost
+   even if the network call fails. *(Still true.)*
+3. **Merchant registration POSTs to the real internal API** — `apiCall('/users/deals')` (`:5531`),
+   token-gated (an unverified phone is refused at `:5448`) and sent as an **allowlisted payload
+   built by picking named fields**, never by forwarding `data` — the intake rejects unknown keys by
+   name with a 422. Optional address geocode stamps `lat`/`lng` first, with a 1.6 s race that sends
+   without coordinates rather than blocking (`:5591`).
+4. **The service-provider / worker funnel no longer submits at all.** It verifies a phone and reads
+   the live eligibility endpoint `GET /users/deals/eligibility` (`workerCheckOtp`). `submitForm` now
+   has exactly **one** caller, the merchant form; anything else reaching the old fall-through
+   **fails loudly** by design (`:5586`; the severance note itself is at `:5578`) rather than showing a thank-you for a submission that went
+   nowhere.
+5. Console export escape hatch — `downloadGopherLeads()` (`:5615`) dumps the localStorage backup as a
+   CSV for manual recovery. *(Still true.)*
 
-> **This is the current persistence layer.** There is no deals database yet — a "lead" is a Sheet
-> row. The production system (SPINE-1 identity + a real deals table) replaces the Apps Script
-> endpoint behind this same `submitForm` seam. Until then, the Sheet **is** the pipeline (merchant
-> deals + provider eligibility requests).
+> **Current persistence:** merchant deals live in the **real backend**
+> (`GOPHER_API = 'https://api.gophergo.io/api/v1'`, `:5274`) — merchant submission was verified
+> against production on 2026-08-10 per the in-code note at `:5439`. SPINE-1 identity is still the
+> open piece; the Google Sheet is **not** the pipeline any more.
 
 ---
 
 ## Stage 2 — The data model (how merchant registration becomes structure)
 
 Once a merchant is in the portal, the shape is **account → businesses[] → locations[] → deals**.
-Defined in the `ACCOUNT` object at `gopher-deals.html:4943` (the demo account owns *My Way Tavern*
+Defined in the `ACCOUNT` object at `gopher-deals.html:7456` (the demo account owns *My Way Tavern*
 across Raleigh / Holly Springs / Fuquay-Varina, and *The Blind Pelican* in Holly Springs):
 
 ```
@@ -122,14 +161,15 @@ ACCOUNT
 - Each deal ties to exactly **one** location. That location's ordering site *and* the parlayed
   Gopher Request pickup both resolve to **that** location's address.
 - To offer the same deal elsewhere, the owner **adds the location** (`bizAddForm`,
-  `gopher-deals.html:4445`; push at `:5189`) and submits a **new** deal there. There is no "one deal,
+  `gopher-deals.html:6366`; the "+ Add location" push is `.la-save` at `:7697`, "+ Add business" is
+  `naSave` at `:7710`) and submits a **new** deal there. There is no "one deal,
   many locations" fan-out — this is intentional and keeps pickup unambiguous.
-- **Mobile / food-truck** locations set `mobileAddress:true` (`applyMobileAddr()`, `:5037`). This
+- **Mobile / food-truck** locations set `mobileAddress:true` (`applyMobileAddr()`, `:7550`). This
   flag is what makes redemption ask the customer for a pickup address instead of auto-filling one.
 
 **Authoring UX:** the "Submit a New Deal" form has a business/location picker grouped by business
-(`populateLocationSelect()`, `:4970`) ending in "+ Add a new business or location…". Picking a
-location calls `prefillFromLocation()` (`:4980`) → "Pre-filled from your last deal at this location."
+(`populateLocationSelect()`, `:7483`) ending in "+ Add a new business or location…". Picking a
+location calls `prefillFromLocation()` (`:7493`) → "Pre-filled from your last deal at this location."
 
 *(The provider deal has no such multi-location model — a provider posts one defined-price service
 from their Gopher Go account; see Stage 1 Entry B.)*
@@ -140,11 +180,12 @@ from their Gopher Go account; see Stage 1 Entry B.)*
 
 | API / service | Where used | Purpose | Key / auth | Prod note |
 |---|---|---|---|---|
-| **Google Maps JavaScript API** | `gopher-deals.html:2316` (loader) | Renders the merchant **audience map** in registration + dashboard | Browser key `AIzaSy…UVJAU`, **HTTP-referrer restricted** | Add each deploy origin to the referrer allowlist (below) |
-| **Google Places API** | Maps-ready init (`:3208`) | Address autocomplete on the merchant address fields | Same key, `libraries=places` | — |
-| **Google Geocoding API** | `new google.maps.Geocoder().geocode()` `:3194` | Turns a typed address → lat/lng to drop the audience-map pin | Same key | — |
+| **Google Maps JavaScript API** | `gopher-deals.html:2713` (loader) | Renders the merchant **audience map** in registration + dashboard | Browser key `AIzaSy…UVJAU`, **HTTP-referrer restricted** | Add each deploy origin to the referrer allowlist (below) |
+| **Google Places API** | Maps-ready init (`:3810`) | Address autocomplete on the merchant address fields | Same key, `libraries=places` | — |
+| **Google Geocoding API** | `new google.maps.Geocoder().geocode()` `:3796` (registration) / `:5598` (at submit) | Turns a typed address → lat/lng to drop the audience-map pin | Same key | — |
 | **Google Distance Matrix API** | Request/Connect ride-pricing seam (`getRideTripEstimate`) | When a merchant deal **parlays into a Gopher Request**, real mileage → delivery price | Same Google project | Wired in the customer apps, not the Deals page itself |
-| **Google Apps Script Web App** | `GOPHER_FORM_ENDPOINT` `:3662` | **Current** lead/eligibility persistence → Google Sheet | Deployed "execute as me / access: Anyone" | Replaced by the real backend at handoff |
+| ~~**Google Apps Script Web App**~~ ⛔ **REMOVED** | ~~`GOPHER_FORM_ENDPOINT`~~ — severed 2026-08-21, note at `:5314` | ⚠️ **No longer a dependency.** Was lead/eligibility persistence → Google Sheet | — | **Do not reintroduce.** Merchant deals now `POST /users/deals`; SP funnel reads `GET /users/deals/eligibility` |
+| **Gopher internal API** | `GOPHER_API` `:5274` → `apiCall()` `:5286` | Merchant deal submission, My Deals read + edit/pause/resume, org roles, eligibility | Bearer `access-token` header from sign-in | Replaced the Apps Script (verified against production 2026-08-10, `:5439`) |
 | **SMS / OTP provider** | Phone-verify affordance, `phone_verified` hidden field | Verify owner phone at merchant registration | **None yet — simulated** | Needs a real provider (Twilio/etc.) in production |
 
 **The audience map uses NO live data API.** The "X customers · Y workers in radius" figure comes from
@@ -169,17 +210,30 @@ Owner setup walkthrough: `Final/SETUP-Google-Maps-Steps.html`.
 ## Stage 4 — Management in the dashboard(s)
 
 **Merchant portal** — built inside `gopher-deals.html` (left nav: Dashboard, My Deals, Inbox,
-Business Info, Users & Access, Feature My Business; section map at `:4776`), with a live-preview
+Business Info, Personal Info, Payment, Users & Access, Refer Gopher, Feature My Business; nav at
+`:6037`–`:6069`, panes at `:6105`–`:6628`, section-title map at `:7034`), with a live-preview
 phone that mirrors how the deal will appear in the customer apps.
 
-- **My Deals** — lists each deal with a real **status badge**: `● Live` (`:4432`), `In review`
-  (`:4434`), `Draft` (`:4435`) and a **Views** counter. It's a **display list today** — edit / pause
-  / delete are not wired (backend actions).
-- **Business Info** — status "Active / Verified" (`pi-status`, `:4486`); the account/identity surface
+- **My Deals** — ⛔ **CORRECTED 2026-09-24 — this is no longer a display list.** It previously read:
+  *"lists each deal with a real status badge … and a **Views** counter. It's a **display list today**
+  — edit / pause / delete are not wired (backend actions)."* **Edit and pause/resume shipped**
+  (owner ruling in-code at `:7927`, 2026-08-25) and call the real API. There is **no Views counter**.
+  As built: `loadMyDeals()` (`:7896`) fetches `GET /users/deals/mine`; `renderMyDeals()` (`:7793`)
+  draws real rows with a status badge (**Live / In review / Paused / Not approved / Expired**,
+  `DEAL_STATUS_LABEL` `:7778`) plus the rejection reason and pause / edit-in-review state; the Edit
+  and Pause buttons (`:7843`–`:7850`, gated on `_authToken`) dispatch at `:8054`–`:8059` into
+  `openPauseModal` → `PATCH /users/deals/{id}/pause`, `resumeDeal` → `…/resume`, `openEditModal`
+  → `PATCH /users/deals/{id}` (edit goes to review; the live version keeps serving).
+  **Delete is still unbuilt** — no delete control exists anywhere in the file. The four hardcoded
+  rows that remain are the **signed-out showroom** (`MY_DEALS` `:7755`; why, at `:7745`).
+  ⚠️ Read in source only — **no write was driven against the live `api.gophergo.io`**, so persistence
+  is *wired, not proven end to end*. Full detail: `G40-286-deals-frontend-consolidated-handoff.md`
+  → DLM-3.
+- **Business Info** — status "Active / Verified" (`pi-status`, `:6407`); the account/identity surface
   SPINE-1 will own.
-- **Feature My Business** — an **open-bid** placement auction (`:4524`): top bid per category is
+- **Feature My Business** — an **open-bid** placement auction (`advertise` pane, `:6536`): top bid per category is
   featured across the app/web platforms next month; top overall becomes the Featured Deal.
-- **Live preview** — a `sandbox`ed `<iframe>` (`pvFrame`, `:4386`) renders the merchant's own ordering
+- **Live preview** — a `sandbox`ed `<iframe>` (`pvFrame`, `:6307`) renders the merchant's own ordering
   site inside the branded page (the same embed technique the customer redemption uses).
 
 > **Provider management is in Gopher Go, and it's built.** An eligible provider **creates and manages
@@ -187,14 +241,25 @@ phone that mirrors how the deal will appear in the customer apps.
 > Entry B), not this merchant portal. On the public Deals page they only check eligibility (Entry A).
 > The eligibility terms live in `gopher-go-101.html#offer-deals`.
 
-> **Interim data pipeline (owner note 2026-07-12):** the Apps Script Sheet (live registrations,
+> ~~**Interim data pipeline (owner note 2026-07-12):** the Apps Script Sheet (live registrations,
 > now with `lat`/`lng` + a `source` channel column) is **periodically uploaded into the Gopher HQ
 > Dashboard** to refresh the Raleigh DMA merchant-coverage map (`deals-coverage.js` manual upload)
-> until the real backend/DB connection automates it.
+> until the real backend/DB connection automates it.~~
+>
+> ⛔ **SUPERSEDED 2026-09-24.** The Apps Script Sheet this describes was **severed on 2026-08-21**,
+> so there is no longer a Sheet to upload from. Merchant registrations land in the internal API
+> (`POST /users/deals`). **How the HQ merchant-coverage map is refreshed now was NOT verified in this
+> pass** — do not assume either the old manual upload or an automated feed; confirm with the HQ
+> Dashboard owner before building against it.
 
-**Admin side (Gopher HQ):** deal lifecycle state, click tracking, and CSV export also exist in the
-HQ Dashboard's `advertiserDeals.js` (the G40-180 admin tool) — the manual "review before it goes
-live" step happens there.
+**Admin side (Gopher HQ):** the manual "review before it goes live" step happens in the HQ Dashboard.
+⚠️ **CORRECTED 2026-08-06** — this previously said deal lifecycle state, click tracking and CSV export
+*"also exist in the HQ Dashboard's `advertiserDeals.js` (the G40-180 admin tool)."* **They do not.**
+`advertiserDeals.js` is a 44-line scaffold at `Documentation/Jira Tickets/advertiserDeals.js`, and
+none of `isDealLive` / `liveHomeDeals` / `trackClick` / `toCsv` appear anywhere in the Dashboard. The
+wired module is **`deals-merchants.js`** (review/reject/contact modals, `localStorage` action store),
+which has a different status vocabulary and no DLP fields. Build to
+`deals-registration-to-publication-config.md` §4.1 / §5.1 / §7.
 
 ---
 
@@ -218,39 +283,40 @@ Tapping a merchant deal opens the detail card with the promo code and two paths:
 1. **Order directly** — the merchant's ordering site is embedded in a **sandboxed `<iframe>`**
    (`allow-scripts allow-same-origin allow-popups allow-forms`) with a **load-timeout fallback +
    "Open in a new tab"**, because many sites refuse embedding via `X-Frame-Options` /
-   `frame-ancestors` CSP (handled explicitly — `gopher-request.html:22584`/`:22783`,
-   `gopher-connect.html:13712`/`:13916`).
-2. **"+ Make a Gopher request to bring you your deal"** (`data-deal-cta`, `:23011` /
-   connect `:14142`) — the last-mile parlay.
+   `frame-ancestors` CSP (handled explicitly — `gopher-request.html:25431`/`:25642`,
+   `gopher-connect.html:16017`/`:16233`).
+2. **"+ Make a Gopher request to bring you your deal"** (`data-deal-cta`, `:25918` /
+   connect `:16495`) — the last-mile parlay.
 
 ### Merchant last-mile parlay ("Bring you your deal")
 
-Opens the `dealReq` modal (`:23033`). Pickup resolution follows the location's `mobileAddress` flag:
+Opens the `dealReq` modal (`dealReqOverlay`, `:25931` / connect `:16508`). Pickup resolution follows the location's `mobileAddress` flag:
 
 - **Fixed location** → pickup auto-applies to that location's address and the pickup field stays
   **hidden**.
 - **Mobile merchant** → the **Pick-up address** field is **shown** (`dealPickupField` / `dealPickup`,
-  `:23035`–`:23037`, connect `:14166`–`:14168`) so the customer enters where to collect from.
+  `:25942`, connect `:16519`) so the customer enters where to collect from.
 
 The request then flows into the normal ASAP Gopher Request pipeline.
 
 ### Provider-directed redemption (DLP-4)
 
-Redeeming a **service-provider** deal (`svc-deal-redeem` / `svcDealRedeem`, `:22883` / connect
-`:14014`) behaves differently from a merchant deal. Per the governing comment at
-`gopher-request.html:14472`:
+Redeeming a **service-provider** deal (`svc-deal-redeem` / `svcDealRedeem`, `:25766` / connect
+`:16356`) behaves differently from a merchant deal. Per the governing comment at
+`gopher-request.html:15604`:
 
 > Service-provider deal redemptions go **only to the offering provider** and are **auto-accepted**
 > (a simulated connect) as a **flexible, within-2-week** request — no broadcast to other workers.
 > Merchant deals keep the normal ASAP flow.
 
-It sets `state.dealProvider = { name, role, tier, pic }` (`:14494` / connect `:12400`) which directs
+It sets `state.dealProvider = { name, role, tier, pic }` (`:15610` / connect `:14418`) which directs
 the request to that one provider and drives the "once **[provider]** accepts, they'll contact you to
-schedule" copy (`:13246`).
+schedule" copy (`:14295`). Redemption also pre-selects the "Within 2 weeks" timing tab
+(`flexibleWindow = '2weeks'`, `:15609`).
 
 ### The customer-side eligibility gate (temporary)
 
-`isDealsEligible()` at `gopher-request.html:21888` currently **returns `true` for all users** — the
+`isDealsEligible()` at `gopher-request.html:24603` currently **returns `true` for all users** — the
 Deals gate is intentionally open in the prototype so anyone can demo it. Production restores the real
 check (`return !!_sessionUserProfile;`) once accounts exist. *(This is the customer's access to the
 Deals surface — distinct from the provider-posting eligibility in Stage 1 Entry B.)*
@@ -269,20 +335,27 @@ parlay + provider-directed).
 
 **Backend seams flagged for the human dev (all gated on SPINE-1 identity + a real deals table):**
 
-1. **Persistence** — replace the Apps Script/Sheet + `localStorage` with a real deals/locations DB
-   behind `submitForm` and `GopherIQData.lookup`.
-2. **My Deals actions** — wire edit / pause / delete (display-only today).
+1. **Persistence** — ⚠️ **partly done.** Merchant **deals** now persist through the internal API
+   (`POST /users/deals`; the Apps Script/Sheet is gone). Still outstanding: the
+   **businesses/locations tree**, which lives only in the in-memory `ACCOUNT` object ("+ Add
+   location" / "+ Add business" push and re-render but there is no `/users/businesses` endpoint), and
+   the `localStorage` lead backup / `GopherIQData.lookup` seam.
+2. **My Deals actions** — ⛔ **CORRECTED 2026-09-24: edit and pause/resume are BUILT and API-wired.**
+   This previously read *"wire edit / pause / delete (display-only today)"*. **Only delete is
+   unbuilt.** See Stage 4 → My Deals. *(Read in source; no write was driven against the live API.)*
 3. **Mobile-address flag** — carry `mobileAddress` into the real request payload
-   (`TODO(backend)`, `gopher-deals.html:5042`).
+   (`TODO(backend)`, `gopher-deals.html:7555`).
 4. **Provider-directed routing** — real directed routing + real accept (currently a simulated
    connect), plus the flexible-2-week scheduling handoff → matching logic.
-5. **Re-gate customer Deals** — restore `isDealsEligible()` (`gopher-request.html:21888`) once
+5. **Re-gate customer Deals** — restore `isDealsEligible()` (`gopher-request.html:24603`) once
    accounts are real.
 6. **OTP** — real SMS provider behind the `phone_verified` affordance.
 7. **Live audience data** — swap the baked `gopher-deals-audience.js` for a live query.
 8. **Provider eligibility + two-entry flow (DLP)** — Service Provider is **not a separate role**;
    it's an eligibility tier of Worker. Auto-eligible when a Gopher is **Elite / Elite+ / Pro · 20+
-   completed jobs · 4.75★ over the last 20 completed** (admin manual-override allowed); each posted
+   completed SERVICE jobs · 4.75★ over the last 20 completed SERVICE jobs** (admin manual-override
+   allowed; **Delivery, Ride Sharing, and Other jobs count toward NEITHER the 20 NOR the rating
+   window** — founder amendment 2026-07-23, service categories piloted first); each posted
    deal is **manually reviewed** before going live. The dev wires: the **Gopher-ID → eligibility
    lookup** behind the public funnel, the real **email + Gopher Go inbox** notification, and the real
    **eligibility gate** on the in-app "Offer My Service" button (simulated by the `ELIGIBLE` demo
@@ -295,7 +368,7 @@ parlay + provider-directed).
 10. **Owner Personal-Info parity — FRONT-END DONE 2026-07-14** (ruling 2026-07-12; validated
     against John's signup screenshots). The merchant form's Business Owner Verification now
     collects the exact standard-signup set (First/Last/DOB/Phone/Email/Address/Source + the
-    Referral→6-digit-ID pattern). Remaining for the dev: provision the owner's Gopher account
+    Referral→Gopher-ID pattern — **variable length, never length-validated**, see Ruling 6). Remaining for the dev: provision the owner's Gopher account
     from these fields, and the **first-sign-in photo prompt** (Deals dashboard or any platform).
     Original ruling:
     Per the standard Gopher process, every sign-up provisions a Gopher Request account — the canonical
@@ -313,10 +386,10 @@ parlay + provider-directed).
 
 ```
 REGISTRATION
-  Merchant → full form on gopher-deals.html (business + deal)
+  Merchant → full form on gopher-deals.html (business + deal) → POST /users/deals
   Provider → TWO ENTRIES:
      A) public eligibility funnel (gopher-deals.html)
-          submitForm('worker') → localStorage backup → Apps Script → Google Sheet
+          phone verify → GET /users/deals/eligibility  (submits nothing; Apps Script severed)
           → "we'll email you terms + Gopher Go inbox"
      B) eligible worker posts the deal IN-APP (gopher-go.html · "Offer My Service")
           earn × 1.10 = customer pays · normal × 1.10 struck · 1–50 mi reach
@@ -326,8 +399,9 @@ DATA MODEL (merchant)     account → businesses[] → locations[] → deals   (
         │                 mobileAddress flag · per-location orderSite · keywords
         ▼
 DASHBOARDS
-  Merchant: gopher-deals.html portal — My Deals (Live/In review/Draft + Views) · Business Info
-            · Feature-bid · live preview
+  Merchant: gopher-deals.html portal — My Deals (real feed: Live/In review/Paused/Not approved/
+            Expired · edit + pause/resume WIRED, delete not) · Business Info · Feature-bid
+            · live preview
   Provider: Gopher Go app — creates + manages deals (built)
         ▼
 CUSTOMER APPS (request / connect / Go)
@@ -338,7 +412,8 @@ CUSTOMER APPS (request / connect / Go)
         └─ Provider deal → redeem → provider-directed request (auto-accept, flexible 2-wk)
 
 APIS: Google Maps JS · Places · Geocoding (merchant audience map) · Distance Matrix (parlay pricing)
-      Apps Script Web App (current persistence) · SMS/OTP (needed, not built)
+      Gopher internal API (api.gophergo.io) = persistence · Apps Script REMOVED 2026-08-21
+      SMS/OTP (needed, not built)
       Audience = baked static dataset, NOT a live API (yet)
 ```
 
