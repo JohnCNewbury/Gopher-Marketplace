@@ -1,5 +1,10 @@
 # G40-7 — (FE) Both Apps: Simplify Sign-Up Process
 
+> ⚠️ **CORRECTION 28 Jul 2026 — `signupFlow.js` does not exist.** It was never written; there is
+> no `wave-bugs/` directory in any repository. Every "already scaffolded" claim below is a
+> **specification, not code** — build it fresh. Also: **there is no AWS Cognito in this system**;
+> email verification is Devise "confirmable" on the `users` table. The current source of truth
+> is the rewritten Jira ticket for G40-271 plus `D-037 (was D-035 — renumbered 7 Aug 2026, collided with the Go canonical's D-035) / INV-EMAILAUTH`.
 **Type:** Bug (umbrella; absorbs BE ticket **G40-242**) · **Priority:** Highest · **Bucket A**
 **Assignee:** John Newbury · **Status:** groomed to dev-ready — 2026-07-02.
 Front end **not** modified (owner chose groom-only; the signup is a delicate multi-step state
@@ -7,7 +12,7 @@ machine and the logic is already scaffolded — see below). No open questions re
 
 ## ⚠️ Read first — two things that reframe this ticket
 1. **The core logic is already scaffolded + tested (owner).** `G40-Build-Recap.md` documents
-   `wave-bugs/g40-7/signupFlow.js` (+ `.test.js`), **shared with G40-271**, implementing:
+   `signupFlow.js` ⚠️(NOT BUILT — spec only) ⚠️(NOT BUILT — spec only) (+ `.test.js`), **shared with G40-271**, implementing:
    - `routeUserOnLogin` — existing **unverified** users → **Email Verification** (never
      new-account creation; history preserved).
    - `otpBackTarget` — Back from the email-OTP screen returns the **Confirmation / Profile-Info**
@@ -54,7 +59,7 @@ The Request prototype already has the signup pieces — here are the exact hooks
 - Persist incomplete signups + the new **"Incomplete"** status; save on each step (powers
   auto-save/resume + re-engagement).
 - Activation gate: email-verified (+ payout for Go workers) → "Active".
-- **G40-271 (shares `signupFlow.js`):** wire the admin email write to the recognized **AWS
+- **G40-271 (shares `signupFlow.js` ⚠️(NOT BUILT — spec only)):** ⚠️ SUPERSEDED (no Cognito exists) — wire the admin email write to the recognized **AWS
   attribute** + link the new AWS category; **repair "Send Confirmation Email."**
 - Email OTP send/verify (ties to G40-272 admin Email-OTP report).
 
@@ -67,7 +72,7 @@ The Request prototype already has the signup pieces — here are the exact hooks
 
 ## Related / dependencies
 - **G40-242** (BE) — merged into this ticket (was a FE/BE split; now one).
-- **G40-271** — the March-2026 regressions; shares `signupFlow.js`; do together.
+- **G40-271** — the March-2026 regressions; shares `signupFlow.js` ⚠️(NOT BUILT — spec only); do together.
 - **G40-157** (`signupValidation.js`) — field validation module to reuse.
 - **G40-170** — incomplete-signup capture (the "Incomplete" status).
 - **G40-10** (`SignupChecklist.jsx`) — Gopher Go best-practices checklist as the **final** signup

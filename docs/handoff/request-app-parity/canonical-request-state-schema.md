@@ -68,6 +68,10 @@ Ordered by severity. **These are the concrete things that break "resume where yo
 | Pickup location | `pickupStop` *(string)* | `pickupStops` *(array)* | Migrated: init/inputs/reads/submit use the array (single-stop UI reads/writes element 0 via `pickupAddr()`); binder writes `[value]`. |
 | Drop-off location | `dropoffStop` *(string)* | `dropoffStops` *(array)* | Same, via `dropoffAddr()`. |
 | ID verification | `idVerified` *(bool)* | `idFrontCaptured`, `idFrontSrc`, `selfieCaptured`, `selfieSrc`, `savedOnFile` | Migrated: "verified" is **derived** (`savedOnFile || (idFrontCaptured && selfieCaptured)`, helper `idVerifiedNow()`); writes go through `markIdVerified(onFile)`. |
+| ID capture — BACK of ID | *(absent)* | `idBackCaptured`, `idBackSrc` | Added web 2026-08-23, prototype 2026-08-25 (owner). **Required, not optional**: the barcode on the back is what a scanner reads to confirm the DOB (`docs/handoff/id-barcode-age-read.md`), so a submission without it cannot be age-verified later and the other two shots become photos nobody can check. Capture is complete only when all THREE are present — helper `idCaptureComplete()`, deliberately separate from `idVerifiedNow()` so widening the older two-shot contract in place could not silently change every existing caller. |
+| One-off pre-clearance | *(absent)* | `submittedAt` (web, inside `idVerification`) · `idSubmittedAt` (prototype, flat) | Marks an ID submitted for THIS order only. ⚠️ Distinct from `savedOnFile`, and the difference is the product: keeping an ID on file **is** TrustShield, so the one-off path must leave `savedOnFile` false (owner, 2026-08-25 — AR Flow.pptx slide 3 removed the "save my ID" checkbox for exactly this reason). |
+| Requester date of birth | *(absent)* | `dob` | Drives the COPY on the age-restricted control. ⚠️ It no longer drives ACCESS: under-30 used to be offered TrustShield and nothing else, which the gate removal (G40-410) and the iDenfy retirement turned into a dead end for 76.7% of new enrolments. Unknown DOB is treated as under-30, the safer default. Parsed from both `MM-DD-YYYY` and `YYYY-MM-DD` — a single-format parser returns null on the other, and null means under-30, so the bug would present as a policy. |
+| Gopher Deals provenance | *(absent on prototype)* | `fromDeal`, `dealKind`, `dealBoost`, `dealMerchant` | Added to the prototype 2026-08-25. ⚠️ `fromDeal` was being **read and written without being declared** there — `undefined` rather than `false` on every ordinary request. `dealKind` drives real money: `fromDeal && dealKind === 'service'` is a Service-Provider deal, a SET PRICE the customer pays with **zero fees** (no ITF, no promo, no TrustShield line — there is no fee bundle left to discount). The 10% `dealBoost` is Gopher's take **out of** that price and is never added to what the customer pays. ⚠️ The branch keys on `dealKind`, never on `fromDeal` alone — a MERCHANT deal is a normally-priced request, so widening it would waive every fee on every deal. An unlabelled deal defaults to `'merchant'` for the same reason. |
 
 ### 3b. CONTRACT GAPS — a real data field missing on a surface (MED — add it)
 
@@ -87,6 +91,44 @@ Ordered by severity. **These are the concrete things that break "resume where yo
   Connect-business features; keep out of the consumer Request contract unless the app adds business mode.
 - **Backstop-suppression / UI** (`dupWarnAck`, `lowAvailabilityAck`, `waiverPrompted`, `hireAgainGophers`,
   `submittedAt`, `profileOpen`, `openInfo`, `openCatInfo`, `osOpen`) — transient; re-derive per session.
+- **Junk volume tier** (`junkTier`) — R, C (added 2026-07-19). `'single' | 'half' | 'full' | null`.
+  Junk Removal prices on a *volume tier*, not item cost: iQ detects the tier from the description
+  (`GopherRequestLogic.detectJunkVolumeTier`) and the requester can correct it in the offer modal,
+  at which point the field owns the tier. Feeds `suggestedJunkOffer()` for the slider range and
+  `recordJunkOffer()` at completion (the forward-learning loop). **Persist it** — it is a structured
+  field the production pricing model learns from, not UI state. Add to P when the prototype adopts
+  the Junk tier model.
+- **Moving tier** (`movingTier`) — R, C (added 2026-08-08). Moving joined `PRICED_CATEGORIES` on
+  that date, giving it the same tier-driven suggested-offer treatment as Junk. Same rules as
+  `junkTier`: **persist it**, it is a structured pricing input rather than UI state, and it is
+  category-scoped (§3d) so it must not survive a switch away from Moving.
+  ⚠️ **The prototype has not adopted the Moving pricing model** — it still hides `aiPaySuggest`
+  for `moving`, so the app would offer no Moving pay suggestion. Caught by the flow-rules check in
+  `run_parity_harness.py`; the fix is one entry in the prototype's `FIELD_HIDDEN_FOR`.
+
+### 3d. CATEGORY-SCOPED FIELDS — must reset when the category changes (2026-07-19)
+
+Every category gates differently, so a field owned by one category must not survive a switch to
+another. `switchCategory()` (Request + Connect) realigns these to their initial values on every
+user-driven category change, and rewinds the flow to Step 2 so the new category's gates are actually
+walked rather than skipped past.
+
+| Scope | Fields |
+|---|---|
+| Delivery | `ageRestricted`, `ageKeywordAck`, `agePurchaseAck`, `idRequiredAtCompletion`, `idVerification`, `itemsPurchased`, `costOfItems` |
+| Ride | `numRiders`, `numBags` |
+| Junk | `junkTier` |
+| Moving (pricing) | `movingTier` |
+| Moving | `noSpecificPickup`, `serviceElevatorPickup`, `serviceElevatorDest`, `pickupStairs`, `destStairs` |
+| Labor / Yard | `payByHour`, `numHours` |
+| Item info | `itemCount`, `multipleItems`, `hazardous` |
+| Worker pay | `payMode`, `payAmount`, `lowOfferAck`, `lowAvailabilityAck`, `suggestedOfferUsed` |
+
+**Deliberately preserved** across a switch: user-typed, category-agnostic input (`description`,
+`picThumbs`, `pickupStops`, `dropoffStops`, `specialInstructions`), plus `agePurchaseDismissed`
+(a session-level "don't show me this again"). Prefill entry points (`__startDealRequest`,
+`__startRequestAgainFast`, `__startHireAgain`, `__startRequestWithCategory`) bypass this — they call
+`resetFlowState()` first and then set category-scoped values intentionally.
 
 ---
 

@@ -1,111 +1,1406 @@
-# G40-11 — Payment method: required identifying info + OTP + dispute log
+# G40-11 — Verified card add: billing address + AVS/CVC/Radar, SMS code before save, dispute audit log
 
 **Type:** Task (child of Epic G40-1 "Bug Fixes & Polish") · **Priority:** Medium · **Assignee:** John Newbury
-**Status set:** groomed to dev-ready (unparked) — 2026-07-02
-**Owner of build:** human developer (payments + security are fenced off from AI work per `Final/CLAUDE.md`).
+**Sprint:** carried from Payment Options (743) into **Cost Adjustment Receipt (776)**, 2026-09-13 · **Status:** Ready for QA — **BUILT and LIVE; the appversion gate is deliberately OFF** (owner ruling 2026-09-13, below)
+**Groomed:** 2026-07-02 · **Built:** 2026-09-08 · **Tile + `verified` flag added 2026-09-09 (§3.4)**
 
-This doc is the authoritative, no-open-questions spec. Where it conflicts with the
-original 2024 ticket body, **this doc wins.** Product decisions below were confirmed
-by John Newbury on 2026-07-02.
+> **Read this first.** Everything in §2 was verified first-hand on 2026-09-08 against the live Stripe
+> account, the backend `production` branch and the requester app's `production` branch. Nothing in
+> this doc is inherited from the July ticket text except the owner's product decisions in §1.
 
 ---
 
-## Goal (one line)
-Every new card added must collect **five verifiable fields + billing address**, pass
-name/address to Stripe for **AVS + Radar**, require an **SMS OTP** to the account phone
-before the card is saved, and **log the verification event** so we have evidence to appeal
-chargeback disputes.
+## ✅ UPDATE 2026-09-15 — THE VARIABLE IS NOW SET. Read this before the ruling below.
 
-## Resolved decisions (were the open questions — now closed)
+**`CARD_VERIFICATION_REQUIRED_FROM_VERSION=46` is live on `Gopher-Production`.** Confirmed by reading
+the EB configuration directly (`describe-configuration-settings`), not inferred: `OptionName:
+CARD_VERIFICATION_REQUIRED_FROM_VERSION, Value: "46"`. EB event log times the configuration update
+to **2026-09-15 13:46:09Z** (`Environment update completed successfully`). This is an **owner-only**
+action — EB mutations are blocked for sessions — so it was the owner's own change, not this session's.
 
-| # | Decision | Answer (John, 2026-07-02) |
-|---|----------|---------------------------|
-| 1 | Ticket status (was parked pending Stripe Connect R&D) | **Unparked — build it.** |
-| 2 | Which surfaces enforce this | **Native Gopher Request app + Gopher Request (web) + Gopher Connect (business).** Gopher Deals is **out of scope** for this ticket. |
-| 3 | OTP after card add | **Required on EVERY card add** — even though the account phone is already OTP-verified at signup. No "skip if already verified." |
-| 4 | Dispute evidence | **Log each card-add verification event** (see "Dispute audit log" below) so disputes can be appealed with more info. |
-| 5 | Prototype UI | **Do not build UI in the prototype.** Build during production rebuild; use the existing prototype screens below as visual reference only. |
+**This does not retract the 2026-09-13 ruling below; it supersedes the *instruction*, not the
+reasoning.** The ruling explains exactly why this was dangerous (GO shares the gated route, has no
+verified flow, sends appversion 47) — that analysis stands and is why the first 16 minutes were
+checked immediately rather than assumed safe:
 
-## Required card-entry fields (all mandatory — Submit disabled until all valid)
-1. **Full Name** — as it appears on the card
-2. **Card Number**
-3. **Expiration Date**
-4. **CVC**
-5. **Billing Address** — street, city, state, ZIP (as issued to the card)
+| Signal, floor-set (13:46:09Z) → +16 min | Count |
+|---|---|
+| Lines scanned | 6,724 |
+| **`card_verification_required` refusals** | **0** |
+| Legacy attach allowed (exempt) | 1 |
+| Verify started / saved | 1 / 1 |
 
-## Stripe handling
-- Use Stripe tokenization; **raw PAN never touches Gopher servers.**
-- Pass full name + billing address in the **`billing_details`** object so Stripe can run
-  **AVS** (address match) and **Radar** fraud scoring, and so we retain that data as
-  dispute evidence.
-- Enable AVS + CVC checks and Radar rules in the Stripe Dashboard (block/review on AVS or
-  CVC mismatch). Refs: <https://docs.stripe.com/disputes/prevention> ·
-  <https://docs.stripe.com/radar>
-- **Engineering choice left to dev (not a product question):** the 2024 ticket named
-  `CardElement`; the modern equivalent is **Payment Element + SetupIntent** for saving a
-  card off-session. Either is acceptable as long as `billing_details` (name + address) is
-  populated and AVS/Radar are active. Recommend Payment Element + SetupIntent.
+**The one legacy-allowed hit is `appversion=45`** (Request, exempt as designed) — not 46, not 47.
+No refusal in the window and no Gopher GO traffic through `/attach` in it either. ⚠️ **16 minutes is
+not a clearance — it is a first check.** Re-run §8a check 2 (the legacy-attach appversion breakdown)
+after real volume has passed, and watch specifically for a `47` (a refused GO user) or an unexpected
+`46` (a released Request build still reaching the legacy route, which should be impossible).
 
-## OTP step (required on every card add)
-- After the card details are submitted, send a **6-digit SMS OTP** to the phone number
-  **already on the account** (no new phone input). Reuse the existing signup OTP provider
-  (Twilio / current SMS provider).
-- Card is **not saved** until the OTP is verified.
-- **Expiry: 5 minutes. Resend: allowed once.**
-- Incorrect/expired OTP → card not saved, user prompted to resend or retry.
+---
 
-## Dispute audit log (NEW — John's requirement)
-On each card-add attempt, persist an **auditable, retained** record for chargeback appeals.
-Capture at minimum:
-- Account/user id and the Stripe **payment method id** (+ card brand / last4)
-- **Timestamp** (UTC) of the verification
-- **Phone number** the OTP was sent to (store per data-policy — masked or hashed as
-  appropriate) and **OTP outcome** (sent / verified / failed / expired / resent)
-- **IP address and device/user-agent** of the session adding the card
-- Stripe result codes returned: **AVS result, CVC result, Radar risk score/outcome**
+## ⛔ OWNER RULING 2026-09-13 — DO NOT SET `CARD_VERIFICATION_REQUIRED_FROM_VERSION` (historical — see update above)
 
-Store in a dedicated, retained audit table (not overwritten on card edit/removal) so the
-full trail survives for dispute response. Retention should meet the chargeback dispute
-window (typically ~120+ days after the transaction; confirm against card-network / Stripe
-timelines during build).
+**This supersedes every instruction below that treats setting the env var as a remaining task or a
+condition of Done.** Read this before acting on §0, §3.1, §4b or §8.
 
-## Acceptance criteria (updated)
-1. Submit stays disabled until all five fields (incl. billing address) are valid.
-2. On submit, an SMS OTP is sent to the account phone; card is not saved pre-verification.
-3. Correct OTP → card saved and available.
-4. Incorrect/expired OTP → card not saved; resend (once) / retry offered.
-5. Name + billing address are present on the Stripe payment method object (AVS + Radar).
-6. **A dispute audit record is written for every card-add attempt** with the fields above.
-7. Behavior holds on native Request app (iOS + Android), Request web, and Connect.
+⚠️ **2026-09-15: the owner set the variable anyway, after this ruling.** Left as written below because
+the underlying analysis — why GO is at risk — is still correct and is exactly what the update above
+checks against production for. Only the instruction "do not set it" has been overtaken by the owner's
+own action.
 
-## Front-end reference in the prototype (visual blueprint only — do NOT edit)
-The go-forward web prototypes already contain the card modal and a reusable phone-OTP UI.
-Mirror these; note the two gaps to add during the rebuild.
+**The owner's condition, in his own words (2026-09-13):** *"I'm ok with users adding either AS LONG
+AS they can but make payments. whether from a 'verified' card or not."* And, on scope: *"Go was not
+included in the payment options. nothing was changed with gopher go payments."*
 
-**Gopher Request web — `Final/gopher-request.html`**
-- Add-payment modal: `ensureModal()` / `window.__openAddPaymentModal` (~lines 10792–10937).
-  Field ids: `payName`, `payNum`, `payExp`, `payCvc`, save button `paySave`, error `payErr`.
-  Collects Name/Number/Exp/CVC only — **no billing address, no OTP step** (both must be added).
-- Reusable signup phone-OTP component: `rqSuPhoneOtpBtn`, label `rqOtpLabel`, copy
-  "We sent a 6-digit code to your phone" (~line 16316, 16398). Reuse this pattern for the
-  card-add OTP screen.
+**The ruling: the floor stays unset. Indefinitely, as a decision — not as an outstanding to-do.**
+Unset means `null` means disabled (`helpers/card_verification_policy.js:46`).
 
-**Gopher Connect — `Final/gopher-connect.html`**
-- Same add-payment modal ("Add a payment method" ~line 9468, "Name on card" ~9474,
-  `__openAddPaymentModal` ~9573) — also lacks billing address + card-add OTP.
-- Same signup phone-OTP ("We sent a 6-digit code" ~line 7290). A street/city/state address
-  input pattern already exists elsewhere in the page (~7097) to mirror for the billing block.
+### Why — the gate would reach into Gopher GO, which is out of scope
 
-**Figma (from ticket):**
+Both statements are true at once: **G40-11 shipped no GO code, and setting the floor would still
+change GO's behaviour.** That is the hazard — nothing in GO has to change for GO to break.
+
+Verified first-hand on `origin/production` of each repo, 2026-09-13:
+
+| Fact | Evidence |
+|---|---|
+| The gate is on the **server**, on a route **both apps call** | `controllers/user/payment.js:1645`, inside `attach_payment_method_to_customer` — the **only** `caller_must_verify` call site in the backend |
+| It discriminates on **version only** — no app or role check | Route middleware is `user_auth` + `require_email_verified` only (`controllers/user/index.js:219-222`); the `role_id: 3` lookup happens **after** the gate |
+| The comparison is **`>=` inclusive** | `helpers/card_verification_policy.js:62` — `return Number.isFinite(v) && v >= floor;` |
+| **GO calls that route**, and it is live code, not dead | `gopher-mobile-gopher-capacitorjs` → `src/component/cardComponent.js:88` — `PUT users/attach/${paymentMethodId}` |
+| GO's card-add is **mounted on the paying path** | imported by `src/pages/summary.js`, `src/pages/renderForm.js` (case `"cardComponent"`), `src/component/popup.js` |
+| It is GO's **only** card-save route | no `cards/setup_intent`, no payment sheet, no `verify/start` anywhere in GO's `src/` |
+| **GO has none of the verified flow** | `cardVerification.js`, `CardVerifyOtp.js`, `SheetVerifyModal.js` all **absent** from GO's tree |
+
+**So:** GO sends appversion **47**, a floor of **46** makes `47 >= 46` true, and every GO user adding
+a card gets `409 card_verification_required` — *"Please update the app and add the card again"* —
+with **no update that fixes it**, because verification was never built for GO and is out of scope.
+
+✅ **The 46 / 47 figures are CONFIRMED first-hand — read from the Appflow API, 2026-09-13.** They
+cannot be read from any repo (`.env*` is gitignored, `.gitignore:24`; `REACT_APP_VERSION` is baked at
+build time, `src/component/getOrders.js:62`) — the authority is the Appflow **prod** environment of
+each app:
+
+| App | Appflow app id | env | `REACT_APP_VERSION` | `REACT_APP_APPTYPE` |
+|---|---|---|---|---|
+| Request (`requester-capacitorjs`) | `8f3b0c3f` | prod (17573) | **46** | `requester` |
+| Gopher GO (`gopher-capacitorjs`) | `515da0a1` | prod | **47** | `gopher` |
+
+So `47 >= 46` is confirmed arithmetic on confirmed values, not an inference. **The GO refusal is real.**
+
+### Why the feature still works without the gate
+
+**The gate is not what delivers G40-11 — the client is.** The merged Request app has **zero**
+`/attach` callers (the legacy call was deliberately removed; the only hit in `src/` is the comment at
+`src/component/cardComponent.js:164`), and `POST /users/add_card` is retired (§4b). So once the
+Request builds ship, those users are on the verified flow **by construction**, with no server switch.
+
+The gate's only remaining effect would be to refuse **incapable** builds — GO, and Request ≤ 45,
+neither of which has the verified flow. That is a **forced-upgrade wall**, not verification
+enforcement, and the owner has ruled against blocking people from adding a card.
+
+### The owner's condition is already met by the live code — verified, not assumed
+
+| Check | Result |
+|---|---|
+| Does the v2 list **filter** on verification? | **No — it stamps.** `controllers/user/payment.js:1484-1512` returns `methods` in full and adds `verified: true\|false` per normalised row. Best-effort: if the lookup throws, every row reads `verified:false` and the list still returns. |
+| Does any **charge** path read the audit table? | **No.** `card_verification_events` is touched only by `controllers/user/card_verification.js` (writes), that one list stamp (read), and a comment in `lib/payment_method_shape.js:74`. (`lib/payment.stripe.js:2499`'s "no verified captured payment" is the **worker-payout** hold — unrelated.) |
+| Does the app **disable** an unverified card? | **No.** `src/component/cardView.js:275` — `verified` decides only whether a `<Pill>Verified</Pill>` renders. No gating of selection or use. |
+
+**An unverified card is listed, selectable and chargeable exactly like a verified one.** The flag is
+informational end to end.
+
+### What this changes about "Done"
+
+⛔ **Setting the env var is no longer a condition of Done for G40-11.** The 2026-09-10 status
+comment on the ticket made it one; that is superseded. What remains:
+
+1. **Ship the Request iOS + Android store builds** (in review as of 2026-09-13) — this is what
+   delivers AC1–AC6 to real users.
+2. **Stripe Radar rules** (§6, owner, Dashboard) — **postal code only, never `address_line1`**
+   (§7d: the street check failed on the owner's own correctly-entered address). This is the only
+   remaining item that actually *blocks* a bad card; today G40-11 records AVS/CVC but acts on neither.
+3. Three QA checks still unrun — the card-form **rendering**, the Link **Bank tile**, and **reading an
+   actual `card_verification_events` row** (production DB is SG-to-SG only; **nobody has read one**).
+
+⚠️ **If the gate is ever revisited**, it cannot be an env var alone — it must exclude GO.
+
+⛔ **CORRECTION, same day, and the error is mine.** This section first said `apptype` could **not**
+carry that discrimination safely, on the grounds that "shipped builds send an empty `apptype`". **That
+was wrong on both halves**, and it matters because it wrote off the one clean fix.
+
+| I claimed | Actually |
+|---|---|
+| shipped builds send an **empty** `apptype` | the header is **omitted entirely** when the value is falsy — `src/axios/axios.js:32-34`: `if (apptype) { config.headers["apptype"] = apptype; }`. Never an empty string. |
+| so gating on it fails open or repeats the outage | omission **fails safe here**: no header → not `requester` → exempt → an old build keeps the legacy path, which is exactly what you want, since it has no verified flow either |
+| `REACT_APP_APPTYPE` is often missing | **both prod environments set it** — Request `requester`, GO `gopher` (Appflow, verified above) |
+
+**Where the error came from, since that is the reusable part:** `helpers/appType.js` really does
+document an empty-apptype hazard — but on the **sign-in** path, reading `req.body.apptype`, where
+falling through told a real user they had no account. That is a different code path with a different
+failure mode, and I carried its warning onto a header check where the failure direction is reversed.
+**A caveat is only valid on the path it was written about.**
+
+**So a correct gate is available if it is ever wanted:** require verification only when the caller is
+`apptype === 'requester'` **and** `appversion >= 46`. Request prod is captured, GO prod is exempt,
+and anything older is exempt by omission. It is a small backend change, not an env var, and it stays
+**unbuilt** unless the owner reverses the ruling above.
+
+---
+
+## 0 · Where it stands (2026-09-08)
+
+> ⛔ **INCIDENT 2026-09-08 17:29 ET — the gate refused the STORE app.** The floor defaulted to
+> `appversion >= 43` on the premise that the store build sends 42 (the repo's
+> `.env.requestor.production`). **It sends 45** — Appflow's prod environment bakes
+> `REACT_APP_VERSION=45` into both store builds (iOS #253, Android #254, 2026-09-05). Verified
+> first-hand from the installed Play APK (`e.headers.appversion="45"`, `users/attach/` still
+> called). Caught by the G40-38 session within the hour. **Fix:** [`gopher-backend-api!529`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/529)
+> — no default floor; the gate is off until `CARD_VERIFICATION_REQUIRED_FROM_VERSION` is set on
+> Gopher-Production (target `production`, squash no, delete no). **Damage:** CloudWatch nginx +
+> web.stdout, 21:25Z → 22:02Z, probe proven on 3.7k+ lines: **zero** `PUT /users/attach` requests
+> and zero 409s — nobody added a card in the window, so nobody was refused. ⚠️ Consequence for
+> release: **the env var must be set to the G40-11 build's real `REACT_APP_VERSION` when that build
+> is in the stores, or the gate never turns on.** Lesson recorded in memory
+> `store-app-appversion-is-45-not-the-env-file`; every "appversion 42/43" statement below is
+> superseded by this note.
+
+> ⚠️ **Second device finding, same evening (18:40 ET), same MR !529 (`de45cdf6`):** on the Samsung
+> the sheet completed, the server screened the card and **texted the code** (read over adb), and
+> the app then said *"Verification did not start"*. `verify/start`'s response carried
+> `verification_id: undefined` — `create()` returns a Sequelize instance (finders return raw
+> rows; create does not) and the response spread the instance, not its columns. Fixed by
+> flattening the created row; the test stub is now instance-shaped and fails against the unfixed
+> controller. **The device test resumes once !529 is merged** — until then the app cannot open the
+> **Timeline (all 2026-09-08, UTC in brackets):** 17:29 ET [21:29Z] `aa499b27` live with the
+> gate at 43 · ~18:05 ET G40-38 session flags that the store app sends 45 · 18:12 ET store APK
+> pulled over adb, `appversion="45"` confirmed first-hand · 18:20 ET `!529` opened (gate off by
+> default) · 18:40 ET [22:40Z] first device run: sheet → screening `avs_postal=pass cvc=pass` →
+> code SMS sent → app showed "Verification did not start" (instance-spread bug) · 18:45 ET second
+> fix pushed into `!529` · 18:47 ET [22:47:16Z] `!529` merged as `fb27e3fd` on the owner's
+> "Proceed" (an unrelated G40-19 merge `dcfbf1b7` deployed just before it) · 18:49 ET [22:49:38Z]
+> Gopher-Production Ready on `fb27e3fd`, `apiversion` 200, EB Red ~2 min (rolling-batch
+> transient, no 5xx). **Damage, 21:29Z → 22:49Z, probe proven on both log groups: zero
+> `card_verification_required` refusals, zero `PUT /users/attach` calls.** Nobody was refused.
+> ✅ **DEVICE TEST PASSED — 2026-09-08 18:51 ET, owner's Samsung, sheet path, after `fb27e3fd`.**
+> Add a payment method → sheet (name + home address prefilled, Card / Cash App Pay, Samsung Pass on
+> the card field) → owner typed the card → Set up → server: `card verification started …
+> path=payment_sheet avs_postal=pass cvc=pass` → code SMS (896761, read over adb) → owner entered
+> it → server: `card verified and saved pm=pm_1UDXqtCQp3eawbpnCIb3Q4cf` → nginx: `verify/start`
+> 200, `verify/confirm` 200 → Stripe: customer `cus_OVbpKctbuDozvt`
+> `invoice_settings.default_payment_method = pm_1UDXqt…` → app list refreshed with the new card as
+> default. AC1–AC5 proven on Android via the sheet; AC6 by the server's "started"/"saved" lines
+> (the row itself not read — no DB tunnel tonight). **Not proven:** iOS; the Stripe.js card-form
+> fallback (web / sheet-unavailable); wrong-code / resend / expiry paths on a device (unit-tested
+> only). App branch rebased onto production `313befd8d` (G40-38's !290 + !291) — services suite
+> 77/77.
+> Earlier in the evening, before the fix:
+> sheet config (name + full address, no Bank/Link on Android), Samsung Pass autofill on the card
+> field, name + home-address prefill, customer-less SetupIntent, AVS/CVC screening, audit row +
+> SMS. Not yet proven: code entry → attach → default.
+
+| Piece | State | Where |
+|---|---|---|
+| Backend — three endpoints, appversion gate, audit table | **MERGED + LIVE 2026-09-08 17:29 ET** — merge commit `aa499b27`; `POST /users/payment_methods/verify/start` went 404 → 440 ("sign in") on production, `apiversion` 200 | [`gopher-backend-api!525`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/525) · branch `feat/g40-11-card-verification` · target `production` · squash **no** · delete source **no** |
+| Requester app — card form + native sheet + code step | **MERGED into mobile `production` 2026-09-08 (merge `7f39edca`, owner's "Proceed"), device-tested on Android; ships in the NEXT STORE BUILD — merged ≠ released** | [`gopher-mobile-requester-capacitorjs!287`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/287) · squash no · source kept · rebased on `313befd8d` (carries G40-38's !290 + !291) |
+| Prototypes — Request web, Connect, Request app prototype | **DEPLOYED 2026-09-08** — deploy `609fd81` → `origin/main`; content-verified on Pages AND TigerTech (`payOtpBoxes` ×2 in gopher-request.html, `addpayOtpBoxes` ×2 in gopher-connect.html); the three riders were HELD BACK per the owner ("exclude them") and are NOT live | [`docs/handoff/G40-11-prototype.patch`](G40-11-prototype.patch) is now history, not a to-do |
+| Saved-method tile — white bubble card, brand marks, Verified pill (2026-09-09) | **MERGED into mobile `production` 2026-09-09 13:0xZ on the owner's "Merge both MRs"** — merge commit `3dce3964`, pipeline green, source branch kept. ⚠️ **Merged ≠ released: it ships in the NEXT STORE BUILD.** | [`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293) · branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Backend — the `verified` flag the pill reads (2026-09-09) | **MERGED + LIVE 2026-09-09** — merge commit `1c5812b7`; all six CI jobs ran and passed (none skipped); EB version `code-pipeline-…-1c5812b7…` deployed, `Environment update completed successfully` 13:07:50Z, `apiversion` 200 on 9/9 probes | [`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch `feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no** · §3.4 |
+| Brand-artwork provenance pinned by checksum (2026-09-09) | **MERGED** — merge commit `e5cde3948`; every mark's SHA-256 asserted after comparison against the vendor's own copy, guard proven to fail on a 10-byte change. ⛔ **But NOT enforced in CI — no pipeline job runs jest** (§3.4 correction); fix in flight, §3.5. ⚠️ The four card-network PNGs are pinned for DRIFT only — their origin is unknown and that is open work, §3.4 | [`gopher-mobile-requester-capacitorjs!294`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294) · branch `G40-11-mark-provenance` · target `production` · squash **no** · delete source **no** |
+| Side-by-side (current vs proposed, all three surfaces) | **Published** | <https://claude.ai/code/artifact/000285b0-12e0-4f5e-a04b-72d9a790c403> (private artifact; the Request/Connect frames are rendered from the actual page code) |
+| Stripe Dashboard Radar rules | **Owner action — unverified** (Dashboard needs a login) | §6 |
+| 101 guides + Terms of Service | **LIVE on the site 2026-09-08** (same deploy; "Adding a card" in both 101s, "Payment Method Verification" in the ToS, verified on both hosts) · live gophergo.io Terms: handed to the **ToS session** by message (its file is in flight) | §7 |
+
+**0b · The 2026-09-09 merge, and a wrong diagnosis I have to withdraw.** Both MRs merged on the
+owner's "Merge both MRs". Backend `1c5812b7` is live; app `3dce3964` ships in the next store build.
+The deploy itself: `Environment update completed successfully` at **13:07:50Z**, version label
+carries the merge SHA, health back to **Ok/Green at 13:11:13Z** with no causes outstanding.
+
+⛔ **What I first wrote here was wrong, and the way it was wrong is the useful part.** Elastic
+Beanstalk went Degraded during the deploy. I checked the event log, found a Degraded 14 minutes
+earlier that also said *"below Auto Scaling group minimum size 2"*, concluded the condition
+pre-dated my deploy, and filed it as the known G40-447 scale-out issue. **Both halves were wrong**,
+and the G40-38 session caught it. Verified first-hand against the event log and the live ASG:
+
+| I claimed | Actually |
+|---|---|
+| the condition pre-dated the deploy (12:49:13Z) | that Degraded was the **drain from the previous deploy**, which completed 12:47:56Z — excess instance removed at 12:49:13Z — and it **cleared at 12:50:13Z**. The first `t2.xlarge` capacity message is **13:04:25Z**, 30 seconds *after* my own rolling batch launched. Different cause, same-looking text. |
+| this is G40-447, recommendation `MaxSize 1` | `aws:autoscaling:asg` already reads **MinSize 1 / MaxSize 1**. The "minimum size 2" in the health text is the **deploy-time temporary minimum** `RollingWithAdditionalBatch` sets while launching the extra instance — not the standing config. Nothing is misconfigured and no recommendation is outstanding. |
+
+**I matched on the wording of a symptom instead of reading what caused each one** — and two unrelated
+events produce near-identical Degraded text here. The conclusion happened to survive (the deploy was
+fine), which is exactly what makes it dangerous: a right answer reached through a broken chain reads
+as confirmation. See memory `a-correction-invalidates-the-whole-inference-chain`.
+
+**What is actually true**, re-derived: the Degraded was AWS having no `t2.xlarge` capacity in
+`us-east-1a` when *this* deploy's additional batch asked for one. It is a transient of this deploy,
+not a standing condition, and not an application fault. **Zero load-balancer 5xx across
+13:00–13:20Z** — and that zero is on a *proven probe*: `RequestCount` over the identical window and
+dimension returns 790 / 617 / 647 / 217 requests per 5-minute bucket, so the metric stream is live
+and the absence is real rather than a query that was never going to return anything.
+
+✅ **The 502 discrepancy is CLOSED, and the answer is zero user impact.** Two readings disagreed:
+G40-38 saw two 502s in the deploy window, and the ALB 5xx metrics showed none. Both were right, and
+they were measuring different layers. Queried the nginx access log directly — **1,464 request lines
+across 13:03–13:12Z, exactly two of them 502**:
+
+```
+13:06:38.192  i-0433df531b936d705  "GET / HTTP/1.1" 502 150 "-" "ELB-HealthChecker/2.0"
+13:06:42.201  i-0433df531b936d705  "GET / HTTP/1.1" 502 150 "-" "ELB-HealthChecker/2.0"
+```
+
+Both are **`ELB-HealthChecker/2.0`**, and both are on **`i-0433df531b936d705`** — the extra-batch
+instance added at 13:05:13Z, still booting its node upstream. The load balancer probed a starting
+instance, nginx answered 502, and the balancer correctly kept traffic off it until it passed. **No
+client request was ever routed there**, which is exactly why `HTTPCode_ELB_5XX_Count` and
+`HTTPCode_Target_5XX_Count` have no datapoints while `RequestCount` shows 790/617/647/217. **A
+failed health check is not a client 5xx.** Two rules fall out, both bigger than this deploy: read
+the **user agent and the log stream** before calling a deploy-window 502 an incident, and **never
+quote a 5xx count without naming the layer**, because instance nginx and the ALB metric legitimately
+disagree.
+
+⚠️ **The one thing still worth carrying forward, from G40-38.** Because `RollingWithAdditionalBatch`
+launches an extra instance, **every deploy runs two instances for roughly four minutes**, and that
+window *is* the socket.io scale-out condition from G40-447. With a single instance the alternative
+is downtime, so it is a deliberate trade rather than a defect — but if anyone ever debugs socket
+drops that correlate with a deploy, that is the mechanism.
+
+**0a · Deploy scope check (2026-09-08, `scripts/deploy.sh` dry run).** Besides this ticket's files,
+three committed-but-undeployed files from other sessions would ride along: `gopher-go-101.html`
+(+5, the G40-9 "if you have to back out" section), `gopher-request-101.html` (one sentence, G40-9
+"details can't be changed while you decide"), and `_prototypes/Go/gopher-go-prototype.html` (+38,
+G40-10 divergence pins). All three are additions relative to `origin/main` — riders, not reverts.
+Owner ruled "exclude them": the three files were held at their `origin/main` content in the working tree for an `--allow-dirty` deploy (the script has no exclude option), the diffstat was checked to carry only this ticket's six files, then pushed as `609fd81`; the working tree was restored to HEAD afterwards. **The G40-9 / G40-10 changes remain committed and undeployed — whoever deploys next carries them.**
+
+**Why it is blocked, in the owner's own terms:** a new UI screen (the billing block + the code step,
+on the app, Request web and Connect) needs his approval before it is applied, and the code step
+sends a real SMS so it needs a real handset. Both are his. The backend MR is safe to merge on its
+own and changes nothing for any installed build (§3).
+
+---
+
+## 1 · The owner's decisions (2026-07-02) — unchanged
+
+| # | Decision | Answer |
+|---|---|---|
+| 1 | Status (was parked pending Stripe Connect R&D) | **Unparked — build it.** |
+| 2 | Surfaces | Native Request app + Request web + Connect. **Deals out of scope.** |
+| 3 | OTP on card add | **Required on EVERY card add.** No skip. |
+| 4 | Dispute evidence | **Log every card-add verification event.** |
+| 5 | Prototype UI | *"Do not build UI in the prototype"* — **superseded by standing rule 12/12b (owner, 2026-08-11 / 09-01):** a completed ticket updates the front ends and the prototypes in the same pass. Built as a patch, applied on approval (rule: side-by-side first). |
+
+Required fields: Full Name · Card Number · Expiration · CVC · **Billing address (street, city,
+state, ZIP)**. OTP: 6 digits, to the **account** phone, **5-minute expiry, one resend**.
+
+---
+
+## 2 · What was actually true on 2026-09-08 (first-hand)
+
+**The card add never asked the issuer anything.** On the live Stripe account, the five most
+recent SetupIntents and the five most recent charges all show `billing_details` with every field
+`null`, `address_line1_check: null` and `address_postal_code_check: null`. `cvc_check` is `pass`
+only on the first charge after a card is added (Stripe keeps the CVC result from setup) and
+`null` after. `radar_options` is `{}` on every charge — no Radar session. Every charge is
+`risk_level: normal`.
+
+**Why:** the store build's card form (`src/component/cardComponent.js`) calls Stripe.js
+`createPaymentMethod({ type:'card', card, metadata:{ name } })` — the cardholder name goes into
+*metadata* as a nickname, not into `billing_details`, and no address is collected at all. The
+method is then handed to `PUT /users/attach/:pm`, which confirms a SetupIntent **with the
+customer** — so the card is saved at that moment — and attaches it.
+
+**The disputes this is for.** The last 15 disputes on the account (Sep 2025 → Jun 2026):
+
+| | |
+|---|---|
+| Reason `fraudulent` (Visa 10.4 / MC 4837 — card-absent fraud) | 13 of 15 |
+| Reason `product_not_received` | 2 of 15 |
+| Lost | 13 · Won 2 |
+| Evidence submitted | 5 of 15 (the two wins both had evidence; 8 had none at all) |
+| `evidence.billing_address` on file | 2 of 15 — and only because the owner typed it in |
+| Repeat disputers | 4 people account for 9 of the 15 |
+| Dispute fee | $15 each, on top of the reversal |
+
+**The G40-38 sheet did not change this.** The native PaymentSheet merged for G40-38
+(`!280`/`!284`, unreleased) creates the SetupIntent *with* the customer (saves on completion) and
+does not configure billing-details collection, so a card added through it would also carry no
+address.
+
+**Two facts that shaped the design:**
+
+- A PaymentMethod's `billing_details` can only be updated once it is attached to a customer — so
+  the name and address must be on the method **when the client creates it**; the server can refuse
+  a method that lacks them but cannot repair it.
+- A SetupIntent confirmed **without** a customer runs the same issuer checks (AVS, CVC) and Radar
+  screening, attaches nothing, and the method can be attached afterwards — the pattern Stripe
+  documents for Checkout setup mode without a customer. That is what makes "code before save"
+  possible.
+
+---
+
+## 3 · What was built
+
+### 3.1 Backend (`gopher-backend-api`, MR !525)
+
+Three endpoints, all behind `user_auth`, requester role only:
+
+| Endpoint | Does |
+|---|---|
+| `POST /users/payment_methods/verify/start` `{ payment_method \| setup_intent, set_default }` | Refuses a method without name + street + city + state + 5-digit ZIP (`422 billing_details_incomplete`, names the missing fields). **Card-form path:** confirms a customer-less SetupIntent so AVS + CVC + Radar run and nothing is saved; a decline is `402` with the `decline_code`, 3DS-required is `422 requires_action` (same stance as `/attach`). **Sheet path:** reads back the SetupIntent the sheet confirmed; refuses one that already has a customer. Writes the audit row, then texts a 6-digit code to the **account** phone (`users.telephone` — never a number in the request). Returns `{ verification_id, phone_masked, expires_in_seconds, resend_allowed, attempts_left }`. |
+| `POST …/verify/resend` `{ verification_id }` | Once. New code, new 5 minutes. `429 resend_limit` after that. |
+| `POST …/verify/confirm` `{ verification_id, code, set_default }` | Right code → `paymentMethods.attach` to the customer, default unless `set_default:false`, re-arms exhausted re-authorization exactly as `/attach` does (G40-402), row `outcome: saved`. Wrong code → `400 incorrect` with `attempts_left`; fifth wrong → `423 locked`, row `failed`. Expired → `410 expired` (`resend_allowed` says whether a resend still revives it). A closed row → `410 closed`. Another user's id → `404`. |
+
+Structured error payloads ride as `data` on the global error response (additive, only when a
+thrower sets `error.payload`).
+
+**The appversion gate (memory `server-guard-must-be-appversion-gated`).** `PUT /users/attach/:pm`
+now refuses callers with `appversion >= CARD_VERIFICATION_REQUIRED_FROM_VERSION` (env; **default
+43**) with `409 card_verification_required`. The store build sends `appversion: 42`
+(`.env.requestor.production`), and header-less callers are treated as legacy — both keep the old
+path, **logged with user_id + appversion**. Raise the env var to retire the exemption; delete the
+block to end it. ⚠️ **The build that ships this must be 43** (or the env var set to what it ships
+as) or the new client will be refused by its own server.
+
+`POST /users/payment_sheet/start` with `card_verification: true` creates the SetupIntent **without
+a customer** (`create_unattached_wallet_setup_intent`, same named types `card` / `cashapp` /
+`link`) and returns `setup_intent_id` + `card_verification: true`. The merged sheet code does not
+send the flag → byte-identical behaviour.
+
+**The audit table — `card_verification_events`** (model + `CREATE TABLE IF NOT EXISTS` on boot,
+like every table here). One row per attempt, **never deleted, never overwritten by a card edit or
+removal**:
+
+| Column group | Columns |
+|---|---|
+| Who / what | `user_id`, `stripe_customer_id`, `payment_method_id`, `setup_intent_id`, `entry_path` (`card_form` \| `payment_sheet`), `card_brand`, `card_last4`, `card_funding`, `card_country`, `billing_name`, `billing_postal_code` |
+| Issuer checks | `avs_line1_check`, `avs_postal_code_check`, `cvc_check`, `radar_risk_level` (**null until Stripe enables setup-attempt risk data** — §6), `stripe_error_code` |
+| Phone + code | `phone_masked` (`***-***-0111`), `phone_hash` (sha256 of digits), `otp_code_hash` (sha256 of token:code — the code is never stored), `otp_status` (`sent → resent → verified \| failed \| expired`), `otp_sent_at`, `otp_expires_at`, `otp_verified_at`, `otp_attempts`, `otp_resends` |
+| Session | `ip_address` (first X-Forwarded-For hop — `trust proxy` is off on this app), `user_agent`, `app_version`, `device_type` |
+| Outcome | `outcome` (`pending → saved \| declined \| failed \| expired`), `created_at`, `updated_at` |
+
+Retention: indefinite by design. Visa and Mastercard allow ~120 days from the **transaction**, and
+the transaction can be months after the add, so a time-boxed purge would delete the evidence
+exactly when it is needed. At today's volume this is kilobytes a month.
+
+Codes live in this table, not in `otps`, for the reason `recovery_attempts` gives: a card-add code
+must never satisfy a sign-in and vice versa.
+
+**Files:** `helpers/card_verification_policy.js` (pure rules) · `controllers/user/card_verification.js`
+· `models/card_verification_events.model.js` · `config/db.config.js` (DDL) · `controllers/user/index.js`
+(routes) · `controllers/user/payment.js` (gate, sheet flag, `rearm_exhausted_auth` export) ·
+`lib/payment.stripe.js` (5 appended helpers) · `index.js` (error `data` passthrough) ·
+`test/g40-11-card-verification.test.js`.
+
+**Tests:** 93 checks — the policy; the controller against raw-row stubs (production sets
+`query:{raw:true}`) with a Stripe stub that records every call so the suite asserts **attach is
+NOT called** until the code is right; decline / 3DS / resend-once / expiry / lockout / ownership /
+sheet path; the `/attach` gate; routes; every DDL column present in the model. Full suite 244/245 —
+the one failure is `admin-jwt-v8-contract`, identical on untouched `production` (the shared clone's
+stale `express-jwt`, memory `shared-clone-node-modules-is-stale`).
+
+### 3.2 Requester app (`gopher-mobile-requester-capacitorjs`, branch `G40-11-card-verification`)
+
+- **Card form** (`cardComponent.js` — the store build's screen, and the web / sheet-unavailable
+  fallback): new *NAME AND BILLING ADDRESS* block (name, street, apt optional, city, state, ZIP).
+  **Save is disabled** until the three Stripe elements report `complete` and the five fields pass
+  (AC1). `createPaymentMethod` carries `billing_details`. The form calls `verify/start`, swaps to
+  the code step, and the server attaches the card only on a confirmed code; the post-save
+  bookkeeping (summary refresh, default, confirmation screen) is unchanged. `PUT /attach` is gone
+  from this screen.
+- **Native sheet** (`paymentSheet.js`): asks for the customer-less SetupIntent and configures
+  `billingDetailsCollectionConfiguration { name:'always', address:'full', email:'never',
+  phone:'never' }`; `completed` returns `setup_intent_id`. `cardlist.js` and `summary.js` open
+  `SheetVerifyModal` after completion and run their existing "newest method becomes default" logic
+  only after the code. An older backend that ignores the flag → old behaviour.
+- **Code step** (`CardVerifyOtp.js`): six boxes mirroring sign-in (`css/otp.css`), auto-advance,
+  paste/autofill into box 1, 5:00 countdown from the server's `expires_in_seconds`, **Resend once**,
+  attempts-left, "Verify and save card", "Cancel — don't save this card". Terminal errors (locked,
+  closed, expired-with-no-resend) close the step and the user adds the card again.
+- **New:** `services/cardVerification.js` (+9 tests) · `CardVerifyOtp.js` · `SheetVerifyModal.js`.
+  `paymentSheet.test.js` gains 4 G40-11 cases. ⚠️ The 6 pre-existing G40-38 cases in that file fail
+  in this checkout **with the untouched service too** (CRA's `resetMocks` strips the factory mocks;
+  the sibling worktree cannot even load `setupTests.js`) — not a regression; the new cases re-install
+  their mocks in `beforeEach` so they do not depend on that setting.
+
+### 3.4 The saved-method tile, and the badge behind it (2026-09-09)
+
+The verification only means something if a person can see which of their cards actually took it.
+That is what this pair of MRs adds, and the redesign the owner asked for on 2026-09-09 rides with
+it because it is the same surface.
+
+**Backend — the `verified` flag** ([`gopher-backend-api!538`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/538) · branch
+`feat/g40-11-card-tiles` · target `production` · squash **no** · delete source **no**).
+`list_requestor_payment_methods_v2` joins the ids it is about to return against
+`card_verification_events` — this user, `outcome='saved'`, one query for the whole list — and
+stamps `verified` on each normalised row. Stripe holds no record of the G40-11 check, so without
+this the client would have to guess; a badge that is always on is worse than no badge, because it
+tells someone their card passed a check it never took. The lookup is wrapped and logged rather
+than fatal: if the table is missing or the query fails, every row returns `verified:false` and the
+screen still renders. **18 checks** (`test/g40-11-verified-flag.test.js`) — scoped to the caller,
+to `saved` only (pending / failed / declined / expired earn nothing), and to the ids in this list;
+another user's row never leaks across; the failed-lookup path returns the full list with nothing
+flagged.
+
+**App — the tile** ([`gopher-mobile-requester-capacitorjs!293`](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/293)
+· branch `G40-11-card-tiles` · target `production` · squash **no** · delete source **no**).
+The old tile was a navy-to-green gradient with white type. Style guide §3.4 lists white on
+Shamrock at 2.0:1 as a **FAIL** — *"not a style preference, an accessibility requirement"* — and
+the last four sat on the green half of that gradient; and five saved methods rendered as five
+identical green rectangles. The replacement is a white bubble card (the owner picked the
+elevation) that answers three questions before a word is read: **which method** (the brand mark,
+full size, top left), **is it usable** (the spine down the left edge, Shamrock healthy / Lava
+declined), **is it trusted** (the Verified pill). All type is Midnight Blue on white, 15.6:1.
+The list screen also loses its two centred headings: "Default Payment Method" now duplicates the
+tile's Default pill, and "Available for use" labelled an empty list whenever only one card was
+saved.
+
+⚠️ **Three logo bugs are fixed here, and all three shipped a tile that looked finished.** Worth
+carrying, because the next person to add a mark will hit them again:
+
+| Symptom | Cause | Rule that now holds |
+|---|---|---|
+| Google Pay drew **nothing** | its file declares no `width`/`height`, so `width:auto + max-height` had nothing to scale from | every mark carries an explicit width AND height |
+| Google Pay drew **1.85x smaller** than every other logo | its file is a white pill with the artwork inset — the ink fills **54%** of the file's height | size by INK, not by box: `boxHeight = inkHeight / fills` (`markBox`) |
+| Cash App Pay and Link drew as **an empty space and a lone badge** | the shipped files were the REVERSED (white) variants, and the tile is white | `src` is the light-ground file, `srcOnDark` the other one |
+
+The ink fractions are **measured, not assumed** — each file rendered on white at 400px and scanned
+for the bounding box of every pixel darker than the ground. `markBleed` then pulls Google Pay's
+taller box back into the row as a negative margin, so a mixed list keeps one tile height:
+**verified in a browser at 390px, seven tiles, every one 178px, no broken images.**
+
+**Assets added** to `public/assets/marks/`: `cash-app-pay-on-light.svg`, `link-on-light.svg`,
+`gopher-peek.svg` (the owner's `GopherLogo-Hero-Peek-RGB.svg` — the logo, never the wordmark) and
+`powered-by-stripe.svg`.
+
+⚠️ **Provenance, because "don't alter the mark" is a licence term.** All four marks are third-party
+trademarks used unaltered, and a replacement file has to name its source. `link-on-light.svg` is
+**byte-identical (shasum)** to Stripe's own iOS SDK asset
+`StripePaymentSheet.xcassets/Link/link_logo.imageset/Light.svg`, and the reversed `link.svg`
+matches `Dark.svg` the same way. ⚠️ **RETRACTION, same day.** This section first said the Cash App artwork *"cannot be re-verified
+against the source today"*, because the Pay Kit path
+`cash-images-f.squarecdn.com/cash-app-pay-kit/…` answers 403. **That was wrong, and the fix came
+from the G40-38 session:** developers.cash.app actually links
+`static.afterpaycdn.com/en-US/integration/logo/lockup/cashapppay-color-{black,white}-32.svg`, which
+answers 200. Both Cash App files are **byte-identical** to those, re-fetched and compared
+2026-09-09. Only the squarecdn path is dead. *A 403 from one path is not "unverifiable" — it is one
+path.* The other two marks are G40-38's originals: Apple's `Apple_Pay_Mark_RGB_041619.svg` and
+Google's `google-pay-mark_800.svg`.
+
+⛔ **CORRECTION — I claimed CI enforces this, and it does not.** I wrote "a swapped file fails CI",
+and told the owner "the pipeline fails until they update the hash". **Both are false.** The G40-38
+session caught it; verified here against `.gitlab-ci.yml` on merged `production` (`e5cde3948`): the
+pipeline has **11 jobs** — `lint-job` (eslint + prettier) and ten contract jobs, each running one
+`node scripts/assert-*.js`. **No job runs jest.** There is no `include:`, no other CI config in the
+repo, and no `scripts/` file invokes jest indirectly. So **today a swapped mark passes all 11 jobs.**
+
+⚠️ **The gap is wider than my claim.** *Every* jest suite in this repo is unenforced — all six under
+`src/services/`, including G40-11's own `cardVerification.test.js` and G40-38's
+`paymentSheet.test.js`. Every "N tests green" reported on this repo, mine and other sessions', was a
+**local run**. The tests are real and they pass; nothing was checking that they keep passing.
+
+**What is actually true:** the pins themselves are correct — all four SHA-256s recomputed from
+`origin/production` match — and `paymentMethodLogos.test.js` does catch a swapped mark. It just only
+fires when a human runs the suite. **Provenance is documented and locally testable, not enforced.**
+
+**Why this one mattered more than an ordinary error:** "CI enforces this" is precisely the kind of
+assurance that stops the next person checking. It converts an open risk into a closed one in
+everybody's head without changing anything in the world.
+
+**Fix built and proven, awaiting the owner:**
+[!295](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/295) adds one
+`services-tests` job (`npm ci` + `npm run test:services`, contract stage, `needs: []`). Whole suite
+rather than a provenance-only guard, because the gap is that **no jest runs at all** — a narrow
+guard would leave the payment-sheet and card-verification suites as unenforced as they are now.
+
+**Proven in CI in both directions, not locally**, precisely because the error being corrected was
+asserting enforcement without checking it:
+
+| | `services-tests` |
+|---|---|
+| branch unmodified | **success**, 1m18s, all 12 jobs green |
+| same branch, one mark altered by 46 bytes | **failed**, 1m20s |
+
+…and it failed for the *right* reason — the job log names the assertion and prints both hashes
+(`Expected 8445bbeb… / Received 159152db…`, `1 failed, 141 passed`). The negative-control branch has
+been deleted; it survives only as that evidence.
+
+**The image is `node:22` on purpose, and it makes the job worth more than the tests it runs**
+(G40-38's contribution). Every other job is `node:24`; the reason to differ is not jest, which runs
+on both — it is the `npm ci`. **Appflow's stack is Node 22.22.2 / npm 10.9.7, and `node:24` bundles
+npm 11** (verified: `node v24.18.0` ships `npm 11.16.0`). npm 11 installs lockfiles npm 10.9.7
+**rejects**, which is what killed Appflow build #257 — *"Missing: canvas@2.11.2 from lock file"*,
+twenty minutes into a store build. On `node:24` that desync passes CI and surfaces later as a failed
+store build; on `node:22` the same `npm ci` reproduces the runner's check and the MR goes red. So
+one job enforces six suites **and** closes the lockfile trap.
+
+Recorded from the CI log, because the script now echoes the versions on every run rather than
+relying on the comment: **`v22.23.2` / npm `10.9.8`**, 1,833 packages installed in 40s, **142 tests /
+6 suites passed**, job 1m21s, pipeline green across 13 jobs. ⚠️ Precise rather than rounded: that is
+npm **10.9.8**, one patch ahead of Appflow's 10.9.7 — same major.minor so the same lockfile check,
+but not literally identical. `package.json` declares **no `engines`**, so the image tag is the only
+thing pinning it; **if Appflow's stack moves, move this with it.**
+
+⚠️ **This is a decision, not a review:** it changes what the pipeline gates for **every** session, so
+a broken services test would block merges repo-wide. Green today (142/142), 1m21s, `needs: []` so it
+cannot cascade, removable in one line.
+
+**The merge itself stands** ([!294](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/294),
+merge commit `e5cde3948`, not squashed, source branch kept; 142 tests green locally on merged
+`production`). Every mark carries its SHA-256 in `paymentMethodLogos.test.js`, taken after comparing
+it against the vendor's own copy. The guard was proven before being trusted: ten bytes appended to one mark fails the suite.
+⚠️ **The four card-network PNGs are pinned on a weaker claim, and the test says so:** they predate
+this work and nobody recorded their source, so the hash catches silent drift but does **not**
+establish that they are the networks' own unaltered artwork.
+
+✅ **CLOSED 2026-09-09 — the owner reviewed a sandbox rendered from the real component and said
+build it.** Merge `60591a4e3`
+([!300](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/300)), not
+squashed, source branch kept.
+
+**All four unknown-origin PNGs are gone from the repo** (`git ls-tree` on `production` returns
+zero), replaced by **seven** marks byte-identical to Stripe's own SDK —
+`StripePaymentsUI.xcassets/CardsNoPadding/stp_card_unpadded_<brand>` — verified per file with
+`diff`, not by eye. Same basis as the Link mark. They are pinned on **provenance** now rather than
+drift, and the pins were proven to fire by altering one file.
+
+⭐ **Diners Club, JCB and UnionPay drew NOTHING before this** — `logoForTile` returned null and those
+tiles rendered no mark at all.
+
+⭐ **The real defect was underneath, and it is the part worth carrying: TWO PLACES DECIDED WHICH LOGO
+TO SHOW.** `CardPaymentMethod.jsx` (the summary and dispute screens) kept its own brand→filename
+mapping, so the same network could render one way on the tile and another at checkout. Both read the
+same `BRAND_MARKS` now. That screen also forced every logo into `height="20" width="40"` — aspect
+**2.0** — while the files ranged 1.45–1.60, so **every brand was stretched**, unnoticed because they
+were all stretched by different amounts. It sizes by the mark's real aspect now.
+
+⚠️ **An existing assertion changed and was REWRITTEN, not deleted.** The suite used JCB as its
+example of *a brand we have no artwork for*. That became false and failed correctly. The replacement
+asserts the three formerly-blank brands **do** draw, and that a genuinely unknown brand (`elo`,
+`cartes_bancaires`) still draws nothing.
+
+**Verified in CI, not just locally:** 159 services tests (was 142), both contract guards, eslint and
+prettier.
+
+**Correction to the history, raised by the G40-38 session (2026-09-09).** The reversed white files
+were **not a mistake when they were added** on 2026-09-08. The tile was then a navy-to-green
+gradient, where white ink reads and the *light* files would have been the invisible ones. They
+became wrong only when the owner picked the white bubble a day later. So `src` / `srcOnDark` is a
+**pairing, not a fix** — keep both, and point each surface at the one matching its ground.
+
+✅ **DEPLOYED 2026-09-09** — `60633fa` → `origin/main`, publishing to **both** hosts (GitHub Pages
+and the TigerTech FTPS workflow). Ten files: this ticket's seven (the corrected
+`gopher-pay-store.js` plus six brand marks, none of which had ever been live) and **three riders the
+owner confirmed are new Gopher Marketplace items and should ship** — the Go prototype (+38), the Go
+101 (+5) and one line in the Request 101. ⚠️ Those same three were **held back** on 2026-09-08; that
+ruling did **not** carry, and the owner was asked again rather than assumed. Each was checked
+against the live page before pushing to confirm it **adds** rather than reverts (both 101s are
+larger than what is live), because the dry-run diffstat displays riders and reverts identically.
+
+**CONTENT-VERIFIED ON BOTH HOSTS**, not by status code and not by SHA:
+
+| | GitHub Pages | TigerTech `/preview/` |
+|---|---|---|
+| `cash-app-pay-on-light.svg` | 200, **8,746 b, 11 dark fills** | 200, **8,746 b** |
+| `link-on-light.svg` | 200, 1,457 b, 7 dark / 0 white | — |
+| `gopher-pay-store.js` | 200, `MARK_IMG` present, **3** `on-light` refs | 200, 25,996 b |
+| `gopher-request-101.html` (rider) | — | 200, **78,954 b — matches the local file exactly** |
+
+⭐ **The deploy's path rewrite is confirmed live**: the served JS contains
+`../../assets/marks/`, not `../../Final/assets/marks/`. From a prototype page at
+`/preview/_prototypes/Request/…` that resolves to `/preview/assets/marks/…`, which returns 200. So
+the marks resolve rather than merely existing — the failure mode G40-38 warned about is closed.
+
+⚠️ **A probe trap worth recording: `gophergo.io` answers 200 for URLs that do not exist.** It is the
+WordPress marketing site and serves a catch-all — `index.html` and `gopher-request-101.html` both
+returned ~136 KB of the *same* page. **A 200 there proves nothing.** The real mirror is
+`gophergo.io.customers.tigertech.net/preview/`, where the byte counts match the source files.
+
+**The web mirror was corrected before it could ship (commit `d598460`).** The same four files
+are mirrored at `Final/assets/marks/` and drawn by `_prototypes/Request/gopher-pay-store.js`, whose
+`.gp-row` and `.gp-wbtn` are `background:#fff` — so Cash App Pay and Link would have been invisible
+there as well, and Google Pay undersized. **It was never a live defect:** curl on the deployed
+prototype JS finds no `MARK_IMG` and every `marks/` path 404s on Pages, so the marks are
+committed-but-undeployed. Verified by calling the real `window.GopherPay.brandMark` against the
+real files at 390px — four marks, none broken, every row 54px. ⚠️ **Not deployed. Whoever runs the
+next deploy carries it; it needs no deploy of its own.**
+
+**Back-compat:** the payout screens pass `cardName` / `cardlastdigit` with no normalised row and
+still work, the logo falling back to the brand string. `payoutlist.js` passes a **boolean** as
+`onClickCard`, which the old tile called — and threw on; that tile was inert, and still is,
+without the exception.
+
+**Tests:** `src/services/paymentMethodLogos.test.js`, 32 assertions anchored to the real files on
+disk. Services suite **129 passed**.
+
+**See it:** [`G40-11-tile-built.html`](G40-11-tile-built.html) — seven cases at 390px, rendered
+from `cardView.js` itself rather than mocked up, with the assets inlined.
+
+**Risk:** the app side is visual only — no network call, no payment path, no state change; the
+worst case is a tile that looks wrong, seen immediately, and it reverts by reverting one commit.
+The backend side adds one indexed read per list call and cannot fail the response. The Verified
+pill needs both MRs; with only the app merged the pill never shows and nothing else changes.
+
+### 3.3 Prototypes (Code repo — `docs/handoff/G40-11-prototype.patch`, apply on approval)
+
+Same change on all three, mirroring the app: billing block under the CVC row, Save/Add disabled
+until the five fields are valid, and a code panel (six boxes, 5:00 countdown, Resend once,
+Cancel) that replaces the form after Save and adds the card only on "Verify and save card". Demo:
+any six digits verify. The saved entry carries `billing` so a later edit pre-fills it.
+
+- `Final/gopher-request.html` — `ensureModal()` modal (`payAddr1/payCity/payState/payZip`, `#payOtp`)
+- `Final/gopher-connect.html` — `openAddPaymentModal` (`addpayAddr1/…`, `#addpayOtp`)
+- `_prototypes/Request/gopher-pay-store.js` — `openAddModal` (`gp-addr1/…`, `drawOtp()`)
+
+Every inline `<script>` parse-checks clean; the flow was driven in the browser (form → disabled
+Save → filled → code panel). ⚠️ One trap, fixed in the patch: the modal's children are
+`display:flex`, which beats the UA's `[hidden]` rule — `.pay-modal-card [hidden]` /
+`.addpay-modal [hidden]` are pinned to `display:none !important`.
+
+**Not edited:** `Final/gopher-deals.html` (Deals is out of scope, decision 2) and `_prototypes/Go/`
+(no worker-side card add). There is no Connect app prototype (rule 12b known bound).
+
+---
+
+## 4 · Risk / reward — for the merge decision
+
+**Backend MR !525**
+
+- **Solves:** every new card carries a name and an AVS-checked address, is phone-verified before it
+  exists on the customer, and leaves an evidence row — the day the next Requester build ships.
+- **Risk:** low. No installed build changes behaviour (§3.1 gate). New table only. New routes only.
+  If wrong: revert the merge; one pipeline (~3 min). The audit table stays, inert.
+- **Reward:** the dispute pack for every future chargeback starts with AVS result + phone
+  verification + device/IP; Radar's postal-code and CVC block rules (§6) finally have something to
+  act on.
+
+**App MR (Draft)**
+
+- **Risk:** a UI the owner has not approved, and a flow that has not touched a device. Held as
+  Draft so it cannot be merged by accident. Store-gated regardless (no OTA).
+- **Reward:** the actual user-facing change. Nothing in the backend does anything for real users
+  until this ships.
+
+**One product consequence to state plainly:** adding a card gets longer — five more fields and a
+text message. That is the owner's decision 3 ("required on every card add, no skip"), reaffirmed
+in the 2026-09-08 brief.
+
+---
+
+## 4b · ⛔ THE GATE HAS A DOOR BESIDE IT — `POST /users/add_card` (found 2026-09-09)
+
+**Setting `CARD_VERIFICATION_REQUIRED_FROM_VERSION` does not close this, and that is the point of
+recording it before the gate is switched on.** The floor is checked in exactly one place —
+`attach_payment_method_to_customer` (`controllers/user/payment.js:1585`, the `/attach` route). A
+**second live route saves cards and never consults it**:
+
+```
+router.post('/add_card',
+  middleware.user_auth,
+  middleware.require_email_verified({ allowUnverified: true }),
+  payment.add_card_and_attach_to_customer)      // controllers/user/index.js:201
+```
+
+`add_card_and_attach_to_customer` (line 1476) calls `create_payment_method` then
+`attach_payment_method` directly. **No `caller_must_verify`, no billing-details check, no audit
+row.** Any signed-in requester can save a card through it at any appversion, gate on or off.
+
+⚠️ **And it is worse than a bypass — it takes the RAW PAN.** The body is
+`{ card_no, card_exp_month, card_exp_year, card_cvc }`, so the full card number and CVC transit our
+API and are handled server-side. The whole modern path exists to avoid that: the Stripe SDK and the
+payment sheet tokenise on the device, and the number never reaches our backend. This route reverses
+that, which is a **PCI scope** question separate from, and larger than, the verification gap.
+
+**Sized, not assumed — it is DORMANT, not leaking.** CloudWatch Logs Insights on
+`/aws/elasticbeanstalk/Gopher-Production/var/log/nginx/access.log`, 7 days: **zero** requests
+matching `/add_card` across **1,287,981 scanned lines**. The probe is proven — the identical filter
+shape on `payment_methods` returns **21,402 hits** over 1,382,396 lines, so the zero is a real
+absence and not a query that could never match. No caller in the requester app (its `payout.json`
+`"add_card"` is a client-side *navigation* path, not this endpoint) and none in any Gopher-app
+checkout.
+
+⛔ **THIS IS NOT A NEW DISCOVERY — WE ALREADY WROTE IT DOWN, ON THE LIVE SITE, AND ROUTED AROUND
+IT.** `Final/gopher-deals.html` line 8049, in the payment-methods block (G40-38's Deals card work,
+MR !453), verbatim:
+
+> *"⛔ NOT the /users/add_card endpoint the mobile apps use. That one takes the raw number, expiry
+> and CVC in the request body and builds the PaymentMethod server-side; **the apps are inside PCI
+> scope because of it**. The same form on a public web page would pull gophergo.io in with them —
+> **SAQ D instead of SAQ A** — for one card box on a merchant portal."*
+
+That is the only `add_card` string anywhere in the web surface, and it exists to say *do not use
+this*. So the conclusion was reached months ago, the web was deliberately built around it, and the
+route was never closed.
+
+**RECOMMENDATION: RETIRE IT, don't gate it** — and the evidence supports retiring rather than merely
+preferring it.
+
+- **It is the ONLY raw-PAN handler left.** `grep card_no|card_cvc|card_number` across
+  `controllers/`, `lib/`, `helpers/`, `middleware/` returns this one route (the only other hit is
+  the string `'invalid_card_number'`, an error-code comparison). So retiring it removes raw card
+  numbers from the API **entirely**, rather than shaving one of several.
+- **Two modern replacements are already in production:** `POST /users/cards/setup_intent`
+  (`controllers/user/index.js:192` — the browser confirms straight to Stripe, MR !453) and the
+  native payment sheet from G40-38.
+- **Gating by appversion is strictly worse here.** It leaves raw-PAN handling in the API for old
+  builds, and the PCI question does not care which version sent the card.
+
+**Safe order, because this is production and payments** (G40-38's shape, and it is the right one):
+**(1)** make it refuse — `410` plus a log line naming caller, appversion and user id. Fully
+reversible, and at zero traffic the blast radius is zero. **(2)** watch a week. **(3)** delete the
+handler.
+
+⚠️ **State the coverage limit when proposing it:** the static search covers the repos on this disk,
+so an unknown consumer would have to be something that produced **no** request in seven days of
+nginx. **Step (1) is exactly what catches that before the delete** — that is why it is three steps
+and not one.
+
+⚠️ **THE DEPLOY FAILED ONCE, AND THE CAUSE IS WORTH KEEPING — IT WAS A TOKEN RACE, NOT A BROKEN
+CONNECTION.** `gopher-prod-codepipeline`'s **Source** stage failed at **15:06:43.8Z**, seconds after
+the merge, with *"[GitLab] Unable to use Connection … Ensure your source provider account has access
+to the repository"*. That reads like a revoked authorisation, and it is not.
+
+**What the GitLab side actually showed** (owner opened `/-/user_settings/applications`): the **AWS
+Connector for GitLab** grant is present, carries `read_repository` / `write_repository`, and is
+stamped **`Authorized At 2026-09-09 15:06:42 UTC`** — **1.8 seconds BEFORE the failure.** So the
+token was being refreshed at the moment the Source action ran, and the action took the old one.
+
+**Resolution: `Release change` on the pipeline. Source succeeded on the first retry, no
+configuration touched.** Nothing was revoked, no new connection was created, nothing repointed.
+
+⛔ **THE TRAP, FOR NEXT TIME.** The error message names *repository access*, which sends you to
+GitLab permissions and to the connection's status — and `aws codeconnections get-connection` reports
+**AVAILABLE**, which looks like a contradiction and is not: AVAILABLE describes the handshake
+record, not a live repo read. **Both signals point away from the real cause.** Check the grant's
+`Authorized At` on
+`https://gitlab.com/-/user_settings/applications` first: if it is within seconds of the failure, it
+is a refresh race and a plain re-run fixes it. ⚠️ **Do NOT revoke that grant to "force a refresh"** —
+five AWS connections hang off it, so revoking turns one stuck pipeline into five.
+
+**Blast radius while it was down** (real, and worth knowing for next time): the same connection
+`5edf4215…` backs **`gopher-prod-admin-codepipeline`** for `gophergo/gopher-admin-frontend` on
+`production`. Backend *and* admin-frontend deploys were both dead, silently — a green MR and no
+deploy.
+
+---
+
+✅ **DEPLOYED AND SETTLED 2026-09-09.** EB version label
+`code-pipeline-…-8ce3d0f43ef9d8725f77f7d281991affbbba3b90` (deployment 550); health back to
+**Ok / Green with no causes outstanding**; API 200 on every probe throughout. **Zero load-balancer
+5xx** across the deploy window, on a *proven* probe — `RequestCount` over the identical window and
+dimension returns 931 / 59, so the metric stream is live and the absence is real. Health passed
+through Red on the way, first *"incorrect application version on 1 of 2 instances"* then *"no data
+from 1 of 2"* — both the `RollingWithAdditionalBatch` extra instance being deployed and torn down,
+the four-minute window described above, not a fault. **Verified by CONTENT, not by SHA alone:**
+`git show 8ce3d0f4:controllers/user/payment.js` carries the retirement markers.
+
+**Route reachability confirmed by contrast:** `POST /users/add_card` answers **440** (sign-in
+required — `user_auth` runs before the handler, which is correct) while a nonsense sibling path
+answers **404**. So the route is registered and reachable, exactly as intended: 410 for an
+authenticated caller, never 404.
+
+⚠️ **HONEST LIMIT — the live 410 is NOT directly observed.** Reaching the handler requires an
+authenticated request, and nothing calls this endpoint (that is the whole point). So the refusal is
+proven by **24 unit tests plus two negative controls plus the CI unit-tests job**, not by a
+production observation. Stated plainly rather than implied: *deployed and reachable* is verified;
+*returns 410 in production* is inferred from the tests. **The first real caller, if one exists, is
+what will prove it — and that is exactly what step 2 is watching for.**
+
+---
+
+**What the merge itself contains — done and green, waiting only on the deploy** (merged on the
+owner's "Do step 1", 2026-09-09).
+[`gopher-backend-api!540`](https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/540),
+merge commit `8ce3d0f4`, target `production`, squash **no**, source kept. All six CI jobs green
+including the full unit suite. The route now returns **410** with
+`{ code: 'add_card_retired' }` and logs the caller by user id, apptype, appversion, os, user agent
+and IP. **The route stays registered on purpose:** 410 says *this is gone*, 404 would be
+indistinguishable from a typo.
+
+⚠️ **An existing guard caught a real consequence, and it was NOT silenced.**
+`g40-402-rearm-on-card-fix` asserted that **all three** card-fix endpoints re-arm exhausted
+authorizations before `res.send`. A retired endpoint cannot fix a card, so it must **not** re-arm —
+doing so would zero a live order's retry budget and expiry on a call that saved nothing, which is
+*worse* than the bug G40-402 exists to fix. The list was narrowed to the two live endpoints **with
+the reason written into the test**, and the retired one is now asserted **as retired** (no re-arm,
+410, never reaches Stripe). **AC6's loop is unaffected:** a requester updating their card lands on
+`attach_payment_method_to_customer` or `set_default_payment_methods`, and both still re-arm — both
+re-proven by deleting each call in turn and watching the guard fail.
+
+**Tests:** `test/g40-11-add-card-retired.test.js`, 24 checks — refuses with a branchable code, never
+reaches Stripe or the DB, names the caller, and **the PAN, CVC and expiry are asserted NOT logged**
+(a retirement that logs the card number would be worse than the endpoint it replaces). Two negative
+controls prove the suite can fail: logging the PAN fires 2 checks, returning success fires 5.
+
+**→ STEP 2 IS NOW OPEN AND IS THE OWNER'S TO CLOSE: watch for a week.** Search CloudWatch for
+`RETIRED ENDPOINT CALLED` in `/aws/elasticbeanstalk/Gopher-Production/var/log/web.stdout.log`. **A
+hit is not a failure — it is the point of the step**, and it names who to migrate. Silence for a
+week clears step 3, deleting the handler and the route.
+
+### ✅ STEP 2 INTERIM — measured 2026-09-13, CLEAN at 4 of 7 days
+
+CloudWatch Insights, 8-day window, **3,434,292 lines scanned**. (AWS session was expired and renewed
+first — an expired session returns *empty results rather than an error*, so this was run only after
+`sts get-caller-identity` came back clean.)
+
+| Signal | Count |
+|---|---|
+| `RETIRED ENDPOINT CALLED` | **0** |
+| any line matching `/add_card/` | **11** — all accounted for, below |
+
+⚠️ **The 11 were chased rather than waved through, and that is the point of recording this.** A raw
+zero on the first signal beside a non-zero on the second is exactly where a watch gets called clear
+too early. **All 11 fall in 2026-09-09 15:07–16:06Z** — the retirement's own deployment-day
+verification probes — and one of them is literally `add_card_nonexistent`, the documented negative
+control that proved a nonsense sibling answers 404 while the real route answers 440. **No real
+caller, and nothing whatsoever in the ~4 days since.**
+
+That they logged no `RETIRED ENDPOINT CALLED` is itself consistent: those probes were
+unauthenticated, `user_auth` runs before the handler, so the handler never executed and never logged.
+
+**Status: on track, NOT yet clear.** Watch opened 2026-09-09; **it clears 2026-09-16**, after which
+step 3 deletes the handler and the route. Re-run this query on that date before deleting anything.
+
+### ✅ STEP 2 CLEAR — full 7-day window measured, 2026-09-16
+
+Re-ran across the whole watch, **2026-09-09 00:00Z → 2026-09-16, 2,412,784 lines scanned**: **0**
+`RETIRED ENDPOINT CALLED`. ⚠️ **Probe proven before trusting the zero** — a same-day check found the
+7-day total lower than the earlier 8-day figure above, so rather than assume the log group was
+healthy the identical filter shape (the surrounding G40-11 log lines) was run day-by-day across the
+window: **15–23 hits every single day, including today.** The pipe is live; the zero is real.
+
+**Step 3 is now unblocked** — delete the handler and the route, per `docs/handoff/G40-11-step2-watch.md`.
+Not done here; deleting a live (if unused) production route is the owner's or the desk's call, not a
+doc-update action.
+
+---
+
+## 5 · Honest limits — what this does and does not stop
+
+The fraud pattern in the dispute list is **card-absent fraud on an account the fraudster controls**
+(stolen card, own phone). What each layer does against it:
+
+| Layer | Stops | Does not stop |
+|---|---|---|
+| Billing address + AVS | a stolen number without the billing ZIP (the common case for skimmed / breached numbers) — **only if a Radar rule blocks the failed check** (§6) | a fraudster who has the full statement address |
+| CVC at setup | numbers without the physical card | a physically stolen card |
+| SMS code to the account phone | account takeover adding a card to someone else's account; it also puts *"the account holder confirmed by phone"* into the dispute pack | the account owner themself using a stolen card — they own the phone |
+| Audit row | nothing by itself — it wins **disputes**, it does not prevent them | — |
+
+So the honest expectation: fewer successful adds of skimmed numbers, and a dispute pack that can
+actually be argued. Not a stop to the repeat-disputer pattern by itself — that is §6's third item.
+
+---
+
+## 6 · Additional fraud measures (the owner's side question) — owner actions and follow-ups
+
+Verified against Stripe's docs on 2026-09-08; the Dashboard state itself could not be read (login
+page in the pane — **pause and wait**, not guessed).
+
+1. **Radar rules — Dashboard → Radar → Rules** (owner). These rules **also apply to attaching a card
+   to a customer** — with this ticket they block at the code step, before anything is saved. Without
+   an address collected they had nothing to check, which is why they were pointless until now.
+
+   ✅ **DASHBOARD STATE READ 2026-09-13** (owner pasted both tabs; this session cannot read Radar —
+   it is not exposed in Stripe's API). **The rules already exist as Stripe built-ins — this is a
+   toggle, not an authoring job.** Transaction rules, 8 total:
+
+   | Rule | Status |
+   |---|---|
+   | Block if payment matches default Stripe block lists | **Enabled** |
+   | **Block if CVC verification fails based on risk score** | ✅ **ALREADY ENABLED** (Nov 5 2024) |
+   | **Block if Postal code verification fails based on risk score** | ⬜ **Disabled — this is the ask** |
+   | Block if Postal code verification fails (plain) | ⬜ Disabled — blunt fallback |
+   | Block if CVC verification fails (plain) | ⬜ Disabled — superseded by the risk-score one |
+   | Block if `:risk_level: = 'highest'` | ⬜ Disabled |
+   | Review if `:risk_level: = 'elevated'` | ⬜ Disabled |
+   | Request 3DS if 3D Secure is supported | ⬜ Disabled (see item 5) |
+
+   ⛔ **CORRECTION: this doc has been asking the owner to enable the CVC rule, and it has been on
+   since 2024-11-05** — nearly a year before this ticket existed. Only the **postal-code** half was
+   ever outstanding. Half of a recommendation being already-done is exactly the kind of thing that
+   makes the other half look done too.
+
+   ✅ **DONE 2026-09-13 — the owner enabled it.** Together with the CVC rule already on since 2024,
+   both issuer checks now have a blocking rule behind them. ⚠️ **It has never been exercised against
+   real data** — Stripe's backtest matched `$0.00` precisely because no card on this account has ever
+   carried an address, so its false-positive rate here is genuinely unknown until the builds ship and
+   real addresses start arriving. **Watch the first week** (§8a). Reassurance, not proof: the rule is
+   the risk-weighted variant, and the owner's own card passed the ZIP check (it was the *street* check
+   that failed, and no street rule exists).
+
+   **The action was: enable "Block if Postal code verification fails based on risk score."**
+   Pick the risk-score variant, not the plain one — it matches the CVC rule already enabled, so the
+   posture stays consistent, and it carries fewer false positives. ⛔ **Never enable a street/line1
+   rule** (§7d — the owner's own correct address failed the street check).
+
+   ⚠️ **Caveat carried from item 2:** the risk-weighted variant depends on Radar scoring the attempt,
+   and Radar does not score SetupIntent attempts by default. If item 2 is not done first, the rule
+   may not fire at card-add. The plain postal rule would fire regardless but is blunter. **Do item 2
+   and item 1 together.**
+
+   ⚠️ **No repeat-disputer rule exists** — none of the 8 transaction rules references disputes. That
+   is now **correct and deliberate**: the owner ruled it out on 2026-09-13 (item 3 below), because
+   the disputes arrive in batches rather than sequentially and a history-based rule cannot catch
+   them. **Do not add one.**
+
+   ✅ **Stripe's own backtest on the postal rule, read from the Dashboard 2026-09-13:** `$0.00 total
+   matched`, *"No payments match this rule in this date range"* (Aug 14 – Sep 13, all screened
+   payment methods). **That zero is expected and is the evidence the rule is safe to enable** — no
+   card on this account has ever carried an address, so `address_postal_code_check` is null on every
+   charge (§2) and the rule has had nothing to match. Enabling it before the builds ship arms it with
+   zero blast radius; it starts mattering the moment addresses begin arriving.
+2. **Radar risk data on setup attempts** (owner → Stripe support). By default Radar does not return
+   a risk outcome for SetupIntent attempts; support enables it on request. `radar_risk_level` in
+   the audit table waits for it.
+
+   ✅ **REQUEST SENT 2026-09-13 by the owner.** ⚠️ **Until Stripe confirms, the state is unknown, not
+   done** — and it matters for item 1: the postal rule is the *risk-weighted* variant, so if Radar
+   still does not score setup attempts, that rule **may not fire at card-add** (it will still apply to
+   charges). **The observable that settles it is `radar_risk_level` in `card_verification_events`:
+   null on every row means scoring is still off; a value means Stripe enabled it.** That column has
+   never been read by anyone (§8 check 8), so this closes only when someone with DB access looks.
+3. ⛔ **Block repeat disputers — RULED OUT BY THE OWNER 2026-09-13. Do not build it.** This doc
+   previously called it *"the only item here that targets the pattern in the data"*. **That rested on
+   a misreading of the data, and the owner supplied the domain fact that corrects it.**
+
+   **Owner, 2026-09-13:** *"disputes come week to a month later and in batches typically, that's why
+   4 people of 9 (they submitted 2-4 each at once) nothing you can do about that with radar."*
+
+   **Why the recommendation was wrong.** "4 people account for 9 of the last 15 disputes" was read as
+   *repeat offenders over time* — someone disputes, comes back, pays again, disputes again. Radar's
+   prior-dispute rule blocks exactly that. But the real shape is **one person batch-filing 2–4
+   disputes at once**, weeks after the payments. At the moment each of those payments was screened,
+   the customer had **no prior dispute** — so the rule would have had nothing to match on, for any of
+   the nine. It cannot prevent a batch; it can only react after the first one lands, by which time
+   the whole batch is already filed.
+
+   **The reusable lesson:** a count of "N people produced M events" says nothing about whether the
+   events were *sequential*. Only sequence makes a history-based rule work, and the concentration
+   statistic looks identical either way. **Check the timing before recommending a rule that keys on
+   history.**
+4. **Radar Session** (code, small, follow-up). `stripe.createRadarSession()` on the client and
+   `radar_options.session` on `createPaymentMethod` gives Radar device signals at setup time;
+   `radar_options` is `{}` on every charge today. Not in this MR — it needs the Stripe.js call in
+   the card form and a plugin option check for the native sheet.
+5. **3DS on setup** (design question). Today a 3DS-required card is **refused** on the card form
+   (`422`, both old and new path). The native sheet handles 3DS itself. Adaptive 3DS on
+   SetupIntents shifts liability for authenticated cards — worth turning on once the sheet is the
+   main path.
+6. **Submit evidence every time** (process). 8 of 15 disputes had no evidence submitted; both wins
+   had it. The audit row plus the order's delivery log is the pack. Stripe Smart Disputes can
+   auto-assemble it.
+8. **Card scanning and native saved cards** (owner question, 2026-09-08, with a TestFlight screenshot
+   of the G40-38 sheet). Both come from the **native PaymentSheet**, not from the card form:
+   - *Scan card* is already there — the owner's screenshot shows Stripe's "📷 Scan card" link on
+     iOS. It is the Stripe iOS SDK's built-in camera scanner (no extra dependency, no config);
+     the Android SDK's sheet has the same scanner. The Stripe.js card form in the WebView cannot
+     scan and never will.
+   - *Saved cards from the OS* — iOS Keychain / Safari AutoFill and Android Autofill (Google's
+     saved cards): the sheet's card field is a native text field with the credit-card content
+     type, so the keyboard offers "AutoFill Card" from the phone's saved cards behind Face ID /
+     fingerprint. Again native-sheet only; a WKWebView form gets no card autofill.
+   - *Apple Pay / Google Pay* is the other meaning of "saved cards" — the wallet. Already on the
+     sheet when the device has a card in Wallet and the build carries the entitlement (the
+     screenshot shows Link but no Apple Pay button: either that TestFlight build predates the
+     entitlement merge, or the device has no card in Wallet — `canMakePayments` is false).
+   - *Link* ("Pay with Link", "Save my info for faster checkout with Link") is Stripe's own
+     saved-card wallet across merchants; it is on by owner decision (G40-38).
+   **Verified on the Samsung (Android 11, 2026-09-08 evening), G40-11 test build:** tapping *Card
+   number* in the sheet raised the phone's autofill service — Samsung Pass — offering "Add card
+   using camera" (this phone has no card saved in Samsung Pass; one that does gets a one-tap fill).
+   Google Pay was the top button. So OS autofill + wallet are live on the sheet with no code.
+   **Added the same evening (owner: "The younger generation especially is NOT a fan of manual
+   entry"):** both surfaces now start from the account's **name + saved home address**
+   (`billingPrefillFromProfile` → the sheet's `defaultBillingDetails`; the card form's billing
+   block), editable, so a typical add is card number + expiry + CVC. Commit `9ef3999f9` on the app
+   branch.
+   **Bank tile, Android half (for G40-38):** with `email:'never'` the Android sheet showed *Card*
+   and *Cash App Pay* only — no Bank tile **and no Link**. G40-38 pointed out (correctly) that Link
+   is a decided deliverable (Decision 2, 2026-09-06), so `'never'` was trading Link away.
+   **Changed the same night:** the sheet now collects email `'automatic'`; Link returns, and the
+   Bank tile is hidden by the owner's Dashboard toggle (Link → Instant Bank Payments OFF, still an
+   owner action). If the owner prefers to drop Link, that is a Decision 2 change and belongs in
+   the G40-38 doc §5, not here.
+   **So the answer is: make the native sheet the only path on a device.** It already is when the
+   plugin initialises; the card form remains only as the web / init-failure fallback. Note what
+   the screenshot also shows: the sheet in that build asks for *Country + ZIP* only (Stripe's
+   default `address: 'automatic'`) and offers *Bank* — both pre-date this ticket and !518. The
+   G40-11 build asks for the **full** billing address (`address: 'full'`) and !518 removed Bank.
+7. **Block prepaid cards** (Radar rule, judgement). `:card_funding: = 'prepaid'` — common for
+   fraud, but also for legitimate low-income users; review-not-block is the safer start.
+
+---
+
+## 7 · 101 guides and Terms of Service — owner directive 2026-09-08
+
+**Owner, 2026-09-08 (after approving the UI): "This info is important to add to the 101 docs and
+ToS."** That overrides the earlier "hold the guides until the build ships" reading of rule 5.
+
+**Done in the Code repo (same commit as this doc):**
+
+- `Final/gopher-request-101.html` — new "Adding a card" under *Payment method*: the five fields,
+  the bank's address check, the 6-digit code to the phone on the account, 5-minute expiry, one
+  resend, "the card is not saved until the code is confirmed", and a *Why the extra step?* tip.
+- `Final/gopher-connect-101.html` — same section under *Account & users*, plus who can add a card
+  (Owner / Admin; a User seat cannot).
+- `Final/gopher-terms-of-service.html` (the rebuild ToS) — new **§19 · Payment Method
+  Verification** subsection, text below.
+
+**Live gophergo.io Terms — DONE by the ToS session (commit `632f31f`, 2026-09-08 evening), paste
+still the owner's.** The clause sits after *Fraudulent Chargebacks and Restitution* in BOTH copies:
+`gophergo-io-terms-CORRECTED.html` (readable) and `gophergo-io-terms-CORRECTED-ascii.html` — **the
+ASCII file is the WordPress paste copy** (0 bytes > 127; em dashes and curly quotes as `&mdash;` /
+`&rsquo;`, because raw ones produced mojibake in Elementor on 2026-09-07). Paste from the ASCII
+file, never from the snippet below, which is kept for the record only.
+
+⚠️ **Flag for the owner before he pastes (raised by the ToS session, agreed here):** the second
+paragraph tells a customer that the verification record "forms part of the evidence" in a
+chargeback. The record exists only for cards added through the verified flow — i.e. after the app
+build ships and the env floor is set. For any card added before that (every card on file today),
+there is no such record, and a contested chargeback from that window would be argued without it.
+Two ways out, the owner's call: (a) paste as written and accept that the sentence describes the
+flow going forward; (b) soften to *"where a verification was performed, its record forms part of
+the evidence"*. Neither changes the app.
+
+Original snippet (readable form; entity-encode before any paste):
+
+```html
+<p style="font-weight: 400;"><strong>Payment Method Verification</strong></p>
+<p style="font-weight: 400;">When you add a card to your Gopher account we collect the name on the card and the billing address on your card statement and pass them to our payment processor, Stripe, so your card issuer can verify them. We then send a one-time code by text message to the phone number on your account; the card is not saved until that code is entered. You agree that entering the code is your authorization to save the card and to charge it for requests you place under these Terms.</p>
+<p style="font-weight: 400;">Gopher, Inc. keeps a record of each card verification — including the card brand and last four digits, the result of the issuer’s address and security-code checks, the phone number the code was sent to (masked), the device and network address used, and the time — for as long as needed to prevent fraud and to respond to payment disputes and chargebacks. This record forms part of the evidence described under Fraudulent Chargebacks and Restitution.</p>
+```
+
+⚠️ **Honesty note.** The 101 text describes the flow the owner approved on 2026-09-08. It goes live
+on the website ahead of the store build that ships it in the app. That was the owner's call; do
+not "correct" the guides back.
+
+---
+
+## 7b · iOS is now testable — a LOCAL Xcode build, on both handsets (2026-09-09)
+
+**iOS had none of G40-11 until today**: the store/TestFlight build predates the merge, so every
+check in §8 was unrunnable on iPhone. It is runnable now. A **development** build of merged
+`production` (`e5cde3948`) is installed on **both** the iPhone 12 Pro and the iPhone 15 Pro Max, at
+`13.9.4` (build 600). The 15 was driven by the owner from Xcode; the 12 was installed over the wire.
+
+⚠️ **"The build worked" is NOT "the QA passed."** What is proven is that the app builds, signs,
+installs and launches on iOS with this code in it. **None of §8's eleven checks are recorded as
+passed on iOS** until someone runs them and writes the result here.
+
+**⛔ This is NOT the build the ticket needs.** It is dev-signed and local. The ticket still needs a
+distribution build in the stores, because that is what the `CARD_VERIFICATION_REQUIRED_FROM_VERSION`
+floor is set against, and a local build's version is not a store version.
+
+**Why Xcode cannot replace Appflow from this machine** (checked 2026-09-09, not assumed): the
+keychain holds exactly one signing identity — `Apple Development: John Newbury` — and **no Apple
+Distribution certificate**; and there is **no App Store Connect API key** in any of the usual
+locations. So Xcode here can build for owned devices and cannot archive for distribution or upload.
+Either fix Appflow (its last failures were the npm-10 lockfile pin, a known cause), or the owner
+archives and uploads from Xcode Organizer signed in as himself.
+
+**Traps hit while doing this, all recoverable, recorded so nobody repeats them:**
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `cap sync ios` throws in `capacitor.config.ts` | env vars not passed | use `npm run sync:ios:requestor_production`, never bare `npx cap sync ios` |
+| `pod install` dies in `unicode_normalize` | no UTF-8 locale under Ruby 4 | `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install` |
+| Build fails at `[CP] Check Pods Manifest.lock` | `Podfile.lock` reverted **before** the build; it must match `Pods/Manifest.lock` | revert the lockfile **after** the build, never before |
+| Firebase silently moved 12.17 → 12.18 | I used `pod install --repo-update` | **never** `--repo-update` here; plain `pod install` honours the pin |
+| App would force-update itself out | repo `MARKETING_VERSION` is `13.1.1`, floor is `13.8.0` | raise it locally for the build, revert after |
+
+⚠️ `cap sync` also rewrites `ios/App/Podfile` to point at whichever worktree's `node_modules` it
+finds, exactly as it rewrites `android/capacitor.settings.gradle`. **Both are local build artifacts
+and must be reverted.** Running `pod install` against the *clean* Podfile avoids the rewrite
+entirely when the worktree has its own `node_modules`.
+
+**Tree state after:** all local edits reverted — `MARKETING_VERSION` back to `13.1.1`, `Podfile.lock`
+back to FirebaseCore 12.17.0 / CocoaPods 1.16.2, `Podfile` untouched. `git status` clean.
+
+---
+
+## 7c · CARD SCANNING WORKS ON iOS — the owner's 2026-09-08 question, answered (2026-09-09)
+
+**Owner-observed on the iPhone, on the local build**, and traced here to what makes it work:
+
+- **The scanner is built into Stripe's PaymentSheet** —
+  `StripePaymentSheet/…/CardSection/CardSectionWithScannerView.swift`. **The separate
+  `StripeCardScan` pod is NOT installed** (0 present), so this needs no extra dependency and no
+  configuration on our side. It arrives with the sheet we already ship for G40-11.
+- **The camera permission string already anticipates it**, in
+  `ios/App/App/gopher-requester-Info.plist`, verbatim from the built app on the phone:
+  *"We use your camera to take photos to attach to your requests, and to scan a card when you add a
+  payment method."* So nothing had to change to enable it — which is why it appeared the moment the
+  sheet did.
+
+**It composes correctly with G40-11:** scanning fills the card number, and the sheet still collects
+name and full billing address (`billingDetailsCollectionConfiguration`), so a scanned card goes
+through the same AVS/CVC screening and the same SMS code as a typed one. **Scanning is an input
+convenience, not a bypass** — worth stating, because it looks like a shortcut.
+
+⚠️ **NOT verified on Android, and there is a concrete reason to doubt parity.** Android's
+`CAMERA` permission is declared, but **`stripecardscan` does not appear in `android/app/build.gradle`
+at all** — on Android that scanner is a *separate* dependency rather than part of the payment sheet.
+So the likely position is **iOS yes, Android no**, and it should be checked on the Samsung rather
+than assumed either way. If Android is wanted, it is an added dependency, not a config flag.
+
+---
+
+## 7d · iOS DEVICE QA — results, 2026-09-09 (owner on iPhone, server side verified here)
+
+Run on the local build (§7b). **Owner drove the phone; every result below was then checked against
+production logs rather than taken from the screen.**
+
+| # | Check | Result |
+|---|---|---|
+| 2 | Save → code step appears, text arrives | **PASS** — phone masked to last 4, "the card is not saved until the code is confirmed", 5:00 countdown running |
+| 3 | wrong code → "N attempts left"; right code → saved | **PASS** — *"Incorrect code. 4 attempts left"*, matching `OTP_MAX_ATTEMPTS = 5`; card then saved and listed |
+| 6 | **five wrong codes → step closes, card NOT in the list** | **PASS** — see below |
+| 9 | native sheet: name + full address, code step after it closes | **PASS** — name and home address **prefilled**, card saved only after the code |
+| — | card scanning | **PASS** — §7c |
+| — | the `verified` badge | **PASS** — 7 methods added new, 7 verification rows, 7 badges; and it discriminated on Android where 2 pre-G40-11 cards showed none |
+
+⭐ **CHECK 6 IS THE ONE THAT MATTERS, AND IT PASSED FOR THE RIGHT REASON.** The owner entered five
+wrong codes; the app showed a lockout and did not add the card. Verified server-side, not from the
+screen: exactly **one** verification in the window **started and never saved** —
+`pm_1UDpOjCQp3eawbpnOYaWp2iF`, started 17:35:05Z. `attach_verified_payment_method` is the only path
+that attaches in this flow and it is the same path that logs *"card verified and saved"*; no such
+line exists for that method.
+
+**And the part worth underlining:** that card logged **`avs_postal=pass cvc=pass`**. It was a
+perfectly good card that passed address and security-code screening, and it was still refused
+because the SMS code was wrong five times. **So the code step is load-bearing on its own** — it is
+not decoration on top of a card Stripe would have rejected anyway. That is the single most valuable
+result of the session.
+
+**AVS/CVC screening is recorded on every attempt**, visible in the `card verification started` line:
+`path=payment_sheet avs_postal=pass cvc=pass`. ⚠️ Wallet methods (Apple Pay / Link) legitimately log
+`avs_postal=null cvc=null` — the network does not return those checks for a tokenised wallet
+credential, so **null there is not a failure** and must not be read as one.
+
+✅ **CHECK 5 (expiry) PASSES** — owner, iOS, 2026-09-09.
+
+✅ **CHECK 7 PASSES, from the Stripe Dashboard** (owner pasted it; this session's key is
+read-restricted). On `pm_1UDogGCQp3eawbpnDtXKxm3B` (Visa 7494, the card added at 16:49:08Z):
+
+| Field | Value |
+|---|---|
+| Name | John Newbury |
+| Billing address | 405 Shorehouse Way, Holly Springs, NC, 27540, US |
+| CVC check | **Passed** |
+| Zip check | **Passed** |
+| **Street check** | **FAILED** |
+
+So the billing details G40-11 collects **do land on the PaymentMethod**, and Stripe **does** run the
+checks against them. That is the whole point of the feature and it is now proven end to end on a
+real card.
+
+⭐ **CHECK 6, RE-CONFIRMED FROM STRIPE ITSELF.** The locked-out `pm_1UDpOjCQp3eawbpnOYaWp2iF` does
+**not** appear anywhere in the customer's payment methods. Five wrong codes, no card — now proven
+from the payment processor's own records, not just our logs.
+
+⛔ **THE STREET CHECK FAILED ON THE OWNER'S OWN REAL ADDRESS — DO NOT BUILD A RADAR RULE ON IT.**
+405 Shorehouse Way is his actual address, typed correctly, prefilled from his account. Truist
+reported **street mismatch, zip match**. This is normal: many issuers do not verify the street line
+reliably, and a lot return a mismatch for a correct address.
+
+**Consequences, both concrete:**
+
+1. **§6's Radar recommendation is right as written** — *"block if **postal code** verification
+   fails"*. **Never widen it to `address_line1_check`.** Had that rule existed today it would have
+   declined the owner's own card. This is the strongest possible argument for the narrower rule and
+   it should be quoted when the rule is actually created.
+2. **Nothing in G40-11 blocks on AVS or CVC**, verified in code: `stripe_checks` **records**
+   `avs_line1_check`, `avs_postal_code_check` and `cvc_check` into the audit row and the start log
+   prints postal + cvc, but **no branch anywhere acts on the result**. The gate is the SMS code; the
+   AVS/CVC values are *evidence*. Blocking is deliberately Radar's job, and Radar is still an
+   unstarted owner action. **So today a card that fails every check still saves if the code is
+   right** — that is by design, and it is worth stating plainly rather than leaving implied.
+
+⚠️ **Customer id correction:** this doc previously carried `cus_OVbpKctbuDozvt` from the 2026-09-08
+Android session. The requester account used here is **`cus_KVBbNaJCCMF3wA`**
+(johncnewbury@gmail.com, customer since 2021-10-30, 148 transactions). Check the id before querying.
+
+✅ **CHECK 4 (resend) PASSES** — owner, iOS: second text arrived, and a further resend was refused,
+matching `OTP_MAX_RESENDS = 1`. He then **cancelled** rather than completing, which exercises the
+abandon path for free.
+
+**All three of the session's incomplete attempts are accounted for**, from the production log —
+none of them left a card on the account:
+
+| Started | Method | Outcome | Screening |
+|---|---|---|---|
+| 17:35:05Z | `pm_1UDpOj…` | **not saved** — five wrong codes (check 6) | `avs=pass` |
+| 17:38:43Z | `pm_1UDpSF…` | **saved** — attached 17:38:50Z, now the default | `avs=pass` |
+| 17:57:47Z | `pm_1UDpkg…` | **not saved** — resend, then cancelled (check 4) | `avs=pass` |
+
+⚠️ **A lag artifact worth knowing:** `pm_1UDpSF…` first read as "started, never saved" because
+CloudWatch was ~20 minutes behind; Stripe's own log showed the attach at 17:38:50Z. **Do not read a
+missing save line as a failure inside the lag window** — cross-check Stripe before concluding.
+
+---
+
+### iOS device QA — where it stands
+
+**PASSED (7):** 2 code step + SMS · 3 wrong-then-right code · 4 resend + cancel · 5 expiry ·
+6 **five-wrong-codes lockout** · 7 billing details and checks on the PaymentMethod · 9 native sheet.
+Plus card scanning and the `verified` badge.
+
+**NOT RUN (3), and each for a stated reason:**
+
+- ✅ **Check 1 — COVERED 2026-09-09**, merge `907e55364`
+  ([!299](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/299)),
+  though **not by a device run**, and the distinction matters. The check has two halves. The RULE
+  (`billingDetailsValid`) was already unit-tested and, since !295, those tests actually run in CI.
+  The WIRING — whether the button consults the rule — was covered by nothing, and *a perfect
+  validator nothing consults is worth nothing*. `scripts/assert-card-form-save-gating.js` now
+  asserts both, plus that the submit **handler** refuses independently, because a disabled button is
+  a UI hint while the handler is the real gate. **10 checks, proven against three separate
+  breakages** (disconnect the button → 2 fail; drop the billing rule → 1; remove the handler's
+  refusal → 1).
+
+  ⚠️ **Why not a real run:** the form appears only when the native sheet is unavailable, so it is
+  unreachable on a device; and in a browser it sits behind a production sign-in (there is **only**
+  `.env.requestor.production` — no dev or stage env exists), which would mean handling the owner's
+  credentials. **So the pixel-level "is it actually grey" is still unobserved.** The logic and its
+  wiring are proven; the rendering is not.
+- **Check 8** — one audit row per attempt with IP and user-agent. Needs the production DB, which is
+  **SG-to-SG only**. The log lines are consistent with the rows being written, but *the rows
+  themselves have not been read by anyone.*
+- **Check 11** — the Link "Bank" tile on both platforms. Belongs with G40-38.
+
+**Check 10** (an old build can still add a card the old way) is **moot** while the gate is off, and
+is a §0 item to re-test once the floor is set. Check **7** is only half
+covered: the AVS/CVC half is proven from logs, but *"the Stripe Dashboard shows name + billing
+address on the PaymentMethod"* is **not verified** — this session's Stripe key is read-restricted
+(`GetPaymentMethodsPaymentMethod` and `GetCustomersCustomerPaymentMethods` both refused), so it
+needs the owner's Dashboard or a key with read scope. Check **8** (one audit row per attempt with
+IP and user-agent) needs the DB, which is SG-to-SG only. Check **10** is moot while the gate is off.
+Check **11** (Bank tile) is not run.
+
+⛔ **CORRECTION — DO NOT PRUNE THOSE CARDS. They are the owner's REAL payment methods.** This
+section first called them "7 test cards … worth pruning"; that was wrong, and acting on it would
+have deleted live cards off a live account. The owner deliberately re-added his **actual** cards
+through the new flow.
+
+**That makes the QA stronger, not weaker.** Seven real cards from different networks and wallets
+went through address screening, security-code screening and an SMS code on a production account —
+not fabricated test numbers. The `avs_postal=pass` results are real address matches against real
+issuers.
+
+**Nothing needs cleaning up.** The two verifications that started and never saved are not attached
+to anything: one is the deliberate five-wrong-codes lockout, the other an abandoned attempt. An
+unattached PaymentMethod is inert.
+
+⚠️ **The general rule this earns:** on a live account, never describe a user's data as test data,
+and never recommend deleting anything you did not create. Ask what it is first.
+
+---
+
+## 8 · QA (device — owner)
+
+1. Card form: with any field empty, Save is grey. Fill all five → Save is navy.
+2. Save → the code step appears; a text arrives on the account phone within seconds.
+3. Wrong code → "Incorrect code. N attempts left." Right code → "Your card has been added!" and the
+   card is in the list, default if the toggle was on.
+4. Resend → second text, "Code already resent once" afterwards.
+5. Let a code expire (5 min) → "That code has expired. Send a new one." Resend revives it.
+6. Five wrong codes → the step closes, "The card was not saved"; the card is **not** in the list.
+7. Stripe Dashboard → the new payment method shows name + billing address, and
+   `address_postal_code_check: pass` (or `fail`, if you use a wrong ZIP on purpose).
+8. `card_verification_events` has one row per attempt above with the matching `otp_status` /
+   `outcome`, IP and user-agent.
+9. Native sheet (Account → Payment Methods → Add): the sheet asks for name + full address; after
+   it closes, the code step appears; the card is listed only after the code.
+10. An old build can still add a card the old way. ⚠️ With the gate OFF (no env floor) the legacy
+    path is simply allowed and logs nothing; the "unverified card attach allowed for legacy build"
+    line appears only once the floor is set and an older build calls `/attach`.
+11. **Bank tile (G40-38 ask):** with `email:'never'` the iOS SDK hides Link's "Bank" tab
+    (Instant Bank Payments). Check the sheet on **both** platforms — Android's SDK may gate it
+    differently — and write the finding into the G40-38 doc's "iOS device QA on build #260"
+    block as well as here. This session has the Android; the iPhone is G40-38's QA device.
+
+---
+
+## 8b · ⭐ PRE-RELEASE BASELINE — measured from production, 2026-09-13
+
+**The first time anyone has counted this.** CloudWatch Logs Insights on
+`/aws/elasticbeanstalk/Gopher-Production/var/log/web.stdout.log`, 7 days
+(2026-09-06 16:38Z → 2026-09-13 16:38Z). ⚠️ The AWS session was **expired** and had to be renewed
+first — an expired session returns *empty results rather than an error*, so this was run only after
+`sts get-caller-identity` came back clean.
+
+| Signal | 7-day count |
+|---|---|
+| Total log lines scanned (**probe control**) | **3,484,886** |
+| `unverified card attach allowed for legacy build` | **69** |
+| `card verification started` | 21 |
+| `card verified and saved` | 18 |
+
+**Broken down by the caller's appversion** (second query, 2,989,263 lines scanned):
+
+| appversion | count | who |
+|---|---|---|
+| **45** | **68** | the **currently installed** Request store build |
+| 44 | 1 | an older Request build |
+| **46** | **0** | the pending Request build — not released yet ✅ consistent |
+| **47** | **0** | **Gopher GO — no GO user added a card in 7 days** |
+
+The two queries agree (68 + 1 = 69), and the zero is on a **proven probe**: the same query returned
+69 hits, so it was capable of matching.
+
+### What this sizes
+
+**~68 unverified card adds per week.** Every one carries no billing address, no AVS check, no SMS
+confirmation and no audit row. That is exactly what the release converts — it is the value of this
+ticket, stated as a number for the first time.
+
+### ⚠️ It also SOFTENS the Gopher GO warning above, and that must be said plainly
+
+The ruling block at the top of this doc argues that a floor of 46 would refuse Gopher GO. **The
+structure of that claim is unchanged and still verified** — GO sends 47, the route is live and
+mounted, GO has no verified flow. **But the measured exposure over 7 days is ZERO.** Run the numbers
+against a floor of 46:
+
+| appversion | `v >= 46` | outcome |
+|---|---|---|
+| 45 (68 adds) | false | exempt — keeps working |
+| 44 (1 add) | false | exempt |
+| 46 (pending build) | true | must verify — and it can |
+| 47 (GO) | true | **would be refused — but 0 observed attempts** |
+
+**So setting the floor today would have broken nobody in this window.** I framed that risk at its
+worst case without having measured it, and the measurement is milder than the framing.
+
+**What does not change:** the exposure is *rare, not absent*. The GO code path is live, and a GO user
+who did add a card would hit a wall with **no update that fixes it**. Low frequency, total breakage,
+no remedy — and 7 days is one window, not a guarantee. **The owner's ruling stands on its own terms**
+(*"as long as they can make payments"*), and nothing here asks for it to be revisited. This is
+recorded so the decision rests on the measured number rather than on my worst case.
+
+---
+
+## 8a · POST-RELEASE WATCH — the only checks left, and none can run before the builds go live
+
+As of 2026-09-13 every owner action is done except the store release itself (Apple/Google, not ours).
+**Nothing below is actionable until the builds are released**, and every remaining unknown in this
+doc closes here. Written now so it is not reconstructed later.
+
+| # | Check | Where | What good looks like |
+|---|---|---|---|
+| 1 | **Verified adds are actually flowing** | `web.stdout.log`: `G40-11 card verification started` / `card verified and saved` | Count rises from zero once 3.9.4 is in hands. If it stays at zero after release, the client is not calling `verify/start` and something is wrong. |
+| 2 | **Who is still using the legacy door** | `web.stdout.log`: `G40-11: unverified card attach allowed for legacy build … appversion=` | ⭐ **This line prints the caller's appversion and fires on every legacy attach, gate on or off.** After release the only appversions here should be **47 (Gopher GO — expected and permanent)** and **≤45 (un-updated Request)**. ⛔ **A `46` in this list means a released Request build still reached `/attach`, which should be impossible — the call site was deleted.** That is the one result that would reopen the design. |
+| 3 | **Postal rule false positives** | Stripe → Radar → Reviews / blocked payments | The rule went live never having been exercised — its backtest matched `$0.00` only because no card had an address (§6.1). **Its real false-positive rate is unknown.** Watch the first week; a legitimate customer blocked on a correct address is the failure mode. ⛔ Do not respond by adding a street rule (§7d). |
+| 4 | **Did Stripe enable setup-attempt risk data?** | `card_verification_events.radar_risk_level` | All-null = still off, and §6.1's rule is not firing at card-add. Any value = Stripe actioned the 2026-09-13 request. **This is the observable that closes §6.2.** |
+| 5 | **AC6 rows — never once read** | `card_verification_events` | One row per attempt with IP, user-agent, `otp_status`, `outcome`, and the AVS/CVC results. ⛔ **Nobody has read a single row.** AC6 is "schema correct, contents unobserved" until this runs. Needs DB access (SG-to-SG only). |
+
+⚠️ **Checks 4 and 5 are the same blocker** — both need someone who can query the production DB, which
+no session on this machine can. They are the last two open items in the ticket and neither is a code
+question.
+
+---
+
+## 9 · Figma references (from the ticket)
+
 - Card entry screen 1 — <https://www.figma.com/design/g7DWLbI86O6SqiwITY7jeL/%E2%9C%8F%EF%B8%8F-Gopher-UI_UX?node-id=5945-10274>
 - Card entry screen 2 — <https://www.figma.com/design/g7DWLbI86O6SqiwITY7jeL/%E2%9C%8F%EF%B8%8F-Gopher-UI_UX?node-id=5945-10275>
-
-## QA
-- Missing any required field (incl. billing address) → Submit disabled.
-- Complete entry → OTP sent to account phone; wrong OTP → not saved + retry/resend; expired
-  OTP → not saved + resend; correct OTP → saved.
-- Stripe Dashboard shows name + billing address on the payment method; AVS mismatch triggers
-  the configured Radar action.
-- Confirm a dispute audit record is written with all listed fields.
-- No raw card data stored on Gopher servers.
-- Test native iOS + Android, Request web, and Connect.
+- Stripe: <https://docs.stripe.com/disputes/prevention/verification> · <https://docs.stripe.com/radar/rules>

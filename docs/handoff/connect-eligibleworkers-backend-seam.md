@@ -1,7 +1,9 @@
 # Handoff — `eligibleWorkers` backend seam (Connect request flow)
 
 **File:** `Final/gopher-connect.html`
-**Domain:** matching logic (who a Go request is broadcast to) — **reserved for the human developer** per `Final/CLAUDE.md`.
+**Domain:** matching logic (who a Go request is broadcast to).
+
+> ⚠️ **Superseded 2026-08-09** — CLAUDE.md's *Scope of AI work* no longer reserves these for a human developer (there is no dev partner, and sessions have been shipping auth/authz/DB work to `production`). **The gate is now the owner's informed consent before production:** what it solves, the risk, the reward — then his decision. Build status below is still accurate; the *who may build it* framing is not.
 **Status:** Part A done (front-end token cleanup). Part B below is the dev's to wire.
 **Date:** 2026-07-05
 

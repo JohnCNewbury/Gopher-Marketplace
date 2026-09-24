@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Gopher's Privacy Policy — how we collect, use, and protect your information.">
   <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
 
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/gopher-fonts.css">
 <style>
   :root {
     --green: #33D975;
@@ -286,12 +286,48 @@
   .contact-card a { color:var(--green); border:none; font-weight:700; }
 
   /* ── RESPONSIVE ── */
+  /* Mobile-only section launcher — desktop keeps the sticky sidebar. */
+  .legal-toc-fab, .legal-toc-scrim { display:none; }
+
   @media (max-width:900px) {
     nav { padding:0 24px; }
     .nav-links { display:none; }
     .privacy-hero { padding:56px 24px 48px; }
     .privacy-layout { grid-template-columns:1fr; gap:0; padding:36px 24px 64px; }
-    .privacy-toc { display:none; }
+    /* ⛔ WAS `display:none` (owner-reported 2026-08-25: "mobile view not showing
+       menu for users to jump to certain section"). The TOC is now a slide-in panel
+       driven by the .legal-toc-fab button, reusing this same <aside> — do not
+       duplicate the link list for mobile, or the two lists will drift. */
+    .privacy-toc {
+      position:fixed; top:0; left:0; z-index:1200;
+      width:min(320px, 86vw); height:100vh; max-height:100vh;
+      background:#fff; border-right:1px solid rgba(0,36,97,.12);
+      box-shadow:0 0 40px rgba(0,0,0,.18);
+      padding:78px 18px 24px; overflow-y:auto;
+      transform:translateX(-105%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+    }
+    body.legal-toc-open .privacy-toc { transform:translateX(0); }
+    .legal-toc-fab {
+      display:inline-flex; align-items:center; gap:8px;
+      /* bottom offset clears the iOS home-indicator / toolbar safe area — at a
+         flat 22px the tap can be swallowed by the system gesture strip on a
+         real handset, which reads as "the button does nothing". */
+      position:fixed; left:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:1190;
+      background:var(--navy); color:#fff; border:none; border-radius:999px;
+      padding:11px 18px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
+      box-shadow:0 8px 24px rgba(0,36,97,.4); cursor:pointer;
+    }
+    .legal-toc-fab svg { width:16px; height:16px; }
+    body.legal-toc-open .legal-toc-fab { display:none; }
+    /* ⛔ display MUST be restored here. The base rule above is
+       `.legal-toc-fab, .legal-toc-scrim { display:none; }`, and this block used
+       to set position/inset/background but NOT display — so the scrim was
+       display:none at every width, the backdrop never dimmed and tap-outside
+       could not close the panel. Found 2026-08-26. */
+    body.legal-toc-open .legal-toc-scrim {
+      display:block; position:fixed; inset:0; z-index:1150; background:rgba(13,21,52,.55);
+    }
+    .legal-toc-scrim[hidden] { display:none; }
     footer { padding:48px 24px 30px; }
 }
 </style>
@@ -308,6 +344,35 @@
 <!-- =====================================================================
      COMPONENT ENGINE  (lift verbatim into shared gopher-header.js)
      ===================================================================== -->
+
+<!-- Mobile-only "Jump to a section" launcher. The TOC aside is a sticky sidebar on
+     desktop and was display:none below the breakpoint, leaving phone readers with no
+     way to reach a section (owner-reported 2026-08-25). Reuses the SAME aside rather
+     than duplicating the link list, so the two can never drift. -->
+<button class="legal-toc-fab" id="legalTocFab" aria-controls="toc" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  Sections
+</button>
+<div class="legal-toc-scrim" id="legalTocScrim" hidden></div>
+<script>
+(function(){
+  var fab   = document.getElementById('legalTocFab');
+  var scrim = document.getElementById('legalTocScrim');
+  var toc   = document.getElementById('toc');
+  if(!fab || !toc || !scrim) return;
+  function setOpen(on){
+    document.body.classList.toggle('legal-toc-open', on);
+    fab.setAttribute('aria-expanded', on ? 'true' : 'false');
+    scrim.hidden = !on;
+  }
+  fab.addEventListener('click', function(){ setOpen(!document.body.classList.contains('legal-toc-open')); });
+  scrim.addEventListener('click', function(){ setOpen(false); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') setOpen(false); });
+  /* Close on choose — the panel covers the text it just jumped to. */
+  toc.addEventListener('click', function(e){ if(e.target.closest('a')) setOpen(false); });
+})();
+</script>
+
 <script src="assets/js/gopher-header.js" defer></script>
 
 <!-- HERO -->
@@ -317,7 +382,7 @@
     <h1>Privacy Policy</h1>
     <p>How Gopher, Inc. collects, uses, and protects your information when you use our website and apps. By using the Service, you agree to the practices described below.</p>
     <div class="privacy-meta">
-      <span>Effective Date: <strong>November 8, 2024</strong></span>
+      <span>Effective Date: <strong>August 24, 2026</strong></span>
     </div>
   </div>
 </header>
@@ -333,7 +398,7 @@
     <a href="#use">Use of Data</a>
     <a href="#transfer">Transfer of Data</a>
     <a href="#disclosure">Disclosure of Data</a>
-    <a href="#security">Security of Data</a>
+    <a href="#security">Security &amp; Retention of Data</a>
     <a href="#providers">Service Providers</a>
     <a href="#links">Links to Other Sites</a>
     <a href="#children">Children's Privacy</a>
@@ -368,7 +433,7 @@
       <ul>
         <li><strong>Contact Information,</strong> including name, address, email address, phone number, and other contact information provided.</li>
         <li><strong>Account and Profile Information,</strong> including name and credentials, privacy settings and notification preferences, pictures, and other information you add to your Gopher profile.</li>
-        <li><strong>Identification Documentation and Signature for Age-Restricted Products,</strong> including driver's license or other government-issued identification, which we may process in limited circumstances such as an order for an age-restricted product (e.g. alcohol) and for legal and regulatory compliance.</li>
+        <li><strong>Identification Documentation and Signature for Age-Restricted Products,</strong> including a driver's license or other government-issued identification, and — where you choose to complete our optional identity verification (Gopher TrustShield) — a photo of the front and back of that identification together with a self-portrait photograph ("selfie") used only to confirm the identification belongs to you. We collect this in limited circumstances connected to age-restricted products (e.g. alcohol) and for legal and regulatory compliance. Its sole purpose is to confirm the identity and legal age of the person placing and receiving the order; <strong>we do not use it for marketing, advertising, profiling, or any purpose unrelated to that verification, and we do not sell it.</strong> Completing identity verification is voluntary and is not required to create an account or browse the Service. Separately, at the time an age-restricted order is handed over, the Gopher fulfilling your order photographs the physical identification you present, as described in our <a href="gopher-terms-of-service.html">Terms of Service</a>.</li>
         <li><strong>In-App Communications,</strong> including the content of in-app messages between customer and worker, SMS/text messages, chats, phone calls, and emails with us related to our Services, customer support inquiries, the date and time of communications, the channel used, call recordings (if applicable), and outcomes or resolutions from those communications.</li>
         <li><strong>Shared Content,</strong> including reviews and ratings of a customer or worker from a completed request, or photos you upload.</li>
         <li><strong>Payment Information,</strong> including credit or debit card information used to make purchases. Payment information is primarily stored and processed by our third-party provider (Stripe); however, we may store limited payment-related information such as the last four digits of a payment card.</li>
@@ -419,6 +484,8 @@
 
     <section id="disclosure">
       <h2><span class="num">5</span>Disclosure of Data</h2>
+      <h3>Identity Confirmation at Delivery</h3>
+      <p>If you place an age-restricted order and have completed our optional identity verification (Gopher TrustShield), the Gopher assigned to fulfill that order is shown your verification photo and identification within their app for the sole purpose of confirming, in person at hand-off, that you are the person who placed the order and are of legal age. This is limited to the assigned Gopher and only for the duration of that order. No other user of the Service can access your identification, and it is never made public. We do not otherwise share your identification documentation or verification photo with third parties except as described elsewhere in this section (for example, a legal requirement).</p>
       <h3>Business Transaction</h3>
       <p>If Gopher, Inc. is involved in a merger, acquisition, or asset sale, your Personal Data may be transferred. We will provide notice before your Personal Data is transferred and becomes subject to a different Privacy Policy.</p>
       <h3>Disclosure for Law Enforcement</h3>
@@ -436,8 +503,13 @@
     </section>
 
     <section id="security">
-      <h2><span class="num">6</span>Security of Data</h2>
+      <h2><span class="num">6</span>Security and Retention of Data</h2>
       <p>The security of your data is important to us, but remember that no method of transmission over the Internet or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.</p>
+      <h3>Retention</h3>
+      <p>We keep your Personal Data only for as long as necessary for the purposes described in this Privacy Policy, to provide the Service to you, to resolve disputes, to enforce our agreements, and to meet our legal, regulatory, tax, accounting, and reporting obligations. When Personal Data is no longer needed for these purposes, we delete it or de-identify it.</p>
+      <p>Identification documentation and identity-verification photos (including any selfie) are retained only for as long as needed to confirm your identity and legal age for age-restricted orders, to resolve any dispute arising from a delivery, and to meet legal and regulatory requirements. You may withdraw from optional identity verification or request deletion of your account and associated identity information by contacting us at <a href="mailto:support@gophergo.io">support@gophergo.io</a>, subject to any records we are required by law to keep.</p>
+      <h3>Biometric Information — Published Retention &amp; Destruction Schedule</h3>
+      <p>Where you choose to complete Gopher TrustShield identity verification, the self-portrait photograph (&ldquo;selfie&rdquo;) we collect may be a &ldquo;biometric identifier&rdquo; under laws such as the Illinois Biometric Information Privacy Act (BIPA). We collect it only with your consent — given when you accept our <a href="gopher-terms-of-service.html">Terms of Service</a> at account creation and when you submit an age-restricted request — and only to confirm your identity and legal age. <strong>We permanently destroy your selfie and identification images when the purpose for collection has been satisfied, or within three (3) years of your last interaction with Gopher, whichever occurs first; and within thirty (30) days if you withdraw from TrustShield or delete your account, except where law requires retention.</strong> We do not sell, lease, trade, or otherwise profit from this information. This section is our published retention schedule and destruction guidelines for biometric information; the full notice appears in our <a href="gopher-terms-of-service.html">Terms of Service</a>.</p>
       <a class="back-top" href="#top">↑ Back to top</a>
     </section>
 
@@ -604,6 +676,7 @@
               <li><a href="gopher-request-101.html">Gopher Request 101</a></li>
               <li><a href="gopher-connect-101.html">Gopher Connect 101</a></li>
               <li><a href="gopher-go-101.html">Gopher Go 101</a></li>
+              <li><a href="gopher-deals-101.html">Gopher Deals 101</a></li>
             </ul>
           </details>
         </li>

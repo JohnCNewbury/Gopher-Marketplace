@@ -45,14 +45,20 @@
 <!-- Shared request decision logic (category-mismatch detection). Single source of
      truth across Request web / Connect / this app prototype. -->
 <script src="../../Final/assets/js/gopher-request-logic.js"></script>
+<!-- Cross-device draft layer. Shared with Final/gopher-request.html so the two
+     surfaces cannot drift on WHAT a draft contains. ⚠️ Keep the ../../Final/ prefix:
+     scripts/deploy.sh rewrites it to ../../ when it flattens Final/ to the site root,
+     and the local serve + tunnel need the repo-layout form. Do NOT "fix" it here. -->
+<script src="../../Final/assets/js/gopher-request-draft.js"></script>
+<script src="../../Final/assets/js/gopher-request-draft-store.js"></script>
 <!-- G40-38 payment methods — shared store + checkout pay-picker (same session store as the account Payment Info screen). -->
 <script src="gopher-pay-store.js"></script>
 <style>
-:root{
-  --green:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
+:root{ --radius-pill:99px; --radius-card:16px; --radius-md:12px; --radius-sm:8px; --font-heading:'Nunito'; --font-body:'DM Sans'; --font-script:'Caveat';  --z-deals:#F3F5F8; --z-jobs:#EEF7F1; --z-tools:#EDF1F8; --z-acct:#E9F1FC; --z-perks:#FBF1E8;  --green-tint:#E8F5EE; --ink:#002461; --ink-soft:#3A4D74; --navy-bar:#03143A; --paper:#FBF7EF; --card:#FFFFFF; --line:#EAE3D5; --line-cool:#E3E7EF; --terra:#C8623C; 
+  --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9;
   --ink-on-green:#002461; --navy:#002461; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
-  --white:#fff; --sand:#FBF3E4; --gray:#f5f6fa; --text:#424242; --muted:#6b7280;
-  --terracotta:#D97757; --aquamarine:#87F7BD; --cornflower:#BADBFC;
+  --white:#fff; --sand:#FBF3E4; --gray:#f5f6fa; --text:#424242; --muted:#8C8675; --muted-cool:#6b7280;
+  --terracotta:#D97757; --aqua:#87F7BD; --cornflower:#BADBFC;
   --warning:#FFDE00; --warning-text:#92580D; --error:#C44257;
   --border:#edf0f5;
   --radius:18px;
@@ -62,6 +68,13 @@
   --over-sh:0 18px 48px rgba(0,36,97,.22);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+/* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+   Measured 2026-08-02 across all 44 rendered screens: every element painting a non-brand
+   font was a form control or a descendant of one. One rule fixes all of them; 36 per-
+   component selectors would miss the next new button. font-weight deliberately NOT reset
+   — buttons that look bold declare their own, and `font:inherit` would flatten them. */
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+
 html,body{height:100%;}
 body{
   font-family:'DM Sans',sans-serif;color:var(--text);line-height:1.5;
@@ -94,8 +107,8 @@ body{
 .back-btn.hidden{visibility:hidden;}
 .topbar-titles{flex:1;min-width:0;}
 .topbar-titles h1{font-family:'Nunito';font-weight:900;font-size:16.5px;color:var(--navy);letter-spacing:-.3px;line-height:1.1;}
-.topbar-titles .eyebrow{font-family:'Caveat';font-weight:700;font-size:15px;color:var(--green-dark);line-height:1;margin-bottom:1px;}
-.step-pill{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green-dark);background:var(--green-light);
+.topbar-titles .eyebrow{font-family:'Caveat';font-weight:700;font-size:15px;color:var(--green);line-height:1;margin-bottom:1px;}
+.step-pill{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green);background:var(--green-light);
   padding:6px 11px;border-radius:99px;flex:0 0 auto;white-space:nowrap;}
 
 /* progress segments (tappable to jump back) */
@@ -104,9 +117,9 @@ body{
 .seg-btn.reach{cursor:pointer;}
 .seg-btn.reach:active .seg{transform:scaleY(1.8);}
 .seg{display:block;height:5px;border-radius:99px;background:#e7ecf3;overflow:hidden;position:relative;transition:transform .12s;}
-.seg.done{background:var(--green-dark);}
+.seg.done{background:var(--green);}
 .seg.current{background:#e7ecf3;}
-.seg.current::after{content:"";position:absolute;inset:0;width:55%;background:linear-gradient(90deg,var(--green),var(--green-dark));border-radius:99px;animation:segfill .5s ease both;}
+.seg.current::after{content:"";position:absolute;inset:0;width:55%;background:linear-gradient(90deg,var(--green-bright),var(--green));border-radius:99px;animation:segfill .5s ease both;}
 @keyframes segfill{from{width:0;}to{width:55%;}}
 
 /* scroll area */
@@ -115,7 +128,7 @@ body{
 
 /* step heading */
 .step-head h3{font-family:'Nunito';font-weight:900;font-size:22px;color:var(--navy);letter-spacing:-.5px;line-height:1.12;}
-.mc-sub{font-size:13px;color:var(--muted);margin-top:6px;margin-bottom:4px;line-height:1.45;}
+.mc-sub{font-size:13px;color:var(--muted-cool);margin-top:6px;margin-bottom:4px;line-height:1.45;}
 
 .stage{animation:stageIn .32s cubic-bezier(.22,.9,.3,1) both;}
 @keyframes stageIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
@@ -128,10 +141,10 @@ body{
 .cat-context .cc-thumb{width:40px;height:40px;border-radius:10px;overflow:hidden;flex:0 0 auto;background:var(--navy-light);}
 .cat-context .cc-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .cat-context .cc-text{flex:1;display:flex;flex-direction:column;min-width:0;}
-.cat-context .cc-eye{font-family:'Nunito';font-weight:800;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+.cat-context .cc-eye{font-family:'Nunito';font-weight:800;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-cool);}
 .cat-context .cc-name{font-family:'Nunito';font-weight:800;font-size:14px;color:var(--navy);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cat-context .cc-change{display:inline-flex;align-items:center;gap:1px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green-dark);flex:0 0 auto;}
-.cat-context .cc-change svg{width:15px;height:15px;fill:none;stroke:var(--green-dark);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
+.cat-context .cc-change{display:inline-flex;align-items:center;gap:1px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green);flex:0 0 auto;}
+.cat-context .cc-change svg{width:15px;height:15px;fill:none;stroke:var(--green);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}
 
 /* ── Category grid (Step 1) — Gopher Go card design ── */
 .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:16px;}
@@ -140,14 +153,14 @@ body{
   display:flex;flex-direction:column;}
 .cat-tile:hover{border-color:#cbd6e6;}
 .cat-tile:active{transform:scale(.985);}
-.cat-tile.selected{border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.16),var(--card-sh);}
+.cat-tile.selected{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.16),var(--card-sh);}
 /* photo */
 .cat-photo{position:relative;height:116px;border-radius:15px 15px 0 0;overflow:hidden;background:var(--navy-light);}
 .cat-img{width:100%;height:100%;object-fit:cover;display:block;}
 .cat-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,36,97,.05),rgba(0,36,97,.22));}
 /* Gopher iQ tag (tap → popular requests) */
 .cat-iq-tag{position:absolute;top:9px;right:9px;z-index:3;display:inline-flex;align-items:center;gap:5px;
-  background:linear-gradient(135deg,var(--green),var(--green-dark));border:none;border-radius:99px;padding:4px 10px 4px 4px;
+  background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;border-radius:99px;padding:4px 10px 4px 4px;
   box-shadow:0 3px 9px rgba(0,36,97,.28);cursor:pointer;transition:transform .1s,box-shadow .15s;}
 .cat-iq-tag:hover{box-shadow:0 5px 14px rgba(28,176,97,.5);}
 .cat-iq-tag:active{transform:scale(.94);}
@@ -158,7 +171,7 @@ body{
 .cat-body{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px 12px;}
 .cat-name{font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--navy);line-height:1.15;letter-spacing:-.2px;}
 .cat-check{width:22px;height:22px;border-radius:50%;border:2px solid #d3dbe8;flex:0 0 auto;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;}
-.cat-check.on{background:var(--green);border-color:var(--green);box-shadow:0 2px 6px rgba(28,176,97,.4);}
+.cat-check.on{background:var(--green-bright);border-color:var(--green-bright);box-shadow:0 2px 6px rgba(28,176,97,.4);}
 .cat-check svg{width:12px;height:12px;fill:none;stroke:var(--navy);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
 /* popular-requests popover (tap the iQ tag) */
 .cat-pop{position:absolute;top:40px;right:9px;z-index:40;width:205px;max-width:230px;
@@ -170,10 +183,10 @@ body{
    never runs off the phone's left edge; keep the arrow under the right-side tag. */
 .cat-tile:nth-child(odd) .cat-pop{right:auto;left:9px;}
 .cat-tile:nth-child(odd) .cat-pop::before{right:auto;left:112px;}
-.cat-pop-title{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--green);margin-bottom:9px;line-height:1.3;}
+.cat-pop-title{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--green-bright);margin-bottom:9px;line-height:1.3;}
 .cat-pop-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;}
 .cat-pop-list li{position:relative;padding-left:15px;font-family:'DM Sans';font-size:12px;color:#eaf1fb;line-height:1.3;}
-.cat-pop-list li::before{content:"";position:absolute;left:2px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--green);}
+.cat-pop-list li::before{content:"";position:absolute;left:2px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--green-bright);}
 .cat-pop-foot{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.16);font-family:'DM Sans';font-style:italic;font-size:11px;color:#a9b9cf;line-height:1.45;}
 
 /* ── Sections / fields ── */
@@ -182,12 +195,12 @@ body{
 .sst .sst-ico{width:30px;height:30px;border-radius:9px;background:var(--navy-light);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
 .sst .sst-ico svg{width:17px;height:17px;fill:none;stroke:var(--navy);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
-.flabel{font-family:'Nunito';font-weight:700;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;}
+.flabel{font-family:'Nunito';font-weight:700;font-size:11px;color:var(--muted-cool);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:6px;}
 .field-textarea,.field-input{width:100%;border:1.5px solid #e4e8f0;border-radius:14px;padding:12px 13px;font-family:'DM Sans';font-size:14px;color:var(--text);background:#fff;resize:none;transition:border-color .15s,box-shadow .15s;}
-.field-textarea:focus,.field-input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
+.field-textarea:focus,.field-input:focus{outline:none;border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
 .field-textarea::placeholder,.field-input::placeholder{color:#9aa6bd;}
 .field-select{width:100%;border:1.5px solid #e4e8f0;border-radius:14px;padding:12px 13px;font-family:'DM Sans';font-size:14px;color:var(--text);background:#fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23002461' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;background-size:15px;appearance:none;-webkit-appearance:none;cursor:pointer;}
-.field-select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
+.field-select:focus{outline:none;border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
 .field-row.split{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
 .field-block{margin-top:12px;}
 .field-block:first-child{margin-top:0;}
@@ -195,26 +208,26 @@ body{
 /* add-pic */
 .field-addpic{display:flex;align-items:center;gap:9px;width:100%;margin-top:11px;border:1.5px dashed #cdd6e6;background:#fbfcfe;border-radius:14px;padding:11px 13px;cursor:pointer;
   font-family:'Nunito';font-weight:800;font-size:12.5px;color:var(--navy-mid);transition:border-color .15s,background .15s;}
-.field-addpic:hover{border-color:var(--green);background:var(--green-light);}
-.field-addpic .ap-ico{width:24px;height:24px;border-radius:50%;background:var(--green);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:17px;line-height:1;}
+.field-addpic:hover{border-color:var(--green-bright);background:var(--green-light);}
+.field-addpic .ap-ico{width:24px;height:24px;border-radius:50%;background:var(--green-bright);color:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:17px;line-height:1;}
 .pic-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:11px;}
 .pic-thumb{width:54px;height:54px;border-radius:12px;overflow:hidden;position:relative;border:1px solid var(--border);background:linear-gradient(135deg,#cfe9da,#bcd9f0);}
 .pic-thumb .ph-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;}
 .pic-thumb-x{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(0,36,97,.82);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .pic-add-more{width:54px;height:54px;border-radius:12px;border:1.5px dashed #cdd6e6;background:#fbfcfe;color:var(--navy-mid);font-size:22px;font-weight:300;cursor:pointer;}
-.pic-count{font-family:'DM Sans';font-size:11px;color:var(--muted);}
+.pic-count{font-family:'DM Sans';font-size:11px;color:var(--muted-cool);}
 
 /* ── Toggle rows ── */
 .toggle-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #f1f3f8;}
 .toggle-row:first-of-type{border-top:none;padding-top:2px;}
 .toggle-row.spaced{justify-content:space-between;}
-.toggle-row.auto-on .tr-label{color:var(--green-dark);}
+.toggle-row.auto-on .tr-label{color:var(--green);}
 .toggle-switch{width:46px;height:27px;border-radius:99px;background:#dde3ec;border:none;position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s;}
 .toggle-switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,36,97,.3);transition:transform .2s;}
-.toggle-switch.on{background:linear-gradient(135deg,var(--green),var(--green-dark));}
+.toggle-switch.on{background:linear-gradient(135deg,var(--green-bright),var(--green));}
 .toggle-switch.on::after{transform:translateX(19px);}
 .tr-label{font-family:'Nunito';font-weight:700;font-size:12.5px;color:var(--text);line-height:1.35;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.auto-on-chip{font-family:'Nunito';font-weight:800;font-size:9.5px;color:var(--green-dark);background:var(--green-light);padding:3px 8px;border-radius:99px;}
+.auto-on-chip{font-family:'Nunito';font-weight:800;font-size:9.5px;color:var(--green);background:var(--green-light);padding:3px 8px;border-radius:99px;}
 
 /* info button + popover */
 .info-tip{position:relative;display:inline-flex;align-items:center;vertical-align:middle;}
@@ -228,46 +241,174 @@ body{
 /* sub-field */
 .sub-field{background:#f7f9fc;border:1px solid #eef1f7;border-radius:13px;padding:12px 13px;margin-top:11px;}
 .sf-label{font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);margin-bottom:3px;}
-.sf-value{font-size:12px;color:var(--muted);line-height:1.45;}
-.sf-hint{font-family:'DM Sans';font-size:11px;color:var(--muted);margin-top:6px;}
+.sf-value{font-size:12px;color:var(--muted-cool);line-height:1.45;}
+.sf-hint{font-family:'DM Sans';font-size:11px;color:var(--muted-cool);margin-top:6px;}
 
-/* AR banner */
-.ar-banner{background:linear-gradient(135deg,#fff7c2,#fff2d6);border:1px solid #f3e09a;display:flex;align-items:center;gap:11px;}
-.ar-banner .ar-mark{width:30px;height:30px;border-radius:9px;background:var(--warning);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-.ar-banner .ar-mark svg{width:18px;height:18px;fill:none;stroke:var(--warning-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.ar-banner .sf-label{color:var(--warning-text);}
-.ar-banner .sf-value{color:#8a6a1f;}
+/* AR banner CSS removed 2026-08-22 — element deleted 2026-08-19; .su-ar-banner is a DIFFERENT live class. */
 /* age-keyword awareness banner */
 .age-kw-banner{background:linear-gradient(135deg,#fff7c2,#fff2d6);border:1px solid #f3e09a;display:flex;align-items:flex-start;gap:11px;}
 .age-kw-banner .ar-mark{width:30px;height:30px;border-radius:9px;background:var(--warning);display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-top:1px;}
 .age-kw-banner .ar-mark svg{width:18px;height:18px;fill:none;stroke:var(--warning-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .age-kw-banner .sf-label{color:var(--warning-text);}
 .age-kw-banner .sf-value{color:#8a6a1f;margin-top:2px;line-height:1.4;}
+/* Resume banner. Same visual language as .age-kw-banner but calm (not a warning):
+   this is an offer, not a compliance stop. ⚠️ Explicit display on the element --
+   this file has NO global [hidden]{display:none}, so anything relying on the hidden
+   attribute renders anyway. Shown/hidden by add/remove, never by [hidden]. */
+/* Resume banner. Built on the LIVE .si-band idiom (si-ico + si-text > h5 + p),
+   not on .age-kw-banner -- that banner was RETIRED 2026-08-18 and only its orphan
+   CSS survives, so matching it meant matching a corpse (App Prototypes, 2026-08-26).
+   .si-band WRAPS rather than clipping, which is precisely the property the first
+   build got wrong. Recoloured calm-blue only: this is an offer, not a warning.
+   ⚠️ No global [hidden]{display:none} in this file -- shown/hidden by add/remove. */
+/* Resume banner — brand colours only, from the surface's own tokens.
+   ⛔ The first build invented #2f6fd0. That is not a Gopher colour. Canon
+   (Documentation/Brand/, Style Guide 2026): navy #002461, green #33D975,
+   Sand #FBF3E4, Terracotta #D97757. This band is SAND + NAVY: an official pair,
+   and deliberately not the green .si-band treatment, which reads as success
+   rather than as an offer.
+   ⚠️ Owner ruling 2026-08-25: on #33D975 the ink must be NAVY, never white.
+   Only --green-dark/#1CB061 may carry white — which is why the primary button
+   below is navy, not green.
+   ⚠️ Compound selectors: .si-band is declared LATER in this stylesheet, so a bare
+   .dr-resume loses on source order and the band rendered green.
+   ⚠️ align-items is INHERITED from .si-band (center), not overridden. An earlier
+   build forced flex-start, which pinned the icon 15px from the top of a ~105px
+   band while leaving 90px beneath it -- the band read as top-heavy. Owner called
+   it 2026-08-26.
+   ⚠️ margin is 14px TOP AND BOTTOM: with `14px 0 0` the band sat flush against the
+   step content below it (measured gap: 0px), so the offer and the page ran
+   together.
+   ⚠️ margin has NO horizontal component: the stage content sits flush to #content
+   (measured left 461 / width 358) and a 14px inset put this band at 475 — visibly
+   narrower than everything under it. */
+.si-band.dr-resume{background:var(--sand,#FBF3E4);border:1px solid #efe2c9;border-radius:var(--radius,18px);margin:14px 0;}
+.si-band.dr-resume .si-ico{background:var(--navy,#002461);color:#fff;font-size:17px;}
+.si-band.dr-resume .si-text h5{color:var(--navy,#002461);}
+.si-band.dr-resume .si-text p{color:#4a4335;}
+.si-band.dr-resume .dr-where{color:#7a6f5c;margin-top:3px;font-size:11.5px;line-height:1.3;}
+.si-band.dr-resume .dr-acts{display:flex;gap:8px;margin-top:10px;}
+.si-band.dr-resume button{font:inherit;font-size:12.5px;font-weight:600;border-radius:10px;padding:8px 14px;cursor:pointer;border:1px solid var(--navy,#002461);background:transparent;color:var(--navy,#002461);}
+.si-band.dr-resume button.dr-primary{background:var(--navy,#002461);border-color:var(--navy,#002461);color:#fff;}
 .age-kw-actions{display:flex;gap:14px;margin-top:12px;}
 .age-kw-actions .ts-promo-btn{padding:7px 13px;}
 .age-kw-actions .age-kw-no{background:#fff;color:var(--navy);border:1.5px solid #e3d7a0;}
 /* ghost (locked) radio option */
 .radio-row.ghost{opacity:.6;cursor:not-allowed;border-style:dashed;}
 .radio-row.ghost .radio-dot{border-color:#c7d0e0;background:repeating-linear-gradient(45deg,#eef0f5,#eef0f5 3px,#fff 3px,#fff 6px);}
-.radio-row.ghost .rr-label{color:var(--muted);}
-.rr-lock-hint{display:block;font-size:10.5px;color:var(--muted);font-weight:500;margin-top:3px;line-height:1.35;}
+.radio-row.ghost .rr-label{color:var(--muted-cool);}
+.rr-lock-hint{display:block;font-size:10.5px;color:var(--muted-cool);font-weight:500;margin-top:3px;line-height:1.35;}
 .rr-lock-hint svg{width:11px;height:11px;fill:none;stroke:var(--navy-mid);stroke-width:1.8;vertical-align:-1px;margin-right:2px;}
 .rr-lock-hint b{color:var(--navy-mid);font-weight:800;}
 
 /* TrustShield promo */
 .ts-promo{display:flex;align-items:center;gap:11px;background:var(--navy);border-radius:13px;padding:12px 13px;margin-top:11px;}
 .ts-shield{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-.ts-shield svg{width:18px;height:18px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.ts-shield svg{width:18px;height:18px;fill:none;stroke:var(--green-bright);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .ts-promo-text{flex:1;}
 .ts-promo-text h5{font-family:'Nunito';font-weight:900;font-size:12px;color:#fff;}
 .ts-promo-text p{font-size:10.5px;color:#bcd0e8;line-height:1.35;margin-top:1px;}
-.ts-promo-btn{font-family:'Nunito';font-weight:900;font-size:11px;color:var(--navy);background:linear-gradient(135deg,var(--green),var(--green-dark));border:none;padding:8px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
-.ts-verified{display:flex;align-items:center;gap:7px;background:var(--green-light);border:1px solid #bfe6cf;border-radius:13px;padding:11px 13px;margin-top:11px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green-dark);}
-.ts-verified svg{width:18px;height:18px;fill:none;stroke:var(--green-dark);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.ts-promo-btn{font-family:'Nunito';font-weight:900;font-size:11px;color:var(--navy);background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;padding:8px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}
+
+/* ===== Age-restricted identity controls + live ID capture =====================
+   Ported from Final/gopher-request.html 2026-08-25 (owner: "virtually replicate the
+   flow of connect and request"). Web values kept where they carry meaning (the ID-1
+   card guide is 1.586:1 because that IS a driver's licence); sizes reflowed for the
+   375px phone frame instead of a 440px desktop modal. Uses this file's own tokens. */
+.ar-control{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:11px;}
+/* Slide 1 of AR Flow.pptx (owner, 2026-08-25): the submit action is NAVY and the
+   TrustShield action is GREEN — the two are different offers and must not read as
+   one repeated button. The explanatory narrative that used to sit here was removed
+   with it; the TrustShield card below already carries that copy. */
+.ar-action{font-family:'Nunito';font-weight:900;font-size:12.5px;color:#fff;background:var(--navy);
+  border:none;border-radius:10px;padding:11px 14px;cursor:pointer;line-height:1.1;width:100%;
+  transition:background .18s,transform .18s;}
+.ar-action:active{transform:translateY(1px);}
+.ar-action-note{display:flex;align-items:center;justify-content:center;gap:8px;
+  font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool);margin:0;}
+.ar-tsbtn{font-family:'Nunito';font-weight:900;font-size:12.5px;color:var(--ink-on-green);
+  background:var(--green);border:none;border-radius:10px;padding:11px 14px;cursor:pointer;
+  line-height:1.1;flex:1 1 auto;transition:background .18s,transform .18s;}
+.ar-tsbtn:active{transform:translateY(1px);}
+.ar-id-done{display:flex;align-items:center;gap:10px;background:var(--green-light);
+  border:1px solid #bfe6cf;border-radius:13px;padding:10px 12px;margin-top:11px;}
+.ar-id-done .ar-id-check{font-size:20px;}
+.ar-id-label{font-family:'Nunito';font-weight:900;font-size:12px;color:var(--green);flex:1;}
+.ar-id-update{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green);
+  background:none;border:none;cursor:pointer;text-decoration:underline;}
+
+/* ---- live capture sheet (same bottom-sheet primitive as the signup pop-up) ---- */
+.idc-back{position:absolute;inset:0;z-index:130;background:rgba(0,16,42,.46);
+  opacity:0;pointer-events:none;transition:opacity .22s;}
+.idc-back.show{opacity:1;pointer-events:auto;}
+.idc-sheet{position:absolute;left:0;right:0;bottom:0;z-index:131;background:var(--card);
+  border-radius:22px 22px 0 0;box-shadow:var(--over-sh);transform:translateY(102%);
+  transition:transform .26s cubic-bezier(.22,.9,.3,1);max-height:94%;display:flex;
+  flex-direction:column;padding:16px 16px calc(14px + env(safe-area-inset-bottom));}
+.idc-sheet.show{transform:translateY(0);}
+.idc-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.idc-title{font-family:'Nunito';font-weight:900;font-size:17px;color:var(--navy);line-height:1.2;}
+.idc-sub{font-family:'DM Sans';font-size:12px;color:var(--ink-soft);margin-top:5px;line-height:1.45;}
+.idc-steps{display:flex;gap:6px;margin:13px 0 14px;}
+.idc-chip{flex:1 1 0;font-family:'Nunito';font-weight:800;font-size:9.5px;text-transform:uppercase;
+  letter-spacing:.4px;text-align:center;padding:7px 4px;border-radius:8px;background:#f0f2f7;color:var(--muted-cool);}
+.idc-chip.done{background:var(--green);color:var(--ink-on-green);}
+.idc-chip.active{background:var(--navy);color:#fff;}   /* .active wins over .done — a
+  captured-but-current step must not read as finished (web v95) */
+.idc-step{display:none;}
+.idc-step.on{display:block;}
+.idc-step h5{font-family:'Nunito';font-weight:900;font-size:14px;color:var(--navy);}
+.idc-hint{font-family:'DM Sans';font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:5px;}
+.idc-cap{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:92px;margin-top:12px;padding:12px;border:2px dashed #cfd6e4;border-radius:12px;
+  background:#fafbfd;cursor:pointer;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);}
+.idc-cap-ico{font-size:24px;}
+.idc-thumb{margin-top:12px;display:flex;align-items:center;gap:10px;padding:8px;
+  border:1px solid var(--line-cool);border-radius:10px;background:#fff;}
+.idc-thumb[hidden]{display:none;}   /* ⚠️ .idc-thumb sets display:flex, which beats the
+  browser default [hidden] rule — this file has no global [hidden] guard (see the
+  2026-07-27 referral-engine finding). Without this line every thumb renders at once. */
+.idc-thumb img{width:60px;height:42px;object-fit:cover;border-radius:6px;flex:0 0 auto;background:#0d1530;}
+.idc-thumb-meta{font-family:'DM Sans';font-size:11.5px;color:var(--text);line-height:1.35;}
+.idc-thumb-meta b{color:var(--green);}
+.idc-retake{margin-left:auto;font-family:'Nunito';font-weight:800;font-size:11px;color:var(--green);
+  background:none;border:none;cursor:pointer;text-decoration:underline;flex:0 0 auto;}
+.idc-camwrap{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;background:#0d1530;
+  aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;}
+.idc-camwrap video{width:100%;height:100%;object-fit:cover;}
+.idc-camwrap video.mirror{transform:scaleX(-1);}
+.idc-guide{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+/* ID-1 proportion (85.6 x 54 mm = 1.586:1) — the real shape of a licence, so filling
+   it yields a straight, fully-in-frame capture. Selfie swaps it for an oval. */
+.idc-guide-win{position:relative;width:86%;aspect-ratio:1.586/1;border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(6,14,38,.55);}
+.idc-guide-win span{position:absolute;width:24px;height:24px;border:3px solid var(--green-bright);}
+.idc-guide-win span:nth-child(1){top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:12px 0 0 0;}
+.idc-guide-win span:nth-child(2){top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 12px 0 0;}
+.idc-guide-win span:nth-child(3){bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 12px;}
+.idc-guide-win span:nth-child(4){bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 12px 0;}
+.idc-guide.face .idc-guide-win{width:62%;aspect-ratio:.78/1;border-radius:50%;}
+.idc-guide.face .idc-guide-win span{display:none;}
+.idc-err{margin-top:10px;padding:9px 11px;border-radius:9px;background:rgba(225,72,72,.08);
+  border:1px solid rgba(225,72,72,.28);font-family:'DM Sans';font-size:11.5px;line-height:1.4;color:#b3261e;}
+.idc-err[hidden]{display:none;}
+.idc-actions{display:flex;flex-direction:column;gap:9px;margin-top:16px;}
+.idc-btn{width:100%;font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--ink-on-green);
+  background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;border-radius:12px;
+  padding:13px;cursor:pointer;}
+.idc-btn[disabled]{opacity:.45;cursor:not-allowed;}
+.idc-btn.sec{background:#eef0f5;color:var(--navy);}
+.idc-note{margin-top:11px;font-family:'DM Sans';font-size:10.5px;color:var(--muted-cool);line-height:1.4;}
+.idc-done-msg{text-align:center;padding:6px 0 2px;}
+.idc-done-ico{font-size:38px;}
+.idc-stores{display:flex;gap:9px;justify-content:center;margin-top:13px;}
+.idc-stores img{height:38px;}
+.ts-verified{display:flex;align-items:center;gap:7px;background:var(--green-light);border:1px solid #bfe6cf;border-radius:13px;padding:11px 13px;margin-top:11px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green);}
+.ts-verified svg{width:18px;height:18px;fill:none;stroke:var(--green);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 
 /* cost input */
 .cost-input-box{display:flex;align-items:center;border:1.5px solid #e4e8f0;border-radius:14px;padding:0 13px;background:#fff;margin-top:6px;transition:border-color .15s,box-shadow .15s;}
-.cost-input-box:focus-within{border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
+.cost-input-box:focus-within{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
 .ci-currency{font-family:'Nunito';font-weight:900;font-size:16px;color:var(--navy);margin-right:4px;}
 .cost-amount-input{flex:1;border:none;outline:none;padding:12px 0;font-family:'Nunito';font-weight:800;font-size:16px;color:var(--navy);background:transparent;}
 .cost-amount-input::placeholder{color:#b6c0d4;font-weight:600;}
@@ -283,18 +424,19 @@ body{
 .radio-group{display:flex;flex-direction:column;gap:9px;}
 .radio-row{display:flex;align-items:flex-start;gap:11px;border:1.5px solid #e4e8f0;border-radius:14px;padding:13px;cursor:pointer;transition:border-color .15s,background .15s;}
 .radio-row:hover{border-color:#cbd6e6;}
-.radio-row.selected{border-color:var(--green);background:var(--green-light);}
+.radio-row.selected{border-color:var(--green-bright);background:var(--green-light);}
 .radio-dot{width:20px;height:20px;border-radius:50%;border:2px solid #c4cee0;flex:0 0 auto;margin-top:1px;position:relative;transition:border-color .15s;}
-.radio-row.selected .radio-dot{border-color:var(--green-dark);}
-.radio-row.selected .radio-dot::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--green-dark);}
+.radio-row.selected .radio-dot{border-color:var(--green);}
+.radio-row.selected .radio-dot::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--green);}
 .rr-label{font-family:'Nunito';font-weight:700;font-size:13px;color:var(--navy);line-height:1.35;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
 
 /* address block */
 .addr-block{position:relative;}
 .addr-pin{position:absolute;left:13px;top:13px;width:18px;height:18px;}
-.addr-pin svg{width:18px;height:18px;fill:none;stroke:var(--green-dark);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.addr-pin svg{width:18px;height:18px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .addr-input{width:100%;border:1.5px solid #e4e8f0;border-radius:14px;padding:12px 13px 12px 38px;font-family:'DM Sans';font-size:13.5px;color:var(--text);background:#fff;transition:border-color .15s,box-shadow .15s;}
-.addr-input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
+.addr-input:focus{outline:none;border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.16);}
 .trip-distance{display:flex;align-items:center;gap:7px;margin-top:13px;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy-mid);background:var(--navy-light);border-radius:11px;padding:10px 12px;}
 .trip-distance svg{width:16px;height:16px;fill:none;stroke:var(--navy-mid);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
@@ -303,14 +445,14 @@ body{
   background:linear-gradient(135deg,rgba(51,217,117,.10),rgba(26,42,94,.04));border:1.5px solid rgba(51,217,117,.55);
   border-radius:14px;cursor:pointer;box-shadow:0 6px 20px -10px rgba(51,217,117,.55);
   transition:border-color .16s,background .16s,box-shadow .16s,transform .16s;}
-.ai-helper-row:hover{border-color:var(--green);background:linear-gradient(135deg,rgba(51,217,117,.16),rgba(26,42,94,.06));box-shadow:0 10px 26px -10px rgba(51,217,117,.7);}
+.ai-helper-row:hover{border-color:var(--green-bright);background:linear-gradient(135deg,rgba(51,217,117,.16),rgba(26,42,94,.06));box-shadow:0 10px 26px -10px rgba(51,217,117,.7);}
 .ai-helper-row .ai-head{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .ai-helper-row .ai-head img{height:16px;width:auto;object-fit:contain;display:block;}
 .ai-helper-row .ai-text{flex:1;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);line-height:1.2;}
-.ai-helper-row .ai-arrow{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;
+.ai-helper-row .ai-arrow{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--green-bright);color:#fff;
   display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;line-height:1;
   box-shadow:0 4px 10px -3px rgba(51,217,117,.8);transition:transform .16s,background .16s;}
-.ai-helper-row:hover .ai-arrow{background:var(--green-dark);transform:translateX(3px);}
+.ai-helper-row:hover .ai-arrow{background:var(--green);transform:translateX(3px);}
 .ai-helper-row::after{content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);
   animation:aiHelperShine 5.5s ease-in-out infinite;pointer-events:none;}
@@ -329,49 +471,66 @@ body{
 .os-panel-head .os-logo{height:24px;width:auto;}
 .os-panel-head span{font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);}
 .os-trip{font-family:'Nunito';font-weight:700;font-size:11.5px;color:var(--navy);background:var(--green-light);border-radius:8px;padding:7px 11px;margin-bottom:12px;line-height:1.4;}
-.os-trip-est{font-weight:600;color:var(--muted);}
+.os-trip-est{font-weight:600;color:var(--muted-cool);}
+/* Junk volume-tier selector — visual parity with the web apps' .os-tier (owner 2026-07-19) */
+.os-junk-tiers{display:flex;gap:7px;margin:2px 0 10px;}
+.os-tier{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px;padding:9px 8px;
+  border:1.5px solid #e4e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:left;
+  font-family:'DM Sans',sans-serif;transition:border-color .12s, background .12s, box-shadow .12s;}
+.os-tier:hover{border-color:var(--green);}
+.os-tier.active{border-color:var(--green);background:var(--green-light);box-shadow:0 0 0 2px rgba(28,176,97,.18);}
+.os-tier-name{font-family:'Nunito';font-weight:800;font-size:12.5px;color:var(--navy);line-height:1.15;}
+.os-tier-hint{font-size:10px;color:var(--muted-cool);line-height:1.25;}
+.os-tier:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
 .os-slider-wrap{margin:2px 0 4px;padding:12px 6px 8px;background:var(--navy-light);border-radius:13px;}
 .os-rail-labels,.os-rail-vals{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;font-family:'Nunito';padding:0 4px;}
 .os-rail-labels{font-size:10.5px;font-weight:800;margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;}
-.os-lab-low{color:var(--muted);text-align:left;} .os-lab-fair{color:var(--green-dark);text-align:center;} .os-lab-gen{color:var(--green-dark);text-align:right;}
+.os-lab-low{color:var(--muted-cool);text-align:left;} .os-lab-fair{color:var(--green);text-align:center;} .os-lab-gen{color:var(--green);text-align:right;}
 .os-rail-vals{font-size:12.5px;font-weight:800;color:var(--navy);margin-top:8px;}
-.os-rail-vals span:first-child{text-align:left;} .os-rail-dash{text-align:center;color:var(--muted);} .os-rail-vals span:last-child{text-align:right;}
+.os-rail-vals span:first-child{text-align:left;} .os-rail-dash{text-align:center;color:var(--muted-cool);} .os-rail-vals span:last-child{text-align:right;}
 .os-slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;outline:none;cursor:pointer;margin:0;
-  background:linear-gradient(90deg,#d6dce8 0%,var(--green) 50%,#d6dce8 100%);}
-.os-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--green);cursor:pointer;box-shadow:0 2px 6px rgba(0,36,97,.22);transition:transform .12s;}
+  background:linear-gradient(90deg,#d6dce8 0%,var(--green-bright) 50%,#d6dce8 100%);}
+.os-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--green-bright);cursor:pointer;box-shadow:0 2px 6px rgba(0,36,97,.22);transition:transform .12s;}
 .os-slider::-webkit-slider-thumb:active{transform:scale(1.12);}
-.os-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--green);cursor:pointer;box-shadow:0 2px 6px rgba(0,36,97,.22);}
+.os-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--green-bright);cursor:pointer;box-shadow:0 2px 6px rgba(0,36,97,.22);}
 .os-amount-block{margin:16px 0 4px;text-align:center;}
-.os-amount-label{font-family:'Nunito';font-weight:700;font-size:10.5px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;}
+.os-amount-label{font-family:'Nunito';font-weight:700;font-size:10.5px;color:var(--muted-cool);margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em;}
 .os-amount-input-box{display:inline-flex;align-items:center;gap:5px;border:1.5px solid #dfe3ec;border-radius:12px;padding:6px 20px;background:#fff;transition:border-color .15s,box-shadow .15s;}
-.os-amount-input-box:focus-within{border-color:var(--green);box-shadow:0 0 0 3px rgba(51,217,117,.12);}
+.os-amount-input-box:focus-within{border-color:var(--green-bright);box-shadow:0 0 0 3px rgba(51,217,117,.12);}
 .os-amount-currency{font-family:'DM Sans';font-weight:600;font-size:22px;color:var(--navy);opacity:.85;}
 .os-amount-input{border:none;outline:none;width:84px;text-align:center;background:transparent;font-family:'DM Sans';font-weight:600;font-size:26px;color:var(--navy);}
-.os-hint{font-family:'DM Sans';font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.4;min-height:16px;}
-.os-hint.warn{color:var(--error);font-weight:600;} .os-hint.over{color:var(--green-dark);font-weight:600;}
+.os-hint{font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool);margin-top:9px;line-height:1.4;min-height:16px;}
+.os-hint.warn{color:var(--error);font-weight:600;} .os-hint.over{color:var(--green);font-weight:600;}
 .os-actions{display:flex;gap:9px;margin-top:13px;}
 .os-cancel{flex:0 0 auto;border:1.5px solid #dfe3ec;background:#fff;border-radius:12px;padding:10px 16px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:var(--navy);cursor:pointer;}
-.os-use{flex:1;border:none;border-radius:12px;padding:10px;font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);background:linear-gradient(135deg,var(--green),var(--green-dark));cursor:pointer;box-shadow:0 4px 12px -3px rgba(51,217,117,.7);}
+.os-use{flex:1;border:none;border-radius:12px;padding:10px;font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);background:linear-gradient(135deg,var(--green-bright),var(--green));cursor:pointer;box-shadow:0 4px 12px -3px rgba(51,217,117,.7);}
 
 /* wage summary */
 .wage-summary{background:#f7f9fc;border:1px solid #eef1f7;border-radius:12px;padding:11px 13px;margin-top:11px;}
 .wage-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;}
 .wage-row.total{border-top:1px dashed #dde3ec;margin-top:4px;padding-top:8px;}
-.wage-label{font-family:'Nunito';font-weight:700;font-size:11.5px;color:var(--muted);}
+.wage-label{font-family:'Nunito';font-weight:700;font-size:11.5px;color:var(--muted-cool);}
 .wage-row.total .wage-label{color:var(--navy);}
 .wage-value{font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);}
-.wage-value small{font-family:'DM Sans';font-weight:400;font-size:10px;color:var(--muted);}
+.wage-value small{font-family:'DM Sans';font-weight:400;font-size:10px;color:var(--muted-cool);}
 
 /* low offer notice */
 .low-offer{display:flex;gap:9px;background:#fff7c2;border:1px solid #f3e09a;border-radius:12px;padding:11px 12px;margin-top:11px;}
 .low-offer svg{width:18px;height:18px;fill:none;stroke:var(--warning-text);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;margin-top:1px;}
 .low-offer p{font-size:11.5px;color:var(--warning-text);line-height:1.45;}
+/* DEMO sim bars on the submitted screen (see renderStep7). Deliberately styled as dev
+   chrome, not product: dashed border and a DEMO tag, so a reviewer can never mistake
+   one for a real notification. */
+.g40-simbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;padding:9px 11px;border:1px dashed #c9d2e3;border-radius:10px;background:#eef0f8;}
+.g40-simtag{font-family:'Nunito';font-weight:900;font-size:9px;letter-spacing:.08em;color:#fff;background:#3A4D74;border-radius:5px;padding:2px 6px;}
+.g40-simnote{flex:1;min-width:120px;font-family:'DM Sans';font-size:10.5px;color:#3A4D74;line-height:1.35;}
+.g40-simbtn{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--navy);background:#fff;border:1px solid #c9d2e3;border-radius:8px;padding:6px 10px;cursor:pointer;}
 
 /* ── Review card ── */
 .review-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:6px 15px;margin-top:16px;box-shadow:var(--card-sh);}
 .review-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:11px 0;border-top:1px solid #f1f3f8;}
 .review-row:first-child{border-top:none;}
-.review-row .rl{font-family:'Nunito';font-weight:700;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+.review-row .rl{font-family:'Nunito';font-weight:700;font-size:12px;color:var(--muted-cool);display:flex;align-items:center;gap:6px;flex:0 0 auto;}
 .review-row .rv{font-family:'Nunito';font-weight:800;font-size:12.5px;color:var(--navy);text-align:right;}
 .review-row.earn .rv{color:var(--navy);}
 .review-row.total{border-top:2px solid var(--navy-light);margin-top:2px;}
@@ -386,43 +545,43 @@ body{
 .fee-items{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;}
 .fee-item{display:flex;justify-content:space-between;font-family:'DM Sans';font-size:11.5px;color:var(--text);}
 .fee-item span:last-child{font-family:'Nunito';font-weight:800;color:var(--navy);}
-.fee-item-promo span{color:var(--green-dark)!important;}
+.fee-item-promo span{color:var(--green)!important;}
 .fee-item-total{border-top:1px dashed #dde3ec;padding-top:6px;margin-top:2px;}
 .fee-item-total span{font-family:'Nunito';font-weight:900;}
 .fee-item-sub{border-top:1px dashed #dde3ec;padding-top:6px;margin-top:2px;}
 .fee-item-sub span{font-family:'Nunito';font-weight:800;}
-.fee-note{font-size:10.5px;color:var(--muted);line-height:1.4;}
+.fee-note{font-size:10.5px;color:var(--muted-cool);line-height:1.4;}
 
 /* promo */
 .promo-entry{display:flex;gap:7px;justify-content:flex-end;}
 .promo-input{width:108px;border:1.5px solid #e4e8f0;border-radius:10px;padding:7px 9px;font-family:'Nunito';font-weight:800;font-size:11.5px;color:var(--navy);text-transform:uppercase;}
-.promo-input:focus{outline:none;border-color:var(--green);}
+.promo-input:focus{outline:none;border-color:var(--green-bright);}
 .promo-input-error{border-color:var(--error);}
 .promo-apply{font-family:'Nunito';font-weight:900;font-size:11px;color:#fff;background:var(--navy);border:none;border-radius:10px;padding:7px 13px;cursor:pointer;}
 .promo-applied{display:flex;align-items:center;gap:7px;justify-content:flex-end;}
-.promo-tag{font-family:'Nunito';font-weight:800;font-size:10.5px;color:var(--green-dark);background:var(--green-light);padding:5px 9px;border-radius:99px;}
+.promo-tag{font-family:'Nunito';font-weight:800;font-size:10.5px;color:var(--green);background:var(--green-light);padding:5px 9px;border-radius:99px;}
 .promo-remove{width:18px;height:18px;border:none;border-radius:50%;background:#eef1f7;color:var(--navy-mid);font-size:12px;cursor:pointer;}
 .promo-hint{display:block;text-align:right;font-size:10.5px;color:var(--error);margin-top:5px;}
 
 /* payment picker */
 .pay-picker{cursor:pointer;}
-.pay-chev{display:inline-block;margin-left:6px;font-size:9px;color:var(--muted);transition:transform .2s;}
+.pay-chev{display:inline-block;margin-left:6px;font-size:9px;color:var(--muted-cool);transition:transform .2s;}
 .pay-picker.open .pay-chev{transform:rotate(180deg);}
 .pay-panel{background:#f7f9fc;border:1px solid #eef1f7;border-radius:13px;padding:7px;margin:4px 0 11px;display:flex;flex-direction:column;gap:5px;}
 .pay-opt{display:flex;align-items:center;gap:11px;padding:9px;border-radius:10px;cursor:pointer;background:#fff;border:1.5px solid transparent;transition:border-color .15s;}
 .pay-opt:hover{border-color:#dde3ec;}
-.pay-opt.selected{border-color:var(--green);background:var(--green-light);}
+.pay-opt.selected{border-color:var(--green-bright);background:var(--green-light);}
 .pmo-badge{width:38px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:9px;color:#fff;flex:0 0 auto;}
 .pmo-body{flex:1;}
 .pmo-name{font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);}
-.pmo-sub{font-family:'DM Sans';font-size:10.5px;color:var(--muted);}
+.pmo-sub{font-family:'DM Sans';font-size:10.5px;color:var(--muted-cool);}
 .pmo-tick{width:18px;height:18px;border-radius:50%;border:2px solid #d4dce8;flex:0 0 auto;}
-.pay-opt.selected .pmo-tick{border-color:var(--green-dark);background:var(--green-dark);}
+.pay-opt.selected .pmo-tick{border-color:var(--green);background:var(--green);}
 .pay-opt.add-new .pmo-badge{background:#eef1f7;color:var(--navy);font-size:18px;}
 
 /* ── Second set of eyes (Gopher iQ review — ported from Gopher Request) ── */
 .sse-block{margin-top:16px;border:1.5px solid #d9e8ff;border-radius:14px;background:linear-gradient(180deg,#f5f9ff 0%,#fff 100%);overflow:hidden;transition:border-color .2s;}
-.sse-block.open{border-color:var(--green);}
+.sse-block.open{border-color:var(--green-bright);}
 .sse-block.attn-pulse{border-color:#e3a0ad;animation:attnRedGlow 2.6s ease-in-out infinite;will-change:box-shadow;}
 @keyframes attnRedGlow{0%,100%{box-shadow:0 2px 8px rgba(196,66,87,.30);}50%{box-shadow:0 4px 22px rgba(196,66,87,.62);}}
 @media (prefers-reduced-motion:reduce){.sse-block.attn-pulse{animation:none;box-shadow:0 3px 14px rgba(196,66,87,.45);}}
@@ -431,26 +590,28 @@ body{
 .sse-brain img{height:42px;width:auto;display:block;}
 .sse-head-text{flex:1;}
 .sse-head-text h4{font-family:'Nunito';font-weight:900;font-size:14.5px;color:var(--navy);}
-.sse-head-text p{font-family:'DM Sans';font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
-.sse-chev{color:var(--green-dark);font-size:11px;flex:0 0 auto;}
+.sse-head-text p{font-family:'DM Sans';font-size:12px;color:var(--muted-cool);margin-top:2px;line-height:1.4;}
+.sse-chev{color:var(--green);font-size:11px;flex:0 0 auto;}
 .sse-body{padding:4px 16px 16px;border-top:1px solid #e4eeff;animation:sseIn .2s ease;}
 @keyframes sseIn{from{opacity:0;}to{opacity:1;}}
 .sse-flag{background:#fff5e6;border:1px solid #ffe2b0;border-radius:9px;padding:9px 12px;margin:12px 0 4px;font-family:'DM Sans';font-size:12px;color:#b07400;line-height:1.45;}
 .sse-flag b{font-weight:800;}
+/* Positive counterpart to .sse-flag — shown when the request is abundantly clear (affirm, no advice). */
+.sse-affirm{background:var(--green-light);border:1px solid #cdeeda;border-radius:9px;padding:11px 13px;margin:12px 0 4px;font-family:'DM Sans';font-size:12.5px;color:#0f6e56;font-weight:600;line-height:1.45;}
 .sse-intro{font-family:'DM Sans';font-size:12.5px;color:var(--navy);margin:12px 0 8px;line-height:1.5;}
 .sse-points{list-style:none;display:flex;flex-direction:column;gap:7px;margin:0 0 12px;padding:0;}
 .sse-points li{position:relative;padding-left:22px;font-family:'DM Sans';font-size:12.5px;color:var(--text);line-height:1.45;}
-.sse-points li::before{content:'✓';position:absolute;left:0;top:0;color:var(--green-dark);font-weight:900;font-size:12px;}
+.sse-points li::before{content:'✓';position:absolute;left:0;top:0;color:var(--green);font-weight:900;font-size:12px;}
 .sse-points li b{font-family:'Nunito';font-weight:700;color:var(--navy);}
 .sse-cta{font-family:'DM Sans';font-size:12px;color:var(--navy);margin:0 0 9px;font-weight:600;}
 .sse-jumps{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
 .sse-jump{text-align:left;border:1.5px solid #cfe0f7;background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;font-family:'Nunito';font-weight:700;font-size:11.5px;color:var(--navy);transition:all .14s;}
-.sse-jump:hover{border-color:var(--green);color:var(--green-dark);background:#f6fbf7;}
-.sse-fine{font-family:'DM Sans';font-size:10.5px;color:var(--muted);margin:0;line-height:1.45;font-style:italic;}
+.sse-jump:hover{border-color:var(--green-bright);color:var(--green);background:#f6fbf7;}
+.sse-fine{font-family:'DM Sans';font-size:10.5px;color:var(--muted-cool);margin:0;line-height:1.45;font-style:italic;}
 .sse-fine b{color:var(--navy);font-weight:700;}
 
 /* what to expect */
-.section-label{font-family:'Nunito';font-weight:900;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--green-dark);margin:20px 2px 0;}
+.section-label{font-family:'Nunito';font-weight:900;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin:20px 2px 0;}
 .wte{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:15px;margin-top:11px;box-shadow:var(--card-sh);}
 .wte-list{list-style:none;display:flex;flex-direction:column;gap:12px;}
 .wte-list li{display:flex;gap:11px;align-items:flex-start;}
@@ -458,37 +619,37 @@ body{
 .wte-id-mark{background:var(--warning);color:var(--warning-text);}
 .wte-text{font-size:12px;color:var(--text);line-height:1.45;}
 .wte-text b{font-family:'Nunito';font-weight:800;color:var(--navy);}
-.wte-footer{font-family:'Caveat';font-weight:700;font-size:18px;color:var(--green-dark);text-align:center;margin-top:14px;}
+.wte-footer{font-family:'Caveat';font-weight:700;font-size:18px;color:var(--green);text-align:center;margin-top:14px;}
 
 /* waiver */
 .waiver-box{display:flex;gap:11px;align-items:flex-start;background:#f7f9fc;border:1px solid #eef1f7;border-radius:13px;padding:13px;margin-top:14px;}
 .waiver-check{width:24px;height:24px;border-radius:7px;border:2px solid #c4cee0;background:#fff;cursor:pointer;flex:0 0 auto;position:relative;transition:background .15s,border-color .15s;}
-.waiver-check.checked{background:var(--green-dark);border-color:var(--green-dark);}
+.waiver-check.checked{background:var(--green);border-color:var(--green);}
 .waiver-check.checked::after{content:"";position:absolute;left:7px;top:3px;width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg);}
 .waiver-box span{font-size:11px;color:var(--text);line-height:1.5;}
 .waiver-box strong{font-family:'Nunito';font-weight:800;color:var(--navy);}
-.legal-link{color:var(--green-dark);text-decoration:underline;cursor:pointer;}
-.auth-note{font-family:'DM Sans';font-size:10px;color:var(--muted);text-align:center;margin-top:11px;line-height:1.5;padding:0 6px;}
+.legal-link{color:var(--green);text-decoration:underline;cursor:pointer;}
+.auth-note{font-family:'DM Sans';font-size:10px;color:var(--muted-cool);text-align:center;margin-top:11px;line-height:1.5;padding:0 6px;}
 
 /* schedule */
 .timing-block{margin-top:16px;}
 .timing-label{font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);display:flex;align-items:center;gap:6px;margin-bottom:9px;}
-.timing-label svg{width:15px;height:15px;fill:none;stroke:var(--green-dark);stroke-width:1.9;}
+.timing-label svg{width:15px;height:15px;fill:none;stroke:var(--green);stroke-width:1.9;}
 .timing-seg{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px;}
 .timing-opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;
   border:1.5px solid #e4e8f0;background:#fff;border-radius:14px;padding:13px 13px 12px;cursor:pointer;
   transition:border-color .15s,background .15s,box-shadow .15s;position:relative;}
 .timing-opt .to-title{font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--navy);letter-spacing:-.2px;}
-.timing-opt .to-sub{font-family:'DM Sans';font-size:10.5px;color:var(--muted);line-height:1.3;}
-.timing-opt.selected{border-color:var(--green);background:var(--green-light);box-shadow:var(--elig-sh);}
-.timing-opt.selected .to-title{color:var(--green-dark);}
-.timing-opt.selected::after{content:"✓";position:absolute;top:9px;right:11px;font-family:'Nunito';font-weight:900;font-size:12px;color:var(--green-dark);}
+.timing-opt .to-sub{font-family:'DM Sans';font-size:10.5px;color:var(--muted-cool);line-height:1.3;}
+.timing-opt.selected{border-color:var(--green-bright);background:var(--green-light);box-shadow:var(--elig-sh);}
+.timing-opt.selected .to-title{color:var(--green);}
+.timing-opt.selected::after{content:"✓";position:absolute;top:9px;right:11px;font-family:'Nunito';font-weight:900;font-size:12px;color:var(--green);}
 .sm-tabs{display:flex;gap:8px;background:#eef1f7;padding:4px;border-radius:13px;margin-bottom:11px;}
 .sm-tab{flex:1;border:none;background:transparent;font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy-mid);padding:9px;border-radius:10px;cursor:pointer;transition:background .15s,color .15s;}
 .sm-tab.selected{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,36,97,.12);}
 .flex-windows{display:flex;flex-direction:column;gap:8px;}
 .flex-window{border:1.5px solid #e4e8f0;border-radius:13px;padding:13px;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);cursor:pointer;text-align:center;transition:border-color .15s,background .15s;}
-.flex-window.selected{border-color:var(--green);background:var(--green-light);color:var(--green-dark);}
+.flex-window.selected{border-color:var(--green-bright);background:var(--green-light);color:var(--green);}
 
 /* calendar */
 .cal{background:#fff;border:1px solid var(--border);border-radius:14px;padding:13px;}
@@ -497,39 +658,39 @@ body{
 .cal-nav{width:30px;height:30px;border-radius:9px;border:1.5px solid #e4e8f0;background:#fff;color:var(--navy);font-size:16px;cursor:pointer;}
 .cal-nav:disabled{opacity:.3;cursor:default;}
 .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
-.cal-dow span{text-align:center;font-family:'Nunito';font-weight:800;font-size:10px;color:var(--muted);}
+.cal-dow span{text-align:center;font-family:'Nunito';font-weight:800;font-size:10px;color:var(--muted-cool);}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:700;font-size:12px;border-radius:9px;border:none;background:transparent;color:var(--navy);cursor:pointer;}
 .cal-cell.cal-day:hover{background:var(--navy-light);}
 .cal-disabled{color:#c4cee0;cursor:default;}
-.cal-selected{background:linear-gradient(135deg,var(--green),var(--green-dark));color:var(--navy);font-weight:900;}
+.cal-selected{background:linear-gradient(135deg,var(--green-bright),var(--green));color:var(--navy);font-weight:900;}
 .cal-empty{cursor:default;}
 .cal-time-row{display:flex;align-items:center;gap:9px;margin-top:11px;}
 .cal-time-label{font-family:'Nunito';font-weight:800;font-size:12px;color:var(--navy);display:flex;align-items:center;gap:5px;}
 .cal-time-label svg{width:15px;height:15px;fill:none;stroke:var(--navy);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .cal-time-select{flex:1;}
-.cal-chosen{font-family:'DM Sans';font-size:11.5px;color:var(--muted);margin-top:10px;text-align:center;}
-.cal-chosen b{font-family:'Nunito';font-weight:800;color:var(--green-dark);}
+.cal-chosen{font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool);margin-top:10px;text-align:center;}
+.cal-chosen b{font-family:'Nunito';font-weight:800;color:var(--green);}
 
 /* empty worker note */
-.soft-note{background:#f7f9fc;border:1px dashed #d8dfeb;border-radius:14px;padding:15px;margin-top:16px;font-size:12.5px;color:var(--muted);line-height:1.5;text-align:center;}
+.soft-note{background:#f7f9fc;border:1px dashed #d8dfeb;border-radius:14px;padding:15px;margin-top:16px;font-size:12.5px;color:var(--muted-cool);line-height:1.5;text-align:center;}
 .soft-note b{font-family:'Nunito';font-weight:800;color:var(--navy);}
 
 /* ── Submitted ── */
 .burst{text-align:center;padding:18px 10px 8px;}
-.check-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-dark));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 10px 26px rgba(51,217,117,.4);animation:pop .45s cubic-bezier(.2,1.3,.4,1) both;}
+.check-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--green-bright),var(--green));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 10px 26px rgba(51,217,117,.4);animation:pop .45s cubic-bezier(.2,1.3,.4,1) both;}
 @keyframes pop{from{transform:scale(.3);opacity:0;}to{transform:scale(1);opacity:1;}}
 .check-circle svg{width:32px;height:32px;fill:none;stroke:var(--navy);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
 .burst h4{font-family:'Nunito';font-weight:900;font-size:21px;color:var(--navy);letter-spacing:-.4px;}
-.burst p{font-size:12.5px;color:var(--muted);margin-top:5px;}
+.burst p{font-size:12.5px;color:var(--muted-cool);margin-top:5px;}
 .burst p strong{color:var(--navy);font-weight:800;}
 .si-band{display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,var(--green-light),#d6efe0);border:1px solid #bfe6cf;border-radius:var(--radius);padding:13px;margin-top:14px;}
 .si-ico{width:38px;height:38px;border-radius:11px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
-.si-ico svg{width:21px;height:21px;fill:none;stroke:var(--green-dark);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.si-ico svg{width:21px;height:21px;fill:none;stroke:var(--green);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .si-text{flex:1;}
 .si-text h5{font-family:'Nunito';font-weight:900;font-size:13px;color:var(--navy);}
 .si-text p{font-size:11px;color:#3e6b52;line-height:1.35;margin-top:1px;}
-.si-btn{font-family:'Nunito';font-weight:900;font-size:12px;color:var(--navy);background:linear-gradient(135deg,var(--green),var(--green-dark));border:none;border-radius:12px;padding:11px;width:100%;margin-top:13px;cursor:pointer;box-shadow:0 6px 16px rgba(51,217,117,.35);}
+.si-btn{font-family:'Nunito';font-weight:900;font-size:12px;color:var(--navy);background:linear-gradient(135deg,var(--green-bright),var(--green));border:none;border-radius:12px;padding:11px;width:100%;margin-top:13px;cursor:pointer;box-shadow:0 6px 16px rgba(51,217,117,.35);}
 .matched-actions{display:flex;gap:9px;margin-top:11px;}
 .ma-btn{flex:1;border-radius:13px;padding:12px;font-family:'Nunito';font-weight:900;font-size:12.5px;cursor:pointer;border:1.5px solid #e4e8f0;background:#fff;color:var(--navy);}
 .ma-btn-secondary{color:var(--error);border-color:#f0d5da;}
@@ -538,7 +699,7 @@ body{
 .foot{flex:0 0 auto;background:#fff;border-top:1px solid var(--border);padding:13px 16px calc(13px + env(safe-area-inset-bottom));display:flex;gap:10px;}
 .btn{flex:1;border:none;border-radius:14px;padding:15px 18px;font-family:'Nunito';font-weight:900;font-size:14.5px;cursor:pointer;transition:transform .1s,box-shadow .15s,opacity .15s;}
 .btn:active{transform:scale(.98);}
-.btn-primary{background:linear-gradient(135deg,var(--green),var(--green-dark));color:var(--ink-on-green);box-shadow:0 8px 22px rgba(51,217,117,.4);}
+.btn-primary{background:linear-gradient(135deg,var(--green-bright),var(--green));color:var(--ink-on-green);box-shadow:0 8px 22px rgba(51,217,117,.4);}
 .btn-navy{background:var(--navy);color:#fff;}
 .btn-outline{background:#fff;border:1.5px solid var(--navy);color:var(--navy);flex:0 0 auto;padding:15px 20px;}
 .btn-pass{background:#f1f3f8;color:var(--navy);}
@@ -573,7 +734,7 @@ body{
 .su-grip{width:38px;height:4px;border-radius:99px;background:var(--line, #EAE3D5);margin:0 auto 12px;flex:0 0 auto;}
 .su-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .su-tag{display:inline-block;font-family:'Nunito';font-weight:900;font-size:10px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--green-dark, #1CB061);background:var(--green-tint, #E8F5EE);
+  text-transform:uppercase;color:var(--green, #1CB061);background:var(--green-tint, #E8F5EE);
   padding:4px 10px;border-radius:99px;margin-bottom:8px;}
 .su-tag.ar{color:var(--warning-text, #92580D);background:#FFF3D1;}
 .su-title{font-family:'Nunito';font-weight:900;font-size:19px;color:var(--navy, #002461);line-height:1.2;}
@@ -589,9 +750,9 @@ body{
 .su-field input::placeholder{color:#aab1bd;}
 .su-row{display:flex;gap:10px;}
 .su-row .su-field{flex:1 1 0;}
-.su-verified{color:var(--green-dark, #1CB061);font-weight:800;font-size:10.5px;}
+.su-verified{color:var(--green, #1CB061);font-weight:800;font-size:10.5px;}
 .su-primary{width:100%;margin-top:16px;border:none;cursor:pointer;
-  background:linear-gradient(135deg,var(--green-bright, #33D975),var(--green-dark, #1CB061));color:var(--navy, #002461);
+  background:linear-gradient(135deg,var(--green-bright, #33D975),var(--green, #1CB061));color:var(--navy, #002461);
   font-family:'Nunito';font-weight:900;font-size:15px;border-radius:14px;padding:14px;
   box-shadow:0 4px 12px -3px rgba(28,176,97,.5);transition:transform .08s,opacity .15s;}
 .su-primary:active{transform:scale(.985);}
@@ -601,7 +762,7 @@ body{
   font-size:12.5px;color:var(--ink-soft, #3A4D74);padding:6px 2px;}
 .su-link:hover{color:var(--navy, #002461);}
 .su-hint{font-family:'DM Sans';font-size:11.5px;color:var(--muted-cool, #6b7280);margin-top:12px;line-height:1.5;}
-.su-hint a{color:var(--green-dark, #1CB061);font-weight:700;cursor:pointer;text-decoration:underline;}
+.su-hint a{color:var(--green, #1CB061);font-weight:700;cursor:pointer;text-decoration:underline;}
 .su-hint b{color:var(--ink-soft, #3A4D74);}
 /* demo context switch */
 .su-demo{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 12px;
@@ -630,14 +791,14 @@ body{
 /* checkbox confirmation */
 .su-check{display:flex;gap:10px;align-items:flex-start;margin-top:16px;cursor:pointer;
   font-family:'DM Sans';font-size:12.5px;color:var(--navy, #002461);line-height:1.5;}
-.su-check input{flex:0 0 auto;width:19px;height:19px;margin-top:1px;accent-color:var(--green-dark, #1CB061);}
+.su-check input{flex:0 0 auto;width:19px;height:19px;margin-top:1px;accent-color:var(--green, #1CB061);}
 /* inline ID capture */
 .su-idcap{margin-top:16px;border:1.5px dashed var(--line-cool, #E3E7EF);border-radius:14px;padding:18px 14px;text-align:center;}
 .su-idcap .ic-frame{width:84px;height:54px;border-radius:9px;margin:0 auto 10px;
   border:2px solid var(--navy-light, #eef0f8);background:var(--navy-light, #eef0f8);display:flex;align-items:center;justify-content:center;}
 .su-idcap .ic-frame svg{width:30px;height:30px;fill:none;stroke:var(--navy-mid, #1a3a7a);stroke-width:1.8;}
 .su-idcap.done .ic-frame{border-color:var(--green-bright, #33D975);background:var(--green-tint, #E8F5EE);}
-.su-idcap.done .ic-frame svg{stroke:var(--green-dark, #1CB061);}
+.su-idcap.done .ic-frame svg{stroke:var(--green, #1CB061);}
 .su-idcap .ic-cap{font-family:'DM Sans';font-size:12px;color:var(--ink-soft, #3A4D74);margin-bottom:12px;}
 .su-idcap .ic-btns{display:flex;gap:9px;justify-content:center;}
 .su-idcap .ic-btn{border:1.5px solid var(--navy, #002461);background:#fff;color:var(--navy, #002461);
@@ -645,7 +806,7 @@ body{
 .su-idcap .ic-btn:active{transform:scale(.97);}
 .su-idcap.done .ic-btns{display:none;}
 .su-idcap .ic-okrow{display:none;align-items:center;justify-content:center;gap:7px;
-  font-family:'Nunito';font-weight:800;font-size:13px;color:var(--green-dark, #1CB061);}
+  font-family:'Nunito';font-weight:800;font-size:13px;color:var(--green, #1CB061);}
 .su-idcap.done .ic-okrow{display:flex;}
 /* TrustShield seal block */
 .su-seal{text-align:center;margin-top:8px;padding:14px 0 4px;}
@@ -658,7 +819,7 @@ body{
 .su-done{text-align:center;padding:10px 0 4px;}
 .su-done .dn-check{width:58px;height:58px;border-radius:50%;margin:0 auto 12px;
   background:var(--green-tint, #E8F5EE);display:flex;align-items:center;justify-content:center;}
-.su-done .dn-check svg{width:30px;height:30px;fill:none;stroke:var(--green-dark, #1CB061);stroke-width:2.6;
+.su-done .dn-check svg{width:30px;height:30px;fill:none;stroke:var(--green, #1CB061);stroke-width:2.6;
   stroke-linecap:round;stroke-linejoin:round;}
 /* launcher row in Account */
 .su-launch{display:flex;align-items:center;gap:13px;background:var(--navy, #002461);border-radius:15px;
@@ -679,7 +840,7 @@ body{
 .sched-summary .ss-line{flex:1;font-family:'DM Sans',sans-serif;font-size:13.5px;color:var(--navy,#002461);display:flex;align-items:center;gap:8px;}
 .sched-summary .ss-line svg{width:16px;height:16px;flex:0 0 auto;}
 .sched-summary .ss-line b{font-family:'Nunito',sans-serif;font-weight:900;}
-.sched-change{border:none;background:none;color:var(--green-dark,#0a7d44);font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;text-decoration:underline;flex:0 0 auto;}
+.sched-change{border:none;background:none;color:var(--green,#0a7d44);font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;cursor:pointer;text-decoration:underline;flex:0 0 auto;}
 
 .demo-ribbon{background:#FFF3D6;color:#7a5300;border:1px solid #f0dca6;border-radius:10px;padding:9px 13px;margin:0 0 14px;font-family:'DM Sans',sans-serif;font-size:12.5px;text-align:center;}
 .demo-ribbon b{font-family:'Nunito',sans-serif;font-weight:900;color:#7a5300;}
@@ -817,6 +978,21 @@ const PROMO_CODES = { GOPHER50:{ label:'GOPHER50', desc:'50% off fees', feeMulti
 const getPromo = (code)=> code ? (PROMO_CODES[String(code).trim().toUpperCase()] || null) : null;
 
 function computeRequestFee(cogOffer){
+  /* GOPHER DEALS — service-provider deals are a SET PRICE: the customer pays exactly
+     that and NOTHING else. Zero fees, no ITF, no promo, no TrustShield line — there is
+     no fee bundle left for a discount to apply to. The 10% Deal Boost is Gopher's own
+     take out of that price and is NEVER added to what the customer pays; it is carried
+     for the admin log only. Ported verbatim in behaviour from the web app's
+     computeRequestFee (Final/gopher-request.html), which this surface must match.
+     ⚠️ Gated on dealKind === 'service', not on fromDeal — a MERCHANT deal is a normal
+     priced request and must keep its full fee schedule. */
+  if(state.fromDeal && state.dealKind === 'service'){
+    const dealBoostFee = Math.round(cogOffer * 0.10 * 100) / 100;
+    return { gopherFee:0, ageFee:0, instantTransfer:0, requestFee:0, cogOffer,
+             gmvTotal:cogOffer, grossCost:cogOffer, promo:null, promoDiscount:0,
+             trustShieldDiscount:0, fullGopherFee:0, fullAgeFee:0, fullInstantTransfer:0,
+             dealBoostFee, serviceDealZeroFee:true };
+  }
   const promo = getPromo(state.promoApplied ? state.promoCode : null);
   const promoPct = promo ? (1 - promo.feeMultiplier) : 0;          // 0.5 == "50% off" for GOPHER50
   const baseGopher = GOPHER_FEE[state.category] ?? GOPHER_FEE.other;
@@ -836,7 +1012,12 @@ function computeRequestFee(cogOffer){
   //    but never reduce the offer/items); TS absorbs any truncation when the cap binds.
   const hasTS = (typeof window.__hasTrustShield === 'function')
     ? !!window.__hasTrustShield() : !!(state && state.trustShield);
-  const tsEligible = hasTS && (state.category==='delivery' || state.category==='ride');
+  /* TrustShield $1 perk scope — age-restricted Delivery + ALL Ride Sharing, never plain
+     delivery. Owner ruling 2026-07-05 made the NARROW build scope authoritative; this file
+     carried the rejected broad scope, so the discount was applying to every delivery — a
+     silent money leak with no visible error, which is why it survived. Request and Connect
+     were both already correct. */
+  const tsEligible = hasTS && ((state.category==='delivery' && state.ageRestricted) || state.category==='ride');
   const promoDiscount = Math.min(promoPct * totalFees, totalFees);
   const tsDiscount    = tsEligible ? Math.min(1.00, totalFees - promoDiscount) : 0;
 
@@ -927,7 +1108,16 @@ const FIELD_HIDDEN_FOR = {
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
   serviceElevator:['delivery','home','labor','junk','yard','ride','other'],
   destStairs:['delivery','home','yard','ride'],
-  aiPaySuggest:['junk','moving','home','labor','yard','other'],
+  /* ⚠️ POLARITY: this table is FIELD_HIDDEN_FOR — every array lists the categories a field is
+     HIDDEN for. isVisible(f) = !FIELD_HIDDEN_FOR[f].includes(category). So REMOVING a category
+     from an array TURNS THE FIELD ON for it. The old comment here named the VISIBLE set
+     ("Delivery + Ride + Junk") one line from a hide list — opposite polarity, side by side,
+     which is plausibly how this drifted in the first place. Naming the rule instead.
+     RULE: aiPaySuggest is visible for exactly PRICED_CATEGORIES (delivery, ride, moving, junk)
+     — so the hide list is everything else. 'moving' was removed 2026-08-22 because Moving
+     joined PRICED_CATEGORIES on 2026-08-08 and its suggestion had stopped appearing; taking it
+     out of the HIDE list is what turns it back ON. The parity harness asserts this equivalence. */
+  aiPaySuggest:['home','labor','yard','other'],
   bidsOption:['delivery','ride']
 };
 const isVisible = (f)=> !FIELD_HIDDEN_FOR[f].includes(state.category);
@@ -981,9 +1171,25 @@ function rideSuggestedOffer(miles, minutes, scheduled){
   const calc=(mult)=>{ let base=Math.max(r.fee+variable*mult, r.minRide); if(scheduled) base*=(1+r.schedUplift); return base*(1+r.itf); };
   return { low:Math.round(calc(1-r.band)), suggested:Math.round(calc(1)), generous:Math.round(calc(1+r.band)), miles, minutes };
 }
+// Junk prices on a VOLUME tier, not item cost (owner 2026-07-19). The tier is
+// iQ-detected from the description on first open and then owned by state.junkTier
+// once the user taps a tier button in the offer modal. Tiers, keyword detector and
+// the forward-learning blend all live in the SHARED module
+// (Final/assets/js/gopher-request-logic.js) — parity with the Request/Connect web apps.
+// No completed-junk history exists in this flow prototype to seed the learning store
+// from (the web surfaces seed via seedJunkLearningOnce()); production records
+// completions through the same recordJunkOffer() seam.
+function currentJunkTier(){
+  const L=window.GopherRequestLogic;
+  if(state.junkTier && L && L.JUNK_TIERS && L.JUNK_TIERS[state.junkTier]) return state.junkTier;
+  const det=(L && L.detectJunkVolumeTier) ? L.detectJunkVolumeTier(state.description||'') : { tier:'half' };
+  return det.tier;
+}
 function getCurrentOfferModel(){
   const isRide = state.category==='ride';
-  if(state.category!=='delivery' && !isRide) return null;
+  const isJunk = state.category==='junk';
+  if(state.category!=='delivery' && !isRide && !isJunk) return null;
+  if(isJunk){ const L=window.GopherRequestLogic; return (L && L.suggestedJunkOffer) ? L.suggestedJunkOffer(currentJunkTier()) : null; }
   if(isRide){ const t=getRideTripEstimate(); return rideSuggestedOffer(t.miles, t.minutes, state.scheduleType!=='now'); }
   return suggestedOffer(currentItemCost(), currentRegionIsNC());
 }
@@ -991,6 +1197,46 @@ function getCurrentOfferModel(){
 /* ============================================================
    STATE
    ============================================================ */
+  /* CATEGORY-SCOPED STATE — mirrors Final/gopher-request.html and gopher-connect.html
+     (identical 26-key table; the canonical copy also lives in
+     Final/assets/js/gopher-flow-rules.js as GopherFlowRules.categoryScopedKeys()).
+     Duplicated rather than imported ON PURPOSE — and NOT for the reason first written here: the
+     module IS committed (d08f7e1) and is currently live. It went live as a SIDE EFFECT (deploy.sh
+     ships the whole Final/ tree, so it rode along in someone else's push), not as a decision, and
+     another session can legitimately hold it back again. Request and Connect also both mirror this
+     list inline today, and Phase 2's design is agree-then-adopt: the harness asserts each surface
+     AGREES with the module; actually consuming it is Phase 3, per surface, with approval. The parity
+     harness (docs/handoff/request-app-parity/run_parity_harness.py) is what keeps this copy
+     honest — it fails the moment this list drifts from the module.
+
+     Why it exists: without it a category switch carried the PREVIOUS category's answers
+     forward — pick Junk, let iQ set a volume tier and a price, switch to Delivery, and the
+     delivery was priced off a junk volume tier with hazardous/itemCount still set.
+
+     Deliberately NOT reset: user-typed, category-agnostic input (description, pics,
+     addresses, specialInstructions) and agePurchaseDismissed, a session-level
+     "don't show me again". workerSelection is NOT category-scoped either — it is the
+     requester's hiring preference, not a property of the category. */
+  const CATEGORY_SCOPED_KEYS = [
+    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'itemsPurchased','costOfItems',
+    'numRiders','numBags',
+    'junkTier','movingTier',
+    'noSpecificPickup','serviceElevatorPickup','serviceElevatorDest','pickupStairs','destStairs',
+    'payByHour','numHours',
+    'itemCount','multipleItems','hazardous',
+    'payMode','payAmount','lowOfferAck','lowAvailabilityAck','suggestedOfferUsed'
+  ];
+  /* Defaults are READ FROM makeInitialState() — never from a stored record — so a reset can
+     never resurrect a retired value, and this can't drift from the schema. */
+  function realignCategoryState(){
+    const fresh = makeInitialState();
+    CATEGORY_SCOPED_KEYS.forEach(function(k){
+      if(!(k in fresh)) return;                 // key this surface doesn't carry — skip
+      state[k] = fresh[k];
+    });
+  }
+
 function makeInitialState(){
   return {
     step:1, maxStepReached:1,
@@ -1002,11 +1248,42 @@ function makeInitialState(){
     // ID verification — canonical capture fields (same shape as the Request web app;
     // see docs/handoff/request-app-parity/canonical-request-state-schema.md §3a).
     // "verified" is DERIVED: savedOnFile || (idFrontCaptured && selfieCaptured).
-    idFrontCaptured:false, idFrontSrc:'', selfieCaptured:false, selfieSrc:'', savedOnFile:false,
+    // DEMO DEFAULT: the requester is TrustShield-verified with ID on file. trustShield was
+    // never declared here at all, so it read undefined -> falsy, and orderFromReq() relayed
+    // trustShield:false to the Go app. The Gopher's card then said "TrustShield Verified"
+    // (it rendered unconditionally) while the hand-off ran the non-TrustShield physical-ID
+    // capture — the TrustShield process was unreachable in the demo. Flip these four to
+    // false to demo the non-TrustShield path; the "TrustShield ON/OFF" chip (act 'demo-ts')
+    // still toggles it at runtime either way.
+    /* Gopher Deals provenance — mirrors the web app's makeInitialState. These were
+       being USED without being declared: `state.fromDeal` is read by orderFromReq()
+       and written by the ?from=deal deep-link, so before this it was `undefined`
+       rather than `false` on every ordinary request, and a resumed draft carried
+       nothing. dealKind/dealBoost did not exist here at all, which is why this
+       surface had no service-deal branch. Set by the deep-link below. */
+    fromDeal:false, dealKind:null, dealBoost:false, dealMerchant:'',
+    trustShield:true,
+    idFrontCaptured:true, idFrontSrc:'', selfieCaptured:true, selfieSrc:'', savedOnFile:true,
+    /* BACK-OF-ID added 2026-08-25 to match the web app (owner, 2026-08-23): the barcode on
+       the back is what a scanner reads to confirm the DOB, so a capture without it cannot
+       be age-verified afterwards and the other two shots become photos nobody can check.
+       See docs/handoff/id-barcode-age-read.md. Three shots, all live, no uploads. */
+    idBackCaptured:true, idBackSrc:'',
+    /* submittedAt marks a one-off pre-clearance for THIS order (web parity). null = none. */
+    idSubmittedAt:null,
+    /* DOB drives which identity control the age-restricted banner offers. The demo
+       profile is 30+; sign-in as (111) 111-1111 on web is the under-30 perspective, and
+       the DEMO age chip below flips it here. Unknown DOB is treated as under-30, which
+       is the safer default and is what web does. */
+    dob:'07-22-1980',
     // age-compliance contract fields (parity with web)
     idRequiredAtCompletion:false, agePurchaseAck:false, agePurchaseDismissed:false,
     // schedule + offer-telemetry contract fields (parity with web)
     scheduleConfirmed:false, selectedDate:null, suggestedOfferUsed:false,
+    // Junk only: resolved volume tier (single|half|full). iQ-detected from the
+    // description; a tier-button tap in the offer modal overrides it. Locked in on
+    // "Use this offer" so completion can teach the model (recordJunkOffer seam).
+    junkTier:null,
     // rider info
     numRiders:'2', numBags:'1', specialInstructions:'',
     // item info
@@ -1044,8 +1321,55 @@ let state = makeInitialState();
 // stored as its own flag.
 function pickupAddr(){ return (state.pickupStops && state.pickupStops[0]) || ''; }
 function dropoffAddr(){ return (state.dropoffStops && state.dropoffStops[0]) || ''; }
+/* Index of the first blank stop, or -1. Mirrors firstEmpty() in gopher-step-gates.js
+   byte-for-byte in behaviour so the two surfaces cannot drift on what "empty" means. */
+/* Address normaliser — byte-for-byte the module's normAddr() in behaviour, so the two
+   surfaces cannot disagree on whether two addresses are "the same". */
+function normAddr(v){ return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9]+/g,''); }
+function firstEmptyStop(arr){
+  if(!Array.isArray(arr)) return -1;
+  for(let i=0;i<arr.length;i++){ if(!String(arr[i]==null?'':arr[i]).trim()) return i; }
+  return -1;
+}
 function idVerifiedNow(){ return !!(state.savedOnFile || (state.idFrontCaptured && state.selfieCaptured)); }
-function markIdVerified(onFile){ state.idFrontCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
+function markIdVerified(onFile){ state.idFrontCaptured=true; state.idBackCaptured=true; state.selfieCaptured=true; if(onFile) state.savedOnFile=true; }
+/* All THREE shots present. Deliberately separate from idVerifiedNow(), which is the
+   older two-shot contract other code already reads — widening that in place would have
+   silently invalidated every existing caller, including the ts-verified badge. */
+function idCaptureComplete(){ return !!(state.idFrontCaptured && state.idBackCaptured && state.selfieCaptured); }
+/* Age in whole years from state.dob, or null when it cannot be derived. Accepts both
+   MM-DD-YYYY (this file's demo profiles) and YYYY-MM-DD, exactly as web's
+   customerAgeYears() does — a single-format parser silently returns null on the other,
+   and null means "under 30" here, so the bug would look like a policy. */
+/* ⚠️ CURRENTLY UNCALLED, and kept on purpose. Age stopped branching anything on
+   2026-08-25, so nothing reads this today. It is retained because `dob` is real data
+   and the 21+ rule is a live gate elsewhere on the platform — a future reader should
+   find a correct age parser here rather than write a new one and get the two date
+   formats wrong. Web keeps its equivalent for the same reason (still passed to the
+   step-gate host as `customerAge`, still read by nothing). Delete both together or
+   neither. */
+function customerAgeYears(){
+  const raw=(state.dob||'').trim(); if(!raw) return null;
+  let y,m,d;
+  let mm=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(mm){ y=+mm[1]; m=+mm[2]; d=+mm[3]; }
+  else { mm=raw.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/); if(!mm) return null; m=+mm[1]; d=+mm[2]; y=+mm[3]; }
+  const birth=new Date(y,m-1,d); if(isNaN(birth)) return null;
+  const now=new Date(); let a=now.getFullYear()-birth.getFullYear();
+  const md=now.getMonth()-birth.getMonth();
+  if(md<0 || (md===0 && now.getDate()<birth.getDate())) a--;
+  return a;
+}
+/* ID already usable for this order — kept on file (TrustShield), pre-cleared once for
+   this request, or satisfied by the older two-shot derived check. idVerifiedNow() is
+   folded in deliberately: replacing its last call site would have left it DEAD while
+   still looking load-bearing, and other paths (markIdVerified, the deals deep-link,
+   the Go relay) still write the flags it reads. */
+/* Identity satisfied for an age-restricted order. Mirrors the web host's
+   identityVerified(): hasTS || submittedAt || onFile — the badge and a one-off
+   submission are equally valid; they differ only in how long they last. */
+function identitySatisfied(){ return !!(state.trustShield || state.idSubmittedAt || state.savedOnFile); }
+function idOnFileOrSubmitted(){ return !!(state.savedOnFile || state.idSubmittedAt || idVerifiedNow()); }
 
 /* ============================================================
    HELPERS
@@ -1065,10 +1389,10 @@ function workerPayTotal(){ return perWorkerPay()*workerCount(); }
 // matrix) and, for Labor/Yard, when paying by the hour. NOTE: NOT gated by moreThanOneWorker.
 function bidsAllowed(){ return isVisible('bidsOption') && !(state.payByHour && (state.category==='labor'||state.category==='yard')); }
 // "Low offer" floor — only meaningful where Gopher iQ pricing exists
-// (Delivery + Ride). Other categories have no suggested-pricing model, so we
-// never show a low-offer caution for them.
+// (Delivery + Ride + Junk volume tiers). Other categories have no
+// suggested-pricing model, so we never show a low-offer caution for them.
 function offerLowThreshold(){
-  if(state.category==='delivery' || state.category==='ride'){ const m=getCurrentOfferModel(); return m ? m.low : 0; }
+  if(state.category==='delivery' || state.category==='ride' || state.category==='junk'){ const m=getCurrentOfferModel(); return m ? m.low : 0; }
   return 0;
 }
 function cogOfferNow(){
@@ -1121,15 +1445,50 @@ function renderStep1(){
 /* ============================================================
    STEP 2 — Job details
    ============================================================ */
-function tsPromo(){
+/* Age-restricted identity control — ONE render, THREE branches, ported from the web
+   app's ageRestrictedBannerControl() on 2026-08-25 (owner: "virtually replicate the
+   flow of connect and request").
+
+     1) Has TrustShield  → the seal replaces the control entirely; no promo below.
+     2) ID already usable → "ID Submitted" + Update.
+     3) Otherwise         → navy "Submit identification" + green "+Add Gopher TrustShield™".
+
+   ⚠️ Under-30 gets the SAME path as everyone else — same control, same copy, same
+   requirement. It was once offered TrustShield and nothing else, which would have
+   become a dead end when the ID vendor retired and enrolment stopped (76.7% of new enrolments
+   are 21-29, so it would have stranded exactly the people who use it most).
+   ⚠️ Two claims that USED to sit here are now false and were removed rather than left
+   to mislead: verification is NOT voluntary (G40-410 was reversed 2026-08-25 — identity
+   is required for age-restricted orders), and customerAgeYears() is NOT read for the
+   copy any more. Age changes nothing on this surface. */
+function arIdentityControl(){
   if(state.trustShield) return `<div class="ts-verified">${tsSeal(18)}TrustShield™ Verified — ID on file, nothing to submit for this order.</div>`;
-  if(idVerifiedNow()) return `<div class="ts-verified">${svgIco('shield')}Identity verified — you're all set for this delivery.</div>`;
-  return `<div class="ts-promo">
-    <span class="ts-shield">${tsSeal(20)}</span>
-    <span class="ts-promo-text"><h5>Verify your identity</h5><p>Get TrustShield™ once, or submit an ID for this order.</p></span>
-    <button class="ts-promo-btn" data-action="verify-id">Verify now</button>
+  /* ⛔ NO AGE BRANCH (owner ruling, 2026-08-25: "there is no distinction with ANY age.
+     ALL users need to submit their identification"). Modelled on the web change in
+     036bc2d, which removed the same fork from Request and Connect.
+     It used to fork on customerAgeYears() < 30 — a boundary that existed only because
+     under-30 once had a TrustShield-only path. Everyone now gets the SAME control, and
+     the two outcomes differ only in HOW LONG the identity lasts:
+       • Submit identification — ONE-TIME, this order only (savedOnFile stays false).
+       • TrustShield          — kept for as long as the badge is carried.
+     That persistence split is enforced in the capture sheet's submit handler by its
+     isTS flag, not here; this function only paints the control.
+     ⚠️ Do not reintroduce an age fork. The 21+ rule is a SEPARATE, still-live gate —
+     nobody under 21 can order age-restricted at all — enforced on the deal categories,
+     not in this banner, and it has no implementation on this surface (verified: zero
+     isMinor / calculateAge / customerAge gating here). */
+  if(idOnFileOrSubmitted()) return `<div class="ar-id-done">
+      <span class="ar-id-check">✅</span>
+      <span class="ar-id-label">ID submitted — pre-cleared for this order</span>
+      <button class="ar-id-update" data-action="id-update">Update</button>
+    </div>`;
+  return `<div class="ar-control">
+    <button class="ar-action" data-action="id-submit">Submit identification</button>
+    <div class="ar-action-note">or <button class="ar-tsbtn" data-action="id-trustshield">+Add Gopher TrustShield™</button></div>
   </div>`;
 }
+/* Kept as the name the rest of this file already calls. */
+function tsPromo(){ return arIdentityControl(); }
 function renderStep2(){
   const c=CATEGORIES[state.category];
   let h=`<div class="step-head"><h3>Tell us about your ${c.name.toLowerCase()} request</h3>
@@ -1158,38 +1517,26 @@ function renderStep2(){
         </span>
       </div>
       ${state.ageRestricted ? `
-        <div class="sub-field ar-banner">
-          <span class="ar-mark">${svgIco('warning')}</span>
-          <div><div class="sf-label">Safe-Guarding & Identity Verification Activated</div>
-          <div class="sf-value">Physical ID required during exchange · ${state.trustShield ? '$1.99 fee added · TrustShield −$1 off request fee' : '$1.99 fee added'}</div></div>
-        </div>
-        ${tsPromo()}
-        <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON (signed-in profile)':'TrustShield off'}</button>
+        ${''/* The yellow "Safe-Guarding & Identity Verification Activated" banner was
+         removed 2026-08-18 (owner: "No need for it"). The information it carried is
+         not lost: the $1.99 age fee shows in the fee breakdown, ID-at-exchange is in
+         the toggle's own waiver tip, and the TrustShield line below still reflects
+         verification state. Don't rebuild it here. */}${tsPromo()}
+        ${''/* The DEMO age chip was REMOVED 2026-08-25 (owner). It existed to switch
+           between the under-30 and 30+ perspectives back when they rendered different
+           controls. They no longer do — "there is no distinction with ANY age" — so the
+           chip toggled a value nothing reads and implied a difference that does not
+           exist. Do not add it back unless age starts branching the UI again. */}
+        <button data-action="demo-ts" style="margin-top:8px;background:#eef0f8;border:1px dashed #c9d2e3;border-radius:8px;padding:6px 10px;font-family:'Nunito';font-weight:800;font-size:11px;color:#3A4D74;cursor:pointer;">DEMO · ${state.trustShield?'TrustShield ON':'TrustShield off'}</button>
       `:''}
-      ${state.ageRestricted && !state.itemsPurchased ? `
-        <div class="sub-field age-kw-banner ar-purchase-note">
-          <span class="ar-mark">${svgIco('warning')}</span>
-          <div style="flex:1;">
-            <div class="sf-label">Most age-restricted items need a purchase</div>
-            <div class="sf-value">Alcohol, tobacco, vape and nicotine are almost always bought on your behalf. Turn on “requires a purchase” below and enter the cost so your Gopher can buy them for you.</div>
-            <div class="age-kw-actions"><button class="ts-promo-btn" data-action="enable-purchase">Turn on “requires a purchase”</button></div>
-          </div>
-        </div>
-      `:''}
-      ${(()=>{ const kw=findAgeRestrictedKeyword(state.description);
-        if(kw && !state.ageRestricted && !state.ageKeywordAck){
-          return `<div class="sub-field age-kw-banner">
-            <span class="ar-mark">${svgIco('warning')}</span>
-            <div style="flex:1;">
-              <div class="sf-label">This looks age-restricted</div>
-              <div class="sf-value">Your description mentions “<b>${esc(kw)}</b>.” Age-restricted deliveries need ID verification at drop-off. Turn that on?</div>
-              <div class="age-kw-actions">
-                <button class="ts-promo-btn" data-action="age-keyword-yes">Yes, it's age-restricted</button>
-                <button class="ts-promo-btn age-kw-no" data-action="age-keyword-no">No, it's not</button>
-              </div>
-            </div>
-          </div>`;
-        } return ''; })()}
+      ${''/* Inline purchase-nudge banner retired 2026-08-18 (owner): superseded by the
+        web-parity pair — the age toggle now AUTO-ENABLES "purchase needed" (so this
+        state is rare), and turning it back off is caught by the openAgePurchaseModal
+        guardrail at Continue. Pop-ups mirror the web app; don't rebuild the banner. */}
+      ${''/* Inline "This looks age-restricted" banner retired 2026-08-18 (owner):
+        the blocking openAgeKwModal at the Continue gate is the single surface for
+        this confirmation, mirroring the web app. Two surfaces asking the same
+        question let a user answer the weak one and never see the strong one. */}
       <div class="toggle-row">
         <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="Purchase needed"></button>
         <span class="tr-label">This delivery requires a purchase
@@ -1297,8 +1644,10 @@ function renderStep3(){
               <button class="counter-btn" data-counter="dec-workers" ${state.numWorkers<=2?'disabled':''}>−</button>
               <span class="counter-val">${state.numWorkers}</span>
               <button class="counter-btn" data-counter="inc-workers">+</button>
-            </div><span style="font-family:'DM Sans';font-size:12px;color:var(--muted);">workers</span>
-          </div></div>`:''}
+            </div><span style="font-family:'DM Sans';font-size:12px;color:var(--muted-cool);">workers</span>
+          </div>
+          <div style="font-family:'DM Sans';font-size:11.5px;line-height:1.45;color:var(--muted-cool);margin-top:8px;">You&rsquo;ll select <b style="color:var(--navy);font-weight:700;">one</b> worker &mdash; they&rsquo;re responsible for bringing the additional worker${state.numWorkers>2?'s':''}.</div>
+          </div>`:''}
       <div class="toggle-row">
         <button class="toggle-switch ${state.payByHour?'on':''}" data-toggle="payByHour"></button>
         <span class="tr-label">Pay by the hour</span>
@@ -1310,7 +1659,7 @@ function renderStep3(){
               <button class="counter-btn" data-counter="dec-hours" ${state.numHours<=1?'disabled':''}>−</button>
               <span class="counter-val">${state.numHours}</span>
               <button class="counter-btn" data-counter="inc-hours">+</button>
-            </div><span style="font-family:'DM Sans';font-size:12px;color:var(--muted);">hours</span>
+            </div><span style="font-family:'DM Sans';font-size:12px;color:var(--muted-cool);">hours</span>
           </div></div>`:''}
     </div>`;
   }
@@ -1318,14 +1667,14 @@ function renderStep3(){
   if(isVisible('workerSelectChoice')){
     any=true;
     h+=`<div class="step-section">
-      <div class="sst"><span class="sst-ico">${svgIco('target')}</span>How is the worker selected?</div>
+      <div class="sst"><span class="sst-ico">${svgIco('target')}</span>How is your worker selected?</div>
       <div class="radio-group">
         <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
           <span class="radio-dot"></span><span class="rr-label">First available worker — fastest match</span></div>
         <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
-          <span class="radio-dot"></span><span class="rr-label">I'll select my ${state.moreThanOneWorker?'workers':'worker'}</span></div>
+          <span class="radio-dot"></span><span class="rr-label">I'll select my worker — review ratings, reviews and job history before selecting</span></div>
         <div class="radio-row ghost" aria-disabled="true">
-          <span class="radio-dot"></span><span class="rr-label">Prioritize MY Gophers
+          <span class="radio-dot"></span><span class="rr-label">Prioritize MY Gophers — we'll notify your favs first
             <span class="rr-lock-hint">${svgIco('shield')} MY Gophers can be added from recommendations or previous completed requests.</span></span></div>
       </div>
     </div>`;
@@ -1351,13 +1700,15 @@ function renderStep4(){
       ${isVisible('noSpecificPickup') ? `
       <div class="toggle-row">
         <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-        <span class="tr-label">No specific pick-up location
-          ${infoTip('nsp','No specific pick-up',['Either the worker can purchase your items anywhere they\'re available, or there\'s no actual pick-up spot for this request.'+(state.category==='moving'?' For a move, this can also mean a simple address-to-address job with nothing to pick up first.':'')])}
+        <span class="tr-label">${state.category==='moving' ? 'Single-location move' : 'Pickup location is flexible'}
+          ${state.category==='moving'
+            ? infoTip('nsp','Single-location move',['Just need moving help at ONE address? Slide this on. Your worker helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.'])
+            : infoTip('nsp','No specific pick-up',['Either the worker can purchase your items anywhere they\'re available, or there\'s no actual pick-up spot for this request.'])}
         </span>
       </div>`:''}
       ${state.noSpecificPickup && isVisible('noSpecificPickup') ? `
-        <div class="sub-field"><div class="sf-label">Pick-up flexibility</div>
-        <div class="sf-value">The worker can purchase anywhere your items are available, or there's no fixed pick-up location.</div></div>
+        <div class="sub-field"><div class="sf-label">${state.category==='moving' ? 'Single-location move' : 'Pick-up flexibility'}</div>
+        <div class="sf-value">${state.category==='moving' ? 'Your worker helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : "The worker can purchase anywhere your items are available, or there's no fixed pick-up location."}</div></div>
       ` : `
         <div class="addr-block"><span class="addr-pin">${svgIco('location')}</span>
           <input class="addr-input" data-field="pickupStops" value="${esc(pickupAddr())}" placeholder="Add pick-up address"></div>
@@ -1409,30 +1760,39 @@ function renderStep5(){
   const rate = toNum(state.payAmount);
   const oneWorkerPay = perWorkerPay();
   const lowThresh = offerLowThreshold();
-  const lowOffer = state.payMode==='set' && oneWorkerPay>0 && lowThresh>0 && oneWorkerPay < lowThresh && !state.lowOfferAck;
+  /* ⛔ HOURLY MODE SKIPS THIS (owner, 2026-08-26 — web parity, 0a249c7). The
+     suggested-pricing model prices a WHOLE JOB; in hourly mode this field is a
+     PER-HOUR rate, so comparing the two says a $25/hr offer is "low" against a
+     $60 whole-job threshold. Moving and Junk are the overlap categories — priced
+     model AND an hourly option — so this is reachable, not theoretical. */
+  const lowOffer = !state.payByHour && state.payMode==='set' && oneWorkerPay>0 && lowThresh>0 && oneWorkerPay < lowThresh && !state.lowOfferAck;
   let h=`<div class="step-head"><h3>How would you like to pay your worker?</h3>
     <p class="mc-sub">Set your hiring price, or ask local workers for bids.</p></div>
     <div class="radio-group">
       <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
-        <span class="radio-dot"></span><span class="rr-label">Set your own price
-          <span style="color:var(--muted);font-weight:500;font-size:11px;">(any request)</span></span></div>`;
+        <span class="radio-dot"></span><span class="rr-label">Set your offer
+          <span style="color:var(--muted-cool);font-weight:500;font-size:11px;">(any request)</span></span></div>`;
 
   if(state.payMode==='set'){
     h+=`<div class="sub-field" style="background:#fff;border-color:#e4e8f0;">
-      <div class="sf-label">${state.payByHour?'How much per hour, per worker?':'How much would you like to pay your worker?'}</div>
+      <div class="sf-label">${state.payByHour?'Your hourly offer to the worker':'Your offer to the worker'}</div>
       <div class="cost-input-box"><span class="ci-currency">$</span>
-        <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Payment to worker"></div>
+        <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Your offer to the worker"></div>
       <div class="sf-hint">Exact amount your worker takes home — 100% of your offer. Request fees are shown at review.</div>
       ${state.payByHour ? `<div id="wageSummaryWrap">${renderWageSummary(rate)}</div>` : ''}
-      ${lowOffer ? `<div class="low-offer">${svgIco('warning')}<p>That's on the low side for this kind of work. A fair offer gets accepted faster — but you can send it as-is.</p></div>
+      ${lowOffer ? `<div class="low-offer">${svgIco('warning')}<p>That's on the low side for ${({ride:'a ride',delivery:'a delivery',moving:'a move',junk:'a junk-removal job'})[state.category]||'a job'} like this. A fair offer gets accepted faster — but you can send it as-is.</p></div>
         <div style="text-align:right;margin-top:8px;"><button class="ts-promo-btn" style="background:#f1f3f8;color:var(--navy);" data-action="ack-low">Send as-is</button></div>`:''}
-      ${isVisible('aiPaySuggest') ? renderPaySuggest() : ''}
+      ${''/* ⛔ HIDDEN IN HOURLY MODE (owner, 2026-08-26 — web parity, 0a249c7): the iQ
+           model returns a whole-job range, which is not a per-hour rate. Offering it
+           beside an hourly field invites the requester to paste a job total into a
+           rate box. Same reason the low-offer notice above is skipped. */}
+      ${isVisible('aiPaySuggest') && !state.payByHour ? renderPaySuggest() : ''}
     </div>`;
   }
 
   if(showBids){
     h+=`<div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids">
-      <span class="radio-dot"></span><span class="rr-label">Request bids from local workers
+      <span class="radio-dot"></span><span class="rr-label">Request bids
         ${infoTip('bids','Request bids',['Local workers send their offers and you pick the best one. Great when you\'re not sure of a fair price.'])}</span></div>`;
   }
   h+=`</div>`;
@@ -1462,10 +1822,18 @@ function offerModalHTML(){
   const trackMax = Math.round(model.suggested+half);
   const offerToPct=(v)=> trackMax===trackMin?50:Math.max(0,Math.min(100,Math.round((v-trackMin)/(trackMax-trackMin)*100)));
   const tripPill = (isRide && model.miles!=null) ? `<div class="os-trip">Estimated trip: ~${Math.round(model.miles*10)/10} mi · ~${Math.round(model.minutes)} min <span class="os-trip-est">(estimate — live distance once your maps are connected)</span></div>` : '';
+  // Junk volume-tier selector (owner 2026-07-19): iQ pre-selects the detected tier;
+  // tapping a button corrects it, and the modal re-renders with the slider re-ranged
+  // to that tier's band (this file's re-render = the web's applyModel(m) refactor).
+  const L=window.GopherRequestLogic;
+  const tierRow = (state.category==='junk' && L && L.JUNK_TIER_ORDER) ? `<div class="os-junk-tiers" role="group" aria-label="How much are we hauling?">`
+      + L.JUNK_TIER_ORDER.map(tk=>{ const t=L.JUNK_TIERS[tk], on=tk===currentJunkTier();
+        return `<button type="button" class="os-tier${on?' active':''}" data-action="junk-tier" data-tier="${tk}" aria-pressed="${on}"><span class="os-tier-name">${t.label}</span><span class="os-tier-hint">${t.hint}</span></button>`; }).join('')
+      + `</div>` : '';
   return `<div class="offer-backdrop" data-action="ai-pay-cancel"></div>
     <div class="offer-card" role="dialog" aria-modal="true" data-tmin="${trackMin}" data-tmax="${trackMax}" data-low="${model.low}" data-sug="${model.suggested}" data-gen="${model.generous}">
       <div class="os-panel-head"><img class="os-logo" src="${GOPHER_IQ_SRC}" alt="Gopher iQ"><span>Suggested fair offer</span></div>
-      ${tripPill}
+      ${tripPill}${tierRow}
       <div class="os-slider-wrap">
         <div class="os-rail-labels"><span class="os-lab-low">Low</span><span class="os-lab-fair">Fair</span><span class="os-lab-gen">Generous</span></div>
         <input type="range" class="os-slider" id="offerSlider" min="0" max="100" value="${offerToPct(model.suggested)}" aria-label="Offer amount">
@@ -1502,7 +1870,7 @@ function bindOfferSlider(){
   const offerToPct=(v)=> tmax===tmin?50:Math.max(0,Math.min(100,Math.round((v-tmin)/(tmax-tmin)*100)));
   const updateHint=(v)=>{ hint.classList.remove('warn','over');
     if(v>gen){ hint.classList.add('over'); hint.textContent='Above suggested — faster acceptance likely'; }
-    else if(v<low){ hint.classList.add('warn'); hint.textContent='Below suggested — may take longer to match'; }
+    else if(v<low){ hint.classList.add('warn'); hint.textContent='Below suggested — may take longer to match. Gophers choose which requests to take, and the offer is the biggest factor.'; }
     else if(v===sug){ hint.textContent='$'+v+' suggested (fair)'; }
     else{ hint.textContent='Within the suggested range'; } };
   slider.addEventListener('input',()=>{ const v=pctToOffer(+slider.value); amt.value=v; updateHint(v); });
@@ -1588,7 +1956,7 @@ function renderStep6(){
   if(showCost) rows+=`<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costNum)}</span></div>`;
 
   // Payment to your worker(s) (single row; per-worker math lives in the info button)
-  rows+=`<div class="review-row earn"><span class="rl">${wCount===1?'Payment to your worker':'Payment to your workers'} ${workerPayTip(bids,wCount,perW,wPay)}</span>
+  rows+=`<div class="review-row earn"><span class="rl">${wCount===1?'Your offer to the worker':'Your offer to the workers'} ${workerPayTip(bids,wCount,perW,wPay)}</span>
     <span class="rv">${bids?'Pending bids':fmt(wPay)}</span></div>`;
 
   // Request fee with breakdown popover
@@ -1719,7 +2087,7 @@ function workerPayTip(bids,wCount,perW,wPay){
     : (wCount>1 ? `Each worker takes home ${fmt(perW)}. With ${wCount} workers, that's ${fmt(wPay)} total.`
                 : `Your worker takes home 100% of your ${fmt(perW)} offer.`);
   return `<span class="info-tip wpay-tip ${open?'open':''}" data-info="wpay">
-    <button class="info-btn" aria-label="Payment to your worker${wCount===1?'':'s'} breakdown">?</button>
+    <button class="info-btn" aria-label="Your offer to the worker${wCount===1?'':'s'} breakdown">?</button>
     <span class="info-popover wpay-popover"><h5>Payment breakdown</h5>
       <div class="fee-items">${body}</div>
       <p class="fee-note">${explain}</p>
@@ -1758,13 +2126,17 @@ function renderSSE(){
   const thin = isVisible('describe') && (state.description.trim().length<25);
   const ageMiss = state.category==='delivery' && state.ageRestricted && !state.itemsPurchased;
   const assertive = thin || ageMiss;
+  // Abundantly-clear request → AFFIRM instead of warn (owner deck 2026-07-20). Mutually exclusive
+  // with `assertive` (a >=25-char description is not thin), so the attn-pulse is already off here.
+  const allClear = isVisible('describe') && state.description.trim().length>=25 && !ageMiss;
   return `<div class="sse-block ${state.sseOpen?'open':''}${assertive?' attn-pulse':''}">
     <div class="sse-head" data-action="toggle-sse">
       <span class="sse-brain"><img src="${GOPHER_IQ_SRC}" alt="Gopher iQ"></span>
-      <div class="sse-head-text"><h4>Want a second set of eyes?</h4><p>Let Gopher review your request and suggest anything worth adding.</p></div>
+      <div class="sse-head-text"><h4>${allClear?'Gopher iQ reviewed your request 👍':'Want a second set of eyes?'}</h4><p>${allClear?"Everything looks good, neighbor — a worker will know exactly what you're asking for.":'Let Gopher review your request and suggest anything worth adding.'}</p></div>
       <span class="sse-chev">${state.sseOpen?'▲':'▼'}</span>
     </div>
     ${state.sseOpen?`<div class="sse-body">
+      ${allClear?`<div class="sse-affirm">✓ Everything looks good, neighbor. Gopher iQ feels a worker would be clear on what you're asking for.</div>`:`
       ${thin?`<div class="sse-flag">Your description looks a little brief — adding detail helps Gophers decide if they're the right fit.</div>`:''}
       ${ageMiss?`<div class="sse-flag">Most age-restricted items can't be purchased in advance. If you <b>do</b> need items purchased, jump to <b>Job details</b> and enter the cost.</div>`:''}
       <p class="sse-intro">${adv.intro}</p>
@@ -1777,6 +2149,7 @@ function renderSSE(){
         <button class="sse-jump" data-jump="5">Worker pay →</button>
       </div>
       <p class="sse-fine">Gopher's suggestions are general guidance for the <b>${(CATEGORIES[state.category]||{}).name||'selected'}</b> category — you know your job best.</p>
+      `}
     </div>`:''}
   </div>`;
 }
@@ -1822,10 +2195,11 @@ function renderStep7(){
   return `<div class="burst">
     <div class="check-circle"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></div>
     <h4>${haFirst ? 'Request sent!' : 'Request submitted!'}</h4>
-    <p>${haFirst ? (haLabel + ' has first dibs…') : 'Looking for your worker…'} · Order <strong>#GR-00001</strong></p>
+    <p>${haFirst ? (haLabel + ' has first dibs…')
+      : `<span style="position:relative;display:inline-block;"><span style="visibility:hidden;">Looking for your worker…</span><span data-typetext="Looking for your worker…" style="position:absolute;left:0;top:0;white-space:nowrap;"></span></span>`} Order <strong>#GR-00001</strong></p>
   </div>
   <div class="review-card">
-    <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green-dark);">Submitted · ${expires}</span></div>
+    <div class="review-row"><span class="rl">Status</span><span class="rv" style="color:var(--green);">Submitted · ${expires}</span></div>
     <div class="review-row"><span class="rl">Timing</span><span class="rv">${timing}</span></div>
     <div class="review-row"><span class="rl">Category</span><span class="rv">${c.name}</span></div>
     ${detailRows}
@@ -1841,6 +2215,14 @@ function renderStep7(){
     <span class="si-ico">${svgIco('users')}</span>
     <div class="si-text"><h5>${interested} worker${interested!==1?'s':''} already interested</h5><p>Review profiles, hire, or consider workers from your dashboard.</p></div>
   </div>`}
+  ${''/* DEMO sim bars — web parity (76a3b9c / f48e261). Both modals have REAL triggers
+       that this prototype cannot receive: expiredInterestedWorkers fires at the EXPIRY
+       MOMENT of an active request where a worker accepted but the requester never
+       approved (production also texts them then), and paymentNotAuthorized fires on a
+       backend Stripe auth-failure event. Web uses the same sim-bar pattern for the same
+       reason. Tagged DEMO so nobody mistakes them for product surface. */}
+  ${state.demo ? `` : `<div class="g40-simbar"><span class="g40-simtag">DEMO</span><span class="g40-simnote">Request expires with workers accepted and none approved — production also texts you.</span><button type="button" class="g40-simbtn" data-action="sim-expiry">Simulate expiry</button></div>
+  <div class="g40-simbar"><span class="g40-simtag">DEMO</span><span class="g40-simnote">Bank declined the charge after a Gopher accepted.</span><button type="button" class="g40-simbtn" data-action="sim-paydecline">Simulate decline</button></div>`}
   ${state.demo ? `` : `<button class="si-btn" data-action="see-workers">Track it on your home screen →</button>
   <div class="matched-actions">
     <button class="ma-btn" data-action="edit-request">Edit request</button>
@@ -1848,12 +2230,48 @@ function renderStep7(){
   </div>`}`;
 }
 
+/* Typewriter for the submitted screen's "Looking for your worker…" — the line keeps re-typing
+   itself (L, Lo, Loo, …) so the requester can SEE that matching is actively running. The typed
+   text overlays an invisible full-width copy, so the "· Order #…" tail never shifts. Progress
+   lives on the element, so a re-render simply restarts the loop; the interval is a no-op when
+   no [data-typetext] element is on screen. */
+(function initTypewriter(){
+  setInterval(function(){
+    document.querySelectorAll('[data-typetext]').forEach(function(el){
+      var full=el.getAttribute('data-typetext')||'';
+      if(el._hold>0){ el._hold--; if(el._hold===0) el._i=0; return; }   // full line rests, then re-types
+      el._i=(el._i==null)?1:el._i+1;
+      if(el._i>=full.length){ el.textContent=full; el._hold=16; }
+      else el.textContent=full.slice(0,el._i)+'▏';
+    });
+  },100);
+})();
+
 /* ============================================================
    RENDER ENGINE
    ============================================================ */
 /* ── G40-308 request modals (G40-309 survivors) for the Request app ──
-   Appended to #phone (like the iQ offer modal); reachable via the in-frame "G40"
-   launcher (window.__g40ReqMenu). Real triggers to be wired at each flow point. */
+   Appended to #phone (like the iQ offer modal).
+
+   ⛔ WIRED TO REAL FLOW POINTS 2026-08-26, mirroring web (76a3b9c / f48e261). They were
+   preview-only before — defined, reachable from a console menu, and fired by nothing.
+     phoneEntered        -> step-2 Continue, phone number in the description (HARD block)
+     pickupSameAsDropoff -> the addressesDiffer gate, swapping its field-flash for the
+                            modal that names the two sliders which resolve it
+     expiredInterestedWorkers / paymentNotAuthorized -> DEMO sim bars on the submitted
+                            screen; the real triggers are a broadcast-expiry event and a
+                            backend Stripe auth failure, neither of which this prototype
+                            receives (web does the same, for the same reason)
+   ⛔ cantDeleteOnlyCard was REMOVED from this set (owner, 2026-08-26): a last-card guard
+   is a WORKER concept protecting the Stripe payout account, and the Go app already
+   implements it. A requester removing their only card is not blocked. Do not re-add it.
+   ⚠️ selectedGopherBusy is defined but UNWIRED HERE ON PURPOSE: this file is the request
+   FLOW (steps 1-7) and has no worker pool, hire, or approve surface to gate. Web wired it
+   into Request's and Connect's dashboards. It belongs wherever this prototype's hire
+   surface lives, which is a different file — flagged, not faked.
+   __g40ReqMenu stays as a CONSOLE-only preview (the floating badge went 2026-07-19); do
+   not rebuild a launcher — web deleted its chip because it shipped dev chrome to every
+   visitor. */
 (function initG40ReqAppModals(){
   function rqModal(html){
     var ph=document.getElementById('phone'); if(!ph) return;
@@ -1868,20 +2286,24 @@ function renderStep7(){
   function b1(t){ return '<button class="grx" style="margin-top:14px;height:46px;border-radius:12px;background:#33D975;color:#002461;border:none;font-family:\'Nunito\';font-weight:900;font-size:14px;width:100%;cursor:pointer;">'+t+'</button>'; }
   function b2(t){ return '<button class="grx" style="margin-top:8px;height:44px;border-radius:12px;background:transparent;color:#002461;border:1.5px solid #d4d8e3;font-family:\'Nunito\';font-weight:800;font-size:13px;width:100%;cursor:pointer;">'+t+'</button>'; }
   window.G40_REQ={
-    phoneEntered:function(){return rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));},
-    paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re gone, we’ll rebroadcast immediately.')+b1('Update payment'));},
-    pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving a single location? Slide the pick-up toggle to <b>“No specific pick-up location.”</b>)')+b1('Got it'));},
-    selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
-    cantDeleteOnlyCard:function(){return rqModal(h('Add a card before removing this one')+p('You need at least one card on file. Add a new card, then you can remove this one.')+b1('Add new card')+b2('Cancel'));},
+    /* "Edit my message" FOCUSES the description — web wires this via wirePrimary().
+       Without it the button only closes the overlay, which looks identical to working
+       and leaves the user staring at the same screen wondering what it did. */
+    phoneEntered:function(){var ov=rqModal(h('Remove the phone number')+p('For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.')+b1('Edit my message')+b2('Cancel'));
+      if(ov){var b=ov.querySelector('button'); if(b) b.addEventListener('click',function(){var d=document.getElementById('descriptionInput'); if(d){try{d.focus();}catch(_){}}});}
+      return ov;},
+    paymentNotAuthorized:function(){return rqModal(h('Update your card to keep this request')+p('A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.')+b1('Update payment'));},
+    pickupSameAsDropoff:function(){return rqModal(h('Pick-up and drop-off are the same')+p('If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)')+b1('Got it'));},
+    selectedGopherBusy:function(){return rqModal(h('That Gopher is on another job')+p('The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.')+b1('Message the Gopher')+b2('Choose another Gopher'));},
     expiredInterestedWorkers:function(){return rqModal(h('Your request expired — workers are interested')+p('Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.')+b1('View interested workers')+b2('Cancel request'));},
     duplicateRequest:function(){return rqModal(h('You already have this request out')+p('You currently have a nearly identical request broadcasting. Posting it again sends two of the same job to Gophers and splits their attention. Continue only if you truly need a second.')+b1('Continue — post anyway')+b2('Keep the one I have'));}
   };
   window.__g40ReqMenu=function(){
-    var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['cantDeleteOnlyCard','Can’t delete only card on file'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
+    var items=[['phoneEntered','Phone number entered'],['paymentNotAuthorized','Payment not authorized after acceptance'],['pickupSameAsDropoff','Pick-up = drop-off address'],['selectedGopherBusy','Selected Gopher already on a job'],['expiredInterestedWorkers','Request expired — interested workers'],['duplicateRequest','Duplicate request']];
     rqModal(h('G40-308 request modals')+p('Preview each rebuilt modal.')+items.map(function(i){return '<button class="grx" style="margin-top:6px;height:40px;border-radius:10px;background:#eef0f8;color:#002461;border:none;font-family:\'Nunito\';font-weight:800;font-size:12px;width:100%;cursor:pointer;text-align:left;padding:0 12px;" onclick="setTimeout(function(){window.G40_REQ.'+i[0]+'()},60)">'+i[1]+'</button>';}).join('')+b2('Close'));
   };
-  function addLaunch(){ var ph=document.getElementById('phone'); if(!ph||document.getElementById('g40ReqLaunch'))return; var b=document.createElement('button'); b.id='g40ReqLaunch'; b.textContent='G40'; b.style.cssText='position:absolute;right:10px;bottom:10px;z-index:130;background:#002461;color:#33D975;border:none;border-radius:9px;padding:7px 11px;font-family:sans-serif;font-weight:800;font-size:11px;cursor:pointer;box-shadow:0 6px 18px rgba(0,36,97,.3)'; b.onclick=function(){ try{ window.__g40ReqMenu(); }catch(e){} }; ph.appendChild(b); }
-  if(document.getElementById('phone')) addLaunch(); else document.addEventListener('DOMContentLoaded', addLaunch);
+  // The floating "G40" review-launcher badge was removed from the prototype (owner 2026-07-19).
+  // window.__g40ReqMenu() still works from the console for previewing the G40-308 request modals.
 })();
 const RENDERERS=[null,renderStep1,renderStep2,renderStep3,renderStep4,renderStep5,renderStep6,renderStep7];
 function render(){
@@ -1960,7 +2382,61 @@ function stepGate(){
   if(state.step===2 && state.itemsPurchased && !(toNum(state.costOfItems)>0)) return {ok:false,sel:'#costOfItemsInput',msg:'Enter the cost of items before continuing.'};
   if(state.step===2 && !state.ageRestricted && !state.ageKeywordAck && findAgeRestrictedKeyword(state.description))
     return {ok:false,sel:'.age-kw-banner',msg:'This looks age-restricted — confirm before continuing.',tone:'alert',age:true};   // ALL categories (compliance): age items under Other/Ride/etc. can't bypass the ID/waiver flow
-  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !idVerifiedNow()) return {ok:false,sel:'.ar-banner',msg:'Verify your identity for this age-restricted order to continue.',tone:'alert'};
+  /* ⛔⛔ THE IDENTITY GATE IS BACK (owner ruling, 2026-08-25) — this SUPERSEDES the
+     G40-410 removal that stood here on 2026-08-24; that note is kept below rather than
+     deleted, so the reversal stays legible instead of looking like the gate was never
+     touched. Modelled on the web change in 036bc2d.
+     G40-410 removed it for exactly one reason: the third-party ID vendor was being retired, enrolment
+     would stop, and under-30 (who then had no one-off ID path) would have been left
+     unable to order at all. TrustShield now runs INTERNALLY — enrolment never stops —
+     so the reason is gone and the requirement returns, for EVERYONE, no age branch.
+     ⚠️ SCOPE IS NARROW and this condition is what carries it: delivery + ageRestricted
+     only. A normal order is never gated by this.
+     ⚠️ Satisfied by EITHER path — that is the point: a one-time submission
+     (idSubmittedAt) or the persistent badge (trustShield / savedOnFile).
+     Superseded: "G40-410 (owner, 2026-08-24): TrustShield ID gate REMOVED —
+     verification is voluntary. Surface 2 of 3; web surfaces cleared in 77b4617." */
+  if(state.step===2 && state.category==='delivery' && state.ageRestricted && !identitySatisfied())
+    return {ok:false,sel:'.ar-control',msg:'Submit your identification for this age-restricted order to continue.',tone:'alert'};
+  /* Step 4 LOCATIONS — added 2026-08-25 (owner: align the prototype with Request web + Connect).
+     This step had NO gate at all: a requester could leave BOTH address fields blank, walk past
+     "Locations", and reach Review with the destination rendering as an em-dash. Both web surfaces
+     have gated this since the shared module landed, and gopher-step-gates.js ALREADY modelled the
+     prototype as having these two gates — the model was right and the code was the outlier. Proven
+     by executing this stepGate() against GopherStepGates.evaluate(..., 'prototype'), not by reading.
+     Semantics MIRROR the module's pickupAddress/dropoffAddress gates deliberately, including the
+     firstEmpty() array walk (this UI renders one stop, but state is array-shaped for web parity)
+     and the pick-up-reports-first ordering, which the sequential ifs below give for free.
+     ⚠️ The `isVisible('pickupSection')` guard is copied from the module and carries a KNOWN HOLE
+     with it: the five categories that hide the pick-up section (home, labor, junk, yard, other)
+     still RENDER a Destination input that nothing validates — on all three surfaces, live on web.
+     Reproduced here on purpose so "aligned with web" is literally true; raised with the owner as a
+     cross-surface defect. The fix is one clause in the module's dropoffAddress.when — when it
+     lands, this needs the same change (or this surface adopts the module outright). */
+  if(state.step===4 && !state.noSpecificPickup && isVisible('pickupSection') && firstEmptyStop(state.pickupStops)>-1)
+    return {ok:false,sel:'input[data-field="pickupStops"]',msg:'Add a pick-up address so your Gopher knows where to start.'};
+  if(state.step===4 && !state.noSpecificPickup && isVisible('pickupSection') && firstEmptyStop(state.dropoffStops)>-1)
+    return {ok:false,sel:'input[data-field="dropoffStops"]',msg:'Add a drop-off address so your Gopher knows where to go.'};
+  /* ADDRESSES MUST DIFFER — added 2026-08-25 (owner: model Connect and Request, which
+     are live and correct). Mirrors the shared module's addressesDiffer gate, including
+     its step list: 4 AND 6. Step 6 is not redundant — a step gate only sees the CURRENT
+     step, so a pair edited back to identical after leaving Locations would otherwise
+     reach submit unchecked. Comparison is normalised the same way the module does it
+     (lowercase, strip everything non-alphanumeric), so "218 Fayetteville St." and
+     "218 fayetteville st" are correctly the same address. */
+  if((state.step===4 || state.step===6) && !state.noSpecificPickup && isVisible('pickupSection')
+     && Array.isArray(state.pickupStops) && Array.isArray(state.dropoffStops)){
+    const pk=state.pickupStops.map(normAddr).filter(Boolean);
+    const dp=state.dropoffStops.map(normAddr).filter(Boolean);
+    /* `id` is carried so goNext() can swap this one gate's field-flash for the
+       pickupSameAsDropoff modal — the same additive move web made in toWebShape().
+       ⚠️ Without it the modal wiring is a SILENT NO-OP: g.id is undefined, the
+       comparison is simply false, nothing throws, and the generic flash keeps
+       showing as if nothing were wired. The other gates carry no id because
+       nothing consumes one yet; add one when something does. */
+    if(pk.some(a=>dp.indexOf(a)!==-1))
+      return {ok:false,id:'addressesDiffer',sel:'input[data-field="dropoffStops"]',msg:'Your pick-up and drop-off need to be different addresses — please update one so your Gopher knows where to go.'};
+  }
   // A worker must ALWAYS be offered > $0 (owner, 2026-07-17). The only path with no set
   // offer is a REAL bids job (payMode 'bids' AND the category allows bids) — anything else
   // needs a positive amount. Checked at the pay step AND re-checked at submit as a backstop
@@ -1968,6 +2444,16 @@ function stepGate(){
   if(state.step===5 && !(state.payMode==='bids' && bidsAllowed()) && !(toNum(state.payAmount)>0)) return {ok:false,sel:'#payAmountInput',msg:'Enter how much you\'d like to pay your worker.'};
   if(state.step===6 && !(state.payMode==='bids' && bidsAllowed()) && !(perWorkerPay()>0))
     return {ok:false,sel:null,msg:'Your worker\'s pay can\'t be $0 — go back to Worker pay and set an offer.',tone:'alert'};
+  /* SCHEDULED REQUESTS NEED A TIME — added 2026-08-25, mirroring the module's
+     scheduleTime gate. Sits BEFORE the waiver deliberately: that ordering is a decision
+     on the web surfaces (a missing time is an upstream data fault, the waiver is a
+     deliberate action), and modelling their flow means modelling the order too.
+     ⚠️ Mostly a BACKSTOP here: this surface's timeSlot defaults to '2:00 PM' and its
+     picker is a <select> that always has a selection, so a user cannot normally empty
+     it. A restored draft or a programmatic set can, which is exactly when a silent
+     submit with no time would otherwise get through. */
+  if(state.step===6 && state.scheduleType==='scheduled' && !state.timeSlot)
+    return {ok:false,sel:'#schedTime',msg:'Pick a time for your scheduled request.'};
   if(state.step===6 && !state.waiverChecked) return {ok:false,sel:'.waiver-box',msg:'Check the liability waiver before submitting.'};
   return {ok:true};
 }
@@ -2011,10 +2497,36 @@ function flashGate(gate){
    ============================================================ */
 function goNext(){
   const g=stepGate();
-  if(!g.ok){ if(g.age){ openAgeKwModal(); return; } showToast(g.msg,g.tone); flashGate(g); return; }
+  if(!g.ok){
+    if(g.age){ openAgeKwModal(); return; }
+    /* G40 modal: pickupSameAsDropoff (web parity, 76a3b9c). The addressesDiffer gate
+       ALREADY hard-blocks identical ends — this swaps its generic field-flash for the
+       purpose-built modal, which names the two sliders that resolve it. The gate still
+       blocks every time until the addresses differ: presentation, not policy. */
+    if(g.id==='addressesDiffer' && window.G40_REQ){ G40_REQ.pickupSameAsDropoff(); return; }
+    showToast(g.msg,g.tone); flashGate(g); return; }
+  /* ── Phone-number privacy gate (G40 modal: phoneEntered) ──────────────────
+     Phone numbers are never broadcast; in-app text/call exists after submit. HARD
+     block with NO ack flag — that is the rule the modal states, so an "I know"
+     escape hatch would contradict it. Ordered AFTER the age-keyword gate and BEFORE
+     the category nudge, matching web exactly; compliance outranks privacy outranks
+     a suggestion. Fails open if the modal library is missing, matching the
+     age-keyword precedent — never trap the user behind a dead modal. */
+  if(state.step===2 && window.G40_REQ
+     && /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/.test(String(state.description||''))){
+    G40_REQ.phoneEntered(); return;
+  }
   // Category-mismatch nudge (worker visibility) — after the age gate (precedence).
   if(state.step===2 && !findAgeRestrictedKeyword(state.description) && window.__checkCategoryMismatch && window.__checkCategoryMismatch()) return;
-  state.openCatInfo=null;
+  // ── Age-restricted "no purchase" guardrail (owner 2026-08-18, web parity) ──
+    // Age-restricted auto-enables "purchase needed"; if the user turned it back OFF,
+    // warn once before advancing (edge cases: Rx pickup, pre-paid alcohol). Fires at
+    // this single choke point, not on the toggle, so mid-edit flips never nag.
+    if(state.step===2 && state.category==='delivery' && state.ageRestricted
+       && !state.itemsPurchased && !state.agePurchaseAck && !state.agePurchaseDismissed){
+      openAgePurchaseModal(); return;
+    }
+    state.openCatInfo=null;
   if(state.step<6){ state.step=nextVisibleStep(state.step); if(state.step>state.maxStepReached)state.maxStepReached=state.step; render(); }
 }
 // Age-restricted confirmation — the VERY IMPORTANT guardrail. Blocking G40-308-standard modal (parity
@@ -2034,8 +2546,42 @@ function openAgeKwModal(){
     +'<button class="js-agekw-no" style="width:100%;margin-top:12px;border:0;background:#c44257;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">No — this is NOT age-restricted</button>'
   +'</div>';
   document.body.appendChild(ov);
-  ov.querySelector('.js-agekw-yes').onclick=function(){ if(state.category!=='delivery') state.category='delivery'; state.ageRestricted=true; state.ageKeywordAck=true; ov.remove(); render(); };   // route age-restricted → Delivery
+  ov.querySelector('.js-agekw-yes').onclick=function(){ if(state.category!=='delivery') state.category='delivery'; state.ageRestricted=true;
+    // Mirror the toggle's smart default (web parity): confirming age-restricted via the
+    // keyword modal also enables "purchase needed" — skips a step the user would almost
+    // certainly have to do anyway.
+    if(!state.itemsPurchased){ state.itemsPurchased=true; state.agePurchaseAck=false; }
+    state.ageKeywordAck=true; ov.remove(); render(); };   // route age-restricted → Delivery
   ov.querySelector('.js-agekw-no').onclick=function(){ state.ageKeywordAck=true; if(findAgeRestrictedKeyword(state.description)) state.idRequiredAtCompletion=true; ov.remove(); goNext(); };   // no silent bypass: force ID-at-completion
+}
+// Age-restricted "no purchase" guardrail — web-parity modal (copy verbatim from
+// Final/gopher-request.html #agePurchaseOverlay). "Add a purchase amount" turns the
+// purchase toggle on and lands focus in the Cost-of-Items field; "Continue without a
+// purchase" acknowledges for this attempt (plus a session don't-show-again) and resumes.
+function openAgePurchaseModal(){
+  const old=document.getElementById('agePurchaseOv'); if(old) old.remove();
+  const ov=document.createElement('div'); ov.id='agePurchaseOv';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:99999;background:rgba(0,18,49,.55);display:flex;align-items:center;justify-content:center;padding:22px;');
+  ov.innerHTML='<div role="dialog" aria-modal="true" aria-labelledby="agePurchTitle" style="background:#fff;width:100%;max-width:340px;border-radius:22px;padding:24px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,18,55,.5);font-family:Nunito,sans-serif;">'
+    +'<div style="width:56px;height:56px;margin:0 auto 12px;border-radius:50%;background:#fdecec;display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;">\u26a0\ufe0f</div>'
+    +'<h4 id="agePurchTitle" style="font-size:18px;color:#002461;margin:0 0 10px;">Most age-restricted orders need a purchase</h4>'
+    +'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#5C6685;line-height:1.5;margin:0 0 12px;">You marked this age-restricted but turned off <b>Purchase needed</b>. Almost all age-restricted deliveries require a purchase &mdash; without one, your card is authorized for a lower amount, and if your Gopher needs to add items later, re-authorizing your card can fail and stall your order.</p>'
+    +'<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#a3401f;line-height:1.5;background:#fdecec;border:1px solid #f3c3b2;border-radius:12px;padding:11px 13px;margin:0 0 12px;text-align:left;">Only skip if you truly don\u2019t need anything purchased &mdash; e.g. a prescription pickup or pre-paid alcohol.</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-family:\'DM Sans\',sans-serif;font-size:13px;color:#6b7280;margin:2px 0 14px;cursor:pointer;"><input type="checkbox" class="js-agep-dontshow" style="width:16px;height:16px;accent-color:#1CB061;">Don\u2019t show me this again</label>'
+    +'<button class="js-agep-add" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Add a purchase amount</button>'
+    +'<button class="js-agep-skip" style="width:100%;margin-top:12px;border:1.5px solid #dfe3ec;background:transparent;color:#002461;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Continue without a purchase</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('.js-agep-add').onclick=function(){
+    state.itemsPurchased=true; state.agePurchaseAck=false; ov.remove(); render();
+    const cog=document.getElementById('costOfItemsInput');
+    if(cog){ cog.focus(); try{ cog.select(); }catch(e){} }
+  };
+  ov.querySelector('.js-agep-skip').onclick=function(){
+    state.agePurchaseAck=true;
+    if(ov.querySelector('.js-agep-dontshow').checked) state.agePurchaseDismissed=true;
+    ov.remove(); goNext(); // resume the advance, same as the age-keyword "No" path
+  };
 }
 /* Category-mismatch nudge (worker visibility) — parity with the Final Request/Connect
    web apps. Reuses the shared iQ classifier (gopher-category-classifier.js, loaded
@@ -2163,7 +2709,7 @@ document.addEventListener('click',(e)=>{
 
   // category select — selects only, no auto-advance
   const cat=e.target.closest('[data-cat]');
-  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
+  if(cat){ state.category=cat.dataset.cat; state.openCatInfo=null; realignCategoryState(); if(state.payMode==='bids' && !bidsAllowed()) state.payMode='set'; if(state.maxStepReached<1)state.maxStepReached=1; render(); return; }
   // outside tap closes an open popover (only relevant on step 1)
   if(state.step===1 && state.openCatInfo){ state.openCatInfo=null; render(); return; }
 
@@ -2175,6 +2721,13 @@ document.addEventListener('click',(e)=>{
   // toggles
   const tg=e.target.closest('[data-toggle]');
   if(tg){ const k=tg.dataset.toggle; state[k]=!state[k];
+      // ── Age-restricted smart default (owner 2026-08-18, mirroring the web app) ──
+      // ~95% of age-restricted deliveries need a purchase, so turning the Age-Restricted
+      // slider ON auto-enables "purchase needed", which surfaces the Cost-of-Items field
+      // right there — the user never hunts for it. Turning purchase back ON re-arms the
+      // guardrail so the modal fires again if they toggle it off before Continue.
+      if(k==='ageRestricted' && state.ageRestricted && !state.itemsPurchased){ state.itemsPurchased=true; }
+      if(k==='itemsPurchased' && state.itemsPurchased){ state.agePurchaseAck=false; }
     if(k==='multipleItems' && !state[k]) { /* keep itemCount */ }
     if(k==='moreThanOneWorker' && state[k] && state.numWorkers<2) state.numWorkers=2;
     // Bids remain valid for >1-worker requests; only fall back to a set price when bids are truly
@@ -2224,19 +2777,32 @@ document.addEventListener('click',(e)=>{
     case 'next': goNext(); break;
     case 'back': goBack(); break;
     case 'submit': submitRequest(); break;
-    case 'age-keyword-yes': state.ageRestricted=true; state.ageKeywordAck=true; render(); break;
-    case 'age-keyword-no': state.ageKeywordAck=true; render(); break;
-    case 'enable-purchase': state.itemsPurchased=true; render(); break;
+    /* age-keyword-yes/no + enable-purchase cases retired with the inline banners (2026-08-18) — the modals own these paths now */
     case 'add-pic': if(state.picThumbs.length<3){ const pics=['📷','🛋️','📦','🧾','🏠']; state.picThumbs.push(pics[state.picThumbs.length%pics.length]); render(); } break;
     case 'remove-pic': state.picThumbs.splice(parseInt(act.dataset.i,10),1); render(); break;
-    case 'verify-id': window.__openSignup(true,{hideDemo:true, signedIn:true, trustShield: !!state.trustShield}); break;
+    /* ⛔ 'verify-id' USED TO OPEN THE SIGNUP SHEET — an OTP flow, not a camera. That is
+       why the owner's review said "no camera": the identity capture was unreachable on
+       this surface. It now opens the same three-shot live capture the web apps run. */
+    case 'id-submit':      window.__openIdCapture({}); break;
+    case 'id-update':      window.__openIdCapture({}); break;
+    case 'id-trustshield': window.__openIdCapture({trustShield:true}); break;
+    case 'verify-id':      window.__openIdCapture({}); break;   // legacy hook, same destination
     case 'demo-ts': state.trustShield=!state.trustShield;
       if(state.trustShield){ markIdVerified(true); }
-      else { state.idFrontCaptured=false; state.selfieCaptured=false; state.savedOnFile=false; }
+      else { state.idFrontCaptured=false; state.idBackCaptured=false; state.selfieCaptured=false;
+             state.savedOnFile=false; state.idSubmittedAt=null; }
       render(); break;
+    case 'sim-expiry': if(window.G40_REQ) G40_REQ.expiredInterestedWorkers(); break;
+    case 'sim-paydecline': if(window.G40_REQ) G40_REQ.paymentNotAuthorized(); break;
     case 'ai-pay-suggest': state.osOpen=true; render(); break;
     case 'ai-pay-cancel': state.osOpen=false; render(); break;
-    case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.lowOfferAck=false; } state.osOpen=false; render(); } break;
+    case 'junk-tier': state.junkTier=act.dataset.tier; render(); break;   // user correction now owns the tier; re-render re-ranges the slider
+    case 'ai-pay-use': { const inp=$('#offerAmountInput'); const r=inp?String(inp.value).replace(/[^\d.]/g,''):''; if(r!==''){ const v=parseFloat(r)||0; state.payAmount = v?('$'+v):'$0'; state.suggestedOfferUsed=true;
+      // Junk: lock in the resolved volume tier so completion can teach the model
+      // (recordJunkOffer — the learning seam). Even if no tier button was tapped,
+      // this persists the iQ-detected one. Parity with the web's iQ submit.
+      if(state.category==='junk') state.junkTier=currentJunkTier();
+      state.lowOfferAck=false; } state.osOpen=false; render(); } break;
     case 'ack-low': state.lowOfferAck=true; render(); break;
     case 'toggle-sse': state.sseOpen=!state.sseOpen; render(); break;
     case 'toggle-wte': state.wteOpen=!state.wteOpen; render(); break;
@@ -2264,13 +2830,20 @@ document.addEventListener('click',(e)=>{
 });
 function showOk(msg){
   const old=$('.toast'); if(old) old.remove();
-  const t=document.createElement('div'); t.className='toast'; t.style.background='var(--green-dark)';
+  const t=document.createElement('div'); t.className='toast'; t.style.background='var(--green)';
   t.innerHTML=`<svg viewBox="0 0 24 24" style="stroke:#fff;"><path d="M5 12l5 5L19 7"/></svg><span>${msg}</span>`;
   $('#phone').appendChild(t); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(),2200);
 }
 function gotoURL(u){ if(window.__navHook){ window.__navHook(u); return; } location.href=u; }
 window.GReq = window.GReq || (function(){
-var KEY='gopher_requests';
+// Store is NAMESPACED BY MODE. Previously both modes shared 'gopher_requests', and all()
+// returns a cached array without ever consulting ptEmpty() \u2014 the PT gate only guarded
+// seed(), the fallback. So a standalone visit cached the demo seed, and the split screen
+// loaded in the SAME TAB (sessionStorage is per-tab, and the iframes share the parent's)
+// re-served it: the requester showed Active(2)+Scheduled(1) while Go showed 0/0/0 with
+// 'No local jobs yet'. One shared store, two phones disagreeing \u2014 impossible by design,
+// reachable in two clicks. Separate keys make the contamination unexpressible, both ways.
+var KEY = ptEmpty() ? 'gopher_requests_pt' : 'gopher_requests';
 // PT (split-screen) mode: start with NO pending requests (see gopher-request-home.html).
 function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
 function seed(){ if(ptEmpty()) return []; return [
@@ -2325,12 +2898,35 @@ return { all:all, save:save,
     // Need ASAP expiry (1-hour broadcast window) — the home card counts down from submittedAt.
     asap:(state.scheduleType==='now'),submittedAt:Date.now(),
     cost:cost,pay:pay,pickup:pickup,dropoff:dropoff,
+      /* ACCESS DETAILS (owner 2026-08-19): stairs/elevator were CAPTURED at step 4 and then
+         dropped on submit — invisible to the requester's own View-details AND to the worker
+         deciding whether to accept. A flight of stairs is exactly the fact that changes who
+         raises a hand, so it travels with the request. Counters are ints; 0 renders nothing. */
+      pickupStairs:(parseInt(state.pickupStairs,10)||0), destStairs:(parseInt(state.destStairs,10)||0),
+      serviceElevatorPickup:!!state.serviceElevatorPickup, serviceElevatorDest:!!state.serviceElevatorDest,
     scope:scope,dist:(state.tripDistance||''),when:when,requestor:'Jamie L.',bids:bids,
     // richer detail carried for the crew pill + full "View details" summary
     workers:workers,payByHour:!!state.payByHour,numHours:(parseInt(state.numHours,10)||1),
-    ageRestricted:!!state.ageRestricted,itemsPurchased:!!state.itemsPurchased,
+    // trustShield travels WITH ageRestricted and must never be separated from it: it is
+    // only consulted on an age-restricted hand-off, and the Go app's openAgeIdConfirm()
+    // branches on exactly this flag to decide whether the worker sees the customer's ID
+    // and selfie on file (TrustShield) or has to photograph a physical ID.
+    // It was MISSING from this record, which is why the Go phone always showed the
+    // physical-capture screen even for a TrustShield requester: the requester's own
+    // state was correct, the Go card even rendered "TrustShield Verified", but the flag
+    // never crossed into GReq, so orderFromReq()'s `trustShield:!!r.trustShield` read
+    // undefined. Identical in shape to the workerSelection bug documented below — a
+    // field dropped here, so Go never knew.
+    ageRestricted:!!state.ageRestricted,trustShield:!!state.trustShield,itemsPurchased:!!state.itemsPurchased,
     deal:!!state.fromDeal,dealMerchant:(state.dealMerchant||''),   // Gopher Deal request → Go card shows the "Gopher Deal" badge
-    description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup};
+    description:(state.description||'').trim(),deliveryType:deliveryType,timingLabel:timingLabel,hasPickup:!!pickup,
+    // How the worker is selected: 'first' (auto-connect on accept) vs 'select' (requester picks from
+    // workers who put themselves forward) vs 'my' (MY Gophers first — the "Prioritize MY Gophers" option; the web build
+    // emits 'my' — SETTLED by the owner 2026-08-22, and the reason outlives the spelling:
+    // MY is a proper name, Michael Yorrie, the first Favorite Gopher. It is ALWAYS capitalized
+    // and is never a possessive — never "correct" it to "my Gophers". NOT 'prioritize'). Was dropped here, so Go
+    // never knew the mode and every accept auto-hired — the bug. Carried through to the Go card now.
+    workerSelection:(state.workerSelection||'first')};
 }
 // Stash the submitted request ONCE. submitRequest() and goHome()/see-workers all call this;
 // without the guard a submit-then-"Go to Home" would broadcast the SAME request twice (two order ids).
@@ -2354,11 +2950,283 @@ window.__onSignupComplete = function(r){
 state.category='delivery';
 // Boot. Default simulates the Home handoff (Step 2, Delivery). URL params enable
 // deep-links: "?category=" from Home's Continue, and "?from=deal&..." from a
+/* ============================================================
+   LIVE ID CAPTURE — front + back + selfie
+   Ported from Final/gopher-request.html on 2026-08-25 (owner: "virtually replicate
+   the flow of connect and request ... no camera"). The prototype previously had NO
+   camera at all: three booleans defaulted to true and the "Verify now" button opened
+   the signup sheet, so the whole identity capture was unreachable here.
+
+   RULES CARRIED OVER, each one owner-set on the web build — do not "simplify" them:
+   • LIVE ONLY. Upload was REMOVED on web 2026-08-23, not hidden: an uploaded ID is a
+     photo of a photo (a screenshot, a borrowed licence) and is indistinguishable after
+     the fact. TrustShield's premise is a live capture, so an upload path would leave
+     the non-TrustShield route weaker while looking equivalent.
+   • THREE shots. The back carries the barcode a scanner reads for the DOB.
+   • No camera is a DEAD END, routed to the app — not a downgrade to upload.
+   • Capture stays disabled until the video reports a real frame. A 0-dimension video
+     falls back to 640x480 and produces an all-black JPEG; that was a real web bug.
+   • Retaking the FRONT clears the selfie, because the pair has to match.
+   • TrustShield enrolment REUSES this same component (opts.trustShield). Web tried two
+     components collecting the same three artefacts and they drifted apart within a day.
+   • No "save my ID" checkbox (owner, 2026-08-25, AR Flow.pptx slide 3) — keeping an ID
+     on file IS TrustShield, so offering it free here defeats the badge. Persistence is
+     driven by the MODE instead.
+   ============================================================ */
+(function initIdCapture(){
+  const phone=document.getElementById('phone'); if(!phone) return;
+  let camStream=null, camPoll=null, camTarget=null, camReturn='A', isTS=false, onDone=null;
+
+  const back=document.createElement('div'); back.className='idc-back'; back.id='idcBack';
+  const sheet=document.createElement('div'); sheet.className='idc-sheet'; sheet.id='idcSheet';
+  sheet.setAttribute('role','dialog'); sheet.setAttribute('aria-modal','true');
+  sheet.innerHTML=`<div class="su-grip"></div><div class="idc-body" id="idcBody"></div>`;
+  phone.appendChild(back); phone.appendChild(sheet);
+  const body=sheet.querySelector('#idcBody');
+
+  const V=()=>state;                       // captures live on the request state
+  function shot(k){ return {front:'idFront',back:'idBack',selfie:'selfie'}[k]; }
+  function has(k){ return !!state[shot(k)+'Captured']; }
+  function src(k){ return state[shot(k)+'Src']||''; }
+  function setShot(k,url){ state[shot(k)+'Captured']=true; state[shot(k)+'Src']=url; }
+  function clearShot(k){ state[shot(k)+'Captured']=false; state[shot(k)+'Src']=''; }
+
+  let step='A', errs={front:'',back:'',selfie:''};
+
+  function chips(){
+    const map=[['A','1 · Front','front'],['Bk','2 · Back','back'],['B','3 · Selfie','selfie']];
+    return `<div class="idc-steps">${map.map(([id,label,k])=>{
+      const on = (step===id) || (step==='Cam' && camReturn===id);
+      /* .active must win over .done: a captured step you are standing on reads as
+         current, not finished (web v95). */
+      const cls = on ? 'active' : (has(k) ? 'done' : '');
+      return `<div class="idc-chip ${cls}">${label}</div>`;
+    }).join('')}</div>`;
+  }
+  function thumb(k,caption){
+    if(!has(k)) return '';
+    return `<div class="idc-thumb">
+      <img src="${src(k)}" alt="">
+      <span class="idc-thumb-meta"><b>${k==='selfie'?'Selfie':'ID '+k} captured</b><br>${caption}</span>
+      <button class="idc-retake" data-idc="retake-${k}">Retake</button>
+    </div>`;
+  }
+  function err(k){ return errs[k] ? `<div class="idc-err">${errs[k]}</div>` : ''; }
+
+  function view(){
+    if(step==='Checking') return `<div class="idc-done-msg"><div class="idc-done-ico">📷</div>
+      <div class="idc-hint">Checking your camera…</div></div>`;
+    if(step==='NoCam') return `<div class="idc-done-msg"><div class="idc-done-ico">📱</div>
+        <h5>Finish in the app</h5>
+        <div class="idc-hint">Verifying an age-restricted order needs a live photo, and we couldn't find a camera on this device. Please finish in the Gopher Request mobile app — it only takes a minute, and every phone has a camera built in.</div>
+      </div>
+      <div class="idc-actions"><button class="idc-btn" data-idc="close">Close</button></div>`;
+    if(step==='Done') return `<div class="idc-done-msg"><div class="idc-done-ico">✅</div>
+        <h5>${isTS?'TrustShield™ added':'Identification submitted'}</h5>
+        <div class="idc-hint">${isTS
+          ? 'Your ID and selfie are on file. Every qualified order from now on skips this step — and saves you $1.'
+          : 'You\'re pre-cleared for this order. Remember to bring your physical ID to the hand-off.'}</div>
+      </div>
+      <div class="idc-actions"><button class="idc-btn" data-idc="close">Back to my request</button></div>`;
+    if(step==='Cam'){
+      const selfie=camTarget==='selfie';
+      return `<h5>${selfie?'Take your selfie':(camTarget==='idback'?'Photograph the BACK of your ID':'Photograph the FRONT of your ID')}</h5>
+        <div class="idc-hint" id="idcCamHint">Starting camera…</div>
+        <div class="idc-camwrap">
+          <video id="idcVideo" class="${selfie?'mirror':''}" autoplay playsinline muted></video>
+          <div class="idc-guide ${selfie?'face':''}" aria-hidden="true">
+            <div class="idc-guide-win"><span></span><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <canvas id="idcCanvas" hidden></canvas>
+        <div class="idc-actions">
+          <button class="idc-btn" id="idcShoot" data-idc="shoot" disabled>Capture</button>
+          <button class="idc-btn sec" data-idc="cam-cancel">Cancel</button>
+        </div>`;
+    }
+    if(step==='A') return `<h5>Front of your ID</h5>
+      <div class="idc-hint">Take a live photo of the front of a valid government ID. Uploads aren't accepted — the photo has to be taken here.</div>
+      <button class="idc-cap" data-idc="take-front"><span class="idc-cap-ico">📷</span>Take photo</button>
+      ${err('front')}${thumb('front','Looks good? Continue to the back.')}
+      <div class="idc-actions"><button class="idc-btn" data-idc="to-back" ${has('front')?'':'disabled'}>Continue</button></div>`;
+    if(step==='Bk') return `<h5>Back of your ID</h5>
+      <div class="idc-hint">Now the back, taken live as well. The barcode there is what lets us confirm the date of birth on the ID.</div>
+      <button class="idc-cap" data-idc="take-back"><span class="idc-cap-ico">📷</span>Take photo</button>
+      ${err('back')}${thumb('back','Looks good? Continue to the selfie.')}
+      <div class="idc-actions">
+        <button class="idc-btn" data-idc="to-selfie" ${has('back')?'':'disabled'}>Continue</button>
+        <button class="idc-btn sec" data-idc="to-front">Back</button>
+      </div>`;
+    // step B — selfie
+    return `<h5>Quick selfie</h5>
+      <div class="idc-hint">Take a live selfie so we can match it to your ID. A live photo is required — upload isn't available for the selfie.</div>
+      <button class="idc-cap" data-idc="take-selfie"><span class="idc-cap-ico">🤳</span>Take selfie</button>
+      ${err('selfie')}${thumb('selfie','Ready to submit.')}
+      <div class="idc-actions">
+        <button class="idc-btn" data-idc="submit" ${idCaptureComplete()?'':'disabled'}>${isTS?'Add TrustShield™':'Submit identification'}</button>
+        <button class="idc-btn sec" data-idc="to-back">Back</button>
+      </div>
+      <div class="idc-note">Submitting here is pre-clearance only. A valid physical ID is still required in person before the order is handed over.</div>`;
+  }
+  function paint(){
+    const chrome = (step==='Done'||step==='NoCam'||step==='Checking') ? '' : chips();
+    body.innerHTML=`<div class="idc-title">${isTS?'Add TrustShield™':'Submit identification'}</div>
+      <div class="idc-sub">${isTS
+        ? 'Verify once and carry the badge — every qualified order after this skips the ID step and saves you $1.'
+        : 'Verify your identity for this age-restricted order. You\'ll still show a physical ID in person at hand-off.'}</div>
+      ${chrome}<div class="idc-step on">${view()}</div>`;
+    if(step==='NoCam') hydrateStores();
+  }
+  function go(next){ step=next; paint(); }
+
+  /* ⚠️ These are LINKS, not decoration. The no-camera screen is a DEAD END by design —
+     the store buttons are the only way out of it — so a badge that renders but does
+     nothing strands the requester exactly where they have no other option.
+     Two bugs lived here on 2026-08-25 and one hid the other: the filenames were wrong
+     (app-store-badge.svg / google-play-badge.png do not exist; the real assets are
+     badge-app-store.webp / badge-google-play.webp) AND an onerror handler set
+     display:none, so the broken images vanished silently and the screen simply showed
+     no way forward. No console error, nothing missing on screen to notice — the
+     failure erased its own evidence. onerror is gone; a broken badge must now be
+     visible so it gets fixed.
+     Store URLs match the web app's; the Play id is io.gophergoapp.requester — the
+     io.gophergo.* listings are dead packages Google removed. */
+  const APP_STORE_URL='https://apps.apple.com/us/app/gopher-request/id1438150218';
+  const PLAY_STORE_URL='https://play.google.com/store/apps/details?id=io.gophergoapp.requester';
+  function hydrateStores(){
+    const wrap=document.createElement('div'); wrap.className='idc-stores';
+    wrap.innerHTML=`<a href="${APP_STORE_URL}" target="_blank" rel="noopener" aria-label="Download Gopher Request on the App Store"><img src="../../Final/assets/img/badge-app-store.webp" alt="Download on the App Store"></a>
+                    <a href="${PLAY_STORE_URL}" target="_blank" rel="noopener" aria-label="Get Gopher Request on Google Play"><img src="../../Final/assets/img/badge-google-play.webp" alt="Get it on Google Play"></a>`;
+    const msg=body.querySelector('.idc-done-msg'); if(msg) msg.after(wrap);
+  }
+
+  /* ── camera ── */
+  function stopCam(){
+    if(camPoll){ clearInterval(camPoll); camPoll=null; }
+    if(camStream){ try{ camStream.getTracks().forEach(t=>t.stop()); }catch(e){} camStream=null; }
+    const v=document.getElementById('idcVideo');
+    if(v){ try{ v.pause(); }catch(e){} v.onloadedmetadata=v.onloadeddata=v.oncanplay=null; v.srcObject=null; }
+  }
+  function videoLive(){ const v=document.getElementById('idcVideo');
+    return !!(v && v.videoWidth>0 && v.videoHeight>0 && v.readyState>=2); }
+  async function cameraExists(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return false;
+    try{ if(navigator.mediaDevices.enumerateDevices){
+      const d=await navigator.mediaDevices.enumerateDevices(); return d.some(x=>x.kind==='videoinput'); } }catch(e){}
+    return true;   // present but unenumerable — let the live attempt decide
+  }
+  const KEY={idfront:'front', idback:'back', selfie:'selfie'};
+  const STEP={idfront:'A', idback:'Bk', selfie:'B'};
+  async function openCamera(target){
+    camTarget=target; camReturn=STEP[target]; errs[KEY[target]]='';
+    go('Cam');
+    const hint=document.getElementById('idcCamHint');
+    const shootBtn=document.getElementById('idcShoot');
+    const ready=()=>{ if(shootBtn) shootBtn.disabled=false;
+      if(hint) hint.textContent = target==='selfie'
+        ? 'Center your face in the oval, then capture.'
+        : target==='idback'
+          ? 'Line the BACK of your ID up inside the frame — hold it flat and horizontal so the barcode is readable.'
+          : 'Line the FRONT of your ID up inside the frame — hold it flat and horizontal, edges inside the corners.'; };
+    const fail=(msg)=>{ stopCam(); errs[KEY[target]]=msg; go(STEP[target]); };
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({
+        video:{ facingMode: target==='selfie'?'user':'environment' }, audio:false });
+      const v=document.getElementById('idcVideo');
+      if(v){
+        v.srcObject=camStream;
+        const tryReady=()=>{ if(videoLive()){ if(camPoll){clearInterval(camPoll);camPoll=null;} ready(); return true; } return false; };
+        v.onloadedmetadata=tryReady; v.onloadeddata=tryReady; v.oncanplay=tryReady;
+        await v.play().catch(()=>{});
+        /* Some browsers fire those events inconsistently — poll for the first real
+           frame, and treat ~4s of nothing as a camera that opened but yields nothing
+           (covered lens, or in use by another app). */
+        let tries=0;
+        camPoll=setInterval(()=>{ tries++;
+          if(tryReady()) return;
+          if(tries>=40){ clearInterval(camPoll); camPoll=null;
+            if(!videoLive()) fail('We couldn’t get a picture from your camera (it may be blocked or in use). Please check it and try again — or finish in the mobile app.'); }
+        },100);
+      }
+    }catch(e){
+      const n=e&&e.name;
+      stopCam();
+      if(n==='NotFoundError'||n==='OverconstrainedError'||n==='DevicesNotFoundError'){ go('NoCam'); }
+      else fail('We couldn’t access the camera. Please allow camera access and try again — or finish in the mobile app.');
+    }
+  }
+  function shoot(){
+    const v=document.getElementById('idcVideo'), c=document.getElementById('idcCanvas');
+    if(!v||!c||!camStream) return;
+    if(!videoLive()){ errs[KEY[camTarget]]='Camera is still starting — give it a moment, then capture.'; go(STEP[camTarget]); return; }
+    const w=v.videoWidth, h=v.videoHeight;
+    c.width=w; c.height=h;
+    const ctx=c.getContext('2d');
+    if(camTarget==='selfie'){ ctx.translate(w,0); ctx.scale(-1,1); }   // un-mirror
+    ctx.drawImage(v,0,0,w,h);
+    let url=''; try{ url=c.toDataURL('image/jpeg',0.85); }catch(e){ url=''; }
+    const t=camTarget, backTo=STEP[t];
+    stopCam();
+    if(!url){ errs[KEY[t]]='Capture failed — please try again.'; go(backTo); return; }
+    setShot(KEY[t],url);
+    go(backTo);
+  }
+
+  sheet.addEventListener('click',e=>{
+    const b=e.target.closest('[data-idc]'); if(!b) return;
+    const a=b.getAttribute('data-idc');
+    if(a==='close'){ close(); return; }
+    if(a==='take-front')  return openCamera('idfront');
+    if(a==='take-back')   return openCamera('idback');
+    if(a==='take-selfie') return openCamera('selfie');
+    if(a==='shoot')       return shoot();
+    if(a==='cam-cancel'){ const r=camReturn; stopCam(); return go(r); }
+    if(a==='to-front')  return go('A');
+    if(a==='to-back')   return go('Bk');
+    if(a==='to-selfie') return go('B');
+    if(a==='retake-front'){ clearShot('front'); clearShot('selfie'); return go('A'); } // ID change ⇒ new selfie
+    if(a==='retake-back'){  clearShot('back');  return go('Bk'); }
+    if(a==='retake-selfie'){clearShot('selfie');return go('B'); }
+    if(a==='submit'){
+      if(!idCaptureComplete()) return;          // hard gate — all THREE
+      state.idSubmittedAt=Date.now();
+      if(isTS){ state.trustShield=true; state.savedOnFile=true; }
+      else { state.savedOnFile=false; }
+      if(typeof onDone==='function'){ try{ onDone(); }catch(_){ } }
+      go('Done');
+    }
+  });
+  back.addEventListener('click',close);
+
+  function close(){
+    stopCam();
+    sheet.classList.remove('show'); back.classList.remove('show');
+    render();                                   // banner reflects the new state
+  }
+  window.__openIdCapture=async function(opts){
+    opts=opts||{};
+    isTS=!!opts.trustShield; onDone=typeof opts.onDone==='function'?opts.onDone:null;
+    stopCam();
+    /* Fresh session every time — the ID and selfie are always recaptured, so a stale
+       pair can never be resubmitted as if it were taken now. */
+    clearShot('front'); clearShot('back'); clearShot('selfie');
+    errs={front:'',back:'',selfie:''};
+    go('Checking');
+    back.classList.add('show'); requestAnimationFrame(()=>sheet.classList.add('show'));
+    const ok=await cameraExists();
+    go(ok?'A':'NoCam');
+  };
+})();
+
 // redeemed merchant Deal (lands prefilled on the canonical Review, Step 6).
 (function(){
   const q=new URLSearchParams(location.search);
   const cat=q.get('category');
   if(q.get('demo')==='1'){ state.demo=true; state.step=1; state.maxStepReached=1; render(); return; }
+  // "?step=1" — land on the real Step 1 category picker (Home's "All services").
+  // Distinct from ?demo=1, which also flips state.demo and adds the "no account needed"
+  // ribbon + demo-signup CTA — wrong for a signed-in requester browsing services.
+  if(q.get('step')==='1'){ state.step=1; state.maxStepReached=1; render(); return; }
   if(cat && CATEGORIES[cat]) state.category=cat;
   if(q.get('from')==='deal'){
     state.category = (cat && CATEGORIES[cat]) ? cat : 'delivery';
@@ -2369,6 +3237,13 @@ state.category='delivery';
     const pay=q.get('pay'); if(pay && parseFloat(pay)>0) state.payAmount='$'+(parseFloat(pay)||0);
     state.dealMerchant=q.get('merchant')||'';
     state.fromDeal=true;   // marks this as a Gopher Deal request → the Go card shows the "Gopher Deal" badge
+    /* kind: 'service' (a Service-Provider deal, set price) or 'merchant'. boost: the
+       10% Deal Boost. Web sets these in __startDealRequest from the deal payload; this
+       surface receives them on the query string. Defaulting kind to 'merchant' rather
+       than null is deliberate — an unlabelled deal must NOT fall into the zero-fee
+       service branch, which would waive every fee on an ordinary merchant deal. */
+    state.dealKind = (q.get('kind')==='service') ? 'service' : 'merchant';
+    state.dealBoost = q.get('boost')==='1' || state.dealKind==='service';
     state.step=6; state.maxStepReached=6;
     render(); return;
   }
@@ -2386,6 +3261,185 @@ state.category='delivery';
   }
   state.step=2; state.maxStepReached=2;
   render();
+})();
+
+/* ── Cross-device draft sync (prototype) ─────────────────────────────────────
+   Mirrors the wiring in Final/gopher-request.html so the app and the web agree on
+   what a draft is. All judgement lives in the shared kernel
+   (Final/assets/js/gopher-request-draft.js): what travels, what never does (ID
+   captures and photo bytes never leave the device), what is re-derived on arrival.
+   This block is only the wiring.
+
+   ⛔ REMOTE SYNC IS OFF, AND THE COPY MUST KEEP SAYING "this device only".
+   The requester surfaces have NO sign-in — 0 apiCall / sign_in / otp on both this
+   file and the web page — and GET /api/v1/requests/draft scopes off the token's own
+   user id, so there is nothing to scope to. Cross-device is gated on a
+   requester-identity product decision, not on this code. Defining
+   window.GOPHER_API_BASE + window.__gopherAuthToken() turns the server tier on with
+   no other change here. Until then the wording stays local: the June copy fixes on
+   gopher-request.html exist because it once claimed "your information is saved
+   automatically" while nothing persisted. Do not let a dev token hook change it. */
+(function initDraftSync(){
+  var K = window.GopherRequestDraft, S = window.GopherRequestDraftStore;
+  if(!K || !S) return;                 // modules absent -> flow behaves exactly as before
+
+  /* Lazy, never at init: someone who merely opens this page and starts nothing is
+     never given a persistent identifier. The store accepts a function and calls it
+     only when it is about to persist. */
+  var deviceId = null;
+  function getDeviceId(){
+    if(deviceId) return deviceId;
+    try{
+      deviceId = localStorage.getItem('gopher.request.deviceId');
+      if(!deviceId){
+        deviceId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                                                        : 'proto-' + Math.random().toString(36).slice(2);
+        localStorage.setItem('gopher.request.deviceId', deviceId);
+      }
+    }catch(_e){}
+    return deviceId;
+  }
+
+  var apiBase = window.GOPHER_API_BASE || null;
+  var tokenFn = typeof window.__gopherAuthToken === 'function' ? window.__gopherAuthToken : null;
+  var crossDevice = !!(apiBase && tokenFn && tokenFn());
+
+  var adapter = S.webLocalAdapter({ key: 'gopher.request.draft.proto' });
+  if(crossDevice){
+    adapter = S.tieredAdapter(adapter, S.remoteAdapter({
+      baseUrl: apiBase,
+      getHeaders: function(){ return { 'access-token': tokenFn() }; }
+    }));
+  }
+
+  var store = S.createStore({
+    adapter: adapter, origin: 'app-prototype', clientId: getDeviceId,
+    onConflict: function(){ /* local wins until identity exists; nothing to reconcile */ }
+  });
+
+  /* ⛔ ARMING — the single most important line here, and this file makes it harder
+     than the web page does. render() is called SYNCHRONOUSLY at the end of the entry
+     IIFE, and there are FIVE such paths (?demo=1, ?step=1, ?from=deal, ?from=again,
+     and the default), each of which may mutate state first — the deals deep-link sets
+     category, cost and identity before rendering. All five run long before load()
+     resolves. Unarmed, the first autosave would overwrite the very draft we are about
+     to offer and a discard would delete it. Nothing is written or cleared until the
+     resume question has been answered. */
+  var armed = false;
+
+  var _render = render;
+  render = function(){
+    _render.apply(this, arguments);
+    if(armed) store.touch(state);
+  };
+
+  window.addEventListener('pagehide', function(){ if(armed) store.flush(state); });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden && armed) store.flush(state);
+  });
+
+  /* ── The offer ────────────────────────────────────────────────────────────
+     ⛔ COPY IS DELIBERATELY LOCAL-ONLY: "saved on this device". That is TRUE
+     today and stays true until a real token exists. It must not become "saved
+     across your devices" when the remote tier is switched on unless the token is
+     genuinely there -- gopher-request.html once claimed "your information is
+     saved automatically" while nothing persisted, and that is why this rule
+     exists. The wording is derived from the adapter, not hardcoded optimism. */
+  function summaryLine(sum){
+    if(sum && sum.description) return String(sum.description).slice(0, 60);
+    if(sum && sum.category) return String(sum.category);
+    return 'Your request in progress';
+  }
+  /* Derived from the ADAPTER, never hardcoded: if the remote tier is off this must
+     say "this device", because that is what is true. */
+  function whereLine(){
+    return crossDevice ? 'Saved to your account' : 'Saved on this device';
+  }
+
+  function dismissBanner(){
+    var el = document.querySelector('.dr-resume');
+    if(el && el.parentNode) el.parentNode.removeChild(el);   // remove, never [hidden]
+  }
+
+  /* ⛔ ARM ONLY ON AN ANSWER. The first version set armed=true when load() RESOLVED,
+     which read as "we have finished asking" but means "we have finished LOADING" --
+     the user had not answered anything yet. App Prototypes reproduced the
+     consequence on the served build: banner up, user touches anything, autosave
+     fires, and the saved request is overwritten by the new one. Silently, with the
+     question still on screen a moment earlier. The comment claimed this could not
+     happen while the code did it. Arm on Resume, on Start fresh, and immediately
+     when there is nothing to protect -- never merely because bytes arrived. */
+  /* ⚠️ IF YOU ARE DEBUGGING AND "NOTHING IS PERSISTING", CHECK FOR AN OPEN BANNER
+     BEFORE ASSUMING THIS IS BROKEN. While an offer is pending, NO WRITE IS THE
+     CORRECT STATE -- that is the whole point of arming on the answer. App
+     Prototypes hit this on the verification re-run and nearly filed it as a
+     regression; the absence of a write is now expected, which makes it very easy
+     to misread as a defect. Two further probe traps from that same re-run, worth
+     the two lines: the store's write is debounced, so a check at ~900ms can land
+     just before it (dispatch `pagehide` to force a flush); and this band is
+     painted with a background-IMAGE gradient, so `backgroundColor` reads
+     rgba(0,0,0,0) even though it is plainly blue. */
+  function armAfterAnswer(){ armed = true; }
+
+  function offerResume(found){
+    /* ⛔ MOUNTED AS A SIBLING OF #content, NOT INSIDE IT. render() does
+       `content.innerHTML = bodyHTML` (:2303), which destroys anything within --
+       so an unanswered offer vanished on the first re-render and took the user's
+       chance to answer with it. #scroll is outside innerHTML's reach. Re-inserting
+       after every render would also work and is strictly more code that can drift. */
+    var scroll = document.querySelector('#scroll');
+    var content = document.querySelector('#content');
+    if(!scroll || !content) { armAfterAnswer(); return; }   // fail open: never trap a draft
+    dismissBanner();
+
+    var el = document.createElement('div');
+    el.className = 'si-band dr-resume';
+    var ico = document.createElement('span'); ico.className = 'si-ico'; ico.textContent = '\u21bb';
+    var txt = document.createElement('div'); txt.className = 'si-text';
+    var h = document.createElement('h5'); h.textContent = 'Pick up where you left off';
+    var pEl = document.createElement('p'); pEl.textContent = summaryLine(found.summary);
+    var where = document.createElement('div'); where.className = 'dr-where';
+    where.textContent = whereLine();
+    var acts = document.createElement('div'); acts.className = 'dr-acts';
+    var yes = document.createElement('button'); yes.className = 'dr-primary';
+    yes.type = 'button'; yes.textContent = 'Resume';
+    var no = document.createElement('button'); no.type = 'button'; no.textContent = 'Start fresh';
+    yes.addEventListener('click', function(){
+      dismissBanner(); window.__protoDraftResume(found); armAfterAnswer();
+    });
+    no.addEventListener('click', function(){
+      dismissBanner(); store.discard(); armAfterAnswer();
+    });
+    acts.appendChild(yes); acts.appendChild(no);
+    txt.appendChild(h); txt.appendChild(pEl); txt.appendChild(where); txt.appendChild(acts);
+    el.appendChild(ico); el.appendChild(txt);
+    scroll.insertBefore(el, content);
+  }
+
+  store.load().then(function(found){
+    var sum = (found && found.summary) || {};
+    var worthOffering = !!(found && found.draft) && (sum.description || (sum.step && sum.step > 1));
+    if(!worthOffering){ armAfterAnswer(); return; }   // nothing to protect -> arm now
+    window.__protoDraftFound = found;                 // still inspectable for tests
+    offerResume(found);                               // stays UNARMED until answered
+  }).catch(function(){ armAfterAnswer(); });
+
+  /* Dev-only, deliberately NOT wired to any button or copy. Lets a web->app
+     cut-over be DEMONSTRATED without shipping a promise the build cannot keep. */
+  window.__protoDraftResume = function(found){
+    var f = found || window.__protoDraftFound;
+    if(!f || !f.draft) return false;
+    var r = store.resumeInto(f.draft, makeInitialState());
+    /* ⚠️ Category FIRST, then the rest. realignCategoryState() wipes the 26 keys in
+       CATEGORY_SCOPED_KEYS on a category change, so assigning category after the
+       other fields would clear them out from under the restore. */
+    if(r.state && r.state.category) state.category = r.state.category;
+    if(typeof realignCategoryState === 'function') realignCategoryState();
+    Object.keys(r.state || {}).forEach(function(k){ state[k] = r.state[k]; });
+    render();
+    return true;
+  };
+  window.__protoDraftDiscard = function(){ store.discard(); return true; };
 })();
 
 /* ====================================================================

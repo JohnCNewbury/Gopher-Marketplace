@@ -1,0 +1,150 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>G40-9 — Recovery modal: built vs the Jira design</title>
+<style>
+:root{--navy:#002461;--green:#33D975;--muted:#6B7280;--ink:#12203a;--bg:#eef1f5;
+--line:#e3e8ef;--warn:#b45309;--warnbg:#fff7ed;--red:#d92d20}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Nunito,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 72px}
+h1{font-size:23px;margin:0 0 4px;color:var(--navy);letter-spacing:-.3px}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 18px;max-width:78ch}
+.note{background:var(--warnbg);border:1px solid #fed7aa;border-left:4px solid var(--warn);
+padding:13px 15px;border-radius:9px;margin:0 0 26px;font-size:13.5px;max-width:82ch}
+.note b{color:var(--warn)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media(max-width:860px){.cols{grid-template-columns:1fr;max-width:400px;margin:0 auto}}
+.col>h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;margin:0 0 3px}
+.col.built>h2{color:var(--navy)} .col.design>h2{color:#3730a3}
+.col>p.cap{font-size:12.5px;color:var(--muted);margin:0 0 12px;min-height:34px}
+
+.phone{width:100%;max-width:340px;margin:0 auto;background:#fff;border:2px solid #111;
+border-radius:26px;overflow:hidden;position:relative;
+box-shadow:0 10px 30px rgba(0,36,97,.14)}
+.status{display:flex;justify-content:space-between;align-items:center;
+padding:9px 20px 3px;font-size:12.5px;font-weight:700;color:#111}
+.grab{width:38px;height:4px;border-radius:2px;background:#dfe4ec;margin:10px auto 14px}
+.body{padding:0 20px 22px}
+h3.t{margin:0 0 18px;font-size:17px;font-weight:800;color:var(--ink);text-align:center}
+p.b{font-size:14px;color:var(--ink);line-height:1.5;text-align:center;margin:0 0 16px}
+.reason{border:1px solid var(--ink);border-radius:4px;padding:12px 14px;margin:0 0 18px;
+font-size:14px;line-height:1.5;color:var(--ink);text-align:center}
+.clockline{font-size:12px;color:var(--muted);text-align:center;margin:0 0 14px}
+.clockline b{color:var(--ink);font-variant-numeric:tabular-nums}
+.btn{width:100%;border:none;background:var(--navy);color:#fff;border-radius:24px;
+padding:14px 16px;font-size:13.5px;font-weight:700;margin-bottom:11px;display:block;text-align:center}
+.btn.navyred{color:var(--red)}
+.btn.whitered{background:#fff;border:1px solid var(--line);color:var(--red)}
+.strike{position:relative;opacity:.38}
+.strike:after{content:"REMOVED — payment complications";position:absolute;inset:0;
+display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;
+letter-spacing:.5px;color:#991b1b;background:rgba(254,226,226,.86);border-radius:24px}
+.pstrike{opacity:.38;text-decoration:line-through}
+mark{background:#fef3c7;padding:0 3px;border-radius:3px}
+
+.why{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-top:30px}
+.why h2{font-size:16px;margin:0 0 12px;color:var(--navy)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);background:#f8fafc}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:999px}
+.tag.diff{background:#fee2e2;color:#991b1b} .tag.ok{background:#d1fae5;color:#065f46}
+.tag.ask{background:#e0e7ff;color:#3730a3}
+code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body><div class="wrap">
+
+<h1>G40-9 — Recovery modal: built vs the Jira design</h1>
+<p class="sub">Left is reproduced value-for-value from the live
+<code>ReleaseRecoveryWatcher.js</code>. Right is the design from the G40-9 ticket, with
+<b>Edit Details struck</b> per the ruling to drop it. Differences are highlighted.</p>
+
+<div class="note"><b>⚠ Correction — this supersedes my earlier comparison.</b> The previous version
+of this file put the <i>prototype's centered-card</i> modal in the design column and concluded the
+build had drifted badly from the design. That was wrong: that card is a different artifact
+(<code>G40-9-recovery-modal-copy-review.html</code>), not the ticket's design. The real design is a
+bottom sheet, and <b>the build follows it closely.</b> The three "fixes" I proposed off the bad
+comparison — new headline, option rows, a recommended pill — are withdrawn. The genuine
+differences are the three below.</div>
+
+<div class="cols">
+
+  <div class="col built">
+    <h2>Built — on your phone now</h2>
+    <p class="cap">Two buttons. Third paragraph rewritten. Countdown added.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>▪▪▪ ᯤ ▮</span></div>
+      <div class="grab"></div>
+      <div class="body">
+        <h3 class="t">Request Options</h3>
+        <p class="b">We’re sorry the Gopher who accepted your request is no longer available.</p>
+        <div class="reason"><b>Reason</b>: Got a flat tire and stuck on the interstate</div>
+        <p class="b">If you still would like your request completed, please select
+          <b>Assign New Gopher</b> and we’ll resubmit immediately with the original offer and terms.</p>
+        <p class="b"><mark>To change the details, select
+          <span style="color:#d92d20">Cancel Request</span> and submit a new one. Your funds are
+          released straight away.</mark></p>
+        <p class="clockline"><mark>Auto-cancels in <b>14:30</b> if no action</mark></p>
+        <button class="btn">Assign New Gopher</button>
+        <button class="btn whitered"><mark style="background:#fef3c7">Cancel Request</mark></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col design">
+    <h2>Designed — the Jira mockup</h2>
+    <p class="cap">Three navy pills. No countdown. Cancel copy is about cancelling.</p>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>▪▪▪ ᯤ ▮</span></div>
+      <div class="grab"></div>
+      <div class="body">
+        <h3 class="t">Request Options</h3>
+        <p class="b">We’re sorry the Gopher who accepted your request is no longer available.</p>
+        <div class="reason"><b>Reason</b>: Got a flat tire and stuck on the interstate</div>
+        <p class="b">If you still would like your request completed, please select
+          <b>Assign New Gopher</b> and we’ll resubmit immediately with the original offer and terms.</p>
+        <p class="b pstrike">If you would like to change something in the details, select
+          <b>Edit Details</b> below.</p>
+        <p class="b"><mark>If you no longer want your request submitted, you can select
+          <span style="color:#d92d20">Cancel Request</span>.</mark></p>
+        <button class="btn">Assign New Gopher</button>
+        <button class="btn strike">Edit Details</button>
+        <button class="btn navyred"><mark style="background:#fef3c7">Cancel Request</mark></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="why">
+<h2>The three real differences</h2>
+<table>
+<tr><th style="width:17%">Difference</th><th style="width:31%">Designed</th><th style="width:31%">Built</th><th>Call</th></tr>
+
+<tr><td><b>1. Cancel button style</b><br><span class="tag diff">DEVIATION</span></td>
+<td><b>Navy pill</b>, red label — same shape and fill as the other two, differing only in ink.</td>
+<td><b>White pill</b>, grey border, red label.</td>
+<td>Straight deviation from the design, no reason recorded for it. One-line fix.</td></tr>
+
+<tr><td><b>2. The cancel paragraph</b><br><span class="tag ask">CONSEQUENCE OF DROPPING EDIT</span></td>
+<td>Two sentences: one pointing at <b>Edit Details</b>, one saying Cancel is for when you no
+longer want the request submitted.</td>
+<td>The Edit sentence is gone and the Cancel sentence was rewritten to carry the edit path:
+“To change the details, select Cancel Request and submit a new one.”</td>
+<td>Rewriting it was necessary — with Edit gone, nothing else tells a requester how to change
+details. But it now leads with <i>changing details</i> rather than <i>cancelling</i>. Suggest
+keeping the design's sentence and appending the edit path, rather than replacing it.</td></tr>
+
+<tr><td><b>3. Countdown</b><br><span class="tag ask">ADDITION — STILL NO RULING</span></td>
+<td>Not present anywhere in the design.</td>
+<td>Quiet grey line above the buttons.</td>
+<td>Added deliberately and flagged for you twice; still never ruled on. The window expires and
+refunds either way, so removing the line hides the fuse rather than removing it.</td></tr>
+
+<tr><td colspan="4" style="background:#f0fdf4"><span class="tag ok">MATCHES</span>&nbsp;
+Title, the apology line, the bordered Reason box, the Assign New Gopher paragraph, the
+Assign New Gopher button, sheet form factor, grabber, stacked full-width pills, no order number.
+<b>The build is faithful to the design on everything else.</b></td></tr>
+</table>
+</div>
+
+</div></body></html>

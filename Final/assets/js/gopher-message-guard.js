@@ -32,12 +32,58 @@
 (function (global) {
   'use strict';
 
+  /* Where this file was loaded from. The module always sits at
+     <siteroot>/assets/js/gopher-message-guard.js, so the site root is two
+     levels up — true on GitHub Pages (a SUBDIRECTORY deploy, where a
+     root-absolute path would 404), on TigerTech, on Netlify, in the repo
+     (Final/assets/js -> Final/), and from the _prototypes tree, which loads
+     this file by a relative path of its own. Same runtime-resolution trick
+     messaging-precheck.md already documents for the srcdoc iframe.
+     Empty when the module is INLINED rather than <script src>'d — the
+     absolute fallback below covers that. */
+  var SELF = (function () {
+    try {
+      if (document.currentScript && document.currentScript.src) {
+        return document.currentScript.src;
+      }
+      var tags = document.getElementsByTagName('script');
+      for (var i = tags.length - 1; i >= 0; i--) {
+        if (/gopher-message-guard\.js/.test(tags[i].src || '')) return tags[i].src;
+      }
+    } catch (e) { /* fall through to the absolute default */ }
+    return '';
+  }());
+
+  function fromSiteRoot(rel, fallback) {
+    if (SELF) {
+      try { return new URL('../../' + rel, SELF).href; } catch (e) { /* noop */ }
+    }
+    return fallback;
+  }
+
   /* ---- CONFIG (edit freely) -------------------------------------- */
   var CONFIG = {
     policyUrl: 'gopher-terms.html',   // relative + case-exact (GitHub Pages/Linux)
-    // "In-App Messaging Terms" link on the transaction-protection alert — points directly
-    // at the Terms of Service (absolute so it works from the site AND the _prototypes tree).
-    termsUrl: 'https://gophergo.io/gopher-terms-of-service.html',
+    /* "In-App Messaging Terms" link on the transaction-protection alert.
+       Deep-links to ToS section 20, "In-App Communication & Accessibility"
+       (owner 2026-08-18) — someone tapping this wants the rule that just
+       fired, not the top of a 30-section contract. The anchor is the
+       <section id="communication"> that wraps that heading; if the ToS is
+       restructured, keep that id.
+       Resolved at runtime rather than hardcoded. The old absolute value
+       (https://gophergo.io/gopher-terms-of-service.html) is DEAD: gophergo.io
+       is the current WordPress marketing site and 301s that path to its
+       homepage, so the link went nowhere and the anchor was discarded with
+       the redirect. Do not point this at gophergo.io again until the ToS
+       actually ships on that host.
+       The fallback is the GitHub Pages URL (owner, 2026-08-18) — the host
+       where the ToS really lives today. It only fires when SELF is empty,
+       i.e. when this module is INLINED instead of <script src>'d, which is
+       the case in the Request srcdoc-iframe prototype. */
+    termsUrl: fromSiteRoot(
+      'gopher-terms-of-service.html#communication',
+      'https://johncnewbury.github.io/Gopher-Marketplace/gopher-terms-of-service.html#communication'
+    ),
     learnMoreUrl: 'gopher-faqs.html#staying-in-app',
     // Escalation is PER USER (across all threads). 1st hit -> level 1,
     // 2nd -> level 2, 3rd and beyond -> level 3 (blocked). Tune to taste.
@@ -57,8 +103,15 @@
       /\bcash\s?app\b/i, /\bvenmo\b/i, /\bzelle\b/i, /\bpay\s?pal\b/i,
       /\bapple\s?pay\b/i, /\bgoogle\s?pay\b/i, /\bg-?pay\b/i,
       /\bwire\s?transfer\b/i, /\b(bit\s?coin|btc|crypto)\b/i,
-      /\bpay(?:ing)?\s+(?:you|me|in)\s+cash\b/i, /\bcash\s+only\b/i,
-      /\bpay\s+(?:me|you)?\s*direct(?:ly)?\b/i, /\bpay\s+outside\b/i,
+      // The alternation used to take exactly ONE token — (?:you|me|in) — so
+      // "pay in cash" and "pay me cash" matched but "pay me in cash" and
+      // "paying you in cash" did NOT, i.e. the two most natural phrasings of
+      // the thing we're trying to catch walked straight through. Both parts are
+      // now independently optional. Still deliberately does NOT fire on past-
+      // tense narration ("the last customer paid me in cash") — that is "paid",
+      // which never enters this branch. (Fixed 2026-07-28.)
+      /\bpay(?:ing)?\s+(?:(?:you|me)\s+)?(?:in\s+)?cash\b/i, /\bcash\s+only\b/i,
+      /\bpay\s+(?:me|you)?\s*direct(?:ly)?\b/i, /\bpay\s+(?:me|you)?\s*outside\b/i,
       // A bare dollar figure is the precursor to CashApp circumvention
       // (John, 2026-07-02). Price is shown transparently in-app, so there's
       // no legitimate reason to type an amount in chat — flag it.
@@ -78,10 +131,21 @@
       // flag). Adjacency keeps "your order number" / "your unit number"
       // from false-positives ("your" must sit right next to the noun).
       /\b(?:your|ur)\s+(?:number|phone|cell|mobile|digits|email|whats\s?app)\b/i,
-      /\bnumber\s+to\s+(?:call|text|reach)\b/i
+      /\bnumber\s+to\s+(?:call|text|reach)\b/i,
+      // Social handles are contact-sharing too (owner 2026-07-19; mirrors the
+      // Dashboard lexicon's social_contact category) — so they connect-gate
+      // with the rest of this family. Conservative list; John curates.
+      /\b(?:insta|instagram|snap\s?chat|tele\s?gram|whats\s?app|discord)\b/i,
+      /\b(?:dm|direct\s+message)\s+(?:me|you|u)\b/i,
+      /\bmy\s+(?:handle|socials?)\b/i
     ],
     off_platform: [
-      /\boutside\s+(?:of\s+)?gopher\b/i, /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
+      // "outside" previously required the literal "gopher", so "pay me outside
+      // the app" matched NEITHER this nor `off\s+(?:the\s+)?(?:app|platform)`
+      // (that one needs "off") — it fell between the two lists. Now covers
+      // gopher / the app / the platform alike. (Owner 2026-07-28.)
+      /\boutside\s+(?:of\s+)?(?:the\s+)?(?:gopher|app|platform)\b/i,
+      /\boff\s+(?:the\s+)?(?:app|platform)\b/i,
       /\bcancel\s+(?:the\s+)?(?:request|order|job)\b/i,
       /\bcancel\s+and\s+pay\b/i, /\bmeet\s+up\s+and\s+pay\b/i,
       /\bdeal\s+outside\b/i, /\bpay\s+in\s+person\b/i
@@ -113,7 +177,13 @@
      "In-App Messaging Terms" link underneath. No hard block: a real
      human reviews flags instead ("we'll always have a real human remove
      any flags that had the best intentions").
-     CONDUCT family keeps the original three escalation levels.           */
+     CONDUCT family (owner revision 2026-07-19): keeps its three
+     escalation levels of copy, but warn levels 1–2 now use the SAME
+     button pair as off-platform — "Edit message" (green, holds the
+     message) and "Send as-is" (blue pulsing, sends FLAGGED). A flagged
+     conduct message is delivered, and the RECIPIENT sees the standard
+     terms-violation note under the bubble (same format as off-platform
+     flags — nothing new invented). Level 3 stays a hard block.           */
   var COPY = {
     offplatform: {
       notConnected: {
@@ -143,13 +213,19 @@
       termsLabel: 'In-App Messaging Terms'
     },
     conduct: {
+      // Warn levels 1–2 (owner 2026-07-19): same Edit / Send-as-is pair as the
+      // off-platform alert. "Edit message" holds the text in the composer;
+      // "Send as-is" delivers it FLAGGED — the recipient sees the standard
+      // terms-violation note under the bubble. The old single-button
+      // acknowledge ("Got It" -> send unflagged) is retired.
       1: {
         verdict: 'warn',
         title: 'Keep It Respectful',
         body: 'Please keep messages professional and respectful. Abusive, ' +
               'threatening, or harassing language goes against our Community ' +
-              'Guidelines and helps no one get the job done.',
-        primary: 'Got It',
+              'Guidelines and helps no one get the job done. You can edit ' +
+              'your message, or send it as-is — sent as-is, it will be ' +
+              'delivered with a note that it may violate our terms.',
         secondary: 'View Guidelines',
         secondaryUrl: function () { return CONFIG.policyUrl; }
       },
@@ -158,8 +234,9 @@
         title: 'Conduct Warning',
         body: 'Abusive, threatening, or harassing language violates our Terms ' +
               'of Service. Continued violations may result in account ' +
-              'restrictions.',
-        primary: 'I Understand',
+              'restrictions. You can edit your message, or send it as-is — ' +
+              'sent as-is, it will be delivered with a note that it may ' +
+              'violate our terms.',
         secondary: 'View Policy',
         secondaryUrl: function () { return CONFIG.policyUrl; }
       },
@@ -170,7 +247,9 @@
               "Guidelines, so it wasn't delivered. Please revise it to continue.",
         primary: 'Edit Message',
         secondary: null
-      }
+      },
+      editLabel: 'Edit message',
+      sendLabel: 'Send as-is'
     }
   };
   // Verdict-by-level mapping (1,2 = warn; 3 = block) now lives on the conduct
@@ -187,18 +266,75 @@
   /* ---- detection -------------------------------------------------- *
      Returns a verdict object whose shape matches /messages/precheck:
        { verdict:'allow'|'warn'|'block', policy, level, matched }      */
+  /* ---- spelled-out digits (owner, 2026-08-18) --------------------
+     "five five five one one one two seven eight five" was sailing through:
+     every pattern here is a regex tested against the raw string, and a
+     spelled-out number contains no digits to match. The owner flagged it as
+     a COMMON practice, and messaging-precheck.md already listed it as a
+     known limitation ("misses obfuscation like v3nmo or spelled-out
+     digits").
+
+     Rather than add a second, weaker phone pattern, normalise a COPY of the
+     message and re-test the existing tuned patterns against it. Nothing is
+     rewritten for the user; the original text is what sends.
+
+     The safety valve is the run length: only runs of THREE OR MORE adjacent
+     number-words collapse. An isolated word is left alone, so "I need one
+     more box" never becomes "I need 1 more box" and can never drift into a
+     phone match. A short run like "one two three" does collapse to "123",
+     which is still far short of the 7-digit body the phone pattern needs.
+
+     Mixed forms work for free, because collapsing happens in place:
+     "eight oh five 624 1724" -> "805 624 1724", which the phone regex
+     already knows how to read.
+
+     NOT covered, and deliberately so: homophones ("won too tree"), letter
+     substitution ("v3nmo"), and non-English number words. Those need the
+     real classifier behind POST /messages/precheck, not more regex. */
+  var NUM_WORD = {
+    zero: '0', oh: '0', one: '1', two: '2', three: '3', four: '4',
+    five: '5', six: '6', seven: '7', eight: '8', nine: '9', niner: '9'
+  };
+  var NUM_TOKEN = '(?:zero|oh|one|two|three|four|five|six|seven|eight|nine|niner)';
+  var NUM_RUN = new RegExp(
+    '\\b' + NUM_TOKEN + '(?:[\\s.,\\-]+' + NUM_TOKEN + '){2,}\\b', 'gi'
+  );
+
+  function spellOutToDigits(text) {
+    if (!text) return '';
+    return String(text).replace(NUM_RUN, function (run) {
+      var out = '';
+      var parts = run.split(/[\s.,\-]+/);
+      for (var i = 0; i < parts.length; i++) {
+        out += NUM_WORD[parts[i].toLowerCase()] || '';
+      }
+      return out;
+    });
+  }
+
   function check(text, threadId, opts) {
     opts = opts || {};
     var hits = [];
+    /* Tested in addition to the raw text, never instead of it. */
+    var probe = spellOutToDigits(text);
+    var useProbe = probe !== String(text || '');
     for (var policy in PATTERNS) {
-      // Connected relaxation (owner, 2026-07-16): once a customer and a worker
-      // are CONNECTED on a request, exchanging personal info may be part of the
-      // job (call on arrival, gate codes, etc.) — the 'contact' patterns are
-      // skipped. Payment / off-platform / conduct stay checked.
+      // Connected relaxation (owner 2026-07-16, re-confirmed with precise scope
+      // 2026-07-19): once a worker has ACCEPTED the thread's job (assigned,
+      // accepted offer/counter, in progress, or delivered), contact exchange is
+      // legitimate post-acceptance coordination — ONLY the 'contact' family
+      // (numbers, emails, asks, social handles) is skipped. Payment /
+      // off-platform stay checked (fee circumvention doesn't stop being
+      // circumvention on an accepted job), and conduct is UNCONDITIONAL
+      // ("bad language isn't allowed, period"). This mirrors the Dashboard
+      // Message Review rule `context_rules.contact_on_connected_order`
+      // (moderation_rules.json / iaContactOnConnected in app_part4.js).
       if (opts.connected && policy === 'contact') continue;
       var list = PATTERNS[policy];
       for (var i = 0; i < list.length; i++) {
-        if (list[i].test(text)) { hits.push(policy); break; }
+        if (list[i].test(text) || (useProbe && list[i].test(probe))) {
+          hits.push(policy); break;
+        }
       }
     }
     if (!hits.length) return { verdict: 'allow', policy: null, level: 0, matched: [] };
@@ -241,11 +377,13 @@
        connected  -> TRUE when this thread belongs to a request the two
                      parties are already matched on. Picks the alert
                      variant AND relaxes the 'contact' patterns.
-       onAllow    -> called when the message may be sent (no hit, OR the
-                     user chose "Send as-is" — flagged — OR acknowledged
-                     a conduct warn). Wire your real send here.
+       onAllow    -> called when the message may be sent: no hit (called
+                     with no argument), OR the user chose "Send as-is" on
+                     EITHER family (called with the verdict — flagged:true;
+                     store the flag so the recipient gets the standard
+                     terms-violation note). Wire your real send here.
        onBlocked  -> called when the message is held back ("Edit message"
-                     on the transaction alert, or a conduct level-3 block). */
+                     on either alert, or a conduct level-3 block). */
   function guard(text, threadId, handlers) {
     handlers = handlers || {};
     var pass = handlers.onAllow || function () {};
@@ -260,10 +398,9 @@
       family: result.family,
       connected: result.connected,
       onPrimary: function () {
-        // Off-platform: primary = "Edit message" -> hold the message.
-        if (result.family === 'offplatform') { stop(result); return; }
-        if (result.verdict === 'block') { stop(result); }  // conduct block -> hold
-        else { pass(); }                                    // acknowledged conduct warn -> send
+        // Primary = "Edit message" on every warn (both families, owner
+        // 2026-07-19) and on the conduct level-3 block -> hold the message.
+        stop(result);
       },
       onSendAsIs: function () { pass(result); }  // flagged send — human review removes good-faith flags
     });
@@ -317,6 +454,10 @@
     var L = offp
       ? COPY.offplatform[handlers.connected ? 'connected' : 'notConnected']
       : COPY[fam][level];
+    // Every warn — off-platform AND conduct levels 1–2 — gets the same
+    // "Edit message" / "Send as-is" pair (owner 2026-07-19). Only the
+    // conduct level-3 block keeps a single Edit button.
+    var pair = offp || (fam === 'conduct' && L.verdict === 'warn');
     var lastFocus = document.activeElement;
 
     var overlay = document.createElement('div');
@@ -339,7 +480,7 @@
 
     var primary = document.createElement('button');
     primary.className = 'gmg-btn gmg-btn-primary';
-    primary.textContent = offp ? COPY.offplatform.editLabel : L.primary;
+    primary.textContent = pair ? COPY[fam].editLabel : L.primary;
 
     function close() {
       document.removeEventListener('keydown', onKey, true);
@@ -353,11 +494,12 @@
 
     actions.appendChild(primary);
 
-    if (offp) {
-      // "Send as-is" — blue with the reddish pulsing shadow. Sends flagged.
+    if (pair) {
+      // "Send as-is" — blue with the reddish pulsing shadow. Sends flagged;
+      // the recipient sees the standard terms-violation note.
       var sendAs = document.createElement('button');
       sendAs.className = 'gmg-btn gmg-btn-sendas';
-      sendAs.textContent = COPY.offplatform.sendLabel;
+      sendAs.textContent = COPY[fam].sendLabel;
       sendAs.addEventListener('click', function () {
         close();
         if (handlers.onSendAsIs) handlers.onSendAsIs();
@@ -385,6 +527,15 @@
       terms.href = CONFIG.termsUrl;
       terms.target = '_blank'; terms.rel = 'noopener';
       card.appendChild(terms);
+    } else if (pair && L.secondary) {
+      // Conduct warn — "View Guidelines"/"View Policy" sits below the pair,
+      // same underline-link slot the off-platform terms link uses.
+      var glink = document.createElement('a');
+      glink.className = 'gmg-terms';
+      glink.textContent = L.secondary;
+      glink.href = (L.secondaryUrl && L.secondaryUrl()) || CONFIG.policyUrl;
+      glink.target = '_blank'; glink.rel = 'noopener';
+      card.appendChild(glink);
     }
     overlay.appendChild(card);
     document.body.appendChild(overlay);

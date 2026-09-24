@@ -71,6 +71,14 @@ AGE_CASES = [  # (text, expected hit? True/False/None=only cross-surface equalit
     ("move a couch to the dump", False),
     ("pick up my prescription", None),
     ("grab me a lighter and some rolling papers", None),
+    # SMART PUNCTUATION (owner repro 2026-08-05). Phones autocorrect ' -> \u2019, and
+    # the brain stores straight ASCII, so every possessive brand was undetectable
+    # on mobile - 41 of 1,658 keywords. These four must stay green or the age
+    # gate silently reopens for exactly the customers most likely to hit it.
+    ("I need some Tito\u2019s", True),          # the exact text that failed
+    ("grab a bottle of Jack Daniel\u2019s", True),
+    ("Maker\u2019s Mark please", True),
+    ("deliver a titanium bolt", False),      # 'tito' substring must NOT fire
 ]
 # Canonical persisted+shared core — must exist in EVERY surface (see schema doc §2).
 # Grew 42 -> 50 with the 2026-07-14 reconciliation: canonical location ARRAYS
@@ -92,9 +100,10 @@ scheduleConfirmed selectedDate suggestedOfferUsed""".split())
 DOCUMENTED_EXTRA = set("""businessPlan dealBoost dealKind
 descriptionIsPlaceholder descriptionPlaceholder dupWarnAck
 eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
-idVerification laborManagement lowAvailabilityAck
+idVerification junkTier movingTier laborManagement lowAvailabilityAck
 openCatInfo openInfo osOpen profileOpen savedOnFile
 selfieCaptured selfieSrc submittedAt waiverPrompted
+idBackCaptured idBackSrc idSubmittedAt dob dealMerchant
 userAcknowledgedCategory lastCheckedDescription trustShield demo""".split())
 
 
@@ -139,6 +148,53 @@ def engine_deps():
     for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
         parts.append(extract_fn(eng, f))
     return "\n".join(parts)
+
+
+def surface_gates(src):
+    """Extract {(step, label)} from a surface's inline stepGate()."""
+    i = src.find("function stepGate(")
+    if i < 0:
+        return None
+    j = src.index("{", i); depth, k = 0, j
+    while k < len(src):
+        if src[k] == "{":
+            depth += 1
+        elif src[k] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        k += 1
+    body = src[i:k + 1]
+    out = set()
+    for m in re.finditer(r"state\.step\s*===\s*(\d+)", body):
+        tail = body[m.start():m.start() + 900]
+        lab = re.search(r"label:\s*'([^']{0,40})'", tail)
+        if lab:
+            out.add((int(m.group(1)), lab.group(1)))
+    return out
+
+
+FHF_RE = re.compile(r"FIELD_HIDDEN_FOR\s*=\s*\{")
+def surface_hidden_for(src):
+    """Parse a surface's inline FIELD_HIDDEN_FOR into {field: [categories]}."""
+    m = FHF_RE.search(src)
+    if not m:
+        return None
+    start = m.end() - 1
+    depth, j = 0, start
+    while j < len(src):
+        if src[j] == "{":
+            depth += 1
+        elif src[j] == "}":
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    body = src[start:j + 1]
+    out = {}
+    for k, v in re.findall(r"([A-Za-z0-9_]+)\s*:\s*\[([^\]]*)\]", body):
+        out[k] = sorted(x.strip().strip("'\"") for x in v.split(",") if x.strip())
+    return out
 
 
 FAILS, WARNS = [], []
@@ -220,7 +276,13 @@ def main():
                 d -= 1
                 if d == 0: break
             j += 1
-        body = re.sub(r"//[^\n]*", "", src[k:j + 1])
+        # ⚠️ Strip BLOCK comments as well as line comments. The field regex matches
+        # any `word:` , so a single explanatory /* … declared: … */ inside the state
+        # literal invented a state field called "declared" and reported it as
+        # undocumented drift. Caught 2026-08-25. A comment must never be able to
+        # create a finding — that is noise that trains people to ignore the warning.
+        body = re.sub(r"/\*.*?\*/", "", src[k:j + 1], flags=re.S)
+        body = re.sub(r"//[^\n]*", "", body)
         fields = set(re.findall(r"([A-Za-z_]\w*)\s*:", body))
         missing = CORE_FIELDS - fields
         check(not missing, "%s carries all %d core fields" % (name, len(CORE_FIELDS)),
@@ -229,6 +291,625 @@ def main():
         if new:
             WARNS.append("%s has undocumented NEW state fields: %s — reconcile into the schema doc"
                          % (name, ", ".join(sorted(new))))
+
+    print("== 6. DRAFT — the cross-device contract holds ==")
+    # The draft kernel is what makes "start on the web, finish in the app" possible.
+    # Two things have to stay true as surfaces change:
+    #   a) every field the kernel promises to carry actually EXISTS in each surface,
+    #      or a resumed request silently drops data;
+    #   b) nothing sensitive or transient can reach a draft — that one is a privacy
+    #      guarantee, so it is asserted against the kernel's real output, not by
+    #      reading the source.
+    draft_js = os.path.join(ROOT, "Final/assets/js/gopher-request-draft.js")
+    if not os.path.exists(draft_js):
+        check(False, "draft kernel present", draft_js)
+    else:
+        probe = r"""
+          var K = require(%s);
+          var state = {};
+          K.CONTRACT_FIELDS.forEach(function(f){ state[f] = 'x'; });
+          // a state that carries everything a real one would, including what must NOT travel
+          state.idVerification = {idFrontSrc:'data:image/jpeg;base64,SECRET', selfieSrc:'data:image/jpeg;base64,S'};
+          state.picThumbs = [{id:1, src:'data:image/jpeg;base64,AAAA'}];
+          K.TRANSIENT_FIELDS.forEach(function(f){ state[f] = 'x'; });
+          var d = K.toDraft(state, {rev:0});
+          var json = JSON.stringify(d);
+          var leaked = K.SENSITIVE_FIELDS.filter(function(f){ return f in d.data; })
+            .concat(K.TRANSIENT_FIELDS.filter(function(f){ return f in d.data; }));
+          console.log(JSON.stringify({
+            contract: K.CONTRACT_FIELDS,
+            leaked: leaked,
+            imageData: json.indexOf('data:image') !== -1,
+            validates: K.validate(d).ok,
+            reconsent: K.RECONSENT_FIELDS
+          }));
+        """ % json.dumps(draft_js)
+        try:
+            out = subprocess.run(["node", "-e", probe], capture_output=True, text=True,
+                                 timeout=60, cwd=ROOT)
+            info = json.loads(out.stdout.strip().splitlines()[-1])
+        except Exception as e:
+            info = None
+            check(False, "draft kernel runs", str(e)[:120])
+
+        if info:
+            check(not info["leaked"], "no sensitive or transient field can reach a draft",
+                  ", ".join(info["leaked"]))
+            check(not info["imageData"], "no image data can reach a draft")
+            check(info["validates"], "kernel validates its own output")
+
+            # Every carried field must exist in every surface's makeInitialState(),
+            # otherwise a resumed request silently drops data. Two exemptions:
+            #
+            #   derived  — computed BY the kernel/map, never read from surface state.
+            #   optional — schema doc §3c "platform-specific": genuinely part of the
+            #              contract, legitimately absent until that platform gains the
+            #              feature (Connect/prototype have no Deals surface yet). These
+            #              WARN rather than fail: a known, documented gap that fails the
+            #              build teaches people to ignore the build.
+            derived = {"picCount", "categoryRaw", "subCategoryRaw", "hasPic"}
+            optional = {"fromDeal", "dealKind", "dealBoost", "hireAgainGophers"}
+            for name, rel in SURFACES.items():
+                src = read(rel)
+                i = src.index("function makeInitialState")
+                k = src.index("{", src.index("return", i)); d = 0; j = k
+                while j < len(src):
+                    if src[j] == "{": d += 1
+                    elif src[j] == "}":
+                        d -= 1
+                        if d == 0: break
+                    j += 1
+                body = re.sub(r"//[^\n]*", "", src[k:j + 1])
+                fields = set(re.findall(r"([A-Za-z_]\w*)\s*:", body))
+                absent = (set(info["contract"]) - derived) - fields
+                soft = absent & optional
+                hard = absent - optional
+                check(not hard, "%s has every field the draft carries" % name,
+                      ("absent: " + ", ".join(sorted(hard))) if hard else "")
+                if soft:
+                    WARNS.append("%s lacks platform-specific contract fields: %s — a draft "
+                                 "resumed here loses them (schema doc §3c)"
+                                 % (name, ", ".join(sorted(soft))))
+
+            # Consent must be re-taken on the receiving device, never inherited.
+            check(set(info["reconsent"]) >= {"waiverChecked"},
+                  "liability waiver is re-consented on resume, not carried")
+
+    # ---------------------------------------------------------------- 6. FLOW RULES
+    # Which fields a category shows is duplicated inline in all three surfaces.
+    # gopher-flow-rules.js is the shared source of truth; this asserts every
+    # surface's private copy still agrees with it, so drift fails a run instead
+    # of shipping. Request and Connect agree on 16 of 17 fields — the one real
+    # difference (multiStop) is modelled as a surface override, not tolerated as
+    # drift.
+    print("\n6. FLOW RULES — inline visibility tables vs the shared module")
+    rules_js = os.path.join(ROOT, "Final/assets/js/gopher-flow-rules.js")
+    if not os.path.exists(rules_js):
+        check(False, "shared flow-rules module present", rules_js)
+    else:
+        try:
+            # jxa() already returns parsed JSON.
+            M = jxa("var module={exports:{}};" + read("Final/assets/js/gopher-flow-rules.js") +
+                    ";JSON.stringify({base:module.exports.tableFor(),"
+                    "connect:module.exports.tableFor('connect'),"
+                    "scoped:module.exports.CATEGORY_SCOPED_KEYS,"
+                    "bad:module.exports.assertInvariants()})")
+        except Exception as e:
+            M = None
+            check(False, "shared flow-rules module runs", str(e)[:160])
+        if M:
+            check(not M["bad"], "flow-rules module passes its own invariants",
+                  "; ".join(M["bad"]))
+            M_SCOPED = M["scoped"]
+            # Each surface is compared against the table for ITS surface.
+            for name, rel in SURFACES.items():
+                want = M["connect"] if name == "connect" else M["base"]
+                got = surface_hidden_for(read(rel))
+                if got is None:
+                    check(False, "%s exposes a FIELD_HIDDEN_FOR table" % name)
+                    continue
+                # A surface need not implement every field; it must not DISAGREE
+                # about one it does implement.
+                shared = sorted(set(got) & set(want))
+                bad = [f for f in shared if sorted(got[f]) != sorted(want[f])]
+                check(not bad,
+                      "%s visibility matches the shared module (%d shared fields)"
+                      % (name, len(shared)),
+                      "" if not bad else "DRIFT on %s — %s has %s, module has %s" % (
+                          ", ".join(bad), name,
+                          {f: got[f] for f in bad}, {f: want[f] for f in bad}))
+                extra = sorted(set(got) - set(want))
+                if extra:
+                    WARNS.append("%s defines visibility fields the module does not: %s"
+                                 % (name, ", ".join(extra)))
+
+        # ---- step gates: which rules block Continue -----------------------
+        # NOT extracted into the shared module yet — that is Phase 3 — but the
+        # reason has CHANGED and the old one is retired. It used to read: "the
+        # canonical flow doc is SILENT on which is correct." It is not silent;
+        # it documents ID-at-the-exchange and was read wrongly (searching for
+        # "identity"/"verification" and finding neither is not the same as canon
+        # having no rule). Owner ruled 2026-08-22: BOTH surfaces gate identity at
+        # step 2, and connect-flows-granular.html now carries the dated row.
+        # ⚠️ A surface that yields an EMPTY gate set used to be dropped here in
+        # silence, which is how the prototype sat outside every gate assertion
+        # without anyone noticing (found by App Prototypes 2026-08-22). It is not
+        # a parse failure: the prototype's stepGate() returns {ok, sel, msg} with
+        # NO `label:` key, so the label-keyed extractor legitimately finds nothing.
+        # Dropping it is still correct — comparing labels to nothing is noise — but
+        # it must be ANNOUNCED, and that surface then needs its own assertion below.
+        gate_sets = {}
+        shapeless = []
+        for name, rel in SURFACES.items():
+            gs = surface_gates(read(rel))
+            if gs is None:
+                check(False, "%s exposes a stepGate() the harness can read" % name,
+                      "no function stepGate( found — the gate comparison silently "
+                      "skipped this surface")
+            elif not gs:
+                shapeless.append(name)
+            else:
+                gate_sets[name] = gs
+        # ⚠️ A surface with no readable labels is EITHER rewired to the shared
+        # module (good — the module's own tests own the rules) OR label-less by
+        # shape (the prototype). Those are not the same thing and must not be
+        # reported the same way.
+        #
+        # This distinction was added because Phase 3 exposed the failure: once
+        # Request and Connect delegated, surface_gates() found no labels on them,
+        # every ruled-gate assertion below silently stopped running, and the
+        # harness reported PASS while checking NOTHING. Same silent-drop shape as
+        # the prototype hole found earlier the same day — a second instance in one
+        # file, for a different reason.
+        DELEGATES = {}
+        for name in shapeless:
+            body = read(SURFACES[name])
+            loads = 'assets/js/gopher-step-gates.js' in body
+            uses = 'GopherStepGates.evaluate' in body
+            DELEGATES[name] = loads and uses
+            if DELEGATES[name]:
+                # A rewired surface must NOT also keep a private copy of the rules.
+                i = body.find("function stepGate(")
+                blk = ""
+                if i >= 0:
+                    j = body.index("{", i); d, k = 0, j
+                    while k < len(body):
+                        if body[k] == "{": d += 1
+                        elif body[k] == "}":
+                            d -= 1
+                            if d == 0: break
+                        k += 1
+                    blk = body[i:k + 1]
+                inline = len(re.findall(r"ok:\s*false", blk))
+                # ⚠️ `uses` is a substring test, so DEAD delegation code still
+                # satisfies it: inserting `return {ok:true};` before the call left
+                # the harness green while every gate was disabled. Caught by
+                # mutation testing. The shim itself must never return a bare pass —
+                # only the MODULE decides ok:true — so an ok:true literal inside
+                # stepGate means something is short-circuiting it.
+                shortcircuit = re.search(r"ok:\s*true", blk)
+                check(not shortcircuit,
+                      "%s's shim does not short-circuit the module" % name,
+                      "stepGate returns ok:true itself — only the module may do that; "
+                      "the delegation call below it would be dead code")
+                check(inline <= 1,
+                      "%s DELEGATES its step gates to the module (no private copy)" % name,
+                      "stepGate still holds %d inline rules — delegation that leaves the "
+                      "old rules behind is duplication with extra steps" % inline)
+                check(loads and uses,
+                      "%s loads AND calls gopher-step-gates.js" % name,
+                      "loads=%s uses=%s" % (loads, uses))
+            else:
+                check(True, "%s uses a label-less gate shape — asserted by condition "
+                            "below, not by comparison" % name)
+        # Only meaningful while a surface still carries readable inline labels.
+        # Once both are rewired this block is skipped -- and the assertions that
+        # replace it are the module's own tests (test-step-gates.js, 56 of them)
+        # plus the delegation checks above. Said explicitly so an empty section
+        # cannot be mistaken for a passing one.
+        if not gate_sets:
+            check(True, "step-gate rules now live in gopher-step-gates.js — "
+                        "asserted by test-step-gates.js, not by cross-surface diff")
+        if "request" in gate_sets and "connect" in gate_sets:
+            only_r = sorted(gate_sets["request"] - gate_sets["connect"])
+            only_c = sorted(gate_sets["connect"] - gate_sets["request"])
+            check(True, "step gates compared (request %d / connect %d)"
+                  % (len(gate_sets["request"]), len(gate_sets["connect"])))
+            # RULED gates are a hard failure, not a warning. A warning that
+            # clears when the fix lands guards nothing: remove the gate again and
+            # it merely returns to WARN, which is the state people scroll past.
+            # Anything NOT yet ruled on stays a warning — this asserts the
+            # decisions that exist, and flags the ones that do not.
+            # ⛔ (2, "Identity verification") was RULED here on 2026-08-22 and REMOVED
+            # from both web surfaces on 2026-08-23 (owner, G40-410 / trustshield-gate-
+            # removal-interim.md §8.1): iDenfy is being retired, so TrustShield becomes
+            # voluntary and the Gopher's physical ID check at the door remains the
+            # compliance control. Listing it here would fail a surface for obeying the
+            # current ruling. Deliberately NOT re-added — the module's assertInvariants()
+            # and test-step-gates.js now assert its ABSENCE on request/connect, which is
+            # where that guard belongs (both web surfaces delegate, so this block does
+            # not even execute for them today).
+            RULED_GATES = {
+                (4, "Addresses"):             "data quality — same ruling",
+                (6, "Addresses"):             "data quality — same ruling",
+                (6, "Schedule time"):         "data quality — same ruling",
+            }
+            for g, why in sorted(RULED_GATES.items()):
+                check(g in gate_sets["connect"],
+                      "connect enforces the RULED gate: step %d %s" % g,
+                      "" if g in gate_sets["connect"] else
+                      "gate is missing — %s. Removing it does not merely diverge from "
+                      "Request: the backend refuses these orders anyway "
+                      "(trust_shield_required, controllers/order/create.js), so the user "
+                      "hits a 403 naming a remedy this surface would not offer." % why)
+                check(g in gate_sets["request"],
+                      "request enforces the RULED gate: step %d %s" % g,
+                      "" if g in gate_sets["request"] else "gate is missing — %s" % why)
+
+            # ⚠️ The label check above catches a DELETED or RENAMED gate but not a
+            # DISABLED one. Proven, not assumed: `if(false && …)` in front of the
+            # identity gate left the label in place and the harness stayed green.
+            #
+            # A first attempt at a fix searched the WHOLE FILE for the guard tokens
+            # and was ALSO useless — every token still occurs elsewhere, so all three
+            # mutations passed. The search has to be scoped to the gate's own block.
+            # Still source-text matching; executing stepGate() is the real answer and
+            # is Phase 3 work.
+            def gate_block(body, label):
+                """The source of the `if` that returns this gate, or None."""
+                i = body.find("label:'%s'" % label)
+                if i < 0:
+                    return None
+                # Walk back to the OUTER `if(state.step …)`, not the nearest `if(`.
+                # The nearest one is the gate's INNER test (`if(!(hasTS || idDone))`,
+                # `if(pk.some(…))`), whose block does not contain the tokens being
+                # asserted — a first version made exactly that mistake and failed on
+                # correct code, which is how it was caught.
+                # Both spellings occur — `if(state.step === 2 …)` and
+                # `if((state.step === 4 || state.step === 6) …)`. Take whichever is
+                # NEAREST the label, not whichever is tried first: ordering them
+                # wrongly picks up an earlier, unrelated gate whose block does not
+                # contain these tokens, and reports a failure on correct code.
+                j = max(body.rfind("if(state.step", 0, i),
+                        body.rfind("if((state.step", 0, i))
+                if j < 0:
+                    return None
+                depth, k = 0, body.find("{", j)
+                if k < 0:
+                    return None
+                while k < len(body):
+                    if body[k] == "{":
+                        depth += 1
+                    elif body[k] == "}":
+                        depth -= 1
+                        if depth == 0:
+                            break
+                    k += 1
+                return body[j:k + 1]
+
+            # "Identity verification" was checked here until 2026-08-23. Its tokens
+            # guarded an INLINE gate that no longer exists on either web surface (the
+            # gate was removed by owner ruling, and both surfaces delegate to the module
+            # regardless). Keeping it would assert tokens for a gate that is gone.
+            GUARDS = {
+                "Addresses": (
+                    # The character class is pinned deliberately. Renaming normAddr
+                    # would throw at runtime and get noticed; SILENTLY WEAKENING the
+                    # normaliser would not — drop the punctuation strip and
+                    # "123 Main St, Raleigh" stops matching "123 main st raleigh",
+                    # so two identical addresses sail through. That is the mutation
+                    # worth catching, and the token list missed it until this line.
+                    ["normAddr", "pickupStops.map", "dropoffStops.map", "dp.includes",
+                     "toLowerCase()", "[^a-z0-9]+"],
+                    "the addresses-must-differ comparison",
+                ),
+            }
+            for name in ("request", "connect"):
+                body = read(SURFACES[name])
+                for label, (tokens, human) in GUARDS.items():
+                    blk = gate_block(body, label)
+                    if blk is None:
+                        check(False, "%s keeps %s intact" % (name, human),
+                              "could not locate the gate block at all")
+                        continue
+                    absent = [t for t in tokens if t not in blk]
+                    # A short-circuited condition keeps every token but stops firing.
+                    dead = re.search(r"if\(\s*(false|0|!true)\b", blk) is not None
+                    check(not absent and not dead,
+                          "%s keeps %s intact" % (name, human),
+                          "condition is short-circuited (`if(false …`) — the gate's label "
+                          "is still present, so the label check cannot see this"
+                          if dead else
+                          "missing from the gate's OWN block: %s — the label may still be "
+                          "present while the condition has been gutted" % ", ".join(absent))
+
+            unruled_missing = [g for g in only_r if g not in RULED_GATES]
+            if unruled_missing:
+                WARNS.append("Connect is missing step gates Request enforces, and no ruling "
+                             "covers them: %s — see PHASE-2-FINDINGS.md"
+                             % ", ".join("step %d %s" % g for g in unruled_missing))
+            if only_c:
+                WARNS.append("Connect enforces step gates Request does not: %s"
+                             % ", ".join("step %d %s" % g for g in only_c))
+
+
+
+        # ⚠️ HOISTED OUT of the request/connect comparison on purpose. This lived
+        # inside `if "request" in gate_sets and "connect" in gate_sets:` and became
+        # DEAD the moment Phase 3 rewired both of them — the block stopped running
+        # and these assertions vanished without a word. That is the THIRD silent
+        # drop in this file in one day (the prototype missing from the ruled-gate
+        # loop; the ruled-gate loop itself going vacuous on adoption; this).
+        #
+        # The pattern is worth stating once: an assertion nested inside a condition
+        # about OTHER surfaces is an assertion that can be switched off by work
+        # that has nothing to do with it. Gate checks belong at the top level.
+        # The prototype is a THIRD surface and the ruled identity gate binds it
+        # too, but it cannot be checked by label (see above), so it is asserted
+        # by CONDITION. Scoped to its own gate line, for the same reason the
+        # whole-file search was useless on the other two.
+        #
+        # Deliberately NOT asserted here: addresses-must-differ and
+        # schedule-time. The prototype genuinely has neither, and no ruling
+        # covers that — asserting them would invent a requirement rather than
+        # enforce a decision. It stays a WARN below if it ever matters.
+        # Scope to stepGate()'s OWN body. The same condition
+        # (step===2 && delivery && ageRestricted) also appears in goNext()'s
+        # age-keyword backstop, and an unscoped search matched THAT instead —
+        # so a mutation to the real gate was "caught" by the wrong assertion,
+        # for the wrong reason. Third time scoping has been the bug in this
+        # file; the pattern is: never search a 2 MB document for a fact that
+        # belongs to one function.
+        proto_src = read(SURFACES["prototype"])
+        _i = proto_src.find("function stepGate(")
+        if _i >= 0:
+            _j = proto_src.index("{", _i)
+            _d, _k = 0, _j
+            while _k < len(proto_src):
+                if proto_src[_k] == "{":
+                    _d += 1
+                elif proto_src[_k] == "}":
+                    _d -= 1
+                    if _d == 0:
+                        break
+                _k += 1
+            proto_src = proto_src[_i:_k + 1]
+        # ⚠️ ANCHORED TO `if(` ON PURPOSE. Reported by App Prototypes, who
+        # mutation-tested this assertion against their own surface and found it
+        # decorative: `if(false && state.step===2 && …)` disables the gate while
+        # leaving every matched substring intact, so the check stayed green. Third
+        # appearance of that exact shape in two days.
+        #
+        # They proposed rejecting a list of falsy prefixes (`false &&`, `0 &&`,
+        # `!true &&`). That closes the observed cases but not a hoisted flag
+        # (`if(killSwitch && …)`), so this requires the condition to begin
+        # IMMEDIATELY after `if(` — which rejects ANY prefix, known or not.
+        # Still source-text matching; EXECUTING stepGate() is the honest fix and is
+        # the adoption work for that surface.
+        # ⛔ INVERTED AGAIN 2026-08-25 — THIRD state for this check in three days, so
+        # read the DATE, not the shape. It required the gate; then required its
+        # ABSENCE (G40-410, because iDenfy was being retired and under-30 had no
+        # one-off path); and now requires its PRESENCE again, because TrustShield runs
+        # INTERNALLY, enrolment never stops, and the owner made identity mandatory for
+        # age-restricted orders with no age branch. The guard follows the ruling rather
+        # than being deleted with it — which is exactly why it keeps flipping.
+        pm = re.search(
+            r"if\(\s*state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
+            r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
+            proto_src)
+        check(pm is not None,
+              "prototype GATES step 2 on identity for A/R delivery (owner 2026-08-25)",
+              "the step-2 identity condition is gone. Identity is mandatory for "
+              "age-restricted orders again — TrustShield is internal now, so the "
+              "iDenfy cliff that justified removing it in G40-410 no longer exists.")
+        if pm:
+            # Must be satisfiable by EITHER path. A gate that only accepts the badge
+            # would make TrustShield mandatory rather than persistent, which is the
+            # opposite of the ruling: submission is one-time, TrustShield lasts.
+            cond = pm.group(1)
+            check("identitySatisfied" in cond,
+                  "prototype's identity gate accepts EITHER path (one-off or badge)",
+                  "condition reads: %s — it must call identitySatisfied(), which is "
+                  "trustShield || idSubmittedAt || savedOnFile, mirroring the web "
+                  "host's identityVerified()." % cond.strip()[:80])
+
+        # ⚠️ The check above, alone, is satisfied by DELETING THE WHOLE FEATURE —
+        # idVerifiedNow() had three references and only ONE was the gate, so removing
+        # all three deletes THE PERK, NOT THE GATE. Voluntary-but-VISIBLE is the ruled
+        # end state, so what follows pins the REWARD rather than any one class name.
+        #
+        # ⚠️ REWRITTEN 2026-08-25, and the reason matters more than the rule. The first
+        # version counted `idVerifiedNow` occurrences and required exactly 2. It passed
+        # while the function was DEAD — its second "reference" was a COMMENT mentioning
+        # the name. Same failure as the `"ts-verified" in src` test it replaced a day
+        # earlier: a substring cannot tell code from prose. Both now require a CALL and
+        # pin behaviour rather than spelling.
+        proto_full = read(SURFACES["prototype"])
+        proto_code = re.sub(r"/\*.*?\*/", "", proto_full, flags=re.S)
+        # Trailing comments too, not just whole-line ones. Caught by mutation-testing:
+        # `state.idSubmittedAt); // was: idVerifiedNow()` kept the mention alive and the
+        # check went green on a dead function — the very hole this rewrite exists to
+        # close. The (?<!:) keeps "https://" from being eaten as a comment.
+        proto_code = re.sub(r"(?m)(?<!:)//[^\n]*$", "", proto_code)
+        id_calls = len(re.findall(r"idVerifiedNow\s*\(", proto_code))
+        check(id_calls >= 2,
+              "prototype still CALLS idVerifiedNow (definition + >=1 live caller)",
+              "found %d in code with comments stripped. 1 means it is defined and never "
+              "called — the derived identity check went dead, which reads identical to "
+              "it working." % id_calls)
+
+        # The reward must be VISIBLE in BOTH states a verified requester can occupy:
+        # carrying the badge, and having pre-cleared this one order. Web renders those
+        # as two different components, so counting a single class name is the wrong test.
+        ts_badge = proto_full.count('<div class="ts-verified">')
+        id_done  = proto_full.count('class="ar-id-done"')
+        check(ts_badge >= 1,
+              "prototype renders the TrustShield seal badge",
+              "found %d — a TrustShield holder must SEE the badge they carry" % ts_badge)
+        check(id_done >= 1,
+              "prototype acknowledges a submitted ID (pre-cleared state)",
+              "found %d — after submitting, the requester must see that it registered, "
+              "or the capture reads as having failed" % id_done)
+
+        # ---- agreement with the SHARED module ---------------------------
+        # gopher-step-gates.js is the extraction of these rules (2026-08-22).
+        # Until a surface is rewired to consume it (Phase 3, per surface, with
+        # approval), this asserts the inline copy AGREES with the module — the
+        # same agree-then-adopt pattern gopher-flow-rules.js uses. Without it
+        # the module is just a fourth copy.
+        # Compare on LABELS, not (step, label). surface_gates() captures only
+        # the FIRST label after each `state.step ===` match, so the drop-off gate
+        # — the second label inside the step-4 address block — is invisible to it,
+        # and addressesDiffer is attributed to step 4 rather than 6 because its
+        # test reads `(state.step === 4 || state.step === 6)`. Both are extractor
+        # artefacts, not surface defects: comparing steps reported a disagreement
+        # that did not exist. Labels are what the user actually sees and are the
+        # thing worth pinning; a MISSING gate still fails, which is the point.
+        MODULE_LABELS = {
+            "category":        "Service category",
+            "description":     "Description",
+            "costOfItems":     "Cost of items",
+            "identity":        "Identity verification",
+            "pickupAddress":   "Pick-up address",
+            "dropoffAddress":  "Drop-off address",
+            "addressesDiffer": "Addresses",
+            "workerPay":       "Worker pay",
+            "workerPaySubmit": "Worker pay",
+            "scheduleTime":    "Schedule time",
+            "waiver":          "Liability waiver",
+        }
+        # Labels surface_gates() structurally cannot see (second-label-in-block).
+        EXTRACTOR_BLIND = {"Drop-off address"}
+        mod_path = os.path.join(ROOT, "Final/assets/js/gopher-step-gates.js")
+        if not os.path.exists(mod_path):
+            check(False, "shared step-gate module exists",
+                  "Final/assets/js/gopher-step-gates.js is missing")
+        else:
+            mod_src = read("Final/assets/js/gopher-step-gates.js")
+            for surface in ("request", "connect"):
+                # A REWIRED surface has no inline labels by design — asking whether
+                # it "agrees" with the module is asking whether a copy it no longer
+                # keeps still matches. Agreement is the PRE-adoption assertion;
+                # delegation is asserted above and the rules are asserted by
+                # test-step-gates.js.
+                if DELEGATES.get(surface):
+                    continue
+                m = re.search(surface + r"\s*:\s*\[(.*?)\]", mod_src, re.S)
+                if not m:
+                    check(False, "module declares a gate list for %s" % surface, "")
+                    continue
+                ids = re.findall(r"'([A-Za-z]+)'", m.group(1))
+                want = {MODULE_LABELS[i] for i in ids if i in MODULE_LABELS}
+                want -= EXTRACTOR_BLIND
+                got = {lab for (_step, lab) in gate_sets.get(surface, set())}
+                missing = sorted(want - got)
+                extra = sorted(got - want)
+                check(not missing and not extra,
+                      "%s's inline stepGate AGREES with gopher-step-gates.js" % surface,
+                      ("in the module but not the surface: %s. " % ", ".join(missing)
+                       if missing else "")
+                      + ("in the surface but not the module: %s" % ", ".join(extra)
+                         if extra else ""))
+
+
+        # ---- category-scoped reset ---------------------------------------
+        # Switching category must snap category-OWNED fields back to their
+        # initial values, or the new category silently inherits answers the user
+        # never gave it — a Junk volume tier still pricing a Delivery request.
+        # Fixed in the web builds 2026-07-19; asserted here so it stays fixed.
+        want_scoped = set(M_SCOPED)
+        for name, rel in SURFACES.items():
+            src = read(rel)
+            m = re.search(r"CATEGORY_SCOPED_KEYS\s*=\s*\[", src)
+            if not m:
+                check(False,
+                      "%s resets category-scoped fields on switch" % name,
+                      "no CATEGORY_SCOPED_KEYS table — a category switch carries the "
+                      "previous category's answers forward (see PHASE-2-FINDINGS.md)")
+                continue
+            start = m.end() - 1
+            depth, k = 0, start
+            while k < len(src):
+                if src[k] == "[":
+                    depth += 1
+                elif src[k] == "]":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k += 1
+            got = set(re.findall(r"'([A-Za-z0-9_]+)'", src[start:k + 1]))
+            missing = sorted(want_scoped - got)
+            check(not missing,
+                  "%s resets all %d category-scoped fields" % (name, len(want_scoped)),
+                  "" if not missing else "missing: " + ", ".join(missing))
+
+
+    # ---------------------------------------------------------------- 7. FEES
+    # Money constants live inline in each surface. They are NOT extracted — the
+    # editions legitimately differ (Connect's A/R fee is $2.99 against Request's
+    # $1.99, a documented HARD NOTE in the canonical flow doc) and fee logic is
+    # the wrong thing to refactor speculatively. But a silent drift here charges
+    # real customers the wrong amount, so the values are pinned.
+    print("\n7. FEES — money constants match canon")
+    EXPECTED_AGE_FEE = {"request": "1.99", "prototype": "1.99", "connect": "2.99"}
+    for name, rel in SURFACES.items():
+        src = read(rel)
+        m = re.search(r"\bAGE_FEE\b\s*=\s*([0-9.]+)", src)
+        want = EXPECTED_AGE_FEE[name]
+        check(bool(m) and m.group(1) == want,
+              "%s age-restricted fee is $%s" % (name, want),
+              "" if (m and m.group(1) == want) else "found %s" % (m.group(1) if m else "nothing"))
+
+        itf = re.search(r"INSTANT_TRANSFER_RATE\s*=\s*([0-9.]+)", src)
+        check(bool(itf) and itf.group(1) == "0.08",
+              "%s instant-transfer rate is 8%%" % name,
+              "" if (itf and itf.group(1) == "0.08") else "found %s" % (itf.group(1) if itf else "nothing"))
+
+        # TrustShield is a flat $1.00 on age-restricted Delivery + ALL Ride Sharing
+        # (both editions; scope reconciled 2026-07-05). Assert the amount and that
+        # the eligibility test still names both arms — a silent narrowing here
+        # quietly overcharges verified customers.
+        ts = re.search(r"tsRaw\s*=\s*[^;]{0,60}?1\.00|tsDiscount[^;]{0,80}?1\.00|TRUSTSHIELD_DISCOUNT\s*=\s*1\.00", src)
+        check(bool(ts), "%s TrustShield discount is $1.00" % name)
+        scope = re.search(r"ageRestricted[^;]{0,120}?'ride'|'ride'[^;]{0,120}?ageRestricted", src)
+        check(bool(scope),
+              "%s TrustShield scope still covers age-restricted delivery AND ride" % name)
+
+
+    # Per-category Gopher fee tables. Two relationships canon asserts:
+    #   1. the app prototype is the Request app, so its table must equal Request's
+    #   2. "The Connect Business plan mirrors Gopher Request's base fees"
+    def fee_tbl(src, name):
+        m = re.search(r"\b" + name + r"\b\s*=\s*\{", src)
+        if not m:
+            return None
+        st = m.end() - 1
+        d, j = 0, st
+        while j < len(src):
+            if src[j] == "{":
+                d += 1
+            elif src[j] == "}":
+                d -= 1
+                if d == 0:
+                    break
+            j += 1
+        return dict(re.findall(r"([A-Za-z_]+)\s*:\s*([0-9.]+)", src[st:j + 1]))
+
+    req_fee = fee_tbl(read(SURFACES["request"]), "GOPHER_FEE")
+    pro_fee = fee_tbl(read(SURFACES["prototype"]), "GOPHER_FEE")
+    biz_fee = fee_tbl(read(SURFACES["connect"]), "GOPHER_FEE_BUSINESS")
+    check(req_fee == pro_fee,
+          "prototype per-category fees match Request (same product)",
+          "" if req_fee == pro_fee else "differ: %s" % [
+              (k, req_fee.get(k), pro_fee.get(k))
+              for k in sorted(set(req_fee or {}) | set(pro_fee or {}))
+              if (req_fee or {}).get(k) != (pro_fee or {}).get(k)])
+    check(biz_fee == req_fee,
+          "Connect Business plan mirrors Request base fees (canon)",
+          "" if biz_fee == req_fee else "differ: %s" % [
+              (k, req_fee.get(k), biz_fee.get(k))
+              for k in sorted(set(req_fee or {}) | set(biz_fee or {}))
+              if (req_fee or {}).get(k) != (biz_fee or {}).get(k)])
 
     print()
     for w in WARNS:

@@ -1,0 +1,248 @@
+# How to retire a session without losing its working memory
+
+Written 2026-08-24. Run this **inside the session being retired, as its last act** —
+not from a fresh session, which cannot see the work.
+
+---
+
+## The thing most people get wrong
+
+**The transcript is never lost.** Every session writes
+`~/.claude/projects/-Users-johnnewbury-.../<session-id>.jsonl` and it stays there
+forever (146 files / 1.1 GB as of this writing). It is **full-text searchable** from any
+future session via `search_session_transcripts`, or a plain `grep` across the folder.
+
+So retiring a session is **not** an archiving problem. What dies is not the record —
+it's **knowing the record exists and what to search for.** A new session with no pointer
+re-derives from scratch, which is how this project has repeatedly counted one unverified
+premise four times (see the 2026-07-20 PII correction in `docs/handoff/session-log.md`).
+
+**Therefore: the handoff's job is to be an INDEX, not a diary.** Short, and full of
+anchors you can grep for later.
+
+---
+
+## The checklist
+
+### 1. Flush disk state — before anything else
+
+```bash
+git status --short          # in EVERY repo the session touched
+git stash list
+```
+
+Then either commit, or **name the files explicitly in the handoff**. Standing rule:
+memory `retiring-sessions-leave-uncommitted-edits`.
+
+⚠️ **The trap specific to this project:** some allowlisted prototype files are
+**gitignored and disk-only** (`_prototypes/Go/gopher-banner.js`,
+`_prototypes/Request/gopher-banner.js`). `git status` will never show them. If the
+session edited one, say so in words — a `git log` will not.
+
+⚠️ Also check the **shared clone** hazard: the autopull agent resets it, so uncommitted
+work there can be eaten (memory `shared-backend-clone-eats-uncommitted-work`).
+
+### 2. Route each durable fact to the layer that matches its lifetime
+
+Do **not** dump everything in one place. Four layers, four lifetimes:
+
+| Layer | Holds | Lifetime |
+|---|---|---|
+| `docs/handoff/session-log.md` | project-permanent facts, traps, "why this is the way it is" | forever — **append new entries HERE, not to `CLAUDE.md`** (moved out 2026-08-26; `CLAUDE.md` loads into every request, so history there costs ~6% of the weekly usage allowance) |
+| `CLAUDE.md` (rules only) | live rules, standing directives, deploy/verification rules | forever, but **freezes per-worktree** — keep it small |
+| `memory/<slug>.md` + a line in `MEMORY.md` | cross-session rules, owner directives, gotchas | forever, all sessions |
+| `docs/handoff/<topic>.md` | the workstream's own state + spec | until the work lands |
+| the `.jsonl` transcript | everything said and every tool output | forever, automatic — **no action needed** |
+
+Owner directives and "never do X again" lessons belong in **memory**, not only in
+`CLAUDE.md`, because `CLAUDE.md` is inside the repo and every worktree freezes its own
+copy (see the ⛔ banner at the top of that file).
+
+### 3. Write the handoff doc
+
+Model to copy: `PAYMENTS-SESSION-HANDOFF-2026-08-13.md`. Fixed shape:
+
+```markdown
+# <Workstream> — session handoff <date>
+
+**Transcript:** <transcript-id>.jsonl     <- THE POINTER. Without this the archive is unusable.
+**Grep anchors:** DOMINANCE_RATIO, ridePhotoGate, !354   <- distinctive strings to search on
+
+## State of play
+What is DONE and verified / DONE but unverified / IN FLIGHT / NOT STARTED.
+Mark every inherited claim as inherited. (memory `pause-and-wait-never-work-around-access`)
+
+## Deployed?
+Live or not, on which hosts, verified BY CONTENT not by SHA.
+(`git merge-base --is-ancestor` is invalid for a feature commit — see CLAUDE.md → *Deploy & verification rules*.)
+
+## Uncommitted / disk-only files
+Explicit paths, incl. gitignored ones.
+
+## What I would do next, in order
+
+## Traps the next session will hit
+The stuff that cost you an hour. This is the highest-value section.
+
+## Open questions for John
+Should be EMPTY — see step 5.
+```
+
+### 3b. Get your transcript id right — it is NOT the session id
+
+⚠️ **Verified 2026-08-24:** the CCD session id from `list_sessions` (`local_9f8520c7-…`)
+is a **different id space** and does **not** name any file on disk. Recording it as the
+pointer produces a dead reference.
+
+The transcript filename is the **directory name in this session's own scratchpad path**:
+
+```
+/private/tmp/claude-501/<project-slug>/2712081b-d8b7-4a68-8d85-82dd7502e83f/scratchpad
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this
+->  ~/.claude/projects/<project-slug>/2712081b-d8b7-4a68-8d85-82dd7502e83f.jsonl
+```
+
+It also appears as the `sessionId` field on every line of the transcript itself. To
+confirm from inside a session:
+
+```bash
+ls -la ~/.claude/projects/-Users-johnnewbury-*/<that-uuid>.jsonl
+```
+
+If you only have a title and need the file, correlate on **exact last-activity
+timestamp**: `list_sessions` gives `lastActivityAt`; the transcript's final `timestamp`
+field matches it to the second.
+
+### 4. Record the grep anchors — this is the step that does the work
+
+Pick 5–10 **distinctive strings** unique to this session's work: constant names, commit
+SHAs, MR numbers, error text, function names. Put them in the handoff.
+
+That's what converts 1.1 GB of dead transcript into a lookup. `grep -l "<anchor>"
+~/.claude/projects/-Users-johnnewbury-*/*.jsonl` then reads back the full reasoning —
+including tool output the summary would have dropped.
+
+### 5. Clear open questions with John *now*
+
+Standing rule, memory `handoff-no-open-questions`: **ask John, never leave it to the
+next session or the dev.** An open question in a handoff becomes an assumption in three
+days. If he's unavailable, write the question AND your recommended default, explicitly
+labelled as a default.
+
+⚠️ **When a question gets answered, grep the doc for references TO that section.** Recorded
+2026-08-24 after it took two commits instead of one: the "Open question" section was correctly
+replaced with the ruling, but two internal pointers elsewhere still said *"see the open
+question below"* and *"ask John the open question below"*. A doc that resolves something in one
+place and calls it open in two others is **worse than one that never raised it** — a successor
+hitting either pointer re-raises a settled question with John, which is the exact outcome this
+step exists to prevent. Resolving a section is a two-part edit: the section, and every
+reference to it.
+
+### 6. Rename the session
+
+`<Title> (retired 8/24)` — the convention already in use. It marks the session as
+closed without archiving it, so it stays searchable and listable.
+
+⚠️ **Use the literal string `"self"`** — verified 2026-08-24, after a session was blocked
+by exactly this:
+
+```
+set_session_title(session_id: "self", title: "<Title> (retired 8/24)")
+```
+
+A session **cannot discover its own `local_` id from inside**: `list_sessions` excludes the
+current session by design, and passing your transcript UUID is rejected (different id
+space — see §3b). `"self"` is the only handle you have on yourself.
+
+### 7. Only then open the new session
+
+Its **first** task: read the handoff doc, not the code.
+
+**When to renew a lane:** only once its handoff exists. A successor opened before its
+predecessor has written one inherits nothing and re-derives from scratch — the exact cost this
+whole procedure exists to avoid.
+
+**How many at once:** the limit is not session count, it is **shared files**. Lanes that touch
+disjoint files can run in parallel safely. Lanes that share a surface must be serialized, or
+scoped to non-overlapping files. Check by grepping the handoffs for the paths each lane claims
+before starting two together. One deploy at a time regardless — `scripts/deploy.sh` reads the
+working tree, so a second session's uncommitted work rides along.
+
+**Opening prompt — paste this, filling the two blanks:**
+
+```
+You are the successor to the <LANE NAME> session, which was retired 2026-08-24.
+
+FIRST, before reading any code: read docs/handoff/<LANE>-handoff-2026-08-24.md.
+It is an index, not a diary. It carries the state of play, what is verified vs
+inherited, the traps that cost the last session time, and grep anchors into its
+full transcript.
+
+To recover detail the handoff only points at, grep the archive:
+  grep -l "<anchor>" ~/.claude/projects/-Users-johnnewbury-*/*.jsonl
+Then read around the match. The transcript holds the full reasoning AND the tool
+output, which is more than any summary preserves.
+
+Standing constraints for this lane:
+- Local-test gate STANDS (owner, reaffirmed 8/24): for any Final/ change, stand up
+  a local serve, give John the URL, wait for his go-ahead before deploy.sh --push.
+  An explicit per-instance "ship it" from him overrides that deploy only.
+- A push publishes to BOTH GitHub Pages and TigerTech at once. There is no staging.
+- Verify deploys BY CONTENT (curl + grep for a string you changed), never by SHA.
+- Do not append to MEMORY.md while other sessions are retiring. Write your memory
+  files, and list owed index lines at the end of your handoff.
+- Ask John directly about anything ambiguous. Do not leave open questions in a doc.
+
+Confirm you have read the handoff and state what you believe the next task is
+before doing any work.
+```
+
+That last line is the cheap check: if the successor restates the lane wrongly, you have caught
+it in one turn instead of three.
+
+---
+
+## The discipline the whole handoff depends on
+
+**When a number turns out to be wrong, test the CAUSE before you write down an explanation.**
+
+Recorded 2026-08-24, from a real case in this rotation. A session reported "11 distinct
+instances in 24 hours" from an AWS call that was silently page-capped. It used that figure as
+evidence with two other sessions. When challenged, it produced a plausible-sounding mechanism
+— *"EB events only name instances they explicitly mention, so it structurally undercounts"* —
+rather than asking why the number was wrong. The mechanism was invented to fit the number.
+Tested, it was false: the real cause was a paging flag, and properly scoped both APIs agreed
+exactly. The true figure was ~3x higher, and it was the frequency input to a production
+decision.
+
+Two things generalise:
+
+0. **A negative probe is a hypothesis until you prove the probe can see.** Three real cases in
+   this one rotation: a route reported 404 twice because it was POSTed to a GET route (440-vs-404
+   only discriminates when the METHOD matches); a "two lanes wrote no handoff" finding that was
+   really a search of one directory out of three; and a grep count of 4 that read as leftover debt
+   when all four hits were tombstone comments. Run a control that MUST match, and check the raw
+   count against a live-code count before calling anything debt.
+
+1. **A truncated call is indistinguishable from a complete one.** No error, no warning — just
+   a smaller number. Any figure that came from a paged API needs the paging proved, not
+   assumed. (`--no-paginate` returns ONE page; the default auto-paginates. The flag that
+   sounds exhaustive is the one that truncates.)
+
+2. **An invented mechanism is worse than an admitted gap.** A handoff saying *"number wrong,
+   cause not yet established"* is honest and gets checked. A handoff carrying a confident
+   wrong explanation gets believed, and propagates. This is the same shape as the 2026-07-20
+   PII incident in `docs/handoff/session-log.md` — one unverified premise, repeated across four sessions until
+   the repetition itself read as corroboration.
+
+So: in the **Traps** section of your handoff, separate *what you observed* from *why you think
+it happened*, and mark the second as untested when it is.
+
+## Before you retire anything: fix `MEMORY.md`
+
+As of 2026-08-24 it is **27.3 KB against a 24.4 KB limit** and is being **silently
+truncated** — 251 memory files behind an index that only partly loads. Step 2 above
+writes into that index, so rows added now may land below the cutoff and never be read.
+
+Run `/consolidate-memory` first, or the handoff leaks at the one layer that is supposed
+to be worktree-proof.

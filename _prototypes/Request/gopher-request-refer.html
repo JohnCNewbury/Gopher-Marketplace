@@ -7,10 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{
+:root{ --radius-pill:99px; --radius-card:16px; --radius-md:12px; --radius-sm:8px; --font-heading:'Nunito'; --font-body:'DM Sans'; --font-script:'Caveat';  --z-deals:#F3F5F8; --z-jobs:#EEF7F1; --z-tools:#EDF1F8; --z-acct:#E9F1FC; --z-perks:#FBF1E8;  --border:#EDF0F5; --warning:#FFDE00; --terra:#C8623C; --aqua:#87F7BD; 
   --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9; --green-tint:#E8F5EE;
   --navy:#002461; --ink:#002461; --ink-soft:#3A4D74; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
-  --paper:#FBF7EF; --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
+  --paper:#FBF7EF;--shadow-sheet:0 -10px 40px rgba(0,0,0,.25); --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
   --terracotta:#D97757; --warning-text:#92580D; --error:#C44257; --cornflower:#BADBFC;
   --line:#EAE3D5; --line-cool:#E3E7EF; --navy-bar:#03143A;
   --card-sh:0 2px 4px rgba(0,36,97,.05),0 9px 20px rgba(0,36,97,.10);
@@ -18,6 +18,12 @@
   --over-sh:0 16px 40px -10px rgba(0,36,97,.3);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+   Measured 2026-08-02: every element painting a non-brand font was a form control or a
+   descendant of one. font-weight deliberately NOT reset — buttons that look bold declare
+   their own, and `font:inherit` would flatten them. docs/screen-spec/TYPE-AND-SHAPE-SCALE.md */
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+
 body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif;color:var(--ink);
   display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px;line-height:1.5;}
 #phone{position:relative;width:390px;max-width:100%;height:844px;max-height:calc(100vh - 40px);
@@ -48,8 +54,6 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
   padding:22px 18px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;}
 .qr-frame{width:172px;height:172px;border-radius:18px;background:#fff;border:2px solid var(--navy);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
 .qr-frame svg{width:150px;height:150px;}
-.qr-leaf{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:9px;background:var(--green);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 5px #fff;}
-.qr-leaf svg{width:20px;height:20px;}
 .qr-name{margin-top:14px;font-family:'Nunito';font-weight:900;font-size:17px;color:var(--navy);}
 .qr-id{margin-top:2px;font-family:'DM Sans';font-weight:600;font-size:13px;color:var(--muted);}
 .qr-id b{color:var(--green-dark);font-weight:800;}
@@ -72,15 +76,17 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .nv svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .nv.on{color:#fff;font-weight:900;}
 .nv.c{color:#fff;font-weight:900;}
-.nv.c .cc{width:54px;height:54px;border-radius:18px;background:var(--green-bright);color:var(--navy);display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
+.nv.c .cc{width:54px;height:54px;border-radius:18px;background:var(--green-bright);color:var(--navy);display:flex;align-items:center;justify-content:center;margin-top:-26px;box-shadow:0 10px 24px rgba(51,217,117,.45);}/* RAISED, matching every other Request screen (owner 2026-08-19: 'use the standard footer size').
+   This screen had margin-bottom:2px instead, so the 54px button sat INSIDE the bar and pushed the
+   nav to 104px against the app standard 76px. The negative margin lifts it out of the bar, which is
+   what keeps every other screen's footer short. Same rule as home/inbox/inprogress/completion. */
 .nv.c .cc svg{width:26px;height:26px;stroke:var(--navy);stroke-width:2.1;}
 .nv.on .lab-underline{display:block;height:2px;width:18px;background:var(--green-bright);border-radius:2px;margin-top:1px;}
 
 /* sheets */
 .sheet-back{position:absolute;inset:0;z-index:120;background:rgba(0,16,42,.46);opacity:0;pointer-events:none;transition:opacity .22s;}
 .sheet-back.show{opacity:1;pointer-events:auto;}
-.sheet{position:absolute;left:0;right:0;bottom:0;top:54px;z-index:121;background:var(--paper);border-radius:22px 22px 0 0;
-  box-shadow:var(--over-sh);transform:translateY(102%);transition:transform .26s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden;}
+.sheet.sheet--full{top:54px;max-height:none;}.sheet{position:absolute;left:0;right:0;bottom:0;max-height:88%;z-index:121;background:var(--paper);border-radius:26px 26px 0 0;box-shadow:var(--shadow-sheet);transform:translateY(100%);transition:transform .34s cubic-bezier(.2,.8,.3,1);display:flex;flex-direction:column;overflow:hidden;}
 .sheet.show{transform:none;}
 .sh-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--line);}
 .sh-grab{position:absolute;left:50%;top:7px;transform:translateX(-50%);width:38px;height:4px;border-radius:3px;background:#d8cfbd;}
@@ -156,10 +162,14 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .rs-bico{font-size:22px;line-height:1;}
 .rs-banner b{font-family:'Nunito';font-weight:800;font-size:13.5px;color:var(--navy,#002461);display:block;margin-bottom:2px;}
 .rs-banner span{font-size:12px;color:#3A4D74;line-height:1.5;}
-.rs-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 18px 0;}
+/* CONTINUITY (owner 2026-08-19, 'still off'): grid rows sized independently, so a card whose
+   title wrapped to two lines made its WHOLE ROW taller — Request read 205/205 then 189/189,
+   a visibly ragged grid against Go's even one. grid-auto-rows:1fr makes every tile the same
+   height regardless of copy length, which is what makes the two apps read as one system. */
+.rs-grid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px;margin:16px 18px 0;}
 .rs-tile{position:relative;text-align:left;background:#fff;border:1.5px solid var(--line,#EAE3D5);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;}
 .rs-tile:active{transform:translateY(1px);}
-.rs-tico{font-size:22px;line-height:1;}
+.rs-tico{font-size:22px;line-height:1;height:24px;display:flex;align-items:center;}.rs-tico img{height:20px;width:auto;display:block;}
 .rs-ttl{font-family:'Nunito';font-weight:800;font-size:13.5px;color:var(--navy,#002461);}
 .rs-tdesc{font-size:11.5px;color:var(--muted-cool,#6B7280);line-height:1.4;}
 .rs-tcta{font-family:'Nunito';font-weight:800;font-size:12px;color:var(--green-dark,#1CB061);margin-top:2px;}
@@ -201,18 +211,37 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
     <h1 class="rs-h1">Refer &amp; Earn</h1>
     <p class="rs-sub">Invite people to the Gopher network and earn rewards when they join.</p>
     
-    <div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:0 0 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);">
-      <div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your unique QR</div>
-      <p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">They scan &mdash; You benefit.</p>
+    <div class="rs-qrcard" style="background:#fff;border-radius:16px;padding:20px 18px;margin:0 18px 16px;text-align:center;box-shadow:0 2px 10px rgba(0,36,97,.07);">
+      <div style="font-family:'Nunito';font-weight:900;font-size:15px;color:#002461;">Your personal link</div> <p style="font-size:11.5px;color:#5C6685;margin:5px 0 14px;line-height:1.4;">Scan to open your invite &mdash; they sign up, you get credit.</p>
       <svg id="qr" width="172" height="172" viewBox="0 0 25 25" shape-rendering="crispEdges" style="display:block;margin:0 auto;"></svg>
-      <div style="font-family:'Nunito';font-weight:800;font-size:10px;letter-spacing:.07em;color:#8a93a6;margin-top:14px;">YOUR REFERRAL ID</div>
-      <div id="qrId" style="font-family:'Nunito';font-weight:900;font-size:22px;color:#002461;letter-spacing:.05em;"></div>
+      
+  <div style="display:flex;gap:10px;margin-top:14px;">
+    <!-- Headline sends (owner via the web restructure 2026-08-18: "all of the other 4 platform
+         referral cards have this and the main headliner does too — I had that in the original
+         draft"). On Request the headline IS the Request invite (Ruling 2), so both open the
+         SAME composer the cards use, kind-aware to Gopher Request — no second send path. -->
+    <button id="qrSms" style="flex:1;font-family:'Nunito';font-weight:800;font-size:13px;padding:11px 6px;border:0;border-radius:12px;background:#33D975;color:#002461;cursor:pointer;">Refer via SMS</button>
+    <button id="qrEmail" style="flex:1;font-family:'Nunito';font-weight:800;font-size:13px;padding:11px 6px;border:0;border-radius:12px;background:#33D975;color:#002461;cursor:pointer;">Refer via Email</button>
+  </div>
     </div>
+  <!-- ID ONCE PER SCREEN (owner, 2026-08-18, ruled for all four platforms): the
+     referral id's single home is this navy code bar — it was removed from inside the
+     QR card above, where it duplicated this bar on web Go. Painter hooks kept on the
+     value element, so the id still derives at runtime. -->
+  <div style="background:#002461;border-radius:14px;padding:12px 14px;margin:14px 0 0;display:flex;align-items:center;justify-content:space-between;">
+    <div style="text-align:left;"><span style="font-family:'Nunito';font-weight:800;font-size:11px;color:#9fb3d9;display:block;">Your referral code</span><span id="qrId" style="font-family:'Nunito';font-weight:900;font-size:20px;color:#fff;letter-spacing:.05em;"></span></div>
+    <button id="qrCopy" style="font-family:'Nunito';font-weight:800;font-size:12px;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:10px;padding:8px 13px;cursor:pointer;">Copy code</button>
+  </div>
     <div class="rs-grid">
       <button class="rs-tile" data-rk="recommend"><span class="rs-tbadge">You</span><span class="rs-tico">&#11088;</span><span class="rs-ttl">Recommend MY Gopher(s)</span><span class="rs-tdesc">Recommend the Gophers you&#8217;ve hired so other customers can find them.</span><span class="rs-tcta">Recommend a Gopher &#8594;</span></button>
-      <button class="rs-tile" data-rk="go"><span class="rs-tico">&#128663;</span><span class="rs-ttl">Refer Gopher Go</span><span class="rs-tdesc">Invite a trusted local worker to start earning on Gopher Go.</span><span class="rs-tcta">Share the app &#8594;</span></button>
-      <button class="rs-tile" data-rk="request"><span class="rs-tico">&#128230;</span><span class="rs-ttl">Refer Gopher Request</span><span class="rs-tdesc">Invite someone to post requests and hire Gophers on demand.</span><span class="rs-tcta">Share the app &#8594;</span></button>
-      <button class="rs-tile" data-rk="connect"><span class="rs-tico">&#127970;</span><span class="rs-ttl">Refer Gopher Connect</span><span class="rs-tdesc">Invite a business to manage their workforce on Gopher Connect.</span><span class="rs-tcta">Refer a business &#8594;</span></button>
+      <button class="rs-tile" data-rk="go"><span class="rs-tico"><img src="../../Final/assets/img/gopher-go-logo.svg" alt="Gopher Go"></span><span class="rs-ttl">Refer Gopher Go</span><span class="rs-tdesc">Invite a trusted local worker to start earning on Gopher Go.</span><span class="rs-tcta">Share the app &#8594;</span></button>
+      <!-- ⛔ "Refer Gopher Request" is NOT here because the HEADLINE is the Request invite
+  (Ruling 2) and now carries the Refer via SMS / Email pair — the card was redundant and its
+  drop was the owner's standing decision (Ruling 3: cards are for OTHER platforms; reconfirmed
+  2026-08-18). The send path did not go away: the headline pair opens the same composer,
+  kind-aware to Gopher Request. Do not re-add the card. -->
+  <button class="rs-tile" data-rk="connect"><span class="rs-tico"><img src="../../Final/assets/img/gopher-connect-logo.svg" alt="Gopher Connect"></span><span class="rs-ttl">Refer Gopher Connect</span><span class="rs-tdesc">Invite a business to manage their workforce on Gopher Connect.</span><span class="rs-tcta">Refer a business &#8594;</span></button>
+      <button class="rs-tile" data-rk="deals"><span class="rs-tico"><img src="../../Final/assets/img/gopher-deals-logo.svg" alt="Gopher Deals"></span><span class="rs-ttl">Refer Gopher Deals</span><span class="rs-tdesc">Invite a local business to offer a deal to Gopher customers.</span><span class="rs-tcta">Refer a merchant &#8594;</span></button>
     </div>
     <div class="rs-banner"><div class="rs-bico">&#127873;</div><div><b>Earn rewards for every referral.</b><span>When someone joins through your referral, you both earn Gopher Rewards credit. Rewards launch in 2027 &mdash; your points start accruing now.</span></div></div><div class="rs-trackhead">Track Referral History</div>
     <div class="rs-tabs"><button class="rs-tab active" data-rstab="pending">Pending</button><button class="rs-tab" data-rstab="added">Added</button><button class="rs-tab" data-rstab="active">Active</button></div>
@@ -233,7 +262,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
   <div class="sheet-back" id="back"></div>
 
   <!-- Recommend MY Gopher -->
-  <div class="sheet" id="shRecommend">
+  <div class="sheet sheet--full" id="shRecommend">
     <div class="sh-grab"></div>
     <div class="sh-head">
       <button class="sh-back" data-rcback>‹ Back</button>
@@ -264,7 +293,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
   </div>
 
   <!-- Refer by SMS / Email -->
-  <div class="sheet" id="shRefer">
+  <div class="sheet sheet--full" id="shRefer">
     <div class="sh-grab"></div>
     <div class="sh-head">
       <button class="sh-back" data-rfback>‹ Back</button>
@@ -290,7 +319,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
   </div>
 
   <!-- Track Referral History -->
-  <div class="sheet" id="shTrack">
+  <div class="sheet sheet--full" id="shTrack">
     <div class="sh-grab"></div>
     <div class="sh-head">
       <button class="sh-back" data-close>‹ Back</button>
@@ -315,7 +344,15 @@ const $=(s,r)=>(r||document).querySelector(s);
 const $$=(s,r)=>[...(r||document).querySelectorAll(s)];
 
 /* ---- data (MY Gophers + referral ledger) ---- */
-const REFERRAL_ID='15544';
+/* ⛔ WAS A REAL USER ID — a live account's own users.id, below the live max, displayed under
+     "YOUR REFERRAL ID" on a publicly served prototype. Anyone reading it off the screen and
+     passing it on credited that account: misattribution, not the harmless kind. Demo personas
+     carry a NON-RESOLVING id — above the live max, or an em dash. Same synthetic band as the Go
+     prototype's 820083. Codes are shared BARE, never GOPHER-prefixed (owner, 2026-08-14).
+     The offending id is deliberately NOT written here: this comment ships in the public page
+     source, and naming it would explain to a reader that that integer is a live account —
+     which the bare number never did on its own. The lesson does not need the digits. */
+  const REFERRAL_ID='820014';
 const MY_GOPHERS=[
   {name:'Kamil Areshov',  spec:'Delivery · Errands'},
   {name:'Rondi Tucker',   spec:'Home · Cleaning'},
@@ -347,13 +384,33 @@ function initials(n){return n.split(' ').map(w=>w[0]).slice(0,2).join('').toUppe
 function avColor(n){let s=0;for(const c of n)s+=c.charCodeAt(0);return AV_COLORS[s%AV_COLORS.length];}
 
 /* ---- real QR: encodes https://gopher.app/r/<REFERRAL_ID> (scannable; credits referral) ---- */
-var REFERRAL_QR=['1111111010001100001111111','1000001000100000001000001','1011101011110111101011101','1011101000111100101011101','1011101000111010001011101','1000001010001110101000001','1111111010101010101111111','0000000001000010000000000','1010001100110001100100101','1101110011101011101101011','1000101100001011100001101','1110000100111001111101000','0100101110101010101100001','0110110001000101011100011','1101001010111001111001101','0001100000101011000111000','1111101011110011111110010','0000000011010011100010001','1111111010111110101010001','1000001000001011100010001','1011101000110011111110010','1011101000110011010010110','1011101010010100110111011','1000001001001010101110000','1111111011010010111001001'];
+/* REFERRAL_QR (a hardcoded 25-row matrix) removed. Two problems, not one: buildQR() painted it
+   verbatim so the QR was NOT derived from REFERRAL_ID — the two could disagree — and the comment
+   above it said the payload was `gopher.app/r/<REFERRAL_ID>`, a URL shape that does not exist.
+   The real destination is the page the API itself serves: api.gophergo.io/self-referral/<id>. */
 function buildQR(){
-  var M=REFERRAL_QR, N=M.length, b=4, svg=$('#qr'); if(!svg) return;
-  svg.setAttribute('viewBox',(-b)+' '+(-b)+' '+(N+2*b)+' '+(N+2*b));
-  var s='<rect x="'+(-b)+'" y="'+(-b)+'" width="'+(N+2*b)+'" height="'+(N+2*b)+'" fill="#ffffff"/>';
-  for(var y=0;y<N;y++){var row=M[y];for(var x=0;x<N;x++){ if(row.charAt(x)==='1') s+='<rect x="'+x+'" y="'+y+'" width="1.02" height="1.02" fill="#002461"/>'; }}
-  svg.innerHTML=s;
+  var svg=$('#qr'); if(!svg) return;
+  /* The encoder tag loads AFTER this inline engine, so qrcode can be undefined on the first
+     pass. Retry rather than silently skipping — the bug Website Updates hit on the web port. */
+  if(typeof qrcode==='undefined'){
+    if(!buildQR._armed){ buildQR._armed=true;
+      window.addEventListener('DOMContentLoaded', buildQR); window.addEventListener('load', buildQR); }
+    return;
+  }
+  if(!REFERRAL_ID){ svg.innerHTML=''; return; }   /* no id, no QR — empty is honest */
+  try{
+    var q=qrcode(0,'L');                          /* level L, and NO centre block, like the live worker app */
+    q.addData('https://api.gophergo.io/self-referral/'+REFERRAL_ID);
+    q.make();
+    var n=q.getModuleCount(), b=4;
+    var out='<rect x="'+(-b)+'" y="'+(-b)+'" width="'+(n+2*b)+'" height="'+(n+2*b)+'" fill="#ffffff"/>';
+    for(var y=0;y<n;y++){ for(var x=0;x<n;x++){ if(q.isDark(y,x))
+      out+='<rect x="'+x+'" y="'+y+'" width="1.02" height="1.02" fill="#002461"/>'; } }
+    svg.setAttribute('viewBox',(-b)+' '+(-b)+' '+(n+2*b)+' '+(n+2*b));
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Referral QR code for Gopher ID '+REFERRAL_ID);
+    svg.innerHTML=out;
+  }catch(_){ svg.innerHTML=''; }
 }
 
 /* ---- toast ---- */
@@ -436,6 +493,31 @@ function setChan(chan){
 }
 function openRefer(chan, appLabel){
   referChan=chan||'email'; referApp=appLabel||''; referChips=[];
+    /* KIND-AWARE MODELLING (owner ruling 2026-08-17). The live POST /referrals is kind-blind —
+       every card would send the identical message. The rebuild's rail is kind-aware, so each card
+       here shows ITS OWN destination link with the referrer's bare id, which is what makes credit
+       survive a phone-number mismatch. Not wired to a real send: outward-facing sends need a
+       per-surface go-ahead. */
+    (function(){
+      var links={
+        'Gopher Go':      'gophergo.io/gopher-go.html?ref='+REFERRAL_ID,
+        'Gopher Request': 'gophergo.io/gopher-request.html?ref='+REFERRAL_ID,
+        'Gopher Connect': 'gophergo.io/gopher-connect.html?ref='+REFERRAL_ID,
+        /* Shape derived from the receiving end, not invented: gopher-deals.html gates its
+           "Referred by — Gopher ID" field on discovery_source="Referral" unhiding #regReferredRow,
+           whose input is name="referred_by_gopher_id". ?ref=<id> sets and fills it. The receiving
+           handler is the Go -> Deal Registration session's lane. */
+        'Gopher Deals':   'gophergo.io/gopher-deals.html?ref='+REFERRAL_ID
+      };
+      var host=$('#rfHeadTitle'); if(!host) return;
+      var old=document.getElementById('rfKindLink'); if(old) old.remove();
+      var url=links[referApp]; if(!url) return;
+      var el=document.createElement('div');
+      el.id='rfKindLink';
+      el.style.cssText='font-family:\'DM Sans\';font-size:10.5px;color:#5C6685;background:#f6f4ee;border-radius:10px;padding:7px 10px;margin:8px 0 2px;word-break:break-all;';
+      el.textContent='They get: '+url;
+      host.parentNode.insertBefore(el, host.nextSibling);
+    })();
   $('#rfHeadTitle').textContent = referApp ? ('Refer '+referApp) : (referChan==='sms'?'Refer via SMS':'Refer via Email');
   ensureChanToggle(); setChan(referChan);
   $('#rfInput').value='';
@@ -486,8 +568,14 @@ $$('.rs-tile[data-rk]').forEach(b=>b.addEventListener('click',()=>{
   if(k==='recommend') openRecommend();
   else if(k==='go') openRefer('email','Gopher Go');
   else if(k==='request') openRefer('email','Gopher Request');
-  else if(k==='connect') openRefer('email','Gopher Connect');
+  else if(k==='connect') openRefer('email','Gopher Connect'); else if(k==='deals') openRefer('email','Gopher Deals');
 }));
+$('#qrSms').addEventListener('click',()=>openRefer('sms','Gopher Request'));
+$('#qrEmail').addEventListener('click',()=>openRefer('email','Gopher Request'));
+$('#qrCopy').addEventListener('click',()=>{ const id=($('#qrId').textContent||'').trim();
+  if(!id){ toast&&toast('No code yet'); return; }
+  try{ navigator.clipboard.writeText(id); }catch(_){}
+  const b=$('#qrCopy'); b.textContent='Copied!'; setTimeout(()=>{ b.textContent='Copy code'; },1400); });
 function renderRsTrack(tab){
   $$('.rs-tab[data-rstab]').forEach(t=>t.classList.toggle('active', t.dataset.rstab===tab));
   const rows=(REFERRALS[tab]||[]);
@@ -523,5 +611,6 @@ $$('.nav .nv').forEach(n=>n.addEventListener('click',()=>{
   }, true);
 })();
 </script>
+<script src="../../Final/assets/js/qrcode-generator.js"></script>
 </body>
 </html>

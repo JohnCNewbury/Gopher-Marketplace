@@ -18,9 +18,7 @@
   <meta name="twitter:description" content="How Gopher Connect works — get vetted local couriers, laborers, cleaners, and skilled pros on demand for your business. A step-by-step walkthrough.">
   <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/gopher-fonts.css">
 <style>
 /* ============================================================
    GOPHER CONNECT — TUTORIAL / SUPPORT PAGE
@@ -148,6 +146,16 @@ a{color:var(--green-dark);}
 .section > p{font-size:15.5px;color:var(--navy);max-width:760px;}
 .section h3{font-size:18px;font-weight:800;margin:26px 0 6px;}
 
+/* The real GO mark — assets/img/go-mark.svg, the same file the Connect app uses.
+   "GO-To" is always branded with the logo, never typed. Sized in em so it tracks
+   whatever text it sits in; the margin is left-only because the mark is always
+   followed by the hyphen, and a right margin would float that off the lockup. */
+.go-mark{display:inline-block;width:auto;height:1.02em;vertical-align:-0.16em;margin:0 0 0 0.08em;}
+.section h2 .go-mark{height:0.88em;vertical-align:-0.08em;}
+.section h3 .go-mark{height:0.95em;vertical-align:-0.12em;}
+/* the mark + its hyphen are one lockup — never let a line break split them */
+.goto-word{white-space:nowrap;}
+
 /* generic card / grid bits */
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--card-shadow);margin-top:18px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
@@ -205,7 +213,21 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .hint-wrap:hover .hint-pop,
 .hint-btn:focus-visible + .hint-pop,
 .hint-btn.open + .hint-pop{opacity:1;visibility:visible;transform:translateY(0);}
-@media (max-width:520px){ .hint-pop{left:auto;right:-10px;} .hint-pop::before{left:auto;right:16px;} }
+/* ⛔ The bubble hangs off an INLINE button that can sit anywhere on the line,
+   so anchoring it to that button (left:-10px, or right:-10px as this rule used
+   to) pushes it off whichever edge the button is nearest — at 375px the MY
+   Gophers bubble rendered at left:-78px, cut off (owner-reported 2026-08-26).
+   On phones it becomes a viewport-pinned sheet, which cannot overflow wherever
+   the button sits. The arrow is dropped because it no longer points at
+   anything. Verified no ancestor carries transform/filter, so position:fixed
+   resolves against the viewport here. */
+@media (max-width:520px){
+  .hint-pop{
+    position:fixed; left:12px; right:12px; top:auto; bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+    width:auto; max-height:60vh; overflow-y:auto;
+  }
+  .hint-pop::before{ display:none; }
+}
 
 /* mini mock UI elements (mirror the app) */
 .mock{margin-top:18px;background:linear-gradient(180deg,#fff,#fffdf8);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);}
@@ -304,12 +326,12 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .foot-bottom .scribble{font-size:21px;color:var(--green);}
 
 /* back to top */
-.totop{position:fixed;right:22px;bottom:22px;z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
+.totop{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom, 0px));z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
 .totop.show{opacity:1;pointer-events:auto;}
 .totop:hover{transform:translateY(-3px);}
 
 /* floating mobile "Sections" button (replaces old topbar toggle) */
-.qr-toggle{display:none;position:fixed;left:16px;bottom:18px;z-index:900;align-items:center;gap:8px;background:var(--midnight);color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:'Nunito';font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);}
+.qr-toggle{display:none;position:fixed;left:16px;bottom:calc(18px + env(safe-area-inset-bottom, 0px));z-index:900;align-items:center;gap:8px;background:var(--midnight);color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:'Nunito';font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);}
 .qr-toggle svg{width:16px;height:16px;}
 @media (max-width:980px){ .qr-toggle{display:inline-flex;} }
 /* mobile sidebar overlay */
@@ -552,14 +574,14 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <h3>1 · Pick a service</h3>
       <p>Start with the category that fits — it decides which workers see your job and what details we ask for next.</p>
       <div class="cat-grid">
-        <div class="cat"><div class="thumb"><span class="badge">Courier</span><img src="https://images.pexels.com/photos/5025668/pexels-photo-5025668.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=400&amp;h=300&amp;fit=crop" alt="" loading="lazy"></div><div class="txt"><div class="nm">Delivery / Courier</div><div class="tg">Same-day drops &amp; B2B logistics</div></div></div>
-        <div class="cat"><div class="thumb"><span class="badge">Relocation</span><img src="https://images.pexels.com/photos/7464687/pexels-photo-7464687.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=400&amp;h=300&amp;fit=crop" alt="" loading="lazy"></div><div class="txt"><div class="nm">Moving</div><div class="tg">Office &amp; site relocations</div></div></div>
-        <div class="cat"><div class="thumb"><span class="badge">Services</span><img src="https://images.pexels.com/photos/8005368/pexels-photo-8005368.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=400&amp;h=300&amp;fit=crop" alt="" loading="lazy"></div><div class="txt"><div class="nm">Home / Office Services</div><div class="tg">Cleaning, installs &amp; handyman</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Courier</span><img src="assets/img/px-5025668-400x300.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Delivery / Courier</div><div class="tg">Same-day drops &amp; B2B logistics</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Relocation</span><img src="assets/img/px-7464687-400x300.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Moving</div><div class="tg">Office &amp; site relocations</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Services</span><img src="assets/img/px-8005368-400x300.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Home / Office Services</div><div class="tg">Cleaning, installs &amp; handyman</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Labor</span><img src="assets/img/connect-img.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Hourly / Day Labor</div><div class="tg">Surge crews by the hour</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Hauling</span><img src="assets/img/connect-junk-removal.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Junk Removal</div><div class="tg">Furniture &amp; debris haul-away</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Outdoor</span><img src="assets/img/connect-img-2.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Yard / Outdoor Projects</div><div class="tg">Grounds &amp; landscaping</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Ride</span><img src="assets/img/connect-img-3.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Ride Sharing</div><div class="tg">Staff, client &amp; airport rides</div></div></div>
-        <div class="cat"><div class="thumb"><span class="badge">Custom</span><img src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=400&amp;h=300&amp;fit=crop" alt="" loading="lazy"></div><div class="txt"><div class="nm">Other / Custom</div><div class="tg">Describe it — we'll route it</div></div></div>
+        <div class="cat"><div class="thumb"><span class="badge">Custom</span><img src="assets/img/px-3184418-400x300.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Other / Custom</div><div class="tg">Describe it — we'll route it</div></div></div>
       </div>
 
       <h3>2 · Crew size &amp; the right kind of worker</h3>
@@ -572,7 +594,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <div class="note tip"><span class="nico">🎯</span><div><span class="h">Credentials or muscle — your call</span>Some jobs need a 30-year licensed electrician; some need three strong people for a Saturday morning. Connect never pretends every need is the same.</div></div>
 
       <h3>3 · Decide what to pay</h3>
-      <p>You set the price, and <b>100% of it goes to your Gopher</b>. Not sure what's fair? Tap <b>Suggested offer assistance</b> — a slider built from thousands of similar requests in your area shows a <b>Low / Fair / Generous</b> range. Drag to the number that works; you always have the final say. On many jobs you can also <b>request bids</b> from local workers instead.</p>
+      <p>You set the price, and <b>100% of it goes to your Gopher</b>. Not sure what's fair? Tap <b>Suggested offer assistance</b> — a slider built from thousands of similar requests in your area shows a <b>Low / Fair / Generous</b> range. Drag to the number that works; you always have the final say on the amount. Gophers choose which jobs to take, and the offer is the biggest factor in whether yours is picked up. On many jobs you can also <b>request bids</b> from local workers instead.</p>
 
       <h3>4 · Review, schedule &amp; submit</h3>
       <p>Confirm everything in one place, choose your <b>payment method</b>, and pick your timing — <b>ASAP</b>, <b>flexible</b>, or a <b>specific date &amp; time</b>. Accept the short <b>liability waiver</b> and the submit button turns on.</p>
@@ -640,6 +662,9 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <span class="eyebrow">Your Connect portal</span>
       <h2>Account &amp; users</h2>
       <p>Everything about your business lives under <b>Account</b>. From here you can review and edit <b>Business information</b>, <b>Personal information</b>, your plan, and your <b>Payment Methods</b> (added securely through <b>Stripe</b>).</p>
+      <h3>Adding a card</h3>
+      <p>Enter the card number, expiry and security code, the <b>name on the card</b>, and the <b>billing address on the card statement</b> (street, city, state, ZIP). The bank checks that address against the card. Then we text a <b>6-digit code</b> to the phone on the account adding the card — enter it and the card is saved. The code expires in 5 minutes and can be resent once. <b>The card is not saved until the code is confirmed.</b> Admins and Owners can add cards; a User seat cannot.</p>
+      <div class="note tip"><span class="nico">🛡️</span><div><span class="h">Why the extra step?</span>A card can only be added by the person who holds the phone on that account, and the address check stops stolen card numbers before a request is placed. We keep a record of each verification to resolve payment disputes.</div></div>
       <h3>Users &amp; access</h3>
       <p>Invite teammates and give each the right level of access. Roles are:</p>
       <ul class="brand">
@@ -657,12 +682,13 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <p>Two badges build trust on Connect — one for you, one for your business. Both are quick, and both help the best workers say yes faster.</p>
 
       <h3>TrustShield — verify your identity</h3>
-      <p>TrustShield confirms the real person behind the account. From your dashboard, tap <b>Add TrustShield</b> and complete two quick steps:</p>
+      <p>TrustShield confirms the real person behind the account. From your dashboard, tap <b>Add TrustShield</b> and complete three quick steps:</p>
       <ul class="brand">
-        <li><b>Take a photo of your ID</b> — the front of a government-issued ID.</li>
+        <li><b>Photograph the front of your ID</b> — a live photo of a government-issued ID.</li>
+        <li><b>Photograph the back</b> — the barcode side, captured live.</li>
         <li><b>Add a selfie</b> — we match it to your ID to confirm it's you.</li>
       </ul>
-      <p>Verify once and it's permanent — you're never asked again. TrustShield unlocks <b>age-restricted deliveries</b> and takes <b>$1 off</b> the age-restricted fee on every order.</p>
+      <p>Verify once and it's permanent &mdash; you're never asked again. Age-restricted deliveries require identity verification either way: you can submit identification for a single order, or add TrustShield and stay verified for as long as you carry the badge. TrustShield also takes <b>$1 off</b> the age-restricted fee on every order. You must be <b>21 or older</b> to order age-restricted at all.</p>
       <div class="note tip"><span class="nico">🛡️</span><div><span class="h">One identity, everywhere</span>TrustShield rides on your Gopher account, so verifying once covers Connect and Gopher Request alike — there's no need to repeat it on each surface.</div></div>
 
       <h3>Verified business</h3>
@@ -687,7 +713,28 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <section class="section" id="history">
       <span class="eyebrow">After the job</span>
       <h2>Previous requests &amp; repeat jobs</h2>
-      <p>Every request lives under <b>Previous Requests</b>, sorted into <b>Completed</b>, <b>Cancelled</b>, and <b>Expired</b>. Open any one to see the full details, or re-run a job you liked.</p>
+      <p>Every request lives under <b>Previous Requests</b>, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details, or re-run a job you liked.</p>
+
+      <h3>Two ways to run a job again</h3>
+      <ul class="brand">
+        <li><b>Request again NOW ⚡️</b> — re-sends that request exactly as it was, immediately. If the Gopher who did it is on your MY Gophers bench, they get first dibs automatically.</li>
+        <li><b>Request again w/ edits</b> — prefills a new request from the old one, lets you pick which MY Gophers get first dibs, and drops you on <b>Review &amp; submit</b> so you can change anything before it goes out.</li>
+      </ul>
+
+      <h3>My <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span> — the jobs you run over and over</h3>
+      <p>Got a job you run every week? Save it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> and it re-sends with a single tap — no review screen, no confirmation. Tick the checkbox on any <b>Completed</b> request to start one. The first time you do, a short intro explains the one-tap behaviour before the editor opens.</p>
+      <p style="margin-top:10px;">A <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> is a <b>copy you own</b>, so everything is editable before you save it:</p>
+      <ol class="brand">
+        <li><b>Name it</b> something you'll recognise on the dashboard — &ldquo;Friday catering run.&rdquo;</li>
+        <li><b>Adjust the request type and details</b> if the job has drifted since last time.</li>
+        <li><b>Set the payment to your Gopher.</b> It arrives carrying the amount a worker already accepted for that job — your best odds of it being picked up again — but you can change it.</li>
+        <li><b>Choose the card</b> that gets charged, and <b>which MY Gophers</b> it goes to first.</li>
+        <li><b>Accept the liability waiver</b>, pre-ticked directly above Save.</li>
+        <li><b>Save.</b> It appears as a card at the top of Previous Requests with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
+      </ol>
+      <div class="note warn"><span class="nico">⚡</span><div><span class="h">One tap means one tap</span>There's no review step and no &ldquo;are you sure&rdquo; — the button sends the request and authorises the card straight away. That's why Save won't unlock until there's a payment above $0 and the waiver is accepted, and why only <b>Completed</b> requests can be saved: a job that already worked, at an amount a worker already took.</div></div>
+      <div class="note info"><span class="nico">📋</span><div><span class="h">It's a copy, not a shortcut to the original</span>The request you saved it from stays in your history untouched, and every send gets a brand-new request ID. Save as many as you like from the same job — one for the small order, one for the big one — and edit or remove any of them any time.</div></div>
+
       <div class="note tip"><span class="nico">🔁</span><div><span class="h">Cancelled isn't gone for good</span>Cancelling a live request notifies any interested workers — but you can always find it again under Previous Requests and post it back out in a few taps.</div></div>
     </section>
 
@@ -748,7 +795,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <ul class="brand">
         <li>Open <b>Ask Gopher</b> in the portal — the assistant answers questions on billing, requests, workers, and your account, any time.</li>
         <li><b>Live chat</b> is available Mon–Fri, 8am–6pm EST.</li>
-        <li>Email <a href="mailto:connect@gophergo.io">connect@gophergo.io</a> or <a href="mailto:support@gopherconnect.com">support@gopherconnect.com</a> (replies within one business day).</li>
+        <li>Email <a href="mailto:connect@gophergo.io">connect@gophergo.io</a> or <a href="mailto:support@gophergo.io">support@gophergo.io</a> (replies within one business day).</li>
         <li>Prefer to call? Reach the business team at <b>(919) 555-0190</b>.</li>
       </ul>
       <div class="note info"><span class="nico">📈</span><div><span class="h">New area? Post anyway.</span>If no Gophers are available yet, your request just expires at no cost — and that's our cue to grow the network near you. Referring Connect is the fastest way to get your area buzzing.</div></div>
@@ -835,6 +882,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
               <li><a href="gopher-request-101.html">Gopher Request 101</a></li>
               <li><a href="gopher-connect-101.html">Gopher Connect 101</a></li>
               <li><a href="gopher-go-101.html">Gopher Go 101</a></li>
+              <li><a href="gopher-deals-101.html">Gopher Deals 101</a></li>
             </ul>
           </details>
         </li>

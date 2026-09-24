@@ -1,5 +1,82 @@
 # G40-18 — Stripe authorization must NEVER expire during an order — TECHNICAL DEEP-DIVE
 
+> ## ✅ RESOLVED 2026-08-20 — `gopher-backend-api!333` merged to `production` (`e25f5d7e`)
+>
+> **Everything below this header is the ORIGINAL 2026-06-12 analysis, kept as history. Its
+> `file:line` anchors and its "seven flaws" are all superseded.** The cron rewrite (continuous,
+> all non-terminal states, retry-capped) had already shipped by late 2025 under other tickets;
+> !333 closed what remained, plus defects the build itself found. **What production does now:**
+>
+> - **The invariant is enforced at the payout seam:** `transfer()` re-reads THIS order's
+>   PaymentIntent from Stripe and refuses to move money unless it is `succeeded` with
+>   `amount_received` covering the transfer (the PI field — see the incident note below). Failure classes are distinct: **blocked** (409,
+>   red `PAYOUT BLOCKED` order_log, support), **deferred** (503, retryable — Stripe unreadable),
+>   **legacy** (`ch_` tokens block for an owner ruling).
+> - **Re-auth rolls are real for every order that should hold funds:** must-confirm derives
+>   from ORDER STATE (accepted/in_progress/scheduled), never from the stored intent's status.
+>   Rolls are **cancel-only** (structurally cannot refund captured money), a `succeeded`
+>   reading aborts the roll, both roll writes are **compare-and-swap on status + token**, a
+>   failed confirm repoints the order at the new intent, and **success resets the retry
+>   budget** (it used to burn it).
+> - **AC6:** on retry exhaustion the requester gets SMS + push (`requestor.payment_action_needed`,
+>   notif index 36, deep-link keys) + email (type 41), outcomes on the order as
+>   `payment_action_needed_channels`. Fires in the loop's CATCH — the only reachable
+>   exhaustion point; the old in-loop branch was dead code and is deleted.
+> - **AC7:** capture/transfer/payout successes write `AUTH LIFECYCLE` order_logs; with the
+>   cron's re-auth logs the order timeline reads authorized → re-authorized → captured →
+>   transferred → paid in HQ.
+> - **Webhooks:** `payment_intent.canceled` / `amount_capturable_updated` handled at the
+>   existing signed endpoint (re-read trust model; self-cancel ledger filters our own rolls).
+>   ~~Inert until the owner subscribes the Stripe endpoint to those events.~~ **LIVE since
+>   2026-08-20** (`!335` → `2c460ed3`): Stripe scopes a destination to platform OR connected
+>   events — never both — so the events come from a NEW destination
+>   (`we_1U6TWpCQp3eawbpnwNazBAlG`, "Your account" scope, same URL) whose signing secret is
+>   held in SSM `/gopher/production/stripe-webhook-secret-2` and verified by the now
+>   multi-secret `middleware/stripe_webhook_auth.js` (5-min TTL — **rotate by overwriting the
+>   parameter in place, never delete-then-recreate**). Proven end to end with real event
+>   `evt_3U6UOzCQp3eawbpn1rMCMjv7` (order #64627): 200/Recovered, server-side SSM fetch on
+>   that request, 0 rejections since.
+> - The always-false double-capture guard is alive (409, already-captured = recovery path);
+>   `services/payment_authorization.service.js` is deleted; `orders.stripe_charge_token` is
+>   indexed.
+>
+> **Guard:** `test/g40-18-auth-invariant.test.js` — 41 anchored checks, 11 mutations proven;
+> plus the multi-secret cases in `test/stripe-account-webhook.test.js` (29 checks, 5 mutations).
+> **Closed 2026-08-20:** the Stripe event subscription (new destination + SSM secret, above)
+> and the CloudWatch filters — alarms `Gopher-Prod-{PayoutBlocked,AuthCanceledLiveOrder,
+> StrayHoldUnreleased}` exist and are registered in `docs/alert-markers.json`.
+> **⚠️ INCIDENT + FIX, 2026-08-20 (order #64627 — the first live completion under this code):**
+> every PaymentIntent verify read `amount_captured`, a field that exists only on Charge
+> objects — a PI reports **`amount_received`**. So the first real Complete tap captured
+> $218.14 at Stripe correctly and then failed its own verify (DB stuck `authorized`, worker
+> unpaid), and the already-captured recovery branch 409'd all 11 retries instead of engaging.
+> **Fixed same morning in `!337` (`ad2b3b9c`)** — 12-site field rename, no logic change; the
+> invariant test gained an INCIDENT GUARD that fails on ANY `amount_captured` read in
+> `payment.stripe.js`. The order healed exactly as designed on the next tap: recovery branch
+> returned the captured intent → $200 transfer (`tr_1U6WNW…`) → instant payout → `paid`, the
+> full AUTH LIFECYCLE timeline on the order. **This was also the invariant's first live
+> positive control.** Lesson recorded: anchored source tests verify shape, not third-party
+> schema truth — validate external field names against a real payload.
+>
+> **G40-402 CLOSED 2026-08-20 — and it was bigger than a deep-link.** Building the tap
+> handler exposed that the AC6 notification was a promise the system could not keep: nothing
+> un-exhausted an order after the requester fixed their card (the cron excludes
+> `payment_auth_retry_count >= 3` forever, and a failed roll's repoint stamps a fresh 7-day
+> expiry). Two merged halves:
+> - **Backend `!342`** (`e3b096a1`, deploys on merge): the three requester card-fix endpoints
+>   (select default / add card / attach) re-arm the requester's own exhausted live orders —
+>   retry budget 0 AND `payment_auth_expires_at = NOW()` (webhook-handler semantics) — so the
+>   cron rebuilds the hold within a minute, genuinely with the fixed card (`charge.create`
+>   resolves the current default per attempt). Guards mirror the cron's own selection with a
+>   drift-check (`test/g40-402-rearm-on-card-fix.test.js`, 12 checks, 5 mutations proven);
+>   fail-open; AUTH LIFECYCLE order_log marks each re-arm.
+> - **Client `gopher-mobile-requester-capacitorjs!233`** (`8ec24659`, **store-gated**): tapping
+>   the push lands on the card-management screen via the PushTapListener seam. Deliberately
+>   account-level, not order-scoped — the remedy is the default card and the re-arm covers
+>   every exhausted order at once.
+> **Still open:** `helpers/payment_error_handler.js` is caller-less from the cron path
+> (cleanup ruling).
+
 **Type:** Bug · **Priority:** Highest · `pay` · Both apps + backend. Verified against the 2026-06-12 `gopher-backend-api` export. All `file:line` refs are from that snapshot.
 
 ## The invariant (non-negotiable)

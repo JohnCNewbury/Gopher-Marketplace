@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G40-39 — Requester confirmation screen</title>
+<style>
+  :root{
+    --navy:#012462;
+    --red:#a31f1f;
+    --ink:#0d1117;
+    --muted:#5b6470;
+    --line:#d9dee3;
+    --page:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 48px;
+    background:var(--page);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+  }
+  h1{font-size:19px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 26px;max-width:1100px;line-height:1.5}
+  .sub code{background:#dfe4ea;padding:1px 5px;border-radius:4px;font-size:12px}
+  .row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .col{width:375px;flex:0 0 auto}
+  .tag{
+    display:flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .ok .dot{background:#1e9e57}     .ok{color:#1e7a45}
+  .bad .dot{background:#c8362f}    .bad{color:#a32822}
+  .fix .dot{background:#2563c9}    .fix{color:#1d4fa3}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.55;margin:10px 2px 0}
+  .note b{color:var(--ink)}
+
+  /* ---- phone ---- */
+  .phone{
+    width:375px;background:#fff;border:1px solid #c9d0d8;border-radius:14px;
+    overflow:hidden;box-shadow:0 6px 20px rgba(16,24,40,.10);
+  }
+  .hero{
+    height:96px;background:linear-gradient(180deg,#012462 0%,#022f7d 100%);
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;
+  }
+  .hero span{color:#fff;font-size:13px;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+  .body{padding:22px 18px 26px;display:flex;flex-direction:column;align-items:center}
+
+  /* exact values: innerWidth = 375 */
+  .headline{font-size:15px;font-weight:700;text-align:center;margin-bottom:22.5px;line-height:1.35}
+
+  .photoSection{display:flex;flex-direction:column;align-items:center;padding-bottom:22.5px}
+  .photoLabel{font-size:14.25px;color:#012462;font-weight:600;padding-bottom:9.375px}
+  .grid{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:9.375px}
+  .thumb{
+    width:82.5px;height:82.5px;border-radius:7.5px;border:1px solid var(--line);
+    background:#c7ccd2;object-fit:cover;
+    display:flex;align-items:center;justify-content:center;
+    font-size:10px;color:#6b727a;letter-spacing:.06em;
+  }
+
+  .btnConfirm{
+    width:187.5px;height:48.75px;border-radius:1.875px;background:#012462;
+    border:2px solid #012462;color:#fff;font-size:13.125px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .btnWrap2{padding-top:40px;padding-bottom:8.6px}
+  .btnDispute{
+    width:168.75px;height:48.75px;border-radius:1.875px;background:#fff;
+    border:2px solid #012462;color:var(--red);font-size:11.25px;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* absent-state marker */
+  .ghost{
+    width:100%;border:1.5px dashed #c8362f;border-radius:8px;
+    padding:14px 12px;margin-bottom:22.5px;text-align:center;
+    color:#a32822;font-size:12px;line-height:1.5;background:#fdf4f3;
+  }
+  .ghost b{display:block;font-size:12.5px;margin-bottom:3px}
+
+  /* in-flight state */
+  .inflight{
+    display:flex;align-items:center;gap:9px;justify-content:center;
+    padding:11px 14px;margin-bottom:22.5px;
+    background:#eef4fd;border:1px solid #c3d6f5;border-radius:8px;
+    color:#1d4fa3;font-size:12.5px;font-weight:600;width:100%;
+  }
+  .spin{
+    width:13px;height:13px;border-radius:50%;flex:0 0 auto;
+    border:2px solid #a8c4ee;border-top-color:#1d4fa3;
+    animation:sp .8s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .warnSheet{
+    width:100%;margin-top:14px;border:1px solid #c3d6f5;border-radius:10px;
+    background:#fff;padding:13px 14px;box-shadow:0 3px 10px rgba(16,24,40,.07);
+  }
+  .warnSheet .t{font-size:12.5px;font-weight:700;margin-bottom:5px}
+  .warnSheet .d{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:11px}
+  .warnRow{display:flex;gap:8px}
+  .wBtn{flex:1;height:34px;border-radius:4px;font-size:11.5px;display:flex;align-items:center;justify-content:center;border:1.5px solid #012462}
+  .wGhost{background:#fff;color:#012462}
+  .wSolid{background:#012462;color:#fff}
+
+  .legend{
+    margin-top:30px;padding:15px 17px;background:#fff;border:1px solid #dbe1e8;
+    border-radius:10px;max-width:1180px;font-size:13px;line-height:1.65;
+  }
+  .legend h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .legend code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>G40-39 — the requester confirmation screen</h1>
+<p class="sub">
+  Reconstructed at 375&nbsp;px from the shipped source, <code>src/component/orderConfirmation.js</code> on
+  <code>origin/production</code> (viewer added 2026-08-20, <code>8095c2ca6</code>; present in
+  <code>release/ios-851</code> and <code>release/android-852</code>). Sizes are the file's own
+  <code>innerWidth</code> percentages evaluated at 375. This is a faithful reconstruction, not a device capture.
+</p>
+
+<div class="row">
+
+  <!-- A -->
+  <div class="col">
+    <div class="tag ok"><span class="dot"></span>A · Built &amp; shipped — photos already landed</div>
+    <div class="phone">
+      <div class="hero"><span>Gopher</span></div>
+      <div class="body">
+        <div class="headline">Your Gopher has completed your request</div>
+        <div class="photoSection">
+          <div class="photoLabel">View pic(s) of completed request</div>
+          <div class="grid">
+            <div class="thumb">PHOTO</div>
+            <div class="thumb">PHOTO</div>
+          </div>
+        </div>
+        <div class="btnConfirm">Confirmed</div>
+        <div class="btnWrap2"></div>
+        <div class="btnDispute">Did not completed</div>
+      </div>
+    </div>
+    <p class="note">
+      This is what the code already does. Tapping a thumbnail opens it full-size in a transparent
+      <b>Dialog</b> at <b>92vw / 80vh</b>. Nothing here needs building.
+    </p>
+  </div>
+
+  <!-- B -->
+  <div class="col">
+    <div class="tag bad"><span class="dot"></span>B · What you actually saw</div>
+    <div class="phone">
+      <div class="hero"><span>Gopher</span></div>
+      <div class="body">
+        <div class="headline">Your Gopher has completed your request</div>
+        <div class="ghost">
+          <b>Entire section absent</b>
+          <code>completionPhotos.length &gt; 0</code> is false, so nothing renders —
+          no label, no grid, no empty state.
+        </div>
+        <div class="btnConfirm">Confirmed</div>
+        <div class="btnWrap2"></div>
+        <div class="btnDispute">Did not completed</div>
+      </div>
+    </div>
+    <p class="note">
+      The screen fetches <b>once</b> on mount and never again. Reach it before the Gopher's upload
+      finishes and the array is empty forever. The <b>catch is silent by design</b> — a failed fetch and
+      "no photos taken" are deliberately indistinguishable, so nothing looks broken.
+    </p>
+  </div>
+
+  <!-- C -->
+  <div class="col">
+    <div class="tag fix"><span class="dot"></span>C · Proposed fix (G40-427)</div>
+    <div class="phone">
+      <div class="hero"><span>Gopher</span></div>
+      <div class="body">
+        <div class="headline">Your Gopher has completed your request</div>
+        <div class="inflight"><span class="spin"></span>Checking for photos from your Gopher…</div>
+        <div class="btnConfirm">Confirmed</div>
+        <div class="warnSheet">
+          <div class="t">Photos may still be uploading</div>
+          <div class="d">Your Gopher's photos haven't arrived yet. Confirming now releases payment before you can see them.</div>
+          <div class="warnRow">
+            <div class="wBtn wGhost">Wait</div>
+            <div class="wBtn wSolid">Confirm anyway</div>
+          </div>
+        </div>
+        <div class="btnWrap2"></div>
+        <div class="btnDispute">Did not completed</div>
+      </div>
+    </div>
+    <p class="note">
+      Poll on a short bounded window instead of one shot. Say <b>"checking"</b> rather than showing nothing,
+      and <b>warn</b> on Confirm rather than blocking it — this file's own rule is that a photo hiccup must
+      never block confirmation. After the window with nothing found, the section stays hidden (the Gopher
+      legitimately skipped).
+    </p>
+  </div>
+
+</div>
+
+<div class="legend">
+  <h2>Why C warns instead of blocking</h2>
+  The client <em>cannot</em> tell "the Gopher skipped" from "still uploading." <code>photo_requirement</code>
+  is computed by <code>helpers/completion_photo_policy.js</code> but returned only to the <b>Gopher's</b> app on
+  order update — the requester never receives it, and it describes whether the photo <em>step runs</em>, not
+  whether a photo was taken. With no such signal, a hard block would strand every requester whose Gopher
+  legitimately skipped. A bounded poll plus an explicit warning is honest about what is and isn't known.
+</div>
+
+</body>
+</html>

@@ -1,5 +1,27 @@
 # G40-199 — Tier Rename Deployment Plan (Developer Task #1)
 
+> ## ⚠️ SUPERSEDED as the entry point (2026-08-10)
+>
+> **Canonical doc: [G40-199-tier-conversion-canonical.md](G40-199-tier-conversion-canonical.md).** Start there.
+>
+> This plan is substantively sound — its inventory, its patch history and its cleanup
+> receipts are all still useful. Four things it gets wrong or omits:
+>
+> 1. **It predates the launch gate.** Owner, 2026-07-30: *"Pro is STILL in play. We have not
+>    launched yet."* This plan reads as "apply the patches and ship." **Live production copy
+>    must stay Pro/Pro+ until the marketplace launches.**
+> 2. **Its line numbers have drifted** — verified 2026-08-10 against `origin/production`:
+>    `constants/index.js` is `:204-208`, not `:166-170`; `controllers/admin/user.js` is
+>    `:1073-1074`, not `:906-908`. Anchor on the symbol, not the line.
+> 3. **"Ready to apply" needs a caveat:** 5 of the 6 patches **fail a plain `git apply`** and
+>    require **`git apply --3way`** (all 6 succeed that way). Verified 2026-08-10.
+> 4. **The new-Pro stacking credential has no data model anywhere** — no schema, no submission
+>    flow, no grant path. It is the largest unbuilt piece of the conversion and this plan does
+>    not track it as work.
+>
+> The canonical doc also records a finding this plan's string-level audit could not see: the
+> prototype layer models the D-1 ruling **three different ways** across Connect, Request and Go.
+
 **Ticket:** [G40-199](https://gopherapp.atlassian.net/browse/G40-199) — "Gopher GO - GOPHER Pro/Pro+ Rebranding To Gopher Elite" (In Progress, assignee John Newbury)
 **Prepared:** 2026-07-12 · full-tree discovery re-verified against the June-2026 GitLab exports, the `Final/` prototype tree, the HQ Dashboard, and the entire `/Documentation` folder.
 **Companion doc:** [G40-199-tier-rename-conversion.md](G40-199-tier-rename-conversion.md) (2026-07-06) — the deep per-file conversion guide. This plan supersedes its inventory where the two differ (§10 lists the corrections) and adds the surfaces it missed.
@@ -214,7 +236,7 @@ Rebuilt via `python3 build.py` → `output/Gopher_HQ_Dashboard.html` (78 MB, 202
 **Verification checklist:**
 
 - SQL: `Σ legacy = Σ canonical` row counts; `legacy_rows_remaining = 0`; spot-check known Pro/Pro+ workers now show Elite/Elite+ everywhere (app profile, admin, order emails).
-- Service-Provider eligibility (D-020: Elite/Elite+/Pro · 20+ jobs · rating floor) computes identically pre/post.
+- Service-Provider eligibility (D-020: Elite/Elite+/Pro · 20+ service jobs · 4.75★ over last 20 service jobs — Delivery/Ride Sharing/Other excluded from both the count and the rating window, founder amendment 2026-07-23) computes identically pre/post.
 - Broadcast cadence (G40-44) Tier-2 unchanged (it's id-based).
 - `rg -n "Gopher Pro\b|Pro\+|Pro Plus"` over each repo returns only new-Pro copy and intentional migration notes (use §2's false-positive list).
 - Emails 15/16 render Elite/Elite+ names + new badge art; signup-confirmation links resolve to the live tiers page.

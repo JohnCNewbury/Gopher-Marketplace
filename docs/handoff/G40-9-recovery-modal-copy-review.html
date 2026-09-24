@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>G40-9 Recovery Modal — Copy Review</title>
+<style>
+:root{--navy:#002461;--green:#33D975;--green-deep:#178A4E;--muted:#6B7280;--ink:#12203a;
+--card:#fff;--bg:#f4f6f9;--line:#e3e8ef;--warn:#b45309;--warnbg:#fff7ed;--okbg:#ecfdf5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Nunito,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 64px}
+h1{font-size:22px;margin:0 0 4px;color:var(--navy);letter-spacing:-.3px}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 22px}
+.note{background:var(--warnbg);border:1px solid #fed7aa;border-left:4px solid var(--warn);
+padding:13px 15px;border-radius:9px;margin:0 0 24px;font-size:13.5px}
+.note b{color:var(--warn)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.col>h2{font-size:12px;text-transform:uppercase;letter-spacing:.9px;margin:0 0 9px;color:var(--muted)}
+.col.now>h2{color:var(--muted)} .col.new>h2{color:var(--green-deep)}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:15px;overflow:hidden;
+box-shadow:0 8px 26px rgba(0,36,97,.09)}
+.col.new .modal{border-color:#a7f3d0}
+.mhead{display:flex;align-items:center;justify-content:space-between;
+padding:14px 16px;border-bottom:1px solid var(--line)}
+.mhead h3{margin:0;font-size:17px;font-weight:800;color:var(--navy);letter-spacing:-.3px}
+.x{color:#9aa5b4;font-size:15px}
+.mbody{padding:15px 16px 18px}
+.copy{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.5}
+.timer{background:#f1f5f9;border:1px solid var(--line);border-radius:9px;
+padding:9px 12px;font-size:12.5px;color:var(--ink);margin-bottom:13px}
+.clock{font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.demo{display:block;color:#94a3b8;font-size:11px;margin-top:3px}
+.opt{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;
+border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 12px;margin-bottom:9px}
+.opt.rec{border-color:var(--green);background:var(--okbg)}
+.ico{font-size:17px;line-height:1.25}
+.otitle{display:block;font-weight:750;font-size:14px;color:var(--navy)}
+.osub{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45}
+.arrow{margin-left:auto;color:#c3cbd6}
+del{background:#fee2e2;color:#991b1b;text-decoration:line-through;padding:0 2px;border-radius:3px}
+ins{background:#d1fae5;color:#065f46;text-decoration:none;padding:0 2px;border-radius:3px}
+.unchanged{color:#94a3b8;font-size:11.5px;font-style:italic;margin-top:14px;display:block}
+.why{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:26px}
+.why h2{font-size:15px;margin:0 0 10px;color:var(--navy)}
+.why p{margin:0 0 10px;font-size:13.5px}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body><div class="wrap">
+
+<h1>G40-9 — Recovery Modal, copy review</h1>
+<p class="sub">Left is the modal as designed and built in <code>Final/gopher-request.html</code>.
+Right is the same modal with only the copy that the merged backend contradicts. Layout, options,
+order and styling are unchanged.</p>
+
+<div class="note"><b>⚠ Why any change at all:</b> the design promises a
+<b>new order #</b>. The backend as merged returns the <b>same</b> order to the marketplace with the
+gopher detached. That is deliberate and load-bearing — the Stripe authorisation is attached to the
+original order, so minting a new order number would re-break the very problem your reframing
+solved. The backend is right; the copy predates the reframing.</div>
+
+<div class="cols">
+  <div class="col now">
+    <h2>Current — as designed</h2>
+    <div class="modal">
+      <div class="mhead"><h3>Your Gopher cancelled</h3><span class="x">✕</span></div>
+      <div class="mbody">
+        <p class="copy">Marcus cancelled request #10482. Your funds are still held — pick an
+          option below. Nothing is re-charged.</p>
+        <div class="timer"><span>Auto-cancels in <span class="clock">15:00</span> if no action
+          <span class="demo">Demo timer — production needs a durable server-side job</span></span></div>
+        <button class="opt rec"><span class="ico">🔄</span><span><span class="otitle">Assign New Gopher ASAP</span>
+          <span class="osub">Repost with the same details &amp; price <del>under a new order #</del>
+            — straight back to the marketplace. No edits.</span></span><span class="arrow">›</span></button>
+        <button class="opt"><span class="ico">📝</span><span><span class="otitle">Edit request</span>
+          <span class="osub">Adjust the details, cost of items, or payment, then repost
+            <del>under a new order #</del>.</span></span><span class="arrow">›</span></button>
+        <button class="opt"><span class="ico">⭐</span><span><span class="otitle">Cancel request</span>
+          <span class="osub">Don't repost. Rate the Gopher who <del>cancelled</del> and close this
+            request.</span></span><span class="arrow">›</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col new">
+    <h2>Proposed — copy only</h2>
+    <div class="modal">
+      <div class="mhead"><h3>Your Gopher <ins>released your request</ins></h3><span class="x">✕</span></div>
+      <div class="mbody">
+        <p class="copy">Marcus <ins>released</ins> request #10482<ins>, and it's back in the
+          marketplace</ins>. Your funds are still held — pick an option below. Nothing is re-charged.</p>
+        <div class="timer"><span>Auto-cancels in <span class="clock">15:00</span> if no action
+          <span class="demo" style="color:#065f46">Live — server-computed deadline, closed by the cron</span></span></div>
+        <button class="opt rec"><span class="ico">🔄</span><span><span class="otitle">Assign New Gopher ASAP</span>
+          <span class="osub">Repost with the same details &amp; price — straight back to the
+            marketplace. No edits.</span></span><span class="arrow">›</span></button>
+        <button class="opt"><span class="ico">📝</span><span><span class="otitle">Edit request</span>
+          <span class="osub">Adjust the details, cost of items, or payment, then repost.</span></span>
+          <span class="arrow">›</span></button>
+        <button class="opt"><span class="ico">⭐</span><span><span class="otitle">Cancel request</span>
+          <span class="osub">Don't repost. Rate the Gopher who <ins>left</ins> and close this
+            request.</span></span><span class="arrow">›</span></button>
+      </div>
+    </div>
+    <span class="unchanged">Unchanged: layout, option order, the recommended option, icons,
+      the 15-minute window, and the "funds still held / nothing re-charged" reassurance.</span>
+  </div>
+</div>
+
+<div class="why">
+  <h2>The four changes, and why each one</h2>
+  <table>
+    <tr><th style="width:24%">Change</th><th style="width:38%">Reason</th><th>Cost of leaving it</th></tr>
+    <tr><td><b>"cancelled" → "released your request"</b></td>
+      <td>Under the merged behaviour the gopher cancels nothing. They detach; the request stays live.</td>
+      <td>Tells the requester their request is dead when it is actually live and recoverable — the
+        opposite of what the modal is for.</td></tr>
+    <tr><td><b>drop "under a new order #"</b> (×2)</td>
+      <td>The same order returns to <code>PENDING</code> with <code>gopher_id</code> cleared. No new order exists.</td>
+      <td>A promise the product does not keep. The requester looks for an order number that never appears.</td></tr>
+    <tr><td><b>add "back in the marketplace"</b></td>
+      <td>Names what actually happened, which is the reassuring part.</td>
+      <td>Without it "released" is ambiguous — released to whom?</td></tr>
+    <tr><td><b>"who cancelled" → "who left"</b></td>
+      <td>Consistency with the title. The gopher is still rated; only the word changes.</td>
+      <td>Minor, but re-introduces the word the title just corrected.</td></tr>
+  </table>
+  <p style="margin-top:14px"><b>Timer note:</b> the design's "Demo timer — production needs a durable
+  server-side job" is now satisfied. The deadline is computed server-side from one shared helper
+  and is the same instant the cron acts on, so the countdown cannot drift from what actually fires.</p>
+  <p style="margin:0"><b>Not proposed:</b> no layout, option, ordering, icon or styling change.
+  If you want none of the copy touched, say so and I will port it verbatim — but the "new order #"
+  line will describe something that does not happen.</p>
+</div>
+</div></body></html>

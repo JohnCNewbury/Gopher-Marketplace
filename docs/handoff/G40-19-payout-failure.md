@@ -1,5 +1,162 @@
 # G40-19 — Payout-card management: failed-transfer recovery + last-card protection
 
+> ## ✅ BUILT 2026-09-08 — this file is no longer a "to build" brief. Read this box first.
+>
+> Everything under **"🔧 TO BUILD"** below was written in July, when the scope rule reserved
+> payments for a human developer who does not exist. That rule was retired 2026-08-09. The work
+> has now been done, and **the sections below are kept for their reasoning, not their status.**
+> Where this box and anything lower down disagree, this box is right.
+>
+> ### What is already LIVE in production
+>
+> | Ticket AC | State | Where |
+> |---|---|---|
+> | **AC2 — payout-failure email** | **LIVE since 2026-07-30** | G40-343, `6e4b08f9`. Dispatcher type **35**, `views/payout-failed-2026.ejs`. Sent from `support@gophergo.io` (`SENDGRID_EMAIL` is unset), **not** `admin@gophergo.io` as the 2024 ticket text says — the branded 2026 template was owner-approved on its own terms. Raise it if the address matters. |
+> | **G40-194 — last payout card cannot be deleted** | **LIVE** | Server: `lib/payment.stripe.js delete_payout_card` throws **422** when it is the only card, counting all cards regardless of health. Client: `cardseperateview.js` hides Delete and shows *"Add a new eligible card to remove this one."* Both halves shipped; G40-194 is Canceled and linked as a duplicate. |
+> | **The debit-card update screen** | **LIVE** | `PAYOUT_CARD_ROUTE` = `/form` with `state.next = "payout"` (`src/helpers/payoutAttentionCopy.js`). The deep-link target the ticket asks for already exists; nothing new was designed. |
+>
+> ### ✅ SHIPPED 2026-09-08/09 — all four MRs merged to `production` and deployed
+>
+> | MR | What | Merge commit |
+> |---|---|---|
+> | `gopher-backend-api!528` | the payout-truth core + AC1's in-app popup | `dcfbf1b77` |
+> | `gopher-mobile-gopher-capacitorjs!282` | the push tap → add-card screen | `138bab55a` |
+> | `gopher-backend-api!532` | a payout can fail AFTER it was reported paid | `a4a6a0b4d` |
+> | `gopher-backend-api!537` | an orphan payout failure now names the worker | `0b13550ad` |
+>
+> Each backend merge auto-deployed via CodePipeline and was verified by `VersionLabel` ending in
+> the merge SHA, a serving instance at `Ok`, and a 200 on `/api/v1/apiversion`. **The mobile merge
+> reaches no user until a store release is cut.**
+>
+> | AC | What was wrong in production | What now does it |
+> |---|---|---|
+> | **AC4** | `Payout Completed` was written the moment `stripe.payouts.create()` **resolved** — Stripe *accepting* a payout, not depositing it. An instant payout to a dead card is accepted and fails minutes later. | `payout.paid`, and only `payout.paid`, writes it (`controllers/admin/stripe_payout_webhook.js`). The two creation sites now write **`Payout Initiated`**. |
+> | **AC5** | That write happened in the **same handler** that had written `Requester Confirmed for Order Completion` seconds earlier. | The two events now come from two different sources; one of them is Stripe. |
+> | **AC3** | `payout.failed` wrote only `Payout Failed : <reason>` — a row the worker **never sees**, because `controllers/order/retrieve.js` filters worker order-log notes through an exact-match allowlist it is not in. | A second, worker-facing row in the ticket's exact words: **`PAYOUT FAILED (Please add a new debit card)`**, added to the allowlist. The support row is deliberately left out of it. |
+> | **AC1, push** | Nothing was pushed on a payout failure at all. | New notif type **`gopher.payout_failed`**; the Go app's `PushTapListener` routes the tap to `PAYOUT_CARD_ROUTE`. |
+> | **AC1, in-app popup** | `users/payment_account/check` keys **only** off `requirements.currently_due`. After a failed payout Stripe flips the *card* to `status: 'errored'` and often leaves `payouts_enabled` true and `currently_due` empty — so the endpoint answered `action: null` and **no modal fired at the one moment it mattered.** | `helpers/payout_attention_policy.unusable_default_card_attention` — one shared verdict now used by **both** `get_gopher_cards` and `payout_account_check`. **No store release needed:** shipped builds already render this modal and already route on `action === 'add_payout_card'`. |
+> | **AC2, completeness** | The email carried no card last 4. | It does now, when the card can be read; the sentence still reads correctly when it cannot. |
+>
+> ### ⛔ Three things the next person must not undo
+>
+> 1. **The note strings are allowlisted by EXACT MATCH.** `Payout Initiated`, `Payout Completed` and
+>    `PAYOUT FAILED (Please add a new debit card)` are compared literally in
+>    `controllers/order/retrieve.js`. Reword any of them and the entry **silently disappears from
+>    every worker's request history** — no error, no failing test except
+>    `test/g40-19-payout-truth.test.js`, which pins each string to its writer for this reason.
+>    They were **added, never swapped**: `Payout Completed` stays so years of historical rows keep
+>    rendering.
+> 2. **`gopher.payout_failed` is one value in two repositories** — the `case` label in
+>    `controllers/order/notification.js` and the literal comparison in the Go app's
+>    `PushTapListener.js`. The requester app shipped a shortened form its client never matched and
+>    the deep link was dead in production. `scripts/assert-push-tap-delivery.js` now fails if they
+>    drift.
+> 3. **The reconciliation sweep is not optional scaffolding.** `confirm_payout_deposits`
+>    (`middleware/cronTasks.js`) reads the payout back from the Stripe API for anything unresolved
+>    after 45 minutes. It is what makes "Payout Completed" correct **with zero Stripe dashboard
+>    configuration**, and therefore what makes the deploy and the console change safe in either
+>    order. Remove it and the feature depends on a setting nobody can see from the code.
+>
+> ### Two owner actions in the Stripe dashboard, after the merge (neither is a blocker)
+>
+> 1. Add **`payout.paid`** and **`payout.failed`** to the connected-accounts destination
+>    **`we_1U48wRCQp3eawbpnIytySy6n`** → `/api/v1/admin/endpoint/stripe_account`. That is the
+>    **signature-verified** endpoint. Until this is done the sweep does the work within ~45 minutes.
+> 2. Then disable **`we_1Q43GzCQp3eawbpnMqmqsfsc`** → `/endpoint/payout_error`, which is mounted
+>    with **no signature verification at all** — anything on the internet can post a fabricated
+>    payout event to it. That predates G40-19 and is not widened by it (no money moves on the
+>    event), and this work is what makes the move possible without a further deploy.
+>
+> ### 🔬 VERIFIED IN PRODUCTION, 2026-09-09 (first-hand, not inherited)
+>
+> - **AC1's in-app popup, on four real workers.** `G40-19: payout attention for user 17917 /
+>   75517 / 56604 / 74469 -- default card expired`. Every one of those calls previously returned
+>   `action: null` and rendered no modal.
+> - **AC4 and AC5, on real order 65308.** The reconciliation sweep logged
+>   `checking Stripe for 1 payout(s) initiated but not yet confirmed`. That query selects **only**
+>   orders carrying a `Payout Initiated` row **and no** `Payout Completed` row — so its firing is
+>   proof that the creation site stopped claiming the money had arrived. The order then resolved
+>   at 04:01 with `deposit verified ... (deposit sweep)`.
+> - **⚠️ That confirmation came from the SWEEP, not the webhook** — the source tag says so. Do not
+>   read a `deposit verified` line as proof the webhook works; both sources write it.
+> - **The webhook is nonetheless proven**, by different evidence: `payout.paid` and `payout.failed`
+>   both reached `/endpoint/stripe_account` and ran the handler, which they could not have done
+>   without passing signature verification.
+> - **65308 was a `standard` payout** (gopher 141956, first completed job, so inside the
+>   first-ten-orders probation). It settled in ~2 hours, not the 1–2 business days assumed.
+>
+> ### 🔎 FOUND WHILE VERIFYING — orphan automatic payouts
+>
+> **`payout.failed` events that carry no `metadata.order_id` reach no order, and nobody is told.**
+> ⚠️ **This is a support-cost problem, not a silently-unpaid-worker problem** — see the owner's
+> ruling in "Open for the owner" below before ranking it as severe.
+>
+> - `charge.payout` is the **only** payout creator here (one call site) and always stamps
+>   `metadata.order_id`. So these are not ours.
+> - `try_enable_payouts_for_account` puts every connected account on Stripe's own **daily
+>   automatic** schedule. Measured live: **600 of 600** sampled accounts are on
+>   `interval: daily, delay_days: 2`. Automatic payouts carry no metadata.
+> - **4 of those 600** have a daily schedule *and* an expired default card — the shape that retries
+>   and fails every day. Extrapolated: ~80 accounts. Observed ~32 orphan failures/day is the same
+>   order of magnitude.
+> - **Pre-existing, not shipped this week** — the old handler had the identical
+>   `if (metadata.order_id)` guard and logged nothing at all.
+>
+> **A real one, captured 2026-09-09 from the Stripe delivery log** (`evt_1UDZzsCR82FxdhQAAysrmlW6`):
+> `automatic: true`, `metadata: {}`, **$71.00**, `failure_code: lost_or_stolen_card`, account
+> `acct_1POgoDCR82FxdhQA`. Our endpoint answered **200 OK** and did nothing. That account reports
+> **`payouts_enabled: true`** while its card is `status: errored` — the shape where the platform's
+> own flag says payout-ready and the card underneath is dead. **Its in-app half is already closed**
+> by `!528`: an `errored` card returns `add_payout_card`, so that worker now gets the modal on their
+> next orders-screen mount. Only the email side is open.
+>
+> ⚠️ **Rate, from Stripe's delivery counts rather than log lines:** 33 in a week (8 + 8 + 1 + 1 on
+> four separate days) — ~5/day average but **bursty**, clustered when the daily automatic payouts
+> run. An earlier ~32/day figure was a linear extrapolation from a 6-hour burst and is **wrong**.
+>
+> `!537` makes each one name the payout, the account, the amount, Stripe's reason, whether it was
+> `automatic`, and the **`user_id`** (via `users_roles.stripe_id`). It deliberately does **not**
+> notify: these retry daily, so telling the worker each time is a daily "your payout failed" email.
+> **That is an open product decision, not a bug.**
+>
+> ### ⛔ DO NOT "optimise" the reconciliation sweep's cadence
+>
+> A note was raised mid-session that the sweep re-polls Stripe every 5 minutes for a standard payout
+> and should skip anything whose `arrival_date` is still in the future. **The arithmetic behind it
+> was wrong and it is retracted.** It assumed the full 1–2 business day window; the one real
+> standard payout measured took ~2 hours, i.e. **~24 polls, not ~550**. There is no meaningful waste
+> to reclaim, and the change would add a branch to money-path code for nothing.
+>
+> ### Still not verified, and honestly so
+>
+> **No real payout FAILURE has been driven end to end.** Everything about the failure path — the
+> worker-visible `PAYOUT FAILED` row, the push, the last-4 in the email, and `!532`'s
+> `PAYOUT DID NOT ARRIVE` — rests on 44 automated checks and on reading the live code, **not** on
+> watching a real worker's card decline. The success path *is* verified end to end on order 65308.
+>
+> The handset half of AC1 (the tap) additionally needs a store release, and has never been run on a
+> device.
+>
+> ### 📌 Open for the owner
+>
+> 1. ~~Disable the old Stripe destination `we_1Q43Gz…`~~ **✅ DONE 2026-09-09** — verified
+>    `status: disabled` via the API. Nothing points at `/endpoint/payout_error` any more, so the
+>    unsigned route is unreachable from Stripe. Disabled rather than deleted, so it is one click to
+>    restore. ⚠️ The Disable control is the **•••** beside "Edit destination" — not on the overview
+>    page, not inside Edit; and **Delete** sits directly beneath it in red.
+> 2. ~~Notify-or-not on orphan automatic payout failures~~ **✅ CLOSED — do not build it.** Owner,
+>    2026-09-09: there are no known unsettled payout cases, and **payout is the one channel workers
+>    do not wait on — they report it immediately.** An unnotified failure is therefore not a worker
+>    quietly going unpaid; it is a worker about to call. And because pre-2026 cases were settled
+>    **manually off-platform with the Stripe balance left in place**, some of those accounts are
+>    retrying against a dead card for money that was paid long ago — so a blind notification would
+>    tell already-settled people their payout failed. `!537`'s log line is a **triage** tool: when a
+>    worker does call, the answer is one query instead of a hand-dig through the Stripe dashboard.
+> 3. **The wording `PAYOUT DID NOT ARRIVE (Please add a new debit card)`** is live and worker-facing.
+>    One string in one place. Change it freely; do **not** collapse it back into `PAYOUT FAILED`.
+> 4. **Store release** for the Gopher Go push-tap.
+
+
 > **Umbrella note (2026-07-07):** G40-19 now **absorbs G40-194** ("Prevent deletion of the last payout card").
 > Both are the same worker payout-card recovery flow — a payout fails → the Gopher must add a replacement,
 > and they must never be able to delete their only card mid-recovery and orphan the Stripe account. G40-194
@@ -225,11 +382,24 @@ logged in `docs/handoff/G40-309-modal-dispositions.md` under *"New — built to 
 
 ---
 
-# Jira actions (pending — apply when the Atlassian connection is back)
+# Jira actions — ✅ ALL APPLIED (do not re-do)
 
-The Atlassian MCP was disconnected when this merge was done, so these ticket ops are **staged, not yet applied**:
-1. **G40-19** — append the "Merged: G40-194" + modals content to the description (or link this handoff); note it
-   absorbs G40-194; keep In Progress / assigned to John.
-2. **G40-194** — **Cancel** ("no longer necessary"), link **duplicates → G40-19**, comment: *"Merged into G40-19
-   (payout-card management umbrella) — same worker payout-card recovery flow; full backend fix + Attention! modal
-   carried into G40-19; modals built to G40-308 (kit + G40-309 tracker)."*
+*This section was written in July as a staged to-do while the Atlassian MCP was disconnected. Both
+items were applied long ago; it is kept only so nobody re-raises them.*
+
+1. **G40-19** — done. The G40-194 merge and the modals are recorded on the ticket.
+   ⚠️ **It said "keep In Progress". That is now WRONG** — G40-19 was moved to **Done** on
+   2026-09-09, after all four MRs merged and deployed.
+2. **G40-194** — done. **Canceled**, linked *duplicates → G40-19*, comment applied.
+
+**Current status: G40-19 = Done.** One piece rides a store release and must not be forgotten
+because the ticket is closed: `gopher-mobile-gopher-capacitorjs!282` (`138bab55a`) is merged to
+`production` but reaches **no handset until a build is cut** — that is the *tap* on the payout push.
+Everything else in this ticket is live.
+
+⚠️ **Strictly, the owner's 2026-08-22 ruling wants "Ready for Release", not Done,** for anything
+waiting on a build (*"Done to me is backend done and waiting on nothing"*). That status is **not in
+G40-19's available transitions** — only Code Review, Done, Blocked, To Do, Canceled — and no G40
+issue currently holds it. Done matches what every comparable store-gated ticket used (G40-192,
+G40-39, G40-331, G40-419). **If the ruling is to be applicable, Ready for Release needs to exist in
+this workflow**; that is a board change, not a ticket one.

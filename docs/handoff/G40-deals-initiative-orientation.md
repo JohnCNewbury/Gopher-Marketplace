@@ -28,9 +28,19 @@ exists, sequences the build, and flags dependencies so each ticket can be fleshe
 - **Customer browse** — `Final/gopher-customer-deals.html` (customer-facing deals browse) + the
   merchant deal display in `Final/gopher-deals.html` (23 merchant logos, category structure). These
   are the front-end starting point for **DLM-6 / DLP-3** (browse by location/category).
-- **Admin deal management + live/tracking** — `advertiserDeals.js` (the **G40-180** Admin Advertising
-  Partner Entry tool, In Progress in the HQ Dashboard): `isDealLive` (active + in date window),
-  `liveHomeDeals`, `trackClick` (deal + request click counters), `toCsv`. DLM deal lifecycle
+- **Admin deal management + live/tracking** — ⚠️ **CORRECTED 2026-08-06 — read this before
+  extending anything.** This bullet previously named `advertiserDeals.js` (the **G40-180** Admin
+  Advertising Partner Entry tool) and described it as *"In Progress in the HQ Dashboard."* **It is
+  not in the HQ Dashboard.** It is a **44-line build-console scaffold** at
+  `Documentation/Jira Tickets/advertiserDeals.js`, and its helpers (`isDealLive`, `liveHomeDeals`,
+  `trackClick`, `toCsv`) are the *intended* shape, not shipped Dashboard code.
+  **The module actually wired into the Dashboard's Deals view is `deals-merchants.js`**, which is
+  larger, later, has its own `localStorage` action store and review/reject/contact modals, and uses a
+  **different status vocabulary** (`live/pending/considered/expired/rejected` vs `active/paused`).
+  ⚠️ **Neither module can represent a DLP (service-provider) deal** — no reach, no keywords, no
+  `earnAmount`/`customerPrice`, no provider reference. Extend toward the **union record** in
+  `deals-registration-to-publication-config.md` §4.1, under the status vocabulary in §5.1. Full
+  finding: that spec's §9.2. DLM deal lifecycle
   (active/scheduled/paused, click tracking) rides this — extend it rather than build parallel logic.
 - **Location intelligence** — the Gopher iQ coverage layer (`gopher-iq-data.js`, 10-mi radius) already
   resolves location→coverage; the DLP 50-mi radius + DLM location browse can reuse the same geo seam.
@@ -42,9 +52,12 @@ exists, sequences the build, and flags dependencies so each ticket can be fleshe
    portal, deal CRUD across locations. **Depends on the account model** — fold merchants/providers into
    the unified identity (**G40-296 SPINE-1**) as an entity type, and reuse the **B2B portal shell
    (G40-160 / Epic G40-2)** rather than a standalone auth.
-2. **Deal data model** — deals today live in the admin tool / prototype only; needs a real
-   `deals` table (merchant/provider id, category, location(s), price/defined-price, radius, window,
-   status, click counters) behind the `advertiserDeals` seam.
+2. **Deal data model** — deals today live in the prototype only; needs a real `deals` table
+   (merchant/provider id, category, location(s), price/defined-price, radius, window, status, click
+   counters). ⚠️ **Not "behind the `advertiserDeals` seam"** — that file is a scaffold outside the
+   Dashboard (see the corrected bullet above). The schema to build to is the **union record** in
+   `deals-registration-to-publication-config.md` §4.1, which is the one shape that can represent
+   both a DLM and a DLP deal.
 3. **Bid-for-Placement auction** (DLM-4) — net-new: opt-in ranking auction for deal placement.
 4. **Merchant-site view + order** (DLM-7) — external merchant-site integration/deep link.
 5. **Deal → request bridge** (DLM-8, DLP-4) — a deal order/redemption calls `create.js` to spawn a

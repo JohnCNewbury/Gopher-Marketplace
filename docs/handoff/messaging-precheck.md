@@ -13,6 +13,59 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > **email**). Escalation is **per user**; admin email + account flag fire at
 > **level ≥ 2**. All previously-open developer questions are answered below.
 
+> **2026-08-18 update (owner) — the mobile flag pop-up was SCRAPPED, not shipped.**
+> The correct implementation lands **at the launch of Connect, Request web, and the reskins**.
+> Until then the native apps have **no in-app moderation UI at all**, deliberately.
+>
+> **What was removed** (merged to `production` on both mobile repos that morning, **never in a
+> store build**): a modal titled *"Keep it in the app"* with a single *"Got it"* button, fired
+> by a `messageFlagged` socket event that the backend emits to **both parties**, **after** the
+> message row is written and delivered. Reverted by
+> `gopher-mobile-gopher-capacitorjs!237` and `gopher-mobile-requester-capacitorjs!226`.
+>
+> **The owner first ruled "leave it", then reconsidered — and the second call was right.**
+> The asymmetry that decided it: while it has never reached a user, removing it costs nothing;
+> once a build ships it, removal becomes a user-visible regression needing its own release.
+> Scrapping was also cheaper than either alternative — the whole feature was 1 file per app,
+> 1 listener, 2 cleanups, 2 state refs, and nothing else in either codebase read it.
+>
+> **Why it is wrong, recorded so nobody re-derives it:** this doc's approved copy says
+> *"You can edit your message to avoid it being sent as-is, which is currently flagged."*
+> On that surface there is no edit, the message is already sent, and "currently flagged" is
+> already final — and because the backend notifies both parties, the RECIPIENT would read
+> "you can edit your message" about a message they did not write. **The approved copy cannot
+> be pasted into that modal.** Two MRs that tried to polish the superseded wording
+> (`gopher-mobile-gopher-capacitorjs!235`, `gopher-mobile-requester-capacitorjs!225`) were
+> **closed** for this reason, not merged and not retargeted.
+>
+> **Root cause:** the two halves were built to different models — web/prototypes run the
+> client guard **pre-send** (decision point: Edit / Send as-is, recipient gets a bubble note),
+> while the mobile client was built against the backend's **post-write** scoring (notice after
+> delivery, modal to both parties). Same feature, two products.
+>
+> **What is correct and stays:** the backend flag row and the `admin@` email match this spec.
+> Only the notification UX diverges.
+>
+> **What the correct implementation needs when it is built:** the pre-send guard in both apps,
+> the Edit / Send-as-is pair, and the recipient note rendered from a **persisted `flagged`
+> field on the message row** — which this doc already specifies ("the send endpoint persists
+> `flagged` on the message row") and which has never been built. `orders_faqs_flags` keys a
+> flag to an ORDER (`order_id`/`from_user_id`/`to_user_id`/`description`), not to a message,
+> so a per-message stamp needs that schema change first.
+>
+> **Also parked (owner, same day):** storing the attempted message TEXT in the flag log.
+> Today's row records the verdict only — score, threshold, categories, combination, action,
+> order state — and **no content**, which is a deliberate privacy position. The owner asked
+> to hold it and will revisit. Logging abandoned attempts (the "sneaky editor" case) requires
+> both that decision and a pre-send report from the client.
+
+> **2026-07-19 update (owner):** the **conduct** family's warn levels 1–2 now
+> use the **same Edit message / Send as-is pair** as the off-platform alert —
+> the old single-button acknowledge ("Got It" → send unflagged) is retired.
+> A conduct **Send as-is delivers FLAGGED**, and the recipient sees the same
+> terms-violation note under the bubble as an off-platform flag (no new
+> format). Level 3 remains a hard block.
+
 ## Purpose
 
 Detect when an in-app message tries to push payment or communication **off
@@ -102,12 +155,22 @@ customer and customer → worker). The sender's own bubble shows no note (they
 already saw the alert). Production: the send endpoint persists `flagged` on the
 message row; every thread renderer shows the note on flagged incoming messages.
 
-**Connected relaxation (evaluation change, not just copy):** once the two
-parties are connected on a request, the **`contact` category is skipped
-entirely** (phone/email/call-me may be legitimate job coordination). Payment,
-off-platform, and conduct are ALWAYS checked. The server precheck must take a
-`connected` input (client passes it today as `guard(text, threadId,
-{connected})`) and mirror this.
+**Connected relaxation (evaluation change, not just copy — precise scope
+re-confirmed by John 2026-07-19):** once a worker has **accepted** the
+thread's job (assigned gopher, accepted offer, **accepted counter-offer**, in
+progress, or delivered), the **`contact` category is skipped entirely** —
+numbers, emails, contact ASKS, and **social handles** (added to the contact
+family 2026-07-19) may be legitimate post-acceptance coordination ("text
+760-905-xxxx when you arrive"). Payment and off-platform are ALWAYS checked
+("still fee circumvention even on an accepted job"), and conduct is
+UNCONDITIONAL ("bad language isn't allowed, period" — John). The server
+precheck must take a `connected` input (client passes it today as
+`guard(text, threadId, {connected})`) and mirror this. The Dashboard's
+Message Review queue already implements the identical rule
+(`context_rules.contact_on_connected_order` in `moderation_rules.json`,
+`iaContactOnConnected` in `app_part4.js`) — note its acceptance evidence
+includes accepted `Gopher_Offers` and `Counter_Offer` rows even when the
+order row still reads pending; production must match that nuance.
 
 **Requests for contact info count too (John, 2026-07-16: TOP red flag).**
 "What is your number?" pre-connection is exactly the circumvention signal the
@@ -126,9 +189,14 @@ admin@ email + account flag fire at level ≥ 2 (`CONFIG.adminAlertAtLevel`);
 level 1 stays a silent nudge. The level no longer changes the off-platform
 UX — it drives the admin/flag pipeline.
 
-**Conduct family (unchanged):** foul/abusive/threatening language keeps the
-original 3-level ladder — warn → warn → block at level 3 (`CONFIG.blockAtLevel`)
-with respectful-tone copy — and is **never relaxed by connection state**.
+**Conduct family (revised 2026-07-19):** foul/abusive/threatening language
+keeps the 3-level ladder of copy — warn → warn → block at level 3
+(`CONFIG.blockAtLevel`), respectful tone, **never relaxed by connection
+state** — but warn levels 1–2 now present the same **Edit message** (green,
+holds) / **Send as-is** (blue pulsing, delivers `flagged: true`) pair as the
+off-platform alert, with the guidelines link underneath. A flagged conduct
+message shows the recipient the standard terms-violation note. Only level 3
+still refuses to deliver.
 
 ---
 
@@ -202,9 +270,11 @@ into the shipped tree for the shared module via `../Final/assets/js/…`.
 
 Each top-level page wraps its send with `window.GopherMessageGuard` present-check
 and **fails open** (sends normally) if the module didn't load — mirroring the
-age-restricted backstop's fail-safe style. Clean messages send unchanged; warns
-send once acknowledged; a level-3 block holds the message and leaves the text in
-the box.
+age-restricted backstop's fail-safe style. Clean messages send unchanged; on
+any warn the user chooses **Edit message** (held; text stays in the box) or
+**Send as-is** (delivers flagged — `onAllow(res)` receives the verdict, and
+the surface stores the flag so the recipient renderer shows the
+terms-violation note); a conduct level-3 block holds the message outright.
 
 ### The Request prototype is special (srcdoc iframe)
 

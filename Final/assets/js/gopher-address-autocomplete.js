@@ -114,7 +114,7 @@
     if (document.getElementById('gac-style')) return;
     var s = document.createElement('style'); s.id = 'gac-style';
     s.textContent =
-      '.gac-pred{position:fixed;z-index:2147483000;background:#fff;border:1px solid #e3e8ef;border-radius:12px;'+
+      '.gac-pred{position:absolute;z-index:2147483000;background:#fff;border:1px solid #e3e8ef;border-radius:12px;'+
       'box-shadow:0 12px 30px rgba(13,26,62,.2);padding:5px;max-height:260px;overflow:auto;}'+
       '.gac-pred-row{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 11px;'+
       'border-radius:8px;font-family:inherit;font-size:13px;color:#2b2f36;cursor:pointer;white-space:nowrap;'+
@@ -137,9 +137,20 @@
   }
   function place(input){
     if (!_predEl) return;
+    /* ABSOLUTE in PAGE coordinates, not fixed in viewport coordinates
+       (2026-08-14, owner's iPhone repro). position:fixed pins to the LAYOUT
+       viewport, but when the mobile keyboard opens, iOS Safari pans the VISUAL
+       viewport — so a fixed box placed at getBoundingClientRect() renders far
+       from the input the user is actually looking at (it appeared ~300px above
+       the Destination field, over a different section). Absolute + scroll
+       offsets keeps the box glued to the input in page flow no matter how the
+       visual viewport pans. The capture-phase scroll listener below still
+       repositions when an INNER container scrolls. */
     var r = input.getBoundingClientRect();
-    _predEl.style.left = Math.round(r.left) + 'px';
-    _predEl.style.top = Math.round(r.bottom + 4) + 'px';
+    var sx = window.scrollX || window.pageXOffset || 0;
+    var sy = window.scrollY || window.pageYOffset || 0;
+    _predEl.style.left = Math.round(r.left + sx) + 'px';
+    _predEl.style.top = Math.round(r.bottom + 4 + sy) + 'px';
     _predEl.style.width = Math.round(r.width) + 'px';
   }
 
@@ -196,6 +207,11 @@
   // reposition on scroll/resize while a dropdown is open
   window.addEventListener('scroll', function(){ if (_predEl && _activeInput) place(_activeInput); }, true);
   window.addEventListener('resize', function(){ if (_predEl && _activeInput) place(_activeInput); });
+  /* The keyboard opening/closing fires visualViewport resize, not window resize. */
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', function(){ if (_predEl && _activeInput) place(_activeInput); });
+    window.visualViewport.addEventListener('scroll', function(){ if (_predEl && _activeInput) place(_activeInput); });
+  }
   // dismiss on outside click
   document.addEventListener('mousedown', function(e){
     if (_predEl && !_predEl.contains(e.target) && e.target !== _activeInput) hidePred();

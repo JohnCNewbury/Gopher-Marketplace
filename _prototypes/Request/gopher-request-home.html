@@ -15,11 +15,36 @@
 <!-- G40-35 shared in-app messaging guard — same module as the Go prototype + site surfaces,
      so the moderation lexicon + the transaction-protection alert are tuned in ONE file. -->
 <script src="../../Final/assets/js/gopher-message-guard.js"></script>
+<!-- Inbox delete (Jira G40-100). This app has NO conversation list — tapping Inbox
+     opens a single thread — so the web portals' row-level swipe has nothing to bind
+     to. Owner 7/28 ruled delete works on the MESSAGE here, "typical mobile text
+     style". Owner 8/5 ruled the flow is the SAME TWO-STAGE MODEL as the web
+     portals (the prototype mirrors how the shipping apps will behave): swipe-delete
+     SOFT-deletes the message into a Deleted segment of the thread (90-day purge
+     note), and only a delete from THERE is permanent + confirmed. The shared module
+     supplies confirmPermanent() / PURGE_DAYS / isPurged, so the destructive wording
+     and the purge window are byte-identical to the four web portals and cannot
+     drift; the stylesheet comes with it for that overlay + the tab/note chrome. -->
+<link rel="stylesheet" href="../../Final/assets/css/gopher-inbox-delete.css">
+<script src="../../Final/assets/js/gopher-inbox-delete.js"></script>
 <style>
-:root{
+/* Message-level swipe-to-delete. The bubble slides left to reveal Delete; only one
+   message stays open at a time, matching the shared module's row behaviour.
+   .itmsg-deleted dims a soft-deleted bubble in the Deleted segment. */
+.itmsg{position:relative;overflow:hidden;}
+.itmsg-slide{transition:transform .16s ease;}
+.itmsg.itmsg-open .itmsg-slide{transform:translateX(-76px);}
+.itmsg.itmsg-deleted .itmsg-slide{opacity:.55;}
+.itmsg-del{position:absolute;top:0;right:0;height:100%;width:72px;border:0;border-radius:12px;
+  background:#C44257;color:#fff;font-family:Nunito,sans-serif;font-weight:800;font-size:12px;
+  cursor:pointer;opacity:0;pointer-events:none;transition:opacity .16s ease;}
+.itmsg.itmsg-open .itmsg-del{opacity:1;pointer-events:auto;}
+</style>
+<style>
+:root{ --radius-pill:99px; --radius-card:16px; --radius-md:12px; --radius-sm:8px; --font-heading:'Nunito'; --font-body:'DM Sans'; --font-script:'Caveat';  --border:#EDF0F5; --warning:#FFDE00; --terra:#C8623C; --aqua:#87F7BD; 
   --green:#1CB061; --green-bright:#33D975; --green-dark:#1CB061; --green-light:#e2f3e9; --green-tint:#E8F5EE;
   --navy:#002461; --ink:#002461; --ink-soft:#3A4D74; --navy-mid:#1a3a7a; --navy-light:#eef0f8;
-  --paper:#FBF7EF; --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
+  --paper:#FBF7EF;--shadow-sheet:0 -10px 40px rgba(0,0,0,.25); --card:#fff; --sand:#FBF3E4; --muted:#8C8675; --muted-cool:#6b7280;
   --terracotta:#D97757; --warning-text:#92580D; --error:#C44257; --cornflower:#BADBFC;
   --line:#EAE3D5; --line-cool:#E3E7EF; --navy-bar:#03143A;
   --z-jobs:#EEF7F1; --z-deals:#F3F5F8; --z-tools:#EDF1F8; --z-acct:#E9F1FC; --z-perks:#FBF1E8;
@@ -28,15 +53,24 @@
   --over-sh:0 16px 40px -10px rgba(0,36,97,.3);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Form controls do NOT inherit font — the UA stylesheet pins them to Arial 13.3333px.
+   Measured 2026-08-02 across all 44 rendered screens: every element painting a non-brand
+   font was a form control or a descendant of one. One rule fixes all of them; 36 per-
+   component selectors would miss the next new button. font-weight deliberately NOT reset
+   — buttons that look bold declare their own, and `font:inherit` would flatten them. */
+button,input,select,textarea{font-family:inherit;font-size:inherit;}
+
 body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif;color:var(--ink);
   display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px;line-height:1.5;}
 #phone{position:relative;width:390px;max-width:100%;height:844px;max-height:calc(100vh - 40px);
   background:var(--paper);border-radius:42px;overflow:hidden;overflow:clip;
   box-shadow:0 30px 80px -20px rgba(0,36,97,.45),0 0 0 11px #0a1730,0 0 0 13px #1f2c44;display:flex;flex-direction:column;}
-.status-bar{flex:0 0 auto;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;
+/* Match the Go phone's status bar (its .sb: 34px tall, 22px side padding) so the two phones read
+   as a consistent device pair. Keeps the crisp SVG signal/wifi/battery icons. */
+.status-bar{flex:0 0 auto;height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;
   font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);background:var(--paper);}
 .sb-right{display:flex;gap:6px;align-items:center;}
-.sb-right svg{width:16px;height:16px;}
+.sb-right svg{width:17px;height:17px;}
 #scroll{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--paper);padding-bottom:92px;}
 #scroll::-webkit-scrollbar{width:0;}
 
@@ -118,6 +152,8 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .gph-hire{font-family:'Nunito';font-weight:800;font-size:11px;color:var(--navy);background:var(--green-bright);border:none;padding:7px 14px;border-radius:99px;cursor:pointer;flex:0 0 auto;}
 .rc-choose{width:100%;margin-top:12px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:11px;border-radius:12px;cursor:pointer;}
 .rc-view{width:100%;margin-top:13px;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#fff;background:var(--navy);border:none;padding:12px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+.rc-alt{margin-top:8px;background:#fff;border:1.5px solid var(--line);color:var(--navy);}
+.rc-alt:hover{background:#f7f9fc;}
 .rc-view:active{transform:scale(.99);}
 .rc-view.urgent{background:#C44257;box-shadow:0 8px 20px -8px rgba(196,66,87,.65);}
 .rc-view.rate{background:#1CB061;animation:ratePulse 1.5s ease-in-out infinite;}
@@ -174,9 +210,19 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 
 /* ── Deals (Go-modeled: deals wordmark + Sponsored + Caveat tagline + Featured) ── */
 .deals-head{position:relative;margin-bottom:14px;}
-.deals-viewall{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:11px;padding:12px;border:1.5px solid #cfe0d3;background:#fff;color:var(--green-dark,#0a7d44);border-radius:13px;font-family:'Nunito';font-weight:800;font-size:13.5px;cursor:pointer;}
+/* EXACT replica of the web Deals button (owner, 2026-08-09).
+   The live element carries TWO classes — `dh-viewall-link dh-viewall-hero` — and an earlier pass
+   styled from the BASE class only, producing a pale-green PILL. Wrong twice over: the `-hero`
+   override is what actually renders, and pill shapes are not used for buttons on this brand.
+   The rule below is `.dh-viewall-link` + `.dh-viewall-hero` composed, copied from
+   Final/gopher-connect.html (byte-identical in Final/gopher-request.html): cream 160deg gradient,
+   #EAD9B6 hairline, 14px radius, the `0 12px 26px rgba(0,36,97,.10)` lift — the "shadow of
+   variance" — green #1a9d4b ink, Nunito 800 15px, 12px/34px padding, 16px chevron.
+   Only the outer margin is local, positioning it under the rail on a phone. */
+.deals-viewall{display:inline-flex;align-items:center;gap:8px;margin-top:11px;padding:12px 34px;border:1px solid #EAD9B6;border-radius:14px;background:linear-gradient(160deg,#FFFDF8 0%, #FBF3E4 58%, #F6E9D0 100%);box-shadow:0 12px 26px rgba(0,36,97,.10);color:#1a9d4b;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .15s ease, transform .15s ease;}
+.deals-viewall:hover{background:linear-gradient(160deg,#FBF3E4 0%, #F6E9D0 100%);border-color:#1CB061;transform:translateY(-1px);}
 .deals-viewall:active{transform:scale(.99);}
-.deals-viewall .dva-arrow{font-weight:900;}
+.deals-viewall svg{width:16px;height:16px;flex:0 0 auto;}
 .deals-logo{display:flex;align-items:center;gap:4px;font-family:'Nunito';font-weight:900;font-size:22px;color:var(--green-dark);letter-spacing:-.5px;}
 .deals-logo-img{height:26px;width:auto;display:block;}
 .deals-logo .leaf{width:22px;height:22px;}
@@ -368,10 +414,44 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 /* ── Go-replicated functional sheets / modal / social ── */
 .gov{position:absolute;inset:0;background:rgba(0,18,49,.5);display:flex;align-items:flex-end;justify-content:center;z-index:60;}
 .gov.mid{align-items:center;padding:24px;}
-.gsheet{background:var(--paper);width:100%;max-height:86%;overflow:auto;border-radius:22px 22px 0 0;padding:18px 20px 26px;}
+.sheet{background:var(--paper);width:100%;max-height:88%;overflow:auto;border-radius:26px 26px 0 0;padding:22px 20px 26px;box-shadow:var(--shadow-sheet);}
 .gmodal{background:#fff;width:100%;max-width:300px;border-radius:20px;padding:22px;}
 .gs-h{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:18px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
 .gs-x{font-size:21px;color:var(--muted-cool);cursor:pointer;line-height:1;}
+/* Full-page screen shell (gPage) — values mirrored from the Go app's .hc-top / .hc-bk / .hc-top h1
+   so Help Center and FAQs are the same screen on both apps. */
+.gpg-top{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:10px 20px 4px;}
+.gpg-bk{width:34px;height:34px;border-radius:11px;border:1px solid #e7e2d3;background:#fff;display:flex;align-items:center;justify-content:center;color:#3A4D74;font-size:18px;cursor:pointer;flex:0 0 auto;}
+.gpg-top h1{font-family:'Nunito';font-weight:900;font-size:20px;color:var(--navy);margin:0;}
+.gpg-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;}
+.gpg-intro{padding:2px 20px 6px;font-size:12.5px;color:#6B7280;font-family:'Nunito';font-weight:600;line-height:1.45;}
+.gpg-cards{padding:8px 20px 18px;display:flex;flex-direction:column;gap:10px;}
+.gpg-card{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:15px 16px;cursor:pointer;}
+/* 101-guide Back pill — values copied from the Go app's injected #appBack so both 101 guides carry
+   the same floating control. `absolute` (not Go's `fixed`): this lives in the .r101ov overlay, which
+   is already inset:0 of #phone, and fixed would resolve against the viewport in the split-screen. */
+.r101-bk{position:absolute;left:16px;bottom:22px;z-index:60;display:inline-flex;align-items:center;gap:4px;
+  height:44px;padding:0 18px 0 13px;border:none;border-radius:999px;background:#2a3654;color:#fff;
+  font-family:'Nunito',-apple-system,sans-serif;font-weight:800;font-size:14px;cursor:pointer;
+  box-shadow:0 8px 24px rgba(0,36,97,.4);}
+.r101-bk:active{transform:scale(.96);}
+/* Contact Us page (cu-) — mirrored from the Go app's Contact Us so it renders identically. */
+.cu-ic{width:40px;height:40px;border-radius:11px;background:#E9F1FC;color:#002461;font-family:'Nunito';font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.cu-tx{flex:1;}
+.cu-n{display:block;font-family:'Nunito';font-weight:900;font-size:14.5px;color:var(--navy);}
+.cu-s{display:block;font-size:12px;color:#6B7280;margin-top:2px;font-family:'Nunito';font-weight:600;}
+.cu-cv{color:#8C8675;font-family:'Nunito';font-weight:900;font-size:18px;flex:0 0 auto;}
+.cu-sec{font-family:'Nunito';font-weight:900;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8C8675;margin:20px 20px 0;}
+.cu-form{margin:8px 20px 18px;background:#fff;border:1px solid #e7e2d3;border-radius:16px;padding:16px;}
+.cu-fl{display:block;font-family:'Nunito';font-weight:800;font-size:12px;color:#3A4D74;margin:2px 0 6px;}
+.cu-inp{width:100%;border:1px solid #e7e2d3;border-radius:11px;padding:11px 12px;font-family:'Nunito';font-weight:600;font-size:13px;color:var(--navy);background:var(--paper,#FBF7EF);outline:none;margin-bottom:12px;box-sizing:border-box;}
+.cu-ta{min-height:92px;resize:vertical;}
+.cu-send{width:100%;border:none;background:var(--navy,#002461);color:#fff;font-family:'Nunito';font-weight:900;font-size:14px;padding:13px;border-radius:13px;cursor:pointer;}
+.cu-note{font-size:11px;color:#8C8675;font-family:'Nunito';font-weight:600;margin-top:10px;line-height:1.4;}
+/* The .rfq-*/.riq-* blocks size themselves with `margin:… 0 0` and no horizontal padding — they
+   inherited it from .sheet's padding. .gpg-body has none (its cards pad themselves, as on Go), so
+   page-hosted content that relied on the sheet gutter gets it back here. */
+.gpg-pad{padding:6px 20px 20px;}
 .gm-h{font-family:'Nunito';font-weight:900;color:var(--navy);font-size:17px;margin-bottom:8px;}
 .gs-sub{font-size:13px;color:var(--body);line-height:1.5;}
 .gm-p{font-size:13px;color:var(--body);line-height:1.55;margin-bottom:14px;}
@@ -389,15 +469,41 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
 .faq-a{font-family:'DM Sans';font-weight:400;color:var(--body);margin-top:7px;line-height:1.5;display:none;}
 .faq.open .faq-a{display:block;}
 .gs-hint{font-size:11.5px;color:var(--muted-cool);margin-top:14px;text-align:center;}
+/* Request FAQ — models the Gopher Go FAQ screen (hero + iQ pill + category tabs). Prefixed
+   rfq-/riq- so it never collides with the request app's own .iq-* home-search classes. */
+.rfq-hero{text-align:center;padding:2px 2px 4px;}
+.rfq-eye{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#1CB061;}
+.rfq-h{font-family:'Nunito';font-weight:900;font-size:22px;color:var(--navy);margin:4px 0 14px;}
+.riq-pill{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #cfd9ea;border-radius:999px;padding:7px 8px;box-shadow:0 8px 22px rgba(0,36,97,.10);}
+.riq-badge{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#33D975,#1CB061);color:#002461;font-family:'Nunito';font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;letter-spacing:-.5px;}
+.riq-in{flex:1;border:none;outline:none;background:none;font-family:'Nunito';font-weight:600;font-size:13.5px;color:var(--navy);}
+.riq-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
+.riq-hint{display:flex;align-items:center;justify-content:center;gap:6px;font-family:'DM Sans';font-size:11px;color:var(--muted-cool);margin-top:9px;}
+.riq-ans{margin:12px 0 0;}
+.riq-card{background:#F2FBF6;border:1px solid #bfe6cf;border-radius:16px;padding:14px 15px;}
+.riq-lab{font-family:'Nunito';font-weight:900;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#1CB061;margin-bottom:7px;}
+.riq-hit.more{margin-top:12px;padding-top:12px;border-top:1px solid #cfeadd;}
+.riq-q{font-family:'Nunito';font-weight:900;font-size:13.5px;color:var(--navy);}
+.riq-aa{font-size:12.5px;color:#3A4D74;line-height:1.55;margin-top:3px;}
+.rfq-tabs{display:flex;gap:8px;margin:16px 0 0;}
+.rfq-tab{flex:1;text-align:center;padding:9px 4px;border-radius:999px;border:1px solid var(--line);background:#fff;font-family:'Nunito';font-weight:800;font-size:12.5px;color:#6B7280;cursor:pointer;}
+.rfq-tab.on{background:#1CB061;border-color:#1CB061;color:#fff;}
+.rfq-list{margin:12px 0 0;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+.rfq-item{border-bottom:1px solid #f0eadd;}
+.rfq-item:last-child{border-bottom:none;}
+.rfq-fq{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 15px;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);cursor:pointer;line-height:1.3;}
+.rfq-cv{color:#1CB061;font-size:17px;flex:0 0 auto;}
+.rfq-fa{padding:0 15px 14px;font-size:12.5px;color:#3A4D74;line-height:1.55;}
+.rfq-help{text-align:center;margin:16px 0 4px;font-size:12px;color:#6B7280;font-family:'Nunito';font-weight:700;}
+.rfq-link{color:#1CB061;font-weight:900;cursor:pointer;}
 .pts-hero{background:linear-gradient(135deg,var(--green-bright),var(--green-dark));border-radius:16px;padding:18px;text-align:center;color:#fff;}
 .pts-n{font-family:'Nunito';font-weight:900;font-size:34px;line-height:1;}.pts-l{font-size:12px;opacity:.92;margin-top:4px;}
-.iq-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin:10px 0;}
-.iq-b{font-family:'Nunito';font-weight:900;font-size:11px;color:#fff;background:var(--green-dark);border-radius:7px;padding:3px 6px;}
-.iq-ask{flex:1;border:none;outline:none;font-family:'DM Sans';font-size:13px;background:none;}
-.iq-send{border:none;background:none;font-size:18px;color:var(--green-dark);cursor:pointer;}
-.iq-ans{background:var(--green-tint);border:1px solid #bfe6cf;border-radius:12px;padding:11px 13px;font-size:12.5px;color:var(--navy);line-height:1.5;margin-bottom:10px;}
-.iq-ctas{display:flex;flex-direction:column;gap:8px;}
-.iq-cta{text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);cursor:pointer;}
+/* Quick-action grid for the Gopher iQ modal — 2-up, mirroring Go's .iqm-ctas/.iqm-cta so both
+   apps' assistants read identically. (The old .iq-row/.iq-b/.iq-ask/.iq-send/.iq-ans/.iq-ctas/
+   .iq-cta sheet styles were retired with the bottom-sheet iQ; the modal reuses riq-* instead.) */
+.riq-ctas{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px;}
+.riq-cta{height:40px;padding:0 6px;border-radius:11px;background:#F4F7FC;border:1px solid #dfe6f2;color:var(--navy);font-family:'Nunito';font-weight:800;font-size:11.5px;cursor:pointer;}
+.riq-cta:active{transform:scale(.98);}
 .soc{display:flex;align-items:center;gap:11px;text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-family:'Nunito';font-weight:800;font-size:13px;color:var(--navy);margin-bottom:8px;}
 .soc .sd{width:30px;height:30px;border-radius:8px;background:var(--c);display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;}
 .soc .sd svg{width:18px;height:18px;}
@@ -487,7 +593,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
         <span class="chev">›</span>
       </div>
       <div class="rail" id="dealsRail"></div>
-      <button class="deals-viewall" data-viewall>View all local Deals <span class="dva-arrow">→</span></button>
+      <button class="deals-viewall" data-viewall>View all local Deals <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
     </div>
 
     <!-- PERKS -->
@@ -530,7 +636,7 @@ body{background:#dfe4ec;font-family:'DM Sans',-apple-system,system-ui,sans-serif
         </div>
         <div class="tool-row" data-goto="history">
           <span class="tri"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M14 4v5h5"/><path d="M8 13h7M8 16h7"/></svg></span>
-          <span class="trt"><div class="h">Request history</div><div class="s">12 completed · reorder in one tap</div></span>
+          <span class="trt"><div class="h">Previous requests</div><div class="s">12 completed · reorder in one tap</div></span>
           <span class="chev">›</span>
         </div>
       </div>
@@ -851,7 +957,14 @@ document.addEventListener('click',(e)=>{
 window.__tierBadge=function(t,proCred){t=String(t==null?'standard':t).toLowerCase();var eP=t==='elite+',e=t==='elite';var tx=(eP||e)?'elite':'standard';var cls=(eP||e)?'':' tier-standard';var h='<span class="gopher-badge'+cls+'">'+tx+(eP?'<span class="gb-plus">+</span>':'')+'</span>';if(proCred)h+='<span class="gopher-badge cred-pro">pro</span>';return h;};
 /* Multi-request store (BACKEND SEAM: real persistence/matching/timers later) */
 window.GReq = window.GReq || (function(){
-var KEY='gopher_requests';
+// Store is NAMESPACED BY MODE. Previously both modes shared 'gopher_requests', and all()
+// returns a cached array without ever consulting ptEmpty() \u2014 the PT gate only guarded
+// seed(), the fallback. So a standalone visit cached the demo seed, and the split screen
+// loaded in the SAME TAB (sessionStorage is per-tab, and the iframes share the parent's)
+// re-served it: the requester showed Active(2)+Scheduled(1) while Go showed 0/0/0 with
+// 'No local jobs yet'. One shared store, two phones disagreeing \u2014 impossible by design,
+// reachable in two clicks. Separate keys make the contamination unexpressible, both ways.
+var KEY = ptEmpty() ? 'gopher_requests_pt' : 'gopher_requests';
 // PT (split-screen) mode: start with NO pending requests. Sticky via sessionStorage so it
 // survives home↔flow navigation. Standalone default (no ?pt) keeps the demo seed.
 function ptEmpty(){ try{ if(new URLSearchParams(location.search).get('pt')==='1'){ sessionStorage.setItem('gopher_pt','1'); return true; } return sessionStorage.getItem('gopher_pt')==='1'; }catch(_){ return false; } }
@@ -881,8 +994,24 @@ const pgInits=s=>String(s).split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toU
 const CATLABEL={delivery:'Delivery',home:'Home Services',junk:'Junk Removal',moving:'Moving',labor:'Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Other'};
 var PEND=null, acceptTimer=null;
 var uiBucket='active', uiIdx=0; var BLABEL={active:'Active',scheduled:'Scheduled',submitted:'Submitted'};
-function statusBucket(r){ if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — cleared from home, lives in Request history
-  if(r.scheduledForLater||r.stage==='scheduled') return 'scheduled'; if(r.stage==='searching'||r.stage==='pending') return 'submitted'; return 'active'; }
+function statusBucket(r){
+    if(r.cancelled||r.substage==='rated'||r.noShow) return 'done';   // terminal — lives in Previous requests
+    /* ACCEPTANCE IS THE GATE (owner ruling 2026-08-21). Active and Scheduled are ONLY
+       occupied once a Gopher has ACCEPTED. Until then a request sits in Submitted no
+       matter how it was timed — Need-ASAP and exact-time bookings alike.
+       The bug this replaces: `scheduledForLater` is stamped at SUBMIT time, and it was
+       tested BEFORE any acceptance check, so a scheduled request nobody had taken yet
+       showed up under Scheduled and was missing from Submitted. */
+    var isAccepted = !!r.hired || r.accepted>=1 ||
+                     r.stage==='accepted' || r.stage==='matched' || r.stage==='active';
+    if(!isAccepted) return 'submitted';
+    /* Accepted. Started work -> Active; an accepted booking still waiting for its
+       date -> Scheduled. `substage` is the worker's progress (in-progress, purchased,
+       picked-up, completed), so any substage means it has started. */
+    var hasStarted = r.stage==='active' || !!r.substage;
+    if((r.scheduledForLater || r.stage==='scheduled') && !hasStarted) return 'scheduled';
+    return 'active';
+  }
 if(window.GReq) GReq.statusBucket=statusBucket;
 function bucketList(b){ return GReq.all().filter(function(r){return statusBucket(r)===b;}); }
 function statusText(r){
@@ -898,6 +1027,10 @@ function statusText(r){
   if(_lf>0) return '⏳ <b>'+_wn+' is at the drop-off waiting</b> · '+Math.floor(_lf/60)+':'+('0'+(_lf%60)).slice(-2)+' left to verify your ID';
   return '<span class="attn-ic">⚠</span><b>ID window expired</b> · '+_wn+' may report a No Show';
  }
+ // Turn-by-turn nav (live-app parity): the worker navigating in their maps app NEVER interrupts
+ // the location feed — the card says so explicitly so the requester knows tracking is still live.
+ if(r.stage==='active' && r.navTo && r.substage!=='completed' && r.substage!=='rated' && !r.noShow)
+  return '🧭 <b>'+(r.hired||'Your Gopher')+' is navigating to the '+String(r.navTo).toLowerCase()+'</b> · live location on';
  if(r.stage==='matched') return 'Matched with <b>'+(r.hired||'a Gopher')+'</b> · arriving ~12 min';
  if(r.stage==='active' && r.substage){
   var _who=r.hired||'your Gopher';
@@ -908,9 +1041,28 @@ function statusText(r){
            rated:'⭐ <b>Rated</b> · thanks for your feedback' };
   if(_S[r.substage]) return _S[r.substage];
  }
- if(r.stage==='active') return '<b>Job in progress</b> · your crew is on it';
- if(r.stage==='scheduled') return 'Scheduled · '+(r.when||'booked for later');
+ if(r.stage==='active'){
+  // A scheduled / flexible request that's been approved but not yet started must keep its timing
+  // visible — otherwise the requester loses track of WHEN it's happening (r.when gets overwritten to
+  // "Accepted…" on hire; r.timingLabel survives).
+  // Requires TWO positive signals, because `asap` is only set by the flow's buildPending — seeded,
+  // injected and reposted records leave it undefined, and a bare `!r.asap` was labelling genuine
+  // "Need ASAP" requests as Scheduled. The label itself must also read as a real schedule.
+  var _tl=String(r.timingLabel||'');
+  var _looksAsap=(!_tl || /asap|matching now/i.test(_tl));
+  if(!r.asap && !_looksAsap && !r.substage) return '📅 <b>Scheduled</b> · '+_tl+' · '+(r.hired||'your Gopher')+' hired';
+  return '<b>Job in progress</b> · your crew is on it';
+ }
+ if(r.stage==='scheduled') return 'Scheduled · '+(r.timingLabel||r.when||'booked for later');
  if(r.stage==='accepted'){ var n=r.accepted||0; return '<b>'+n+' Gopher'+(n!==1?'s':'')+'</b> accepted — ready to review'; }
+ /* COMPLETED. There was no branch for it, so a finished job fell through to the
+    broadcasting copy at the bottom of this function and told the requester we
+    were still "Finding Gophers near you..." - while the web pane showed it
+    complete and the Gopher's phone showed it awaiting confirmation. The most
+    misleading default that fallback could have had. */
+ if(r.stage==='completed') return r.confirmed
+   ? '<b>Completed</b> · confirmed'
+   : '<b>Completed</b> · confirm to release payment';
  // Submitted (broadcasting) — Need ASAP requests carry the 1-hour expiry ON the card so the
  // window is evident without opening details.
  if((r.stage==='searching'||r.stage==='pending') && r.asap && r.submittedAt){
@@ -929,7 +1081,7 @@ function cardHTML(r){
   ? (attn.type==='counter'
      ? '<button class="rc-view urgent" data-pending-action="counter" data-order="'+r.order+'">Review now →</button>'
      : attn.type==='bid'
-       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+' bids · Review →'):'Review bid →')+'</button>'
+       ? '<button class="rc-view urgent" data-pending-action="bid" data-order="'+r.order+'">'+((attn.count||1)>1?(attn.count+(r.bids?' bids · Review →':' accepted · Review →')):(r.bids?'Review bid →':'Review & approve →'))+'</button>'
        : attn.type==='rate'
        ? '<button class="rc-view rate" data-pending-action="rate" data-order="'+r.order+'">Rate now →</button>'
        : attn.type==='confirm'
@@ -945,16 +1097,24 @@ function cardHTML(r){
   +'<div class="rc-tx"><div class="rc-title">'+r.title+'</div><div class="rc-sub">#'+r.order+' &middot; '+cat+'</div></div>'
   +(r.amount?'<span class="rc-amt">'+r.amount+'</span>':'')+'</div>'
   +'<div class="rc-status"><span class="rc-pulse'+(attn?' red':'')+'"></span><span class="rc-status-tx">'+statusText(r)+'</span></div>'
-  +btn+'</div>';
+  +btn
+  /* An attention CTA REPLACED "View details", and the cancel/edit affordance lives inside that
+     sheet — so once a Gopher accepted, the requester's only moves were Hire / Considering / Deny.
+     No way back, no way out. Owner 2026-07-21: "we have them trapped ... MAJOR regression".
+     The urgent CTA stays primary; this restores the route to details (and therefore to Cancel
+     request) beside it. Nothing about cancellation POLICY changes — __reqCancelAffordance already
+     allowed it in this state; it had simply become unreachable. */
+  +(attn ? '<button class="rc-view rc-alt" data-pending-action="view" data-order="'+r.order+'" data-reqdetails>View details &amp; options \u2192</button>' : '')
+  +'</div>';
 }
 function renderPending(){
- try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Request history counts in sync
+ try{ updateAccountLabels(); }catch(_){}   // keep MY Gophers / Previous requests counts in sync
  var slot=$('#hubSlot'); if(!slot) return;
  /* FIX: only a total of ZERO requests (across Active+Scheduled+Submitted) hides the whole
     multi-request block — no switcher, no card, no gap. A selected-but-empty bucket keeps the
     switcher (handled below). */
  // Hide the whole multi-request block when nothing is live in the three home buckets — a terminal
- // (rated / no-show) request has moved to Request history, so the home clears.
+ // (rated / no-show) request has moved to Previous requests, so the home clears.
  var _homeLive=bucketList('active').length+bucketList('scheduled').length+bucketList('submitted').length;
  if(!_homeLive){ slot.hidden=true; slot.innerHTML=''; PEND=null; try{window.__PEND=null;}catch(_){} return; }
  slot.hidden=false;
@@ -985,7 +1145,7 @@ function startAccepting(){
  clearTimeout(acceptTimer);
  var tick=function(){ var reqs=GReq.all(), changed=false;
   reqs.forEach(function(r){ if(r.stage==='searching'){ r.accepted=(r.accepted||0)+1;
-   if(r.accepted>=PENDING_GOPHERS.length){ r.stage='accepted'; if(!r.attention){ r.attention={type:'bid',label:'New bid from '+PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' — above your offer'}; } }
+   if(r.accepted>=PENDING_GOPHERS.length){ r.stage='accepted'; if(!r.attention){ r.attention={type:'bid',label:(r.bids?('New bid from '+PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' \u2014 above your offer'):(PENDING_GOPHERS[PENDING_GOPHERS.length-1].n+' accepted \u2014 approve to hire'))}; } }
    changed=true; } });
   if(changed){ GReq.save(reqs); renderPending(); }
   if(GReq.all().some(function(r){return r.stage==='searching';})) acceptTimer=setTimeout(tick,1000);
@@ -1009,7 +1169,8 @@ setInterval(function(){ try{
 document.addEventListener('click',function(e){
  var a=e.target.closest('[data-pending-action]'); if(!a) return;
  var act=a.dataset.pendingAction, order=a.getAttribute('data-order');
- if(act==='counter'){ if(order) openCounterReview(order); return; }
+ if(act==='report'){ if(order) openReqReport(order); return; }
+ else if(act==='counter'){ if(order) openCounterReview(order); return; }
  else if(act==='gcancel'){ if(order) openGopherCancelledSheet(order); return; }
  else if(act==='adjust'){ if(order) openAdjustReview(order); return; }
  else if(act==='bid'){ if(order) openBidsList(order); return; }
@@ -1034,8 +1195,30 @@ initPending();
 /* ===== Go-replicated functional features: iQ (CTAs), Rewards, Help, Social, Website, Blog, Terms ===== */
 function gClose(){ const o=$('#phone').querySelector('.gov'); if(o) o.remove(); }
 function gModal(html){ gClose(); const o=document.createElement('div'); o.className='gov mid'; o.innerHTML='<div class="gmodal">'+html+'</div>'; o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('.gm-close')) o.remove(); }); $('#phone').appendChild(o); return o; }
-function openTrustShield(){var L=(document.querySelector('.tslogo')||{}).src||'';gSheet('Gopher TrustShield™','<div style="text-align:center;margin:2px 0 6px;"><img src="'+L+'" alt="TrustShield" style="height:78px;width:auto;display:inline-block;"><div style="font-family:Fraunces,serif;font-weight:600;font-size:19px;color:var(--navy);margin-top:6px;line-height:1.2;">Verify once. Carry your badge.</div></div><p class="gs-sub" style="text-align:center;">A free, one-time identity check — powered by iDenfy — that earns you a TrustShield™ badge every Gopher can see.</p><div class="gs-sech">Why verify</div><div class="gs-list"><div class="gs-li"><b>Two-way trust.</b> Workers know you’re a real, verified neighbor — not just the other way around.</div><div class="gs-li"><b>Save on requests.</b> $1 off every age-restricted delivery &amp; ride request, applied automatically.</div><div class="gs-li"><b>Get picked faster.</b> Verified requests get accepted sooner.</div></div><div class="gs-sech">How it works</div><p class="gs-sub">Upload your ID, take a quick selfie, and submit — most people are approved within minutes, all inside the app.</p><button data-goto="trustverify" style="width:100%;margin-top:8px;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Verify with TrustShield →</button>');}function openTrustVerify(){gModal('<h3 class="gm-h">Verify your identity — securely</h3><p class="gm-p">Powered by <b>iDenfy</b>. Your ID and selfie are encrypted, used only for verification, and never sold or shared.</p><div class="gs-list" style="margin:10px 0;"><div class="gs-li">Secure &amp; encrypted</div><div class="gs-li">Never sold or shared</div><div class="gs-li">Used only for verification</div></div><button data-goto="trustgo" style="width:100%;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Agree &amp; continue securely</button><span class="gm-link" data-goto="trustcancel" style="display:block;text-align:center;margin-top:12px;">Not now</span>');}
-function gSheet(title,html){ gClose(); const o=document.createElement('div'); o.className='gov'; o.innerHTML='<div class="gsheet"><div class="gs-h">'+title+'<span class="gs-x">\u00D7</span></div>'+html+'</div>'; o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('.gs-x')) o.remove(); }); $('#phone').appendChild(o); return o; }
+function openTrustShield(){var L=(document.querySelector('.tslogo')||{}).src||'';gSheet('Gopher TrustShield™','<div style="text-align:center;margin:2px 0 6px;"><img src="'+L+'" alt="TrustShield" style="height:78px;width:auto;display:inline-block;"><div style="font-family:Fraunces,serif;font-weight:600;font-size:19px;color:var(--navy);margin-top:6px;line-height:1.2;">Verify once. Carry your badge.</div></div><p class="gs-sub" style="text-align:center;">A free, one-time identity check that earns you a TrustShield™ badge every Gopher can see.</p><div class="gs-sech">Why verify</div><div class="gs-list"><div class="gs-li"><b>Two-way trust.</b> Workers know you’re a real, verified neighbor — not just the other way around.</div><div class="gs-li"><b>Save on requests.</b> $1 off every age-restricted delivery &amp; ride request, applied automatically.</div><div class="gs-li"><b>Get picked faster.</b> Verified requests get accepted sooner.</div></div><div class="gs-sech">How it works</div><p class="gs-sub">Upload your ID, take a quick selfie, and submit — most people are approved within minutes, all inside the app.</p><button data-goto="trustverify" style="width:100%;margin-top:8px;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Verify with TrustShield →</button>');}function openTrustVerify(){gModal('<h3 class="gm-h">Verify your identity — securely</h3><p class="gm-p">Your ID and selfie are encrypted, used only for verification, and never sold or shared.</p><div class="gs-list" style="margin:10px 0;"><div class="gs-li">Secure &amp; encrypted</div><div class="gs-li">Never sold or shared</div><div class="gs-li">Used only for verification</div></div><button data-goto="trustgo" style="width:100%;padding:13px;border:none;border-radius:12px;background:var(--navy,#0b2e6f);color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;">Agree &amp; continue securely</button><span class="gm-link" data-goto="trustcancel" style="display:block;text-align:center;margin-top:12px;">Not now</span>');}
+function gSheet(title,html){ gClose(); const o=document.createElement('div'); o.className='gov'; o.innerHTML='<div class="sheet"><div class="gs-h">'+title+'<span class="gs-x">\u00D7</span></div>'+html+'</div>'; o.addEventListener('click',e=>{ if(e.target===o||e.target.closest('.gs-x')) o.remove(); }); $('#phone').appendChild(o); return o; }
+// gPage \u2014 FULL-PAGE in-phone screen, matching the Gopher Go app's page shell (its .hcbody/.hc-top/
+// .hc-bk, cream paper background, back chevron + title, scrolling body). Help Center and FAQs use
+// this instead of gSheet: on Go they are real screens, and as bottom sheets here they read as a
+// different product. Same overlay mechanics as openReq101's r101ov, so Back/nav behave as before.
+// Returns the overlay; query content out of `.gpg-body`.
+// `back` \u2014 optional opener for the PREVIOUS screen, matching Go's history stack (its back chevron
+// runs BACK(), so FAQs returns to Help Center rather than dumping you on Home). Omit for a
+// top-level screen, where back just closes.
+function gPage(title,html,back){
+  gClose(); const ph=$('#phone'); const o=document.createElement('div'); o.className='gov gpg';
+  // Anchor BELOW the phone's status bar, never over it. On Go these are real screens built as
+  // `<div class="frame">${SBAR}<div class="hcbody">…`, so the clock/battery row stays visible and
+  // the back chevron clears the notch. An `inset:0` overlay covered the status bar and pushed the
+  // chevron + title to the very top of the phone — the reported mismatch. Measured, not hardcoded,
+  // so it tracks .status-bar's height.
+  const _sb=ph&&ph.querySelector('.status-bar'); const _top=_sb?_sb.offsetHeight:34;
+  o.setAttribute('style','position:absolute;left:0;right:0;bottom:0;top:'+_top+'px;z-index:140;background:var(--paper,#FBF7EF);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;');
+  o.innerHTML='<div class="gpg-top"><span class="gpg-bk">\u2039</span><h1>'+title+'</h1></div>'
+    +'<div class="gpg-body">'+html+'</div>';
+  o.addEventListener('click',e=>{ if(e.target.closest('.gpg-bk')){ o.remove(); if(typeof back==='function') back(); } });
+  ph.appendChild(o); return o;
+}
 // Counter-offer review: a Gopher countered above your offer \u2014 Accept (hire at the new price) or Decline (stay open).
 function openCounterReview(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r||!r.attention||r.attention.type!=='counter') return;
@@ -1092,6 +1275,17 @@ function openCounterReview(order){
 var _bidSort='amount';
 function openBidsList(order){
   if(!window.GReq) return; var r=GReq.get(order); if(!r) return;
+  /* SET-PRICE vs BID (owner 2026-08-21). A worker ACCEPTING a set-price request is surfaced
+     through this same review-and-hire flow — right plumbing, wrong words: it read "Review bid",
+     "Bid amount", "Bid denied" on a request that never had bidding. r.bids is the request's own
+     payMode flag, so the copy follows the REQUEST rather than the attention type, which stays
+     'bid' so every downstream handler keeps working untouched. */
+  var _isBid = !!r.bids;
+  var W = _isBid
+    ? {amt:'Bid amount', unit:'bid', head:' bids \u2014 review & hire',
+       none:'All bids passed \u2014 request stays open', denied:'Bid denied'}
+    : {amt:'Their price', unit:'accepted', head:' accepted \u2014 review & hire',
+       none:'All applicants passed \u2014 request stays open', denied:'Acceptance declined'};
   var esc=function(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); };
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
   function sortList(list){ var l=list.slice();
@@ -1108,7 +1302,7 @@ function openBidsList(order){
         +'<div style="width:40px;height:40px;border-radius:50%;background:#002461;color:#fff;display:flex;align-items:center;justify-content:center;font-family:Nunito;font-weight:900;font-size:14px;flex:0 0 auto;">'+esc(initials)+'</div>'
         +'<div style="flex:1;min-width:0;"><div style="font-family:Nunito;font-weight:900;font-size:14px;color:#002461;">'+esc(b.by)+(considering?' <span style="font-size:10px;color:#1CB061;font-weight:800;">\u00b7 Considering</span>':'')+'</div>'
           +'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;">\u2605 '+esc(b.rating)+' \u00b7 '+(b.jobs||0)+' jobs \u00b7 '+esc(b.dist)+' away</div></div>'
-        +'<div style="text-align:right;flex:0 0 auto;"><div style="font-family:Nunito;font-weight:900;font-size:17px;color:#1CB061;">'+money(b.amt)+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:9.5px;color:#8a94a3;text-transform:uppercase;letter-spacing:.5px;">bid</div></div>'
+        +'<div style="text-align:right;flex:0 0 auto;"><div style="font-family:Nunito;font-weight:900;font-size:17px;color:#1CB061;">'+money(b.amt)+'</div><div style="font-family:\'DM Sans\',sans-serif;font-size:9.5px;color:#8a94a3;text-transform:uppercase;letter-spacing:.5px;">'+W.unit+'</div></div>'
       +'</div>'
       +'<div style="display:flex;gap:16px;margin:9px 0 2px;font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;"><span>Materials cost <b style="color:#002461;">'+money(b.cost)+'</b></span><span>Labor <b style="color:#002461;">'+money(b.labor)+'</b></span></div>'
       +(b.note?'<div style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#8a94a3;margin-bottom:4px;">\u201c'+esc(b.note)+'\u201d</div>':'')
@@ -1122,7 +1316,7 @@ function openBidsList(order){
   function renderBody(){
     var rr=GReq.get(order); var list=(rr&&rr.bidsList)||[];
     var active=sortList(list.filter(function(b){return b.status!=='denied';}));
-    var sorts=[['amount','Bid amount'],['distance','Distance'],['rating','Ratings'],['jobs','Total jobs']];
+    var sorts=[['amount',W.amt],['distance','Distance'],['rating','Ratings'],['jobs','Total jobs']];
     var tabs='<div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;">'+sorts.map(function(s){var on=_bidSort===s[0];return '<button class="bid-sort" data-bs="'+s[0]+'" style="flex:0 0 auto;border:1px solid '+(on?'#002461':'#e3ddcd')+';background:'+(on?'#002461':'#fff')+';color:'+(on?'#fff':'#002461')+';border-radius:99px;padding:6px 12px;font-family:Nunito;font-weight:800;font-size:11.5px;cursor:pointer;white-space:nowrap;">'+s[1]+'</button>';}).join('')+'</div>';
     var body=o.querySelector('#bidsBody'); if(!body) return;
     body.innerHTML='<div style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#5b6472;margin:-2px 0 8px;">'+esc(rr.title||'Request')+' \u00b7 #'+order+' \u00b7 <b>'+active.length+'</b> interested</div>'+tabs+active.map(bidRow).join('');
@@ -1142,9 +1336,9 @@ function openBidsList(order){
     if(act==='consider'){ b.status=(b.status==='considered'?'new':'considered'); GReq.update(order,{bidsList:list}); renderBody(); return; }
     if(act==='deny'){ b.status='denied'; GReq.update(order,{bidsList:list});
       var remaining=list.filter(function(x){return x.status!=='denied';});
-      if(!remaining.length){ GReq.update(order,{attention:null}); o.remove(); renderPending(); toast('All bids passed \u2014 request stays open'); return; }
-      GReq.update(order,{ attention:{type:'bid',label:remaining.length+' bids \u2014 review & hire',count:remaining.length} });
-      renderBody(); toast('Bid denied'); return; }
+      if(!remaining.length){ GReq.update(order,{attention:null}); o.remove(); renderPending(); toast(W.none); return; }
+      GReq.update(order,{ attention:{type:'bid',label:remaining.length+W.head,count:remaining.length} });
+      renderBody(); toast(W.denied); return; }
   }
   renderBody();
 }
@@ -1567,6 +1761,82 @@ function __reqCancelAffordance(r){
     return '<button data-pending-action="reqcancel" data-order="'+r.order+'" style="width:100%;margin-top:14px;padding:12px;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:12px;font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">Cancel request</button>';
   return '';
 }
+/* ── Report a request — prototype counterpart of the web build ──────────────
+   Owner directive 2026-09-01 (standing rule 12b): web and prototype move in the
+   SAME pass. This surface was the debt that rule created — the web Request build
+   got Report a day earlier and the prototype did not.
+
+   The taxonomy is VERBATIM from the live requester app
+   (gopher-mobile-request/src/component/getOrders.js — the Selectpopup list, both
+   copy paragraphs, and handleFlagReport's endpoint). Same six reasons, same
+   order, same wording as Final/gopher-request.html and Final/gopher-connect.html.
+
+   ⚠️ The sixth reason, "Violates Age-Restricted Policies", is on the REQUESTER'S
+   list and NOT the worker's. That asymmetry is upstream's and it is right: only
+   the person who placed the order knows the contents were misrepresented. Do not
+   "harmonise" the two lists.
+
+   It flags the ORDER, not a person — the same endpoint the worker app posts to.
+
+   ⚠️ Confirmation shown on submit. Upstream just closes the modal; all three of
+   our surfaces show a confirmation instead. Deliberate and named in
+   prototype-vs-live-findings.md — a safety report that vanishes silently gives
+   the reporter no reason to believe it went anywhere. */
+var REPORT_REASONS=['Inappropriate Request','Inappropriate Language','Inappropriate Picture',
+  'Request may be illegal/suspicious','Unsafe request/location','Violates Age-Restricted Policies'];
+
+function __reqReportAffordance(r){
+  if(!r || r.cancelled) return '';
+  return '<button data-pending-action="report" data-order="'+r.order+'" style="width:100%;margin-top:9px;'
+    +'padding:12px;border:1.5px solid #f0d5d8;background:#fff;color:#C44257;border-radius:12px;'
+    +'font-family:Nunito;font-weight:800;font-size:13px;cursor:pointer;">\u2691 Report a request</button>';
+}
+function openReqReport(order){
+  var r=GReq.get(order); if(!r) return;
+  var opts=REPORT_REASONS.map(function(t,i){
+    return '<button class="rep-opt" data-rep-i="'+i+'" style="text-align:left;width:100%;margin-top:8px;'
+      +'font-family:Nunito;font-weight:800;font-size:13px;color:#002461;background:#fff;'
+      +'border:1.5px solid #e7eaf2;border-radius:11px;padding:12px 14px;cursor:pointer;">'+__gcEsc(t)+'</button>';
+  }).join('');
+  var ov=gSheet('Report A Request',
+     '<div class="gs-b" id="repBody" style="padding:0 16px 18px;">'
+    +'<p class="gs-hint" style="margin-top:10px;">We strive to create a community of people who respect '
+    +'each other and feel they are in a safe environment. If you feel like one of the listings is of '
+    +'inappropriate nature, please use this page to report it.</p>'
+    +'<p class="gs-hint">Our team will be notified, and we will investigate the issue as soon as possible.</p>'
+    +opts
+    +'<button id="repSubmit" disabled style="width:100%;margin-top:14px;padding:13px;border:0;'
+    +'background:#1CB061;color:#fff;border-radius:12px;font-family:Nunito;font-weight:800;font-size:14px;'
+    +'cursor:pointer;opacity:.5;">Submit report</button></div>');
+  var picked=null;
+  ov.querySelectorAll('.rep-opt').forEach(function(b){
+    b.onclick=function(){
+      /* Single-select, matching upstream's Selectpopup: exactly one reason
+         leaves with the report, and Submit stays disabled until one is chosen —
+         an empty description reaches the admin panel as a flag nobody can action. */
+      ov.querySelectorAll('.rep-opt').forEach(function(x){ x.style.background='#fff'; x.style.borderColor='#e7eaf2'; x.style.color='#002461'; });
+      b.style.background='#E8F5EE'; b.style.borderColor='#1CB061'; b.style.color='#0a7d44';
+      picked=+b.getAttribute('data-rep-i');
+      var sb=ov.querySelector('#repSubmit'); if(sb){ sb.disabled=false; sb.style.opacity=''; }
+    };
+  });
+  var sub=ov.querySelector('#repSubmit');
+  if(sub) sub.onclick=function(){
+    if(picked==null) return;
+    /* BACKEND SEAM — the live requester app posts exactly this:
+          POST orders/<id>/flag { description }   (getOrders.js handleFlagReport) */
+    GReq.update(order,{ flagReport:{ reason:REPORT_REASONS[picked], at:Date.now() } });
+    var body=ov.querySelector('#repBody');
+    if(body) body.innerHTML='<div style="text-align:center;padding:14px 4px 4px;">'
+      +'<div style="font-size:30px;line-height:1;margin-bottom:8px;">\u2713</div>'
+      +'<h4 style="font-family:Nunito;font-weight:900;font-size:16px;color:#002461;margin:0 0 6px;">Report submitted</h4>'
+      +'<p class="gs-hint">Our team has been notified and will investigate as soon as possible.</p>'
+      +'<button class="gs-x-done" style="width:100%;margin-top:12px;padding:12px;border:1.5px solid #e0dccb;'
+      +'background:#fff;color:#5b6472;border-radius:12px;font-family:Nunito;font-weight:800;cursor:pointer;">Close</button></div>';
+    var c=ov.querySelector('.gs-x-done'); if(c) c.onclick=function(){ ov.remove(); };
+  };
+}
+
 function openReqCancel(order){
   var r=GReq.get(order); if(!r||r.cancelled) return;
   if(__reqStarted(r)){ gModal('<h3 class="gm-h">'+__gcEsc(r.hired||'Your Gopher')+' has started</h3><p class="gm-p">Cancelling is no longer available once your Gopher has started the job. Message them directly, or contact support if something’s wrong.</p><button class="gm-close">Got it</button>'); return; }
@@ -1717,25 +1987,132 @@ function openInboxThread(order){
   var who=r.hired||'Your Gopher';
   GReq.update(order,{unread:0}); refreshInboxBadge();
   var o=gSheet(who, '<div id="itBody"></div>');
+  // Staged photo lives OUTSIDE renderT — renderT rebuilds the whole thread from GReq
+  // state on every send, so anything held inside it would be wiped mid-compose.
+  var itPendingPhoto=null;
+  // G40-100 two-stage (owner 8/5): which segment of the thread is showing. There is
+  // only ONE thread in this app, so "Deleted" is a segment of the thread screen, not
+  // a separate tab bar — the lightest structure that still shows the full model.
+  var itView='inbox';
   function renderT(){
     var rr=GReq.get(order); var msgs=rr.messages||[];
     var body=o.querySelector('#itBody'); if(!body) return;
-    var bubbles=msgs.map(function(m){ var me=(m.from==='req');
+    var D=window.GopherInboxDelete||null;
+    var isDel=function(m){ return !!(m&&m.deletedAt); };
+    // The 90-day purge is a CHECK-ON-READ against deletedAt, same as the shared
+    // module: a purged message simply never renders again. No job runner here.
+    var isPurgedM=function(m){ return !!(D&&m&&m.deletedAt&&D.isPurged(m.deletedAt)); };
+    var live=msgs.filter(function(m){ return !isDel(m); });
+    var dele=msgs.filter(function(m){ return isDel(m)&&!isPurgedM(m); });
+    var inDeleted=(itView==='deleted');
+    var bubbles=msgs.map(function(m,mi){ var me=(m.from==='req');
+      if(isPurgedM(m)) return '';                 // purged for good (ticket Scenario 4)
+      if(inDeleted!==isDel(m)) return '';         // segment filter; data-mi stays the REAL array index
       // Flagged Send-as-is messages carry a terms-violation note to the RECIPIENT (owner 2026-07-16; reciprocal in Go).
-      return '<div style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;"><div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>'+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div>';
-    }).join('')||'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>';
-    body.innerHTML='<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
-      +'<div style="display:flex;gap:8px;margin-top:8px;"><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>';
+      // A photo message carries `photo` (a data URL) instead of `text` — G40-216,
+      // owner 2026-07-28: "All inboxes need the capability to add pics."
+      // G40-100: each message is individually deletable here (no conversation list
+      // to delete from), so the bubble sits in a swipeable wrapper. In the thread the
+      // revealed Delete SOFT-deletes (stage 1); in the Deleted segment it is the
+      // permanent path (stage 2, confirmed).
+      return '<div class="itmsg'+(inDeleted?' itmsg-deleted':'')+'" data-mi="'+mi+'"><div class="itmsg-slide" style="display:flex;flex-direction:column;align-items:'+(me?'flex-end':'flex-start')+';margin:5px 0;">'+(m.photo?'<img src="'+esc(m.photo)+'" alt="Photo attachment" style="max-width:62%;border-radius:14px;display:block;border:1px solid #e3ddcd;">':'<div style="max-width:78%;padding:9px 12px;border-radius:14px;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.4;background:'+(me?'#002461':'#eef1f5')+';color:'+(me?'#fff':'#1b2a44')+';">'+esc(m.text)+'</div>')+((m.flagged&&!me)?'<div style="max-width:78%;margin-top:3px;font-family:\'DM Sans\',sans-serif;font-size:10.5px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>':'')+'</div><button type="button" class="itmsg-del" data-del="'+mi+'" data-act="'+(inDeleted?'purge':'trash')+'" aria-label="'+(inDeleted?'Delete permanently':'Move to Deleted')+'">Delete</button></div>';
+    }).join('')||(inDeleted
+      ?'<div class="ibx-empty">Nothing deleted.<br>Swipe a message left to move it here.</div>'
+      :(dele.length
+        ?'<div class="ibx-empty">All messages here were moved to Deleted.</div>'
+        :'<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:11.5px;padding:16px 0;">Start of your conversation with '+esc(who)+' \u2014 keep messages on-platform.</div>'));
+    // Segment pills reuse the shared .ibx-tabs chrome so the two surfaces read as one
+    // product; first label is "Messages" (not "Inbox") because this IS the thread.
+    var cnt=function(n){ return n?'<span class="ibx-count">'+n+'</span>':''; };
+    var tabs='<div class="ibx-tabs" style="padding:0 0 6px;">'
+      +'<button type="button" class="ibx-tab'+(inDeleted?'':' on')+'" data-itview="inbox">Messages'+cnt(live.length)+'</button>'
+      +'<button type="button" class="ibx-tab'+(inDeleted?' on':'')+'" data-itview="deleted">Deleted'+cnt(dele.length)+'</button>'
+      +'</div>';
+    body.innerHTML=tabs
+      +((inDeleted&&dele.length)?'<div class="ibx-purge-note" style="margin:0 0 8px;">Deleted messages are permanently removed after '+(D?D.PURGE_DAYS:90)+' days. Deleting from here is immediate and cannot be undone.</div>':'')
+      +'<div class="it-scroll" style="max-height:46vh;overflow-y:auto;padding:2px 2px 8px;">'+bubbles+'</div>'
+      +(inDeleted?'':(itPendingPhoto?'<div style="display:flex;align-items:center;gap:9px;margin-top:8px;padding:7px 10px;border:1px solid #dcebdc;background:#f4f8f4;border-radius:12px;"><img src="'+esc(itPendingPhoto)+'" alt="Photo ready to send" style="width:40px;height:40px;object-fit:cover;border-radius:8px;"><span style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#5b6472;">Photo ready to send</span><button class="it-drop" aria-label="Remove photo" style="margin-left:auto;border:0;background:none;color:#8a94a3;font-size:16px;line-height:1;cursor:pointer;">&times;</button></div>':'')
+      +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center;"><button class="it-attach" title="Attach a photo" aria-label="Attach a photo" style="flex:0 0 auto;width:40px;height:40px;border:1.5px solid #e3ddcd;border-radius:50%;background:#fff;font-size:15px;line-height:1;cursor:pointer;">&#128247;</button><input class="it-file" type="file" accept="image/*" hidden><input class="it-in" placeholder="Message '+esc(who)+'\u2026" style="flex:1;min-width:0;border:1.5px solid #e3ddcd;border-radius:12px;padding:11px 13px;font-family:\'DM Sans\',sans-serif;font-size:13px;"><button class="it-send" style="border:0;background:#1CB061;color:#fff;border-radius:12px;padding:0 16px;font-family:Nunito;font-weight:800;cursor:pointer;">Send</button></div>');
     var inp=body.querySelector('.it-in'), snd=body.querySelector('.it-send');
     var sc=body.querySelector('.it-scroll'); if(sc) sc.scrollTop=sc.scrollHeight;   // grow with the convo, keep newest in view
-    function doSend(){ var t=(inp.value||'').trim(); if(!t) return;
-      var deliver=function(res){ var _fl=!!(res&&res.flagged); var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice(); mm.push({from:'req',text:t,flagged:_fl?1:0}); GReq.update(order,{messages:mm}); renderT(); };
+    function doSend(){ var t=(inp.value||'').trim(); if(!t && !itPendingPhoto) return;
+      var deliver=function(res){ var _fl=!!(res&&res.flagged); var rr2=GReq.get(order); var mm=(rr2.messages||[]).slice();
+        // The staged photo sends first, so it reads above its caption in the thread.
+        if(itPendingPhoto){ mm.push({from:'req',photo:itPendingPhoto}); itPendingPhoto=null; }
+        if(t){ mm.push({from:'req',text:t,flagged:_fl?1:0}); }
+        GReq.update(order,{messages:mm}); renderT(); };
+      // Photo with no caption: GopherMessageGuard scans TEXT, so there is nothing for it
+      // to read. Deliver directly. Image moderation is a server-side production concern
+      // (G40-35 covers the text channel only).
+      if(!t){ deliver(); return; }
       // G40-35 messaging guard — connected = a Gopher is already matched on this request
       // (relaxed contact rules + the connected variant of the transaction alert).
       var rr1=GReq.get(order); var conn=!!(rr1 && (rr1.accepted || rr1.hired));
       if(window.GopherMessageGuard){ GopherMessageGuard.guard(t,'request-home',{ connected:conn, onAllow:deliver, onBlocked:function(){ try{inp.focus();}catch(_){} } }); } else { deliver(); } }
     if(snd) snd.onclick=doSend;
     if(inp){ inp.addEventListener('keydown',function(e){ if(e.key==='Enter') doSend(); }); inp.focus(); }
+    /* Photo attachment (G40-216). PROTOTYPE ONLY: the file is read to a data URL and held
+       in memory like the rest of this demo's state. Production uploads to the messaging
+       service. Unlike the Go side there is no acceptance gate here — that gate is the
+       worker-side rule in the ticket; a requester owns the request and can always attach. */
+    var att=body.querySelector('.it-attach'), fil=body.querySelector('.it-file'), drp=body.querySelector('.it-drop');
+    if(att && fil){
+      att.onclick=function(){ fil.click(); };
+      fil.addEventListener('change',function(){ var f=fil.files&&fil.files[0]; if(!f) return;
+        var rd=new FileReader(); rd.onload=function(){ itPendingPhoto=rd.result; renderT(); }; rd.readAsDataURL(f); });
+    }
+    if(drp) drp.onclick=function(){ itPendingPhoto=null; renderT(); };
+    /* ── Message delete (G40-100, TWO-STAGE — owner 8/5) ──────────────────────
+       Swipe the bubble left to reveal Delete; swipe right (or open another) to
+       close. Only one message stays open at a time — the same rule the shared
+       module applies to rows, so the two surfaces feel like one product.
+       Stage 1 (Messages segment): Delete SOFT-deletes — the message is stamped
+       deletedAt and moves to the Deleted segment, silently recoverable-by-eye
+       there for PURGE_DAYS (90). No confirm, matching the web trash stage.
+       Stage 2 (Deleted segment): Delete is PERMANENT and always routes through
+       the SHARED GopherInboxDelete.confirmPermanent(), so "Delete permanently?
+       / This cannot be undone." is byte-identical across all six surfaces and
+       cannot drift.
+       PROTOTYPE BOUNDARY: in-memory like the rest of this demo — a reload
+       restores the thread. The 90-day purge is check-on-read via the shared
+       isPurged(). Production needs a real deleted_at + the purge job. ── */
+    var closeAllMsgs=function(){ body.querySelectorAll('.itmsg.itmsg-open').forEach(function(x){ x.classList.remove('itmsg-open'); }); };
+    body.querySelectorAll('.itmsg').forEach(function(el){
+      var x0=null;
+      el.addEventListener('touchstart',function(e){ x0=e.touches[0].clientX; },{passive:true});
+      el.addEventListener('touchmove',function(e){
+        if(x0===null) return;
+        var dx=e.touches[0].clientX-x0;
+        if(dx<-34){ closeAllMsgs(); el.classList.add('itmsg-open'); x0=null; }
+        else if(dx>34){ el.classList.remove('itmsg-open'); x0=null; }
+      },{passive:true});
+      el.addEventListener('touchend',function(){ x0=null; },{passive:true});
+    });
+    body.querySelectorAll('[data-itview]').forEach(function(b){
+      b.onclick=function(){ itView=b.getAttribute('data-itview'); renderT(); };
+    });
+    body.querySelectorAll('.itmsg-del').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        var mi=+b.getAttribute('data-del');
+        if(b.getAttribute('data-act')==='purge'){
+          // Stage 2 — permanent, from the Deleted segment only.
+          var go=function(){
+            var rr=GReq.get(order); var mm=(rr.messages||[]).slice();
+            mm.splice(mi,1); GReq.update(order,{messages:mm}); renderT();
+          };
+          if(window.GopherInboxDelete) GopherInboxDelete.confirmPermanent(go); else go();
+        } else {
+          // Stage 1 — soft delete: stamp deletedAt, message moves to Deleted. The
+          // toast is the mobile substitute for watching the row slide between tabs.
+          var rr=GReq.get(order); var mm=(rr.messages||[]).slice();
+          mm[mi]=Object.assign({},mm[mi],{deletedAt:new Date().toISOString()});
+          GReq.update(order,{messages:mm});
+          if(typeof toast==='function') toast('Moved to Deleted');
+          renderT();
+        }
+      };
+    });
   }
   renderT();
 }
@@ -1837,7 +2214,8 @@ function openDetails(order){
   var money=function(v){ return '$'+Number(v||0).toFixed(2); };
   var cat=(typeof CATLABEL!=='undefined'&&CATLABEL[r.cat])?CATLABEL[r.cat]:(r.cat||'Request');
   var bids=!!r.bids, hasPickup=!!(r.hasPickup&&r.pickup);
-  var stat=r.stage==='active'?'In progress':(r.stage==='scheduled'?'Scheduled':(r.stage==='accepted'?'Gopher accepted':'Finding Gophers near you'));
+  // Same completed gap as the subtitle above - see the note there.
+  var stat=r.stage==='active'?'In progress':(r.stage==='scheduled'?'Scheduled':(r.stage==='completed'?(r.confirmed?'Completed':'Completed · confirm to release payment'):(r.stage==='accepted'?'Gopher accepted':'Finding Gophers near you')));
   var row=function(l,v){ return (v!=null&&v!=='')?'<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0eef2;font-family:\'DM Sans\',sans-serif;font-size:13px;"><span style="color:#8a94a3;font-weight:600;flex:0 0 auto;">'+l+'</span><span style="color:#002461;font-weight:700;text-align:right;max-width:62%;">'+v+'</span></div>':''; };
   var wc=+r.workers||1;
   var html='<div style="margin-top:4px;">'
@@ -1851,17 +2229,59 @@ function openDetails(order){
     +(hasPickup?row('Pick-up', esc(r.pickup)):'')
     +row(hasPickup?'Destination':'Location', esc(r.dropoff||'\u2014'))
     +(r.dist?row('Distance', esc(r.dist)+(/mi/i.test(r.dist)?'':' mi')):'')
+   /* Access details — same facts the worker sees, so the two sides never disagree. */
+   +(function(){var L=[];var ps=+r.pickupStairs||0,ds=+r.destStairs||0;
+     if(ps) L.push(ps+' flight'+(ps>1?'s':'')+' at pick-up'+(r.serviceElevatorPickup?' (service elevator available)':''));
+     if(ds) L.push(ds+' flight'+(ds>1?'s':'')+' at destination'+(r.serviceElevatorDest?' (service elevator available)':''));
+     return L.length?row('Stairs', L.join('<br>')):''; })()
     +'<div style="height:10px;"></div>'
     +row(wc>1?'Payment to workers':'Worker takes home', bids?'Pending bids':(money((+r.pay||0)*wc)+(wc>1?' <span style="color:#8a94a3;font-weight:600;">('+wc+' × '+money(r.pay)+')</span>':'')))
     +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
     +row('Total', bids?'TBD after bid':(r.amount||money((+r.pay||0)+(+r.cost||0))))
     +'</div>';
-  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r));
+  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r)+__reqReportAffordance(r));
 }
 // Deals launch gate (Raleigh DMA only) \u2014 same flag the home Deals section honors.
 function __dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
 const IQ_ANSWER="I can help you start a request, "+(__dealsLive()?"find a deal, ":"")+"track an active request, or refer a friend \u2014 pick a quick action below, or tell me what you need and I'll point you to the right place.";
-function openIQ(){ gSheet('Gopher iQ','<p class="gs-sub">Tell us what you need \u2014 or tap a quick action.</p><div class="iq-row"><span class="iq-b">iQ</span><input class="iq-ask" id="iqAsk" placeholder="Ask Gopher iQ\u2026"><span class="iq-send" data-iq-send>\u2192</span></div><div class="iq-ans" id="iqAns" hidden></div><div class="iq-ctas"><button class="iq-cta" data-goto="flow">Start a request \u2192</button>'+(__dealsLive()?'<button class="iq-cta" data-goto="deals">Browse deals \u2192</button>':'')+'<button class="iq-cta" data-goto="track">Track my request \u2192</button><button class="iq-cta" data-goto="refer">Refer &amp; earn \u2192</button></div><div class="gs-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'); }
+// The Home pill sheet answers with the SAME brain as the Help Center (reqAnswerCard).
+// It used to print IQ_ANSWER regardless of what you typed \u2014 the input was decorative.
+// IQ_ANSWER is now only the empty-input prompt, which is what that copy actually reads like.
+function __iqSheetAsk(){
+  var a=$('#iqAns'), inp=$('#iqAsk'); if(!a) return;
+  var q=inp?inp.value.trim():'';
+  // NOT bare: .riq-ans is a plain container and reqAnswerCard supplies the .riq-card chrome —
+  // same split as Go's .iqm-ans. (The old sheet passed bare:true because its .iq-ans WAS the card;
+  // leaving that on here renders the answer unframed.)
+  a.innerHTML = q ? reqAnswerCard(q,'requester',{browseHint:false})
+                  : '<div class="riq-card"><div class="riq-lab">Gopher iQ</div><p class="riq-aa">'+IQ_ANSWER+'</p></div>';
+  a.hidden=false;
+}
+// Owner directive 2026-07-25: Gopher iQ on Request must be the SAME UI/UX as Gopher Go \u2014
+// a centred modal card (title / sub / iQ pill / answer / 2-up quick actions / hint / Close),
+// not the old bottom sheet and not the full-phone chat panel that used to open from the Home
+// pill. The chat panel is retired: it carried its OWN keyword classifier, a third brain that
+// never got the corpus fixes, which is why "can i pay with cash" answered with the pricing
+// blurb. Everything now answers through reqAnswerCard \u2014 the same brain as the Help Center.
+// The riq-* primitives already match Go's iqm-* one-for-one (same pill, badge, navy arrow,
+// answer card), so this is a re-layout, not a new design.
+function openIQ(seed){
+  var o=gModal('<h3 class="gm-h">Gopher iQ</h3>'
+    +'<p class="gm-p">Ask about pricing, your requests, deals \u2014 or tell me what you need.</p>'
+    +'<div class="riq-pill"><span class="riq-badge">iQ</span><input class="riq-in" id="iqAsk" placeholder="Ask Gopher anything\u2026" autocomplete="off"><span class="riq-go" data-iq-send>\u2192</span></div>'
+    +'<div class="riq-ans" id="iqAns" hidden></div>'
+    +'<div class="riq-ctas"><button class="riq-cta" data-goto="flow">Start a request</button>'
+    +(__dealsLive()?'<button class="riq-cta" data-goto="deals">Browse deals</button>':'')
+    +'<button class="riq-cta" data-goto="track">Track my request</button>'
+    +'<button class="riq-cta" data-goto="refer">Refer &amp; earn</button></div>'
+    +'<div class="riq-hint">Powered by Gopher iQ \u00B7 answers from our FAQs</div>'
+    +'<button class="gm-close" style="margin-top:14px;">Close</button>');
+  var inp=o.querySelector('#iqAsk');
+  if(inp){ inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); __iqSheetAsk(); } });
+           if(seed){ inp.value=seed; __iqSheetAsk(); }
+           setTimeout(function(){ try{ inp.focus(); }catch(_){} },30); }
+  return o;
+}
 function openRewards(){ gModal('<h3 class="gm-h">Gopher Rewards \u2014 launching 2027</h3><p class="gm-p">Gopher Rewards officially launches in <b>2027</b>. The good news: <b>every referral point you earn starts accumulating right now</b> toward points for cash \u2014 so referring early pays off when the program goes live.</p><button class="gm-close">Got it</button>'); }
 function openPoints(){ gSheet('Your points','<div class="pts-hero"><div class="pts-n">1,240</div><div class="pts-l">points \u00B7 $12.40 credit</div></div><p class="gs-sub" style="margin-top:12px;">Points become redeemable cash credit when Rewards launches in 2027 (100 pts = $10) \u2014 and they start accruing now.</p><div class="gs-sech">How you earn</div><div class="gs-list"><div class="gs-li">Refer a friend who completes a request \u2014 <b>+100 pts</b></div><div class="gs-li">Recommend MY Gopher(s) who gets hired \u2014 <b>+50 pts</b></div><div class="gs-li">Complete a request \u2014 <b>+10 pts</b></div></div><div class="gs-sech">Recent activity</div><div class="gs-list"><div class="gs-li">Referral \u00B7 Rosa P. joined \u2014 <b>+100</b></div><div class="gs-li">Request completed \u00B7 #GR-00187 \u2014 <b>+10</b></div></div>'); }
 function openHelp(){ gSheet('Help Center','<p class="gs-sub">Answers to common questions. Still stuck? Contact support.</p><div class="gs-list" style="margin-top:10px;"><div class="faq" data-faq>How do I place a request?<div class="faq-a">Tap a category on Home, add the details and your offer, then submit \u2014 nearby Gophers can accept it.</div></div><div class="faq" data-faq>How does pricing work?<div class="faq-a">You set the payment to your Gopher; a small Gopher fee is added at review. Any item costs are reimbursed separately.</div></div><div class="faq" data-faq>What is TrustShield?<div class="faq-a">A one-time ID verification for age-restricted orders, so you don\u2019t re-verify each time.</div></div><div class="faq" data-faq>Can I cancel a request?<div class="faq-a">Yes \u2014 before a Gopher is matched it\u2019s free; after matching, the cancellation policy may apply.</div></div></div><div class="gs-hint">Still need help? <span class="gs-link" data-goto="contact">Contact support</span></div>'); }
@@ -1875,6 +2295,9 @@ document.addEventListener('click',function(e){
     if(k==='rewards'){ openRewards(); return; }
     if(k==='points'){ gClose(); openPoints(); return; }
     if(k==='help'){ openHelpCenter(); return; }
+    if(k==='hc-faqs'){ openReqFaqs(); return; }
+    if(k==='hc-101'){ openReq101(); return; }
+    if(k==='hc-contact'){ openReqContact(); return; }
     if(k==='terms'){ try{window.open('https://gophergo.io/gopher-terms-of-service.html','_blank','noopener');}catch(_){} toast('Opening Terms of Service \u2192'); return; }
     if(k==='social'){ openSocial(); return; }
     if(k==='refer'){ gClose(); gotoURL('gopher-request-refer.html'); return; }
@@ -1886,29 +2309,317 @@ document.addEventListener('click',function(e){
     if(k==='contact'){ toast('Connecting you to support\u2026'); return; }
   }
   var faq=e.target.closest('[data-faq]'); if(faq){ faq.classList.toggle('open'); return; }
-  var send=e.target.closest('[data-iq-send]'); if(send){ var a=$('#iqAns'); if(a){ a.hidden=false; a.textContent=IQ_ANSWER; } return; }
+  var hcs=e.target.closest('.hc-send'); if(hcs){ var sh=hcs.closest('.sheet'); var m=sh&&sh.querySelector('.hc-msg'); if(m&&!m.value.trim()){ try{if(window.toast)toast('Add a short message first');}catch(_){}; return; } var tp=sh&&sh.querySelector('.hc-topic'); try{if(window.toast)toast('Message sent'+(tp?(' · '+tp.value):'')+' — we’ll be in touch');}catch(_){}; if(m)m.value=''; return; }
+  var send=e.target.closest('[data-iq-send]'); if(send){ __iqSheetAsk(); return; }
 });
 
 /* ===== remaining functional sheets (Batch: header, tools, account, Activity/Account tabs) ===== */
 const ADDRS=[['Home','4101 NC-55, Apex, NC 27502'],['Work','120 Grand Hill Pl, Holly Springs, NC'],['Mom\u2019s','55 Pinecrest Dr, Cary, NC'],['Gym','900 Town Center Blvd, Apex, NC']];
 function openLocation(){ gSheet('Your location','<p class="gs-sub">Pick a saved address or use your current location.</p><div class="gs-list" style="margin-top:10px;">'+ADDRS.map(a=>'<div class="gs-li" data-addr="'+a[1]+'"><b>'+a[0]+'</b> \u00B7 '+a[1]+'</div>').join('')+'<div class="gs-li" data-addr="current"><b>\u2316 Use current location</b></div></div><div class="gs-hint"><span class="gs-link" data-goto="addresses">Manage saved addresses \u2192</span></div>'); }
 function openNotif(){ var dot=document.querySelector('.bell .dot'); if(dot) dot.style.display='none'; gSheet('Notifications','<div class="gs-list" style="margin-top:6px;"><div class="gs-li"><b>Devon M. accepted your request</b><br>Grocery + pharmacy run \u00B7 just now</div><div class="gs-li"><b>New deal near you</b><br>Power Washing \u2014 $30 off in Apex</div><div class="gs-li"><b>You earned 100 points</b><br>Rosa P. joined from your referral</div></div><div class="gs-hint"><span class="gs-link" data-goto="notifsettings">Notification settings \u2192</span></div>'); }
-const CATS8=[['delivery','Delivery'],['home','Home Services'],['junk','Junk Removal'],['moving','Moving'],['labor','Labor'],['yard','Yard / Outdoor'],['ride','Ride Sharing'],['other','Other']];
-function openAllServices(){ gSheet('All services','<p class="gs-sub">Pick a category to start a request.</p><div class="gs-list" style="margin-top:10px;">'+CATS8.map(c=>'<div class="gs-li" data-svc="'+c[0]+'"><b>'+c[1]+'</b></div>').join('')+'</div>'); }
+// The "All services" bottom sheet (a flat text list) was retired 2026-07-21 — the link
+// goes to the flow's real Step 1 category picker instead. CATS8 / openAllServices /
+// the [data-svc] row handler existed only to serve that sheet.
 function openFeatured(){ gotoURL('gopher-request-deals.html?deal=feat-johns'); }
-// Help Center \u2014 in-app (no separate page to 404 on). Common topics + contact support.
+// Help Center \u2014 card-based, PARITY with the Gopher Go app's Help Center (FAQs / 101 / Contact Us).
+// Identical shell/UX; the only difference is the 101 doc (Gopher REQUEST 101) and requester-facing
+// FAQ content. Cards mirror Go's .hc-card visual (icon tile + title + subtitle + chevron).
+function __hcCard(goto,ic,icBg,icCol,name,sub){
+  return '<div class="gpg-card" data-goto="'+goto+'">'
+    +'<span style="width:40px;height:40px;border-radius:11px;background:'+icBg+';color:'+icCol+';font-family:Nunito;font-weight:900;font-size:'+(ic==='101'?'13px':'18px')+';letter-spacing:'+(ic==='101'?'.5px':'0')+';display:flex;align-items:center;justify-content:center;flex:0 0 auto;">'+ic+'</span>'
+    +'<span style="flex:1;"><span style="display:block;font-family:Nunito;font-weight:900;font-size:15px;color:#002461;">'+name+'</span><span style="display:block;font-size:12px;color:#6B7280;margin-top:2px;font-family:Nunito;font-weight:600;">'+sub+'</span></span>'
+    +'<span style="color:#8C8675;font-family:Nunito;font-weight:900;font-size:18px;flex:0 0 auto;">\u203a</span></div>';
+}
 function openHelpCenter(){
-  var topics=[
-    ['How Gopher works','Post a request, a nearby Gopher accepts, and you confirm & rate when it\u2019s done. You\u2019re only charged when a Gopher is hired.'],
-    ['Payments & receipts','Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'],
-    ['Age-restricted deliveries','These require a valid ID at drop-off. Verify once with TrustShield\u2122 to skip re-verifying on future orders.'],
-    ['Cancellations & disputes','Cancel before a match at no charge. If something goes wrong after, open a dispute \u2014 you and your Gopher work it out with our team.'],
-    ['Safety & TrustShield\u2122','Every Gopher is background-checked. Verify your own identity with TrustShield\u2122 for two-way trust and $1 off age-restricted orders.']
-  ];
-  gSheet('Help Center',
-    '<p class="gs-sub">Answers to the most common questions.</p>'
-    +'<div class="gs-list" style="margin-top:10px;">'+topics.map(function(t){ return '<div class="gs-li"><b>'+t[0]+'</b><br><span style="color:#5b6472;">'+t[1]+'</span></div>'; }).join('')+'</div>'
-    +'<button class="gm-close" style="width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#002461;color:#fff;font-family:Nunito;font-weight:800;font-size:14px;cursor:pointer;" onclick="try{if(window.toast)toast(\'Support: help@gophergo.io \u00b7 in-app chat 24/7\');}catch(_){}">Contact support</button>');
+  gPage('Help Center',
+    '<p class="gpg-intro">Quick, mobile-friendly help \u2014 tap a topic.</p>'
+    +'<div class="gpg-cards">'
+      +__hcCard('hc-faqs','?','#E9F1FC','#002461','FAQs','Payments, requests, TrustShield &amp; more')
+      +__hcCard('hc-101','101','#E8F5EE','#1CB061','Gopher Request 101','The basics in a 2-minute walkthrough')
+      +__hcCard('hc-contact','@','#E9F1FC','#002461','Contact Us','Reach a human on the Gopher team')
+    +'</div>');
+}
+// Gopher iQ location/service-area answer \u2014 the FAQ pill routes ZIP / city / "do you service X"
+// questions HERE (real coverage brain, window.GopherIQData) instead of guessing from FAQ text.
+// Returns an answer string, or null when the query isn't a location question. Kept in sync with
+// the Go app's copy (same logic + copy) so dual users get the same behavior. audience: 'requester' | 'worker'.
+// The signed-in user's own area, for "near me"-style questions that name no place.
+// Prototype-grade: the demo profile's ZIP. Production reads real device location.
+function iqHomePlace(){ try{ return (PROFILE && (PROFILE.zip || (PROFILE.city && PROFILE.state ? PROFILE.city+', '+PROFILE.state : ''))) || null; }catch(_){ return null; } }
+function iqCoverageReply(query, audience){
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var t=' '+query.toLowerCase()+' ';
+  var zip=query.match(/\b(\d{5})\b/);
+  var cue=/(are you (?:in|serving)|do you (?:serve|service|cover|have gopher)|servic(?:e|es|ing)\b|serving\b|available in|coming to|gophers? (?:in|near)|service area|coverage|operate in|live in|you (?:serve|service|cover)|near me)/.test(t);
+  var m=query.match(/\b(?:in|to|near|serve|service|servicing|serving|cover|covering)\s+([a-z][a-z .'\-]{1,26}(?:,\s*[a-z]{2})?)\s*[?!.]*$/i);
+  // The alternation above contains VERBS ("service", "serve", "cover"), so the capture can start
+  // one word too early: "do you have service in Raleigh?" matches on `service` and captures
+  // "in Raleigh". lookup() has no row for that, so it synthesizes one (title-cased echo, all
+  // zeros) and we confidently answer "0 Gopher requests ... in In Raleigh" about a market with
+  // 232. Same shape turned "do you serve near me" into "we're not live in Near, ME".
+  // Strip leading prepositions off the capture. Articles are deliberately NOT stripped --
+  // "The Colony, TX" is a real city and lookup() indexes it under the full name.
+  var cap = m ? m[1].trim() : null;
+  if(cap){ var prev; do{ prev=cap; cap=cap.replace(/^(?:in|to|near|at|around|within)\s+/i,'').trim(); }while(cap!==prev); }
+  if(cap && !/[a-z]/i.test(cap)) cap=null;
+  // "near me" / "around here" capture a PRONOUN, not a place. Drop it, then fall back to
+  // the user's own area below. "Are there requests near me" is the most natural thing a
+  // worker types, and it used to return null here, drop through to FAQ keyword search, and
+  // come back with "Can I request age-restricted products?" \u2014 confident and unrelated.
+  if(cap && /^(me|us|myself|here|home|there|nearby|my area)$/i.test(cap)) cap=null;
+  var place = zip ? zip[1] : ((cue && cap) ? cap : ((cap && /,\s*[a-z]{2}\b/i.test(cap)) ? cap : null));
+  if(!place && /(near ?by|near me|around here|round here|in my area|my area|close to me|by me|around me)/.test(t)
+     && typeof iqHomePlace==='function') place=iqHomePlace();
+  if(!place) return null;
+  if(!(window.GopherIQData && GopherIQData.lookup)) return null;
+  var cov=GopherIQData.lookup(place); if(!cov) return null;
+  var worker=(audience==='worker');
+  if(cov.ambiguous){
+    var opts=(cov.options||[]).map(function(o){return o.state+' ('+o.workers+' Gophers)';}).join(', ');
+    return "There\u2019s more than one <b>"+esc(cov.city)+"</b> \u2014 which state did you mean? "+opts+".";
+  }
+  var isZip=/^\d{5}$/.test(String(cov.city||place));
+  var pretty = isZip ? ('the '+esc(place)+' area') : ('<b>'+esc(cov.city)+(cov.state?(', '+cov.state):'')+'</b>');
+  var w=cov.workers||0;
+  // WORKER audience answers with DEMAND (requests3mo), not supply \u2014 a worker asking about an area
+  // wants to know whether requests are coming in, not how many rivals they have. Deliberately NOT
+  // gated on inData or workers: inData is keyed to workers>0, so a demand-only area (real requests,
+  // no local Gopher yet) returns inData:false \u2014 exactly the places the under-20 share-your-QR-code
+  // copy is written for. Requester tiers below are unchanged and still supply-based.
+  if(worker){
+    // A MISSING requests3mo is not zero demand — it means a stale gopher-iq-data.js (pre-43e302b,
+    // 2-value entries), which browsers happily serve from cache after a regen. `||0` would print
+    // "0 Gopher requests have been submitted", a believable and completely wrong number. Fall
+    // through to the other pill tiers instead of asserting it.
+    if(typeof cov.requests3mo!=='number'){
+      if(window.console&&console.warn) console.warn('[iQ] stale gopher-iq-data.js — no requests3mo (asOf '+((window.GopherIQData||{}).asOf||'?')+'); hard-reload to refresh.');
+      return null;
+    }
+    var r=cov.requests3mo;
+    var msg='<b>'+r+'</b> Gopher request'+(r===1?' has':'s have')+' been submitted in '+pretty+' in the last 3 months.';
+    if(r<20) msg+=' Please keep in mind, if you\u2019re already signed up as a worker, share your QR code. '
+      +'You\u2019d be surprised how many people could use your help. Anyone who scans your QR code or receives '
+      +'a Refer Yourself invite can add you as a Favorite and request you by name.';
+    return msg;
+  }
+  if(!cov.inData || w===0)
+    return "We\u2019re not live in "+pretty+" just yet \u2014 but every request helps us grow there. You can post a request to gauge interest, and if we can\u2019t connect you, you don\u2019t pay a dime.";
+  if(w<20)
+    return "Word\u2019s just getting out in "+pretty+" \u2014 a small crew of Gophers so far. Post a request to reach them (if we can\u2019t connect you, you don\u2019t pay a dime), or use Find MY Gopher.";
+  return "Yes \u2014 "+pretty+" has <b>"+w+"</b> active Gophers ready to help. Start a request and I\u2019ll get you matched.";
+}
+// Gopher iQ category + pricing answer \u2014 the FAQ pill's third tier (after coverage, after a
+// confident FAQ match), so "I need my couch hauled away" or "what's the fee for a move" get a
+// real answer instead of the not-found fallback. Cue words mirror the home iQ classifier so the
+// two brains agree. Kept in sync with the Go app's copy; audience only changes the wording.
+function iqTopicReply(query, audience){
+  var worker=(audience==='worker');
+  var t=' '+String(query).toLowerCase()+' ';
+  var has=function(){ for(var i=0;i<arguments.length;i++){ if(t.indexOf(arguments[i])>-1) return true; } return false; };
+  var price=has('price','cost','fee','how much','charge','expensive','cheap','pricing',' rate',' pay ','payout','earn');
+  var cat=null;
+  if(has('alcohol','wine','beer','liquor','tobacco','vape','cigarette','nicotine','booze','whiskey','vodka','age restricted','age-restricted')) cat='age';
+  else if(has('move','moving','relocat','u-haul','furniture')) cat='moving';
+  else if(has('junk','haul','couch','dispose','trash','debris','cleanout')) cat='junk';
+  else if(has('mount','tv','assemble','install','clean','handyman','repair','fix')) cat='home';
+  else if(has('labor','hands','helper','crew')) cat='labor';
+  else if(has('yard','mow','lawn','leaves','mulch','outdoor','garden')) cat='yard';
+  else if(has('ride','airport','drive','lift','pick me up')) cat='ride';
+  else if(has('deliver','errand','pick up','pickup','drop','grocery','pharmacy','takeout','bring')) cat='delivery';
+  var CAT={ moving:['Moving','loading, hauling, and heavy lifting'],
+            junk:['Junk Removal','haul-away of furniture, debris, and cleanouts'],
+            home:['Home / Office Services','mounting, assembly, cleaning, repairs, and handyman work'],
+            labor:['Hourly / Day Labor','extra hands booked by the hour'],
+            yard:['Yard / Outdoor','mowing, leaf and yard cleanup, mulch, and garden work'],
+            ride:['Ride Sharing','getting you where you need to be'],
+            delivery:['Delivery / Errand','pickups, drop-offs, grocery and pharmacy runs, and quick errands'] };
+  var pricingMsg = worker
+    ? "You keep <b>100%</b> of the offer you accept \u2014 the requester\u2019s fees sit on their side. Payout begins when you mark the request complete and the requester confirms (or automatically after 48 hours). Your first 10 payouts use Standard speed; after that you\u2019re upgraded to Instant, and Elite/Elite+/Pro start on Instant."
+    : "You set what your Gopher takes home, plus any cost of items they front \u2014 they receive <b>100%</b> of your offer. On top there\u2019s a <b>Gopher Fee</b> ($0.99\u2013$4.99 by service type), an 8% instant-transfer fee, and $1.99 for age-restricted orders (<b>TrustShield</b> takes $1 off).";
+  if(cat==='age'){
+    return (worker
+      ? "Age-restricted requests (alcohol, tobacco) are <b>Delivery / Errand</b> jobs with an ID check at drop-off \u2014 you verify the requester\u2019s ID and identity before handing anything over. TrustShield holders are pre-verified, so there\u2019s nothing for them to submit."
+      : "Age-restricted items (alcohol, tobacco) go out as a <b>Delivery / Errand</b> request with an ID check at drop-off \u2014 you must show a valid ID in person, and contactless is never allowed. There\u2019s a $1.99 age-verification fee, and <b>TrustShield</b> takes $1 off.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(cat){
+    var c=CAT[cat];
+    return (worker
+      ? "<b>"+c[0]+"</b> jobs cover "+c[1]+". Add that category in <b>Work Settings &amp; Radius</b> and you\u2019ll see these requests near you."
+      : "That\u2019s a <b>"+c[0]+"</b> request \u2014 "+c[1]+". Start one from Home, add the details, and set your offer.")
+      + (price?('<br><br>'+pricingMsg):'');
+  }
+  if(price) return pricingMsg;
+  return null;
+}
+// FAQs \u2014 models the Gopher Go FAQ screen (Help Center hero + iQ ask pill with inline answers +
+// category tabs). Content is requester-facing; the pill behaves like the FAQ (inline answer from
+// the FAQ corpus), NOT like the home iQ CTA. Kept consistent with Go for dual-user familiarity.
+var REQ_FAQS=[
+  {g:'Requests',q:'What are your hours?',a:'Gopher requests are available 24/7/365. If there\u2019s a Gopher requested and a Gopher available, we go to work.'},
+  {g:'Requests',q:'How do I place a request?',a:'Tap a category on Home, add the details and your offer, then submit \u2014 nearby Gophers can accept it right away.'},
+  {g:'Requests',q:'Can I cancel my request after the worker has started?',a:'Before a Gopher is matched it\u2019s free. If it\u2019s marked in-progress you may be charged up to $5; if items were already purchased you may also owe that amount. See the Terms for details.'},
+  {g:'Requests',q:'Can I request age-restricted products?',a:'Yes, after agreeing to an age-restricted waiver. You must show a valid ID in person at delivery \u2014 contactless is never allowed, and without ID there\u2019s no refund.'},
+  // Tracking / order-status entries, verbatim from the canonical corpus
+  // (Final/assets/js/gopher-ai-engine.js, group "Customers"). Without them the corpus had NO
+  // status answer at all, so "where is my order" scored onto "How can I see my previous
+  // orders?" — a history-page answer — and iqTopicReply's track branch never got a turn
+  // because a confident FAQ hit returns first. "where" is deliberately NOT a stop word (see
+  // the stop list): it is the interrogative that separates tracking from history here.
+  {g:'Requests',q:'Where is my order?',a:'There are usually only a couple reasons a request isn\u2019t accepted: We may not have enough Gophers in your area yet. Anytime a request is submitted in a new area, we get to work recruiting available Gophers there. The offer may have been deemed too low for the Gophers in your area. Gopher is NOT an auto-fulfillment service \u2014 the offer you make is 100% of what your worker earns. They work for you, not Gopher, Inc. If your offer is below the typical accepted offer, you\u2019ll see a pop-up sharing the average offer for that category. You can still offer whatever amount you want.'},
+  {g:'Requests',q:'Can I track my delivery?',a:'Yes. Once your Gopher is on the way, you can track the order throughout the process.'},
+  {g:'Requests',q:'Am I able to see when my Gopher will arrive?',a:'Yes. For requests involving a pick-up and drop-off, once your Gopher selects \u201Cin-progress,\u201D your request screen shows a map of the Gopher\u2019s location relative to the destination(s). If you ever see the driver \u201Cstuck,\u201D check in via text or call \u2014 some areas have poor connection, but calls and texts typically get through better than location services.'},
+  {g:'Requests',q:'How can I see my previous orders?',a:'Go to Account \u2192 Previous requests to see your completed and cancelled requests.'},
+  {g:'Payments',q:'How much does it cost to use the app?',a:'A Gopher Fee ($0.99\u2013$4.99 by service type) plus an 8% instant-transfer fee; age-restricted adds $1.99 (minus $1 with TrustShield\u2122). Your Gopher receives 100% of your offer.'},
+      {g:'Payments',q:'Can I pay with cash?',a:'No \u2014 cash isn\u2019t an option. We have to guarantee payment to the worker before a request can be accepted, so all payment runs through the app.'},
+  {g:'Payments',q:'How do payments & receipts work?',a:'Your card is authorized when a Gopher accepts and captured on completion. A receipt is emailed the moment you confirm.'},
+  {g:'Payments',q:'How does pricing work?',a:'You set the payment to your Gopher; a small Gopher fee is added at review. Any item costs are reimbursed separately.'},
+  {g:'Trust & Safety',q:'What is TrustShield\u2122?',a:'A free, one-time identity check. Verify once for two-way trust and $1 off every age-restricted delivery & ride request \u2014 no re-verifying each time.'},
+  {g:'Trust & Safety',q:'Are Gophers background-checked?',a:'Yes. Every Gopher is background-checked before they can accept requests, so you know a verified neighbor is on the way.'},
+  {g:'Trust & Safety',q:'What if something goes wrong with my request?',a:'Open a dispute from the request \u2014 you and your Gopher work it out with our team, and payment stays on hold until it\u2019s resolved.'}
+];
+var REQ_FAQ_GROUPS=['Requests','Payments','Trust & Safety'];
+/* \u2500\u2500 Gopher iQ \u00b7 shared answering brain (requester side) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   ONE implementation behind both requester-facing iQ surfaces: the Help Center pill
+   and the Home "Ask Gopher iQ" pill sheet (openIQ). Tiers, most-specific first:
+     1. location / service-area  -> iqCoverageReply()  (real coverage numbers)
+     2. curated FAQ search       -> confident matches only
+     3. category / pricing intent-> iqTopicReply()
+   The sheet used to ignore what you typed and print a fixed string; sharing the brain
+   is what stops that from happening again. Mirrors the Go app's iqAnswerCard(). */
+/* "where" is deliberately NOT stopped (owner 7/25). On a delivery marketplace it is the word
+   that separates "where is my order" (tracking) from "see my orders" (history) — stopping it
+   left "order" as the only token, which tied and fell to array order. Safe because no other
+   REQ_FAQS question or answer contains "where", so it can only score the tracking entry. Same
+   judgement as leaving "out" un-stopped for "cash out": topical, not grammatical. */
+var IQ_STOP=new Set('the a an to of do i my is it for in on at can how what when why are be and or if you your with this that get got need want make made have has does will would should could about im there their they them then than been being was were from into also just one take more most but who which while because very such only even same both each every well per via any some'.split(' '));
+function iqCanon(w){ w=w.replace(/(ing|ed|es|s)$/,''); if(/^(pay|paid|payout|payment|deposit|charge|cost|fee|receipt)/.test(w))return 'pay'; if(/^cancel/.test(w))return 'cancel'; if(/^(refund)/.test(w))return 'refund'; if(/^(ride|driv)/.test(w))return 'ride'; if(/^(trust|verif)/.test(w))return 'trust';
+  // "past" -> the stem "previous" reduces to, so "see my past requests" / "my past orders"
+  // reach the previous-orders FAQ. Without it "past" scored nothing, the query tied on
+  // "request" alone, and the tie fell to array order — landing on the CANCELLATION FAQ.
+  if(/^past$/.test(w))return 'previou';
+  return w; }
+function iqToks(s){ return String(s).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>2 && !IQ_STOP.has(w);}).map(iqCanon); }
+function reqFaqSearch(query){ var qw=iqToks(query); if(!qw.length) return [];
+  return REQ_FAQS.map(function(f){ var qset=new Set(iqToks(f.q)); var aset=new Set(iqToks(f.q+' '+f.a+' '+f.g)); var s=0,n=0; qw.forEach(function(w){ if(qset.has(w)){s+=3;n++;} else if(aset.has(w)){s+=1;n++;} }); return {f:f,s:s,n:n,qn:qw.length}; })
+    .filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).slice(0,3);
+}
+// Ready-to-insert card HTML for a query ('' when blank). opts.browseHint:false drops the
+// "browse the topics below" nudge \u2014 right for the sheet, which has no FAQ list under it.
+function reqAnswerCard(query, audience, opts){
+  opts=opts||{};
+  var q=String(query||'').trim(); if(!q) return '';
+  // opts.bare: caller already supplies the card chrome. No caller does since the iQ modal
+  // replaced the bottom sheet (both surfaces now use a plain .riq-ans container, like Go) —
+  // kept for a caller that frames its own answer.
+  var card=function(inner){ return opts.bare ? inner : '<div class="riq-card"><div class="riq-lab">Gopher iQ</div>'+inner+'</div>'; };
+  // 1) Location / service-area questions -> real coverage brain (not a stray FAQ match).
+  var cov=iqCoverageReply(q,audience);
+  if(cov) return card('<p class="riq-aa">'+cov+'</p>');
+  // 2) FAQ search \u2014 only surface a CONFIDENT match: a question-word hit (score >= 3) that also
+  //    covers the query. A single common word matching (e.g. "order" in "can i order beer"
+  //    hitting the previous-orders FAQ) isn't enough unless the query is one word.
+  var hits=reqFaqSearch(q).filter(function(h){return h.s>=3 && (h.n>=2 || h.qn<=1);});
+  if(hits.length) return card(hits.map(function(h,idx){ return '<div class="riq-hit'+(idx?' more':'')+'"><div class="riq-q">'+h.f.q+'</div><div class="riq-aa">'+h.f.a+'</div></div>'; }).join(''));
+  // 3) Category / pricing intent \u2014 catches what the curated FAQs don't cover.
+  var topic=iqTopicReply(q,audience);
+  var miss = opts.browseHint===false
+    ? 'I couldn\u2019t find that one. Try different words, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.'
+    : 'I couldn\u2019t find that in our FAQs. Try different words, browse the topics below, or <span class="rfq-link" data-goto="hc-contact">contact us</span>.';
+  return card('<p class="riq-aa">'+(topic || miss)+'</p>');
+}
+function openReqFaqs(){
+  var o=gPage('FAQs',
+    '<div class="gpg-pad">'
+    +'<div class="rfq-hero"><div class="rfq-eye">Help Center</div><div class="rfq-h">How can we help?</div>'
+      +'<div class="riq-pill"><span class="riq-badge">iQ</span><input class="riq-in" placeholder="Ask Gopher iQ a question\u2026"><span class="riq-go" data-rfq-go>\u2192</span></div>'
+      +'<div class="riq-hint">Powered by Gopher iQ \u00b7 answers pulled from our FAQs</div></div>'
+    +'<div class="riq-ans" hidden></div>'
+    +'<div class="rfq-tabs">'+REQ_FAQ_GROUPS.map(function(g,i){ return '<button class="rfq-tab'+(i===0?' on':'')+'" data-rfq-tab="'+g+'">'+g+'</button>'; }).join('')+'</div>'
+    +'<div class="rfq-list" data-rfq-list></div>'
+    +'<div class="rfq-help">Still need help? <span class="rfq-link" data-goto="hc-contact">Contact Us \u2192</span></div>'
+    +'</div>',
+    openHelpCenter);
+  var sheet=o.querySelector('.gpg-body'); if(!sheet) return;
+  var listEl=sheet.querySelector('[data-rfq-list]'), ansEl=sheet.querySelector('.riq-ans'), inp=sheet.querySelector('.riq-in');
+  var group=REQ_FAQ_GROUPS[0];
+  function renderList(){
+    listEl.innerHTML=REQ_FAQS.filter(function(f){return f.g===group;}).map(function(f){
+      return '<div class="rfq-item"><div class="rfq-fq" data-rfq-q>'+f.q+'<span class="rfq-cv">+</span></div><div class="rfq-fa" hidden>'+f.a+'</div></div>';
+    }).join('');
+    listEl.querySelectorAll('[data-rfq-q]').forEach(function(q){ q.onclick=function(){ var a=q.nextElementSibling, c=q.querySelector('.rfq-cv'); var open=a.hasAttribute('hidden'); a.toggleAttribute('hidden'); if(c)c.textContent=open?'\u2013':'+'; }; });
+  }
+  sheet.querySelectorAll('[data-rfq-tab]').forEach(function(t){ t.onclick=function(){ group=t.getAttribute('data-rfq-tab'); sheet.querySelectorAll('.rfq-tab').forEach(function(x){ x.classList.toggle('on',x===t); }); renderList(); }; });
+  renderList();
+  // Answering is the SHARED brain (reqAnswerCard) \u2014 the Home iQ pill sheet calls the very
+  // same function, so the Help Center and the pill cannot drift apart.
+  function ask(){ var q=inp.value.trim();
+    if(!q){ ansEl.setAttribute('hidden',''); ansEl.innerHTML=''; return; }
+    ansEl.innerHTML=reqAnswerCard(q,'requester');
+    ansEl.removeAttribute('hidden');
+  }
+  sheet.querySelector('[data-rfq-go]').onclick=ask;
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
+}
+// Contact Us \u2014 mirrors the Go app's Contact Us (email + topic/message form).
+// Contact Us \u2014 FULL PAGE, matching the Gopher Go app's Contact Us (its .cubody/.cu-method/.cu-sec/
+// .cu-form). Was a gSheet; on Go it's a real screen, so Help Center \u2192 Contact Us is page \u2192 page.
+// Back returns to Help Center (Go's BACK() pops to whatever pushed it; Help Center is the parent).
+function openReqContact(){
+  var o=gPage('Contact Us',
+    '<p class="gpg-intro">We\u2019re here to help \u2014 reach the Gopher team however works best for you.</p>'
+    +'<div class="gpg-cards"><div class="gpg-card" data-cu-email><span class="cu-ic">@</span>'
+      +'<span class="cu-tx"><span class="cu-n">Email support</span><span class="cu-s">support@gophergo.io</span></span>'
+      +'<span class="cu-cv">\u203a</span></div></div>'
+    +'<div class="cu-sec">Send us a message</div>'
+    +'<div class="cu-form">'
+      +'<label class="cu-fl">Topic</label>'
+      +'<select class="cu-inp" data-cu-topic><option>A payment or receipt</option><option>A request or Gopher</option><option>My account or profile</option><option>Trust &amp; safety</option><option>Something else</option></select>'
+      +'<label class="cu-fl">Message</label>'
+      +'<textarea class="cu-inp cu-ta" data-cu-msg placeholder="How can we help?"></textarea>'
+      +'<button class="cu-send" data-cu-send>Send message</button>'
+      +'<p class="cu-note">Replies go to <b>'+String(PROFILE.email).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})+'</b>. We typically respond within a few hours.</p>'
+    +'</div>',
+    openHelpCenter);
+  var body=o.querySelector('.gpg-body'); if(!body) return;
+  var email=body.querySelector('[data-cu-email]'), send=body.querySelector('[data-cu-send]'),
+      msg=body.querySelector('[data-cu-msg]'), topic=body.querySelector('[data-cu-topic]');
+  email.onclick=function(){ try{ if(window.toast) toast('Opening email to <b>support@gophergo.io</b> \u2192'); }catch(_){} };
+  send.onclick=function(){ if(!msg.value.trim()){ msg.focus(); try{ if(window.toast) toast('Add a short message first'); }catch(_){} return; }
+    try{ if(window.toast) toast('Message sent \u00b7 '+topic.value+' \u2014 we\u2019ll be in touch'); }catch(_){} msg.value=''; };
+}
+// Gopher Request 101 \u2014 opens the request-101 doc in an in-phone overlay (mirrors Go's open101).
+// The doc's "FAQs" links are rewired on load to close the overlay and open the in-app FAQs
+// (the reported bug: those links used to go nowhere).
+function openReq101(){
+  var ph=$('#phone'); if(!ph) return;
+  var ov=document.createElement('div'); ov.className='r101ov';
+  ov.style.cssText='position:absolute;inset:0;z-index:140;background:#FBF7EF;display:flex;flex-direction:column;';
+  // Full-bleed guide with NO top bar, matching Go's showGuide(): the doc's own web header is the
+  // only chrome, and Back is a floating pill in the bottom-left (Go injects #appBack there). The
+  // navy "\u2039 Back  Gopher Request 101" strip this used to draw exists on neither app.
+  ov.innerHTML='<iframe class="r101-fr" style="flex:1;width:100%;border:0;background:#fff;"></iframe>'
+    +'<button class="r101-bk" aria-label="Back">\u2039 Back</button>';
+  ph.appendChild(ov);
+  ov.querySelector('.r101-bk').onclick=function(){ ov.remove(); };
+  var fr=ov.querySelector('.r101-fr');
+  fr.src='../../Final/gopher-request-101.html';
+  fr.onload=function(){ try{ var d=fr.contentDocument; if(!d) return;
+    // The doc ships its Sections FAB bottom-LEFT, which is where the Back pill now lives. Go's
+    // embedded copy patches the same two rules (.sections-fab -> right, .totop -> bottom:78px);
+    // we inject them instead of forking the doc, so Final/ stays the single source. Kept inside
+    // the doc's own max-width:980px media query, and later in source order, so it wins.
+    // The Back pill is owned by the OVERLAY, not injected here \u2014 if this cross-document access
+    // ever fails, Back still works and only the FAB placement degrades.
+    var st=d.createElement('style');
+    st.textContent='@media (max-width:980px){.page-sections-fab{left:auto !important;right:18px !important;}}'
+      +'.totop{bottom:78px !important;}';
+    (d.head||d.documentElement).appendChild(st);
+    // Rewire the dead "gopher-faqs.html" links to the in-app FAQ sheet.
+    d.querySelectorAll('a[href$="gopher-faqs.html"]').forEach(function(a){
+      a.addEventListener('click',function(e){ e.preventDefault(); ov.remove(); openReqFaqs(); });
+    });
+  }catch(_){} };
 }
 // MY Gophers \u2014 session-only favorites. In the split/PT demo this starts EMPTY (0) and only fills when
 // John adds the prototype Gopher this session; the standalone app keeps a few representative favorites.
@@ -1925,7 +2636,7 @@ function openMyGophers(){ var L=myGopherRows();
     ? '<p class="gs-sub">Favorited Gophers \u2014 prioritized on new requests.</p><div class="gs-list" style="margin-top:10px;">'+L.map(g=>'<div class="gph"><span class="gph-pic">'+g[0].split(/\s+/).map(w=>w[0]).join('').slice(0,2)+'</span><div class="gph-tx"><div class="gph-nm">'+g[0]+' '+window.__tierBadge(g[1],g[2])+'</div><div class="gph-tag">'+g[3]+'</div></div><button class="gph-hire" data-goto="flow">Hire again</button></div>').join('')+'</div>'
     : '<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;line-height:1.55;padding:24px 12px;">No favorited Gophers yet.<br>After a completed request, add your Gopher here \u2014 they\u2019ll be prioritized on your future requests.</div>';
   gSheet('MY Gophers', body); }
-// Keep the account tool-row sub-labels (MY Gophers / Request history) in sync with session state.
+// Keep the account tool-row sub-labels (MY Gophers / Previous requests) in sync with session state.
 function updateAccountLabels(){
   try{
     var mg=isPTmode()? (SESS_MYGOPHERS||[]).length : 3;   // guard: initPending() may run before SESS_MYGOPHERS is assigned
@@ -1936,10 +2647,10 @@ function updateAccountLabels(){
     });
   }catch(_){}
 }
-// Request history (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
+// Previous requests (requester perspective) \u2014 the requester's own finished requests: what they PAID, who
 // fulfilled it, and the rating THEY gave. Pulls live completed requests from the store first, then a few
 // representative past ones, so a job completed during the demo shows up at the top.
-/* "Request again" from a completed job in the request history.
+/* "Request again" from a completed job in Previous requests.
    NOW  → skip the review page, land on the submitted confirmation.
    edits→ land on the canonical Review (Step 6), everything prefilled.
    Either way the past job's Gopher rides along and gets first dibs. */
@@ -1963,7 +2674,7 @@ function openHistory(){
     return { title:r.title||'Request', order:r.order, cat:(CATLABEL[r.cat]||'Request'), date:'Just now',
       paid:(r.amount||money((+r.pay||0)+(+r.cost||0))), who:(r.hired||'your Gopher'), rating:(+r.rating||0), note:(r.ratingNote||''), noShow:!!r.noShow };
   });
-  // In the split/PT demo, Request history starts EMPTY and fills only from this session's completed
+  // In the split/PT demo, Previous requests starts EMPTY and fills only from this session's completed
   // requests. The standalone app keeps a few representative past requests.
   var demo=isPTmode()? [] : [
     { title:'Grocery + pharmacy run', order:'GR-00187', cat:'Delivery', date:'Mar 4', paid:'$24.91', who:'Devon M.', rating:5, note:'Fast and friendly \u2014 grabbed everything on the list.' },
@@ -1992,10 +2703,10 @@ function openHistory(){
     : '<div style="text-align:center;color:#8a94a3;font-family:\'DM Sans\',sans-serif;font-size:12.5px;padding:22px 10px;">No completed requests yet \u2014 your finished requests will appear here.</div>';
   var cancelledBlock = isPTmode()? ''
     : '<div class="gs-sech">Cancelled</div><div style="border:1px solid #eceaf0;border-radius:14px;padding:12px 13px;background:#fff;"><b style="font-family:Nunito;font-weight:900;font-size:13.5px;color:#002461;">Furniture moving</b><div style="font-family:\'DM Sans\',sans-serif;font-size:11.5px;color:#8a94a3;margin-top:2px;">#GR-00120 &middot; cancelled before a Gopher was matched &middot; no charge</div></div>';
-  gSheet('Request history', '<div class="gs-sech">Completed</div>'+completedBlock+cancelledBlock);
+  gSheet('Previous requests', '<div class="gs-sech">Completed</div>'+completedBlock+cancelledBlock);
 }
 /* ── Canonical Gopher account (single source of truth for the My Profile sheet) ── */
-var PROFILE={firstName:'John',lastName:'Newbury',email:'johnnewbury@sbcglobal.net',phone:'(805) 624-1724',accountId:'GPH-000001-NEWBURY',street:'405 Shorehouse Way',city:'Holly Springs',state:'NC',zip:'27540',dob:'02-03-1976',source:'Referral',referredBy:'Ken Newbury',memberSince:'2024',lastSignin:'Today · Holly Springs, NC',rating:'4.9 (128)'};
+var PROFILE={firstName:'John',lastName:'Demo',email:'john.demo@gophergo.io',phone:'(919) 555-0124',accountId:'GPH-000001-DEMO',street:'100 Demo Way',city:'Raleigh',state:'NC',zip:'27601',dob:'01-01-1990',source:'Referral',referredBy:'Demo Referrer',memberSince:'2024',lastSignin:'Today · Raleigh, NC',rating:'4.9 (128)'};
 function peInitials(){return ((PROFILE.firstName[0]||'')+(PROFILE.lastName[0]||'')).toUpperCase();}
 function peFullName(){return PROFILE.firstName+' '+PROFILE.lastName;}
 function peAddrFull(){return PROFILE.street+', '+PROFILE.city+', '+PROFILE.state+' '+PROFILE.zip;}
@@ -2091,13 +2802,13 @@ function openPayments(){
   gSheet('Payment methods','<div class="gs-list" style="margin-top:6px;"><div class="gs-li"><b>Visa \u2022\u2022\u2022\u2022 4242</b> \u00B7 default</div><div class="gs-li">Mastercard \u2022\u2022\u2022\u2022 8210</div><div class="gs-li">Apple Pay</div></div><div class="gs-hint"><span class="gs-link">+ New payment method</span></div>');
 }
 function openNotifSettings(){ gSheet('Notification settings','<div class="gs-list" style="margin-top:6px;"><div class="gs-li">Request updates \u2014 <b>On</b></div><div class="gs-li">Deals near me \u2014 <b>On</b></div><div class="gs-li">Rewards & referrals \u2014 <b>On</b></div><div class="gs-li">Product news \u2014 Off</div></div>'); }
-function openAccount(){ gSheet('Account','<div class="pts-hero" style="background:var(--navy);"><div class="pts-n" style="font-size:22px;">John Newbury</div><div class="pts-l">Signed in \u00B7 TrustShield pending</div></div><div class="gs-list" style="margin-top:12px;"><div class="gs-li" data-goto="profile"><b>My Profile</b></div><div class="gs-li" data-goto="addresses"><b>Saved addresses</b></div><div class="gs-li" data-goto="payments"><b>Payment methods</b></div><div class="gs-li" data-goto="notifsettings"><b>Notification settings</b></div><div class="gs-li" data-goto="history"><b>Request history</b></div><div class="gs-li" data-goto="help"><b>Help Center</b></div><div class="gs-li" data-goto="terms"><b>Terms & Privacy</b></div></div><div class="gs-hint"><span class="gs-link" data-goto="signout">Sign out</span></div>'); }
+function openAccount(){ gSheet('Account','<div class="pts-hero" style="background:var(--navy);"><div class="pts-n" style="font-size:22px;">John Newbury</div><div class="pts-l">Signed in \u00B7 TrustShield pending</div></div><div class="gs-list" style="margin-top:12px;"><div class="gs-li" data-goto="profile"><b>My Profile</b></div><div class="gs-li" data-goto="addresses"><b>Saved addresses</b></div><div class="gs-li" data-goto="payments"><b>Payment methods</b></div><div class="gs-li" data-goto="notifsettings"><b>Notification settings</b></div><div class="gs-li" data-goto="history"><b>Previous requests</b></div><div class="gs-li" data-goto="help"><b>Help Center</b></div><div class="gs-li" data-goto="terms"><b>Terms & Privacy</b></div></div><div class="gs-hint"><span class="gs-link" data-goto="signout">Sign out</span></div>'); }
 function openActivity(){ var act=''; if(typeof PEND!=='undefined' && PEND){ act='<div class="gs-sech">Active</div><div class="gs-list"><div class="gs-li"><b>'+PEND.title+'</b> \u00B7 '+(PEND.amount||'')+'<br>'+(PEND.stage==='matched'?('Matched with '+PEND.hired):'Finding a Gopher\u2026')+' \u00B7 <span class="gs-link" data-pending-action="track">Track</span></div></div>'; } else { act='<div class="gs-sech">Active</div><p class="gs-sub">No active request right now.</p>'; } gSheet('Activity', act+'<div class="gs-sech">Past requests</div><div class="gs-list"><div class="gs-li"><b>Grocery + pharmacy run</b> \u00B7 $24.91 \u00B7 Completed \u00B7 5\u2605<br><span class="gs-link" data-goto="flow">Request again \u2192</span></div><div class="gs-li"><b>Lawn mowing</b> \u00B7 $45 \u00B7 Completed \u00B7 5\u2605</div><div class="gs-li">Furniture moving \u00B7 Cancelled</div></div>'); }
 document.addEventListener('click',function(e){
   var g=e.target.closest('[data-goto]'); if(g){ var k=g.dataset.goto;
     if(k==='location'){ openLocation(); return; }
     if(k==='notif'){ openNotif(); return; }
-    if(k==='allsvc'){ openAllServices(); return; }
+    if(k==='allsvc'){ gotoURL('gopher-request-flow.html?step=1'); return; }
     if(k==='featured'){ openFeatured(); return; }
     if(k==='mygophers'){ openMyGophers(); return; }
     if(k==='history'){ openHistory(); return; }
@@ -2111,7 +2822,6 @@ document.addEventListener('click',function(e){
     if(k==='signout'){ toast('Signed out (demo)'); gClose(); return; }
   }
   var ad=e.target.closest('[data-addr]'); if(ad){ var v=ad.dataset.addr; var loc=document.querySelector('.loc'); if(loc){ var t=v==='current'?'Apex, NC 27502':v.split(',').slice(-2).join(',').trim(); } gClose(); toast('Location updated'); return; }
-  var sv=e.target.closest('[data-svc]'); if(sv){ gClose(); gotoURL('gopher-request-flow.html?category='+encodeURIComponent(sv.dataset.svc)); return; }
 });
 (function(){ try{ var sp=new URLSearchParams(location.search).get('sheet'); if(sp==='account') setTimeout(openAccount,60); else if(sp==='activity') setTimeout(openActivity,60); }catch(_){} })();
 
@@ -2129,220 +2839,40 @@ document.addEventListener('click',function(e){
 })();
 </script>
 <!-- ===================================================================
-     GOPHER iQ — consumer ask assistant (Request side; NOT the Go FAQ).
-     User types in the Home pill -> a full-phone iQ panel opens with a
-     real composer, intent-aware answers, and action chips that route
-     into the app. Self-contained; appended to #phone (same pattern as
-     the D-029 signup pop-up). Front-end sim — no external AI call.
+     GOPHER iQ — Home pill entry point.
+     Owner directive 2026-07-25: Request's iQ is the SAME modal as Gopher
+     Go's (built in openIQ() above); the Home pill only opens it, carrying
+     over whatever was already typed. The full-phone chat panel that used
+     to live here is RETIRED — it shipped its own keyword classifier, a
+     third brain that never received the corpus fixes the shared one got,
+     which is why "can i pay with cash" came back with the pricing blurb.
+     Every answer now routes through reqAnswerCard, the Help Center brain.
      ==================================================================== -->
 <style>
-  .iqp-wrap{position:absolute;inset:0;z-index:70;display:none;flex-direction:column;
-    background:var(--paper,#FBF7EF);font-family:'DM Sans',-apple-system,system-ui,sans-serif;}
-  .iqp-wrap.open{display:flex;animation:iqpIn .22s ease both;}
-  @keyframes iqpIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
-  .iqp-head{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;
-    background:linear-gradient(135deg,#1CB061,#33D975);color:#fff;flex:0 0 auto;}
-  .iqp-badge{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.18);
-    display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;
-    font-size:13px;letter-spacing:.02em;border:1px solid rgba(255,255,255,.35);}
-  /* iQ logo lockup (mark + wordmark) */
-  .iqp-logo{background:#fff;border-radius:10px;padding:7px 11px;display:flex;align-items:center;flex:0 0 auto;box-shadow:0 1px 3px rgba(0,36,97,.12);}
-  .iqp-logoimg{height:22px;width:auto;display:block;}
-  .iqp-x{margin-left:auto;width:30px;height:30px;border:none;background:rgba(255,255,255,.16);
-    color:#fff;border-radius:50%;font-size:18px;line-height:1;cursor:pointer;}
-  .iqp-feed{flex:1 1 auto;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:12px;}
-  .iqp-row{display:flex;gap:8px;max-width:100%;}
-  .iqp-row.user{justify-content:flex-end;}
-  .iqp-av{width:24px;height:24px;border-radius:7px;flex:0 0 auto;background:#E8F5EE;color:#1CB061;
-    display:flex;align-items:center;justify-content:center;font-family:'Nunito';font-weight:900;font-size:9.5px;margin-top:2px;}
-  .iqp-bub{padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.5;max-width:80%;}
-  .iqp-row.bot .iqp-bub{background:#fff;border:1px solid #e7e0d2;border-top-left-radius:5px;color:#33405e;}
-  .iqp-row.user .iqp-bub{background:var(--navy,#002461);color:#fff;border-top-right-radius:5px;}
-  .iqp-bub b{font-family:'Nunito';font-weight:800;color:inherit;}
-  .iqp-chips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 2px 32px;}
-  .iqp-chip{font-family:'Nunito';font-weight:800;font-size:12px;padding:7px 12px;border-radius:999px;
-    background:#fff;border:1.5px solid #1CB061;color:#1CB061;cursor:pointer;line-height:1;}
-  .iqp-chip:active{transform:scale(.97);}
-  .iqp-chip.go{background:#1CB061;color:#fff;}
-  .iqp-typing{display:flex;gap:4px;padding:11px 14px;}
-  .iqp-typing span{width:6px;height:6px;border-radius:50%;background:#9aa6bd;animation:iqpBlink 1.2s infinite;}
-  .iqp-typing span:nth-child(2){animation-delay:.2s;}.iqp-typing span:nth-child(3){animation-delay:.4s;}
-  @keyframes iqpBlink{0%,60%,100%{opacity:.25;}30%{opacity:1;}}
-  .iqp-comp{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:11px 12px;
-    background:#fff;border-top:1px solid #e7e0d2;}
-  .iqp-input{flex:1;border:1px solid #dfe3ec;border-radius:999px;padding:11px 15px;font-size:14px;
-    font-family:'DM Sans',sans-serif;color:var(--navy,#002461);outline:none;background:#fff;}
-  .iqp-input:focus{border-color:#33D975;box-shadow:0 0 0 3px rgba(51,217,117,.16);}
-  .iqp-send{width:40px;height:40px;flex:0 0 auto;border:none;border-radius:50%;background:var(--navy,#002461);
-    color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-  .iqp-send:disabled{opacity:.4;cursor:default;}
-  .iqp-send svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-  /* the Home pill becomes a real text entry that opens iQ */
+  /* the Home pill is a real text entry that opens iQ */
   .iq-pill .iq-seed{font-family:'Nunito';font-weight:700;font-size:13px;color:var(--ink-soft,#5C6685);
     flex:1;border:none;background:transparent;outline:none;padding:0;min-width:0;}
   .iq-pill .iq-seed::placeholder{color:var(--ink-soft,#5C6685);opacity:1;}
 </style>
 
-<div class="iqp-wrap" id="iqPanel" role="dialog" aria-modal="true" aria-label="Gopher iQ">
-  <div class="iqp-head">
-    <span class="iqp-logo"><img class="iqp-logoimg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAADACAMAAADLAvdFAAADAFBMVEX+/v4BJGQEJFkx13YbrmGE97sDFTb5/fwXsV0AAREGHEsasWIABBUABRklqWsYrFwANE0ACicACCIABh1GyY4DHWYvyXMADDIARVAltWp6+LUDEScCEisACysbeG441IOL98VH1YwqmXEABiDT/u07yocIJTsCV1KO6swHNGYSaGc1p4dw6aow4HJJuY4ANjkFZlciql06toqM6bkZhmoxmIUlh3QFEyJIyHxGmGxW45QLWWYJdVdC0XqO1bCy+9Rot49px5J6yKSH19HV5fiGlbUalWslOVk4iYlMuHtx1qQARTkndnZIWXhOp3hMqY9Rx6Oo6MUFEh00Rmg34oFHl40QSmwUnFcdwmQveoVWuafo7foHEyAAVTspa3cgslxQZYht1plg6p4ADUAHjE8aw1klbIFKdpRzhpl61sGFy6mzvNi0++HM2vDG+dwVLIMyR102WG9KZ3ZO1KJ1hqKcpryZp8aFztOb5+Ob9OACDGsHEgwOFxQCEBkAZz0lm19FWIJAjmRGi5Jal6xgcJJ+krdgp39krbZ3tMZ+z8iFvZqBv9S5xd+8zeG/0NoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADrBX3gAAABAHRSTlMA///////7//8Q//8uT////66MbP////T///+vzs///////3v///7/////////////////////jv//////////////////////////////////a////////////3v///////////////////////////////////////8VOkj//////////////////////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAtHTgQQAAN/BJREFUeNrtnQdj2zi2qCVYRkSIpNjULMlFju3YTuz0ZGayU3Zmp+/UO33L3XK33b29v977e7/54QAgCZAAiyLZGZuYZBKX0BSFD6ef02qtb1mhP8KEEITasBBdBGMc2PC1VrOadY2X7QRzTJBY7YQQWHgWBPthg0izrutyRlRspEi04wUfDLgkIQSHzYNq1jVcVogFHvrFCGG04Cd287iadb00qwDokKVGlg4uSMQfVI7s242u1azrgoePE9WqXYRIuqjZPm/MkWZdB9XK8TGKtSfBiGSdt2VmqOyQEZk5zeNr1tXHgygmuXBZefJiH6muLfaNuCGkWVd7OZgMhIGR7HvvfHx3+233/v1IrPvu4uH23fH5OaeESxYGSOPRataVXk8OkWJe0E0/3n50RqEY7uxsxGtnZ+cgis5OFxQSdEzVrASQRoI06wqrVyFmO30AvwiTHScPzw4O9vZ2NoYbKR98Pf1BFB3cP9v2PI4UiBG/8fc26+ry4Qt9iRnex8gbP74f7e1kwZDXzk4Uffsuah8T7u2dO40jq1lX1vpIUq3Asji/u4j29obDIjrg/wefnHiICFue4HkjQ5p1JVcg+GAurMPx9n2qWcl0DGF9PczysXHgfgBqGUFxFmPQCJFmXb0VEtltRaXHAdgdMRs9WP1+t9/LyZHop+eeEhnBjSHSrCu3nnAJwPE4WoDpwSXEsAuL4tHpdCgjvZytHoGZjtCxHDBsfFnNulrmOUbMV0s1pWM0fnZATQ9GyBCkRspHp9fNS5CNgyh6dPf8nFr3SeyENIQ064rxwfZ3G3mHVHxw0TGcTCgfQIZYVH7oAKHfGkUuFSMeATkyoAuhJmDYrKvFByUEZMj59lkUDYfU/gA6mNgoAQQCJAd7UXR2cg7erDgigoUhYjUme7O+HxhYthPuB2Hg2Fk+eOYu8OE9jqh1vrcDlke/05v0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" alt="Gopher iQ"></span>
-    <button class="iqp-x" id="iqClose" aria-label="Close">&times;</button>
-  </div>
-  <div class="iqp-feed" id="iqFeed"></div>
-  <div class="iqp-comp">
-    <input class="iqp-input" id="iqInput" placeholder="Tell us what you need&hellip;" autocomplete="off">
-    <button class="iqp-send" id="iqSend" aria-label="Send" disabled>
-      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-    </button>
-  </div>
-</div>
-
 <script>
 (function(){
-  var panel=document.getElementById('iqPanel'), feed=document.getElementById('iqFeed'),
-      input=document.getElementById('iqInput'), send=document.getElementById('iqSend'),
-      closeb=document.getElementById('iqClose');
-  if(!panel) return;
-  // mount inside the 390px phone frame so the panel is phone-sized (not full-viewport)
-  var dev=document.getElementById('phone'); if(dev && panel.parentNode!==dev){ dev.appendChild(panel); }
-
-  function nav(url){ if(typeof window.__navHook==='function'){ window.__navHook(url); } else { location.href=url; } }
-  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
-
-  // ---- intent engine: keyword -> { reply, chips } -------------------
-  // Deals launch gate (Raleigh DMA only) — flag decided at load; the split-screen toggle reboots the frame.
-  var DEALS_LIVE=(function(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } })();
-  var CORE=[
-    {label:'Start a request',go:1,act:'cat:delivery'},
-    {label:'Browse deals',go:0,act:'nav:gopher-request-deals.html'},
-    {label:'Track my request',go:0,act:'msg:track'},
-    {label:'Refer & earn',go:0,act:'nav:gopher-request-refer.html'}
-  ].filter(function(c){ return DEALS_LIVE || c.act!=='nav:gopher-request-deals.html'; });
-  var CATS={delivery:'Delivery / Errand',junk:'Junk Removal',moving:'Moving',home:'Home / Office Services',
-            labor:'Hourly / Day Labor',yard:'Yard / Outdoor',ride:'Ride Sharing',other:'Something else'};
-  function catChip(k){ return {label:'Start a '+CATS[k].split(' / ')[0].toLowerCase()+' request',go:1,act:'cat:'+k}; }
-
-  function classify(t){
-    t=' '+t.toLowerCase()+' ';
-    var has=function(){for(var i=0;i<arguments.length;i++){if(t.indexOf(arguments[i])>-1)return true;}return false;};
-    // ── Location / availability — answer with the REAL coverage brain (window.GopherIQData) ──
-    var availCue = has('are you in','are you serving','do you serve','do you cover','do you have gophers','service in','available in','coming to','gophers in','service area','coverage in','operate in','you serve','you in ');
-    var placeM = t.match(/\b(?:in|serve|servicing|serving|cover|covering|to)\s+([a-z][a-z .'\-]{1,26}(?:,\s*[a-z]{2})?)\s*[?!.]*\s*$/i)
-              || t.match(/\b(\d{5})\b/);
-    if((availCue || (placeM && /,\s*[a-z]{2}\b/.test(t))) && placeM && window.GopherIQData && GopherIQData.lookup){
-      var place=String(placeM[1]).trim();
-      var cov=GopherIQData.lookup(place);
-      var startChip=[{label:'Start a request',go:1,act:'cat:delivery'}];
-      var findChip=[{label:'Find MY Gopher',go:0,act:'nav:gopher-request-refer.html'}];
-      if(cov && cov.ambiguous){
-        var opts=(cov.options||[]).map(function(o){return o.state+' ('+o.workers+' Gophers)';}).join(', ');
-        return {reply:"There’s more than one <b>"+esc(cov.city)+"</b> — which state? "+opts+".",chips:startChip};
-      }
-      var pretty=(cov&&cov.city)?cov.city:place.replace(/\b([a-z])/g,function(c){return c.toUpperCase();});
-      if(!cov || !cov.inData || (cov.workers||0)===0){
-        return {reply:"We’re not live in <b>"+esc(pretty)+"</b> just yet — but every request helps us grow there. You can post a request to gauge interest, or help bring Gopher to your area.",chips:startChip.concat(findChip)};
-      }
-      var w=cov.workers||0;
-      if(w<20) return {reply:"Word’s just getting out in <b>"+esc(pretty)+"</b> — a small crew of Gophers so far. Post a request to reach them (and if we can’t connect you, you don’t pay a dime), or use <b>Find MY Gopher</b>.",chips:startChip.concat(findChip)};
-      return {reply:"Yes — <b>"+esc(pretty)+"</b> has <b>"+w+"</b> active Gophers ready to help. Start a request and I’ll get you matched.",chips:startChip};
-    }
-    if(has('alcohol','wine','beer','liquor','tobacco','vape','cigarette','cig','smokes','nicotine','juul','booze','whiskey','vodka','tequila','rum','hard seltzer',' 21')||has('age restricted','age-restricted'))
-      return {reply:"Sure — age-restricted items (like alcohol or tobacco) need a quick identity check. With <b>TrustShield</b> on your profile it's automatic; otherwise you'll snap a photo of your ID in the flow. There's a $1.99 age-verification fee (TrustShield takes $1 off the request fee).",chips:[catChip('delivery')]};
-    if(has('price','cost','fee','how much','charge',' pay ','expensive','cheap'))
-      return {reply:"Here's how pricing works: you set the <b>worker payment</b> plus any <b>cost of items</b> — the Gopher sees the total. On top there's a small request fee by category (delivery starts at $0.99), an optional 8% instant-transfer rate, and $1.99 for age-restricted orders. Promo <b>GOPHER50</b> takes 50% off fees.",chips:[catChip('delivery')]};
-    if(has('deal','discount','coupon','save','offer','promo'))
-      return DEALS_LIVE
-        ? {reply:"We've got local deals you can have delivered or picked up. Want to browse what's near you?",chips:[{label:'Browse deals',go:1,act:'nav:gopher-request-deals.html'}]}
-        : {reply:"Gopher Deals isn't live in your area just yet — we're rolling it out market by market. In the meantime I can get you a Gopher for anything you need.",chips:[catChip('delivery')]};
-    if(has('track','where','status',' eta','how long','on its way'))
-      return {reply:"If you have an active request, its live card sits right on your Home screen — tap <b>Track</b> there to follow your Gopher in real time. No active request yet? Start one and I'll get you matched.",chips:[catChip('delivery')]};
-    if(has('refer','invite','friend','earn','reward','points'))
-      return {reply:"Love it — refer friends to Gopher Request, Go, or Connect (or recommend a Gopher you liked) and earn rewards. Want to open Refer &amp; Earn?",chips:[{label:'Refer & earn',go:1,act:'nav:gopher-request-refer.html'}]};
-    if(has('move','moving','relocat','u-haul','furniture')) return {reply:"On it — a Moving request handles loading, hauling, and heavy lifting.",chips:[catChip('moving')]};
-    if(has('junk','haul','couch','dispose','trash','debris','cleanout')) return {reply:"Got it — junk haul-away. I'll start a Junk Removal request for you.",chips:[catChip('junk')]};
-    if(has('mount','tv','assemble','install','clean','handyman','repair','fix')) return {reply:"That's a Home / Office Services job — mounting, assembly, cleaning, and more.",chips:[catChip('home')]};
-    if(has('labor','hands','helper','load','event','crew','hour')) return {reply:"Need extra hands? Hourly / Day Labor lets you book people by the hour.",chips:[catChip('labor')]};
-    if(has('yard','mow','lawn','leaves','mulch','outdoor','garden')) return {reply:"Yard & Outdoor it is — mowing, cleanup, mulch, and more.",chips:[catChip('yard')]};
-    if(has('ride','airport','drive','lift','pick me up')) return {reply:"A Ride request can get you where you need to be.",chips:[catChip('ride')]};
-    if(has('deliver','errand','pick up','pickup','drop','grocery','pharmacy','takeout','bring')) return {reply:"A Delivery / Errand request is perfect for that — pickups, drop-offs, and quick runs.",chips:[catChip('delivery')]};
-    if(has('hi','hello','hey','help','what can you','who are you','do '))
-      return {reply:"Hi! I'm Gopher iQ. Tell me what you need done — a delivery, a haul-away, a few hours of help — and I'll set it up. Here are some quick ways to start:",chips:CORE};
-    return {reply:"I can help you get just about anything done. Describe the task in your own words, or pick one of these to start:",chips:CORE};
+  // One entry point for both gestures. Clicking the pill's input fires focus THEN click, so
+  // without the already-open guard the second event would tear down the modal gModal just
+  // built and drop the seeded text with it.
+  function openFromPill(){
+    if(document.querySelector('#iqAsk')) return;            // modal already up
+    var s=document.querySelector('.iq-seed');
+    var v=s?s.value.trim():'';
+    if(s) s.value='';
+    openIQ(v);
   }
-
-  // ---- rendering ----------------------------------------------------
-  function scroll(){ feed.scrollTop=feed.scrollHeight; }
-  function addUser(text){
-    var r=document.createElement('div'); r.className='iqp-row user';
-    r.innerHTML='<div class="iqp-bub">'+esc(text)+'</div>'; feed.appendChild(r); scroll();
-  }
-  function addBot(reply,chips){
-    var r=document.createElement('div'); r.className='iqp-row bot';
-    r.innerHTML='<div class="iqp-av">iQ</div><div class="iqp-bub">'+reply+'</div>'; feed.appendChild(r);
-    if(chips&&chips.length){
-      var c=document.createElement('div'); c.className='iqp-chips';
-      chips.forEach(function(ch){
-        var b=document.createElement('button'); b.className='iqp-chip'+(ch.go?' go':'');
-        b.textContent=ch.label; b.dataset.act=ch.act; c.appendChild(b);
-      });
-      feed.appendChild(c);
-    }
-    scroll();
-  }
-  function typing(on){
-    var ex=document.getElementById('iqTyping');
-    if(on&&!ex){ var r=document.createElement('div'); r.className='iqp-row bot'; r.id='iqTyping';
-      r.innerHTML='<div class="iqp-av">iQ</div><div class="iqp-bub iqp-typing"><span></span><span></span><span></span></div>';
-      feed.appendChild(r); scroll(); }
-    else if(!on&&ex){ ex.remove(); }
-  }
-  function respond(text){
-    typing(true);
-    setTimeout(function(){ typing(false); var r=classify(text); addBot(r.reply,r.chips); }, 480);
-  }
-
-  // ---- chip actions -------------------------------------------------
-  feed.addEventListener('click',function(e){
-    var chip=e.target.closest('.iqp-chip'); if(!chip) return;
-    var act=chip.dataset.act||'';
-    if(act.indexOf('cat:')===0){ nav('gopher-request-flow.html?category='+encodeURIComponent(act.slice(4))); return; }
-    if(act.indexOf('nav:')===0){ nav(act.slice(4)); return; }
-    if(act.indexOf('msg:')===0){ addUser(chip.textContent); respond(act.slice(4)); return; }
-  });
-
-  // ---- composer -----------------------------------------------------
-  function submit(){
-    var v=input.value.trim(); if(!v) return;
-    var sd=document.querySelector('.iq-seed'); if(sd) sd.value='';
-    addUser(v); input.value=''; send.disabled=true; respond(v);
-  }
-  input.addEventListener('input',function(){ send.disabled=!input.value.trim(); });
-  input.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); submit(); } });
-  send.addEventListener('click',submit);
-  closeb.addEventListener('click',function(){ panel.classList.remove('open'); });
-
-  // ---- open / greeting ----------------------------------------------
-  var greeted=false;
-  window.__openIq=function(seed){
-    panel.classList.add('open');
-    if(!greeted){ var g=classify('hello'); addBot(g.reply,g.chips); greeted=true; }
-    if(seed){ input.value=seed; send.disabled=!seed.trim(); }
-    setTimeout(function(){ input.focus(); },60);
-  };
-
-  // open from the Home pill (the seed input + the pill itself)
   document.addEventListener('click',function(e){
-    var p=e.target.closest('[data-iq-open]'); if(p){ window.__openIq(); }
+    if(e.target.closest('[data-iq-open]')) openFromPill();
   });
-  // the pill's own text field: focusing or typing in it opens iQ; text mirrors into the composer
   var seed=document.querySelector('.iq-seed');
-  if(seed){
-    seed.addEventListener('focus',function(){ if(!panel.classList.contains('open')) window.__openIq(); });
-    seed.addEventListener('input',function(){
-      if(!panel.classList.contains('open')) window.__openIq();
-      input.value=seed.value; send.disabled=!input.value.trim();
-    });
-  }
+  if(seed) seed.addEventListener('focus',openFromPill);
+  window.__openIq=openFromPill;   // kept: the split-screen harness may still call it
 })();
 </script>
 
@@ -2551,7 +3081,9 @@ document.addEventListener('click',function(e){
 
   function renderPending(){
     var hired=by('hired'), interested=sortInterested(by('interested')), considered=by('considered');
-    var perWorker = TOTAL/REQUESTED, adj = perWorker*hired.length;
+    // Canon (connect-flows-granular, "Bids when >1 worker"): the single hire is responsible
+    // for PAYING THE WHOLE CREW, so one payment covers every worker. No pro-rating.
+    var adj = TOTAL;
     var html='';
     // summary
     html+='<div class="rd-sum"><span class="rd-pending">PENDING</span>'
@@ -2560,11 +3092,11 @@ document.addEventListener('click',function(e){
       +'<div class="rd-sum-w">'+(interested.length+considered.length)+' worker'+((interested.length+considered.length)!==1?'s':'')+' interested</div></div>';
     // hire approved
     if(hired.length){
-      html+='<div class="rd-sec">Hire Approved <span class="rd-count">'+hired.length+' of '+REQUESTED+'</span></div>';
+      html+='<div class="rd-sec">Hire Approved <span class="rd-count">Lead worker</span></div>';
       hired.forEach(function(w){ html+=workerRow(w,'hired'); });
-      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">'+hired.length+' worker'+(hired.length!==1?'s':'')+' hired \u00b7 '+REQUESTED+' requested</div>'
-        +'<div class="rd-bank-amt">'+money(adj)+(hired.length<REQUESTED?'<s>'+money(TOTAL)+'</s>':'')+'</div>'
-        +'<div class="rd-bank-sub">Adjusted for '+hired.length+' of '+REQUESTED+' \u2014 you only pay for who you start.</div></div>'
+      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">Lead worker hired \u00b7 crew of '+REQUESTED+'</div>'
+        +'<div class="rd-bank-amt">'+money(adj)+'</div>'
+        +'<div class="rd-bank-sub">You pay your lead worker the full amount \u2014 they bring and pay the rest of the crew.</div></div>'
         +'<button class="rd-start" data-rd="start">Start Job \u2192</button></div>';
     }
     // workers interested
@@ -2600,14 +3132,20 @@ document.addEventListener('click',function(e){
   function allDone(){ var h=by('hired'); return h.length>0 && h.every(function(w){return (w.stage||0)>=LIVE_STAGES.length-1;}); }
 
   function renderActive(){
-    var hired=by('hired'), perWorker=TOTAL/REQUESTED, paid=perWorker*hired.length, done=allDone(), pct=overallPct();
+    // Full amount to the lead — no pro-rating (see REQUEST HIRE RULE in renderPending).
+    var hired=by('hired'), paid=TOTAL, done=allDone(), pct=overallPct();
     var html='<div class="rd-sum">'
       +'<span class="rd-statuspill'+(done?' done':'')+'">'+(done?'COMPLETED':'IN PROGRESS')+'</span>'
       +'<div class="rd-sum-t">'+REQ.icon+' '+REQ.title+' \u00b7 '+REQ.note+'</div>'
-      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 '+hired.length+' Gopher'+(hired.length!==1?'s':'')+' on the job</div>'
+      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 lead worker on the job \u00b7 crew of '+REQUESTED+'</div>'
       +'<div class="rd-prog"><div class="rd-prog-bar"><i style="width:'+pct+'%"></i></div><span>'+pct+'%</span></div></div>';
     html+='<button class="rd-live" data-rd="live">\uD83D\uDCE1 View Live Activity</button>';
-    html+='<div class="rd-sec">Your Crew <span class="rd-count">'+hired.length+'</span></div>';
+    /* Owner 7/28: keep the original "Your Crew" heading. The COUNT that used to sit
+   here was hired.length, which under the one-lead-worker rule would always read 1
+   and looked like a bug on a multi-worker job — so it goes, but the heading itself
+   stays as it was. Crew size is still shown twice in this panel (the summary line
+   and the payment row), so nothing is lost by dropping it here. */
+html+='<div class="rd-sec">Your Crew</div>';
     hired.forEach(function(w){
       var st=LIVE_STAGES[w.stage||0];
       html+='<div class="rd-card"><div class="rd-row"><span class="rd-av">'+inits(w.name)+'</span>'
@@ -2735,7 +3273,11 @@ document.addEventListener('click',function(e){
     if(act==='advanceto'){ var aw=workers.find(function(x){return x.id===id;}); var si=parseInt(el.dataset.si,10); if(aw && si>(aw.stage||0)){ aw.stage=si; render(); } return; }
     if(!w){ if(act==='profile') toast('Opening profile\u2026'); else if(act==='text') toast('Opening chat\u2026'); return; }
     if(act==='hire'){
-      if(by('hired').length>=REQUESTED){ toast('You\u2019ve hired all '+REQUESTED+' \u2014 remove one to swap.'); return; }
+      // REQUEST HIRE RULE (owner 7/27): Request hires exactly ONE worker no matter what
+      // REQUESTED says. The hire is the LEAD, responsible for bringing AND paying the rest.
+      // Individually hiring >1 is CONNECT-only (laborManagement 'individually'). REQUESTED
+      // stays as crew size and drives labels/pricing only.
+      if(by('hired').length>=1){ toast('You hire one worker \u2014 remove them to pick someone else.'); return; }
       w.state='hired'; w.just=false; toast('Hired '+w.name);
     }
     else if(act==='consider'){ w.state='considered'; w.just=false; toast('Moved '+w.name+' to Considered'); }
@@ -2747,24 +3289,19 @@ document.addEventListener('click',function(e){
   });
   // ---- Start-Job confirmation modals (mirror web pop-ups, fitted to phone) ----
   function closeModal(){ modal.classList.remove('open'); modal.innerHTML=''; }
-  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast('Job started with '+n+' Gopher'+(n!==1?'s':'')+' \u2014 great pick!'); }
-  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="#E0A100" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.7 20h18.6L12 4z"/><line x1="12" y1="10" x2="12" y2="14.2"/><circle cx="12" cy="17.4" r=".5" fill="#E0A100" stroke="none"/></svg>';
+  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast(n?'Job started with your lead worker \u2014 great pick!':'Job started'); }
   function showStartConfirm(){
-    var hired=by('hired').length;
-    if(hired>=REQUESTED){
-      modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
-        +'<div class="rdm-ic go">\uD83D\uDE80</div>'
-        +'<h3 class="rdm-h">All workers needed have been selected!</h3>'
-        +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your workers and track the progress by tapping View Live Activity in the Request Details section.</p>'
-        +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Start Job</button></div></div>';
-    } else {
-      modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
-        +'<div class="rdm-ic warn">'+WARN_SVG+'</div>'
-        +'<h3 class="rdm-h">Heads up \u2014 your crew isn\u2019t full</h3>'
-        +'<p class="rdm-p">You\u2019ve hired <b>'+hired+' of '+REQUESTED+'</b> requested workers. You can absolutely start now if you\u2019re on a timeline, but <b>any workers you haven\u2019t hired yet will be lost</b> once you start \u2014 including any communication with them.</p>'
-        +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Yes, start anyway</button>'
-        +'<button class="rdm-btn ghost" data-rdm="close">\u2190 Go back</button></div></div>';
-    }
+    // REQUEST HIRE RULE (owner 7/28): "1 worker accepted on ALL requests is max with every
+    // request" — so starting early is MOOT in Request. There is no partial-crew state to warn
+    // about: the Start Job button only renders inside `if(hired.length)`, so this can never be
+    // reached with nobody hired. The old two-branch modal (full crew vs "your crew isn't full,
+    // start anyway and lose the others") was Connect's model; that second branch is now
+    // unreachable and is deleted rather than reworded.
+    modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
+      +'<div class="rdm-ic go">\uD83D\uDE80</div>'
+      +'<h3 class="rdm-h">Your lead worker is selected!</h3>'
+      +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your lead worker and track the progress by tapping View Live Activity in the Request Details section.</p>'
+      +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Start Job</button></div></div>';
     modal.classList.add('open');
   }
   modal.addEventListener('click',function(e){

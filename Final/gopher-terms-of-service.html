@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Gopher's Terms of Service — the agreement and rules for using the Gopher marketplace.">
   <meta name="twitter:image" content="https://gophergo.io/assets/img/og-default.jpg">
 
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/gopher-fonts.css">
 <style>
   :root {
     --green: #33D975;
@@ -151,10 +151,46 @@
   .contact-card a { color:var(--green); border:none; font-weight:700; }
 
   /* ── RESPONSIVE ── */
+  /* Mobile-only section launcher — desktop keeps the sticky sidebar. */
+  .legal-toc-fab, .legal-toc-scrim { display:none; }
+
   @media (max-width:900px) {
     .terms-hero { padding:56px 24px 48px; }
     .terms-layout { grid-template-columns:1fr; gap:0; padding:36px 24px 64px; }
-    .terms-toc { display:none; }
+    /* ⛔ WAS `display:none` (owner-reported 2026-08-25: "mobile view not showing
+       menu for users to jump to certain section"). The TOC is now a slide-in panel
+       driven by the .legal-toc-fab button, reusing this same <aside> — do not
+       duplicate the link list for mobile, or the two lists will drift. */
+    .terms-toc {
+      position:fixed; top:0; left:0; z-index:1200;
+      width:min(320px, 86vw); height:100vh; max-height:100vh;
+      background:#fff; border-right:1px solid rgba(0,36,97,.12);
+      box-shadow:0 0 40px rgba(0,0,0,.18);
+      padding:78px 18px 24px; overflow-y:auto;
+      transform:translateX(-105%); transition:transform .28s cubic-bezier(.4,0,.2,1);
+    }
+    body.legal-toc-open .terms-toc { transform:translateX(0); }
+    .legal-toc-fab {
+      display:inline-flex; align-items:center; gap:8px;
+      /* bottom offset clears the iOS home-indicator / toolbar safe area — at a
+         flat 22px the tap can be swallowed by the system gesture strip on a
+         real handset, which reads as "the button does nothing". */
+      position:fixed; left:18px; bottom:calc(22px + env(safe-area-inset-bottom, 0px)); z-index:1190;
+      background:var(--navy); color:#fff; border:none; border-radius:999px;
+      padding:11px 18px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
+      box-shadow:0 8px 24px rgba(0,36,97,.4); cursor:pointer;
+    }
+    .legal-toc-fab svg { width:16px; height:16px; }
+    body.legal-toc-open .legal-toc-fab { display:none; }
+    /* ⛔ display MUST be restored here. The base rule above is
+       `.legal-toc-fab, .legal-toc-scrim { display:none; }`, and this block used
+       to set position/inset/background but NOT display — so the scrim was
+       display:none at every width, the backdrop never dimmed and tap-outside
+       could not close the panel. Found 2026-08-26. */
+    body.legal-toc-open .legal-toc-scrim {
+      display:block; position:fixed; inset:0; z-index:1150; background:rgba(13,21,52,.55);
+    }
+    .legal-toc-scrim[hidden] { display:none; }
 }
 </style>
 </head>
@@ -172,7 +208,7 @@
     <p>The agreement between you and Gopher, Inc. By accessing or interacting with our services, site, or apps, you agree to the terms below.</p>
     <div class="terms-meta">
       <span>Effective Date: <strong>January 1, 2026</strong></span>
-      <span>Last Updated: <strong id="lastUpdated">June 7, 2026</strong></span>
+      <span>Last Updated: <strong id="lastUpdated">August 18, 2026</strong></span>
     </div>
   </div>
 </header>
@@ -263,22 +299,22 @@
 
     <section id="marketplace">
       <h2><span class="num">6</span>Marketplace Facilitator &amp; Independent Contractor Relationship</h2>
-      <p>Gopher, Inc. operates a digital marketplace that facilitates the connection between individuals and businesses seeking services ("Requestors") and independent service providers ("Gophers"). <strong>Gopher, Inc. acts strictly as a neutral technology platform — a "connector" or venue — that introduces Requestors and Gophers to one another. Gopher, Inc. does not provide, perform, supervise, direct, or participate in the services advertised on the platform, and does not employ, engage, or retain Gophers.</strong></p>
-      <p>All Gophers are independent third-party contractors who offer services directly to Requestors. Gopher does not supervise, direct, or control the manner or means by which services are performed.</p>
+      <p>Gopher, Inc. operates a digital marketplace that facilitates the connection between individuals and businesses seeking services ("Requesters") and independent service providers ("Gophers"). <strong>Gopher, Inc. acts strictly as a neutral technology platform — a "connector" or venue — that introduces Requesters and Gophers to one another. Gopher, Inc. does not provide, perform, supervise, direct, or participate in the services advertised on the platform, and does not employ, engage, or retain Gophers.</strong></p>
+      <p>All Gophers are independent third-party contractors who offer services directly to Requesters. Gopher does not supervise, direct, or control the manner or means by which services are performed.</p>
       <h3>Direct Offer Model</h3>
-      <p>Through the Gopher Request application, Requestors make <strong>direct offers</strong> to independent Gophers for specific services. Gophers may accept, reject, or counter these offers at their sole discretion. Upon acceptance, a direct agreement is formed between the Requestor and the Gopher. Gopher is <strong>not a party to this agreement</strong> and is not responsible for the performance of the services.</p>
+      <p>Through the Gopher Request application, Requesters make <strong>direct offers</strong> to independent Gophers for specific services. Gophers may accept, reject, or counter these offers at their sole discretion. Upon acceptance, a direct agreement is formed between the Requester and the Gopher. Gopher is <strong>not a party to this agreement</strong> and is not responsible for the performance of the services.</p>
       <h3>Safe &amp; Lawful Performance</h3>
       <p>Gophers are solely responsible for determining whether a requested service can be performed safely and lawfully. A Gopher may decline any request they believe presents an unreasonable risk of injury, property damage, or legal liability. <strong>Acceptance of a request constitutes the Gopher's representation that they are willing and able to perform the requested service safely, lawfully, and competently.</strong></p>
       <h3>Platform Fee &amp; Payment Facilitation</h3>
-      <p>Gopher charges a small platform facilitation fee to Requestors for use of the marketplace and payment processing services. This fee enables Gopher to facilitate secure payment processing and ensure that funds are released to the Gopher promptly after the Requestor confirms completion of the service. Gopher does not set worker compensation or control pricing.</p>
+      <p>Gopher charges a small platform facilitation fee to Requesters for use of the marketplace and payment processing services. This fee enables Gopher to facilitate secure payment processing and ensure that funds are released to the Gopher promptly after the Requester confirms completion of the service. Gopher does not set worker compensation or control pricing.</p>
       <h3>No Guarantee of Matches, Fulfillment, or Earnings</h3>
-      <p>Gopher, Inc. does not guarantee that any request will receive responses, bids, acceptance, completion, or successful fulfillment. Because Requestors set their own price and any offer must be voluntarily accepted by an independent Gopher, a match may not occur, and Gopher, Inc. does not promise that one will.</p>
-      <p>Likewise, Gopher, Inc. does not guarantee to any Gopher any minimum amount of work, earnings, opportunities, requests, acceptance rate, or future availability of requests through Gopher Request, Gopher Go, or any other platform offering. Earnings depend on factors outside Gopher's control, including Requestor demand and a Gopher's own activity.</p>
+      <p>Gopher, Inc. does not guarantee that any request will receive responses, bids, acceptance, completion, or successful fulfillment. Because Requesters set their own price and any offer must be voluntarily accepted by an independent Gopher, a match may not occur, and Gopher, Inc. does not promise that one will.</p>
+      <p>Likewise, Gopher, Inc. does not guarantee to any Gopher any minimum amount of work, earnings, opportunities, requests, acceptance rate, or future availability of requests through Gopher Request, Gopher Go, or any other platform offering. Earnings depend on factors outside Gopher's control, including Requester demand and a Gopher's own activity.</p>
     </section>
 
     <section id="connect">
       <h2><span class="num">7</span>Gopher Connect</h2>
-      <p><strong>Gopher Connect</strong> is an extension of the Gopher platform. Like Gopher Request, it allows users to use the platform to find and arrange help from independent service providers — in this respect the two platforms operate identically. Except where expressly stated otherwise, Gopher Connect is fully governed by these Terms, including the marketplace-facilitator and independent-contractor relationship described in Section 6, the fee provisions in Sections 10 and 11, and the assumption-of-risk and liability provisions in Section 31. Gopher, Inc.'s role on Gopher Connect is the same as on Gopher Request: it acts strictly as a connector and is <strong>not a party</strong> to any agreement formed between a Requestor and a Gopher.</p>
+      <p><strong>Gopher Connect</strong> is an extension of the Gopher platform. Like Gopher Request, it allows users to use the platform to find and arrange help from independent service providers — in this respect the two platforms operate identically. Except where expressly stated otherwise, Gopher Connect is fully governed by these Terms, including the marketplace-facilitator and independent-contractor relationship described in Section 6, the fee provisions in Sections 10 and 11, and the assumption-of-risk and liability provisions in Section 31. Gopher, Inc.'s role on Gopher Connect is the same as on Gopher Request: it acts strictly as a connector and is <strong>not a party</strong> to any agreement formed between a Requester and a Gopher.</p>
       <h3>Plans &amp; Fees</h3>
       <p>Gopher Connect is offered through tiered plans, and all fees are disclosed transparently at checkout before a request is confirmed. The figures below are provided for reference and may be updated from time to time; <strong>to review current pricing, always check the <a href="gopher-connect.html">Gopher Connect</a> website.</strong></p>
       <p><strong>Connect Starter</strong> has no monthly subscription and includes <strong>5 free requests per month</strong>. If those 5 free requests are used up, an additional block of 5 requests may be purchased for <strong>$35</strong>. Purchased requests <strong>do not expire</strong> &mdash; any that go unused carry over when the monthly free allotment resets.</p>
@@ -294,7 +330,7 @@
 
     <section id="deals">
       <h2><span class="num">8</span>Gopher Deals</h2>
-      <p><strong>Gopher Deals</strong> is a semi-informal merchant partnership program created to reduce the strain and cost of third-party integrated delivery and assistance. It allows participating merchants and businesses to showcase their offers to the entire Gopher Marketplace community &mdash; including Requestors and Gophers &mdash; at no transactional cost to either side.</p>
+      <p><strong>Gopher Deals</strong> is a semi-informal merchant partnership program created to reduce the strain and cost of third-party integrated delivery and assistance. It allows participating merchants and businesses to showcase their offers to the entire Gopher Marketplace community &mdash; including Requesters and Gophers &mdash; at no transactional cost to either side.</p>
       <h3>How Deals Work</h3>
       <p>When a user browses Gopher Deals and finds an offer of interest, Gopher provides a link directing them to the merchant's own online ordering portal. Any purchase is made <strong>directly through the merchant</strong> on the merchant's own website or platform. Gopher, Inc. does not collect, process, or receive any portion of a Deal purchase. Gopher does not set, control, or interfere with the substance of a merchant's offer; we simply encourage merchants to make their Deals trackable on their end.</p>
       <h3>Gopher's Role Is Listing Only</h3>
@@ -348,7 +384,14 @@
       <div class="callout warn">
         <p>Contactless delivery is <strong>NEVER</strong> available for age-restricted requests, even with Gopher TrustShield. <strong>Attempting to use your account to circumvent age restrictions will result in a permanent ban from all Gopher, Inc. platforms.</strong></p>
       </div>
-      <p>If a Requestor cannot provide a valid ID at delivery, the Gopher will log the transaction as "Completed; ID Not Provided" and will not hand over the items. <strong>The Requestor will be charged for the entire non-refundable transaction.</strong></p>
+      <h3>If You Are Not Present — No-Show Completion</h3>
+      <p><strong>You must be present at the delivery address for every age-restricted request.</strong> If your Gopher arrives and you are not present, they will start a <strong>10-minute timer</strong>, and we will send a text message to the mobile number on your account telling you your Gopher is waiting and needs your immediate attention. If you do not appear with a valid physical, government-issued ID before that timer expires, the request is recorded as a <strong>No-Show Completion</strong> (it appears in your request log as "Request Completed – No-Show Confirmation").</p>
+      <div class="callout warn">
+        <p>Because your Gopher purchased the items with their own money and <strong>cannot lawfully leave age-restricted items unattended</strong>, on a No-Show Completion <strong>your Gopher keeps the items and is paid in full</strong> — the cost of goods, the offer, and all fees. <strong>This is not a refundable transaction.</strong></p>
+      </div>
+      <p>Your Gopher's arrival, the start of the 10-minute timer, and the completion are each GPS- and time-stamped, and that record is what we rely on to resolve any question about the delivery. See <a href="#completing">Completing / Confirming a Request</a> and <a href="#records">Records Retention &amp; Evidence Preservation</a>.</p>
+      <p>The same outcome applies if you <em>are</em> present but cannot provide a valid physical ID: your Gopher will log the transaction as <strong>"Completed; ID Not Provided,"</strong> will not hand over the items, and <strong>you will be charged for the entire non-refundable transaction.</strong></p>
+      <p>Because both outcomes are final and non-refundable, do not place an age-restricted request unless you will be at the delivery address, awake and reachable, with your physical ID in hand.</p>
     </section>
 
     <section id="request-fees">
@@ -370,9 +413,9 @@
       <h2><span class="num">11</span>Gopher Request "Gopher Offering" Policy</h2>
       <p>When submitting a Gopher Request, there are two options: (1) <strong>Set your own price</strong>, which lets you enter the cost of items and the amount you'd like to hire a Gopher for; or (2) <strong>Allow Gophers to bid</strong>, which broadcasts the request so available Gophers can submit a bid that you approve or decline.</p>
       <div class="callout">
-        <p>In either case, <strong>stating that additional funds will be earned outside of the app is a violation of these Terms.</strong> Gopher, Inc. can only fulfill a transaction if the amount is entered in the "Payment Information" section. This protects both the Requestor and Gopher from disagreements about actual money received.</p>
+        <p>In either case, <strong>stating that additional funds will be earned outside of the app is a violation of these Terms.</strong> Gopher, Inc. can only fulfill a transaction if the amount is entered in the "Payment Information" section. This protects both the Requester and Gopher from disagreements about actual money received.</p>
       </div>
-      <p>If both parties agree on a different price after acceptance, this can be done in-app via the Cost Adjustment feature, initiated by the Gopher and approved by the Requestor — but only before the request is confirmed as completed. Once completed and confirmed, the transaction is finalized and cannot be refunded. Recruiting for a job may be offered, but terms and pay must be upfront and transparent; using "allow Gophers to bid" to disguise a fixed wage is strictly prohibited and grounds for an immediate ban.</p>
+      <p>If both parties agree on a different price after acceptance, this can be done in-app via the Cost Adjustment feature, initiated by the Gopher and approved by the Requester — but only before the request is confirmed as completed. Once completed and confirmed, the transaction is finalized and cannot be refunded. Recruiting for a job may be offered, but terms and pay must be upfront and transparent; using "allow Gophers to bid" to disguise a fixed wage is strictly prohibited and grounds for an immediate ban.</p>
     </section>
 
     <section id="payout">
@@ -382,7 +425,7 @@
       <ol>
         <li>Review the request and determine whether you can fully perform it.</li>
         <li>Agree to the "Gopher Go Cancellation Policy" and accept the request.</li>
-        <li>Once connected to the Requestor, message them with your ETA and confirm details.</li>
+        <li>Once connected to the Requester, message them with your ETA and confirm details.</li>
         <li>Update the request progress (In-Progress → Items Pick-Up, if applicable).</li>
         <li>Update the request to "Completed" once finished.</li>
       </ol>
@@ -391,13 +434,13 @@
 
     <section id="fraud">
       <h2><span class="num">13</span>Gopher Go Payout Fraud</h2>
-      <p>If we determine a Gopher Go worker has maliciously logged "Completed" with the intent to defraud, Gopher will file criminal charges without hesitation, including all related transaction information. When a request has been accepted, asking the Requestor for additional funds — other than a legitimate cost adjustment — is a violation and grounds for immediate account deactivation. Asking a Requestor to complete a request early (before it is actually completed), for any reason, is cause for immediate removal from the platform.</p>
+      <p>If we determine a Gopher Go worker has maliciously logged "Completed" with the intent to defraud, Gopher will file criminal charges without hesitation, including all related transaction information. When a request has been accepted, asking the Requester for additional funds — other than a legitimate cost adjustment — is a violation and grounds for immediate account deactivation. Asking a Requester to complete a request early (before it is actually completed), for any reason, is cause for immediate removal from the platform.</p>
     </section>
 
     <section id="purchase">
       <h2><span class="num">14</span>Purchase Needed Requests</h2>
       <p>When a request uses the <strong>Purchase Needed</strong> icon, the Gopher makes the purchase with their own money initially, at retail cost. You will see a "Total" (the deposit you receive on completion), an "Earn" amount (your profit), and a "Spend" amount (your short-term out-of-pocket expense). If you do not have funds to cover the "Spend" amount, <strong>do not accept the request.</strong></p>
-      <p>For "Purchase Needed – Age-Restricted" requests, the Requestor MUST be present at the delivery address. If the Gopher arrives and the Requestor is not present, they may start a 10-minute timer. If the Requestor does not appear with a valid ID within 10 minutes, the request is completed and paid out to the Gopher in full. This is not a refundable transaction.</p>
+      <p>For <strong>"Purchase Needed – Age-Restricted"</strong> requests, the Requester MUST be present at the delivery address. If the Gopher arrives and the Requester is not present, they may start a 10-minute timer. If the Requester does not appear with a valid ID within 10 minutes, the request is completed as a <strong>No-Show Completion</strong> and paid out to the Gopher in full, and the Gopher keeps the items. This is not a refundable transaction. The full rule, including the text message you receive when the timer starts, is set out in <a href="#age">Age of Usage &amp; Age-Restricted Deliveries</a>.</p>
     </section>
 
     <section id="counter">
@@ -405,23 +448,27 @@
       <h3>Counter-Offers</h3>
       <p>On the Gopher Go App, some requests allow counter-offers, capped at 150% of the original offer (with a minimum of $20). The feature is meant to turn an unrealistic offer into a fair one. Abusing it may lead to deactivation. If your counter-offer is not accepted, do not accept the request and then use Cost Adjustment to ask for more — this is a violation.</p>
       <p>Standard Gophers are allowed 5 counter-offers per month. Elite, Elite+, and Pro Gophers receive <strong>unlimited counter-offers</strong> as a Pro perk of their verification tier. The 150% cap described above does not apply to Elite, Elite+, or Pro Gophers, whose counter-offers are not capped.</p>
-      <p>The counter-offer feature is not to be taken lightly or misused. <strong>Submitting a counter-offer is a binding offer to the Requestor.</strong> If the Requestor accepts it, their payment method is authorized for the countered amount and a binding agreement is formed between you and the Requestor on those terms. You are then expected to complete the request according to its description, and you will be paid the countered amount upon completion. Submitting counter-offers you do not intend to honor, or failing to perform after a counter-offer is accepted, is a misuse of the feature and may result in cancellation, withheld payment, and deactivation.</p>
+      <p>The counter-offer feature is not to be taken lightly or misused. <strong>Submitting a counter-offer is a binding offer to the Requester.</strong> If the Requester accepts it, their payment method is authorized for the countered amount and a binding agreement is formed between you and the Requester on those terms. You are then expected to complete the request according to its description, and you will be paid the countered amount upon completion. Submitting counter-offers you do not intend to honor, or failing to perform after a counter-offer is accepted, is a misuse of the feature and may result in cancellation, withheld payment, and deactivation.</p>
       <h3>Cost Adjustments</h3>
-      <p>If the listed cost of items is not enough to cover the actual cost, the Gopher can make a cost adjustment, which requires Requestor approval. The cost-of-items section is always meant to be a wash — neither to make nor lose money. Your earnings are the "Gopher Offering." Gophers should not purchase items significantly above the entered amount before submitting a cost adjustment, as the adjustment may fail. Gopher, Inc. is not responsible for recovering costs above the authorized amount.</p>
+      <p>If the listed cost of items is not enough to cover the actual cost, the Gopher can make a cost adjustment, which requires Requester approval. The cost-of-items section is always meant to be a wash — neither to make nor lose money. Your earnings are the "Gopher Offering." Gophers should not purchase items significantly above the entered amount before submitting a cost adjustment, as the adjustment may fail. Gopher, Inc. is not responsible for recovering costs above the authorized amount.</p>
     </section>
 
     <section id="completing">
       <h2><span class="num">16</span>Completing / Confirming a Request</h2>
-      <p>When a worker updates a request to "Completed," the Requestor receives a notification via App and SMS and is given two options:</p>
+      <p>When a worker updates a request to "Completed," the Requester receives a notification via App and SMS and is given two options:</p>
       <ul>
         <li><strong>Confirm Completion</strong> — finalizes the order; a receipt is emailed immediately, payment is transferred to the worker, and it cannot be cancelled or refunded. Tapping this serves as your electronic signature.</li>
         <li><strong>Dispute</strong> — you and your Gopher can work together to resolve any issues, with all app features available during the dispute.</li>
       </ul>
-      <p>The Gopher's progress is GPS-stamped at each update (Start, In-Progress, Items Picked-Up/Purchased, Completed). The Requestor has a 48-hour Grace Period to confirm or dispute. If no action is taken within the Grace Period, the request is considered completed and payment is made automatically — <strong>there are no refunds from automatic payouts.</strong></p>
+      <p>You are also notified at two other points: by text message if your Gopher arrives for an age-restricted request and you are not present (see <a href="#age">No-Show Completion</a>), and by email if a request is completed as a No-Show Completion.</p>
+      <p>The Gopher's progress is GPS-stamped at each update (Start, In-Progress, Items Picked-Up/Purchased, Completed). The Requester has a 48-hour Grace Period to confirm or dispute. If no action is taken within the Grace Period, the request is considered completed and payment is made automatically — <strong>there are no refunds from automatic payouts.</strong></p>
     </section>
 
     <section id="cancellation">
       <h2><span class="num">17</span>Cancellation &amp; Refund Policy</h2>
+      <div class="callout">
+        <p>This section governs <strong>cancelling</strong> a request. If you were charged because you were not present when your Gopher arrived with an <strong>age-restricted</strong> request, that is a <strong>No-Show Completion</strong> and is governed by <a href="#age">Age of Usage &amp; Age-Restricted Deliveries</a> — it is not a cancellation, and it is not refundable.</p>
+      </div>
       <p>Once a Gopher has accepted your request, you can still cancel it — or instantly repost it to other Gophers — at no charge, as long as your Gopher has not started and has not purchased any items. Once your Gopher has started the job and/or purchased items on your behalf, the request may no longer be cancelled for free. If a request has been updated to "Items Purchased," it <strong>cannot be cancelled</strong>, as the Gopher has already incurred an out-of-pocket expense.</p>
       <h3>Cancellation Fees</h3>
       <p>If your Gopher has started the request ("in-progress") and/or purchased items on your behalf, cancelling is subject to a flat $5 cancellation fee, and if items were already purchased you are also responsible for the cost of those items. On the worker side, Gophers are expected to complete the jobs they accept. If a Gopher cancels after accepting and the cancellation is not excused, it is reviewed; a confirmed unapproved cancellation may carry a flat $5 fee, deducted from the Gopher’s next payout, but only after repeated unexcused cancellations — never on a first occurrence. Cancellations outside the Gopher’s control are excused with no fee. Repeated unexcused cancellations can lead to account deactivation, and consistent five-star work restores a Gopher’s standing.</p>
@@ -431,7 +478,7 @@
     <section id="disputes">
       <h2><span class="num">18</span>Dispute Protocol &amp; Resolution</h2>
       <p>If a dispute is entered, an alert is sent to the Gopher with resolution instructions. If a customer asked for "X" and received "Y" (the wrong item), this is not an issue Gopher, Inc. is responsible for — the Gopher would need to correct the issue and return with the correct item, after which the dispute is reversed and confirmed. Alternatively, both parties may agree on a Cost Adjustment.</p>
-      <p>Requestors should not use the dispute option for a delay or timing issue — that is what ratings are for. If parties cannot resolve a dispute, either may submit a resolution request to Gopher, Inc., which may review transaction logs, documentation, and user history. <strong>Any dispute resolution determinations made by Gopher, Inc. are final.</strong></p>
+      <p>Requesters should not use the dispute option for a delay or timing issue — that is what ratings are for. If parties cannot resolve a dispute, either may submit a resolution request to Gopher, Inc., which may review transaction logs, documentation, and user history. <strong>Any dispute resolution determinations made by Gopher, Inc. are final.</strong></p>
     </section>
 
     <section id="chargebacks">
@@ -440,43 +487,61 @@
       <div class="callout warn">
         <p>If a fraudulent chargeback is made, you can assume the financial consequences will be <strong>more than double the amount charged back.</strong> We provide multiple ways to resolve a dispute immediately, so circumventing the process with a chargeback is a violation of these Terms and we will seek damages.</p>
       </div>
+      <h3>Payment Method Verification</h3>
+      <p>When you add a card to your Gopher account, we collect the <strong>name on the card</strong> and the <strong>billing address on your card statement</strong> and pass them to our payment processor, Stripe, so your card issuer can verify them. We then send a <strong>one-time code by text message to the phone number on your account</strong>; the card is not saved until that code is entered. Entering the code is your authorization to save the card and to charge it for requests you place under these Terms.</p>
+      <p>Gopher, Inc. keeps a record of each card verification — the card brand and last four digits, the result of the issuer's address and security-code checks, the phone number the code was sent to (masked), the device and network address used, and the time — for as long as needed to prevent fraud and to respond to payment disputes and chargebacks. This record forms part of the evidence described above.</p>
     </section>
 
     <section id="communication">
       <h2><span class="num">20</span>In-App Communication &amp; Accessibility</h2>
-      <p>Gopher's in-app messaging exists for one purpose: legitimate, request-related communication. Before a request is accepted, an available Gopher may message the Requestor to ask a clarifying question when more information is needed; while a request is live, both parties may coordinate to complete it. Messaging a Requestor does <strong>not</strong> "connect" you to a request — even if the Requestor verbally commits, the request must be accepted in the app to earn the work.</p>
-      <p><strong>Keeping transactions on the platform is mandatory.</strong> Neither a Requestor nor a Gopher may use messaging — or any other means — to solicit, encourage, arrange, or complete a transaction outside the app, or to circumvent Gopher's fees. This prohibition applies to <strong>both parties</strong> and includes sharing or requesting phone numbers, email addresses, social-media handles, off-app payment or payment-app details (for example Venmo, Cash App, Zelle, or PayPal), or an address beyond what a job legitimately requires, as well as offering or accepting payment outside the app. A Gopher can only fulfill a transaction through the platform; if either party proposes paying or being paid outside the app, that is a violation of these Terms — decline it and contact <a href="mailto:support@gophergo.io">support@gophergo.io</a> immediately.</p>
+      <p>Gopher's in-app messaging exists for one purpose: legitimate, request-related communication. Before a request is accepted, an available Gopher may message the Requester to ask a clarifying question when more information is needed; while a request is live, both parties may coordinate to complete it. Messaging a Requester does <strong>not</strong> "connect" you to a request — even if the Requester verbally commits, the request must be accepted in the app to earn the work.</p>
+      <p><strong>Keeping transactions on the platform is mandatory.</strong> Neither a Requester nor a Gopher may use messaging — or any other means — to solicit, encourage, arrange, or complete a transaction outside the app, or to circumvent Gopher's fees. This prohibition applies to <strong>both parties</strong> and includes sharing or requesting phone numbers, email addresses, social-media handles, off-app payment or payment-app details (for example Venmo, Cash App, Zelle, or PayPal), or an address beyond what a job legitimately requires, as well as offering or accepting payment outside the app. A Gopher can only fulfill a transaction through the platform; if either party proposes paying or being paid outside the app, that is a violation of these Terms — decline it and contact <a href="mailto:support@gophergo.io">support@gophergo.io</a> immediately.</p>
       <p><strong>Messages are moderated.</strong> To protect users, in-app messages are automatically screened for content that signals an attempt to take a transaction off-platform or to exchange contact or payment details — including phone numbers, email addresses, physical addresses, dollar amounts, and payment-app references. When such content is detected, the sender is warned and given the opportunity to correct the message before it is sent; if the sender proceeds anyway, the offending content is masked before it reaches the recipient and the message is flagged for review. Attempting to disguise, misspell, or spell out this information to defeat screening is itself a violation.</p>
       <p><strong>Consequences.</strong> Flagged messages and off-platform solicitation are reviewed and enforced on an escalating basis — up to and including a warning, masking of the message, restriction or loss of messaging, flagging of the account, suspension, and, for serious or repeat violations, permanent removal from the platform. Circumventing the platform to avoid fees is a material breach of these Terms, and a Gopher who solicits or accepts payment outside the app may also forfeit pending payouts. <strong>Any arrangement made or completed off-platform is entirely at the parties' own risk: it is not covered by Gopher's payment escrow or completion guarantee, dispute resolution, TrustShield, background-check or credential programs, or any other platform protection, and Gopher, Inc. bears no responsibility or liability for it.</strong></p>
-      <p>While engaging in a live request, both Requestor and Gopher <strong>must</strong> have acceptable means to communicate and be responsive within a reasonable time frame. Gopher, Inc. reserves the right to cancel any request where one party is unresponsive for a prolonged period (greater than one hour for a delivery is on the fringe of reasonable).</p>
+      <h3>Device &amp; Responsiveness</h3>
+      <p>While engaging in a live request, both Requester and Gopher <strong>must</strong> have a working, charged, network-connected mobile device with the Gopher app installed and notifications enabled, <strong>must</strong> have acceptable means to communicate, and <strong>must</strong> be responsive within a reasonable time frame. Gopher, Inc. reserves the right to cancel any request where one party is unresponsive for a prolonged period (greater than one hour for a delivery is on the fringe of reasonable).</p>
+      <p>Nearly every step that moves a request forward happens on your device — accepting, messaging, GPS-stamping progress, approving a cost adjustment, verifying ID at an age-restricted hand-off, and confirming completion. If your device is off, uncharged, silenced, out of service, or has notifications disabled, those steps cannot happen on time. <strong>That can change the outcome of a request and delay money in both directions.</strong></p>
+      <ul>
+        <li><strong>For Gophers — payouts.</strong> Your payout is released after completion is logged and confirmed. If you cannot log your progress or mark a request complete, your payout is delayed. If you cannot carry out the required steps at a hand-off — including the 10-minute timer in <a href="#age">Age of Usage &amp; Age-Restricted Deliveries</a> — you may lose the protection those steps give you.</li>
+        <li><strong>For Requesters — payments.</strong> You may miss the alerts a live request depends on: that your Gopher has arrived, that a cost adjustment needs your approval, or that a request has been marked complete. Missing them does not pause these Terms. An age-restricted request can complete as a <strong>No-Show Completion</strong> under <a href="#age">Section 9</a>, and an unconfirmed request completes automatically after the 48-hour Grace Period in <a href="#completing">Completing / Confirming a Request</a>. Both are charged in full and are not refundable.</li>
+      </ul>
+      <div class="callout warn">
+        <p>A device that is off, uncharged, silenced, or without service <strong>does not excuse either party from the outcomes in these Terms.</strong> Gopher, Inc. is not responsible for a missed notification, a delayed payout, or a completed charge that results from a party's own device, carrier, or notification settings.</p>
+      </div>
     </section>
 
     <section id="features">
       <h2><span class="num">21</span>Gopher Features</h2>
       <h3>I'll Select My Worker</h3>
-      <p>When a Requestor chooses "I'll select my worker," the request is broadcast as usual. When a Gopher accepts, the Requestor can view their prior performance, ratings, and reviews before selecting them. Accepting an "I'll select my worker" request does not mean you are connected to the job — you will be notified if selected.</p>
+      <p>When a Requester chooses "I'll select my worker," the request is broadcast as usual. When a Gopher accepts, the Requester can view their prior performance, ratings, and reviews before selecting them. Accepting an "I'll select my worker" request does not mean you are connected to the job — you will be notified if selected.</p>
       <h3>MY Gopher (formerly "Favorite Gopher")</h3>
-      <p>When a Requestor chooses "Prioritize MY Gophers," the request is first broadcast to their "MY Gophers" list for one minute (the "Exclusive Period") before opening to all other Gophers. This feature was inspired by the greatest Gopher we have ever known, the late Michael Yorrie (3,677 completed requests, all 5 stars). After his passing, we renamed this feature from Favorite Gopher to MY Gopher, permanently etching his place in our story.</p>
+      <p>When a Requester chooses "Prioritize MY Gophers," the request is first broadcast to their "MY Gophers" list for one minute (the "Exclusive Period") before opening to all other Gophers. This feature was inspired by the greatest Gopher we have ever known, the late Michael Yorrie (3,677 completed requests, all 5 stars). After his passing, we renamed this feature from Favorite Gopher to MY Gopher, permanently etching his place in our story.</p>
     </section>
 
     <section id="trust">
       <h2><span class="num">22</span>Trust &amp; Safety Initiatives</h2>
-      <p>Gopher, Inc. is committed to providing a platform users feel confident in. Building trust between neighbors who may be meeting for the first time is central to how Gopher works, so we've implemented a layered set of verification and screening tools: Gopher Elite+, Gopher Elite, and Gopher Pro designations, along with Gopher TrustShield ID Verification. Together, these initiatives help Requestors and Gophers transact with greater peace of mind. Participation is optional, but the resulting profile badges help build credibility within the community and may make a Gopher more likely to have their offers accepted.</p>
+      <p>Gopher, Inc. is committed to providing a platform users feel confident in. Building trust between neighbors who may be meeting for the first time is central to how Gopher works, so we've implemented a layered set of verification and screening tools: Gopher Elite+, Gopher Elite, and Gopher Pro designations, along with Gopher TrustShield ID Verification. Together, these initiatives help Requesters and Gophers transact with greater peace of mind. Participation is optional, but the resulting profile badges help build credibility within the community and may make a Gopher more likely to have their offers accepted.</p>
       <h3>Gopher Elite+ &amp; Gopher Elite (Background Screening with Yardstik)</h3>
       <p>Gopher has teamed up with <a href="https://www.yardstik.com/">Yardstik</a> for a one-time, fee-based background check. Once cleared, Gophers receive a profile badge showcasing they have cleared a National Criminal search, National Sex Offender search, OFAC and Most Wanted List search, and Address/SSN trace &mdash; this is the <strong>Gopher Elite</strong> designation. <strong>Gopher Elite+</strong> includes everything in Gopher Elite plus an additional Motor Vehicle (DMV) Search, which is especially relevant for Gophers offering driving, delivery, or transport-related help. Both Gopher Elite and Gopher Elite+ are <strong>one-time fees and are not recurring or subscription-based</strong>, and the fee is <strong>non-refundable</strong>. You must be at least 16 years old to apply. A badge reflects status as of the date the check was completed and does not guarantee any future conduct; Gopher, Inc. does not perform continuous monitoring and makes no representation or warranty regarding any user beyond the limited scope of the searches performed by Yardstik.</p>
       <p><strong>Background-check payments and screening disputes are handled directly by Yardstik.</strong> Gophers pay Yardstik directly for the check, and Yardstik provides results, support, and dispute resolution for the screening itself; support information is provided by Yardstik at the time of submission. Gopher, Inc. does not collect, process, or refund background-check payments and is not responsible for resolving concerns related to a failed, delayed, or disputed screening inquiry &mdash; those must be pursued through Yardstik. A current comparison of the benefits and perks tied to each designation is available on the <a href="gopher-tiers.html">Gopher Tiers</a> page.</p>
       <h3>Gopher Pro (Licensed, Bonded &amp; Insured)</h3>
       <p>A <strong>Gopher Pro</strong> designation indicates that a Gopher offers work that may require professional credentials &mdash; for example a skilled tradesperson, contractor, or other professional &mdash; and has submitted those credentials to Gopher. <strong>There is no fee for the Gopher Pro designation.</strong> Unlike a self-reported badge, Gopher, Inc. <strong>formally verifies the submitted credentials and their expiration dates</strong> before granting Pro status.</p>
-      <p><strong>Maintaining Pro status requires annual re-verification.</strong> Each year, a Gopher Pro must provide current proof that their credentials remain valid; if valid proof is not provided, the designation will lapse. Verification confirms the documentation provided and its stated validity and expiration dates as of the date of review &mdash; it is not a guarantee of work quality, ongoing validity, or sufficiency for any particular job, and Requestors remain responsible for confirming that a Gopher's credentials are appropriate for their specific needs. If Gopher later becomes aware of a violation or circumstance that would constitute grounds for a failed credential or background review, the Gopher will, at a minimum, lose the Gopher Pro badge and may be removed or expelled from the platform.</p>
-      <h3>Gopher TrustShield (ID Verification with iDenfy)</h3>
-      <p>Gopher has teamed up with <a href="https://www.idenfy.com/">iDenfy</a> to offer ID verification for Gopher Request users at no cost. Once verified, users earn a TrustShield badge. Users under 30 looking to have age-restricted items delivered are required to verify through TrustShield. Note: for age-restricted deliveries, Requestors with TrustShield will still show their valid ID during the items exchange. TrustShield verification confirms identity at the time of the check and is intended to reduce fraud and support responsible age-restricted commerce; it does not replace the in-person ID check required for age-restricted items, and it is not a substitute for your own judgment when arranging a Gopher.</p>
+      <p><strong>Maintaining Pro status requires annual re-verification.</strong> Each year, a Gopher Pro must provide current proof that their credentials remain valid; if valid proof is not provided, the designation will lapse. Verification confirms the documentation provided and its stated validity and expiration dates as of the date of review &mdash; it is not a guarantee of work quality, ongoing validity, or sufficiency for any particular job, and Requesters remain responsible for confirming that a Gopher's credentials are appropriate for their specific needs. If Gopher later becomes aware of a violation or circumstance that would constitute grounds for a failed credential or background review, the Gopher will, at a minimum, lose the Gopher Pro badge and may be removed or expelled from the platform.</p>
+      <h3>Gopher TrustShield (ID Verification)</h3>
+      <p>Gopher offers ID verification for Gopher Request users at no cost, provided directly by Gopher, Inc. Once verified, users earn a TrustShield badge. Users under 30 looking to have age-restricted items delivered are required to verify through TrustShield. Note: for age-restricted deliveries, Requesters with TrustShield will still show their valid ID during the items exchange. TrustShield verification confirms identity at the time of the check and is intended to reduce fraud and support responsible age-restricted commerce; it does not replace the in-person ID check required for age-restricted items, and it is not a substitute for your own judgment when arranging a Gopher.</p>
+      <h4>Biometric Information Notice &amp; Consent</h4>
+      <p><strong>What we collect.</strong> When you choose to complete Gopher TrustShield identity verification, we collect a photograph of the front and back of your government-issued identification and a self-portrait photograph (a &ldquo;selfie&rdquo;). The selfie may constitute a &ldquo;biometric identifier&rdquo; or &ldquo;biometric information&rdquo; under laws such as the Illinois Biometric Information Privacy Act (BIPA).</p>
+      <p><strong>Why we collect it.</strong> We use this information solely to confirm that the identification belongs to you and that you meet the legal age required for age-restricted orders, and to reduce fraud. We do not use it for any other purpose.</p>
+      <p><strong>How long we keep it, and how we destroy it.</strong> We retain your identification images and selfie only as long as necessary for that purpose, and in any event we will permanently destroy them <strong>when the purpose for collection has been satisfied, or within three (3) years of your last interaction with Gopher, whichever occurs first.</strong> If you withdraw from TrustShield or delete your account, we will delete these images within thirty (30) days, except where we are required by law to retain them.</p>
+      <p><strong>We do not sell or profit from it.</strong> We do not sell, lease, trade, or otherwise profit from your biometric information or identification images, and we do not disclose, redisclose, or otherwise disseminate them except as described in our <a href="gopher-privacy.html">Privacy Policy</a> (for example, to the Gopher fulfilling your age-restricted order, to confirm your identity in person at hand-off), as you direct, or as required by law, warrant, or subpoena.</p>
+      <p><strong>Your consent.</strong> Gopher TrustShield is voluntary and is not required to create an account or use the Service generally. By accepting these Terms of Service when you create your account, and by completing TrustShield verification and checking the acknowledgement box when you submit an age-restricted request, you provide your written consent to the collection, storage, use, and destruction of this information as described in this notice and in our Privacy Policy. You may decline, and you may withdraw your consent at any time by contacting us at <a href="mailto:support@gophergo.io">support@gophergo.io</a>, which will end further verification and trigger deletion as described above.</p>
       <h3>Badges &amp; Screening Are Informational Only</h3>
-      <p><strong>All Gopher badges and designations &mdash; including Gopher Elite, Gopher Elite+, Gopher Pro, and Gopher TrustShield &mdash; are provided for informational purposes only. They are not endorsements, guarantees, recommendations, warranties, or assurances of any user's safety, trustworthiness, character, qualifications, work quality, or future conduct.</strong> A background check or verification reflects only the limited information available as of the date it was performed and is <strong>not a guarantee of safety, trustworthiness, future conduct, or suitability</strong> for any particular request. Gopher, Inc. does not endorse, recommend, or vouch for any Requestor or Gopher, and each user remains responsible for exercising their own judgment when deciding whether to transact with another user.</p>
+      <p><strong>All Gopher badges and designations &mdash; including Gopher Elite, Gopher Elite+, Gopher Pro, and Gopher TrustShield &mdash; are provided for informational purposes only. They are not endorsements, guarantees, recommendations, warranties, or assurances of any user's safety, trustworthiness, character, qualifications, work quality, or future conduct.</strong> A background check or verification reflects only the limited information available as of the date it was performed and is <strong>not a guarantee of safety, trustworthiness, future conduct, or suitability</strong> for any particular request. Gopher, Inc. does not endorse, recommend, or vouch for any Requester or Gopher, and each user remains responsible for exercising their own judgment when deciding whether to transact with another user.</p>
     </section>
 
     <section id="ratings">
       <h2><span class="num">23</span>Ratings &amp; Removal from Platform</h2>
-      <p>After a request is completed, both Requestor and Gopher can rate the transaction and add comments. Ratings impact the order in which Gophers see requests, so please be mindful and fair. If a request was completed to expectation, please rate your Gopher a 5. Gopher, Inc. reserves the right to remove any user with excessive poor ratings when deemed in the best interest of all users. Additionally, taking more than one "Need ASAP" request at a time is not advised; the completion-time expectation for all "Need ASAP" requests is <strong>40–60 minutes</strong> max.</p>
+      <p>After a request is completed, both Requester and Gopher can rate the transaction and add comments. Ratings impact the order in which Gophers see requests, so please be mindful and fair. If a request was completed to expectation, please rate your Gopher a 5. Gopher, Inc. reserves the right to remove any user with excessive poor ratings when deemed in the best interest of all users. Additionally, taking more than one "Need ASAP" request at a time is not advised; the completion-time expectation for all "Need ASAP" requests is <strong>40–60 minutes</strong> max.</p>
     </section>
 
     <section id="accounts">
@@ -487,7 +552,7 @@
     <section id="credentials">
       <h2><span class="num">25</span>Licensed / Bonded / Insured Credentials</h2>
       <p>Many Gophers offer general help that does not require a license. When requesting help from a worker whose service does require unique credentials, customers should confirm those credentials before work starts. Gopher, Inc. allows workers to upload credentials to their profile; for non-Pro workers these uploads are self-reported, and verification remains the hiring customer's responsibility.</p>
-      <p>For workers who hold the <strong>Gopher Pro</strong> designation, Gopher, Inc. formally verifies the submitted credentials and expiration dates as described in our <a href="#trust">Trust &amp; Safety Initiatives</a> section, and requires annual re-verification to keep the badge active. This verification confirms the documentation and validity dates provided as of the date of review; it does not guarantee the scope, sufficiency, or continued validity of any license, bond, or insurance policy for a particular job, and Requestors are still encouraged to confirm that a Gopher's credentials fit their specific needs. All labor requests require agreement to Gopher, Inc.'s Release of Liability and Assumption of Risk policy.</p>
+      <p>For workers who hold the <strong>Gopher Pro</strong> designation, Gopher, Inc. formally verifies the submitted credentials and expiration dates as described in our <a href="#trust">Trust &amp; Safety Initiatives</a> section, and requires annual re-verification to keep the badge active. This verification confirms the documentation and validity dates provided as of the date of review; it does not guarantee the scope, sufficiency, or continued validity of any license, bond, or insurance policy for a particular job, and Requesters are still encouraged to confirm that a Gopher's credentials fit their specific needs. All labor requests require agreement to Gopher, Inc.'s Release of Liability and Assumption of Risk policy.</p>
     </section>
 
     <section id="thirdparty">
@@ -531,16 +596,16 @@
       <h2><span class="num">31</span>Assumption of Risk &amp; Liability Disclaimer</h2>
       <p>To the full extent permitted by law, Gopher, Inc. and its officers, directors, employees, agents, licensors, affiliates, and successors ("Gopher Entities") make no promises, warranties, or representations as to Gopher, Inc., including its completeness, accuracy, availability, timeliness, security, or reliability; provide Gopher, Inc. on an "AS IS" and "AS AVAILABLE" basis with any risk assumed by you; and disclaim all warranties, express or implied. Gopher, Inc. is not liable for any direct, indirect, consequential, incidental, special, or punitive losses.</p>
       <h3>Gopher (Worker) Assumption of Risk &amp; Release</h3>
-      <p>By accepting or performing any service through Gopher, each Gopher acknowledges that they are voluntarily engaging in independent work activities and <strong>assume all risks</strong> associated with those activities, including but not limited to bodily injury, illness, death, vehicle and transportation accidents, lifting and repetitive-motion injuries, slips, trips, and falls, property damage, interactions with Requestors, animals, and third parties (including assault or other misconduct by another person), exposure to weather conditions, and the use of tools, equipment, vehicles, and hazardous environments.</p>
+      <p>By accepting or performing any service through Gopher, each Gopher acknowledges that they are voluntarily engaging in independent work activities and <strong>assume all risks</strong> associated with those activities, including but not limited to bodily injury, illness, death, vehicle and transportation accidents, lifting and repetitive-motion injuries, slips, trips, and falls, property damage, interactions with Requesters, animals, and third parties (including assault or other misconduct by another person), exposure to weather conditions, and the use of tools, equipment, vehicles, and hazardous environments.</p>
       <p>Each Gopher understands and agrees that <strong>Gopher, Inc. is not an employer, joint employer, staffing agency, contractor, subcontractor, or supervisor</strong> of any work performed through the platform. Gopher, Inc. does not provide workers' compensation insurance, occupational accident insurance, disability insurance, unemployment insurance, health insurance, or general liability insurance for Gophers unless expressly stated in writing. Each Gopher is solely responsible for reporting and paying all applicable federal, state, and local taxes on amounts earned through the platform, and for obtaining any insurance, workers' compensation coverage, or benefits they desire or are required by law to maintain.</p>
-      <p>To the fullest extent permitted by law, each Gopher <strong>releases, waives, and agrees not to assert any claim</strong> against the Gopher Entities arising from any injury, illness, death, loss, or damage sustained while preparing for, traveling to or from, or performing any service obtained through the platform — whether caused by a Requestor, a third party, an animal, equipment, the condition of any premises, or otherwise.</p>
-      <h3>Requestor Assumption of Risk &amp; Release</h3>
-      <p>Because Gopher, Inc. acts only as a connector and does not perform, supervise, or vet the services arranged through the platform, each Requestor likewise <strong>assumes all risks</strong> arising from a Gopher's performance of a service, including but not limited to property damage, theft, personal injury, the quality or completeness of work, and the conduct of any Gopher or third party. It remains the Requestor's responsibility to verify a Gopher's identity, credentials, licensing, bonding, and insurance before work begins, as described elsewhere in these Terms.</p>
-      <p>To the fullest extent permitted by law, each Requestor <strong>releases, waives, and agrees not to assert any claim</strong> against the Gopher Entities arising from any act, omission, injury, loss, or damage caused by or related to a Gopher or any service arranged through the platform.</p>
+      <p>To the fullest extent permitted by law, each Gopher <strong>releases, waives, and agrees not to assert any claim</strong> against the Gopher Entities arising from any injury, illness, death, loss, or damage sustained while preparing for, traveling to or from, or performing any service obtained through the platform — whether caused by a Requester, a third party, an animal, equipment, the condition of any premises, or otherwise.</p>
+      <h3>Requester Assumption of Risk &amp; Release</h3>
+      <p>Because Gopher, Inc. acts only as a connector and does not perform, supervise, or vet the services arranged through the platform, each Requester likewise <strong>assumes all risks</strong> arising from a Gopher's performance of a service, including but not limited to property damage, theft, personal injury, the quality or completeness of work, and the conduct of any Gopher or third party. It remains the Requester's responsibility to verify a Gopher's identity, credentials, licensing, bonding, and insurance before work begins, as described elsewhere in these Terms.</p>
+      <p>To the fullest extent permitted by law, each Requester <strong>releases, waives, and agrees not to assert any claim</strong> against the Gopher Entities arising from any act, omission, injury, loss, or damage caused by or related to a Gopher or any service arranged through the platform.</p>
       <h3>Third-Party Merchant Product Liability</h3>
-      <p>Gopher, Inc. does not sell, manufacture, distribute, inspect, store, package, or warrant any goods purchased from third-party merchants. Once factory-sealed products are delivered in unopened condition, <strong>all risk of loss, defect, contamination, expiration, missing components, allergic reactions, injury, recall issues, or product failure transfers exclusively to the Requestor and the merchant.</strong> All returns, refunds, replacements, recalls, and warranty claims must be pursued directly with the applicable merchant or manufacturer.</p>
+      <p>Gopher, Inc. does not sell, manufacture, distribute, inspect, store, package, or warrant any goods purchased from third-party merchants. Once factory-sealed products are delivered in unopened condition, <strong>all risk of loss, defect, contamination, expiration, missing components, allergic reactions, injury, recall issues, or product failure transfers exclusively to the Requester and the merchant.</strong> All returns, refunds, replacements, recalls, and warranty claims must be pursued directly with the applicable merchant or manufacturer.</p>
       <h3>Property Access &amp; Securing Valuables</h3>
-      <p>Many services involve a Gopher entering a Requestor's home, vehicle, or property, or handling a Requestor's belongings. <strong>Requestors are solely responsible for securing cash, jewelry, valuables, important documents, pets, firearms, medications, hazardous materials, and any other sensitive or dangerous property before services begin.</strong> Gopher, Inc. is not responsible for safeguarding such property and is not liable for any loss, theft, damage, or injury arising from a Requestor's failure to secure it.</p>
+      <p>Many services involve a Gopher entering a Requester's home, vehicle, or property, or handling a Requester's belongings. <strong>Requesters are solely responsible for securing cash, jewelry, valuables, important documents, pets, firearms, medications, hazardous materials, and any other sensitive or dangerous property before services begin.</strong> Gopher, Inc. is not responsible for safeguarding such property and is not liable for any loss, theft, damage, or injury arising from a Requester's failure to secure it.</p>
       <h3>Limitation of Liability</h3>
       <p>To the maximum extent permitted by applicable law, the total aggregate liability of the Gopher Entities for any and all claims arising out of or relating to these Terms, the platform, or your use of (or inability to use) the platform or services <strong>shall not exceed the greater of (a) $100 (USD) or (b) the total fees paid by you to Gopher, Inc. during the twelve (12) months immediately preceding the event giving rise to the claim.</strong> This limitation applies regardless of the legal theory on which a claim is based and even if a stated remedy fails of its essential purpose. Some jurisdictions do not allow certain limitations of liability, so portions of this limitation may not apply to you.</p>
     </section>
@@ -548,7 +613,7 @@
     <section id="vehicles-equipment">
       <h2><span class="num">32</span>Vehicles, Tools &amp; Equipment</h2>
       <p>Some services arranged through the platform involve driving, delivery, rides, hauling, or transport. <strong>Gopher, Inc. does not own, maintain, inspect, certify, register, or insure any vehicle used by a Gopher</strong>, and does not confirm a Gopher's driver's license, registration, or insurance status. Each Gopher is solely responsible for operating any vehicle lawfully and safely and for maintaining all legally required licensing and insurance.</p>
-      <p><strong>Gophers are solely responsible for the condition, legality, maintenance, suitability, and safe operation of any tools, vehicles, ladders, trailers, equipment, supplies, or materials they use</strong> in performing a service. Gopher, Inc. does not provide, inspect, or warrant any such items and assumes no liability for any injury, death, property damage, or other loss arising from their use, whether to the Gopher, a Requestor, or any third party.</p>
+      <p><strong>Gophers are solely responsible for the condition, legality, maintenance, suitability, and safe operation of any tools, vehicles, ladders, trailers, equipment, supplies, or materials they use</strong> in performing a service. Gopher, Inc. does not provide, inspect, or warrant any such items and assumes no liability for any injury, death, property damage, or other loss arising from their use, whether to the Gopher, a Requester, or any third party.</p>
     </section>
 
     <section id="termination">
@@ -564,7 +629,7 @@
 
     <section id="taxes">
       <h2><span class="num">35</span>Taxes</h2>
-      <p>Each user is responsible for determining and meeting their own tax obligations arising from use of the platform. <strong>Gophers</strong> are independent contractors and are solely responsible for reporting and paying all applicable federal, state, and local income and self-employment taxes on amounts they earn, along with any related filings. Gophers must report all earnings regardless of the amount and regardless of whether they receive any tax form. <strong>Merchants</strong> participating in Gopher Deals or otherwise selling through or in connection with the platform are solely responsible for determining, collecting, and remitting any applicable sales, use, or other transaction taxes on their sales. <strong>Requestors and other users</strong> are responsible for any applicable local taxes or fees associated with the goods or services they obtain.</p>
+      <p>Each user is responsible for determining and meeting their own tax obligations arising from use of the platform. <strong>Gophers</strong> are independent contractors and are solely responsible for reporting and paying all applicable federal, state, and local income and self-employment taxes on amounts they earn, along with any related filings. Gophers must report all earnings regardless of the amount and regardless of whether they receive any tax form. <strong>Merchants</strong> participating in Gopher Deals or otherwise selling through or in connection with the platform are solely responsible for determining, collecting, and remitting any applicable sales, use, or other transaction taxes on their sales. <strong>Requesters and other users</strong> are responsible for any applicable local taxes or fees associated with the goods or services they obtain.</p>
       <p>Where Gopher, Inc. is required by law to collect and remit taxes as a marketplace facilitator, it will do so, and any such amounts may be calculated and displayed at checkout. Except as expressly required by law, Gopher does not determine, collect, remit, or advise on any user's tax obligations, and nothing in these Terms constitutes tax advice.</p>
       <p>Gopher may provide payment summaries, reports, reminders, or similar tools (for example, consolidated worker-payment histories within Gopher Connect) as a convenience. <strong>These tools are informational only, do not constitute tax advice, and do not determine any user's tax or reporting obligations.</strong> Gopher, Inc. is <strong>not the payer of record</strong>, does not issue Form 1099 or any other tax form on a user's behalf, and does not file or remit taxes for any user unless expressly required by law. Businesses and other payers are solely responsible for determining and meeting their own information-reporting obligations and for applying the reporting thresholds then in effect, which change over time. Any totals, thresholds, or reminders shown within the platform are provided for general convenience, may not reflect current law, and should not be relied upon; users should consult their own tax professional.</p>
     </section>
@@ -754,6 +819,7 @@
               <li><a href="gopher-request-101.html">Gopher Request 101</a></li>
               <li><a href="gopher-connect-101.html">Gopher Connect 101</a></li>
               <li><a href="gopher-go-101.html">Gopher Go 101</a></li>
+              <li><a href="gopher-deals-101.html">Gopher Deals 101</a></li>
             </ul>
           </details>
         </li>
@@ -782,6 +848,35 @@
   </div>
 
 </footer>
+
+
+<!-- Mobile-only "Jump to a section" launcher. The TOC aside is a sticky sidebar on
+     desktop and was display:none below the breakpoint, leaving phone readers with no
+     way to reach a section (owner-reported 2026-08-25). Reuses the SAME aside rather
+     than duplicating the link list, so the two can never drift. -->
+<button class="legal-toc-fab" id="legalTocFab" aria-controls="toc" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  Sections
+</button>
+<div class="legal-toc-scrim" id="legalTocScrim" hidden></div>
+<script>
+(function(){
+  var fab   = document.getElementById('legalTocFab');
+  var scrim = document.getElementById('legalTocScrim');
+  var toc   = document.getElementById('toc');
+  if(!fab || !toc || !scrim) return;
+  function setOpen(on){
+    document.body.classList.toggle('legal-toc-open', on);
+    fab.setAttribute('aria-expanded', on ? 'true' : 'false');
+    scrim.hidden = !on;
+  }
+  fab.addEventListener('click', function(){ setOpen(!document.body.classList.contains('legal-toc-open')); });
+  scrim.addEventListener('click', function(){ setOpen(false); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') setOpen(false); });
+  /* Close on choose — the panel covers the text it just jumped to. */
+  toc.addEventListener('click', function(e){ if(e.target.closest('a')) setOpen(false); });
+})();
+</script>
 
 <script src="assets/js/gopher-header.js" defer></script>
 

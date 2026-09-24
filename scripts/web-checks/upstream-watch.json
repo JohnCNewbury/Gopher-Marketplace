@@ -1,0 +1,24 @@
+{
+  "_why": "Files in OTHER repos that this workstream ported behaviour FROM. The port is only as current as the source, and nothing tells us when the source moves — the sha is the notification. Warn-only by design: a change here is a PROMPT TO GO LOOK, not a verdict. The one entry that BLOCKS is noShow.js, and it blocks in its own check (noshow-freshness.js) because a 3-way parity test is bound to it.",
+  "_howToUpdate": "Read the upstream diff FIRST. If the behaviour moved, update the port and the doc, then re-record. If it was cosmetic, re-record and say so in the note. Never re-record to silence it.",
+  "watch": [
+    {
+      "path": "gopher-mobile-request/src/component/getOrders.js",
+      "sha256": "a71bd941cdbae30bf421723843d521cd9e9e03aab17c3bd197fd5b366d6967a8",
+      "portedInto": "Final/gopher-request.html — REPORT_REASONS + buildReportModal()",
+      "why": "The six report reasons and both copy paragraphs are a VERBATIM port of the live Selectpopup list, including 'Violates Age-Restricted Policies', which the worker app's list does not have. If upstream adds, removes or rewords a reason, the web port is silently wrong and there is no test that would notice."
+    },
+    {
+      "path": "gopher-mobile-request/src/component/modalContent.js",
+      "sha256": "5d42ffcecd97847fc8e43e81537fa615d16de40a93f6ae1721680a67ee0d38c5",
+      "portedInto": "Final/assets/js/gopher-web-pt-bridge.js — First Available auto-start",
+      "why": "This file is the CANON cited for auto-start: 'the first Gopher to accept your request is off to the races' / 'requires little to no engagement on your part'. The bridge auto-hires AND auto-starts on that wording. If the wording changes, the ruling it rests on has changed."
+    },
+    {
+      "path": "gopher-mobile-gopher/src/component/ordercard.js",
+      "sha256": "3f8de53b1f05986eaea6e3b80adb47c84a5dd15140bc7e8e3b7009e12684c579",
+      "portedInto": "_prototypes/Go/gopher-go-prototype.html — parseMoney / fmtMoney",
+      "why": "This is the reference for money entry: type=number + parseFloat, cost_of_goods in cents. It is what proved the prototype's digit-stripping was a defect rather than a choice. If it changes, the money fix's justification changes with it."
+    }
+  ]
+}

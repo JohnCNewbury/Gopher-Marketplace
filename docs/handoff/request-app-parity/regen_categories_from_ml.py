@@ -46,7 +46,7 @@ INLINE_PAGES = ["Final/index.html", "Final/gopher-request.html", "Final/gopher-s
                 "Final/gopher-iq-sandbox-standalone.html"]
 
 CAT_STOP = set("a an the to of for i need my me you we is it do does can someone help with this and or in on at".split())
-STEM_KEEP = {'ride','rides','riding','side','tide','wide','dome','time','line'}
+STEM_KEEP = {'ride','rides','riding','side','tide','wide','dome','time','line','worker','workers'}
 
 
 def stem(w):

@@ -1,0 +1,171 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>G40-424 AC6 — what the phone should show</title>
+<style>
+  :root{ --ink:#1a1c1f; --mut:#6b7076; --line:#d8dbdf; --bg:#f4f5f7;
+         --good:#1a7f4b; --bad:#b3261e; --card:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:28px 20px 60px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--mut);margin:0 0 6px}
+  .note{color:var(--mut);font-size:12.5px;max-width:980px;margin:0 0 24px;
+        border-left:3px solid var(--line);padding-left:12px}
+  .row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .ptitle{font-weight:700;font-size:13px;margin:0 0 2px}
+  .pmeta{color:var(--mut);font-size:11.5px;margin:0 0 10px;font-variant-numeric:tabular-nums}
+  .verdict{font-size:11.5px;font-weight:700;margin:10px 0 0}
+  .ok{color:var(--good)} .no{color:var(--bad)}
+
+  /* --- phone frame: 1:1 with the real viewport --- */
+  .phone{position:relative;overflow:hidden;background:#fff;
+         border:1px solid #9aa0a6;border-radius:14px}
+  .stage{position:relative;width:100%;height:100%;overflow:hidden}
+  /* formContainer: height innerHeight*85/100, overflowY scroll */
+  .form{width:100%;overflow-y:scroll;display:flex;flex-direction:column;
+        align-items:center;padding-top:8px}
+  .hdr{width:100%;text-align:center;font-weight:700;padding:6px 0 8px;
+       font-size:13px;border-bottom:1px solid #74777C}
+  .subj{width:100%;display:flex;justify-content:center;align-items:center;
+        border-top:1px solid #74777C;border-bottom:1px solid #74777C;font-weight:700}
+  .bubble{background:#BADBFC;border-radius:11px;padding:8px;max-width:80%;
+          margin:8px auto;font-size:13px}
+  .selall{width:90%;display:flex;justify-content:flex-end;align-items:center;
+          padding-top:8px;gap:8px;font-weight:700;font-size:11px}
+  .cbx{width:20px;height:20px;border:1.5px solid #292929;border-radius:3px;flex:0 0 auto}
+  /* the DetailBlock list — the subject of F5a */
+  .list{width:90%;border-top:1.5px solid #74777C;background:#fff}
+  .lrow{display:flex;flex-direction:row;justify-content:space-between;align-items:center;
+        border-bottom:1.5px solid #74777C;margin-bottom:3.75px;padding-bottom:3.75px}
+  .av{border-radius:50%;background:#c9d3dd;flex:0 0 auto}
+  .nm{margin:0;font-size:13.1px}
+  /* fixed button stack: position:absolute; bottom:65px; width:90% */
+  .btns{position:absolute;left:5%;width:90%;bottom:65px;background:#fff;
+        display:flex;flex-direction:column;align-items:center;gap:8px}
+  .btn{width:100%;height:45px;border-radius:8px;display:flex;align-items:center;
+       justify-content:center;font-weight:700;font-size:13px}
+  .b1{background:#00A651;color:#fff}
+  .b2{background:#fff;color:#292929;border:1.5px solid #292929}
+  .scrim{position:absolute;left:0;right:0;bottom:0;height:65px;background:#fff}
+  .flag{position:absolute;right:6px;font-size:10px;font-weight:700;
+        background:#fff;border:1px solid;border-radius:4px;padding:1px 5px}
+  legend{font-size:11.5px;color:var(--mut)}
+</style>
+
+<h1>G40-424 · AC6 — what the handset should show</h1>
+<p class="sub">The last open criterion. Hold this next to the phone.</p>
+<p class="note">
+  <b>What this is:</b> a 1:1 geometry model built from the arithmetic in the shipped
+  <code>SupportMessage.js</code> on <code>origin/production</code> — <code>maxHeight: innerHeight*45/100</code> (:605),
+  <code>overflowY:"auto"</code> (:606), <code>marginBottom:"180px"</code> (:630), button stack
+  <code>position:absolute; bottom:65px</code> (:712–714). It is <b>not</b> the React component, so it cannot
+  close AC6 by itself — it tells you what pass looks like so the device check takes seconds.
+</p>
+
+<div class="row">
+
+  <!-- 1. iPhone, shipped -->
+  <div class="panel">
+    <p class="ptitle">iPhone · 375 × 812 — shipped</p>
+    <p class="pmeta">list bound 365px · reservation 180px · stack 155px</p>
+    <div class="phone" style="width:375px;height:812px">
+      <div class="stage">
+        <div class="form" style="height:690px">
+          <div class="hdr">Gopher Support</div>
+          <div class="subj" style="font-size:15px;padding:5.6px 0">Subject:&nbsp;Favorite Gopher Referral</div>
+          <div class="bubble">You have a favorite gopher referral waiting. Select the gophers you want to add.</div>
+          <div class="selall">Select all <span class="cbx"></span></div>
+          <div class="list" style="max-height:365px;overflow-y:auto;margin-bottom:180px">
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Ryan Newbury</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Oliver Del Real</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Maya Fitzgerald</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Dev Sharma</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Tasha Brooks</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Andre Whitfield</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Priya Raman</p><span class="cbx"></span></div>
+            <div class="lrow" style="border-bottom:none"><span class="av" style="width:37.5px;height:37.5px"></span><p class="nm">Chris Boateng</p><span class="cbx"></span></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="btns">
+          <div class="btn b1">Accept Referrals</div>
+          <div class="btn b2">Decline</div>
+        </div>
+        <span class="flag ok" style="bottom:230px;border-color:#1a7f4b">↕ scrolls</span>
+      </div>
+    </div>
+    <p class="verdict ok">PASS — list scrolls; last row clears the green button.</p>
+  </div>
+
+  <!-- 2. short Android, shipped -->
+  <div class="panel">
+    <p class="ptitle">Android A50 · 360 × 640 — shipped</p>
+    <p class="pmeta">list bound 288px · reservation 180px · stack 155px</p>
+    <div class="phone" style="width:360px;height:640px">
+      <div class="stage">
+        <div class="form" style="height:544px">
+          <div class="hdr">Gopher Support</div>
+          <div class="subj" style="font-size:14.4px;padding:5.4px 0">Subject:&nbsp;Favorite Gopher Referral</div>
+          <div class="bubble">You have a favorite gopher referral waiting.</div>
+          <div class="selall">Select all <span class="cbx"></span></div>
+          <div class="list" style="max-height:288px;overflow-y:auto;margin-bottom:180px">
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Ryan Newbury</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Oliver Del Real</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Maya Fitzgerald</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Dev Sharma</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Tasha Brooks</p><span class="cbx"></span></div>
+            <div class="lrow" style="border-bottom:none"><span class="av" style="width:36px;height:36px"></span><p class="nm">Andre Whitfield</p><span class="cbx"></span></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="btns">
+          <div class="btn b1">Accept Referrals</div>
+          <div class="btn b2">Decline</div>
+        </div>
+        <span class="flag ok" style="bottom:230px;border-color:#1a7f4b">↕ scrolls</span>
+      </div>
+    </div>
+    <p class="verdict ok">PASS — the short screen that used to fail now clears.</p>
+  </div>
+
+  <!-- 3. short Android, BEFORE -->
+  <div class="panel" style="background:#fdf6f5;border-color:#e6c3bf">
+    <p class="ptitle">Android A50 · 360 × 640 — <span class="no">before the fix</span></p>
+    <p class="pmeta">no height bound · reservation 12% = 77px vs stack 155px</p>
+    <div class="phone" style="width:360px;height:640px">
+      <div class="stage">
+        <div class="form" style="height:544px">
+          <div class="hdr">Gopher Support</div>
+          <div class="subj" style="font-size:14.4px;padding:5.4px 0">Subject:&nbsp;You Have A Favorite Gopher Referra<br>l</div>
+          <div class="bubble">You have a favorite gopher referral waiting.</div>
+          <div class="selall">Select all <span class="cbx"></span></div>
+          <div class="list" style="margin-bottom:76.8px">
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Ryan Newbury</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Oliver Del Real</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Maya Fitzgerald</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Dev Sharma</p><span class="cbx"></span></div>
+            <div class="lrow"><span class="av" style="width:36px;height:36px"></span><p class="nm">Tasha Brooks</p><span class="cbx"></span></div>
+            <div class="lrow" style="border-bottom:none"><span class="av" style="width:36px;height:36px"></span><p class="nm">Andre Whitfield</p><span class="cbx"></span></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="btns">
+          <div class="btn b1" style="opacity:.45">Accept Referrals</div>
+          <div class="btn b2" style="opacity:.45">Decline</div>
+        </div>
+        <span class="flag no" style="bottom:230px;border-color:#b3261e">✕ no scroll</span>
+      </div>
+    </div>
+    <p class="verdict no">FAIL — rows buried, buttons disabled, dead end.</p>
+  </div>
+
+</div>
+
+<p class="note" style="margin-top:26px">
+  <b>The two checks on the handset.</b>
+  <b>(a)</b> Drag the referral list — it must move independently.
+  <b>(b)</b> Scroll to the bottom — the last row must sit fully above the green
+  <i>Accept Referrals</i> button, readable, not merely tappable.
+  Both platforms. If the build is Android-only, the iOS half stays open and AC6 does not close.
+</p>

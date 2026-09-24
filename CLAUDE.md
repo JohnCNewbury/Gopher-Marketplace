@@ -1,13 +1,64 @@
 # CLAUDE.md — Gopher Marketplace
 
+> ## ⛔ READ FIRST — this file can be out of date. The live rules are elsewhere.
+>
+> **The authoritative, current owner directives live in
+> `Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md`.** Read that file before
+> acting on anything below, and re-read it after any context carryover.
+>
+> ⚠️ **Path corrected 2026-09-01.** This pointer read `Dev/gopher-dev-handoff/STANDING-RULES.md`
+> until today. That file **does not exist** — the handoff repo was restructured onto Astro/Starlight
+> (`01b47c4`) and the rules moved into `src/content/docs/`. So every session that followed this
+> banner to "the authoritative rules" found nothing, and proceeded on `CLAUDE.md` alone — which is
+> the exact failure the banner exists to prevent. Fixing the pointer is the whole fix; the rules
+> themselves were never lost.
+>
+> **Why this warning exists.** `CLAUDE.md` is *inside* this repo, so **every git worktree freezes
+> its own copy at the moment the worktree was created.** Rules the owner set afterwards are
+> invisible to any session working there — silently, with nothing to signal the gap. On
+> 2026-08-10 three worktree copies were found still enforcing a scope rule the owner had
+> **retired on 2026-08-09**, and two live sessions had been blocking themselves on it for days.
+>
+> `standing-rules.md` lives in a **different repository**, so a worktree cannot freeze it. It is
+> always live for every session, whenever that session's tree was made. **Where the two disagree,
+> `standing-rules.md` wins.**
+
 ## What this is
 
-This repository is an **AI-generated static HTML prototype** for "Gopher Marketplace."
-It is a **visual blueprint, not production code.** Do not treat it as a real, working
-platform. It exists to be handed off to a human developer who will perform a
-production rebuild.
+This repository began as an **AI-generated static HTML prototype** for "Gopher Marketplace" — a
+visual blueprint for a production rebuild. Most of it still is: self-contained static HTML, no build
+step, no framework.
 
-Every page is self-contained static HTML (no build step, no framework, no backend).
+> ⚠️ **But it is no longer entirely a blueprint, and the difference is where the real harm lives
+> (corrected 2026-08-09).** The old wording — *"not production code… do not treat it as a real,
+> working platform… no backend"* — is stale in the dangerous direction: it invites treating live
+> surfaces as a sandbox. In fact:
+>
+> - ⚠️ **CORRECTED 2026-09-24 — this bullet was STALE for over a month and was propagating into
+>   every session's brief.** It read: *"`gopher-deals.html`'s merchant registration POSTs to a live
+>   Google Apps Script that writes a real Sheet and emails the owner."* ⛔ **That has been false
+>   since 2026-08-21.**
+>   **What is true now, desk-verified first-hand in `Final/gopher-deals.html`:** merchant
+>   registration **`POST /users/deals`** on the internal API (`apiCall('/users/deals', …)`, ~line
+>   5531), and the service-provider funnel **reads `GET /users/deals/eligibility`** and submits
+>   nothing. The owner's own words are in the code at ~line 5314: *"GOPHER_FORM_ENDPOINT (Google
+>   Apps Script) REMOVED 2026-08-21 — I wanted to sever App Scripts and EVERYTHING is internal now.
+>   Deals and GO → HQ and soon HQ → Connect and Request."*
+>   ⛔ **The prohibition is unchanged and still binding: do NOT reintroduce `GOPHER_FORM_ENDPOINT`
+>   or anything that posts to `script.google.com`.** (This was always consistent with the deals@
+>   wiring rule further down — that rule was right; **this bullet was the one contradicting it.**)
+>   ⭐ **Why it mattered enough to correct rather than quietly edit:** this file loads into *every
+>   request of every session*, so anyone reasoning about **where merchant data lands** — blast
+>   radius, what is at risk if Deals breaks, who to notify — was reasoning about a system that no
+>   longer exists. It was found by a seat reading the code instead of the brief. **It is still a
+>   real backend and still the real merchant-intake path; only the destination changed.**
+> - The site is **live on three hosts** — GitHub Pages, TigerTech, and the Netlify mirror — indexed,
+>   with a sitemap.
+> - The **101 guides are public** and read by real merchants and workers.
+>
+> Two of the worst defects found on 2026-08-06 — a logo **required and then discarded**, and one
+> click producing **four registration leads** — mattered precisely *because* a real merchant can hit
+> them. Treat anything reachable from those three hosts as live.
 
 ## Repository layout
 
@@ -19,20 +70,49 @@ each other and their assets relative to `Final/`). It contains ~132 HTML pages p
 `Final.zip` is the original archive `Final/` was extracted from; it is kept only as a
 backup and is not part of the served site.
 
-## Scope of AI work (important)
+## Scope of AI work — REWRITTEN 2026-08-09 (owner)
 
-Limit all AI work to **cleanup, documentation, and front-end reference fixes.**
+> ⚠️ **The old rule is retired. It read:** *"Limit all AI work to cleanup, documentation and
+> front-end reference fixes. Do NOT implement or modify … **they are reserved for a human
+> developer**: Payments/billing · Authentication/accounts · Database/persistence · Matching logic ·
+> Security logic."*
+>
+> **Why it went:** its load-bearing clause was *"reserved for a human developer"* — and there is no
+> dev partner. Work reserved for someone who does not exist is work that never happens. It had also
+> stopped describing reality: on **2026-08-08/09 alone**, sessions merged **authorization**
+> (`851fb717` — require the caller to be the requester before declining a cost adjustment),
+> **authentication/session** (`18bbda6d` — repeat sign-ins; `1d133fe3` — email-OTP loop),
+> **authorization** (`d265bf69`), and **database config** (`373a887d`) straight to
+> `gopher-backend-api` **`production`**. The rule wasn't gating that work; it was only tripping
+> whichever session happened to read it literally — as it tripped this one on the Deals intake
+> endpoint, which was then simply reassigned to another Claude session. That is routing by accident,
+> not a safety boundary. Same failure shape as the stale "no `node` on this box" note below: a
+> point-in-time observation left standing until it started steering people wrong.
 
-**Do NOT implement or modify any of the following — they are reserved for a human
-developer:**
+**The gate is not the topic. The gate is the owner's informed consent before anything reaches
+production.** Owner, 2026-08-09:
 
-- Payments / billing
-- Authentication / accounts
-- Database / persistence
-- Matching logic (connecting requesters and "Gophers")
-- Security logic
+> *"Nothing is ever to be pushed to production without verification that I fully understand the
+> risk/rewards and what the work is solving for."*
 
-If a task seems to require any of the above, stop and flag it rather than building it.
+**So, in practice:**
+
+- **Build what the work requires** — including payments, auth, persistence, matching and security —
+  in whatever repo the task lives in. Being AI-authored is not itself a reason to stop.
+- **Before anything reaches production, put three things in front of the owner in plain words:**
+  **what it solves**, **the risk**, and **the reward** — including what happens if it is wrong and
+  how quickly it can be undone. Then wait for a decision. *He is the one clicking the button; an
+  unstated risk becomes a guess.*
+- **Verification is the price of a bigger scope, not an optional extra.** Read the live code, drive
+  the real path, and say plainly which claims are **verified** versus **inherited**. The more
+  consequential the surface, the more of the diagnosis has to be first-hand.
+- **Prototype ≠ production, and the difference is how much proof is owed** — not whether the work is
+  allowed. A copy fix in `Final/` and an authz change on `production` are both in scope; only one of
+  them can quietly cost real money or lock real users out.
+- **Still stop and ask when access is the blocker** — the pause-and-wait directive is unchanged and
+  is the one rule that has *not* relaxed.
+- **Still flag rather than assume** when a task looks like it belongs to another session's surface,
+  or when the scope of a request is genuinely ambiguous.
 
 ## Deployment constraints (these cause real bugs)
 
@@ -84,241 +164,182 @@ do not assume they indicate deeper problems.
 - Keep changes scoped to cleanup, documentation, and reference correctness.
 - Do not introduce backend behavior, real data flows, or security/auth/payment code.
 
-## Session progress (cleanup work done so far)
+### Tooling — verify before you route around it
 
-_Paths below are relative to the site root (`Final/`); handoff docs live in the
-repo-root `docs/handoff/` folder, one level above this file._
+**`node` IS installed: v24.18.0 at `~/bin/node`, on PATH** (since the 2026-07-28 toolchain
+setup). Older notes in this file and in memory said "no `node` on this box" — **true when
+written in July, false since.** Anything in the session log dated before 2026-07-28 that
+reasons from node's absence was correct at the time; don't inherit the premise.
 
-### Done
+- **Use `node`** for anything that *executes* module code (running a shared module,
+  exercising a function against real inputs, a test harness).
+- **JXA is still correct** for a pure syntax parse-check — `new Function(src)` per inline
+  `<script>` block. It needs no `window`/`module` shims there and node buys nothing.
+- **Don't hand-roll a JXA shim harness for JS node can run.** That's a workaround with no
+  blocker behind it, and the shims themselves can produce a confident wrong result.
 
-- **Image optimization (content images).** 19 base64-embedded images were externalized
-  to `assets/img/`, removing **~4.9 MB of base64** from the HTML across `index.html`,
-  `gopher-blog.html`, `gopher-customer-deals.html`, `gopher-request.html`, and
-  `gopher-our-story.html` (4 exact JPEGs + 7 HQ masters + 8 hero pics → WebP). Full-res
-  originals are archived in `assets/img/originals/`.
-- **Shared header/footer "chrome" dedup (the big one — done 2026-06-26).** The 7
-  highest-duplication chrome blobs (5 brand logos + 2 app-store badges, inlined as base64
-  on 100+ pages each) were externalized to single shared files in `assets/img/`, and all
-  **862** inline copies replaced with relative, case-exact references — **16.76 MB of
-  base64 text removed** across **127 pages**, collapsing to 7 cached files (106.8 KB).
-  Each instance was sha256-verified byte-identical before merging; zero inline chrome
-  base64 remains. SVG logos kept as `.svg`, badges kept as PNG (externalized as-is). Full
-  detail: `docs/handoff/final-cleanup/chrome-dedup-manifest.md`.
-- **Honesty copy fixes in `gopher-request.html`** (copy-only, no functionality change):
-  removed the false persistence claims — "Your information is saved automatically" →
-  "Your progress stays here while this page is open"; "✓ Saved to your job history" →
-  "✓ Request submitted". (There is no real storage; state is in-memory only.)
-- **New handoff docs** (in `docs/handoff/`):
-  - `connect-request-readiness.md` — deep production-readiness audit of
-    `gopher-connect.html` and `gopher-request.html`, which are intended to become the
-    **real product front end** (web version of the Gopher Request app). Verdict for both:
-    **prototype-grade, needs hardening.** Recommended path: **rebuild as components with a
-    real state layer + backend — do NOT patch the inline JS in place.**
-  - `deals-asset-match.md` — cross-reference of the Deals merchant-logo folders vs. what
-    the Deals pages embed.
-  - (Earlier docs also present: secrets-scan, broken-references, missing-files,
-    page-inventory, unfinished-functions, component-structure, base64-image-plan +
-    manifest, asset-match-report, README.)
-- **Page-count corrections across the handoff docs.** After the duplicate
-  `e-waste-removal_1.html` was deleted, every doc that cited the old totals was updated to
-  the verified counts: **133 HTML files** (was 134) = 19 core/brand/legal + **107
-  service-detail** (was 108) + 7 components/fragments. Junk Removal dropped 13 → 12.
-  Touched `page-inventory.md`, `README.md`, `component-structure.md`, `broken-references.md`,
-  and `base64-image-plan.md`; the stale `e-waste-removal_1.html` orphan/duplicate entries
-  in `page-inventory.md` were updated to reflect the deletion.
-- **Gopher iQ location intelligence + coverage "data brain" (done 2026-07-02).** The
-  search pill now answers location questions ("Do you have service in Raleigh?", "become a
-  Gopher in Cary", "when are you coming to Charlotte?") with **real local-Gopher counts** and
-  drives a request/signup. New shared data layer **`gopher-iq-data.js`** (`window.GopherIQData`),
-  loaded before the engine on every pill page, holds a **10-mile-radius** coverage table built
-  offline from `Users_02_07_2026.csv` + `Orders_02_07_2026.csv` (+ GeoNames ZIP centroids,
-  CC BY 4.0). Worker = role∋Gopher & Stripe-payout-verified & active **& engaged** (signed up
-  in the last 6 months OR has completed ≥1 request all-time — so the count isn't inflated by
-  registrations that never worked); recent-activity (tier 4) = distinct gophers who completed a
-  delivery in the last ~3 months. Availability answers are
-  **4-tiered** (< 20 "word getting out" + *Find MY Gopher* → `age-restricted.html#find-my-gopher`;
-  20–49 / 50+ standard; 50+ & 10+-active "ready to connect"), plus a **collision clarifier**
-  ("Denver → CO/NC/PA?"). Engine changes (`gopher-ai-engine.js`/`.css`) propagated to all
-  inlined copies (index, request, services, faqs, both `-block` fragments, sandbox). It is a
-  **prototype static data layer** — production swaps the tables for a live query behind the same
-  `GopherIQData.lookup()` seam. Full detail + regeneration recipe:
-  `docs/handoff/gopher-iq-location-intelligence.md`.
-- **Canonical-flow scrub — Connect/Request prototypes vs the flow spec (done 2026-07-05).**
-  Audited `gopher-connect.html` + `gopher-request.html` against the canonical
-  `Documentation/Canonical Request Flow - Master/connect-flows-granular.html` (v3.2) —
-  all 19 invariants, the visibility matrix, fee tables, and the Connect↔Request
-  divergence table. Verdict: **both adhere**, with two fixes:
-  (1) **Connect `eligibleWorkers` enum** normalized `pros`/`my`/`all` → canonical
-  `elite_pros`/`my_gophers`/`entire_workforce` across all 10 read/write sites (brings
-  Connect into parity with the already-migrated Request app; no behavior/UX change). The
-  field is **not yet in the submit payload** — that wiring is matching logic, flagged for
-  the human dev in `docs/handoff/connect-eligibleworkers-backend-seam.md`.
-  (2) **TrustShield $1 perk scope** — both builds gate it to *age-restricted delivery + all
-  ride*; the canonical doc had claimed a broader "all delivery & ride" scope. Owner decision
-  (Jul 5): the **narrow build scope is authoritative** — corrected the canonical doc (Master
-  + the byte-identical `Dev-Handoff-FeeModel/` copy; older `Jira Tickets/` snapshot left as-is).
-  **No prototype code changed for #2** (it was already correct; fee-engine = human-dev only).
-- **Asset "verify visually" pass + 4 swaps (done 2026-07-05).** Eyeballed all 6 `med`/`low`
-  candidate rows in `asset-match-report.md` by extracting each embedded blob (matched by mime +
-  exact decoded byte-size) and comparing side-by-side with its external master. **Completed 4
-  of 6** — `img-140`→`go101-delivery.webp` + `img-144`→`go101-moving.webp` (gopher-go-101.html,
-  straight swaps), `img-060`→`connect-junk-removal.webp` (gopher-connect.html, center-cropped
-  the square master to 3:2 to match the embedded framing), and `img-025`→`services-laptop.webp`
-  (gopher-services.html, the clean no-guides variant, which also shrank a 216 KB PNG blob → 12 KB
-  WebP). WebP q82, originals archived in `assets/img/originals/`; **~409 KB of base64 removed**.
-  The other **2 were left as correctness traps, not cost savings**: `img-037` is a **false match**
-  (Connect-business vs Request-customer deals screenshot — the pHash collision the report warned
-  about) and `img-052` is a **different version** (different featured deal; the embedded has a
-  bottom-nav the master lacks) — swapping either would inject a wrong/changed screenshot. Verdicts
-  in `asset-match-report.md` → "Visual-verify pass". _(Principle applied: do the crop/clean work
-  ourselves where the asset is genuinely the same image; only decline when swapping would be a bug.)_
-  **Follow-on (2026-07-06):** the two merchant logos originally flagged "downgrade — don't swap"
-  (`Blind Pelican`, `Buoy Bowls`) were **upgraded with owner-supplied transparent art** — Buoy Bowls
-  → 325px transparent WebP across `gopher-connect`/`gopher-request`/`gopher-customer-deals` (replacing
-  a 256px WebP + a 150px PNG); Blind Pelican → swapped the `LOGO_PELICAN` constant in `gopher-deals.html`
-  from a 365px **no-alpha** PNG to a 336px **transparent** WebP with corrected pelican-in-circle art.
+**The general rule this is an instance of:** a documented constraint is a point-in-time
+observation, not live state. Before routing around a blocker this file names, spend the one
+command to check it still exists. See the owner's standing pause-and-wait directive — when
+something genuinely *is* blocked, stop and ask rather than take the lesser route.
 
-### Asset packs at repo root — spare/upgrade assets, NOT live-site dependencies
+## Standing rules (owner directives — apply to every session)
 
-`source-images/`, `source-assets/`, and six Deals merchant-logo folders (`Age-Restricted/`,
-`Convenience Store/`, `Restaurants & Food Trucks/`, `Local Favorites/`, `Service Providers/`,
-`Home Screen/`) sit at the repo root. They are **high-res masters / spares for the
-rebuild**, not required for the live site to render — e.g. the Deals page already embeds all
-23 merchant logos as thumbnails; the folders are just crisp upgrade sources. (See
-`deals-asset-match.md` and `asset-match-report.md`.)
+- **A Jira ticket is NEVER the source of truth — a document is, and the ticket references the doc
+  (owner, reaffirmed 2026-08-05).** Tickets are *meant* to die; truths have to outlive them. When a
+  ticket completes, the doc is updated and the ticket dies — and a ticket **is not Done until its
+  doc row is written**, or the ticket dies and the doc never learned.
+  **Direction matters: doc ← ticket, never doc → ticket.** Never cite a ticket as the authority for
+  behaviour; cite the doc, and if the doc is silent *that is the bug to fix*.
+  **Why it keeps biting:** a truth buried in a **closed** ticket becomes a fossil — the product moves
+  on, the truth evolves, and the closed ticket still reads as authoritative to whoever finds it next.
+  G40-44 is the recorded case study (its Done state contradicted production, and it was re-raised
+  three times in one day across sessions). It happened again on 2026-08-05: the G40-351 ground-truth
+  findings were first written **into a ticket comment**, then moved into
+  `deals-registration-to-publication-config.md` §9.9–9.16 / Rulings 7–8, with the comment rewritten
+  as a pointer.
+  **What belongs where:** the *doc* carries the canonical rule, the deployment reality (flags off,
+  branches unmerged), and the dated owner decision. The *ticket* carries only what should die with
+  the fix — the repro, the acceptance criteria, the assignee. See memory
+  `docs-are-truth-not-tickets`.
 
-- **Full base64 externalization — images + video (done 2026-07-07, G40-313).** Removed
-  **all** remaining inline base64: **~14.6 MB** of base64 raster images across 15 pages
-  (217 occurrences → **145 unique files**, SHA-dedup) externalized to `assets/img/`, plus
-  the **~4.64 MB** inline base64 video montage in `gopher-services.html` (18 clips →
-  `assets/video/services-clip-1..18.mp4`, referenced from the JS `CLIPS[]` array). Real file
-  types detected by magic bytes; **exact original bytes** written (lossless — compression/resize
-  is G40-314). Biggest drops: `gopher-connect` 5.64→1.20 MB, `gopher-deals` 5.22→0.52 MB,
-  `gopher-services` 5.03→0.35 MB, `gopher-customer-deals` 1.93→0.29 MB, `gopher-our-story`
-  1.42→0.13 MB. **Zero** base64 raster/video remains (tiny URL-encoded inline `<svg>` icons kept
-  intentionally). Verified: 0 missing refs site-wide + live render checks (deals/connect/
-  customer-deals/services-video) pass. Generic auto-names (`connect-img-N`, `request-img-N`,
-  `shared-img-N`) left for G40-320 to polish. Full mapping:
-  `docs/handoff/base64-externalization-2026-07-07.md`. _(Part of Epic G40-312 scale-readiness.)_
+- **⛔ PAUSE AND WAIT when access is the blocker — never take the less optimal route (owner,
+  2026-08-06).** Verbatim: *"NO SESSION is to take the less optimal route, EVER. It is a pause and
+  wait for my attention to log in to whatever platform is the block, to create a token, or share my
+  credentials… With no dev support on my end, this cannot ever happen again."*
+  **What triggered it:** a session without **Sentry** access proceeded on a workaround; **MR !222 was
+  merged prematurely and incorrectly into production.** Once asked, a token existed **in five
+  minutes**. The danger isn't that a workaround fails — it's that it yields a **confident wrong
+  answer**, which is worse than none because it gets acted on.
+  **The rule:** stop, state what's blocked / what unlocks it / what it enables, then wait. Do
+  genuinely independent work meanwhile, but **never let a workaround feed a merge, a deploy, a ticket
+  closure, a doc row, or a recommendation.** Covers Sentry · AWS · GitLab/GitHub tokens · Play & App
+  Store · Appflow · Stripe · Netlify · Twilio · SendGrid · Firebase · iDenfy · the production DB.
+  **Second-hand facts count as workarounds** — a behaviour another session described, written into a
+  doc row without inspecting it yourself, is the same failure wearing a friendlier face. Mark
+  inherited claims as inherited. See memory `pause-and-wait-never-work-around-access`.
 
-- **Image compression + resize (done 2026-07-07, G40-314).** Compressed the externalized
-  assets in `assets/img/` — **~6.1 MB saved**. **83** raster files (PNG/JPG/GIF) → **WebP q82**
-  (alpha preserved, longest side capped 1400 px) = 4.42 MB saved; the **2 large deals-page Figma
-  SVGs** (vector-wrapped layered rasters, 918 KB + 875 KB) composited to flat WebP (52 KB + 72 KB,
-  **visually verified pixel-identical** before swap) = 1.67 MB saved. Live `assets/img/` footprint
-  ~12 MB → **6.2 MB** (excl. `originals/`). **330** references updated across **118** files (incl.
-  the App-Store/Google-Play badges on 100+ pages); 0 broken/missing refs site-wide, verified in
-  browser (deals/connect/customer-deals/services). Done with Pillow 11.3 (no cwebp/ffmpeg). Kept
-  as-is where WebP wasn't smaller (`04-labor.jpg`, `go-gg-share-label.png`, animated `story-pin.gif`).
-  **Video not compressed** — `assets/video/*.mp4` (~3.4 MB) needs ffmpeg (unavailable); flagged for
-  dev. Full detail: `docs/handoff/image-compression-2026-07-07.md`. _(Epic G40-312.)_
+- **Every merge hand-off states three things, in plain words (owner, 2026-08-06):** **target
+  branch** · **squash yes/no** · **delete source branch yes/no**. Never leave them to the MR
+  defaults — the owner is the one clicking Merge, so an unstated option becomes a guess.
+  **Two reasons this is more than tidiness here:** *squashing rewrites the SHA*, and this project
+  verifies deployment **by SHA** in several places (G40-334's commit pins, the canonical and
+  as-built flow docs, and `gopher-dev-handoff/FIELD-NOTES.md`, which tells the incoming dev to
+  verify that way) — a squash silently invalidates all of them; and *deleting the source branch
+  removes the only copy of an unmerged fix* if the merge has to be reverted.
+  ⚠️ **Does not apply to THIS repo's deploy:** `scripts/deploy.sh` flattens `Final/` onto `main`
+  via rsync in a throwaway worktree and `main` shares no history with the feature branches — there
+  is no MR and nothing to squash. It applies to the **Dashboard**, **gopher-dev-handoff**, and the
+  **backend/app repos**, where an MR merge is the real mechanism.
 
-- **Shared header/footer components — client-side include (done 2026-07-07, G40-315).**
-  Header + footer were duplicated inline on every page (~25 KB header CSS+JS/page + ~5.8 KB
-  static footer/page). Now shared: **`assets/js/gopher-header.js`** (26 KB, on **124 pages**;
-  per-page logo via `window.GopherHeader={logo:'…'}`, mounts `<header class="gh-header">`) and
-  **`assets/js/gopher-footer.js`** (6.5 KB, on **108 pages**; mounts at `<div id="gopher-footer">`).
-  **~3.6 MB of duplicated HTML removed**, 0 broken refs, verified in browser (default + all branded
-  logos, Deals dropdown, footer styling). Built from the canonical inline block (not the stale
-  standalone `gopher-header.html`, now a pointer stub). Reconciled connect/request/request-101
-  variants onto canonical (logos byte-identical); deleted 5 duplicate logo SVGs; **removed the
-  external `gophergo.io/wp-content` footer-logo dependency** → local `assets/img/gopher-logo-footer.webp`.
-  18 branded/variant footers + index/go/sandbox bespoke headers intentionally left inline.
-  SEO caveat (accepted): nav/footer links are JS-injected — production rebuild should use
-  server/build-time components. Full detail: `docs/handoff/header-footer-componentization-2026-07-07.md`.
+- **A user-facing change is not done until its 101 guide is updated (owner, 2026-08-05).** Every
+  surface has a tutorial that real users read — `gopher-deals-101.html`, `gopher-go-101.html`,
+  `gopher-request-101.html`, `gopher-connect-101.html`. When you change behaviour or copy on a
+  surface, **review its guide, don't just string-match it.** A minimal find-and-replace is what
+  *created* the problem this rule came from: the Deals taxonomy rename swapped one word in the
+  Deals 101 and left the guide claiming the portal Inbox was "the fastest path to the Deals team"
+  (it transmits nothing) and describing the service-provider path as "the same as a merchant's,
+  just two differences" (it is neither — different entry point, different app, and a hard
+  eligibility bar the guide never mentioned). Both were caught only because the owner pushed back.
+  Same honesty standard as the June `gopher-request.html` copy fixes: **the guide describes what
+  the product does, not what it will do.**
+- **Deals activation SLA is ≤5 business days — never 1 (owner ruling, 2026-08-05).** "Within 1
+  business day" had propagated into the Deals 101 hero, its what-happens-next note, and the Deals
+  portal inbox copy, **contradicting the Merchant Agreement and the Terms of Service, which both
+  say "five (5) business days."** Corrected site-wide. ⚠️ **Do not blanket-replace "1 business
+  day"** — that string is also the legitimate **support-reply** SLA on Connect, Request and the
+  deals@ line, which stays. Activation ≠ support reply; classify before editing. The iQ FAQ
+  corpus already said 5 days and was correct.
 
-- **CSS consolidation (done 2026-07-08, G40-316).** Extracted the two large **duplicated**
-  inline `<style>` blocks into the new `assets/css/`: service-detail CSS (`gopher-fd-css`,
-  ~12 KB) → **`assets/css/gopher-fd.css`** on **107** service pages; footer CSS (`.gopher-footer`,
-  ~7.7 KB) → **`assets/css/gopher-footer.css`** on **124** pages. Replaced in place with
-  `<link>` (cascade preserved); no `url()` so no path rewrites. **~2.25 MB removed.** With the
-  header CSS already in `gopher-header.js` (G40-315), all shared chrome CSS is now cached files.
-  Page-specific blocks (dashboard/services/os, single pages) correctly left inline. Verified in
-  browser (service + branded pages styled, footer navy, no 404s). Detail:
-  `docs/handoff/css-consolidation-2026-07-07.md`. **Deploy must include `assets/css/`.**
+## Deploy & verification rules (hoisted 2026-08-26 — these are RULES, not history)
 
-- **Mobile responsiveness pass (done 2026-07-08, G40-317).** Verified the 8 priority templates
-  at phone (375) + tablet (768): **0 horizontal overflow** on all (index, a service page repping
-  all 107, connect, request, deals, go, services, faqs). Mobile burger drawer opens the full
-  styled nav (incl. Deals/Tutorials sub-dropdowns) from the shared `gopher-header.js`; gopher iQ
-  search pill renders correctly at 375. **No fixes required** — the site is already consistently
-  responsive, now structurally so via the shared components. Not exhaustive (every page / extreme
-  widths / real devices) — follow-up if wanted. Detail: `docs/handoff/mobile-responsiveness-2026-07-08.md`.
+These governed every deploy but were buried inside the old session log. They are load-bearing on a
+repo that publishes to **two live hosts** (GitHub Pages + TigerTech) from the **working tree**.
+Fuller narrative for each — the incident that produced it — is in
+[`docs/handoff/session-log.md`](docs/handoff/session-log.md).
 
-- **Navigation paths & broken refs (done 2026-07-08, G40-318).** Audited every href/src across
-  all pages + the shared header/footer JS vs real filenames: **0 root-absolute paths, 0 case
-  mismatches**; Home/logo → `index.html` confirmed. Fixed 1 legacy broken link
-  (`terms-of-service.html` → `gopher-terms-of-service.html` in request-101). **Localized 13
-  external `gophergo.io/wp-content` images** (hot-linked from the live WP site — would 404 when
-  gophergo.io is replaced) → `assets/img/wp-*.webp`+`blog-*.webp`, repointed across 7 pages; 0
-  hotlinks remain; `mailto:` addresses untouched. Only unresolved refs left = the 8 known-missing
-  hero clips (video production, degrades gracefully). Verified in browser. Detail:
-  `docs/handoff/nav-paths-2026-07-08.md`.
+- ⚠️ **`git merge-base --is-ancestor <sha> origin/main` is valid ONLY for a DEPLOY sha** (a commit
+  that lives on `main`). It is **INVALID — always false — for a source/feature commit.** `main` is a
+  flattened rsync lineage sharing no history with the dev branches, so a feature commit is *never*
+  its ancestor **no matter how completely its content is live**; asked that way it reports NOT
+  DEPLOYED for every change ever shipped. It has already produced a false "deploy gap" and then a
+  false *retraction* of a finding that was correct.
+- ⚠️ **Verify deployment by CONTENT, never by SHA.** Compare `git show origin/main:<file>` against
+  the working / `HEAD:Final/` file, then curl the live URL and **grep for the changed string** — a
+  200 only proves the file exists, not that it updated. **Never suppress the fetch**
+  (`git fetch origin main -q 2>/dev/null` hides failures and leaves you reading a stale
+  `origin/main` as current) — re-fetch, unsuppressed, immediately before any "is it live?" claim.
+- ⚠️ **A PINNED DEPLOY CAN BE A REVERT. Pinning is safe ONLY when the pin point is at or ahead of
+  what is currently live.** Pinning excludes *uncommitted* work only — it does nothing about other
+  sessions' commits, and if the pin point sits BEHIND live it silently rolls back everything shipped
+  since. Pinning at your own last-**deployed** commit is the dangerous case; pinning at your own
+  **latest** commit is safe, because it carries everyone's ancestors. The safe shape is **build the
+  deploy tree from HEAD and `git rm` the specific file you don't own.**
+- ⚠️ **The dry-run diffstat shows riders and reverts IDENTICALLY.** An unfamiliar file is either
+  someone else's new work or something you are about to roll back, and the only way to tell is to
+  check whether it is currently live — **one `curl`. Do not skip it.** The dry-run file list is a
+  **scope check, not just a diffstat**: get an owner OK on anything outside your own change before
+  `--push`. The deploy script's own diffstat display **elides** — don't read it as the full list.
+- ⚠️ **The deploy reads the WORKING TREE** (owner decision 2026-07-20, settled). So an
+  `--allow-dirty` run publishes whatever other sessions have left uncommitted. Scope-check
+  accordingly.
+- ⚠️ **A pinned worktree lacks the gitignored disk-only allowlisted prototype files**
+  (`_prototypes/Go/gopher-banner.js`, `_prototypes/Request/gopher-banner.js`) — the preflight aborts
+  until you copy them in from the clone.
+- ⚠️ **A push to `main` publishes to BOTH hosts** (Pages + the TigerTech FTPS workflow) — scope-check
+  for two destinations, and content-verify on both.
+- ⚠️ **BOTH SITES ARE THE DEFAULT (owner, 2026-09-23).** A bare
+  `scripts/deploy.sh --push` now ships the live site **and** the prototype twin, in
+  that order. The twin does not track production, so a one-sided deploy is a silent
+  drift you only find when a screenshot disagrees with the code — it sat three weeks
+  behind that way, then drifted again *within the hour* of the owner asking how to
+  prevent it. `--site live` and `--site prototype` remain as deliberate opt-outs, and
+  an explicit `--site live` says out loud that it has left the twin behind.
+- ⚠️ **THERE ARE TWO SITES.** `--site prototype`
+  publishes the **prototype twin** — `johncnewbury.github.io/Gopher-Marketplace-Prototype/`, repo
+  `Gopher-Marketplace-Prototype`, git remote **`proto`** — which serves the same pages plus the
+  web↔Go harness, with PT mode ON and every page `noindex`ed. Created 2026-09-02 so Matt has a URL.
+  **The twin does not track the live site by itself** — which is why a bare run now ships both (see
+  the bullet above). A one-sided deploy leaves it behind silently.
+  ⚠️ **The twin shares production's HOSTNAME**, so the PT allowlist entry for it is host **+ path
+  prefix** (`gopher-web-pt-bridge.js`). The slash after `Marketplace` is the only thing keeping
+  `?pt=1` off the live site — `/Gopher-Marketplace/` must never match. 23-case guard:
+  `scripts/web-checks/pt-production-gate.js`, and **every case there must carry a `pathname`** or
+  the production assertions pass for the wrong reason.
+- ⚠️ **`git` author does NOT identify a session** — every commit here is "John Newbury". To find
+  which workstream owns a file, read the **sibling paths** in the same commit (a
+  `docs/handoff/<x>/` directory usually names the lane), or search session transcripts. Guessing
+  has already caused a misattribution another session had to correct.
+- ⚠️ **A cross-host content mismatch on a file your deploy did not touch is a CACHE artifact until
+  proven otherwise** — cache-bust the curl before concluding anything.
 
-- **Per-page SEO basics (done 2026-07-08, G40-319).** Base domain `https://gophergo.io/` (owner
-  decision). Injected into **126 pages**: `<link rel="canonical">` (home → `/`, others →
-  `/<page>.html`), Open Graph (type/site_name/title/description/url/image) + Twitter
-  `summary_large_image`; **filled 13 missing meta descriptions** with hand-written copy. Titles
-  (127/127) and single-`<h1>` were already good. Created a 1200×630 share image
-  `assets/img/og-default.jpg` (cream + navy/green logo + tagline), used as default og/twitter
-  image. Idempotent; verified 1 canonical/og:image/desc per page, header/footer intact, no errors.
-  `gopher-go-101.html` skipped (concurrent refactor) — add its SEO block once that lands. If prod
-  adopts clean URLs, regenerate canonicals without `.html`. Detail: `docs/handoff/seo-basics-2026-07-08.md`.
+## Session progress — moved out of this file (2026-08-26)
 
-- **Asset naming + folder organization (done 2026-07-08, G40-320 — final epic ticket).** Created
-  `draft-content/` (staging); **consolidated all loose root CSS/JS into `assets/`** (`gopher-ai-engine.css`,
-  `3-pill-css.css` → `assets/css/`; `gopher-ai-engine.js`, `gopher-iq-data.js` → `assets/js/`; only
-  iq-data is `src`-loaded (4 pages, refs updated) — engines are inlined). Archived 4 unref spare
-  images → `assets/img/originals/`. **0 broken refs** (verified `GopherIQData.lookup` still works).
-  Documented the naming convention (`<context>-<descriptor>[-n].<ext>`) + live-vs-spare + what the
-  rebuild should still move (root `.mp4` scene videos → `assets/video/`; generic `*-img-N` names left
-  as-is; go-101 pending concurrent refactor). Full map: `docs/handoff/folder-structure.md`.
+**The completed-work log now lives in [`docs/handoff/session-log.md`](docs/handoff/session-log.md).**
+Read it when you need the history of a particular surface; grep it for the page or feature name.
 
-- **Connect hero b-roll stand-ins + Maps localhost fix (done 2026-07-15, audit response).**
-  The 8 hero-clip 404s in `gopher-connect.html` are **gone**: the 4 hero `<video>` sources now
-  point at existing `assets/video/services-clip-{1,5,9,14}.mp4` (the documented stopgap —
-  approved services b-roll; `.webm` sources dropped). Photo-cycle fallback + clip swap-in JS
-  unchanged; comments mark where to re-point at `hero-media/clip-1..4` when the produced clips
-  arrive. Deployed live (main `7972687`) together with a new **`.nojekyll`** on main — GitHub
-  Pages' Jekyll was silently dropping underscore files (`__maps-check.html`, `_redirects` were
-  404 live; now 200). Also verified the Maps key end-to-end: works on the live github.io domain
-  AND (after owner fixed the allowlist) on `localhost:8123` — Google's referrer matcher does
-  **not** support wildcard ports (`localhost:*` never matches; use `localhost:8123/*`).
-  `file://` can never be allowlisted — reviewers must serve the folder
-  (`python3 -m http.server 8123`).
+*Why it moved:* it had grown to ~40,700 tokens — **91% of this file** — and `CLAUDE.md` is loaded
+into every request of every session. It was costing roughly 6% of the weekly usage allowance to
+re-read finished history on every single API call. The rules above are what every session actually
+needs; the log is reference material, so it is now fetched on demand.
 
-- **SEO quick wins — sitemap, robots, structured data (done 2026-07-15, launch-readiness §11).**
-  Added `sitemap.xml` (all 127 canonical URLs, `gophergo.io` base per the SEO-basics owner
-  decision) + `robots.txt` (allow-all + sitemap pointer; header comment notes it's inert on the
-  GitHub Pages subdirectory and becomes effective at the domain root). Injected JSON-LD
-  structured data on **108 pages**: schema.org `Service` (name/description/canonical/provider)
-  on all 107 service pages, `Organization` + `WebSite` on `index.html`. Generated from each
-  page's existing title/description/canonical (no invented content, no fake ratings);
-  idempotent script; all 108 blocks machine-validated + browser render check clean (header
-  mounts, 0 console errors). Tracked in `RFP/Gopher-Launch-Readiness-Checklist.md` §11.
+**Genuinely open items** (everything else in the log is closed or superseded):
 
-- **Public-exposure security pass (done 2026-07-17).** Audited what the two public hosts
-  (gopher-deals.netlify.app + GitHub Pages) actually serve. Verdict: no secrets, no
-  writable backend, form endpoint safe on read (Apps Script `doGet` returns a liveness
-  string only), iQ/audience data aggregate-only. Two fixes applied:
-  (1) **Demo-profile PII swapped to fictional** — the seeded demo accounts in
-  `gopher-connect.html`/`gopher-request.html` carried a real personal email + 2 real phone
-  numbers; now `john.demo@gophergo.io` / `tony.demo@gophergo.io` and 555-pattern phones
-  (`9195550124` = the TrustShield/deals-eligible demo profile, `9195550160` = the second
-  profile). Digits swapped consistently everywhere incl. logic comments — demo behavior
-  unchanged, but anyone using the old numbers to identify the demo accounts should note
-  the new ones.
-  (2) **Internal docs removed from the served tree** — `docs/handoff/*` (11 files) moved
-  to repo-root `docs/handoff/final-cleanup/`, and `GOPHER_IQ_UPDATE_KIT.md`,
-  `_MOBILE_FIX_REPORT.txt`, `SETUP-Google-Maps-Steps.html` moved to repo-root `docs/`
-  (nothing on the site linked to any of them — verified). `CLAUDE.md` must stay in
-  `Final/` for tooling: masked on Netlify via a forced `_redirects` rule
-  (`/CLAUDE.md / 301!`) and **excluded at deploy time on GitHub Pages** (the deploy
-  worktree step now `rm`s it before committing to `main`).
+- **Produced hero clips for `gopher-connect.html`** — optional. Owner-approved stock stand-ins are
+  live at `assets/video/connect-hero-1..4.mp4`; produced clips drop in at the **same filenames**
+  with zero code change. Brief: `docs/handoff/connect-hero-video-brief.md`.
+- **deals@ email wiring** — **not started, and must NOT be built against Apps Script.** The Apps
+  Script is severed (owner, 2026-08-21); the work belongs to the G40-305 dispatcher
+  (`sendEmail.js`). ⚠️ `docs/handoff/deals-email-wiring.md` is a **decision record, not a work
+  item** — its paste-ready snippet must never be pasted.
+- **Merchant-portal sign-in, end to end** — still unverified; `/otp/get` sends a live SMS, so it
+  needs a real code on a real handset. Failure is silent by design. Do not record it as verified
+  until someone actually signs in.
+- **`#modal-logo` second entry point** — owner ruled 2026-08-24: **leave both doors open for now**,
+  precisely because the sign-in above is unverified.
 
-### Outstanding to-do
-
-- **4 produced hero clips** still wanted for `gopher-connect.html`: `hero-media/clip-1..4`
-  (.mp4, optionally .webm). No longer urgent — the hero plays services b-roll stand-ins
-  meanwhile (see 2026-07-15 entry); swap the `<source>`s back when production clips exist.
-- ~~The "verify visually" image rows~~ — **DONE 2026-07-05** (see below).
+**Standing non-item:** the **Netlify mirror** (`gopher-deals.netlify.app`). Owner ruling
+2026-07-28 — keeping it current is **low priority; do not flag its drift.** Only changes touching
+the merchant registration flow itself (the form, its validation, `_redirects`, or its Maps key)
+warrant raising a redeploy, and it is owner-action only. Sessions have re-raised this repeatedly;
+it is not a defect.

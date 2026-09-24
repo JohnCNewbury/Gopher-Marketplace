@@ -1,0 +1,346 @@
+diff --git a/src/component/smartPriceSuggestion.js b/src/component/smartPriceSuggestion.js
+index 0fe99b46e..e29bd0a3c 100644
+--- a/src/component/smartPriceSuggestion.js
++++ b/src/component/smartPriceSuggestion.js
+@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/capacitor";
+ import * as API from "../axios/axios";
+ import "../css/home.css";
+ import "../css/style.css";
++import "../css/smart-price-slider.css";
+ import CustomModal from "./modals/CustomModal";
+ import { formatOrderObjcet } from "../helpers/orderObject";
+ import gopherIqLogo from "../img/gopher-iq.png";
+@@ -87,6 +88,96 @@ const SmartPriceSuggestion = (props) => {
+   const [band, setBand] = useState(null); // { low, suggested, generous } | null
+   const [open, setOpen] = useState(false);
+   const [draft, setDraft] = useState(""); // what's in the modal's own input
++
++  /* ⚠️ TEMPORARY DIAGNOSTIC — G40-502, 2026-09-23. REMOVE BEFORE MERGE.
++     The owner reports the rail thumb will not follow his finger on an iPhone 15
++     Pro Max. Two hypotheses have already been wrong (a WebKit appearance
++     mismatch, then a percent/dollar quantisation round-trip — the latter was a
++     genuine defect and is fixed, but it was not this). Rather than guess a
++     third time, this reports what the input actually receives on the device.
++     His finger is the instrument; I cannot see the screen. */
++  const railRef = useRef(null);
++  const [probe, setProbe] = useState({
++    down: 0,
++    move: 0,
++    input: 0,
++    nDown: 0,
++    nMove: 0,
++    dTs: 0,
++    dTm: 0,
++    dCk: 0,
++    tgt: "?",
++    pd: "?",
++    cx: "?",
++    ta: "?",
++  });
++  const bump = (k) => setProbe((p) => ({ ...p, [k]: p[k] + 1 }));
++
++  /* TEMP DIAGNOSTIC: NATIVE listeners, bound straight to the element. React's
++     synthetic touch handlers report 0 while `input` still increments, which
++     means either the events never happen or React's delegation is not seeing
++     them. Binding directly tells those two apart — they need different fixes. */
++  useEffect(() => {
++    const el = railRef.current;
++    if (!el || !open) return undefined;
++    const d = () => setProbe((p) => ({ ...p, nDown: p.nDown + 1 }));
++    const m = () => setProbe((p) => ({ ...p, nMove: p.nMove + 1 }));
++    el.addEventListener("touchstart", d, { passive: true });
++    el.addEventListener("touchmove", m, { passive: true });
++
++    /* ⛔ PROVE THE PROBE. The element-level counters read 0 while the value
++       still changed, which is either "touch never arrives" or "my listener
++       never attached" — and a zero from a probe that cannot report is not
++       evidence. These sit on `document` in the CAPTURE phase, which nothing in
++       the page can pre-empt, and `dClick` is the positive control: if clicks
++       count and touches do not, the zeros are real. If NOTHING counts, the
++       probe is broken and every conclusion drawn from it is void. */
++    const D = { ts: 0, tm: 0, ck: 0 };
++    const dts = () => {
++      D.ts += 1;
++      setProbe((p) => ({ ...p, dTs: D.ts }));
++    };
++    const dtm = (e) => {
++      D.tm += 1;
++      /* ⛔ THE TWO POSSIBILITIES LEFT. Touch reaches the document but the thumb
++         never moves, and touch-action is ruled out. Either something calls
++         preventDefault (the gesture is refused) or these touchmoves never land
++         on the input (the gesture never reaches it). defaultPrevented and the
++         target tell those apart in one reading. */
++      const t = e.target || {};
++      setProbe((p) => ({
++        ...p,
++        dTm: D.tm,
++        tgt: `${t.tagName || "?"}${t.type ? "/" + t.type : ""}`,
++        pd: e.defaultPrevented ? "YES" : "no",
++        cx: e.cancelable ? "y" : "n",
++      }));
++    };
++    const dck = () => {
++      D.ck += 1;
++      setProbe((p) => ({ ...p, dCk: D.ck }));
++    };
++    document.addEventListener("touchstart", dts, {
++      capture: true,
++      passive: true,
++    });
++    /* BUBBLE phase on purpose — this must run AFTER every other listener has
++       had its chance to preventDefault, or defaultPrevented reads false and the
++       probe lies about the one thing it exists to measure. */
++    document.addEventListener("touchmove", dtm, {
++      capture: false,
++      passive: true,
++    });
++    document.addEventListener("click", dck, { capture: true });
++
++    return () => {
++      el.removeEventListener("touchstart", d);
++      el.removeEventListener("touchmove", m);
++      document.removeEventListener("touchstart", dts, { capture: true });
++      document.removeEventListener("touchmove", dtm, { capture: false });
++      document.removeEventListener("click", dck, { capture: true });
++    };
++  }, [open]);
+   const [lowAck, setLowAck] = useState(false);
+ 
+   /* G40-534 — the volume-tier correction row. `tiers` is the whole table the
+@@ -367,6 +458,20 @@ const SmartPriceSuggestion = (props) => {
+     if (!band) return;
+     setDraft(String(offer > 0 ? offer : band.suggested));
+     setOpen(true);
++    /* TEMP DIAGNOSTIC — read what the device actually computed for the rail,
++       which is the one thing a bundle grep cannot tell me. */
++    setTimeout(() => {
++      const el = railRef.current;
++      if (!el) return setProbe((p) => ({ ...p, ta: "NO REF" }));
++      const cs = window.getComputedStyle(el);
++      setProbe((p) => ({
++        ...p,
++        down: 0,
++        move: 0,
++        input: 0,
++        ta: `${cs.touchAction}|${cs.webkitAppearance || cs.appearance}|${Math.round(el.getBoundingClientRect().height)}px`,
++      }));
++    }, 400);
+   };
+ 
+   /* The slider's own range. Centred on the suggestion so "Fair" sits in the
+@@ -381,15 +486,55 @@ const SmartPriceSuggestion = (props) => {
+   const trackMax = band ? Math.round(band.suggested + half) : 100;
+ 
+   const draftNum = toNum(draft);
+-  const sliderPct =
++
++  /* ⛔ THE SLIDER'S DOMAIN IS DOLLARS, NOT PERCENT. Do not "simplify" this back
++     to 0..100 — that was a real defect, found on a handset.
++
++     It used to be `min=0 max=100`, with the handler converting percent to
++     dollars and this expression converting dollars back to percent. Both sides
++     rounded, and the track is narrow: with TRACK_SPREAD 1.6 on a +/-25% band the
++     track is only ~0.8x the suggestion. For a $50 basket (suggested $14) that is
++     $8–$20 — TWELVE dollars across 101 slider steps, so one dollar is 8.3% of
++     the track. A drag shorter than that rounded to the same dollar, the
++     controlled `value` then snapped the thumb back, and **88 of the 101
++     positions resolved to a different percent than the finger was on.** The
++     thumb fought the finger; only a jump large enough to cross a dollar
++     boundary held. That is why tap-to-position appeared to work while dragging
++     did not (owner, iPhone 15 Pro Max, 2026-09-23).
++
++     ⚠️ SEVERITY IS INVERSE TO TRACK WIDTH, so it was WORST on Delivery — the
++     narrowest tracks on the platform. Measured across the curve:
++       $10 -> track $5–$15, 90/101 (89%)      $30 -> $17–$43, 74/101
++       $14 -> track $8–$20, 88/101 (87%)      $44 -> $26–$62, 64/101
++       $20 -> track $12–$28, 84/101 (83%)
++     Independently reproduced by the G40-534 session from this file's own maths.
++
++     ⚠️ IF YOU RE-DERIVE THIS TABLE IN PYTHON YOU WILL GET $7–$13 / 94-of-101 FOR
++     THE $10 ROW, AND THE TABLE ABOVE IS STILL THE CORRECT ONE. Python's
++     `round()` is banker's rounding — `round(12.5) == 12` — while JS
++     `Math.round(12.5) === 13`. The $10 band is `10 * 1.25 = 12.5` exactly, so
++     generous comes out 12 in Python and 13 in JS, moving the half-width from
++     3.2 to 4.8. JS is authoritative here: this component is JS, and the live
++     server returns `generous: 13` for that band. Only rows containing a .5
++     diverge, which is why the other four reproduce identically under either
++     language — and .5 lands precisely on the tidy anchors a pricing model is
++     most likely to use (x1.25 and x0.75 of a round number). Found by the
++     G40-534 session, 2026-09-23, after I mis-attributed the discrepancy to a
++     missing TRACK_SPREAD — a guess from a symptom, which it was not.
++
++     ⚠️ An earlier revision of this comment said "$6–$22 / sixteen dollars /
++     84 of 101". That was computed with TRACK_SPREAD = 2, a placeholder in a
++     scratch script, not the real 1.6. Corrected the same day. The defect and
++     the fix were unaffected; only the figures were wrong.
++
++     In dollars there is no conversion and nothing to round: one step is one
++     dollar, and the value the browser holds is the value React renders. */
++  const sliderValue =
+     trackMax === trackMin
+-      ? 50
++      ? trackMin
+       : Math.max(
+-          0,
+-          Math.min(
+-            100,
+-            Math.round(((draftNum - trackMin) / (trackMax - trackMin)) * 100),
+-          ),
++          trackMin,
++          Math.min(trackMax, Number.isFinite(draftNum) ? draftNum : trackMin),
+         );
+ 
+   /* ⭐ THE MARKETPLACE'S OWN FOUR STATES, and deliberately no more than that
+@@ -479,6 +624,23 @@ const SmartPriceSuggestion = (props) => {
+         </span>
+       </div>
+ 
++      {/* TEMP DIAGNOSTIC — CONTROL D, OUTSIDE THE MODAL. A, B and C all live
++          inside the MUI Dialog. If D drags on the form and they do not, the
++          Dialog is what is eating touch and no work inside the card can fix
++          it. This is the single most informative control of the set. */}
++      <div style={{ fontSize: 11, color: "#555", marginTop: 8 }}>
++        D (OUTSIDE the modal):
++      </div>
++      <input
++        type="range"
++        min={0}
++        max={100}
++        step={1}
++        defaultValue={50}
++        aria-label="control D outside modal"
++        style={{ width: "100%", height: 44 }}
++      />
++
+       <CustomModal
+         visibility={open}
+         setVisibility={() => setOpen(false)}
+@@ -536,23 +698,104 @@ const SmartPriceSuggestion = (props) => {
+               </div>
+               <input
+                 type="range"
+-                min={0}
+-                max={100}
++                min={trackMin}
++                max={trackMax}
+                 step={1}
+-                value={sliderPct}
++                value={sliderValue}
+                 aria-label="Suggested offer amount"
+-                style={styles.slider}
+-                onChange={(e) => {
+-                  const pct = Number(e.target.value);
+-                  setDraft(
+-                    String(
+-                      Math.round(
+-                        trackMin + (pct / 100) * (trackMax - trackMin),
+-                      ),
+-                    ),
+-                  );
++                className="gopher-iq-slider"
++                ref={railRef}
++                onPointerDown={() => bump("down")}
++                onPointerMove={() => bump("move")}
++                onTouchStart={() => bump("down")}
++                onTouchMove={() => bump("move")}
++                onInput={() => bump("input")}
++                onChange={(e) => setDraft(e.target.value)}
++              />
++              {/* TEMP DIAGNOSTIC — CONTROL RAILS. B and C isolate the two
++                  things A changed. B is a bare, UNCONTROLLED range with no
++                  class at all: if B drags and A does not, the cause is mine
++                  (my CSS or the controlled value). If NOTHING drags, the cause
++                  is environmental — an ancestor or the webview — and no amount
++                  of work on this component fixes it. C keeps my sizing but
++                  restores browser gesture handling, which is the single most
++                  suspicious line I added. */}
++              <div style={{ fontSize: 11, color: "#555", marginTop: 6 }}>
++                B (plain, uncontrolled):
++              </div>
++              <input
++                type="range"
++                min={trackMin}
++                max={trackMax}
++                step={1}
++                defaultValue={sliderValue}
++                aria-label="control B"
++              />
++              {/* ⚠️ CONTROL C WAS INVALID — it set -webkit-appearance:none with
++                  no ::-webkit-slider-thumb rules, so it had no grabbable thumb
++                  and could never have dragged regardless of touch-action. Kept
++                  only so the comparison with E is visible. */}
++              <div style={{ fontSize: 11, color: "#555" }}>
++                C (INVALID control — no thumb):
++              </div>
++              <input
++                type="range"
++                min={trackMin}
++                max={trackMax}
++                step={1}
++                defaultValue={sliderValue}
++                aria-label="control C"
++                style={{
++                  width: "100%",
++                  height: 44,
++                  WebkitAppearance: "none",
++                  appearance: "none",
++                  touchAction: "auto",
++                  background: "transparent",
+                 }}
+               />
++
++              {/* CONTROL E — the valid one: fully native appearance, nothing
++                  overridden except touch-action, forced back to `auto`. If E
++                  drags and B does not, the global `input { touch-action:
++                  manipulation }` rule is the cause, conclusively. */}
++              <div style={{ fontSize: 11, color: "#555" }}>
++                E (native + touch-action AUTO):
++              </div>
++              <input
++                type="range"
++                min={trackMin}
++                max={trackMax}
++                step={1}
++                defaultValue={sliderValue}
++                aria-label="control E"
++                style={{ width: "100%", touchAction: "auto" }}
++              />
++
++              {/* TEMP DIAGNOSTIC — REMOVE BEFORE MERGE */}
++              <div
++                style={{
++                  fontFamily: "monospace",
++                  fontSize: 11,
++                  background: "#111",
++                  color: "#0f0",
++                  padding: "4px 6px",
++                  borderRadius: 4,
++                  marginBottom: 4,
++                  wordBreak: "break-all",
++                }}
++              >
++                A react down:{probe.down} move:{probe.move} input:{probe.input}
++                {" | native down:"}
++                {probe.nDown} move:{probe.nMove}
++                {" | DOC ts:"}
++                {probe.dTs} tm:{probe.dTm} click:{probe.dCk}
++                {" | tgt:"}
++                {probe.tgt} prevented:{probe.pd} cancelable:{probe.cx}
++                {" | val:"}
++                {sliderValue} [{trackMin}-{trackMax}] {probe.ta}
++              </div>
++
+               <div style={styles.railVals}>
+                 <span style={styles.railValLow}>${band.low}</span>
+                 <span style={styles.railDash}>—</span>
+@@ -801,7 +1044,9 @@ const styles = {
+      difference. Measured on an A50: FAIR sat at x=482 against a rail centre of
+      539.5, off by 57px, which is (190-75)/2. Equal columns put the middle
+      label's centre on the rail's centre regardless of word length. */
+-  slider: { width: "100%", accentColor: COLORS.green, margin: `${w(2)}px 0` },
++  /* `slider` removed: the rail is styled by css/smart-price-slider.css, because
++     ::-webkit-slider-thumb cannot be expressed as an inline React style. An
++     inline style here would also outrank that sheet. */
+   /* Same grid, so $low / dash / $generous sit directly under LOW / FAIR /
+      GENEROUS instead of drifting independently. */
+   railVals: {

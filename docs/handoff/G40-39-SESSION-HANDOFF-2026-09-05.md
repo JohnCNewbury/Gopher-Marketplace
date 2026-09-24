@@ -1,0 +1,564 @@
+# G40-39 — handoff to a fresh session, 2026-09-05
+
+**Read this, then [`G40-39-completion-flow.md`](G40-39-completion-flow.md).** Written at the end of a
+long session, deliberately, because the previous session's context was ~79% full and its judgement
+had started to slip. Everything below is verified against merged `production` or against live
+`order_logs` — not recalled.
+
+---
+
+## The one-line state
+
+**All three are closed on live orders as of 2026-09-05 05:28 EDT.** The notification half (65185),
+the screen half (**65198**, on a local build of `next` carrying !278 — see the completion-flow
+doc's "2026-09-05 (morning)" section), and the rating prompt (65198, single-device gopher 31677,
+prompt delivered and used). What remains is store-gated: the release carrying `3a28f1c21`,
+`18cb0de0f`, `b6530ac39`, then the App Store scenario check and the staged 101 copy.
+
+---
+
+## ✅ Done, deployed, proven — do NOT redo any of this
+
+**Order 65185 (2026-09-04, live, non-A/R Delivery, gopher=1, requester=test account 141548) is the
+proof.** ⚠️ Corrected 2026-09-04 evening: the times below were first written as "ET" but were
+UTC; these are **EDT**, read back from `order_logs` and the production log.
+
+| Time (EDT) | Event |
+|---|---|
+| 18:31:04 | Order Completed |
+| **18:31:09** | Requester's confirm screen already polling for photos — **+5s** (this is OPEN #1) |
+| 18:32:34 | Gopher added 1 completion photo — **+90s** |
+| **18:32:35** | **Requester notified to confirm** — **1s after the photo** |
+| 18:34:02 | Gopher skipped the photo step (owner went back and also tapped Skip) |
+| 18:34:06 | Requester Confirmed |
+| 18:34:09 | Payout done; `rateYourRequestor` **emitted to socket `eqzzeaZMjkwwjjqMAAKb`** (this is OPEN #2) |
+
+Two things that timeline proves: the notification **waited 90 seconds** for the photo, and the later
+skip did **not** re-notify — the one-shot marker held.
+
+**Merged and content-verified:**
+
+| Repo | Merge | What |
+|---|---|---|
+| `gopher-backend-api` | `2524bba3` | Notification deferred to photo-step resolution; `skip` endpoint; one-shot marker; `mark_notified` on the inline push |
+| `gopher-mobile-gopher` | `63c963ef5` | Client sends `defer_completion_notify`; skip signals the server |
+| `gopher-mobile-gopher` | `a0212eec` | Requester request-creation removed from the worker app; Done → job list |
+| `gopher-mobile-request` | (earlier) | `CompletionPhotosSection` on `Orderdispute.js` |
+
+⚠️ **The backend AUTO-DEPLOYS on merge to `production`** (CodePipeline → Elastic Beanstalk).
+`2524bba3` deployed and was verified Succeeded. Treat a backend merge as a deploy.
+
+---
+
+## ⛔ OPEN #1 — the confirm/dispute SCREEN fires early (the actual remaining bug)
+
+**This is not the notification.** The owner proved it live: the confirm/dispute screen was already up
+on the requester's phone while the Gopher had not yet taken the photo, and the *banner* only arrived
+when the photo was submitted.
+
+**Mechanism:** the requester app renders that screen from **order state**. The moment the order flips
+to `delivered`, an app already open on that order shows the confirm view. Gating the push does
+nothing about it.
+
+⚠️ **The previous session got this wrong and cost the owner a live order.** He reported, on the first
+run, that the requester got "the confirm/dispute notification **and** screen transition" — two
+things. The session fixed the notification and then told him the requester "can't act on
+confirm/dispute until the pics are there," which was false. **Do not repeat that: the notification
+and the screen are separate paths.**
+
+**⛔ BLOCKED ON AN OWNER DECISION — ask before building.** When the photo step is unresolved, should
+the requester:
+
+- **(a)** not reach the confirm screen at all yet, or
+- **(b)** reach it with **Confirm disabled** and a "your Gopher is adding photos…" state, Dispute
+  still available?
+
+They are different fixes. The owner has been asked twice and it has not been answered yet.
+
+**The signal already exists server-side.** The `order_logs` note
+`Requester notified to confirm completion` means the photo step is resolved (photos in, or
+deliberately skipped). Exposing that on the order read the confirm screen already polls
+(`GET /orders/order_log/:id`) is the natural mechanism — no new state needed.
+
+**✅ 2026-09-04 evening — mechanism proven, OWNER RULED (option a, no timeout), BOTH HALVES
+BUILT.** The log shows the requester's confirm screen polling `order_log` from **+5s**; the path is
+`requestOrder.js` (poll → `/request` on `delivered`) → `requestHeader.js` red card tap →
+`startDispute` → `Orderdispute.js`, and nothing on it consulted the photo step.
+- **`gopher-backend-api` MR !495 — MERGED to `production` `5813d416`, 19:55 EDT, LIVE** —
+  `photo_step_resolved` on `GET /orders/:id` (while delivered), `GET /orders/order_log/:id`, and per
+  delivered row on `GET /orders/v3` (requester lists). Not squashed, source kept, content-verified.
+- **`gopher-mobile-requester-capacitorjs` MR !278 — MERGED to `next` `9b595b414`, 19:55 EDT** —
+  the screen waits: tracking screen holds, list card stays green and its tap opens the order view,
+  both confirm screens bounce back if reached early. Strict `=== false`, so it reads !495's field.
+  Not squashed, source kept, content-verified. Store-gated. **Device-verified 2026-09-05 on order
+  65198** (iPhone 12, local build 13.9.1 (603); 30 order polls and zero confirm-screen polls across
+  the 73 s before the photo). `next` is 2 commits ahead of `production`; intended, do not "fix" it.
+- Owner, verbatim, on the no-timer consequence: *"if the gopher doesn't skip or submit pics,
+  nothing is triggered, so their screen still shows items picked up."* Do not add a fail-open.
+Full write-up: [`G40-39-completion-flow.md`](G40-39-completion-flow.md), section
+"2026-09-04 (evening)" and "Owner rulings".
+
+---
+
+## ⛔ OPEN #2 — no rating prompt on the Go app after confirmation
+
+Owner reported it on order 65185. **CLOSED 2026-09-04 evening.** Owner: *"i already rated it by
+going into the request history and tapping the all red gopher holes representing the rating was
+still needed"* — the Scenario 5 catch-all worked. Root cause below; the verified/inferred split is
+in [`G40-39-completion-flow.md`](G40-39-completion-flow.md), section "2026-09-04 (evening)".
+
+- ✅ **The server delivered it.** `ratings` has **no** gopher-side row for 65185 (only the requester
+  rating the Gopher), so the guard passed; the log shows `Sending rateYourRequestor` **and then
+  `EMITTING TO SOCKET ID: eqzzeaZMjkwwjjqMAAKb`** at 18:34:09 EDT. That is the success branch, which
+  is why no `pending_notifications` row exists. ⚠️ Filtering the log on `"65185"` hides the EMITTING
+  line — it carries no order id.
+- ✅ **The registered device was not the Samsung.** The backend keeps **one** socket per
+  `(user, gopher)` (replaced on every connect) and **one** `fcm_token`/`device_type`/`app_version`
+  per role (stamped at sign-in). `users_roles` for user 1 / gopher reads **`ios, 99.0.0(31)`** — the
+  iPhone 15's "NOT ours" build in the table below. The Payday push went to that token.
+- ✅ **Proven (after `aws login`, 19:50 EDT):** socket `eqzzeaZMjkwwjjqMAAKb` was registered for
+  gopher 1 at **18:24:47 EDT** by a connect-replace-connect within one second (the iOS resume
+  reconnect; Android never reconnects on resume), stayed registered through the emit, and
+  **disconnected at 19:01:51 EDT while the Samsung's Go app was in the foreground until after
+  19:30**. An iOS Go app also fetched `mobile-config` at the emit second. The Samsung's socket had
+  been displaced from the one-slot registry at 18:24:47. Which iPhone, the server cannot say.
+- **Not a product defect for a one-phone worker.** It is the shared test account on three handsets.
+  Secondary weakness (report, don't fix): multi-device accounts get confirm-time events on one device
+  only, and the `pending_alert` drain also emits to the registry's socket, not the caller's.
+- **To close:** open the iPhone 15's Go app and look for the 65185 rating / Payday banner, or check
+  the Samsung's history card for 65185 shows "Rate now →". Then re-run a confirm with the gopher
+  account signed into **one** Go device. If it still shows nothing then, look at the client pipeline
+  (`bottomMenu.js` → `pendingAlertKey` → `fireAlert` → `grating`), which reads sound but has not
+  been exercised single-device since G40-331 shipped.
+
+**Still true from before — do not re-investigate:**
+- ❌ *Not* the Done-button change. `/form` **does** mount `<BottomMenu />` (`renderForm.js:1253`),
+  which owns the `rateYourRequestor` socket listener, and the completion screens do not set
+  `hideBottom`.
+- ⚠️ The `ratings` table has **no `created_at`** and uses `rated_id`, not `ratee_id`; `order_logs`
+  uses `created_at`, not `created_on`; `users_roles` has no `updated_at`; there is no
+  `order_notification` table on production.
+
+---
+
+## Device state — all three rebuilt and verified 2026-09-05
+
+| Device | Go app | Requester app |
+|---|---|---|
+| Samsung A50 `R58N22N8QSM` | 3.9.1 **(905)** — local build of `production` `4c3b88ca8` (carries !276), installed 2026-09-05 07:05 EDT; signed in as gopher **31677** | 3.9.1 **(902)** |
+| iPhone 12 Pro `92BE0D3B-…` | 13.9.1 **(34)** — signed in as 31677 briefly 07:15 EDT for the G40-422 iOS list check, then signed OUT | 13.9.1 **(603)** — carries !278, installed 2026-09-05 04:52 EDT |
+| iPhone 15 Pro Max `4FE8ACA1-…` | ⚠️ **99.0.0 (31) — NOT ours** | 13.9.1 **(602)** |
+
+- **Build number is the only reliable marker.** `versionName` is unchanged at 13.9.1/3.9.1 across
+  old and new builds, so it cannot tell a stale binary from a current one.
+- ⚠️ **Another session (or the owner) installed `99.0.0 (31)` on the iPhone 15's Go app.** Left alone
+  deliberately — overwriting could destroy someone else's in-flight test. Ask before touching it.
+  **And it is the device the server currently treats as gopher 1's phone** (`users_roles`:
+  `ios, 99.0.0(31)`) — see OPEN #2. As of 19:35 EDT the iPhone 15 is not attached to the Mac.
+- The owner's working pair is **Samsung = Gopher, iPhone 12 = Requester**. ⚠️ The Samsung's Go app
+  is signed in as **31677 ("Gopher, Inc")**, not user 1 — read from its web storage 2026-09-05. Its
+  `users_roles` row is `android 3.9.1(902)`. User 1 remains registered to the iPhone 15.
+- ⛔ **Before any confirm-time device test, sign the gopher account into ONE Go device** — or read
+  `users_roles.device_type / app_version` for that user and check it names the phone in hand. The
+  rating prompt, DisputeResolved, favorite congrats and the Payday push all go to that one device.
+
+---
+
+## Traps that cost real time last session
+
+- ⛔ **Never conclude from a grep of a minified bundle.** Three false negatives, each briefly believed.
+  A zero that also comes back zero for a known-present string means the pattern is broken. Always run
+  the same grep against a case you *know* is present before trusting a zero.
+- ⛔ **Whole-file `indexOf` in a file with more than one writer.** Broke the same assertion twice —
+  matched `already_notified`'s lookup, then `mark_notified`'s create. Scope to the function body.
+- ⛔ **Branch-green is not proof.** The double-notify defect passed every branch test and was caught
+  only by verifying the **merge**. Verify merged `production`, not your branch.
+- ⛔ **`git checkout -- <file>` in a worktree reverts your own uncommitted work**, not just a test
+  mutation. Cost a confusing red run.
+- ⚠️ `JAVA_HOME` is `~/.local/opt/jdk21/Contents/Home`; `/usr/libexec/java_home` cannot find it.
+  Don't set `JAVA_HOME` — the ambient one is correct.
+- ⚠️ CI runs `eslint .` **and** `prettier . --check` as separate steps. Run both.
+- ⚠️ Adding a `logger.error` in `helpers/` trips the alert-marker ratchet — register it in
+  `docs/alert-markers.json` and raise the baseline in `test/alert-marker-manifest.test.js`.
+
+## Still owed beyond the two open items
+
+- **101 guide copy** — written, paste-ready, in
+  [`G40-39-101-guide-copy-STAGED.md`](G40-39-101-guide-copy-STAGED.md). ⛔ Staged **outside `Final/`
+  on purpose**; must not ship before a store release carries the fixes.
+- **The original seven scenarios on the App Store build** — blocked on a store release.
+
+---
+
+## Observed 2026-09-05 ~05:10 EDT during the !278 device test — OUTSIDE G40-39, report don't fix
+
+Logged at the owner's request. **Observed by the owner on device AND corroborated by the server's
+own `order_logs` for order 65198** (read live from the production reader). The *why* is not yet
+read in code.
+
+**Server record, order 65198** (`notify_fav_gopher = true`, `selectgopher = true`, one
+`notify_first_orders` row = the hand-pick; Delivery / General Errand; not age-restricted), EDT:
+
+| Time | `order_logs.notes` |
+|---|---|
+| 05:04:16.620 | Order Created (Delivery-General Errand) |
+| 05:04:30.768 | **Order Accepted by Fav- Gopher#31677** |
+| 05:04:33.609 | **Order Assigned to Fav Gopher#31677** |
+| 05:04:34.011 | AUTH LIFECYCLE: authorization holding $14.25 |
+
+**Accept → Assign is 2.84 s apart, as two separate writes.** That gap is the owner's 2–3 s
+window exactly: the order sits in the plain *accepted* state (which the requester client renders
+as the "I'll select" path — "(!) New Request Info (!)") until the follow-up assign step lands
+and flips it to connected. So the mechanism is server-side sequencing, not a client guess; what
+is not yet known is *why* the assign is a second step rather than the same transaction.
+
+**Setup:** requester 141548 on iPhone 12 (Requester 13.9.1 build 603, the `!278` build), gopher
+31677 "Gopher, Inc" on the Samsung A50 (Go 3.9.1 build 902). The owner used **Notify MY Gophers**
+with 31677 hand-picked. *Why:* it lets him send a test request essentially privately, without
+broadcasting to the live Gopher network. Use the same pattern for future live tests.
+
+**What happened:**
+1. On submit, the requester got the banner and the distinct "you're a favorite…" notification —
+   correct.
+2. When 31677 (the hand-picked MY Gopher) accepted, the requester's screen **briefly behaved as
+   the "I'll select my Gopher" path**: "Request Submitted…" with the red **"(!) New Request Info
+   (!) / View Here"** row and the "New Request Information Available" banner — for **about 2–3
+   seconds** — and only then transitioned to **"Request Accepted by: Gopher, Inc"**, the
+   auto-connected state.
+3. The end state was correct. The transient is the defect: 2–3 s is long enough to tap "View
+   Here", which opens the approve/decline flow for an acceptance that needs no approval.
+
+**Canon it violates** (owner, 2026-08-23; memory `three-acceptance-paths-canon`): with Notify MY
+Gophers on, an acceptance **by the hand-picked MY Gopher behaves exactly like First Available**;
+an acceptance by **any other Gopher behaves like "I'll select"**. The client showed the
+"select" state first and corrected itself afterwards — so something on the requester side
+classifies the acceptance before it knows the accepting Gopher is the hand-picked one (or the
+server emits a generic "new bid" event before the auto-connect state lands). Which of those it
+is has not been checked.
+
+**Not part of G40-39.** Ticketed as **G40-445** (Bug, sprint "Payment Options", 9–16 Sep,
+created 2026-09-05 at the owner's instruction; the ticket points back here). It needs a session
+that reads: the requester's acceptance/bid socket handling in
+`gopher-mobile-requester-capacitorjs` (the poll or event that flips to "New Request Info"), and
+the backend accept path for `notify_fav_gopher` orders (whether the order is moved to the
+connected state in the same transaction as the acceptance, or after a follow-up step).
+
+---
+
+## G40-445 — DIAGNOSED AND FIXED IN CODE, 2026-09-09 (awaiting the owner's merge + a device run)
+
+Closes out the "why" the section above deliberately left open (*"what is not yet known is why the
+assign is a second step rather than the same transaction"*). All of the below was read first-hand
+in `gopher-backend-api` at `origin/production` `dfd4fd40`, not inherited.
+
+### Why the assign is a second step
+
+It isn't, really — the two `order_logs` rows are two writes inside **one** request to
+`assign_order`, and what sits between them is an **awaited Stripe call**. In
+`controllers/order/update.js`, the `selectgopher` branch runs in this order:
+
+1. `order_logs` ← `Order Accepted by Fav- Gopher#…`
+2. `db.OrderGophers.create({ order_id, gopher_id })` — **`accepted=false`, `declined=false`**
+3. *(fav gopher only)* `await ChargeToken(…)` → `payment_actions.charge.confirm()` — **the 2.84 s**
+4. `db.orders.update({ gopher_id, aasm_state: accepted })`
+5. `order_logs` ← `Order Assigned to Fav Gopher#…`
+6. `InvalidateSelectMyGophers(order_gopher.id, …)` → flips that row to `accepted=true`
+
+Step 2 is what the requester's screen reads. `retrieve.js` builds `select_my_gopher` from
+`order_gophers` rows where **`accepted=false AND declined=false AND deleted=false`**
+(`retrieve.js`, the `selectmygopher` raw query), and `requestOrder.js` renders *any* such row as
+the red **"(!) New Request Info (!) / View Here"** block — the condition is literally
+`localFormProps.selectMyGopher.length || localFormProps.counterOffers.length`. The requester polls
+`getOrderbyId()` on a **7.5 s interval** (`requestOrder.js:360`). So between steps 2 and 6 the row
+is a bona-fide pending bid and the client is right to draw it: **the client was never guessing, and
+there is nothing to fix on the client.** The end state corrected itself because step 6 removed the
+row from the query, not because the app changed its mind.
+
+### The fix — `G40-445-fav-accept-no-transient-bid`, commit `6999b254`
+
+Backend only.
+
+- The row is created **`accepted: true`** on the auto-connect path (hand-picked MY Gopher +
+  `notify_fav_gopher` + not distance-exceeded), so it is never selected by the
+  `select_my_gopher` query at any instant. End state is unchanged —
+  `InvalidateSelectMyGophers` still runs and still declines every other gopher's row.
+- The auto-connect block is wrapped so that **if `ChargeToken` throws** (the usual cause is the
+  requester's card declining) the row is put back to `accepted:false` and the error is rethrown.
+  That preserves today's behaviour on failure exactly: it degrades into an ordinary pending bid
+  the requester can still approve.
+- **The requester's push was also wrong, and permanently — not only for the 2.84 s.** The
+  auto-connect path sent `gopherorder.submitted` = *"Gopher Interested In Your Request / Click
+  here to view details"*, which is the notification for a bid awaiting approval. Canon says a
+  hand-picked MY Gopher accepting behaves exactly like First Available, and First Available sends
+  `order.claim` = *"Your Request Was Accepted!"*. It now sends `order.claim`. Same requester
+  payload, same `requestAccepted` sound, and neither type carries `extra_data`, so no deep link
+  changes. `docs/handoff/G40-306-banner-notifications.html` already described the intended trigger
+  correctly ("*A Gopher accepts an 'I'll select my worker' request or makes a bid*") — the code was
+  the thing that deviated.
+
+### Test
+
+`test/g40-445-fav-accept-never-a-pending-bid.test.js` (14 assertions) **executes** `assign_order`
+against a stubbed db and **snapshots the `order_gophers` table from inside the Stripe call** — the
+exact instant the old code was wrong — then applies `retrieve.js`'s own predicate to that snapshot.
+It asserts the user-visible property (*is there a bid on the requester's screen right now?*), not
+the shape of the fix. It also covers the other half of the split, the toggle-off case, and the
+charge-failure fallback.
+
+⚠️ **Negative control run, and it matters:** against unpatched `origin/production` the suite fails
+on exactly two assertions — the mid-charge snapshot (printing the live row
+`{"id":501,"accepted":false,"order_id":65198,"gopher_id":31677}`, which *is* the defect the owner
+saw) and the push type. Everything else passes on both. Full suite: **261 suites, 1 failure**, and
+that one (`admin-jwt-v8-contract.test.js`, `expressjwt is not a function`) **fails identically on
+pristine `origin/production`** — it is the known stale shared-clone `node_modules` (express-jwt 6
+against a `^8` dependency), not this change. `eslint` and `prettier --check` clean.
+
+### AC status
+
+| AC | State |
+|---|---|
+| 1. Never shows "(!) New Request Info (!)", its banner, or the approve/decline flow — even transiently | **Done in code**, proven by the mid-charge snapshot test + negative control |
+| 2. Another Gopher accepting the same order still shows "I'll select" | **Done**, covered by test 2 |
+| 3. Verified on device on a live order, `order_logs` rows recorded here | ⛔ **BLOCKED — needs the owner.** Neither MR merged, and a device run needs a real handset. The worker half is store-gated on top |
+| 4. Doc row written before the ticket closes | **This section** |
+
+### The worker's half — FIXED TOO (owner: *"fix both here"*, 2026-09-09)
+
+Found while tracing the above, and it is the mirror image of the requester defect. Both accept
+handlers in `gopher-mobile-gopher` branched on `props.request.selectgopher` **alone** — and order
+creation forces that flag true whenever `notify_fav_gopher` is set (`create.js`), so **it is true
+for both halves of the split and cannot tell them apart.** Consequences, both **permanent**, not
+transient:
+
+- `RequestDetailPullOver.onAcceptRequest` — the hand-picked Gopher, *already hired*, got the
+  Select-My-Gopher modal (`ordercard.js` ~8250): *"Your Select My Gopher offer has been sent to the
+  Requestor for approval… The Requestor can accept or decline your offer."* Nothing was sent
+  anywhere and nobody could decline it.
+- `ordercard.onAcceptRequest` — the same missing distinction called `navigate(-1)`, sending them
+  **back to the request queue** on a job they had just been given.
+
+**The client cannot re-derive the answer** — my first instinct, `is_you_fav_gopher`, is wrong.
+Auto-connection also depends on **`distance_exceeded`**, computed inside `assign_order` and never
+returned as a field; a client that re-derives skips a modal the Requestor is genuinely waiting on
+when the Gopher is far away. So !549 adds **`auto_connected`** to the claim response — **purely
+additive, no shipped client reads it**, so the backend deploy alone changes nothing on any handset
+— and both handlers read it. An older server omits the key and both behave exactly as today.
+
+The auto-connected Gopher now gets the First Available treatment: no approval modal, the existing
+**"Time to go!"** send-off, routing into the job. **No new screen or asset.**
+
+⚠️ **`data` in the claim response is deliberately left stale.** On this path `get_order` is the
+pre-update row (`gopher_id` null, `aasm_state` `'pending'`) because `orders.update` never assigns
+its result back. Making it honest server-side would silently change what **already-shipped**
+handsets do with `data.aasm_state` — which gates location tracking — with no way to device-test
+first. The clients set their own state off `auto_connected` instead. **Fix the staleness and the
+clients together, or not at all.**
+
+**MR: `gopher-mobile-gopher-capacitorjs` !295** → `production`, branch
+`G40-445-worker-auto-connect-modal`, commit `ab49e18ee`. Guard
+`scripts/assert-fav-auto-connect-modal.mjs` + a `contract` CI job pin the wiring *and* that the
+flag comes from the server. Verified in three states: **passes** patched, **fails 7 of 8** on
+unpatched `production` source, and **fails on its control** (rather than passing vacuously) if the
+handler is renamed. Lint + prettier clean. ⚠️ **Source assertion only** — this repo's CI runs lint
+plus node guards and **no jest**, so nothing here proves handset behaviour.
+
+**Merge !549 first.** !295 is inert without it — the key is simply absent — so there is no ordering
+that breaks anything; the other way round it just would not do anything.
+
+### ⚠️ One thing found on the way that is NOT G40-445
+
+1. **The ticket and the section above quote a banner as "New Request Information Available".**
+   That string exists in **no** repo — not in `gopher-mobile-requester-capacitorjs` (any branch,
+   any point in its history), not in `gopher-backend-api`. The two real strings on this path are
+   the in-app row **"(!) New Request Info (!)"** and the push **"Gopher Interested In Your
+   Request"**. Recorded so the next reader does not go hunting for a string that was a paraphrase.
+
+### Dependency worth knowing
+
+**G40-449** (hand-picked workers are never recorded — the checkboxes render pre-ticked, so tapping
+a name *deselects* it) sits directly upstream. `is_notify_first()` reads `notify_first_orders`, so
+with no hand-pick row recorded the auto-connect branch never runs at all and *every* acceptance on
+a Notify MY Gophers order behaves like "I'll select". Order 65198 did have its row, which is why
+this defect was observable. **A device verification of G40-445 has to confirm the hand-pick
+actually landed** — otherwise a pass here proves nothing.
+
+### Re-verified against a moved production, 2026-09-10 — still unmerged, still needed
+
+Both branches sat overnight while `production` advanced under them (**backend +12 commits, Go app
++18**). Re-checked rather than assumed, because "no conflict" is not "still correct".
+
+**The defect is still live on today's tip.** The suite run against unpatched `origin/production`
+`811e84bf` still fails, printing the offending row
+`{"id":501,"accepted":false,"order_id":65198,"gopher_id":31677}`. This ticket has not been overtaken
+by anything.
+
+**What the drift could have broken, and did not:**
+
+- `controllers/order/update.js` — **untouched** by anything merged since. My hunks survive the merge
+  intact.
+- `controllers/order/notification.js` — **G40-188 (`f9f8de1b`) added 129 lines to it.** That file
+  carries a documented index-shift hazard (its own comment: *"index-matched cases in this file have
+  already been re-pointed once by an insertion"*), and this fix depends on two of those mappings.
+  Checked explicitly: **`order.claim` is still `notif_types[0]` → "Your Request Was Accepted!"**, and
+  **`gopherorder.submitted` is still `notif_types[11]` → "Gopher Interested In Your Request"**.
+  G40-188 appended at the end. ⚠️ **Re-check this pair after any future change to that file** — the
+  fix reads correct and does the wrong thing if the array shifts.
+- Go app — 4 merged commits touched `RequestDetailPullOver.js` / `ordercard.js` / `.gitlab-ci.yml`.
+  The guard still passes on the branch, still **fails on current unpatched production source**, and
+  still **fails on its control** if the handler is renamed.
+
+**Both branches now carry a merge of `origin/production`:** backend `0e7b34ad`, Go `6df671679`.
+The original commits (`6999b254`, `17a22221`, `ab49e18ee`) are unchanged and still cited above —
+nothing was rebased, so no SHA in this doc has gone stale. Both pipelines green, both mergeable.
+
+⚠️ **The backend baseline moved from 1 failure to 4, and none of it is this change.** Corrects the
+"261 suites, 1 failure" figure above, which was true on 2026-09-09 and is not today.
+
+| Suite | Why it fails | Mine? |
+|---|---|---|
+| `admin-jwt-v8-contract` | stale shared-clone `node_modules` (express-jwt 6 against a `^8` dep) | no |
+| `deal-approved-email-carries-the-deal` | needs Postgres at `127.0.0.1:55432`; refuses to pretend to pass without one | no |
+| `g40-419-no-show-location-gate.db` | same — `ECONNREFUSED 127.0.0.1:55432` | no |
+| `g40-9-broadcast-exclusion.db` | same — `ECONNREFUSED 127.0.0.1:55432` | no |
+
+**265 suites, the same 4 failures on my branch and on pristine `production`.** Three are this box
+having no local Postgres, not a defect; they are new only because the suites themselves are new.
+
+**Method note.** GitLab briefly reported !295 as `conflict` on its pre-merge SHA. It was not one —
+merging `ab49e18ee` into `origin/production` by hand exits 0 with no unmerged paths. That reading
+was an unsettled `detailed_merge_status`, and it would have become a tidy false claim that this pass
+rescued a conflicting MR. **Poll it until it settles; a transient status is not a finding.**
+
+### MERGED AND DEPLOYED, 2026-09-10 (owner instruction: *"Merge both now"*)
+
+Both halves are on `production`. **AC 3 is still open** — see the bottom of this section.
+
+| | Repo | Merge commit | Verified |
+|---|---|---|---|
+| Requester | `gopher-backend-api` !549 | **`31707fc5`** | content-read off `origin/production`: all five hunks present |
+| Worker | `gopher-mobile-gopher-capacitorjs` !295 | **`dd66eb4da`** | `auto_connected` present in both handlers; guard script on `production` |
+
+Neither was squashed and neither source branch was deleted, as agreed.
+
+**Backend deploy — verified, not assumed.** CodePipeline `gopher-prod-codepipeline` Source +
+Deploy both **Succeeded**; Elastic Beanstalk `Gopher-Production` **Green / Ok**; `api.gophergo.io`
+answering **200**.
+
+⚠️ **The environment read `Red / Degraded` for a few minutes and it was NOT this change.** The EB
+event log is unambiguous: my version deployed at 16:44 EDT, went `Info → Degraded` at 16:46 with
+*"Incorrect application version found on 1 out of 2 instances"* — the ordinary rolling-batch
+window — and back to **Ok at 16:48**. The Red seen afterwards belonged to the *next* deploy
+(`595eb7bb`, `feat/tier-email-readiness-wiring`, another lane) still rolling, which then settled
+Green too. **Read the events before attributing a post-deploy Red to your own merge**; the
+timestamps separate two deploys that a single health reading merges into one.
+
+**The Go merge needed a conflict resolved.** G40-450 (`live-refresh`) merged into `production`
+between the refresh above and the merge, and both branches had **appended a CI job at the end of
+`.gitlab-ci.yml`** — an append/append conflict, nothing semantic. Resolved by keeping **both**
+jobs in full. Checked afterwards: G40-450's job block is byte-identical to production's copy, and
+the whole-file diff against production is **27 added lines and 0 removed**. Neither handler file
+conflicted; the guard still passes on the merged tree and still fails against current unpatched
+production source.
+
+### What is live, and what is NOT
+
+- **Requester side is live now.** The backend deployed, so the transient "(!) New Request Info (!)"
+  window is closed and the requester's push on that path is now *"Your Request Was Accepted!"*.
+- **Worker side is NOT live.** `gopher-mobile-gopher` is a store-released app: merging to
+  `production` ships nothing to a handset. It reaches Gophers only in the next release build.
+  Until then the auto-connected Gopher still sees *"…sent to the Requestor for approval"* — the
+  server now sends `auto_connected`, but no shipped build reads it. **That is expected**, not a
+  regression, and it is why the flag was made additive.
+
+### ⛔ AC 3 REMAINS OPEN — the ticket is NOT Done
+
+*"Verified on device on a live order, with the `order_logs` accept/assign rows recorded in the
+doc."* Nothing above is a device run. What is proven is that the code is deployed and the service
+is healthy; what is **not** proven is what a handset shows. The ticket stays **In Progress**.
+
+To close it: place a live request with **Notify MY Gophers** on and one Gopher hand-picked, have
+that Gopher accept, and watch the requester's screen through the accept.
+⚠️ **First confirm the hand-pick actually recorded** — check for a `notify_first_orders` row on the
+order. **G40-449** (the checkboxes render pre-ticked, so tapping a name *deselects* it) means an
+order with no such row never enters the auto-connect branch at all, and a "pass" would prove
+nothing. Then paste the `order_logs` accept/assign rows into this section.
+
+### ✅ AC 3 CLOSED — device-verified on live order 65352, 2026-09-10
+
+Owner ran it on a real order and reported: *"worker as expected. no select my gopher lag. immediate
+connection."* Everything below was then read first-hand from production — CloudWatch and the
+production DB — not inherited from that report.
+
+**⚠️ Times below are UTC. `order_logs.created_at` stores a NAIVE UTC timestamp.** My first query
+aliased `created_at AT TIME ZONE 'America/New_York'` as `t_edt` and it was **wrong by +4h** — that
+expression treats the naive value as New York wall time and converts *to* UTC, the opposite of what
+was wanted. Caught by comparing against the CloudWatch epoch (`1789062998553` = 17:56:38.553 UTC =
+13:56:38 EDT), which is authoritative because it is an epoch, not a rendered string. The correct
+conversion is `created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York'`. **This is the second
+time this exact trap has bitten this document** — see the "corrected 2026-09-04 evening" note near
+the top. Subtract 4h from any UTC time here for EDT.
+
+**Order 65352** — requester **31677**, gopher **1** (roles reversed vs 65198), `Need a Ride`,
+`selectgopher = true`, `notify_fav_gopher = true`, `request_schedule_later = false`.
+
+**The G40-449 gate passed — this run actually proves something.** `notify_first_orders` row
+**13486** → `notify_gopher_id = 1`, corroborated independently by the broadcast log:
+`G40-44: order 65352 scheduled 4 tier(s) — my_gophers@0s(1) …` then
+`tier my_gophers fired to 1 Gopher(s)`. The hand-pick recorded, so the order really did enter the
+auto-connect branch.
+
+**`order_logs`, the rows AC 3 asks for (UTC):**
+
+| Time (UTC) | `order_logs.notes` |
+|---|---|
+| 17:56:38.201 | Order Created (Need a Ride-null) |
+| **17:56:57.047** | **Order Accepted by Fav- Gopher#1** |
+| **17:56:58.050** | **Order Assigned to Fav Gopher#1** |
+| 17:56:58.603 | AUTH LIFECYCLE: authorization holding $15.04 (`pi_3UECDCCQp3eawbpn19k38IoQ`) |
+
+**Accept → Assign is still a gap — 1.003 s here, 2.84 s on 65198 — and that is the point.** The fix
+never removed the gap; it removed what was *visible* during it. Proof, from the same order:
+
+**`order_gophers` has exactly ONE row, id 10541, `accepted = true`, `declined = false`.** Under the
+old code that row was written `accepted = false` and only flipped ~1 s later, and for that second it
+was selected by `retrieve.js`'s `select_my_gopher` query and drawn as "(!) New Request Info (!)".
+It was never selectable here.
+
+**The push half, proven by the log line the fix added:**
+
+```
+17:56:57  info: Creating select my gopher record and back
+17:56:58  info: Sending Select My Gopher Auto-Connected Push Notification (order.claim)
+17:56:58  info: SUCCESS: push notif sent to fcm (new app): fhyv_GYVScyem9VjBBrPsa:APA91b…
+```
+
+That one line carries three facts at once: the `selectgopher` branch ran, **`auto_connect_fav`
+evaluated true** (which it cannot do without an `is_notify_first` hit, so it re-proves the G40-449
+gate), and the push sent was **`order.claim` = "Your Request Was Accepted!"**. Pre-fix, the same
+line would have read `Submitted … (gopherorder.submitted)` = "Gopher Interested In Your Request".
+The FCM SUCCESS line confirms it was actually delivered.
+
+### AC status — final
+
+| AC | State |
+|---|---|
+| 1. Never shows "(!) New Request Info (!)", its banner, or the approve/decline flow, even transiently | ✅ **Device-verified** (owner: "no select my gopher lag, immediate connection") **and** server-verified (`order_gophers` never pending; push is `order.claim`) |
+| 2. Another Gopher accepting the same order still shows "I'll select" | ⚠️ **NOT device-exercised** — see below |
+| 3. Verified on device on a live order, `order_logs` rows recorded here | ✅ order 65352, rows above |
+| 4. Doc row written before the ticket closes | ✅ this section |
+
+**⚠️ AC 2 was not exercised on a device, and I am not going to pretend it was.** No second,
+non-hand-picked Gopher accepted 65352. What supports it instead: the code path for a non-hand-picked
+Gopher is **provably unchanged** — `accepted: auto_connect_fav` is `accepted: false` for them,
+byte-for-byte today's behaviour — and test 2 of
+`g40-445-fav-accept-never-a-pending-bid.test.js` asserts that acceptance still produces a visible
+bid, no assignment, and the "Gopher Interested" push. **Judgement, stated openly rather than
+silently: that is sufficient and a second device run is not worth a third live account and a real
+charge.** If the owner disagrees, the run is: same order shape, have a Gopher who was *not*
+hand-picked accept, and confirm the approve/decline row appears.
+
+**Still outstanding, and NOT part of these ACs: the worker half is store-gated.** The Go app change
+is merged (`dd66eb4da`) but ships to no handset until the next release build. On 65352 the owner
+reported the worker "as expected" — that is the *pre-fix* behaviour, correctly, because no shipped
+build reads `auto_connected` yet. **It wants a line on the next release's test pass**, not a
+reopening of this ticket.

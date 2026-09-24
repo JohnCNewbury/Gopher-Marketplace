@@ -1,0 +1,313 @@
+# ID images — what we actually hold, and what we've told users
+
+**Status: FINDINGS + open owner decisions. 2026-08-23.**
+Written because the in-house TrustShield flow makes us the custodian of identity documents rather
+than a vendor. **The retention question turned out to sit on top of a disclosure gap**, so the facts
+come first and the periods come second.
+
+⚠️ **Nothing here is legal advice.** §5 flags where counsel review looks genuinely warranted.
+
+---
+
+## 1. There are THREE ID-image streams, not one
+
+Only the first was in scope when this was raised. All three are verified from the live docs/code.
+
+| # | Stream | Where it lives | Verified |
+|---|---|---|---|
+| 1 | **TrustShield enrollment** — front, back, selfie | iDenfy → **now our own S3 mirror** (`get_idenfy_files`, `ed270b91`) | serving `source:'mirror'` |
+| 2 | **Delivery-time ID photo** — the Gopher photographs the physical ID | worker app → wherever that upload lands | ToS |
+| 3 | **Support email** — users told to email ID photos in | `support@gophergo.io` **mailbox** | TrustShield page |
+
+**Stream 2, from the Terms of Service:**
+> *"you… will provide a physical, valid government-issued ID to your Gopher upon delivery (a picture
+> of the ID is not allowed). **Your Gopher will take a photo of the physical ID before items are
+> exchanged.**"*
+
+So **every age-restricted delivery produces an ID photograph**, taken by a worker, on their device.
+That is a far larger and less controlled corpus than TrustShield enrollment.
+
+**Stream 3, from `gopher-trustshield.html`:**
+> *"To keep your previous requests, **email a clear photo of the front and back of your ID to
+> support@gophergo.io**."*
+
+Government ID images arriving in a shared mailbox, retained by whatever the mail provider's default
+is, visible to whoever reads that inbox. **This is the least controlled stream and the easiest to
+stop.**
+
+---
+
+## 1b. ⚠️ Access-control defect — and an honest severity (corrected 2026-08-23)
+
+`GET /users/get_trustshield_files/:reqid` had **no authorization**: it took the target id from the
+URL and returned that user's ID front/back/selfie to any authenticated caller. Fixed on
+`fix/trustshield-files-authz` (backend, commit `28d6ddd9`, **not merged**) — bind to the owner or a
+Gopher with an order for that requester; unauthorized callers get 204.
+
+**Severity, stated accurately after checking the whole attack chain — NOT the "one HTTP request"
+framing it was first raised with:**
+
+1. **The caller must be authenticated, and auth is phone + SMS OTP** (no password path). So it is
+   **not anonymous** — the attacker registers a phone-verified account, which costs a working number
+   and is attributable. Low bar, not zero.
+2. **Per victim, it is genuinely one request** — no per-resource check exists. If an id is known or
+   guessed, one call returns that person's identity documents.
+3. **Bulk enumeration is rate-limited.** A global `express-rate-limit` of **30 req/s per IP**
+   (`index.js`) applies. Walking all 6,894 verified users is ~4 minutes of sustained traffic from one
+   IP — detectable and blockable; going faster needs IP rotation.
+
+**So the real shape is TARGETED disclosure, not anonymous instant mass-scrape:** a known/guessed id
+yields that user's ID documents in one attributable, rate-limited request, stopped only by a per-IP
+cap rather than by any check that the caller should see them. The defect is real and the fix stands;
+the severity is lower than first stated, and the rate limiter should have been confirmed before the
+"one request / whole population" framing was used.
+
+## 2. There is also a SHARING fact nobody has written down
+
+From `gopher-trustshield.html`:
+> *"If you're TrustShield verified, **your worker will already see your ID and photo in their app**
+> — the in-person check just confirms the match."*
+
+**Workers see the requester's identity document and photograph.** That is a disclosure to a third
+party — an independent contractor, on their own device — and it is a deliberate product behaviour,
+not a leak. It is *not* mentioned in the privacy policy.
+
+---
+
+## 3. ⛔ The privacy policy does not describe any of this
+
+`Final/gopher-privacy.html`, **Effective Date November 8, 2024**. Measured occurrences in the
+rendered text:
+
+| Term | Count |
+|---|---|
+| `retention` / `retain your` / `how long` | **0** |
+| `delete your` | **0** |
+| `biometric` | **0** |
+| `identity document` / `selfie` | **0** |
+| `TrustShield` / `iDenfy` / `ID verification` | **0** |
+| `encrypt` | **0** |
+
+Its "Personal Data" list is: contact information, usage data, cookies, shared content (*"reviews and
+ratings… or photos you upload"*), payment information, and communications.
+
+**So the policy (as it stood before the 2026-08-24 update):**
+1. ⚠️ **CORRECTION — it DID disclose ID collection, worded differently than I searched for.**
+   The keyword counts above are a false negative: the bullet *"Identification Documentation and
+   Signature for Age-Restricted Products… driver's license or other government-issued
+   identification"* was present. My grep for `identity document` / `selfie` / `biometric` missed
+   *"Identification Documentation"* / *"driver's license"*. The **selfie specifically** was not
+   named, and biometric framing was absent — but "collects government ID: not disclosed at all"
+   was wrong. Same negative-grep trap flagged elsewhere in this session.
+2. **Had no retention section** — no statement of how long anything is kept. (True.)
+3. **Did not disclose that workers see a requester's ID.** (True.)
+4. Predated TrustShield by name. (True.)
+
+✅ **Addressed 2026-08-24** in `Final/gopher-privacy.html` (committed, **not yet deployed** — holds
+to ride with the `!367` merge): §2 now names the selfie, its voluntary and purpose-limited nature
+(no marketing/profiling/sale), and the delivery-time photo; §5 gains an *"Identity Confirmation at
+Delivery"* subsection disclosing worker visibility; §6 renamed *"Security and Retention"* with a
+retention subsection. ⚠️ **Still owed:** a *specific published destruction schedule* (BIPA wants a
+number, not a principle) and counsel review of the biometric + retention language — the update
+improves disclosure, it does not by itself make us BIPA-compliant.
+
+⚠️ **This is why retention could not be answered as asked.** A retention period is a promise about
+data the policy does not admit to collecting. **The disclosure gap is the prior problem**, and it
+exists *today* — it is not created by the in-house flow. The in-house flow only removes the ability
+to point at a vendor.
+
+---
+
+## 4. Open decisions
+
+**4.1 — Disclosure.** ✅ **DONE 2026-08-24** (committed, not deployed; rides with `!367`). Privacy
+policy now describes the selfie, the delivery photo, worker visibility, purpose-limitation, and a
+retention principle. ⚠️ A *specific* published destruction schedule and counsel review remain open
+(see §5). Everything below is a detail of this.
+
+**4.2 — Retention period, per stream.** ⚠️ **STILL OPEN — needs a NUMBER and counsel; the shipped
+policy states a principle only.** As of 2026-08-24 there is **no deletion/expiry job** for any ID
+image (confirmed by the investigations in 4.4/4.6). The concrete streams needing a period:
+- **Enrollment images (mirror):** private + signed, kept **indefinitely**. Once the badge (a boolean)
+  exists, the *image's* only ongoing use is the at-door match display — so the question is whether
+  that justifies indefinite retention or a fixed window.
+- **At-door ID photos (order attachments):** private + signed, kept **indefinitely** — but the ToS
+  ties them to *dispute evidence*, which argues for the dispute/chargeback window, not forever.
+- **Completion photos (non-ID, public):** see 4.6 — a posture to ratify separately.
+- **Support-mailbox images:** ✅ path removed (4.5).
+
+⚠️ **BIPA specifics for the SELFIE (not legal advice — counsel must confirm):** Illinois BIPA §15(a)
+requires a *written, published* retention schedule **and** destruction guidelines, destroying
+biometric data **when the purpose is satisfied or within 3 years of the individual's last
+interaction, whichever comes first.** A principle ("as long as necessary") does not satisfy the
+"published schedule" element — a **specific timeframe** is the requirement. Recommended shape for
+counsel to ratify: *destroy the verification selfie within [N days] of the last transaction, or 3
+years of last interaction, whichever is first*; ID images on the dispute-window clock. **This is the
+one item genuinely blocked on a lawyer** — the rest of the ID track is engineering/decisions the
+owner can make.
+
+**4.3 — Deletion triggers.** What happens to images on account deletion, on TrustShield removal, on
+a worker's device? Today nothing is specified. Note `users.updated_at` is **not** auto-stamped
+(`timestamps:false`), so "last activity" is not a reliable clock for expiry — a retention job needs
+its own timestamp.
+
+**4.4 — Access control.** ✅ **INVESTIGATED 2026-08-24 (backend code) — and ANSWERED AT THE CONSOLE 2026-08-25; see the dated section below, which supersedes this paragraph's open items.**
+Enrollment images (stream 1) live in `process.env.AWS_BUCKET` under `uploads/trustshield/<scanRef>/`,
+uploaded **`ACL: 'private'`** (`helpers/trustshield_files.js:138`) and served as **signed URLs with a
+3600-second / 1-hour TTL** (`URL_TTL_SECONDS`, via `shared/S3.js` `getSecureUrl`). Caller access is
+now gated by the `!367` authz fix (owner or the assigned Gopher). **So: private, time-limited,
+authorized.** ⚠️ **One gap I could NOT confirm from code:** the upload sets no `ServerSideEncryption`
+param, so **encryption-at-rest depends on the bucket's DEFAULT encryption setting**, which is AWS
+console config, not code. Likewise **S3 Block Public Access** and access **logging/audit** are
+bucket-level settings invisible to the repo. **These three (default SSE, block-public-access,
+access logging) need a console check** — the AWS/TrustShield session or the owner, not something this
+session can verify. Nothing here is public *by code*; whether the bucket enforces it at the platform
+level is the open item.
+
+---
+
+### 4.4 — ANSWERED AT THE CONSOLE, 2026-08-25 (owner opened AWS; read-only discovery, nothing changed)
+
+**Production `AWS_BUCKET` = `gopher-test`** (read from the `Gopher-Production` EB environment).
+⚠️ **A production bucket holding identity documents is named `gopher-test`.** Not a vulnerability;
+a live trap — the name invites someone to treat it as disposable.
+
+| Check | Result |
+|---|---|
+| Default encryption (SSE) | ✅ **AES256 enabled** — the code gap is closed at the bucket |
+| Block Public Access | ⚠️ **Not configured at all** (`NoSuchPublicAccessBlockConfiguration`) |
+| Access logging | ⚠️ **Not enabled** — reads of these objects are not auditable |
+| Bucket policy / bucket ACL | ✅ No policy; ACL grants owner `FULL_CONTROL` only. **The bucket is not public.** |
+
+**✅ The ID images are PRIVATE, confirmed by request, not by reading code.**
+`uploads/trustshield/<scanRef>/BACK.png` — no `AllUsers` grant, and an unsigned public fetch returns
+**HTTP 403**. `ACL: 'private'` holds in production. **This was the question that mattered and the
+answer is good.**
+
+**⚠️ Other prefixes in the SAME bucket are world-readable — object ACLs grant `AllUsers READ`, and
+unsigned fetches return HTTP 200:**
+
+| Prefix | Contents | Unsigned fetch |
+|---|---|---|
+| `uploads/image/file/` | user profile photos | **200** |
+| `uploads/image/business_profile/` | business logos | **200** |
+| `uploads/attachment/file/` | attachments | **200** |
+| `uploads/image/user_attachement/business_credential/` | **business credentials** (sampled: a `Certificate of Existence .pdf`) | **200** |
+| `uploads/image/user_attachement/past_jobs/` | completed-job photos | **200** |
+
+This is **by design, not by accident** — `helpers/functions.js:90` `generate_image_url()` builds
+exactly these unsigned URLs and is called live from `controllers/user/auth.js`,
+`controllers/user/deals.js`, `services/users.services.js`, `services/orders.services.js`.
+
+⛔ **Therefore: switching Block Public Access on would break profile pictures, business logos,
+credentials and past-job photos platform-wide.** It is not a one-click fix. The correct shape is a
+prefix-scoped policy that keeps `uploads/image/*` and `uploads/attachment/*` readable while
+denying everything else, *then* enabling BPA's account-level settings that don't conflict.
+
+**Severity nuance — anonymous LIST is denied (403), which is doing less work than it appears.**
+The keys are deterministic: `uploads/image/file/<user_id>/profile.jpg`, and `user_id` is a
+sequential integer (sampled: 1, 100, 10000, 100000, 100001, 100003). **For profile photos the
+pattern IS the index** — no enumeration is needed, so the denied listing buys nothing there. It
+does still matter for the credential and past-job prefixes, whose filenames are not predictable
+(`Certificate of Existence .pdf`, `completedjob_0.jpg`).
+
+**Recommended, in order:** (1) decide whether business credentials and past-job photos should be
+public at all — that is a product/legal call, not an engineering one; (2) enable **access logging**,
+which is free and blocks nothing; (3) prefix-scoped policy, then BPA; (4) rename or re-home the
+bucket away from `gopher-test` (highest-risk change, do last).
+
+**Method note:** every "is it public?" claim here is an **unsigned HTTP request that returned a
+status code**, plus the object ACL. Reading `ACL: 'private'` in source is what made this look
+answered for weeks; it was only half the question, and the other half needed the console.
+
+### 4.4 CLOSED — 2026-08-25, actions taken (owner-directed)
+
+| Action | State |
+|---|---|
+| S3 access logging on `gopher-test` | ✅ **enabled** → `gopher-logs/s3-access/gopher-test/`, delivery **confirmed** (a planted 200 and 403 both appear in the logs) |
+| Business credentials + past-job photos | ✅ **private** — 109 objects re-ACL'd, 238 already private, 0 failures, across 138 + 209 objects |
+| Serving path for those two prefixes | ✅ **signed URLs** (`getSecureUrl`, 3600s) live in `origin/production` |
+| Verified end to end | ✅ unsigned = **403**, presigned = **200**, on one object of each prefix |
+| Block Public Access | ⚠️ **PARTIAL only** — see below |
+
+⛔ **Full BPA is NOT reachable on this bucket today, and this is the durable finding.**
+`BlockPublicAcls` would break new uploads and `IgnorePublicAcls` would break all serving, because
+**seven prefixes upload `public-read` and are served as unsigned URLs**: `uploads/image/file/`,
+`business_profile/`, `attachment/file/`, `deal_logo/`, `In_app_message/`, `Completed_orders/`,
+`assets/`. Only `BlockPublicPolicy` + `RestrictPublicBuckets` were enabled — verified zero-impact,
+they merely stop anyone adding a public *bucket policy* later. **Full BPA requires migrating those
+seven prefixes to signed URLs first**, which is a product decision (several render where there is
+no session), not a cleanup.
+
+⚠️ **The ID images were never the exposure.** They were already private and stayed private
+throughout. What was world-readable was everything *around* them.
+
+**4.5 — Stop stream 3.** The support-mailbox path exists to solve one narrow problem (an alias
+account whose name won't match the ID). **Recommendation: remove that instruction and replace it
+with an in-product path.** It is the only stream where identity documents sit in a general-purpose
+mailbox, and it is a copy change plus a small flow — the cheapest risk reduction available here.
+
+**4.6 — Worker-side handling.** ✅ **INVESTIGATED 2026-08-24 (worker app + backend,
+`origin/production`).** Better than feared on the device, but it surfaced a separate finding:
+- **NOT persisted on the worker's device.** Capture uses `@capacitor-community/camera-preview` with
+  **no `saveToGallery` / `storeToFile` flag** (`cameraPreviewBox.js`), so the base64 image lives in a
+  Formik field (`id_image`) in memory and never lands in the camera roll. The main worry — IDs
+  accumulating on contractors' phones — **does not happen.**
+- **Uploaded only for NON-TrustShield customers:** `id_image: isNonTrustShield ? … : null`
+  (`ordercard.js:1334`, `RequestDetailPullOver.js:1366`). A TrustShield customer is matched against
+  the mirror instead, so no new photo is taken.
+- **Server-side it IS retained**, as an order attachment: `POST /orders/:id/complete` →
+  `uploads/attachment/file/<id>/…jpg`, **`'private'` + signed read** (`update.js:2146+`, and the
+  line-4642 comment confirms "The A/R identity path uses 'private' and is signed"). So stream 2 is a
+  real retained corpus of government-ID photos — private and signed, but with no deletion policy
+  (feeds 4.2).
+- ⚠️ **ADJACENT FINDING, non-ID but worth the owner knowing:** the *non*-age-restricted **completion
+  photos** (G40-39 proof-of-delivery) upload **PUBLIC with unsigned URLs** — the same
+  `update.js:4642` comment states this deliberately ("Uploaded PUBLIC, matching ratings.js… stated
+  here so it is a choice rather than an accident"). These are delivery/proof photos, **not IDs**, so
+  lower stakes — but "public, unsigned, permanent" is a posture the owner should ratify, not inherit.
+
+---
+
+## 5. ⚠️ Where counsel review looks warranted
+
+Not legal advice — but three things a lawyer would want to see, flagged so the decision is informed:
+
+1. **The selfie is plausibly a biometric identifier** under several US state laws. **Illinois BIPA**
+   carries a private right of action and statutory damages **per violation**, and its requirements
+   are specific — written notice, written consent, and **a published retention/destruction
+   schedule**. A published schedule is exactly what §3 shows we do not have.
+2. **Disclosure to workers** (§2) is a sharing of identity documents with third parties, currently
+   undisclosed.
+3. **The policy is silent on retention entirely**, which several state privacy statutes treat as a
+   required disclosure independent of the data type.
+
+**None of this is new exposure created by the in-house flow — it is the current state.** Going
+in-house changes who holds the data, not whether it was disclosed.
+
+---
+
+## 6. Recommendations (owner decides; these are starting points)
+
+1. **Update the privacy policy first.** Nothing else is coherent until the policy admits the data
+   exists. This is also the cheapest item.
+2. **Kill the support@ email path** (§4.5) — smallest change, largest risk reduction.
+3. **Enrollment images: keep only what the product needs.** The badge is a boolean; the images are
+   evidence. If nothing after approval reads them except the worker-facing display, then the
+   question is whether that display justifies indefinite retention — **or whether the ID front alone
+   suffices and the selfie can be destroyed after matching.** ⚠️ *Note this interacts with the
+   barcode work: the selfie there is captured but nothing compares it to the ID, which is already
+   flagged as "deterrent or theatre — decide."*
+4. **Delivery photos: tie to the dispute window**, since that is the stated purpose.
+5. **Publish the schedule.** Under BIPA-style regimes the published schedule is itself the
+   requirement, not just the practice.
+
+---
+
+## 7. What this session verified vs inherited
+
+**Verified here:** the three streams (ToS + TrustShield page quotes above), the privacy policy's
+omissions (measured counts, §3), the worker-visibility statement.
+**Inherited, not verified:** that the S3 mirror is encrypted/private and access-controlled (§4.4) —
+the TrustShield session owns that and should confirm.
+**Not investigated:** worker-device handling of delivery photos (§4.6), and where those uploads land.
