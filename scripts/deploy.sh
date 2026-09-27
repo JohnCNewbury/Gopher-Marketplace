@@ -126,6 +126,25 @@ PRESERVE=( ".git" ".github" ".nojekyll" "README.md" "_prototypes" )
 # So: an ALLOWLIST of exactly the files the running prototypes need, derived by
 # crawling the four entry points for href/src AND JS string literals. Anything
 # not named here does not ship. Add a file only after reading what is in it.
+#
+# ⛔ THIS ARRAY IS PARSED BY ANOTHER REPO. The Interactive Pitch Deck's
+# `.sync/mirror-proto.py` reads it out of THIS FILE at sync time to decide what
+# explore.gophergo.io and tour.gophergo.io publish (owner GO, 2026-09-27), so
+# that the deck can never drift from what the twin serves. Its regex is
+# `^PROTO=\(\s*\n(.*?)^\)`, which constrains the SHAPE, not just the contents:
+#
+#   · `PROTO=(` must start a line, with nothing after `(` but the newline
+#   · one filename per line
+#   · the closing `)` must be in COLUMN 0 — indent it and the parse fails
+#   · `#` comment lines inside the array are skipped, so they are safe
+#   · keep at least 7 entries; it adds web-split-screen.html and aborts under 8
+#
+# Adding a file here is picked up by the next deck sync automatically — that is
+# the point. Reflowing this into `PROTO=(a b c)`, or re-indenting the `)`, is
+# NOT a cosmetic edit: it breaks the sync for two published sites. It fails
+# loudly rather than shipping a partial demo, but it fails somewhere you are
+# not looking. If this array ever has to move or change shape, say so in the
+# same breath to whoever owns the deck.
 PROTO=(
   split-screen.html
   Go/gopher-banner.js
