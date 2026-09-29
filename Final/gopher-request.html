@@ -8062,17 +8062,50 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     padding:4px 9px; display:inline-flex; align-items:center; gap:6px;
   }
   /* Bid amount — prominent, sits between the worker info and the action buttons */
+  /* Owner 2026-09-29: BID reads to the LEFT of the number, and the number is
+     tappable — it opens the itemised breakdown. Mirrors gopher-connect.html. */
   .wcard-bid {
-    display:flex; flex-direction:column; align-items:flex-end;
-    flex-shrink:0; padding-right:4px;
+    display:flex; flex-direction:row; align-items:baseline; gap:7px;
+    flex-shrink:0; padding:2px 4px 2px 0; background:none; border:0;
+    cursor:pointer; font:inherit; text-align:right;
+    border-radius:8px; transition:background 0.15s;
   }
+  .wcard-bid:hover, .wcard-bid:focus-visible { background:rgba(51,217,117,0.10); outline:none; }
   .wcard-bid .wb-amount {
     font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy);
-    line-height:1;
+    line-height:1; text-decoration:underline; text-decoration-style:dotted;
+    text-underline-offset:3px; text-decoration-thickness:1.5px;
+    text-decoration-color:rgba(26,42,94,0.45);
   }
+  .wcard-bid:hover .wb-amount { text-decoration-color:var(--green); }
   .wcard-bid .wb-label {
     font-family:'Nunito'; font-weight:800; font-size:9px; letter-spacing:0.6px;
-    text-transform:uppercase; color:var(--muted); margin-top:3px;
+    text-transform:uppercase; color:var(--muted); margin:0;
+  }
+  .bidbd-ov {
+    position:fixed; inset:0; background:rgba(12,22,48,0.55); z-index:9000;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .bidbd-card {
+    background:#fff; border-radius:16px; width:min(380px,100%);
+    box-shadow:0 18px 50px rgba(12,22,48,0.3); padding:20px 20px 16px;
+    font-family:'DM Sans'; max-height:88vh; overflow:auto;
+  }
+  .bidbd-head { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .bidbd-sub  { font-size:12px; color:var(--muted); margin:3px 0 14px; }
+  .bidbd-row  { display:flex; justify-content:space-between; gap:12px; font-size:13.5px;
+                padding:7px 0; border-bottom:1px dashed #e6e9f2; color:var(--navy); }
+  .bidbd-row.is-disc .bidbd-v { color:#1f9d52; }
+  .bidbd-row.is-total { border-bottom:0; margin-top:6px; padding-top:11px;
+                        border-top:2px solid #eef0f5; font-weight:800; font-size:15px; }
+  .bidbd-k { color:var(--muted); }
+  .bidbd-row.is-total .bidbd-k { color:var(--navy); }
+  .bidbd-v { font-variant-numeric:tabular-nums; font-weight:700; }
+  .bidbd-note { font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.45; }
+  .bidbd-close {
+    width:100%; margin-top:14px; padding:11px; border:0; border-radius:10px;
+    background:var(--green); color:#fff; font-family:'Nunito'; font-weight:800;
+    font-size:14px; cursor:pointer;
   }
   @media(max-width:620px){
     .wcard-bid { align-items:flex-start; padding-left:54px; }
@@ -22051,7 +22084,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           : '';
         // Bid amount, shown to the right on every "ask for bids" request.
         const bidHtml = (bidsMode && !isLive && w.bidAmount != null)
-          ? `<div class="wcard-bid"><span class="wb-amount">$${Number(w.bidAmount).toFixed(0)}</span><span class="wb-label">Bid</span></div>`
+          ? `<button type="button" class="wcard-bid" data-wact="bidinfo" data-i="${realIdx}"
+                     title="See what this bid covers" aria-label="See what ${w.name}'s bid covers">
+               <span class="wb-label">Bid</span><span class="wb-amount">$${Number(window.__bidAllIn(r, w)).toFixed(0)}</span>
+             </button>`
           : '';
         return `
           <div class="wcard ${fresh?'wcard-fresh':''}">
@@ -22497,6 +22533,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
             if(hiredCount >= needed){ showHireCapModal(needed); return; }
           }
+          /* Read-only: shows the itemisation and returns, BEFORE any status change,
+             so tapping the amount can never alter the worker. */
+          if(act === 'bidinfo'){ window.__openBidBreakdown(r, list[i]); return; }
           if(act === 'hire')          { list[i].status = 'hired'; list[i].justAccepted = false; }
           else if(act === 'consider') { list[i].status = 'considered'; list[i].justAccepted = false; }
           else if(act === 'approve')  { list[i].status = 'hired'; }
@@ -22657,15 +22696,109 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
      Exposed on window so the start-job bar and startJob() share one answer
      rather than each doing their own arithmetic. */
   window.__agreedAmountFor = function(r, w){
-    const bidsMode = !!(r && r.reviewSnapshot && r.reviewSnapshot.bidsMode);
+    const bidsMode = window.__isBidsRequest(r);
     if(bidsMode && w && w.bidAmount != null) return Number(w.bidAmount) || 0;
     return Number(r && r.perWorkerCost) || 0;
   };
   window.__agreedTotalFor = function(r, hiredList){
     return (hiredList || []).reduce((sum, w) => sum + window.__agreedAmountFor(r, w), 0);
   };
+  /* bidsMode is recorded in BOTH places at creation — on the record (read by the
+     worker-card bid column) and inside reviewSnapshot. Demo/seeded requests set
+     neither, so this accepts either rather than depending on which one a given
+     request happened to be built with. */
   window.__isBidsRequest = function(r){
-    return !!(r && r.reviewSnapshot && r.reviewSnapshot.bidsMode);
+    return !!(r && (r.bidsMode || (r.reviewSnapshot && r.reviewSnapshot.bidsMode)));
+  };
+
+  /* ── A BID'S ITEMISED BREAKDOWN ─────────────────────────────────────────────
+     Owner 2026-09-29: a bid is an ALL-IN number — "fees, offer & COG if
+     applicable" — and tapping it shows the itemisation.
+
+     ⛔ This does NOT call computeConnectFee(). That function reads the live flow
+     `state` (category, promo, plan, age), and in the dashboard `state` belongs to
+     whatever the user last had open in the flow, not to the request being viewed.
+     Calling it here would price one request using another's parameters. Everything
+     below is derived from the request's OWN frozen reviewSnapshot instead.
+
+     w.bidAmount is the worker's OFFER — it is seeded from r.perWorkerCost, which
+     is worker pay. The all-in total is built forward from it using the same shape
+     computeConnectFee uses: flat Gopher + Age fees, then instant transfer as a
+     rate on (COG + offer + those flat fees), then discounts.
+
+     The ITF rate is DERIVED from the snapshot rather than hardcoded at 0.08, so
+     if the canonical rate ever changes this follows it instead of quietly
+     disagreeing with the review screen. */
+  window.__bidBreakdown = function(r, w){
+    const snap = (r && r.reviewSnapshot) || {};
+    const fee  = snap.fee || {};
+    const num  = (v) => { const n = Number(v); return isFinite(n) ? n : 0; };
+
+    const offer = num(w && w.bidAmount);
+    const cog   = num(snap.costOfItems);
+    const flatGopher = num(fee.fullGopherFee);
+    const flatAge    = num(fee.fullAgeFee);
+
+    // Original base the snapshot's ITF was computed on, used only to recover the rate.
+    const origBase = num(snap.costOfItems) + num(snap.workerPay) + flatGopher + flatAge;
+    const itfRate  = (origBase > 0 && num(fee.fullInstantTransfer) > 0)
+      ? num(fee.fullInstantTransfer) / origBase
+      : 0;
+
+    const base = cog + offer + flatGopher + flatAge;
+    const itf  = itfRate * base;
+    const feesPre = flatGopher + flatAge + itf;
+
+    /* Discounts carry across as the snapshot recorded them, capped so they can
+       never exceed the fee side — the same cap computeConnectFee applies. */
+    const promoDisc = Math.min(num(fee.promoDiscount), feesPre);
+    const tsDisc    = Math.min(num(fee.tsDiscount), feesPre - promoDisc);
+
+    const feesPost = feesPre - promoDisc - tsDisc;
+    const total    = cog + offer + feesPost;
+
+    return {
+      offer, cog, gopherFee: flatGopher, ageFee: flatAge, instantTransfer: itf,
+      promoDiscount: promoDisc, tsDiscount: tsDisc,
+      promoLabel: (fee.promo && fee.promo.label) || null,
+      total,
+    };
+  };
+
+  /* The number shown on the card IS the all-in total, per the owner. */
+  window.__bidAllIn = function(r, w){ return window.__bidBreakdown(r, w).total; };
+
+  window.__openBidBreakdown = function(r, w){
+    const b = window.__bidBreakdown(r, w);
+    const money = (n) => '$' + Number(n).toFixed(2);
+    const row = (k, v, cls) => `<div class="bidbd-row ${cls||''}"><span class="bidbd-k">${k}</span><span class="bidbd-v">${v}</span></div>`;
+    const lines = [
+      row("Worker's offer", money(b.offer)),
+      b.cog > 0 ? row('Cost of items', money(b.cog)) : '',
+      b.gopherFee > 0 ? row('Gopher fee', money(b.gopherFee)) : '',
+      b.ageFee > 0 ? row('Age-restricted fee', money(b.ageFee)) : '',
+      b.instantTransfer > 0 ? row('Instant transfer', money(b.instantTransfer)) : '',
+      b.promoDiscount > 0 ? row(b.promoLabel ? ('Promo — ' + b.promoLabel) : 'Promo', '−' + money(b.promoDiscount), 'is-disc') : '',
+      b.tsDiscount > 0 ? row('TrustShield™ discount', '−' + money(b.tsDiscount), 'is-disc') : '',
+      row('Total', money(b.total), 'is-total'),
+    ].join('');
+    const ov = document.createElement('div');
+    ov.className = 'bidbd-ov';
+    ov.innerHTML = `
+      <div class="bidbd-card" role="dialog" aria-modal="true" aria-label="Bid breakdown">
+        <div class="bidbd-head">${(w && w.name) || 'Worker'}'s bid</div>
+        <div class="bidbd-sub">Everything this bid covers — nothing is added later.</div>
+        ${lines}
+        <div class="bidbd-note">This is what you pay if you hire ${(w && w.name) || 'this worker'}. The worker receives their offer in full; the rest is fees.</div>
+        <button class="bidbd-close" type="button">Got it</button>
+      </div>`;
+    const close = () => ov.remove();
+    ov.addEventListener('click', (e) => { if(e.target === ov) close(); });
+    ov.querySelector('.bidbd-close').addEventListener('click', close);
+    document.addEventListener('keydown', function esc(e){
+      if(e.key === 'Escape'){ close(); document.removeEventListener('keydown', esc); }
+    });
+    document.body.appendChild(ov);
   };
 
   function startJob(r){
