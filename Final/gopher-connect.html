@@ -5583,6 +5583,16 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .bidbd-row.is-total .bidbd-k { color:var(--navy); }
   .bidbd-v { font-variant-numeric:tabular-nums; font-weight:700; }
   .bidbd-note { font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.45; }
+  .hirerev-card { width:min(460px,100%); }
+  .hirerev-sep {
+    font-family:'Nunito'; font-weight:900; font-size:11px; letter-spacing:0.7px;
+    text-transform:uppercase; color:var(--muted); margin:16px 0 4px;
+  }
+  .hirerev-back {
+    width:100%; margin-top:8px; padding:9px; border:0; background:none;
+    color:var(--muted); font-family:'DM Sans'; font-size:12.5px; cursor:pointer;
+  }
+  .hirerev-back:hover { color:var(--navy); text-decoration:underline; }
   .bidbd-close {
     width:100%; margin-top:14px; padding:11px; border:0; border-radius:10px;
     background:var(--green); color:#fff; font-family:'Nunito'; font-weight:800;
@@ -17565,6 +17575,80 @@ const PAY_BADGES = {
   /* The number shown on the card IS the all-in total, per the owner. */
   window.__bidAllIn = function(r, w){ return window.__bidBreakdown(r, w).total; };
 
+  window.__isBidsRequest = function(r){
+    return !!(r && (r.bidsMode || (r.reviewSnapshot && r.reviewSnapshot.bidsMode)));
+  };
+
+  /* ── POST-HIRE REVIEW, BIDS ONLY ────────────────────────────────────────────
+     Owner 2026-09-29: hiring a bidder opens the review with the REAL pricing and
+     a Start button, "so the user can agree on the actual terms WITH the actual
+     price and can start the request."
+
+     ⛔ SCOPE IS BIDS ONLY, and that is deliberate. gopher-connect.html carries an
+     owner ruling of 2026-09-01 — "HIRING STARTS THE JOB … the live requester app
+     has NO start step in any mode" — which removed a Start step precisely because
+     requests sat in Pending waiting for it. These do not actually conflict: in
+     every other mode the price was agreed at submit, so hiring is the commitment
+     and nothing new needs agreeing. On a BIDS request the requester has never
+     seen the price — the review screen literally reads "Pending bids" and "TBD
+     after bid" — so the bid is a new term, and this is where it gets agreed.
+     Owner confirmed this narrow scope on 2026-09-29. Do NOT widen it to the
+     other modes without revisiting the 09-01 ruling.
+
+     Built from the request's frozen reviewSnapshot, NOT from the flow's `state`
+     — same reason as __bidBreakdown: in the dashboard `state` belongs to
+     whatever was last open in the flow. */
+  window.__openHireReview = function(r, w, onStart){
+    const snap = (r && r.reviewSnapshot) || {};
+    const b = window.__bidBreakdown(r, w);
+    const money = (n) => '$' + Number(n).toFixed(2);
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const row = (k, v, cls) => v === '' || v == null ? '' :
+      `<div class="review-row ${cls||''}"><span class="rl">${esc(k)}</span><span class="rv">${esc(v)}</span></div>`;
+    const moneyRow = (k, v, cls) =>
+      `<div class="review-row ${cls||''}"><span class="rl">${esc(k)}</span><span class="rv">${money(v)}</span></div>`;
+
+    const firstOf = (a) => (Array.isArray(a) && a.length) ? a[0] : '';
+    const facts = [
+      row('Category', snap.category || r.category || ''),
+      row('Description', snap.description || r.descriptionFull || ''),
+      row('Worker', (w && w.name) || ''),
+      row('Pick-up', firstOf(snap.pickups)),
+      row('Destination', firstOf(snap.dropoffs)),
+    ].join('');
+
+    const pricing = [
+      moneyRow("Worker's offer (winning bid)", b.offer),
+      b.cog > 0 ? moneyRow('Cost of items', b.cog) : '',
+      b.gopherFee > 0 ? moneyRow('Gopher fee', b.gopherFee) : '',
+      b.ageFee > 0 ? moneyRow('Age-restricted fee', b.ageFee) : '',
+      b.instantTransfer > 0 ? moneyRow('Instant transfer', b.instantTransfer) : '',
+      b.promoDiscount > 0 ? `<div class="review-row"><span class="rl">Promo${b.promoLabel ? ' — ' + esc(b.promoLabel) : ''}</span><span class="rv">&minus;${money(b.promoDiscount)}</span></div>` : '',
+      b.tsDiscount > 0 ? `<div class="review-row"><span class="rl">TrustShield&trade; discount</span><span class="rv">&minus;${money(b.tsDiscount)}</span></div>` : '',
+      moneyRow('Total', b.total, 'total'),
+    ].join('');
+
+    const ov = document.createElement('div');
+    ov.className = 'bidbd-ov hirerev-ov';
+    ov.innerHTML = `
+      <div class="bidbd-card hirerev-card" role="dialog" aria-modal="true" aria-label="Confirm and start">
+        <div class="bidbd-head">Let's review your request</div>
+        <div class="bidbd-sub">${esc((w && w.name) || 'Your worker')}'s bid is now your price. Nothing starts until you press Start.</div>
+        ${facts}
+        <div class="hirerev-sep">Pricing</div>
+        ${pricing}
+        <button class="bidbd-close hirerev-start" type="button">Start &rarr;</button>
+        <button class="hirerev-back" type="button">Not yet &mdash; back to my workers</button>
+      </div>`;
+    const close = () => ov.remove();
+    ov.querySelector('.hirerev-back').addEventListener('click', close);
+    ov.querySelector('.hirerev-start').addEventListener('click', () => {
+      close();
+      if (typeof onStart === 'function') onStart();
+    });
+    document.body.appendChild(ov);
+  };
+
   window.__openBidBreakdown = function(r, w){
     const b = window.__bidBreakdown(r, w);
     const money = (n) => '$' + Number(n).toFixed(2);
@@ -18378,7 +18462,22 @@ const PAY_BADGES = {
            that difference is Connect's and is preserved. */
           const needed = r.workersNeeded || 1;
           const hiredNow = list.filter(w => w.status === 'hired').length;
-          if(hiredNow === needed){ startJob(r); }
+          if(hiredNow === needed){
+            /* BIDS ONLY: the requester has never seen this price — the review
+               screen read "Pending bids" / "TBD after bid" — so the winning bid
+               is a NEW term and gets agreed here before anything starts.
+               Owner 2026-09-29, scope confirmed narrow the same day.
+               Every other mode keeps the 2026-09-01 ruling above: the price was
+               agreed at submit, so hiring IS the commitment and the job starts
+               immediately. Widening this would re-create the Pending-limbo that
+               ruling removed. */
+            if(window.__isBidsRequest(r)){
+              const lead = list.filter(w => w.status === 'hired').pop() || list[i];
+              window.__openHireReview(r, lead, () => startJob(r));
+            } else {
+              startJob(r);
+            }
+          }
         }
       });
     });
