@@ -22185,10 +22185,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
       let startBar = '';
       if(hired.length > 0){
+        const bidsReq   = window.__isBidsRequest(r);
         const perWorker = r.perWorkerCost || 0;
-        const liveTotal = perWorker * hired.length;
+        const liveTotal = window.__agreedTotalFor(r, hired);
         const origTotal = perWorker * needed;
-        const adjusted  = hired.length < needed;
+        /* The "was $X" comparison only means something when there WAS an
+           up-front price. A bids request never had one, so it is suppressed
+           rather than shown as a drop from $0.00. */
+        const adjusted  = !bidsReq && hired.length < needed;
         startBar = `
           <div class="start-job-bar">
             <div class="sjb-cost">
@@ -22643,13 +22647,33 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // (`${reqId}::${workerName}`) resolve to real crew metadata.
   // r.live is built for BOTH in-progress AND scheduled — earlier versions had
   // a !goScheduled guard that broke scheduled messaging; don't replicate it.
+  /* ── The agreed amount for ONE hired worker ──────────────────────────────
+     ⛔ r.perWorkerCost is the price the REQUESTER set UP FRONT. On an
+     "ask for bids" request there is no such price — it stays 0 until a bid is
+     accepted — so reading it produced the $0.00 the owner screenshotted
+     (2026-09-29), sitting directly above a worker card reading "$102 Bid".
+     On a bids request the agreed amount IS that worker's bid, and because each
+     worker bids their own number the crew total is a SUM, not a multiply.
+     Exposed on window so the start-job bar and startJob() share one answer
+     rather than each doing their own arithmetic. */
+  window.__agreedAmountFor = function(r, w){
+    const bidsMode = !!(r && r.reviewSnapshot && r.reviewSnapshot.bidsMode);
+    if(bidsMode && w && w.bidAmount != null) return Number(w.bidAmount) || 0;
+    return Number(r && r.perWorkerCost) || 0;
+  };
+  window.__agreedTotalFor = function(r, hiredList){
+    return (hiredList || []).reduce((sum, w) => sum + window.__agreedAmountFor(r, w), 0);
+  };
+  window.__isBidsRequest = function(r){
+    return !!(r && r.reviewSnapshot && r.reviewSnapshot.bidsMode);
+  };
+
   function startJob(r){
     if(!r) return;
     const hiredList = (r.interestedWorkers || []).filter(w => w.status === 'hired');
     const hiredCount = hiredList.length;
     if(hiredCount === 0) return;
-    const perWorker = r.perWorkerCost || 0;
-    const finalTotal = perWorker * hiredCount;
+    const finalTotal = window.__agreedTotalFor(r, hiredList);
 
     const goScheduled = !!r.scheduledForLater;
     r.status         = goScheduled ? 'scheduled' : 'in-progress';
