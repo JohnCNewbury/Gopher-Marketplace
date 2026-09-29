@@ -8102,6 +8102,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .bidbd-row.is-total .bidbd-k { color:var(--navy); }
   .bidbd-v { font-variant-numeric:tabular-nums; font-weight:700; }
   .bidbd-note { font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.45; }
+  .tscx-warn {
+    background:#fff5f5; border:1px solid #f6d5d5; border-radius:10px;
+    padding:12px 13px; font-size:12.5px; line-height:1.5; color:#7a2230;
+    margin-top:4px;
+  }
+  .tscx-warn strong { display:block; margin-bottom:4px; color:#a3202f; }
+  .tscx-confirm { background:#c53030 !important; }
+  .dash-nav-item.is-ts-verified .dni-label { color:var(--green-dark,#1f9d52); font-weight:700; }
   .bidbd-close {
     width:100%; margin-top:14px; padding:11px; border:0; border-radius:10px;
     background:var(--green); color:#fff; font-family:'Nunito'; font-weight:800;
@@ -19374,6 +19382,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <button class="dash-nav-item" data-rqsection="personal">
         <span class="dni-ico">👤</span><span class="dni-label">Personal info</span>
       </button>
+      <!-- Owner 2026-09-29: TrustShield sits directly below Personal info. The
+           label and behaviour both flip on enrolment — see rqRenderTrustShieldNav. -->
+      <button class="dash-nav-item" id="rqNavTrustShield">
+        <span class="dni-ico">🛡️</span><span class="dni-label" id="rqNavTsLabel">Add TrustShield&trade;</span>
+      </button>
       <button class="dash-nav-item" id="rqDashSavedAddr">
         <span class="dni-ico">📍</span><span class="dni-label">Saved addresses</span>
       </button>
@@ -23832,7 +23845,82 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     pro:   'assets/img/tier-pro.svg'
   };
 
+  /* ── TrustShield nav entry ───────────────────────────────────────────────
+     Owner 2026-09-29: "Below Personal Info, we need to add the Add TrustShield.
+     If the user already has TrustShield, it will change to 'TrustShield verified.'
+     User CAN tap into that if they want to cancel their TrustShield. Have an area
+     you sure as it removes their discounts tied to TS."
+
+     NOT-ENROLLED state carries data-open-trustshield, which is the page's existing
+     canonical enrol path (delegated handler -> __openIdSubmitModal / the
+     __openIdVerifyFlow fallback -> __setTrustShield(true)). Reusing the attribute
+     rather than calling the flow directly means this entry can never drift from
+     the other Add-TrustShield affordances.
+
+     ENROLLED state removes that attribute — otherwise the delegate would fire the
+     ENROL flow for someone who is already enrolled — and confirms before removing. */
+  function rqRenderTrustShieldNav(){
+    const btn = document.getElementById('rqNavTrustShield');
+    const lbl = document.getElementById('rqNavTsLabel');
+    if(!btn || !lbl) return;
+    const verified = !!(DASH_DATA.profile && DASH_DATA.profile.trustShield);
+    lbl.innerHTML = verified ? 'TrustShield&trade; verified' : 'Add TrustShield&trade;';
+    btn.classList.toggle('is-ts-verified', verified);
+    if(verified) btn.removeAttribute('data-open-trustshield');
+    else btn.setAttribute('data-open-trustshield', '');
+  }
+
+  function rqOpenTrustShieldCancel(){
+    const ov = document.createElement('div');
+    ov.className = 'bidbd-ov';
+    ov.innerHTML = `
+      <div class="bidbd-card" role="dialog" aria-modal="true" aria-label="Cancel TrustShield">
+        <div class="bidbd-head">Cancel your TrustShield&trade;?</div>
+        <div class="bidbd-sub">You can add it back any time, but you'll have to verify your ID again.</div>
+        <div class="tscx-warn">
+          <strong>This removes the discounts tied to TrustShield.</strong>
+          Age-restricted delivery and ride-sharing requests lose the TrustShield discount
+          on the grand total, and you'll be asked to show your ID at the door again
+          instead of having it on file.
+        </div>
+        <button class="bidbd-close tscx-confirm" type="button">Yes, cancel my TrustShield</button>
+        <button class="hirerev-back" type="button">Keep TrustShield</button>
+      </div>`;
+    const close = () => ov.remove();
+    ov.querySelector('.hirerev-back').addEventListener('click', close);
+    ov.addEventListener('click', (e) => { if(e.target === ov) close(); });
+    ov.querySelector('.tscx-confirm').addEventListener('click', () => {
+      close();
+      /* Goes through the same setter every other surface uses, so the seal, the
+         age-restricted banner and the fee maths all follow in one step. */
+      if(window.__setTrustShield) window.__setTrustShield(false);
+    });
+    document.body.appendChild(ov);
+  }
+
+  /* rqRenderBadges() only runs when setTrustShield() flips the flag, so it does
+     NOT paint on load — a profile that already has TrustShield would still read
+     "Add TrustShield" until something changed it. Paint once at init too. */
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', rqRenderTrustShieldNav);
+  } else {
+    rqRenderTrustShieldNav();
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#rqNavTrustShield');
+    if(!btn) return;
+    if(DASH_DATA.profile && DASH_DATA.profile.trustShield){
+      /* Already enrolled — this is the cancel door, not the enrol one. Stop the
+         event so the data-open-trustshield delegate cannot also run. */
+      e.preventDefault();
+      e.stopPropagation();
+      rqOpenTrustShieldCancel();
+    }
+  }, true);
+
   function rqRenderBadges(){
+    rqRenderTrustShieldNav();
     const rail = document.getElementById('rqPhBadges');
     if(!rail) return;
     const p = DASH_DATA.profile || {};
