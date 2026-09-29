@@ -18442,7 +18442,11 @@ const PAY_BADGES = {
         else if(act === 'approve')  { list[i].status = 'hired'; }
         else if(act === 'unhire')   { list[i].status = 'interested'; }
         else if(act === 'deny')     { list.splice(i, 1); }       // remove entirely
-        else if(act === 'message')  { b.classList.add('msg-open'); b.title = 'Conversation opened'; return; }
+        /* Was VISUAL ONLY — it added a class and a tooltip and opened nothing,
+           which is the dead Message button the owner reported (2026-09-29).
+           Request's equivalent already called openInboxThread; Connect never did,
+           despite having the same function. */
+        else if(act === 'message')  { b.classList.add('msg-open'); openInboxThread(workerThreadId(r, list[i])); return; }
         else if(act === 'profile')  {                            // open full profile view
           dashState.profileWorkerIdx = i;
           dashState.profileReqId = r.id;
@@ -18484,7 +18488,7 @@ const PAY_BADGES = {
 
     // Counter-offer action buttons — Accept (faked hire at the counter price) /
     // Details (opens this counter's breakdown modal) / Deny (remove the counter) /
-    // Review profile (reuses renderWorkerProfile) / Message (visual, mirrors interested).
+    // Review profile (reuses renderWorkerProfile) / Message (opens the worker's inbox thread).
     // The modal's own Accept/Deny carry the same data-coact, so they resolve here too.
     document.querySelectorAll('#reqDetailBody [data-coact]').forEach(b => {
       b.addEventListener('click', () => {
@@ -18492,7 +18496,7 @@ const PAY_BADGES = {
         const ci = parseInt(b.dataset.ci, 10);
         const counters = r.counterOffers || [];
         if(isNaN(ci) || !counters[ci]) return;
-        if(act === 'message'){ b.classList.add('msg-open'); b.title = 'Conversation opened'; return; }
+        if(act === 'message'){ b.classList.add('msg-open'); openInboxThread(workerThreadId(r, (counters[ci] || {}).worker)); return; }
         if(act === 'profile'){
           dashState.counterProfileIdx = ci;
           dashState.profileReqId = r.id;
@@ -19473,6 +19477,34 @@ const PAY_BADGES = {
     return out;
   }
 
+  /* The thread id for messaging ONE worker on a request, pre- or post-hire.
+
+     ⛔ Mirrors the assigned-card rule at the top of this file — `isCrew ?
+     `${r.id}::${name}` : r.id` — on purpose. That rule keys per-worker threads
+     only when there is actually a crew, and single-worker requests keep the
+     legacy bare r.id. isCrew is computed from the ASSIGNED crew, which does not
+     exist yet when you message someone from the interested list, so workersNeeded
+     is the pre-hire stand-in for the same question.
+
+     Getting this wrong is not cosmetic: always appending ::name would open
+     "GC-001::Bianca L." before hiring and "GC-001" after, so the conversation
+     would look like it vanished the moment the worker was hired. */
+  function workerThreadId(r, w){
+    const name = (w && w.name) || '';
+    /* Messaging a SPECIFIC person is always keyed by name. The bare r.id form
+       carries no identity, and pre-hire there is no assigned worker to infer it
+       from — the request's own `worker` field reads "1 worker interested", which
+       is what the inbox would otherwise show as the correspondent.
+
+       ⚠️ KNOWN GAP, not introduced here: the assigned-worker card still uses the
+       legacy bare r.id for a SINGLE hired worker (`isCrew ? id::name : id`), so a
+       conversation started before hiring lives at id::name and the post-hire card
+       opens id. The demo thread store is keyed the same two ways (r.threads[name]
+       vs r.thread), so this is a data-model split that predates this change.
+       Raised rather than papered over. */
+    return name ? `${r.id}::${name}` : r.id;
+  }
+
   function openInboxThread(id){
     // Remember where the user came from, so the inbox's Back button can
     // return them there (Request Detail when they tapped Message on an
@@ -19516,19 +19548,45 @@ const PAY_BADGES = {
       const sep = activeId.indexOf('::');
       const baseId = sep > -1 ? activeId.slice(0, sep) : activeId;
       const crewName = sep > -1 ? activeId.slice(sep + 2) : null;
-      const r = DASH_DATA.activeRequests.find(x => x.id === baseId && x.userStarted);
+      /* ⛔ The `userStarted` gate used to live HERE, on the lookup, which meant a
+         thread could not even be RESOLVED for a seeded request — so tapping
+         Message on an interested worker fell through to threads[0] and opened a
+         completely different person's conversation (owner: "message feature not
+         working", 2026-09-29). Addressing a message to the wrong correspondent is
+         worse than the dead button it replaced.
+
+         userStarted governs whether you may TYPE, not whether the conversation can
+         be shown, so it moved to `typeable` below where it belongs. */
+      const r = DASH_DATA.activeRequests.find(x => x.id === baseId);
       if(r){
         // Pick the crew member by name if specified, otherwise the lead.
         const crew = (r.live && Array.isArray(r.live.crew)) ? r.live.crew : null;
+        /* PRE-HIRE correspondents. A thread can now be opened against a worker who
+           is only INTERESTED (or who sent a counter-offer) — the Message buttons in
+           those lists were dead until 2026-09-29 and had no thread to resolve. The
+           old fallback assumed an assigned worker and otherwise used r.worker, which
+           on a pending request is the summary string "N workers interested" — so the
+           conversation would have been addressed to a count rather than a person. */
+        const byName = (list, n) => (Array.isArray(list) ? list : []).find(x => x && x.name === n);
+        const pending = crewName
+          ? (byName(r.interestedWorkers, crewName)
+             || ((r.counterOffers || []).map(c => c && c.worker).find(x => x && x.name === crewName)))
+          : null;
         const worker = (crew && crewName) ? (crew.find(w => w.name === crewName) || crew[0])
-                     : (r.live ? r.live.worker : { name: r.worker, photo:'' });
+                     : (pending ? { name: pending.name, photo: pending.photo || '' }
+                     : (r.live ? r.live.worker : { name: r.worker, photo:'' }));
         // Per-worker thread lives at r.threads[workerName]; single-worker at r.thread.
         const thread = crewName
           ? ((r.threads && r.threads[crewName]) || [])
           : (r.thread || []);
         activeThread = {
           id: activeId, worker,
-          title: r.title, thread, last: thread[thread.length-1] || null, typeable: true,
+          title: r.title, thread, last: thread[thread.length-1] || null,
+          /* Was hardcoded true, which was safe only while the lookup above already
+             required userStarted. Now that the lookup resolves any request, the
+             composer rule has to be stated explicitly or seeded demo threads would
+             silently become typeable. */
+          typeable: !!r.userStarted,
         };
       }
     }
