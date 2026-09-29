@@ -3442,6 +3442,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        (top corners) and body (bottom corners) instead of clipping here. */
     overflow:visible; cursor:pointer; position:relative;
     transition:transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    /* Owner 2026-09-29: the tiles are buttons and did not read as buttons — they
+       had NO resting shadow, only hover and selected. This is the same two-layer
+       bubble the Request prototype already uses (--card-sh), so the portal and the
+       prototype now lift the same way. Hover still goes deeper, so the affordance
+       still changes on interaction rather than sitting flat. */
+    box-shadow:0 2px 4px rgba(0,36,97,0.05), 0 9px 20px rgba(0,36,97,0.13);
   }
   .cat-tile:hover {
     transform:translateY(-3px);
@@ -12230,7 +12236,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
 
     other: {
-      icon:'✨', name:'Other', tag:'Custom',
+      icon:'✨', name:'Custom Task', tag:'Custom',
       detailsTitle:'Tell us what you need',
       detailsSub:"Don't see your category? Describe it and we'll route it to the right team.",
       fields:[
@@ -12941,7 +12947,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   // ---- Step content renderers ----
   function renderStep1(){
     return `
-      <h3>Let's get you the help you need today!</h3>
+      <h3>Select the service you need help with below</h3>
       <div class="cat-grid">
         ${Object.entries(CATEGORIES).map(([key,c]) => `
           <div class="cat-tile ${key===state.category?'selected':''}" data-cat="${key}">
@@ -17705,7 +17711,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="ts-perk-icon">$</div>
         <div class="ts-perk-body">
           <strong>$1 off Age-Restricted Delivery and Ride-Sharing</strong>
-          <span>Applied automatically once you're verified, reducing the $1.99 age-restricted fee to $0.99 as long as you carry the badge. Savings add up fast.</span>
+          <span>Discount applied to grand total for all age-restricted delivery and ride sharing requests. Savings add up fast.</span>
         </div>
       </div>
       <div class="ts-perk">
