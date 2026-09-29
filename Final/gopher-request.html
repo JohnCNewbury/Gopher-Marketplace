@@ -8102,6 +8102,34 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .bidbd-row.is-total .bidbd-k { color:var(--navy); }
   .bidbd-v { font-variant-numeric:tabular-nums; font-weight:700; }
   .bidbd-note { font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.45; }
+  .pe-danger {
+    margin-top:22px; padding-top:16px; border-top:1px solid #eef0f5;
+  }
+  .pe-danger-head {
+    font-family:'Nunito'; font-weight:900; font-size:12px; letter-spacing:0.5px;
+    text-transform:uppercase; color:#a3202f;
+  }
+  .pe-danger-copy {
+    font-family:'DM Sans'; font-size:12.5px; color:var(--muted);
+    line-height:1.5; margin:5px 0 10px;
+  }
+  .pe-danger-btn {
+    background:none; border:1.5px solid #e6b3ba; color:#c53030;
+    border-radius:10px; padding:9px 14px; font-family:'Nunito'; font-weight:800;
+    font-size:13px; cursor:pointer;
+  }
+  .pe-danger-btn:hover { background:#fff5f5; border-color:#c53030; }
+  .da-list { margin:10px 0 0; padding-left:18px; font-size:12.5px; color:#7a2230; line-height:1.6; }
+  .da-confirm-label {
+    display:block; font-family:'DM Sans'; font-size:12.5px; color:var(--navy);
+    margin:14px 0 6px;
+  }
+  .da-confirm-input {
+    width:100%; box-sizing:border-box; padding:10px 12px; border:1.5px solid #dfe3ec;
+    border-radius:10px; font-family:'DM Sans'; font-size:14px; letter-spacing:1px;
+  }
+  .da-confirm-input:focus { outline:none; border-color:#c53030; }
+  .bidbd-close.is-disabled { background:#e3e6ee !important; color:#9aa3b5 !important; cursor:not-allowed; }
   .tscx-warn {
     background:#fff5f5; border:1px solid #f6d5d5; border-radius:10px;
     padding:12px 13px; font-size:12.5px; line-height:1.5; color:#7a2230;
@@ -23870,6 +23898,85 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     else btn.setAttribute('data-open-trustshield', '');
   }
 
+  /* ── DELETE ACCOUNT ─────────────────────────────────────────────────────────
+     Owner 2026-09-29: "Users need to be able to delete their account."
+
+     ⛔ FRONT-END ONLY, BY OWNER DECISION (2026-09-29). Nothing here calls a
+     backend and nothing is erased. Account deletion carries data-retention and
+     legal questions — what is erased versus retained, what happens to open
+     requests, payouts and disputes — and the owner's instruction was to build the
+     screens and leave those settled first. So the final step confirms a REQUEST
+     was recorded; it does NOT claim the account is gone, and it deliberately
+     quotes no retention period, because none has been set.
+
+     ⚠️ Whoever wires this: the copy below is the contract the user was shown.
+     If the real policy differs — grace period, what survives deletion, what
+     happens to an in-flight request — change this copy in the same commit. */
+  function rqOpenDeleteAccount(){
+    const ov = document.createElement('div');
+    ov.className = 'bidbd-ov';
+    ov.innerHTML = `
+      <div class="bidbd-card" role="dialog" aria-modal="true" aria-label="Delete account">
+        <div class="bidbd-head">Delete your Gopher account?</div>
+        <div class="bidbd-sub">This cannot be undone.</div>
+        <div class="tscx-warn">
+          <strong>What happens when your account closes</strong>
+          <ul class="da-list">
+            <li>Your profile, saved addresses and payment methods are removed.</li>
+            <li>Any TrustShield&trade; verification and its discounts end.</li>
+            <li>Open requests must finish or be cancelled first, and any money owed either way has to settle.</li>
+            <li>Past receipts we're required to keep are retained.</li>
+          </ul>
+        </div>
+        <label class="da-confirm-label" for="daConfirmInput">Type <strong>DELETE</strong> to confirm</label>
+        <input class="da-confirm-input" id="daConfirmInput" type="text" autocomplete="off" placeholder="DELETE" aria-label="Type DELETE to confirm">
+        <button class="bidbd-close tscx-confirm is-disabled" id="daConfirmBtn" type="button" disabled>Delete my account</button>
+        <button class="hirerev-back" type="button">Keep my account</button>
+      </div>`;
+    const close = () => ov.remove();
+    ov.querySelector('.hirerev-back').addEventListener('click', close);
+    ov.addEventListener('click', (e) => { if(e.target === ov) close(); });
+
+    const input = ov.querySelector('#daConfirmInput');
+    const go    = ov.querySelector('#daConfirmBtn');
+    /* Typing the word is the whole guard — a single misclick must not be able to
+       close an account. Exact match, so "delete " or "Delete" do not arm it. */
+    input.addEventListener('input', () => {
+      const armed = input.value === 'DELETE';
+      go.disabled = !armed;
+      go.classList.toggle('is-disabled', !armed);
+    });
+    go.addEventListener('click', () => {
+      if(input.value !== 'DELETE') return;
+      close();
+      rqShowDeleteAcknowledgement();
+    });
+    document.body.appendChild(ov);
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function rqShowDeleteAcknowledgement(){
+    const ov = document.createElement('div');
+    ov.className = 'bidbd-ov';
+    ov.innerHTML = `
+      <div class="bidbd-card" role="dialog" aria-modal="true" aria-label="Deletion requested">
+        <div class="bidbd-head">Your deletion request is in</div>
+        <div class="bidbd-sub">We'll email you at the address on your account once it's processed.</div>
+        <p class="pe-danger-copy">
+          If you have an open request, it has to finish or be cancelled before the
+          account can close, and anything owed in either direction needs to settle
+          first. Changed your mind? Contact support and we'll stop it.
+        </p>
+        <button class="bidbd-close" type="button">Done</button>
+      </div>`;
+    ov.querySelector('.bidbd-close').addEventListener('click', () => ov.remove());
+    document.body.appendChild(ov);
+  }
+
+  document.addEventListener('click', (e) => {
+    if(e.target.closest('#peDeleteAccount')) rqOpenDeleteAccount();
+  });
+
   function rqOpenTrustShieldCancel(){
     const ov = document.createElement('div');
     ov.className = 'bidbd-ov';
@@ -27115,6 +27222,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <p class="pe-status" id="peStatus">No changes yet.</p>
       <button type="button" class="gr-modal-btn" id="peSave" disabled>Save changes</button>
       <button type="button" class="gr-modal-btn-text" id="peCancel">Cancel</button>
+      <!-- Owner 2026-09-29: "Users need to be able to delete their account."
+           Kept visually separate from Save/Cancel so it cannot be hit by reflex. -->
+      <div class="pe-danger">
+        <div class="pe-danger-head">Close account</div>
+        <p class="pe-danger-copy">Deleting your Gopher account removes your profile, saved addresses and payment methods. This cannot be undone.</p>
+        <button type="button" class="pe-danger-btn" id="peDeleteAccount">Delete my account</button>
+      </div>
     </div>
 
     <div id="peOtpView" hidden>
