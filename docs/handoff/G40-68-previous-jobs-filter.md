@@ -54,14 +54,17 @@ the feature "net-new".
 
 ## What was built
 
-| Piece | Where | State (2026-09-30) |
+**State at 2026-09-30 18:55 ET: Jira Ready for Release. Everything is merged; it ships with the 10/2 Request store build.**
+
+| Piece | Where | State |
 |---|---|---|
-| Backend `previous_jobs` on the 3 endpoints | gopher-backend-api **!657** | **MERGED 09:21:19 ET and LIVE** (owner's instruction). Merge 23cbc801; MR pipeline 2897387430 6/6 on e28aa643; production pipeline 2897422031 6/6; CodePipeline b8d8668c Succeeded 09:24:45; EB serving 23cbc801, Ready/Green |
-| Ratings on each row | gopher-backend-api **!662** (bf35a8cc) | **MERGED 12:56:05 ET and LIVE** (owner: merge when green). Merge daf6a95e; production pipeline 2898223817 6/6; CodePipeline c2fb24eb Succeeded 12:59:07; EB Ready/Green 13:01:29 |
-| Live Request app screen (all 3 entry points) + the owner's design | gopher-mobile-requester-capacitorjs **!405** | open · green at **7e76cf624** (MR pipeline 2898222136 31/31) · A50 test **passed**; iPhone test pending; the owner merges before the 10/2 cut |
-| Front ends (Request web, Connect, Request prototype) | Code repo `G40-68-frontends` (a75639d), off `feature/deals-google-maps-audience` 10798d3, pushed to GitHub | **not merged into the site branch, not deployed**; `git merge --ff-only G40-68-frontends` in the main checkout, then deploy on the owner's go |
-| As-Built rows | `Documentation/…/production-request-flow-granular.html` | updated for ratings + design · twin: gopher-dev-handoff **!84** merged 10:44:21 (8baca5a6); **!92** (b4fa8f54) carries today's update, `cmp` identical, owner merges |
-| Test builds | A50: Request **881** / 3.10.0 — owner tested 14:47–14:58 ET · iPhone: 13.10.0, rebuilt at installed+1 when the desk releases it | 5475 was deleted (collided with G40-537's 5475) |
+| Backend `previous_jobs` on the 3 endpoints | gopher-backend-api **!657** | merged 09:21:19, LIVE (23cbc801; production pipeline 2897422031 6/6; CodePipeline b8d8668c) |
+| Ratings on each row | gopher-backend-api **!662** | merged 12:56:05, LIVE (daf6a95e; pipeline 2898223817 6/6; CodePipeline c2fb24eb) |
+| App screen + the owner's design (all 3 entry points) | Request **!405** | merged 17:40:35 (ab468edaf, pinned to 7e76cf624; pipeline 2898969201 31/31). Owner passed it on the A50 (881) and iPhone 12 (870) |
+| Business OR personal header, keyed on `add_business` | Request **!419** | merged 18:49:29 (28f51c802; pipeline 2899115413 31/31). Owner said "merge it", with no hand test |
+| Front ends (Request web, Connect, Request prototype) | Code `G40-68-frontends` | LIVE on both sites via Website Updates: live 77bf910, twin 20f0676, site merge f1db11d |
+| As-Built rows | gopher-dev-handoff !84, !92, !94, !96 | all merged; `main` matches the Documentation copy on the G40-68 row and box |
+| 101 guides | Website Updates' list | app wording waits for the 10/2 build |
 
 ### Backend (`helpers/previous_jobs.js`, `helpers/previous_jobs_rules.js`)
 - `gopher.previous_jobs = { category, all, in_category }`. Rows are `{ month, year, category, type, rating }`.
@@ -104,18 +107,12 @@ the feature "net-new".
 - **Prototype:** mirrors the app design (header card, stat bar, green buttons, rated cards).
 - All 18 of `scripts/web-checks/run-all.sh` pass, and the parity harness is OK.
 
-## What is left, in order
+## What is left
 
-1. ~~GitLab unblock~~ (08:56). ~~!657~~ live (09:24). ~~!662 ratings~~ live (12:59). ~~A50 test~~
-   passed (881, 14:47–14:58 ET).
-2. **iPhone 15 Pro Max test** when the desk releases it (queue: G40-537 → G40-553 → G40-68).
-   Rebuild from the latest branch at installed+1. ⛔ Stamp **3.10.0 / 13.10.0**, not 3.11.0. A test
-   phone reporting 3.11.0 before the release exists inflates G40-554's adoption gate.
-3. **Merge of !405 before the 10/2 cut.** Then read the `production` pipeline by id.
-4. **Front ends:** fast-forward the site branch to `G40-68-frontends`, then deploy on the owner's go.
-5. **As-Built twin:** owner merges gopher-dev-handoff !92, then `cmp` the two copies on `main`.
-6. After the app ships, fold the As-Built "LIVE TODAY" and "backend LIVE; app NOT live" paragraphs
-   into one and delete the deployment-reality box.
+Nothing on this ticket except the 10/2 store release. After it ships:
+
+1. Fold the As-Built "LIVE TODAY" and "backend LIVE; app NOT live" paragraphs into one, and delete the deployment box.
+2. Walk Jira from Ready for Release to Done (10: "Work is complete and validated").
 
 ## Open for the owner, deliberately not assumed
 
