@@ -17584,16 +17584,26 @@ const PAY_BADGES = {
      a Start button, "so the user can agree on the actual terms WITH the actual
      price and can start the request."
 
-     ⛔ SCOPE IS BIDS ONLY, and that is deliberate. gopher-connect.html carries an
-     owner ruling of 2026-09-01 — "HIRING STARTS THE JOB … the live requester app
-     has NO start step in any mode" — which removed a Start step precisely because
-     requests sat in Pending waiting for it. These do not actually conflict: in
-     every other mode the price was agreed at submit, so hiring is the commitment
-     and nothing new needs agreeing. On a BIDS request the requester has never
-     seen the price — the review screen literally reads "Pending bids" and "TBD
-     after bid" — so the bid is a new term, and this is where it gets agreed.
-     Owner confirmed this narrow scope on 2026-09-29. Do NOT widen it to the
-     other modes without revisiting the 09-01 ruling.
+     ⛔ SCOPE IS BIDS ONLY, and the button says SUBMIT — not Start.
+
+     Owner 2026-09-30, settling a collision of words: "Start on Slide 11 should
+     actually say 'Submit.' It is when a bid has been accepted and they now can
+     see the review request screen with actual pricing, since the last time they
+     saw it, it said 'pending'." So this is the requester submitting at a price
+     they can finally see — NOT a start step.
+
+     That distinction is load-bearing. This file carries an owner ruling of
+     2026-09-01 — "HIRING STARTS THE JOB … the live requester app has NO start
+     step in any mode" — which removed a Start step because requests sat in
+     Pending waiting for someone to press it. Calling this button "Start" put it
+     back in name and invited exactly that confusion. The separate dashboard
+     "Start job" BAR is a different control with its own rule (owner 2026-09-30,
+     slide 9): Connect only, and only when more workers were requested than have
+     accepted.
+
+     In every non-bid mode the price was agreed at submit, so hiring remains the
+     commitment and nothing new needs agreeing. Do NOT widen this overlay to
+     those modes.
 
      Built from the request's frozen reviewSnapshot, NOT from the flow's `state`
      — same reason as __bidBreakdown: in the dashboard `state` belongs to
@@ -17633,11 +17643,11 @@ const PAY_BADGES = {
     ov.innerHTML = `
       <div class="bidbd-card hirerev-card" role="dialog" aria-modal="true" aria-label="Confirm and start">
         <div class="bidbd-head">Let's review your request</div>
-        <div class="bidbd-sub">${esc((w && w.name) || 'Your worker')}'s bid is now your price. Nothing starts until you press Start.</div>
+        <div class="bidbd-sub">${esc((w && w.name) || 'Your worker')}'s bid is now your price. Last time you saw this it said "Pending bids" — nothing is committed until you submit.</div>
         ${facts}
         <div class="hirerev-sep">Pricing</div>
         ${pricing}
-        <button class="bidbd-close hirerev-start" type="button">Start &rarr;</button>
+        <button class="bidbd-close hirerev-start" type="button">Submit</button>
         <button class="hirerev-back" type="button">Not yet &mdash; back to my workers</button>
       </div>`;
     const close = () => ov.remove();
