@@ -21815,11 +21815,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function __demoJobsFor(w){
     // Deterministic demo history spanning categories so the filter + empty state
     // are demonstrable. Real per-job top-level category tags come from the backend.
+    /* G40-68 (owner rulings 2026-09-30): a past job is another customer's, so a
+       row is its MONTH + YEAR, category, type and the star RATING that job's
+       customer gave ("Not rated" if none) — no order id, amount, details,
+       comment or photos. The rating was added after the owner used the live
+       app on the A50 ("need to include rating"; "We're excluding pics and
+       comments"). The live app's payload is gopher.previous_jobs { category,
+       all, in_category }, rows { month, year, category, type, rating }:
+       gopher-backend-api !657 + !662. */
     return [
-      { id:'#212121', date:'3/4/26',  type:'Home Services · Handyman',   details:'Install ceiling fan',        amount:'$140.00', rating:'5.00', comment:'Excellent — professional and quick. Highly recommend.', cat:'Service' },
-      { id:'#20245',  date:'3/1/26',  type:'Delivery — Age-Restricted',  details:'1 can of ZYN wintergreen',   amount:'$40.00',  rating:'4.95', comment:'', cat:'Delivery' },
-      { id:'#20188',  date:'2/22/26', type:'Junk Removal',               details:'Garage cleanout — 6 items',  amount:'$210.00', rating:'5.00', comment:'Fast and careful with everything.', cat:'Service' },
-      { id:'#20102',  date:'2/10/26', type:'Need A Ride',                details:'Airport drop-off',           amount:'$55.00',  rating:'4.90', comment:'', cat:'Need A Ride' }
+      { date:'Mar 2026', type:'Home Services · General Handyman', rating:'5.00', cat:'Service' },
+      { date:'Mar 2026', type:'Delivery · Age-Restricted',         rating:'4.95', cat:'Delivery' },
+      { date:'Feb 2026', type:'Junk Removal',                      rating:'5.00', cat:'Service' },
+      { date:'Feb 2026', type:'Need A Ride',                       rating:'4.90', cat:'Need A Ride' }
     ];
   }
   (function initJobFilter(){
@@ -21911,7 +21919,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     return parts[0] + (parts[1] ? ' ' + parts[1].charAt(0) : '');
   }
 
-  function renderWorkerProfile(r, w, idx){
+  function renderWorkerProfile(r, w, idx, opts){
+    /* Per-job stars show everywhere this renders: the Request worker profile
+       (G40-68 — the owner restored ratings on 2026-09-30 after testing the
+       live app) and the gopher-profile modal (Deals card, MY Gophers, inbox),
+       which always had them. `opts` is kept for the modal's call site. */
+    void opts;
     /* ⛔ NEVER A DEFAULT TIER FOR A LIVE PROVIDER. This read
        `w.tier || w.badge || 'pro+'`, and __tierName('pro+') returns 'Elite+' —
        so a real provider the backend resolved NO tier for rendered the TOP
@@ -26262,7 +26275,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     ensureGopherProfileModal();
     const w = tierToWorker(m);
     const r = { title: m.name };
-    document.getElementById('gopherProfBody').innerHTML = renderWorkerProfile(r, w, 0);
+    document.getElementById('gopherProfBody').innerHTML = renderWorkerProfile(r, w, 0, { showJobRatings: true });
     document.getElementById('gopherProfOverlay').hidden = false;
   }
 
