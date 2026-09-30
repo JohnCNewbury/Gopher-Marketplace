@@ -44,10 +44,11 @@ the feature "net-new".
 
 | Piece | Where | State (2026-09-30) |
 |---|---|---|
-| Backend `previous_jobs` on the 3 endpoints | gopher-backend-api `G40-68-previous-jobs` → **!657** | open · MR pipeline 2897061920 green on d64657aa; later commits cb6de675, 422f2550 not re-checked; **owner HOLD** |
-| Live Request app screen (all 3 entry points) | gopher-mobile-requester-capacitorjs `G40-68-previous-jobs` → **!405** | open · MR pipeline 2897120353 31/31 on d578dbe11; 167033d91 not re-checked |
-| Front ends (Request web, Connect, Request prototype) | Code repo `G40-68-frontends` 5754b1d, off `feature/deals-google-maps-audience` 10798d3 | committed locally · **not merged into the site branch, not deployed** |
-| As-Built row | `Documentation/…/production-request-flow-granular.html` | written · **twin in gopher-dev-handoff NOT yet updated** (GitLab blocked 08:52 ET) |
+| Backend `previous_jobs` on the 3 endpoints | gopher-backend-api **!657** | **MERGED 09:21:19 ET and LIVE** (owner's instruction). Merge 23cbc801; MR pipeline 2897387430 6/6 on e28aa643; production pipeline 2897422031 6/6; CodePipeline b8d8668c Succeeded 09:24:45; EB serving 23cbc801, Ready/Green |
+| Live Request app screen (all 3 entry points) | gopher-mobile-requester-capacitorjs **!405** | open · green (7e354e649: 2897356478 31/31; 1b77cc627 pipeline 2897665160 started) · waits on the owner's hardware test |
+| Front ends (Request web, Connect, Request prototype) | Code repo `G40-68-frontends`, off `feature/deals-google-maps-audience` 10798d3, pushed to GitHub | **not merged into the site branch, not deployed**; `git merge --ff-only G40-68-frontends` in the main checkout, then deploy on the owner's go |
+| As-Built row | `Documentation/…/production-request-flow-granular.html` | written, updated for the 09:24 deploy · twin in gopher-dev-handoff **!84** (d8dd338), `cmp` identical, owner merges |
+| Test builds | A50: Request 880 / 3.10.0 (878 was installed 09:48, then replaced by G40-547's 879 on the owner's order) · iPhone: 13.10.0 (5475) | both built and verified from the artefact; A50 re-queued behind G40-547, iPhone behind G40-553 |
 
 ### Backend (`helpers/previous_jobs.js`, `helpers/previous_jobs_rules.js`)
 - `gopher.previous_jobs = { category, all, in_category }`. Rows are `{ month, year, category, type }`.
@@ -83,16 +84,15 @@ the feature "net-new".
 
 ## What is left, in order
 
-1. **GitLab unblock** (the owner). Then re-verify both MR pipelines by id on their current SHAs,
-   with `include_retried=true`.
-2. **Owner consent, then merge of !657.** Then read the `production` pipeline by id and confirm
-   the deploy.
-3. **Hardware test by the owner:** A50 and iPhone 15 Pro Max, booked through the desk. The Request
-   build must be numbered above 5473 and pointed at production.
-4. **Merge of !405 before the 10/2 cut.** Then read the `production` pipeline.
-5. **Front ends:** merge `G40-68-frontends` into the site branch, then deploy with the owner's go.
-6. **As-Built twin:** copy the doc into gopher-dev-handoff, `cmp` the two, open an MR to `main`.
-7. After both MRs ship, fold the As-Built "LIVE TODAY" and "built, NOT live" paragraphs into one.
+1. ~~GitLab unblock~~ — done (08:56). ~~Merge of !657~~ — done and live (09:24).
+2. **Hardware test by the owner:** A50 (install 880 when the desk releases it) and iPhone 15 Pro
+   Max (install 5475, or higher than whatever is then installed). ⛔ Stamp **3.10.0 / 13.10.0**, not
+   3.11.0 — a test phone reporting 3.11.0 before the release exists inflates G40-554's adoption gate.
+3. **Merge of !405 before the 10/2 cut.** Then read the `production` pipeline by id.
+4. **Front ends:** fast-forward the site branch to `G40-68-frontends`, then deploy on the owner's go.
+5. **As-Built twin:** owner merges gopher-dev-handoff !84, then `cmp` the two copies on `main`.
+6. After the app ships, fold the As-Built "LIVE TODAY" and "backend LIVE; app NOT live" paragraphs
+   into one and delete the deployment-reality box.
 
 ## Open for the owner, deliberately not assumed
 
