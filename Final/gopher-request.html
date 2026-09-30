@@ -8083,7 +8083,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     text-transform:uppercase; color:var(--muted); margin:0;
   }
   .bidbd-ov {
-    position:fixed; inset:0; background:rgba(12,22,48,0.55); z-index:9000;
+    /* ⛔ 9800, NOT 9000. These dialogs are launched FROM other modals — the
+       delete-account one opens from inside the Personal info modal, which is
+       .gr-modal-overlay at z-index:9500 — so at 9000 it rendered BEHIND the very
+       modal that opened it. That is the owner's 2026-09-30 report: "this did not
+       appear right after selecting delete." It had appeared; it was underneath.
+       Sits above .gr-modal-overlay (9500) and the 9600 overlay, and below the
+       12000 toast layer so notifications still surface over it. */
+    position:fixed; inset:0; background:rgba(12,22,48,0.55); z-index:9800;
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
   .bidbd-card {
