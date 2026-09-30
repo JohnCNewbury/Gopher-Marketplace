@@ -17703,8 +17703,8 @@ const PAY_BADGES = {
     /* opts.showJobRatings marks the Deals "Review job history" card, which keeps
        its own showroom history with per-job stars (owner ruling 2026-08-26).
        Everything else — Request Details: Interested / Counter Offers — gets the
-       G40-68 All / [Category] filter with no stars (owner ruling 2026-09-30),
-       as in gopher-request.html. */
+       G40-68 All / [Category] filter, each job with its rating (owner rulings
+       2026-09-30), as in gopher-request.html. */
     const dealsCard = !!(opts && opts.showJobRatings);
     const tier = w.tier || 'standard';
     const tierLabel = tier.replace('+','');
@@ -17804,8 +17804,8 @@ const PAY_BADGES = {
                here once they have finished work through Gopher.`}
         </div>` : !dealsCard ? `
         <!-- G40-68 — Request Details (Interested / Counter Offers). The live app
-             reads gopher.previous_jobs (gopher-backend-api !657): month + year,
-             category and type only; no stars (owner rulings 2026-09-30). -->
+             reads gopher.previous_jobs (gopher-backend-api !657 + !662): month +
+             year, category, type and rating (owner rulings 2026-09-30). -->
         <div class="profile-history" data-topcat="${topCat}">
           ${window.__ecJobs(w)}
           <div class="profile-history-empty" style="display:none">No Previous ${topCat} Jobs</div>
@@ -25423,18 +25423,19 @@ const PAY_BADGES = {
          sentence-cased. The Style Guide's rule governs headlines and labels; it
          does not rename the taxonomy. "Age-restricted" IS prose, so that one is
          lowercased. */
-      { when:'Mar 2026', type:'Home Services · Handyman',  cat:'Service' },
-      { when:'Mar 2026', type:'Delivery — Age-restricted', cat:'Delivery' },
-      { when:'Feb 2026', type:'Junk Removal',              cat:'Service' },
-      { when:'Feb 2026', type:'Need a Ride',               cat:'Need A Ride' }
+      { when:'Mar 2026', type:'Home Services · Handyman',  cat:'Service',     rating:'5.00' },
+      { when:'Mar 2026', type:'Delivery — Age-restricted', cat:'Delivery',    rating:'4.95' },
+      { when:'Feb 2026', type:'Junk Removal',              cat:'Service',     rating:'5.00' },
+      { when:'Feb 2026', type:'Need a Ride',               cat:'Need A Ride', rating:'' }
     ];
     /* ⛔ G40-68 (owner rulings 2026-09-30). These rows are the worker profile a
        REQUESTER opens from Interested / Bids / Counter Offers, and each past job
-       is another customer's: month + year, category and type, and NOTHING else —
-       no order id, spend, comment, and no stars (the Deals provider card keeps
-       its own stars under the 2026-08-26 ruling; it does not use this helper).
-       The live app reads the same shape from gopher.previous_jobs
-       (gopher-backend-api !657).
+       is another customer's: month + year, category, type and the star rating
+       that job's customer gave ("Not rated" if none) — no order id, spend,
+       comment or photos. The rating came back after the owner used the live app
+       ("need to include rating"; "We're excluding pics and comments"). The live
+       app reads the same shape from gopher.previous_jobs (gopher-backend-api
+       !657 + !662).
        `name` is left unused rather than removed from the signature: the caller
        still passes it and a signature change here is not this fix's business. */
     void name;
@@ -25442,6 +25443,9 @@ const PAY_BADGES = {
       return '<div class="profile-history-item pjh-row" data-cat="'+j.cat+'">'
         + '<span class="pjh-cat">'+j.type+'</span>'
         + '<span class="pjh-when">'+j.when+'</span>'
+        + (j.rating
+            ? '<span class="pjh-star">★ '+Number(j.rating).toFixed(1)+'</span>'
+            : '<span class="pjh-unrated">Not rated</span>')
         + '</div>';
     }).join('');
   };
