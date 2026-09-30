@@ -11,6 +11,19 @@
 
 ---
 
+## 0 · Status of the D12 follow-up (Store Pick Up & Delivery), opened 2026-09-30
+
+| | |
+| --- | --- |
+| Why reopened | Owner's 2026-09-26 device pass: Store Pick Up/Delivery showed no suggested price. Ticket → **Blocked**, sprint "Flow Modification" (875). See **D12** in §4. |
+| Scope | Owner, 2026-09-30: **"Reuse. ALL moving shares same suggested pricing."** App only, one form. No backend change. |
+| App | [!415](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/415) **open, not merged** · branch `G40-533-store-pickup-suggested-pricing` @ `e98a98ecc` on production `067942f59` · target `production`, squash **no**, source branch **kept** (read back from the API) |
+| Local gate | eslint exit 0 · prettier exit 0 · services **49/49 suites, 792/792 tests** · 4 mutations each turned it red |
+| Hardware | ⛔ **pending**: A50 booked through the desk. APK Request 3.10.0 / 884 built from `e98a98ecc` |
+| 10/2 build | John's call. A mobile `production` merge **is** inclusion. |
+
+The 2026-09-23 status below is kept as the record of the original delivery.
+
 ## 1 · Status — **MERGED**, and still **not Done**
 
 | | |
@@ -230,26 +243,68 @@ a live `distance` field, so the number is right there in the payload.
 
 ---
 
-## 4 · Scope — Moving is four forms and **three** are in
+## 4 · Scope — Moving is four forms, and since D12 **all four** are in
 
 | form | `category_type` | in scope |
 | --- | --- | :---: |
 | `locationmove.json` | Moving | ✅ |
 | `samelocationmove.json` | Moving | ✅ |
 | `othermoving.json` | Moving | ✅ |
-| `storepickupdelivery.json` | Moving | ❌ **out** |
+| `storepickupdelivery.json` | Moving | ✅ **since D12** (owner, 2026-09-30). ❌ out from 2026-09-23 to 2026-09-30 |
 
-**Why Store Pick Up & Delivery is out, with evidence.** The Moving anchors were fitted
+> # ✅ D12 — STORE PICK UP & DELIVERY SHARES THE MOVING PRICE (owner, 2026-09-30)
+>
+> Owner, verbatim: **"Reuse. ALL moving shares same suggested pricing."**
+>
+> **How it came up.** On 2026-09-26 the owner's device pass found that Store Pick
+> Up/Delivery showed **no suggested price at all**, while Location Move, Same Location
+> Move and Other did. He moved the ticket to Blocked, "until Store Pickup and Delivery are
+> updated." **That was the 9/23 exclusion below showing up on the phone, not a
+> regression.** VERIFIED on Request `production` `c74823cc4`:
+> `storepickupdelivery.json` was the only Moving form without `smart_price`.
+>
+> **What he chose between** (2026-09-30): (a) its own anchors under its own
+> `model_version`; (b) reuse the Moving model; (c) wait on a Store Pickup flow change.
+> He was shown the n=22 over-suggestion below when he chose (b). No seat owned a Store
+> Pickup change (confirmed by the desk).
+>
+> **What changed.** App only. `storepickupdelivery.json` declares `smart_price` right
+> after `gopher_offering`, identical to `locationmove.json`, and the two forms now differ
+> only in icon, title and sub-type strings. **No backend change:** the form sends
+> `request_type: "Moving"`, which production `49585bd2` already routes to `movingBand`.
+> VERIFIED on production's `helpers/suggested_pricing.js`: a store-pickup description
+> prices exactly as it does on Location Move.
+>
+> **The `model_version` stays `g40-533-moving-anchors-2026-09-22`, on purpose.** It is
+> the same model, so a distinct version would falsely say two models are running.
+> Store Pickup rows stay separable in the capture by `sub_category_type = "Store Pick Up
+> & Delivery"`.
+>
+> **The guard now works the other way.** The test that asserted the form stays out is
+> gone. The form is in `MOVING_FORMS`, and a new test walks `moving.json`'s `Navigate`
+> paths, so a Moving form missing from that list fails CI.
+>
+> ⛔ **Do not re-exclude it on the strength of the n=22 number.** The owner ruled with
+> that number in front of him. What would reopen this is **new evidence**: once Store
+> Pickup orders priced under this model have completed, compare the accepted offers with
+> the suggestion (`g40-533-moving-anchors-vs-production.py`, filtered to the sub-type)
+> and take the result to him.
+>
+> **Delivery:** Request [!415](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/415)
+> — see §0 for its state.
+
+**Why Store Pick Up & Delivery was out from 2026-09-23 to 2026-09-30 (history; superseded by D12).** The Moving anchors were fitted
 on a corpus that *deliberately removed* those orders (discovery §4b dropped 22 of them
 before fitting — **INHERITED**). The production check in §5 says why that matters
 (**VERIFIED**): across those 22 completed orders the detector tiers **15 as `truck`**
 and would suggest **$110 against a real median of $75** — a ~47% over-suggestion on the
 modal case. That is the same defect class G40-502 existed to remove.
 
-**A test asserts it stays out**, because the obvious tidy-up is to spot one Moving form
-missing the control and add it.
+Until D12 a test asserted it stayed out, because the obvious tidy-up is to spot one
+Moving form missing the control and add it. Since D12 that test is replaced by its
+opposite: every form the Moving menu opens must declare the control.
 
-Wiring, in all three, placed directly after `gopher_offering`:
+Wiring, in all three (all four since D12), placed directly after `gopher_offering`:
 
 ```json
 "smart_price": { "type": "smartPriceSuggestion", "visible": true }
@@ -446,8 +501,8 @@ replacements were mutation-proved.
   This is the single largest untested surface, because the tier row is new UI.
 - ⛔ **The live endpoint has not been exercised end to end** against the new client.
 - **GO/iOS and GO/Android** — out of scope, untouched, not built, not run.
-- The Store Pick Up & Delivery exclusion rests on n=22 completed orders. Directionally
-  clear, thin in absolute terms.
+- The Store Pick Up & Delivery exclusion rested on n=22 completed orders. Directionally
+  clear, thin in absolute terms. (Superseded by D12, 2026-09-30: the owner ruled it in.)
 
 ---
 
