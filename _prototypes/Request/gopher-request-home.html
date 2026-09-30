@@ -3225,11 +3225,15 @@ html+='<div class="rd-sec">Your Crew</div>';
   function demoJobs(){
     // Deterministic demo history spanning categories so the filter + empty state
     // are demonstrable. Real per-job top-level category tags come from the backend.
+    // ⛔ Owner rulings 2026-09-30: each past job is another customer's, so a row
+    // is month + year and request type ONLY — no order #, details, amount,
+    // stars or comment. Same shape as the live app's gopher.previous_jobs
+    // (gopher-backend-api !657; gopher-mobile-requester-capacitorjs !405).
     return [
-      {id:'#212121',date:'3/4/26', type:'Home Services · Handyman', details:'Install ceiling fan',       amount:'$140.00',rating:'5.00',comment:'Excellent — professional and quick.', cat:'Service'},
-      {id:'#20245', date:'3/1/26', type:'Delivery — Age-Restricted',details:'1 can of ZYN wintergreen',  amount:'$40.00', rating:'4.95',comment:'', cat:'Delivery'},
-      {id:'#20188', date:'2/22/26',type:'Junk Removal',                details:'Garage cleanout — 6 items',amount:'$210.00',rating:'5.00',comment:'Fast and careful.', cat:'Service'},
-      {id:'#20102', date:'2/10/26',type:'Need A Ride',                 details:'Airport drop-off',            amount:'$55.00', rating:'4.90',comment:'', cat:'Need A Ride'}
+      {date:'Mar 2026', type:'Home Services · General Handyman', cat:'Service'},
+      {date:'Mar 2026', type:'Delivery · Age-Restricted',         cat:'Delivery'},
+      {date:'Feb 2026', type:'Junk Removal',                      cat:'Service'},
+      {date:'Feb 2026', type:'Need A Ride',                       cat:'Need A Ride'}
     ];
   }
   function renderProfile(){
@@ -3246,11 +3250,8 @@ html+='<div class="rd-sec">Your Crew</div>';
       +'<button class="rd-prof-link'+(jobMode==='cat'?' on':'')+'" data-rd="jobmode" data-m="cat">View Previous '+cat+' Jobs Only</button></div>';
     if(jobs.length){
       html+=jobs.map(function(j){
-        return '<div class="rd-prof-job"><div class="rd-prof-jid">Request '+j.id+'</div>'
-          +'<div><b>Date:</b> '+j.date+'</div><div><b>Request Type:</b> '+j.type+'</div>'
-          +'<div><b>Details:</b> '+j.details+'</div><div><b>Amount Spent:</b> '+j.amount+'</div>'
-          +'<div><b>Rating:</b> '+j.rating+'</div>'
-          +(j.comment?'<div class="rd-prof-cmt">“'+j.comment+'”</div>':'')+'</div>';
+        return '<div class="rd-prof-job">'
+          +'<div><b>Date:</b> '+j.date+'</div><div><b>Request Type:</b> '+j.type+'</div></div>';
       }).join('');
     } else {
       html+='<div class="rd-prof-empty">No Previous '+cat+' Jobs</div>';

@@ -16495,7 +16495,7 @@ const PAY_BADGES = {
     ensureGopherProfileModal();
     const w = tierToWorker(m);
     const r = { title: m.name };
-    document.getElementById('gopherProfBody').innerHTML = renderWorkerProfile(r, w, 0);
+    document.getElementById('gopherProfBody').innerHTML = renderWorkerProfile(r, w, 0, { showJobRatings: true });
     document.getElementById('gopherProfOverlay').hidden = false;
   }
 
@@ -17699,7 +17699,13 @@ const PAY_BADGES = {
     return parts[0] + (parts[1] ? ' ' + parts[1].charAt(0) : '');
   }
 
-  function renderWorkerProfile(r, w, idx){
+  function renderWorkerProfile(r, w, idx, opts){
+    /* opts.showJobRatings marks the Deals "Review job history" card, which keeps
+       its own showroom history with per-job stars (owner ruling 2026-08-26).
+       Everything else — Request Details: Interested / Counter Offers — gets the
+       G40-68 All / [Category] filter with no stars (owner ruling 2026-09-30),
+       as in gopher-request.html. */
+    const dealsCard = !!(opts && opts.showJobRatings);
     const tier = w.tier || 'standard';
     const tierLabel = tier.replace('+','');
     const reviews = (w.reviews != null) ? w.reviews : (w.jobsNum || 0);
@@ -17727,6 +17733,7 @@ const PAY_BADGES = {
       ? `Rating across ${w.reviews} ${hasJobs ? `rated job${w.reviews === 1 ? '' : 's'}` : `review${w.reviews === 1 ? '' : 's'}`}`
       : '';
     const firstWord = (r.title || 'Previous').split(/[\s·]/)[0];
+    const topCat = window.__ecTopCatOfRequest(r);   // G40-68
     /* A deal that came from the publication feed carries `live`. We hold no job
        history for those providers, so the showroom history below is withheld
        rather than shown under their name. */
@@ -17775,9 +17782,12 @@ const PAY_BADGES = {
           <button class="profile-message-btn" data-wact="message" data-i="${idx}">💬 Message</button>
         </div>
 
-        ${isLive ? '' : `<div class="profile-links">
+        ${isLive ? '' : dealsCard ? `<div class="profile-links">
           <span class="profile-link">View all previous jobs</span>
           <span class="profile-link">View all previous ${firstWord} jobs only</span>
+        </div>` : `<div class="profile-links">
+          <button type="button" class="profile-link on" data-jobfilter="all">View all previous jobs</button>
+          <button type="button" class="profile-link" data-jobfilter="cat">View previous ${topCat} jobs only</button>
         </div>`}
         <!-- The demo filters stay demo-only. A LIVE provider gets the real
              Service jobs / All jobs toggle, rendered by
@@ -17792,6 +17802,13 @@ const PAY_BADGES = {
                this provider's Gopher history.`
             : `No completed jobs to show yet. This provider's history will appear
                here once they have finished work through Gopher.`}
+        </div>` : !dealsCard ? `
+        <!-- G40-68 — Request Details (Interested / Counter Offers). The live app
+             reads gopher.previous_jobs (gopher-backend-api !657): month + year,
+             category and type only; no stars (owner rulings 2026-09-30). -->
+        <div class="profile-history" data-topcat="${topCat}">
+          ${window.__ecJobs(w)}
+          <div class="profile-history-empty" style="display:none">No Previous ${topCat} Jobs</div>
         </div>` : `
         <!-- ⛔ MATCHED TO THE LIVE CARD. These rows carried the past customer's
              spend and their written comment — the two fields the live endpoint
@@ -25383,6 +25400,18 @@ const PAY_BADGES = {
 (function(){
   var MAP = { delivery:'Delivery', errand:'Delivery', ride:'Need A Ride', moving:'Service', home:'Service', labor:'Service', junk:'Service', yard:'Service', service:'Service', other:'Other' };
   window.__ecTopCat = function(key){ return MAP[(key||'').toString().toLowerCase()] || 'Service'; };
+  /* G40-68 — the dashboard's Request Details holds a request object, not a
+     flow key. Same four buckets and the same rule as gopher-request.html's
+     __topCategoryOf, so the two sites label one request the same way. */
+  window.__ecTopCatOfRequest = function(r){
+    var key = ((r && (r.topCategory || r.category)) || '').toString().toLowerCase();
+    if (MAP[key]) return MAP[key];
+    var t = ((r && r.title) || '') + '';
+    if (/ride|airport|chauffeur|need a ride/i.test(t)) return 'Need A Ride';
+    if (/deliver|errand|grocery|food|courier|package|pharmacy|retail/i.test(t)) return 'Delivery';
+    if (/\bother\b/i.test(t)) return 'Other';
+    return 'Service';
+  };
   window.__ecJobs = function(pw){
     var name = (pw && pw.name) || 'Gopher';
     var jobs = [
@@ -25394,15 +25423,18 @@ const PAY_BADGES = {
          sentence-cased. The Style Guide's rule governs headlines and labels; it
          does not rename the taxonomy. "Age-restricted" IS prose, so that one is
          lowercased. */
-      { id:'#212121', when:'Mar 2026', type:'Home Services · Handyman',  rating:'5.00', cat:'Service' },
-      { id:'#20245',  when:'Mar 2026', type:'Delivery — Age-restricted', rating:'4.95', cat:'Delivery' },
-      { id:'#20188',  when:'Feb 2026', type:'Junk Removal',              rating:'5.00', cat:'Service' },
-      { id:'#20102',  when:'Feb 2026', type:'Need a Ride',               rating:'',     cat:'Need A Ride' }
+      { when:'Mar 2026', type:'Home Services · Handyman',  cat:'Service' },
+      { when:'Mar 2026', type:'Delivery — Age-restricted', cat:'Delivery' },
+      { when:'Feb 2026', type:'Junk Removal',              cat:'Service' },
+      { when:'Feb 2026', type:'Need a Ride',               cat:'Need A Ride' }
     ];
-    /* ⛔ MATCHED TO THE LIVE CARD — the THIRD copy of this renderer, and the
-       reason the live history was extracted into one shared module. These rows
-       carried the past customer's spend and their written comment, which the
-       live endpoint deliberately never returns. Category, month/year, rating.
+    /* ⛔ G40-68 (owner rulings 2026-09-30). These rows are the worker profile a
+       REQUESTER opens from Interested / Bids / Counter Offers, and each past job
+       is another customer's: month + year, category and type, and NOTHING else —
+       no order id, spend, comment, and no stars (the Deals provider card keeps
+       its own stars under the 2026-08-26 ruling; it does not use this helper).
+       The live app reads the same shape from gopher.previous_jobs
+       (gopher-backend-api !657).
        `name` is left unused rather than removed from the signature: the caller
        still passes it and a signature change here is not this fix's business. */
     void name;
@@ -25410,9 +25442,6 @@ const PAY_BADGES = {
       return '<div class="profile-history-item pjh-row" data-cat="'+j.cat+'">'
         + '<span class="pjh-cat">'+j.type+'</span>'
         + '<span class="pjh-when">'+j.when+'</span>'
-        + (j.rating
-            ? '<span class="pjh-star">★ '+Number(j.rating).toFixed(1)+'</span>'
-            : '<span class="pjh-unrated">Not rated</span>')
         + '</div>';
     }).join('');
   };
