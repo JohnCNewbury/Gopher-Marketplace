@@ -6952,13 +6952,23 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     overflow-y:auto;
   }
   .dash-sidebar-head {
-    /* uniform platform card across all portals (owner, 2026-07-23) */
-    min-height:122px; box-sizing:border-box;
-    display:flex; flex-direction:column; align-items:flex-start; gap:12px;
+    /* Was a white 122px "uniform platform card" (owner, 2026-07-23) holding the
+       logo plus a name and status line. Owner 2026-09-30 removed the name/status,
+       which left the card an empty white box, then asked for the logo to read the
+       way our logos do on a dark background.
+
+       ⛔ It CANNOT simply sit on the navy: the wordmark in gopher-request-logo.svg
+       is fill="#012462" — the same navy — so "request" vanishes and only the green
+       mark survives. There is no white/inverted logo asset in the repo. So the
+       white stays, but as a chip that HUGS the mark instead of a 122px void:
+       inline-flex + width:auto, so it is the logo's backing, not a panel. */
+    box-sizing:border-box;
+    display:inline-flex; align-items:center; align-self:flex-start;
+    width:auto;
     background:#ffffff;
-    border-radius:18px;
-    padding:18px 18px 16px;
-    margin-bottom:18px;
+    border-radius:14px;
+    padding:10px 16px;
+    margin-bottom:16px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
   }
   .dash-sidebar-brand {
@@ -8140,6 +8150,64 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .dash-avatar-lead {
     width:36px; height:36px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
+  }
+  /* ── the two-pathway home screen (owner 2026-09-30, slide 2) ── */
+  .choose-stage { padding:34px 4px 10px; }
+  .choose-ask {
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; line-height:1.15;
+    margin:0 0 6px; letter-spacing:-.4px; color:var(--navy);
+  }
+  .choose-sub { margin:0 0 28px; font-size:14px; color:var(--muted); }
+  .choose-two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .choose-card {
+    position:relative; overflow:hidden; text-align:left; cursor:pointer; border:0;
+    border-radius:18px; padding:30px 28px; min-height:280px;
+    display:flex; flex-direction:column; font:inherit;
+    box-shadow:0 2px 4px rgba(0,36,97,.05), 0 9px 20px rgba(0,36,97,.13);
+    transition:transform .22s cubic-bezier(.2,.8,.3,1), box-shadow .22s;
+  }
+  .choose-card:hover, .choose-card:focus-visible {
+    transform:translateY(-5px); box-shadow:0 18px 44px rgba(0,36,97,.18); outline:none;
+  }
+  .choose-card.svc   { background:linear-gradient(150deg,#053a75 0%, #002461 60%); }
+  .choose-card.deals { background:linear-gradient(135deg,#FFFBF3 0%,#FBF3E4 55%,#F6E9D0 100%);
+                       border:1.5px solid #EAD9B6; }
+  .choose-card .cc-orb {
+    position:absolute; right:-42px; top:-42px; width:180px; height:180px;
+    border-radius:50%; background:rgba(51,217,117,.18);
+  }
+  .choose-card.deals .cc-orb { background:rgba(201,163,63,.16); }
+  .choose-card .cc-ico {
+    position:relative; width:54px; height:54px; border-radius:15px;
+    display:flex; align-items:center; justify-content:center; font-size:26px;
+    background:rgba(255,255,255,.14);
+  }
+  .choose-card.deals .cc-ico { background:#fff; border:1px solid #EAD9B6; }
+  .choose-card .cc-h {
+    position:relative; font-family:'Nunito',sans-serif; font-weight:900;
+    font-size:23px; margin:18px 0 7px; color:#fff;
+  }
+  .choose-card.deals .cc-h { color:#002461; }
+  .choose-card .cc-s {
+    position:relative; font-size:13.5px; line-height:1.55; max-width:36ch;
+    color:rgba(255,255,255,.78);
+  }
+  .choose-card.deals .cc-s { color:#6b5a38; }
+  .choose-card .cc-go {
+    position:relative; margin-top:auto; padding-top:20px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:14px;
+    color:var(--green); display:inline-flex; gap:7px; align-items:center;
+  }
+  .choose-card.deals .cc-go { color:#8a6a2f; }
+  .choose-card .cc-tag {
+    position:absolute; top:22px; right:22px; z-index:1;
+    font-size:9px; font-weight:800; letter-spacing:.7px; color:#8a6a2f;
+    background:#fff; border:1px solid #EAD9B6; border-radius:20px; padding:4px 10px;
+  }
+  @media(max-width:860px){
+    .choose-two { grid-template-columns:1fr; }
+    .choose-ask { font-size:24px; }
+    .choose-stage { padding:22px 2px 6px; }
   }
   .tscx-warn {
     background:#fff5f5; border:1px solid #f6d5d5; border-radius:10px;
@@ -19479,7 +19547,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="dash-avatar dash-avatar-lead" id="rqDashAvatar">JL</div>
         <div>
           <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
-          <div class="dash-section-title" id="rqDashSectionTitle">Dashboard overview</div>
+          <!-- Owner 2026-09-30, slide 1: "Remove Submit new request." The section
+               title is GONE from the topbar. Slide 2 is why it can go — the home
+               screen's two pathways carry the orientation, and each destination
+               already has its own heading ("Select the service you need help with
+               below", "Feature Deals Near You"), so this line was saying it twice.
+               Kept in the DOM, hidden, because renderers still write to it. -->
+          <div class="dash-section-title" id="rqDashSectionTitle" hidden>Dashboard overview</div>
         </div>
       </div>
       <div class="dash-topbar-right"></div>
@@ -19487,8 +19561,40 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     <div class="dash-content">
 
+      <!-- ── CHOOSE: the dashboard's home screen ──────────────────────────────
+           Owner 2026-09-30, slide 2: "I want the initially home screen of the
+           dashboard to share the customers 2 pathways ... Services or Deals."
+
+           Its ONLY job is the choice. Both destinations already exist — Services
+           hands off to the request flow in data-rqsec="new-request", Deals hands
+           off to the deals panel already hosted in that same section behind
+           #pathTabDeals — so this adds a front door, not a third surface. -->
+      <section class="dash-section active" data-rqsec="choose">
+        <div class="choose-stage">
+          <h2 class="choose-ask">So, how can we help you today?</h2>
+          <p class="choose-sub">Two ways to go from here.</p>
+          <div class="choose-two">
+            <button type="button" class="choose-card svc" data-choose="services">
+              <span class="cc-orb"></span>
+              <span class="cc-ico">🛠️</span>
+              <span class="cc-h">Get something done</span>
+              <span class="cc-s">Delivery, moving, junk, labor, rides and more — a neighbor takes it from here.</span>
+              <span class="cc-go">Choose your service →</span>
+            </button>
+            <button type="button" class="choose-card deals" data-choose="deals">
+              <span class="cc-tag">SPONSORED PICKS</span>
+              <span class="cc-orb"></span>
+              <span class="cc-ico">🏷️</span>
+              <span class="cc-h">Local deals near you</span>
+              <span class="cc-s">This month's winning offers from local merchants and vetted pros.</span>
+              <span class="cc-go">View local deals →</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- Home -->
-      <section class="dash-section active" data-rqsec="home">
+      <section class="dash-section" data-rqsec="home">
         <div class="kpi-grid">
           <button class="kpi-filter kpi-amber" data-rqfilter="pending" type="button">
             <div class="kpi-label">Pending</div><div class="kpi-value" id="kpiPending">0</div>
@@ -19765,8 +19871,28 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   const newReqBtn  = document.getElementById('rqDashNewRequest');
   const logoSlot   = document.getElementById('rqDashLogoSlot');
 
+  /* ── the home screen's two pathways ──────────────────────────────────────
+     Neither branch builds anything new: Services shows the existing request
+     flow, and Deals shows the existing deals panel by clicking the path tab
+     that already lives in that section. Going through #pathTabDeals rather
+     than toggling #dashDealsHost directly means the tab's own active/aria
+     state stays correct and renderDealsPanel() still runs. */
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-choose]');
+    if(!card) return;
+    const which = card.dataset.choose;
+    showSection('new-request');
+    if(which === 'deals'){
+      const tab = document.getElementById('pathTabDeals');
+      if(tab) tab.click();
+    } else {
+      const tab = document.getElementById('pathTabNew');
+      if(tab && !tab.classList.contains('is-active')) tab.click();
+    }
+  });
+
   const SECTION_TITLES = {
-    home:'Dashboard overview', previous:'Previous requests', inbox:'Inbox',
+    choose:'', home:'Dashboard overview', previous:'Previous requests', inbox:'Inbox',
     gophers:'MY Gophers',
     personal:'Personal info', payment:'Payment info', refer:'Refer Gopher',
     'new-request':'Submit New Request', 'request-detail':'Request Details'
@@ -25120,12 +25246,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     setTrustShield(DASH_DATA.profile ? DASH_DATA.profile.trustShield : true); // also paints the badges rail
     document.body.classList.add('dashboard-mode');
     dash.classList.add('open');
-    // v76 — "New Request is the screen": land directly on the request flow
-    // (Step 1) every login. The overview/home stays one click away in the
-    // sidebar. (Home was already painted above so it's ready when navigated to.)
+    /* v76 landed straight on the request flow (Step 1) every login — "New
+       Request is the screen". SUPERSEDED by owner 2026-09-30, slide 2: the
+       dashboard now opens on the two-pathway home screen, because landing in
+       the flow presumes the customer came to post a request and gives Deals no
+       visibility at all. The flow is still hosted here and is one click away
+       behind "Get something done"; the overview stays on the Dashboard nav. */
     moveFlowToDash();
     if(typeof window.__resetRequestFlow === 'function') window.__resetRequestFlow();
-    showSection('new-request');
+    showSection('choose');
     window.scrollTo({ top:0, behavior:'instant' });
     // Cross-app requirement: if the resolved profile has no photo (e.g. created
     // in Connect, which doesn't require one), block with a prompt to add one.
@@ -25147,7 +25276,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     seedDashboardRequests();
     if(typeof window.__g40ResetRecovery === 'function') window.__g40ResetRecovery(); // clear recovery state on sign-out
     renderActiveRequests();
-    showSection('home');     // next sign-in starts on the overview
+    /* Owner 2026-09-30, slide 2: the dashboard now OPENS on the two-pathway
+       home screen, not the KPI overview. The overview is still there on the
+       Dashboard nav item — this only changes where a fresh sign-in lands. */
+    showSection('choose');   // next sign-in starts on the Services/Deals choice
     sessionProfilePhoto = null;  // next account gets prompted for a photo fresh
     _sessionUserProfile = null;  // clear Gopher Deals eligibility for the next sign-in
     document.body.classList.remove('dashboard-mode');
