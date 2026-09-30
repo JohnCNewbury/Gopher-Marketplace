@@ -54,7 +54,7 @@ the feature "net-new".
 
 ## What was built
 
-**State at 2026-09-30 18:55 ET: Jira Ready for Release. Everything is merged; it ships with the 10/2 Request store build.**
+**State at 2026-09-30 19:05 ET: Jira Ready for Release. All code is merged and the web is live; the app half ships with the 10/2 Request store build. The 101 guides are still outstanding (see below).**
 
 | Piece | Where | State |
 |---|---|---|
@@ -109,7 +109,14 @@ the feature "net-new".
 
 ## What is left
 
-Nothing on this ticket except the 10/2 store release. After it ships:
+Two things, both outside this seat:
+
+- **The 10/2 Request store build** (the app half of !405 and !419).
+- **The 101 guides** (standing rule: a user-facing change is not done until its guide describes it). They're on
+  Website Updates' list, with this ticket's rules as the spec. The web-accurate wording can go in now; the
+  app sentences wait for 10/2, because a guide describes what the product does.
+
+After 10/2 ships and the guides are updated:
 
 1. Fold the As-Built "LIVE TODAY" and "backend LIVE; app NOT live" paragraphs into one, and delete the deployment box.
 2. Walk Jira from Ready for Release to Done (10: "Work is complete and validated").
