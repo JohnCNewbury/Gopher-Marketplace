@@ -739,3 +739,239 @@ account they can name" as a standing property. Owner action for the variable its
 A stronger version — a short-lived random token stored server-side, so the URL carries no account
 identifier at all — is the right end state, and is more work than the risk currently justifies.
 
+
+## 14. Addendum 2026-10-01: two routes this audit never saw, now FIXED (G40-564, desk PL-153)
+
+### 14.1 What leaked, and since when
+`GET /gopherdetail/:id` (`fav_gopher.gopher_details`) and `GET /requestordetail/:id`
+(`requestor.get_requestor_details`) are both `user_auth` only and take any id. Both called
+`get_users_details([id], false)` with **no field list**. That is the exact §6/§8 shape: the internal
+record went into the response, including email, telephone, date_of_birth, **fcm_token**, confirmed_at
+and, through the unconditional users_info block, the **full** `driver_license_number`.
+- Any signed-in requester could read any Gopher.
+- Any signed-in Gopher (the `decoded.gopher` branch) could read **any user**, customers included.
+
+Found 2026-09-30 by the G40-68 seat while building G40-561; the desk verified it from code. Neither
+route appears anywhere above.
+
+### 14.2 The fix: this audit's own projection
+gopher-backend-api **!671** passes `user_services.prospect_user_fields` in all three calls.
+- Merged 2026-10-01 06:53:52 ET (`6633b7051`).
+- Production pipeline 2900839034: 6/6.
+- CodePipeline 9dfc2fc9: Succeeded.
+- EB Gopher-Production: Ready / Green 06:58:51 ET.
+
+`test/g40-564-profile-endpoints-privacy.test.js` drives the **real** handlers through the **real**
+`get_users_details`, with only the database stubbed. Reverting any one call fails its check; pre-fix
+code fails all four.
+
+**Readers, both apps' production, 2026-10-01:**
+- Request chat and MY Gophers (`/gopherdetail`) read name, created_at, users_info fields, and the
+  licence via `.slice(-4)`.
+- Go chat (`/requestordetail`) reads only `ratings.total_ratings` and `requestor_completed_task_count`.
+
+None reads a removed field. A second session (G40-561) checked this independently.
+
+**On hardware:**
+- `/requestordetail` returned 200 at 07:26:57 (the A50) and 07:42:44 (a production Gopher's phone).
+- `/gopherdetail` returned 200 at 07:54:07 (the A50), during the owner's re-check: "it passes".
+
+### 14.3 Misuse check (owner-requested; counts only, no IPs or ids recorded)
+nginx access log, **retained 2026-09-24 06:44 ET onward only** (7-day retention; nothing earlier exists).
+- 355 GETs on the two routes, out of ~1.42M lines.
+- Distinct people looked up, all callers combined: 33 (`/requestordetail`) and 37 (`/gopherdetail`).
+- Max distinct ids from one caller: 6. Busiest hour: 22.
+
+**No enumeration pattern in the retained window.** Before 24 Sep is unknowable from logs.
+
+### 14.4 ⛔ Why no guard caught it: the guards do not scan the file these routes live in
+`index.js` mounts `routes/common.routes.js` (40 routes, 5 parameterised GETs, these two among them),
+`routes/admin.routes.js` and `routes/payment.routes.js`. **`check-route-authz.js` and
+`check-read-route-authz.js` scan only `controllers/{order,user,common}/index.js`.**
+
+`check-read-route-authz.js` is also **not run by CI** (absent from `package.json` and
+`.gitlab-ci.yml`). Run by hand on production it reports "16 parameterised GET routes, all accounted
+for", which is true of the files it reads and silent about `routes/common.routes.js`.
+
+`check-user-router-privacy.js` looks only for contact columns in a handler's **own** SQL. These handlers
+call a service whose wide default lives elsewhere.
+
+### 14.5 Still open (not G40-564)
+- **35 other `get_users_details` calls pass no field list** (`git ls-files '*.js'` minus test/ and
+  scripts/, 2026-10-01). Most are internal (email, push, admin, the user's own profile). Some are in
+  order handlers and may reach a response. This is the input for the PL-154/155 MR.
+- Add `routes/common.routes.js` (and the other mounted `routes/*.js`) to both guards' TARGETS, and wire
+  `check-read-route-authz.js` into CI. Until then, a new parameterised route in that file is invisible
+  to every authz check.
+
+## 15. Addendum 2026-10-01: a stranger's address attached to orders, now FIXED (desk PL-160)
+
+### 15.1 What leaked
+`addresses.addressable_id` is shared by every owner type (Order, Order_PickUp, Order_DropOff, User,
+Business). Four reads fetched addresses **by id alone**, so any User or Business address whose owner
+id equals an order id was attached to that order and returned to the caller. That is a stranger's
+home or business: street, city, zip and coordinates. The only masking (unit/apartment nulled) applied
+to a Gopher before acceptance, and a requester's own lists were unmasked.
+- `retrieve.js` `get_all_order_v2` and `get_all_order_v3`: every request list (`GET /orders/v2`,
+  `/v3`), for requesters and Gophers.
+- `retrieve.js` `get_gopher_active_and_available_orders`: the Gopher available feed.
+- `update.js` `order_pick_up`: the `PATCH /orders/:id/pick_up` reply, to the Gopher who taps Picked Up.
+
+**Size, from a read-only count on the production READER, 2026-10-01** (`pg_is_in_recovery()` true;
+counts only, no addresses read out):
+- **63,252 User and 1,045 Business** addresses had an id equal to an existing order's, touching
+  **58,049 of 64,888 orders**.
+- On orders created in the last 30 days: 951 User and 19 Business.
+- Users go up to id 145,147 and orders to 65,986, so nearly every order id has a namesake user.
+
+**Traffic, nginx, the 24 h before the fix:** `GET /orders/v2` 439×200 + 7,976×304;
+`GET /orders/v3` 997×200 + 3,399×304. All phone apps.
+
+### 15.2 Fixes, both live
+- **gopher-backend-api !673** (G40-551): the three `retrieve.js` reads typed to `ORDER_ADDRESS_TYPES`
+  (constants/index.js: Order / Order_PickUp / Order_DropOff). Merged 08:47:19 ET (`663d740ed`); EB
+  Green 08:52:18 ET.
+- **gopher-backend-api !676**: `order_pick_up` typed the same way. Merged 09:03:40 ET (`246535414`);
+  EB Green 09:11:17 ET. `test/pl-160-pickup-addresses.test.js` drives the real handler with an
+  addresses stub that behaves like Postgres. Against pre-fix code the stranger's home and business
+  addresses reach the reply.
+
+Neither app reads a non-order address type from these replies. The Go app's pickup caller reads only
+`aasm_state`. Nothing visible changed.
+
+### 15.3 Audited and NOT leaking (production, 2026-10-01, code read)
+- `auth.js`, `payment.stripe.js`, `cancel.js`, `create.js`, `functions.js`: every address read
+  carries a type (create.js has none).
+- `retrieve.js`'s four raw-SQL address reads were already typed.
+- `helpers/helper.js:121` (`distance_from_gopher_to_dropoff`, `addressable_type<>'User'`) admits
+  Business rows, but uses only Order / Order_DropOff rows for a distance and returns nothing to the
+  caller.
+
+### 15.4 Not a leak, possibly a bug (recorded, not changed)
+`update.js` `order_pick_up_complete_v2` and `assign_order` type their read as
+`[ORDER_DROP_OFF_LOCATION, ORDER_DROP_OFF_LOCATION]`, which is drop-off twice and never pick-up. Their
+replies may lack the pick-up address. It's a product bug for its own ticket; it isn't a privacy issue.
+
+## 16. Addendum 2026-10-01: the guards now see the mounted routers; two holes found there, both CLOSED (desk PL-159)
+
+### 16.1 Guard coverage widened (closes §14.5's second bullet)
+gopher-backend-api **!677**:
+- All three guards now read `routes/common.routes.js`.
+- The write guard also reads `routes/payment.routes.js`.
+- The read guard also reads `controllers/go_to/index.js`.
+- `check-read-route-authz.js` now runs in CI (job `read-route-authz-guard`).
+
+Merged 10:01:46 ET (`287d56978`).
+
+Coverage, from running each guard on production before !677 (`76d4613c`) and after all of §16 (`66bb3cb67`):
+
+| Guard | Before | After |
+|---|---|---|
+| `check-route-authz.js` (writes) | 56 routes, 0 exceptions | 61 routes, 2 documented exceptions |
+| `check-read-route-authz.js` (GETs) | 16 routes | 22 routes |
+| `check-user-router-privacy.js` | 146 routes | 162 routes |
+
+The two write exceptions are `referral.get_referrals_by_id` and `inboundEmail.inbound_dispute_email`.
+The reason for each is in the guard's `ALLOWED`. The read guard's only KNOWN-OPEN is now
+`GET /reauth/:stripe` (§13).
+
+⛔ **!677 was green on its own base and turned production's pipeline red (2901639338).**
+- A concurrent MR (G40-551 BE-2) had added `GET /go_tos/:id`. The widened read guard now saw that route
+  and it had no verdict.
+- Fixed forward by **!679** (verdict: owner-checked): merged 10:48:34 ET (`84b0bd9fd`), pipeline
+  2901824298 green, EB Green 10:54:03 ET.
+- There are no merge-result pipelines here. **A guard MR that widens coverage must be re-run against
+  current production right before it merges.**
+
+### 16.2 DELETED: `GET /otp/getfortelephone/:phoneno`
+**What it was:** a "for automation testing" route that returned the **unused sign-in codes** for a
+phone number.
+- It sat behind one shared header key (`api-key` = `OTP_API_KEY`).
+- Its SQL was built by pasting the URL value into the query, after a `+91` (India) prefix. A plain
+  lookup therefore matched only India-format numbers. The pasted value had no such limit: a crafted
+  value could have rewritten the query.
+
+**Use:** zero requests in the 7-day nginx log. No caller in the backend, either app, HQ or the site.
+
+**gopher-backend-api !680** removes:
+- the route;
+- `lib/sendSms.js` `get_phone_otp`;
+- `middleware/auth_token.js` `otp_auth`;
+- the README's `OTP_API_KEY=` line;
+- the route's KNOWN-OPEN verdict.
+
+`test/otp-getfortelephone-removed.test.js` fails if any of them come back.
+- Merged 11:09:21 ET (`0f6a20a5c`).
+- Pipeline 2901897154 green.
+- EB Ready / Green 11:15:31 ET. It was Red for about 40 s while the old instance was replaced.
+
+**Verified live:**
+- 11:10 ET: the route answered 500 "Invalid Access", so it existed and was refusing the missing key.
+- 11:15:37 ET: 404 on 4 of 4 probes. A control route answered as before (440).
+
+### 16.3 CLOSED: anyone signed in could move any Gopher's dot
+**What:** `POST /socket/emit/gopher-location-change` (`user_auth`) and the `gopher_location_changed`
+socket event both took **the Gopher's id from the payload**. Any signed-in account could post
+coordinates *as any Gopher*. They were:
+- pushed live to that Gopher's requesters (`gopher_location_received`);
+- written into `orders.in_progress_latitude/longitude/location_at` on every one of that Gopher's
+  active orders.
+
+With no `gopherId` at all, the position went to whatever `requesterId` the caller named.
+
+**Why the newly widened write guard passed it:** the handler reads `decoded` to require a signed-in
+caller, and reading `decoded` is all the guard checks. **Reading the caller's identity is not the
+same as using it for the object being written.** The guard is necessary, not sufficient.
+
+**Real Gophers are unaffected (VERIFIED from code, 2026-10-01):**
+- The Go app on `production` (`src/services/locationTrackingService.js`) posts
+  `gopherId: this.user?.id` under that same user's `access-token`.
+- Its `initialize()` refuses to start without `user.id`.
+- Every access token is minted by `generate_pair(user.id, …)`.
+- The Go app's socket emit is commented out. The Request app, HQ and the site send neither.
+- `shared/Socket.js` has the same pattern but is never loaded: its `require` in `index.js` is
+  commented out.
+
+**gopher-backend-api !681:** the id now comes from the token (HTTP) or from the verified socket (event).
+A payload id that doesn't match is ignored and logged at `warn`.
+
+`test/gopher-location-own-id-only.test.js` drives the **real** handlers through a fake socket.io server.
+It checks whether the victim's requester **receives** the forged position.
+- With the fix: 8/8.
+- Against pre-fix code: 5 of 8 fail (every forgery delivered).
+- Positive controls (the real Gopher's own post is delivered) pass both ways.
+
+Deploy:
+- Merged 11:16:03 ET (`66bb3cb67`).
+- Pipeline 2901922501 green.
+- EB Ready / Green 11:22:12 ET.
+
+**Traffic:** in the 24 h before the fix, 37,268 × 200, 3,892 × 440 (expired token, which the app
+refreshes) and 2 × 429.
+
+**After the fix (11:22 to 11:50 ET; nginx log and app log):**
+- 1,070 × 200, 25 × 440 and 1 × 429.
+- **Zero mismatch warnings.**
+- The handler logged 619 location broadcasts.
+
+**The 440 share does not point at !681.** It was 2.3%, between this morning's (about 0.7%) and the
+previous 24 h's (9.5%). `user_auth` issues 440 before the handler runs, so !681 cannot produce one.
+
+**The zero is a real zero.** Warn-level lines do reach `web.stdout.log`: 651 from other call sites in
+the 6 h before, with the message text intact after winston's colour codes.
+
+**Misuse before the fix cannot be measured from logs.** nginx records no bodies, and nothing logged
+the payload id beside the caller's. From now on, the `warn` line records every attempt.
+
+### 16.4 G40-564 on hardware: all three AC2 screens (adds to §14.2)
+The owner passed all three surfaces on an iPhone 15 (Request build 5496, live backend):
+- chat → Review Profile;
+- Account → MY Gophers → a Gopher;
+- Request History → Review Profile.
+
+INHERITED: relayed by the G40-551 seat. This seat did not observe it.
+
+### 16.5 Still open
+- §14.5: **35 `get_users_details` calls with no field list** (the PL-154/155 input).
+- §15.4: the drop-off-twice address typing (a product bug, not a leak).
+- §13: `GET /reauth/:stripe`.
