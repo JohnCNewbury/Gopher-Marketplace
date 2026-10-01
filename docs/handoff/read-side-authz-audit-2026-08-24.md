@@ -739,3 +739,67 @@ account they can name" as a standing property. Owner action for the variable its
 A stronger version — a short-lived random token stored server-side, so the URL carries no account
 identifier at all — is the right end state, and is more work than the risk currently justifies.
 
+
+## 14. Addendum 2026-10-01: two routes this audit never saw, now FIXED (G40-564, desk PL-153)
+
+### 14.1 What leaked, and since when
+`GET /gopherdetail/:id` (`fav_gopher.gopher_details`) and `GET /requestordetail/:id`
+(`requestor.get_requestor_details`) are both `user_auth` only and take any id. Both called
+`get_users_details([id], false)` with **no field list**. That is the exact §6/§8 shape: the internal
+record went into the response, including email, telephone, date_of_birth, **fcm_token**, confirmed_at
+and, through the unconditional users_info block, the **full** `driver_license_number`.
+- Any signed-in requester could read any Gopher.
+- Any signed-in Gopher (the `decoded.gopher` branch) could read **any user**, customers included.
+
+Found 2026-09-30 by the G40-68 seat while building G40-561; the desk verified it from code. Neither
+route appears anywhere above.
+
+### 14.2 The fix: this audit's own projection
+gopher-backend-api **!671** passes `user_services.prospect_user_fields` in all three calls.
+- Merged 2026-10-01 06:53:52 ET (`6633b7051`).
+- Production pipeline 2900839034: 6/6.
+- CodePipeline 9dfc2fc9: Succeeded.
+- EB Gopher-Production: Ready / Green 06:58:51 ET.
+
+`test/g40-564-profile-endpoints-privacy.test.js` drives the **real** handlers through the **real**
+`get_users_details`, with only the database stubbed. Reverting any one call fails its check; pre-fix
+code fails all four.
+
+**Readers, both apps' production, 2026-10-01:**
+- Request chat and MY Gophers (`/gopherdetail`) read name, created_at, users_info fields, and the
+  licence via `.slice(-4)`.
+- Go chat (`/requestordetail`) reads only `ratings.total_ratings` and `requestor_completed_task_count`.
+
+None reads a removed field. A second session (G40-561) checked this independently.
+
+**On hardware:**
+- `/requestordetail` returned 200 at 07:26:57 (the A50) and 07:42:44 (a production Gopher's phone).
+- `/gopherdetail` returned 200 at 07:54:07 (the A50), during the owner's re-check: "it passes".
+
+### 14.3 Misuse check (owner-requested; counts only, no IPs or ids recorded)
+nginx access log, **retained 2026-09-24 06:44 ET onward only** (7-day retention; nothing earlier exists).
+- 355 GETs on the two routes, out of ~1.42M lines.
+- Distinct people looked up, all callers combined: 33 (`/requestordetail`) and 37 (`/gopherdetail`).
+- Max distinct ids from one caller: 6. Busiest hour: 22.
+
+**No enumeration pattern in the retained window.** Before 24 Sep is unknowable from logs.
+
+### 14.4 ⛔ Why no guard caught it: the guards do not scan the file these routes live in
+`index.js` mounts `routes/common.routes.js` (40 routes, 5 parameterised GETs, these two among them),
+`routes/admin.routes.js` and `routes/payment.routes.js`. **`check-route-authz.js` and
+`check-read-route-authz.js` scan only `controllers/{order,user,common}/index.js`.**
+
+`check-read-route-authz.js` is also **not run by CI** (absent from `package.json` and
+`.gitlab-ci.yml`). Run by hand on production it reports "16 parameterised GET routes, all accounted
+for", which is true of the files it reads and silent about `routes/common.routes.js`.
+
+`check-user-router-privacy.js` looks only for contact columns in a handler's **own** SQL. These handlers
+call a service whose wide default lives elsewhere.
+
+### 14.5 Still open (not G40-564)
+- **35 other `get_users_details` calls pass no field list** (`git ls-files '*.js'` minus test/ and
+  scripts/, 2026-10-01). Most are internal (email, push, admin, the user's own profile). Some are in
+  order handlers and may reach a response. This is the input for the PL-154/155 MR.
+- Add `routes/common.routes.js` (and the other mounted `routes/*.js`) to both guards' TARGETS, and wire
+  `check-read-route-authz.js` into CI. Until then, a new parameterised route in that file is invisible
+  to every authz check.
