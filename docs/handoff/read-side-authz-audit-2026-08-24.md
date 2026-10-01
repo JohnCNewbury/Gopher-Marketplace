@@ -803,3 +803,51 @@ call a service whose wide default lives elsewhere.
 - Add `routes/common.routes.js` (and the other mounted `routes/*.js`) to both guards' TARGETS, and wire
   `check-read-route-authz.js` into CI. Until then, a new parameterised route in that file is invisible
   to every authz check.
+
+## 15. Addendum 2026-10-01: a stranger's address attached to orders, now FIXED (desk PL-160)
+
+### 15.1 What leaked
+`addresses.addressable_id` is shared by every owner type (Order, Order_PickUp, Order_DropOff, User,
+Business). Four reads fetched addresses **by id alone**, so any User or Business address whose owner
+id equals an order id was attached to that order and returned to the caller. That is a stranger's
+home or business: street, city, zip and coordinates. The only masking (unit/apartment nulled) applied
+to a Gopher before acceptance, and a requester's own lists were unmasked.
+- `retrieve.js` `get_all_order_v2` and `get_all_order_v3`: every request list (`GET /orders/v2`,
+  `/v3`), for requesters and Gophers.
+- `retrieve.js` `get_gopher_active_and_available_orders`: the Gopher available feed.
+- `update.js` `order_pick_up`: the `PATCH /orders/:id/pick_up` reply, to the Gopher who taps Picked Up.
+
+**Size, from a read-only count on the production READER, 2026-10-01** (`pg_is_in_recovery()` true;
+counts only, no addresses read out):
+- **63,252 User and 1,045 Business** addresses had an id equal to an existing order's, touching
+  **58,049 of 64,888 orders**.
+- On orders created in the last 30 days: 951 User and 19 Business.
+- Users go up to id 145,147 and orders to 65,986, so nearly every order id has a namesake user.
+
+**Traffic, nginx, the 24 h before the fix:** `GET /orders/v2` 439×200 + 7,976×304;
+`GET /orders/v3` 997×200 + 3,399×304. All phone apps.
+
+### 15.2 Fixes, both live
+- **gopher-backend-api !673** (G40-551): the three `retrieve.js` reads typed to `ORDER_ADDRESS_TYPES`
+  (constants/index.js: Order / Order_PickUp / Order_DropOff). Merged 08:47:19 ET (`663d740ed`); EB
+  Green 08:52:18 ET.
+- **gopher-backend-api !676**: `order_pick_up` typed the same way. Merged 09:03:40 ET (`246535414`);
+  EB Green 09:11:17 ET. `test/pl-160-pickup-addresses.test.js` drives the real handler with an
+  addresses stub that behaves like Postgres. Against pre-fix code the stranger's home and business
+  addresses reach the reply.
+
+Neither app reads a non-order address type from these replies. The Go app's pickup caller reads only
+`aasm_state`. Nothing visible changed.
+
+### 15.3 Audited and NOT leaking (production, 2026-10-01, code read)
+- `auth.js`, `payment.stripe.js`, `cancel.js`, `create.js`, `functions.js`: every address read
+  carries a type (create.js has none).
+- `retrieve.js`'s four raw-SQL address reads were already typed.
+- `helpers/helper.js:121` (`distance_from_gopher_to_dropoff`, `addressable_type<>'User'`) admits
+  Business rows, but uses only Order / Order_DropOff rows for a distance and returns nothing to the
+  caller.
+
+### 15.4 Not a leak, possibly a bug (recorded, not changed)
+`update.js` `order_pick_up_complete_v2` and `assign_order` type their read as
+`[ORDER_DROP_OFF_LOCATION, ORDER_DROP_OFF_LOCATION]`, which is drop-off twice and never pick-up. Their
+replies may lack the pick-up address. It's a product bug for its own ticket; it isn't a privacy issue.
