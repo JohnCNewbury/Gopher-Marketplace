@@ -3442,16 +3442,34 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        (top corners) and body (bottom corners) instead of clipping here. */
     overflow:visible; cursor:pointer; position:relative;
     transition:transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    /* Owner 2026-09-29: the tiles are buttons and did not read as buttons — they
-       had NO resting shadow, only hover and selected. This is the same two-layer
-       bubble the Request prototype already uses (--card-sh), so the portal and the
-       prototype now lift the same way. Hover still goes deeper, so the affordance
-       still changes on interaction rather than sitting flat. */
-    box-shadow:0 2px 4px rgba(0,36,97,0.05), 0 9px 20px rgba(0,36,97,0.13);
+    /* Owner 2026-09-29, revised 2026-09-30: "still don't look like floating
+       cards ... I want them looking almost 3D."
+
+       A single soft blur reads as a flat card with a shadow. Depth needs the
+       layers the eye actually uses:
+         1  a hairline inner highlight on the top edge — light falling on a lip
+         2  a tight contact shadow, so the card sits ON something
+         3  a mid shadow for the body
+         4  a wide, soft ambient shadow for the drop
+       Together they imply a card standing off the page rather than printed on
+       it. Hover then increases the drop AND the lift, so the thing moves
+       through space instead of just getting darker. */
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.9),
+      0 1px 1px rgba(0,36,97,0.07),
+      0 4px 8px rgba(0,36,97,0.09),
+      0 14px 28px rgba(0,36,97,0.16),
+      0 28px 48px rgba(0,36,97,0.10);
   }
   .cat-tile:hover {
-    transform:translateY(-3px);
-    box-shadow:0 10px 24px rgba(26,42,94,0.14); border-color:#d4d8e3;
+    transform:translateY(-7px) scale(1.012);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      0 2px 2px rgba(0,36,97,0.07),
+      0 8px 14px rgba(0,36,97,0.10),
+      0 26px 44px rgba(0,36,97,0.20),
+      0 46px 72px rgba(0,36,97,0.12);
+    border-color:#d4d8e3;
     /* raised so this tile's popup paints above its sibling tiles */
     z-index:20;
   }
@@ -8147,10 +8165,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .da-confirm-input:focus { outline:none; border-color:#c53030; }
   .bidbd-close.is-disabled { background:#e3e6ee !important; color:#9aa3b5 !important; cursor:not-allowed; }
+  /* Owner 2026-09-30: bigger, and spaced off the greeting so it is not crammed.
+     Was 36px hard against the text. */
   .dash-avatar-lead {
-    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    width:46px; height:46px; border-radius:50%; flex-shrink:0;
+    margin-right:14px;
     display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
   }
+  .dash-avatar-lead img { width:100%; height:100%; object-fit:cover; display:block; }
   /* ── the two-pathway home screen (owner 2026-09-30, slide 2) ── */
   .choose-stage { padding:34px 4px 10px; }
   .choose-ask {
@@ -8177,15 +8200,40 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     border-radius:50%; background:rgba(51,217,117,.18);
   }
   .choose-card.deals .cc-orb { background:rgba(201,163,63,.16); }
-  .choose-card .cc-ico {
-    position:relative; width:54px; height:54px; border-radius:15px;
-    display:flex; align-items:center; justify-content:center; font-size:26px;
-    background:rgba(255,255,255,.14);
+  /* Media block shared by both cards — sits where the icon used to. */
+  .choose-card .cc-media {
+    position:relative; display:grid; gap:4px; width:100%; height:140px;
+    border-radius:12px; overflow:hidden; margin-bottom:4px;
   }
-  .choose-card.deals .cc-ico { background:#fff; border:1px solid #EAD9B6; }
+  /* ⛔ minmax(0,1fr), NOT 1fr. `1fr` is minmax(AUTO,1fr), so each track floors at
+     the intrinsic size of its content — the images computed 201px rows inside a
+     140px box and the second row simply overflowed out of view. */
+  .choose-card .cc-quads { grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,1fr); }
+  .choose-card .cc-quad { position:relative; overflow:hidden; background:rgba(255,255,255,.07); }
+  .choose-card .cc-quad video {
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .choose-card .cc-mosaic { grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,1fr); }
+  /* A deal has two sides, so the mosaic shows both: merchant marks on a light
+     tile (they are logos — cropping them like a photo would behead them) and
+     service providers actually working. Diagonally arranged so neither side
+     reads as the subordinate one. */
+  .choose-card .cc-mosaic .cc-work { width:100%; height:100%; object-fit:cover; display:block; }
+  .choose-card .cc-mosaic .cc-merch {
+    display:flex; align-items:center; justify-content:center;
+    background:#fff; padding:8px; overflow:hidden;
+  }
+  .choose-card .cc-mosaic .cc-merch img {
+    max-width:100%; max-height:100%; width:auto; height:auto;
+    object-fit:contain; display:block;
+  }
+  .choose-card .cc-deals-brand {
+    position:relative; display:flex; align-items:center; margin-bottom:12px;
+  }
+  .choose-card .cc-deals-logo { height:30px; width:auto; display:block; }
   .choose-card .cc-h {
     position:relative; font-family:'Nunito',sans-serif; font-weight:900;
-    font-size:23px; margin:18px 0 7px; color:#fff;
+    font-size:23px; margin:14px 0 7px; color:#fff;
   }
   .choose-card.deals .cc-h { color:#002461; }
   .choose-card .cc-s {
@@ -19576,7 +19624,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="choose-two">
             <button type="button" class="choose-card svc" data-choose="services">
               <span class="cc-orb"></span>
-              <span class="cc-ico">🛠️</span>
+              <!-- Service clips on loop, same source and cycling behaviour as the
+                   laptop on gopher-services.html (owner 2026-09-30). -->
+              <span class="cc-media cc-quads" id="chooseSvcQuads" aria-hidden="true">
+                <span class="cc-quad"></span><span class="cc-quad"></span>
+                <span class="cc-quad"></span><span class="cc-quad"></span>
+              </span>
               <span class="cc-h">Get something done</span>
               <span class="cc-s">Delivery, moving, junk, labor, rides and more — a neighbor takes it from here.</span>
               <span class="cc-go">Choose your service →</span>
@@ -19584,7 +19637,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <button type="button" class="choose-card deals" data-choose="deals">
               <span class="cc-tag">SPONSORED PICKS</span>
               <span class="cc-orb"></span>
-              <span class="cc-ico">🏷️</span>
+              <!-- The Deals mark, then a mosaic of real merchants and service
+                   providers — the two sides of a deal in one image. -->
+              <span class="cc-deals-brand">
+                <img class="cc-deals-logo" src="assets/img/gopher-deals-logo.svg" alt="Gopher Deals">
+              </span>
+              <span class="cc-media cc-mosaic" aria-hidden="true">
+                <span class="cc-merch"><img src="assets/img/cust-deals-hs-market-logo.webp" alt=""></span>
+                <img class="cc-work" src="assets/img/01-delivery.webp" alt="">
+                <img class="cc-work" src="assets/img/06-yard.webp" alt="">
+                <span class="cc-merch"><img src="assets/img/deals-img.webp" alt=""></span>
+              </span>
               <span class="cc-h">Local deals near you</span>
               <span class="cc-s">This month's winning offers from local merchants and vetted pros.</span>
               <span class="cc-go">View local deals →</span>
@@ -19835,11 +19898,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
       <!-- New Request (hosts the relocated .flow-mockup inside the dashboard) -->
       <section class="dash-section" data-rqsec="new-request">
-        <div class="rq-pathtabs" role="tablist" aria-label="What would you like to do">
-          <button type="button" class="rq-pathtab is-active" id="pathTabNew"  role="tab" aria-selected="true">+ Choose your service</button>
-          <button type="button" class="rq-pathtab deals-tab" id="pathTabDeals" role="tab" aria-selected="false"><span class="dt-row"><svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0l-6.2-6.2A2 2 0 0 1 3.8 13V5.2A1.4 1.4 0 0 1 5.2 3.8H13a2 2 0 0 1 1.4.6l6.2 6.2a2 2 0 0 1 0 2.8z"/><circle cx="8.6" cy="8.6" r="1.4" fill="currentColor" stroke="none"/></svg><span>View Local Deals</span></span><span class="dt-cue"><span class="dt-dot"></span>Sponsored picks</span></button>
-          <span class="deals-cue-note" aria-hidden="true"><span class="dcn-arrow">⟵</span> Check this out!</span>
-        </div>
+        <!-- ⛔ The "+ Choose your service" / "View Local Deals" tab row was HERE
+             and is deliberately gone (owner 2026-09-30): "the top section was to
+             be completely removed. The user gets to those on the home page."
+             The dashboard's home screen (data-rqsec="choose") is now the only
+             place that choice is made, so repeating it above the flow was the
+             same decision asked twice.
+             setRequestPath() null-guards #pathTabNew / #pathTabDeals, and
+             initDealsPathToggle() returns early when they are absent, so nothing
+             downstream breaks — the home screen calls setRequestPath directly. -->
         <div class="dash-flow-host" id="rqDashFlowHost">
           <!-- The .flow-mockup is moved here when +New Request is tapped -->
         </div>
@@ -19871,6 +19938,64 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   const newReqBtn  = document.getElementById('rqDashNewRequest');
   const logoSlot   = document.getElementById('rqDashLogoSlot');
 
+  /* ── service clips on the "Get something done" card ──────────────────────
+     Owner 2026-09-30: "multiple service videos in the card on loop (similar to
+     the services page on the laptop)."
+
+     Same source and the same cycling shape as gopher-services.html: shuffle the
+     18 clips, deal them across the quads, and advance each quad on 'ended' so
+     the four panes drift out of sync instead of marching together. A quad that
+     ends up with a single clip loops itself.
+
+     muted + playsInline + the muted ATTRIBUTE are all required — without the
+     attribute present in markup, iOS Safari refuses to autoplay. play() is
+     caught because a browser may still refuse, and an unhandled rejection here
+     would be noise, not a failure worth surfacing. */
+  /* ⛔ This used to run immediately and the clips never played — readyState 4,
+     no error, just paused. play() was called while data-rqsec="choose" was still
+     display:none, and a browser will not start a video it cannot show. Calling
+     play() by hand once the screen was visible worked, which is what identified
+     it. So the player is now armed and only starts when the home screen is
+     actually on, and it re-starts each time you come back to it. */
+  function initChooseClips(){
+    const host = document.getElementById('chooseSvcQuads');
+    if(!host || host.dataset.wired) return;
+    host.dataset.wired = '1';
+    const CLIPS = [];
+    for(let i = 1; i <= 18; i++) CLIPS.push('assets/video/services-clip-' + i + '.mp4');
+    const shuffled = CLIPS.slice();
+    for(let i = shuffled.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+    }
+    const quads = host.querySelectorAll('.cc-quad');
+    const lists = []; for(let i = 0; i < quads.length; i++) lists.push([]);
+    shuffled.forEach((src, i) => lists[i % quads.length].push(src));
+    quads.forEach((q, i) => {
+      const list = lists[i];
+      if(!list.length) return;
+      const v = document.createElement('video');
+      v.muted = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      if(list.length === 1) v.loop = true;
+      let idx = 0;
+      const load = () => { v.src = list[idx]; const pr = v.play(); if(pr && pr.catch) pr.catch(() => {}); };
+      v.addEventListener('ended', () => { if(list.length > 1){ idx = (idx + 1) % list.length; load(); } });
+      q.appendChild(v); load();
+    });
+  }
+  /* Re-issue play() whenever the home screen is shown. Videos pause when their
+     container is hidden, so without this the clips freeze the first time the
+     user navigates away and comes back. */
+  function playChooseClips(){
+    const host = document.getElementById('chooseSvcQuads');
+    if(!host) return;
+    initChooseClips();
+    host.querySelectorAll('video').forEach(v => {
+      const pr = v.play(); if(pr && pr.catch) pr.catch(() => {});
+    });
+  }
+
   /* ── the home screen's two pathways ──────────────────────────────────────
      Neither branch builds anything new: Services shows the existing request
      flow, and Deals shows the existing deals panel by clicking the path tab
@@ -19882,12 +20007,21 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(!card) return;
     const which = card.dataset.choose;
     showSection('new-request');
+    /* Calls the same functions the removed tabs called, rather than synthesising
+       a click on buttons that no longer exist. Deals keeps its eligibility gate:
+       ineligible users get the coming-soon overlay exactly as before. */
     if(which === 'deals'){
-      const tab = document.getElementById('pathTabDeals');
-      if(tab) tab.click();
+      const host = document.getElementById('dashDealsHost');
+      const eligible = (typeof isDealsEligible === 'function') ? isDealsEligible() : false;
+      if(eligible && host){
+        if(typeof renderDealsHome === 'function') renderDealsHome();
+        setRequestPath('deals');
+      } else {
+        const ov = document.getElementById('dealsOverlay');
+        if(ov) ov.hidden = false;
+      }
     } else {
-      const tab = document.getElementById('pathTabNew');
-      if(tab && !tab.classList.contains('is-active')) tab.click();
+      setRequestPath('new');
     }
   });
 
@@ -25123,6 +25257,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(sectionTitle) sectionTitle.textContent = SECTION_TITLES[name] || 'Dashboard';
     // Whenever the overview is shown, repaint the live request log + KPI counts so
     // it always reflects the current store (regardless of how we got here).
+    /* ⛔ Deferred a frame. showSection() toggles .active in this tick, but the
+       section is still not painted when the handler runs, and a browser will not
+       start a video it cannot show — play() resolved and the clips stayed paused.
+       requestAnimationFrame puts the call after the style/layout pass. */
+    if(name === 'choose') requestAnimationFrame(() => playChooseClips());
     if(name === 'home') renderActiveRequests();
     // Whenever the Previous section is shown, reset the detail panel back to the
     // list view and repaint — covers nav from sidebar, KPI, or any data mutation.
@@ -25196,7 +25335,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // If the user added a profile photo at signup, show it in both avatars
     // (clipped to the circle); otherwise the initials set above remain. A photo
     // added via the cross-app "Complete your profile" modal also counts.
-    const photo = opts.profilePhoto || sessionProfilePhoto || null;
+    /* Owner 2026-09-30: the greeting avatar shows a real profile picture by
+       default rather than initials. A photo the user actually supplied still
+       wins; this is only the fallback. */
+    const DEFAULT_PROFILE_PHOTO = 'assets/img/px-1043471-240x240.webp';
+    const photo = opts.profilePhoto || sessionProfilePhoto || DEFAULT_PROFILE_PHOTO;
     const setAvatarPhoto = (id) => {
       const el = document.getElementById(id);
       if(!el) return;
