@@ -1,0 +1,137 @@
+# Website Updates deck (2026-09-30) — status, open decisions, traps
+
+Source: `/Users/johnnewbury/Desktop/Website Updates.pptx`, 14 slides, owner-annotated
+screenshots. The file is **edited in place and reused** — it was 12 slides on 09-29 and
+1,896,574 bytes; on 09-30 it became 14 slides / 2,695,869 bytes at the same path. Check the
+mtime and slide count before assuming you are reading the same deck a previous session read.
+
+Branch: `feature/deals-google-maps-audience`. Everything below is on it.
+
+---
+
+## 1 · What is LIVE
+
+Deployed 2026-09-30 by `scripts/deploy.sh --push` (both sites, one run):
+
+| | |
+|---|---|
+| production | `77bf910 -> origin/main` (GitHub Pages + TigerTech) |
+| prototype twin | `20f0676 -> proto/main` |
+
+Verified by CONTENT on all three hosts, probes proven against `77bf910^` first, and the
+**bytes each host serves** re-parsed (19 / 14 / 4 blocks, 0 failed).
+
+Live from the deck: slides **7, 10, 11, 14** (these four were carried forward from the 09-29
+deck and were already shipped), plus **13's stacking half**, **1 (partial)**, **6**.
+Also live: G40-68's previous-jobs filter (see §5).
+
+⚠️ Pages and the twin lagged ~25s behind TigerTech on first check. That is Pages build
+latency, not a bad deploy. Re-check before concluding.
+
+## 2 · What is COMMITTED BUT NOT DEPLOYED
+
+`75ae40c` and `c6d23b4`, both on the branch, nothing uncommitted under `Final/` or
+`_prototypes/`:
+
+- **The dashboard home screen** — `data-rqsec="choose"`. Two options, Services or Deals,
+  nothing else on the page. The dashboard now OPENS here.
+- Profile photo by default (46px, 14px gap), service clips in the Services card, the Gopher
+  Deals mark + merchants/providers mosaic in the Deals card.
+- The `+ Choose your service` / `View Local Deals` tab row REMOVED from the request
+  destination.
+- Category tiles rebuilt for depth.
+- `Start` -> `Submit` on the bid review (slide 11 wording).
+
+**Do not deploy this without the owner seeing it** — he has sent the home screen back twice
+and the treatment is not signed off (§4).
+
+## 3 · Deck slide status
+
+| # | Item | Status |
+|---|---|---|
+| 1 | header: drop "Submit New Request", profile circle, logo | **partial** — title + avatar done; logo unresolved (§4) |
+| 2 | home screen, 2 pathways | **built, unapproved** |
+| 3 | services destination | existing; tab row removed |
+| 4 | deals destination + headliner & 5 category winners | **NOT built** — the headliner/5-winner hierarchy is still outstanding |
+| 5 | "floating cards … almost 3D" | **built, unapproved** — owner rejected the first attempt |
+| 6 | Done button on Saved addresses | **live** |
+| 7 | bids `$0.00` vs `$102` | **live** |
+| 8 | 1st-available / MY Gopher auto-connect to live screen | **NOT started** |
+| 9 | "Start job" bar rule | **NOT started** (see §4) |
+| 10 | BID left + tappable itemisation | **live** |
+| 11 | bid review + Submit | **live** |
+| 12 | TrustShield panel — celebrate, manage card/selfie, soft removal | **NOT started** — owner rejected what shipped as a scare dialog |
+| 13 | delete dialog | stacking **live**; "Fix UI" **NOT started** |
+| 14 | TrustShield discount copy | **live** |
+
+## 4 · OPEN — needs the owner
+
+1. **The sidebar logo.** `gopher-request-logo.svg` has the wordmark at `fill="#012462"`, the
+   same navy as the sidebar, so it CANNOT sit on the dark background — "request" disappears
+   and only the green mark survives. There is no white/inverted logo asset in the repo.
+   Current state is a white chip sized to the mark (163x66). Owner asked for it to "look like
+   our logos behind a dark background". Either a white lockup from the brand kit, or inline
+   the SVG and recolour the wordmark paths.
+2. **Home screen treatment.** Built as "Brand fields" (navy vs gold). Two alternatives were
+   mocked (photography; light & airy). Not chosen.
+3. **Slide 9's "Start job" rule** — Connect only, and only when more workers were requested
+   than accepted. NOT yet implemented. ⚠️ Do not conflate with slide 11: the owner ruled
+   2026-09-30 that slide 11's button is **Submit**, a different control on the bid review
+   overlay. Implementing slide 9 must not remove it.
+4. **"on and on and on"** — the owner said there is more wrong than he had listed. His list
+   has not arrived. Do not infer it from the deck.
+
+## 5 · G40-68 (another session's work, merged here)
+
+Previous-jobs filter on the Gopher profile. Merged `f1db11d`, docs follow-ups `c84e6a5`,
+`c901597`. **Live on web.** The Request APP gets it only with the 10/2 store build.
+`!419` (Business Gophers show their business, everyone else personal) **IS merged** —
+28f51c802 is an ancestor of `origin/production`; an earlier claim that it was pending is
+wrong.
+
+**101 guides are OUTSTANDING** for it, and the owner's standing rule is that a user-facing
+change is not done until its guide is updated. Rules to write against (owner-approved, via
+the G40-68 seat):
+- Default is View All Previous Jobs; "View Previous [Category] Jobs Only" follows the active
+  request's category — Delivery, Need A Ride, Service, Other.
+- Each row: month + year, type, and ★ rating or "Not rated".
+- Empty state: "No Previous [Category] Jobs".
+- NOT shown: other customers' comments, photos, prices, exact dates.
+- Ride Sharing Info on Need a Ride only.
+- Write the web-accurate version now; HOLD app-specific sentences until the 10/2 build.
+
+Also outstanding: 101 guides for this deck's user-facing changes — the step-1 header,
+Other -> Custom Task, TrustShield in nav, account deletion, and the new home screen.
+
+## 6 · Traps found here (cost real time; do not re-learn)
+
+- **`1fr` is `minmax(auto,1fr)`.** Grid tracks floor at their content's intrinsic size. Image
+  tracks computed 201px rows inside a 140px box and the second row overflowed out of view,
+  which read as "only 2 of 4 images are there". Use `minmax(0,1fr)`.
+- **A browser will not start a video it cannot show.** `play()` called while the container is
+  `display:none` resolves and leaves the video paused — readyState 4, no error. Defer past
+  paint (`requestAnimationFrame`) and re-issue when the section is shown, because videos also
+  pause when hidden.
+- **The preview pane does not autoplay muted video.** Control: the LIVE `gopher-services.html`
+  — same pattern, in production — is also 0/4 playing in the pane. So "paused here" is not
+  evidence of a bug. It is also not evidence the clips work; that needs a real browser.
+- **A repo-vs-`origin/main` byte compare flags transformed files as changed.** The deploy adds
+  a `noindex` meta and rewrites `../../Final/assets/` -> `../../assets/`. Undo those before
+  concluding a file is out of date. I reported a false "DIFFERS" on this twice.
+- **`.dashboard` is `display:none` until `openRequestDashboard()` runs** (Request) /
+  `__openDashboard()` (Connect). Rendering into it without opening it produces blank
+  screenshots and `offsetParent: null` on every element.
+- **A `textContent` probe over a filtered list reads hidden rows too** and reports the same
+  list filtered or not — it will pass a broken filter. Use `offsetParent` + computed display.
+- **The deploy script's diffstat ELIDES.** It printed "4 file(s) changed" and listed 3. Check
+  the count against the list; the omitted file was a shared JS module.
+
+## 7 · Cross-session
+
+- **Explorer Deck / Public Tour** (`local_55c39be8…`) mirrors the repo WORKING TREE into
+  explore.gophergo.io and tour.gophergo.io and byte-compares against live first. Ping it when
+  a deploy lands. Its `mirror-proto.py` parses `PROTO=( … )` out of `scripts/deploy.sh` —
+  see the ⛔ comment at that array before reshaping it.
+- **Web -> Go Prototype** (`local_15b531c4…`) owns the PT side. Agreed 09-30: one combined
+  `deploy.sh --push` rather than split `--site` runs, per the both-sites-are-default ruling.
+- **G40-68** (`local_2817ac02…`) — see §5.
