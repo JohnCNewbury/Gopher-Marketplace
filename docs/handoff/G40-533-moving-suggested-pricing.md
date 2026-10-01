@@ -17,10 +17,32 @@
 | --- | --- |
 | Why reopened | Owner's 2026-09-26 device pass: Store Pick Up/Delivery showed no suggested price. Ticket → **Blocked**, sprint "Flow Modification" (875). See **D12** in §4. |
 | Scope | Owner, 2026-09-30: **"Reuse. ALL moving shares same suggested pricing."** App only, one form. No backend change. |
-| App | [!415](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/415) **open, not merged** · branch `G40-533-store-pickup-suggested-pricing` @ `e98a98ecc` on production `067942f59` · target `production`, squash **no**, source branch **kept** (read back from the API) |
-| Local gate | eslint exit 0 · prettier exit 0 · services **49/49 suites, 792/792 tests** · 4 mutations each turned it red |
-| Hardware | ⛔ **pending**: A50 booked through the desk. APK Request 3.10.0 / 884 built from `e98a98ecc` |
-| 10/2 build | John's call. A mobile `production` merge **is** inclusion. |
+| App: price card | [!415](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/415) **MERGED** 2026-09-30 18:50 ET on the owner's "YES, merge now" · `e98a98ecc` → merge commit `b8a7976aa` · production pipeline **2899116442, 31/31** (enumerated with `include_retried`, nothing retried, manual or skipped) · target `production`, squash **no**, source branch **kept** (read back from the API) |
+| App: menu flash | [!421](https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/421) **MERGED** 2026-10-01 04:45 ET on the owner's "proceed with recommended next steps" · `a00449f92` → merge commit `7348552b1` · production pipeline **2900355634, 31/31** (enumerated the same way) · same three merge settings. See §0b. |
+| Hardware (price card) | ✅ Samsung A50. **Before**, Request 883: Store Pick Up/Delivery has no iQ row; Location Move on the same build shows it at $75 (the positive control). **After**, Request 884 (`e98a98ecc`), then 886 (current production + !415): the card opens at **$75** ($55–$95) for "pick up a dresser from the furniture store"; tapping "A truck-load" gives **$110** ($85–$140). The owner looked at 886 himself: *"it appears to be added now"*. Evidence: `Dev/G40-533-evidence/` (local disk). |
+| 10/2 build | Both MRs are on Request `production`, so both ride the next store build. The owner's call, given above. |
+| As-Built row | `production-request-flow-granular.html`, written 2026-10-01: a **Gopher iQ suggested price** box on the Moving tab's "6 · Offer or bids" step, and the global "Smart price" line corrected. Rendered and checked. |
+| Jira | **Ready for Release** (2026-10-01), walked In Progress → Code Review → Ready for QA → In Review / QA → Ready for Release. Merged, not yet shipped. |
+
+### 0b · The glitch the owner asked to see, and its fix (!421)
+
+Before merging !415 the owner wrote *"Wait until you view. I want you to see the glitchiness"*. I went looking on the price card and found two things there: the card jumps while the slider is dragged (its hint line changes height), and the 4-up Moving tiles break "bedroom" mid-word. **Neither was what he meant.** Of the tiles: *"they show up fine"*. Asked where: *"When i opened the services to moving"*, confirmed *"Yes, that's it"* against the film.
+
+**The glitch.** Tap "Moving" on Services and the Moving menu opens with **Location Move** exactly under the finger. That tile took MUI's raised contained-button shadow and sank back about 0.3 s later, a tile flashing as if tapped. The colour does not change; only the shadow does. It was live before !415 (filmed on Request 887).
+
+**The fix** (`RequestCategoryBlock.js`, every category menu): `:hover`, `:active` and `.Mui-focusVisible` are held at MUI's resting shadow. The tile looks the same at rest and the tap ripple is untouched. A new CSS test reads the rules MUI actually generates, with a positive control, and was mutation-proved.
+
+**Measured on hardware** (shadow darkness in the gap under the Location Move tile, from screen recordings): Request **887** rises from the resting 13.8 to **37–45** for 0.2–0.3 s after Moving opens, on both opens. Request **888** (`a00449f92`) stays at **13.6–13.8** from the first frame on all three opens.
+
+**Not changed, on the owner's word or for lack of it:**
+- The mid-word tile breaks stay ("they show up fine").
+- The card-jump fix was never asked for. It was **not** merged and is not on any branch.
+- Seen in passing: on the **first** Moving open after a fresh install, the menu icons appear about 0.1 s after the text while they load for the first time. Not on later opens. Not caused by either MR.
+
+### 0c · Process notes worth keeping
+
+- **"See the glitchiness" was a pointer to a screen, not to a component.** I analysed the screen I had been working on and found real defects that were not his. One question, *"where?"*, would have saved a build cycle.
+- **A shared phone can be in use while it is booked.** During one recording the owner was hand-testing a Courier form on the same A50, and one of my taps landed in it. Nothing was submitted. Only the earlier, clean part of that film was used.
 
 The 2026-09-23 status below is kept as the record of the original delivery.
 
