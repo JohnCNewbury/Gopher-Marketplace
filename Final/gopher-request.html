@@ -8200,37 +8200,91 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     border-radius:50%; background:rgba(51,217,117,.18);
   }
   .choose-card.deals .cc-orb { background:rgba(201,163,63,.16); }
-  /* Media block shared by both cards — sits where the icon used to. */
+  .dash-sidebar-deals {
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    width:100%; margin:0 0 14px; padding:10px 12px; cursor:pointer;
+    background:linear-gradient(135deg,#FFFBF3 0%,#FBF3E4 55%,#F6E9D0 100%);
+    border:1.5px solid #EAD9B6; border-radius:11px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
+    color:var(--navy-deep); line-height:1.15;
+  }
+  .dash-sidebar-deals:hover { border-color:#c9a33f; }
+  .dash-sidebar-deals .dsd-sub {
+    font-size:9px; letter-spacing:.5px; color:#1fb85f; font-weight:800;
+  }
+
+  /* Both cards lead with their own mark, centred (owner 2026-10-01). */
+  .choose-card .cc-brand {
+    position:relative; display:flex; align-items:center; justify-content:center;
+    background:#fff; border-radius:10px; padding:7px 14px; margin:0 auto 14px;
+    width:max-content; max-width:100%;
+  }
+  .choose-card.deals .cc-brand { border:1px solid #EAD9B6; }
+  .choose-card .cc-brand-logo { height:26px; width:auto; display:block; }
+
   .choose-card .cc-media {
     position:relative; display:grid; gap:4px; width:100%; height:140px;
     border-radius:12px; overflow:hidden; margin-bottom:4px;
   }
-  /* ⛔ minmax(0,1fr), NOT 1fr. `1fr` is minmax(AUTO,1fr), so each track floors at
-     the intrinsic size of its content — the images computed 201px rows inside a
-     140px box and the second row simply overflowed out of view. */
+  /* ⛔ minmax(0,1fr), NOT 1fr. `1fr` is minmax(AUTO,1fr), so a track floors at the
+     intrinsic size of its content — images computed 201px rows inside a 140px box
+     and the second row overflowed out of view. */
   .choose-card .cc-quads { grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,1fr); }
   .choose-card .cc-quad { position:relative; overflow:hidden; background:rgba(255,255,255,.07); }
-  .choose-card .cc-quad video {
-    width:100%; height:100%; object-fit:cover; display:block;
+  .choose-card .cc-quad video { width:100%; height:100%; object-fit:cover; display:block; }
+
+  /* ── merchant marquee ── two rows, opposite directions ── */
+  .choose-card .cc-marquee {
+    display:grid; grid-template-rows:minmax(0,1fr) minmax(0,1fr); gap:8px;
+    background:transparent; border-radius:12px;
   }
-  .choose-card .cc-mosaic { grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(0,1fr); }
-  /* A deal has two sides, so the mosaic shows both: merchant marks on a light
-     tile (they are logos — cropping them like a photo would behead them) and
-     service providers actually working. Diagonally arranged so neither side
-     reads as the subordinate one. */
-  .choose-card .cc-mosaic .cc-work { width:100%; height:100%; object-fit:cover; display:block; }
-  .choose-card .cc-mosaic .cc-merch {
-    display:flex; align-items:center; justify-content:center;
-    background:#fff; padding:8px; overflow:hidden;
+  .cc-mq-row {
+    position:relative; overflow:hidden; border-radius:9px;
+    background:linear-gradient(90deg,#1fb85f 0%, #33d975 50%, #1fb85f 100%);
+    display:flex; align-items:center;
   }
-  .choose-card .cc-mosaic .cc-merch img {
-    max-width:100%; max-height:100%; width:auto; height:auto;
-    object-fit:contain; display:block;
+  .cc-mq-track { display:flex; align-items:center; gap:10px; padding:0 5px; will-change:transform; }
+  .cc-mq-track img {
+    height:40px; width:auto; display:block; flex:0 0 auto;
+    background:#fff; border-radius:7px; padding:3px 6px;
   }
-  .choose-card .cc-deals-brand {
-    position:relative; display:flex; align-items:center; margin-bottom:12px;
+  /* The track holds the logo run TWICE, so translating by exactly -50% lands on an
+     identical frame and the loop has no visible jump.
+
+     ⛔ Direction is the opposite of what the transform reads like. Animating
+     translateX toward -50% moves the content LEFT (items travel ←). The owner
+     asked for TOP → and BOTTOM ←, so the top row runs ccMqRight and the bottom
+     runs ccMqLeft. I had these swapped first time; measure m41 over time rather
+     than reasoning from the keyframe names. */
+  .cc-mq-ltr .cc-mq-track { animation:ccMqRight 30s linear infinite; }  /* top: → */
+  .cc-mq-rtl .cc-mq-track { animation:ccMqLeft  26s linear infinite; }  /* bottom: ← */
+  @keyframes ccMqLeft  { from{ transform:translateX(0); }    to{ transform:translateX(-50%); } }
+  @keyframes ccMqRight { from{ transform:translateX(-50%); } to{ transform:translateX(0); } }
+  @media (prefers-reduced-motion: reduce){
+    .cc-mq-rtl .cc-mq-track, .cc-mq-ltr .cc-mq-track { animation:none; }
   }
-  .choose-card .cc-deals-logo { height:30px; width:auto; display:block; }
+
+  /* CTA reads as a real button, per the mockup. */
+  .choose-card .cc-btn {
+    position:relative; margin-top:auto; align-self:flex-start;
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:14.5px; line-height:1.15;
+    padding:12px 22px; border-radius:11px; margin-bottom:0;
+  }
+  .choose-card .cc-btn-green {
+    background:var(--green); color:#04240f;
+    box-shadow:0 6px 16px rgba(28,176,90,.34);
+  }
+  .choose-card .cc-btn-gold {
+    background:#fff; color:var(--navy-deep); border:1.5px solid #EAD9B6;
+    box-shadow:0 6px 16px rgba(201,163,63,.22); gap:2px;
+  }
+  .choose-card .cc-btn-gold .ccb-sub {
+    font-size:9px; letter-spacing:.6px; color:#8a6a2f; font-weight:800;
+  }
+  .choose-card:hover .cc-btn-green { background:var(--green-dark); }
+  .choose-card:hover .cc-btn-gold  { border-color:#c9a33f; }
+
   .choose-card .cc-h {
     position:relative; font-family:'Nunito',sans-serif; font-weight:900;
     font-size:23px; margin:14px 0 7px; color:#fff;
@@ -8241,12 +8295,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     color:rgba(255,255,255,.78);
   }
   .choose-card.deals .cc-s { color:#6b5a38; }
-  .choose-card .cc-go {
-    position:relative; margin-top:auto; padding-top:20px;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:14px;
-    color:var(--green); display:inline-flex; gap:7px; align-items:center;
-  }
-  .choose-card.deals .cc-go { color:#8a6a2f; }
   .choose-card .cc-tag {
     position:absolute; top:22px; right:22px; z-index:1;
     font-size:9px; font-weight:800; letter-spacing:.7px; color:#8a6a2f;
@@ -19521,6 +19569,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     <button class="dash-sidebar-newreq" id="rqDashNewRequest">
       <span class="dsn-plus">+</span> New Request
     </button>
+      <!-- Owner 2026-10-01: Deals gets its own sidebar entry under + New Request,
+           carrying the same gold SPONSORED PICKS treatment as the home card. It
+           routes through the same handler, so the eligibility gate still runs. -->
+      <button type="button" class="dash-sidebar-deals" id="rqSidebarDeals" data-choose="deals">
+        <span class="dsd-main">🏷️ View Local Deals</span>
+        <span class="dsd-sub">● SPONSORED PICKS</span>
+      </button>
     <nav class="dash-nav">
       <button class="dash-nav-item active" data-rqsection="home">
         <span class="dni-ico">🏠</span><span class="dni-label">Dashboard</span>
@@ -19624,33 +19679,36 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="choose-two">
             <button type="button" class="choose-card svc" data-choose="services">
               <span class="cc-orb"></span>
-              <!-- Service clips on loop, same source and cycling behaviour as the
-                   laptop on gopher-services.html (owner 2026-09-30). -->
+              <!-- Owner 2026-10-01: the Request logo is CENTRED at the top of the
+                   card, on its white chip — the mark needs a light ground because
+                   its wordmark is navy (see the sidebar note). -->
+              <span class="cc-brand"><img class="cc-brand-logo" src="assets/img/gopher-request-logo.svg" alt="Gopher Request"></span>
               <span class="cc-media cc-quads" id="chooseSvcQuads" aria-hidden="true">
                 <span class="cc-quad"></span><span class="cc-quad"></span>
                 <span class="cc-quad"></span><span class="cc-quad"></span>
               </span>
-              <span class="cc-h">Get something done</span>
-              <span class="cc-s">Delivery, moving, junk, labor, rides and more — a neighbor takes it from here.</span>
-              <span class="cc-go">Choose your service →</span>
+              <span class="cc-h">Get you connected to a great local worker</span>
+              <span class="cc-s">Delivery, moving, junk removal, home services, labor, rides and more &mdash; where a neighbor takes it from here.</span>
+              <span class="cc-btn cc-btn-green">+ Make a request</span>
             </button>
             <button type="button" class="choose-card deals" data-choose="deals">
-              <span class="cc-tag">SPONSORED PICKS</span>
               <span class="cc-orb"></span>
-              <!-- The Deals mark, then a mosaic of real merchants and service
-                   providers — the two sides of a deal in one image. -->
-              <span class="cc-deals-brand">
-                <img class="cc-deals-logo" src="assets/img/gopher-deals-logo.svg" alt="Gopher Deals">
+              <span class="cc-brand"><img class="cc-brand-logo" src="assets/img/gopher-deals-logo.svg" alt="Gopher Deals"></span>
+              <!-- Two marquee rows of real merchant marks, running in OPPOSITE
+                   directions (owner 2026-10-01: "Top scrolling →, bottom
+                   scrolling ←"). Each row's track is duplicated so the loop has
+                   no seam; the copy is aria-hidden to keep it out of the a11y
+                   tree twice. -->
+              <span class="cc-media cc-marquee" aria-hidden="true">
+                <span class="cc-mq-row cc-mq-ltr"><span class="cc-mq-track" data-mq="a"></span></span>
+                <span class="cc-mq-row cc-mq-rtl"><span class="cc-mq-track" data-mq="b"></span></span>
               </span>
-              <span class="cc-media cc-mosaic" aria-hidden="true">
-                <span class="cc-merch"><img src="assets/img/cust-deals-hs-market-logo.webp" alt=""></span>
-                <img class="cc-work" src="assets/img/01-delivery.webp" alt="">
-                <img class="cc-work" src="assets/img/06-yard.webp" alt="">
-                <span class="cc-merch"><img src="assets/img/deals-img.webp" alt=""></span>
+              <span class="cc-h">View hot local deals near you</span>
+              <span class="cc-s">See a deal you like, buy from the merchant directly and Gopher takes it from there for the last mile.</span>
+              <span class="cc-btn cc-btn-gold">
+                <span class="ccb-main">View Local Deals</span>
+                <span class="ccb-sub">SPONSORED PICKS</span>
               </span>
-              <span class="cc-h">Local deals near you</span>
-              <span class="cc-s">This month's winning offers from local merchants and vetted pros.</span>
-              <span class="cc-go">View local deals →</span>
             </button>
           </div>
         </div>
@@ -19995,6 +20053,29 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const pr = v.play(); if(pr && pr.catch) pr.catch(() => {});
     });
   }
+
+  /* ── merchant marquee: real marks from the customer-deals page ──────────
+     Owner 2026-10-01: "have multiple logos running on the screen. Top scrolling
+     →, bottom scrolling ←." Reference he gave: gopher-customer-deals.html, which
+     is where these files come from.
+
+     Each row renders its run TWICE. The CSS translates by exactly -50%, so the
+     animation ends on a frame identical to its start and the loop is seamless —
+     with a single run you get a visible snap back every cycle. */
+  (function initDealsMarquee(){
+    const ROWS = {
+      a: ['cust-deals-bass-lake-outfitters.webp', 'cust-deals-bass-lake-quickmart.webp', 'cust-deals-buoy-bowls.webp', 'cust-deals-cardinal.webp', 'cust-deals-carolina-cellars.webp', 'cust-deals-circle-g.webp', 'cust-deals-ember-cigar-lounge.webp', 'cust-deals-frankie-fannkks.webp', 'cust-deals-holly-springs-market.webp', 'cust-deals-hs-market-logo.webp'],
+      b: ['cust-deals-johns-deli.webp', 'cust-deals-la-cocina.webp', 'cust-deals-mini-aussie-bottle-shop.webp', 'cust-deals-my-way-tavern.webp', 'cust-deals-quickstop.webp', 'cust-deals-sand-savvy-rental.webp', 'cust-deals-sugarbird.webp', 'cust-deals-triangle-handyman.webp', 'cust-deals-triangle-vine.webp', 'cust-deals-videri.webp']
+    };
+    Object.keys(ROWS).forEach(key => {
+      const track = document.querySelector('[data-mq="' + key + '"]');
+      if(!track || track.dataset.filled) return;
+      const run = ROWS[key].map(f =>
+        '<img src="assets/img/' + f + '" alt="" loading="lazy">').join('');
+      track.innerHTML = run + run;   // duplicated: see the -50% note above
+      track.dataset.filled = '1';
+    });
+  })();
 
   /* ── the home screen's two pathways ──────────────────────────────────────
      Neither branch builds anything new: Services shows the existing request
