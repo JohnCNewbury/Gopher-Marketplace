@@ -30,30 +30,41 @@ latency, not a bad deploy. Re-check before concluding.
 
 ## 2 · What is COMMITTED BUT NOT DEPLOYED
 
-`75ae40c` and `c6d23b4`, both on the branch, nothing uncommitted under `Final/` or
-`_prototypes/`:
+`75ae40c`, `c6d23b4`, `544a1ca`, `814c7fe`. Working tree clean under `Final/` and
+`_prototypes/`. **None of this is live. Do not deploy without the owner seeing it** —
+he has sent the home screen back twice.
 
-- **The dashboard home screen** — `data-rqsec="choose"`. Two options, Services or Deals,
-  nothing else on the page. The dashboard now OPENS here.
-- Profile photo by default (46px, 14px gap), service clips in the Services card, the Gopher
-  Deals mark + merchants/providers mosaic in the Deals card.
-- The `+ Choose your service` / `View Local Deals` tab row REMOVED from the request
-  destination.
-- Category tiles rebuilt for depth.
-- `Start` -> `Submit` on the bid review (slide 11 wording).
+**The dashboard home screen** (`data-rqsec="choose"`) — its only job is the choice,
+Services or Deals. The dashboard OPENS here, superseding the v76 "New Request is the
+screen" decision. Both destinations already existed; the cards call `setRequestPath()` /
+`renderDealsHome()` directly.
 
-**Do not deploy this without the owner seeing it** — he has sent the home screen back twice
-and the treatment is not signed off (§4).
+Built to the owner's 10/01 annotated mockup:
+- Both cards lead with their own mark, **centred**.
+- Copy verbatim: "Let's get you connected to a great local worker" / "View hot local deals
+  near you", with short bodies that run the full card width (no max-width cap).
+- **Symmetrical CTAs**, both exactly 186x45 — "+ Make a request" (green) and "View Local
+  Deals" (gold, with the old `dtSheen` sweep, SPONSORED PICKS sub-line dropped). The green
+  one carries a transparent 1.5px border purely to match the gold one's height.
+- **Merchant marquee** — two rows of real marks from `gopher-customer-deals.html`, 20 logos,
+  top scrolling →, bottom ←.
+- Services card runs four looping `services-clip-*.mp4` quads, same pattern as the laptop on
+  `gopher-services.html`.
+- **"Activated" state**: the sidebar's `+ New Request` and `View Local Deals` buttons are
+  HIDDEN on the home screen and appear once a card is chosen (`.dashboard.is-choosing`).
+- Sidebar narrowed 260px -> 229px.
+- Profile photo by default (46px, 14px gap); `px-1043471-240x240.webp`.
+- `Start` -> `Submit` on the bid review; tab row removed from the request destination.
 
 ## 3 · Deck slide status
 
 | # | Item | Status |
 |---|---|---|
-| 1 | header: drop "Submit New Request", profile circle, logo | **partial** — title + avatar done; logo unresolved (§4) |
-| 2 | home screen, 2 pathways | **built, unapproved** |
+| 1 | header: drop "Submit New Request", profile circle, logo | **done** — title removed, avatar leads, logo resolved (§4) |
+| 2 | home screen, 2 pathways | **built to the 10/01 mockup, unapproved** |
 | 3 | services destination | existing; tab row removed |
 | 4 | deals destination + headliner & 5 category winners | **NOT built** — the headliner/5-winner hierarchy is still outstanding |
-| 5 | "floating cards … almost 3D" | **built, unapproved** — owner rejected the first attempt |
+| 5 | "floating cards … almost 3D" | **rebuilt with 4-layer depth, unapproved** — first attempt rejected |
 | 6 | Done button on Saved addresses | **live** |
 | 7 | bids `$0.00` vs `$102` | **live** |
 | 8 | 1st-available / MY Gopher auto-connect to live screen | **NOT started** |
@@ -66,12 +77,13 @@ and the treatment is not signed off (§4).
 
 ## 4 · OPEN — needs the owner
 
-1. **The sidebar logo.** `gopher-request-logo.svg` has the wordmark at `fill="#012462"`, the
-   same navy as the sidebar, so it CANNOT sit on the dark background — "request" disappears
-   and only the green mark survives. There is no white/inverted logo asset in the repo.
-   Current state is a white chip sized to the mark (163x66). Owner asked for it to "look like
-   our logos behind a dark background". Either a white lockup from the brand kit, or inline
-   the SVG and recolour the wordmark paths.
+1. ~~**The sidebar logo.**~~ **RESOLVED 2026-10-01.** The owner's third screenshot showed the
+   wordmark WHITE on the navy. `gopher-request-logo.svg` paints it `fill="#012462"` — the same
+   navy — and there is no white variant in the repo, so an `<img>` could never work. `initLogo()`
+   now FETCHES the SVG, inlines it, and swaps that one fill for white; the gopher art keeps its
+   greens. Inlining is what makes it recolourable at all.
+   ⚠️ `fetch` fails on `file://`, so a double-clicked local copy falls back to the old
+   bitmap-on-a-white-chip. That fallback is deliberate, not a regression — see §8.
 2. **Home screen treatment.** Built as "Brand fields" (navy vs gold). Two alternatives were
    mocked (photography; light & airy). Not chosen.
 3. **Slide 9's "Start job" rule** — Connect only, and only when more workers were requested
@@ -135,3 +147,42 @@ Other -> Custom Task, TrustShield in nav, account deletion, and the new home scr
 - **Web -> Go Prototype** (`local_15b531c4…`) owns the PT side. Agreed 09-30: one combined
   `deploy.sh --push` rather than split `--site` runs, per the both-sites-are-default ruling.
 - **G40-68** (`local_2817ac02…`) — see §5.
+
+## 8 · How to SHOW the owner (he could not open the link)
+
+⛔ **`http://localhost:8250` is NOT reachable from the owner's own browser.** The preview
+server runs inside the session sandbox — nothing listens on that port from outside. Handing
+him a localhost URL wastes a round trip; it works only in the in-app Browser pane.
+
+What works: a self-contained copy on his Desktop.
+
+```
+rm -rf ~/Desktop/Gopher-Home-Preview && mkdir -p ~/Desktop/Gopher-Home-Preview/assets
+cp Final/gopher-request.html ~/Desktop/Gopher-Home-Preview/index.html
+rsync -a --include='*/' --include='img/***' --include='css/***' --include='js/***' \
+  --include='fonts/***' --include='video/services-clip-*.mp4' --exclude='*' \
+  Final/assets/ ~/Desktop/Gopher-Home-Preview/assets/
+open ~/Desktop/Gopher-Home-Preview/index.html
+```
+
+The page references `assets/…` relatively, so that layout is all it needs (~60 MB with the
+clips). **Expect one difference from the served version: the logo falls back to the white
+chip**, because `file://` blocks the fetch that inlines and recolours the SVG. That is the
+fallback working. If the logo itself is what needs judging, serve it or inline the SVG into
+the markup.
+
+## 9 · Immediate next steps
+
+1. **Owner review of the home screen** — built twice to his notes, still unapproved. His
+   "on and on and on" list has never arrived; do not infer it.
+2. **Slide 4** — the deals destination needs 1 headliner + 5 category winners. Not started,
+   and it is the one piece with commercial weight (those are the sold placement slots).
+3. **Slide 12** — TrustShield panel: celebrate verified, manage card/selfie, soft removal.
+   What shipped was a scare dialog and he rejected it.
+4. **Slides 8 + 9** — flow tightening. ⚠️ Slide 9's "Start job" rule is Connect-only /
+   multi-worker-partial; it must NOT remove slide 11's **Submit** button, which is a
+   different control.
+5. **Slide 13** — "Fix UI" on the delete dialog (the stacking half is already live).
+6. **101 guides** — this deck's user-facing changes plus G40-68 (§5).
+7. **Deploy** when approved: one bare `scripts/deploy.sh --push` (both sites), scope-check
+   the dry run, then content-verify all three hosts.
