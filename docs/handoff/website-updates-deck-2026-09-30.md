@@ -101,8 +101,14 @@ Previous-jobs filter on the Gopher profile. Merged `f1db11d`, docs follow-ups `c
 28f51c802 is an ancestor of `origin/production`; an earlier claim that it was pending is
 wrong.
 
-**101 guides are OUTSTANDING** for it, and the owner's standing rule is that a user-facing
-change is not done until its guide is updated. Rules to write against (owner-approved, via
+**101 guides are STILL OUTSTANDING** for it, and the owner's standing rule is that a
+user-facing change is not done until its guide is updated.
+
+⚠️ Commit `1812669` on this branch is titled "G40-68: 101 guides describe the new Gopher
+profile" — **it does not.** It is two lines: a passing "past jobs" mention inside a
+radio-row description. Neither guide contains the phrase "previous jobs" at all, and none
+of the rules below are described. Checked by reading the diff, not the subject line. Do not
+let that commit close this item. Rules to write against (owner-approved, via
 the G40-68 seat):
 - Default is View All Previous Jobs; "View Previous [Category] Jobs Only" follows the active
   request's category — Delivery, Need A Ride, Service, Other.
