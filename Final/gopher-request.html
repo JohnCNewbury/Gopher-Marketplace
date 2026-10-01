@@ -6954,7 +6954,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     position:fixed; inset:0;
     background:#f5f7fb;
     z-index:9000;
-    grid-template-columns:260px 1fr;
+    grid-template-columns:229px 1fr;   /* owner 2026-10-01: ~12% narrower (was 260) */
     font-family:'Nunito',sans-serif;
     color:var(--text);
   }
@@ -6983,10 +6983,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     box-sizing:border-box;
     display:inline-flex; align-items:center; align-self:flex-start;
     width:auto;
-    background:#ffffff;
-    border-radius:14px;
-    padding:10px 16px;
+    background:transparent;
+    padding:4px 2px 2px;
     margin-bottom:16px;
+  }
+  /* inlined + recoloured: reads straight off the navy */
+  .dash-logo-slot.is-inline-svg svg { width:150px; height:auto; display:block; }
+  /* bitmap fallback only — the navy wordmark still needs a light ground */
+  .dash-logo-slot.needs-chip {
+    background:#fff; border-radius:12px; padding:8px 12px;
     box-shadow:0 4px 14px rgba(0,0,0,0.18);
   }
   .dash-sidebar-brand {
@@ -8175,12 +8180,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .dash-avatar-lead img { width:100%; height:100%; object-fit:cover; display:block; }
   /* ── the two-pathway home screen (owner 2026-09-30, slide 2) ── */
-  .choose-stage { padding:34px 4px 10px; }
+  .choose-stage { padding:10px 4px 10px; }   /* owner 2026-10-01: heading sits up, was 34px top */
   .choose-ask {
     font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; line-height:1.15;
-    margin:0 0 6px; letter-spacing:-.4px; color:var(--navy);
+    margin:0 0 4px; letter-spacing:-.4px; color:var(--navy);
   }
-  .choose-sub { margin:0 0 28px; font-size:14px; color:var(--muted); }
+  .choose-sub { margin:0 0 18px; font-size:14px; color:var(--muted); }
   .choose-two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   .choose-card {
     position:relative; overflow:hidden; text-align:left; cursor:pointer; border:0;
@@ -8200,6 +8205,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     border-radius:50%; background:rgba(51,217,117,.18);
   }
   .choose-card.deals .cc-orb { background:rgba(201,163,63,.16); }
+  /* home screen = not yet activated: hide both sidebar CTAs */
+  .dashboard.is-choosing .dash-sidebar-newreq,
+  .dashboard.is-choosing #rqDashNewRequest,
+  .dashboard.is-choosing .dash-sidebar-deals { display:none; }
+
   .dash-sidebar-deals {
     display:flex; flex-direction:column; align-items:center; gap:2px;
     width:100%; margin:0 0 14px; padding:10px 12px; cursor:pointer;
@@ -8264,34 +8274,49 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     .cc-mq-rtl .cc-mq-track, .cc-mq-ltr .cc-mq-track { animation:none; }
   }
 
-  /* CTA reads as a real button, per the mockup. */
+  /* CTAs are SYMMETRICAL (owner 2026-10-01): identical box — same padding, radius,
+     font and min-width — so the two cards' buttons line up. Only the fill differs.
+     The gold one is the old .rq-pathtab.deals-tab treatment, sheen included, with
+     the SPONSORED PICKS sub-line dropped so it is a single line like its partner. */
   .choose-card .cc-btn {
-    position:relative; margin-top:auto; align-self:flex-start;
-    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative; overflow:hidden; margin-top:auto; align-self:flex-start;
+    display:inline-flex; align-items:center; justify-content:center;
     font-family:'Nunito',sans-serif; font-weight:800; font-size:14.5px; line-height:1.15;
-    padding:12px 22px; border-radius:11px; margin-bottom:0;
+    padding:13px 24px; border-radius:11px; min-width:186px; box-sizing:border-box;
   }
   .choose-card .cc-btn-green {
     background:var(--green); color:#04240f;
+    /* transparent border matching the gold button's 1.5px, so the two boxes are
+       the same HEIGHT as well as width — without it they measured 43 vs 45. */
+    border:1.5px solid transparent;
     box-shadow:0 6px 16px rgba(28,176,90,.34);
   }
   .choose-card .cc-btn-gold {
-    background:#fff; color:var(--navy-deep); border:1.5px solid #EAD9B6;
-    box-shadow:0 6px 16px rgba(201,163,63,.22); gap:2px;
+    background:linear-gradient(135deg,#FFFBF3 0%, #FBF3E4 55%, #F6E9D0 100%);
+    color:var(--navy-deep); border:1.5px solid #EAD9B6;
+    box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06);
   }
-  .choose-card .cc-btn-gold .ccb-sub {
-    font-size:9px; letter-spacing:.6px; color:#8a6a2f; font-weight:800;
+  /* the sheen the owner asked to keep — same timing as the tab it replaces */
+  .choose-card .cc-btn-gold::after {
+    content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
+    transform:skewX(-18deg); animation:dtSheen 4.5s ease-in-out infinite; pointer-events:none;
   }
+  @media (prefers-reduced-motion: reduce){ .choose-card .cc-btn-gold::after { animation:none; } }
   .choose-card:hover .cc-btn-green { background:var(--green-dark); }
-  .choose-card:hover .cc-btn-gold  { border-color:#c9a33f; }
+  .choose-card:hover .cc-btn-gold  { border-color:var(--terracotta);
+    box-shadow:0 10px 24px rgba(217,119,87,.30), 0 0 0 1px rgba(217,119,87,.30); }
 
   .choose-card .cc-h {
     position:relative; font-family:'Nunito',sans-serif; font-weight:900;
     font-size:23px; margin:14px 0 7px; color:#fff;
   }
   .choose-card.deals .cc-h { color:#002461; }
+  /* Owner 2026-10-01: the copy runs END TO END against the media above it, so no
+     max-width cap — it was wrapping short and leaving a ragged right edge beside
+     a full-width image strip. */
   .choose-card .cc-s {
-    position:relative; font-size:13.5px; line-height:1.55; max-width:36ch;
+    position:relative; font-size:13.5px; line-height:1.5; max-width:none;
     color:rgba(255,255,255,.78);
   }
   .choose-card.deals .cc-s { color:#6b5a38; }
@@ -19687,8 +19712,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <span class="cc-quad"></span><span class="cc-quad"></span>
                 <span class="cc-quad"></span><span class="cc-quad"></span>
               </span>
-              <span class="cc-h">Get you connected to a great local worker</span>
-              <span class="cc-s">Delivery, moving, junk removal, home services, labor, rides and more &mdash; where a neighbor takes it from here.</span>
+              <span class="cc-h">Let's get you connected to a great local worker</span>
+              <span class="cc-s">Delivery, moving, junk, home services, labor, rides and more &mdash; a neighbor takes it from here.</span>
               <span class="cc-btn cc-btn-green">+ Make a request</span>
             </button>
             <button type="button" class="choose-card deals" data-choose="deals">
@@ -19704,11 +19729,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <span class="cc-mq-row cc-mq-rtl"><span class="cc-mq-track" data-mq="b"></span></span>
               </span>
               <span class="cc-h">View hot local deals near you</span>
-              <span class="cc-s">See a deal you like, buy from the merchant directly and Gopher takes it from there for the last mile.</span>
-              <span class="cc-btn cc-btn-gold">
-                <span class="ccb-main">View Local Deals</span>
-                <span class="ccb-sub">SPONSORED PICKS</span>
-              </span>
+              <span class="cc-s">Buy from the merchant direct &mdash; a Gopher brings it the last mile.</span>
+              <span class="cc-btn cc-btn-gold">View Local Deals</span>
             </button>
           </div>
         </div>
@@ -24200,12 +24222,41 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // renders) instead of the text wordmark. grAsset() reads the embedded logo
     // already on the page, so there's no duplicated base64. Falls back to the
     // text wordmark only if the art can't be found.
-    const src = (window.grAsset && grAsset('requestLogo')) || '';
+    /* Owner 2026-10-01 ("correct the request logo as pictured"): the mark sits on
+       the NAVY sidebar with a WHITE wordmark — no white chip behind it.
+
+       ⛔ The shipped asset cannot do that as an <img>: gopher-request-logo.svg
+       paints the wordmark with fill="#012462", the same navy as the sidebar, so
+       it disappears. There is no white variant in the repo. So the SVG is fetched
+       and INLINED, and that one fill is swapped for white — the gopher art keeps
+       its own greens. Inlining is what makes it recolourable at all; an <img>
+       cannot be restyled from outside.
+
+       Falls back to the previous bitmap-on-a-chip if the fetch fails, so a file://
+       open or a blocked request still shows a logo rather than nothing. */
+    const SVG_URL = 'assets/img/gopher-request-logo.svg';
+    fetch(SVG_URL).then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
+      .then(svg => {
+        logoSlot.innerHTML = svg.replace(/#012462/gi, '#ffffff');
+        const el = logoSlot.querySelector('svg');
+        if(el){ el.removeAttribute('width'); el.removeAttribute('height'); el.setAttribute('aria-label','Gopher Request'); }
+        logoSlot.classList.add('is-inline-svg');
+      })
+      .catch(() => {
+        const src = (window.grAsset && grAsset('requestLogo')) || '';
+        if(src){
+          const img = document.createElement('img');
+          img.src = src; img.alt = 'Gopher Request';
+          logoSlot.appendChild(img);
+          logoSlot.classList.add('needs-chip');
+        }
+      });
+    const src = '';
     if(src){
       const img = document.createElement('img');
       img.src = src; img.alt = 'Gopher Request';
       logoSlot.appendChild(img);
-    } else {
+    } else if(false) {
       logoSlot.innerHTML = '<div class="dash-logo-text"><span class="dlt-mark">G</span><span class="dlt-words"><b>GOPHER</b><span class="dlt-connect" style="color:var(--navy)!important;">REQUEST</span></span></div>';
     }
     logoSlot.dataset.done = '1';
@@ -25342,6 +25393,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        section is still not painted when the handler runs, and a browser will not
        start a video it cannot show — play() resolved and the clips stayed paused.
        requestAnimationFrame puts the call after the style/layout pass. */
+    /* Owner 2026-10-01: the sidebar's + New Request and View Local Deals buttons
+       are NOT shown on the home screen. They appear once a category card has been
+       chosen — the "activated" state — because on the home screen those buttons
+       duplicate the two cards the user is looking at. */
+    dash.classList.toggle('is-choosing', name === 'choose');
     if(name === 'choose') requestAnimationFrame(() => playChooseClips());
     if(name === 'home') renderActiveRequests();
     // Whenever the Previous section is shown, reset the detail panel back to the
