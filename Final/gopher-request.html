@@ -7477,7 +7477,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   /* Make the whole pending-request row visibly clickable */
   .req-card.is-clickable { cursor:pointer; }
-  .req-card.is-clickable:hover { border-color:#C44257; }
+  /* ⛔ Red is for negatives and alerts only (owner, 2026-10-02). This rule used to
+     set border-color:#C44257 on EVERY clickable card, so an In Progress or
+     Scheduled card went red on hover with nothing wrong — it was the one red use
+     with no state gate. Removed: the card now falls through to .req-card:hover,
+     which is already border-color:var(--green), the house convention shared with
+     .deal-card and .refer-card. .req-card.has-attention keeps its red and still
+     wins on hover (equal specificity, declared later), so a card that genuinely
+     needs attention is unaffected. */
   .req-card.has-attention {
     border-color:rgba(196,66,87,0.45);
     background:linear-gradient(90deg, rgba(196,66,87,0.04), white 30%);
