@@ -164,10 +164,19 @@ Crispness, in fix order:
 2. ~~Coloured glows under small text: `.mst-tab.active` 16px blur at 12.5px;
    `.req-action.attention` 20.4px at 11px.~~
 
-   ◼ **WITHDRAWN. Owner, 2026-10-02:** *"We're not suggesting removing the pulsing glow when
-   something needs attention are we? That was never an issue. It was the words inside the
-   buttons."* The attention pulse is a deliberate, documented feature (see the comment above
-   `.attn-pulse` at `request:7478`) and it **stays**.
+   ◼ **WITHDRAWN — and ⛔ OUT OF SCOPE AS A STANDING RULE, not just for this finding.**
+   Owner, 2026-10-02: *"We're not suggesting removing the pulsing glow when something needs
+   attention are we? That was never an issue. It was the words inside the buttons."* — and, when
+   that was read as a report about one button: *"Pulsing buttons is NOT an issue and i DID NOT
+   want that removed… I'm just talking about the places where i specifically had the pulsing
+   buttons when an action is needed is to stay. Wasn't speaking about a specific button."*
+
+   **This is a general constraint, not a defect report.** Wherever a pulsing control signals that
+   an action is needed, it is a deliberate owner design decision and it **stays** — every
+   instance, not just `.attn-pulse`. Do not list it as a finding, a crispness cause or a cleanup
+   candidate. If other work would remove one, surface it to him rather than letting it go
+   silently. (One already did on 2026-10-02: `32889c6` removed `sjb-start-btn attn-pulse` along
+   with the whole Start job bar — unrelated to this pass, flagged to him.)
 
    It could not have been the cause anyway: `.attn-pulse`'s `box-shadow` is **not** inset, so
    it paints outside the border box, behind an opaque `background:var(--green)`. It never
