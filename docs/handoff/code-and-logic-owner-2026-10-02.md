@@ -135,7 +135,18 @@ which carry a preview-only bootstrap that is deliberately **not** in the repo
 copies:
 
 - Request — https://claude.ai/artifact/UakWSaDiygowUcwPM6kx9P
-- Connect — https://claude.ai/artifact/9bpG9NEdpaXea7p6sQK7TG
+- Connect — https://claude.ai/artifact/Ag7WPWBXWg1pD5n7wBQ8Mv
+  ⚠️ **The Connect URL changed on 2026-10-02.** The old one
+  (`9bpG9NEdpaXea7p6sQK7TG`) is STALE and will keep serving the pre-rename
+  page — do not review it. It could not be updated in place: republishing an
+  artifact requires having read its live version first, and because every line
+  of that page is short the platform demands a FULL read, which for a 1.4MB
+  page is ~630k tokens and cannot fit in a context window. The Request page
+  escapes this only because two of its lines are long enough that the full-read
+  requirement is waived. A Connect republish therefore means publishing a new
+  artifact and re-attaching its 174 asset files; they can be copied server-side
+  from the previous artifact (`files: {path: {artifact, path}}`) EXCEPT SVGs,
+  which that mechanism refuses — publish those 8 from `Final/assets/img/`.
 
 They are snapshots. After changing the repo files, republish to the same URL or
 the owner reviews stale pages. `localhost` is **not** reachable from his browser
