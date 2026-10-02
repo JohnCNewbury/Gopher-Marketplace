@@ -35,6 +35,37 @@ poll until the string lands rather than concluding anything.
 Deck items live from this run: slides **1, 2, 3, 4, 5, 6, 7, 9, 10**. Slides 8
 and 11 were already live before it.
 
+### Also deployed 2026-10-02 — the port to Connect and the split prototype
+
+| | |
+|---|---|
+| production | `c725843 -> origin/main` |
+| prototype twin | `97c047f -> proto/main` |
+
+⚠️ **Connect is NOT the worker app — Go is.** Connect is "On-Demand Workforce
+for Businesses", a customer-side portal and a sibling of Request, so most of the
+deck applied there. A session that assumes otherwise will under-scope the port.
+
+Ported to `Final/gopher-connect.html`: floating cards, the Age-Restricted
+category always showing, the deals headliner + 5 category winners (Connect had
+the **identical** empty-data bug — `dealsHomePicks()` scanned for a
+`featuredSlot` no merchant carried), the 5-up `.dh-cats` grid, tap-to-change
+profile photo, and the greeting moving below the header bar (its avatar was
+already top-right).
+
+NOT ported because the surface does not exist in Connect: the two-pathway home
+screen, the deals button, the merchant marquee, the delete-account dialog, the
+TrustShield cancel dialog, the matched sidebar CTA pair. `.hirerev-back` **is**
+defined in Connect, so Request's unstyled-button bug does not exist there.
+
+`_prototypes/Request/gopher-request-flow.html` is the allowlisted prototype file
+carrying `.cat-tile`; it got the same borderless treatment.
+⚠️ `_prototypes/` belongs to the **Web → Go Prototype** session. Edited on the
+owner's direct instruction — tell that session rather than let it discover this.
+
+Content-verified on all three hosts. Connect: live and TigerTech byte-identical
+at 1,456,830, twin +48 for its `noindex`.
+
 ### Deployed 2026-09-30 by `scripts/deploy.sh --push` (both sites, one run):
 
 | | |
