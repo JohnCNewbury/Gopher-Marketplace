@@ -186,12 +186,37 @@ Crispness, in fix order:
    **What he actually meant by the words inside the buttons** is the ink:
    `.req-action.attention` sets 11px Nunito 900 uppercase in `var(--ink-on-green)` — white, via
    the broken token — on Shamrock at **1.85:1**. That is item 1 of the fix order, already.
-3. Half-pixel font sizes — Request 36 elements (11.5/13.5/15.5px), Connect 56
-   (12.5/10.5/15.5px). **⚠️ OPEN QUESTION WITH THE OWNER, do not act on it
-   blind:** at 2x Retina these land on whole device pixels and are fine; at 1x
-   they land on half-pixels and render soft. I asked whether the fuzziness is
-   worse on one screen than another and he has not answered. The answer decides
-   whether rounding them is worth doing at all.
+3. ~~Half-pixel font sizes — Request 36 elements, Connect 56. **OPEN QUESTION.**~~
+
+   ◼ **RESOLVED 2026-10-02, and the pixel-grid theory is DEAD.** Owner was shown one source
+   size against **two** whole-pixel alternatives — rounded *down* (smaller) and *up* (larger):
+
+   | | as live | whole, **smaller** | whole, larger |
+   |---|---|---|---|
+   | | 12.5px | 12px | **13px ← picked** |
+   | | 15.5px | 15px | **16px ← picked** |
+
+   He picked the **larger** column both times. **If the pixel grid were the cause, the smaller
+   whole-pixel column would also have beaten the half-pixel one. It did not.** So half-pixel
+   rendering is *not* what he is reacting to — size is. ⛔ Do not round these for crispness
+   reasons; that justification is gone.
+
+   What remains is a **type-size preference**, which is a design decision and a separate ask,
+   not a brand-compliance fix. Rounding *up* would deliver it and stays inside the guide's
+   bands (§4.2) — but see the corrected scope below before quoting "92".
+
+   ◼ **The count of 92 was wrong.** A census of the current tip (comments stripped) finds
+   **425 half-pixel declarations — 223 in Request, 202 in Connect — across 8 distinct sizes
+   per page**, not 3: 6.5 / 8.5 / 9.5 / 10.5 / 11.5 / 12.5 / 13.5 / 14.5 / 15.5 / 16.5.
+   The 92 figure was presumably *rendered elements visible on first paint*, which misses
+   modals and hidden panels; **declarations is the unit that matters for the size of the
+   edit.** Both numbers can be true; only one tells you the cost.
+
+4. ◼ **CONFIRMED by the owner, 2026-10-02: `-webkit-font-smoothing:antialiased` is sharper.**
+   Tested against `auto` on the real navy sidebar gradient with text, size and colour held
+   constant — a clean comparison, unlike the other two I built. **This is the only change so
+   far that actually addresses sharpness rather than legibility.** One line per page, no
+   layout or size movement. Do it.
 4. `.dni-ext` renders text at `opacity:0.7`.
 
 ### ~~⭐ The most consequential finding, invisible on screen~~ ◼ CORRECTED — does not hold
