@@ -196,14 +196,26 @@ Crispness, in fix order:
    | | 12.5px | 12px | **13px ← picked** |
    | | 15.5px | 15px | **16px ← picked** |
 
-   He picked the **larger** column both times. **If the pixel grid were the cause, the smaller
-   whole-pixel column would also have beaten the half-pixel one. It did not.** So half-pixel
-   rendering is *not* what he is reacting to — size is. ⛔ Do not round these for crispness
-   reasons; that justification is gone.
+   His full answer came in two parts, and the second part is the one that decides it:
+   *"and the 13/16"*, then — *"and yes, 12 is sharper then the live 12.5."*
 
-   What remains is a **type-size preference**, which is a design decision and a separate ask,
-   not a brand-compliance fix. Rounding *up* would deliver it and stays inside the guide's
-   bands (§4.2) — but see the corrected scope below before quoting "92".
+   ⛔ **I acted on the first half before the second arrived and briefly recorded the opposite
+   conclusion. Do not repeat that: a terse answer can be partial.** Corrected below.
+
+   **The pixel grid is REAL.** 12px beats 12.5px *despite being smaller* — that is exactly the
+   discriminator the strip was built to test, and it passes. Size cannot explain it, because
+   the winner is the smaller sample. **And** he prefers 13/16 over both, so larger type helps
+   too. Two independent effects, both confirmed:
+
+   | Effect | Evidence | Verdict |
+   |---|---|---|
+   | Whole-pixel rendering | 12px sharper than 12.5px, while smaller | **Real** |
+   | Larger type | 13px / 16px preferred overall | **Real, separate** |
+
+   **Rounding UP captures both at once** — it lands on a whole pixel *and* gives the larger
+   size he picked — and stays inside the guide's type bands (§4.2), max 17px, which the guide
+   caps on-screen body at. That is the change to make, but see the corrected scope first: it
+   is not 92.
 
    ◼ **The count of 92 was wrong.** A census of the current tip (comments stripped) finds
    **425 half-pixel declarations — 223 in Request, 202 in Connect — across 8 distinct sizes
