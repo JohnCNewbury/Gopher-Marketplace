@@ -7067,7 +7067,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; align-items:center; justify-content:center; gap:8px;
     width:100%;
     margin:0 0 18px;
-    min-height:50px; box-sizing:border-box; /* uniform CTA size (owner, 2026-07-23) */
+    /* ⛔ 52, and .dash-sidebar-deals must carry the SAME number — owner
+       2026-10-02: "These buttons need to both be the same exact size."
+       It was 50 (owner, 2026-07-23, uniform CTA size) but the + glyph's line box
+       pushed the real height to 52, so the deals button pinned at 50 sat 2px
+       shorter. Declaring 52 changes nothing visually here — it is what this
+       button already measured — and gives both one number to share. */
+    min-height:52px; box-sizing:border-box;
     padding:15px 18px;
     background:var(--green); color:#002461; /* navy words on all portal CTAs (owner, 2026-07-23) */
     border:none; border-radius:14px;
@@ -8274,10 +8280,23 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* The sidebar instance differs ONLY in box metrics — it has a narrower column
      to live in. Fill, border, text colour, glow and sheen all come from the
      shared rule above, which is the point of the slide. */
+  /* ⛔ Owner 2026-10-02: "These buttons need to both be the same exact size for
+     branding continuity." Every box metric below is copied from
+     .dash-sidebar-newreq above — change one, change both.
+
+     min-height + border-box is what makes them equal DESPITE this one carrying a
+     1.5px border and + New Request carrying none: with border-box the border is
+     inside the 50px, so both measure exactly 50. Do not swap in a bare height,
+     and do not drop box-sizing. */
   .dash-sidebar-deals {
-    display:flex; align-items:center; justify-content:center;
-    width:100%; margin:0 0 14px; padding:11px 10px;
-    font-size:13px; text-align:center;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%;
+    margin:0 0 18px;
+    min-height:52px; box-sizing:border-box;
+    padding:15px 18px;
+    border-radius:14px;
+    font-weight:900; font-size:15.5px; letter-spacing:0.2px;
+    text-align:center;
   }
 
   /* Both cards lead with their own mark, centred (owner 2026-10-01). */
