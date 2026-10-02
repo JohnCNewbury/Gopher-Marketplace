@@ -6972,10 +6972,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .dash-logo-slot {
     display:flex; align-items:center;
-    min-height:36px;
+    min-height:32px;
   }
   .dash-logo-slot img {
-    height:34px; width:auto; max-width:200px; display:block;
+    height:30px; width:auto; max-width:200px; display:block;
   }
   /* Text-wordmark fallback — shown by default; replaced by image when JS clones it */
   .dash-logo-text {
@@ -7175,9 +7175,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     overflow-y:auto;
     padding:0;
   }
+  /* Owner 2026-10-02: the top bar was trimmed a little, and Request and Connect
+     set to the SAME height so the two dashboards read as one product.
+     ~67px (Request) / ~63px (Connect) -> ~57px. The avatar and the logo set the
+     floor, so both come down with the padding; shrinking the padding alone just
+     tightens the gap around a 38px circle and barely moves the bar. */
   .dash-topbar {
     display:flex; align-items:center; justify-content:space-between;
-    padding:14px 32px 14px 20px;
+    padding:10px 32px 10px 20px;
     background:white;
     border-bottom:1px solid #e7eaf2;
     position:sticky; top:0; z-index:5;
@@ -7189,6 +7194,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-weight:600; margin:0 0 2px;
   }
   .dash-topbar-right .dash-avatar-lead {
+    /* The topbar circle is the TALLEST thing in the bar, so it — not the padding —
+       sets the bar's height. .dash-avatar-lead is 46px and outranks the 36px base
+       rule, which is why trimming padding alone barely moved it. Scoped to the
+       topbar so the 46px lead avatar is untouched anywhere else it is used. */
+    width:36px; height:36px;
     margin-right:0; padding:0; border:0; cursor:pointer;
     background:var(--navy); color:#fff;
     box-shadow:0 0 0 0 rgba(51,217,117,0); transition:box-shadow .18s, transform .18s;
@@ -7214,7 +7224,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .dash-new-request:hover { background:var(--green-dark); transform:translateY(-1px); }
   .dash-avatar {
-    width:38px; height:38px; border-radius:50%;
+    width:36px; height:36px; border-radius:50%;
     background:var(--navy); color:white;
     display:flex; align-items:center; justify-content:center;
     font-family:'Nunito'; font-weight:800; font-size:13px;
@@ -9910,7 +9920,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     .kpi-grid { grid-template-columns:repeat(2, 1fr); }
     .gophers-grid { grid-template-columns:1fr; }
     .dash-content { padding:18px; }
-    .dash-topbar { padding:14px 18px; }
+    .dash-topbar { padding:10px 18px; }
     /* no sidebar to line up with on a phone — the logo just takes its own width */
     .dash-topbar-brand { flex:0 0 auto; margin-right:14px; }
     .dash-logo-slot img { height:30px; max-width:150px; }
@@ -9918,7 +9928,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* Putting the logo in the bar cost the greeting its room on a narrow phone and
      it wrapped to two lines. Shrink the mark rather than truncate the name. */
   @media (max-width:560px){
-    .dash-topbar { padding:10px 14px; }
+    .dash-topbar { padding:8px 14px; }
     .dash-topbar-brand { margin-right:10px; }
     .dash-logo-slot img { height:24px; max-width:110px; }
     .dash-burger { width:34px; height:34px; margin-right:8px; }
