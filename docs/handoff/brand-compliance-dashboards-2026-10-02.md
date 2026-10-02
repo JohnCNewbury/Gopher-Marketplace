@@ -88,10 +88,21 @@ one he saw. Three more:
 override **only** the background to green, so the ink is never corrected.
 Measured **1.85 : 1**.
 
-⭐ **His diagnosis was right and worth repeating to him: the fuzziness is mostly
-the contrast, not the rendering.** White on bright green has almost no luminance
-difference, so glyph edges have nothing to resolve against. Correcting the ink
-to navy sharpens them with no other change.
+~~⭐ **His diagnosis was right: the fuzziness is mostly the contrast, not the rendering.**
+Correcting the ink to navy sharpens them with no other change.~~
+
+◼ **CORRECTED by the owner, 2026-10-02, looking at a before/after of the ink change:**
+*"It looks more readable but i wouldn't say more crisp."* **Contrast buys readability, not edge
+definition — do not sell the ink fix as a sharpness fix.** The navy correction still stands on
+its own merits (the guide's ruling, 33 surfaces failing AA), but the softness has a different
+cause and is still unidentified.
+
+⛔ **My before/after page was incapable of showing crispness and I did not notice**: it set
+`-webkit-font-smoothing:antialiased` on its body, so *both* panels already carried the smoothing
+correction while the live files set the property **zero** times (= `auto`). The only variable left
+was ink. A demo must inherit the target's rendering settings, not quietly improve them —
+same family as the §4 traps. Replacement diagnostic, one variable per strip and smoothing left on
+`auto`: `docs/handoff/brand-crispness-isolation-test.html`.
 
 ~~⛔ **The fix already exists in this codebase.** `--ink-on-green:#002461` is
 defined, and `gopher-request.html:3919` already does it right. The main flow tabs simply

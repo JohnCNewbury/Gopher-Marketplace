@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crispness Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     CRISPNESS ISOLATION TEST
+     Ink colour is deliberately NOT a variable here — that question is
+     settled and it is not what this page is asking about.
+
+     ⛔ The page default below is -webkit-font-smoothing:AUTO, which is what
+     gopher-request.html and gopher-connect.html actually use (neither file
+     sets the property at all). The earlier before/after page set
+     'antialiased' on its body, so BOTH panels there already had the smoothing
+     correction applied and no crispness difference could have shown. That is
+     why that page read as "more readable, not more crisp" — correctly.
+
+     Every strip below changes exactly ONE thing. Values are lifted from the
+     live files; sources noted per strip.
+     ============================================================ */
+  :root{
+    --green:#33d975;
+    --brand-navy:#002461;
+    --page:#fbf3e4;
+    --card:#ffffff;
+    --rule:#e3ddcd;
+    --muted:#6b7280;
+    --sidebar:linear-gradient(180deg,#1a2a5e 0%,#0f1a3d 100%);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto}  /* matches live */
+  body{
+    font-family:'DM Sans',sans-serif;background:var(--page);color:var(--brand-navy);
+    padding:40px 16px 64px;
+  }
+  .wrap{max-width:1000px;margin:0 auto}
+  .eyebrow{font-family:'Nunito',sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1{font-family:'Nunito',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);
+    line-height:1.1;letter-spacing:-.015em;margin-bottom:12px}
+  .lede{font-size:16px;line-height:1.6;max-width:68ch;color:#3b4252}
+  .lede b{color:var(--brand-navy)}
+
+  .ask{background:var(--brand-navy);color:#dfe8f7;border-radius:14px;padding:18px 20px;margin:22px 0 10px}
+  .ask b{color:#fff;font-family:'Nunito',sans-serif;font-weight:800}
+  .ask ol{margin:9px 0 0;padding-left:20px;line-height:1.7;font-size:14.5px}
+
+  .strip{background:var(--card);border:1px solid var(--rule);border-radius:14px;margin-top:22px;overflow:hidden}
+  .strip-head{padding:14px 18px;border-bottom:1px solid var(--rule)}
+  .strip-head h2{font-family:'Nunito',sans-serif;font-weight:800;font-size:16.5px;margin-bottom:3px}
+  .strip-head p{font-size:13px;color:var(--muted);line-height:1.5}
+  .strip-head code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+    background:#f3f4f8;padding:1px 5px;border-radius:4px;color:#1d2433}
+  .pair{display:grid;grid-template-columns:1fr 1fr}
+  @media (max-width:720px){.pair{grid-template-columns:1fr}}
+  .half{padding:20px 18px 22px}
+  .half + .half{border-left:1px solid var(--rule)}
+  @media (max-width:720px){.half + .half{border-left:none;border-top:1px solid var(--rule)}}
+  .lbl{font-family:'Nunito',sans-serif;font-weight:900;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:block}
+  .lbl.live::before{content:'● ';color:#C44257}
+  .lbl.alt::before{content:'● ';color:#15803d}
+
+  /* ---- A · smoothing, on the real sidebar ground ---- */
+  .navy{background:var(--sidebar);border-radius:10px;padding:16px 16px 18px}
+  .navy .row{color:#fff;font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;line-height:1.25;margin-bottom:7px}
+  .navy .sub{color:rgba(255,255,255,.72);font-family:'DM Sans',sans-serif;font-weight:500;font-size:11px}
+  .aa{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+  /* ---- B · half-pixel sizes ---- */
+  .sz p{font-family:'DM Sans',sans-serif;color:var(--brand-navy);margin-bottom:7px;line-height:1.5}
+  .sz .n{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--muted);margin-right:7px}
+
+  /* ---- C · coloured glow under small type ---- */
+  .glowrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:4px}
+  .pill{
+    font-family:'Nunito',sans-serif;font-weight:900;font-size:11px;letter-spacing:.5px;
+    text-transform:uppercase;background:var(--green);color:var(--brand-navy);
+    padding:8px 14px;border-radius:9px;border:none;
+  }
+  .pill.redglow{box-shadow:0 4px 22px rgba(196,66,87,0.62)}
+  .tab{
+    font-family:'Nunito',sans-serif;font-weight:800;font-size:12.5px;background:var(--green);
+    color:var(--brand-navy);padding:9px 16px;border-radius:11px;border:none;
+  }
+  .tab.greenglow{box-shadow:0 6px 16px rgba(51,217,117,0.42),0 0 0 3px rgba(51,217,117,0.18)}
+
+  /* ---- D · opacity vs solid ---- */
+  .op span{font-family:'DM Sans',sans-serif;font-size:13px}
+  .op .faded{color:var(--brand-navy);opacity:.7}
+  .op .solid{color:#5a6478}
+
+  /* ---- control ---- */
+  .ctl .blurred{filter:blur(.3px)}
+
+  .foot{margin-top:30px;border-top:1px solid var(--rule);padding-top:18px;
+    font-size:13.5px;line-height:1.65;color:#4a5160}
+  .foot b{color:var(--brand-navy)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Brand compliance · diagnostic, nothing changed</p>
+  <h1>Which of these actually looks crisper?</h1>
+  <p class="lede">
+    You said the navy ink read as <b>more readable, but not more crisp</b> — and you were right,
+    for a reason that was my fault: that page set <code>-webkit-font-smoothing:antialiased</code> on
+    its body, so <b>both</b> panels already had the smoothing correction applied. The only variable
+    left was ink colour, which buys contrast, not edge definition. It couldn't have shown you
+    crispness either way.
+  </p>
+  <p class="lede" style="margin-top:10px">
+    This page fixes that. It renders at <code>font-smoothing:auto</code> — what the live dashboards
+    actually use — and each strip below changes <b>exactly one thing</b>. Ink colour is not a
+    variable here.
+  </p>
+
+  <div class="ask">
+    <b>What I need from you</b>
+    <ol>
+      <li>Which strip, if any, shows a difference you'd call <i>sharper</i> — not just different?</li>
+      <li>Does your answer change between your laptop screen and an external monitor? That is the
+        question that's been open, and strip B is the one it decides.</li>
+    </ol>
+  </div>
+
+  <!-- A -->
+  <div class="strip">
+    <div class="strip-head">
+      <h2>A · Font smoothing, on the real navy sidebar</h2>
+      <p>The live sidebar gradient and white Nunito 800 / 14px, from <code>gopher-request.html:6985</code>.
+         Light-on-dark is where macOS renders heaviest. Left is live; right adds <code>antialiased</code>.</p>
+    </div>
+    <div class="pair">
+      <div class="half">
+        <span class="lbl live">As live · auto</span>
+        <div class="navy">
+          <div class="row">My Requests</div><div class="sub">3 active · 1 needs attention</div>
+          <div class="row" style="margin-top:12px">Find a Gopher</div><div class="sub">Browse local workers near you</div>
+        </div>
+      </div>
+      <div class="half">
+        <span class="lbl alt">antialiased</span>
+        <div class="navy aa">
+          <div class="row">My Requests</div><div class="sub">3 active · 1 needs attention</div>
+          <div class="row" style="margin-top:12px">Find a Gopher</div><div class="sub">Browse local workers near you</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="strip">
+    <div class="strip-head">
+      <h2>B · Half-pixel font sizes — the open question</h2>
+      <p>The sizes actually in use (92 elements across both files) against the same text rounded to
+         whole pixels. <b>On a 2x Retina screen these should look identical.</b> On a 1x external
+         monitor the left side should look softer. That difference is the whole question.</p>
+    </div>
+    <div class="pair">
+      <div class="half sz">
+        <span class="lbl live">As live · half-pixels</span>
+        <p style="font-size:11.5px"><span class="n">11.5</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:12.5px"><span class="n">12.5</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:13.5px"><span class="n">13.5</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:15.5px"><span class="n">15.5</span>Submitted 2 hours ago by a neighbour</p>
+      </div>
+      <div class="half sz">
+        <span class="lbl alt">Rounded to whole pixels</span>
+        <p style="font-size:12px"><span class="n">12&nbsp;&nbsp;</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:13px"><span class="n">13&nbsp;&nbsp;</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:14px"><span class="n">14&nbsp;&nbsp;</span>Submitted 2 hours ago by a neighbour nearby</p>
+        <p style="font-size:16px"><span class="n">16&nbsp;&nbsp;</span>Submitted 2 hours ago by a neighbour</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="strip">
+    <div class="strip-head">
+      <h2>C · Coloured glow under small type</h2>
+      <p>The red attention pulse at its brightest keyframe behind 11px text
+         (<code>request:7487</code>), and the green tab glow behind 12.5px
+         (<code>connect:7054</code>). Right side removes the glow only.</p>
+    </div>
+    <div class="pair">
+      <div class="half">
+        <span class="lbl live">As live · with glow</span>
+        <div class="glowrow">
+          <button class="pill redglow">Needs attention</button>
+          <button class="tab greenglow">In progress</button>
+        </div>
+      </div>
+      <div class="half">
+        <span class="lbl alt">Glow removed</span>
+        <div class="glowrow">
+          <button class="pill">Needs attention</button>
+          <button class="tab">In progress</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="strip">
+    <div class="strip-head">
+      <h2>D · Text faded with opacity vs a solid lighter colour</h2>
+      <p>The sidebar's external-link marks render at <code>opacity:0.7</code>. Right side is the
+         same apparent lightness set as a solid colour at full opacity.</p>
+    </div>
+    <div class="pair">
+      <div class="half op">
+        <span class="lbl live">As live · opacity 0.7</span>
+        <span class="faded">Opens in a new tab · gophergo.io</span>
+      </div>
+      <div class="half op">
+        <span class="lbl alt">Solid colour, full opacity</span>
+        <span class="solid">Opens in a new tab · gophergo.io</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- control -->
+  <div class="strip ctl">
+    <div class="strip-head">
+      <h2>Control — ignore unless nothing above differs</h2>
+      <p>The right side is deliberately blurred by a third of a pixel. If this pair looks identical
+         to you too, then the screen you're on can't resolve differences at this scale and the real
+         answer is on your other display — not that these fixes do nothing.</p>
+    </div>
+    <div class="pair">
+      <div class="half op"><span class="lbl alt">Normal</span><span class="solid">Submitted 2 hours ago by a neighbour nearby</span></div>
+      <div class="half op"><span class="lbl live">Blurred 0.3px</span><span class="solid blurred">Submitted 2 hours ago by a neighbour nearby</span></div>
+    </div>
+  </div>
+
+  <p class="foot">
+    <b>Nothing in either dashboard has been changed.</b> This page is a diagnostic only.
+    <br><br>
+    Whatever you find, the navy ink change still stands on its own merits — it's the style guide's
+    ruling and it fixes 33 surfaces that currently fail AA. <b>I'm just no longer claiming it will
+    make them look sharper</b>, and I'll correct that sentence in the audit doc and the artifact
+    once this tells us where the softness actually comes from.
+  </p>
+
+</div>
+</body>
+</html>
