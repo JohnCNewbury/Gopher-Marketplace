@@ -17971,16 +17971,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   </div>
 </div>
 
-<!-- START JOB ENCOURAGEMENT MODAL (Request Details — crew complete) -->
-<div class="gr-modal-overlay" id="startEncOverlay" hidden>
-  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="startEncTitle">
-    <button type="button" class="gr-modal-close" id="startEncClose" aria-label="Close">×</button>
-    <div class="gr-modal-icon gr-modal-icon-go">🚀</div>
-    <h4 id="startEncTitle">Your worker is ready!</h4>
-    <p class="gr-modal-sub" id="startEncBody">Your full crew is hired. Tap Start job when you're ready to get going.</p>
-    <button type="button" class="gr-modal-btn" id="startEncStart">OK</button>
-  </div>
-</div>
 
 <!-- CANCEL REQUEST CONFIRMATION MODAL -->
 <div class="gr-modal-overlay" id="cancelReqOverlay" hidden>
@@ -21717,6 +21707,20 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         req.userStarted = true;
       }
     }
+    /* ⛔ An AUTO-HIRED Gopher starts the job, exactly like a hand-picked one.
+       First Available and Prioritize MY Gophers hire up above, at submit; without
+       this they left a hired worker sitting on a PENDING request — the one state
+       the Start-job bar existed to clear, and the bar is gone. Hiring IS the
+       commitment (owner ruling 2026-09-01) and the live requester app has no
+       start step in any mode, so the auto-hired case cannot be the exception.
+       navigate:false because the flow is still on its confirmation band — its
+       "See workers in dashboard" CTA does the routing, and startJob()'s own hop
+       to the overview would pull the requester off that screen.
+       Service-provider deals are excluded: the branch above already connected
+       them and built their own live crew. */
+    if(data.dealKind !== 'service' && (req.interestedWorkers || []).some(w => w.status === 'hired')){
+      startJob(req, { navigate:false });
+    }
     renderActiveRequests();
     return id;
   };
@@ -21749,44 +21753,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
   })();
 
-  // ── Start-encourage modal (crew complete) per Post-Submitted spec §8b ──
-  // Verbatim copy from the master spec:
-  //   Title:  "All workers needed have been selected!"
-  //   Body:   "Please select Start job so we can move your request into your
-  //            Dashboard. There you can communicate with your workers and
-  //            track the progress in the Request Details section."
-  //   Button: "Start job" (calls startJob(r) — NOT a plain close)
-  let _startEncourageReq = null;
-  function showStartEncourageModal(r, needed){
-    const overlay = document.getElementById('startEncOverlay');
-    const title   = document.getElementById('startEncTitle');
-    const body    = document.getElementById('startEncBody');
-    const startB  = document.getElementById('startEncStart');
-    if(!overlay) return;
-    _startEncourageReq = r;
-    if(title)  title.textContent  = 'All workers needed have been selected!';
-    if(body)   body.textContent   = 'Please select Start job so we can move your request into your Dashboard. There you can communicate with your workers and track the progress in the Request Details section.';
-    if(startB) startB.textContent = 'Start job';
-    overlay.hidden = false;
-  }
-  (function initStartEncourageModal(){
-    const overlay = document.getElementById('startEncOverlay');
-    if(!overlay) return;
-    const close = () => { overlay.hidden = true; };
-    const x      = document.getElementById('startEncClose');
-    const startB = document.getElementById('startEncStart');
-    if(x) x.addEventListener('click', () => { _startEncourageReq = null; close(); });
-    if(startB) startB.addEventListener('click', () => {
-      const req = _startEncourageReq;
-      _startEncourageReq = null;
-      close();
-      if(req) startJob(req);
-    });
-    overlay.addEventListener('click', (e) => { if(e.target === overlay){ _startEncourageReq = null; close(); } });
-    document.addEventListener('keydown', (e) => {
-      if(e.key === 'Escape' && !overlay.hidden){ _startEncourageReq = null; close(); }
-    });
-  })();
+  // ── Start-encourage modal (Post-Submitted spec §8b) — REMOVED 2026-10-02 ──
+  // Owner: the Start job bar "was never supposed to be on request", and hiring is
+  // the same commitment as tapping Accept in the live app. This modal asked the
+  // requester to press a Start job button that exists nowhere in the product. The
+  // Hire path stopped calling it on 2026-09-01; its last caller (accepting a
+  // counter-offer) now calls startJob() directly, so the function and its
+  // #startEncOverlay markup were DELETED rather than left unreachable — same
+  // reasoning as the §8c incomplete-crew modal.
 
   // ── Incomplete-crew modal (Post-Submitted spec §8c) — REMOVED 2026-07-28 ──────
   // Retired by owner ruling: "Hiring early is moot on request. 1 worker accepted on
@@ -22908,35 +22882,20 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         </div>
       ` : '';
 
-      let startBar = '';
-      if(hired.length > 0){
-        const bidsReq   = window.__isBidsRequest(r);
-        const perWorker = r.perWorkerCost || 0;
-        const liveTotal = window.__agreedTotalFor(r, hired);
-        const origTotal = perWorker * needed;
-        /* The "was $X" comparison only means something when there WAS an
-           up-front price. A bids request never had one, so it is suppressed
-           rather than shown as a drop from $0.00. */
-        const adjusted  = !bidsReq && hired.length < needed;
-        startBar = `
-          <div class="start-job-bar">
-            <div class="sjb-cost">
-              <div class="sjb-cost-label">${hired.length} worker${hired.length!==1?'s':''} hired · ${needed} requested</div>
-              <div class="sjb-cost-amount">
-                $${liveTotal.toFixed(2)}
-                ${adjusted ? `<span class="sjb-cost-was">was $${origTotal.toFixed(2)}</span>` : ''}
-              </div>
-              ${adjusted ? `<div class="sjb-cost-note">Adjusted for ${hired.length} of ${needed} — you only pay for who you start.</div>` : ''}
-            </div>
-            <button class="sjb-start-btn attn-pulse" id="startJobBtn">Start job →</button>
-          </div>
-        `;
-      }
+      /* ⛔ NO START-JOB BAR IN REQUEST. Owner, 2026-10-02: it "was never
+         supposed to be on request" — selecting Hire is the same commitment as
+         tapping Accept in the live app, and the live requester app has no start
+         step in ANY mode. Every path that hires now calls startJob() itself: the
+         Hire/Approve handler, accepting a counter-offer, and the auto-hire that
+         First Available / MY Gophers perform at submit. The hired-but-not-started
+         state this bar existed to clear can therefore no longer occur.
+         Deleted rather than left unreachable — this file already learned what
+         stale scaffolding costs (see the §8c incomplete-crew note).
+         ⛔ This is NOT the bid-review overlay's Submit button, a different
+         control that stays. Connect KEEPS its start-job bar: there a crew can be
+         partially accepted, so a job worth starting early genuinely exists. */
 
       const multiIndividual = !!r.multiIndividual && needed > 1;
-      const fullyHired = hired.length > 0 && hired.length === needed;
-      const topBar = fullyHired ? startBar : '';
-      const midBar = fullyHired ? '' : startBar;
 
       if(isLive){
         // Job is running. Render per the post-submit master spec §7:
@@ -23030,10 +22989,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         }
       } else if(multiIndividual){
         workersHtml = `
-          ${topBar}
           ${section('Hire Approved', `${hired.length} of ${needed}`, hired, 'wsection-hired')}
           ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
-          ${midBar}
           ${interestedBlock(interested)}
           ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
@@ -23046,10 +23003,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         // from the list — visible on multi-individual flows but not here
         // (the bug v55 fixed). Approve/Deny from this section still work.
         workersHtml = `
-          ${topBar}
           ${section('Hired', `${hired.length}`, hired, 'wsection-hired')}
           ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
-          ${midBar}
           ${interestedBlock(interested)}
           ${window.__g40ExpirySimBar ? __g40ExpirySimBar(hired.length, interested.length) : ''}
           ${section('Considered', considered.length, considered, 'wsection-considered')}
@@ -23352,18 +23307,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           return;
         }
 
-        // 3) Start job bar — gated by hired count
-        const startBtn = target.closest('#startJobBtn');
-        if(startBtn){
-          const r = getR();
-          if(!r) return;
-          // REQUEST HIRE RULE: one lead worker is the max, so there is no "crew isn't
-          // full" state to warn about — hired at all means ready to start.
-          const hiredCount = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
-          if(hiredCount === 0) return;
-          startJob(r);
-          return;
-        }
       });
     }
   }
@@ -23490,7 +23433,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     document.body.appendChild(ov);
   };
 
-  function startJob(r){
+  /* `opts.navigate === false` suppresses the hop to the overview below. A hire
+     made from the detail page should land the requester back on the overview;
+     an AUTO-hire at submit must not, because the flow is still showing its
+     confirmation band and navigating would yank them off the screen they just
+     submitted from. Default is unchanged, so every existing caller behaves
+     exactly as before. */
+  function startJob(r, opts){
     if(!r) return;
     const hiredList = (r.interestedWorkers || []).filter(w => w.status === 'hired');
     const hiredCount = hiredList.length;
@@ -23562,7 +23511,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     recountKpis && recountKpis();
     renderActiveRequests();
-    showSection('home');
+    if(!(opts && opts.navigate === false)) showSection('home');
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -23977,10 +23926,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     r.counterOffers.splice(ci, 1);   // counter resolved → leave the list
     renderActiveRequests();          // dashboard summary card reflects the counter price
     renderRequestDetail();
-    // Same post-hire behavior as the Hire button: encourage Start once the crew is full.
-    const needed = 1;   // REQUEST HIRE RULE: one lead worker, never workersNeeded
-    const hiredNow = (r.interestedWorkers || []).filter(w => w.status === 'hired').length;
-    if(hiredNow >= needed && typeof showStartEncourageModal === 'function'){ showStartEncourageModal(r, needed); }
+    /* Accepting a counter-offer IS hiring, so it starts the job — the same
+       commitment as the Hire button. This used to open the start-encourage
+       modal, which the 2026-09-01 ruling had already removed from the Hire
+       path; this caller was missed, so a counter-offer left the request sitting
+       in Pending behind a prompt to press a button the live app does not have. */
+    startJob(r);
   }
 
   // ── Read-only Request recap, rendered from a FROZEN reviewSnapshot (the deal the
