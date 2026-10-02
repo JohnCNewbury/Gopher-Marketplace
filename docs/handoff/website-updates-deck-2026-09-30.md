@@ -160,7 +160,37 @@ Other -> Custom Task, TrustShield in nav, account deletion, and the new home scr
 server runs inside the session sandbox — nothing listens on that port from outside. Handing
 him a localhost URL wastes a round trip; it works only in the in-app Browser pane.
 
-What works: a self-contained copy on his Desktop.
+### 8a · Best route — a published Artifact (added 2026-10-01)
+
+**https://claude.ai/artifact/UakWSaDiygowUcwPM6kx9P** — the home screen, served over HTTPS,
+openable on any device he is signed in on. Private to his account; nothing is published to
+any of the three real hosts. 105 files, ~7 MB: `index.html` plus only the assets the page
+actually requests (captured from a real network log, not guessed), including all 18
+`services-clip-*.mp4` because the quads pick 4 at random from the full pool.
+
+Rebuild + republish recipe — the staging dir is
+`<session scratchpad>/artifact/`, and the republish must pass
+`url: https://claude.ai/artifact/UakWSaDiygowUcwPM6kx9P` or it creates a SECOND artifact
+at a new URL instead of updating this one.
+
+⚠️ **Three things differ from the served page, all expected:**
+- A **preview-only bootstrap** is appended before `</body>` that calls
+  `openRequestDashboard()` on load. Without it the artifact lands on the marketing page and
+  the dashboard is reachable only through sign-in, which needs the network. **It is NOT in
+  the repo copy** — `Final/gopher-request.html` has zero bootstrap hits. Do not let it leak
+  back into the repo.
+- **Google Maps is blocked.** The artifact CSP admits only the artifact's own files, Google
+  Fonts and a few script CDNs, so `maps.googleapis.com/maps/api/js` never loads and address
+  autocomplete is dead inside the preview. It does not touch the home screen.
+- It is **a snapshot.** Editing `Final/gopher-request.html` does not update it; republish.
+
+⛔ **Could NOT be verified end to end from this session** — the in-app Browser pane is not
+signed into claude.ai and hits the sign-in wall. What IS verified: all 105 files published
+with correct MIME types (`action: "list"`, `scope: "files"`), and the identical bytes minus
+the bootstrap render correctly on the preview server (screenshots sent 2026-10-01). If he
+reports it blank, that gap is where to look first.
+
+### 8b · Fallback — a self-contained copy on his Desktop
 
 ```
 rm -rf ~/Desktop/Gopher-Home-Preview && mkdir -p ~/Desktop/Gopher-Home-Preview/assets
