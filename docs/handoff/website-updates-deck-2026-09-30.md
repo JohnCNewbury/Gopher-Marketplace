@@ -11,7 +11,31 @@ Branch: `feature/deals-google-maps-audience`. Everything below is on it.
 
 ## 1 · What is LIVE
 
-Deployed 2026-09-30 by `scripts/deploy.sh --push` (both sites, one run):
+### Deployed 2026-10-02 — the whole 10-02 deck
+
+| | |
+|---|---|
+| production | `de7e7a1 -> origin/main` (GitHub Pages + TigerTech) |
+| prototype twin | `3fbdab7 -> proto/main` |
+
+One file: `Final/gopher-request.html`. Scope-checked on the dry run — 1 file
+claimed and 1 file listed, so nothing was elided and no other session's work
+rode along. Working tree was clean and the branch was 0 behind origin.
+
+Content-verified on **all three hosts**: 14 positive strings present, 4 strings
+that had to be gone absent (the rejected amber fill, the card corner orb, the
+preview-only bootstrap, the sidebar's SPONSORED PICKS line). Live and TigerTech
+byte-identical at 1,894,044; the twin is 48 bytes larger, which is its `noindex`
+meta. The **bytes each host serves** re-parsed: 19/19 blocks, 0 failed.
+
+⚠️ Both GitHub Pages hosts served the OLD build on the first check while
+TigerTech was already current. That is Pages build latency, not a bad deploy —
+poll until the string lands rather than concluding anything.
+
+Deck items live from this run: slides **1, 2, 3, 4, 5, 6, 7, 9, 10**. Slides 8
+and 11 were already live before it.
+
+### Deployed 2026-09-30 by `scripts/deploy.sh --push` (both sites, one run):
 
 | | |
 |---|---|
