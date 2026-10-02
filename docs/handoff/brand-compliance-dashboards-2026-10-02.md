@@ -74,14 +74,26 @@ And the owner, 2026-10-02: **"red is only used in negative/alerts."**
 ```
 
 ⛔ This is on **every** request card, not only ones needing attention — an
-In Progress or Scheduled card turns red on hover with nothing wrong. That is the
-one he saw. Three more:
+In Progress or Scheduled card turns red on hover with nothing wrong. **That is the one he
+saw, and on the correction below it is the only one.**
 
-| Where | What | Line |
+~~Three more:~~
+
+| ~~Where~~ | ~~What~~ | ~~Line~~ |
 |---|---|---|
-| `.req-card.has-attention` | red border 45% + red background wash | 7497 |
-| `.req-detail-header.has-attention` | 4px solid red left border | 7548 |
-| `.req-action.attention` | **red 20px glow behind a GREEN button** | 7467 |
+| ~~`.req-card.has-attention`~~ | ~~red border 45% + red background wash~~ | ~~7497~~ |
+| ~~`.req-detail-header.has-attention`~~ | ~~4px solid red left border~~ | ~~7548~~ |
+| ~~`.req-action.attention`~~ | ~~red 20px glow behind a GREEN button~~ | ~~7467~~ |
+
+◼ **CORRECTED — all three are correct usage, and padding his finding with them was the
+error.** Every one is gated on `.has-attention` / `.attention`; each fires *only* when
+something genuinely needs attention. His rule is *"red is only used in negative/alerts"* —
+these **are** the alerts. Red belongs there.
+
+Only `:7496` violates the rule, because it is the one rule with **no state gate**:
+`.req-card.is-clickable:hover` reddens every card regardless of condition. One finding, not
+four. ⛔ Do not hand him a padded list again — he raised one defect and three working
+features came back attached to it.
 
 ### His #2 — white on green, and the fuzziness
 `gopher-connect.html:7038` sets `color:#fff`; `:7048 .done` and `:7052 .active`
@@ -149,8 +161,22 @@ Crispness, in fix order:
 1. `-webkit-font-smoothing` is `auto`. Much of this UI is light-on-dark (navy
    sidebar, navy buttons, top bar) — exactly where macOS renders heavy and soft.
    `antialiased` is the one-line correction.
-2. Coloured glows under small text: `.mst-tab.active` 16px blur at 12.5px;
-   `.req-action.attention` 20.4px at 11px.
+2. ~~Coloured glows under small text: `.mst-tab.active` 16px blur at 12.5px;
+   `.req-action.attention` 20.4px at 11px.~~
+
+   ◼ **WITHDRAWN. Owner, 2026-10-02:** *"We're not suggesting removing the pulsing glow when
+   something needs attention are we? That was never an issue. It was the words inside the
+   buttons."* The attention pulse is a deliberate, documented feature (see the comment above
+   `.attn-pulse` at `request:7478`) and it **stays**.
+
+   It could not have been the cause anyway: `.attn-pulse`'s `box-shadow` is **not** inset, so
+   it paints outside the border box, behind an opaque `background:var(--green)`. It never
+   touches the glyphs. The audit said it "softens the whole element's edge" — the *element's*
+   edge, which was then carried forward as if it softened the text. It does not.
+
+   **What he actually meant by the words inside the buttons** is the ink:
+   `.req-action.attention` sets 11px Nunito 900 uppercase in `var(--ink-on-green)` — white, via
+   the broken token — on Shamrock at **1.85:1**. That is item 1 of the fix order, already.
 3. Half-pixel font sizes — Request 36 elements (11.5/13.5/15.5px), Connect 56
    (12.5/10.5/15.5px). **⚠️ OPEN QUESTION WITH THE OWNER, do not act on it
    blind:** at 2x Retina these land on whole device pixels and are fine; at 1x

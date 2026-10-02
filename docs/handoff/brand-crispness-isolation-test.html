@@ -76,21 +76,7 @@
   .sz p{font-family:'DM Sans',sans-serif;color:var(--brand-navy);margin-bottom:7px;line-height:1.5}
   .sz .n{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--muted);margin-right:7px}
 
-  /* ---- C · coloured glow under small type ---- */
-  .glowrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:4px}
-  .pill{
-    font-family:'Nunito',sans-serif;font-weight:900;font-size:11px;letter-spacing:.5px;
-    text-transform:uppercase;background:var(--green);color:var(--brand-navy);
-    padding:8px 14px;border-radius:9px;border:none;
-  }
-  .pill.redglow{box-shadow:0 4px 22px rgba(196,66,87,0.62)}
-  .tab{
-    font-family:'Nunito',sans-serif;font-weight:800;font-size:12.5px;background:var(--green);
-    color:var(--brand-navy);padding:9px 16px;border-radius:11px;border:none;
-  }
-  .tab.greenglow{box-shadow:0 6px 16px rgba(51,217,117,0.42),0 0 0 3px rgba(51,217,117,0.18)}
-
-  /* ---- D · opacity vs solid ---- */
+  /* ---- C · opacity vs solid ---- */
   .op span{font-family:'DM Sans',sans-serif;font-size:13px}
   .op .faded{color:var(--brand-navy);opacity:.7}
   .op .solid{color:#5a6478}
@@ -119,6 +105,14 @@
     This page fixes that. It renders at <code>font-smoothing:auto</code> — what the live dashboards
     actually use — and each strip below changes <b>exactly one thing</b>. Ink colour is not a
     variable here.
+  </p>
+
+  <p class="lede" style="margin-top:10px">
+    <b>The pulsing attention glow is not in this test and is not on the table.</b> You're right
+    that it was never the issue — and it couldn't have been: a non-inset <code>box-shadow</code>
+    paints outside the button, behind an opaque fill, so it never touches the letters. The words
+    inside that button <i>are</i> a real problem, but it's their ink colour, which is the
+    separate fix.
   </p>
 
   <div class="ask">
@@ -181,36 +175,14 @@
     </div>
   </div>
 
-  <!-- C -->
-  <div class="strip">
-    <div class="strip-head">
-      <h2>C · Coloured glow under small type</h2>
-      <p>The red attention pulse at its brightest keyframe behind 11px text
-         (<code>request:7487</code>), and the green tab glow behind 12.5px
-         (<code>connect:7054</code>). Right side removes the glow only.</p>
-    </div>
-    <div class="pair">
-      <div class="half">
-        <span class="lbl live">As live · with glow</span>
-        <div class="glowrow">
-          <button class="pill redglow">Needs attention</button>
-          <button class="tab greenglow">In progress</button>
-        </div>
-      </div>
-      <div class="half">
-        <span class="lbl alt">Glow removed</span>
-        <div class="glowrow">
-          <button class="pill">Needs attention</button>
-          <button class="tab">In progress</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- C withdrawn: the attention pulse is a deliberate feature and stays.
+       A non-inset box-shadow paints outside the button behind an opaque fill,
+       so it never touches the glyphs and could not have been the cause. -->
 
   <!-- D -->
   <div class="strip">
     <div class="strip-head">
-      <h2>D · Text faded with opacity vs a solid lighter colour</h2>
+      <h2>C · Text faded with opacity vs a solid lighter colour</h2>
       <p>The sidebar's external-link marks render at <code>opacity:0.7</code>. Right side is the
          same apparent lightness set as a solid colour at full opacity.</p>
     </div>
