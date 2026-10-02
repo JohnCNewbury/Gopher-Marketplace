@@ -295,16 +295,20 @@ the markup.
 
 ## 9 · Immediate next steps
 
-1. **Owner review of the home screen** — built twice to his notes, still unapproved. His
-   "on and on and on" list has never arrived; do not infer it.
-2. **Slide 4** — the deals destination needs 1 headliner + 5 category winners. Not started,
-   and it is the one piece with commercial weight (those are the sold placement slots).
-3. **Slide 12** — TrustShield panel: celebrate verified, manage card/selfie, soft removal.
-   What shipped was a scare dialog and he rejected it.
-4. **Slides 8 + 9** — flow tightening. ⚠️ Slide 9's "Start job" rule is Connect-only /
-   multi-worker-partial; it must NOT remove slide 11's **Submit** button, which is a
-   different control.
-5. **Slide 13** — "Fix UI" on the delete dialog (the stacking half is already live).
-6. **101 guides** — this deck's user-facing changes plus G40-68 (§5).
-7. **Deploy** when approved: one bare `scripts/deploy.sh --push` (both sites), scope-check
-   the dry run, then content-verify all three hosts.
+⚠️ **Rewritten 2026-10-02.** Most of the old list shipped that day; it was
+describing work that no longer exists. What is actually left:
+
+1. **Slides 8 + 9 — the only unbuilt deck items.** Slide 8: 1st-available /
+   MY Gopher auto-connect to the live screen. Slide 9: the "Start job" bar.
+   ⚠️ Slide 9's rule is **Connect-only and multi-worker-partial**, and it must
+   NOT remove slide 11's **Submit** button — a different control, on the bid
+   review overlay. Conflating the two was already caught once.
+2. **101 guides — DEFERRED by the owner (2026-10-02)** to near launch, because
+   the surfaces keep changing. Do not list these as outstanding.
+3. **Brand compliance pass** — audited, not implemented, owned by its own
+   session. See `brand-compliance-dashboards-2026-10-02.md`.
+
+**Shipped 2026-10-02** and no longer open: the two-pathway home screen, the
+deals headliner + 5 category winners, the TrustShield panel, the delete-dialog
+UI, the Age-Restricted category, the floating cards, and the full port of all of
+it to Connect and the split prototype.
