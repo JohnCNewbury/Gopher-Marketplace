@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two Decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Values lifted from Final/gopher-request.html:
+       .req-status      Nunito 800 / 11px / 5px 10px / radius 14px / uppercase / ls .4px
+       .status-in-progress  background rgba(51,217,117,0.12)  color var(--green-dark)
+       .status-scheduled    background rgba(26,42,94,0.10)    color var(--navy)
+       .status-pending      background rgba(251,191,36,0.18)  color #92580d
+       .view-all        Nunito 700 / 12px / underlined
+     Green fills are Shamrock #33d975 throughout. */
+  :root{
+    --green:#33d975; --navy:#002461; --page:#fbf3e4; --card:#fff; --rule:#e3ddcd;
+    --muted:#6b7280; --greendark:#1fb85f; --darkgreen:#0f7a3f; --bodycopy:#424242;
+    --reqnavy:#2a3654;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased}
+  body{font-family:'DM Sans',sans-serif;background:var(--page);color:var(--navy);padding:40px 16px 70px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .eyebrow{font-family:'Nunito';font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1{font-family:'Nunito';font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-.015em;margin-bottom:10px}
+  .lede{font-size:16px;line-height:1.6;max-width:70ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+  h2{font-family:'Nunito';font-weight:800;font-size:21px;margin:38px 0 4px;padding-top:24px;border-top:2px solid var(--rule)}
+  .h2sub{color:var(--muted);font-size:13.5px;margin-bottom:16px;max-width:70ch;line-height:1.55}
+
+  .opt{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+  .opt.rec{border-color:var(--green);box-shadow:0 0 0 2px rgba(51,217,117,.18)}
+  .opt h3{font-family:'Nunito';font-weight:800;font-size:15.5px;margin-bottom:3px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .tag{font-family:'Nunito';font-weight:900;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:5px;background:var(--green);color:var(--navy)}
+  .tag.bad{background:#C44257;color:#fff}
+  .opt p{font-size:13.5px;color:#4a5160;line-height:1.55;margin-top:7px}
+  .demo{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px;padding:14px 16px;background:#fff;border:1px solid #eef0f5;border-radius:10px}
+  .req-status{font-family:'Nunito';font-weight:800;font-size:11px;padding:5px 10px;border-radius:14px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+  .sp{background:rgba(26,42,94,0.10);color:var(--reqnavy)}
+  .sa{background:rgba(251,191,36,0.18);color:#92580d}
+  .ip{background:rgba(51,217,117,0.12)}
+  .view-all{font-family:'Nunito';font-weight:700;font-size:12px;text-decoration:underline;margin-left:6px}
+  .ratio{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--muted);margin-left:auto}
+  .ratio b{color:#15803d}.ratio b.no{color:#C44257}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #eef0f5;vertical-align:middle}
+  th{font-family:'Nunito';font-weight:800;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:#faf9f5}
+  tr.flagged{background:#fff8ee}
+  td.sel code{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#f3f4f8;padding:1px 5px;border-radius:4px}
+  td.pg{font-size:11.5px;color:var(--muted);white-space:nowrap}
+  td.ds{font-size:12.5px;color:#4a5160}
+  .unk{color:#9aa3b2;font-style:italic}
+  .chip{display:inline-block;font-family:'Nunito';font-weight:800;font-size:11px;padding:5px 9px;border-radius:7px;background:var(--green);white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+  .chip.now{color:#fff}
+  .chip.fix{color:var(--navy)}
+  .scroll{overflow-x:auto}
+  .note{background:#fff8ee;border-left:3px solid #E8A33D;border-radius:0 10px 10px 0;padding:13px 16px;margin:14px 0;font-size:13.5px;line-height:1.6;color:#4a4134}
+  .note b{color:var(--navy)}
+  .foot{margin-top:34px;border-top:1px solid var(--rule);padding-top:18px;font-size:13.5px;line-height:1.65;color:#4a5160}
+  .foot b{color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Brand compliance · two decisions, nothing changed</p>
+  <h1>Pick the green, and look at the list</h1>
+  <p class="lede">Items 1&ndash;4 and two of the four sub-AA pairs are already in. These are the two
+    things I stopped on. <b>Nothing on this page has been applied.</b></p>
+
+  <h2>1 &middot; Green text &mdash; no palette green passes</h2>
+  <p class="h2sub">The In&nbsp;Progress pill and the &ldquo;View all&rdquo; link are both green text and both fail AA.
+    Shamrock is 2.39:1 on the pill tint; Mountain Meadow, the darkest green in the guide, only
+    reaches 2.83:1 on white. So there is no correct-brand-green answer &mdash; each option below
+    changes something. Pills are shown next to their siblings, because that is where the trade-off shows.</p>
+
+  <div class="opt">
+    <h3>As it is today <span class="tag bad">Fails AA</span></h3>
+    <div class="demo">
+      <span class="req-status ip" style="color:var(--greendark)">In progress</span>
+      <span class="req-status sp">Scheduled</span>
+      <span class="req-status sa">Pending</span>
+      <a class="view-all" style="color:var(--greendark)">View previous requests &rarr;</a>
+      <span class="ratio"><b class="no">2.39</b> &middot; <b class="no">2.60</b></span>
+    </div>
+  </div>
+
+  <div class="opt rec">
+    <h3>A &middot; Accessible dark green <code style="font-size:12px">#0f7a3f</code> <span class="tag">Recommended</span></h3>
+    <p>Keeps the colour-coding: In&nbsp;Progress stays green and stays distinct from Scheduled. Follows a
+      pattern already in the file &mdash; <code style="font-size:11.5px">#92580d</code> exists as the accessible dark amber doing
+      exactly this job for Pending. Cost: a green the guide does not list.</p>
+    <div class="demo">
+      <span class="req-status ip" style="color:var(--darkgreen)">In progress</span>
+      <span class="req-status sp">Scheduled</span>
+      <span class="req-status sa">Pending</span>
+      <a class="view-all" style="color:var(--darkgreen)">View previous requests &rarr;</a>
+      <span class="ratio"><b>4.99</b> &middot; <b>5.42</b></span>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h3>B &middot; Midnight Blue <code style="font-size:12px">#002461</code></h3>
+    <p>Straight from the guide, no new colour, highest contrast. <b>But look at the first two pills:</b>
+      In&nbsp;Progress becomes the same ink as Scheduled, so the statuses stop reading apart at a glance.</p>
+    <div class="demo">
+      <span class="req-status ip" style="color:var(--navy)">In progress</span>
+      <span class="req-status sp">Scheduled</span>
+      <span class="req-status sa">Pending</span>
+      <a class="view-all" style="color:var(--navy)">View previous requests &rarr;</a>
+      <span class="ratio"><b>13.58</b> &middot; <b>14.74</b></span>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h3>C &middot; Body Copy gray <code style="font-size:12px">#424242</code></h3>
+    <p>In the palette, and it does not collide with Scheduled. But In&nbsp;Progress loses its green
+      identity and reads as inactive next to the others.</p>
+    <div class="demo">
+      <span class="req-status ip" style="color:var(--bodycopy)">In progress</span>
+      <span class="req-status sp">Scheduled</span>
+      <span class="req-status sa">Pending</span>
+      <a class="view-all" style="color:var(--bodycopy)">View previous requests &rarr;</a>
+      <span class="ratio"><b>9.26</b> &middot; <b>10.2</b></span>
+    </div>
+  </div>
+
+  <h2>2 &middot; The 40 components with white ink on Shamrock</h2>
+  <p class="h2sub">Every one is <b>1.85:1</b> &mdash; the same failing pair as the step tabs, but written as a
+    literal <code>color:#fff</code> rather than through the token, so item&nbsp;1 did not reach them.
+    13 appear in both dashboards, 26 in Request only, 1 in Connect only.</p>
+
+  <div class="note">
+    <b>This is not an invisible change.</b> <code>.btn-green</code> is the primary call-to-action style,
+    so approving all of these turns the text on every main green button from white to navy across both
+    dashboards. That is the right call by the style guide &mdash; it is the same correction you already
+    approved for the step tabs &mdash; but it is the most visible thing in the whole pass, so look at the
+    right-hand column before saying go.
+    <br><br>
+    The highlighted row is <code>.dash-logo-text .dlt-mark</code>. That is part of a logo lockup, and the
+    guide governs logo colour separately, so I would leave it alone unless you say otherwise.
+  </div>
+
+  <div class="scroll">
+  <table>
+    <tr><th>Selector</th><th>Page</th><th>What it is</th><th>Now</th><th>Proposed</th></tr>
+<tr>
+      <td class="sel"><code>.bidbd-close</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Bid breakdown close button</td>
+      <td class="sw"><span class="chip now">Bid breakdown close button</span></td>
+      <td class="sw"><span class="chip fix">Bid breakdown close button</span></td>
+    </tr>
+<tr class="flagged">
+      <td class="sel"><code>.dash-logo-text .dlt-mark</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">LOGO MARK — governed separately by the guide</td>
+      <td class="sw"><span class="chip now">LOGO MARK</span></td>
+      <td class="sw"><span class="chip fix">LOGO MARK</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.dd-portal-btn</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deal detail portal button</td>
+      <td class="sw"><span class="chip now">Deal detail portal button</span></td>
+      <td class="sw"><span class="chip fix">Deal detail portal button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.dd-promo</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deal detail promo chip</td>
+      <td class="sw"><span class="chip now">Deal detail promo chip</span></td>
+      <td class="sw"><span class="chip fix">Deal detail promo chip</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.deal-card-service:hover .deal-view-btn</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deal card “View” button on hover</td>
+      <td class="sw"><span class="chip now">Deal card “View” button on hover</span></td>
+      <td class="sw"><span class="chip fix">Deal card “View” button on hover</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.deal-cta</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deal call-to-action button</td>
+      <td class="sw"><span class="chip now">Deal call-to-action button</span></td>
+      <td class="sw"><span class="chip fix">Deal call-to-action button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.dh-cat:hover .dh-cat-cta</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deals category CTA on hover</td>
+      <td class="sw"><span class="chip now">Deals category CTA on hover</span></td>
+      <td class="sw"><span class="chip fix">Deals category CTA on hover</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.dh-feat-go</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Deals hero featured GO button</td>
+      <td class="sw"><span class="chip now">Deals hero featured GO button</span></td>
+      <td class="sw"><span class="chip fix">Deals hero featured GO button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.rq-pathtab.deals-tab.is-active</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Selected Deals path tab</td>
+      <td class="sw"><span class="chip now">Selected Deals path tab</span></td>
+      <td class="sw"><span class="chip fix">Selected Deals path tab</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.rq-pathtab.is-active</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Selected path tab</td>
+      <td class="sw"><span class="chip now">Selected path tab</span></td>
+      <td class="sw"><span class="chip fix">Selected path tab</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.step.completed .dot</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Completed step dot</td>
+      <td class="sw"><span class="chip now">Completed step dot</span></td>
+      <td class="sw"><span class="chip fix">Completed step dot</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.svc-deal-redeem</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Service deal Redeem button</td>
+      <td class="sw"><span class="chip now">Service deal Redeem button</span></td>
+      <td class="sw"><span class="chip fix">Service deal Redeem button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.svc-deal-save</code></td>
+      <td class="pg">Request + Connect</td>
+      <td class="ds">Service deal Save button</td>
+      <td class="sw"><span class="chip now">Service deal Save button</span></td>
+      <td class="sw"><span class="chip fix">Service deal Save button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.btn-green</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Primary green button — the main CTA style</td>
+      <td class="sw"><span class="chip now">Primary green button</span></td>
+      <td class="sw"><span class="chip fix">Primary green button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.cmp-us .cmp-ico</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Comparison table tick icon</td>
+      <td class="sw"><span class="chip now">Comparison table tick icon</span></td>
+      <td class="sw"><span class="chip fix">Comparison table tick icon</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.dobcal-cell.is-selected</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Selected date in the DOB calendar</td>
+      <td class="sw"><span class="chip now">Selected date in the DOB calendar</span></td>
+      <td class="sw"><span class="chip fix">Selected date in the DOB calendar</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.estimate-cta</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Estimate call-to-action button</td>
+      <td class="sw"><span class="chip now">Estimate call-to-action button</span></td>
+      <td class="sw"><span class="chip fix">Estimate call-to-action button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.field-add-stop .add-stop-icon</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">“Add stop” icon</td>
+      <td class="sw"><span class="chip now">“Add stop” icon</span></td>
+      <td class="sw"><span class="chip fix">“Add stop” icon</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.field-addpic .ap-ico</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">“Add picture” icon</td>
+      <td class="sw"><span class="chip now">“Add picture” icon</span></td>
+      <td class="sw"><span class="chip fix">“Add picture” icon</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.flow-cat-tab.active</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Selected category tab in the request flow</td>
+      <td class="sw"><span class="chip now">Selected category tab in the reque</span></td>
+      <td class="sw"><span class="chip fix">Selected category tab in the reque</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.flow-step.active .step-num</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Current step number</td>
+      <td class="sw"><span class="chip now">Current step number</span></td>
+      <td class="sw"><span class="chip fix">Current step number</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.flow-step.done .step-num</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Completed step number</td>
+      <td class="sw"><span class="chip now">Completed step number</span></td>
+      <td class="sw"><span class="chip fix">Completed step number</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.gs-submit</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Get-started submit button</td>
+      <td class="sw"><span class="chip now">Get-started submit button</span></td>
+      <td class="sw"><span class="chip fix">Get-started submit button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.how-num</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">“How it works” step number</td>
+      <td class="sw"><span class="chip now">“How it works” step number</span></td>
+      <td class="sw"><span class="chip fix">“How it works” step number</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.idv-dot.on, .idv-dot.done</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">ID-verification progress dot</td>
+      <td class="sw"><span class="chip now">ID-verification progress dot</span></td>
+      <td class="sw"><span class="chip fix">ID-verification progress dot</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.ma-btn-primary</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Primary modal action button</td>
+      <td class="sw"><span class="chip now">Primary modal action button</span></td>
+      <td class="sw"><span class="chip fix">Primary modal action button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.mc-day.selected</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Selected day in the mini calendar</td>
+      <td class="sw"><span class="chip now">Selected day in the mini calendar</span></td>
+      <td class="sw"><span class="chip fix">Selected day in the mini calendar</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.mf-btn-next</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Multi-step form Next button</td>
+      <td class="sw"><span class="chip now">Multi-step form Next button</span></td>
+      <td class="sw"><span class="chip fix">Multi-step form Next button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.mygopher-pick .mgp-row.checked .mgp-check</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Checked row tick in My Gophers</td>
+      <td class="sw"><span class="chip now">Checked row tick in My Gophers</span></td>
+      <td class="sw"><span class="chip fix">Checked row tick in My Gophers</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.pay-method-opt.selected .pmo-tick</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Selected payment method tick</td>
+      <td class="sw"><span class="chip now">Selected payment method tick</span></td>
+      <td class="sw"><span class="chip fix">Selected payment method tick</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.pay-save</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Save payment button</td>
+      <td class="sw"><span class="chip now">Save payment button</span></td>
+      <td class="sw"><span class="chip fix">Save payment button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.prev-tab.active</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Selected tab in Request History</td>
+      <td class="sw"><span class="chip now">Selected tab in Request History</span></td>
+      <td class="sw"><span class="chip fix">Selected tab in Request History</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.profile-stat-bubble.reviews</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Reviews count bubble on a profile</td>
+      <td class="sw"><span class="chip now">Reviews count bubble on a profile</span></td>
+      <td class="sw"><span class="chip fix">Reviews count bubble on a profile</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.review-actions .ra-submit</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Submit review button</td>
+      <td class="sw"><span class="chip now">Submit review button</span></td>
+      <td class="sw"><span class="chip fix">Submit review button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.sched-done</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Scheduling done button</td>
+      <td class="sw"><span class="chip now">Scheduling done button</span></td>
+      <td class="sw"><span class="chip fix">Scheduling done button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.sched-done-btn</code></td>
+      <td class="pg">Connect</td>
+      <td class="ds">Scheduling done button (Connect)</td>
+      <td class="sw"><span class="chip now">Scheduling done button (Connect)</span></td>
+      <td class="sw"><span class="chip fix">Scheduling done button (Connect)</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.si-workers-btn</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">“See workers in dashboard” button</td>
+      <td class="sw"><span class="chip now">“See workers in dashboard” button</span></td>
+      <td class="sw"><span class="chip fix">“See workers in dashboard” button</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.svc-icon</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Service row icon tile</td>
+      <td class="sw"><span class="chip now">Service row icon tile</span></td>
+      <td class="sw"><span class="chip fix">Service row icon tile</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.ta-avatar</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Avatar initial tile</td>
+      <td class="sw"><span class="chip now">Avatar initial tile</span></td>
+      <td class="sw"><span class="chip fix">Avatar initial tile</span></td>
+    </tr>
+<tr>
+      <td class="sel"><code>.worker-cta.primary</code></td>
+      <td class="pg">Request</td>
+      <td class="ds">Primary worker CTA</td>
+      <td class="sw"><span class="chip now">Primary worker CTA</span></td>
+      <td class="sw"><span class="chip fix">Primary worker CTA</span></td>
+    </tr>
+  </table>
+  </div>
+
+  <p class="foot">
+    <b>Nothing here is applied.</b> Items 1&ndash;4 and two sub-AA pairs are committed and pushed; these two
+    decisions are not. Tell me which green, and whether to do the 40 &mdash; all, all-but-the-logo, or none.
+  </p>
+</div>
+</body>
+</html>
