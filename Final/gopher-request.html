@@ -3436,7 +3436,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
   }
   .cat-tile {
-    background:white; border:2px solid #eef0f5; border-radius:14px;
+    /* ⛔ NO BORDER. Owner 2026-10-02 sent a reference image as "the best example
+       of what I'm looking for", and the single thing separating it from what was
+       here is that its cards have no outline — only light. A 2px border is a
+       DRAWN edge, and a drawn edge is exactly what stops a card floating; the
+       four stacked shadows underneath were fighting it and reading as grey haze.
+
+       One soft, wide, slightly cool shadow instead, plus a hairline top
+       highlight. Do not put the border back. */
+    background:white; border:0; border-radius:14px;
     /* overflow VISIBLE (was hidden) so the .ct-pop hover tooltip can escape
        the tile. The rounded look is preserved by rounding the inner photo
        (top corners) and body (bottom corners) instead of clipping here. */
@@ -3456,30 +3464,31 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        through space instead of just getting darker. */
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.9),
-      0 1px 1px rgba(0,36,97,0.07),
-      0 4px 8px rgba(0,36,97,0.09),
-      0 14px 28px rgba(0,36,97,0.16),
-      0 28px 48px rgba(0,36,97,0.10);
+      0 1px 2px rgba(0,36,97,0.06),
+      0 8px 18px rgba(0,36,97,0.10),
+      0 22px 42px rgba(0,36,97,0.13);
   }
   .cat-tile:hover {
-    transform:translateY(-7px) scale(1.012);
+    transform:translateY(-8px);
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.95),
-      0 2px 2px rgba(0,36,97,0.07),
-      0 8px 14px rgba(0,36,97,0.10),
-      0 26px 44px rgba(0,36,97,0.20),
-      0 46px 72px rgba(0,36,97,0.12);
-    border-color:#d4d8e3;
+      0 2px 4px rgba(0,36,97,0.07),
+      0 16px 30px rgba(0,36,97,0.12),
+      0 40px 70px rgba(0,36,97,0.18);
     /* raised so this tile's popup paints above its sibling tiles */
     z-index:20;
   }
+  /* selection reads as a ring rather than a border, so the card keeps floating */
   .cat-tile.selected {
-    border-color:var(--green);
-    box-shadow:0 8px 22px rgba(51,217,117,0.28);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.9),
+      0 0 0 2px var(--green),
+      0 10px 24px rgba(51,217,117,0.28),
+      0 26px 50px rgba(0,36,97,0.12);
   }
   .cat-tile .ct-photo {
     position:relative; aspect-ratio:1.55; overflow:hidden; background:#eef2f9;
-    border-radius:12px 12px 0 0;   /* inner top corners (tile is overflow:visible now) */
+    border-radius:14px 14px 0 0;   /* matches the tile now that the border is gone */
   }
   .cat-tile .ct-photo img {
     width:100%; height:100%; object-fit:cover; display:block;
@@ -3489,8 +3498,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* (v121) .ct-tag pill removed — redundant with the ct-name footer, per owner. */
   .cat-tile .ct-body {
     padding:10px 12px 11px; display:flex; align-items:center;
-    justify-content:space-between; gap:8px;
-    border-radius:0 0 12px 12px;   /* inner bottom corners (tile is overflow:visible now) */
+    justify-content:space-between; gap:8px; background:#fff;
+    border-radius:0 0 14px 14px;   /* matches the tile now that the border is gone */
   }
   .cat-tile .ct-name {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
@@ -8224,36 +8233,51 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      reads at full contrast on BOTH grounds this button has to live on — the navy
      sidebar and the sand card — which the sand fill never could, and it stays
      clear of the green the Request CTA owns on the facing card. */
+  /* ⛔ THE deals button — owner-approved 2026-10-02, slide 4: "USE THIS BUTTON!!!"
+     against this exact treatment, with a red X struck through the sidebar's old
+     sand-and-SPONSORED-PICKS pill.
+
+     ⚠️ I had that slide backwards once. The arrow runs FROM this button TO the
+     sidebar: the X marks what to replace, this is the replacement. I read it as
+     "both are wrong" and shipped an amber fill, which he rejected. The "sand
+     background" remark is about the X'd pill, whose label had washed out to
+     near-invisible against it — not about this button, whose navy-on-ivory is
+     the contrast that was missing.
+
+     One definition, both places: the home card CTA and the sidebar entry. */
   .gopher-deals-btn {
     position:relative; overflow:hidden; cursor:pointer;
-    background:linear-gradient(135deg,#FFC73F 0%, #F5A623 55%, #E8951B 100%);
-    border:1.5px solid #D4860F; border-radius:11px;
+    background:linear-gradient(135deg,#FFFBF3 0%, #FBF3E4 55%, #F6E9D0 100%);
+    border:1.5px solid #EAD9B6; border-radius:11px;
     font-family:'Nunito',sans-serif; font-weight:800;
-    color:#2A1A00; line-height:1.15;
+    /* ⛔ LITERAL, not var(--navy-deep). That custom property is defined NOWHERE
+       in this file, and an undefined var() makes the whole `color` declaration
+       invalid at computed-value time — so colour fell back to INHERITED. On the
+       card that landed on black; in the sidebar it inherited the sidebar's own
+       white and the label all but vanished into the cream.
+
+       That is the real reason the struck-out button looked washed out on slide 4
+       — not the sand. Do not reintroduce the variable without defining it. */
+    color:#002461; line-height:1.15;
+    animation:ccGoldPulse 1.8s ease-out infinite;
   }
-  .gopher-deals-btn:hover { border-color:#8a5600; filter:brightness(1.04); }
-  /* the pulse and the sheen, straight off the original deals pill */
-  .gopher-deals-btn .dsd-dot {
-    width:7px; height:7px; border-radius:50%; flex:0 0 auto; background:#1d5c00;
-    box-shadow:0 0 0 0 rgba(29,92,0,.55); animation:dtPulse 1.8s ease-out infinite;
-  }
+  .gopher-deals-btn:hover { border-color:var(--terracotta); }
   .gopher-deals-btn::after {
     content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
-    background:linear-gradient(100deg, transparent, rgba(255,255,255,.75), transparent);
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
     transform:skewX(-18deg); animation:dtSheen 4.5s ease-in-out infinite; pointer-events:none;
   }
   @media (prefers-reduced-motion: reduce){
-    .gopher-deals-btn .dsd-dot, .gopher-deals-btn::after { animation:none; }
+    .gopher-deals-btn, .gopher-deals-btn::after { animation:none; }
   }
 
+  /* The sidebar instance differs ONLY in box metrics — it has a narrower column
+     to live in. Fill, border, text colour, glow and sheen all come from the
+     shared rule above, which is the point of the slide. */
   .dash-sidebar-deals {
-    display:flex; flex-direction:column; align-items:center; gap:2px;
-    width:100%; margin:0 0 14px; padding:10px 12px;
-    font-size:13.5px;
-  }
-  .dash-sidebar-deals .dsd-sub {
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:9px; letter-spacing:.5px; color:#2A1A00; font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+    width:100%; margin:0 0 14px; padding:11px 10px;
+    font-size:13px; text-align:center;
   }
 
   /* Both cards lead with their own mark, centred (owner 2026-10-01). */
@@ -8346,14 +8370,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      button read flat. The pulse moves onto the button's own halo instead, using
      the same dtPulse timing. overflow:hidden on .cc-btn clips children, not the
      element's own box-shadow, so this coexists with the sheen. */
-  .choose-card .cc-btn-gold { animation:ccGoldPulse 1.8s ease-out infinite; }
   @keyframes ccGoldPulse {
-    0%   { box-shadow:0 6px 18px rgba(184,118,10,.26), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(29,92,0,.5); }
-    70%  { box-shadow:0 6px 18px rgba(184,118,10,.26), 0 2px 6px rgba(0,36,97,.06), 0 0 0 9px rgba(29,92,0,0); }
-    100% { box-shadow:0 6px 18px rgba(184,118,10,.26), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(29,92,0,0); }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .choose-card .cc-btn-gold { animation:none; }
+    0%   { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(51,217,117,.55); }
+    70%  { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 9px rgba(51,217,117,0); }
+    100% { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(51,217,117,0); }
   }
   .choose-card:hover .cc-btn-green { background:var(--green-dark); }
 
@@ -19803,13 +19823,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
            carrying the same gold SPONSORED PICKS treatment as the home card. It
            routes through the same handler, so the eligibility gate still runs. -->
       <button type="button" class="dash-sidebar-deals gopher-deals-btn" id="rqSidebarDeals" data-choose="deals">
-        <span class="dsd-main">🏷️ View Local Deals</span>
-        <!-- Owner 2026-10-01: this is the button on the ACTIVATED dashboard, and
-             it has to be "the pulsing one" — the original .rq-pathtab.deals-tab
-             pill. The bullet here was a static ● character; it is now the real
-             .dt-dot element driven by the SAME dtPulse keyframes as that pill,
-             and the pill's dtSheen sweep is on the button itself. -->
-        <span class="dsd-sub"><span class="dsd-dot"></span>SPONSORED PICKS</span>
+        <!-- Owner 2026-10-02 (slide 4): one label, matching the card's exactly.
+             The SPONSORED PICKS sub-line went with the pill he struck out — it is
+             what made this button two cramped lines of washed-out type, and the
+             card CTA he approved has never carried it. -->
+        <span class="dsd-main">View Local Deals</span>
       </button>
     <nav class="dash-nav">
       <button class="dash-nav-item active" data-rqsection="home">
