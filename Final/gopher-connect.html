@@ -15929,7 +15929,11 @@ const PAY_BADGES = {
   };
 
   const SECTION_TITLES = {
-    choose:         'Dashboard',
+    /* The home screen carries NO title (owner 2026-10-02). Its own question is
+       the heading; "Dashboard" above it said nothing, and contradicted the
+       sidebar, where Home — not Dashboard — is the active item. Request has
+       never shown one here. '' must HIDE the element, see showSection(). */
+    choose:         '',
     home:           'Dashboard overview',
     previous:       'Request History',
     business:       'Business information',
@@ -16062,7 +16066,12 @@ const PAY_BADGES = {
     const navTarget = navHighlight || ((name === 'request-detail' || name === 'new-request') ? 'home' : name);
     $navItems.forEach(b => b.classList.toggle('active', b.dataset.dashSection === navTarget));
     $sections.forEach(s => s.classList.toggle('active', s.dataset.section === name));
-    $sectionTitle.textContent = SECTION_TITLES[name] || 'Dashboard';
+    /* ⛔ An empty title HIDES the element rather than falling back. The old
+       `|| 'Dashboard'` would have printed the very word being removed, because
+       '' is falsy — blanking the map entry alone would have changed nothing. */
+    const _secTitle = SECTION_TITLES[name] || '';
+    $sectionTitle.textContent = _secTitle;
+    $sectionTitle.hidden = !_secTitle;
     /* Owner 2026-10-02: the sidebar's two CTAs are NOT shown on the home screen.
        They appear once a card is chosen — the "activated" state — because on the
        home screen they duplicate the two cards the user is looking at. */
@@ -16841,7 +16850,9 @@ const PAY_BADGES = {
     if(td){ td.classList.toggle('is-active', showDeals);  td.setAttribute('aria-selected', String(showDeals)); }
     // Header reflects the active path.
     const st = document.getElementById('dashSectionTitle');
-    if(st) st.textContent = showDeals ? 'Local Deals' : 'Submit New request';
+    /* Un-hide too: showSection() now hides this node on the home screen, and
+       this writer runs afterwards — setting text alone would leave it invisible. */
+    if(st){ st.textContent = showDeals ? 'Local Deals' : 'Submit New request'; st.hidden = false; }
   }
 
   const DEAL_BACK_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
