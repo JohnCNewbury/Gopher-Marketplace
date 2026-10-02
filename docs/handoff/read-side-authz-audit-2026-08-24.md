@@ -975,3 +975,76 @@ INHERITED: relayed by the G40-551 seat. This seat did not observe it.
 - §14.5: **35 `get_users_details` calls with no field list** (the PL-154/155 input).
 - §15.4: the drop-off-twice address typing (a product bug, not a leak).
 - §13: `GET /reauth/:stripe`.
+
+## 17. Addendum 2026-10-02: the last two counterparty leaks CLOSED (desk PL-154, PL-155)
+
+### 17.1 PL-155: after a job connected, each side received the other's internal record
+§14.5 left **35 `get_users_details` calls with no field list**. Two were inside comments, so 33 were real. Each was traced to see where its result goes.
+
+**Six call sites spread both parties' full records into the response.** They cover eight endpoints:
+
+| Endpoint | Caller | Whose full record leaked |
+|---|---|---|
+| complete, complete/v2, claim (`assign_order`) | Gopher | the requester's |
+| confirm_payout, bid accept, cost-adjustment accept | requester | the Gopher's |
+| Select-My-Gopher accept, counter-offer accept (`assign_order`) | requester | the Gopher's |
+
+The record carried email, date of birth, push token, home and business addresses, and the **full** driver's licence number.
+
+The other 27 calls are one of:
+- the caller's own data;
+- admin-only (including dispute detail);
+- internal email, SMS or push.
+
+None reaches another user. Push payloads cannot carry a record at all: `sendPushNotif` stringifies each value, so an object arrives as `[object Object]`.
+
+**Fix:** gopher-backend-api **!683** adds `users.services.as_counterparty(record)`.
+- It strips exactly what `required_user_fields` adds beyond `counterparty_user_fields`, plus `address`, `business_address` and `completed_profile`.
+- It then cuts the licence to its last 4.
+- The strip list is derived from the internal projection, so a column added there later is stripped automatically.
+- Ratings and the gopher/requestor flags are kept.
+- It's applied to **both** records at all six sites. Emails, SMS and pushes keep the full record.
+
+### 17.2 PL-154: one past job opened a requester's ID and selfie to that Gopher forever
+`GET /users/get_trustshield_files/:reqid` allowed any Gopher with **any** order with the requester, in any state. It now requires an order in `accepted`, `picked_up` or `purchased`.
+
+That's where the Go app opens the drop-off ID check: the Complete button in `ordercard.js` and `RequestDetailPullOver.js`, the same in every build since March 2026. `delivered` is completion and terminal, so it's excluded. A refusal is still a 204.
+
+### 17.3 Consumer audit: what phones actually run (VERIFIED from code, 2026-10-01)
+The desk asked for coverage of installed builds, not just today's branch. So the audit grep ran on:
+- **every first-parent commit of each app's `production`**, back to 2023-07-10: about 1,100 per app;
+- the live store commits (Go `add6dd65e`, Request `443337506`).
+
+That's a superset of every build cut from `production`, including the forced-update floor builds. Results:
+- No commit reads a removed field off the other party. Every hit is the user's own profile, a sign-up/OTP form, local storage, a referral list or a payment method.
+- No commit reads `party.address` or `completed_profile`.
+- Every licence read without `.slice(-4)` is on the gopher-detail screen, which is already trimmed and isn't touched here.
+- `localStorage.items` is only ever written from sign-in, OTP, the profile form, the profile fetch or TrustShield enrolment, never from an order response.
+
+**Stated gap:** a store build cut from a commit that never reached `production` is not covered.
+
+### 17.4 Tests and deploy
+- `test/pl-155-counterparty-records.test.js`, 20/20. It runs:
+  - the **real** `get_users_details`, against a stub that projects columns like Postgres, with a positive control that the full record carries every secret;
+  - the **real** complete, complete/v2 and confirm_payout handlers, through the real users service.
+
+  **Against production's handler files, all six sites fail.**
+- `test/trustshield-files-authz.test.js` gains a Postgres-like stub (the old one ignored order state) and the full state matrix. **Against production's code, 6 checks fail.**
+- **Deploy:**
+  - !683 merged 2026-10-02 05:06:10 ET (`c8f2d68ac`), on the owner's "merge it".
+  - It was re-checked 0 behind production right before the merge.
+  - Pipeline 2906038760 green. EB Ready / Green 05:09:56 ET.
+
+### 17.5 After-check, production, 05:10 to 08:08 ET (CloudWatch, plus the read-only replica)
+- **Server errors:** zero 5xx on any route since the deploy.
+- **Changed routes:** all 200. complete/v2 ×3, claim ×5, confirm_payout ×3, bid accept ×1.
+- **ID photos:** 10 × 200 and 19 × 204. The app log shows 19 "refused" lines, all with the new "no **active** order" wording, matching the 204s one-for-one.
+- **Each of the 19 refusals, checked against the order timeline (`order_logs`) on the replica:**
+  - Every one fell when the job had not started (bidding, or accepted for a later slot: both such orders had `request_schedule_later`), had already completed, or didn't exist between the two.
+  - **None fell during an accepted, picked-up or purchased job.**
+  - A first pass flagged two such orders as active. Their logs read "Accepted and Scheduled" and later "Assigning Gopher" at the real start, so the log status wording is not the state field.
+- **Positive control:** every time one of those jobs went active, the assigned Gopher was served the photos (200) within one to three seconds. Four jobs showed this.
+
+### 17.6 Still open
+- §15.4: the drop-off-twice address typing (a product bug, not a leak).
+- §13: `GET /reauth/:stripe`.
