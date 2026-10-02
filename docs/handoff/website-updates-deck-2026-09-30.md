@@ -66,6 +66,37 @@ owner's direct instruction — tell that session rather than let it discover thi
 Content-verified on all three hosts. Connect: live and TigerTech byte-identical
 at 1,456,830, twin +48 for its `noindex`.
 
+### Connect parity, round 2 — 2026-10-02 (`0c62a46` / `37fe643`)
+
+John pushed back that Connect was not getting ALL the Request changes. He was
+right; the first port under-scoped it. Re-audited every change by measurement.
+
+**Ported:** Saved-addresses **Done** button (slide 8 — Request had `#saDone`,
+Connect's identical modal had none) · tapping the profile circle opens Personal
+info (it only toggled the mobile drawer) · **TrustShield management panel and a
+new sidebar row** · "Sponsored picks" stripped from Connect's deals tab.
+
+⛔ **Delete account is deliberately NOT in Connect, and is not a gap to close
+later.** Owner, 2026-10-02: the product is moving to a **subscription model**, so
+**cancel-subscription has to be sequenced BEFORE** a delete-account option
+exists. Building it now would put the steps in the wrong order. Do not "fix"
+this as an oversight.
+
+⚠️ Connect had **no verified-state TrustShield surface at all** — no row, no
+manage, no removal. In Request the panel *replaced* a cancel dialog; in Connect
+the row and the panel are both new.
+
+⛔ The panel's overlay carries its own `.tsp-ov` z-index **9800**. Connect's
+shared `.bidbd-ov` is **9000**, under `.gc-modal-overlay` (9500) and the mobile
+drawer (9300) — the same stacking that made Request's delete dialog look like it
+never opened. Scoped to this one overlay so Connect's existing bid dialogs keep
+the stacking they were built against.
+
+⚠️ **The host that lags is not always the same one.** On the earlier runs both
+GitHub Pages hosts served the old build while TigerTech was already current; on
+this one Pages was current and **TigerTech** was the stale one. Poll whichever
+disagrees — never conclude from a first fetch in either direction.
+
 ### Deployed 2026-09-30 by `scripts/deploy.sh --push` (both sites, one run):
 
 | | |
