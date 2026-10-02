@@ -6955,11 +6955,22 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:#f5f7fb;
     z-index:9000;
     grid-template-columns:229px 1fr;   /* owner 2026-10-01: ~12% narrower (was 260) */
+    /* Owner 2026-10-01: "the top white bar goes all the way across the top."
+       So the bar is a grid ROW spanning both columns, not a band that starts
+       where the sidebar ends. The Request logo moved onto it — which is what
+       lets the REGULAR branded logo come back (see .dash-topbar-brand). */
+    grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"topbar topbar"
+                        "sidebar main";
     font-family:'Nunito',sans-serif;
     color:var(--text);
   }
   .dashboard.open { display:grid; }
   body.dashboard-mode { background:#f5f7fb; }
+
+  .dash-topbar  { grid-area:topbar; }
+  .dash-sidebar { grid-area:sidebar; }
+  .dash-main    { grid-area:main; }
 
   /* ─── Sidebar ─── */
   .dash-sidebar {
@@ -6969,42 +6980,25 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     padding:18px 14px;
     overflow-y:auto;
   }
-  .dash-sidebar-head {
-    /* Was a white 122px "uniform platform card" (owner, 2026-07-23) holding the
-       logo plus a name and status line. Owner 2026-09-30 removed the name/status,
-       which left the card an empty white box, then asked for the logo to read the
-       way our logos do on a dark background.
+  /* ⛔ The logo is NOT in the sidebar any more (owner 2026-10-01). It sits on the
+     full-width white top bar, so the shipped asset works as shipped and the
+     recoloured white wordmark — which the owner ruled a style-guide violation —
+     is gone. This node only survives because renderers still write to the hidden
+     #rqDashUserName / #rqDashStatus inside it; removing it would make them throw. */
+  .dash-sidebar-head { display:none; }
 
-       ⛔ It CANNOT simply sit on the navy: the wordmark in gopher-request-logo.svg
-       is fill="#012462" — the same navy — so "request" vanishes and only the green
-       mark survives. There is no white/inverted logo asset in the repo. So the
-       white stays, but as a chip that HUGS the mark instead of a 122px void:
-       inline-flex + width:auto, so it is the logo's backing, not a panel. */
-    box-sizing:border-box;
-    display:inline-flex; align-items:center; align-self:flex-start;
-    width:auto;
-    background:transparent;
-    padding:4px 2px 2px;
-    margin-bottom:16px;
-  }
-  /* inlined + recoloured: reads straight off the navy */
-  .dash-logo-slot.is-inline-svg svg { width:150px; height:auto; display:block; }
-  /* bitmap fallback only — the navy wordmark still needs a light ground */
-  .dash-logo-slot.needs-chip {
-    background:#fff; border-radius:12px; padding:8px 12px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
-  }
-  .dash-sidebar-brand {
-    width:100%;
-    padding:4px 0;
-    display:flex; align-items:center; justify-content:flex-start;
+  /* The logo's home: a fixed zone on the left of the white bar, sized so the
+     avatar beside it starts exactly where the content column does
+     (229px sidebar + 32px content padding = 261px = 20px bar padding + 241px). */
+  .dash-topbar-brand {
+    flex:0 0 241px; display:flex; align-items:center; min-width:0;
   }
   .dash-logo-slot {
     display:flex; align-items:center;
     min-height:36px;
   }
   .dash-logo-slot img {
-    height:38px; width:auto; max-width:220px;
+    height:34px; width:auto; max-width:200px; display:block;
   }
   /* Text-wordmark fallback — shown by default; replaced by image when JS clones it */
   .dash-logo-text {
@@ -7200,7 +7194,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .dash-topbar {
     display:flex; align-items:center; justify-content:space-between;
-    padding:18px 32px;
+    padding:14px 32px 14px 20px;
     background:white;
     border-bottom:1px solid #e7eaf2;
     position:sticky; top:0; z-index:5;
@@ -8200,17 +8194,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .choose-card.svc   { background:linear-gradient(150deg,#053a75 0%, #002461 60%); }
   .choose-card.deals { background:linear-gradient(135deg,#FFFBF3 0%,#FBF3E4 55%,#F6E9D0 100%);
                        border:1.5px solid #EAD9B6; }
-  .choose-card .cc-orb {
-    position:absolute; right:-42px; top:-42px; width:180px; height:180px;
-    border-radius:50%; background:rgba(51,217,117,.18);
-  }
-  .choose-card.deals .cc-orb { background:rgba(201,163,63,.16); }
+  /* The decorative corner circle was removed from both cards (owner 2026-10-01).
+     Rules deleted with it so nothing re-adds it by reusing the class. */
   /* home screen = not yet activated: hide both sidebar CTAs */
   .dashboard.is-choosing .dash-sidebar-newreq,
   .dashboard.is-choosing #rqDashNewRequest,
   .dashboard.is-choosing .dash-sidebar-deals { display:none; }
 
   .dash-sidebar-deals {
+    position:relative; overflow:hidden;
     display:flex; flex-direction:column; align-items:center; gap:2px;
     width:100%; margin:0 0 14px; padding:10px 12px; cursor:pointer;
     background:linear-gradient(135deg,#FFFBF3 0%,#FBF3E4 55%,#F6E9D0 100%);
@@ -8220,7 +8212,23 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .dash-sidebar-deals:hover { border-color:#c9a33f; }
   .dash-sidebar-deals .dsd-sub {
+    display:inline-flex; align-items:center; gap:5px;
     font-size:9px; letter-spacing:.5px; color:#1fb85f; font-weight:800;
+  }
+  /* the pulse and the sheen, straight off the original deals pill */
+  .dash-sidebar-deals .dsd-dot {
+    width:7px; height:7px; border-radius:50%; flex:0 0 auto; background:var(--green);
+    box-shadow:0 0 0 0 rgba(51,217,117,.55); animation:dtPulse 1.8s ease-out infinite;
+  }
+  /* absolute, so it is not laid out as a flex item of the column */
+  .dash-sidebar-deals::after {
+    content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
+    transform:skewX(-18deg); animation:dtSheen 4.5s ease-in-out infinite; pointer-events:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .dash-sidebar-deals .dsd-dot,
+    .dash-sidebar-deals::after { animation:none; }
   }
 
   /* Both cards lead with their own mark, centred (owner 2026-10-01). */
@@ -8302,10 +8310,26 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:linear-gradient(100deg, transparent, rgba(255,255,255,.65), transparent);
     transform:skewX(-18deg); animation:dtSheen 4.5s ease-in-out infinite; pointer-events:none;
   }
-  @media (prefers-reduced-motion: reduce){ .choose-card .cc-btn-gold::after { animation:none; } }
+  /* The owner asked for "the flashing pulsing glow as before" on this button and
+     then for the SPONSORED PICKS line to go. On the original pill the pulse WAS
+     that line's green dot — so dropping the line took the pulse with it, and the
+     button read flat. The pulse moves onto the button's own halo instead, using
+     the same dtPulse timing. overflow:hidden on .cc-btn clips children, not the
+     element's own box-shadow, so this coexists with the sheen. */
+  .choose-card .cc-btn-gold { animation:ccGoldPulse 1.8s ease-out infinite; }
+  @keyframes ccGoldPulse {
+    0%   { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(51,217,117,.55); }
+    70%  { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 9px rgba(51,217,117,0); }
+    100% { box-shadow:0 6px 18px rgba(217,119,87,.18), 0 2px 6px rgba(0,36,97,.06), 0 0 0 0 rgba(51,217,117,0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .choose-card .cc-btn-gold::after,
+    .choose-card .cc-btn-gold { animation:none; }
+  }
   .choose-card:hover .cc-btn-green { background:var(--green-dark); }
-  .choose-card:hover .cc-btn-gold  { border-color:var(--terracotta);
-    box-shadow:0 10px 24px rgba(217,119,87,.30), 0 0 0 1px rgba(217,119,87,.30); }
+  /* border only — the pulse owns box-shadow now, so a hover shadow here would
+     just be overwritten on the next keyframe. */
+  .choose-card:hover .cc-btn-gold  { border-color:var(--terracotta); }
 
   .choose-card .cc-h {
     position:relative; font-family:'Nunito',sans-serif; font-weight:900;
@@ -9721,8 +9745,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
   /* ─── Mobile/narrow viewport — collapse sidebar to top bar ─── */
   @media (max-width:900px){
-    .dashboard { grid-template-columns:1fr; }
-    .dash-sidebar{ position:fixed; top:0; left:0; bottom:0; width:84%; max-width:300px; transform:translateX(-100%); transition:transform .28s ease; z-index:9300; box-shadow:0 0 50px rgba(0,0,0,0.35); overflow-y:auto; }
+    .dashboard { grid-template-columns:1fr; grid-template-areas:"topbar" "main"; }
+    /* out of flow, so it claims no grid row; the named area no longer exists */
+    .dash-sidebar{ grid-area:auto; position:fixed; top:0; left:0; bottom:0; width:84%; max-width:300px; transform:translateX(-100%); transition:transform .28s ease; z-index:9300; box-shadow:0 0 50px rgba(0,0,0,0.35); overflow-y:auto; }
     .dashboard.sidebar-open .dash-sidebar{ transform:translateX(0); }
     .dash-backdrop{ display:block; position:fixed; inset:0; background:rgba(0,18,49,0.5); opacity:0; visibility:hidden; transition:opacity .28s ease; z-index:9200; }
     .dashboard.sidebar-open .dash-backdrop{ opacity:1; visibility:visible; }
@@ -9732,6 +9757,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     .gophers-grid { grid-template-columns:1fr; }
     .dash-content { padding:18px; }
     .dash-topbar { padding:14px 18px; }
+    /* no sidebar to line up with on a phone — the logo just takes its own width */
+    .dash-topbar-brand { flex:0 0 auto; margin-right:14px; }
+    .dash-logo-slot img { height:30px; max-width:150px; }
+  }
+  /* Putting the logo in the bar cost the greeting its room on a narrow phone and
+     it wrapped to two lines. Shrink the mark rather than truncate the name. */
+  @media (max-width:560px){
+    .dash-topbar { padding:10px 14px; }
+    .dash-topbar-brand { margin-right:10px; }
+    .dash-logo-slot img { height:24px; max-width:110px; }
+    .dash-burger { width:34px; height:34px; margin-right:8px; }
+    .dash-avatar-lead { width:38px; height:38px; margin-right:10px; }
     .info-row { grid-template-columns:1fr; gap:4px; }
   }
 
@@ -19569,14 +19606,40 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
      - Refer Gopher kept
      ============================================================ -->
 <div id="rqDashboard" class="dashboard" role="application" aria-label="Gopher Request dashboard">
-  <!-- Sidebar -->
-  <aside class="dash-sidebar">
-    <div class="dash-sidebar-head">
-      <div class="dash-sidebar-brand">
+  <!-- Owner 2026-10-01: "the top white bar goes all the way across the top. The
+       Request logo is the regular branded request logo." So the bar is a direct
+       child of .dashboard spanning both grid columns, and it carries the logo —
+       on white, which is the whole reason the standard asset can be used again.
+       The recoloured white wordmark that sat on the navy sidebar is GONE. -->
+  <div class="dash-topbar">
+    <div class="dash-topbar-left">
+      <button class="dash-burger" id="rqDashBurger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+      <div class="dash-topbar-brand">
         <div class="dash-logo-slot" id="rqDashLogoSlot">
           <!-- JS injects the Gopher Request logo image here on open -->
         </div>
       </div>
+      <!-- Owner 2026-09-30 (slide 1): the profile circle LEADS, and the greeting
+           follows it. The avatar used to sit alone on the far right with the
+           greeting stacked over a section title on the left. -->
+      <div class="dash-avatar dash-avatar-lead" id="rqDashAvatar">JL</div>
+      <div>
+        <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
+        <!-- Owner 2026-09-30, slide 1: "Remove Submit new request." The section
+             title is GONE from the topbar. Slide 2 is why it can go — the home
+             screen's two pathways carry the orientation, and each destination
+             already has its own heading ("Select the service you need help with
+             below", "Feature Deals Near You"), so this line was saying it twice.
+             Kept in the DOM, hidden, because renderers still write to it. -->
+        <div class="dash-section-title" id="rqDashSectionTitle" hidden>Dashboard overview</div>
+      </div>
+    </div>
+    <div class="dash-topbar-right"></div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="dash-sidebar">
+    <div class="dash-sidebar-head">
       <!-- Owner 2026-09-30 (slide 1): "Remove everything but Request logo and
            standard white background." The name and status line moved out; the
            greeting carries the name now, and TrustShield status has its own nav
@@ -19599,7 +19662,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
            routes through the same handler, so the eligibility gate still runs. -->
       <button type="button" class="dash-sidebar-deals" id="rqSidebarDeals" data-choose="deals">
         <span class="dsd-main">🏷️ View Local Deals</span>
-        <span class="dsd-sub">● SPONSORED PICKS</span>
+        <!-- Owner 2026-10-01: this is the button on the ACTIVATED dashboard, and
+             it has to be "the pulsing one" — the original .rq-pathtab.deals-tab
+             pill. The bullet here was a static ● character; it is now the real
+             .dt-dot element driven by the SAME dtPulse keyframes as that pill,
+             and the pill's dtSheen sweep is on the button itself. -->
+        <span class="dsd-sub"><span class="dsd-dot"></span>SPONSORED PICKS</span>
       </button>
     <nav class="dash-nav">
       <button class="dash-nav-item active" data-rqsection="home">
@@ -19666,27 +19734,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
   <!-- Main -->
   <main class="dash-main">
-    <div class="dash-topbar">
-      <!-- Owner 2026-09-30 (slide 1): the profile circle LEADS, and the greeting
-           follows it. The avatar used to sit alone on the far right with the
-           greeting stacked over a section title on the left. -->
-      <div class="dash-topbar-left">
-        <button class="dash-burger" id="rqDashBurger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
-        <div class="dash-avatar dash-avatar-lead" id="rqDashAvatar">JL</div>
-        <div>
-          <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
-          <!-- Owner 2026-09-30, slide 1: "Remove Submit new request." The section
-               title is GONE from the topbar. Slide 2 is why it can go — the home
-               screen's two pathways carry the orientation, and each destination
-               already has its own heading ("Select the service you need help with
-               below", "Feature Deals Near You"), so this line was saying it twice.
-               Kept in the DOM, hidden, because renderers still write to it. -->
-          <div class="dash-section-title" id="rqDashSectionTitle" hidden>Dashboard overview</div>
-        </div>
-      </div>
-      <div class="dash-topbar-right"></div>
-    </div>
-
     <div class="dash-content">
 
       <!-- ── CHOOSE: the dashboard's home screen ──────────────────────────────
@@ -19703,7 +19750,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <p class="choose-sub">Two ways to go from here.</p>
           <div class="choose-two">
             <button type="button" class="choose-card svc" data-choose="services">
-              <span class="cc-orb"></span>
               <!-- Owner 2026-10-01: the Request logo is CENTRED at the top of the
                    card, on its white chip — the mark needs a light ground because
                    its wordmark is navy (see the sidebar note). -->
@@ -19712,12 +19758,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <span class="cc-quad"></span><span class="cc-quad"></span>
                 <span class="cc-quad"></span><span class="cc-quad"></span>
               </span>
-              <span class="cc-h">Let's get you connected to a great local worker</span>
-              <span class="cc-s">Delivery, moving, junk, home services, labor, rides and more &mdash; a neighbor takes it from here.</span>
+              <span class="cc-h">Get connected to a great local worker</span>
+              <span class="cc-s">Delivery, moving, junk removal, home services, day labor, rides and more.</span>
               <span class="cc-btn cc-btn-green">+ Make a request</span>
             </button>
             <button type="button" class="choose-card deals" data-choose="deals">
-              <span class="cc-orb"></span>
               <span class="cc-brand"><img class="cc-brand-logo" src="assets/img/gopher-deals-logo.svg" alt="Gopher Deals"></span>
               <!-- Two marquee rows of real merchant marks, running in OPPOSITE
                    directions (owner 2026-10-01: "Top scrolling →, bottom
@@ -24218,47 +24263,26 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Inject the Gopher Request logo (reuse the nav logo on the page)
   function initLogo(){
     if(logoSlot.dataset.done) return;
-    // v75 — use the REAL Gopher Request logo (the same art the page header
-    // renders) instead of the text wordmark. grAsset() reads the embedded logo
-    // already on the page, so there's no duplicated base64. Falls back to the
-    // text wordmark only if the art can't be found.
-    /* Owner 2026-10-01 ("correct the request logo as pictured"): the mark sits on
-       the NAVY sidebar with a WHITE wordmark — no white chip behind it.
+    /* Owner 2026-10-01: the logo lives on the full-width WHITE top bar now, so the
+       shipped asset reads correctly exactly as shipped — this is the REGULAR
+       branded Request logo.
 
-       ⛔ The shipped asset cannot do that as an <img>: gopher-request-logo.svg
-       paints the wordmark with fill="#012462", the same navy as the sidebar, so
-       it disappears. There is no white variant in the repo. So the SVG is fetched
-       and INLINED, and that one fill is swapped for white — the gopher art keeps
-       its own greens. Inlining is what makes it recolourable at all; an <img>
-       cannot be restyled from outside.
-
-       Falls back to the previous bitmap-on-a-chip if the fetch fails, so a file://
-       open or a blocked request still shows a logo rather than nothing. */
-    const SVG_URL = 'assets/img/gopher-request-logo.svg';
-    fetch(SVG_URL).then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
-      .then(svg => {
-        logoSlot.innerHTML = svg.replace(/#012462/gi, '#ffffff');
-        const el = logoSlot.querySelector('svg');
-        if(el){ el.removeAttribute('width'); el.removeAttribute('height'); el.setAttribute('aria-label','Gopher Request'); }
-        logoSlot.classList.add('is-inline-svg');
-      })
-      .catch(() => {
-        const src = (window.grAsset && grAsset('requestLogo')) || '';
-        if(src){
-          const img = document.createElement('img');
-          img.src = src; img.alt = 'Gopher Request';
-          logoSlot.appendChild(img);
-          logoSlot.classList.add('needs-chip');
-        }
-      });
-    const src = '';
-    if(src){
-      const img = document.createElement('img');
-      img.src = src; img.alt = 'Gopher Request';
-      logoSlot.appendChild(img);
-    } else if(false) {
-      logoSlot.innerHTML = '<div class="dash-logo-text"><span class="dlt-mark">G</span><span class="dlt-words"><b>GOPHER</b><span class="dlt-connect" style="color:var(--navy)!important;">REQUEST</span></span></div>';
-    }
+       ⛔ Do NOT reintroduce the fetch-and-recolour this replaced. It rewrote the
+       wordmark's fill="#012462" to white so the mark could sit on the navy
+       sidebar; the owner ruled that a style-guide violation. It also required a
+       network fetch, which file:// blocks — that is why a double-clicked local
+       copy used to fall back to a white chip. A plain <img> needs neither. */
+    const img = document.createElement('img');
+    img.src = 'assets/img/gopher-request-logo.svg';
+    img.alt = 'Gopher Request';
+    /* grAsset() reads the logo already embedded on the page, so the fallback
+       costs no extra bytes and works even if the file is missing. */
+    img.addEventListener('error', function(){
+      const src = (window.grAsset && grAsset('requestLogo')) || '';
+      if(src && img.src !== src) img.src = src;
+    }, { once:true });
+    logoSlot.innerHTML = '';
+    logoSlot.appendChild(img);
     logoSlot.dataset.done = '1';
   }
 
