@@ -8729,7 +8729,16 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .dh-featured:hover .dh-feat-go { background:var(--green-dark); transform:translateY(-1px); }
 
   /* Per-category bid-winner cards — PAID placements, larger & richer than free browse cards */
-  .dh-cats { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:16px; margin-top:18px; }
+  /* Owner 2026-10-02 (slide 6): "1 main card and 5 category bid winners." With
+     auto-fit at minmax(260px,1fr) only four fitted the dashboard's content
+     column, so the fifth — the age-restricted category, which only appears for a
+     21+ user — dropped onto a row of its own and read as an afterthought rather
+     than one of five equal slots. Explicit counts instead, so the row never
+     orphans a single card at any width. */
+  .dh-cats { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:14px; margin-top:18px; }
+  @media(max-width:1320px){ .dh-cats { grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; } }
+  @media(max-width:1040px){ .dh-cats { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media(max-width:640px) { .dh-cats { grid-template-columns:1fr; } }
   .dh-cat { position:relative; display:flex; flex-direction:column; align-items:center; text-align:center;
     background:#fff; border:1px solid #eef0f6; border-radius:20px; padding:22px 18px 20px; cursor:pointer;
     box-shadow:0 12px 26px rgba(0,36,97,.10), 0 3px 8px rgba(0,36,97,.06);
@@ -26153,7 +26162,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Add `logo:'data:image/...'` to any record to replace its monogram tile.
   const DEALS_DATA = [
     { key:'localpro', title:'Local Service Provider Deals', merchants:[
-      { id:'lp-power',  name:'Power Washing',   pro:'John Newbury',       tier:'Gopher Elite+', price:150, normalRate:225, offer:'Full exterior house & driveway wash',
+      { id:'lp-power', featuredSlot:'category', featuredMonth:'2026-09',  name:'Power Washing',   pro:'John Newbury',       tier:'Gopher Elite+', price:150, normalRate:225, offer:'Full exterior house & driveway wash',
         kind:'service', reqCategory:'home', reviews:312, rating:4.9, verified:true, testimonial:'Driveways and siding like new.',
         dealSpecifics:"I will power wash any residential home under 2000 sq ft for $150 flat rate. My normal rate is $225. I use a special solution that will kill mold for up to 1 year.",
         photo:'assets/img/px-3932291-240x240.webp' },
@@ -26191,10 +26200,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         photo:'assets/img/px-1212984-240x240.webp' },
     ]},
     { key:'restaurants', title:'Restaurants & Food Trucks', merchants:[
-      { id:'r-myway',   name:'My Way Tavern',            sub:'American · Burgers · Drinks', offer:'10% off online orders, use promo code GOPHER', distance:'0.5 mi',
+      { id:'r-myway', featuredSlot:'hero', featuredMonth:'2026-09',   name:'My Way Tavern',            sub:'American · Burgers · Drinks', offer:'10% off online orders, use promo code GOPHER', distance:'0.5 mi',
         kind:'merchant', category:'delivery', address:'105 Avent Ferry Rd, Holly Springs, NC 27540', mobile:false, promo:'GOPHER', pay:12, portalUrl:'mywaytavern.com', portalTag:'The best food (& drinks) around',
         logoSvg:'<svg viewBox="0 0 220 168" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="My Way Tavern"><rect x="104" y="22" width="10" height="138" rx="3" fill="#3a3a3a"/><rect x="104" y="22" width="4" height="138" rx="2" fill="#606060"/><circle cx="109" cy="20" r="9" fill="#454545"/><circle cx="109" cy="20" r="4" fill="#6f6f6f"/><path d="M150 122 q-12 -10 -22 -6 q14 -10 26 2 z" fill="#2a2a2a"/><path d="M68 122 q12 -10 22 -6 q-14 -10 -26 2 z" fill="#2a2a2a"/><g transform="rotate(8 109 76)"><path d="M104 62 H196 L208 76 L196 90 H104 Z" fill="#1f7a3d" stroke="#ffffff" stroke-width="4"/><text x="150" y="82" text-anchor="middle" font-family="Nunito, Arial, sans-serif" font-weight="800" font-size="19" fill="#ffffff" letter-spacing="1">TAVERN</text></g><g transform="rotate(-8 109 76)"><path d="M114 62 H22 L10 76 L22 90 H114 Z" fill="#1f7a3d" stroke="#ffffff" stroke-width="4"/><text x="64" y="82" text-anchor="middle" font-family="Nunito, Arial, sans-serif" font-weight="800" font-size="19" fill="#ffffff" letter-spacing="1">MY WAY</text></g></svg>' },
-      { id:'r-frankks', name:'Frankie Frankks Hot Dogs', sub:'Hot Dog Cart', offer:"Buy 2 dogs, the drink's on us", distance:'2.2 mi',
+      { id:'r-frankks', featuredSlot:'category', featuredMonth:'2026-09', name:'Frankie Frankks Hot Dogs', sub:'Hot Dog Cart', offer:"Buy 2 dogs, the drink's on us", distance:'2.2 mi',
         kind:'merchant', category:'delivery', address:null, mobile:true, noOrdering:true, pay:9, portalUrl:'https://www.frankks.com', portalTag:"Frankly, we're the best!" },
       { id:'r-freshfork',   name:'Fresh Fork',                    sub:'Salads · Wraps · Bowls', offer:'Free topping upgrade', distance:'2.5 mi',
         kind:'merchant', category:'delivery', address:'308 Village Walk Dr, Holly Springs, NC 27540', mobile:false, pay:11, portalUrl:'freshforkhs.com', portalTag:'Healthy and fresh' },
@@ -26204,7 +26213,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         kind:'merchant', category:'delivery', address:'634 Holly Springs Rd, Holly Springs, NC 27540', mobile:false, promo:'GOPHER5', pay:10, portalUrl:'orderonline.granburyrs.com/slice/menu/main', portalTag:'Real NY Thin Crust Pizza' },
     ]},
     { key:'favorites', title:'Local Favorites', merchants:[
-      { id:'f-hatch',   name:'Hatch Coffee',             sub:'Coffee · Bakery', offer:'Free pastry with any latte', distance:'0.8 mi',
+      { id:'f-hatch', featuredSlot:'category', featuredMonth:'2026-09',   name:'Hatch Coffee',             sub:'Coffee · Bakery', offer:'Free pastry with any latte', distance:'0.8 mi',
         kind:'merchant', category:'delivery', address:'306 S Main St, Holly Springs, NC 27540', mobile:false, pay:8, portalUrl:'hatchcoffee.com', portalTag:'Small-batch, locally roasted' },
       { id:'f-sugar',   name:'Sugarbird Sweets & Teas',  sub:'Desserts · Tea', offer:'BOGO macarons', distance:'1.1 mi',
         kind:'merchant', category:'delivery', address:'124 Bowden Way, Holly Springs, NC 27540', mobile:false, pay:9, portalUrl:'sugarbird.com', portalTag:'A little something sweet' },
@@ -26218,7 +26227,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     { key:'retail', title:'Retail Merchants', merchants:[
       { id:'c-cardinal',name:'Cardinal Corner Store',    sub:'Convenience · Snacks', offer:'Free coffee with any fill-up', distance:'0.4 mi',
         kind:'merchant', category:'delivery', address:'500 Holly Springs Rd, Holly Springs, NC 27540', mobile:false, pay:8, portalUrl:'cardinalcorner.com', portalTag:'Your corner, stocked' },
-      { id:'c-quik',    name:'QuikStop Holly Springs',   sub:'Convenience · Fuel', offer:'2-for-1 energy drinks', distance:'1.0 mi',
+      { id:'c-quik', featuredSlot:'category', featuredMonth:'2026-09',    name:'QuikStop Holly Springs',   sub:'Convenience · Fuel', offer:'2-for-1 energy drinks', distance:'1.0 mi',
         kind:'merchant', category:'delivery', address:'1001 Avent Ferry Rd, Holly Springs, NC 27540', mobile:false, pay:8, portalUrl:'quikstop.com', portalTag:'In and out, fast' },
       { id:'c-pantry',  name:'GoPantry Express',         sub:'Grocery · Essentials', offer:'$3 off $20', distance:'1.9 mi',
         kind:'merchant', category:'delivery', address:'2840 Village Market Pl, Morrisville, NC 27560', mobile:false, pay:10, portalUrl:'gopantry.com', portalTag:'Essentials, delivered' },
@@ -26228,7 +26237,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     { key:'age', title:'Age-Restricted Merchants', ageRestricted:true, merchants:[
       { id:'a-bombshell',name:'Bombshell Beer Co.',      sub:'Brewery · Taproom', offer:'10% off growler fills', distance:'1.3 mi',
         kind:'merchant', category:'delivery', address:'300 N Main St, Holly Springs, NC 27540', mobile:false, pay:11, ageRestricted:true, portalUrl:'bombshellbeer.com', portalTag:'Fresh from the taproom' },
-      { id:'a-cellars', name:'Carolina Cellars',         sub:'Wine · Spirits', offer:'Free tasting flight', distance:'0.9 mi',
+      { id:'a-cellars', featuredSlot:'category', featuredMonth:'2026-09', name:'Carolina Cellars',         sub:'Wine · Spirits', offer:'Free tasting flight', distance:'0.9 mi',
         kind:'merchant', category:'delivery', address:'120 Grand Hill Pl, Holly Springs, NC 27540', mobile:false, pay:12, ageRestricted:true, portalUrl:'carolinacellars.com', portalTag:'Curated wine & spirits' },
       { id:'a-vine',    name:'Triangle Vine Bottle Shop',sub:'Bottle Shop', offer:'Buy 6 bottles, 10% off', distance:'2.4 mi',
         kind:'merchant', category:'delivery', address:'4112 Pleasant Valley Rd, Raleigh, NC 27612', mobile:false, pay:13, ageRestricted:true, portalUrl:'trianglevine.com', portalTag:'Hand-picked bottles' },
@@ -26512,13 +26521,33 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const run = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const month = run.getUTCFullYear() + '-' + String(run.getUTCMonth() + 1).padStart(2, '0');
     const picks = { featured: null, winners: {} };
-    (typeof DEALS_DATA !== 'undefined' ? DEALS_DATA : []).forEach(cat => {
-      ((cat && cat.merchants) || []).forEach(m => {
-        if(!m || m.featuredMonth !== month) return;
-        if(m.featuredSlot === 'hero') picks.featured = m.id;
-        else if(m.featuredSlot === 'category' && !picks.winners[cat.key]) picks.winners[cat.key] = m.id;
+    const scan = (matchMonth) => {
+      (typeof DEALS_DATA !== 'undefined' ? DEALS_DATA : []).forEach(cat => {
+        ((cat && cat.merchants) || []).forEach(m => {
+          if(!m || !m.featuredSlot) return;
+          if(matchMonth && m.featuredMonth !== month) return;
+          if(m.featuredSlot === 'hero'){ if(!picks.featured) picks.featured = m.id; }
+          else if(m.featuredSlot === 'category' && !picks.winners[cat.key]) picks.winners[cat.key] = m.id;
+        });
       });
-    });
+    };
+    scan(true);
+    /* ⚠️ PROTOTYPE FALLBACK — owner 2026-10-02, slide 6: "we have a headliner
+       featured deal and this page isn't representing that."
+
+       The real rule is above and is unchanged: winners are whoever bought the
+       slot in the auction that closed LAST month. The page rendered with no
+       headliner and every category showing the mascot placeholder for one
+       reason — NOT a layout bug — no merchant in DEALS_DATA carried a
+       featuredSlot at all, so this returned empty on every run.
+
+       The demo merchants are tagged now, but a fixed featuredMonth goes stale
+       the moment the calendar turns, and a prototype that empties itself
+       mid-demo is worse than one pinned to a month. So: if the live month sold
+       nothing, fall back to the standing demo placement, ignoring the month.
+       ⛔ Delete this fallback when real auction data backs the slots — in
+       production an unsold month SHOULD render without a headliner. */
+    if(!picks.featured && !Object.keys(picks.winners).length) scan(false);
     return picks;
   }
   const DEALS_HOME_SUBS = { localpro:'Vetted local pros', restaurants:'Meals on the road', favorites:'Neighborhood picks', retail:'Quick stops', age:'21+ · ID at door' };
