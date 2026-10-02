@@ -1,5 +1,26 @@
 # Brand compliance pass — Request & Connect dashboards (handoff, 2026-10-02)
 
+> ## ⛔ CORRECTED 2026-10-02, second pass — read this box first
+>
+> A verification pass against the branch tip re-confirmed every **line reference** in this
+> doc, and confirmed both of the owner's own findings. It also found **four claims below
+> that are wrong**, including the headline finding and the remedy in §6. Each is struck
+> and corrected in place, marked **◼ CORRECTED**. The short version:
+>
+> 1. **`--ink-on-green` is `#ffffff` in Request** (`gopher-request.html:6536`, top-level,
+>    unconditional, and its *only* definition). So `:3919` — cited below as the correct
+>    exemplar — renders white-on-Shamrock at 1.85:1, and so do **33 green surfaces**.
+>    *Following §6 step 2 as originally written would have spread the failing pair, not
+>    fixed it.* Changing that one line fixes all 33.
+> 2. **The "30 silent failures" finding does not hold.** Every undefined `var()` in both
+>    files carries a fallback, so none become invalid and none fall back to inherited.
+>    Verified with a positive control.
+> 3. **Neither page loads `gopher-connect-uc.css`.** Connect's only mention of it is inside
+>    a comment — the §4 trap catching this doc's own author.
+> 4. **The real drift is Request's `:root`**, which was never brought to canon.
+>
+> Side-by-side of fix #1: `docs/handoff/brand-ink-on-green-before-after.html`.
+
 **Status: AUDIT COMPLETE, NOTHING IMPLEMENTED.** The owner asked for findings
 first — *"point out as many as you can and i'll review then before actual
 implementation."* Do not start changing colours until he has reviewed.
@@ -72,17 +93,42 @@ the contrast, not the rendering.** White on bright green has almost no luminance
 difference, so glyph edges have nothing to resolve against. Correcting the ink
 to navy sharpens them with no other change.
 
-⛔ **The fix already exists in this codebase.** `--ink-on-green:#002461` is
-defined, and `gopher-request.html:3919` already does it right:
-`.idsub-stepchip.done { background:var(--green); color:var(--ink-on-green); }`.
-The main flow tabs simply never adopted it. Prefer the token over a literal.
+~~⛔ **The fix already exists in this codebase.** `--ink-on-green:#002461` is
+defined, and `gopher-request.html:3919` already does it right. The main flow tabs simply
+never adopted it. Prefer the token over a literal.~~
+
+◼ **CORRECTED — this is backwards, and it was the most dangerous line in the doc.**
+In **Connect** the token is correct (`connect.html:83  --ink-on-green: #002461`).
+In **Request** its one and only definition is:
+
+```css
+gopher-request.html:6536      :root { --ink-on-green:#ffffff; }
+```
+
+Top-level, unconditional, brace depth 0 — grafted in with the login-portal CSS, where white
+was wanted for a *navy* portal button. Written at `:root`, it went global.
+
+So `:3919` does **not** do it right: it renders **white on Shamrock, 1.85:1**. And it is not
+alone — **33 declarations** in Request ask for `var(--ink-on-green)` and are all handed white:
+tabs, primary CTAs, selected segment buttons, check marks, the sent-message bubble.
+
+**Consequence for the fix order:** adopting the token on *more* surfaces, as this doc
+originally advised, would have propagated the failing pair. The correct first edit is the
+token itself — one line, 33 surfaces, and it makes Request agree with Connect rather than
+introducing anything new.
 
 ---
 
 ## 3 · The rest of the audit
 
-White on Shamrock also at: `.req-action.attention` (request:7467),
-`.dni-badge` (request:7172), `.mst-tab.done/.active` (connect:7048/7052).
+White on Shamrock also at: `.mst-tab.done/.active` (connect:7048/7052) — plus
+`.mst-tab.done:hover`, which keeps white ink over `--green-dark` **#1CB061 at 2.83:1**;
+even the hover green will not carry white.
+
+◼ **CORRECTED:** `.req-action.attention` (request:7467) and `.dni-badge` (request:7172)
+were listed here as literal white. Both actually say `var(--ink-on-green)` — they are two
+of the **33** governed by the broken token above, and are fixed by that one line, not
+individually.
 
 Below AA: `.req-status.status-in-progress` 2.39 (request:7385) ·
 `.dash-block-head .view-all` 2.42 (:7324) · `.g40-demo-tag` 3.10 (:7760) ·
@@ -102,12 +148,41 @@ Crispness, in fix order:
    whether rounding them is worth doing at all.
 4. `.dni-ext` renders text at `opacity:0.7`.
 
-### ⭐ The most consequential finding, invisible on screen
+### ~~⭐ The most consequential finding, invisible on screen~~ ◼ CORRECTED — does not hold
 
-**30 declarations reference CSS custom properties that are never defined.** An
-undefined `var()` makes the whole declaration invalid at computed-value time, so
-the property falls back to **inherited** — not to the brand colour, and with no
-error anywhere.
+~~**30 declarations reference CSS custom properties that are never defined**, so the
+property falls back to **inherited** — not to the brand colour.~~
+
+◼ **CORRECTED.** The *count* was right; the *mechanism and the consequence* were not.
+**Every** undefined `var()` reference in both files carries a fallback — `var(--error,#c44257)`,
+never bare `var(--error)`. A `var()` with a fallback does not invalidate the declaration, so
+**zero** of them fall back to inherited.
+
+Verified with a positive control: a bare undefined `var()` injected into Request was caught;
+the fallback form was correctly ignored; a known-good token was correctly seen as defined.
+`--error`'s fallback is `#c44257` — **canonical Lava Alert** — so the alert colour renders
+correctly all 11 times. Nothing is silently off-brand here.
+
+**What is real, in its place:** the fallbacks are unmanaged literals, and some have drifted.
+`--line` resolves to **three different greys** in Connect (`#cbd5e1`, `#e1e6f0`, `#e2e8f0`);
+`--text-soft #64748b` and `--bg-soft #f8fafc` are slate values absent from the palette
+entirely. That is a maintainability and palette-drift finding, not an invisible-failure one.
+
+### ⭐ The genuinely consequential finding: Request's `:root` was never brought to canon
+
+Connect's token block is annotated against the guide and correct. Request's is not:
+
+| Token | Request | Style guide |
+|---|---|---|
+| `--ink-on-green` | `#ffffff` | `#002461` — **the 33-surface bug above** |
+| `--navy` | `#2a3654` | `#002461` Midnight Blue |
+| `--green-dark` | `#1fb85f` | `#1CB061` Mountain Meadow |
+| `--text` | `#2c2c3e` | `#424242` Body Copy |
+| `--tan` | `#EBE8E5`, commented *"brand neutral"* | **retired** — "don't use on new work" (4 uses) |
+| `--white` | *never defined* | `#FFFFFF` |
+
+Note `--navy #2a3654` on Sand is **10.86:1** — it still passes AAA. This row is a brand-canon
+violation, not an accessibility one, and should be described to the owner that way.
 
 | Page | Undefined tokens | Declarations |
 |---|---|---|
@@ -118,9 +193,19 @@ error anywhere.
 and resolves to nothing. This is the same fault that made the deals button
 render white-on-cream earlier today (fixed in `7acf006` with a literal `#002461`).
 
-**Why it persists:** the canonical tokens live in
-`Final/assets/css/gopher-connect-uc.css`. Connect loads it; **Request does not**
-and re-declares its own set. One shared brand stylesheet closes both.
+~~**Why it persists:** the canonical tokens live in `gopher-connect-uc.css`.
+Connect loads it; **Request does not**.~~
+
+◼ **CORRECTED: neither page loads it.** Request links `gopher-fonts.css` and
+`gopher-inbox-delete.css`; Connect links those two plus `gopher-footer.css`. No `<link>`,
+no `@import`, no JS injection of `gopher-connect-uc.css` in either file. Connect's *only*
+mention of it is **inside a comment** at `connect.html:1961` saying its values "match
+gopher-connect-uc.css exactly" — which is exactly the §4 trap about counting your own
+comments, sprung on the author of §4.
+
+Both pages define their tokens inline and independently. A shared brand stylesheet is still
+the right end state, but it is a **refactor**, not the bug fix — and it is *not* a
+prerequisite for the one-line `--ink-on-green` correction.
 
 ---
 
@@ -146,6 +231,12 @@ and re-declares its own set. One shared brand stylesheet closes both.
   reported 14/14 clean while the page was visibly broken. Add a brace-balance
   check across `<style>` blocks after any CSS edit — both files currently balance
   (request 2992/2992, connect 2773/2773).
+- ◼ **ADDED: a `var()` census must distinguish `var(--x)` from `var(--x,fallback)`.**
+  Only the bare form invalidates the declaration. Conflating them turned 20 harmless
+  fallback references into a fabricated "30 silent failures" headline. Prove any such zero
+  (or any such alarm) with a positive control before reporting it.
+- ◼ **ADDED: brace counts here strip comments first** (Request 2990/2990, Connect 2773/2773);
+  the 2992 figure below counts braces inside comments. Both balance either way.
 - The Browser pane runs at `devicePixelRatio: 1`. The owner's Mac does not. Any
   sub-pixel conclusion drawn in the pane needs that caveat stated.
 
@@ -171,11 +262,18 @@ and re-declares its own set. One shared brand stylesheet closes both.
 
 ## 6 · Suggested order, once he approves
 
-1. Define the 13 missing tokens, or point both pages at one shared brand
-   stylesheet. Everything else is cosmetic next to colours that silently are not
-   brand colours.
-2. `--ink-on-green` on every white-on-green surface.
+◼ **CORRECTED ORDER.** Steps 1 and 2 as first written were, respectively, not a bug and
+actively harmful. The replacement:
+
+1. **`gopher-request.html:6536` → `--ink-on-green:#002461`.** One line. Fixes 33 green
+   surfaces, including every one this doc previously listed individually. Nothing else is a
+   prerequisite. Side-by-side: `brand-ink-on-green-before-after.html`.
+2. **Connect's `.mst-tab`** — the owner's own finding, the only true literal-white-on-green
+   left (`connect.html:7038`, plus `.done:hover` over `--green-dark`).
 3. Red confined to alerts — starting with the hover rule at request:7496.
 4. `-webkit-font-smoothing:antialiased`.
 5. The remaining sub-AA pairs.
-6. Half-pixel sizes **only if he confirms** it differs by display.
+6. Half-pixel sizes **only if he confirms** it differs by display. ⛔ Still unanswered as
+   of this correction pass — not acted on.
+7. *(Refactor, not a fix)* one shared brand stylesheet for both pages, and bring Request's
+   remaining `:root` tokens to canon (`--navy`, `--green-dark`, `--text`, retire `--tan`).
