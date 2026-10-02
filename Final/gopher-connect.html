@@ -7061,7 +7061,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:#c9cfdd; transform:none; box-shadow:none;
   }
 
-  /* ─── Previous requests table ─── */
+  /* ─── Request History table ─── */
   .prev-table-wrap {
     background:white;
     border:1px solid #e7eaf2;
@@ -7106,7 +7106,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .prev-table .pt-action:hover { border-color:var(--green); color:var(--green-dark); }
 
-  /* ─── Previous requests: tabs, search, detail view ─── */
+  /* ─── Request History: tabs, search, detail view ─── */
   /* Main filter (Requests | Workers) — segmented, sits above the sub-tabs */
   .prev-main-tabs {
     display:inline-flex; gap:4px; margin-bottom:18px;
@@ -8341,7 +8341,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     <button type="button" class="gc-modal-close" id="cancelReqClose" aria-label="Close">×</button>
     <div class="gc-modal-icon">🗑️</div>
     <h4 id="cancelReqTitle">Cancel this request?</h4>
-    <p class="gc-modal-sub">This will cancel the request and notify any interested workers. Don't worry — a cancelled request isn't gone for good. You can always find it later under <b>Previous requests</b>.</p>
+    <p class="gc-modal-sub">This will cancel the request and notify any interested workers. Don't worry — a cancelled request isn't gone for good. You can always find it later under <b>Request History</b>.</p>
     <button type="button" class="gc-modal-btn gc-modal-btn-danger" id="cancelReqConfirm">Yes, cancel request</button>
     <button type="button" class="gc-modal-btn-text" id="cancelReqKeep">Never mind, keep it</button>
   </div>
@@ -9934,12 +9934,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <span class="dsd-main">View Local Deals</span>
     </button>
     <nav class="dash-nav">
+      <!-- Owner 2026-10-02: Home returns to the two-pathway choice screen.
+           Before this there was NO route back to it — only a page reload —
+           because Dashboard maps to `home`, the overview. Home keeps the house
+           glyph; Dashboard takes the chart glyph, which suits an overview.
+           No JS change needed: the generic nav handler routes any section key
+           and showSection() toggles .active off the same attribute. -->
+      <button class="dash-nav-item" data-dash-section="choose">
+        <span class="dni-ico">🏠</span><span class="dni-label">Home</span>
+      </button>
       <button class="dash-nav-item active" data-dash-section="home">
-        <span class="dni-ico">🏠</span><span class="dni-label">Dashboard</span>
+        <span class="dni-ico">📊</span><span class="dni-label">Dashboard</span>
         <span class="dni-badge" id="dashNavBadge">4</span>
       </button>
       <button class="dash-nav-item" data-dash-section="previous">
-        <span class="dni-ico">📚</span><span class="dni-label">Previous requests</span>
+        <span class="dni-ico">📚</span><span class="dni-label">Request History</span>
       </button>
       <button class="dash-nav-item" data-dash-section="gophers">
         <span class="dni-ico">⭐</span><span class="dni-label">MY Gophers</span>
@@ -10083,7 +10092,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
         <div class="dash-block-head">
           <h3 id="reqListHeading">All requests</h3>
-          <button class="view-all" data-jump-section="previous">View previous requests →</button>
+          <button class="view-all" data-jump-section="previous">View request history →</button>
         </div>
 
         <!-- recovery UX (prototype), ported from gopher-request.html. Demo
@@ -10110,10 +10119,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         </div>
       </section>
 
-      <!-- ░░ Section: Previous Requests ░░ -->
+      <!-- ░░ Section: Request History ░░ -->
       <section class="dash-section" data-section="previous">
         <div class="dash-block-head">
-          <h3 id="prevSecTitle">All previous requests</h3>
+          <h3 id="prevSecTitle">All request history</h3>
           <button class="view-all" data-jump-section="home">← Back to active</button>
         </div>
 
@@ -15917,7 +15926,7 @@ const PAY_BADGES = {
   const SECTION_TITLES = {
     choose:         'Dashboard',
     home:           'Dashboard overview',
-    previous:       'Previous requests',
+    previous:       'Request History',
     business:       'Business information',
     personal:       'Personal information',
     payment:        'Payment Methods',
@@ -16056,14 +16065,14 @@ const PAY_BADGES = {
     /* Deferred a frame: a browser will not start a video it cannot show, and the
        section is still unpainted in this tick. */
     if(name === 'choose') requestAnimationFrame(() => { try { playChooseClips(); } catch(_){} });
-    // When entering Previous requests, always start on the list (not a leftover detail view)
+    // When entering Request History, always start on the list (not a leftover detail view)
     if(name === 'previous'){
       const dp = document.getElementById('prevDetailPanel');
       const lp = document.getElementById('prevListPanel');
       const t  = document.getElementById('prevSecTitle');
       if(dp) dp.hidden = true;
       if(lp) lp.hidden = false;
-      if(t)  t.textContent = 'All previous requests';
+      if(t)  t.textContent = 'All request history';
     }
     document.querySelector('.dash-main').scrollTop = 0;
   }
@@ -17688,7 +17697,7 @@ const PAY_BADGES = {
     if(confirm) confirm.addEventListener('click', () => {
       // Two cancel contexts:
       //   1. Dashboard detail view — cancel the dashboard request by its id,
-      //      stay in the dashboard, and land on Previous requests · Cancelled.
+      //      stay in the dashboard, and land on Request History · Cancelled.
       //   2. In-flow — fall through to the original behavior (reset flow,
       //      exit to dashboard, file the request as cancelled).
       const dashId = pendingCancelDashId;
@@ -20439,7 +20448,7 @@ const PAY_BADGES = {
   }
 
   // ─── Other render functions (mostly unchanged from v1) ───
-  // ─── Previous requests: tabs, search, list, detail view ───
+  // ─── Request History: tabs, search, list, detail view ───
   // Local currency formatter (the flow IIFE has its own `fmt`, but this scope doesn't).
   const fmt = (n) => '$' + (Number(n) || 0).toFixed(2);
   let prevTab = 'all';
@@ -20890,7 +20899,7 @@ const PAY_BADGES = {
     const title     = document.getElementById('prevSecTitle');
     if(panel)     panel.hidden = true;
     if(listPanel) listPanel.hidden = false;
-    if(title)     title.textContent = 'All previous requests';
+    if(title)     title.textContent = 'All request history';
     renderPrevRequests();
   }
 
@@ -21249,7 +21258,7 @@ const PAY_BADGES = {
     if(panel) panel.hidden = true;
     if(editPanel) editPanel.hidden = true;
     if(listPanel) listPanel.hidden = false;
-    if(title) title.textContent = 'All previous requests';
+    if(title) title.textContent = 'All request history';
     renderPrevRequests(); // refresh in case toggles changed state
   }
 
@@ -22450,7 +22459,7 @@ const PAY_BADGES = {
     updateInboxBadge();
     if(document.querySelector('.dash-section.active')?.dataset.section === 'inbox') renderInbox();
   };
-  // Cancel a request: remove it from active and file it under Previous requests
+  // Cancel a request: remove it from active and file it under Request History
   // (cancelled, retrievable). Used by the flow's "Cancel request" button.
   window.__cancelDashboardRequest = (id) => {
     const i = DASH_DATA.activeRequests.findIndex(r => r.id === id);
@@ -22464,7 +22473,7 @@ const PAY_BADGES = {
       : (r.title || 'Cancelled before completion');
     const today = new Date();
     const dateStr = `${today.getMonth()+1}/${today.getDate()}/${String(today.getFullYear()).slice(2)}`;
-    // Land it in the CANCELLED bucket (shows on Previous requests · Cancelled tab),
+    // Land it in the CANCELLED bucket (shows on Request History · Cancelled tab),
     // matching the cancelled-record shape (no worker/payment/rating; has a reason).
     if(!Array.isArray(DASH_DATA.cancelledRequests)) DASH_DATA.cancelledRequests = [];
     DASH_DATA.cancelledRequests.unshift({
@@ -22844,7 +22853,7 @@ const PAY_BADGES = {
     { match:['billing','bill','charge','pre-auth','authorization','payment process','pre auth'],
       answer:`<b>Billing & pre-authorization:</b> your payment method isn't authorized until a worker is matched to your request. When the worker accepts, we pre-authorize the card for the request total <i>plus 20%</i> as a buffer for cost adjustments. If no adjustments are needed, you're only charged the original total. You'll be prompted to confirm completion before the final charge.` },
     { match:['cancel','change request','modify','edit request'],
-      answer:`<b>Cancel or change a request:</b> open the request from the Dashboard or Previous requests, and use the <b>Cancel request</b> or <b>Edit</b> options. Before a worker accepts, cancelling is free. After acceptance, a small adjustment may apply depending on how far the worker has traveled.` },
+      answer:`<b>Cancel or change a request:</b> open the request from the Dashboard or Request History, and use the <b>Cancel request</b> or <b>Edit</b> options. Before a worker accepts, cancelling is free. After acceptance, a small adjustment may apply depending on how far the worker has traveled.` },
     { match:['worker','matched','match','rating','rated','elite','pros','my gophers','select worker'],
       answer:`<b>How workers are matched:</b> we match based on proximity, category specialty, ratings, and your preferences. You can restrict each request to <b>MY Gophers</b>, <b>Gopher Elite + Pros</b>, or open it to the full workforce. After each completed request, you'll rate your Gopher and can add them to MY Gophers from the request detail screen.` },
     { match:['payment method','add card','credit card','ach','paypal','venmo','apple pay','google pay','cash app'],
@@ -23336,7 +23345,7 @@ const PAY_BADGES = {
     renderBusinessBadge();                            // paints the Verified business rail
     // Cancel request (top-right of the Request Detail view) — opens the same
     // confirmation modal used by the in-flow cancel, but with the dashboard
-    // request id so confirmation files it under Previous requests · Cancelled.
+    // request id so confirmation files it under Request History · Cancelled.
     const reqDetailCancel = document.getElementById('reqDetailCancelBtn');
     if(reqDetailCancel && !reqDetailCancel.__wired){
       reqDetailCancel.__wired = true;
@@ -23380,7 +23389,11 @@ const PAY_BADGES = {
        word — an earlier one gets overwritten. */
     if(window.__resetFlowToStart) window.__resetFlowToStart();
     moveFlowMockupToDashboard();
-    showSection('choose', 'home');
+    /* The 'home' nav-highlight override is GONE (owner 2026-10-02): it existed
+       only because no nav item targeted `choose`, so the highlight had to borrow
+       Dashboard's. The Home item now targets `choose` directly and highlights
+       itself — leaving the override here lit Dashboard on the home screen. */
+    showSection('choose');
     initChooseClips();
     window.scrollTo({ top:0, behavior:'instant' });
   }
