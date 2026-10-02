@@ -7050,12 +7050,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .mst-tab:hover { background:var(--navy-mid); transform:translateY(-1px); box-shadow:0 7px 16px rgba(26,42,94,0.3); }
   .mst-tab:active { transform:translateY(0); }
+  /* ⛔ The base .mst-tab is white on NAVY (15.6:1, correct). These two swap the
+     ground to Shamrock, so the ink must swap too — white on Shamrock is 1.85:1
+     and fails AA. Navy is 7.95:1 on --green and 5.22:1 on --green-dark, so
+     .done:hover is covered by inheriting .done's colour. */
   .mst-tab.done {
-    background:var(--green); box-shadow:0 4px 12px rgba(51,217,117,0.3);
+    background:var(--green); color:var(--ink-on-green);
+    box-shadow:0 4px 12px rgba(51,217,117,0.3);
   }
   .mst-tab.done:hover { background:var(--green-dark); }
   .mst-tab.active {
-    background:var(--green);
+    background:var(--green); color:var(--ink-on-green);
     box-shadow:0 6px 16px rgba(51,217,117,0.42), 0 0 0 3px rgba(51,217,117,0.18);
   }
   /* Locked = step not yet reached; greyed out, not interactive. */
