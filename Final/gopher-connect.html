@@ -7258,6 +7258,40 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .prev-empty { padding:28px 18px; text-align:center; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; }
 
   /* Detail card */
+  /* ── Request detail, laid out like the live app (owner 2026-10-02) ──────
+     Mirrors gopher-request.html; .pca is shared with the history cards. */
+  .pdx-head { margin:2px 0 16px; }
+  .pdx-type { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .pdx-when { font-family:'DM Sans'; font-size:13px; color:var(--muted); margin-top:2px; }
+  .pdx-sec { border-top:1px solid #eef0f5; padding:14px 0 4px; }
+  .pdx-h { font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy); margin-bottom:8px; }
+  .pdx-row {
+    display:flex; justify-content:space-between; align-items:flex-start; gap:18px;
+    padding:4px 0; font-family:'DM Sans'; font-size:14px;
+  }
+  .pdx-l { color:var(--muted); flex:0 1 auto; }
+  .pdx-v { color:var(--navy); font-weight:600; text-align:right; flex:1 1 auto; min-width:0; }
+  .pdx-dim { color:var(--muted); font-weight:400; }
+  .pdx-sub { padding-left:16px; }
+  .pdx-sub .pdx-row { padding:2px 0; font-size:13px; }
+  .pdx-sub .pdx-v { font-weight:400; color:var(--muted); }
+  .pdx-money .pdx-row:not(.pdx-total) .pdx-v { font-weight:700; }
+  .pdx-total {
+    border-top:2px solid #eef0f5; margin-top:8px; padding-top:10px;
+    font-family:'Nunito'; font-weight:900; font-size:15px;
+  }
+  .pdx-total .pdx-l, .pdx-total .pdx-v { color:var(--navy); font-weight:900; }
+  .pdx-link {
+    background:none; border:0; padding:0; cursor:pointer;
+    font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--navy);
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .pdx-link:hover { color:var(--green-dark); }
+  .pdx-bar {
+    position:sticky; bottom:0; display:flex; gap:8px; justify-content:flex-end;
+    border-top:1px solid #eef0f5; margin-top:16px; padding:12px 0 2px; background:white;
+  }
+
   .prev-detail-card {
     background:white; border:1px solid #e7eaf2; border-radius:14px;
     padding:22px 24px; max-width:760px;
@@ -15907,29 +15941,113 @@ const PAY_BADGES = {
     ],
     previousRequests: [
       { date:'5/12/26', id:'GC-00120', category:'Delivery',     details:'Catering tray drop-off',           worker:'Devon M.',  amount:'$47.50',  rating:'5.00',
-        breakdown:{ workerPay:38.50, fees:9.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:38.50, fees:9.00, gopherFee:3.99, instantTransfer:5.01 },
+        type:'Courier Delivery',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Acme DC-2, 1400 Corporation Pkwy, Raleigh, NC 27610',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'5/12/26 5:00 PM', acceptedAt:'5/12/26 8:20 AM', completedAt:'5/12/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
+        isMyGopher:true,  blocked:false },
       { date:'5/10/26', id:'GC-00119', category:'Day Labor',    details:'2 workers · unload pavers (2 hr)', worker:'Marcus K.', amount:'$120.00', rating:'4.50',
-        breakdown:{ workerPay:100.00, fees:20.00 }, isMyGopher:false, blocked:false },
+        breakdown:{ workerPay:100.00, fees:20.00, gopherFee:3.99, instantTransfer:16.01 },
+        type:'Warehouse Support',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'510 Fayetteville St, Raleigh, NC 27601',
+        payMethod:'Visa 4242', timing:'Flexible on timing',
+        openUntil:'5/10/26 5:00 PM', acceptedAt:'5/10/26 8:20 AM', completedAt:'5/10/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:"I'll select my worker",
+        isMyGopher:false, blocked:false },
       { date:'5/06/26', id:'GC-00118', category:'Home Services',details:'Install 2 ceiling fans',           worker:'Rosa P.',   amount:'$140.00', rating:'5.00',
-        breakdown:{ workerPay:120.00, fees:20.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:120.00, fees:20.00, gopherFee:3.99, instantTransfer:16.01 },
+        type:'Facilities & Repair',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'No specific drop-off location',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'5/06/26 5:00 PM', acceptedAt:'5/06/26 8:20 AM', completedAt:'5/06/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
+        isMyGopher:true,  blocked:false },
       { date:'5/01/26', id:'GC-00117', category:'Moving',       details:'2BR move — Raleigh → Durham',      worker:'Aaron T.',  amount:'$347.50', rating:'4.92',
-        breakdown:{ workerPay:300.00, fees:47.50 }, isMyGopher:false, blocked:false },
+        breakdown:{ workerPay:300.00, fees:47.50, gopherFee:4.99, instantTransfer:42.51 },
+        type:'Equipment Move',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Client site — 820 Aviation Pkwy, Morrisville, NC 27560',
+        payMethod:'Mastercard 1928', timing:'Flexible on timing',
+        openUntil:'5/01/26 5:00 PM', acceptedAt:'5/01/26 8:20 AM', completedAt:'5/01/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
+        isMyGopher:false, blocked:false },
       { date:'4/28/26', id:'GC-00116', category:'Junk Removal', details:'Old retail fixtures',              worker:'Tyler J.',  amount:'$210.00', rating:'4.91',
-        breakdown:{ workerPay:180.00, fees:30.00 }, isMyGopher:false, blocked:false },
+        breakdown:{ workerPay:180.00, fees:30.00, gopherFee:3.99, instantTransfer:26.01 },
+        type:'Site Clearance',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Acme DC-2, 1400 Corporation Pkwy, Raleigh, NC 27610',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'4/28/26 5:00 PM', acceptedAt:'4/28/26 8:20 AM', completedAt:'4/28/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:"I'll select my worker",
+        isMyGopher:false, blocked:false },
       { date:'4/22/26', id:'GC-00115', category:'Delivery',     details:'Document courier · downtown',      worker:'Jordan R.', amount:'$22.50',  rating:'4.88',
-        breakdown:{ workerPay:18.00, fees:4.50 }, isMyGopher:false, blocked:false },
+        breakdown:{ workerPay:18.00, fees:4.50, gopherFee:3.99, instantTransfer:0.51 },
+        type:'Courier Delivery',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'510 Fayetteville St, Raleigh, NC 27601',
+        payMethod:'Visa 4242', timing:'Flexible on timing',
+        openUntil:'4/22/26 5:00 PM', acceptedAt:'4/22/26 8:20 AM', completedAt:'4/22/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
+        isMyGopher:false, blocked:false },
       { date:'4/18/26', id:'GC-00114', category:'Yard Work',    details:'Office landscaping touch-up',      worker:'Tomás V.',  amount:'$185.00', rating:'4.93',
-        breakdown:{ workerPay:160.00, fees:25.00 }, isMyGopher:false, blocked:false },
+        breakdown:{ workerPay:160.00, fees:25.00, gopherFee:3.99, instantTransfer:21.01 },
+        type:'Grounds Maintenance',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'No specific drop-off location',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'4/18/26 5:00 PM', acceptedAt:'4/18/26 8:20 AM', completedAt:'4/18/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
+        isMyGopher:false, blocked:false },
       { date:'4/15/26', id:'GC-00113', category:'Home Services',details:'Conf-room AV install',             worker:'Maria G.',  amount:'$240.00', rating:'5.00',
-        breakdown:{ workerPay:210.00, fees:30.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:210.00, fees:30.00, gopherFee:3.99, instantTransfer:26.01 },
+        type:'Facilities & Repair',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Client site — 820 Aviation Pkwy, Morrisville, NC 27560',
+        payMethod:'Mastercard 1928', timing:'Flexible on timing',
+        openUntil:'4/15/26 5:00 PM', acceptedAt:'4/15/26 8:20 AM', completedAt:'4/15/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:"I'll select my worker",
+        isMyGopher:true,  blocked:false },
       { date:'3/22/26', id:'GC-00112', category:'Home Services',details:'Quarterly office deep clean (full day)', worker:'Priya N.',  amount:'$644.00', rating:'4.97',
-        breakdown:{ workerPay:560.00, fees:84.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:560.00, fees:84.00, gopherFee:4.99, instantTransfer:79.01 },
+        type:'Facilities & Repair',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Acme DC-2, 1400 Corporation Pkwy, Raleigh, NC 27610',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'3/22/26 5:00 PM', acceptedAt:'3/22/26 8:20 AM', completedAt:'3/22/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
+        isMyGopher:true,  blocked:false },
       { date:'2/18/26', id:'GC-00111', category:'Day Labor',    details:'Warehouse inventory count · 2-day',  worker:'Priya N.',  amount:'$598.00', rating:'4.95',
-        breakdown:{ workerPay:520.00, fees:78.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:520.00, fees:78.00, gopherFee:4.99, instantTransfer:73.01 },
+        type:'Warehouse Support',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'510 Fayetteville St, Raleigh, NC 27601',
+        payMethod:'Visa 4242', timing:'Flexible on timing',
+        openUntil:'2/18/26 5:00 PM', acceptedAt:'2/18/26 8:20 AM', completedAt:'2/18/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
+        isMyGopher:true,  blocked:false },
       { date:'2/02/26', id:'GC-00110', category:'Delivery',     details:'Recurring weekly courier route',     worker:'Priya N.',  amount:'$552.00', rating:'4.99',
-        breakdown:{ workerPay:480.00, fees:72.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:480.00, fees:72.00, gopherFee:4.99, instantTransfer:67.01 },
+        type:'Courier Delivery',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'No specific drop-off location',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'2/02/26 5:00 PM', acceptedAt:'2/02/26 8:20 AM', completedAt:'2/02/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:"I'll select my worker",
+        isMyGopher:true,  blocked:false },
       { date:'1/16/26', id:'GC-00109', category:'Event Staffing',details:'Trade-show booth setup & teardown', worker:'Priya N.',  amount:'$690.00', rating:'4.98',
-        breakdown:{ workerPay:600.00, fees:90.00 }, isMyGopher:true,  blocked:false },
+        breakdown:{ workerPay:600.00, fees:90.00, gopherFee:4.99, instantTransfer:85.01 },
+        type:'Event Crew',
+        pickup:'510 Fayetteville St, Raleigh, NC 27601', dropoff:'Client site — 820 Aviation Pkwy, Morrisville, NC 27560',
+        payMethod:'Mastercard 1928', timing:'Flexible on timing',
+        openUntil:'1/16/26 5:00 PM', acceptedAt:'1/16/26 8:20 AM', completedAt:'1/16/26 3:45 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
+        isMyGopher:true,  blocked:false },
     ],
     cancelledRequests: [
       { date:'5/14/26', id:'GC-00125', category:'Delivery',   details:'Lunch run · Pinewood Cafe',         reason:'Cancelled by you · plans changed' },
@@ -21251,39 +21369,80 @@ const PAY_BADGES = {
     const title = document.getElementById('prevSecTitle');
 
     if(status === 'completed'){
+      /* ── Completed view: the live app's section order, with our styling ──
+         Mirrors gopher-request.html. ⛔ Every section is conditional — the
+         seeded history carries these fields but a request created by the flow
+         in this session does not, and an empty row is worse than no section. */
       const firstName = (r.worker || '').split(' ')[0] || 'Your Gopher';
       const ratingNum = parseFloat(r.rating) || 0;
       const stars = Array.from({length:5},(_,i) => `<span class="star ${i < Math.round(ratingNum) ? '' : 'dim'}">★</span>`).join('');
+      const row = (label, value) => (value === undefined || value === null || value === '')
+        ? '' : `<div class="pdx-row"><span class="pdx-l">${label}</span><span class="pdx-v">${value}</span></div>`;
+      const yesNo = (v) => (v === undefined || v === null) ? '' : (v ? 'Yes' : 'No');
+      const section = (heading, rows) => {
+        const body = rows.filter(Boolean).join('');
+        return body ? `<div class="pdx-sec"><div class="pdx-h">${heading}</div>${body}</div>` : '';
+      };
+      const bd = r.breakdown || {};
+      const feeLines = (bd.gopherFee != null || bd.instantTransfer != null)
+        ? `<div class="pdx-sub">${row('Gopher Fee', fmt(bd.gopherFee))}${row('Instant Transfer Fee', fmt(bd.instantTransfer))}</div>`
+        : '';
       panel.innerHTML = `
         <div class="prev-detail-card">
           <button class="prev-detail-back" data-prev-back>← Back to history</button>
           <span class="prev-detail-status completed">Completed</span>
           <div class="prev-detail-title">Request #${r.id}</div>
-          <div class="prev-detail-rows">
-            <div class="prev-detail-row"><span class="pdr-label">Date:</span><span class="pdr-value">${r.date}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Request type:</span><span class="pdr-value">${r.category}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Gopher name:</span><span class="pdr-value">${r.worker}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label under">Total spent:</span><span class="pdr-value">${r.amount}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Payment to Gopher:</span><span class="pdr-value">${fmt(r.breakdown.workerPay)}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Fees:</span><span class="pdr-value">${fmt(r.breakdown.fees)}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Rating:</span><span class="pdr-value">${ratingNum.toFixed(2)} <span class="prev-detail-rating">${stars}</span></span></div>
+          <div class="pdx-head">
+            <div class="pdx-type">${r.type || r.category}</div>
+            <div class="pdx-when">${[r.category, r.date].filter(Boolean).join(' · ')}</div>
           </div>
+
+          ${section('Where', [ row('Pick Up', r.pickup), row('Drop Off', r.dropoff) ])}
+          ${section('Method of payment', [ row('Method of payment', r.payMethod) ])}
+          ${section('When', [
+            row('Timing', r.timing), row('Open until', r.openUntil),
+            row('Accepted', r.acceptedAt), row('Completed', r.completedAt)
+          ])}
+          ${section('Request details', [
+            row('Type', r.type || r.category), row('Details', r.details),
+            row('Select if you need items purchased', yesNo(r.itemsPurchased)),
+            row('My orders includes age-restricted items', yesNo(r.ageRestricted)),
+            row('Allow counter offers', yesNo(r.counterOffers)),
+            row('Liability Waiver', r.waiver)
+          ])}
+          ${section('How your Gopher was chosen', [
+            row('Gopher Requested', r.chosenHow ? `${r.chosenHow}${r.worker ? `<br><span class="pdx-dim">${r.worker}</span>` : ''}` : '')
+          ])}
+
+          <div class="pdx-sec pdx-money">
+            ${row('Payment to your Gopher', fmt(bd.workerPay))}
+            ${row('Fees', fmt(bd.fees))}
+            ${feeLines}
+            <div class="pdx-row pdx-total"><span class="pdx-l">Total Spent</span><span class="pdx-v">${r.amount}</span></div>
+          </div>
+
+          <div class="pdx-sec">
+            <div class="pdx-row">
+              <span class="pdx-l">Gopher: <b>${r.worker}</b></span>
+              <span class="pdx-v"><button class="pdx-link" data-prev-profile="${r.id}">Review Profile</button></span>
+            </div>
+            <div class="pdx-row"><span class="pdx-l">Rating</span><span class="pdx-v">${ratingNum.toFixed(2)} <span class="prev-detail-rating">${stars}</span></span></div>
+          </div>
+
           <div class="prev-detail-checks">
             <button class="prev-check-row ${r.isMyGopher?'checked':''}" data-prev-toggle="myGopher">
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
-          </div>
-          <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
-            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
-          </div>
-          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
+          </div>
+
+          <div class="pdx-bar">
+            <button class="pca pca-goto" data-prev-fav="${r.id}">Create a ${GO_MARK}-To</button>
+            <button class="pca pca-again" data-prev-again="${r.id}">Request Again</button>
           </div>
         </div>`;
     } else {
@@ -21323,6 +21482,15 @@ const PAY_BADGES = {
       if(myG.length){ openRaFastModal(r); }
       else { window.__startRequestAgainFast(r, []); }
     });
+    /* Create a GO-To from the detail view's sticky bar — same entry point as the
+       history card, so the first-run intro still gates it. */
+    const favBtn = panel.querySelector('[data-prev-fav]');
+    if(favBtn) favBtn.addEventListener('click', () => introThenGoToEditor(r.id));
+    /* Review Profile: history records carry no worker id, and the profile view
+       is keyed by worker INDEX on a live request — so this opens MY Gophers,
+       where that Gopher's card lives. A real destination beats a dead link. */
+    const profBtn = panel.querySelector('[data-prev-profile]');
+    if(profBtn) profBtn.addEventListener('click', () => { closePrevDetail(); showSection('gophers'); });
     const nowBtn = panel.querySelector('[data-prev-now]');
     if(nowBtn) nowBtn.addEventListener('click', () => {
       // Request NOW ⚡: no picker, no Review — send it exactly as it went out before,
