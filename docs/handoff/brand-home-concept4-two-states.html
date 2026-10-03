@@ -113,7 +113,7 @@
 <div class="page">
   <p class="eyebrow">Gopher Request &middot; home &middot; one container</p>
   <h1 class="t">One container. It shows the one that needs you.</h1>
-  <p class="lede">Messages are off the canvas &mdash; the <b>Inbox badge pulses in the sidebar</b> instead. The activity area is never a row: it is <b>one container</b>, and when more than one request is in play it stacks and says so. <b>The request needing attention is always the one on top.</b> <b>Nothing is implemented.</b></p>
+  <p class="lede"><b>Every string on this screen is a lookup, not a sentence someone wrote for this user.</b> Three headline templates, a status pill mapped from the stage, and a sub-line that falls back until it reaches something that always exists. The Caveat appears only on the empty state. Messages are off the canvas &mdash; the <b>Inbox badge pulses in the sidebar</b> instead. The activity area is never a row: it is <b>one container</b>, and when more than one request is in play it stacks and says so. <b>The request needing attention is always the one on top.</b> <b>Nothing is implemented.</b></p>
 
   <div class="state">
     <div class="shead"><span class="snum">A &middot; nothing live</span><div class="stitle"><h2>The cards are the whole screen</h2><p>No container at all.</p></div></div>
@@ -148,8 +148,7 @@
         <div class="foot"><span>&larr; Back to main page</span><span>&larr; Sign out</span></div></nav>
       <div class="main">
         <div class="topbar"><div><p class="welcome">Welcome back, Jamie &#128075;</p>
-          <h2 style="font-family:var(--n);font-weight:900;font-size:30px;letter-spacing:-.6px;line-height:1.12;margin-top:3px">Marcus is on the way</h2>
-          <p style="margin-top:0"><span class="scribble" style="font-size:23px">&mdash; about twenty minutes out.</span></p></div><div class="avatar"></div></div>
+          <h2 style="font-family:var(--n);font-weight:900;font-size:30px;letter-spacing:-.6px;line-height:1.12;margin-top:3px">Here&rsquo;s what&rsquo;s live</h2></div><div class="avatar"></div></div>
         <div class="wrap"><div class="tile"><span class="ico">&#128719;</span>
           <span class="tx"><span class="pillst">In progress</span><span class="ttl">Couch pickup &amp; delivery</span><span class="sub">Marcus is on the way &middot; arriving about 4:20 pm</span></span>
           <span class="stackn"><i></i></span><span class="amt">$84</span></div></div>
@@ -174,8 +173,7 @@
         <div class="foot"><span>&larr; Back to main page</span><span>&larr; Sign out</span></div></nav>
       <div class="main">
         <div class="topbar"><div><p class="welcome">Welcome back, Jamie &#128075;</p>
-          <h2 style="font-family:var(--n);font-weight:900;font-size:30px;letter-spacing:-.6px;line-height:1.12;margin-top:3px">One needs a yes from you</h2>
-          <p style="margin-top:0"><span class="scribble" style="font-size:23px">&mdash; the rest is running fine.</span></p></div><div class="avatar"></div></div>
+          <h2 style="font-family:var(--n);font-weight:900;font-size:30px;letter-spacing:-.6px;line-height:1.12;margin-top:3px">1 needs your attention</h2></div><div class="avatar"></div></div>
         <div class="wrap stacked">
           <div class="behind"></div>
           <div class="tile attn"><span class="ico">&#129529;</span>
@@ -193,6 +191,28 @@
       </div>
     </div></div>
     <p class="note"><b>The container is the same height in B and C.</b> The only differences are the edge peeking out below, the &ldquo;1 more in play&rdquo; chip, and which request is on top. The cards never move between the two.</p>
+  </div>
+
+  <div class="state" style="margin-top:36px">
+    <div class="shead"><span class="snum">The logic</span><div class="stitle"><h2>No realtime anything &mdash; three templates and two lookups</h2><p>Driven entirely by two numbers already in the page: how many requests are live, and how many of those carry an <code>attention</code> object.</p></div></div>
+    <div style="padding:18px 22px">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+        <tr><th style="text-align:left;padding:7px 10px 7px 0;border-bottom:1px solid var(--rule);font-family:var(--n);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">Condition</th><th style="text-align:left;padding:7px 0;border-bottom:1px solid var(--rule);font-family:var(--n);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">Headline &mdash; the only three</th></tr>
+        <tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #f0ece2"><code>live === 0</code></td><td style="padding:8px 0;border-bottom:1px solid #f0ece2">So, how can we help you today?</td></tr>
+        <tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #f0ece2"><code>attn === 0</code></td><td style="padding:8px 0;border-bottom:1px solid #f0ece2">Here&rsquo;s what&rsquo;s live</td></tr>
+        <tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #f0ece2"><code>attn &gt;= 1</code></td><td style="padding:8px 0;border-bottom:1px solid #f0ece2"><code>attn</code> + (attn === 1 ? &ldquo; needs&rdquo; : &ldquo; need&rdquo;) + &ldquo; your attention&rdquo;</td></tr>
+      </table>
+      <p style="margin-top:16px;font-size:13.5px;line-height:1.6;color:#4a5160"><b>Status pill</b> &mdash; a map from the stage the prototype already stores, eight values collapsing to four: <code>searching | pending</code> &rarr; &ldquo;Finding a Gopher&rdquo;; <code>matched | accepted</code> &rarr; &ldquo;Accepted&rdquo;; <code>active</code> &rarr; &ldquo;In progress&rdquo;; <code>scheduled</code> &rarr; &ldquo;Scheduled&rdquo;. <code>completed | rated</code> never appear &mdash; they leave home for Request History, which the prototype already does. When an <code>attention</code> object is present it overrides the pill with &ldquo;Needs you&rdquo; and the Lava Alert ring.</p>
+      <p style="margin-top:12px;font-size:13.5px;line-height:1.6;color:#4a5160"><b>Sub-line</b> &mdash; a fallback chain, first match wins, and <b>the last rung needs no data beyond the request itself</b>:</p>
+      <ol style="margin:8px 0 0 20px;font-size:13.5px;line-height:1.7;color:#4a5160">
+        <li><code>attention.label</code> &mdash; the prototype already builds these (&ldquo;New bid from Dana &mdash; above your offer&rdquo;). Five types exist: <code>bid, rate, gcancel, confirm, adjust</code>, so that is <b>five strings a human writes once</b>, not per user.</li>
+        <li>name + ETA, if both are known &mdash; &ldquo;Marcus is on the way &middot; arriving about 4:20 pm&rdquo;</li>
+        <li>name only &mdash; &ldquo;Marcus is on the way&rdquo;</li>
+        <li>neither &mdash; &ldquo;On the way&rdquo;</li>
+        <li>nothing renders; title and amount carry the row</li>
+      </ol>
+      <p style="margin-top:14px;font-size:13.5px;line-height:1.6;color:#4a5160"><b>The rule that keeps it honest at scale:</b> no string may require data that can be missing unless something above it in the chain does not. My first draft broke that twice &mdash; &ldquo;Marcus is on the way&rdquo; as a <i>headline</i> needs a name that may not exist yet, and &ldquo;One needs a yes from you&rdquo; is simply false the moment two do.</p>
+    </div>
   </div>
 
   <p class="foot"><b>Nothing here is implemented.</b> One choice I made that is worth your ruling: <b>the Inbox badge pulses green, not red.</b> Your standing rule is that red is for negatives and alerts, and an unread message is not a negative &mdash; so it reuses the Shamrock badge already there rather than introducing the red attention pulse. If you want it to carry the same urgency as a counter-offer, it should be the red one instead. It respects <code>prefers-reduced-motion</code> either way.
