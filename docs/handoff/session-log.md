@@ -723,6 +723,18 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   > answers to be reverted on 10/2, by me and by the Gopher Vault session independently.
   > The rule that still applies, unchanged: capital-P "Previous requests" is the SECTION
   > NAME and gets renamed; lowercase "previous request(s)" is generic prose and stays.
+  > **Corroborated by a record older than the confusion, so nobody has to adjudicate
+  > between two owner directives:** the 2026-07-23 entry in this log (line ~641) records
+  > the owner correcting Go's blocked list to "Block Requesters", sitting *top-level
+  > directly under Request history* — a dated note placing that label in the LIVE app a
+  > day before the 7/24 row below proposed renaming away from it.
+  > **Re-check rather than trusting either row.** 2026-10-03, verified from this session:
+  > `curl -s "https://tour.gophergo.io/iq/index.html?cb=$RANDOM"` returns 484,656 bytes
+  > carrying `const FAQS`, **"Request History" × 8, "Previous requests" × 0**.
+  > ⛔ Count with `grep -o … | wc -l`, NOT `grep -c` — the corpus is a single JSON line,
+  > so eight occurrences report as "1" — and assert `const FAQS` is in the same fetch, or
+  > a gated page answering 200 returns a clean-looking zero.
+  > (Evidence supplied by the Gopher Vault session, re-verified here before use.)
   Owner directive from a Go-sidebar screenshot: no customer-facing surface may say
   "Request history" anywhere. Swept `Final/`: Go portal sidebar label + history-panel
   `<h2>` (the last portal still using the old name — Connect/Request/Deals were already
