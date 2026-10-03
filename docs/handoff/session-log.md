@@ -710,6 +710,19 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   refinements.
 
 - **"Request history" → "Previous requests", all customer-facing copy (owner, 2026-07-24).**
+  > ⛔ **SUPERSEDED AND REVERSED 2026-10-02 — do not follow this entry.** Everything below
+  > happened and is accurately recorded, but the direction is now the opposite: the rename
+  > today is **"Previous requests" → "Request History"**, owner-directed, repo-wide, deployed
+  > and content-verified on all three hosts.
+  > **Why, because the obvious inference is backwards:** "Request History" is what the LIVE
+  > apps already use. "Previous requests" was the name on the new marketplace web surfaces,
+  > which have **not launched**. Owner, 2026-10-02: *"The live apps already have Request
+  > History. Previous requests was for the new marketplace that hasn't even launched yet."*
+  > So this is not a web rename running ahead of a store build — it is the web catching up.
+  > Reading the 7/24 row as current is exactly the mistake that nearly caused ~59 iQ corpus
+  > answers to be reverted on 10/2, by me and by the Gopher Vault session independently.
+  > The rule that still applies, unchanged: capital-P "Previous requests" is the SECTION
+  > NAME and gets renamed; lowercase "previous request(s)" is generic prose and stays.
   Owner directive from a Go-sidebar screenshot: no customer-facing surface may say
   "Request history" anywhere. Swept `Final/`: Go portal sidebar label + history-panel
   `<h2>` (the last portal still using the old name — Connect/Request/Deals were already
