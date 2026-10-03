@@ -351,8 +351,26 @@ longer match the HTML. The HTML is the live one per §1.
 
 ## 4c · ⛔ ALL SIX ITEMS ARE IMPLEMENTED — this audit is closed
 
-Owner approved each in turn on 2026-10-02 after review. Eleven+ commits on
-`feature/deals-google-maps-audience`. **Nothing is deployed** — branch only.
+Owner approved each in turn on 2026-10-02 after review, and **DEPLOYED 2026-10-02 ~20:25 ET**:
+live `ba0b9c0 -> origin/main`, twin `3b89805 -> proto/main`, both sites in one
+`scripts/deploy.sh --push` run by the owner. ⛔ I could not run it — the auto-mode classifier
+blocks it as a Production Deploy, dry run included.
+
+**Deploy scope was exactly 2 of 727 files in `Final/`** — `gopher-request.html` and
+`gopher-connect.html`. Everything else from 2026-10-02 was already on main at `f5fca32`.
+
+**Content-verified, not by SHA**, on both Pages hosts, clean on the first poll — 9 checks each:
+token = `#002461`, `--green-text` present, `antialiased` present, and zero occurrences of
+half-pixel font-sizes, the ungated red hover, or `background:var(--green); color:white`.
+
+⚠️ **The third host is not mine and is NOT verified here.** `explore.gophergo.io` /
+`tour.gophergo.io` are mirrored by the **Explorer Deck & Public Tour** session from the repo
+working tree; the deck doc says to ping it when a deploy lands, and I have. Its password page
+answers **200 at the same URL**, so a status check cannot confirm content there.
+
+⛔ **Eyeball `.step .step-label` first.** `max-width:88px`, now 13px (was 12.5), `line-height:1.25`
+— of everything in item 6 it is the likeliest to have gained a line. Owner: *"we'll correct it if
+something doesn't look right."* Revert boundary for the type change alone is `6fabc59`.
 
 | # | Change | Scale | Effect |
 |---|---|---|---|
