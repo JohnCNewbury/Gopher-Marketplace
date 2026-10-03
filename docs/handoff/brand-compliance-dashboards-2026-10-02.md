@@ -325,6 +325,30 @@ prerequisite for the one-line `--ink-on-green` correction.
 
 ---
 
+## 4b · ⛔ The style guide itself was amended — Pine #0F7A3F
+
+Owner, 2026-10-02: approved the accessible dark green **and** required it be added to the guide
+with an explanation. Done, in **`Gopher Style Guide.html`** (outside this repo, in
+`Documentation/Brand/Gopher Brand Standards/`). That file is **not under version control** —
+a timestamped backup was taken first: `Gopher Style Guide.html.bak-20261002-195811-pre-green-text`.
+
+Two edits, both in the house markup and render-verified against the guide's own CSS:
+
+- **§3.2 Secondary palette** — a `Pine` swatch (`#0F7A3F`, Digital Only) plus a *"Why Pine exists"*
+  row: neither brand green can carry text (Shamrock 2.4:1 on its own tint, Mountain Meadow 2.8:1
+  on white), Pine is 5.4:1 / 5.0:1, it is **text-only and never a fill**, and it does the same job
+  `#92580D` does for amber.
+- **§3.4 Accessibility** — two contrast cells: `Mountain Meadow on White 2.8:1 FAIL` placed next to
+  `Pine on White 5.4:1 AA`, so the reason for the addition is visible rather than asserted.
+
+⛔ **The name "Pine" is mine, not the owner's.** It follows the palette's naming convention
+(Shamrock, Mountain Meadow, Aquamarine, Cornflower), but he approved a hex, not a name. If he
+wants it called something else it is a find-and-replace in the guide and a token rename in
+`gopher-request.html`.
+
+⚠️ The PDF exports (`Gopher Style Guide 2026.pdf` and earlier) are **not** regenerated and no
+longer match the HTML. The HTML is the live one per §1.
+
 ## 5 · Standing rules that apply to this work
 
 - ⛔ **Audit, do not implement, until he reviews.** His words, this session.
