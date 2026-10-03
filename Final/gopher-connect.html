@@ -21293,6 +21293,14 @@ const PAY_BADGES = {
     let draft;
     if(existing){
       draft = Object.assign({}, existing, { gophers:(existing.gophers || []).slice() });
+      /* Records saved before anyPickup was persisted have no boolean, so fall
+         back to reading the stored pick-up text -- once, here, rather than
+         leaving the rest of the sheet to infer it. A record saved SINCE always
+         wins, even when its text would read the other way. */
+      if(typeof existing.anyPickup !== 'boolean'){
+        draft.anyPickup = /anywhere|no specific|no pick/i.test(String(existing.pickup || ''));
+      }
+      if(pickupToggleHidden(draft.category)) draft.anyPickup = false;
     } else {
       const src = findPrevById(srcId);
       if(!src) return;
@@ -21313,7 +21321,7 @@ const PAY_BADGES = {
         itemsPurchased: !!src.itemsPurchased,
         ageRestricted:  !!src.ageRestricted,
         counterOffers:  src.counterOffers !== false,
-        anyPickup: /anywhere|no specific/i.test(String(src.pickup || '')),
+        anyPickup: defaultAnyPickup(src.category || 'Other', src.pickup),
         notes: '',
         pickup:  src.pickup  || '',
         dropoff: src.dropoff || '',
@@ -21345,7 +21353,29 @@ const PAY_BADGES = {
     };
     function noPickupLabel(cat){
       const c = String(cat || '').trim().toLowerCase();
-      return NO_PICKUP_LABELS[c] || 'Pickup location is flexible';
+      return NO_PICKUP_LABELS[c] || 'No pick up \u2014 work happens on site';
+    }
+    /* ⛔ A ride's pick-up IS its origin, so "no pick-up address" is a
+       contradiction there -- switching it on would leave the ride with only a
+       destination. Owner 2026-10-03: hide the control for rides. Hiding it is
+       not enough on its own: anyPickup must be forced OFF too, or a ride
+       inherits a hidden true from its source request and the address field
+       stays hidden with it. */
+    function pickupToggleHidden(cat){
+      return /^ride\b|ride sharing/i.test(String(cat || '').trim());
+    }
+    /* Owner 2026-10-03: default the switch ON for the on-site categories --
+       "allow the user to deselect if somehow relevant (after all, Gopher IS
+       anything anytime anywhere)". A DEFAULT only decides where there is
+       nothing to honour: when the source request carries a real pick-up
+       address, that address wins, or prefilling would silently discard it. */
+    function defaultAnyPickup(cat, srcPickup){
+      if(pickupToggleHidden(cat)) return false;
+      const p = String(srcPickup || '').trim();
+      if(/anywhere|no specific|no pick/i.test(p)) return true;
+      if(p) return false;                       // a real address -- keep it
+      const c = String(cat || '').trim().toLowerCase();
+      return !NO_PICKUP_LABELS[c];              // on-site categories default ON
     }
 
     // Card in use — the same list the checkout picker and Payment info share.
@@ -21413,7 +21443,7 @@ const PAY_BADGES = {
         </div>
 
         <div class="goto-sec-h">Pick up location</div>
-        <div class="goto-field goto-toggles">
+        <div class="goto-field goto-toggles" id="gotoAnyPickupRow"${pickupToggleHidden(draft.category) ? ' hidden' : ''}>
           <button type="button" class="goto-tog ${draft.anyPickup ? 'checked' : ''}" data-goto-tog="anyPickup">
             <span class="prev-check-box"></span><span id="gotoAnyPickupLabel">${noPickupLabel(draft.category)}</span>
           </button>
@@ -21508,12 +21538,15 @@ const PAY_BADGES = {
        box for a request that buys nothing, or an address box for a GO-To whose
        Gopher picks the shop. */
     const show = (id, on) => { const el = document.getElementById(id); if(el) el.hidden = !on; };
+    // Once the requester sets this switch themselves, the category default stops
+    // overriding them.
+    let pickupTouched = false;
     panel.querySelectorAll('[data-goto-tog]').forEach(t => {
       t.addEventListener('click', () => {
         t.classList.toggle('checked');
         const on = t.classList.contains('checked');
         if(t.dataset.gotoTog === 'itemsPurchased') show('gotoGoodsField', on);
-        if(t.dataset.gotoTog === 'anyPickup')      show('gotoPickupField', !on);
+        if(t.dataset.gotoTog === 'anyPickup'){ pickupTouched = true; show('gotoPickupField', !on); }
         refreshGoToSave();
       });
     });
@@ -21527,6 +21560,32 @@ const PAY_BADGES = {
     if(catSel) catSel.addEventListener('change', () => {
       const lbl = document.getElementById('gotoAnyPickupLabel');
       if(lbl) lbl.textContent = noPickupLabel(catSel.value);
+      /* Switching INTO a ride has to force the switch off and bring the address
+         field back, not just hide the control -- otherwise the ride keeps a
+         hidden "no pick-up" and loses its origin with no way to say so. */
+      const row  = document.getElementById('gotoAnyPickupRow');
+      const tgl  = panel.querySelector('[data-goto-tog="anyPickup"]');
+      const hide = pickupToggleHidden(catSel.value);
+      if(row) row.hidden = hide;
+      if(hide){
+        if(tgl) tgl.classList.remove('checked');
+      } else if(!pickupTouched && tgl){
+        /* The default is per CATEGORY, so it re-applies when the category
+           changes -- not only at first paint, or picking Yard Work on a sheet
+           started from a Delivery would never default ON. It stops the moment
+           the requester touches the switch themselves: after that the choice is
+           theirs.
+           Deliberately IGNORES any address already in the box here, unlike
+           first paint. At first paint the source request's own pick-up is real
+           information about that job and is honoured. On a category change the
+           requester is redefining the job, and a prefilled address is a
+           leftover from the old one -- and nothing is lost by superseding it:
+           the field keeps its value, hidden, and switching the toggle back off
+           returns it untouched. Without this, Connect never defaulted ON at
+           all, because every one of its requests carries an address. */
+        tgl.classList.toggle('checked', defaultAnyPickup(catSel.value, ''));
+      }
+      show('gotoPickupField', hide || !(tgl && tgl.classList.contains('checked')));
     });
     panel.querySelectorAll('[data-goto-who]').forEach(r => {
       r.addEventListener('click', () => {
@@ -21580,7 +21639,15 @@ const PAY_BADGES = {
         details: val('gotoDetails').trim(),
         notes: val('gotoNotes').trim(),
         workerPay: pay,
-        pickup:  tog('anyPickup') ? 'Gopher can purchase from anywhere' : val('gotoPickup').trim(),
+        /* ⛔ Two bugs lived on this line. The saved pickup string was
+           HARD-CODED to the delivery wording, so a Moving GO-To stored and
+           displayed "Gopher can purchase from anywhere" -- visible on the
+           owner's own card. And anyPickup was never persisted at all: Edit
+           re-derived it by regex-matching that display string, so changing the
+           wording would have silently flipped the switch off on reopen. The
+           boolean is now stored, and the string follows the category. */
+        anyPickup: tog('anyPickup'),
+        pickup:  tog('anyPickup') ? noPickupLabel(val('gotoCat')) : val('gotoPickup').trim(),
         dropoff: val('gotoDropoff').trim(),
         goodsCost: val('gotoGoods').trim() === '' ? '' : Number(val('gotoGoods')),
         itemsPurchased: tog('itemsPurchased'),
