@@ -176,40 +176,77 @@ is settled and documented; the only unfixed defect is named above with its fix.
 
 ---
 
-## 7 · ⛔ The deploy tree is NOT the branch
+## 7 · ⛔ CORRECTED — a commit on origin is not a deployed commit
 
-Added 2026-10-03, after the home screen was pushed to the branch and a deploy
-shipped without it. The owner's words: *"they deployed and it was NOT what you
-created."*
+◼ **This section was WRONG when first written (2026-10-03) and is corrected
+here the same day.** It claimed `scripts/deploy.sh` publishes *"the WORKING
+TREE of the shared Code checkout"* and built an explanation of a missed deploy
+on top of that. **The mechanism is false.** It was asserted from a memory note
+about where deploys usually run, never checked against the script, and then
+written into this doc as fact and sent to another session.
 
-**Nothing was reverted.** `scripts/deploy.sh` publishes the **WORKING TREE of
-the shared Code checkout**, not a branch and not any session's worktree:
+**What the script actually does** — `scripts/deploy.sh:56`:
 
-```
-/Users/johnnewbury/Desktop/All New Gopher/Documentation/Claude Code Review:Cleanup/Code
-```
-
-At that deploy it held one session's header work and another's GO-To fixes —
-because those sessions' content was physically in that tree — and none of the
-home screen, which existed only on `origin/feature/deals-google-maps-audience`
-and in the authoring worktree.
-
-⚠️ **Pulling a commit into your own worktree verifies the code and ships
-nothing.** A peer pulled and ran a full regression on the home-screen tip; the
-shared clone was still on `950b8d8` — a different line entirely, carrying a
-third session's commits — with 25 uncommitted files and none of the new
-markers. A deploy at that moment would have missed exactly the same two
-commits for exactly the same reason.
-
-**Before any deploy, check the TREE, not the branch:**
-
-```
-grep -c '<a marker string from your change>' "<shared clone>/Final/<file>"
+```sh
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ```
 
-Zero means your change is not going out, however green the branch is.
+`REPO` is derived from **the script's own location**, so the deploy publishes
+**whichever checkout you run it from.** Running it from a worktree ships that
+worktree. There is no privileged clone.
 
-⛔ **Do not quietly update that clone to fix this.** It routinely carries other
-sessions' diverged commits and uncommitted files, and `git add` in a shared
-clone hands someone else's file to whoever commits next. Whoever updates it
-should be whoever knows what the uncommitted files are.
+**The disproof, run rather than argued.** Four strings exist only in the
+deploying session's commits, which the shared clone does not have:
+
+| marker | shared clone | LIVE |
+|---|---|---|
+| `function mintGoToId` | 0 | 2 |
+| `anyPickup: tog` | 0 | 2 |
+| `work happens on site` | 0 | 2 |
+| `function pickupToggleHidden` | 0 | 2 |
+
+Control in the same pass: `const FAQS` is 1 in both, so the fetch and the file
+read are real. **If the deploy had read the shared clone, those four could not
+be live. They are.** Credit to `Website Code/Logic [927f4e]` for refusing the
+claim and producing the test.
+
+---
+
+**The real reason the home screen was not live** is duller than the mechanism
+it got dressed in: **the deploy simply predates the commits.** It ran at
+`origin/main d43916b`, from the deploying session's own tree, before `dabc45d`
+and `16553e7` existed. Nothing was reverted, no tree was stale, and no
+session did anything wrong.
+
+⛔ **The rule worth keeping, which the wrong mechanism obscured:** pushing to
+`origin` deploys nothing. A commit is live only once someone runs the deploy
+**from a tree that contains it**, and the only way to know is to verify the
+live host **by content**:
+
+```sh
+curl -s "https://johncnewbury.github.io/Gopher-Marketplace/<file>?cb=$(date +%s)" \
+  | grep -c '<a marker string from your change>'
+```
+
+Zero means it is not out, however green the branch is. ⚠️ Never check this by
+SHA — `main` is a flattened rsync lineage sharing no history with the dev
+branches, so an ancestry test reports NOT DEPLOYED for every change ever
+shipped.
+
+⚠️ **The shared clone is still not somewhere to go tidying** — it routinely
+carries other sessions' diverged commits and uncommitted files, and `git add`
+there hands someone else's file to whoever commits next. That caution stands;
+it simply has nothing to do with deployment. The one thing the clone really
+does own is `_prototypes/`, which is gitignored disk-only content: a deploy run
+from a worktree aborts in preflight until those allowlisted files are copied
+in.
+
+⭐ **The lesson that cost the most here:** two wrong claims in this doc on one
+day — the `choose`/`home` merge in §4 and this mechanism — were both
+**plausible, inherited, and written with the same confidence as the measured
+facts beside them.** Both were caught by someone running a test instead of
+reading the sentence. Mark inherited claims as inherited, or they get planned
+against.
+
+⚠️ `d632860`'s commit message carries the superseded mechanism and cannot be
+rewritten — it is on the shared branch. This section supersedes it.
