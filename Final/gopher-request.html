@@ -9586,6 +9586,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .goto-tog:hover { border-color:#c9d2e3; }
   .goto-tog.checked { border-color:var(--green); background:#f6fbf7; }
+  /* ⛔ The tick mark lives on `.prev-check-row.checked .prev-check-box`, scoped to
+     that class — which these toggles are not. They highlighted green while the box
+     stayed empty, so a ticked option did not read as ticked. */
+  .goto-tog .prev-check-box { position:relative; flex:0 0 auto; }
+  .goto-tog.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
+  .goto-tog.checked .prev-check-box::after {
+    content:'✓'; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-size:12px; font-weight:900; line-height:1;
+  }
 
   .goto-field label { font-family:'Nunito'; font-weight:800; font-size:12px; color:var(--navy); }
   .goto-field input, .goto-field select, .goto-field textarea {
@@ -25513,6 +25522,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
 
     const gophers = gatherMyGophers();
+    /* ⛔ "Gopher can purchase from anywhere" only makes sense for a delivery or
+       errand. The request flow already varies this toggle by category — moving
+       calls it a single-location move — and the GO-To sheet has to say the same
+       thing, or the two surfaces describe one switch differently. Wording lifted
+       from the flow's own pick-up step rather than invented here. */
+    function noPickupLabel(cat){
+      const c = String(cat || '').toLowerCase();
+      if(c.indexOf('mov') !== -1) return 'Single-location move';
+      if(c.indexOf('deliv') !== -1 || c.indexOf('errand') !== -1) return 'Gopher can purchase from anywhere';
+      return 'Pickup location is flexible';
+    }
+
 
     // Card in use — the same in-session store the checkout picker and the
     // Payment info screen share, so changing it here is the one real write path.
@@ -25576,7 +25597,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         <div class="goto-sec-h">Pick up location</div>
         <div class="goto-field goto-toggles">
           <button type="button" class="goto-tog ${draft.anyPickup ? 'checked' : ''}" data-goto-tog="anyPickup">
-            <span class="prev-check-box"></span><span>Gopher can purchase from anywhere</span>
+            <span class="prev-check-box"></span><span id="gotoAnyPickupLabel">${noPickupLabel(draft.category)}</span>
           </button>
         </div>
         <div class="goto-field" id="gotoPickupField"${draft.anyPickup ? ' hidden' : ''}>
@@ -25682,6 +25703,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        the live app's two options on this screen. Choosing MY Gophers reveals the
        list; choosing First Available hides it and clears the picks, so a saved
        GO-To cannot carry favourites it will not route to. */
+    /* The label follows the Request type while the sheet is open, not only at
+       first paint. */
+    const catSel = document.getElementById('gotoCat');
+    if(catSel) catSel.addEventListener('change', () => {
+      const lbl = document.getElementById('gotoAnyPickupLabel');
+      if(lbl) lbl.textContent = noPickupLabel(catSel.value);
+    });
     panel.querySelectorAll('[data-goto-who]').forEach(r => {
       r.addEventListener('click', () => {
         panel.querySelectorAll('[data-goto-who]').forEach(x => x.classList.toggle('checked', x === r));
