@@ -20381,12 +20381,22 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
            glyph; Dashboard takes the chart glyph, which suits an overview.
            No JS change needed: the generic nav handler routes any section key
            and showSection() toggles .active off the same attribute. -->
+      <!-- Owner 2026-10-03: Home and Dashboard had become ONE destination, so
+           the Dashboard entry is gone and Home is it. Why it went rather than
+           Home: at the realistic ceiling of 2 concurrent requests the KPI tiles
+           are theatre — "All requests: 2" over "Active: 1, Scheduled: 1"
+           describes two cards you can already see, and the home container pages
+           through them. ⛔ This is the CONSUMER ruling only. gopher-connect.html
+           KEEPS its Dashboard: a business has Users & access, so several people
+           request and the ceiling argument does not hold there.
+
+           The `home` SECTION is untouched and still reachable — "View all" and
+           the internal flows route to it. It simply has no sidebar entry. -->
       <button class="dash-nav-item active" data-rqsection="choose">
         <span class="dni-ico">🏠</span><span class="dni-label">Home</span>
-      </button>
-      <button class="dash-nav-item" data-rqsection="home">
-        <span class="dni-ico">📊</span><span class="dni-label">Dashboard</span>
-        <span class="dni-badge" id="rqDashNavBadge">3</span>
+        <!-- Counts what WANTS you, not how many requests exist, and hides at
+             zero like every other badge here. See recountKpis(). -->
+        <span class="dni-badge" id="rqDashNavBadge" hidden>0</span>
       </button>
       <button class="dash-nav-item" data-rqsection="previous">
         <span class="dni-ico">📚</span><span class="dni-label">Request History</span>
@@ -22825,7 +22835,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     set('kpiAll', reqs.length);
     // Keep the sidebar "Dashboard" nav badge in sync with the total request
     // count so it always matches the ALL REQUESTS KPI (never a stale number).
-    set('rqDashNavBadge', reqs.length);
+    /* Owner 2026-10-03. This badge used to read reqs.length. At a ceiling of 2
+       a "2" beside Home tells you nothing you need; "1" meaning one needs you
+       is the only number worth a red dot. It was also the only badge in this
+       sidebar that never hid — hard-coded to "3" in the markup — while
+       #rqInboxNavBadge and #rqGophersNavBadge both hide at zero. */
+    const attn = reqs.filter(r => r.needsAttention).length;
+    const navBadge = document.getElementById('rqDashNavBadge');
+    if(navBadge){ navBadge.textContent = attn; navBadge.hidden = (attn === 0); }
     // The home container reads the same store, so repaint it from the same
     // place rather than hunting every mutation site.
     if(typeof renderHomeLive === 'function') renderHomeLive();
@@ -26649,7 +26666,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       restoreFlow();
       if(typeof window.__resetRequestFlow === 'function') window.__resetRequestFlow();
     }
-    navItems.forEach(b => b.classList.toggle('active', b.dataset.rqsection === (name==='new-request'?'home':name)));
+    /* `home` (the overview) and `new-request` are both reached FROM the home
+       screen and no longer have a sidebar entry of their own, so Home stays lit
+       rather than the sidebar going blank underneath you. */
+    const navKey = (name === 'new-request' || name === 'home') ? 'choose' : name;
+    navItems.forEach(b => b.classList.toggle('active', b.dataset.rqsection === navKey));
     sections.forEach(s => s.classList.toggle('active', s.dataset.rqsec === name));
     if(sectionTitle) sectionTitle.textContent = SECTION_TITLES[name] || 'Dashboard';
     // Whenever the overview is shown, repaint the live request log + KPI counts so
