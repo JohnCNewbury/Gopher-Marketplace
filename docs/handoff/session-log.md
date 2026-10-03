@@ -729,8 +729,16 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
   > directly under Request history* — a dated note placing that label in the LIVE app a
   > day before the 7/24 row below proposed renaming away from it.
   > **Re-check rather than trusting either row.** 2026-10-03, verified from this session:
-  > `curl -s "https://tour.gophergo.io/iq/index.html?cb=$RANDOM"` returns 484,656 bytes
-  > carrying `const FAQS`, **"Request History" × 8, "Previous requests" × 0**.
+  > `curl -s "https://tour.gophergo.io/iq/index.html?cb=$RANDOM"` carries `const FAQS`
+  > (×1, the positive control), **"Request History" × 8, "Previous requests" × 0**, and
+  > **"Delivery - Tobacco" × 0** — so that corpus holds the rename AND the age-restricted
+  > category fix.
+  > ⛔ **Assert CONTENT, never a byte size.** This block first quoted 484,656 bytes; the
+  > file is 484,658. `${#body}` in zsh counts CHARACTERS, and two multi-byte UTF-8
+  > characters made up the difference — a size measured that way is not a size. Three
+  > different wrong figures were published for this one file in two days. Use `wc -c` if a
+  > size is genuinely needed, and prefer the sha or a string count, which cannot drift
+  > against their own meaning.
   > ⛔ Count with `grep -o … | wc -l`, NOT `grep -c` — the corpus is a single JSON line,
   > so eight occurrences report as "1" — and assert `const FAQS` is in the same fetch, or
   > a gated page answering 200 returns a clean-looking zero.
