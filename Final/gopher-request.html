@@ -20979,6 +20979,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         if(ov) ov.hidden = false;
       }
     } else {
+      /* ⛔ The flow mockup is ONE node that gets MOVED between the marketing
+         page and the dashboard host. Leaving the request flow moves it back
+         out, and this handler never moved it in — only the sidebar button did
+         (openRequestFlow -> moveFlowToDash). So the home card worked the FIRST
+         time, when the node happened to already be in the host, and every time
+         after that it switched to an empty section: a blank canvas with the
+         nav highlighted. Owner reported it 2026-10-03 as "tapping the request
+         card ... wouldn't load the select a service page". */
+      moveFlowToDash();
       setRequestPath('new');
     }
   });
