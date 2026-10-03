@@ -9523,6 +9523,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     line-height:1.6; margin-bottom:18px;
   }
   .goto-field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  /* ⛔ display:flex above BEATS the user-agent [hidden] rule, so a field hidden
+     by the markup rendered anyway — the Cost of items box showed on a GO-To that
+     buys nothing. gopher-connect.html carries a global [hidden] enforcement and
+     gopher-request.html does not, so this is scoped here rather than adding a
+     global rule to a 29k-line file late in the day. */
+  .goto-field[hidden] { display:none !important; }
   /* Owner 2026-10-02: the money fields have to READ as money. They were bare
      number inputs with the browser's spinner arrows. This is the same
      .cost-input-box treatment the request flow's "Cost of items needed" field
@@ -9549,6 +9555,28 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     text-transform:uppercase; color:var(--muted);
     margin:22px 0 10px; padding-bottom:6px; border-bottom:1px solid #eef0f5;
   }
+  .goto-req {
+    font-family:'Nunito'; font-weight:800; font-size:10px; color:var(--error, #C44257);
+    text-transform:uppercase; letter-spacing:0.4px; margin-left:6px;
+  }
+  .goto-radios { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .goto-radio {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:white; border:1.5px solid #e7eaf2; border-radius:10px;
+    padding:11px 13px; cursor:pointer;
+    font-family:'DM Sans'; font-size:14px; color:var(--navy);
+  }
+  .goto-radio:hover { border-color:#c9d2e3; }
+  .goto-radio.checked { border-color:var(--green); background:#f6fbf7; }
+  .goto-radio .radio-dot {
+    width:16px; height:16px; border-radius:50%; border:2px solid #c9d2e3;
+    flex:0 0 auto; position:relative;
+  }
+  .goto-radio.checked .radio-dot { border-color:var(--green); }
+  .goto-radio.checked .radio-dot::after {
+    content:''; position:absolute; inset:3px; border-radius:50%; background:var(--green);
+  }
+
   .goto-toggles { display:flex; flex-direction:column; gap:8px; }
   .goto-tog {
     display:flex; align-items:center; gap:10px; width:100%; text-align:left;
@@ -25500,39 +25528,25 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     panel.innerHTML = `
       <div class="goto-edit-card">
         <button class="prev-detail-back" data-goto-back>← Back to history</button>
-        <!-- one span, not loose nodes: .prev-detail-status is inline-flex with a
-             6px gap, which would otherwise push "-To" off the mark -->
-        <span class="prev-detail-status completed"><span>${existing ? 'Editing' : 'New'} ${GO_MARK}-To</span></span>
-        <div class="prev-detail-title">${existing ? `Edit this ${GO_MARK}-To` : `Save as a ${GO_MARK}-To`}</div>
-        <div class="goto-edit-note">
-          This is a <b>copy you own</b> — change anything before saving.
-          It carries no request ID${draft.srcId ? `: <b>#${goEsc(draft.srcId)}</b> stays in your history exactly as it is` : ''},
-          and a fresh one is issued each time you send it.
-        </div>
 
+        <!-- ⛔ ONE header. The live app's setup screen opens with this green block
+             and nothing above it; the old "Save as a GO-To / this is a copy you
+             own" panel was a second competing header saying the same thing. -->
         <div class="goto-flow-banner">
           <div class="gfb-title">Setting up a ${GO_MARK}-To</div>
           <div class="gfb-sub">Nothing is requested until you send it.</div>
-        </div>
-
-        <div class="goto-field">
-          <label for="gotoName">Name this GO-To</label>
-          <input type="text" id="gotoName" maxlength="60" placeholder="e.g. Friday catering run"
-                 value="${goEsc(draft.name)}">
-        </div>
-
-        <div class="goto-field">
-          <label for="gotoCat">Request type</label>
-          <select id="gotoCat">${GOTO_CATS.map(c =>
-            `<option value="${c}"${sameCat(c, draft.category) ? ' selected' : ''}>${c}</option>`).join('')}</select>
+          <div class="goto-field" style="margin-top:12px;">
+            <label for="gotoCat">Request type</label>
+            <select id="gotoCat">${GOTO_CATS.map(c =>
+              `<option value="${c}"${sameCat(c, draft.category) ? ' selected' : ''}>${c}</option>`).join('')}</select>
+          </div>
         </div>
 
         <div class="goto-sec-h">Request details</div>
         <div class="goto-field">
-          <label for="gotoDetails">Details</label>
+          <label for="gotoDetails">Description <span class="goto-req">required</span></label>
           <textarea id="gotoDetails" placeholder="What do you need done?">${goEsc(draft.details)}</textarea>
         </div>
-
         <div class="goto-field goto-toggles">
           <button type="button" class="goto-tog ${draft.itemsPurchased ? 'checked' : ''}" data-goto-tog="itemsPurchased">
             <span class="prev-check-box"></span><span>Select if you need items purchased</span>
@@ -25540,9 +25554,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <button type="button" class="goto-tog ${draft.ageRestricted ? 'checked' : ''}" data-goto-tog="ageRestricted">
             <span class="prev-check-box"></span><span>My order includes age-restricted items</span>
           </button>
-          <button type="button" class="goto-tog ${draft.counterOffers === false ? '' : 'checked'}" data-goto-tog="counterOffers">
-            <span class="prev-check-box"></span><span>Allow counter offers</span>
-          </button>
+        </div>
+        <!-- Cost of items belongs to Request details, with the toggle that turns
+             it on — not under Drop off, where it had drifted. -->
+        <div class="goto-field" id="gotoGoodsField"${draft.itemsPurchased ? '' : ' hidden'}>
+          <label for="gotoGoods">Cost of items</label>
+          <div class="cost-input-box goto-money">
+            <span class="ci-currency">$</span>
+            <input type="text" inputmode="decimal" class="cost-amount-input" id="gotoGoods"
+                   placeholder="0.00" autocomplete="off" aria-label="Cost of items"
+                   value="${draft.goodsCost === '' || draft.goodsCost == null ? '' : Number(draft.goodsCost).toFixed(2)}">
+          </div>
+          <div class="goto-hint">What the Gopher pays at the till, on top of their payment.</div>
         </div>
 
         <div class="goto-sec-h">Pick up location</div>
@@ -25551,35 +25574,51 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             <span class="prev-check-box"></span><span>Gopher can purchase from anywhere</span>
           </button>
         </div>
-        <div class="goto-field">
-          <label for="gotoPickup">Pick-up location</label>
-          <input type="text" id="gotoPickup" placeholder="e.g. Gopher can purchase from anywhere"
-                 value="${goEsc(draft.pickup || '')}">
-          <div class="goto-hint">Sent exactly as written. Leave it as the free-choice wording if the Gopher picks the shop.</div>
+        <div class="goto-field" id="gotoPickupField"${draft.anyPickup ? ' hidden' : ''}>
+          <label for="gotoPickup">Enter address here</label>
+          <input type="text" id="gotoPickup" placeholder="Pick-up address"
+                 value="${goEsc(draft.anyPickup ? '' : (draft.pickup || ''))}">
         </div>
 
         <div class="goto-sec-h">Drop off location</div>
         <div class="goto-field">
-          <label for="gotoDropoff">Drop-off location</label>
+          <label for="gotoDropoff">Enter address here</label>
           <input type="text" id="gotoDropoff" placeholder="Where should it end up?"
                  value="${goEsc(draft.dropoff || '')}">
         </div>
 
-        <div class="goto-field">
-          <label for="gotoGoods">Cost of items</label>
-          <div class="cost-input-box goto-money">
-            <span class="ci-currency">$</span>
-            <input type="text" inputmode="decimal" class="cost-amount-input" id="gotoGoods"
-                   placeholder="0.00" autocomplete="off" aria-label="Cost of items"
-                   value="${draft.goodsCost === '' || draft.goodsCost == null ? '' : Number(draft.goodsCost).toFixed(2)}">
-          </div>
-          <div class="goto-hint">What the Gopher pays at the till, on top of their payment. Blank means nothing is bought.</div>
-        </div>
-
         <div class="goto-sec-h">Request time</div>
         <div class="goto-field">
-          <div class="goto-hint" style="margin-top:0;">A ${GO_MARK}-To always sends as
-            <b>Need it now</b>, the moment you tap it — that is what makes it one tap.</div>
+          <div class="goto-hint" style="margin-top:0;">When do you want your request completed?</div>
+          <div class="goto-radios">
+            <button type="button" class="goto-radio checked" data-goto-when="now">
+              <span class="radio-dot"></span><span>Need it now, the moment you tap</span>
+            </button>
+          </div>
+          <div class="goto-hint">⛔ A ${GO_MARK}-To has no scheduling option: it fires when you tap it,
+            which is the whole feature. Scheduling belongs to a normal request.</div>
+        </div>
+
+        <div class="goto-sec-h">Request Gopher</div>
+        <div class="goto-field">
+          <div class="goto-hint" style="margin-top:0;">How would you like to select your Gopher?</div>
+          <div class="goto-radios" id="gotoWho">
+            <button type="button" class="goto-radio ${draft.gophers.length ? '' : 'checked'}" data-goto-who="first">
+              <span class="radio-dot"></span><span>First Available</span>
+            </button>
+            <button type="button" class="goto-radio ${draft.gophers.length ? 'checked' : ''}" data-goto-who="my">
+              <span class="radio-dot"></span><span>Notify One Of MY Gophers</span>
+            </button>
+          </div>
+        </div>
+        <div class="goto-field" id="gotoGophersField"${draft.gophers.length ? '' : ' hidden'}>
+          ${gophers.length ? `<div class="goto-gophers">${gophers.map(g => `
+            <button type="button" class="goto-gopher-row ${draft.gophers.indexOf(g.name) !== -1 ? 'checked' : ''}"
+                    data-goto-gopher="${goEsc(g.name)}">
+              <span class="prev-check-box"></span>
+              <span>${goEsc(g.name)}<span style="color:var(--muted);"> · last: ${goEsc(g.lastCategory || '—')}</span></span>
+            </button>`).join('')}</div>`
+          : `<div class="goto-empty" style="padding:12px;">No MY Gophers saved yet — this one will open to the wider workforce.</div>`}
         </div>
 
         <div class="goto-sec-h">Special requests</div>
@@ -25590,11 +25629,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
         <div class="goto-sec-h">Payment information</div>
         <div class="goto-field">
-          <label for="gotoPay">Payment to Gopher</label>
+          <label for="gotoPay">Payment to your Gopher</label>
           <div class="cost-input-box goto-money">
             <span class="ci-currency">$</span>
             <input type="text" inputmode="decimal" class="cost-amount-input" id="gotoPay"
-                   placeholder="0.00" autocomplete="off" aria-label="Payment to Gopher"
+                   placeholder="0.00" autocomplete="off" aria-label="Payment to your Gopher"
                    value="${hadPay ? Number(draft.workerPay).toFixed(2) : ''}">
           </div>
           <div class="goto-hint" id="gotoPayHint">${hadPay
@@ -25602,30 +25641,15 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             : 'This request has no accepted amount on record. A GO-To sends with no review step, so set one here.'
           }</div>
         </div>
-
-        <div class="goto-field">
-          <label for="gotoCard">Card being used</label>
-          ${payMethods.length
-            ? `<select id="gotoCard">${payMethods.map(m =>
-                `<option value="${m.key}"${m.key === selPayKey ? ' selected' : ''}>${goEsc(payLabel(m))}</option>`
-              ).join('')}</select>
-               <div class="goto-hint">Charged the moment you tap the button. Add or remove cards under Payment info.</div>`
-            : `<div class="goto-empty" style="padding:14px;">No payment method on file — add one under Payment info first.</div>`}
+        <div class="goto-field goto-toggles">
+          <button type="button" class="goto-tog ${draft.counterOffers === false ? '' : 'checked'}" data-goto-tog="counterOffers">
+            <span class="prev-check-box"></span><span>Allow counter offers</span>
+          </button>
         </div>
-
-        <div class="goto-field">
-          <label>Send to these MY Gophers first</label>
-          ${gophers.length ? `<div class="goto-gophers">${gophers.map(g => `
-            <button type="button" class="goto-gopher-row ${draft.gophers.indexOf(g.name) !== -1 ? 'checked' : ''}"
-                    data-goto-gopher="${goEsc(g.name)}">
-              <span class="prev-check-box"></span>
-              <span>${goEsc(g.name)}<span style="color:var(--muted);"> · last: ${goEsc(g.lastCategory || '—')}</span></span>
-            </button>`).join('')}</div>`
-          : `<div class="goto-empty" style="padding:14px;">
-               No MY Gophers saved yet — this one will open to the wider workforce.
-             </div>`}
-        </div>
-
+        <!-- ⛔ No card picker here. The live app chooses the METHOD on the review
+             sheet, next to the waiver that authorises it — splitting the two
+             across screens is how someone agrees to a charge on a card they did
+             not pick. -->
 
         <div class="goto-edit-ctas">
           <button class="prev-detail-cta cta-now" data-goto-save>Review my ${GO_MARK}-To →</button>
@@ -25636,8 +25660,30 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     panel.querySelectorAll('[data-goto-gopher]').forEach(row => {
       row.addEventListener('click', () => row.classList.toggle('checked'));
     });
+    /* Toggles that REVEAL a field have to move it, or the sheet shows a cost
+       box for a request that buys nothing, or an address box for a GO-To whose
+       Gopher picks the shop. */
+    const show = (id, on) => { const el = document.getElementById(id); if(el) el.hidden = !on; };
     panel.querySelectorAll('[data-goto-tog]').forEach(t => {
-      t.addEventListener('click', () => t.classList.toggle('checked'));
+      t.addEventListener('click', () => {
+        t.classList.toggle('checked');
+        const on = t.classList.contains('checked');
+        if(t.dataset.gotoTog === 'itemsPurchased') show('gotoGoodsField', on);
+        if(t.dataset.gotoTog === 'anyPickup')      show('gotoPickupField', !on);
+        refreshGoToSave();
+      });
+    });
+    /* Gopher selection is a RADIO: First Available or Notify One Of MY Gophers,
+       the live app's two options on this screen. Choosing MY Gophers reveals the
+       list; choosing First Available hides it and clears the picks, so a saved
+       GO-To cannot carry favourites it will not route to. */
+    panel.querySelectorAll('[data-goto-who]').forEach(r => {
+      r.addEventListener('click', () => {
+        panel.querySelectorAll('[data-goto-who]').forEach(x => x.classList.toggle('checked', x === r));
+        const my = r.dataset.gotoWho === 'my';
+        show('gotoGophersField', my);
+        if(!my) panel.querySelectorAll('.goto-gopher-row.checked').forEach(g => g.classList.remove('checked'));
+      });
     });
 
     // A GO To skips Review entirely, so the two things Review would otherwise
@@ -25676,7 +25722,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const rec = {
         gid: draft.gid,
         srcId: draft.srcId,
-        name: val('gotoName').trim() || draft.name || 'Saved request',
+        /* The NAME is collected on the review sheet, as the live app does — this
+           screen has no name field any more. The default rides along so the
+           review sheet opens with something sensible in it. */
+        name: draft.name || 'Saved request',
         category: val('gotoCat'),
         details: val('gotoDetails').trim(),
         notes: val('gotoNotes').trim(),
@@ -25687,8 +25736,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         itemsPurchased: tog('itemsPurchased'),
         ageRestricted:  tog('ageRestricted'),
         counterOffers:  tog('counterOffers'),
-        chosenHow: gophers.length ? 'Notify One Of MY Gophers' : 'First Available',
-        payKey: val('gotoCard') || selPayKey || null,
+        chosenHow: (panel.querySelector('[data-goto-who].checked') || {}).dataset
+                     ? ((panel.querySelector('[data-goto-who].checked').dataset.gotoWho === 'my')
+                        ? 'Notify One Of MY Gophers' : 'First Available')
+                     : (gophers.length ? 'Notify One Of MY Gophers' : 'First Available'),
+        payKey: selPayKey || null,   // the method is CHOSEN on the review sheet
         gophers: gophers
       };
       if(!(window.__openGoToReview && window.__openGoToReview(rec, (finalRec) => {
