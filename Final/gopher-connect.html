@@ -7453,6 +7453,25 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .gtr-pay:hover { border-color:#c9d2e3; }
   .gtr-pay.checked { border-color:var(--green); background:#f6fbf7; }
+
+  /* ⛔ The Review sheet's two controls drew NO tick (found 2026-10-03, by
+     testing every .prev-check-box on the page rather than the one the owner
+     had reported). The tick lives on `.prev-check-row.checked`, and neither
+     .gtr-pay nor .gtr-waiver carries that class — so the payment method and
+     the LIABILITY WAIVER both highlighted while their box stayed empty. The
+     waiver is what gates Save, so the one control a user must consciously
+     tick was the one that never looked ticked.
+     Any new control reusing .prev-check-box needs a rule here too; the
+     functional check is in scripts/web-checks/check-box-ticks.js. */
+  .gtr-pay .prev-check-box,
+  .gtr-waiver .prev-check-box { position:relative; flex:0 0 auto; }
+  .gtr-pay.checked .prev-check-box,
+  .gtr-waiver.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
+  .gtr-pay.checked .prev-check-box::after,
+  .gtr-waiver.checked .prev-check-box::after {
+    content:'✓'; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-size:12px; font-weight:900; line-height:1;
+  }
   .gtr-pay-name { font-family:'DM Sans'; font-size:14px; color:var(--navy); font-weight:600; }
   .gtr-def {
     font-family:'Nunito'; font-weight:800; font-size:10px; color:var(--green-dark);
@@ -13467,8 +13486,8 @@ const PAY_BADGES = {
             ${rec.dropoff ? `<div class="pdx-row"><span class="pdx-l">Drop Off</span><span class="pdx-v">${esc(rec.dropoff)}</span></div>` : ''}
             <div class="pdx-row"><span class="pdx-l">Type</span><span class="pdx-v">${esc(rec.category)}</span></div>
             <div class="pdx-row"><span class="pdx-l">Details</span><span class="pdx-v">${esc(rec.details)}</span></div>
-            <div class="pdx-row"><span class="pdx-l">Select if you need items purchased</span><span class="pdx-v">${rec.itemsPurchased ? 'Yes' : 'No'}</span></div>
-            <div class="pdx-row"><span class="pdx-l">My orders includes age-restricted items</span><span class="pdx-v">${rec.ageRestricted ? 'Yes' : 'No'}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Items to be purchased</span><span class="pdx-v">${rec.itemsPurchased ? 'Yes' : 'No'}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Age-restricted items</span><span class="pdx-v">${rec.ageRestricted ? 'Yes' : 'No'}</span></div>
             <div class="pdx-row"><span class="pdx-l">Allow counter offers</span><span class="pdx-v">${rec.counterOffers ? 'Yes' : 'No'}</span></div>
             <div class="pdx-row"><span class="pdx-l">When</span><span class="pdx-v">Need it now when you tap</span></div>
           </div>
@@ -21781,8 +21800,8 @@ const PAY_BADGES = {
           ])}
           ${section('Request details', [
             row('Type', r.type || r.category), row('Details', r.details),
-            row('Select if you need items purchased', yesNo(r.itemsPurchased)),
-            row('My orders includes age-restricted items', yesNo(r.ageRestricted)),
+            row('Items to be purchased', yesNo(r.itemsPurchased)),
+            row('Age-restricted items', yesNo(r.ageRestricted)),
             row('Allow counter offers', yesNo(r.counterOffers)),
             row('Liability Waiver', r.waiver)
           ])}
