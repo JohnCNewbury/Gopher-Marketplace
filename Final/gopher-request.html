@@ -25527,11 +25527,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        calls it a single-location move — and the GO-To sheet has to say the same
        thing, or the two surfaces describe one switch differently. Wording lifted
        from the flow's own pick-up step rather than invented here. */
+    // Label for the "no pick-up address" switch, per request type.
+    // Keyed on the EXACT category value, never a substring: 'Junk Removal'
+    // lowercases to 'junk removal', which contains 'mov', so an
+    // indexOf('mov') test labelled a junk haul a "Single-location move"
+    // (found 2026-10-03). GOTO_CATS is the only source of these keys.
+    const NO_PICKUP_LABELS = {
+      'delivery': 'Gopher can purchase from anywhere',
+      'errands':  'Gopher can purchase from anywhere',
+      'moving':   'Single-location move'
+    };
     function noPickupLabel(cat){
-      const c = String(cat || '').toLowerCase();
-      if(c.indexOf('mov') !== -1) return 'Single-location move';
-      if(c.indexOf('deliv') !== -1 || c.indexOf('errand') !== -1) return 'Gopher can purchase from anywhere';
-      return 'Pickup location is flexible';
+      const c = String(cat || '').trim().toLowerCase();
+      return NO_PICKUP_LABELS[c] || 'Pickup location is flexible';
     }
 
 
