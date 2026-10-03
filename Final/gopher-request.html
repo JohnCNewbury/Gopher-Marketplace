@@ -21595,6 +21595,26 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // that differ in details, pay, or who they route to.
   // HOOK POINT: swap the array for a persisted per-user collection later.
   let goToSeq = 0;
+  /* ⛔ A new gid must not collide with one ALREADY in the store. This used to be
+     a bare `'GT-' + (++goToSeq)`, which is only safe while DASH_DATA.goTos
+     starts EMPTY -- true of the repo seed (`goTos: []`), and false of every
+     real account, which loads its saved GO-To's from the server. The first
+     GO-To a user created then minted 'GT-1' on top of their existing 'GT-1'.
+     gid is the key for EVERY action on a card, so the damage was not cosmetic:
+       - Edit opened the OTHER record (GoTos.get -> .find -> first match),
+       - Save then wrote this card's fields OVER that other record,
+       - Remove deleted the other one,
+       - and Submit SENT it -- a real request, to a real Gopher, for the wrong
+         job, charged to the other record's saved card.
+     Found 2026-10-03 by the owner, reproduced from a seeded store.
+     Scanning on every mint (not just seeding the counter once) is deliberate:
+     records can arrive from the server at any point in a session. */
+  function mintGoToId(){
+    const used = new Set((DASH_DATA.goTos || []).map(g => String(g && g.gid)));
+    let id;
+    do { id = 'GT-' + (++goToSeq); } while (used.has(id));
+    return id;
+  }
   const GoTos = {
     all(){ return DASH_DATA.goTos; },
     count(){ return DASH_DATA.goTos.length; },
@@ -21606,7 +21626,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       if(!rec) return null;
       const existing = rec.gid ? GoTos.get(rec.gid) : null;
       if(existing){ Object.assign(existing, rec); return existing; }
-      const created = Object.assign({}, rec, { gid:'GT-' + (++goToSeq) });
+      const created = Object.assign({}, rec, { gid: mintGoToId() });
       DASH_DATA.goTos.push(created);
       return created;
     },
@@ -25585,8 +25605,17 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="gfb-sub">Nothing is requested until you send it.</div>
           <div class="goto-field" style="margin-top:12px;">
             <label for="gotoCat">Request type</label>
-            <select id="gotoCat">${GOTO_CATS.map(c =>
-              `<option value="${c}"${sameCat(c, draft.category) ? ' selected' : ''}>${c}</option>`).join('')}</select>
+            <!-- ⛔ A saved category that is not in GOTO_CATS must still be an
+                 OPTION, or the browser falls back to the first one and the next
+                 Save silently rewrites it. The seeded GO-To's alone carry
+                 'Restaurant/Food Truck' and 'Age-Restricted'; a real account's
+                 categories come from the server and need not match this list at
+                 all. Opening Edit and pressing Save must never change a field
+                 the requester did not touch. -->
+            <select id="gotoCat">${(GOTO_CATS.some(c => sameCat(c, draft.category))
+                || !String(draft.category || '').trim()
+                ? GOTO_CATS : GOTO_CATS.concat([draft.category])).map(c =>
+              `<option value="${goEsc(c)}"${sameCat(c, draft.category) ? ' selected' : ''}>${goEsc(c)}</option>`).join('')}</select>
           </div>
         </div>
 
