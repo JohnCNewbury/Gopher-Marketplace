@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Four Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     FOUR DIRECTIONS for the Request home screen.
+     Every colour here is from the Gopher Style Guide — no exceptions:
+       #002461 Midnight Blue · #33D975 Shamrock · #FBF3E4 Sand
+       #D97757 Terracotta (Caveat only) · #0F7A3F Pine (green TEXT only)
+       #87F7BD Aquamarine · #BADBFC Cornflower · #424242 Body Copy
+     The sidebar is Midnight Blue in all four — that is the fix to the
+     five-navies problem, not one of the variables being tested.
+     Real nav labels and real logo assets throughout.
+     ============================================================ */
+  :root{
+    --navy:#002461; --green:#33D975; --sand:#FBF3E4; --terracotta:#D97757;
+    --pine:#0F7A3F; --aqua:#87F7BD; --corn:#BADBFC; --body:#424242;
+    --muted:#6b7280; --rule:#e3ddcd; --white:#fff;
+    --n:'Nunito',system-ui,sans-serif; --d:'DM Sans',system-ui,sans-serif; --c:'Caveat',cursive;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased}
+  body{font-family:var(--d);background:#f2efe6;color:var(--navy);padding:38px 18px 70px}
+  .page{max-width:1280px;margin:0 auto}
+  .eyebrow{font-family:var(--n);font-weight:700;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1.t{font-family:var(--n);font-weight:800;font-size:clamp(27px,4vw,35px);line-height:1.1;
+    letter-spacing:-.015em;margin-bottom:10px}
+  .lede{font-size:16px;line-height:1.6;max-width:72ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+
+  .concept{margin-top:40px;background:var(--white);border:1px solid var(--rule);
+    border-radius:16px;overflow:hidden;box-shadow:0 2px 20px rgba(0,36,97,.05)}
+  .chead{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;gap:14px;
+    align-items:flex-start;flex-wrap:wrap}
+  .cnum{font-family:var(--n);font-weight:900;font-size:13px;color:var(--navy);
+    background:var(--green);border-radius:8px;width:30px;height:30px;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center}
+  .ctitle{flex:1;min-width:230px}
+  .ctitle h2{font-family:var(--n);font-weight:800;font-size:19px;margin-bottom:3px}
+  .ctitle p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:74ch}
+  .tradeoff{display:flex;gap:9px;flex-wrap:wrap;margin-top:9px}
+  .pill{font-family:var(--n);font-weight:800;font-size:11px;padding:4px 10px;border-radius:20px}
+  .pill.yes{background:rgba(51,217,117,.2);color:#0b4a2a}
+  .pill.cost{background:rgba(217,119,87,.16);color:#8a3f23}
+
+  /* ---- the mock frame: sidebar + main, scaled to fit ---- */
+  .frame{background:#e9e4d7;padding:16px}
+  .screen{width:1180px;transform-origin:top left;display:grid;
+    grid-template-columns:186px 1fr;background:var(--white);border-radius:10px;overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,36,97,.14);min-height:470px}
+  .fit{overflow-x:auto}
+
+  /* sidebar — Midnight Blue in every concept */
+  .sb{background:var(--navy);padding:14px 11px;display:flex;flex-direction:column;gap:1px}
+  .sb .brandrow{display:flex;align-items:center;gap:7px;padding:3px 7px 13px}
+  .sb .brandrow img{height:20px;width:auto;display:block;filter:brightness(0) invert(1)}
+  .sb .grp{font-family:var(--d);font-size:8.5px;font-weight:700;color:rgba(255,255,255,.62);
+    text-transform:uppercase;letter-spacing:1.1px;padding:11px 8px 4px}
+  .sb a{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;
+    font-family:var(--n);font-weight:700;font-size:11.5px;color:rgba(255,255,255,.88);
+    text-decoration:none}
+  .sb a.on{background:var(--green);color:var(--navy);font-weight:800}
+  .sb a .dot{width:14px;text-align:center;font-size:10px;opacity:.9}
+  .sb .badge{margin-left:auto;background:var(--green);color:var(--navy);font-family:var(--n);
+    font-weight:900;font-size:8.5px;border-radius:9px;padding:1px 6px}
+  .sb a.on .badge{background:var(--navy);color:var(--green)}
+  .sb .foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:12px}
+  .sb .foot span{display:block;text-align:center;border:1px solid rgba(255,255,255,.28);
+    border-radius:8px;padding:6px;font-family:var(--n);font-weight:700;font-size:10.5px;
+    color:rgba(255,255,255,.9)}
+
+  .main{background:var(--sand);padding:24px 28px 30px}
+  .topbar{display:flex;justify-content:flex-end;margin-bottom:14px}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--corn)}
+  .welcome{font-size:12.5px;color:var(--body);margin-bottom:5px}
+
+  /* shared card bits */
+  .chip{display:inline-flex;background:var(--white);border-radius:9px;padding:6px 11px;
+    box-shadow:0 1px 3px rgba(0,36,97,.1)}
+  .chip img{height:17px;width:auto;display:block}
+  .quads{display:grid;grid-template-columns:1fr 1fr;gap:3px;border-radius:9px;overflow:hidden}
+  .quads i{display:block;height:46px;background:linear-gradient(135deg,#1b4a86,#0a2f63)}
+  .quads i:nth-child(2){background:linear-gradient(135deg,#2f6aa8,#17457f)}
+  .quads i:nth-child(3){background:linear-gradient(135deg,#27589a,#113a6f)}
+  .mq{display:flex;flex-direction:column;gap:4px}
+  .mqrow{display:flex;gap:5px;background:var(--green);border-radius:7px;padding:5px 6px;overflow:hidden}
+  .mqrow b{flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:rgba(0,36,97,.22)}
+  .cta{display:inline-block;font-family:var(--n);font-weight:800;font-size:12.5px;
+    padding:10px 18px;border-radius:11px}
+  .cta.green{background:var(--green);color:var(--navy)}
+  .cta.line{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+  .cta.white{background:var(--white);color:var(--navy)}
+  .scribble{font-family:var(--c);font-weight:700;color:var(--terracotta);
+    transform:rotate(-2deg);display:inline-block}
+
+  .note{padding:14px 22px;background:#faf8f2;border-top:1px solid var(--rule);
+    font-size:13px;line-height:1.6;color:#4a5160}
+  .note b{color:var(--navy)}
+  .foot{margin-top:40px;border-top:1px solid var(--rule);padding-top:18px;
+    font-size:13.5px;line-height:1.65;color:#4a5160}
+  .foot b{color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">Gopher Request · home screen · concepts, nothing built</p>
+  <h1 class="t">Four directions</h1>
+  <p class="lede">
+    Four different <b>philosophies</b>, not four shades of one. Each uses only style-guide colours,
+    so the five-navies problem is fixed in all of them — <b>the sidebar is Midnight Blue
+    everywhere</b>, that's a given rather than a variable. Each also carries exactly one Caveat
+    line, per the one-scribble-per-page rule. Real nav labels, real logo files.
+    <b>Nothing here is implemented.</b>
+  </p>
+
+  <!-- ══ 1 ══════════════════════════════════════════════════════════════ -->
+  <div class="concept">
+    <div class="chead">
+      <span class="cnum">1</span>
+      <div class="ctitle">
+        <h2>Peers</h2>
+        <p>The two paths become genuine equals. Both sit on light grounds and are told apart by
+           their <i>accent</i> — Shamrock for Request, warm gold for Deals — instead of one being
+           dark and heavy and the other pale. Settles the hierarchy the copy already promises
+           ("Two ways to go from here") rather than contradicting it.</p>
+        <div class="tradeoff">
+          <span class="pill yes">Honest to the copy</span>
+          <span class="pill yes">Calmest, most brand-like</span>
+          <span class="pill cost">Loses the navy drama</span>
+        </div>
+      </div>
+    </div>
+    <div class="frame fit"><div class="screen" style="zoom:.79">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">▦</span>Dashboard<span class="badge">9</span></a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox<span class="badge">1</span></a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main">
+        <div class="topbar"><div class="avatar"></div></div>
+        <p class="welcome">Welcome back, Jamie 👋</p>
+        <h2 style="font-family:var(--n);font-weight:900;font-size:38px;line-height:1.1;letter-spacing:-.6px;color:var(--navy)">So, how can we help you today?</h2>
+        <p style="margin:-2px 0 20px"><span class="scribble" style="font-size:29px">— two ways to go from here.</span></p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <div style="background:var(--white);border:1.5px solid #dfe5f0;border-radius:16px;padding:20px 20px 22px;display:flex;flex-direction:column;gap:12px">
+            <span class="chip" style="align-self:flex-start;background:var(--sand)"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt=""></span>
+            <div class="quads"><i></i><i></i><i></i><i></i></div>
+            <div style="font-family:var(--n);font-weight:800;font-size:17px;line-height:1.25">Get connected to a great local worker</div>
+            <div style="font-size:12.5px;color:var(--body);line-height:1.5">Delivery, moving, junk removal, home services, day labor, rides and more.</div>
+            <span class="cta green" style="align-self:flex-start;margin-top:auto">+ Make a request</span>
+          </div>
+          <div style="background:var(--white);border:1.5px solid #ecdfc4;border-radius:16px;padding:20px 20px 22px;display:flex;flex-direction:column;gap:12px">
+            <span class="chip" style="align-self:flex-start;background:var(--sand)"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-deals-logo.svg" alt=""></span>
+            <div class="mq"><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+            <div style="font-family:var(--n);font-weight:800;font-size:17px;line-height:1.25">View hot local deals near you</div>
+            <div style="font-size:12.5px;color:var(--body);line-height:1.5">Buy from the merchant direct — a Gopher brings it the last mile.</div>
+            <span class="cta line" style="align-self:flex-start;margin-top:auto">View Local Deals</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>The move:</b> both cards go white-on-Sand; the only difference is the accent
+      and the CTA weight. The Caveat line replaces the flat "Two ways to go from here" subtitle, so
+      the brand's voice does the job the sub-copy was doing.</p>
+  </div>
+
+  <!-- ══ 2 ══════════════════════════════════════════════════════════════ -->
+  <div class="concept">
+    <div class="chead">
+      <span class="cnum">2</span>
+      <div class="ctitle">
+        <h2>Commit to the hierarchy</h2>
+        <p>The opposite decision, made deliberately. Request <i>is</i> the product — so it becomes
+           a full-width Midnight Blue hero with the video band running across it, and Deals sits
+           beneath as a confident but secondary strip. Nothing floats; the composition fills the
+           screen top to bottom.</p>
+        <div class="tradeoff">
+          <span class="pill yes">Fills the empty canvas</span>
+          <span class="pill yes">Strongest first impression</span>
+          <span class="pill cost">Demotes Deals — a business call</span>
+        </div>
+      </div>
+    </div>
+    <div class="frame fit"><div class="screen" style="zoom:.79">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">▦</span>Dashboard<span class="badge">9</span></a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox<span class="badge">1</span></a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main" style="padding:0">
+        <div style="background:var(--navy);padding:26px 30px 28px;color:var(--white)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div><p style="font-size:12.5px;color:rgba(255,255,255,.75);margin-bottom:5px">Welcome back, Jamie 👋</p></div>
+            <div class="avatar"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:center;margin-top:4px">
+            <div>
+              <h2 style="font-family:var(--n);font-weight:900;font-size:40px;line-height:1.06;letter-spacing:-.8px;color:var(--white)">Get connected to a great local worker</h2>
+              <p style="margin:4px 0 0"><span class="scribble" style="font-size:30px">— a neighbor, not a stranger.</span></p>
+              <p style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.55;margin:10px 0 16px;max-width:46ch">Delivery, moving, junk removal, home services, day labor, rides and more.</p>
+              <span class="cta green">+ Make a request</span>
+            </div>
+            <div class="quads" style="grid-template-columns:1fr 1fr"><i style="height:78px"></i><i style="height:78px"></i><i style="height:78px"></i><i style="height:78px"></i></div>
+          </div>
+        </div>
+        <div style="padding:18px 30px 22px;display:flex;align-items:center;gap:20px">
+          <span class="chip" style="background:var(--white)"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-deals-logo.svg" alt=""></span>
+          <div style="flex:1">
+            <div style="font-family:var(--n);font-weight:800;font-size:16px">View hot local deals near you</div>
+            <div style="font-size:12.5px;color:var(--body);margin-top:2px">Buy from the merchant direct — a Gopher brings it the last mile.</div>
+          </div>
+          <div class="mq" style="flex:0 0 250px"><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+          <span class="cta line">View Local Deals</span>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>The move:</b> stop pretending they're equal. Request takes the hero, Deals
+      becomes a live strip that still shows merchant marks moving. <b>This is a product decision
+      as much as a design one</b> — worth saying out loud before picking it.</p>
+  </div>
+
+  <!-- ══ 3 ══════════════════════════════════════════════════════════════ -->
+  <div class="concept">
+    <div class="chead">
+      <span class="cnum">3</span>
+      <div class="ctitle">
+        <h2>Editorial</h2>
+        <p>Treats the screen the way the style guide treats its own pages: a big Nunito display
+           line, a Caveat annotation tucked into it, generous Sand, and the two paths as quiet
+           objects rather than competing billboards. The brand carries the page; the cards just
+           sit in it.</p>
+        <div class="tradeoff">
+          <span class="pill yes">Most unmistakably Gopher</span>
+          <span class="pill yes">Uses the empty space on purpose</span>
+          <span class="pill cost">Slowest to the CTA</span>
+        </div>
+      </div>
+    </div>
+    <div class="frame fit"><div class="screen" style="zoom:.79">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">▦</span>Dashboard<span class="badge">9</span></a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox<span class="badge">1</span></a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main" style="padding:30px 40px 34px">
+        <div class="topbar"><div class="avatar"></div></div>
+        <div style="max-width:620px">
+          <p style="font-family:var(--n);font-weight:700;font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);margin-bottom:9px">Welcome back, Jamie</p>
+          <h2 style="font-family:var(--n);font-weight:900;font-size:53px;line-height:.98;letter-spacing:-1.6px;color:var(--navy)">Find local help<br>in minutes.</h2>
+          <p style="margin:-2px 0 0"><span class="scribble" style="font-size:40px">— from a neighbor next door.</span></p>
+          <p style="font-family:var(--d);font-size:16px;line-height:1.55;color:var(--body);margin-top:14px;max-width:52ch">Real local workers, fair pricing, no chasing quotes — just the right person, when you need them.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px;max-width:780px">
+          <div style="background:var(--white);border-radius:14px;padding:17px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 10px rgba(0,36,97,.07)">
+            <div class="quads" style="flex:0 0 62px;grid-template-columns:1fr 1fr"><i style="height:29px"></i><i style="height:29px"></i><i style="height:29px"></i><i style="height:29px"></i></div>
+            <div style="flex:1">
+              <div style="font-family:var(--n);font-weight:800;font-size:14.5px;line-height:1.2">Make a request</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45">Delivery, moving, home services and more.</div>
+            </div>
+            <span style="font-family:var(--n);font-weight:900;font-size:17px;color:var(--pine)">→</span>
+          </div>
+          <div style="background:var(--white);border-radius:14px;padding:17px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 10px rgba(0,36,97,.07)">
+            <div class="mq" style="flex:0 0 62px"><div class="mqrow" style="padding:4px"><b style="width:14px;height:14px"></b><b style="width:14px;height:14px"></b><b style="width:14px;height:14px"></b></div><div class="mqrow" style="padding:4px"><b style="width:14px;height:14px"></b><b style="width:14px;height:14px"></b><b style="width:14px;height:14px"></b></div></div>
+            <div style="flex:1">
+              <div style="font-family:var(--n);font-weight:800;font-size:14.5px;line-height:1.2">Local deals near you</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45">Buy direct — a Gopher brings it the last mile.</div>
+            </div>
+            <span style="font-family:var(--n);font-weight:900;font-size:17px;color:var(--pine)">→</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>The move:</b> the headline stops being a UI label and becomes the brand line
+      from the guide's own typography page, with the Caveat tucked under it exactly as specified —
+      75–80% of the headline, −2°, Terracotta. The two paths shrink to confident rows.
+      <b>Note the green arrows are Pine, not Shamrock</b> — Shamrock can't carry text.</p>
+  </div>
+
+  <!-- ══ 4 ══════════════════════════════════════════════════════════════ -->
+  <div class="concept">
+    <div class="chead">
+      <span class="cnum">4</span>
+      <div class="ctitle">
+        <h2>Working dashboard</h2>
+        <p>Argues the screen's real problem isn't styling — it's that a signed-in user with
+           9 dashboard items and 1 unread message is shown an empty chooser. This version answers
+           "what's happening with my stuff?" first, and keeps the two paths as a permanent action
+           bar underneath.</p>
+        <div class="tradeoff">
+          <span class="pill yes">Earns the screen on every visit</span>
+          <span class="pill yes">No empty canvas at all</span>
+          <span class="pill cost">Needs live data wiring</span>
+        </div>
+      </div>
+    </div>
+    <div class="frame fit"><div class="screen" style="zoom:.79">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">▦</span>Dashboard<span class="badge">9</span></a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox<span class="badge">1</span></a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main" style="padding:22px 26px 26px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <p class="welcome" style="margin-bottom:1px">Welcome back, Jamie 👋</p>
+            <h2 style="font-family:var(--n);font-weight:900;font-size:27px;letter-spacing:-.5px;color:var(--navy)">Here's where things stand</h2>
+            <p style="margin:0"><span class="scribble" style="font-size:21px">— all caught up, nearly.</span></p>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">
+          <div style="background:var(--white);border-radius:14px;padding:16px 17px;box-shadow:0 2px 10px rgba(0,36,97,.06)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">
+              <span style="font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:.9px;text-transform:uppercase;background:var(--green);color:var(--navy);padding:3px 8px;border-radius:14px">In progress</span>
+              <span style="font-family:var(--n);font-weight:800;font-size:13.5px">Couch pickup &amp; delivery</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px">
+              <div style="width:30px;height:30px;border-radius:50%;background:var(--aqua)"></div>
+              <div style="flex:1">
+                <div style="font-family:var(--n);font-weight:800;font-size:12.5px">Marcus is on the way</div>
+                <div style="font-size:11px;color:var(--muted)">Arriving about 4:20 pm</div>
+              </div>
+              <span class="cta green" style="font-size:11.5px;padding:7px 13px">Track</span>
+            </div>
+          </div>
+          <div style="background:var(--white);border-radius:14px;padding:16px 17px;box-shadow:0 2px 10px rgba(0,36,97,.06);display:flex;flex-direction:column;justify-content:center;gap:7px">
+            <div style="font-family:var(--n);font-weight:900;font-size:25px;color:var(--navy);line-height:1">1</div>
+            <div style="font-size:11.5px;color:var(--body);line-height:1.4">unread message from a Gopher</div>
+            <span style="font-family:var(--n);font-weight:800;font-size:11.5px;color:var(--pine)">Open Inbox →</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+          <div style="background:var(--navy);border-radius:14px;padding:16px 17px;display:flex;align-items:center;gap:14px">
+            <div class="quads" style="flex:0 0 56px;grid-template-columns:1fr 1fr"><i style="height:26px"></i><i style="height:26px"></i><i style="height:26px"></i><i style="height:26px"></i></div>
+            <div style="flex:1">
+              <div style="font-family:var(--n);font-weight:800;font-size:13.5px;color:var(--white);line-height:1.2">Need something else done?</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.76);margin-top:2px">Delivery, moving, home services and more.</div>
+            </div>
+            <span class="cta green" style="font-size:11.5px;padding:8px 13px">+ Request</span>
+          </div>
+          <div style="background:var(--white);border:1.5px solid #ecdfc4;border-radius:14px;padding:16px 17px;display:flex;align-items:center;gap:14px">
+            <span class="chip" style="background:var(--sand);flex:0 0 auto"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-deals-logo.svg" alt=""></span>
+            <div style="flex:1">
+              <div style="font-family:var(--n);font-weight:800;font-size:13.5px;line-height:1.2">14 local deals near you</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Buy direct — a Gopher brings it the last mile.</div>
+            </div>
+            <span class="cta line" style="font-size:11.5px;padding:8px 13px">Browse</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>The move:</b> the chooser stops being the whole screen and becomes a strip.
+      The page leads with the live order and the unread message — the two things that make a
+      signed-in user open it. <b>The only one of the four that needs real data</b>, so it's the
+      biggest build.</p>
+  </div>
+
+  <p class="foot">
+    <b>Nothing here is implemented</b> — these are concepts in a standalone file, and neither
+    dashboard has been touched since the brand pass went live.
+    <br><br>
+    If you want my read: <b>3 is the one that makes the brand unmistakable</b> and it's the
+    closest to what your own style guide shows on its typography page — but <b>4 is the one that
+    makes the page worth returning to</b>, because it answers a question the user actually has.
+    The honest combination is 3's voice applied to 4's structure, which is a bigger piece of work
+    than either alone. 1 is the safe, quick improvement; 2 is really a product decision about
+    whether Deals is a peer of Request or not.
+  </p>
+
+</div>
+</body>
+</html>
