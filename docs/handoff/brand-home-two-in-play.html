@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two In Play</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* Three ways for ONE container to say "there are two". Same data in each:
+     Garage clear-out has a counter-offer (attention), Couch pickup is running.
+     Shown at the real main-column width on the real Sand ground. */
+  :root{--navy:#002461;--green:#33D975;--sand:#FBF3E4;--terracotta:#D97757;--pine:#0F7A3F;
+    --aqua:#87F7BD;--corn:#BADBFC;--lava:#C44257;--body:#424242;--muted:#6b7280;--rule:#e3ddcd;--white:#fff;
+    --n:'Nunito',system-ui,sans-serif;--d:'DM Sans',system-ui,sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased}
+  body{font-family:var(--d);background:#f2efe6;color:var(--navy);padding:38px 18px 70px}
+  .page{max-width:1120px;margin:0 auto}
+  .eyebrow{font-family:var(--n);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1.t{font-family:var(--n);font-weight:800;font-size:clamp(26px,4vw,33px);line-height:1.1;letter-spacing:-.015em;margin-bottom:10px}
+  .lede{font-size:16px;line-height:1.6;max-width:72ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+  .opt{margin-top:32px;background:var(--white);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .oh{padding:16px 20px;border-bottom:1px solid var(--rule);display:flex;gap:13px;align-items:flex-start;flex-wrap:wrap}
+  .on{font-family:var(--n);font-weight:900;font-size:11px;color:var(--navy);background:var(--green);border-radius:8px;padding:6px 10px;flex:0 0 auto}
+  .ot{flex:1;min-width:230px}
+  .ot h2{font-family:var(--n);font-weight:800;font-size:17.5px;margin-bottom:3px}
+  .ot p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:76ch}
+  .stage{background:var(--sand);padding:26px 24px}
+
+  /* shared atoms */
+  .ico{width:42px;height:42px;border-radius:13px;background:#e8f5ee;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .ico.sm{width:30px;height:30px;border-radius:9px;font-size:14px}
+  .pill{font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;padding:3px 9px;border-radius:14px;background:var(--green);color:var(--navy)}
+  .pill.at{background:var(--lava);color:var(--white)}
+  .ttl{font-family:var(--n);font-weight:900;font-size:14.5px;line-height:1.2}
+  .sub{font-size:12px;color:var(--muted);line-height:1.35}
+  .sub.hot{color:var(--lava);font-weight:700}
+  .amt{font-family:var(--n);font-weight:900;font-size:15px;white-space:nowrap}
+
+  /* ── 1 · primary + slim secondary row, one box ── */
+  .c1{background:var(--white);border:1px solid #e9e3d4;border-radius:15px;box-shadow:0 2px 10px rgba(0,36,97,.06);overflow:hidden}
+  .c1.attn{border-color:var(--lava);box-shadow:0 0 0 1.4px var(--lava),0 4px 14px -3px rgba(196,66,87,.35)}
+  .c1 .prim{padding:15px 17px;display:flex;align-items:center;gap:13px}
+  .c1 .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+  .c1 .sec{display:flex;align-items:center;gap:11px;padding:10px 17px;border-top:1px solid #efe9db;background:#fcfaf5}
+  .c1 .sec .st{flex:1;min-width:0;font-size:12.5px;color:var(--body)}
+  .c1 .sec .st b{font-family:var(--n);font-weight:800;color:var(--navy)}
+  .c1 .sec .go{font-family:var(--n);font-weight:800;font-size:11.5px;color:var(--pine)}
+
+  /* ── 2 · one box, split in two by a hairline ── */
+  .c2{display:grid;grid-template-columns:1.25fr 1px 1fr;background:var(--white);border:1px solid #e9e3d4;
+    border-radius:15px;box-shadow:0 2px 10px rgba(0,36,97,.06);overflow:hidden}
+  .c2 .pane{padding:15px 17px;display:flex;align-items:center;gap:12px;min-width:0}
+  .c2 .rulev{background:#efe9db}
+  .c2 .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+  .c2 .pane.left{box-shadow:inset 3px 0 0 var(--lava)}
+
+  /* ── 3 · one box, count in its own header strip ── */
+  .c3{background:var(--white);border:1px solid #e9e3d4;border-radius:15px;box-shadow:0 2px 10px rgba(0,36,97,.06);overflow:hidden}
+  .c3.attn{border-color:var(--lava);box-shadow:0 0 0 1.4px var(--lava),0 4px 14px -3px rgba(196,66,87,.35)}
+  .c3 .hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 17px;background:#f6f2e8;border-bottom:1px solid #efe9db}
+  .c3 .hdr .lab{font-family:var(--n);font-weight:900;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .c3 .hdr .lab b{color:var(--navy)}
+  .c3 .hdr .other{font-family:var(--n);font-weight:800;font-size:11.5px;color:var(--pine)}
+  .c3 .prim{padding:15px 17px;display:flex;align-items:center;gap:13px}
+  .c3 .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+
+  .note{padding:14px 20px;background:#faf8f2;border-top:1px solid var(--rule);font-size:13px;line-height:1.6;color:#4a5160}
+  .note b{color:var(--navy)}
+  .note .y{color:#0b4a2a;font-weight:700}
+  .note .n{color:#8a3f23;font-weight:700}
+  .foot{margin-top:36px;border-top:1px solid var(--rule);padding-top:18px;font-size:13.5px;line-height:1.65;color:#4a5160}
+  .foot b{color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Gopher Request &middot; home &middot; the two-in-play container</p>
+  <h1 class="t">Three ways for one container to say &ldquo;there are two&rdquo;</h1>
+  <p class="lede">The stacked edge is gone &mdash; it read as a deck you'd swipe, which isn't what's happening. Same data in all three: <b>Garage clear-out</b> has a counter-offer waiting, <b>Couch pickup</b> is running fine. In every one the attention request is the one that gets the weight. Shown at the real column width on the real Sand ground. <b>Nothing is implemented.</b></p>
+
+  <div class="opt">
+    <div class="oh"><span class="on">1</span><div class="ot"><h2>Primary, then a slim second line</h2>
+      <p>One box, one divider. The attention request is rendered in full; the other is a single quiet line beneath it. It doesn't hint that a second exists &mdash; it shows it, and gives you a way to reach it.</p></div></div>
+    <div class="stage">
+      <div class="c1 attn">
+        <div class="prim">
+          <span class="ico">&#129529;</span>
+          <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140 instead of $160</span></span>
+          <span class="amt">$160</span>
+        </div>
+        <div class="sec">
+          <span class="ico sm">&#128719;</span>
+          <span class="st"><b>Couch pickup &amp; delivery</b> &middot; Marcus is on the way &middot; about 4:20 pm</span>
+          <span class="amt" style="font-size:13px">$84</span>
+          <span class="go">View &rarr;</span>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="y">Shows both, routes to both, height is bounded (~34px for the second line).</span> <span class="n">Costs the most vertical space of the three &mdash; about 44px more than one request alone.</span></p>
+  </div>
+
+  <div class="opt">
+    <div class="oh"><span class="on">2</span><div class="ot"><h2>One box, split by a hairline</h2>
+      <p>Uses the width rather than the height. Both requests sit in a single bordered box divided down the middle, the attention one wider and carrying a Lava Alert edge. Reads as one object because the border and background are shared.</p></div></div>
+    <div class="stage">
+      <div class="c2">
+        <div class="pane left">
+          <span class="ico">&#129529;</span>
+          <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140</span></span>
+          <span class="amt">$160</span>
+        </div>
+        <div class="rulev"></div>
+        <div class="pane">
+          <span class="ico">&#128719;</span>
+          <span class="tx"><span class="pill">In progress</span><span class="ttl">Couch pickup</span><span class="sub">Marcus &middot; about 4:20 pm</span></span>
+          <span class="amt">$84</span>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="y">No extra height at all, and both are equally reachable.</span> <span class="n">At three it would have to reflow, and the second pane is tight enough that the title has to shorten.</span></p>
+  </div>
+
+  <div class="opt">
+    <div class="oh"><span class="on">3</span><div class="ot"><h2>Count in the container's own header</h2>
+      <p>The quietest. The box shows only the request needing you; a thin strip along its top states how many are live and names the other one as a link. Closest to what you have now, minus the fake stack.</p></div></div>
+    <div class="stage">
+      <div class="c3 attn">
+        <div class="hdr">
+          <span class="lab"><b>2</b> requests in play</span>
+          <span class="other">Also: Couch pickup &amp; delivery &rarr;</span>
+        </div>
+        <div class="prim">
+          <span class="ico">&#129529;</span>
+          <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140 instead of $160</span></span>
+          <span class="amt">$160</span>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="y">Smallest change from what you already approved, adds ~32px, scales to any number without reflowing.</span> <span class="n">The second request is a name in a strip rather than a thing you can see the state of.</span></p>
+  </div>
+
+  <p class="foot"><b>Nothing here is implemented.</b> If you want my pick: <b>1</b>. It is the only one that tells you the state of both requests without you doing anything, and the slim row degrades cleanly &mdash; at three in play it becomes two slim rows, at four it becomes two rows plus &ldquo;2 more&rdquo;, and the box never changes shape. <b>2</b> is the prettiest but it is the one that breaks first, because a third request has nowhere to go. <b>3</b> is the safest if you would rather the home screen stayed a headline rather than a list.</p>
+</div>
+</body>
+</html>
