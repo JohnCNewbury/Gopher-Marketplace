@@ -9221,21 +9221,68 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .mst-tab:hover { background:var(--navy-mid); transform:translateY(-1px); box-shadow:0 7px 16px rgba(26,42,94,0.3); }
   .mst-tab:active { transform:translateY(0); }
+  /* ⛔ STEP CHIPS — state-led. Owner picked this on 2026-10-03 from four options
+     shown side by side on the live page: "I like this one."
+
+     COLOUR NOW MEANS SOMETHING. Navy = done, Shamrock = you are here, grey =
+     not yet reached. Before this, the current step and every finished step were
+     the SAME Shamrock, so the row read as decoration rather than progress — you
+     had to read all seven labels to find out where you were.
+
+     It also fixes two contrast failures that were live:
+       done/active : white on Shamrock      1.85:1  ->  7.95:1 and 14.74:1
+       locked      : white on #c9cfdd       1.56:1  ->  4.93:1
+     The locked chips were WORSE than the green ones and nobody had reported them.
+
+     ⚠️ The white here is on NAVY, not on green — the Shamrock rule is intact.
+     Shamrock still carries navy, on the one chip that is Shamrock. */
   .mst-tab.done {
-    background:var(--green); box-shadow:0 4px 12px rgba(51,217,117,0.3);
+    background:var(--navy); color:#fff;
+    box-shadow:0 3px 10px rgba(0,36,97,0.20);
   }
-  .mst-tab.done:hover { background:var(--green-dark); }
+  /* The tick is the only Shamrock on a finished chip — brand present, not loud.
+     It is real text content, so a screen reader announces "check, Job details",
+     which is what the state actually means. */
+  /* Compact on purpose. Measured: at Connect's 860px demo portal each chip gets
+     111px, and the first draft of this tick (13px + nbsp) needed 135px — it
+     truncated "Pick a service" to "Pick a servi...". I caused that; it did not
+     truncate before the tick existed. 11px with a 3px margin plus the container
+     rule below gives real slack instead of an exact fit. */
+  .mst-tab.done::before { content:'\2713'; color:var(--green); font-weight:900; font-size:11px; margin-right:3px; }
+  .mst-tab.done:hover { background:var(--navy-mid); }
   .mst-tab.active {
-    background:var(--green);
-    box-shadow:0 6px 16px rgba(51,217,117,0.42), 0 0 0 3px rgba(51,217,117,0.18);
+    background:var(--green); color:var(--ink-on-green);
+    box-shadow:0 6px 16px rgba(51,217,117,0.45), 0 0 0 3px rgba(0,36,97,0.14);
   }
-  /* Locked = step not yet reached; greyed out, not interactive. */
+  .mst-tab.active:hover { background:var(--green); }
+  /* Locked = step not yet reached. Grey, but READABLE grey: the old pairing was
+     white on #c9cfdd at 1.56:1, and opacity:0.65 was dimming it further. */
   .mst-tab.locked, .mst-tab:disabled {
-    background:#c9cfdd; color:#fff; cursor:not-allowed; box-shadow:none; opacity:0.65;
+    background:#e7eaf1; color:#5a6479; cursor:not-allowed; box-shadow:none; opacity:1;
   }
   .mst-tab.locked:hover, .mst-tab:disabled:hover {
-    background:#c9cfdd; transform:none; box-shadow:none;
+    background:#e7eaf1; transform:none; box-shadow:none;
   }
+
+  /* ⛔ The aligned chip row needs CONTAINER width, not viewport width. The two
+     places this flow renders are very different sizes inside the SAME viewport:
+     the Request dashboard portal is ~1180px, Connect's marketing demo is 860px.
+     A viewport media query cannot tell them apart, which is how the tick came to
+     truncate on one surface while measuring fine on the other.
+     Below 1000px of PORTAL width the row packs instead, where chips are
+     content-width and cannot truncate at all. */
+  .flow-mockup { container-type:inline-size; }
+  @container (max-width:1000px){
+    .mockup-step-tabs,
+    .dash-section[data-rqsec="new-request"] .mockup-step-tabs,
+    .dash-section[data-section="new-request"] .mockup-step-tabs { flex-wrap:wrap; gap:9px; }
+    .mockup-step-tabs .mst-tab,
+    .dash-section[data-rqsec="new-request"] .mst-tab,
+    .dash-section[data-section="new-request"] .mst-tab {
+      flex:0 0 auto; padding-left:16px; padding-right:16px;
+    }
+  }
+
 
   /* ─── Request History table ─── */
   /* ── Request History cards (owner 2026-10-02) ───────────────────────────

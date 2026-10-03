@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard · Four Directions</title>
+<!-- Real self-hosted brand fonts, same file the live site loads. A mock must
+     inherit the target's rendering settings or it proves nothing. -->
+<link rel="stylesheet" href="../../Final/assets/css/gopher-fonts.css">
+<style>
+  :root{
+    --navy:#002461; --shamrock:#33D975; --sand:#FBF3E4; --pine:#0F7A3F;
+    --lava:#C44257; --corn:#BADBFC; --body:#424242; --muted:#6b7280;
+    --terracotta:#D97757; --rule:#e3ddcd; --white:#fff;
+    --n:'Nunito',system-ui,sans-serif; --d:'DM Sans',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  body{font-family:var(--d);background:#eef0f4;color:var(--navy);padding:34px 18px 80px}
+  .page{max-width:1180px;margin:0 auto}
+  .eyebrow{font-family:var(--n);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1.t{font-family:var(--n);font-weight:900;font-size:clamp(28px,4vw,36px);line-height:1.08;letter-spacing:-.02em;margin-bottom:12px}
+  .lede{font-size:16px;line-height:1.62;max-width:78ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+  .fork{margin:22px 0 6px;background:var(--white);border:1px solid var(--rule);border-radius:14px;padding:18px 20px}
+  .fork h3{font-family:var(--n);font-weight:900;font-size:15px;margin-bottom:8px}
+  .fork p{font-size:14px;line-height:1.6;color:#3b4252}
+  .fork .pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px}
+  .fork .pair div{background:#f7f9fc;border:1px solid #e6eaf2;border-radius:10px;padding:12px 14px}
+  .fork .pair b{font-family:var(--n);font-size:13px}
+  .fork .pair span{display:block;font-size:13px;color:var(--muted);line-height:1.5;margin-top:3px}
+
+  .opt{margin-top:30px;background:var(--white);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .oh{padding:16px 20px;border-bottom:1px solid var(--rule);display:flex;gap:13px;align-items:flex-start;flex-wrap:wrap}
+  .on{font-family:var(--n);font-weight:900;font-size:11px;color:var(--navy);background:var(--shamrock);border-radius:8px;padding:6px 10px;flex:0 0 auto}
+  .on.grey{background:#e6eaf2;color:var(--muted)}
+  .ot{flex:1;min-width:240px}
+  .ot h2{font-family:var(--n);font-weight:900;font-size:18px;margin-bottom:3px}
+  .ot p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:80ch}
+  .stage{background:#f5f7fb;padding:24px}
+  .note{padding:13px 20px;background:#faf8f2;border-top:1px solid var(--rule);font-size:13px;line-height:1.6;color:#4a5160}
+  .note b{color:var(--navy)} .y{color:#0b4a2a;font-weight:700} .n{color:#8a3f23;font-weight:700}
+
+  /* ── shared atoms ─────────────────────────────────────────── */
+  .face{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:#dfe5ee}
+  .face.lg{width:62px;height:62px}
+  .face.sm{width:30px;height:30px}
+  .ini{display:flex;align-items:center;justify-content:center;font-family:var(--n);font-weight:900;font-size:14px;color:var(--navy);background:var(--corn)}
+  .tier{font-family:var(--n);font-weight:900;font-size:9px;letter-spacing:.7px;text-transform:uppercase;background:var(--corn);color:var(--navy);border-radius:20px;padding:2px 7px}
+  .rate{font-size:12px;color:var(--muted)}
+  .cav{font-family:'Caveat',cursive;color:var(--terracotta);transform:rotate(-2deg);display:inline-block}
+
+  /* ── 0 · today ─────────────────────────────────────────────── */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .kpi{background:var(--white);border:1px solid #e6eaf2;border-radius:10px;padding:12px 14px}
+  .kpi .l{font-family:var(--n);font-weight:800;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .kpi .v{font-family:var(--n);font-weight:900;font-size:26px;margin-top:2px}
+  .kpi .s{font-size:11px;color:var(--muted)}
+  .rowz{background:var(--white);border:1px solid #e6eaf2;border-radius:10px;padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .rowz .ic{width:34px;height:34px;border-radius:9px;background:#eef1f7;display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto}
+  .rowz .tx{flex:1;min-width:0}
+  .rowz .ti{font-family:var(--n);font-weight:800;font-size:13.5px}
+  .rowz .me{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .pill{font-family:var(--n);font-weight:900;font-size:9px;letter-spacing:.7px;text-transform:uppercase;border-radius:20px;padding:4px 9px;background:rgba(251,191,36,.18);color:#92580d}
+  .pill.gr{background:rgba(51,217,117,.16);color:var(--pine)}
+  .btn{font-family:var(--n);font-weight:800;font-size:11.5px;border:0;border-radius:8px;padding:7px 13px;background:#eef1f7;color:var(--navy)}
+  .btn.red{background:var(--lava);color:#fff}
+
+  /* ── A · work order ───────────────────────────────────────── */
+  .dispatch{font-family:var(--n);font-weight:900;font-size:25px;line-height:1.18;letter-spacing:-.015em;margin-bottom:3px}
+  .dispatch em{font-style:normal;color:var(--lava)}
+  .wo{background:var(--white);border:1px solid #e9e3d4;border-radius:14px;overflow:hidden;margin-top:14px;box-shadow:0 2px 9px rgba(0,36,97,.05)}
+  .wo.attn{border-color:var(--lava);box-shadow:0 0 0 1.3px var(--lava),0 4px 14px -4px rgba(196,66,87,.3)}
+  .wo .band{background:#fdf2f3;border-bottom:1px solid #f3d7da;padding:9px 16px;display:flex;align-items:center;gap:10px}
+  .wo .band .s{flex:1;font-size:12.5px;font-weight:700;color:var(--lava)}
+  .wo .zones{display:grid;grid-template-columns:1.5fr 1.1fr .8fr;gap:0}
+  .wo .z{padding:14px 16px}
+  .wo .z+.z{border-left:1px solid #f0ece2}
+  .wo .job{display:flex;gap:11px;align-items:flex-start}
+  .wo .cat{width:38px;height:38px;border-radius:11px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}
+  .wo .ti{font-family:var(--n);font-weight:900;font-size:14.5px;line-height:1.22}
+  .wo .ds{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .wo .crew{display:flex;align-items:center;gap:8px;margin-top:11px}
+  .wo .crew .nm{font-family:var(--n);font-weight:800;font-size:12.5px}
+  .rt{font-size:11.5px;line-height:1.45}
+  .rt .lab{font-family:var(--n);font-weight:900;font-size:8.5px;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+  .rt .ad{color:var(--navy);font-weight:600}
+  .rt .bar{border-left:2px solid var(--corn);margin:5px 0 5px 3px;padding-left:9px}
+  .wo .eta{font-family:var(--n);font-weight:900;font-size:22px;line-height:1}
+  .wo .cl{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .wo .tot{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .wo .tot b{font-family:var(--n);font-size:13.5px;color:var(--navy)}
+  .steps{display:flex;align-items:center;gap:7px;padding:9px 16px;border-top:1px solid #f0ece2;background:#fcfaf5}
+  .steps .st{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
+  .steps .dot{width:7px;height:7px;border-radius:50%;background:#dcd6c8}
+  .steps .st.done .dot{background:var(--pine)} .steps .st.done{color:var(--pine);font-weight:700}
+  .steps .st.now .dot{background:var(--shamrock);box-shadow:0 0 0 3px rgba(51,217,117,.25)}
+  .steps .st.now{color:var(--navy);font-weight:800}
+  .steps .sp{flex:1;height:1px;background:#ece7db}
+  .steps .fol{margin-left:auto;font-size:10px;color:#b9b2a3;letter-spacing:.4px}
+  .booked{margin-top:14px;background:var(--sand);border:1px solid #efe4cd;border-radius:11px;padding:11px 15px}
+  .booked .bh{font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .booked .br{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:3px 0}
+  .booked .br b{font-family:var(--n);font-weight:800}
+
+  /* ── B · lead story ───────────────────────────────────────── */
+  .lead{background:var(--white);border:1px solid #e9e3d4;border-radius:14px;padding:26px 28px 22px}
+  .kick{font-family:var(--n);font-weight:900;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lava)}
+  .hl{font-family:var(--n);font-weight:900;font-size:36px;line-height:1.04;letter-spacing:-.025em;margin:7px 0 9px;max-width:21ch}
+  .stand{font-size:16px;line-height:1.5;color:#3b4252;max-width:58ch}
+  .byline{display:flex;align-items:center;gap:11px;margin-top:16px;padding-top:14px;border-top:1px solid #f0ece2}
+  .byline .who{font-family:var(--n);font-weight:800;font-size:13.5px}
+  .byline .sub{font-size:11.5px;color:var(--muted)}
+  .cta{margin-left:auto;font-family:var(--n);font-weight:800;font-size:13px;background:var(--lava);color:#fff;border:0;border-radius:9px;padding:10px 17px}
+  .second{margin-top:12px;background:var(--white);border:1px solid #e9e3d4;border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:11px}
+  .second .k{font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);flex:0 0 auto}
+  .second .h2{font-family:var(--n);font-weight:800;font-size:14px;flex:1;min-width:0}
+  .second .m{font-size:11.5px;color:var(--muted)}
+
+  /* ── C · who's on it ──────────────────────────────────────── */
+  .ppl{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .person{background:var(--white);border:1px solid #e9e3d4;border-radius:14px;padding:17px 18px}
+  .person.attn{border-color:var(--lava);box-shadow:0 0 0 1.3px var(--lava)}
+  .person .top{display:flex;align-items:center;gap:12px}
+  .person .nm{font-family:var(--n);font-weight:900;font-size:17px;line-height:1.1}
+  .person .meta{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .person .together{font-family:var(--n);font-weight:800;font-size:11px;color:var(--pine);background:#e7f8ee;border-radius:20px;padding:3px 9px}
+  .person .cap{margin-top:13px;padding-top:12px;border-top:1px solid #f0ece2}
+  .person .cl{font-family:var(--n);font-weight:900;font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .person .cj{font-size:13.5px;margin-top:3px;line-height:1.4}
+  .person .cm{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .person .act{margin-top:12px;display:flex;align-items:center;gap:9px}
+  .roster{margin-top:14px;background:var(--sand);border:1px solid #efe4cd;border-radius:11px;padding:12px 15px}
+  .roster .rh{font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .roster .rr{display:flex;gap:9px;align-items:center}
+  .roster .rr img,.roster .rr span.ini{border:2px solid var(--sand)}
+  .roster .more{font-size:12px;color:var(--muted);margin-left:4px}
+
+  /* ── D · nothing needs you ────────────────────────────────── */
+  .calm{background:var(--white);border:1px solid #e9e3d4;border-radius:14px;padding:30px 28px;text-align:center}
+  .calm .big{font-family:var(--n);font-weight:900;font-size:27px;line-height:1.2;letter-spacing:-.018em}
+  .calm .sm{font-size:14px;color:var(--muted);margin-top:8px}
+  .calm .f{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px}
+  .decide{background:var(--white);border:1px solid var(--lava);box-shadow:0 0 0 1.3px var(--lava),0 6px 18px -6px rgba(196,66,87,.35);border-radius:14px;padding:22px 24px}
+  .decide .k{font-family:var(--n);font-weight:900;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--lava)}
+  .decide .q{font-family:var(--n);font-weight:900;font-size:22px;line-height:1.2;margin:7px 0 6px}
+  .decide .w{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .decide .row{display:flex;align-items:center;gap:10px;margin-top:15px}
+  .decide .ghost{font-family:var(--n);font-weight:800;font-size:13px;background:transparent;border:1px solid #d9dee8;color:var(--navy);border-radius:9px;padding:10px 15px}
+  .quiet{margin-top:12px;font-size:12.5px;color:var(--muted);text-align:center}
+  .quiet b{color:var(--navy);font-family:var(--n);font-weight:800}
+
+  .foot{margin-top:34px;border-top:1px solid var(--rule);padding-top:18px;font-size:13.5px;line-height:1.68;color:#4a5160}
+  .foot b{color:var(--navy)}
+  @media(max-width:900px){.wo .zones{grid-template-columns:1fr}.wo .z+.z{border-left:0;border-top:1px solid #f0ece2}.ppl{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.fork .pair{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Gopher Request &middot; dashboard &middot; four directions</p>
+  <h1 class="t">It isn't the styling. It's that a job record is being drawn as a table row.</h1>
+  <p class="lede">The dashboard already holds the worker's <b>name, photo, rating, tier</b>, the <b>four progress milestones</b> the Gopher taps in the Go app, <b>job photos</b>, <b>pickup and drop-off</b>, and a full <b>money breakdown</b>. Today's screen renders all of that as <i>&ldquo;Request #GR-00127 &middot; Marcus B. (Pro) &middot; $55.07 total&rdquo;</i> in grey. That's why it reads as a template &mdash; templates show metadata, products show the work. Each direction below is a different answer to <b>which half of that record earns the top of the screen</b>. Real data, real photos, real brand fonts. <b>Nothing is implemented.</b></p>
+
+  <div class="fork">
+    <h3>The actual fork &mdash; these are two pairs, not four rivals</h3>
+    <p>Six directions were generated independently and scored by three judges. Two collapsed into each other and two were dropped on facts, not taste. What's left is one question asked twice:</p>
+    <div class="pair">
+      <div><b>OBJECT-LED &mdash; A and B</b><span>The request is the unit; the person is an attribute of it. A and B are the same idea at two type sizes: rank by <i>layout</i> (every ticket equal) or rank by <i>scale</i> (one set large).</span></div>
+      <div><b>PERSON-LED &mdash; C and D</b><span>A named neighbour is the unit; the job is the caption. C shows you everyone working for you; D shows you only the one decision and says plainly when there is none.</span></div>
+    </div>
+  </div>
+
+  <!-- 0 · TODAY -->
+  <div class="opt">
+    <div class="oh"><span class="on grey">0</span><div class="ot"><h2>Today, for reference</h2>
+      <p>Four tiles that sum to a list six inches below them, then nine rows of identical weight. The one that needs a decision and the one quietly running differ by a pill colour.</p></div></div>
+    <div class="stage">
+      <div class="kpis">
+        <div class="kpi"><div class="l">Pending</div><div class="v">3</div><div class="s">Awaiting your action</div></div>
+        <div class="kpi"><div class="l">Active</div><div class="v">4</div><div class="s">Worker on the way</div></div>
+        <div class="kpi"><div class="l">Scheduled</div><div class="v">2</div><div class="s">Booked for later</div></div>
+        <div class="kpi"><div class="l">All requests</div><div class="v">9</div><div class="s">Pending + Active + Scheduled</div></div>
+      </div>
+      <div class="rowz"><span class="ic">&#128679;</span><span class="tx"><div class="ti">Crew of 3 to unload pavers &mdash; 2 hrs</div><div class="me">Request #GR-00123 &middot; 6 workers interested &middot; $360.00 total &middot; Today, 2:00 PM</div></span><span class="pill">Pending</span><button class="btn red">NEEDS ATTENTION</button></div>
+      <div class="rowz"><span class="ic">&#128722;</span><span class="tx"><div class="ti">Grocery run &mdash; Harris Teeter to 412 Oakwood Ave</div><div class="me">Request #GR-00127 &middot; Marcus B. (Pro) &middot; $55.07 total &middot; ETA 14 min &middot; Today, 2:30 PM</div></span><span class="pill gr">In Progress</span><button class="btn">View</button></div>
+    </div>
+    <p class="note"><span class="n">Every fact in the same grey voice.</span> The ID leads, the person is buried mid-string, and the four milestones, the photo, the rating and the route aren't on screen at all.</p>
+  </div>
+
+  <!-- A · WORK ORDER -->
+  <div class="opt">
+    <div class="oh"><span class="on">A</span><div class="ot"><h2>The Work Order &mdash; object-led, equal weight</h2>
+      <p>Each live job laid out flat like a work order on a bench: what it is, where it's going, who has it, what step it's on, when it lands. A dispatch sentence replaces the tiles. The milestones along the bottom are literally the taps the Gopher makes in the Go app.</p></div></div>
+    <div class="stage">
+      <div class="dispatch">Marcus is 14 minutes out. <em>One job needs a decision.</em></div>
+      <div style="font-size:17px" class="cav">straight from your Gopher&rsquo;s phone</div>
+
+      <div class="wo attn">
+        <div class="band"><span class="s">6 Gophers are interested &mdash; pick your crew to lock the 2:00 PM start</span><button class="btn red">Choose crew</button></div>
+        <div class="zones">
+          <div class="z"><div class="job"><span class="cat">&#128679;</span><div><div class="ti">Crew of 3 to unload pavers</div><div class="ds">2 hrs &middot; pallets off a flatbed, stacked by the garage</div></div></div>
+            <div class="crew"><span class="face sm ini">6</span><span class="nm">6 interested</span><span class="tier">no crew yet</span></div></div>
+          <div class="z"><div class="rt"><div class="lab">Site</div><div class="bar"><div class="ad">412 Oakwood Ave</div></div><div class="lab" style="margin-top:6px">Access</div><div class="ad" style="font-weight:400;color:var(--muted)">Driveway, no stairs</div></div></div>
+          <div class="z"><div class="eta">2:00</div><div class="cl">PM today</div><div class="tot">Your offer <b>$360.00</b></div></div>
+        </div>
+        <div class="steps"><span class="st now"><span class="dot"></span>Choosing crew</span><span class="sp"></span><span class="st"><span class="dot"></span>Accepted</span><span class="sp"></span><span class="st"><span class="dot"></span>In progress</span><span class="sp"></span><span class="st"><span class="dot"></span>Completed</span><span class="fol">GR-00123</span></div>
+      </div>
+
+      <div class="wo">
+        <div class="zones">
+          <div class="z"><div class="job"><span class="cat">&#128722;</span><div><div class="ti">Grocery run</div><div class="ds">Harris Teeter &mdash; list of 14 items, no substitutions</div></div></div>
+            <div class="crew"><img class="face sm" src="../../Final/assets/img/px-1043471-200x200.webp" alt=""><span class="nm">Marcus B.</span><span class="tier">Pro</span><span class="rate">&#9733; 4.94</span></div></div>
+          <div class="z"><div class="rt"><div class="lab">Pick up</div><div class="bar"><div class="ad">Harris Teeter, Hillsborough St</div></div><div class="lab">Drop off</div><div class="ad">412 Oakwood Ave</div></div></div>
+          <div class="z"><div class="eta">14<span style="font-size:13px"> min</span></div><div class="cl">arriving 2:30 PM</div><div class="tot">Total <b>$55.07</b></div></div>
+        </div>
+        <div class="steps"><span class="st done"><span class="dot"></span>Accepted</span><span class="sp"></span><span class="st now"><span class="dot"></span>In progress</span><span class="sp"></span><span class="st"><span class="dot"></span>Items purchased</span><span class="sp"></span><span class="st"><span class="dot"></span>Completed</span><span class="fol">GR-00127</span></div>
+      </div>
+
+      <div class="booked">
+        <div class="bh">Booked</div>
+        <div class="br"><img class="face sm" src="../../Final/assets/img/px-3727469-200x200.webp" alt=""><b>Tomorrow, 9:00 AM</b> &middot; Install 2 ceiling fans &middot; Rosa P.</div>
+        <div class="br"><img class="face sm" src="../../Final/assets/img/px-697509-200x200.webp" alt=""><b>Thursday, 1:00 PM</b> &middot; Office furniture clear-out &middot; Diego R.</div>
+      </div>
+    </div>
+    <p class="note"><span class="y">The only direction whose Gopher-specific claim is already in the data</span> &mdash; the milestones, the route, and the &ldquo;Gopher&rsquo;s choice&rdquo; pickup line that rewrites itself when a real person walks into a real shop. <span class="n">Cost: the three-zone layout is shaped around deliveries and rides. A home-services job has one address, no route and no ETA, so the middle zone empties &mdash; it needs a second, shorter ticket variant.</span></p>
+  </div>
+
+  <!-- B · LEAD STORY -->
+  <div class="opt">
+    <div class="oh"><span class="on">B</span><div class="ot"><h2>The Lead Story &mdash; object-led, editorial rank</h2>
+      <p>The same object-led idea, but rank is carried by <i>type size</i> instead of layout. One lead story set large; everything else demoted to a line. The byline turns a dead grey pill into the most charged sentence on the page.</p></div></div>
+    <div class="stage">
+      <div class="lead">
+        <div class="kick">Needs your decision</div>
+        <div class="hl">Six Gophers want your paver job.</div>
+        <div class="stand">Three of them have done hauling for you before. Pick your crew and the 2:00 PM start locks in &mdash; otherwise the window reopens to everyone at noon.</div>
+        <div class="byline">
+          <span class="face ini" style="width:44px;height:44px">6</span>
+          <div><div class="who">Byline pending</div><div class="sub">6 Gophers reading this right now</div></div>
+          <button class="cta">Choose your crew</button>
+        </div>
+      </div>
+      <div class="second"><span class="k">Also running</span><span class="h2">Grocery run &mdash; Harris Teeter</span><img class="face sm" src="../../Final/assets/img/px-1043471-200x200.webp" alt=""><span class="m">Marcus B. &middot; 14 min out &middot; $55.07</span></div>
+      <div class="second"><span class="k">Booked</span><span class="h2">Install 2 ceiling fans</span><img class="face sm" src="../../Final/assets/img/px-3727469-200x200.webp" alt=""><span class="m">Rosa P. &middot; tomorrow 9:00 AM &middot; $165.00</span></div>
+    </div>
+    <p class="note"><span class="y">Scored 9&ndash;10 on distinctiveness by all three judges &mdash; the one that could never be mistaken for a template,</span> and your complaint is literally about distinctiveness. <span class="n">Cost: a lead spread is taller than the tiles and rows it replaces, so the second job can fall below the fold on a laptop &mdash; and it asserts an editorial rank that's wrong whenever the two jobs genuinely matter equally.</span></p>
+  </div>
+
+  <!-- C · WHO'S ON IT -->
+  <div class="opt">
+    <div class="oh"><span class="on">C</span><div class="ot"><h2>Who&rsquo;s On It &mdash; person-led</h2>
+      <p>The unit is a neighbour, not a record. The job becomes the caption underneath the person. Scored highest overall, and the only direction that gets <i>better</i> as volume rises &mdash; nine rows collapse into five or six people.</p></div></div>
+    <div class="stage">
+      <div class="ppl">
+        <div class="person attn">
+          <div class="top"><span class="face lg ini">6</span><div><div class="nm">Nobody yet</div><div class="meta">6 Gophers interested &middot; 3 have worked for you</div></div></div>
+          <div class="cap"><div class="cl">On your job</div><div class="cj">Crew of 3 to unload pavers &mdash; 2 hrs</div><div class="cm">Today, 2:00 PM &middot; $360.00 &middot; 412 Oakwood Ave</div></div>
+          <div class="act"><button class="btn red">Choose your crew</button><span class="rate">window reopens at noon</span></div>
+        </div>
+        <div class="person">
+          <div class="top"><img class="face lg" src="../../Final/assets/img/px-1043471-300x300.webp" alt=""><div><div class="nm">Marcus B.</div><div class="meta"><span class="tier">Pro</span><span class="rate">&#9733; 4.94 &middot; 218 jobs</span><span class="together">3rd job with you</span></div></div></div>
+          <div class="cap"><div class="cl">On your job</div><div class="cj">Grocery run &mdash; Harris Teeter</div><div class="cm">14 min out &middot; arriving 2:30 PM &middot; $55.07</div></div>
+          <div class="act"><button class="btn">Message Marcus</button><button class="btn">Track</button></div>
+        </div>
+      </div>
+      <div class="roster">
+        <div class="rh">Your Gophers &middot; booked ahead</div>
+        <div class="rr">
+          <img class="face sm" src="../../Final/assets/img/px-3727469-200x200.webp" alt="">
+          <img class="face sm" src="../../Final/assets/img/px-697509-200x200.webp" alt="">
+          <img class="face sm" src="../../Final/assets/img/px-2379004-200x200.webp" alt="">
+          <span class="more">Rosa tomorrow 9:00 AM &middot; Diego Thursday 1:00 PM</span>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="y">The only direction that <i>is</i> the brand thesis rather than a decoration of it</span> &mdash; neighbours helping neighbours, with &ldquo;3rd job with you&rdquo; computed from history you already keep. The photos above are real files from the repo. <span class="n">Cost: it is awkward in exactly the state you most need to act &mdash; before anyone has accepted, there is no person, so the lead card has a hole where its subject should be.</span></p>
+  </div>
+
+  <!-- D · NOTHING NEEDS YOU -->
+  <div class="opt">
+    <div class="oh"><span class="on">D</span><div class="ot"><h2>Nothing Needs You &mdash; radical reduction</h2>
+      <p>The screen shows the one decision waiting on you and almost nothing otherwise. The resting state isn&rsquo;t an empty state &mdash; it&rsquo;s a named confirmation that someone else has your job. Cheapest on the board by a wide margin, because it is mostly subtraction.</p></div></div>
+    <div class="stage">
+      <div class="decide">
+        <div class="k">One decision</div>
+        <div class="q">Six Gophers want your paver job.</div>
+        <div class="w">Pick your crew and the 2:00 PM start locks in. Three of them have hauled for you before.</div>
+        <div class="row"><button class="btn red" style="font-size:13px;padding:10px 17px">Choose your crew</button><button class="ghost">See all six</button></div>
+      </div>
+      <div class="quiet">Everything else is handled. <b>Marcus has your grocery run</b> &mdash; arriving 2:30 PM. <b>Rosa</b> tomorrow 9:00 AM, <b>Diego</b> Thursday.</div>
+
+      <div style="margin-top:22px;border-top:1px dashed #d8dde7;padding-top:20px">
+        <p class="eyebrow" style="text-align:center">and when nothing needs you &mdash; which is most days</p>
+        <div class="calm">
+          <div class="big">Marcus has it &mdash; arriving 2:30 PM.</div>
+          <div class="sm">Nothing needs you right now.</div>
+          <div class="f"><img class="face" src="../../Final/assets/img/px-1043471-200x200.webp" alt=""><span class="cav" style="font-size:19px">we&rsquo;ll shout if that changes</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><span class="y">A generic panel&rsquo;s quiet state can only say &ldquo;No records found.&rdquo;</span> This one says a neighbour&rsquo;s name and a time, which is the product promise rendered as a layout. <span class="n">Cost: it deletes the only visible proof that scheduled work exists &mdash; today &ldquo;Scheduled 2&rdquo; tells you a mover is booked for Saturday, and here that becomes one quiet line you might not read.</span></p>
+  </div>
+
+  <p class="foot"><b>What you're really choosing.</b> Not four options &mdash; one question, asked twice. <b>Is the unit of this screen a job or a person?</b> Object-led (A, B) is safer, works before anyone has accepted, and maps cleanly onto Connect where volume is real. Person-led (C, D) is braver and is the brand thesis out loud, but both have a hole in the pre-acceptance state, which is exactly when you most need to act.<br><br>
+  If you want my read: <b>A with B's byline folded in.</b> The Work Order is the only direction whose distinctiveness is already paid for by data you hold &mdash; the milestones, the route, the self-rewriting &ldquo;Gopher's choice&rdquo; line &mdash; and the Lead Story's treatment of &ldquo;nobody has accepted yet&rdquo; is better than anything the others do with that state. <b>C is the one I'd fight for if you want the braver answer</b>, and it is the right shape for Connect. <b>D is not a rival</b> &mdash; it is a resting state any of the other three could adopt.</p>
+</div>
+</body>
+</html>
