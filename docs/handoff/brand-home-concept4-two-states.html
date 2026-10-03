@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Two States</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     CONCEPT 4, owner's model — the home screen LEADS with the two cards.
+     Activity, when there is any, sits ABOVE them in ONE bounded container
+     and slides them down by a fixed amount.
+
+     Ported from _prototypes/Request/gopher-request-home.html #hubSlot:
+       · segmented switcher, real buckets Active / Scheduled / Submitted
+       · count in each tab (.hb-n), alert dot on any bucket needing action
+       · per-bucket empty state keeps the switcher rather than collapsing
+       · whole block hides when all buckets are zero
+     Two deliberate changes from the prototype, agreed before building:
+       1. MESSAGES added as a fourth segment (owner's extension).
+       2. NO carousel — the prototype is mobile-shaped; this is 1465px wide,
+          so cards show 2-up and only paginate beyond that. Same bounded
+          height, far less hidden.
+     Alert colour is Lava Alert #C44257 (brand), not the prototype's #E5484D.
+     Style-guide colours only. Sidebar is Midnight Blue. One Caveat per screen.
+     ============================================================ */
+  :root{
+    --navy:#002461; --green:#33D975; --sand:#FBF3E4; --terracotta:#D97757;
+    --pine:#0F7A3F; --aqua:#87F7BD; --corn:#BADBFC; --lava:#C44257;
+    --body:#424242; --muted:#6b7280; --rule:#e3ddcd; --white:#fff;
+    --n:'Nunito',system-ui,sans-serif; --d:'DM Sans',system-ui,sans-serif; --c:'Caveat',cursive;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased}
+  body{font-family:var(--d);background:#f2efe6;color:var(--navy);padding:38px 18px 70px}
+  .page{max-width:1300px;margin:0 auto}
+  .eyebrow{font-family:var(--n);font-weight:700;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1.t{font-family:var(--n);font-weight:800;font-size:clamp(27px,4vw,35px);line-height:1.1;
+    letter-spacing:-.015em;margin-bottom:10px}
+  .lede{font-size:16px;line-height:1.6;max-width:74ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+
+  .state{margin-top:38px;background:var(--white);border:1px solid var(--rule);
+    border-radius:16px;overflow:hidden;box-shadow:0 2px 20px rgba(0,36,97,.05)}
+  .shead{padding:18px 22px;border-bottom:1px solid var(--rule);display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .snum{font-family:var(--n);font-weight:900;font-size:11px;color:var(--navy);background:var(--green);
+    border-radius:8px;padding:7px 11px;flex:0 0 auto;white-space:nowrap}
+  .stitle{flex:1;min-width:240px}
+  .stitle h2{font-family:var(--n);font-weight:800;font-size:19px;margin-bottom:3px}
+  .stitle p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:78ch}
+  .frame{background:#e9e4d7;padding:16px;overflow-x:auto}
+  .screen{width:1200px;display:grid;grid-template-columns:192px 1fr;background:var(--white);
+    border-radius:10px;overflow:hidden;box-shadow:0 10px 30px rgba(0,36,97,.14)}
+
+  /* sidebar */
+  .sb{background:var(--navy);padding:14px 11px;display:flex;flex-direction:column;gap:1px}
+  .sb .brandrow{display:flex;align-items:center;gap:7px;padding:3px 7px 13px}
+  .sb .brandrow img{height:20px;width:auto;display:block;filter:brightness(0) invert(1)}
+  .sb .grp{font-size:8.5px;font-weight:700;color:rgba(255,255,255,.62);text-transform:uppercase;
+    letter-spacing:1.1px;padding:11px 8px 4px}
+  .sb a{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;
+    font-family:var(--n);font-weight:700;font-size:11.5px;color:rgba(255,255,255,.88);text-decoration:none}
+  .sb a.on{background:var(--green);color:var(--navy);font-weight:800}
+  .sb a .dot{width:14px;text-align:center;font-size:10px;opacity:.9}
+  .sb .badge{margin-left:auto;background:var(--green);color:var(--navy);font-family:var(--n);
+    font-weight:900;font-size:8.5px;border-radius:9px;padding:1px 6px}
+  .sb a.on .badge{background:var(--navy);color:var(--green)}
+  .sbcta{display:flex;flex-direction:column;gap:7px;padding:12px 1px 4px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:6px}
+  .sbcta span{display:block;text-align:center;border-radius:9px;padding:8px;
+    font-family:var(--n);font-weight:800;font-size:11.5px}
+  .sbcta .req{background:var(--green);color:var(--navy)}
+  .sbcta .deal{background:transparent;color:var(--white);border:1.5px solid rgba(255,255,255,.5)}
+  .sb .foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:12px}
+  .sb .foot span{display:block;text-align:center;border:1px solid rgba(255,255,255,.28);
+    border-radius:8px;padding:6px;font-family:var(--n);font-weight:700;font-size:10.5px;color:rgba(255,255,255,.9)}
+
+  .main{background:var(--sand);padding:22px 28px 28px}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .welcome{font-size:12.5px;color:var(--body)}
+  .avatar{width:28px;height:28px;border-radius:50%;background:var(--corn);flex:0 0 auto}
+  .scribble{font-family:var(--c);font-weight:700;color:var(--terracotta);transform:rotate(-2deg);display:inline-block}
+
+  /* ── the bounded activity container ── */
+  .hub{background:var(--white);border:1px solid #e7e0cf;border-radius:16px;padding:13px;
+    box-shadow:0 2px 12px rgba(0,36,97,.06);margin-bottom:20px}
+  .hbsegs{display:flex;gap:6px;background:var(--sand);border:1px solid #eae3d5;border-radius:13px;
+    padding:4px;margin-bottom:12px}
+  .hbseg{flex:1 1 0;border:0;background:none;border-radius:9px;padding:9px 4px;font-family:var(--n);
+    font-weight:800;font-size:12px;color:var(--muted);display:flex;align-items:center;
+    justify-content:center;gap:5px;position:relative}
+  .hbseg .n{font-weight:900;opacity:.85}
+  .hbseg.on{background:var(--navy);color:var(--white)}
+  .hbseg.alert{box-shadow:0 0 0 1.6px var(--lava),0 5px 15px -3px rgba(196,66,87,.5)}
+  .hbseg .adot{width:6px;height:6px;border-radius:50%;background:var(--lava);display:inline-block}
+  .hbgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rq{background:var(--white);border:1px solid #eef0f5;border-radius:13px;padding:13px;display:flex;
+    align-items:center;gap:11px}
+  .rq .ico{width:40px;height:40px;border-radius:12px;background:#e8f5ee;flex:0 0 auto;display:flex;
+    align-items:center;justify-content:center;font-size:17px}
+  .rq .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .rq .ttl{display:block;font-family:var(--n);font-weight:900;font-size:13.5px;line-height:1.2}
+  .rq .sub{display:block;font-size:11px;color:var(--muted);line-height:1.35}
+  .rq .amt{font-family:var(--n);font-weight:900;font-size:14px;white-space:nowrap}
+  .stack{display:flex;align-items:center}
+  .stack i{width:24px;height:24px;border-radius:50%;background:var(--aqua);border:2px solid var(--white);
+    margin-left:-8px;display:block}
+  .stack i:first-child{margin-left:0}
+  .hbfoot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;padding-top:10px;
+    border-top:1px dashed #eae3d5}
+  .hbfoot .more{font-family:var(--n);font-weight:800;font-size:11.5px;color:var(--pine)}
+  .hbfoot .dots{display:flex;gap:5px}
+  .hbfoot .dots b{width:6px;height:6px;border-radius:50%;background:#d6dbe6;display:block}
+  .hbfoot .dots b.on{background:var(--navy)}
+
+  /* ── the two hero cards ── */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{border-radius:20px;padding:26px 26px 28px;display:flex;flex-direction:column;gap:14px;
+    min-height:286px;box-shadow:0 3px 8px rgba(0,36,97,.06),0 14px 30px rgba(0,36,97,.12)}
+  .card.sm{min-height:236px;padding:22px 24px 24px}
+  .card.req{background:linear-gradient(150deg,#053a75 0%,var(--navy) 60%);color:var(--white)}
+  .card.dl{background:linear-gradient(135deg,#FFFBF3 0%,var(--sand) 55%,#F6E9D0 100%);border:1.5px solid #EAD9B6}
+  .chip{display:inline-flex;align-self:flex-start;background:var(--white);border-radius:10px;padding:7px 12px;
+    box-shadow:0 1px 3px rgba(0,36,97,.12)}
+  .chip img{height:19px;width:auto;display:block}
+  .quads{display:grid;grid-template-columns:1fr 1fr;gap:4px;border-radius:12px;overflow:hidden}
+  .quads i{display:block;height:56px;background:linear-gradient(135deg,#1b4a86,#0a2f63)}
+  .quads i:nth-child(2){background:linear-gradient(135deg,#2f6aa8,#17457f)}
+  .quads i:nth-child(3){background:linear-gradient(135deg,#27589a,#113a6f)}
+  .card.sm .quads i{height:42px}
+  .mq{display:flex;flex-direction:column;gap:5px}
+  .mqrow{display:flex;gap:6px;background:var(--green);border-radius:9px;padding:6px 7px;overflow:hidden}
+  .mqrow b{flex:0 0 auto;width:27px;height:27px;border-radius:50%;background:rgba(0,36,97,.22)}
+  .card.sm .mqrow b{width:22px;height:22px}
+  .ch{font-family:var(--n);font-weight:900;font-size:21px;line-height:1.18;letter-spacing:-.3px}
+  .card.sm .ch{font-size:18px}
+  .cs{font-size:13px;line-height:1.5}
+  .card.req .cs{color:rgba(255,255,255,.82)}
+  .card.dl .cs{color:var(--body)}
+  .cta{display:inline-block;align-self:flex-start;margin-top:auto;font-family:var(--n);font-weight:800;
+    font-size:13.5px;padding:12px 22px;border-radius:12px}
+  .cta.green{background:var(--green);color:var(--navy)}
+  .cta.line{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+
+  .note{padding:15px 22px;background:#faf8f2;border-top:1px solid var(--rule);font-size:13px;
+    line-height:1.6;color:#4a5160}
+  .note b{color:var(--navy)}
+  .foot{margin-top:38px;border-top:1px solid var(--rule);padding-top:18px;font-size:13.5px;
+    line-height:1.65;color:#4a5160}
+  .foot b{color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="eyebrow">Gopher Request · home · concept 4, your model</p>
+  <h1 class="t">Cards lead. Activity slides them down — by a fixed amount.</h1>
+  <p class="lede">
+    The two cards are the home screen. When there's activity it appears <b>above</b> them in one
+    bounded container, ported from the prototype's <code>#hubSlot</code> — real buckets, counts in
+    the tabs, alert dot on anything needing your action. <b>Messages is the fourth segment</b>, and
+    <b>cards show 2-up instead of a carousel</b> since this is 1200px not a phone. Because the
+    container's height doesn't grow with the number of requests, the cards sit at a predictable
+    depth however busy the user is — which is what buys the room to make them bigger.
+    <b>Nothing is implemented.</b>
+  </p>
+
+  <!-- ═══ STATE A ═══════════════════════════════════════════════════════ -->
+  <div class="state">
+    <div class="shead">
+      <span class="snum">State A · quiet</span>
+      <div class="stitle">
+        <h2>Nothing live — the cards are the whole screen</h2>
+        <p>No activity in any bucket, so the container isn't rendered at all (the prototype hides it
+           when Active + Scheduled + Submitted are zero). The cards get the full canvas and a real
+           hero treatment. <b>The sidebar's + New Request and Deals buttons stay hidden here</b> —
+           they'd duplicate what the user is looking at, which is the rule your code already states.</p>
+      </div>
+    </div>
+    <div class="frame"><div class="screen">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox</a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <p class="welcome">Welcome back, Jamie 👋</p>
+            <h2 style="font-family:var(--n);font-weight:900;font-size:34px;letter-spacing:-.7px;line-height:1.1;margin-top:3px">So, how can we help you today?</h2>
+            <p style="margin-top:1px"><span class="scribble" style="font-size:26px">— two ways to go from here.</span></p>
+          </div>
+          <div class="avatar"></div>
+        </div>
+        <div class="two" style="margin-top:18px">
+          <div class="card req">
+            <span class="chip"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt=""></span>
+            <div class="quads"><i></i><i></i><i></i><i></i></div>
+            <div class="ch">Get connected to a<br>great local worker</div>
+            <div class="cs">Delivery, moving, junk removal, home services, day labor, rides and more.</div>
+            <span class="cta green">+ Make a request</span>
+          </div>
+          <div class="card dl">
+            <span class="chip"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-deals-logo.svg" alt=""></span>
+            <div class="mq"><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+            <div class="ch">View hot local<br>deals near you</div>
+            <div class="cs">Buy from the merchant direct — a Gopher brings it the last mile.</div>
+            <span class="cta line">View Local Deals</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>Note the sidebar:</b> no Dashboard item and no CTAs. With the chooser and the
+      dashboard merged into one screen there's nothing for Dashboard to point at, and the two
+      actions are right there on the canvas.</p>
+  </div>
+
+  <!-- ═══ STATE B ═══════════════════════════════════════════════════════ -->
+  <div class="state">
+    <div class="shead">
+      <span class="snum">State B · busy</span>
+      <div class="stitle">
+        <h2>Four live things — cards slide down once, and stop</h2>
+        <p>Two active, one scheduled, one submitted, three unread. The container takes a fixed
+           ~200px whether that's four items or forty — a fifth request adds a dot, not height. The
+           cards are still fully visible and still substantial. <b>Submitted carries the alert dot</b>
+           (a counter-offer is waiting) so it's visible from the Active tab. <b>And the sidebar CTAs
+           appear here</b>, because the cards are no longer the first thing on screen.</p>
+      </div>
+    </div>
+    <div class="frame"><div class="screen">
+      <nav class="sb">
+        <div class="brandrow"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt="Gopher Request"></div>
+        <div class="sbcta"><span class="req">+ New Request</span><span class="deal">Gopher Deals</span></div>
+        <a class="on"><span class="dot">⌂</span>Home</a>
+        <a><span class="dot">↻</span>Request History</a>
+        <a><span class="dot">★</span>MY Gophers</a>
+        <a><span class="dot">✉</span>Inbox<span class="badge">3</span></a>
+        <div class="grp">Account</div>
+        <a><span class="dot">○</span>Personal info</a>
+        <a><span class="dot">◇</span>TrustShield™ verified</a>
+        <a><span class="dot">⌖</span>Saved addresses</a>
+        <a><span class="dot">▭</span>Payment info</a>
+        <div class="grp">Rewards</div>
+        <a><span class="dot">♡</span>Refer Gopher</a>
+        <div class="foot"><span>← Back to main page</span><span>← Sign out</span></div>
+      </nav>
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <p class="welcome">Welcome back, Jamie 👋</p>
+            <h2 style="font-family:var(--n);font-weight:900;font-size:26px;letter-spacing:-.5px;line-height:1.15;margin-top:3px">Here's what's live right now</h2>
+            <p style="margin-top:0"><span class="scribble" style="font-size:20px">— Marcus is nearly there.</span></p>
+          </div>
+          <div class="avatar"></div>
+        </div>
+
+        <div class="hub">
+          <div class="hbsegs">
+            <button class="hbseg on">Active <span class="n">(2)</span></button>
+            <button class="hbseg">Scheduled <span class="n">(1)</span></button>
+            <button class="hbseg alert">Submitted <span class="n">(1)</span><span class="adot"></span></button>
+            <button class="hbseg alert">Messages <span class="n">(3)</span><span class="adot"></span></button>
+          </div>
+          <div class="hbgrid">
+            <div class="rq">
+              <span class="ico">🛋️</span>
+              <span class="tx"><span class="ttl">Couch pickup &amp; delivery</span><span class="sub">Marcus is on the way · about 4:20 pm</span></span>
+              <span class="stack"><i></i><i style="background:var(--corn)"></i></span>
+              <span class="amt">$84</span>
+            </div>
+            <div class="rq">
+              <span class="ico">🧹</span>
+              <span class="tx"><span class="ttl">Garage clear-out</span><span class="sub">2 Gophers accepted · starts 5:30 pm</span></span>
+              <span class="stack"><i></i><i style="background:var(--corn)"></i><i style="background:#f2c98a"></i></span>
+              <span class="amt">$160</span>
+            </div>
+          </div>
+          <div class="hbfoot">
+            <span class="more">View request history →</span>
+            <span class="dots"><b class="on"></b><b></b></span>
+          </div>
+        </div>
+
+        <div class="two">
+          <div class="card req sm">
+            <span class="chip"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-request-logo.svg" alt=""></span>
+            <div class="quads"><i></i><i></i><i></i><i></i></div>
+            <div class="ch">Need something else done?</div>
+            <span class="cta green">+ Make a request</span>
+          </div>
+          <div class="card dl sm">
+            <span class="chip"><img src="https://johncnewbury.github.io/Gopher-Marketplace/assets/img/gopher-deals-logo.svg" alt=""></span>
+            <div class="mq"><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="mqrow"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+            <div class="ch">14 local deals near you</div>
+            <span class="cta line">View Local Deals</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="note"><b>The cards shrink, they don't disappear</b> — shorter copy, tighter padding,
+      same shape and same CTAs. A returning user still recognises the screen they learned on.
+      That's the part worth checking with your own eye: whether they shrink too much, or not enough.</p>
+  </div>
+
+  <p class="foot">
+    <b>Nothing here is implemented.</b> Two things I decided while building and would flag rather than
+    bury: the busy state's headline changes from "So, how can we help you today?" to "Here's what's
+    live right now", because asking how it can help while the user's couch is in transit reads oddly
+    — and the <b>Dashboard nav item disappears in both states</b>, since merging the chooser into the
+    dashboard leaves it pointing at the screen you're already on. Its badge count moves into the
+    segment tabs, which is arguably where it belonged.
+    <br><br>
+    The alert ring is <b>Lava Alert #C44257</b>, not the prototype's #E5484D — the prototype predates
+    the brand pass.
+  </p>
+
+</div>
+</body>
+</html>
