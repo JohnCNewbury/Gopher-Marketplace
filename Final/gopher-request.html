@@ -21125,7 +21125,35 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     updateInboxBadge();
   }
 
-  // Update sidebar badge — count of inbox rows (threads with at least 1 msg).
+  /* ⛔ SINGLE SOURCE OF TRUTH for "what is in the Inbox right now".
+     The list and the sidebar badge both derive from getThreads(), and they used
+     to filter it through DIFFERENT rules: renderInbox() excluded purged AND
+     deleted threads, updateInboxBadge() excluded neither. So deleting every
+     message emptied the list and left the badge reading 1 — owner reported it
+     2026-10-03, reproduced in-browser. The repaint was never missing; the two
+     surfaces simply disagreed about what counts.
+     Any new surface that lists or summarises the Inbox calls THIS, never
+     getThreads() directly. Purge expiry is evaluated here so one pass serves
+     every caller. */
+  function partitionInboxThreads(){
+    dashState.inboxDeleted = dashState.inboxDeleted || {};
+    dashState.inboxPurged  = dashState.inboxPurged  || {};
+    const D = window.GopherInboxDelete;
+    if(D){
+      Object.keys(dashState.inboxDeleted).forEach(id => {
+        if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
+      });
+    }
+    const visible = getThreads().filter(x => !dashState.inboxPurged[x.id]);
+    return {
+      visible: visible,
+      live:    visible.filter(x => !dashState.inboxDeleted[x.id]),
+      deleted: visible.filter(x =>  dashState.inboxDeleted[x.id]),
+    };
+  }
+
+  // Update sidebar badge — count of LIVE inbox rows (deleted and purged excluded,
+  // via the same partition the list uses).
   function updateInboxBadge(){
     // NOTE: nav items use data-rqSECTION (the section router); dash sections use
     // data-rqSEC. The badge lookup used the wrong attribute, so it silently
@@ -21133,7 +21161,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const nav = document.getElementById('rqInboxNavBadge')
              || document.querySelector('.dash-nav-item[data-rqsection="inbox"] .dni-badge');
     if(!nav) return;
-    const n = getThreads().length;
+    const n = partitionInboxThreads().live.length;
     nav.textContent = String(n);
     nav.hidden = n === 0;
   }
@@ -21142,24 +21170,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   function renderInbox(){
     const body = document.getElementById('rqInboxBody');
     if(!body) return;
-    const allThreads = getThreads();
     /* G40-100 — threads here are DERIVED from requests, so a delete cannot splice
        an array; it records the thread id against a deletedAt stamp and the list is
-       filtered on read. Purge (90 days) is evaluated at the same moment. */
+       filtered on read. Purge (90 days) is evaluated at the same moment.
+       The filtering itself now lives in partitionInboxThreads() so the sidebar
+       badge cannot drift from this list again. */
     const D = window.GopherInboxDelete;
-    dashState.inboxDeleted = dashState.inboxDeleted || {};
     dashState.inboxTab = dashState.inboxTab || 'inbox';
-    if(D){
-      Object.keys(dashState.inboxDeleted).forEach(id => {
-        if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
-      });
-    }
-    dashState.inboxPurged = dashState.inboxPurged || {};
-    const isDel  = id => !!dashState.inboxDeleted[id];
-    const purged = id => !!dashState.inboxPurged[id];
-    const visible = allThreads.filter(x => !purged(x.id));
-    const liveThreads = visible.filter(x => !isDel(x.id));
-    const delThreads  = visible.filter(x =>  isDel(x.id));
+    const part = partitionInboxThreads();
+    const liveThreads = part.live;
+    const delThreads  = part.deleted;
     const threads = dashState.inboxTab === 'deleted' ? delThreads : liveThreads;
 
     // Determine active thread (defaults to most recent if not set).

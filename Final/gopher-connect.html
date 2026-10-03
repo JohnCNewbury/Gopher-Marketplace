@@ -20688,19 +20688,15 @@ const PAY_BADGES = {
 
   function renderInbox(){
     const body = document.getElementById('inboxBody');
-    const allThreads = getThreads();
     /* G40-100 — threads are DERIVED from requests, so deletion is recorded against
-       the thread id and filtered on read; the 90-day purge is evaluated here too. */
+       the thread id and filtered on read; the 90-day purge is evaluated here too.
+       The filtering lives in partitionInboxThreads() so the sidebar badge cannot
+       drift from this list again. */
     const D = window.GopherInboxDelete;
-    dashState.inboxDeleted = dashState.inboxDeleted || {};
-    dashState.inboxPurged  = dashState.inboxPurged  || {};
-    dashState.inboxTab     = dashState.inboxTab     || 'inbox';
-    if(D) Object.keys(dashState.inboxDeleted).forEach(id => {
-      if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
-    });
-    const visible     = allThreads.filter(x => !dashState.inboxPurged[x.id]);
-    const liveThreads = visible.filter(x => !dashState.inboxDeleted[x.id]);
-    const delThreads  = visible.filter(x =>  dashState.inboxDeleted[x.id]);
+    dashState.inboxTab = dashState.inboxTab || 'inbox';
+    const part        = partitionInboxThreads();
+    const liveThreads = part.live;
+    const delThreads  = part.deleted;
     const threads     = dashState.inboxTab === 'deleted' ? delThreads : liveThreads;
 
     // The active thread may be a user-started request with NO messages yet
@@ -21015,10 +21011,35 @@ const PAY_BADGES = {
   }
 
   // Inbox unread badge = number of conversations (simple demo count).
+  /* ⛔ SINGLE SOURCE OF TRUTH for "what is in the Inbox right now".
+     The list and the sidebar badge both derive from getThreads(), and they used
+     to filter it through DIFFERENT rules: renderInbox() excluded purged AND
+     deleted threads, updateInboxBadge() excluded neither. So deleting every
+     message emptied the list and left the badge showing a count — owner
+     reported it on Request 2026-10-03; Connect carried the identical defect.
+     Any new surface that lists or summarises the Inbox calls THIS, never
+     getThreads() directly. */
+  function partitionInboxThreads(){
+    dashState.inboxDeleted = dashState.inboxDeleted || {};
+    dashState.inboxPurged  = dashState.inboxPurged  || {};
+    const D = window.GopherInboxDelete;
+    if(D) Object.keys(dashState.inboxDeleted).forEach(id => {
+      if(D.isPurged(dashState.inboxDeleted[id])) delete dashState.inboxDeleted[id];
+    });
+    const visible = getThreads().filter(x => !dashState.inboxPurged[x.id]);
+    return {
+      visible: visible,
+      live:    visible.filter(x => !dashState.inboxDeleted[x.id]),
+      deleted: visible.filter(x =>  dashState.inboxDeleted[x.id]),
+    };
+  }
+
+  // Count of LIVE inbox rows — deleted and purged excluded, via the same
+  // partition the list uses.
   function updateInboxBadge(){
     const badge = document.getElementById('inboxBadge');
     if(!badge) return;
-    const n = getThreads().length;
+    const n = partitionInboxThreads().live.length;
     badge.textContent = n;
     badge.style.display = n > 0 ? '' : 'none';
   }
