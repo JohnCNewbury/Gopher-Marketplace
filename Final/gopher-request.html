@@ -13941,9 +13941,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // ──── Step 3 Worker info gating ────
     workerSetup:  ['delivery','home','ride'],                        // hidden for Delivery, Home, Ride
     laborMgmt:    ['delivery','home','ride'],                        // hidden for Delivery, Home, Ride
-    // "How is the worker selected?" choice — ONLY for Delivery/Courier, Junk Removal, Ride Sharing.
-    // All other categories require the user to select their worker (no "first available" option).
-    workerSelectChoice: ['moving','home','labor','yard','other'],
+    /* "How is the worker selected?" choice.
+       ⛔ MOVING now SHOWS it (owner 2026-10-03, via the 909 desk, spec v3.18
+       INV-8 / MV-03): "Web and PT missing the select my worker and MY Gopher".
+       Moving is the one visible category with NO First Available — live Moving
+       has never had it — so the `first` row is suppressed for Moving in
+       renderStep3() and render() coerces any stale 'first' away. The remaining
+       categories here still force 'select'. */
+    workerSelectChoice: ['home','labor','yard','other'],
     // ──── Step 4 Location-section visibility ────
     pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
     noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
@@ -14684,12 +14689,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- How worker is selected — ONLY for Delivery/Courier, Junk Removal, Ride Sharing -->
       ${isVisible('workerSelectChoice') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">🎯</span>How do you want to select your worker? (${myUnlocked ? '3 of 3' : '2 of 3'} options available)</div>
+        ${''/* The count must describe what is actually RENDERED. Moving drops
+             First Available, so the hard-coded "3 of 3" claimed an option the
+             user could not see. Derive it instead. */}
+        ${(() => {
+          const total = state.category === 'moving' ? 2 : 3;
+          const avail = (state.category === 'moving' ? 1 : 2) + (myUnlocked ? 1 : 0);
+          return `<div class="step-section-title"><span class="sst-ico">🎯</span>How do you want to select your worker? (${avail} of ${total} options available)</div>`;
+        })()}
         <div class="radio-group rg-stack">
+          ${state.category === 'moving' ? '' : `
           <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
             <span class="radio-dot"></span>
             <span class="rr-label">First available worker — fastest match</span>
           </div>
+          `}
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
             <span class="rr-label">I'll select my worker — review ratings, reviews and job history before selecting</span>
@@ -15707,6 +15721,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // the user must select their worker, so force that selection.
     if(!isVisible('workerSelectChoice')) {
       state.workerSelection = 'select';
+    } else if(state.category === 'moving' && state.workerSelection === 'first'){
+      /* Moving offers no First Available, and 'first' is the app-wide default,
+         so a Moving request would otherwise open on an option it does not show
+         — an empty radio group with nothing selected. Spec default: Prioritize
+         MY Gopher(s) when the requester has any, otherwise I'll select. */
+      const myN = (window.__myGophersCount ? window.__myGophersCount() : 0);
+      state.workerSelection = myN > 0 ? 'my' : 'select';
     }
     // Never sit on an auto-hidden empty detail section — advance past it.
     if(state.step > 1 && state.step < 7 && stepIsEmpty(state.step)){
