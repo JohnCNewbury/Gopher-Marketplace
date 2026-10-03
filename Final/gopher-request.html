@@ -12376,7 +12376,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // ── Account "Payment info" list renderer (reads the same store) ──
     window.__renderPayMethods = function(){
       const wrap = document.getElementById('rqPayList'); if(!wrap) return;
-      if(!store.length){ wrap.innerHTML = '<div class="pay-empty">No payment methods yet.</div>'; return; }
+      /* ⛔ The empty state used to RETURN before the "+ Add payment method"
+         button was appended and wired, so removing your last card left the
+         Payment info screen with ZERO controls — measured: no buttons, no
+         links, just the words "No payment methods yet." on the one page whose
+         whole job is managing cards. Nothing on it could add one back; the only
+         route left was starting a request and using the Step 6 checkout picker.
+         __removePayMethod has no "keep at least one" guard and explicitly
+         handles store.length === 0, so this is a reachable state, not a
+         theoretical one. The button is now rendered and wired on BOTH paths. */
+      const addBtn = '<button type="button" class="add-pay-btn" id="rqAddPayBtn">+ Add payment method</button>';
+      if(!store.length){
+        wrap.innerHTML = '<div class="pay-empty">No payment methods yet.</div>' + addBtn;
+        wrap.querySelector('#rqAddPayBtn').addEventListener('click', () => window.__openAddPaymentModal());
+        return;
+      }
       wrap.innerHTML = store.map(m => {
         const actions = m.isDefault ? '<span class="pc-default">Default</span>'
           : '<button type="button" class="pc-action" data-pay-default="' + m.key + '">Make default</button>';
