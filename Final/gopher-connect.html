@@ -2204,8 +2204,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; justify-content:space-between; align-items:center;
     margin-bottom:8px;
   }
+  /* Owner 2026-10-03 — mirrors gopher-request.html. Nothing changed font: this
+     title and .mockup-content h3 are both Nunito. The heading went 22px → 32px
+     with the 2026-07-20 owner deck and this stayed at 13px, so the pair went
+     from 1.7x to 2.5x and the title dropped to Caption size (12-13.5) for the
+     title of the whole flow container. 18px is the floor of H3 (18-20). */
   .progress-meta-title {
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy);
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:18px; color:var(--navy);
   }
   .progress-meta-left { display:flex; align-items:center; gap:8px; min-width:0; }
   .progress-meta-cat {
@@ -5206,6 +5211,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-family:'DM Sans'; font-size:12px; color:var(--muted);
     font-weight:500;
   }
+  /* Owner 2026-10-03: "the 'Welcome back' is ONLY on the home screen." It is a
+     sibling above every .dash-section, so it rendered on every one of them.
+     Keyed off which section is .active, not a JS-set class, so it cannot fall
+     out of step with whichever path opened the dashboard. */
+  .dashboard .dash-greeting { display:none; }
+  .dashboard:has(.dash-section[data-section="choose"].active) .dash-greeting { display:block; }
   .dash-section-title {
     font-family:'Nunito'; font-weight:800; font-size:22px;
     color:var(--navy); margin-top:2px;
@@ -7035,13 +7046,45 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* Part 2: horizontal jump-tabs — hidden in the demo, shown in the dashboard */
   /* Horizontal step tabs show in BOTH the demo and the dashboard new-request
      view, so the demo is a true replica of the dashboard flow. */
-  .mockup-step-tabs {
-    display:flex; flex-wrap:wrap; gap:9px;
-    padding:16px 22px 4px;
-  }
+  /* Owner 2026-10-03 — mirrors gopher-request.html. Side padding was 22px while
+     .mockup-progress and .mockup-content use 28px, so the first chip sat 6px
+     left of the rest of the column; and the chips were content-width packed
+     left while .progress-track renders seven EQUAL full-width segments for the
+     same seven steps, so the two drifted apart step by step. In the dashboard
+     each chip is now flex:1 on the track's own 4px gap — chip i under segment
+     i, row ending where the track ends. */
+  /* ⛔ Scoping NOTE — this differs from gopher-request.html on purpose. There the
+     flow node is relocated INTO .dash-section[data-rqsec="new-request"], so the
+     aligned mode can be scoped to the dashboard and the marketing demo can keep
+     its packed row (its "Start over" button shares that flex row). Connect has
+     no "Start over" and the flow can be rendered from #flow-demo OR from
+     #dashFlowHost depending on how the section was entered — verified in-browser,
+     the section-scoped selector matched NOTHING while the row rendered in
+     #flow-demo. So the aligned mode is unscoped here. The pre-existing
+     dashboard-scoped selector is carried along in each group rather than left to
+     out-specify the fallback below and pin it to nowrap under 1100px. */
+  .mockup-step-tabs,
   .dash-section[data-section="new-request"] .mockup-step-tabs {
-    display:flex; flex-wrap:wrap; gap:9px;
-    padding:16px 22px 4px;
+    display:flex; flex-wrap:nowrap; gap:4px;
+    padding:16px 28px 4px;
+  }
+  .mockup-step-tabs .mst-tab,
+  .dash-section[data-section="new-request"] .mst-tab {
+    flex:1 1 0; min-width:0;
+    padding-left:8px; padding-right:8px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* Measured: "Pick a service" is the tightest label and starts ellipsing at a
+     main column of ~1065px, so the fallback has to fire ABOVE that, not at the
+     1024px it was first written to — otherwise there is a ~40px band where every
+     step reads "Pick a servi…". Falls back to the packed row instead. */
+  @media (max-width:1100px){
+    .mockup-step-tabs,
+    .dash-section[data-section="new-request"] .mockup-step-tabs { flex-wrap:wrap; gap:9px; }
+    .mockup-step-tabs .mst-tab,
+    .dash-section[data-section="new-request"] .mst-tab {
+      flex:0 0 auto; padding-left:16px; padding-right:16px;
+    }
   }
   .mst-tab {
     border:none; cursor:pointer;
@@ -9668,7 +9711,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         <div class="mockup-progress">
           <div class="progress-meta">
             <div class="progress-meta-left">
-              <span class="progress-meta-title" id="progressTitle">New request Details</span>
+              <span class="progress-meta-title" id="progressTitle">New Request Details</span>
               <span class="progress-meta-cat" id="progressCat" hidden></span>
             </div>
             <span class="progress-meta-count" id="progressCount">Step 1 of 5</span>
@@ -12038,7 +12081,7 @@ const PAY_BADGES = {
       return `<div class="progress-seg ${cls}"></div>`;
     }).join('');
     $progressCount.textContent = `Step ${state.step} of 7`;
-    $progressTitle.textContent = state.step === 7 ? 'Request Submitted' : 'New request Details';
+    $progressTitle.textContent = state.step === 7 ? 'Request Submitted' : 'New Request Details';
     // Keep the picked category visible through every step (badge beside the title).
     const catData = state.category ? CATEGORIES[state.category] : null;
     if($progressCat){

@@ -3394,8 +3394,22 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; justify-content:space-between; align-items:center;
     margin-bottom:8px;
   }
+  /* Owner 2026-10-03: "why the headers on the submitting a request changes to a
+     different font. I liked what we have before."
+
+     NOTHING changed font. Verified rendered on the live host: this title and the
+     step heading are BOTH Nunito, same colour, and all three webfonts load. What
+     changed is the SIZE RATIO. This title has never moved — 13px since the first
+     import — but .mockup-content h3 went 22px → 32px in 10ec2a7 (owner deck,
+     2026-07-20). So the pair read 22/13 (1.7x) and now reads 32/13 (2.5x), and
+     at 13px Nunito loses the rounded character that makes it read as Nunito.
+
+     13px is Caption in the brand scale (12-13.5) — caption size for the title of
+     the whole flow container. 18px puts it at the bottom of H3 (18-20), which is
+     what it is, and brings the pair back to ~1.8x without touching the 32px
+     heading he approved in July. */
   .progress-meta-title {
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy);
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:18px; color:var(--navy);
   }
   .progress-meta-left { display:flex; align-items:center; gap:8px; min-width:0; }
   .progress-meta-cat {
@@ -7210,6 +7224,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-family:'DM Sans'; font-size:14px; color:var(--muted);
     font-weight:600; margin:0 0 2px;
   }
+  /* Owner 2026-10-03: "the 'Welcome back' is ONLY on the home screen. It doesn't
+     need to be shown anywhere else which allows the new request details container
+     to move up appropriately a little."
+
+     It is a sibling ABOVE every .dash-section, so it was rendering on Request
+     History, Payment info, Refer and the new-request flow as well. Keyed off
+     which section is actually .active rather than a JS-set class, so it cannot
+     fall out of step with whichever path opened the dashboard. :has() is already
+     used elsewhere in this file. */
+  .dashboard .dash-greeting { display:none; }
+  .dashboard:has(.dash-section[data-rqsec="choose"].active) .dash-greeting { display:block; }
   .dash-topbar-right .dash-avatar-lead {
     /* The topbar circle is the TALLEST thing in the bar, so it — not the padding —
        sets the bar's height. .dash-avatar-lead is 46px and outranks the 36px base
@@ -9012,9 +9037,46 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
   /* Part 2: horizontal jump-tabs — now shown in BOTH the demo and the dashboard
      so the public "See it in action" mockup matches the real portal exactly. */
+  /* Owner 2026-10-03: "it's not centered. doesn't look thoughtfully done."
+     Two separate defects, both measured on the live host:
+
+     1. Side padding was 22px while .mockup-progress, .mockup-content and the
+        heading all use 28px — so the FIRST chip started 6px left of everything
+        else on the screen. 28px now, so the row registers with the column.
+
+     2. .progress-track renders seven EQUAL segments spanning the full content
+        width; these seven chips were content-width, packed left on a 9px gap.
+        They are the same seven steps and they drifted apart progressively —
+        step 2 off by 43px, step 7 off by 329px, and the row finished 390px
+        short of the track. The dashboard rule below gives each chip flex:1 on
+        the track's own 4px gap, so chip i sits under segment i and the row ends
+        where the track ends.
+
+     ⛔ The aligned mode is scoped to the DASHBOARD deliberately. In the
+     marketing demo the "Start over" button shares this flex row (it is
+     display:none in the dashboard only), so distributing to full width there
+     would slide the last chip under it. The demo keeps the packed row. */
   .mockup-step-tabs {
     display:flex; flex-wrap:wrap; gap:9px;
-    padding:16px 22px 4px;
+    padding:16px 28px 4px;
+  }
+  .dash-section[data-rqsec="new-request"] .mockup-step-tabs {
+    flex-wrap:nowrap; gap:4px;
+  }
+  .dash-section[data-rqsec="new-request"] .mst-tab {
+    flex:1 1 0; min-width:0;
+    padding-left:8px; padding-right:8px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* Measured: "Pick a service" is the tightest label and starts ellipsing at a
+     main column of ~1065px, so the fallback has to fire ABOVE that, not at the
+     1024px it was first written to — otherwise there is a ~40px band where every
+     step reads "Pick a servi…". Falls back to the packed row instead. */
+  @media (max-width:1100px){
+    .dash-section[data-rqsec="new-request"] .mockup-step-tabs { flex-wrap:wrap; gap:9px; }
+    .dash-section[data-rqsec="new-request"] .mst-tab {
+      flex:0 0 auto; padding-left:16px; padding-right:16px;
+    }
   }
   /* Step-pills row + demo-only "Start over" (right-aligned, matching the pills' top). */
   .mockup-steprow { display:flex; align-items:flex-start; }
