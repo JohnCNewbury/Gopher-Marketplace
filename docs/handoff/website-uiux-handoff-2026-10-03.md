@@ -101,9 +101,40 @@ Do not rebuild that.
 
 ⛔ **Request History stays in the sidebar**, off the main canvas (owner).
 
-**Consequence not yet actioned:** this merges the `choose` section into the
-`home` section, so sidebar **Home** and **Dashboard** become one destination and
-the Dashboard badge needs a home. Flagged, not decided.
+◼ **CORRECTED 2026-10-03, after the build.** This paragraph read:
+
+> *"Consequence not yet actioned: this merges the `choose` section into the
+> `home` section, so sidebar Home and Dashboard become one destination and the
+> Dashboard badge needs a home. Flagged, not decided."*
+
+**The merge never happened, and it was never required.** The container went
+INTO the existing `choose` section, so `choose` is still the home screen and
+`home` is still the overview. Nothing was merged.
+
+⚠️ **Why the wrong sentence mattered:** it was a prediction about unwritten
+work, stated as flatly as the facts around it. A second session planned real
+work from it — recording that the greeting selector and the `is-choosing`
+toggle "will break silently" — when neither was ever going to move. Both still
+key on `"choose"` and both are correct. **Write what the code IS coupled to;
+do not write what a change nobody has made would do to it.**
+
+**What was actually built** (`dabc45d`, `16553e7`):
+
+- The container lives in the `choose` section, above the two cards.
+- The **Dashboard sidebar entry is removed** on Request — owner ruling, because
+  at a ceiling of 2 the KPI tiles describe two cards you can already see.
+- The **`home` section still exists and is still reachable.** "View all" and the
+  internal flows route to it; it has no sidebar entry. No `showSection('home')`
+  call site changed.
+- The badge moved onto **Home** and counts **attention**, not `reqs.length`,
+  hidden at zero like every other badge in that sidebar.
+- ⛔ **Connect keeps its Dashboard** — owner ruling. A business has Users &
+  access, so several people request and the ceiling-of-2 argument does not hold.
+
+⚠️ **The container's attention sub-line is deliberately generic.** Final's store
+carries `needsAttention` as a **boolean with no type**, so there is no honest
+way to say which of the five moments it is. When a type reaches the store, that
+one line in `renderHomeLive()` becomes the real sentence.
 
 ---
 
@@ -115,7 +146,7 @@ the Dashboard badge needs a home. Flagged, not decided.
 | `confirm` vs `adjust` look like the same event | product question, unanswered | **John** |
 | `bid` carries two unrelated events | product question, unanswered | **John** |
 | Missing-name fallback spelled 4 ways | minor cleanup | any |
-| Home design → build | designed, not built | **John to schedule** |
+| Home design → build | **BUILT** 2026-10-03 (`dabc45d`, `16553e7`), on the branch — ⚠️ **not deployed**, see §7 | — |
 | Deploy permission rule | **blocked** — the auto-mode classifier refuses both the deploy and reading permission settings (Self-Modification). Owner wants it; must be added by him. Exact rule and command in this session's transcript. | **John** |
 
 ---
@@ -141,3 +172,44 @@ the Dashboard badge needs a home. Flagged, not decided.
 
 **Nothing is waiting on me.** The brand pass is live and verified; the home design
 is settled and documented; the only unfixed defect is named above with its fix.
+
+
+---
+
+## 7 · ⛔ The deploy tree is NOT the branch
+
+Added 2026-10-03, after the home screen was pushed to the branch and a deploy
+shipped without it. The owner's words: *"they deployed and it was NOT what you
+created."*
+
+**Nothing was reverted.** `scripts/deploy.sh` publishes the **WORKING TREE of
+the shared Code checkout**, not a branch and not any session's worktree:
+
+```
+/Users/johnnewbury/Desktop/All New Gopher/Documentation/Claude Code Review:Cleanup/Code
+```
+
+At that deploy it held one session's header work and another's GO-To fixes —
+because those sessions' content was physically in that tree — and none of the
+home screen, which existed only on `origin/feature/deals-google-maps-audience`
+and in the authoring worktree.
+
+⚠️ **Pulling a commit into your own worktree verifies the code and ships
+nothing.** A peer pulled and ran a full regression on the home-screen tip; the
+shared clone was still on `950b8d8` — a different line entirely, carrying a
+third session's commits — with 25 uncommitted files and none of the new
+markers. A deploy at that moment would have missed exactly the same two
+commits for exactly the same reason.
+
+**Before any deploy, check the TREE, not the branch:**
+
+```
+grep -c '<a marker string from your change>' "<shared clone>/Final/<file>"
+```
+
+Zero means your change is not going out, however green the branch is.
+
+⛔ **Do not quietly update that clone to fix this.** It routinely carries other
+sessions' diverged commits and uncommitted files, and `git add` in a shared
+clone hands someone else's file to whoever commits next. Whoever updates it
+should be whoever knows what the uncommitted files are.
