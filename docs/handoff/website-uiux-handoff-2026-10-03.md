@@ -250,3 +250,64 @@ against.
 
 ⚠️ `d632860`'s commit message carries the superseded mechanism and cannot be
 rewritten — it is on the shared branch. This section supersedes it.
+
+---
+
+## 8 · ⛔ The deploy scope check is per-COMMIT, not per-FILE
+
+Added 2026-10-03 after a deploy from this session shipped `b9c15e1` ("Moving
+Step 3"), which the **909 desk had placed on hold** and which the owner had
+already told another session to revert. It was reverted and redeployed within
+the hour. ⭐ Nothing was lost, and that is not the point.
+
+**How it happened, stated plainly, because the mechanism will recur:**
+
+The deploy scope was three files — two HTML and one JS — and nothing about them
+looked unusual. **The unit of the problem was a COMMIT; the check was per-FILE.**
+Five commits from another session rode along inside those three files, and one
+of them was held.
+
+⛔ **What was reported to the owner before he approved:**
+
+> *"five commits landed from Code/Logic while I worked — including the Inbox
+> badge fix … plus three other behaviour fixes."*
+
+One of five named. The remainder described as a count — **a count that did not
+even add up** (1 + 3 ≠ 5). "Moving Step 3" never appeared in front of him. He
+approved **a count and a diffstat, not a list**. Had the five subject lines been
+pasted, he would have stopped it in a second: he had just ordered that revert.
+
+**The two rules this produces:**
+
+1. ⛔ **Enumerate every rider's subject line to the owner, verbatim.** Never a
+   count, never "plus some fixes". A long list is still the list. `git log
+   --oneline <live-content-sha>..HEAD` is the scope, not the diffstat.
+2. ⛔ **Ping the session that owns a commit before shipping it.** This was done
+   two deploys earlier and skipped here, on the reasoning that the owner "had
+   already seen them" — he had seen the inaccurate summary above.
+
+⚠️ **THE HAZARD THAT HAS NO FIX YET, and it is the owner's to rule on.** A
+commit under a category hold is **indistinguishable from a shippable one** on
+the shared branch. Nothing in git marks it. The session that held `b9c15e1` held
+it *on the branch* rather than reverting or isolating it, because keep-vs-revert
+was the owner's call — which is correct, and which also leaves a held commit
+sitting in every future deploy's scope. **Holding is not isolating.**
+
+Until the owner rules on where a hold is recorded — a line in this doc, or a
+convention in the commit subject — **anyone cutting a deploy has exactly the
+information that was not enough here.** Ask before shipping another session's
+commit; that is currently the only guard.
+
+### The empty-state test, recorded with it
+
+Two defects the same week shared one shape, on different surfaces:
+
+- The Dashboard sidebar entry was removed while the `home` section stayed
+  reachable — a live route with nowhere in the nav to land (§4, reversed by the
+  owner).
+- Payment info dead-ended when the last card was removed: the screen was left
+  with **zero controls** and no way to add another.
+
+⛔ **The test: drive the list to zero and COUNT the interactive elements left.
+Zero is the signal.** Deleting the last of something is not finished until you
+have asked what the surface then *offers* — not merely what it *says*.
