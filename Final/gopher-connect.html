@@ -26381,6 +26381,13 @@ const PAY_BADGES = {
     if(window.__resetFlowToStart) window.__resetFlowToStart();
     moveFlowMockupToDashboard();
     showSection('new-request');
+    /* ⛔ The request flow and the Deals panel SHARE the 'new-request' section,
+       and which one shows is decided by setRequestPath(), not by showSection().
+       Without this line, tapping "+ New Request" while Local Deals was open
+       reset the flow invisibly and left DEALS on screen — the button read as
+       dead (owner, 2026-10-03). showSection() alone was already a no-op there,
+       because the section was the active one either way. */
+    setRequestPath('new');
   });
 
   // ─── Request-limit upsell modal ───
@@ -26388,6 +26395,7 @@ const PAY_BADGES = {
     if(window.__resetFlowToStart) window.__resetFlowToStart();
     moveFlowMockupToDashboard();
     showSection('new-request');
+    setRequestPath('new');   // see the note on the sidebar button above
   }
   function showReqLimitModal(){
     const overlay = document.getElementById('reqLimitOverlay');

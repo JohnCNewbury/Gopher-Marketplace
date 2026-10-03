@@ -27042,6 +27042,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     moveFlowToDash();
     if(typeof window.__resetRequestFlow === 'function') window.__resetRequestFlow();
     showSection('new-request');
+    /* ⛔ The request flow and the Deals panel SHARE the 'new-request' section,
+       and which one shows is decided by setRequestPath(), not by showSection().
+       Without this line, tapping "+ New Request" while Local Deals was open
+       reset the flow invisibly and left DEALS on screen — the button read as
+       dead (owner, 2026-10-03). showSection() alone was already a no-op there,
+       because the section was the active one either way. */
+    setRequestPath('new');
   };
   if(newReqBtn){
     newReqBtn.addEventListener('click', () => window.openRequestFlow());
