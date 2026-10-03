@@ -9052,11 +9052,62 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
 
   /* ─── Request History table ─── */
+  /* ── Request History cards (owner 2026-10-02) ───────────────────────────
+     The history list is CARDS, not a table, matching the live app: one card
+     per request carrying the status, the money, the Gopher and the two
+     actions. The table it replaced put the GO-To behind a checkbox COLUMN,
+     which has no equivalent in the app — "Create a GO-To" is a button on the
+     card there, so the column is gone and the button is the only entry point.
+     Ratings stay as a star + number: that is this dashboard's convention
+     everywhere else (MY Gophers, worker cards), and the brief was app UX with
+     OUR styling. The app draws five gopher glyphs instead. */
+  .prev-cards { display:flex; flex-direction:column; gap:12px; }
+  .prev-card {
+    background:white; border:1px solid #e7eaf2; border-radius:14px;
+    padding:16px 18px 14px;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .prev-card:hover { border-color:#d3dae8; box-shadow:0 4px 16px rgba(0,36,97,0.07); }
+  /* The whole header is the hit target for the detail view — the app puts a
+     chevron at the end of that row and opens the request from anywhere on it. */
+  .prev-card-head {
+    display:flex; align-items:center; gap:10px; width:100%;
+    background:none; border:0; padding:0; cursor:pointer; text-align:left;
+  }
+  .prev-card-title {
+    font-family:'Nunito'; font-weight:900; font-size:15.5px; color:var(--navy);
+    flex:1 1 auto; min-width:0;
+  }
+  .prev-card-chev { flex:0 0 auto; color:#9fb0c9; font-size:17px; line-height:1; }
+  .prev-card-sub {
+    font-family:'DM Sans'; font-size:12.5px; color:var(--muted); margin:3px 0 10px;
+  }
+  .prev-card-rows { display:flex; flex-wrap:wrap; gap:4px 26px; margin-bottom:4px; }
+  .prev-card-row { font-family:'DM Sans'; font-size:13.5px; color:var(--navy); }
+  .prev-card-row .pcr-l { color:var(--muted); }
+  .prev-card-row .pcr-v { font-weight:700; }
+  .prev-card-rate { font-family:'DM Sans'; font-size:13.5px; color:var(--navy); margin-bottom:12px; }
+  .prev-card-rate .pcr-l { color:var(--muted); }
+  .prev-card-acts { display:flex; gap:10px; flex-wrap:wrap; }
+  .prev-card-acts .pca {
+    flex:1 1 0; min-width:150px; padding:11px 16px; border-radius:99px; cursor:pointer;
+    font-family:'Nunito'; font-weight:800; font-size:13.5px; text-align:center;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  /* Secondary = outline, primary = navy fill. Same pairing the app uses, in our tokens. */
+  .pca-goto { background:white; color:var(--navy); border:1.5px solid var(--navy); }
+  .pca-goto:hover { background:var(--navy-light); }
+  .pca-again { background:var(--navy); color:white; border:1.5px solid var(--navy); }
+  .pca-again:hover { background:var(--navy-mid); }
+  @media(max-width:560px){ .prev-card-acts .pca { flex:1 1 100%; } }
+
   .prev-table-wrap {
-    background:white;
-    border:1px solid #e7eaf2;
-    border-radius:14px;
-    overflow:hidden;
+    /* Now just the cards' container — each card draws its own frame, so the
+       wrapper no longer paints one of its own. */
+    background:transparent;
+    border:0;
+    border-radius:0;
+    overflow:visible;
     /* The All view carries an extra Status column + the GO To box, so let the
        table scroll sideways on narrow screens instead of crushing Details. */
     overflow-x:auto;
@@ -20078,14 +20129,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
           <div class="prev-search" id="prevSearchWrap">
             <span class="prev-search-ico" aria-hidden="true">🔍</span>
-            <input type="text" id="prevSearch" placeholder="Search by ID, category, details, or worker">
+            <input type="text" id="prevSearch" placeholder="Search by ID, type, details or Gopher">
           </div>
 
           <div class="prev-table-wrap" id="prevTableWrap">
-            <table class="prev-table">
-              <thead id="prevTableHead"></thead>
-              <tbody id="prevRequestsRows"><!-- filled by JS --></tbody>
-            </table>
+            <div class="prev-cards" id="prevCards"><!-- filled by renderPrevRequests() --></div>
             <div id="prevEmpty" class="prev-empty" hidden>No requests in this category.</div>
           </div>
         </div>
@@ -24811,19 +24859,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   // Only COMPLETED requests can become a GO To, so only those two views carry the
   // column. A GO To fires with no review step, so it has to start from a job that
   // actually worked — and from a worker payment a worker already accepted.
-  const PREV_TAB_COLS = {
-    all:       ['Date','Request ID','Category','Details','Status','Worker','Amount','', GOTO_COL],
-    completed: ['Date','Request ID','Category','Details','Worker','Amount','Rating','', GOTO_COL],
-    cancelled: ['Date','Request ID','Category','Details','Status',''],
-    expired:   ['Date','Request ID','Category','Details','Status',''],
-  };
+  /* ⛔ PREV_TAB_COLS is GONE with the table. The GO-To checkbox column went with
+     it: in the live app a GO-To is created by a BUTTON on the request, never by
+     ticking a column, so there is no longer a second entry point to keep in
+     step. The rule it enforced survives below — only a COMPLETED request can
+     become a GO-To, because a GO-To sends with no review step and so has to
+     start from a job that worked, at a price a Gopher already accepted. */
 
   function renderPrevRequests(){
-    const head = document.getElementById('prevTableHead');
-    const body = document.getElementById('prevRequestsRows');
-    if(!head || !body) return;
+    const cards = document.getElementById('prevCards');
+    if(!cards) return;
 
-    // The GO Tos tab is the strip on its own — no search box, no history table.
+    // The GO-To's tab is the saved-GO-To strip on its own — no search, no list.
     const searchWrap = document.getElementById('prevSearchWrap');
     const tableWrap  = document.getElementById('prevTableWrap');
     const onGoTos    = (prevTab === 'gotos');
@@ -24832,12 +24879,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     renderGoTos();
     if(onGoTos) return;
 
-    // Build the header row for the active tab (last col = the GO To box)
-    const cols = PREV_TAB_COLS[prevTab];
-    head.innerHTML = `<tr>${cols.map((c, i) =>
-      `<th${i === cols.length - 1 ? ' class="pt-fav-h"' : ''}>${c}</th>`).join('')}</tr>`;
-
-    // Apply search across id/category/details/worker/reason (whichever exist on this row)
+    // Search across id/category/details/worker/reason — whichever this row has.
     const q = prevSearch.trim().toLowerCase();
     const rows = PREV_TAB_DATA[prevTab]().filter(r => {
       if(!q) return true;
@@ -24848,80 +24890,66 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
     const empty = document.getElementById('prevEmpty');
     if(rows.length === 0){
-      body.innerHTML = '';
+      cards.innerHTML = '';
       if(empty){
         empty.hidden = false;
         empty.textContent = q ? 'No requests match your search.' : 'No requests in this category.';
       }
-    } else {
-      if(empty) empty.hidden = true;
-
-      // The GO To box. Checked = this past request already has at least one GO
-      // To saved from it; the badge counts them when there's more than one.
-      // Clicking always opens the editor on a NEW copy (duplicates are allowed) —
-      // removal happens from the card itself, so a stray click here is never
-      // destructive.
-      // COMPLETED ONLY: cancelled/expired rows get a dashed placeholder instead,
-      // so the column still lines up in the All view and the reason is on hover.
-      const favCell = (r) => {
-        const n = GoTos.forSource(r.id).length;
-        const tip = n ? `Saved as a GO-To (${n}) — click to save another copy`
-                      : 'Save as a GO-To';
-        return `<td class="pt-fav-c"><button class="pt-fav ${n ? 'checked' : ''}"
-          data-prev-fav="${r.id}" title="${tip}" aria-label="${tip}"
-          >${n > 1 ? `<span class="pt-fav-n">${n}</span>` : ''}</button></td>`;
-      };
-      const favCellNA = () => `<td class="pt-fav-c"><span class="pt-fav-na"
-        title="Only completed requests can be saved as a GO-To">&mdash;</span></td>`;
-      const viewCell = (r) => `<td><button class="pt-action" data-prev-view="${r.id}">View</button></td>`;
-
-      body.innerHTML = rows.map(r => {
-        if(prevTab === 'all'){
-          // Mixed buckets: show the status, and dash out the completed-only
-          // columns for records that never got that far.
-          const st = prevStatusOf(r);
-          return `<tr>
-            <td>${r.date}</td>
-            <td class="pt-id">#${r.id}</td>
-            <td>${r.category}</td>
-            <td>${r.details}</td>
-            <td><span class="pt-status ${st}">${st}</span></td>
-            <td>${r.worker || '—'}</td>
-            <td class="pt-amount">${r.amount || '—'}</td>
-            ${viewCell(r)}${st === 'completed' ? favCell(r) : favCellNA()}
-          </tr>`;
-        }
-        if(prevTab === 'completed'){
-          return `<tr>
-            <td>${r.date}</td>
-            <td class="pt-id">#${r.id}</td>
-            <td>${r.category}</td>
-            <td>${r.details}</td>
-            <td>${r.worker}</td>
-            <td class="pt-amount">${r.amount}</td>
-            <td class="pt-rating">⭐ ${r.rating}</td>
-            ${viewCell(r)}${favCell(r)}
-          </tr>`;
-        }
-        // Cancelled / expired — no GO To column at all on these two tabs.
-        return `<tr>
-          <td>${r.date}</td>
-          <td class="pt-id">#${r.id}</td>
-          <td>${r.category}</td>
-          <td>${r.details}</td>
-          <td style="color:var(--muted);font-size:13px;">${r.reason || '—'}</td>
-          ${viewCell(r)}
-        </tr>`;
-      }).join('');
-
-      // Wire View buttons every render (rows are rebuilt, so listeners must re-attach)
-      body.querySelectorAll('[data-prev-view]').forEach(b => {
-        b.addEventListener('click', () => openPrevDetail(b.dataset.prevView));
-      });
-      body.querySelectorAll('[data-prev-fav]').forEach(b => {
-        b.addEventListener('click', () => introThenGoToEditor(b.dataset.prevFav));
-      });
+      return;
     }
+    if(empty) empty.hidden = true;
+
+    cards.innerHTML = rows.map(r => {
+      const st   = prevStatusOf(r);
+      const done = (st === 'completed');
+      /* Details carry the specifics ("Catering tray drop-off"); the app's card
+         title is "Delivery - Restaurant/Food Truck", i.e. category + sub-type.
+         These rows hold no sub-type field, so the category leads and the details
+         sit under it rather than inventing a value. */
+      const sub = [`#${r.id}`, r.date].filter(Boolean).join(' · ');
+      /* Money and Gopher only exist on a job that completed; the others dash out,
+         exactly as the app does. */
+      const money = done ? (r.amount || '—') : '—';
+      const who   = done ? (r.worker || '—') : '—';
+      const n     = GoTos.forSource(r.id).length;
+      const gotoLabel = n ? `Create another ${GO_MARK}-To` : `Create a ${GO_MARK}-To`;
+      return `<div class="prev-card">
+        <button class="prev-card-head" data-prev-view="${r.id}"
+                aria-label="Open request #${r.id}">
+          <span class="prev-card-title">${r.category}</span>
+          <span class="pt-status ${st}">${st}</span>
+          <span class="prev-card-chev" aria-hidden="true">›</span>
+        </button>
+        <div class="prev-card-sub">Request ${sub}${r.details ? ` · ${r.details}` : ''}</div>
+        <div class="prev-card-rows">
+          <div class="prev-card-row"><span class="pcr-l">Total Spent</span> <span class="pcr-v">${money}</span></div>
+          <div class="prev-card-row"><span class="pcr-l">Gopher:</span> <span class="pcr-v">${who}</span></div>
+        </div>
+        ${done && r.rating ? `<div class="prev-card-rate"><span class="pcr-l">Rating</span> ⭐ ${r.rating}</div>` : ''}
+        <div class="prev-card-acts">
+          ${done ? `<button class="pca pca-goto" data-prev-fav="${r.id}">${gotoLabel}</button>` : ''}
+          <button class="pca pca-again" data-prev-again="${r.id}">Request Again</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Rebuilt every render, so listeners re-attach every render.
+    cards.querySelectorAll('[data-prev-view]').forEach(b => {
+      b.addEventListener('click', () => openPrevDetail(b.dataset.prevView));
+    });
+    cards.querySelectorAll('[data-prev-fav]').forEach(b => {
+      b.addEventListener('click', () => introThenGoToEditor(b.dataset.prevFav));
+    });
+    /* Request Again = prefill and REVIEW (the existing w/-edits path). The
+       one-tap, no-review send is what a GO-To is for; keeping them distinct is
+       the whole point of having both buttons on the card. */
+    cards.querySelectorAll('[data-prev-again]').forEach(b => {
+      b.addEventListener('click', () => {
+        const r = findPrevById(b.dataset.prevAgain)
+          || (DASH_DATA.previousRequests || []).find(x => x.id === b.dataset.prevAgain);
+        if(r) openRaFastModal(r);
+      });
+    });
   }
 
   // ── MY GO TOS: strip, editor, and the one-tap send ───────────────────────
