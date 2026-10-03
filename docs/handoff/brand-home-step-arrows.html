@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stepping Through</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Three ways to put STEP ARROWS on the one container.
+     Rules being shown, from the owner:
+       · more than one in play  -> a right arrow, tapping it slides this one left
+       · viewing the middle of three -> both arrows
+       · headline states the count, and the attention count when there is one
+     The request needing attention is always the one shown first. */
+  :root{--navy:#002461;--green:#33D975;--sand:#FBF3E4;--pine:#0F7A3F;--aqua:#87F7BD;
+    --corn:#BADBFC;--lava:#C44257;--body:#424242;--muted:#6b7280;--rule:#e3ddcd;--white:#fff;
+    --n:'Nunito',system-ui,sans-serif;--d:'DM Sans',system-ui,sans-serif;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{-webkit-font-smoothing:antialiased}
+  body{font-family:var(--d);background:#f2efe6;color:var(--navy);padding:38px 18px 70px}
+  .page{max-width:1120px;margin:0 auto}
+  .eyebrow{font-family:var(--n);font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  h1.t{font-family:var(--n);font-weight:800;font-size:clamp(26px,4vw,33px);line-height:1.1;letter-spacing:-.015em;margin-bottom:10px}
+  .lede{font-size:16px;line-height:1.6;max-width:74ch;color:#3b4252}
+  .lede b{color:var(--navy)}
+  .spec{background:#fff;border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:18px;max-width:78ch}
+  .spec p{font-size:13.5px;line-height:1.65;color:#4a5160}
+  .spec code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#f3f4f8;padding:1px 5px;border-radius:4px}
+  .spec b{color:var(--navy)}
+  .opt{margin-top:32px;background:var(--white);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  .oh{padding:16px 20px;border-bottom:1px solid var(--rule);display:flex;gap:13px;align-items:flex-start;flex-wrap:wrap}
+  .on{font-family:var(--n);font-weight:900;font-size:11px;color:var(--navy);background:var(--green);border-radius:8px;padding:6px 10px;flex:0 0 auto}
+  .ot{flex:1;min-width:230px}
+  .ot h2{font-family:var(--n);font-weight:800;font-size:17.5px;margin-bottom:3px}
+  .ot p{font-size:13.5px;color:var(--muted);line-height:1.55;max-width:76ch}
+  .stage{background:var(--sand);padding:24px 24px 26px}
+  .flab{font-family:var(--n);font-weight:900;font-size:10px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .flab.two{margin-top:22px}
+  .head{font-family:var(--n);font-weight:900;font-size:25px;letter-spacing:-.5px;margin-bottom:12px}
+  .head em{font-style:normal;color:var(--lava)}
+
+  /* atoms */
+  .ico{width:42px;height:42px;border-radius:13px;background:#e8f5ee;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .pill{font-family:var(--n);font-weight:900;font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;padding:3px 9px;border-radius:14px;background:var(--green);color:var(--navy)}
+  .pill.at{background:var(--lava);color:var(--white)}
+  .ttl{font-family:var(--n);font-weight:900;font-size:14.5px;line-height:1.2}
+  .sub{font-size:12px;color:var(--muted);line-height:1.35}
+  .sub.hot{color:var(--lava);font-weight:700}
+  .amt{font-family:var(--n);font-weight:900;font-size:15px;white-space:nowrap}
+  .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+  .arw{width:34px;height:34px;border-radius:50%;border:0;background:var(--navy);color:var(--white);
+    font-family:var(--n);font-weight:900;font-size:16px;line-height:1;display:flex;align-items:center;
+    justify-content:center;flex:0 0 auto;cursor:pointer;box-shadow:0 2px 6px rgba(0,36,97,.25)}
+  .dots{display:flex;gap:5px;align-items:center}
+  .dots b{width:6px;height:6px;border-radius:50%;background:#cfd6e4;display:block}
+  .dots b.on{background:var(--navy);width:16px;border-radius:3px}
+
+  /* 1 · arrows inset on the card's own edges */
+  .c1{background:var(--white);border:1px solid #e9e3d4;border-radius:15px;padding:14px 14px;
+    display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(0,36,97,.06)}
+  .c1.attn{border-color:var(--lava);box-shadow:0 0 0 1.4px var(--lava),0 4px 14px -3px rgba(196,66,87,.3)}
+
+  /* 2 · a control strip above the card body, inside the same box */
+  .c2{background:var(--white);border:1px solid #e9e3d4;border-radius:15px;overflow:hidden;box-shadow:0 2px 10px rgba(0,36,97,.06)}
+  .c2.attn{border-color:var(--lava);box-shadow:0 0 0 1.4px var(--lava),0 4px 14px -3px rgba(196,66,87,.3)}
+  .c2 .strip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 13px;
+    background:#f6f2e8;border-bottom:1px solid #efe9db}
+  .c2 .pos{font-family:var(--n);font-weight:900;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+  .c2 .pos b{color:var(--navy)}
+  .c2 .nav{display:flex;gap:7px;align-items:center}
+  .c2 .arw{width:28px;height:28px;font-size:14px;box-shadow:none}
+  .c2 .body{padding:15px 17px;display:flex;align-items:center;gap:13px}
+
+  /* 3 · full-height page-turn edge */
+  .c3{background:var(--white);border:1px solid #e9e3d4;border-radius:15px;overflow:hidden;
+    display:flex;align-items:stretch;box-shadow:0 2px 10px rgba(0,36,97,.06)}
+  .c3.attn{border-color:var(--lava);box-shadow:0 0 0 1.4px var(--lava),0 4px 14px -3px rgba(196,66,87,.3)}
+  .c3 .body{flex:1;min-width:0;padding:15px 17px;display:flex;align-items:center;gap:13px}
+  .c3 .turn{width:46px;flex:0 0 auto;border:0;background:#f4f0e6;color:var(--navy);cursor:pointer;
+    font-family:var(--n);font-weight:900;font-size:19px;display:flex;align-items:center;justify-content:center}
+  .c3 .turn.l{border-right:1px solid #e9e3d4}
+  .c3 .turn.r{border-left:1px solid #e9e3d4}
+
+  .note{padding:14px 20px;background:#faf8f2;border-top:1px solid var(--rule);font-size:13px;line-height:1.6;color:#4a5160}
+  .note b{color:var(--navy)} .note .y{color:#0b4a2a;font-weight:700} .note .n{color:#8a3f23;font-weight:700}
+  .foot{margin-top:36px;border-top:1px solid var(--rule);padding-top:18px;font-size:13.5px;line-height:1.65;color:#4a5160}
+  .foot b{color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Gopher Request &middot; home &middot; stepping through more than one</p>
+  <h1 class="t">Three ways to put the arrows on</h1>
+  <p class="lede">Each option is shown twice: <b>viewing the first of three</b> (right arrow only) and <b>viewing the middle of three</b> (both arrows), so you can see the rule you described. The request needing attention is always the one you land on. <b>Nothing is implemented.</b></p>
+
+  <div class="spec">
+    <p><b>The headline, as a template &mdash; no generation:</b><br>
+    <code>"You have " + n + (n===1 ? " current request" : " current requests")</code><br>
+    <code>+ (a ? ", " + a + (a===1 ? " needs" : " need") + " attention" : "")</code><br>
+    &rarr; &ldquo;You have 3 current requests, 1 needs attention&rdquo; &middot; &ldquo;You have 2 current requests&rdquo; &middot; &ldquo;You have 1 current request&rdquo;.
+    Two numbers you already have, one string, correct for every user.</p>
+  </div>
+
+  <!-- 1 -->
+  <div class="opt">
+    <div class="oh"><span class="on">1</span><div class="ot"><h2>Arrows inset on the card itself</h2>
+      <p>Circular buttons sitting inside the card's own edges, vertically centred. The card is the control &mdash; nothing floats, nothing extra is added above it.</p></div></div>
+    <div class="stage">
+      <p class="flab">Viewing 1 of 3 &mdash; the one needing attention</p>
+      <div class="head">You have 3 current requests, <em>1 needs attention</em></div>
+      <div class="c1 attn">
+        <span class="ico">&#129529;</span>
+        <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140 instead of $160</span></span>
+        <span class="amt">$160</span>
+        <button class="arw" aria-label="Next request">&rsaquo;</button>
+      </div>
+      <p class="flab two">Viewing 2 of 3 &mdash; both arrows</p>
+      <div class="c1">
+        <button class="arw" aria-label="Previous request">&lsaquo;</button>
+        <span class="ico">&#128719;</span>
+        <span class="tx"><span class="pill">In progress</span><span class="ttl">Couch pickup &amp; delivery</span><span class="sub">Marcus is on the way &middot; about 4:20 pm</span></span>
+        <span class="amt">$84</span>
+        <button class="arw" aria-label="Next request">&rsaquo;</button>
+      </div>
+    </div>
+    <p class="note"><span class="y">Most obvious &mdash; the arrow is on the thing that moves.</span> <span class="n">The card's content shifts left and right as arrows appear and disappear, so the title does not sit still between steps.</span></p>
+  </div>
+
+  <!-- 2 -->
+  <div class="opt">
+    <div class="oh"><span class="on">2</span><div class="ot"><h2>A control strip across the top</h2>
+      <p>Navigation lives in its own strip inside the same box, with the position stated in words. The card body never moves &mdash; only its contents change.</p></div></div>
+    <div class="stage">
+      <p class="flab">Viewing 1 of 3</p>
+      <div class="head">You have 3 current requests, <em>1 needs attention</em></div>
+      <div class="c2 attn">
+        <div class="strip">
+          <span class="pos"><b>1</b> of 3 &middot; needs you first</span>
+          <span class="nav"><span class="dots"><b class="on"></b><b></b><b></b></span><button class="arw" aria-label="Next request">&rsaquo;</button></span>
+        </div>
+        <div class="body"><span class="ico">&#129529;</span>
+          <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140 instead of $160</span></span>
+          <span class="amt">$160</span></div>
+      </div>
+      <p class="flab two">Viewing 2 of 3 &mdash; both arrows</p>
+      <div class="c2">
+        <div class="strip">
+          <span class="pos"><b>2</b> of 3</span>
+          <span class="nav"><span class="dots"><b></b><b class="on"></b><b></b></span><button class="arw" aria-label="Previous request">&lsaquo;</button><button class="arw" aria-label="Next request">&rsaquo;</button></span>
+        </div>
+        <div class="body"><span class="ico">&#128719;</span>
+          <span class="tx"><span class="pill">In progress</span><span class="ttl">Couch pickup &amp; delivery</span><span class="sub">Marcus is on the way &middot; about 4:20 pm</span></span>
+          <span class="amt">$84</span></div>
+      </div>
+    </div>
+    <p class="note"><span class="y">The body is rock steady, and &ldquo;2 of 3&rdquo; plus the dots mean you always know where you are.</span> <span class="n">Adds about 36px, and it is the busiest of the three.</span></p>
+  </div>
+
+  <!-- 3 -->
+  <div class="opt">
+    <div class="oh"><span class="on">3</span><div class="ot"><h2>Page-turn edges</h2>
+      <p>Full-height tinted columns on the card's edges. Reads as turning a page rather than pressing a button, and the body keeps a fixed width whether one arrow is present or two.</p></div></div>
+    <div class="stage">
+      <p class="flab">Viewing 1 of 3</p>
+      <div class="head">You have 3 current requests, <em>1 needs attention</em></div>
+      <div class="c3 attn">
+        <div class="body"><span class="ico">&#129529;</span>
+          <span class="tx"><span class="pill at">Needs you</span><span class="ttl">Garage clear-out</span><span class="sub hot">New counter-offer &mdash; $140 instead of $160</span></span>
+          <span class="amt">$160</span></div>
+        <button class="turn r" aria-label="Next request">&rsaquo;</button>
+      </div>
+      <p class="flab two">Viewing 2 of 3 &mdash; both edges live</p>
+      <div class="c3">
+        <button class="turn l" aria-label="Previous request">&lsaquo;</button>
+        <div class="body"><span class="ico">&#128719;</span>
+          <span class="tx"><span class="pill">In progress</span><span class="ttl">Couch pickup &amp; delivery</span><span class="sub">Marcus is on the way &middot; about 4:20 pm</span></span>
+          <span class="amt">$84</span></div>
+        <button class="turn r" aria-label="Next request">&rsaquo;</button>
+      </div>
+    </div>
+    <p class="note"><span class="y">Biggest tap targets, calmest look, and the arrows never overlap content.</span> <span class="n">No position indicator unless one is added, so you cannot tell 2-of-3 from 3-of-3 at a glance.</span></p>
+  </div>
+
+  <p class="foot"><b>Nothing here is implemented.</b> My pick is <b>2</b>, for one reason: in 1 and 3 the card's content shifts horizontally as the second arrow appears, so stepping from the first request to the second moves the title under your eye. In 2 the body never moves and only its contents change &mdash; and it is the only one that answers &ldquo;how far through am I?&rdquo; without you counting.
+  <br><br>If 2 feels too busy, <b>3 with the dots added into the body</b> is the compromise &mdash; the calm of the page-turn with the position restored.</p>
+</div>
+</body>
+</html>
