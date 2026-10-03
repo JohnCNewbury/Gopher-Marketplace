@@ -9442,11 +9442,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .gtr-foot .pca[disabled] { opacity:.45; cursor:not-allowed; }
 
-  /* GO-To mode banner on the request flow (owner 2026-10-02) */
-  .goto-flow-banner {
-    background:var(--green-soft, #f2fdf6); border:1px solid rgba(51,217,117,0.38);
-    border-radius:12px; padding:12px 16px; margin-bottom:18px;
-  }
   .gfb-title {
     font-family:'Nunito'; font-weight:900; font-size:15px; color:var(--navy);
     display:flex; align-items:center; gap:2px;
@@ -9545,6 +9540,24 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .goto-money .cost-amount-input:focus { border:0; }
   /* Focus belongs to the wrapper, which is what the user sees as the field. */
   .goto-money:focus-within { border-color:var(--green); }
+
+  /* ── GO-To setup sheet: section headings + toggles (owner 2026-10-03) ─────
+     The setup screen is ONE prepopulated sheet, not the step-by-step flow, so
+     it carries the live app's section structure inline. */
+  .goto-sec-h {
+    font-family:'Nunito'; font-weight:900; font-size:11px; letter-spacing:0.6px;
+    text-transform:uppercase; color:var(--muted);
+    margin:22px 0 10px; padding-bottom:6px; border-bottom:1px solid #eef0f5;
+  }
+  .goto-toggles { display:flex; flex-direction:column; gap:8px; }
+  .goto-tog {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:white; border:1.5px solid #e7eaf2; border-radius:10px;
+    padding:11px 13px; cursor:pointer;
+    font-family:'DM Sans'; font-size:14px; color:var(--navy);
+  }
+  .goto-tog:hover { border-color:#c9d2e3; }
+  .goto-tog.checked { border-color:var(--green); background:#f6fbf7; }
 
   .goto-field label { font-family:'Nunito'; font-weight:800; font-size:12px; color:var(--navy); }
   .goto-field input, .goto-field select, .goto-field textarea {
@@ -13325,16 +13338,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // Empty for a normal request; populated by __startRequestAgainFast.
     hireAgainGophers: [],
 
-    /* ── GO-To mode (owner 2026-10-02) ───────────────────────────────────────
-       Creating a GO-To runs the REAL request flow, pre-filled, exactly as the
-       live app does — not a condensed form. Nothing is submitted in this mode:
-       step 6 opens the Review My GO-To sheet instead of sending. goToSrcId is
-       the history request it was built from; goToGid is set when EDITING an
-       existing GO-To so Save updates rather than duplicates. */
-    goToMode: false,
-    goToSrcId: null,
-    goToGid: null,
-    goToName: '',
 
     // Page 5 — Item Info
     // Default to 1 item / single-item mode (v71). The "Multiple items"
@@ -15341,34 +15344,20 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      Save stays disabled until it is. A GO-To sends with no review screen, so
      this is the only moment the requester agrees to what every future send
      carries. */
-  window.__openGoToReview = function(){
+  window.__openGoToReview = function(rec, onSaved){
+    if(!rec) return false;
     const esc = (v) => String(v == null ? '' : v)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    /* toNum is a local const inside each renderStepN, not a shared helper — so
-       this sheet carries its own rather than reaching for one it cannot see. */
-    const toNum = (v) => parseFloat(String(v).replace(/[^0-9.]/g,'')) || 0;
-    const c = CATEGORIES[state.category] || { name: state.category || 'Request' };
-    const pickup  = (state.pickupStops || []).filter(Boolean)[0]
-      || (state.noSpecificPickup ? 'Gopher can purchase from anywhere' : '');
-    const dropoff = (state.dropoffStops || []).filter(Boolean)[0] || '';
-    const workerCount = Math.max(1, Number(state.numWorkers) || 1);
-    const perWorkerPay = toNum(state.payAmount);
-    const workerPayNum = perWorkerPay * (state.category === 'labor' ? workerCount : 1);
-    const costItemsNum = state.itemsPurchased ? toNum(state.costOfItems) : 0;
-    const fee = computeRequestFee(costItemsNum + workerPayNum);
+    const num = (v) => parseFloat(String(v).replace(/[^0-9.]/g,'')) || 0;
+    const workerPayNum = num(rec.workerPay);
+    const goodsNum     = num(rec.goodsCost);
+    const fee   = computeRequestFee(workerPayNum + goodsNum);
     const money = (n) => '$' + Number(n || 0).toFixed(2);
-
-    const chosen = state.workerSelection === 'first' ? 'First Available'
-                 : state.workerSelection === 'my'    ? 'Notify One Of MY Gophers'
-                 : "I'll select my worker";
-    const gophers = (state.hireAgainGophers || []);
+    const gophers = rec.gophers || [];
     const methods = (window.__getPayMethods ? window.__getPayMethods() : []);
-    const selKey  = (window.__getSelectedPayKey && window.__getSelectedPayKey())
-                    || (methods.find(m => m.isDefault) || methods[0] || {}).key || '';
-    const label = (m) => {
-      const nm = (window.__payDisplayName ? window.__payDisplayName(m) : m.name) || m.name;
-      return m.last4 ? nm + ' ' + m.last4 : (m.sub ? nm + ' · ' + m.sub : nm);
-    };
+    const selKey  = (methods.find(m => m.key === rec.payKey)
+                  || methods.find(m => m.isDefault) || methods[0] || {}).key || '';
+    const label = (m) => (m.last4 ? ((window.__payDisplayName ? window.__payDisplayName(m) : m.name) + ' ' + m.last4) : (m.sub ? m.name + ' · ' + m.sub : m.name));
 
     const ov = document.createElement('div');
     ov.className = 'gr-modal-overlay gtr-ov';
@@ -15382,34 +15371,31 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         <div class="gtr-body">
           <div class="gtr-field">
             <label for="gtrName">Name this ${GO_MARK_FLOW}-To</label>
-            <input type="text" id="gtrName" maxlength="60" value="${esc(state.goToName || state.description || '')}">
+            <input type="text" id="gtrName" maxlength="60" value="${esc(rec.name || '')}">
             <div class="gtr-hint">Only you see this name. It is not sent with the request.</div>
           </div>
-
           <div class="gtr-sec"><div class="gtr-h">What will be sent</div>
-            ${pickup  ? `<div class="pdx-row"><span class="pdx-l">Pick Up</span><span class="pdx-v">${esc(pickup)}</span></div>` : ''}
-            ${dropoff ? `<div class="pdx-row"><span class="pdx-l">Drop Off</span><span class="pdx-v">${esc(dropoff)}</span></div>` : ''}
-            <div class="pdx-row"><span class="pdx-l">Type</span><span class="pdx-v">${esc(c.name)}</span></div>
-            <div class="pdx-row"><span class="pdx-l">Details</span><span class="pdx-v">${esc(state.description)}</span></div>
-            <div class="pdx-row"><span class="pdx-l">Select if you need items purchased</span><span class="pdx-v">${state.itemsPurchased ? 'Yes' : 'No'}</span></div>
-            <div class="pdx-row"><span class="pdx-l">My orders includes age-restricted items</span><span class="pdx-v">${state.ageRestricted ? 'Yes' : 'No'}</span></div>
+            ${rec.pickup  ? `<div class="pdx-row"><span class="pdx-l">Pick Up</span><span class="pdx-v">${esc(rec.pickup)}</span></div>` : ''}
+            ${rec.dropoff ? `<div class="pdx-row"><span class="pdx-l">Drop Off</span><span class="pdx-v">${esc(rec.dropoff)}</span></div>` : ''}
+            <div class="pdx-row"><span class="pdx-l">Type</span><span class="pdx-v">${esc(rec.category)}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Details</span><span class="pdx-v">${esc(rec.details)}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Select if you need items purchased</span><span class="pdx-v">${rec.itemsPurchased ? 'Yes' : 'No'}</span></div>
+            <div class="pdx-row"><span class="pdx-l">My orders includes age-restricted items</span><span class="pdx-v">${rec.ageRestricted ? 'Yes' : 'No'}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Allow counter offers</span><span class="pdx-v">${rec.counterOffers ? 'Yes' : 'No'}</span></div>
             <div class="pdx-row"><span class="pdx-l">When</span><span class="pdx-v">Need it now when you tap</span></div>
           </div>
-
           <div class="gtr-sec"><div class="gtr-h">How your Gopher will be chosen</div>
-            <div class="pdx-row"><span class="pdx-l">Gopher Requested</span><span class="pdx-v">${esc(chosen)}${gophers.length ? `<br><span class="pdx-dim">${esc(gophers.join(', '))}</span>` : ''}</span></div>
+            <div class="pdx-row"><span class="pdx-l">Gopher Requested</span><span class="pdx-v">${esc(rec.chosenHow || 'First Available')}${gophers.length ? `<br><span class="pdx-dim">${esc(gophers.join(', '))}</span>` : ''}</span></div>
           </div>
-
           <div class="gtr-sec gtr-money">
             <div class="pdx-row"><span class="pdx-l">Payment to your Gopher</span><span class="pdx-v">${money(workerPayNum)}</span></div>
-            ${costItemsNum > 0 ? `<div class="pdx-row"><span class="pdx-l">Cost of items</span><span class="pdx-v">${money(costItemsNum)}</span></div>` : ''}
+            ${goodsNum > 0 ? `<div class="pdx-row"><span class="pdx-l">Cost of items</span><span class="pdx-v">${money(goodsNum)}</span></div>` : ''}
             <div class="pdx-row"><span class="pdx-l">Request Fees</span><span class="pdx-v">${money(fee.requestFee)}</span></div>
             <div class="pdx-row pdx-total"><span class="pdx-l">Total today</span><span class="pdx-v">${money(fee.gmvTotal)}</span></div>
             <div class="gtr-note">Each send is priced again when you tap, the same way as any
               request. Your payment method is pre-authorized for an additional 20% when a
               Gopher accepts.</div>
           </div>
-
           <div class="gtr-sec"><div class="gtr-h">Method of payment</div>
             <div class="gtr-pays">${methods.map(m => `
               <button type="button" class="gtr-pay ${m.key === selKey ? 'checked' : ''}" data-gtr-pay="${esc(m.key)}">
@@ -15421,7 +15407,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
               removed or can't be used by then, your default card is used instead, with no
               prompt. To use a method that isn't listed, add it in Account → Payment Methods first.</div>
           </div>
-
           <button type="button" class="gtr-waiver" data-gtr-waiver>
             <span class="prev-check-box"></span>
             <span><b>Liability Waiver</b> — You agree that Gopher, Inc is released from any/all
@@ -15440,6 +15425,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const saveBtn = ov.querySelector('[data-gtr-save]');
     const waiver  = ov.querySelector('[data-gtr-waiver]');
     const gate    = ov.querySelector('#gtrGate');
+    /* ⛔ The waiver is ticked EVERY time and Save stays disabled until it is: a
+       GO-To sends with no review screen, so this is the only moment the
+       requester agrees to what every future send carries. */
     const sync = () => {
       const ok = waiver.classList.contains('checked');
       saveBtn.disabled = !ok;
@@ -15457,20 +15445,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
     saveBtn.addEventListener('click', () => {
       if(saveBtn.disabled) return;
-      const nameEl = ov.querySelector('#gtrName');
       const chosenPay = methods.find(m => m.key === payKey);
-      const ok = window.__saveGoToFromFlow && window.__saveGoToFromFlow({
-        gid: state.goToGid, srcId: state.goToSrcId,
-        name: (nameEl.value || '').trim() || state.description || 'Saved request',
-        category: c.name, details: state.description,
-        workerPay: workerPayNum, goodsCost: costItemsNum || '',
-        pickup: pickup, dropoff: dropoff,
-        payKey: payKey, payLabel: chosenPay ? label(chosenPay) : '',
-        waiver: true, gophers: gophers.slice()
+      const out = Object.assign({}, rec, {
+        name: (ov.querySelector('#gtrName').value || '').trim() || rec.name || 'Saved request',
+        payKey: payKey, payLabel: chosenPay ? label(chosenPay) : '', waiver: true
       });
       close();
-      if(ok){ state.goToMode = false; state.goToGid = null; state.goToSrcId = null; resetFlowState(); render(); }
+      if(typeof onSaved === 'function') onSaved(out);
     });
+    return true;
   };
 
   /* The flow runs in its own scope and cannot see the dashboard's GO_MARK. */
@@ -15497,17 +15480,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     else if(state.step === 6) $content.innerHTML = renderStep6();
     else                      $content.innerHTML = renderStep7();
 
-    /* GO-To mode banner — the live app heads the flow with it on every step so
-       the requester is never unsure whether they are about to send something.
-       Prepended after the step renders rather than baked into each renderStepN,
-       so the seven of them stay unaware of the mode. */
-    if(state.goToMode){
-      const b = document.createElement('div');
-      b.className = 'goto-flow-banner';
-      b.innerHTML = `<div class="gfb-title">Setting up a ${GO_MARK_FLOW}-To</div>
-        <div class="gfb-sub">Nothing is requested until you send it.</div>`;
-      $content.insertBefore(b, $content.firstChild);
-    }
 
     // Step 1 ("Pick a service") has no footer — picking a category is the
     // transition trigger, so the Back/Continue bar is hidden on this step only.
@@ -15991,14 +15963,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       $footNote.textContent = '✓ Request submitted';
       $btnNext.classList.remove('is-disabled');
     } else if(state.step === 6){
-      /* GO-To mode: this button opens the review sheet, it does not submit — so
-         it says so, and the waiver gate does not grey it out. The sheet carries
-         the waiver and keeps its own Save disabled until it is ticked. */
-      $btnNext.textContent = state.goToMode ? 'Review my GO-To' : 'Submit';
-      $footNote.textContent = state.goToMode
-        ? 'Nothing is requested until you send it'
-        : 'Your progress stays here while this page is open';
-      $btnNext.classList.toggle('is-disabled', !state.goToMode && !gate.ok);
+      $btnNext.textContent = 'Submit';
+      $footNote.textContent = 'Your progress stays here while this page is open';
+      // Gate submission on the liability waiver.
+      $btnNext.classList.toggle('is-disabled', !gate.ok);
     } else {
       $btnNext.textContent = 'Continue →';
       $footNote.textContent = 'Your progress stays here while this page is open';
@@ -16193,18 +16161,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(state.step > 1){ state.step = prevVisibleStep(state.step); render(); }
   });
   $btnNext.addEventListener('click', () => {
-    /* ⛔ GO-To mode hands Review off to the Review My GO-To sheet and submits
-       NOTHING, so the step-6 SUBMIT gates do not apply here — including the
-       liability waiver, which the sheet collects instead and whose text covers
-       every future send ("every request this GO-To sends"). Asking for the same
-       agreement on two screens is not more careful, it is noise. Checked before
-       stepGate() for that reason; every earlier step keeps all of its gates,
-       and the shared gopher-step-gates.js module is untouched, since it is
-       compliance logic shared with Connect and the prototype. */
-    if(state.goToMode && state.step === 6){
-      if(window.__openGoToReview) window.__openGoToReview();
-      return;
-    }
     // Universal gate: if this step has an unmet requirement, don't advance —
     // flash the missing field and tell the user which one is required.
     const gate = stepGate();
@@ -16295,8 +16251,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       // Duplicate-request backstop: if a virtually-identical request is
       // already active/broadcasting, warn once. "Submit anyway" re-enters here
       // with dupWarnAck set; "Go back" stays on Review (inputs preserved).
-      /* GO-To mode never reaches here — it is intercepted at the top of this
-         handler, before the submit gates. */
       if(!state.dupWarnAck && window.__findDuplicateActive){
         const dup = window.__findDuplicateActive(computeRequestDupKey());
         if(dup && window.__openDuplicateNotice && window.__openDuplicateNotice(dup)) return;
@@ -16451,26 +16405,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     return true;
   };
 
-  /* ── Start the flow in GO-To mode (owner 2026-10-02) ──────────────────────
-     Create a GO-To runs the REAL request flow, pre-filled, exactly as the live
-     app does. It reuses __startRequestAgainFast for the prefill — one prefill
-     path, so a GO-To and a Request Again can never diverge in what they carry
-     across — then rewinds to step 1, because the point of this mode is that
-     the requester walks every screen and sees everything the one tap will
-     send. A GO-To that was never reviewed is the failure this prevents.
-     `gid` is passed when EDITING, so Save updates instead of duplicating. */
-  window.__startGoToFlow = function(prev, selected, gid, name){
-    if(!window.__startRequestAgainFast(prev, selected)) return false;
-    state.goToMode  = true;
-    state.goToSrcId = prev && prev.id || null;
-    state.goToGid   = gid || null;
-    state.goToName  = name || '';
-    // Walk from the top, with every step unlocked for jumping around.
-    state.step = 1;
-    state.maxStepReached = 6;
-    render();
-    return true;
-  };
 
   // Request NOW ⚡ — 1-click re-submit. Identical prefill to __startRequestAgainFast
   // (which already forces Need ASAP), but submits immediately instead of stopping on
@@ -25382,17 +25316,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   /* ⛔ Create a GO-To now runs the REAL request flow (owner 2026-10-02), not the
      condensed editor. openGoToEditor stays for EDIT, where the point is to
      change one field on a saved card rather than walk seven screens again. */
+  /* ⛔ A GO-To is set up on its OWN prepopulated sheet, NOT by walking the
+     step-by-step request flow (owner 2026-10-03: "it is supposed to have the
+     GO-To unique registration sheet, mostly prepopulated"). I built the wizard
+     route first and it was wrong — the live app's setup screen has no step
+     tracker and no Pick a service / Job details tabs; it is one continuous form
+     carrying every field the one tap will send. openGoToEditor IS that sheet. */
   function startGoToFromSource(srcId){
-    const src = findPrevById(srcId);
-    if(!src){ openGoToEditor(null, srcId); return; }
-    const names = (typeof window.__myGopherNames === 'function') ? window.__myGopherNames() : [];
-    const seed  = (src.worker && names.indexOf(src.worker) > -1) ? [src.worker] : [];
-    if(window.__startGoToFlow && window.__startGoToFlow(src, seed, null, defaultGoToName(src))){
-      closePrevDetail();
-      showSection('new-request');
-      return;
-    }
-    openGoToEditor(null, srcId);   // fallback: never leave the button dead
+    openGoToEditor(null, srcId);
   }
 
   function introThenGoToEditor(srcId){
@@ -25535,6 +25466,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
            Address and cost of items were missing entirely — the editor could not
            show them, so a saved GO-To carried whatever the source request had
            and the requester had no way to see it, let alone correct it. */
+        itemsPurchased: !!src.itemsPurchased,
+        ageRestricted:  !!src.ageRestricted,
+        counterOffers:  src.counterOffers !== false,
+        anyPickup: /anywhere|no specific/i.test(String(src.pickup || '')),
+        notes: '',
         pickup:  src.pickup  || '',
         dropoff: src.dropoff || '',
         goodsCost: (src.costOfItems != null ? src.costOfItems
@@ -25574,6 +25510,11 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           and a fresh one is issued each time you send it.
         </div>
 
+        <div class="goto-flow-banner">
+          <div class="gfb-title">Setting up a ${GO_MARK}-To</div>
+          <div class="gfb-sub">Nothing is requested until you send it.</div>
+        </div>
+
         <div class="goto-field">
           <label for="gotoName">Name this GO-To</label>
           <input type="text" id="gotoName" maxlength="60" placeholder="e.g. Friday catering run"
@@ -25586,11 +25527,30 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
             `<option value="${c}"${sameCat(c, draft.category) ? ' selected' : ''}>${c}</option>`).join('')}</select>
         </div>
 
+        <div class="goto-sec-h">Request details</div>
         <div class="goto-field">
           <label for="gotoDetails">Details</label>
           <textarea id="gotoDetails" placeholder="What do you need done?">${goEsc(draft.details)}</textarea>
         </div>
 
+        <div class="goto-field goto-toggles">
+          <button type="button" class="goto-tog ${draft.itemsPurchased ? 'checked' : ''}" data-goto-tog="itemsPurchased">
+            <span class="prev-check-box"></span><span>Select if you need items purchased</span>
+          </button>
+          <button type="button" class="goto-tog ${draft.ageRestricted ? 'checked' : ''}" data-goto-tog="ageRestricted">
+            <span class="prev-check-box"></span><span>My order includes age-restricted items</span>
+          </button>
+          <button type="button" class="goto-tog ${draft.counterOffers === false ? '' : 'checked'}" data-goto-tog="counterOffers">
+            <span class="prev-check-box"></span><span>Allow counter offers</span>
+          </button>
+        </div>
+
+        <div class="goto-sec-h">Pick up location</div>
+        <div class="goto-field goto-toggles">
+          <button type="button" class="goto-tog ${draft.anyPickup ? 'checked' : ''}" data-goto-tog="anyPickup">
+            <span class="prev-check-box"></span><span>Gopher can purchase from anywhere</span>
+          </button>
+        </div>
         <div class="goto-field">
           <label for="gotoPickup">Pick-up location</label>
           <input type="text" id="gotoPickup" placeholder="e.g. Gopher can purchase from anywhere"
@@ -25598,6 +25558,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="goto-hint">Sent exactly as written. Leave it as the free-choice wording if the Gopher picks the shop.</div>
         </div>
 
+        <div class="goto-sec-h">Drop off location</div>
         <div class="goto-field">
           <label for="gotoDropoff">Drop-off location</label>
           <input type="text" id="gotoDropoff" placeholder="Where should it end up?"
@@ -25615,6 +25576,19 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <div class="goto-hint">What the Gopher pays at the till, on top of their payment. Blank means nothing is bought.</div>
         </div>
 
+        <div class="goto-sec-h">Request time</div>
+        <div class="goto-field">
+          <div class="goto-hint" style="margin-top:0;">A ${GO_MARK}-To always sends as
+            <b>Need it now</b>, the moment you tap it — that is what makes it one tap.</div>
+        </div>
+
+        <div class="goto-sec-h">Special requests</div>
+        <div class="goto-field">
+          <label for="gotoNotes">Any special instructions? (optional)</label>
+          <textarea id="gotoNotes" placeholder="Is there anything else that might help with fulfilling your request?">${goEsc(draft.notes || '')}</textarea>
+        </div>
+
+        <div class="goto-sec-h">Payment information</div>
         <div class="goto-field">
           <label for="gotoPay">Payment to Gopher</label>
           <div class="cost-input-box goto-money">
@@ -25652,22 +25626,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
              </div>`}
         </div>
 
-        <button type="button" class="goto-waiver ${draft.waiver === false ? '' : 'checked'}" data-goto-waiver>
-          <span class="prev-check-box"></span>
-          <span><b>Liability waiver &mdash; accepted for every send.</b> You agree Gopher, Inc. is
-          released from liability associated with this request, and authorise the card above to be
-          charged for the total shown. A GO-To sends immediately with no review step, so this is
-          accepted here and re-affirmed each time you tap the button.</span>
-        </button>
 
         <div class="goto-edit-ctas">
-          <button class="prev-detail-cta cta-now" data-goto-save>${existing ? 'Save changes' : `Save ${GO_MARK}-To`}</button>
+          <button class="prev-detail-cta cta-now" data-goto-save>Review my ${GO_MARK}-To →</button>
           <button class="prev-detail-cta" data-goto-cancel>Cancel</button>
         </div>
       </div>`;
 
     panel.querySelectorAll('[data-goto-gopher]').forEach(row => {
       row.addEventListener('click', () => row.classList.toggle('checked'));
+    });
+    panel.querySelectorAll('[data-goto-tog]').forEach(t => {
+      t.addEventListener('click', () => t.classList.toggle('checked'));
     });
 
     // A GO To skips Review entirely, so the two things Review would otherwise
@@ -25676,38 +25646,59 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const saveBtn  = panel.querySelector('[data-goto-save]');
     const payEl    = document.getElementById('gotoPay');
     const payHint  = document.getElementById('gotoPayHint');
-    const waiverEl = panel.querySelector('[data-goto-waiver]');
+    /* ⛔ The waiver is NOT collected here any more — it is on the Review sheet,
+       which is where the live app agrees it, once, covering every future send.
+       This screen only has to guarantee a payment above $0 before review. */
     function refreshGoToSave(){
       const pay = parseFloat(payEl ? payEl.value : '');
       const payOk = !isNaN(pay) && pay > 0;
-      const waiverOk = waiverEl.classList.contains('checked');
-      saveBtn.disabled = !(payOk && waiverOk);
+      saveBtn.disabled = !payOk;
       if(payHint) payHint.classList.toggle('warn', !payOk && payEl.value !== '');
     }
     if(payEl) payEl.addEventListener('input', refreshGoToSave);
-    waiverEl.addEventListener('click', () => { waiverEl.classList.toggle('checked'); refreshGoToSave(); });
     refreshGoToSave();
 
     saveBtn.addEventListener('click', () => {
       if(saveBtn.disabled) return;
       const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
       const pay = parseFloat(val('gotoPay'));
-      GoTos.save({
+      const tog = (k) => {
+        const el = panel.querySelector(`[data-goto-tog="${k}"]`);
+        return !!(el && el.classList.contains('checked'));
+      };
+      const gophers = Array.from(panel.querySelectorAll('.goto-gopher-row.checked'))
+                           .map(el => el.dataset.gotoGopher);
+      /* ⛔ The setup sheet does NOT save. It hands the assembled record to the
+         Review My GO-To sheet, which is where the live app shows what the one
+         tap will send, picks the method and takes the liability waiver — and
+         only then saves. Saving straight from here would skip the only screen
+         that exists to be read. */
+      const rec = {
         gid: draft.gid,
         srcId: draft.srcId,
         name: val('gotoName').trim() || draft.name || 'Saved request',
         category: val('gotoCat'),
         details: val('gotoDetails').trim(),
+        notes: val('gotoNotes').trim(),
         workerPay: pay,
-        pickup:  val('gotoPickup').trim(),
+        pickup:  tog('anyPickup') ? 'Gopher can purchase from anywhere' : val('gotoPickup').trim(),
         dropoff: val('gotoDropoff').trim(),
         goodsCost: val('gotoGoods').trim() === '' ? '' : Number(val('gotoGoods')),
+        itemsPurchased: tog('itemsPurchased'),
+        ageRestricted:  tog('ageRestricted'),
+        counterOffers:  tog('counterOffers'),
+        chosenHow: gophers.length ? 'Notify One Of MY Gophers' : 'First Available',
         payKey: val('gotoCard') || selPayKey || null,
-        waiver: waiverEl.classList.contains('checked'),
-        gophers: Array.from(panel.querySelectorAll('.goto-gopher-row.checked'))
-                      .map(el => el.dataset.gotoGopher)
-      });
-      closeGoToEditor();
+        gophers: gophers
+      };
+      if(!(window.__openGoToReview && window.__openGoToReview(rec, (finalRec) => {
+        GoTos.save(finalRec);
+        closeGoToEditor();
+      }))){
+        // Review unavailable — never strand the user mid-setup.
+        GoTos.save(Object.assign({}, rec, { waiver:true }));
+        closeGoToEditor();
+      }
     });
 
     panel.querySelector('[data-goto-cancel]').addEventListener('click', closeGoToEditor);
