@@ -9454,6 +9454,24 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     line-height:1.6; margin-bottom:18px;
   }
   .goto-field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  /* Owner 2026-10-02: the money fields have to READ as money. They were bare
+     number inputs with the browser's spinner arrows. This is the same
+     .cost-input-box treatment the request flow's "Cost of items needed" field
+     already uses — $ prefix, Nunito figures, no spinners — widened to fill the
+     editor field instead of its inline default. */
+  .goto-money { display:flex; width:100%; margin-top:0; }
+  /* ⛔ .goto-field input already paints a border, padding and a radius on EVERY
+     input in the editor, so the currency input drew a second box inside the
+     .cost-input-box frame. Strip it back to a bare field; the wrapper is the
+     control. */
+  .goto-money .cost-amount-input {
+    border:0; padding:0; border-radius:0; background:transparent;
+    font-family:'Nunito'; font-weight:700; font-size:16px; color:var(--navy);
+  }
+  .goto-money .cost-amount-input:focus { border:0; }
+  /* Focus belongs to the wrapper, which is what the user sees as the field. */
+  .goto-money:focus-within { border-color:var(--green); }
+
   .goto-field label { font-family:'Nunito'; font-weight:800; font-size:12px; color:var(--navy); }
   .goto-field input, .goto-field select, .goto-field textarea {
     width:100%; padding:10px 12px; border:1px solid #e7eaf2; border-radius:10px;
@@ -25277,15 +25295,23 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
 
         <div class="goto-field">
           <label for="gotoGoods">Cost of items</label>
-          <input type="number" id="gotoGoods" min="0" step="0.01" placeholder="0.00 — leave blank if nothing is purchased"
-                 value="${draft.goodsCost === '' || draft.goodsCost == null ? '' : Number(draft.goodsCost)}">
+          <div class="cost-input-box goto-money">
+            <span class="ci-currency">$</span>
+            <input type="text" inputmode="decimal" class="cost-amount-input" id="gotoGoods"
+                   placeholder="0.00" autocomplete="off" aria-label="Cost of items"
+                   value="${draft.goodsCost === '' || draft.goodsCost == null ? '' : Number(draft.goodsCost).toFixed(2)}">
+          </div>
           <div class="goto-hint">What the Gopher pays at the till, on top of their payment. Blank means nothing is bought.</div>
         </div>
 
         <div class="goto-field">
           <label for="gotoPay">Payment to Gopher</label>
-          <input type="number" id="gotoPay" min="1" step="1" placeholder="Required — e.g. 45"
-                 value="${hadPay ? Number(draft.workerPay) : ''}">
+          <div class="cost-input-box goto-money">
+            <span class="ci-currency">$</span>
+            <input type="text" inputmode="decimal" class="cost-amount-input" id="gotoPay"
+                   placeholder="0.00" autocomplete="off" aria-label="Payment to Gopher"
+                   value="${hadPay ? Number(draft.workerPay).toFixed(2) : ''}">
+          </div>
           <div class="goto-hint" id="gotoPayHint">${hadPay
             ? 'This is what a Gopher already accepted for this job &mdash; your best odds of it being picked up again. Change it if you like.'
             : 'This request has no accepted amount on record. A GO-To sends with no review step, so set one here.'
