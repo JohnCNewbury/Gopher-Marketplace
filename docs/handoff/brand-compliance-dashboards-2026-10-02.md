@@ -349,6 +349,34 @@ wants it called something else it is a find-and-replace in the guide and a token
 ⚠️ The PDF exports (`Gopher Style Guide 2026.pdf` and earlier) are **not** regenerated and no
 longer match the HTML. The HTML is the live one per §1.
 
+## 4c · ⛔ ALL SIX ITEMS ARE IMPLEMENTED — this audit is closed
+
+Owner approved each in turn on 2026-10-02 after review. Eleven+ commits on
+`feature/deals-google-maps-audience`. **Nothing is deployed** — branch only.
+
+| # | Change | Scale | Effect |
+|---|---|---|---|
+| 1 | `--ink-on-green` → `#002461` (Request) | 1 line | 32 surfaces, 1.85 → 7.95:1 |
+| 2 | Connect step tabs `.done`/`.active` | 2 rules | 1.85 → 7.95:1; hover 5.22:1 |
+| 3 | Dropped the ungated red card hover | 1 rule | Falls through to the existing green hover |
+| 4 | `-webkit-font-smoothing:antialiased` | 2 lines | The only confirmed *sharpness* fix |
+| 5 | Four sub-AA pairs | 4 rules | demo tag 4.83, nav labels 6.64, pill 4.99, link 5.42 |
+| — | Literal white on green | **51 rules** | All 1.85 → 7.95:1, incl. `.btn-green` |
+| 6 | Half-pixel font sizes rounded up | **461** | Whole-pixel rendering + the larger size he picked |
+
+**The only white-on-Shamrock left in either file is `.dash-logo-text .dlt-mark`,** deliberately:
+logo colour is governed separately by the guide and he has previously ruled a recoloured wordmark
+a violation. One line if he ever wants it.
+
+⛔ **Item 6 is the only change in the pass that can move layout.** Everything else swapped a colour
+and could not reflow anything. It is deliberately the **last commit** so it reverts cleanly on its
+own. Pre-checked: 7 rules pair a half-pixel size with a fixed px dimension and none break; 3 nowrap
+rules with an ellipsis truncate marginally earlier; `.step .step-label` (max-width 88px) is the
+likeliest to gain a line. Owner: *"we'll correct it if something doesn't look right."*
+
+⛔ **Deploy the colour work separately from and before item 6**, so a cosmetic revert cannot drag
+the compliance fixes back with it.
+
 ## 5 · Standing rules that apply to this work
 
 - ⛔ **Audit, do not implement, until he reviews.** His words, this session.
