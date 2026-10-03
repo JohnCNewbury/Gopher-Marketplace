@@ -3446,13 +3446,25 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      text at 2.25 / 1.5 / 1 on a 14px base = 32 / 21 / 14. Applied to every flow
      step here (all use .mockup-content h3 + .mc-sub); button/option base is set
      on .radio-row .rr-label below. Mirrors gopher-connect.html. */
+  /* Owner 2026-10-03: "both need the 'Select the service...' header centered
+     between the stage cards and category cards." Centred, and given room below
+     so it sits BETWEEN the step chips and the tiles rather than hugging the
+     tiles — it had 32px of air above it and 8px below.
+     Applies to every step's heading, not just step 1: they are one component
+     and a centred step 1 over six left-aligned siblings is the same kind of
+     inconsistency the chip row had. */
   .mockup-content h3 {
     font-family:'Nunito',sans-serif; font-weight:900; font-size:32px;
     line-height:1.1; letter-spacing:-0.3px; color:var(--navy); margin-bottom:8px;
+    text-align:center;
   }
   .mockup-content .mc-sub {
     font-size:21px; line-height:1.25; font-weight:600; color:var(--muted); margin-bottom:20px;
+    text-align:center;
   }
+  /* Step 1 is the only step whose heading is followed straight by content with
+     no .mc-sub between, so it is the only one that needs the gap restored. */
+  .mockup-content h3 + .cat-grid { margin-top:24px; }
 
   /* Step 1 — category grid */
   .cat-grid {
