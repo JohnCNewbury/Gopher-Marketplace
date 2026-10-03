@@ -9094,7 +9094,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      convention already used on the worker cards here — compact, 9px radius,
      nowrap — right-aligned on the card. */
   .prev-card-acts { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-  .prev-card-acts .pca {
+  /* Unscoped on purpose: the same control is used by the history card AND the
+     detail view's sticky bar. Scoping it under .prev-card-acts left the detail
+     bar's buttons unstyled. */
+  .pca {
     flex:0 0 auto; padding:9px 16px; border-radius:9px; cursor:pointer;
     font-family:'Nunito'; font-weight:800; font-size:12.5px; white-space:nowrap;
     transition:background .15s, color .15s, border-color .15s;
@@ -9181,6 +9184,48 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
 
   /* ─── Previous-request detail card ─── */
+  /* ── Request detail, laid out like the live app (owner 2026-10-02) ──────
+     Section headings with label/value rows, the itemised fee block, and a
+     sticky action bar. Reuses .pca from the history cards so the two actions
+     are the same control in both places. */
+  .pdx-head { margin:2px 0 16px; }
+  .pdx-type { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .pdx-when { font-family:'DM Sans'; font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .pdx-sec { border-top:1px solid #eef0f5; padding:14px 0 4px; }
+  .pdx-h {
+    font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy);
+    margin-bottom:8px;
+  }
+  .pdx-row {
+    display:flex; justify-content:space-between; align-items:flex-start; gap:18px;
+    padding:4px 0; font-family:'DM Sans'; font-size:13.5px;
+  }
+  .pdx-l { color:var(--muted); flex:0 1 auto; }
+  .pdx-v { color:var(--navy); font-weight:600; text-align:right; flex:1 1 auto; min-width:0; }
+  .pdx-dim { color:var(--muted); font-weight:400; }
+  .pdx-sub { padding-left:16px; }
+  .pdx-sub .pdx-row { padding:2px 0; font-size:12.5px; }
+  .pdx-sub .pdx-v { font-weight:400; color:var(--muted); }
+  .pdx-money .pdx-row:not(.pdx-total) .pdx-v { font-weight:700; }
+  .pdx-total {
+    border-top:2px solid #eef0f5; margin-top:8px; padding-top:10px;
+    font-family:'Nunito'; font-weight:900; font-size:15px;
+  }
+  .pdx-total .pdx-l, .pdx-total .pdx-v { color:var(--navy); font-weight:900; }
+  .pdx-link {
+    background:none; border:0; padding:0; cursor:pointer;
+    font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--navy);
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .pdx-link:hover { color:var(--green-dark); }
+  /* Sticky, like the app's bottom bar — the actions stay reachable on a long
+     record instead of being stranded past the fee block. */
+  .pdx-bar {
+    position:sticky; bottom:0; display:flex; gap:8px; justify-content:flex-end;
+    border-top:1px solid #eef0f5; margin-top:16px; padding:12px 0 2px;
+    background:white;
+  }
+
   .prev-detail-card {
     background:white; border:1px solid #e7eaf2; border-radius:14px;
     padding:22px 24px; max-width:760px;
@@ -21022,30 +21067,74 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     //    Separate arrays (not one with a status field) because lookup is faster —
     //    the tabs pick a bucket directly — and the shapes legitimately diverge:
     //    breakdown/worker/rating only exist on completed records.
+    /* ⛔ Enriched 2026-10-02 so the detail view can render the sections the live
+       app shows: Where, Method of payment, When, Request details, How your
+       Gopher was chosen, and the fee SPLIT (Gopher Fee + Instant Transfer Fee,
+       which the app itemises under Fees). `fees` is kept as the total so
+       anything still reading it keeps working, and every new field is optional
+       — a request created by the flow in this session carries only some of
+       them, and the renderer omits the sections it has no data for rather than
+       printing empty rows. */
     previousRequests: [
-      { date:'5/12/26', id:'GR-00120', category:'Delivery', details:'Catering tray drop-off to 1820 Holloway St',
+      { date:'5/12/26', id:'GR-00120', category:'Delivery', type:'Restaurant/Food Truck',
+        details:'Catering tray drop-off to 1820 Holloway St',
         worker:'Devon M.', amount:'$47.50', rating:'5.00',
-        breakdown:{ workerPay:38.50, fees:9.00 },
+        breakdown:{ workerPay:38.50, fees:9.00, gopherFee:0.99, instantTransfer:8.01 },
+        pickup:'Gopher can purchase from anywhere', dropoff:'1820 Holloway St, Holly Springs, NC 27540',
+        payMethod:'Visa 6577', timing:'Need It Now!',
+        openUntil:'5/12/26 1:05 PM', acceptedAt:'5/12/26 12:05 PM', completedAt:'5/12/26 2:31 PM',
+        itemsPurchased:true, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
         isMyGopher:true, blocked:false },
-      { date:'5/05/26', id:'GR-00118', category:'Yard Work', details:'Mow, edge & blow front + back · 0.4 acre',
+      { date:'5/05/26', id:'GR-00118', category:'Yard Work', type:'Mowing & Edging',
+        details:'Mow, edge & blow front + back · 0.4 acre',
         worker:'Carlos P.', amount:'$78.00', rating:'4.00',
-        breakdown:{ workerPay:64.00, fees:14.00 },
+        breakdown:{ workerPay:64.00, fees:14.00, gopherFee:3.99, instantTransfer:10.01 },
+        pickup:'No specific pick-up location', dropoff:'405 Shorehouse Way, Holly Springs, NC 27540',
+        payMethod:'Visa 6577', timing:'Flexible on timing',
+        openUntil:'5/05/26 6:00 PM', acceptedAt:'5/05/26 9:14 AM', completedAt:'5/05/26 11:48 AM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
         isMyGopher:false, blocked:false },
-      { date:'4/28/26', id:'GR-00115', category:'Moving', details:'2 movers · 1-bedroom apt · same complex',
+      { date:'4/28/26', id:'GR-00115', category:'Moving', type:'Apartment Move',
+        details:'2 movers · 1-bedroom apt · same complex',
         worker:'Rosa P.', amount:'$210.00', rating:'5.00',
-        breakdown:{ workerPay:175.00, fees:35.00 },
+        breakdown:{ workerPay:175.00, fees:35.00, gopherFee:3.99, instantTransfer:31.01 },
+        pickup:'118 Jamesford Dr, Holly Springs, NC 27540', dropoff:'412 Jamesford Dr, Holly Springs, NC 27540',
+        payMethod:'American Express 6004', timing:'Need It Now!',
+        openUntil:'4/28/26 11:00 AM', acceptedAt:'4/28/26 8:42 AM', completedAt:'4/28/26 12:20 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:false, waiver:'Agreed',
+        chosenHow:"I'll select my worker",
         isMyGopher:true, blocked:false },
-      { date:'4/19/26', id:'GR-00112', category:'Junk Removal', details:'Old couch + dresser haul-away',
+      { date:'4/19/26', id:'GR-00112', category:'Junk Removal', type:'Furniture Haul-Away',
+        details:'Old couch + dresser haul-away',
         worker:'Andre W.', amount:'$95.00', rating:'5.00',
-        breakdown:{ workerPay:78.00, fees:17.00 },
+        breakdown:{ workerPay:78.00, fees:17.00, gopherFee:3.99, instantTransfer:13.01 },
+        pickup:'405 Shorehouse Way, Holly Springs, NC 27540', dropoff:'Gopher chooses a disposal site',
+        payMethod:'Visa 6577', timing:'Flexible on timing',
+        openUntil:'4/19/26 5:00 PM', acceptedAt:'4/19/26 10:05 AM', completedAt:'4/19/26 1:12 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'First Available',
         isMyGopher:false, blocked:false },
-      { date:'4/11/26', id:'GR-00109', category:'Handyman', details:'Mount 65" TV + cable management',
+      { date:'4/11/26', id:'GR-00109', category:'Handyman', type:'TV Mounting',
+        details:'Mount 65" TV + cable management',
         worker:'Priya N.', amount:'$120.00', rating:'4.00',
-        breakdown:{ workerPay:98.00, fees:22.00 },
+        breakdown:{ workerPay:98.00, fees:22.00, gopherFee:4.99, instantTransfer:17.01 },
+        pickup:'No specific pick-up location', dropoff:'405 Shorehouse Way, Holly Springs, NC 27540',
+        payMethod:'Mastercard 1928', timing:'Need It Now!',
+        openUntil:'4/11/26 4:30 PM', acceptedAt:'4/11/26 1:36 PM', completedAt:'4/11/26 3:58 PM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
         isMyGopher:false, blocked:false },
-      { date:'4/02/26', id:'GR-00106', category:'Day Labor', details:'Help loading U-Haul · 2 hrs',
+      { date:'4/02/26', id:'GR-00106', category:'Day Labor', type:'Loading Help',
+        details:'Help loading U-Haul · 2 hrs',
         worker:'Marcus T.', amount:'$110.00', rating:'5.00',
-        breakdown:{ workerPay:90.00, fees:20.00 },
+        breakdown:{ workerPay:90.00, fees:20.00, gopherFee:2.99, instantTransfer:17.01 },
+        pickup:'405 Shorehouse Way, Holly Springs, NC 27540', dropoff:'No specific drop-off location',
+        payMethod:'Visa 6577', timing:'Need It Now!',
+        openUntil:'4/02/26 10:00 AM', acceptedAt:'4/02/26 7:48 AM', completedAt:'4/02/26 10:06 AM',
+        itemsPurchased:false, ageRestricted:false, counterOffers:true, waiver:'Agreed',
+        chosenHow:'Notify One Of MY Gophers',
         isMyGopher:true, blocked:false },
     ],
     cancelledRequests: [
@@ -25317,43 +25406,90 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     const title = document.getElementById('prevSecTitle');
 
     if(status === 'completed'){
-      // ── Completed view: receipt + rating + MY Gophers/Block toggles ──
+      /* ── Completed view: the live app's section order, with our styling ──
+         Where / Method of payment / When / Request details / How your Gopher
+         was chosen / the fee split / the Gopher + rating / the two Gopher
+         checkboxes / a sticky Create a GO-To + Request Again bar.
+         ⛔ EVERY section is conditional. The seeded history carries all of
+         these fields, but a request created by the flow in this session does
+         not — and printing "Pick Up: undefined" is worse than omitting the
+         section, so a missing field drops its row and an empty section drops
+         itself. */
       const firstName = (r.worker || '').split(' ')[0] || 'Your Gopher';
       const ratingNum = parseFloat(r.rating) || 0;
       const stars = Array.from({length:5},(_,i) =>
         `<span class="star ${i < Math.round(ratingNum) ? '' : 'dim'}">★</span>`
       ).join('');
+      const row = (label, value) => (value === undefined || value === null || value === '')
+        ? '' : `<div class="pdx-row"><span class="pdx-l">${label}</span><span class="pdx-v">${value}</span></div>`;
+      const yesNo = (v) => (v === undefined || v === null) ? '' : (v ? 'Yes' : 'No');
+      const section = (heading, rows) => {
+        const body = rows.filter(Boolean).join('');
+        return body ? `<div class="pdx-sec"><div class="pdx-h">${heading}</div>${body}</div>` : '';
+      };
+      const bd = r.breakdown || {};
+      /* The app itemises Fees into Gopher Fee + Instant Transfer Fee. Records
+         without the split still show the single Fees total. */
+      const feeLines = (bd.gopherFee != null || bd.instantTransfer != null)
+        ? `<div class="pdx-sub">${row('Gopher Fee', prevFmt(bd.gopherFee))}${row('Instant Transfer Fee', prevFmt(bd.instantTransfer))}</div>`
+        : '';
 
       panel.innerHTML = `
         <div class="prev-detail-card">
           <button class="prev-detail-back" data-prev-back>← Back to history</button>
           <span class="prev-detail-status completed">Completed</span>
           <div class="prev-detail-title">Request #${r.id}</div>
-          <div class="prev-detail-rows">
-            <div class="prev-detail-row"><span class="pdr-label">Date:</span><span class="pdr-value">${r.date}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Request type:</span><span class="pdr-value">${r.category}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Details:</span><span class="pdr-value">${r.details}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Gopher name:</span><span class="pdr-value">${r.worker}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label under">Total spent:</span><span class="pdr-value">${r.amount}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Payment to Gopher:</span><span class="pdr-value">${prevFmt(r.breakdown.workerPay)}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Fees:</span><span class="pdr-value">${prevFmt(r.breakdown.fees)}</span></div>
-            <div class="prev-detail-row"><span class="pdr-label">Rating:</span><span class="pdr-value">${ratingNum.toFixed(2)} <span class="prev-detail-rating">${stars}</span></span></div>
+          <div class="pdx-head">
+            <div class="pdx-type">${r.type || r.category}</div>
+            <div class="pdx-when">${[r.category, r.date].filter(Boolean).join(' · ')}</div>
           </div>
+
+          ${section('Where', [ row('Pick Up', r.pickup), row('Drop Off', r.dropoff) ])}
+          ${section('Method of payment', [ row('Method of payment', r.payMethod) ])}
+          ${section('When', [
+            row('Timing', r.timing), row('Open until', r.openUntil),
+            row('Accepted', r.acceptedAt), row('Completed', r.completedAt)
+          ])}
+          ${section('Request details', [
+            row('Type', r.type || r.category), row('Details', r.details),
+            row('Select if you need items purchased', yesNo(r.itemsPurchased)),
+            row('My orders includes age-restricted items', yesNo(r.ageRestricted)),
+            row('Allow counter offers', yesNo(r.counterOffers)),
+            row('Liability Waiver', r.waiver)
+          ])}
+          ${section('How your Gopher was chosen', [
+            row('Gopher Requested', r.chosenHow ? `${r.chosenHow}${r.worker ? `<br><span class="pdx-dim">${r.worker}</span>` : ''}` : '')
+          ])}
+
+          <div class="pdx-sec pdx-money">
+            ${row('Payment to your Gopher', prevFmt(bd.workerPay))}
+            ${row('Fees', prevFmt(bd.fees))}
+            ${feeLines}
+            <div class="pdx-row pdx-total"><span class="pdx-l">Total Spent</span><span class="pdx-v">${r.amount}</span></div>
+          </div>
+
+          <div class="pdx-sec">
+            <div class="pdx-row">
+              <span class="pdx-l">Gopher: <b>${r.worker}</b></span>
+              <span class="pdx-v"><button class="pdx-link" data-prev-profile="${r.id}">Review Profile</button></span>
+            </div>
+            <div class="pdx-row"><span class="pdx-l">Rating</span><span class="pdx-v">${ratingNum.toFixed(2)} <span class="prev-detail-rating">${stars}</span></span></div>
+          </div>
+
           <div class="prev-detail-checks">
             <button class="prev-check-row ${MyGophers.has(r.worker)?'checked':''}" data-prev-toggle="myGopher">
               <span class="prev-check-box"></span>
               <span>${firstName} is one of your MY Gophers</span>
             </button>
-          </div>
-          <div class="prev-detail-ctas">
-            <button class="prev-detail-cta cta-now" data-prev-now="${r.id}">Request again NOW ⚡️</button>
-            <button class="prev-detail-cta" data-prev-again="${r.id}">Request again w/ edits</button>
-          </div>
-          <div class="prev-detail-checks prev-detail-block">
             <button class="prev-check-row ${r.blocked?'checked':''}" data-prev-toggle="blocked">
               <span class="prev-check-box"></span>
               <span>Do not send requests to ${firstName} again</span>
             </button>
+          </div>
+
+          <div class="pdx-bar">
+            <button class="pca pca-goto" data-prev-fav="${r.id}">Create a ${GO_MARK}-To</button>
+            <button class="pca pca-again" data-prev-again="${r.id}">Request Again</button>
           </div>
         </div>`;
     } else {
@@ -25408,6 +25544,18 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     if(again) again.addEventListener('click', () => openRaFastModal(r));
     const nowBtn = panel.querySelector('[data-prev-now]');
     if(nowBtn) nowBtn.addEventListener('click', () => launchRaNow(r));
+
+    /* Create a GO-To, from the detail view's sticky bar — the same entry point
+       the history card uses, so the intro still gates the first one. */
+    const favBtn = panel.querySelector('[data-prev-fav]');
+    if(favBtn) favBtn.addEventListener('click', () => introThenGoToEditor(r.id));
+    /* Review Profile — the app links the Gopher out to their profile. The web
+       profile view is keyed by worker INDEX on a live request, which a history
+       record has no equivalent of, so this opens the MY Gophers screen where
+       that Gopher's card and history live. Honest destination rather than a
+       dead link; swap it the day history records carry a worker id. */
+    const profBtn = panel.querySelector('[data-prev-profile]');
+    if(profBtn) profBtn.addEventListener('click', () => { closePrevDetail(); showSection('gophers'); });
 
     // Swap panels
     const editPanel = document.getElementById('goToEditPanel');
