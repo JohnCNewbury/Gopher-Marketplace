@@ -261,7 +261,25 @@ else
   ok "no external font/image hotlinks"
 fi
 
-# --------------------------------------------------------- 5. internal docs
+# ------------------------------------------------- 5. inlined iQ FAQS corpus
+# The iQ answer corpus is duplicated verbatim across seven files. A partial
+# propagation ships pages that disagree, and nothing about it is visible in a
+# diffstat. On 2026-09-18 a fix for an age-restricted FAQ (0abbea2, G40-495)
+# reached three of the seven and the other four told customers to pick a
+# category deleted in Dec 2024 — live on both hosts for fifteen days, because
+# this guard existed but was never wired in.
+if [[ -x "$(command -v python3)" ]] && [[ -f "$REPO/docs/handoff/verify-faqs-integrity.py" ]]; then
+  if faqs_out="$(python3 "$REPO/docs/handoff/verify-faqs-integrity.py" --root "$SRC" 2>&1)"; then
+    ok "iQ FAQS corpus consistent across all seven inlined copies"
+  else
+    bad "iQ FAQS corpus failed its integrity guard:"
+    echo "$faqs_out" | grep '✗' | sed 's/^/    /'
+  fi
+else
+  note "verify-faqs-integrity.py not runnable — iQ FAQS corpus NOT checked"
+fi
+
+# --------------------------------------------------------- 6. internal docs
 for e in "${EXCLUDE[@]}"; do
   [[ -e "$SRC/$e" ]] && note "$e present in Final/ — will be excluded from the deploy"
 done
