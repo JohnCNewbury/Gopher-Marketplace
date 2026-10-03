@@ -20,6 +20,32 @@ Exit non-zero (blocking a deploy) if any check fails.
 
 Usage:
   python3 verify-faqs-integrity.py [--root Final] [--expect 185]
+
+Wired in as preflight check 5 of scripts/deploy.sh on 2026-10-03, after a fix that
+reached three of the seven copies shipped and sat live for fifteen days (0abbea2 ->
+5ac1b2f). This guard existed through all of it and was called by nothing.
+
+⛔ TWO FAQ ANSWERS ARE LOAD-BEARING DOWNSTREAM — DO NOT REWORD THEM SILENTLY.
+Entries 111 ("How do I order cigarettes / tobacco?") and 114 ("Why was my request
+cancelled for the wrong category…") are the age-restricted answers that name the
+category which turns on ID verification at drop-off. The Gopher Vault's
+deploy/mirror-deck.sh asserts on a phrase from entry 111 — "turns on ID verification
+at drop-off" — as a POSITIVE check, because the dead category "Delivery - Tobacco"
+being absent is satisfied just as well by an answer that is simply wrong. Reword that
+phrase and the Vault's mirror of the investor deck ABORTS until its expected string is
+updated. So:
+  - changing the wording of 111/114 is a cross-repo change. Update the Vault's
+    expected phrase in the same breath, and say so in docs/handoff/session-log.md.
+  - the 111/114 asymmetry is DELIBERATE: 111 says "choose Delivery and then Other
+    Age-Restricted" (two taps), 114 says 'Delivery - Other Age-Restricted' (the tile's
+    name). Do not normalise one to the other.
+  - the dash in 111 is a literal em dash (U+2014), not the \\u2014 escape, and 114 uses
+    straight single quotes. Check 4 (round-trip) is what fails if that changes.
+
+⚠️ COUNT WITH `grep -o … | wc -l`, NEVER `grep -c`, anywhere near this corpus. FAQS is
+a SINGLE LINE of JSON, so grep -c reports 1 for any number of hits. On 2026-10-03 that
+produced three separate confidently-wrong counts in one day across three sessions, and
+nearly hid the fifteen-day defect above.
 """
 import argparse, json, re, sys, hashlib
 from pathlib import Path
