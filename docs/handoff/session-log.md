@@ -1697,6 +1697,45 @@ rebuild**, not required for the live site to render — e.g. the Deals page alre
     anyone tunes harder at this shape: it is *worker solicits, customer declines*, so tightening
     catches confused users at least as often as bad actors.
 
+- **⛔ A FIX THAT REACHED THREE OF SEVEN COPIES: the age-restricted FAQ named a category deleted in
+  Dec 2024, live for fifteen days (2026-10-02/03; commit `5ac1b2f`, deploys `952328a` live /
+  `784664f` twin, content-verified on all three hosts).** `0abbea2` (G40-495, 9/18) correctly
+  replaced `Delivery - Tobacco` with `Delivery - Other Age-Restricted` in FAQ entries 111 and 114 —
+  the two answers that tell customers how ID verification at drop-off is switched on. **Its own
+  commit message says it did so "in all three files carrying the FAQ corpus". There are seven.**
+  `gopher-ai-engine.js`, `2-engine-js-block.html`, `gopher-iq-sandbox-standalone.html` and
+  `gopher-request.html` kept the old text — so the **shared engine**, which is what most pages
+  actually answer from, plus the Request dashboard, spent fifteen days instructing customers to pick
+  a category that is not in the app. **The defect the ticket was raised to fix was still live
+  wherever the engine answered.**
+  - ⚠️ **HOW IT WAS FOUND, AND THE GENERAL LESSON: `docs/handoff/verify-faqs-integrity.py` HAD
+    EXISTED SINCE JULY AND WAS CALLED BY NOTHING.** It was written after a 2026-07-11 copy-edit
+    find/replace silently deleted 474 lines from `gopher-faqs.html` and shipped a page whose search
+    threw. It would have caught this on 9/18 on the first run. It surfaced only because another
+    session disclosed an unrelated edit to the same corpus and running the guard over *their* change
+    was the obvious courtesy check. **A guard nobody calls is not a guard.** It is now preflight
+    check 5 in `scripts/deploy.sh` and blocks the deploy — proved in the failing direction by
+    reintroducing the stale string in the engine alone and watching the preflight print the five
+    disagreeing copies and exit BLOCKED.
+  - ⚠️ **A PARTIAL PROPAGATION IS INVISIBLE IN A DIFFSTAT.** `0abbea2` is a tidy, well-argued,
+    3-file / 3-line commit that reads as complete and verified its replacement copy against the live
+    requester taxonomy. Nothing about its diff says "four more files hold this same text." **When a
+    string is duplicated N ways, the count of files you touched is the claim that needs checking, not
+    the text you wrote.**
+  - ⚠️ **`DRIFT_ALLOWED` IS A HOLE IN THE GUARD, BY DESIGN — KNOW WHICH ENTRIES IT COVERS.**
+    `gopher-request.html` is allow-listed because it carries five intentionally Request-specific
+    answers, so the guard checks its *shape* and never compares its *content*. It was therefore
+    carrying the stale Tobacco text invisibly. The five real drifts are entries **1, 56, 72, 90,
+    109** (cost-to-use, pay-to-become-a-Gopher, cash-out, existing background check, why
+    TrustShield) — verified, and 111/114 were byte-identical to the engine's stale text, so the fix
+    went in without disturbing the allow-listed drift. **`gopher-connect.html` is not one of the
+    seven at all** and is unguarded.
+  - **Also normalised the one escaped em dash `0abbea2` left behind** (`—` → the literal
+    character) in the three files it did edit. Renders identically; it is what made those three fail
+    the round-trip arm of the guard, and it is why the guard reported "whitespace/mangling" — which
+    sounds like corruption and was not. The hash arm compares the **parsed** array, so escaped and
+    literal hash alike; only round-trip sees it.
+
 - **⛔ THE MODERATION CORPUS WAS SILENTLY REVERTED — FOURTH OCCURRENCE — AND THE STANDING ADVICE
   ABOUT IT IS WRONG ON THIS MACHINE (2026-08-27/28).** The three payment phrases were committed to
   the dashboard (`8132389`, 40 phrases), then a regen overwrote the file back to 37 and another
