@@ -14583,6 +14583,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   //   Page 3: Rider(s) Info — riders, bags, special instructions
   //   Page 5: Item Info — count, multiple items, hazardous
   // ───────────────────────────────────────────────
+  /* ⛔ Moving ships with NO card-title icons yet. Owner 2026-10-02: "we dont
+     need all the icons yet", carried into the 909 desk's completed-category
+     package for Moving. Every other category keeps its icon, so this is a
+     per-category suppression, not a deletion -- when the icons are approved,
+     delete this function and the markup is already correct. */
+  function sstIco(ch){
+    return state.category === 'moving' ? '' : ('<span class="sst-ico">' + ch + '</span>');
+  }
+
   function renderStep2(){
     const c = CATEGORIES[state.category];
     return `
@@ -14592,7 +14601,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- ░ Page 1 — Describe (hidden for Ride Sharing) ░ -->
       ${isVisible('describe') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">✏️</span>Describe what you need</div>
+        <div class="step-section-title">${sstIco('✏️')}Describe what you need</div>
         <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3">${state.description}</textarea>
         ${isVisible('addPic') ? (
           state.picThumbs.length === 0
@@ -14618,7 +14627,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- ░ Page 2 — Delivery Type (only shown for Delivery / Courier) ░ -->
       ${state.category === 'delivery' ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">📋</span>Delivery type</div>
+        <div class="step-section-title">${sstIco('📋')}Delivery type</div>
         <div class="toggle-row">
           <button class="toggle-switch ${state.ageRestricted?'on':''}" data-toggle="ageRestricted" aria-label="Age-restricted toggle"></button>
           <span class="tr-label">Slide if this delivery includes Age-restricted items
@@ -14673,7 +14682,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- ░ Page 3 — Rider(s) Info (Delivery + Ride only) ░ -->
       ${isVisible('riderInfo') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">👥</span>Rider info</div>
+        <div class="step-section-title">${sstIco('👥')}Rider info</div>
         <div class="field-row split">
           <div>
             <label style="font-family:Nunito;font-weight:700;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;"># of riders</label>
@@ -14699,7 +14708,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- ░ Page 5 — Item Info (Moving + Junk Removal only) ░ -->
       ${isVisible('itemInfo') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">📦</span>Item info</div>
+        <div class="step-section-title">${sstIco('📦')}Item info</div>
         ${!state.multipleItems ? `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <span style="font-family:Nunito;font-weight:700;font-size:13px;color:var(--text);"># of items involved</span>
@@ -14754,7 +14763,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ${(() => { const mv = state.category === 'moving';
                  const unit = mv ? 'Gopher' : 'worker'; return `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">👷</span>${mv ? 'Gopher setup' : 'Worker setup'}</div>
+        <div class="step-section-title">${sstIco('👷')}${mv ? 'Gopher setup' : 'Worker setup'}</div>
         <div class="toggle-row">
           <button class="toggle-switch ${state.moreThanOneWorker?'on':''}" data-toggle="moreThanOneWorker"></button>
           <span class="tr-label">More than 1 ${unit} needed</span>
@@ -14806,7 +14815,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           const mvSel = state.category === 'moving';
           const total = mvSel ? 2 : 3;
           const avail = (mvSel ? 1 : 2) + (myUnlocked ? 1 : 0);
-          return `<div class="step-section-title"><span class="sst-ico">🎯</span>How do you want to select your ${mvSel ? 'Gopher' : 'worker'}? (${avail} of ${total} options available)</div>`;
+          return `<div class="step-section-title">${sstIco('🎯')}How do you want to select your ${mvSel ? 'Gopher' : 'worker'}? (${avail} of ${total} options available)</div>`;
         })()}
         <div class="radio-group rg-stack">
           ${state.category === 'moving' ? '' : `
@@ -14878,7 +14887,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <!-- ░ Page 6 — Pick-Up ░ -->
       ${isVisible('pickupSection') ? `
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">📍</span>Pick-up location</div>
+        <div class="step-section-title">${sstIco('📍')}Pick-up location</div>
         ${isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
@@ -14924,7 +14933,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
       <!-- ░ Page 7 — Destination ░ -->
       <div class="step-section">
-        <div class="step-section-title"><span class="sst-ico">🏁</span>Destination</div>
+        <div class="step-section-title">${sstIco('🏁')}Destination</div>
         ${renderMultiAddressBlock_dropoff()}
         ${isVisible('destStairs') ? `
         <div class="toggle-row" style="margin-top:10px;justify-content:space-between;">
