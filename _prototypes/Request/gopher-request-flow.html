@@ -957,7 +957,7 @@ const CATEGORIES = {
     ex:'Couch haul · garage cleanout · debris' },
   moving:{ name:'Moving', tag:'Relocation', ph:"e.g. Move a 2-bedroom apartment — mostly boxes plus a couch and bed frame",
     ex:'Load a U-Haul · heavy furniture · dorm move' },
-  home:{ name:'Home / Office Services', tag:'Services', ph:'e.g. Mount a 55" TV on drywall and hide the cables',
+  home:{ name:'Home Services', tag:'Services', ph:'e.g. Mount a 55" TV on drywall and hide the cables',
     ex:'Mount a TV · assemble furniture · deep clean' },
   labor:{ name:'Hourly / Day Labor', tag:'Labor', ph:"e.g. Need 2 people for 3 hours to load a truck for an event",
     ex:'Extra hands · event setup · load materials' },
@@ -1115,7 +1115,7 @@ const FIELD_HIDDEN_FOR = {
   itemInfo:['delivery','home','labor','yard','ride','other'],
   hazardous:['delivery','moving','home','labor','yard','ride','other'],
   workerSetup:['delivery','home','ride'],
-  workerSelectChoice:['home','yard','other'],   /* Moving SHOWS it (owner 2026-10-03, G40-576 package): two options, no First Available */
+  workerSelectChoice:['yard','other'],   /* Moving SHOWS it (owner 2026-10-03, G40-576 package): two options, no First Available */
   pickupSection:['home','labor','junk','yard','other'],
   noSpecificPickup:['home','labor','junk','yard','ride','other'],
   pickupStairs:['delivery','home','labor','junk','yard','ride','other'],
@@ -1626,9 +1626,9 @@ function renderPics(){
 }
 /* Moving ships with NO card-title icons yet ("we dont need all the icons yet" — owner 2026-10-02, carried into the
    909 desk's G40-576 package). Per-category suppression, not a deletion: every other category keeps its icon. */
-/* The categories already on the new flow (G40-576 Moving, G40-577 Junk Removal, G40-578 Hourly / Day Labor): they speak "Gopher",
+/* The categories already on the new flow (G40-576 Moving, G40-577 Junk Removal, G40-578 Hourly / Day Labor, G40-579 Home Services): they speak "Gopher",
    show the two-option Gopher choice with NO First Available, and ship without card-title icons. Yard joins when its package lands. */
-const GOPHER_CATS=['moving','junk','labor'];
+const GOPHER_CATS=['moving','junk','labor','home'];
 function isGoph(){ return GOPHER_CATS.indexOf(state.category)>=0; }
 /* Need ASAP stays open about 6 hours for the SERVICE categories (Home Services, Moving, Junk Removal, Yard Project,
    Hourly / Day Labor — backend SERVICE_ORDERS, create.js ~530) and 1 hour for Delivery, Need a Ride and Custom Task / Other. */
@@ -1798,6 +1798,13 @@ function renderStep4(){
 /* The app's "Set your own price" sheet (src/component/yardFlow/InfoSheetContent.js ownPrice()), verbatim, all points
    including the 100% line. ONE copy, rendered by exactly one ?: on the "Set your offer" radio when that radio exists,
    otherwise on the offer field. Never both (owner 2026-10-04: "The full sheet, on the offer field"; "Never two ?s"). */
+/* Home Services speaks the app's pay-option names (G40-579): "Set your own price" / "Allow Gophers to bid on your job". */
+function ownTitle(){ return state.category==='home' ? 'Set your own price' : 'Set your offer'; }
+const BID_SHEET_APP=[
+  'Selecting this option allows Gophers to bid on your request for the amount they think is fair.',
+  'They will see the full details of your request and can make you an offer.',
+  'You can approve or decline the offers as they come in.',
+  "When bids come in, select View Profile to view the Gopher's ratings, reviews and job history to help make your selection."];
 const OWN_PRICE_SHEET=[
   'Selecting this option allows you to set whatever price you think is fair.',
   'For certain requests, we may suggest a minimum based on the average accepted offers for that category.',
@@ -1820,9 +1827,9 @@ function renderStep5(){
     <div class="radio-group">
       ${showBids ? `
       <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
-        <span class="radio-dot"></span><span class="rr-label">Set your offer
-          <span style="color:var(--muted-cool);font-weight:500;font-size:11px;">(any request)</span>
-          ${infoTip('own','Set your offer',OWN_PRICE_SHEET)}</span></div>` : ''}`;
+        <span class="radio-dot"></span><span class="rr-label">${ownTitle()}
+          ${state.category==='home' ? '' : '<span style="color:var(--muted-cool);font-weight:500;font-size:11px;">(any request)</span>'}
+          ${infoTip('own',ownTitle(),OWN_PRICE_SHEET)}</span></div>` : ''}`;
 
   if(state.payMode==='set'){
     h+=`<div class="sub-field" style="background:#fff;border-color:#e4e8f0;">
@@ -1837,7 +1844,7 @@ function renderStep5(){
             carries the FULL sheet (OWN_PRICE_SHEET). Where the radio exists it
             carries the sheet instead, so a category never shows two ?s. */}
       <div class="sf-label">${isGoph() ? (state.payByHour?'Your hourly offer to your Gopher':'Your offer to your Gopher') : (state.payByHour?'Your hourly offer to the worker':'Your offer to the worker')}
-        ${!showBids ? infoTip('earn','Set your offer',OWN_PRICE_SHEET) : ''}
+        ${!showBids ? infoTip('earn',ownTitle(),OWN_PRICE_SHEET) : ''}
       </div>
       <div class="cost-input-box"><span class="ci-currency">$</span>
         <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Your offer to your ${gw}"></div>
@@ -1855,8 +1862,8 @@ function renderStep5(){
 
   if(showBids){
     h+=`<div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids">
-      <span class="radio-dot"></span><span class="rr-label">Request bids
-        ${infoTip('bids','Request bids',['Local workers send their offers and you pick the best one. Great when you\'re not sure of a fair price.'])}</span></div>`;
+      <span class="radio-dot"></span><span class="rr-label">${state.category==='home' ? 'Allow Gophers to bid on your job' : 'Request bids'}
+        ${state.category==='home' ? infoTip('bids','Allow Gophers to bid on your job',BID_SHEET_APP) : infoTip('bids','Request bids',['Local workers send their offers and you pick the best one. Great when you\'re not sure of a fair price.'])}</span></div>`;
   }
   h+=`</div>`;
   return h;
