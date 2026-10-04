@@ -1074,8 +1074,9 @@ function statusText(r){
  // Submitted (broadcasting) — Need ASAP requests carry the 1-hour expiry ON the card so the
  // window is evident without opening details.
  if((r.stage==='searching'||r.stage==='pending') && r.asap && r.submittedAt){
-  var _left=60-Math.floor((Date.now()-r.submittedAt)/60000);
-  return 'Finding Gophers near you… · <b>'+(_left>0?('expires in '+(_left>=60?'1 hour':_left+' min')):'expired')+'</b>';
+  var _win=r.asapMins||60;   // service categories stay open about 6 hours (flow.html asapHours()); the rest 1 hour
+  var _left=_win-Math.floor((Date.now()-r.submittedAt)/60000);
+  return 'Finding Gophers near you… · <b>'+(_left>0?('expires in '+(_left>=60?(_win>60?('about '+Math.ceil(_left/60)+' hours'):'1 hour'):_left+' min')):'expired')+'</b>';
  }
  return 'Finding Gophers near you…';
 }
