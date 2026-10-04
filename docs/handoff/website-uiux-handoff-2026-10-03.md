@@ -301,6 +301,15 @@ keep current, no judgement call at speed.
   **after** the commit is written, as it did here. Marking it means amending a
   commit that is already on a shared branch, and rewriting published history is
   a worse problem than the one it solves.
+⛔ **DESIGN CONSTRAINT FOR THAT CHECK, when it is built — it must FAIL OPEN.**
+If the held-SHA file is missing, unreadable or malformed, the check must emit a
+loud warning and let the deploy proceed. It must **not** abort. Otherwise a typo
+in a data file becomes a repo-wide deploy outage for every session, which is a
+worse failure than the one the check prevents. Raised by
+`Website Code/Logic [927f4e]`, who will review it before it lands and named this
+as the thing they will push hardest on. Record it here because the build is
+weeks away and this is exactly the constraint that gets lost in between.
+
 - *A holds file the deploy script enforces* — this is the better long-term
   answer and the owner has approved it **for after 15 Nov**, not before. It is
   ~20 lines in `scripts/deploy.sh` preflight: read the held SHAs, compute the
