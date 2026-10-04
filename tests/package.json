@@ -1,0 +1,21 @@
+{
+  "name": "gopher-tests",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "serve:golden": "node serve.mjs ../Final --port 8140",
+    "parity": "node parity.mjs",
+    "parity:noise": "node parity.mjs --noise-floor",
+    "flows": "playwright test",
+    "flows:golden": "BASE_URL=http://127.0.0.1:8140 playwright test",
+    "flows:candidate": "BASE_URL=http://127.0.0.1:8000 URL_MAP=cleanUrls playwright test",
+    "unit": "for t in draft-map draft-store flow-rules step-gates; do node ../docs/handoff/request-app-parity/test-$t.js || exit 1; done",
+    "test": "npm run unit && npm run flows:golden"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.55.0",
+    "pngjs": "^7.0.0"
+  }
+}
