@@ -12309,7 +12309,14 @@ const PAY_BADGES = {
     pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
     noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
     pickupStairs:     ['delivery','home','labor','junk','yard','ride','other'], // Moving only
-    destStairs:       ['delivery','home','yard','ride'],              // Moving, Labor, Junk, Other only
+    destStairs:       ['delivery','home','junk','yard','ride'],       // Moving, Labor, Other only
+                                                                      /* Junk removed 2026-10-04. Owner, picking "Drop it on the web too":
+                                                                         "Web, Connect and prototype match the app: no stairs question on
+                                                                         Junk. Junk sends total_stair_flight 0 everywhere, as the app does."
+                                                                         The payload half is already satisfied -- the builder reads
+                                                                         `isVisible('destStairs') ? state.destStairs : 0`, so hiding the field
+                                                                         IS what sends 0. destStairs is also category-scoped, so a value set
+                                                                         on Moving cannot survive a switch to Junk. */
     serviceElevator:  ['delivery','home','labor','junk','yard','ride','other'], // Moving only
     multiStop:        ['moving','home','labor','junk','yard','other'], // Delivery + Ride
     // ──── Step 5 Worker pay ────

@@ -14118,7 +14118,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        category with NO First Available — the live app has never had it — so the
        `first` row is suppressed for Moving in renderStep3() and render()
        coerces any stale 'first' away. The rest still force 'select'. */
-    workerSelectChoice: ['home','labor','yard','other'],
+    workerSelectChoice: ['home','yard','other'],                      // + Labor 2026-10-04 (G40-578): Labor now shows the two-option Gopher choice
     // ──── Step 4 Location-section visibility ────
     pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
     noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
@@ -14132,7 +14132,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        for EVERY category, which is how it leaves Request without deleting the
        state (the payload snapshot already zeroes it when not visible). */
     serviceElevator:  ['delivery','moving','home','labor','junk','yard','ride','other'], // Connect-only: never shown
-    destStairs:       ['delivery','home','yard','ride'],              // Moving, Labor, Junk, Other only
+    destStairs:       ['delivery','home','junk','yard','ride'],       // Moving, Labor, Other only -- Junk removed 2026-10-04 (JR-34, ruled NO stairs for Junk)
     multiStop:        ['delivery','moving','home','labor','junk','yard','ride','other'], // Request: single pickup + single destination only (no multi-stop)
     // ──── Step 5 Worker pay ────
     aiPaySuggest: ['home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
@@ -14141,6 +14141,22 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // one-line edit here instead of an inline check.
     bidsOption: ['delivery','ride'],
   };
+  /* ── Completed flows ───────────────────────────────────────────────────────
+     Categories the owner has signed off as COMPLETE, in order: Moving
+     (G40-576, 2026-10-03), Junk Removal (G40-577) and Hourly / Day Labor
+     (G40-578), both 2026-10-04. They share the finished treatment: the
+     two-option Gopher choice with NO First Available, and "Gopher" rather than
+     "worker" in the labels the owner reviewed.
+
+     ⚠️ Adding a key here is a PRODUCT statement, not a tidy-up -- it asserts the
+     owner has called that flow complete. Yard is deliberately absent: it is a
+     crew category and gets the shared crew line, but its flow has not been
+     signed off. Each entry replaced a literal `state.category === 'moving'`
+     test; keeping them as one named set is what stops the next category from
+     having to find all of them again. */
+  const COMPLETED_FLOW = ['moving', 'junk', 'labor'];
+  const isCompletedFlow = () => COMPLETED_FLOW.indexOf(state.category) !== -1;
+
   const isVisible = (field) => !FIELD_HIDDEN_FOR[field].includes(state.category);
   // Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
   // crew, so one bid covers every worker (no discrepancy). Hidden only by category (bidsOption matrix)
@@ -14839,7 +14855,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
              the other categories have not been released by the 909 desk and a
              blanket worker->Gopher rename would change screens that are still
              mid-pass. */}
-      ${(() => { const mv = state.category === 'moving';
+      ${(() => { const mv = isCompletedFlow();
                  const unit = mv ? 'Gopher' : 'worker'; return `
       <div class="step-section">
         <div class="step-section-title">${sstIco('👷')}${mv ? 'Gopher setup' : 'Worker setup'}</div>
@@ -14891,13 +14907,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         ${''/* The count must describe what is actually RENDERED — Moving drops one
               option, so a hard-coded "3 of 3" would claim one the user cannot see. */}
         ${(() => {
-          const mvSel = state.category === 'moving';
+          const mvSel = isCompletedFlow();
           const total = mvSel ? 2 : 3;
           const avail = (mvSel ? 1 : 2) + (myUnlocked ? 1 : 0);
           return `<div class="step-section-title">${sstIco('🎯')}How do you want to select your ${mvSel ? 'Gopher' : 'worker'}? (${avail} of ${total} options available)</div>`;
         })()}
         <div class="radio-group rg-stack">
-          ${state.category === 'moving' ? '' : `
+          ${isCompletedFlow() ? '' : `
           <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
             <span class="radio-dot"></span>
             <span class="rr-label">First available worker — fastest match</span>
@@ -14914,7 +14930,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
                 sheet will describe a control that no longer exists. */}
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">${state.category === 'moving' ? `I'll select my worker
+            <span class="rr-label">${isCompletedFlow() ? `I'll select my worker
               <span class="info-tip" onclick="event.stopPropagation()">
                 <button class="info-btn" aria-label="About I'll select my worker">?</button>
                 <div class="info-popover" role="tooltip">
@@ -14928,7 +14944,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${myUnlocked ? `
           <div class="radio-row ${state.workerSelection==='my'?'selected':''}" data-radio="workerSelection" data-val="my">
             <span class="radio-dot"></span>
-            <span class="rr-label">${state.category === 'moving' ? `Prioritize MY Gopher(s)
+            <span class="rr-label">${isCompletedFlow() ? `Prioritize MY Gopher(s)
               <span class="info-tip" onclick="event.stopPropagation()">
                 <button class="info-btn" aria-label="About Prioritize MY Gophers">?</button>
                 <div class="info-popover" role="tooltip">
@@ -16005,7 +16021,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // the user must select their worker, so force that selection.
     if(!isVisible('workerSelectChoice')) {
       state.workerSelection = 'select';
-    } else if(state.category === 'moving' && state.workerSelection === 'first'){
+    } else if(isCompletedFlow() && state.workerSelection === 'first'){
       /* Moving shows no First Available, and 'first' is the app-wide default, so
          a Moving request would otherwise open on an option it does not display:
          a radio group with nothing selected.
