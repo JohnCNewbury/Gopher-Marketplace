@@ -21278,9 +21278,21 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         const worker = crew
           ? ((crewName && crew.find(w => w.name === crewName)) || crew[0])
           : ((r.live && r.live.worker) || { name: r.worker, photo:'', tier:'' });
-        const thread = crewName
+        /* ⛔ A PURGED thread must never come back. The product tells the
+           user "Delete permanently? This cannot be undone." — and then tapping
+           Message on the request rebuilt the whole conversation from r.thread,
+           composer and all, while the list still said "Nothing deleted" and the
+           badge read zero. Two clicks to undo an undoable-never.
+           The Gopher relationship survives a purge; the MESSAGE HISTORY does
+           not. So a purged thread still opens — you can still message your
+           Gopher — it just opens EMPTY. Soft-deleted threads are untouched
+           here: they still live in the Deleted tab and are the user's to
+           restore. Found 2026-10-03 by the launch behaviour audit, reproduced
+           on Connect and fixed on both surfaces. */
+        const wasPurged = !!(dashState.inboxPurged && dashState.inboxPurged[activeId]);
+        const thread = wasPurged ? [] : (crewName
           ? ((r.threads && r.threads[crewName]) || [])
-          : (r.thread || []);
+          : (r.thread || []));
         activeThread = {
           id: activeId,
           worker,
