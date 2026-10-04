@@ -63,22 +63,44 @@
     pickupSection:        ['home', 'junk', 'labor', 'other', 'yard'],
     pickupStairs:         ['delivery', 'home', 'junk', 'labor', 'other', 'ride', 'yard'],
     riderInfo:            ['delivery', 'home', 'junk', 'labor', 'moving', 'other', 'yard'],
-    serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'other', 'ride', 'yard'],
-    workerSelectChoice:   ['home', 'labor', 'moving', 'other', 'yard'],
+    /* ⚠️ BOTH ENTRIES CORRECTED 2026-10-04 (G40-576 Moving package). Each one
+       had drifted to CONNECT's value while this table claims to be Request's,
+       so `request` failed section 6 of run_parity_harness.py on both. Read the
+       list as HIDDEN-FOR: that inversion is easy to misread, and it did get
+       misread — `workerSelectChoice` naming `moving` looks like "Moving has
+       First Available" and means the opposite, that Moving gets no choice at
+       all. MV-03 is enforced elsewhere: Moving coerces workerSelection off
+       'first' (myN > 0 ? 'my' : 'select'), so it has the choice WITHOUT First
+       Available. Both facts hold at once. */
+    serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'moving', 'other', 'ride', 'yard'],
+    workerSelectChoice:   ['home', 'labor', 'other', 'yard'],
     workerSetup:          ['delivery', 'home', 'ride']
   };
 
   /* ── Surface overrides ─────────────────────────────────────────────────────
-     Connect is a different product and legitimately differs. Exactly one field
-     does so today.
+     Connect is a different product and legitimately differs. Three fields do
+     so today.
 
      `multiStop` is BUILT IN BOTH web surfaces — each has six isVisible call
      sites — but Request hides it for all eight categories, so in Request it is a
      finished feature switched off, not a missing one. Connect enables it for
-     Delivery and Ride. Treat a change here as a product decision, not a tidy-up. */
+     Delivery and Ride. Treat a change here as a product decision, not a tidy-up.
+
+     `serviceElevator` and `workerSelectChoice` became overrides on 2026-10-04,
+     when the baseline above was corrected to Request's values. Both are real
+     product differences, not drift:
+       • the service elevator is a CONNECT feature and not a Request one (owner,
+         G40-576 MV-11), so Connect shows it for Moving and Request never shows
+         it at all;
+       • Connect's Moving worker control has no "Prioritize MY Gophers" option,
+         so the Request choice does not translate — that is an OPEN question with
+         the owner, and until he rules, Connect keeps hiding the choice for
+         Moving. Revisit this entry when he answers, not before. */
   var SURFACE_OVERRIDES = {
     connect: {
-      multiStop:            ['home', 'junk', 'labor', 'moving', 'other', 'yard']
+      multiStop:            ['home', 'junk', 'labor', 'moving', 'other', 'yard'],
+      serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'other', 'ride', 'yard'],
+      workerSelectChoice:   ['home', 'labor', 'moving', 'other', 'yard']
     }
   };
 

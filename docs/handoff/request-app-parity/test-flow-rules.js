@@ -82,16 +82,33 @@ section('3. Surface overrides');
      R.isVisible('multiStop', 'delivery', 'connect') === true,
      'the same field differs by surface — which is the point of the override layer');
 
-  ok(R.darkFields().join(',') === 'multiStop', 'multiStop is the only dark field in the baseline');
+  /* ⚠️ UPDATED 2026-10-04 (G40-576). These two were 'multiStop is the ONLY dark
+     field' and 'exactly ONE field differs' — true when written, and both went red
+     when the baseline was corrected to Request's real values. They are kept as
+     EXACT-SET comparisons rather than relaxed to counts, so a FOURTH difference
+     still fails here instead of landing silently. */
+  ok(R.darkFields().join(',') === 'multiStop,serviceElevator',
+     'exactly multiStop + serviceElevator are dark in the baseline', R.darkFields().join(','));
   ok(R.darkFields('connect').length === 0, 'Connect has no dark fields');
 
-  /* Everything else must be identical across surfaces — 16 of 17 measured. */
+  /* 14 of 17 fields are identical across surfaces; these three legitimately differ. */
   var base = R.tableFor(), connect = R.tableFor('connect');
   var differing = Object.keys(base).filter(function (f) {
     return base[f].join(',') !== connect[f].join(',');
   });
-  ok(differing.join(',') === 'multiStop',
-     'exactly ONE field differs between the surfaces', differing.join(','));
+  ok(differing.join(',') === 'multiStop,serviceElevator,workerSelectChoice',
+     'exactly THREE fields differ between the surfaces', differing.join(','));
+
+  /* The two rulings behind the new overrides, asserted as behaviour and not as
+     table shape — a future edit that flips either one fails here by name. */
+  ok(R.visibleCategories('serviceElevator').length === 0 &&
+     R.visibleCategories('serviceElevator', 'connect').join(',') === 'moving',
+     'service elevator is a CONNECT feature for Moving and is never shown on Request (MV-11)',
+     'request=' + R.visibleCategories('serviceElevator').join(',') +
+     ' connect=' + R.visibleCategories('serviceElevator', 'connect').join(','));
+  ok(R.isVisible('workerSelectChoice', 'moving') === true &&
+     R.isVisible('workerSelectChoice', 'moving', 'connect') === false,
+     'Request offers Moving the worker-select choice; Connect does not (owner question still open)');
 })();
 
 /* ═══ 4. The pricing invariant — the one that caught a real defect ════════════ */
