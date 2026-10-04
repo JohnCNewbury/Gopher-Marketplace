@@ -6547,6 +6547,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     color:#fff;
     font-family:'Nunito',sans-serif; font-weight:900; font-size:16px;
   }
+  /* 2026-10-04 — the SAME fallback element is reused by every circular avatar on
+     this surface (.agl-photo / .rc-photo in the MY Gophers pickers, .gsc-photo on
+     the saved-Gopher card). One class, so the four lists cannot drift apart the
+     way Request's did. Only the glyph needs sizing: the element is
+     width/height:100% and fits whatever circle contains it. */
+  .agl-photo .wcard-photo-fallback,
+  .rc-photo  .wcard-photo-fallback { font-size:14px; }                   /* 38px */
+  .gopher-saved-card .gsc-photo .wcard-photo-fallback { font-size:24px; } /* 64px */
   .wcard-main { flex:1; min-width:0; }
   .wcard-top { display:flex; align-items:center; gap:7px; }
   .wcard-name { font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--navy); }
@@ -22267,7 +22275,7 @@ const PAY_BADGES = {
     const prevWorker = prev.worker || '';
     list.innerHTML = myG.map(g => `
       <button class="agl-row ${g.name===prevWorker ? 'selected':''}" data-gopher="${g.name}">
-        <div class="agl-photo"><img src="${g.photo}" alt=""></div>
+        <div class="agl-photo">${g.photo ? `<img src="${g.photo}" alt="">` : `<div class="wcard-photo-fallback">${(g.name||'?').charAt(0)}</div>`}</div>
         <div class="agl-main"><div class="agl-name">${g.name}</div><div class="agl-spec">${g.specialty}</div></div>
         <div class="agl-check"></div>
       </button>`).join('');
@@ -22726,7 +22734,7 @@ const PAY_BADGES = {
     const html = DASH_DATA.myGophers.map(g => `
       <div class="gopher-saved-card">
         <div class="gsc-photo">
-          <img src="${g.photo}" alt="${g.name}">
+          ${g.photo ? `<img src="${g.photo}" alt="">` : `<div class="wcard-photo-fallback">${(g.name||'?').charAt(0)}</div>`}
         </div>
         <div class="gsc-info">
           <div class="gsc-name">
@@ -23219,7 +23227,7 @@ const PAY_BADGES = {
       const carried = hireAgainState.extraGophers || [];
       document.getElementById('addGophersList').innerHTML = remaining.map(g =>
         `<button class="agl-row${carried.includes(g.name) ? ' selected' : ''}" data-gopher="${g.name}">
-           <div class="agl-photo"><img src="${g.photo}" alt=""></div>
+           <div class="agl-photo">${g.photo ? `<img src="${g.photo}" alt="">` : `<div class="wcard-photo-fallback">${(g.name||'?').charAt(0)}</div>`}</div>
            <div class="agl-main"><div class="agl-name">${g.name}</div><div class="agl-spec">${g.specialty}</div></div>
            <div class="agl-check"></div>
          </button>`).join('');
@@ -23835,7 +23843,7 @@ const PAY_BADGES = {
     const list = document.getElementById('rcList');
     list.innerHTML = DASH_DATA.myGophers.map((g,i) => `
       <div class="rc-row" data-rc-i="${i}">
-        <div class="rc-photo"><img src="${g.photo}" alt=""></div>
+        <div class="rc-photo">${g.photo ? `<img src="${g.photo}" alt="">` : `<div class="wcard-photo-fallback">${(g.name||'?').charAt(0)}</div>`}</div>
         <div class="rc-main">
           <div class="rc-name">${g.name}</div>
           <div class="rc-spec">${g.specialty}</div>
