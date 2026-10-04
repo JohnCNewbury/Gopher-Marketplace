@@ -13771,6 +13771,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
     // Page 6 — Pick-Up Location
     noSpecificPickup: false,
+    /* G40-577 / G40-578: free-text Unit/Apt, one per address. Plain strings, NOT
+       members of pickupStops/dropoffStops (those are the address arrays) and
+       deliberately NOT in CATEGORY_SCOPED_KEYS -- a unit number belongs to the
+       BUILDING the requester typed, so switching category must not silently
+       drop the "4B" from an address that is still on screen. */
+    pickupUnit: '',
+    destUnit: '',
     pickupStairs: 0,
     serviceElevatorPickup: false,     // Moving only — access to a service elevator at pick-up
     pickupStops: [''],
@@ -15377,7 +15384,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           `<div class="review-row"><span class="rl">Pick-up Address ${i+1}</span><span class="rv" style="text-align:right;max-width:60%;">${addr}</span></div>`
         ).join('');
       }
-      return `<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="text-align:right;max-width:60%;">${state.pickupStops[0]}</span></div>`;
+      return `<div class="review-row"><span class="rl">Pick-up</span><span class="rv" style="text-align:right;max-width:60%;">${addrWithUnit(state.pickupStops[0], 'pickupUnit')}</span></div>`;
     })();
     const dropoffRows = (() => {
       if(state.dropoffStops.length > 1) {
@@ -15385,7 +15392,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           `<div class="review-row"><span class="rl">Drop-off Address ${i+1}</span><span class="rv" style="text-align:right;max-width:60%;">${addr}</span></div>`
         ).join('');
       }
-      return `<div class="review-row"><span class="rl">Destination</span><span class="rv" style="text-align:right;max-width:60%;">${state.dropoffStops[0]}</span></div>`;
+      return `<div class="review-row"><span class="rl">Destination</span><span class="rv" style="text-align:right;max-width:60%;">${addrWithUnit(state.dropoffStops[0], 'destUnit')}</span></div>`;
     })();
     // Access detail (stairs / service elevator) entered on Step 4. Shown only
     // when the field is offered for this category AND the customer entered
@@ -15906,9 +15913,35 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${pickupExpanded ? `Pickup stops (${pickups.length})` : 'Pickup address'}
         </label>
         ${renderStops}
+        ${(state.category === 'moving' && !pickupExpanded) ? renderUnitInput('pickup') : ''}
         ${footer}
       </div>
     `;
+  }
+
+  /* ── Unit / Apt # ──────────────────────────────────────────────────────────
+     A second input directly under its address, in the same card. No visible
+     label -- the placeholder carries it and the aria-label says WHICH address,
+     since two identical placeholders on one step are otherwise indistinguishable
+     to a screen reader. Free text: no validation, not required, never gates
+     Continue. Matched to the prototype's shape, but built from the web's own
+     .field-input / .fi-value markup rather than pasting the prototype's
+     .addr-block / .addr-input, which do not exist on this surface. */
+  function renderUnitInput(kind){
+    const key = kind === 'pickup' ? 'pickupUnit' : 'destUnit';
+    const who = kind === 'pickup' ? 'Pick-up' : 'Destination';
+    return `
+      <div class="field-input" style="margin-top:8px;">
+        <input class="fi-value" type="text" value="${(state[key]||'').replace(/"/g,'&quot;')}"
+               data-field="${key}" placeholder="Unit/Apt #" aria-label="${who} Unit/Apt #" autocomplete="off">
+      </div>`;
+  }
+
+  /* The address string as the requester should READ it: the unit is a suffix on
+     the same line, never its own review row. */
+  function addrWithUnit(addr, unitKey){
+    const u = (state[unitKey] || '').trim();
+    return (addr || '') + (u ? ', Unit/Apt ' + u : '');
   }
 
   function renderMultiAddressBlock_dropoff(){
@@ -15955,6 +15988,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${dropoffExpanded ? `Drop-off stops (${dropoffs.length})` : 'Destination address'}
         </label>
         ${renderStops}
+        ${''/* Moving, Junk and Labor -- which is exactly COMPLETED_FLOW, so the
+              gate is the predicate rather than a second list that could drift
+              away from it. Suppressed on a multi-stop drop-off: one unit box
+              under several addresses would be ambiguous about which it belongs
+              to, and Request hides multiStop for all eight categories anyway. */}
+        ${(isCompletedFlow() && !dropoffExpanded) ? renderUnitInput('dest') : ''}
         ${(isVisible('pickupSection') && !state.noSpecificPickup) ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
         ${footer}
       </div>
@@ -16276,6 +16315,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     });
 
     // ─── Editable text fields (description, cost of items, pay amount) ───
+    /* Unit/Apt: same no-re-render pattern as the description below -- a
+       re-render on every keystroke would drop focus mid-"4B". There is no
+       generic [data-field] binding on this surface; every field is wired by
+       hand, so these are too. No validation and no gate: the value is read when
+       the review step renders. */
+    $content.querySelectorAll('input[data-field="pickupUnit"], input[data-field="destUnit"]').forEach(el => {
+      el.addEventListener('input', () => { state[el.getAttribute('data-field')] = el.value; });
+    });
+
     // Update state on input WITHOUT a full re-render so the field keeps focus
     // while typing. Values are picked up when the review step renders.
     const $desc = $content.querySelector('#descriptionInput');
