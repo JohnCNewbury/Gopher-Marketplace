@@ -15232,20 +15232,27 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
       <div class="review-card">
         <div class="review-row"><span class="rl">Category</span><span class="rv">${c.name}</span></div>
-        ${(state.hireAgainGophers && state.hireAgainGophers.length) ? `<div class="review-row"><span class="rl">MY Gophers first</span><span class="rv" style="text-align:right;max-width:60%;">${state.hireAgainGophers.join(', ')}</span></div>` : ''}
+        ${''/* On MOVING this row moves BELOW the locations and is called
+              "Gopher requested", per the 909 desk's completed-category package
+              and the master doc's Step 6 order. Every other category keeps it
+              here, named "MY Gophers first". */}
+        ${(state.category !== 'moving' && state.hireAgainGophers && state.hireAgainGophers.length) ? `<div class="review-row"><span class="rl">MY Gophers first</span><span class="rv" style="text-align:right;max-width:60%;">${state.hireAgainGophers.join(', ')}</span></div>` : ''}
         ${isVisible('describe') && !state.descriptionIsPlaceholder ? `<div class="review-row"><span class="rl">Description</span><span class="rv" style="text-align:right;max-width:60%;">${state.description}</span></div>` : ''}
         ${isVisible('addPic') && state.picThumbs.length > 0 ? `<div class="review-row"><span class="rl">Pics</span><span class="rv"><div class="review-thumbs">${state.picThumbs.map((t,i)=>`<div class="review-thumb"><img src="${t.src}" alt="pic ${i+1}"></div>`).join('')}</div></span></div>` : ''}
         ${state.category === 'delivery' ? `<div class="review-row"><span class="rl">Delivery type</span><span class="rv">${state.ageRestricted?'Age-restricted · ':''}${state.itemsPurchased?'Purchase needed':'Items in hand'}</span></div>` : ''}
         ${isVisible('riderInfo') ? `<div class="review-row"><span class="rl">Rider info</span><span class="rv">${state.numRiders} rider${state.numRiders!=='1'?'s':''} · ${state.numBags} bag${state.numBags!=='1'?'s':''}</span></div>` : ''}
-        ${isVisible('workerSetup') ? `<div class="review-row"><span class="rl">Worker info</span><span class="rv">${workerInfoStr}</span></div>` : ''}
+        ${isVisible('workerSetup') ? `<div class="review-row"><span class="rl">${state.category === 'moving' ? 'Gopher info' : 'Worker info'}</span><span class="rv">${workerInfoStr}</span></div>` : ''}
         ${isVisible('itemInfo') ? `<div class="review-row"><span class="rl">Item info</span><span class="rv">${itemInfoStr}</span></div>` : ''}
         ${isVisible('pickupSection') ? pickupRows : ''}
         ${isVisible('pickupSection') ? pickupAccessRow : ''}
         ${dropoffRows}
         ${dropoffAccessRow}
+        ${(state.category === 'moving' && state.hireAgainGophers && state.hireAgainGophers.length) ? `<div class="review-row"><span class="rl">Gopher requested</span><span class="rv" style="text-align:right;max-width:60%;">${state.hireAgainGophers.join(', ')}</span></div>` : ''}
         ${showCostOfItems ? `<div class="review-row"><span class="rl">Cost of items</span><span class="rv">${fmt(costItemsNum)}</span></div>` : ''}
         <div class="review-row">
-          <span class="rl">Your offer to the worker${workerCount > 1 ? 's' : ''}${workerCount > 1 && !bidsMode ? `
+          ${''/* MOVING: "Your offer to your Gopher", and NO ? — master doc Step 6
+                row, which marks the Request fee as the only ? on this screen. */}
+          <span class="rl">${state.category === 'moving' ? 'Your offer to your Gopher' : ('Your offer to the worker' + (workerCount > 1 ? 's' : ''))}${state.category !== 'moving' && workerCount > 1 && !bidsMode ? `
             <span class="info-tip fee-tip" onclick="event.stopPropagation()">
               <button class="info-btn" aria-label="How payment is split across workers">?</button>
               <div class="info-popover fee-popover" role="tooltip">
