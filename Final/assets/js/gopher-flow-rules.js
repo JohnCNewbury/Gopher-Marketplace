@@ -54,7 +54,7 @@
     bidsOption:           ['delivery', 'ride'],
     deliveryType:         ['home', 'junk', 'labor', 'moving', 'other', 'ride', 'yard'],
     describe:             ['ride'],
-    destStairs:           ['delivery', 'home', 'ride', 'yard'],
+    destStairs:           ['delivery', 'home', 'junk', 'ride', 'yard'],
     hazardous:            ['delivery', 'home', 'labor', 'moving', 'other', 'ride', 'yard'],
     itemInfo:             ['delivery', 'home', 'labor', 'other', 'ride', 'yard'],
     laborMgmt:            ['delivery', 'home', 'ride'],
@@ -73,7 +73,11 @@
        'first' (myN > 0 ? 'my' : 'select'), so it has the choice WITHOUT First
        Available. Both facts hold at once. */
     serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'moving', 'other', 'ride', 'yard'],
-    workerSelectChoice:   ['home', 'labor', 'other', 'yard'],
+    /* 'labor' left on 2026-10-04 (G40-578): Labor now shows the two-option
+       Gopher choice. 'junk' joined destStairs the same day (JR-34) -- owner:
+       "Web, Connect and prototype match the app: no stairs question on Junk.
+       Junk sends total_stair_flight 0 everywhere, as the app does." */
+    workerSelectChoice:   ['home', 'other', 'yard'],
     workerSetup:          ['delivery', 'home', 'ride']
   };
 
@@ -101,6 +105,15 @@
       multiStop:            ['home', 'junk', 'labor', 'moving', 'other', 'yard'],
       serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'other', 'ride', 'yard'],
       workerSelectChoice:   ['home', 'labor', 'moving', 'other', 'yard']
+      /* ⚠️ Connect keeps BOTH 'labor' and 'moving' hidden, and this is a finding
+         rather than lag. Connect's control offers exactly two options --
+         "First available worker" and "I'll select my worker(s)" -- and has NO
+         "Prioritize MY Gopher(s)" row at all; Connect routes favourites through
+         its separate eligibleWorkers block. So the owner's "two options, no
+         First Available" cannot translate here: dropping First Available would
+         leave ONE option, which is not a choice. Read from Connect's own
+         markup, not inferred from Request. Parked with the owner together with
+         Connect's Moving -- one ruling covers both. Revisit when he answers. */
     }
   };
 

@@ -109,6 +109,19 @@ section('3. Surface overrides');
   ok(R.isVisible('workerSelectChoice', 'moving') === true &&
      R.isVisible('workerSelectChoice', 'moving', 'connect') === false,
      'Request offers Moving the worker-select choice; Connect does not (owner question still open)');
+
+  /* G40-578 / JR-34, 2026-10-04. Both are owner rulings, pinned as BEHAVIOUR so
+     that reverting either one fails here by name rather than as a table diff. */
+  ok(R.isVisible('workerSelectChoice', 'labor') === true,
+     'Labor shows the worker-select choice on Request (G40-578)');
+  ok(R.isVisible('workerSelectChoice', 'labor', 'connect') === false,
+     'Connect still hides it for Labor -- its control has no "Prioritize MY Gopher(s)" row (parked with the owner)');
+  ok(R.isVisible('destStairs', 'junk') === false &&
+     R.isVisible('destStairs', 'junk', 'connect') === false,
+     'Junk asks NO stairs question on either dashboard (JR-34)',
+     'request=' + R.isVisible('destStairs', 'junk') + ' connect=' + R.isVisible('destStairs', 'junk', 'connect'));
+  ok(R.isVisible('destStairs', 'labor') === true,
+     'Labor DOES keep its destination stairs question (INV-13) -- JR-34 is Junk only');
 })();
 
 /* ═══ 4. The pricing invariant — the one that caught a real defect ════════════ */
