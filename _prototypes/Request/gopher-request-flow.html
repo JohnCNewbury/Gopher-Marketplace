@@ -1798,8 +1798,10 @@ function renderStep4(){
 /* The app's "Set your own price" sheet (src/component/yardFlow/InfoSheetContent.js ownPrice()), verbatim, all points
    including the 100% line. ONE copy, rendered by exactly one ?: on the "Set your offer" radio when that radio exists,
    otherwise on the offer field. Never both (owner 2026-10-04: "The full sheet, on the offer field"; "Never two ?s"). */
-/* Home Services speaks the app's pay-option names (G40-579): "Set your own price" / "Allow Gophers to bid on your job". */
-function ownTitle(){ return state.category==='home' ? 'Set your own price' : 'Set your offer'; }
+/* The app's pay-option names, shared by every step flow (owner 2026-10-04 via the 909 desk, "copy what's built"):
+   "Set your own price" / "Allow Gophers to bid on your job". They appear wherever the bids option exists (every
+   category but Delivery and Ride); the own-price sheet carries the same name where the radio is absent. */
+function ownTitle(){ return 'Set your own price'; }
 const BID_SHEET_APP=[
   'Selecting this option allows Gophers to bid on your request for the amount they think is fair.',
   'They will see the full details of your request and can make you an offer.',
@@ -1828,7 +1830,6 @@ function renderStep5(){
       ${showBids ? `
       <div class="radio-row ${state.payMode==='set'?'selected':''}" data-radio="payMode" data-val="set">
         <span class="radio-dot"></span><span class="rr-label">${ownTitle()}
-          ${state.category==='home' ? '' : '<span style="color:var(--muted-cool);font-weight:500;font-size:11px;">(any request)</span>'}
           ${infoTip('own',ownTitle(),OWN_PRICE_SHEET)}</span></div>` : ''}`;
 
   if(state.payMode==='set'){
@@ -1862,8 +1863,8 @@ function renderStep5(){
 
   if(showBids){
     h+=`<div class="radio-row ${state.payMode==='bids'?'selected':''}" data-radio="payMode" data-val="bids">
-      <span class="radio-dot"></span><span class="rr-label">${state.category==='home' ? 'Allow Gophers to bid on your job' : 'Request bids'}
-        ${state.category==='home' ? infoTip('bids','Allow Gophers to bid on your job',BID_SHEET_APP) : infoTip('bids','Request bids',['Local workers send their offers and you pick the best one. Great when you\'re not sure of a fair price.'])}</span></div>`;
+      <span class="radio-dot"></span><span class="rr-label">Allow Gophers to bid on your job
+        ${infoTip('bids','Allow Gophers to bid on your job',BID_SHEET_APP)}</span></div>`;
   }
   h+=`</div>`;
   return h;
