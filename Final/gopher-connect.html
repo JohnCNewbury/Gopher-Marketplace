@@ -13303,6 +13303,21 @@ const PAY_BADGES = {
           `Once accepted, you can <b>text or call your worker</b> directly, and <b>track route progress in real time</b> when applicable.`,
           `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
         ];
+        /* ── The crew line (owner, verified on his phone, 2026-10-04) ────────
+           Whenever 2+ Gophers are requested, say plainly that ONE Gopher
+           accepts and brings the rest, so a single acceptance is not read as a
+           partial fill. Identical to the line in gopher-request.html; the two
+           must be changed together.
+
+           ⚠️ Keyed on the CREW CONTROL being in play, not on a category list:
+           isVisible('workerSetup') && moreThanOneWorker && numWorkers>1. That
+           is what "whenever 2+ Gophers are requested" means, and it stays
+           correct for Yard, Moving, Junk and Labor without naming them. */
+        const crewN = parseInt(state.numWorkers, 10) || 1;
+        if(isVisible('workerSetup') && state.moreThanOneWorker && crewN > 1){
+          wteSteps.splice(1, 0,
+            `One Gopher accepts your request and agrees to show up with all <b>${crewN}</b> Gophers needed.`);
+        }
         // Need ASAP requests expire — be explicit up front (1-hour broadcast window).
         if(state.scheduleType==='now') wteSteps.splice(1,0,
           `<b>Need ASAP</b> requests stay live for <b>1 hour</b> — if no worker accepts in that time, the request <b>expires</b>. You're never charged for an expired request, and you can resubmit anytime.`);
