@@ -14176,6 +14176,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      having to find all of them again. */
   const COMPLETED_FLOW = ['moving', 'junk', 'labor'];
   const isCompletedFlow = () => COMPLETED_FLOW.indexOf(state.category) !== -1;
+
+  /* ── Categories that ask for a Unit/Apt # ──────────────────────────────────
+     ⚠️ A SEPARATE LIST ON PURPOSE, even though it holds the same three keys as
+     COMPLETED_FLOW today. "This flow is signed off" and "this category has an
+     address worth a unit number" are different questions that happen to agree
+     right now. Gating the field on isCompletedFlow() would mean the next
+     category marked complete silently grows a Unit/Apt box nobody asked for --
+     which is exactly how `mv` came to mean two things and deleted Labor's
+     hourly toggle when it was widened (2026-10-04). Keep them apart. */
+  const UNIT_CATEGORIES = ['moving', 'junk', 'labor'];
+  const asksForUnit = () => UNIT_CATEGORIES.indexOf(state.category) !== -1;
   /* ── How long a Need ASAP request stays live ───────────────────────────────
      ⛔ THIS WAS WRONG FOR FIVE OF THE EIGHT CATEGORIES until 2026-10-04. The
      sentence below hard-coded "1 hour" for everyone, so a Junk, Moving, Yard,
@@ -16034,12 +16045,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${dropoffExpanded ? `Drop-off stops (${dropoffs.length})` : 'Destination address'}
         </label>
         ${renderStops}
-        ${''/* Moving, Junk and Labor -- which is exactly COMPLETED_FLOW, so the
-              gate is the predicate rather than a second list that could drift
-              away from it. Suppressed on a multi-stop drop-off: one unit box
-              under several addresses would be ambiguous about which it belongs
-              to, and Request hides multiStop for all eight categories anyway. */}
-        ${(isCompletedFlow() && !dropoffExpanded) ? renderUnitInput('dest') : ''}
+        ${''/* Moving, Junk and Labor, via UNIT_CATEGORIES -- deliberately NOT
+              isCompletedFlow(), which holds the same keys today but answers a
+              different question. Suppressed on a multi-stop drop-off: one unit
+              box under several addresses cannot say which it belongs to. */}
+        ${(asksForUnit() && !dropoffExpanded) ? renderUnitInput('dest') : ''}
         ${(isVisible('pickupSection') && !state.noSpecificPickup) ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
         ${footer}
       </div>

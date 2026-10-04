@@ -97,12 +97,11 @@ scheduleConfirmed selectedDate suggestedOfferUsed""".split())
 # outside core+documented are reported as NEW DRIFT (warning). The RETIRED legacy
 # shapes (pickupStop/dropoffStop strings, idVerified bool) are deliberately NOT
 # listed: if one reappears anywhere, it surfaces as NEW-DRIFT.
-# pickupUnit / destUnit: free-text Unit/Apt, added to gopher-request.html on
-# 2026-10-04 (G40-577 / G40-578). Listed as DRIFT rather than core because they
-# are Request-only TODAY -- measured: request 6 occurrences, connect 0,
-# prototype 0. The prototype gains them when its held package lands. Whether
-# CONNECT should have them is an open question with the desk; if it does, these
-# two belong in the core set above and this entry should go.
+# pickupUnit / destUnit: free-text Unit/Apt (G40-577 / G40-578, 2026-10-04).
+# On BOTH dashboards since the owner ruled "Yes" for Connect. Still listed as
+# drift rather than core only because the PROTOTYPE does not have them yet --
+# they arrive with its held package, and when it lands these two belong in the
+# core set above and this entry should go.
 DOCUMENTED_EXTRA = set("""pickupUnit destUnit businessPlan dealBoost dealKind
 descriptionIsPlaceholder descriptionPlaceholder dupWarnAck
 eligibleWorkers fromDeal hasPic hireAgainGophers idFrontCaptured idFrontSrc
