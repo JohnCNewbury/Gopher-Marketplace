@@ -373,3 +373,34 @@ Same shape: correct for a condition that no longer held, and silent about it.
 ⛔ **The remedy is a six-word comment naming the dependency.** Every case above
 would have been caught by one. Cheapest guard in this repo, most consistently
 skipped.
+
+### ⛔ THE DRY-RUN DIFFSTAT DOES NOT SHOW `_prototypes/` CHANGES
+
+Found 2026-10-04, one push away from shipping a prototype change nobody had
+cleared.
+
+`scripts/deploy.sh` prints its "what would ship" diffstat for **`Final/` only**.
+The 11 allowlisted `_prototypes/` files are copied in a **separate step**, so a
+change to any of them is **completely invisible in the scope list** — the very
+list this doc tells you to read per-commit. The run still prints
+`✓ prototypes: 11 allowlisted file(s), 0 strays`, which reads like a clean
+result and is actually just a count.
+
+**What it looked like:** a deploy whose diffstat said *2 files, both mine*, while
+three prototype files differed from the deployed copies — including one touching
+a cockpit footer the owner had explicitly parked (*"variant A chosen, implement
+decision pending, do not apply until he says"*).
+
+⛔ **Check prototypes separately, every time, before `--push`:**
+
+```sh
+for f in $(git ls-tree -r --name-only origin/main | grep '^_prototypes/'); do
+  a=$(git show "origin/main:$f" | md5 -q); b=$(md5 -q "$f" 2>/dev/null)
+  [ "$a" = "$b" ] || echo "DIFFERS  $f"
+done
+```
+
+⭐ **The wider lesson, and it is the same one as §8's pattern:** a scope check is
+only as wide as the thing it reads. Per-commit fixed the *unit*; it did not fix
+the *coverage*. `git log` listed the prototype commit plainly — it was the
+diffstat, the thing that looks authoritative, that silently omitted it.
