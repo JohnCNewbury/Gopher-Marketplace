@@ -14832,7 +14832,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         <div class="toggle-row">
           <button class="toggle-switch ${state.hazardous?'on':''}" data-toggle="hazardous"></button>
           <span class="tr-label">Includes hazardous material
-            <button class="info-btn" title="Flammable, corrosive, etc — requires specialized worker. May include extra fee for worker to dispose.">?</button>
+            ${''/* G40-577: the prototype's wording, matched verbatim --
+                  _prototypes/Request/gopher-request-flow.html, infoTip('haz',...).
+                  The web's own version said the same thing in note form
+                  ("Flammable, corrosive, etc — requires specialized worker"),
+                  which is not what a requester reads on the app. Promoted from a
+                  bare one-line tooltip to the web's rich popover so the fee line
+                  can carry the same emphasis the prototype gives it. */}
+            <span class="info-tip" onclick="event.stopPropagation()">
+              <button class="info-btn" aria-label="About hazardous material">?</button>
+              <div class="info-popover" role="tooltip">
+                <h5>Hazardous material</h5>
+                <p>Flammable, corrosive, or otherwise hazardous items need a specialized worker.</p>
+                <p class="emphasis">May include an extra fee for safe disposal.</p>
+              </div>
+            </span>
           </span>
         </div>
         ` : ''}

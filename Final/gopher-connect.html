@@ -12477,7 +12477,17 @@ const PAY_BADGES = {
         <div class="toggle-row">
           <button class="toggle-switch ${state.hazardous?'on':''}" data-toggle="hazardous"></button>
           <span class="tr-label">Includes hazardous material
-            <button class="info-btn" data-info="Flammable, corrosive, etc — requires specialized worker. May include extra fee for worker to dispose.">?</button>
+            ${''/* G40-577: the prototype's wording, matched verbatim, same as
+                  gopher-request.html -- the three surfaces must say the same
+                  thing about a safety question. */}
+            <span class="info-tip" onclick="event.stopPropagation()">
+              <button class="info-btn" aria-label="About hazardous material">?</button>
+              <div class="info-popover" role="tooltip">
+                <h5>Hazardous material</h5>
+                <p>Flammable, corrosive, or otherwise hazardous items need a specialized worker.</p>
+                <p class="emphasis">May include an extra fee for safe disposal.</p>
+              </div>
+            </span>
           </span>
         </div>
         ` : ''}
