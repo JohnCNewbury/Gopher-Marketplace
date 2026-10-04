@@ -14852,14 +14852,42 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
             <span class="radio-dot"></span>
             <span class="rr-label">First available worker — fastest match</span>
           </div>`}
+          ${''/* MOVING: a PLAIN label plus a ?, per the 909 desk's package. The
+                ? copy is the merged app's, from src/component/yardFlow/
+                InfoSheetContent.js @ aae10b7a — smg() lines 32-42 and
+                favGopher() lines 43-58 — approved by the desk with the web's
+                own labels substituted for the app's {select} / {priority}
+                slots, and the web's popover shape kept rather than the app's
+                lead+points sheet.
+                ⚠️ The two are COUPLED: favGopher's first point names the other
+                option, so these labels must be changed together or the second
+                sheet will describe a control that no longer exists. */}
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">I'll select my worker — review ratings, reviews and job history before selecting</span>
+            <span class="rr-label">${state.category === 'moving' ? `I'll select my worker
+              <span class="info-tip" onclick="event.stopPropagation()">
+                <button class="info-btn" aria-label="About I'll select my worker">?</button>
+                <div class="info-popover" role="tooltip">
+                  <h5>I&rsquo;ll select my worker</h5>
+                  <p>When choosing <b>I&rsquo;ll select my worker</b>, each Gopher interested will create an alert in the app for you.</p>
+                  <p>You can see their rating, reviews and job history before making your selection!</p>
+                  <p>This option requires some engagement during the selection process.</p>
+                </div>
+              </span>` : `I'll select my worker — review ratings, reviews and job history before selecting`}</span>
           </div>
           ${myUnlocked ? `
           <div class="radio-row ${state.workerSelection==='my'?'selected':''}" data-radio="workerSelection" data-val="my">
             <span class="radio-dot"></span>
-            <span class="rr-label">Prioritize MY Gophers — we'll notify your favs first</span>
+            <span class="rr-label">${state.category === 'moving' ? `Prioritize MY Gopher(s)
+              <span class="info-tip" onclick="event.stopPropagation()">
+                <button class="info-btn" aria-label="About Prioritize MY Gophers">?</button>
+                <div class="info-popover" role="tooltip">
+                  <h5>Prioritize MY Gopher(s)</h5>
+                  <p>When selecting <b>Prioritize MY Gopher(s)</b>, each favorite you select will be notified of your request.</p>
+                  <p>If none of your MY Gophers have accepted within about a minute, all other Gophers in the area will see your request and you will be able to choose the same way as I&rsquo;ll select my worker.</p>
+                  <p>This option requires some engagement during the selection process, yet only if your MY Gopher is unavailable.</p>
+                </div>
+              </span>` : `Prioritize MY Gophers — we'll notify your favs first`}</span>
           </div>
           ` : `
           <div class="radio-row locked" aria-disabled="true">
