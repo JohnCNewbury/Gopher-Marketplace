@@ -4476,7 +4476,36 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:white; border-radius:18px; padding:28px 26px 24px;
     width:100%; max-width:380px; position:relative; text-align:center;
     box-shadow:0 30px 80px rgba(0,0,0,0.35);
+    /* ⛔ ACTIONS ARE ANCHORED AT THE BOTTOM. Owner 2026-10-03, as a blanket
+       rule for every modal: "The standard modal should be buttons (and those
+       with 'dont show me this again') anchored on the bottom."
+       In a SHORT modal the buttons were already last, so nothing moves. The
+       case this fixes is a TALL one — the age-restricted waiver, the fee
+       breakdowns — where the modal grew past the viewport and the only way to
+       the button was to scroll a dialog people do not expect to scroll. The
+       body now scrolls and the actions stay put.
+       Done here, once, rather than in ~20 individual modal markups: every one
+       already ends with its buttons, so pinning them by CLASS reaches all of
+       them and any modal added later. */
+    max-height:min(86vh, 760px); overflow-y:auto;
   }
+  /* The action block: whatever trails the modal, pinned to its floor. The
+     white backdrop and the top rule keep scrolled content from bleeding
+     through behind the buttons. */
+  .gr-modal > .gr-modal-btn,
+  .gr-modal > .gr-modal-btn-secondary,
+  .gr-modal > .gr-modal-btn-danger,
+  .gr-modal > .gr-modal-btn-text,
+  .gr-modal > .prev-check-row,
+  .gr-modal > .goto-intro-never {
+    position:sticky; bottom:0; z-index:2;
+    background-clip:padding-box;
+  }
+  .gr-modal > .gr-modal-btn-text,
+  .gr-modal > .prev-check-row,
+  .gr-modal > .goto-intro-never { background:#fff; }
+  /* The first pinned element carries the separation from the scrolling body. */
+  .gr-modal > .gr-modal-btn:first-of-type { box-shadow:0 -10px 14px -10px rgba(0,0,0,0.18), 0 6px 18px rgba(51,217,117,0.3); }
   .gr-modal-close {
     position:absolute; top:12px; right:15px;
     background:none; border:none; font-size:23px; line-height:1;
@@ -15525,8 +15554,19 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       <div class="matched-burst">
         <div class="check-circle">✓</div>
         <h4>${isServiceDeal ? "You're Connected!" : (haFirst ? 'Request sent!' : 'Request Submitted!')}</h4>
-        <p>${isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.')
-              : (haFirst ? (haLabel + ' has first dibs\u2026') : 'Currently looking for your worker\u2026')} · Request Order <strong>#${reqNum}</strong></p>
+        ${''/* MOVING types its status line out, matching the merged app's
+              "Looking for your Gopher…" (aae10b7a). The order number sits
+              beside it and is NOT typed — it is the thing a worried requester
+              reads back to support, so it must be there the instant the screen
+              paints rather than arriving a second later.
+              data-typeline carries the full string; typeStatusLine() reveals it
+              after render. With JS unavailable the span is empty, so the
+              fallback is handled by rendering the text into it immediately
+              when the helper cannot run. */}
+        <p>${(state.category === 'moving' && !isServiceDeal && !haFirst)
+              ? `<span class="s7-typed" data-typeline="Looking for your Gopher\u2026"></span>`
+              : (isServiceDeal && prov ? ('Connected with ' + _esc(prov.name) + ' \u2014 they accepted your deal.')
+                 : (haFirst ? (haLabel + ' has first dibs\u2026') : 'Currently looking for your worker\u2026'))} · Request Order <strong>#${reqNum}</strong></p>
       </div>
 
       <div class="review-card" style="margin-top:14px;">
@@ -15879,6 +15919,23 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     else if(state.step === 6) $content.innerHTML = renderStep6();
     else                      $content.innerHTML = renderStep7();
 
+
+    // ─── Step 7: type the status line out ───
+    // Only ever reveals text already in the DOM attribute, so a failure here
+    // leaves the sentence present rather than blank.
+    $content.querySelectorAll('.s7-typed[data-typeline]').forEach(el => {
+      const full = el.getAttribute('data-typeline') || '';
+      if(!full || el.dataset.typed) return;
+      el.dataset.typed = '1';
+      let i = 0;
+      el.textContent = '';
+      const tick = () => {
+        i += 1;
+        el.textContent = full.slice(0, i);
+        if(i < full.length) setTimeout(tick, 45);
+      };
+      tick();
+    });
 
     // Step 1 ("Pick a service") has no footer — picking a category is the
     // transition trigger, so the Back/Continue bar is hidden on this step only.
