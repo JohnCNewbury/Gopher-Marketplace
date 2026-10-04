@@ -348,3 +348,28 @@ Two defects the same week shared one shape, on different surfaces:
 ⛔ **The test: drive the list to zero and COUNT the interactive elements left.
 Zero is the signal.** Deleting the last of something is not finished until you
 have asked what the surface then *offers* — not merely what it *says*.
+
+### ⭐ The wider pattern these belong to — three in one week
+
+Named by `Website Code/Logic [927f4e]` on 2026-10-03 after the third instance:
+
+> *Something that worked only because of a condition that later changed, with
+> nothing in the code saying it depended on that condition.*
+
+⛔ **The tell: a value whose correctness is INVISIBLE at the point it is
+written.** You cannot see the bug by reading the line. You can only see it by
+knowing something that is not on the line.
+
+| What was written | The unstated condition | How it failed |
+|---|---|---|
+| `.cc-quad { background:rgba(255,255,255,.07) }` | the card behind it was **navy** | cards went white → media frame invisible |
+| `.mst-tab.done { background:var(--green) }` | the inherited `color` suited green | inherited `#fff` → 1.85:1 on Shamrock |
+| a control rendered only on the **non-empty** branch | the list is never empty | last item deleted → screen with zero controls |
+
+Add the two instrument cases from §7 and §8 — a check run per-FILE when the unit
+was a COMMIT, and `grep -c` counting LINES when the question was OCCURRENCES.
+Same shape: correct for a condition that no longer held, and silent about it.
+
+⛔ **The remedy is a six-word comment naming the dependency.** Every case above
+would have been caught by one. Cheapest guard in this repo, most consistently
+skipped.
