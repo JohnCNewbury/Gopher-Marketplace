@@ -1811,7 +1811,19 @@ function renderStep5(){
 
   if(state.payMode==='set'){
     h+=`<div class="sub-field" style="background:#fff;border-color:#e4e8f0;">
-      <div class="sf-label">${state.payByHour?'Your hourly offer to the worker':'Your offer to the worker'}</div>
+      ${''/* G40-576 addendum (John, 2026-10-04, on the A50): "add one √ that
+            says ..." — the payment-clarity line the app ships in
+            src/component/yardFlow/InfoSheetContent.js ownPrice() and
+            modalContent.js (Request !445, merged). Same sentence verbatim,
+            "your Gopher" kept as the live app words it.
+            ⚠ It hangs off the OFFER FIELD, not the "Set your offer" radio's ?,
+            because that radio is inside showBidsOption — bidsOption:
+            ['delivery','ride'] hides it for Delivery and Ride, and the hourly
+            branch hides it for Labor/Yard. On the field it renders for EVERY
+            category whenever payMode==='set'. */}
+      <div class="sf-label">${state.payByHour?'Your hourly offer to the worker':'Your offer to the worker'}
+        ${infoTip('earn','Your offer to the worker',['Your offer to your Gopher here is 100% of what they will earn for the job, paid directly to them after you confirm the work has been completed.'])}
+      </div>
       <div class="cost-input-box"><span class="ci-currency">$</span>
         <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${esc(state.payAmount.replace(/^\$/,''))}" placeholder="0.00" aria-label="Your offer to the worker"></div>
       <div class="sf-hint">Exact amount your worker takes home — 100% of your offer. Request fees are shown at review.</div>
