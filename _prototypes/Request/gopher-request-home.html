@@ -1321,7 +1321,7 @@ function openBidsList(order){
         +'<button data-bid-act="deny" data-bid-i="'+i+'" style="flex:0.85;border:1.5px solid #C44257;background:#fff;color:#C44257;border-radius:10px;padding:9px;font-family:Nunito;font-weight:800;font-size:12.5px;cursor:pointer;">Deny</button>'
       +'</div></div>';
   }
-  var o=gSheet('Workers interested', '<div id="bidsBody"></div>');
+  var o=gSheet('Gophers Interested', '<div id="bidsBody"></div>');
   function renderBody(){
     var rr=GReq.get(order); var list=(rr&&rr.bidsList)||[];
     var active=sortList(list.filter(function(b){return b.status!=='denied';}));
@@ -2226,7 +2226,7 @@ function openDetails(order){
   // Same completed gap as the subtitle above - see the note there.
   var stat=r.stage==='active'?'In progress':(r.stage==='scheduled'?'Scheduled':(r.stage==='completed'?(r.confirmed?'Completed':'Completed · confirm to release payment'):(r.stage==='accepted'?'Gopher accepted':'Finding Gophers near you')));
   var row=function(l,v){ return (v!=null&&v!=='')?'<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0eef2;font-family:\'DM Sans\',sans-serif;font-size:13px;"><span style="color:#8a94a3;font-weight:600;flex:0 0 auto;">'+l+'</span><span style="color:#002461;font-weight:700;text-align:right;max-width:62%;">'+v+'</span></div>':''; };
-  var wc=+r.workers||1;
+  var wc=+r.workers||1, gph=['moving','junk','labor','home','ride','other'].indexOf(r.cat)>=0;   // the completed categories say "Gopher", never "worker" (909 desk, 2026-10-04)
   var html='<div style="margin-top:4px;">'
     +row('Order','#'+r.order)
     +row('Status', stat)
@@ -2236,21 +2236,21 @@ function openDetails(order){
     +(r.deliveryType?row('Delivery type', esc(r.deliveryType)):'')
     +(r.riders>0?row('Riders', r.riders):'')
     +(r.bags>0?row('Large bags', r.bags):'')   /* Need a Ride only, only when above 0 (NR-05 / NR-20) */
-    +((wc>1||r.payByHour)?row('Worker info', wc+' worker'+(wc>1?'s':'')+(r.payByHour?' \u00b7 '+(r.numHours||1)+'hr':'')):'')
+    +((wc>1||r.payByHour)?row(gph?'Gopher info':'Worker info', wc+(gph?' Gopher':' worker')+(wc>1?'s':'')+(r.payByHour?' \u00b7 '+(r.numHours||1)+'hr':'')):'')
     +(hasPickup?row('Pick-up', esc(r.pickup)):'')
     +row(hasPickup?'Destination':'Location', esc(r.dropoff||'\u2014'))
-    +(r.dist?row('Distance', esc(r.dist)+(/mi/i.test(r.dist)?'':' mi')):'')
+    +((r.dist && hasPickup)?row('Distance', esc(r.dist)+(/mi/i.test(r.dist)?'':' mi')):'')   /* a trip distance means nothing on a single-location job (Junk, Home, Labor, Yard, Custom Task) */
    /* Access details — same facts the worker sees, so the two sides never disagree. */
    +(function(){var L=[];var ps=+r.pickupStairs||0,ds=+r.destStairs||0;
      if(ps) L.push(ps+' flight'+(ps>1?'s':'')+' at pick-up'+(r.serviceElevatorPickup?' (service elevator available)':''));
      if(ds) L.push(ds+' flight'+(ds>1?'s':'')+' at destination'+(r.serviceElevatorDest?' (service elevator available)':''));
      return L.length?row('Stairs', L.join('<br>')):''; })()
     +'<div style="height:10px;"></div>'
-    +row(wc>1?'Payment to workers':'Worker takes home', bids?'Pending bids':(money((+r.pay||0)*wc)+(wc>1?' <span style="color:#8a94a3;font-weight:600;">('+wc+' × '+money(r.pay)+')</span>':'')))
+    +row(wc>1?(gph?'Payment to Gophers':'Payment to workers'):(gph?'Gopher takes home':'Worker takes home'), bids?'Pending bids':(money((+r.pay||0)*wc)+(wc>1?' <span style="color:#8a94a3;font-weight:600;">('+wc+' × '+money(r.pay)+')</span>':'')))
     +((+r.cost>0)?row('Cost of items', money(r.cost)):'')
     +row('Total', bids?'TBD after bid':(r.amount||money((+r.pay||0)+(+r.cost||0))))
     +'</div>';
-  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>')+__reqCancelAffordance(r)+__reqReportAffordance(r));
+  gSheet('Request details', html+(r.hired?'<div class="gs-hint">Hired: '+esc(r.hired)+'</div>':((r.attention&&r.attention.label)?'<div class="gs-hint"><b>'+esc(r.attention.label)+'</b></div>':r.stage==='accepted'?'<div class="gs-hint"><b>'+(r.accepted||1)+' Gopher'+((r.accepted||1)!==1?'s':'')+'</b> accepted \u2014 ready to review</div>':'<div class="gs-hint">We\u2019ll notify you the moment a Gopher accepts.</div>'))   /* A Gopher who has accepted (or countered) is shown in the card's own words; the sheet used to say "Gopher accepted" and then promise to notify when one accepts. */+__reqCancelAffordance(r)+__reqReportAffordance(r));
 }
 // Deals launch gate (Raleigh DMA only) \u2014 same flag the home Deals section honors.
 function __dealsLive(){ try{ return localStorage.getItem('gopherDealsLive')!=='0'; }catch(_){ return true; } }
@@ -3119,18 +3119,18 @@ document.addEventListener('click',function(e){
     html+='<div class="rd-sum"><span class="rd-pending">PENDING</span>'
       +'<div class="rd-sum-t">'+REQ.icon+' '+REQ.title+' \u00b7 '+REQ.note+'</div>'
       +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(TOTAL)+' total \u00b7 Just now \u00b7 awaiting your selection</div>'
-      +'<div class="rd-sum-w">'+(interested.length+considered.length)+' worker'+((interested.length+considered.length)!==1?'s':'')+' interested</div></div>';
+      +'<div class="rd-sum-w">'+(interested.length+considered.length)+' Gopher'+((interested.length+considered.length)!==1?'s':'')+' interested</div></div>';
     // hire approved
     if(hired.length){
-      html+='<div class="rd-sec">Hire Approved <span class="rd-count">Lead worker</span></div>';
+      html+='<div class="rd-sec">Hire Approved <span class="rd-count">Lead Gopher</span></div>';
       hired.forEach(function(w){ html+=workerRow(w,'hired'); });
-      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">Lead worker hired \u00b7 crew of '+REQUESTED+'</div>'
+      html+='<div class="rd-bank"><div class="rd-bank-l"><div class="rd-bank-hd">Lead Gopher hired \u00b7 crew of '+REQUESTED+'</div>'
         +'<div class="rd-bank-amt">'+money(adj)+'</div>'
-        +'<div class="rd-bank-sub">You pay your lead worker the full amount \u2014 they bring and pay the rest of the crew.</div></div>'
+        +'<div class="rd-bank-sub">You pay your lead Gopher the full amount \u2014 they bring and pay the rest of the crew.</div></div>'
         +'<button class="rd-start" data-rd="start">Start Job \u2192</button></div>';
     }
     // workers interested
-    html+='<div class="rd-sec muted">Workers Interested <span class="rd-count">'+interested.length+'</span></div>';
+    html+='<div class="rd-sec muted">Gophers Interested <span class="rd-count">'+interested.length+'</span></div>';
     if(interested.length){
       html+='<div class="rd-sort"><span class="rd-sort-l">SORT BY</span>'
         +'<button class="rd-sortc'+(sortBy==='dist'?' on':'')+'" data-rd="sort" data-k="dist">Distance \u2191 Low to high</button>'
@@ -3167,7 +3167,7 @@ document.addEventListener('click',function(e){
     var html='<div class="rd-sum">'
       +'<span class="rd-statuspill'+(done?' done':'')+'">'+(done?'COMPLETED':'IN PROGRESS')+'</span>'
       +'<div class="rd-sum-t">'+REQ.icon+' '+REQ.title+' \u00b7 '+REQ.note+'</div>'
-      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 lead worker on the job \u00b7 crew of '+REQUESTED+'</div>'
+      +'<div class="rd-sum-m">'+REQ.order+' \u00b7 '+money(paid)+' total \u00b7 lead Gopher on the job \u00b7 crew of '+REQUESTED+'</div>'
       +'<div class="rd-prog"><div class="rd-prog-bar"><i style="width:'+pct+'%"></i></div><span>'+pct+'%</span></div></div>';
     html+='<button class="rd-live" data-rd="live">\uD83D\uDCE1 View Live Activity</button>';
     /* Owner 7/28: keep the original "Your Crew" heading. The COUNT that used to sit
@@ -3322,7 +3322,7 @@ html+='<div class="rd-sec">Your Crew</div>';
       // REQUESTED says. The hire is the LEAD, responsible for bringing AND paying the rest.
       // Individually hiring >1 is CONNECT-only (laborManagement 'individually'). REQUESTED
       // stays as crew size and drives labels/pricing only.
-      if(by('hired').length>=1){ toast('You hire one worker \u2014 remove them to pick someone else.'); return; }
+      if(by('hired').length>=1){ toast('You hire one Gopher \u2014 remove them to pick someone else.'); return; }
       w.state='hired'; w.just=false; toast('Hired '+w.name);
     }
     else if(act==='consider'){ w.state='considered'; w.just=false; toast('Moved '+w.name+' to Considered'); }
@@ -3334,7 +3334,7 @@ html+='<div class="rd-sec">Your Crew</div>';
   });
   // ---- Start-Job confirmation modals (mirror web pop-ups, fitted to phone) ----
   function closeModal(){ modal.classList.remove('open'); modal.innerHTML=''; }
-  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast(n?'Job started with your lead worker \u2014 great pick!':'Job started'); }
+  function doStart(){ var n=by('hired').length; closeModal(); started=true; view='active'; liveStart(); render(); if(window.__onJobStarted){ try{window.__onJobStarted();}catch(_){ } } toast(n?'Job started with your lead Gopher \u2014 great pick!':'Job started'); }
   function showStartConfirm(){
     // REQUEST HIRE RULE (owner 7/28): "1 worker accepted on ALL requests is max with every
     // request" — so starting early is MOOT in Request. There is no partial-crew state to warn
@@ -3344,8 +3344,8 @@ html+='<div class="rd-sec">Your Crew</div>';
     // unreachable and is deleted rather than reworded.
     modal.innerHTML='<div class="rdm-card"><button class="rdm-x" data-rdm="close" aria-label="Close">\u00D7</button>'
       +'<div class="rdm-ic go">\uD83D\uDE80</div>'
-      +'<h3 class="rdm-h">Your lead worker is selected!</h3>'
-      +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your lead worker and track the progress by tapping View Live Activity in the Request Details section.</p>'
+      +'<h3 class="rdm-h">Your lead Gopher is selected!</h3>'
+      +'<p class="rdm-p">Please select Start Job so we can move your request into your Dashboard. There you can communicate with your lead Gopher and track the progress by tapping View Live Activity in the Request Details section.</p>'
       +'<div class="rdm-acts"><button class="rdm-btn primary" data-rdm="go">Start Job</button></div></div>';
     modal.classList.add('open');
   }
