@@ -96,10 +96,15 @@
        • the service elevator is a CONNECT feature and not a Request one (owner,
          G40-576 MV-11), so Connect shows it for Moving and Request never shows
          it at all;
-       • Connect's Moving worker control has no "Prioritize MY Gophers" option,
-         so the Request choice does not translate — that is an OPEN question with
-         the owner, and until he rules, Connect keeps hiding the choice for
-         Moving. Revisit this entry when he answers, not before. */
+       • Connect's worker control has no "Prioritize MY Gophers" row, so the
+         Request choice does not translate. ⛔ RULED 2026-10-04, and SETTLED
+         rather than pending: the owner — "connect doesn't have that because
+         they have a unique option to only send to that group." The absence is
+         DELIBERATE. Connect routes favourites through its own eligibleWorkers
+         "only send to that group" control, which is stronger than
+         prioritisation — it RESTRICTS the send rather than ordering it. So
+         Connect keeps hiding workerSelectChoice for BOTH 'moving' and 'labor',
+         permanently. This is not a parity gap to be closed later. */
   var SURFACE_OVERRIDES = {
     connect: {
       multiStop:            ['home', 'junk', 'labor', 'moving', 'other', 'yard'],

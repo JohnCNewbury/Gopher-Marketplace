@@ -108,14 +108,14 @@ section('3. Surface overrides');
      ' connect=' + R.visibleCategories('serviceElevator', 'connect').join(','));
   ok(R.isVisible('workerSelectChoice', 'moving') === true &&
      R.isVisible('workerSelectChoice', 'moving', 'connect') === false,
-     'Request offers Moving the worker-select choice; Connect does not (owner question still open)');
+     'Request offers Moving the worker-select choice; Connect does not (owner ruled 2026-10-04: deliberate, Connect uses eligibleWorkers)');
 
   /* G40-578 / JR-34, 2026-10-04. Both are owner rulings, pinned as BEHAVIOUR so
      that reverting either one fails here by name rather than as a table diff. */
   ok(R.isVisible('workerSelectChoice', 'labor') === true,
      'Labor shows the worker-select choice on Request (G40-578)');
   ok(R.isVisible('workerSelectChoice', 'labor', 'connect') === false,
-     'Connect still hides it for Labor -- its control has no "Prioritize MY Gopher(s)" row (parked with the owner)');
+     'Connect hides it for Labor too -- no "Prioritize MY Gopher(s)" row by design (owner ruled 2026-10-04)');
   ok(R.isVisible('destStairs', 'junk') === false &&
      R.isVisible('destStairs', 'junk', 'connect') === false,
      'Junk asks NO stairs question on either dashboard (JR-34)',

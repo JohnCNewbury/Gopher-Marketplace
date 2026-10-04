@@ -46,6 +46,7 @@ Grouped by the step that owns it. These 42 are already identical in all three su
 | Item / rider detail | `itemCount`, `multipleItems`, `hazardous`, `numRiders`, `numBags`, `specialInstructions` |
 | Worker plan | `moreThanOneWorker`, `numWorkers`, `payByHour`, `numHours`, `workerSelection` |
 | Locations (access) | `noSpecificPickup`, `pickupStairs`, `serviceElevatorPickup`, `destStairs`, `serviceElevatorDest`, `tripDistance` |
+| Locations (unit) | `pickupUnit`, `destUnit` — free-text Unit/Apt #, added 2026-10-04 (G40-577 / G40-578). **Request web only today**; the prototype gains them with its held package, and whether Connect should have them is open. Joined to the address for DISPLAY only — the stored address stays raw because it feeds the coverage geocode. |
 | Pay | `payMode`, `payAmount`, `lowOfferAck` |
 | Schedule | `scheduleType`, `flexibleWindow`, `schedDate`, `timeSlot` |
 | Promo / payment | `promoCode`, `promoApplied`, `promoError`, `paymentMethod`, `waiverChecked` |
