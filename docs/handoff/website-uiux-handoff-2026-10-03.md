@@ -147,6 +147,7 @@ one line in `renderHomeLive()` becomes the real sentence.
 | `bid` carries two unrelated events | product question, unanswered | **John** |
 | Missing-name fallback spelled 4 ways | minor cleanup | any |
 | Home design → build | **BUILT** 2026-10-03 (`dabc45d`, `16553e7`), on the branch — ⚠️ **not deployed**, see §7 | — |
+| Deploy preflight: hold check | **APPROVED for AFTER 15 Nov** (owner 2026-10-03). ~20 lines in `scripts/deploy.sh` preflight: read held SHAs from a file, compute commits in scope, abort naming any match. Deferred because a bug there blocks everyone's deploys. Until then the standing rule in §8 (a hold means revert) carries it. Code/Logic reviews before it lands — they deploy too. | **UI/UX to build, after launch** |
 | Deploy permission rule | **blocked** — the auto-mode classifier refuses both the deploy and reading permission settings (Self-Modification). Owner wants it; must be added by him. Exact rule and command in this session's transcript. | **John** |
 
 ---
@@ -286,17 +287,44 @@ pasted, he would have stopped it in a second: he had just ordered that revert.
    two deploys earlier and skipped here, on the reasoning that the owner "had
    already seen them" — he had seen the inaccurate summary above.
 
-⚠️ **THE HAZARD THAT HAS NO FIX YET, and it is the owner's to rule on.** A
-commit under a category hold is **indistinguishable from a shippable one** on
-the shared branch. Nothing in git marks it. The session that held `b9c15e1` held
-it *on the branch* rather than reverting or isolating it, because keep-vs-revert
-was the owner's call — which is correct, and which also leaves a held commit
-sitting in every future deploy's scope. **Holding is not isolating.**
+### ⛔ STANDING RULE — A HOLD MEANS REVERT (owner, 2026-10-03)
 
-Until the owner rules on where a hold is recorded — a line in this doc, or a
-convention in the commit subject — **anyone cutting a deploy has exactly the
-information that was not enough here.** Ask before shipping another session's
-commit; that is currently the only guard.
+**When work is put on hold, it comes OFF the branch. It does not sit there.**
+
+The owner ruled this after the deploy above. The reasoning is one line: *if it
+is not on the branch, it cannot ship.* No convention to remember, no file to
+keep current, no judgement call at speed.
+
+**Why the alternatives lost:**
+
+- *Marking held commits in the subject line* — the hold almost always arrives
+  **after** the commit is written, as it did here. Marking it means amending a
+  commit that is already on a shared branch, and rewriting published history is
+  a worse problem than the one it solves.
+- *A holds file the deploy script enforces* — this is the better long-term
+  answer and the owner has approved it **for after 15 Nov**, not before. It is
+  ~20 lines in `scripts/deploy.sh` preflight: read the held SHAs, compute the
+  commits in scope, abort naming any that match. It is deferred only because a
+  bug in that check blocks **everyone's** deploys, and five weeks out from
+  launch is the wrong time to find that out. See §5.
+
+**The failure this replaces:** the session that held `b9c15e1` held it *on the
+branch* rather than reverting, because keep-vs-revert was the owner's call.
+That was the correct instinct and it still left a loaded commit in every future
+deploy's scope. ⭐ **Holding is not isolating** — their phrase, and the clearest
+statement of the problem.
+
+⚠️ **ONE TRAP IN APPLYING THIS RULE.** Reverting the content does **not** remove
+the commit from the branch — `b9c15e1` is still in the history, with `38f439c`
+reverting it. So a per-commit scope check (`git log --oneline <live>..HEAD`)
+**will still list a held commit**, and the next person to read that list may
+think it needs shipping or that the hold failed. **Always pair a held commit
+with its revert when reporting scope**, e.g. *"b9c15e1 Moving Step 3 — HELD,
+reverted by 38f439c, content is not live."* The commit list is not the content.
+
+Ask the owning session before shipping another session's commit. That guard
+stays regardless; this rule only removes the case where asking is the ONLY
+guard.
 
 ### The empty-state test, recorded with it
 
