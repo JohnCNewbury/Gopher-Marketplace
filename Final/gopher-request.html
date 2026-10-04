@@ -8160,6 +8160,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .wcard-fresh .wcard-photo { border-color:var(--green); }
   .wcard-photo img { width:100%; height:100%; object-fit:cover; }
+  /* ⛔ THIS RULE DID NOT EXIST IN THIS FILE. `.wcard-photo-fallback` was referenced
+     three times in the markup and styled zero times, so the initial rendered as an
+     unstyled 16px glyph in the corner of a 42px circle — effectively invisible.
+     gopher-connect.html has carried this rule all along; Request never got it.
+     Ported verbatim rather than re-invented, so the two surfaces match. */
+  .wcard-photo-fallback {
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, var(--navy), #3d52a0);
+    color:#fff;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:16px;
+  }
   .wcard-main { flex:1; min-width:0; }
   .wcard-top { display:flex; align-items:center; gap:7px; }
   .wcard-name { font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--navy); }
@@ -23884,7 +23896,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           : '';
         return `
           <div class="wcard ${fresh?'wcard-fresh':''}">
-            <div class="wcard-photo"><img src="${w.photo}" alt="${w.name}"></div>
+            <!-- ⛔ Was an unconditional <img src="${w.photo}">. Every seeded worker
+                 carries photo:'' (see makeSeedWorker), so this emitted <img src="">
+                 — an empty circle, and an empty src re-requests the PAGE URL in some
+                 browsers. The sibling renderer below already guarded this; this one
+                 never did. Same guard now, matching gopher-connect.html. -->
+            <div class="wcard-photo">${w.photo ? `<img src="${w.photo}" alt="${w.name}">` : `<div class="wcard-photo-fallback">${(w.name||'?').charAt(0)}</div>`}</div>
             <div class="wcard-main">
               <div class="wcard-top">
                 <span class="wcard-name">${w.name}</span>
