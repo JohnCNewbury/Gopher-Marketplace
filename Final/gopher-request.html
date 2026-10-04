@@ -14903,13 +14903,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           </div>
         ` : `
           ${renderMultiAddressBlock_pickup()}
-          ${''/* Moving counts stairs ONCE, as a total — the merged app's
-                 MovingStairs.js uses a single control, label "Total flights to
-                 stairs", min 0, mapping to move_asc_desc.total_stair_flight.
-                 So the per-end row is suppressed for Moving and the total is
-                 rendered under Destination below. Other categories keep the
-                 per-end rows they already had. */}
-          ${(isVisible('pickupStairs') && state.category !== 'moving') ? `
+          ${''/* ⛔ TWO stairs fields is CORRECT on the web — owner 2026-10-03,
+                 after I raised the app's single total: "2 fields is correct and
+                 that is an oversight on my part. I'll get moving session back in
+                 the game." So the APP is the one changing, not this. Do not
+                 consolidate these to one total to match it. */}
+          ${isVisible('pickupStairs') ? `
           <div class="toggle-row" style="margin-top:10px;justify-content:space-between;">
             <span class="tr-label">Flights of stairs at pick-up</span>
             <div class="field-counter">
@@ -14937,7 +14936,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         ${renderMultiAddressBlock_dropoff()}
         ${isVisible('destStairs') ? `
         <div class="toggle-row" style="margin-top:10px;justify-content:space-between;">
-          <span class="tr-label">${state.category === 'moving' ? 'Total flights to stairs' : 'Flights of stairs at destination'}</span>
+          <span class="tr-label">Flights of stairs at destination</span>
           <div class="field-counter">
             <button class="counter-btn" data-counter="dec-deststairs" ${state.destStairs<=0?'disabled':''}>−</button>
             <span class="counter-val">${state.destStairs}</span>
