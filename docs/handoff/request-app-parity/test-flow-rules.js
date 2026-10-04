@@ -114,6 +114,12 @@ section('3. Surface overrides');
      that reverting either one fails here by name rather than as a table diff. */
   ok(R.isVisible('workerSelectChoice', 'labor') === true,
      'Labor shows the worker-select choice on Request (G40-578)');
+  ok(R.isVisible('workerSelectChoice', 'home') === true,
+     'Home Services shows the worker-select choice on Request (G40-579)');
+  ok(R.isVisible('workerSelectChoice', 'home', 'connect') === false,
+     'Connect hides it for Home too -- same ruling as Labor and Moving, its control has no "Prioritize MY Gopher(s)" row');
+  ok(R.isVisible('destStairs', 'home') === false && R.isVisible('pickupSection', 'home') === false,
+     'Home Services asks no stairs and has no pick-up section');
   ok(R.isVisible('workerSelectChoice', 'labor', 'connect') === false,
      'Connect hides it for Labor too -- no "Prioritize MY Gopher(s)" row by design (owner ruled 2026-10-04)');
   ok(R.isVisible('destStairs', 'junk') === false &&

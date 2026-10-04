@@ -13031,7 +13031,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   const DESCRIBE_HINT = {
     delivery: 'Please be as descriptive as possible. Tell your worker exactly what needs to be delivered or purchased.',
     moving:   'Please be as descriptive as possible. Tell your worker exactly what needs to be moved — the items, the rooms, anything heavy or fragile, and whether a truck is needed.',
-    home:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done, where, and anything they should bring.',
+    /* G40-579: the owner's own example, concrete rather than an instruction.
+       ⚠ &quot; IS LOAD-BEARING. This string is interpolated straight into
+       placeholder="${describeHint()}", so a raw " in '55" TV' would close the
+       attribute early and spill the rest of the sentence into the markup. */
+    home:     'e.g. Mount a 55&quot; TV on drywall and hide the cables',
     labor:    'Please be as descriptive as possible. Tell your worker exactly what the job involves — the work, the site, and any equipment needed.',
     junk:     'Please be as descriptive as possible. Tell your worker exactly what needs to be hauled away — the items and roughly how much there is.',
     yard:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done in the yard, and any equipment needed.',
@@ -13303,7 +13307,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
 
     home: {
-      icon:'🧹', name:'Home / Office Services', tag:'Services',
+      icon:'🧹', name:'Home Services', tag:'Services',
       detailsTitle:'What service do you need?',
       detailsSub:'Cleaning, organization, installs — pick what fits and we\'ll handle the rest.',
       fields:[
@@ -14166,7 +14170,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        category with NO First Available — the live app has never had it — so the
        `first` row is suppressed for Moving in renderStep3() and render()
        coerces any stale 'first' away. The rest still force 'select'. */
-    workerSelectChoice: ['home','yard','other'],                      // + Labor 2026-10-04 (G40-578): Labor now shows the two-option Gopher choice
+    workerSelectChoice: ['yard','other'],                             // + Labor (G40-578) and Home Services (G40-579), 2026-10-04: both now show the two-option Gopher choice
     // ──── Step 4 Location-section visibility ────
     pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
     noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
@@ -14202,7 +14206,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      signed off. Each entry replaced a literal `state.category === 'moving'`
      test; keeping them as one named set is what stops the next category from
      having to find all of them again. */
-  const COMPLETED_FLOW = ['moving', 'junk', 'labor'];
+  /* 'home' joined 2026-10-04 (G40-579), the owner moving it to Done after
+     "All pass, merge 449". */
+  const COMPLETED_FLOW = ['moving', 'junk', 'labor', 'home'];
   const isCompletedFlow = () => COMPLETED_FLOW.indexOf(state.category) !== -1;
 
   /* ── Categories that ask for a Unit/Apt # ──────────────────────────────────
@@ -14213,7 +14219,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      category marked complete silently grows a Unit/Apt box nobody asked for --
      which is exactly how `mv` came to mean two things and deleted Labor's
      hourly toggle when it was widened (2026-10-04). Keep them apart. */
-  const UNIT_CATEGORIES = ['moving', 'junk', 'labor'];
+  const UNIT_CATEGORIES = ['moving', 'junk', 'labor', 'home'];
   const asksForUnit = () => UNIT_CATEGORIES.indexOf(state.category) !== -1;
   /* ── How long a Need ASAP request stays live ───────────────────────────────
      ⛔ THIS WAS WRONG FOR FIVE OF THE EIGHT CATEGORIES until 2026-10-04. The

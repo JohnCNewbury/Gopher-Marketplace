@@ -73,11 +73,11 @@
        'first' (myN > 0 ? 'my' : 'select'), so it has the choice WITHOUT First
        Available. Both facts hold at once. */
     serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'moving', 'other', 'ride', 'yard'],
-    /* 'labor' left on 2026-10-04 (G40-578): Labor now shows the two-option
-       Gopher choice. 'junk' joined destStairs the same day (JR-34) -- owner:
+    /* 'labor' left on 2026-10-04 (G40-578) and 'home' the same day (G40-579):
+       both now show the two-option Gopher choice. 'junk' joined destStairs the same day (JR-34) -- owner:
        "Web, Connect and prototype match the app: no stairs question on Junk.
        Junk sends total_stair_flight 0 everywhere, as the app does." */
-    workerSelectChoice:   ['home', 'other', 'yard'],
+    workerSelectChoice:   ['other', 'yard'],
     workerSetup:          ['delivery', 'home', 'ride']
   };
 
