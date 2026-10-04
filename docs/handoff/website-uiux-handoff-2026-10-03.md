@@ -374,33 +374,56 @@ Same shape: correct for a condition that no longer held, and silent about it.
 would have been caught by one. Cheapest guard in this repo, most consistently
 skipped.
 
-### ⛔ THE DRY-RUN DIFFSTAT DOES NOT SHOW `_prototypes/` CHANGES
+### ◼ CORRECTED — the dry-run diffstat omits `_prototypes/`, but the md5 check I wrote to catch it CRIES WOLF
 
-Found 2026-10-04, one push away from shipping a prototype change nobody had
-cleared.
+**Written 2026-10-04, corrected the same day after it produced a false alarm
+that cost the owner a held deploy.**
 
-`scripts/deploy.sh` prints its "what would ship" diffstat for **`Final/` only**.
-The 11 allowlisted `_prototypes/` files are copied in a **separate step**, so a
-change to any of them is **completely invisible in the scope list** — the very
-list this doc tells you to read per-commit. The run still prints
-`✓ prototypes: 11 allowlisted file(s), 0 strays`, which reads like a clean
-result and is actually just a count.
+⚠️ **What is true:** `scripts/deploy.sh` prints its "what would ship" diffstat
+for **`Final/` only**. The 11 allowlisted `_prototypes/` files are copied in a
+separate step and never appear in it. That part stands.
 
-**What it looked like:** a deploy whose diffstat said *2 files, both mine*, while
-three prototype files differed from the deployed copies — including one touching
-a cockpit footer the owner had explicitly parked (*"variant A chosen, implement
-decision pending, do not apply until he says"*).
+⛔ **What was WRONG:** the fix I published — md5 the local `_prototypes/` files
+against `origin/main` — reports **every prototype as DIFFERING, always**,
+because the deploy TRANSFORMS them on the way out (`scripts/deploy.sh:340`):
 
-⛔ **Check prototypes separately, every time, before `--push`:**
-
-```sh
-for f in $(git ls-tree -r --name-only origin/main | grep '^_prototypes/'); do
-  a=$(git show "origin/main:$f" | md5 -q); b=$(md5 -q "$f" 2>/dev/null)
-  [ "$a" = "$b" ] || echo "DIFFERS  $f"
-done
+```python
+t=re.sub(r'(?<=["'])\.\./\.\./Final/', '../../', t)   # repo layout -> flattened site
+t=re.sub(r'(?<=["'])\.\./Final/',        '../',    t)
+# plus a noindex meta injected into <head>
 ```
 
-⭐ **The wider lesson, and it is the same one as §8's pattern:** a scope check is
-only as wide as the thing it reads. Per-commit fixed the *unit*; it did not fix
-the *coverage*. `git log` listed the prototype commit plainly — it was the
-diffstat, the thing that looks authoritative, that silently omitted it.
+The source keeps repo-layout paths on purpose — the local serve and the tunnel
+need them. So source ≠ shipped **by design**, and a raw md5 comparison can never
+tell a real change from the deploy doing its job. It reported 3 files, then 9,
+and every one was the rewrite.
+
+⛔ **THE CHECK THAT ACTUALLY WORKS — apply the transformation first:**
+
+```python
+import re, os, subprocess
+NOINDEX='<meta name="robots" content="noindex,nofollow">'
+def shipped(t, fn):
+    t=re.sub(r'(?<=["\'])\.\./\.\./Final/','../../',t)
+    t=re.sub(r'(?<=["\'])\.\./Final/','../',t)
+    if fn.endswith('.html') and 'name="robots"' not in t:
+        t=re.sub(r'(<head[^>]*>)', r'\1\n'+NOINDEX, t, count=1, flags=re.I)
+    return t
+# compare shipped(local) against `git show origin/main:<path>`
+```
+
+Run that and the answer was **none — every prototype already matches what is
+deployed.**
+
+⭐ **The lesson, and it is sharper than the one this section originally
+claimed.** The dry-run diffstat — the artefact I accused of hiding things — was
+**right**. My replacement check was the broken instrument, and because it was
+*mine* and *newer* I trusted it over the tool that had been correct all along.
+A check that fires on every run is not a safety net; it is noise that will be
+ignored exactly when it matters. **Before trusting a new check, make it pass on
+a known-good state.** Mine was never run against a clean tree.
+
+This is the fourth instrument failure recorded in this doc (see §8's pattern,
+`grep -c`, the per-FILE scope check, and now this). All four had the same shape:
+correct-looking output from a question subtly different from the one being
+asked.
