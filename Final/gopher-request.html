@@ -14224,7 +14224,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      having to find all of them again. */
   /* 'home' joined 2026-10-04 (G40-579), the owner moving it to Done after
      "All pass, merge 449". */
-  const COMPLETED_FLOW = ['moving', 'junk', 'labor', 'home', 'ride'];
+  const COMPLETED_FLOW = ['moving', 'junk', 'labor', 'home', 'ride', 'delivery'];
   const isCompletedFlow = () => COMPLETED_FLOW.indexOf(state.category) !== -1;
 
   /* ⚠ WORDING ONLY -- do not fold this into COMPLETED_FLOW above.
@@ -14269,7 +14269,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      category marked complete silently grows a Unit/Apt box nobody asked for --
      which is exactly how `mv` came to mean two things and deleted Labor's
      hourly toggle when it was widened (2026-10-04). Keep them apart. */
-  const UNIT_CATEGORIES = ['moving', 'junk', 'labor', 'home', 'ride'];   // ride takes one at BOTH ends
+  const UNIT_CATEGORIES = ['moving', 'junk', 'labor', 'home', 'ride', 'delivery'];   // ride + delivery take one at BOTH ends
+  /* Unit/Apt under the PICK-UP address specifically. UNIT_CATEGORIES above answers
+     "does this category take a Unit/Apt at all" (it gates the DESTINATION one); this
+     answers "at the pick-up end too". Was an inline (moving || ride) check until
+     Delivery joined on 2026-10-04 and needed both ends. */
+  const PICKUP_UNIT = ['moving', 'ride', 'delivery'];
   const asksForUnit = () => UNIT_CATEGORIES.indexOf(state.category) !== -1;
   /* ── How long a Need ASAP request stays live ───────────────────────────────
      ⛔ THIS WAS WRONG FOR FIVE OF THE EIGHT CATEGORIES until 2026-10-04. The
@@ -14377,6 +14382,28 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     return a;
   }
 
+  /* ⛔ OWNER TRUTH 2026-10-04, verbatim: "No-one under 21 should see anything AR
+     or trustshield related. 21 or older have no AR gates, for any reason. if they
+     had TS, they get $1 off AR. if they don't have AR, regular price."
+     So age decides VISIBILITY and nothing else -- a 21+ requester is never gated,
+     and an under-21 requester is never shown the surface at all.
+     ⚠ THIS WAS NEVER BUILT ON THE WEB until today. The owner's note said "or at
+     least that was the rule i made. If that did not happen, a session failed me" --
+     it did not happen. The Delivery-type block was gated on category ALONE, so an
+     under-21 profile saw the age-restricted slider, its waiver popover, the
+     safeguarding banner and the TrustShield promo. The only thing on this surface
+     that ever mentioned 21 was a self-attested "I am 21+" waiver tickbox
+     (~line 20929), which is an attestation, not a check.
+     UNKNOWN DOB COUNTS AS NOT ELIGIBLE: it cannot be shown to be 21+. Safe for the
+     demo because every seeded profile carries a 1970s/80s DOB, so the public page
+     still shows the feature; the only way to reach the unknown branch is a requester
+     who has not given one. */
+  const AR_MIN_AGE = 21;
+  function canSeeAgeRestricted(){
+    const a = customerAgeYears();
+    return typeof a === 'number' && a >= AR_MIN_AGE;
+  }
+
   // ── Age-restricted banner control — one render, three branches ──
   //   1) Has TrustShield        → seal, no button (replaces the control).
   //   2) Under 30 / unknown age → "Get TrustShield™" (enrollment required;
@@ -14394,9 +14421,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        • TrustShield          — kept for as long as the badge is carried.
      That persistence split is enforced in the submit handler by _idSubIsTS, not
      here; this function only paints the control.
-     ⚠️ Do not reintroduce an age fork. The 21+ rule is a SEPARATE, still-live gate:
-     nobody under 21 can order age-restricted at all, enforced on the deal
-     categories, not in this banner. */
+     ⚠️ Do not reintroduce an age fork HERE -- the 21/30 TrustShield fork is gone
+     for good (owner 2026-10-04: "21 or older have no AR gates, for any reason").
+     ⛔ CORRECTED 2026-10-04: this used to say the 21+ rule was "enforced on the deal
+     categories, not in this banner". It was enforced NOWHERE on this surface -- there
+     was no DOB comparison at all, only a self-attested waiver tickbox. It is now
+     enforced by canSeeAgeRestricted() above, which hides the whole Delivery-type
+     age-restricted block, and by the coercion in render(). Do not re-delegate it to
+     a file you have not opened. */
   function ageRestrictedBannerControl(){
     if(window.__hasTrustShield && window.__hasTrustShield()){
       return (window.__trustShieldBannerBadge && window.__trustShieldBannerBadge()) || '';
@@ -14901,6 +14933,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ${state.category === 'delivery' ? `
       <div class="step-section">
         <div class="step-section-title">${sstIco('📋')}Delivery type</div>
+        ${canSeeAgeRestricted() ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.ageRestricted?'on':''}" data-toggle="ageRestricted" aria-label="Age-restricted toggle"></button>
           <span class="tr-label">Slide if this delivery includes Age-restricted items
@@ -14924,6 +14957,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
             ${ageRestrictedBannerControl()}
           </div>
           ${(window.__hasTrustShield && window.__hasTrustShield()) ? '' : tsPromoMarkup()}
+        ` : ''}
         ` : ''}
         <div class="toggle-row">
           <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="Items purchased toggle"></button>
@@ -15242,15 +15276,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         ${isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
-          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'Pickup location is flexible'}
-            <button class="info-btn" title="${state.category === 'moving' ? 'Just need moving help at ONE address? Slide this on. Your Gopher helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.' : 'Either the worker can make the purchase anywhere that has your items OR there is not an actual pick up location for this request.'}">?</button>
+          <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'Gopher can purchase from anywhere'}
+            <button class="info-btn" title="${state.category === 'moving' ? 'Just need moving help at ONE address? Slide this on. Your Gopher helps on-site — loading, unloading, rearranging — and will NOT travel between two locations.' : 'Either your Gopher can make the purchase anywhere that has your items OR there is not an actual pick up location for this request.'}">?</button>
           </span>
         </div>
         ` : ''}
         ${state.noSpecificPickup && isVisible('noSpecificPickup') ? `
           <div class="sub-field">
             <div class="sf-label">${state.category === 'moving' ? 'Single-location move' : 'Pick-up flexibility'}</div>
-            <div class="sf-value">${state.category === 'moving' ? 'Your Gopher helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : "Either the worker can make the purchase anywhere that has your items, or there's no actual pick-up location for this request."}</div>
+            <div class="sf-value">${state.category === 'moving' ? 'Your Gopher helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : "Either your Gopher can make the purchase anywhere that has your items, or there's no actual pick-up location for this request."}</div>
           </div>
         ` : `
           ${renderMultiAddressBlock_pickup()}
@@ -15567,7 +15601,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // Build per-stop pickup / drop-off rows (one row each when single, numbered rows when multi)
     const pickupRows = (() => {
       if(state.noSpecificPickup) {
-        return `<div class="review-row"><span class="rl">Pick-up</span><span class="rv">Any location</span></div>`;
+        /* DISPLAY ONLY. The snapshot keeps the 'Any location' sentinel -- renderRecap
+           and the map both test `snap.pickup === 'Any location'` to spot a
+           Gopher's-choice pickup, so renaming the stored value would break both. */
+        return `<div class="review-row"><span class="rl">Pick-up</span><span class="rv">Gopher&rsquo;s choice</span></div>`;
       }
       if(state.pickupStops.length > 1) {
         return state.pickupStops.map((addr, i) =>
@@ -16124,7 +16161,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${pickupExpanded ? `Pickup stops (${pickups.length})` : 'Pickup address'}
         </label>
         ${renderStops}
-        ${((state.category === 'moving' || state.category === 'ride') && !pickupExpanded) ? renderUnitInput('pickup') : ''}
+        ${(PICKUP_UNIT.indexOf(state.category) !== -1 && !pickupExpanded) ? renderUnitInput('pickup') : ''}
         ${footer}
       </div>
     `;
@@ -16342,6 +16379,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // Normalize: the "How is the worker selected?" choice is only offered for
     // Delivery/Courier, Junk Removal, and Ride Sharing. For every other category
     // the user must select their worker, so force that selection.
+    /* An under-21 requester must never CARRY ageRestricted, even if the flag was set
+       before their DOB was known or came back on a restored draft. Coerced here and
+       not merely hidden in renderStep2, because the payload and the review snapshot
+       read state.ageRestricted directly and would otherwise ship a true that nobody
+       could see or turn off. */
+    if(state.ageRestricted && !canSeeAgeRestricted()) state.ageRestricted = false;
+
     if(!isVisible('workerSelectChoice')) {
       state.workerSelection = 'select';
     } else if(hidesFirstAvailable() && state.workerSelection === 'first'){
@@ -17104,6 +17148,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
       const kw = findAgeRestrictedKeyword(state.description);
       if(kw){
+        /* D-038 part 2: under-21 is a DEAD STOP, never the Yes/No confirmation.
+           ageKeywordAck is deliberately NOT set, so it blocks on every attempt
+           until the term is removed -- an ack would let one dismissal through. */
+        if(!canSeeAgeRestricted()){
+          if(window.G40_REQ) G40_REQ.ageRestrictedNotEligible(kw);
+          return;
+        }
         // Block Continue only if the confirmation actually opened; if the modal
         // is somehow unavailable, don't trap the user — acknowledge and proceed.
         if(window.__openAgeKeywordModal && window.__openAgeKeywordModal(kw)) return;
@@ -17230,6 +17281,27 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     function wirePrimary(ov, fn){ if(fn){ var b=ov.querySelector('.gr-modal-btn'); if(b) b.addEventListener('click', fn); } return ov; }
     function openAddPay(){ if(window.__openAddPaymentModal) window.__openAddPaymentModal(); }
     window.G40_REQ = {
+      /* ⛔ D-038 part 2 (BUILD spec; owner picked "Port the iQ keyword scan" on
+         2026-10-04). A requester who is not 21+ cannot continue while the description
+         names an age-restricted term. The Yes/No confirmation is NOT shown to them:
+         its "Yes" routes the order to age-restricted Delivery, which is exactly the
+         thing they must never be offered (owner: "No-one under 21 should see anything
+         AR or trustshield related"). So they get a dead-stop instead, with no mention
+         of TrustShield and no route to enable it.
+         The term is named because a block with no reason is unactionable -- they have
+         to know WHICH word to remove. */
+      ageRestrictedNotEligible: function(kw){
+        var safe = String(kw == null ? 'that item' : kw)
+                     .replace(/[&<>"]/g, function(c){
+                       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; });
+        return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" '
+          + 'style="font-size:26px;line-height:1;">\u26d4</div>'
+          + '<h4>This item can\u2019t be requested</h4>'
+          + '<p class="gr-modal-sub">Your description mentions <b>\u201c' + safe
+          + '\u201d</b>, which is an age-restricted item. Age-restricted items '
+          + 'cannot be requested from this account. Please remove it from your '
+          + 'description to continue.</p>'
+          + '<button type="button" class="gr-modal-btn grx">Got it</button>'); },
       phoneEntered: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
       paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
       pickupSameAsDropoff: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gr-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gr-modal-btn grx">Got it</button>'); },
