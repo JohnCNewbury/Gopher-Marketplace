@@ -67,15 +67,17 @@ section('1. Catalogue');
      ⚠️ This block has now been rewritten three times in three days. Read the DATE,
      not the shape — the gate was required, then removed with G40-410 when iDenfy was
      being retired, and is required again now TrustShield runs internally. */
-  ok(G.gatesFor('request').length === 11, 'request enables 11',
+  /* ⚠️ FOURTH rewrite, 2026-10-04. Owner: "No block, match the app" / "TrustShield
+     is optional" — so identity comes OFF all three, and the counts drop by one. */
+  ok(G.gatesFor('request').length === 10, 'request enables 10',
      String(G.gatesFor('request').length));
-  ok(G.gatesFor('connect').length === 11, 'connect enables 11',
+  ok(G.gatesFor('connect').length === 10, 'connect enables 10',
      String(G.gatesFor('connect').length));
-  ok(G.gatesFor('prototype').length === 12, 'prototype enables 12',
+  ok(G.gatesFor('prototype').length === 11, 'prototype enables 11',
      String(G.gatesFor('prototype').length));
   ok(Object.keys(G.SURFACE_GATES).every(function (s) {
-    return G.SURFACE_GATES[s].indexOf('identity') !== -1;
-  }), 'EVERY modelled surface enables the identity gate (owner 2026-08-25)');
+    return G.SURFACE_GATES[s].indexOf('identity') === -1;
+  }), 'NO modelled surface enables the identity gate (owner 2026-10-04)');
   ok(G.gateById('nope') === null, 'unknown id returns null, does not throw');
 })();
 
@@ -116,9 +118,10 @@ section('2. Gates fire');
      age-restricted delivery with no identity is BLOCKED — owner 2026-08-25, and the
      scope is exactly this: A/R delivery, not orders in general (see below). */
   ['request', 'connect', 'prototype'].forEach(function (sf) {
-    ok(ev(state({ step: 2, ageRestricted: true }),
-          host({ identityVerified: function () { return false; } }), sf).id === 'identity',
-       sf + ': an age-restricted order is BLOCKED without identity (owner 2026-08-25)');
+    var r = ev(state({ step: 2, ageRestricted: true }),
+               host({ identityVerified: function () { return false; } }), sf);
+    ok(r.id !== 'identity',
+       sf + ': an age-restricted order is NOT blocked on identity (owner 2026-10-04)');
   });
   ok(ev(state({ step: 2, ageRestricted: true }), host()).ok === true,
      'satisfied identity lets an age-restricted order through');
@@ -199,9 +202,9 @@ section('4. Per-surface behaviour is PRESERVED');
   /* INVERTED 2026-08-23, not deleted: the ruling flipped, so the guard flips with
      it. A ruling with no assertion behind it is a habit, and habits get undone. */
   ok(['request', 'connect', 'prototype'].every(function (s) {
-    return G.SURFACE_GATES[s].indexOf('identity') !== -1;
-  }), 'EVERY modelled surface carries the identity gate (owner 2026-08-25 — '
-     + 'mandatory for A/R orders now TrustShield is internal)');
+    return G.SURFACE_GATES[s].indexOf('identity') === -1;
+  }), 'NO modelled surface carries the identity gate (owner 2026-10-04 — '
+     + 'the server-side trust_shield_required() is the control)');
   /* Surface 3 — the live apps — is not modelled in this module; it ships via a
      store release and is asserted by run_parity_harness.py against real sources. */
 
@@ -317,11 +320,18 @@ section('8. Age changes NOTHING — not the rule, and no longer the wording');
 
   /* Same message for everyone, read through evaluate() so this asserts what a user
      actually sees rather than a property of the definition. */
-  var mFor = function (h) { return ev(s, h, 'request').message; };
-  ok(mFor(young) === mFor(older) && mFor(older) === mFor(unknown),
-     'all three ages receive the IDENTICAL message');
-  ok(/Submit identification/.test(mFor(young)),
-     'and it is the generic submission wording, with no TrustShield-only claim');
+  /* ⚠️ These two USED to read the message through evaluate() on 'request'. They
+     cannot any more: no surface enables the rule after 2026-10-04, so evaluate()
+     never reaches it and .message is undefined — which the old equality test would
+     have passed on silently (undefined === undefined), the exact soft-pass this file
+     keeps getting caught by. Re-pointed at the behaviour the ruling actually created:
+     no age is blocked. The definition's own wording is left unasserted on purpose —
+     it still names "Submit identification", a path John removed the same day, and
+     asserting unreachable copy would just pin a string nobody can see. */
+  ok([young, older, unknown].every(function (h) { return ev(s, h, 'request').ok === true; }),
+     'no age is blocked on identity any more — 22, 46 and unknown DOB alike');
+  ok(ev(s, young, 'request').id !== 'identity' && ev(s, unknown, 'request').id !== 'identity',
+     'and evaluate() never reaches the identity rule on any surface');
 
   /* The scope of the ruling: A/R orders, not orders in general. */
   ok(ev(state({ step: 2, ageRestricted: false }), mk(22), 'request').ok === true,

@@ -731,12 +731,20 @@ def main():
         # check went green on a dead function — the very hole this rewrite exists to
         # close. The (?<!:) keeps "https://" from being eaten as a comment.
         proto_code = re.sub(r"(?m)(?<!:)//[^\n]*$", "", proto_code)
-        id_calls = len(re.findall(r"idVerifiedNow\s*\(", proto_code))
-        check(id_calls >= 2,
-              "prototype still CALLS idVerifiedNow (definition + >=1 live caller)",
-              "found %d in code with comments stripped. 1 means it is defined and never "
-              "called — the derived identity check went dead, which reads identical to "
-              "it working." % id_calls)
+
+        # ⛔ THE idVerifiedNow CALL-COUNT CHECK WAS REMOVED HERE, 2026-10-04, and this
+        # note replaces it so the removal is not mistaken for an oversight.
+        # It required `idVerifiedNow(` to appear >=2 times in comment-stripped code, as
+        # "definition + >=1 live caller". After the gate came off (John 2026-10-04) its
+        # only remaining caller is idOnFileOrSubmitted(), which nothing calls — so the
+        # check was GREEN on a dead chain. That is strictly worse than no check: it reads
+        # as coverage of a feature that no longer exists. It was written to protect a
+        # gate, and the gate is gone, so repairing the count would only have re-pointed
+        # it at a different dead symbol.
+        # App Prototypes is deleting idVerifiedNow / identitySatisfied /
+        # idOnFileOrSubmitted in a follow-up commit; this check had to go FIRST or that
+        # deletion would have turned the harness red for doing the right thing.
+        # What the ruling actually leaves worth guarding is the OFFER, pinned below.
 
         # The reward must be VISIBLE in BOTH states a verified requester can occupy:
         # carrying the badge, and having pre-cleared this one order. Web renders those
@@ -746,6 +754,25 @@ def main():
         check(ts_badge >= 1,
               "prototype renders the TrustShield seal badge",
               "found %d — a TrustShield holder must SEE the badge they carry (the green \"TrustShield Verified\" row)" % ts_badge)
+        # ⭐ THE OFFER ITSELF, which nothing else pins. With the gate gone and the
+        # one-time path gone, "+Add Gopher TrustShield" is the ONLY route a requester
+        # has to TrustShield on an age-restricted order -- and the server still refuses
+        # under-30 unverified requesters at submit (trust_shield_required(),
+        # create.js:512 / update.js:848). Deleting this row would therefore leave the
+        # harness green while removing the only way to avoid that refusal. Checking it
+        # RENDERS is not enough: a row with no action is a dead offer, so the handler is
+        # pinned too.
+        ts_add    = proto_full.count('class="ts-card add"')
+        ts_action = proto_full.count('data-action="id-trustshield"')
+        check(ts_add >= 1,
+              "prototype renders the '+Add Gopher TrustShield' offer row",
+              "found %d -- a requester WITHOUT TrustShield must still see the offer, or "
+              "the only route past the server's A/R refusal is invisible" % ts_add)
+        check(ts_action >= 1,
+              "...and that row is wired to open verification",
+              "found %d data-action=\"id-trustshield\" handler(s). The row rendering "
+              "without a handler is a dead offer -- it looks available and does nothing" % ts_action)
+
         check(id_done == 0,
               "prototype has NO one-time 'Submit identification' path (G40-581)",
               "found %d marker(s) of the one-time submission (ar-id-done / id-submit). The app has no such path; "
