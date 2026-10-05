@@ -698,25 +698,20 @@ def main():
         # INTERNALLY, enrolment never stops, and the owner made identity mandatory for
         # age-restricted orders with no age branch. The guard follows the ruling rather
         # than being deleted with it — which is exactly why it keeps flipping.
+        # ⛔ INVERTED A FOURTH TIME 2026-10-04 (G40-581 Delivery; John via the 909 desk: "Drop your PT's one-time
+        # 'Submit identification' path; the app has no such path"). The live Request app has NO identity gate on an
+        # age-restricted delivery: it goes on, ID is checked at the door, and TrustShield is an optional "+Add" row.
+        # So this now requires the gate's ABSENCE (read the DATE, not the shape: it required it, removed it, required
+        # it again on 2026-08-25, and the app's own build ends the argument). The voluntary-but-visible reward is
+        # pinned below; the one-time path is pinned ABSENT.
         pm = re.search(
             r"if\(\s*state\.step\s*===\s*2\s*&&\s*state\.category\s*===\s*'delivery'"
             r"\s*&&\s*state\.ageRestricted\s*&&\s*([^)]*)\)",
             proto_src)
-        check(pm is not None,
-              "prototype GATES step 2 on identity for A/R delivery (owner 2026-08-25)",
-              "the step-2 identity condition is gone. Identity is mandatory for "
-              "age-restricted orders again — TrustShield is internal now, so the "
-              "iDenfy cliff that justified removing it in G40-410 no longer exists.")
-        if pm:
-            # Must be satisfiable by EITHER path. A gate that only accepts the badge
-            # would make TrustShield mandatory rather than persistent, which is the
-            # opposite of the ruling: submission is one-time, TrustShield lasts.
-            cond = pm.group(1)
-            check("identitySatisfied" in cond,
-                  "prototype's identity gate accepts EITHER path (one-off or badge)",
-                  "condition reads: %s — it must call identitySatisfied(), which is "
-                  "trustShield || idSubmittedAt || savedOnFile, mirroring the web "
-                  "host's identityVerified()." % cond.strip()[:80])
+        check(pm is None,
+              "prototype has NO step-2 identity gate for A/R delivery (G40-581, John 2026-10-04)",
+              "an identity gate is back in stepGate(). The live app has none: age-restricted deliveries go on, "
+              "ID is shown at the door, TrustShield is optional.")
 
         # ⚠️ The check above, alone, is satisfied by DELETING THE WHOLE FEATURE —
         # idVerifiedNow() had three references and only ONE was the gate, so removing
@@ -746,15 +741,15 @@ def main():
         # The reward must be VISIBLE in BOTH states a verified requester can occupy:
         # carrying the badge, and having pre-cleared this one order. Web renders those
         # as two different components, so counting a single class name is the wrong test.
-        ts_badge = proto_full.count('<div class="ts-verified">')
-        id_done  = proto_full.count('class="ar-id-done"')
+        ts_badge = proto_full.count('class="ts-card ok"')
+        id_done  = proto_full.count('class="ar-id-done"') + proto_full.count('data-action="id-submit"')
         check(ts_badge >= 1,
               "prototype renders the TrustShield seal badge",
-              "found %d — a TrustShield holder must SEE the badge they carry" % ts_badge)
-        check(id_done >= 1,
-              "prototype acknowledges a submitted ID (pre-cleared state)",
-              "found %d — after submitting, the requester must see that it registered, "
-              "or the capture reads as having failed" % id_done)
+              "found %d — a TrustShield holder must SEE the badge they carry (the green \"TrustShield Verified\" row)" % ts_badge)
+        check(id_done == 0,
+              "prototype has NO one-time 'Submit identification' path (G40-581)",
+              "found %d marker(s) of the one-time submission (ar-id-done / id-submit). The app has no such path; "
+              "the only identity action on Delivery is \"+Add Gopher TrustShield\u2122\"." % id_done)
 
         # ---- agreement with the SHARED module ---------------------------
         # gopher-step-gates.js is the extraction of these rules (2026-08-22).
