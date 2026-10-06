@@ -370,13 +370,6 @@
   }
   .jc-cat svg { width:15px; height:15px; color:var(--green-dark); flex-shrink:0; }
   .jc-cat span { font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; color:var(--navy); white-space:nowrap; }
-  .jc-source {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:4px 9px; border-radius:7px; flex-shrink:0;
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:10px;
-  }
-  .jc-source.src-connect { background:#badbfc; border:1px solid #9fc4f5; color:#0d3b82; }
-  .jc-source.src-deal { background:#ffe9a8; border:1px solid #f0cf7a; color:#7a5512; }
   .jc-posted { margin-left:auto; font-family:'DM Sans',sans-serif; font-weight:600; font-size:10.5px; color:#6b7280; white-space:nowrap; }
 
   .jc-pay { display:flex; align-items:center; gap:8px; min-height:40px; padding:11px 0 5px; }
@@ -413,14 +406,29 @@
   .iqm span { font-family:'Nunito',sans-serif; font-weight:900; font-size:8px; letter-spacing:0.3px; color:#fff; }
 
   /* Ribbons (top-right) */
-  .jc-ribbon {
-    position:absolute; top:0; right:0; border-bottom-left-radius:12px;
-    display:inline-flex; align-items:center; gap:5px; padding:4px 12px 5px 14px;
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:9.5px; letter-spacing:0.3px; color:#fff;
-  }
-  .jc-ribbon svg { width:13px; height:13px; }
-  .jc-ribbon.r-toppay { background:linear-gradient(135deg, #33d975 0%, #1cb061 100%); }
-  .jc-ribbon.r-lock { background:var(--navy); }
+  /* ── Corner rail (canonical, ported from assets/css/gopher-connect-uc.css +
+     the Go prototype). The source mark is a FRAMED WHITE PILL sitting IN the top
+     row, not a flush ribbon: 15px lockup, 4px/8px padding, 9px radius, hairline
+     border, soft shadow — identical sizing for the Connect and Deals marks.
+     The rail is a COLUMN so a TOP PAY badge stacks ABOVE the source mark instead
+     of colliding with it (owner, 2026-08-26), and `posted` moved to .jc-foot so
+     nothing crowds the corner. */
+  .jc-corner { margin-left:auto; display:inline-flex; flex-direction:column;
+    align-items:flex-end; gap:7px; flex:0 0 auto; }
+  .jc-badge { display:inline-flex; align-items:center; gap:5px; border-radius:9px; }
+  .jc-badge.mark { background:#fff; border:1px solid #e4e8f0; padding:4px 8px;
+    box-shadow:0 1px 3px rgba(0,36,97,.08); }
+  .jc-badge.mark img { height:15px; width:auto; display:block; }
+  .jc-badge.mark .lk { display:inline-flex; width:11px; height:11px; color:#7a869a; }
+  .jc-badge.mark .lk svg { width:11px; height:11px; display:block; }
+  .jc-badge.top { background:linear-gradient(135deg,#33d975 0%,#1cb061 100%); color:#fff;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:9.5px; letter-spacing:.3px;
+    padding:5px 10px; white-space:nowrap; }
+  /* the category chip yields rather than pushing the rail off the card */
+  .jc-top .jc-cat { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .jc-foot { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:11px; }
+  .jc-foot .jc-flags { padding-top:0; flex:1 1 auto; }
+  .jc-foot .jc-posted { margin-left:auto; flex:0 0 auto; }
 
   /* Locked states */
   .lockwrap { opacity:0.45; display:flex; flex-direction:column; gap:5px; filter:saturate(0.6); }
@@ -922,7 +930,13 @@
 
   @media (max-width:820px) {
     .ts-card { grid-template-columns:1fr; padding:36px 28px; gap:32px; }
-    .ts-left h2 { font-size:28px; }
+    /* ⛔ white-space MUST return to normal here. The base rule sets nowrap so the
+       desktop headline breaks only at its authored <br>; on a phone that forces
+       one unbreakable line and the tail ("...and your Customer's!") is clipped
+       past the right edge — owner-reported 2026-08-26 at 375px, where the <em>
+       ran to x=506 in a 375px viewport. `em.nowrap` still holds individual
+       phrases together where the markup asks for it. */
+    .ts-left h2 { font-size:28px; white-space:normal; }
     .ts-badges { gap:24px 20px; }
     .ts-logo { height:30px; }
   }
@@ -1196,54 +1210,66 @@
     <div class="feed-grid">
       <div class="feed-col">
         <div class="job-card is-toppay">
-          <div class="jc-ribbon r-toppay"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.6L20 9.3l-4 4 1 6-5-2.8L7 19.3l1-6-4-4 5.4-.7L12 3Z"/></svg> TOP PAY</div>
-          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z"/></svg><span>Seasonal</span></span><span class="jc-posted">3 min ago</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z"/></svg><span>Seasonal</span></span><span class="jc-corner"><span class="jc-badge top">&#9733; TOP PAY</span></span></div>
           <div class="jc-pay"><span class="amt">$275</span><span class="per">~$55/hr</span></div>
           <div class="jc-scope">Install Christmas lights on my 2-story house. All lights and hooks ready to go.</div>
           <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>2.4 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><b>~5 hr</b></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><b>This week</b></span></div>
-          <div class="jc-flags"><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>Ladder needed</span><span class="flag f-good">Materials ready</span></div>
+          <div class="jc-foot">
+<div class="jc-flags"><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>Ladder needed</span><span class="flag f-good">Materials ready</span></div>
+<span class="jc-posted">3 min ago</span>
+</div>
         </div>
         <div class="job-card">
-          <div class="jc-ribbon r-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Connect</div>
-          <div class="lockwrap">
-            <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4 4 0 0 0-5.3 5.1l-6.2 6.2 2.8 2.8 6.2-6.2a4 4 0 0 0 5.1-5.3l-2.6 2.6-2.1-2.1 2.1-2.1Z"/></svg><span>Hourly / Day Labor</span></span><span class="jc-source src-connect">Connect</span><span class="jc-posted">19 min ago</span></div>
-            <div class="jc-pay"><span class="amt">$200</span><span class="per">~$50/hr</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4 4 0 0 0-5.3 5.1l-6.2 6.2 2.8 2.8 6.2-6.2a4 4 0 0 0 5.1-5.3l-2.6 2.6-2.1-2.1 2.1-2.1Z"/></svg><span>Hourly / Day Labor</span></span><span class="jc-corner"><span class="jc-badge mark connect"><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><img src="assets/img/connect-mark.png" alt="Gopher Connect"></span></span></div>
+<div class="lockwrap">
+                        <div class="jc-pay"><span class="amt">$200</span><span class="per">~$50/hr</span></div>
             <div class="jc-scope">Need 2 people for 2 hrs to break down tables &amp; chairs after a wedding reception.</div>
             <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>4.0 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><b>~2 hr</b></span></div>
-            <div class="jc-flags"><span class="flag f-info">1 of 2 crew</span></div>
+            <div class="jc-foot">
+<div class="jc-flags"><span class="flag f-info">1 of 2 crew</span></div>
+<span class="jc-posted">19 min ago</span>
+</div>
           </div>
           <div class="lock-cta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><p>Connect job &mdash; for <b>Gopher Elite &amp; Pros</b></p><span class="lgo">Tier up</span></div>
         </div>
       </div>
       <div class="feed-col">
         <div class="job-card">
-          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h11v9H2zM13 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.7"/><circle cx="17" cy="18" r="1.7"/></svg><span>Moving</span></span><span class="jc-posted">8 min ago</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h11v9H2zM13 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.7"/><circle cx="17" cy="18" r="1.7"/></svg><span>Moving</span></span></div>
           <div class="jc-pay"><span class="bid-cta">Submit a Bid</span></div>
           <div class="jc-scope">Need 2 people to move me from a small 1-bedroom apartment to another 1-bedroom across town. Not much stuff &mdash; just need the muscle.</div>
           <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>5.4 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><b>~3 hr</b></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><b>Sat 9 AM</b></span></div>
-          <div class="jc-flags"><span class="flag f-info">You staff 2</span><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4v-4h4v-4h4V8h4"/></svg>Stairs at pickup</span></div>
+          <div class="jc-foot">
+<div class="jc-flags"><span class="flag f-info">You staff 2</span><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4v-4h4v-4h4V8h4"/></svg>Stairs at pickup</span></div>
+<span class="jc-posted">8 min ago</span>
+</div>
         </div>
         <div class="job-card">
-          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l8-8M13 7l4 4 3.5-3.5-4-4L13 7Z"/><path d="M11 9l4 4"/></svg><span>Handyman</span></span><span class="jc-posted">11 min ago</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l8-8M13 7l4 4 3.5-3.5-4-4L13 7Z"/><path d="M11 9l4 4"/></svg><span>Handyman</span></span></div>
           <div class="jc-pay"><span class="amt">$75</span><span class="per">~$50/hr</span></div>
           <div class="jc-scope">Hang a 65&quot; TV. I have the mount. Drywall install, one-story home.</div>
           <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>3.1 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><b>~1.5 hr</b></span></div>
-          <div class="jc-flags"><span class="flag f-info">Mount supplied</span><span class="flag f-iq iq-warn"><span class="iqm"><span>iQ</span></span>Heavy item</span><span class="flag f-iq iq-info"><span class="iqm"><span>iQ</span></span>Stud-mount</span></div>
+          <div class="jc-foot">
+<div class="jc-flags"><span class="flag f-info">Mount supplied</span><span class="flag f-iq iq-warn"><span class="iqm"><span>iQ</span></span>Heavy item</span><span class="flag f-iq iq-info"><span class="iqm"><span>iQ</span></span>Stud-mount</span></div>
+<span class="jc-posted">11 min ago</span>
+</div>
         </div>
       </div>
       <div class="feed-col">
         <div class="job-card">
-          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Delivery / Errand</span></span><span class="jc-posted">4 min ago</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Delivery / Errand</span></span></div>
           <div class="jc-pay"><span class="amt">$50</span><span class="per">~$40/hr</span></div>
           <div class="jc-scope">Anniversary emergency! Need a bouquet delivered. Text me pics of what&rsquo;s available, $60&ndash;$80.</div>
           <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>1.8 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg><b>~1 hr</b></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg><b>Now</b></span></div>
-          <div class="jc-flags"><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>Time-sensitive</span><span class="flag f-good">No heavy lift</span></div>
+          <div class="jc-foot">
+<div class="jc-flags"><span class="flag f-warn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>Time-sensitive</span><span class="flag f-good">No heavy lift</span></div>
+<span class="jc-posted">4 min ago</span>
+</div>
         </div>
         <div class="job-card">
-          <div class="jc-ribbon r-lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Gopher Deal</div>
-          <div class="lockwrap">
-            <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Delivery / Errand</span></span><span class="jc-source src-deal">Gopher Deal</span><span class="jc-posted">1 min ago</span></div>
-            <div class="jc-pay"><span class="amt">$10</span><span class="per">~$30/hr</span></div>
+          <div class="jc-top"><span class="jc-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l1 13H5L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span>Delivery / Errand</span></span><span class="jc-corner"><span class="jc-badge mark deal"><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><img src="assets/img/deals-mark.png" alt="Gopher Deals"></span></span></div>
+<div class="lockwrap">
+                        <div class="jc-pay"><span class="amt">$10</span><span class="per">~$30/hr</span></div>
             <div class="jc-scope">Deals Request &mdash; My Way Tavern Delivery</div>
             <div class="jc-stats"><span class="jc-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.3"/></svg><b>0.9 mi</b><small>away</small></span><span class="jc-stat"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg><b>Now</b></span></div>
           </div>
@@ -1281,7 +1307,7 @@
         <div class="gg-quote">&ldquo;When you refer an app, it usually doesn't help YOU. Until now.&rdquo;</div>
         <div class="gg-feature-cta">
           <a href="https://apps.apple.com/us/app/gopher-go/id1438128905" class="btn-green">Start your referral empire</a>
-          <a href="gopher-blog.html#refer-yourself" class="gg-link">Read how Refer Yourself works <span aria-hidden="true">&rarr;</span></a>
+          <a href="blog-refer-yourself.html" class="gg-link">Read how Refer Yourself works <span aria-hidden="true">&rarr;</span></a>
         </div>
       </div>
       <div class="gg-feature-visual" aria-hidden="true">
@@ -2184,6 +2210,15 @@ window.GoAuth = (function(){
         tier: d.tier || null,
         serviceJobs: (d.service_jobs != null ? d.service_jobs : d.serviceJobs) || 0,
         serviceRating: (d.service_rating != null ? d.service_rating : d.serviceRating) || null,
+        /* ⛔ WHY A DEAL CAN BE BLOCKED BY AN IMAGE (owner, 2026-08-27). A card
+           with no mark misrepresents nothing — it just shows a customer
+           nothing — and until this ruling the OWNER was the only thing that
+           ever noticed, by eye, in the HQ queue. `image.reason` says which
+           piece is missing so the page can name the actual fix:
+             no_profile_photo  -> no photo on the account at all
+             business_no_mark  -> showing as a business, no logo, and has not
+                                  elected to use the profile photo */
+        image: (d.image && typeof d.image === 'object') ? d.image : null,
         raw: d
       };
     });
@@ -2202,6 +2237,10 @@ window.GoAuth = (function(){
            422 "Unrecognised field(s): deal_text." Allowlist: DLP_FIELDS in
            helpers/deals_intake_validation.js. */
         deal: d.dealText,
+        /* Ruling 9. The SERVICE this deal is for, as a slug. Required by the
+           server for every dlp submission — a missing or gated value is a 422,
+           and `other` additionally requires a real keyword. */
+        service_category: d.serviceCategory,
         keywords: (d.keywords || []).slice(0, 3),
         earn_amount: Math.round(Number(d.earn) * 100),
         normal_price: Math.round(Number(d.normal) * 100),
@@ -2597,6 +2636,39 @@ window.GoProfile = (function(){
      above and by the file picker below, so the two can never disagree about
      which element holds the message or leave a stale one behind.
      `tone` is '' | 'ready' | 'error'. */
+/* ⛔ PAINT THE REAL PHOTO INTO EVERY AVATAR. One writer, so the topbar and
+     the profile hero cannot disagree — and so the Business-info tile and the
+     Profile page show the SAME picture, which is what the owner meant by
+     "profile pics do NOT match". Falls back to initials, which is what these
+     always did and is still right for someone with no photo. */
+  window.GoAvatar = window.GoAvatar || {};
+  window.GoAvatar.paint = function(url){
+    ['dashAvatar','profAvatar'].forEach(function(id){
+      var el = document.getElementById(id); if(!el) return;
+      var img = el.querySelector('.avatar-img');
+      if(url){
+        if(!img){
+          img = document.createElement('img');
+          img.className = 'avatar-img';
+          img.alt = 'Your profile photo';
+          /* A dead URL must fall back to initials rather than leave a blank
+             circle — the S3 key changes whenever a photo is replaced. */
+          img.addEventListener('error', function(){
+            img.remove();
+            el.childNodes.forEach && null;
+            if(!el.textContent.trim()) el.textContent = (window.GoAvatar.initials || '');
+          });
+          el.textContent = '';
+          el.appendChild(img);
+        }
+        if(img.getAttribute('src') !== url) img.src = url;
+      } else if(img){
+        img.remove();
+        el.textContent = window.GoAvatar.initials || '';
+      }
+    });
+  };
+
   window.__goSetLogoState = function(tile, html, tone){
     if(!tile) return;
     var st = tile.querySelector('.vp-state');
@@ -2624,10 +2696,46 @@ window.GoProfile = (function(){
       set('dashWorkerName', full, true);
       set('profName', full, true);
       var initials = full.split(/\s+/).map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+      window.GoAvatar = window.GoAvatar || {};
+      window.GoAvatar.initials = initials;
       ['dashAvatar','profAvatar'].forEach(function(id){
-        var el=document.getElementById(id); if(el && initials) el.textContent = initials;
+        var el=document.getElementById(id); if(!el) return;
+        /* Only write initials where there is no photo already painted. */
+        if(!el.querySelector('.avatar-img') && initials) el.textContent = initials;
       });
     }
+    /* ⛔ THE PIC IS PART OF SP-DEAL ELIGIBILITY (owner, 2026-08-27) — and the
+       worker has to be TOLD, next to the thing that needs fixing, or the owner
+       goes back to being the discovery mechanism. Asks the server rather than
+       guessing from the avatar: the initials fallback renders identically
+       whether a photo exists or not, so the DOM cannot answer this. Fails
+       silent — an unreachable endpoint must not accuse a worker of a problem
+       they may not have. */
+    /* The identity toggle previews an UNSAVED choice, so the page needs the
+       PARTS, not just the server's resolved answer — see provider_image in
+       controllers/user/profile.js. Stashed here because this is the one place
+       the profile payload lands. */
+    if(p.provider_image && typeof p.provider_image === 'object'){
+      window.GoBiz = window.GoBiz || {};
+      window.GoBiz.providerImage = p.provider_image;
+      if(window.GoBiz.paintShowAs) window.GoBiz.paintShowAs();
+      /* The SAME url the Business-info tile uses, so the two always match. */
+      if(window.GoAvatar && GoAvatar.paint)
+        GoAvatar.paint(p.provider_image.profile_photo_url || '');
+    }
+
+    (function showPicGate(){
+      var warn = document.getElementById('profPicWarn');
+      if(!warn || !window.GoAuth || !GoAuth.fetchEligibility) return;
+      GoAuth.fetchEligibility().then(function(e){
+        var reason = e && e.ok && e.image ? e.image.reason : null;
+        if(!reason){ warn.hidden = true; return; }
+        warn.textContent = reason === 'business_no_mark'
+          ? 'Add a business logo — or choose to use your profile photo — to be eligible for Gopher Deals.'
+          : 'Add a profile photo to be eligible for Gopher Deals.';
+        warn.hidden = false;
+      }).catch(function(){ warn.hidden = true; });
+    })();
     if(p.gopher_completed_task_count != null) set('profJobs', p.gopher_completed_task_count, true);
     if(p.average_rating != null && +p.average_rating > 0)
       set('profRating', (Math.round(+p.average_rating*10)/10).toFixed(1), true);
@@ -3368,7 +3476,27 @@ window.showNoAccount = function(){
 
   /* profile overview */
   .profile-hero { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
-  .ph-avatar { width:66px; height:66px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:24px; flex-shrink:0; }
+  .ph-avatar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  /* Deliberately small and quiet: this is a prompt, not an error. It names the
+     fix rather than the rule — a worker does not care what "eligibility" means,
+     they care that adding a photo unlocks something. */
+  .ph-pic-warn { max-width:150px; margin:0; font-family:'DM Sans',sans-serif;
+    font-size:11px; line-height:1.35; color:#8A6D00; background:#FFF6E5;
+    border:1px solid #F0DCA8; border-radius:8px; padding:6px 8px; text-align:center; }
+  .ph-avatar { overflow:hidden; width:66px; height:66px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:24px; flex-shrink:0; }
+  /* ⛔ AN AVATAR MUST BE ABLE TO SHOW THE ACTUAL PHOTO. Both avatars were
+     initials-only — there was no <img> path at all — so a worker WITH a profile
+     photo saw "JN" on their own profile page and had no way to tell the product
+     even had their picture. Reported three times before it was fixed. */
+  /* ⛔ THE ONLY PLACE TO CHANGE A PROFILE PHOTO WAS THE BUSINESS SECTION.
+     Owner, 2026-08-27: "there is nowhere for me to change my profile pic IF i
+     do not go into the business section" — a worker who never opens Business
+     info could not set the image that represents them everywhere. Same upload,
+     same endpoint, reachable from the profile itself. */
+  button.ph-avatar { border:none; padding:0; cursor:pointer; }
+  .ph-avatar-hint { margin:6px 0 0; text-align:center; font-family:'DM Sans',sans-serif;
+    font-size:11px; color:var(--muted); }
+  .avatar-img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .ph-id { flex:1; min-width:200px; }
   .ph-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:21px; color:var(--navy); }
   .ph-since { font-size:13px; color:var(--muted); margin-top:1px; }
@@ -3386,6 +3514,28 @@ window.showNoAccount = function(){
   .ph-vlogo img { height:22px; width:auto; display:block; }
   .ph-vlogo { background:var(--green-light); border-radius:8px; padding:7px 11px; display:inline-flex; }
   .ph-vcap { font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; color:var(--navy); }
+  /* Profile hero on phones (owner-approved from a side-by-side, 2026-08-26).
+     There were NO mobile rules here at all: .profile-hero is a wrapping flex row
+     and .ph-verify carries margin-left:auto, so under ~560px the avatar took a
+     row of its own, the identity block took another, and the badges wrapped to a
+     third jammed hard right — three ragged rows and a lot of dead space.
+     Now an explicit 2-column grid: avatar beside the identity, badges on their
+     own shelf under a hairline, spread rather than right-jammed. */
+  @media (max-width:560px){
+    .profile-hero{
+      display:grid; grid-template-columns:auto 1fr;
+      grid-template-areas:"avatar id" "verify verify";
+      column-gap:14px; row-gap:16px; align-items:center;
+    }
+    .ph-avatar-wrap{ grid-area:avatar; }
+    .ph-id{ grid-area:id; min-width:0; }
+    .ph-verify{
+      grid-area:verify; margin-left:0; justify-content:space-around;
+      gap:12px; padding-top:14px; border-top:1px solid #eef0f6;
+    }
+    .ph-stats{ gap:14px; margin-top:10px; }
+    .ph-name{ font-size:19px; }
+  }
   .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
   .stat { background:#fafbff; border:1px solid #eef0f5; border-radius:12px; padding:16px; }
   .stat-v { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:var(--navy); }
@@ -3406,6 +3556,33 @@ window.showNoAccount = function(){
   .rh-list::-webkit-scrollbar-thumb:hover { background:#bcc5d4; }
   .rh-count { font-size:12.5px; color:var(--muted); margin:0 0 8px; }
   .rh-count b { color:var(--navy); }
+  .up2-pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:420px){ .up2-pair { grid-template-columns:1fr; } }
+  /* The ACTIVE image is the one being answered for, so it gets the emphasis —
+     the inactive one stays legible and tappable, never hidden: a worker has to
+     be able to add the other one. */
+  .idtile { opacity:.55; transition:opacity .15s, box-shadow .15s; }
+  .idtile.is-active { opacity:1; box-shadow:0 0 0 2px var(--green,#33D975); }
+  /* ⛔ NEVER OVER THE IMAGE. Owner, 2026-08-27: "Do NOT allow the pill to
+     interfere with the logo or pic, that would be taboo UI." It sat absolutely
+     positioned on top of the artwork — covering the very thing it was labelling.
+     It is a caption under the tile now, in normal flow. */
+  /* ⛔ [hidden] MUST WIN. Giving this an explicit `display` overrode the UA
+     stylesheet's `display:none`, so the hidden attribute did nothing and BOTH
+     tiles wore "Shown to customers" — announcing two live images when only one
+     can be. This repo has no global [hidden] rule to fall back on. */
+  .idtile-flag[hidden] { display:none !important; }
+  .idtile-flag { display:block; margin:8px auto 0; width:fit-content;
+    background:var(--green,#33D975); color:var(--navy,#002461);
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:10px;
+    letter-spacing:.2px; border-radius:999px; padding:3px 10px; }
+  /* A business needs a profile photo before it can exist (owner, 2026-08-27),
+     so the switch is refused rather than allowed-then-broken. */
+  .showas-blocked { opacity:.45; pointer-events:none; }
+  .bizlogo-use { margin:8px 2px 0; font-family:'DM Sans',sans-serif; font-size:12px;
+    line-height:1.45; color:var(--muted); }
+  .bizlogo-use.is-idle { color:#8A6D00; background:#FFF6E5; border:1px solid #F0DCA8;
+    border-radius:8px; padding:7px 10px; }
   .bizlogo-img { display:block; max-width:120px; max-height:64px; width:auto; height:auto;
                  object-fit:contain; margin:0 auto 8px; border-radius:8px; background:#fff; }
   .cred.uptile.has-logo { padding-top:14px; border-style:solid; border-color:#dfe6f2; background:#fff; }
@@ -3955,7 +4132,7 @@ window.showNoAccount = function(){
   .dash-burger { display:none; background:none; border:none; font-size:22px; color:var(--navy); cursor:pointer; }
   .dash-greeting { font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--muted); }
   .dash-section-title { font-family:'Nunito',sans-serif; font-weight:900; font-size:19px; color:var(--navy); line-height:1.2; margin-top:1px; }
-  .dash-avatar { width:42px; height:42px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; }
+  .dash-avatar { overflow:hidden; width:42px; height:42px; border-radius:50%; background:var(--green); color:var(--ink-on-green); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; }
   .dash-content { padding:30px; max-width:860px; width:100%; }
   .dash-section { display:none; }
   .dash-section.active { display:block; animation:fadeIn 0.25s ease; }
@@ -3977,8 +4154,19 @@ window.showNoAccount = function(){
   .inbox-row-top { display:flex; justify-content:space-between; gap:8px; }
   .inbox-row-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy); }
   .inbox-row-time { font-family:'DM Sans',sans-serif; font-size:11px; color:var(--muted); flex-shrink:0; }
-  .inbox-row-sub { font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:1px 0; }
-  .inbox-row-last { font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ⛔ display:block is what MAKES the ellipsis work. Both of these are <span>s,
+     so they were inline boxes — text-overflow has no effect on an inline box, and
+     the truncation declared here was inert: long announcement bodies ran past the
+     list instead of clipping (owner-reported 2026-09-01). The nowrap/overflow/
+     ellipsis trio was already correct; only the box type was wrong. */
+  .inbox-row-sub { display:block; font-family:'DM Sans',sans-serif; font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:1px 0; }
+  .inbox-row-last { display:block; font-family:'DM Sans',sans-serif; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Gopher Support wears the Gopher, not initials (owner, 2026-09-01). White
+     ground, per the standing brand ruling that the mark sits on no background —
+     the full-colour character does not read on the green avatar circle. */
+  .inbox-row-photo.is-hq, .inbox-convo-photo.is-hq { background:#fff; border:1px solid #e4e8f0; }
+  .inbox-row-photo.is-hq img { width:74%; height:74%; object-fit:contain; display:block; }
+  .inbox-convo-photo.is-hq img { width:74%; height:74%; object-fit:contain; display:block; }
   .inbox-unread { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-left:6px; vertical-align:middle; }
   .inbox-convo { background:#fff; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
   .inbox-convo-head { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid #eef0f5; }
@@ -3994,6 +4182,12 @@ window.showNoAccount = function(){
   .inbox-msg.theirs .inbox-bubble { background:#eef2f8; color:var(--navy); border-bottom-left-radius:5px; }
   .inbox-msg.mine .inbox-bubble { background:var(--green); color:var(--ink-on-green); border-bottom-right-radius:5px; }
   .inbox-msg-time { font-family:'DM Sans',sans-serif; font-size:10.5px; color:var(--muted); margin-top:3px; padding:0 4px; }
+  /* Announcement links. word-break is load-bearing: an App Store URL is longer
+     than the bubble and would otherwise push it past the pane. */
+  .inbox-bubble .inbox-link { color:var(--green-dark); font-weight:700; text-decoration:underline;
+    text-underline-offset:2px; word-break:break-word; overflow-wrap:anywhere; }
+  .inbox-msg.mine .inbox-bubble .inbox-link { color:var(--navy); }
+  .inbox-bubble .inbox-link:hover { color:var(--navy); }
   /* Photo attachment (G40-216) */
   .inbox-photo { max-width:230px; border-radius:14px; display:block; border:1px solid #e7eaf2; }
   .inbox-msg.mine .inbox-photo { border-color:transparent; }
@@ -4334,7 +4528,7 @@ window.showNoAccount = function(){
       <button class="dash-offer-learn" id="offerLearnMore" type="button">Learn more</button>
       <button class="dash-demo-toggle" id="offerDemoToggle" type="button" title="Prototype demo only — production reads eligibility from the worker's tier automatically">&#128295; Demo: eligible <b id="offerDemoState">ON</b></button>
       <button class="dash-nav-item active" data-dash-section="profile"><span class="dni-ico">&#128100;</span><span class="dni-label">Profile</span></button>
-      <button class="dash-nav-item" data-dash-section="history"><span class="dni-ico">&#128218;</span><span class="dni-label">Previous requests</span></button>
+      <button class="dash-nav-item" data-dash-section="history"><span class="dni-ico">&#128218;</span><span class="dni-label">Request History</span></button>
       <button class="dash-nav-item" data-dash-section="inbox"><span class="dni-ico">&#128172;</span><span class="dni-label">Inbox</span><span class="dni-badge" id="goInboxBadge" hidden>0</span></button>
       <button class="dash-nav-item" data-dash-section="blocked"><span class="dni-ico">&#128683;</span><span class="dni-label">Block Requesters</span></button>
       <div class="dash-nav-divider">Account</div>
@@ -4383,7 +4577,11 @@ window.showNoAccount = function(){
       <section class="dash-section active" data-dash-section="profile">
         <div class="panel">
           <div class="profile-hero">
-            <div class="ph-avatar" id="profAvatar">MH</div>
+            <div class="ph-avatar-wrap">
+              <button type="button" class="ph-avatar" id="profAvatar" title="Change your profile photo" aria-label="Change your profile photo">MH</button>
+              <p class="ph-avatar-hint" id="profAvatarHint">Tap to change</p>
+              <p class="ph-pic-warn" id="profPicWarn" hidden></p>
+            </div>
             <div class="ph-id">
               <div class="ph-name" id="profName">&nbsp;</div>
               <div class="ph-since" id="profSince">Member since Jan 2026</div>
@@ -4421,7 +4619,7 @@ window.showNoAccount = function(){
             <div class="idrow"><span class="idl">&#9993;&#65039; Email</span><span class="idstat ok">&#10003; Verified</span></div>
             <div class="idrow"><span class="idl">&#128241; Phone</span><span class="idstat ok">&#10003; Verified</span></div>
             <div class="idrow"><span class="idl"><svg class="idl-shield" viewBox="0 0 336.54 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"> <g> <path fill="#32d876" d="m168.27,0C79.89,0,0,41.93,0,41.93v61.25c8.34-6.79,17.16-13.21,26.42-19.21,47.71-30.9,106.92-50.85,170.32-56.01,43.98-3.58,89.98-.06,135.56,11.87C314.72,31.33,244.68,0,168.27,0Z"/> <path fill="#012462" d="m310.12,48.13v124.67c0,62.43-24.68,115.12-73.37,156.61-27.3,23.26-55.11,36.63-68.53,42.28-13.14-5.5-40.01-18.38-67.1-41.14-49.57-41.64-74.71-94.72-74.71-157.74v-41.6C112.84,61.43,190.08,47.87,261.06,41c-34.75-2.8-69.87-.94-104.49,5.7-48.62,9.32-93.31,27.72-130.15,53.14-9.33,6.44-18.16,13.33-26.42,20.64v52.32c0,171.67,168.27,227.2,168.27,227.2,0,0,168.27-55.52,168.27-227.2V54.65c-8.75-2.49-17.56-4.65-26.42-6.52Z"/> </g> <g> <path fill="#32d876" d="m247.93,140.65c-.04.05-.08.11-.13.16.04-.05.08-.11.13-.16Z"/> <path fill="#32d876" d="m248.93,139.23c-.15.24-.3.47-.46.7.16-.23.31-.46.46-.7Z"/> <path fill="#32d876" d="m238.37,145.96c-.11.01-.22.03-.33.04.11-.01.22-.03.33-.04Z"/> <path fill="#32d876" d="m239.71,145.74c-.09.02-.18.04-.26.05.09-.02.18-.04.26-.05Z"/> <path fill="#32d876" d="m117.97,146.07c0,.65-.05,1.29-.14,1.91v95.78s.09,0,.14,0v-97.69Z"/> <path fill="#32d876" d="m117.96,145.8c0,.09.01.18.01.28v-.28h-.01Z"/> <path fill="#32d876" d="m106.55,145.8c-.98,0-1.81-.14-2.65-.28-.14,0-.42-.14-.7-.14-.7-.14-1.25-.28-1.81-.56-.28-.14-.42-.14-.7-.28-.84-.28-1.53-.7-2.23-1.11l-.14-.14c-.56-.42-1.11-.84-1.67-1.39-.14-.14-.42-.42-.56-.56-.42-.42-.84-.98-1.11-1.39-.28-.28-.42-.42-.56-.7-.42-.7-.84-1.39-1.11-2.09.14-7.11,5.99-12.82,13.1-12.82,3.76,0,7.24,1.67,9.61,4.32l6.27,6.27c8.22-18.95,27.17-32.32,49.18-32.32h.14v21.87c11.29,0,20.34,9.06,20.34,20.34v12.53c6.27,1.94,10.96,7.72,11.42,14.5.28,8.92-6.83,16.3-15.74,16.3-1.35,0-2.66-.17-3.9-.48v9.53c6.35,3.77,10.85,10.41,11.56,18.26l3.8,39.45c.68-.27,1.41-.44,2.19-.44,2.65,0,4.74,1.67,5.57,4.04,1.11-1.39,2.65-2.37,4.6-2.37,1.39,0,2.65.42,3.62,1.25.56-4.04,4.04-7.11,8.22-7.11.68,0,1.32.1,1.95.25v-102.32c-.09-.65-.14-1.31-.14-2,0-8.5,6.97-15.46,15.46-15.46.16,0,.31.02.46.03.17,0,.34-.03.51-.03,3.76,0,7.11,2.23,8.78,5.43-.34,1.06-.8,2.08-1.37,3.02,1.39-2.22,2.21-4.83,2.21-7.61,0-7.94-6.41-14.49-14.49-14.49-4.04,0-7.66,1.67-10.31,4.18l-6.69,6.69-.14.14c-6.69-11.15-17.14-19.78-29.68-23.96l2.09-3.62c-5.99-2.23-12.54-3.48-19.37-3.48-21.6,0-40.26,12.54-49.18,30.79l-6.69-6.69c-2.65-2.65-6.27-4.18-10.31-4.18-7.94,0-14.49,6.55-14.49,14.49s6.55,14.49,14.49,14.49h4.45s0-.09,0-.14h-4.31Z"/> <path fill="#1baf61" d="m159.49,197.2v-9.44c-1.12.25-2.29.39-3.48.39-7.7,0-14.04-5.51-15.45-12.76,0,.03-.01.05-.02.08-.01-.1-.02-.19-.03-.28-.19-1.08-.28-2.2-.25-3.34.23-6.73,4.82-12.48,11.01-14.46v-12.57c0-11.29,9.06-20.34,20.34-20.34v-21.87h-.14c-22.01,0-40.96,13.38-49.18,32.32l-6.27-6.27c-2.37-2.65-5.85-4.32-9.61-4.32-7.11,0-12.96,5.71-13.1,12.82.28.7.7,1.39,1.11,2.09.14.28.28.42.56.7.28.42.7.98,1.11,1.39.14.14.42.42.56.56.56.56,1.11.98,1.67,1.39l.14.14c.7.42,1.39.84,2.23,1.11.28.14.42.14.7.28.56.28,1.11.42,1.81.56.28,0,.56.14.7.14.84.14,1.67.28,2.65.28h4.31c-.13-7.12-5.09-13.12-11.97-14.77,1.25-.28,2.37-.42,3.62-.42,8.4,0,15.3,6.82,15.45,15.19h.01v97.97c4.34.29,7.8,3.92,7.8,8.33,0,.56,0,.98-.14,1.53.7-.42,1.67-.7,2.65-.7,2.79,0,5.15,1.95,5.71,4.46,1.25-3.07,4.32-5.29,7.8-5.29.9,0,1.75.17,2.56.44l3.57-37.09c.71-7.85,5.21-14.49,11.56-18.26Z"/> <path fill="#86f7bc" d="m183.73,197.2v.84c0,.56-.42.98-.98.98h-3.36c-1.78,1.35-4.6,2.23-7.79,2.23s-6.01-.88-7.79-2.23h-3.36c-.56,0-.98-.42-.98-.98v-.84c-6.35,3.77-10.85,10.41-11.56,18.26l-3.57,37.09c2.97.99,5.22,3.63,5.66,6.8,1.11-1.11,2.51-1.81,4.18-1.81,1.81,0,3.2.84,4.32,1.95v-.7c0-3.2,2.65-5.85,5.85-5.85s5.85,2.65,5.85,5.85v.14c1.25-.84,2.93-1.39,4.6-1.39,2.23,0,4.18.84,5.71,2.23.98-3.48,4.18-5.99,7.94-5.99,3.2,0,5.99,1.81,7.38,4.46.57-1.53,1.75-2.72,3.24-3.32l-3.8-39.45c-.71-7.85-5.21-14.49-11.56-18.26Z"/> <path fill="#1baf61" d="m163.82,199.02c1.78,1.35,4.6,2.23,7.79,2.23s6.01-.88,7.79-2.23h-15.58Z"/> <path fill="#fff" d="m172.73,177.7c-.28-.84-1.53-.84-1.81,0-1.84,5.06-6.14,8.87-11.42,10.06v10.28c0,.56.42.98.98.98h22.29c.56,0,.98-.42.98-.98v-10.37c-5.15-1.28-9.21-5.04-11.01-9.97Z"/> <path fill="#fff" d="m151.27,144.82v12.57c1.24-.4,2.55-.66,3.9-.73h2.05c2.02-3.48,7.69-5.99,14.39-5.99s12.38,2.51,14.39,5.99h2.19c1.3.07,2.56.31,3.76.69v-12.53c0-11.29-9.06-20.34-20.34-20.34s-20.34,9.06-20.34,20.34Zm25.77-5.99c0-1.25,1.11-2.37,2.37-2.37s2.37.98,2.37,2.37v5.85c0,1.25-1.11,2.37-2.37,2.37s-2.37-1.11-2.37-2.37v-5.85Zm-15.47,0c0-1.25,1.11-2.37,2.37-2.37s2.37.98,2.37,2.37v5.85c0,1.25-1.11,2.37-2.37,2.37s-2.37-1.11-2.37-2.37v-5.85Z"/> <path fill="#1baf61" d="m140.51,175.19c-.13-1.14-.25-2.18-.25-3.34-.04,1.14.05,2.26.25,3.34Z"/> <path fill="#1baf61" d="m186,156.66c.51.88.79,1.81.79,2.79,0,4.85-6.8,8.78-15.19,8.78-6.61,0-12.22-2.44-14.3-5.85h-2.14c-7.36.42-13.46,5.81-14.61,13.02,1.41,7.25,7.75,12.76,15.45,12.76,1.2,0,2.36-.14,3.48-.39,5.28-1.19,9.59-5,11.42-10.06.28-.84,1.53-.84,1.81,0,1.8,4.94,5.85,8.7,11.01,9.97,1.24.31,2.55.48,3.9.48,8.92,0,16.02-7.38,15.74-16.3-.47-6.78-5.16-12.56-11.42-14.5-1.2-.37-2.46-.62-3.76-.69h-2.19Z"/> <path fill="#32d876" d="m155.17,162.37h2.14c-.56-.92-.88-1.9-.88-2.93s.29-1.91.79-2.79h-2.05c-1.35.07-2.66.33-3.9.73-6.19,1.98-10.77,7.73-11.01,14.46,0,1.16.12,2.2.25,3.34.01.1.02.19.03.28,0-.03.01-.05.02-.08,1.15-7.2,7.26-12.6,14.61-13.02Z"/> <path fill="#012462" d="m157.31,162.37c2.09,3.41,7.69,5.85,14.3,5.85,8.39,0,15.19-3.93,15.19-8.78,0-.98-.29-1.91-.79-2.79-2.02-3.48-7.69-5.99-14.39-5.99s-12.37,2.51-14.39,5.99c-.51.88-.79,1.81-.79,2.79,0,1.03.32,2.01.88,2.93Z"/> <path fill="#1baf61" d="m241.55,130.75c-.17,0-.34.02-.51.03,1.1.03,2.18.15,3.16.39-6.83,1.53-11.84,7.66-11.84,14.91h4.32c.46,0,.92-.03,1.37-.07.11-.01.22-.03.33-.04.36-.04.72-.1,1.07-.17.09-.02.18-.04.26-.05,3.25-.69,6.09-2.47,8.1-4.93.04-.05.08-.11.13-.16.19-.23.37-.47.54-.72.16-.23.32-.46.46-.7,0-.01.01-.02.02-.04.57-.94,1.04-1.95,1.37-3.02-1.67-3.2-5.02-5.43-8.78-5.43Z"/> <g> <path fill="#012462" d="m228.73,110.27c-3.07.98-5.71,2.79-8.08,5.15l-.14.14c-5.15-6.13-11.56-11.29-18.81-15.05l1.39-2.51c.42-.7.14-1.67-.7-1.95l-7.52-2.93c-3.76-1.39-7.52-2.51-11.42-3.2-24.52-4.04-47.79,5.99-61.58,24.94-4.18-3.9-9.61-5.99-15.33-5.99-13.65,0-24.52,11.98-22.43,26.05,1.53,11.15,11.56,19.37,22.99,19.37h2.65v85.45c-.23-.02-.46-.05-.7-.05-4.04,0-7.52,2.93-8.22,6.83-.84-.42-1.67-.56-2.51-.56-3.2,0-5.85,2.65-5.85,5.85v.14c-.42,0-.7-.14-1.11-.14-4.6,0-8.36,3.76-8.36,8.36s3.76,8.36,8.36,8.36c.98,0,1.95-.14,2.79-.56.84,2.23,2.93,3.9,5.43,3.9,1.39,0,2.65-.56,3.62-1.39,1.53,2.37,4.04,3.9,6.97,3.9,1.67,0,3.2-.56,4.6-1.39.7,2.37,2.93,4.04,5.57,4.04,1.53,0,2.93-.56,3.9-1.53,1.39,2.79,4.18,4.6,7.38,4.6,2.93,0,5.57-1.53,7.11-3.9,1.39,1.25,3.34,1.95,5.29,1.95,2.65,0,4.88-1.25,6.41-3.07.42,2.79,2.79,5.02,5.71,5.02,2.65,0,4.88-1.81,5.57-4.32,1.53,1.39,3.48,2.37,5.71,2.37,1.95,0,3.76-.7,5.29-1.95,1.11,3.34,4.18,5.71,7.94,5.71,3.48,0,6.41-2.09,7.66-5.02,1.11,1.53,2.79,2.51,4.74,2.51,1.81,0,3.34-.84,4.46-2.09,1.39,2.65,4.18,4.6,7.38,4.6,2.93,0,5.57-1.53,7.11-3.9,1.53,2.37,4.04,3.9,7.11,3.9,3.34,0,6.27-2.09,7.66-5.02,1.53,0,2.93-.56,3.9-1.53,1.53,1.67,3.62,2.65,6.13,2.65,3.48,0,6.41-2.09,7.66-5.02,1.67-.14,3.2-.98,4.18-2.23.7.14,1.39.28,2.09.28,4.6,0,8.36-3.76,8.36-8.36.42-2.93-.98-5.29-3.07-6.83.14-.56.28-.98.28-1.53,0-3.2-2.65-5.85-5.85-5.85-1.25,0-2.37.42-3.34,1.11-.98-3.62-4.18-6.27-8.08-6.27v-.42c0-3.16-2.57-5.76-5.71-5.84v-82.63h2.51c12.26,0,22.71-9.33,23.41-21.46.98-15.6-14.21-28.14-30.51-22.71Zm20.22,28.93s-.01.02-.02.04c-.15.24-.3.47-.46.7-.17.25-.35.48-.54.72-.04.05-.08.11-.13.16-2.02,2.46-4.85,4.24-8.1,4.93-.09.02-.18.04-.26.05-.35.07-.71.12-1.07.17-.11.01-.22.03-.33.04-.45.04-.91.07-1.37.07h-4.32c0-7.24,5.02-13.38,11.84-14.91-.98-.24-2.06-.36-3.16-.39-.16,0-.31-.03-.46-.03-8.5,0-15.46,6.97-15.46,15.46,0,.69.05,1.35.14,2v102.32c-.63-.15-1.27-.25-1.95-.25-4.18,0-7.66,3.07-8.22,7.11-.98-.84-2.23-1.25-3.62-1.25-1.95,0-3.48.98-4.6,2.37-.84-2.37-2.93-4.04-5.57-4.04-.78,0-1.52.16-2.19.44-1.49.6-2.67,1.79-3.24,3.32-1.39-2.65-4.18-4.46-7.38-4.46-3.76,0-6.97,2.51-7.94,5.99-1.53-1.39-3.48-2.23-5.71-2.23-1.67,0-3.34.56-4.6,1.39v-.14c0-3.2-2.65-5.85-5.85-5.85s-5.85,2.65-5.85,5.85v.7c-1.11-1.11-2.51-1.95-4.32-1.95-1.67,0-3.07.7-4.18,1.81-.44-3.17-2.69-5.81-5.66-6.8-.81-.27-1.66-.44-2.56-.44-3.48,0-6.55,2.23-7.8,5.29-.56-2.51-2.93-4.46-5.71-4.46-.98,0-1.95.28-2.65.7.14-.56.14-.98.14-1.53,0-4.41-3.46-8.04-7.8-8.33-.05,0-.09,0-.14,0v-95.78c.09-.62.14-1.25.14-1.91,0-.09-.01-.19-.01-.28-.15-8.37-7.05-15.19-15.45-15.19-1.25,0-2.37.14-3.62.42,6.88,1.65,11.84,7.65,11.97,14.77,0,.05,0,.09,0,.14h-4.45c-7.94,0-14.49-6.55-14.49-14.49s6.55-14.49,14.49-14.49c4.04,0,7.66,1.53,10.31,4.18l6.69,6.69c8.92-18.25,27.59-30.79,49.18-30.79,6.83,0,13.37,1.25,19.37,3.48l-2.09,3.62c12.54,4.18,22.99,12.82,29.68,23.96l.14-.14,6.69-6.69c2.65-2.51,6.27-4.18,10.31-4.18,8.08,0,14.49,6.55,14.49,14.49,0,2.79-.82,5.39-2.21,7.61Z"/> <path fill="#012462" d="m253.12,273.97c-3.2,0-5.85,2.65-5.85,5.85s2.65,5.85,5.85,5.85,5.85-2.65,5.85-5.85-2.51-5.85-5.85-5.85Z"/> <path fill="#012462" d="m73.95,254.05c-3.2,0-5.85,2.65-5.85,5.85s2.65,5.85,5.85,5.85,5.85-2.65,5.85-5.85c-.14-3.2-2.65-5.85-5.85-5.85Z"/> <path fill="#012462" d="m264.82,265.06c-2.09,0-3.76,1.67-3.76,3.76s1.67,3.62,3.76,3.62,3.62-1.67,3.62-3.62c.14-2.09-1.53-3.76-3.62-3.76Z"/> </g> <path fill="#012462" d="m179.41,147.05c1.25,0,2.37-1.11,2.37-2.37v-5.85c0-1.39-1.11-2.37-2.37-2.37s-2.37,1.11-2.37,2.37v5.85c0,1.25,1.11,2.37,2.37,2.37Z"/> <path fill="#012462" d="m163.95,147.05c1.25,0,2.37-1.11,2.37-2.37v-5.85c0-1.39-1.11-2.37-2.37-2.37s-2.37,1.11-2.37,2.37v5.85c0,1.25,1.11,2.37,2.37,2.37Z"/> </g> </svg> Gopher TrustShield&trade;</span><span class="idstat ok">&#10003; Verified</span></div>
-            <div class="idrow"><span class="idl"><img class="pro-badge-sm" src="assets/img/go-idstat-ok.svg" alt="Pro"> Gopher Pro</span><span class="idstat ok">&#10003; Verified</span></div>
+            <div class="idrow"><span class="idl"><img class="pro-badge-sm" src="assets/img/go-idstat-ok.svg" alt="Elite+"> Gopher Elite+</span><span class="idstat ok">&#10003; Verified</span></div>
           </div>
           <p class="lock-note" style="margin-top:10px">View-only. Update your contact details in <b>Personal info</b>; identity is maintained by Stripe.</p>
         </div>
@@ -4511,6 +4709,7 @@ window.showNoAccount = function(){
               <span class="sw on" id="bizShowAsSw" role="switch" aria-checked="true" aria-label="Show me as a business"></span>
             </div>
             <input type="hidden" id="bizShowAs" data-field value="business">
+            <p class="bizlogo-use is-idle" id="bizShowAsBlock" hidden>Add a <b>profile photo</b> in <b>Profile</b> before showing as a business &mdash; it is what represents you until you add a business logo.</p>
           </div>
           <!-- "My business doesn't have a logo" (owner, 2026-08-25). An EXPLICIT
                statement by the worker, never an automatic fallback: the whole
@@ -4540,9 +4739,32 @@ window.showNoAccount = function(){
                two-column grid beside an empty cell: the logo preview is what the
                worker is judging, and a refusal ("that is an SVG", "that is 6.2MB")
                is a sentence that needs the width to stay readable at 375. -->
-          <div class="up2 up2-solo">
-            <div class="cred uptile" data-cred="Business logo"><div class="up-ico">&#128247;</div><span>Business logo</span><input type="hidden" data-field value="0"></div>
+          <!-- ⛔ BOTH IMAGES, WITH THE ACTIVE ONE MARKED (owner, 2026-08-27:
+               "show both profile AND business logo… IF the view is individual,
+               highlight the profile pic as the one that will be shown").
+               One tile could never answer "which of my images do customers
+               actually see" — the owner slid the toggle twice and the panel
+               looked identical both times. -->
+          <div class="up2 up2-pair">
+            <div class="cred uptile idtile" data-cred="Profile photo" id="tileProfilePic">
+              <div class="up-ico">&#128100;</div><span>Profile photo</span>
+              <span class="idtile-flag" hidden>Shown to customers</span>
+            </div>
+            <div class="cred uptile idtile" data-cred="Business logo">
+              <div class="up-ico">&#128247;</div><span>Business logo</span>
+              <span class="idtile-flag" hidden>Shown to customers</span>
+              <input type="hidden" data-field value="0">
+            </div>
           </div>
+          <!-- ⛔ "On file ✓" ALONE IS MISLEADING, because whether the logo is
+               USED depends on the toggle above it, and the tile looks identical
+               either way. Owner demonstrated it 2026-08-27 by screenshotting
+               both positions: same image, same green tick, in the state where it
+               is the mark and in the state where it is ignored entirely.
+                 helpers/business_pic.js: if (!addBusiness) return profileUrl || null
+               A worker could upload a logo, see the tick, be refused a deal by
+               the image gate, and have nothing on screen to explain why. -->
+          <p class="bizlogo-use" id="bizLogoUse" hidden></p>
           <div class="save-row"><button class="btn-save" disabled>Save changes</button><span class="save-note">No changes yet.</span></div>
         </div>
       </section>
@@ -4649,7 +4871,7 @@ window.showNoAccount = function(){
           </div>
 
           <div class="sec-h">Travel radius</div>
-          <div class="tier-badge" id="workTierBadge">Your tier: <b id="workTierName">Gopher Pro</b></div>
+          <div class="tier-badge" id="workTierBadge">Your tier: <b id="workTierName">Gopher Elite+</b></div>
           <div class="seg" id="workTierSeg"><button data-tier="standard">Standard view</button><button class="on" data-tier="elite">Elite / Pro view</button></div>
           <p class="demo-note">&#128295; Demo toggle only — in production this is set automatically from the worker's tier (Standard vs Elite / Elite+ / Pro) and isn't editable here.</p>
           <div class="tierhint" id="workTierHint">As an Elite-or-above gopher you have a second, wider radius for non-delivery work.</div>
@@ -4696,7 +4918,7 @@ window.showNoAccount = function(){
       <!-- ░░ REQUEST HISTORY ░░ -->
       <section class="dash-section" data-dash-section="history">
         <div class="panel">
-          <div class="panel-head"><h2>Previous requests</h2></div>
+          <div class="panel-head"><h2>Request History</h2></div>
           <p class="panel-desc">Your finished &amp; past jobs — paid out to your account.</p>
           <!-- Order per owner 2026-07-28: Completed – Cancelled, then a gap, then Payout
                issue. The gap is deliberate — payout issue is not another outcome of a
@@ -4714,7 +4936,7 @@ window.showNoAccount = function(){
       <section class="dash-section" data-dash-section="inbox">
         <div class="panel">
           <div class="panel-head"><h2>Inbox</h2></div>
-          <p class="panel-desc">Messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
+          <p class="panel-desc">Announcements from Gopher Support, and messages with the requesters whose jobs you&rsquo;re on. Photos can be sent once you&rsquo;ve been accepted onto a request &mdash; and stay available until it&rsquo;s completed or cancelled.</p>
           <div id="goInboxBody" class="inbox-grid"><!-- filled by renderGoInbox() --></div>
         </div>
       </section>
@@ -4818,7 +5040,7 @@ window.showNoAccount = function(){
           <p class="gbb-note">The leading bid for each category is shown openly. You bid on <b>your own category only</b> &mdash; as a Service Provider that&rsquo;s the <b>Service Providers</b> card. The single highest bid across all categories headlines as the Featured Deal.</p>
           <div class="gbb-board" id="gbbBoard"><!-- rendered from GopherBidBrain.board() --></div>
           <button class="gbb-cta" id="gbbStart" type="button">Place a bid &rarr;</button>
-          <p class="gbb-demo-note">Prototype demo &mdash; standings and bids live in this page&rsquo;s memory only and reset when you leave. Production settles the monthly auction server-side.</p>
+          <p class="gbb-demo-note" id="gbbDemoNote">Prototype demo &mdash; standings and bids live in this page&rsquo;s memory only and reset when you leave. Production settles the monthly auction server-side.</p>
         </div>
       </section>
 
@@ -5085,6 +5307,33 @@ window.showNoAccount = function(){
         </div>
 
         <div class="osf-sec">Your deal</div>
+        <!-- ⛔ RULING 9 (owner, 2026-08-27) — the deal must say WHAT SERVICE it is
+             for. Until this field existed an SP deal carried no service category at
+             all, so a customer choosing "Home / Office Services" could not be
+             matched to one: there was nothing to match on.
+
+             VALUES ARE THE `slug`, LABELS ARE DISPLAY ONLY. Three vocabularies exist
+             for these eight categories (canonical-service-categories.md §2.3) and
+             none substitutes for another — never send the label.
+
+             ⛔ Delivery and Ride Sharing are DELIBERATELY ABSENT. Not a new rule:
+             sp_eligibility.js already excludes exactly those when counting the
+             service jobs that make a worker eligible, so a worker may only offer a
+             deal in the kind of work that qualified them. The server refuses them
+             by name if a client sends one anyway. -->
+        <div class="osf-field">
+          <label for="osfSvcCat">What service is this for?</label>
+          <select class="osf-input" id="osfSvcCat">
+            <option value="">Choose a service&hellip;</option>
+            <option value="junk_removal">Junk Removal</option>
+            <option value="moving">Moving</option>
+            <option value="home_services">Home / Office Services</option>
+            <option value="hourly_day_labor">Hourly / Day Labor</option>
+            <option value="yard_work_outdoor_projects">Yard / Outdoor Projects</option>
+            <option value="other">Other</option>
+          </select>
+          <p class="osf-hint" id="osfSvcCatHint" hidden>Your keywords are how customers will find this &mdash; describe the service, e.g. &ldquo;dog grooming&rdquo;.</p>
+        </div>
         <div class="osf-field">
           <label for="osfDeal">Deal you&rsquo;re offering</label>
           <textarea class="osf-ta" id="osfDeal" placeholder="e.g. I&rsquo;ll power wash your home (up to 2,500 sq ft) for $150 &mdash; normally $200."></textarea>
@@ -5173,6 +5422,19 @@ window.showNoAccount = function(){
         <label for="gbbAmount">Your monthly bid</label>
         <input type="text" class="osf-input" id="gbbAmount" inputmode="numeric" placeholder="$0" autocomplete="off">
         <p class="osf-hint" id="gbbAmountHint"></p>
+      </div>
+      <!-- ⛔ THE COMMITMENT, SHOWN BEFORE IT IS MADE. Nothing is charged at bid
+           time — a card authorization lasts about 7 days and bidding runs to the
+           20th, so an early bid cannot hold one (Ruling 7). This acceptance is
+           what makes a win collectable, and the server refuses a bid without it
+           (422). It must be a thing the worker does, not a flag we send for them. -->
+      <div class="osf-field" id="gbbTermsField">
+        <label for="gbbTerms" style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;font-weight:600">
+          <input type="checkbox" id="gbbTerms" style="margin-top:3px;flex:none">
+          <span>I understand a bid is a <b>commitment, not a charge</b>. Nothing is charged now.
+            If mine is the top bid on the Service Providers card when bidding closes on the 20th,
+            I agree to pay it for the following month&rsquo;s placement.</span>
+        </label>
       </div>
       <p class="osf-err" id="gbbErr" hidden></p>
       <button type="button" class="gc-modal-btn" id="gbbPlace">Place bid &rarr;</button>
@@ -5634,7 +5896,9 @@ window.showNoAccount = function(){
          Read-only was considered and rejected — a read-only view of invented
          conversations is worse than none, because it shows messages nobody
          sent about jobs that may not exist. */
-      inbox:   'Inbox',
+      /* `inbox` left this map 2026-09-01: the pane now reads the REAL server
+         inbox (GET /users/messages). Sending is still gated per-thread in the
+         composer, not by hiding the pane — see the locked-composer copy. */
       /* ⛔ THE GATE HERE IS LOAD-BEARING, not belt-and-braces. The logic is now
          real — eligibility, the worker's own live deals, the signed-in business
          name, the close-and-placement dates — but placeBid() still writes to an
@@ -5664,7 +5928,6 @@ window.showNoAccount = function(){
          endpoints. Block creation stays in the app's rating flow, per the
          owner's trigger rule. */
       payout:  'Payouts are managed in the Gopher Go app, where your Stripe account lives. This view is read-only at launch.',
-      inbox:   'Messaging lives in the Gopher Go app, where your requesters can actually receive it. Sending from here arrives at launch — until then the app is the only place a message is delivered.',
       bidboard:'Bidding to feature your deal opens at launch. Your eligibility and any live deals are already tracked — nothing is lost by waiting.',
       /* `recovery` left both maps 2026-08-19: the backend shipped (!329) and
          the sign-in link now opens the real server-driven flow (GoRecovery). */
@@ -5709,6 +5972,12 @@ window.showNoAccount = function(){
       const name = b.dataset.dashSection;
       if(COMING_SOON[name]){ showComingSoon(name); return; }   /* pane never opens */
       show(name);
+      /* A message fired from HQ while the dashboard is open must not wait for a
+         reload to appear (owner-reported 2026-09-01). Re-read on entry, and
+         poll only while the pane is actually on screen — a background poll on
+         a marketing page is cost with no reader. */
+      if(name === 'inbox' && window.GoInbox && GoInbox.watch) GoInbox.watch();
+      else if(window.GoInbox && GoInbox.unwatch) GoInbox.unwatch();
     }));
 
     /* ░░ INBOX ░░ Built 2026-07-28 (owner: "Gopher-go dashboard needs a functional
@@ -5740,6 +6009,117 @@ window.showNoAccount = function(){
         { from:'them', text:'Thanks again — you made that look easy.', time:'2:10 PM' },
         { from:'mine', text:'Anytime! Rate when you get a sec 🙏', time:'2:12 PM' } ] },
     ];
+    /* ── REAL INBOX (GET /users/messages) ─────────────────────────────────
+       ONE endpoint returns everything a worker's inbox holds, already merged
+       and ordered by created_at desc. For a gopher it unions TWO sources
+       (the third, refer_favorites, is disabled server-side for workers by
+       `1=:conditional`):
+
+         message_type 'gopher_support'  — HQ broadcast. inbox_users JOIN inboxes,
+                                          subject as title, body as content,
+                                          filtered to `now() < expired_on`.
+         message_type 'inbox_message'   — a JOB THREAD from orders_faqs: the
+                                          LATEST message per (sender,receiver,
+                                          order), with the order title, the
+                                          other party's name and profile image.
+
+       ⚠️ It is a thread LIST, not thread history — one row per conversation.
+       Full history is GET /orders/faq/v2/:orderId, wired in the next pass.
+       Until then a live job thread shows its latest message and the composer
+       stays locked, because a send that goes nowhere is the failure this pane
+       was gated for in the first place.
+
+       Demo threads stand until real data arrives (same contract as history):
+       null = not loaded, [] = loaded and genuinely empty. */
+    const GoInbox = (function(){
+      function esc(s){ return String(s == null ? '' : s); }
+      function initials(name){
+        return esc(name).trim().split(/\s+/).slice(0,2).map(w => (w[0]||'').toUpperCase()).join('') || '?';
+      }
+      function stamp(iso){
+        const d = new Date(iso);
+        if(isNaN(d)) return '';
+        const today = new Date();
+        const sameDay = d.toDateString() === today.toDateString();
+        return sameDay
+          ? d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+          : d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      }
+      /* `viewed` arrives as a real boolean on support rows and as the STRING
+         'true' on job rows (the SQL casts it: `CASE when of.from=:user_id then
+         'true' else of.viewed end`). Treat both as read. */
+      function isRead(v){ return v === true || v === 'true'; }
+      function toThread(row, me){
+        const support = row.message_type === 'gopher_support';
+        const when = stamp(row.created_at);
+        const body = esc(row.content);
+        if(support){
+          return {
+            id: 'sup-' + row.id, serverId: row.id, kind: 'support', live: true, hq: true,
+            name: 'Gopher Support', init: 'GS',
+            req: esc(row.title) || 'Announcement', reqId: '',
+            state: 'active', accepted: false,
+            unread: isRead(row.viewed) ? 0 : 1, time: when,
+            msgs: [{ from: 'them', text: body, time: when }]
+          };
+        }
+        const mine = me != null && String(row.from) === String(me);
+        return {
+          id: 'ord-' + row.order_id + '-' + row.id, serverId: row.id, kind: 'job', live: true,
+          orderId: row.order_id,
+          name: esc(row.first_name) || 'Requester', init: initials(row.first_name),
+          req: esc(row.title) || 'Request', reqId: row.order_id ? '#' + row.order_id : '',
+          /* `blured` is the server's own flag for a thread with no gopher
+             assigned yet — the pre-acceptance case the G40-216 gate covers. */
+          state: 'active', accepted: false, preAccept: !!row.blured,
+          unread: isRead(row.viewed) ? 0 : 1, time: when,
+          msgs: [{ from: mine ? 'mine' : 'them', text: body, time: when }]
+        };
+      }
+      function load(){
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return Promise.resolve();
+        return GoAuth.apiCall('/users/messages', { method:'GET' }).then(function(r){
+          if(!r.ok) return;                       // silent: demo rows stand, nothing is claimed
+          const arr = (r.body && r.body.data && r.body.data.messages) || [];
+          if(!Array.isArray(arr)) return;
+          const me = (window.GoSession && GoSession.userId && GoSession.userId()) || null;
+          const mapped = arr.map(function(row){ return toThread(row, me); });
+          /* Replace CONTENTS, never the binding — renderGoInbox closes over
+             this exact array. Reassigning it would leave the renderer drawing
+             the demo set forever, silently. */
+          GO_INBOX.length = 0;
+          mapped.forEach(function(t){ GO_INBOX.push(t); });
+          goInboxActive = GO_INBOX.length ? GO_INBOX[0].id : null;
+          renderGoInbox(); goInboxBadge();
+        });
+      }
+      /* Mark a broadcast read server-side. Job threads are marked by opening
+         them (GET /orders/faq/v2/:id does it), so they are not sent here. */
+      function markRead(th){
+        if(!th || th.kind !== 'support' || !th.serverId) return;
+        if(!(window.GoAuth && window.GoSession && GoSession.token())) return;
+        GoAuth.apiCall('/users/inbox_message/' + th.serverId, { method:'PATCH' });
+      }
+      /* Poll while the Inbox pane is open. 45s is a deliberate compromise: an
+         announcement is not time-critical the way a job message is, and this
+         runs against production. Cleared the moment the pane is left, and
+         skipped entirely while the tab is hidden so a backgrounded dashboard
+         costs nothing. */
+      let timer = null;
+      function watch(){
+        load();
+        if(timer) return;
+        timer = setInterval(function(){
+          if(document.hidden) return;
+          if(!(window.GoSession && GoSession.token && GoSession.token())) return;
+          load();
+        }, 45000);
+      }
+      function unwatch(){ if(timer){ clearInterval(timer); timer = null; } }
+      return { load: load, markRead: markRead, watch: watch, unwatch: unwatch };
+    })();
+    window.GoInbox = GoInbox;
+
     let goInboxActive = GO_INBOX[0].id;
     let goInboxPending = null;          // staged photo (data URL) awaiting send
     let goInboxTab = 'inbox';           // 'inbox' | 'deleted'  (G40-100)
@@ -5766,21 +6146,73 @@ window.showNoAccount = function(){
       const t = shown.find(x => x.id === goInboxActive) || shown[0] || null;
       const rows = shown.map(x => (D ? D.wrapRow(`
         <button type="button" class="inbox-row${t&&x.id===t.id?' active':''}" data-go-thread="${x.id}">
-          <span class="inbox-row-photo">${goEsc(x.init)}</span>
+          <span class="inbox-row-photo${x.hq?' is-hq':''}">${x.hq
+            ? '<img src="assets/img/gopher-character-full.svg" alt="Gopher Support">'
+            : goEsc(x.init)}</span>
           <span class="inbox-row-main">
             <span class="inbox-row-top">
               <span class="inbox-row-name">${goEsc(x.name)}${x.unread?'<span class="inbox-unread"></span>':''}</span>
               <span class="inbox-row-time">${goEsc(x.time)}</span>
             </span>
             <span class="inbox-row-sub">${goEsc(x.req)}</span>
-            <span class="inbox-row-last">${goEsc((x.msgs[x.msgs.length-1]||{}).text || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
+            <span class="inbox-row-last">${goEsc(inboxPreview((x.msgs[x.msgs.length-1]||{}).text) || (x.msgs.length?'\u{1F4F7} Photo':''))}</span>
           </span>
         </button>`, x.id, goInboxTab === 'deleted') : '')).join('');
 
+      /* ── @!URL!@ IS THE PLATFORM'S IN-APP LINK TOKEN, not stray punctuation.
+         HQ inbox campaigns wrap every link in it and the token is literal, so an
+         un-parsed announcement shows the raw delimiters and the link is dead —
+         owner-reported 2026-09-01 on a real "new version of Gopher Go" message.
+         ⛔ ESCAPE FIRST, THEN LINKIFY. The reverse order lets message content
+         inject markup: this text is written in HQ and rendered on a live
+         surface, so it is untrusted by definition. Only the href/label we
+         construct from the captured URL is ever unescaped, and the pattern
+         admits nothing but http(s). A bare URL is linkified too — the token is
+         the convention, not a guarantee every author uses it. */
+      /* The LIST PREVIEW is plain text — it cannot hold an anchor, and it is
+         clipped mid-sentence by design. But it must not show the raw link
+         delimiters either: the owner's screenshot had rows reading
+         "Testing @!www.gophergo.io!@ for a ..." while the bubble beside them
+         rendered the link correctly. Strip the token, keep the URL, collapse
+         newlines so a multi-line announcement previews on one line. */
+      function inboxPreview(text){
+        return String(text == null ? '' : text)
+          .replace(/@!([^\s!]+)!@/g, '$1')
+          .replace(/\s*\n+\s*/g, ' ')
+          .trim();
+      }
+      function inboxBody(text){
+        const safe = goEsc(text);
+        const linkAs = (href, label) => '<a class="inbox-link" href="' + href + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+        const link = u => linkAs(u, u);
+        /* ⛔ THE TOKEN'S CONTENTS ARE NOT ALWAYS SCHEME-QUALIFIED. HQ authors
+           write @!www.gophergo.io!@ as readily as @!https://…!@, and requiring
+           https?:// left the bare-host form rendering as raw delimiters — the
+           SECOND time this link failed (owner, 2026-09-01). Resolve instead of
+           pattern-matching one shape:
+             · already http(s)      → use as-is
+             · ANY other scheme     → refuse (javascript:, data:, mailto: …)
+             · looks like a host    → assume https://
+             · anything else        → leave the text exactly as written
+           A refusal returns the original token rather than inventing a link. */
+        const resolve = raw => {
+          if(/^https?:\/\//i.test(raw)) return raw;
+          if(/^[a-z][a-z0-9+.\-]*:/i.test(raw)) return null;
+          if(/^[\w.\-]+\.[a-z]{2,}([\/?#]|$)/i.test(raw)) return 'https://' + raw;
+          return null;
+        };
+        /* Bare URLs run FIRST and require a boundary before the scheme, so they
+           cannot reach inside a token (the char before is '!'), and the token
+           pass that follows cannot re-wrap an anchor this pass created. */
+        return safe
+          .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_, pre, u) => pre + link(u))
+          .replace(/@!([^\s!]+)!@/g, (m, raw) => { const h = resolve(raw); return h ? linkAs(h, raw) : m; })
+          .replace(/\n/g, '<br>');
+      }
       const msgs = (t ? t.msgs : []).map(m => `
         <div class="inbox-msg ${m.from==='mine'?'mine':'theirs'}">
           ${m.photo ? `<img class="inbox-photo" src="${goEsc(m.photo)}" alt="Photo attachment">`
-                    : `<div class="inbox-bubble">${goEsc(m.text)}</div>`}
+                    : `<div class="inbox-bubble">${inboxBody(m.text)}</div>`}
           <div class="inbox-msg-time">${goEsc(m.time)}</div>
         </div>`).join('');
 
@@ -5794,7 +6226,15 @@ window.showNoAccount = function(){
             <input type="text" class="inbox-composer-input" id="goInboxInput" placeholder="Message ${goEsc(t.name.split(' ')[0])}\u2026">
             <button type="button" class="inbox-composer-send" id="goInboxSend" aria-label="Send">&#10148;</button>
           </div>`
-        : `<div class="inbox-composer-locked">${!t ? '' : t.state==='active'
+        : `<div class="inbox-composer-locked">${!t ? ''
+              : t.kind === 'support'
+              ? 'Announcements from Gopher Support don\u2019t have a reply channel.'
+              : t.kind === 'job'
+              /* Honest about the real state: the thread is real and so is the
+                 message, but this surface cannot deliver a reply yet. Saying
+                 "once you're accepted" here would be a different lie. */
+              ? 'Replying from the web is coming \u2014 the Gopher Go app delivers messages on this request today.'
+              : t.state==='active'
               ? 'You can message and send photos once you\u2019ve been accepted onto this request.'
               : 'This request is ' + goEsc(t.state) + ' \u2014 messages stay here, but you can no longer send new ones.'}</div>`;
 
@@ -5813,10 +6253,12 @@ window.showNoAccount = function(){
         <div class="inbox-convo">
           ${t ? `
           <div class="inbox-convo-head">
-            <span class="inbox-convo-photo">${goEsc(t.init)}</span>
+            <span class="inbox-convo-photo${t.hq?' is-hq':''}">${t.hq
+              ? '<img src="assets/img/gopher-character-full.svg" alt="Gopher Support">'
+              : goEsc(t.init)}</span>
             <span class="inbox-convo-meta">
               <div class="inbox-convo-name">${goEsc(t.name)}</div>
-              <div class="inbox-convo-req">${goEsc(t.req)} &middot; ${goEsc(t.reqId)}</div>
+              <div class="inbox-convo-req">${goEsc(t.req)}${t.reqId ? ' &middot; ' + goEsc(t.reqId) : ''}</div>
             </span>
           </div>
           <div class="inbox-thread" id="goInboxThread">${msgs || '<div class="inbox-empty">No messages yet.</div>'}</div>
@@ -5837,7 +6279,8 @@ window.showNoAccount = function(){
       body.querySelectorAll('[data-go-thread]').forEach(btn => btn.addEventListener('click', () => {
         goInboxActive = btn.getAttribute('data-go-thread');
         goInboxPending = null;
-        const th = GO_INBOX.find(x => x.id === goInboxActive); if(th) th.unread = 0;
+        const th = GO_INBOX.find(x => x.id === goInboxActive);
+        if(th){ th.unread = 0; GoInbox.markRead(th); }
         renderGoInbox(); goInboxBadge();
       }));
 
@@ -6031,7 +6474,13 @@ window.showNoAccount = function(){
        was built — the same gap App Prototypes flagged in the Go app prototype. Follows
        the page's existing window.__* convention (__openVerifyModal, __TIER_LOGOS). */
     window.__setStripeVerified = (v) => { ACCOUNT.stripeVerified = !!v; return ACCOUNT.stripeVerified; };
-    const WORKER  = { tier: 'Pro' };   // Standard | Elite | Elite+ | Pro — drives the radius UI
+    /* Owner, 2026-08-26: the new build has ZERO Pros, so the demo worker must not
+       present as one. Elite+ is the top tier that actually exists today. Every
+       tier-dependent surface (profile lockup, sidebar account card, Work-settings
+       "Your tier" badge) derives from THIS constant — the only hardcoded copies
+       are the static Verification row and that badge's pre-JS placeholder, both
+       updated alongside it. */
+    const WORKER  = { tier: 'Elite+' };   // Standard | Elite | Elite+ | Pro — drives the radius UI
     window.__WORKER_TIER = WORKER.tier;
     const digits = (s) => (s.match(/\d/g)||[]).join('');
     const maskPhone = (v) => { const d=digits(v); return d.length>=4 ? '\u2022\u2022\u2022 \u2022\u2022\u2022-'+d.slice(-4) : v; };
@@ -6386,6 +6835,19 @@ window.showNoAccount = function(){
           ? GoProfile.uploadBusinessLogo(pending.file, pending.kind).then(function(u){
               if(!u.ok) return u;
               if(logoTile.__logoSaved) logoTile.__logoSaved(u.url);
+              /* ⛔ THE PANEL'S COPY OF THE SERVER DATA GOES STALE HERE. The
+                 upload succeeds and the tile shows the new logo, but
+                 provider_image was read at page load and still says there is
+                 none — so Business info kept the profile photo highlighted and
+                 said "No business logo yet" over a visible logo. The identical
+                 staleness was already fixed for the profile photo upload; this
+                 is its mirror, and its absence is why the owner uploaded a logo
+                 and saw nothing change. */
+              if(u.url && window.GoBiz){
+                GoBiz.providerImage = GoBiz.providerImage || {};
+                GoBiz.providerImage.business_logo_url = u.url;
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+              }
               return { ok:true };
             })
           : Promise.resolve({ ok:true });
@@ -6450,7 +6912,12 @@ window.showNoAccount = function(){
          its own handler below, which validates the file and keeps it. Leaving
          the logo tile on this list would attach BOTH handlers, so every pick
          would also run the demo one and print a second, competing status. */
-      document.querySelectorAll('.dash-section[data-dash-section="business"] .cred:not([data-cred="Business logo"]), .dash-section[data-dash-section="pro"] .cred')
+      /* ⚠️ THE PROFILE-PHOTO TILE IS EXCLUDED FOR THE SAME REASON AS THE LOGO.
+         It got caught by this generic DEMO handler the moment it was added: it
+         printed "New file ready" and dropped the File on the floor, so a worker
+         would set their photo, be told it worked, save, and have nothing happen.
+         It has a real upload of its own below. */
+      document.querySelectorAll('.dash-section[data-dash-section="business"] .cred:not([data-cred="Business logo"]):not([data-cred="Profile photo"]), .dash-section[data-dash-section="pro"] .cred')
         .forEach(tile => tile.addEventListener('click', () => { credTarget=tile; credFile.value=''; credFile.click(); }));
       credFile.addEventListener('change', () => {
         if(!credTarget) return;
@@ -6463,6 +6930,92 @@ window.showNoAccount = function(){
         credTarget=null;
       });
     }
+
+    /* ══ PROFILE PHOTO — one image, two places ═══════════════════════════════
+       Owner, 2026-08-27: "if i add my profile pic to the business page, it
+       updates to the profile page and vice versa." It is ONE asset, so this
+       uploads to the SAME endpoint the profile surface uses —
+       PATCH /users/ (multipart, field `profile_photo`) — rather than storing a
+       second copy that would immediately disagree with the first.
+
+       ⛔ It must never be wired to the generic credential handler above: that
+       one is demo, prints "New file ready", and discards the file. A tile that
+       claims success and does nothing is worse than no tile. */
+    (function wireProfilePhoto(){
+      var tile = document.getElementById('tileProfilePic');
+      var hero = document.getElementById('profAvatar');
+      if(!tile && !hero) return;
+      var picker = document.createElement('input');
+      picker.type = 'file'; picker.accept = 'image/*'; picker.style.display = 'none';
+      document.body.appendChild(picker);
+
+      var say = function(msg, bad){
+        /* Report next to whichever entry point they used — a status written
+           into the business panel is invisible to someone on the profile. */
+        var hint = document.getElementById('profAvatarHint');
+        if(hint) hint.textContent = msg.replace(/<[^>]+>/g,'');
+        var el = document.getElementById('bizLogoUse');
+        if(!el) return;
+        el.classList.toggle('is-idle', !!bad);
+        el.textContent = msg;
+        el.hidden = false;
+      };
+
+      /* ONE picker and ONE handler for both entry points — a second copy would
+         be a second place for the endpoint or the repaint to drift. */
+      [tile, hero].forEach(function(el){
+        if(!el) return;
+        el.addEventListener('click', function(){ picker.value=''; picker.click(); });
+      });
+
+      picker.addEventListener('change', function(){
+        var file = picker.files && picker.files[0];
+        if(!file) return;
+        if(!/^image\//.test(file.type)) return say('That is not an image file.', true);
+        if(!(window.GoSession && GoSession.token()))
+          return say('Sign in to update your profile photo.', true);
+
+        say('Uploading your profile photo\u2026');
+        var fd = new FormData();
+        fd.append('profile_photo', file, 'profile-' + Date.now() + '.jpg');
+        GoAuth.apiCall('/users/', { method:'PATCH', body: fd })
+          .then(function(r){
+            if(!r.ok) return say(GoAuth.apiMessage(r) || 'Could not update your photo.', true);
+
+            /* ⛔ SHOW THE FILE THEY JUST PICKED, IMMEDIATELY. The upload
+               succeeded and the tile still showed an empty placeholder, so the
+               owner reported "added pic and it wasn't recognized" — a true
+               report of what the screen said. The page has no profile-photo URL
+               until the paired backend field ships, and even after it does the
+               re-read is a round trip. The picked File is the one thing we hold
+               for certain, so render it and stop lying about the state.
+
+               ⚠️ The object URL is a LOCAL preview of a confirmed upload, never
+               a claim about what the server stored — the next profile read
+               replaces it with the real URL. */
+            var localUrl = '';
+            try { localUrl = URL.createObjectURL(file); } catch(e) {}
+            if(localUrl){
+              window.GoBiz = window.GoBiz || {};
+              GoBiz.providerImage = GoBiz.providerImage || {};
+              GoBiz.providerImage.profile_photo_url = localUrl;
+            }
+            if(window.GoBiz && GoBiz.paintShowAs) GoBiz.paintShowAs();
+            /* The claim in the message below has to be TRUE on screen, not just
+               in the database — repaint the avatars from the same url. */
+            if(localUrl && window.GoAvatar && GoAvatar.paint) GoAvatar.paint(localUrl);
+            say('Profile photo updated \u2014 it is used on your profile too.');
+
+            /* Then re-read for the real URL: update_profile_photo DESTROYS the
+               old images row and CREATES a new one, so any cached value is
+               already stale. Best-effort — the preview above already stands. */
+            if(window.GoProfile && GoProfile.reload){
+              try { GoProfile.reload(); } catch(e) {}
+            }
+          })
+          .catch(function(){ say('Could not update your photo.', true); });
+      });
+    })();
 
     /* ══ BUSINESS LOGO — a real upload path ═══════════════════════════════════
        The tile used to say "On file ✓ · tap to replace" over a file picker that
@@ -7168,6 +7721,11 @@ window.showNoAccount = function(){
       /* Re-read when the worker enters the dashboard, for the same reason the
          identity load does: signing in mid-session must not leave demo rows. */
       document.addEventListener('go:entered', loadLive);
+      /* The inbox loads on the same event and for the same reason: signing in
+         mid-session must not leave demo threads on screen. */
+      document.addEventListener('go:entered', function(){
+        if(window.GoInbox && GoInbox.load) GoInbox.load();
+      });
       /* Work settings loads on the same event. READ ONLY for now — the save is
          deliberately not wired until the owner has confirmed the categories and
          radius come back right, because a wrong selectionMap key does not error,
@@ -7745,7 +8303,7 @@ window.showNoAccount = function(){
       renderTrack('pending');
 
       /* Real referrals replace the demo rows on sign-in. Same contract as
-         Previous requests: the seeded rows are what an unauthenticated visitor
+         Request History: the seeded rows are what an unauthenticated visitor
          sees, and a real session must never leave them on screen. A failed or
          empty load leaves the demo rows alone rather than blanking the pane —
          except when the account genuinely HAS referrals, in which case the
@@ -8187,10 +8745,239 @@ window.showNoAccount = function(){
       showTtl.textContent = on ? 'Showing as a business' : 'Showing as an individual';
       showSub.innerHTML = 'Requesters see <b>' + (on ? biz : who) + '</b>';
       showSw.setAttribute('aria-checked', String(on));
+      /* Say whether the logo is actually in play. Painted HERE rather than by
+         the logo tile's own writer so it can never disagree with the toggle —
+         they are the same state and one repaint owns it. */
+      /* ⛔ SHOW THE IMAGE THAT IS ACTUALLY IN USE, and change it as the switch
+         moves (owner, 2026-08-27: "the version activated should be the logo
+         shown so the user can change if needed" / "they should change on
+         slide"). The tile used to render the uploaded logo in BOTH positions —
+         identical picture, identical "On file ✓" — in the state where it is the
+         mark and the state where it is ignored entirely.
+
+         ⚠️ THIS BRANCH MIRRORS helpers/business_pic.js pickBusinessPicUrl AND
+         IS A PREVIEW ONLY. It exists because the server cannot answer a
+         question about a state that has not been saved yet. The saved answer is
+         provider_image.mark and the server stays authoritative; if the two ever
+         disagree, the server is right and this is the bug. */
+      var PI = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var useEl = document.getElementById('bizLogoUse');
+      var tile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+
+      /* ⛔ WHICH IMAGE IS ACTIVE, MARKED ON THE TILE ITSELF (owner, 2026-08-27).
+         Two tiles, the live one ringed. The inactive tile stays tappable — a
+         worker must be able to add the image they do not yet have.
+
+         ⛔ A BUSINESS REQUIRES A PROFILE PHOTO. Owner: "IF no profile, they
+         cannot select show me as a business… IF they want to create an optional
+         business profile, they MUST have AT LEAST a profile pic." Refused at
+         the switch rather than allowed and then broken downstream — and it is
+         what makes the fallback below always have something to fall back to.
+         Working with no profile photo at all stays permitted; only the BUSINESS
+         identity is gated.
+
+         ⚠️ Mirrors helpers/business_pic.js for PREVIEW ONLY — the server cannot
+         answer a question about an unsaved state. provider_image.mark is the
+         saved truth; if the two disagree, the server is right. */
+      var PI = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var useEl = document.getElementById('bizLogoUse');
+      var logoTileEl = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+      var picTileEl  = document.getElementById('tileProfilePic');
+
+      /* ⛔ AN IMAGE ON SCREEN COUNTS, whatever the cached payload says. Reading
+         provider_image ALONE made this panel argue with itself: a freshly
+         uploaded logo was visible in its tile while the stale payload said
+         there was none, so the profile photo stayed highlighted and the copy
+         read "No business logo yet". Either source proving an image is enough;
+         requiring both is how a true thing gets contradicted by a stale one. */
+      var tileShows = function(t){
+        if(!t) return false;
+        var i = t.querySelector('.bizlogo-img');
+        /* naturalWidth guards a BROKEN image — see the dead-url note below. */
+        return !!(i && i.getAttribute('src') && (!i.complete || i.naturalWidth > 0));
+      };
+      var hasPhoto = !!(PI && PI.profile_photo_url) || tileShows(picTileEl);
+      var hasLogo  = !!(PI && PI.business_logo_url) || tileShows(logoTileEl);
+
+      /* ⛔ BOTH TILES PAINT FROM THE SERVER'S TRUTH (owner, 2026-08-27: "it
+         should represent EXACTLY what the gopher's live profile pic is. AND
+         business logo IF they have one").
+
+         Only the profile tile did. The LOGO tile was still painted by the older
+         writer, so the two disagreed: the logo tile showed an empty camera icon
+         while `business_logo_url` said a logo existed — and the empty tile was
+         therefore marked active and captioned "see your business logo". One
+         source, or the panel argues with itself.
+
+         ⚠️ A PENDING UPLOAD WINS. __pendingLogo means the worker has just picked
+         a file that has not been saved yet; repainting from the server would
+         throw away what they are looking at. */
+      /* ⛔ A URL THAT DOES NOT LOAD IS NOT A LOGO. The owner switched to
+         showing as a business with no usable logo and the panel highlighted the
+         logo tile, gave it the "Shown to customers" pill and said customers see
+         it — over a BROKEN IMAGE showing its own alt text. A provider image URL
+         does not go stale, it 404s: replacing a photo destroys the images row
+         and deletes the S3 object, so the key changes and the old one is gone.
+
+         Treating a dead URL as an existing logo is the worst of both: the
+         worker is told they are covered, and the customer sees nothing. On
+         error we forget the URL and repaint, which drops through to the profile
+         photo exactly as if no logo had ever been uploaded. */
+      if(PI && logoTileEl && !logoTileEl.__pendingLogo){
+        var lim = logoTileEl.querySelector('.bizlogo-img');
+        if(PI.business_logo_url){
+          var deadUrl = PI.business_logo_url;
+          if(!lim){
+            lim = document.createElement('img');
+            lim.className = 'bizlogo-img';
+            lim.alt = 'Your business logo';
+            logoTileEl.insertBefore(lim, logoTileEl.firstChild);
+          }
+          if(!lim.__deadWatch){
+            lim.__deadWatch = true;
+            lim.addEventListener('error', function(){
+              /* Only forget the url we actually failed on — a later, good one
+                 must not be discarded by a stale handler. */
+              if(window.GoBiz && GoBiz.providerImage &&
+                 GoBiz.providerImage.business_logo_url === deadUrl){
+                GoBiz.providerImage.business_logo_url = '';
+                /* Drop the broken element so `tileShows()` cannot keep counting
+                   it — but leave any OTHER image the tile's writer owns. */
+                /* ⛔ RESTORE THE CAMERA ICON. Removing the broken image without
+                   un-hiding .up-ico and clearing .has-logo leaves an EMPTY tile:
+                   no picture, no icon, nothing to tap — captioned "On file ✓".
+                   That is the exact defect this file's own logo writer records
+                   having fixed once already, and I reintroduced it from a second
+                   place. A tile that cannot be tapped is worse than a broken
+                   image, because the worker cannot even retry. */
+                if(lim && lim.getAttribute('src') === deadUrl){
+                  lim.remove();
+                  logoTileEl.classList.remove('has-logo');
+                  var deadIco = logoTileEl.querySelector('.up-ico');
+                  if(deadIco) deadIco.hidden = false;
+                }
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+              }
+            });
+          }
+          if(lim.getAttribute('src') !== PI.business_logo_url) lim.src = PI.business_logo_url;
+          logoTileEl.classList.add('has-logo');
+          var lico = logoTileEl.querySelector('.up-ico'); if(lico) lico.hidden = true;
+        }
+        /* ⛔ NEVER REMOVE AN IMAGE THIS FUNCTION DID NOT PUT THERE. This branch
+           used to clear the tile whenever the cached payload said "no logo" —
+           and it deleted the logo the tile's OWN writer had painted from
+           business_logo_on_file. Combined with the dead-url handler clearing
+           that field on a single failed load, one transient hiccup erased a
+           logo that was genuinely saved, leaving a camera icon under a caption
+           reading "On file ✓". Two writers, and only one of them destructive.
+           This repaint is ADDITIVE now: it can set or update an image, never
+           take one away. The tile's own writer owns removal. */
+      }
+
+      /* Paint the profile-photo tile from the resolved parts when we have them. */
+      if(PI && picTileEl){
+        var pp = picTileEl.querySelector('.bizlogo-img');
+        if(PI.profile_photo_url){
+          if(!pp){ pp = document.createElement('img'); pp.className='bizlogo-img';
+                   pp.alt='Your profile photo'; picTileEl.insertBefore(pp, picTileEl.firstChild); }
+          if(!pp.__deadWatch){
+            pp.__deadWatch = true;
+            var deadPhoto = PI.profile_photo_url;
+            pp.addEventListener('error', function(){
+              if(window.GoBiz && GoBiz.providerImage &&
+                 GoBiz.providerImage.profile_photo_url === deadPhoto){
+                GoBiz.providerImage.profile_photo_url = '';
+                if(pp && pp.getAttribute('src') === deadPhoto){
+                  pp.remove();
+                  picTileEl.classList.remove('has-logo');
+                  var deadPico = picTileEl.querySelector('.up-ico');
+                  if(deadPico) deadPico.hidden = false;
+                }
+                if(GoBiz.paintShowAs) GoBiz.paintShowAs();
+                if(window.GoAvatar && GoAvatar.paint) GoAvatar.paint('');
+              }
+            });
+          }
+          if(pp.getAttribute('src') !== PI.profile_photo_url) pp.src = PI.profile_photo_url;
+          picTileEl.classList.add('has-logo');
+          var pico = picTileEl.querySelector('.up-ico'); if(pico) pico.hidden = true;
+        }
+        /* Additive here too, for the same reason. */
+      }
+
+      /* WHICH ONE IS LIVE. Business prefers the logo and falls back to the
+         profile photo (guaranteed present by the gate above); an individual is
+         always their profile photo. */
+      var activeTile = null, note = '';
+      if(!on){
+        activeTile = picTileEl;
+        note = hasPhoto
+          ? 'Requesters and Deals customers see <b>your profile photo</b>.'
+          : 'No image is shown. Add a profile photo in <b>Profile</b>.';
+      } else if(hasLogo){
+        activeTile = logoTileEl;
+        note = 'Requesters and Deals customers see <b>your business logo</b>. Tap it to replace.';
+      } else {
+        activeTile = picTileEl;
+        note = 'No business logo yet \u2014 <b>your profile photo</b> represents your business until you add one. Tap <b>Business logo</b> to add it.';
+      }
+      /* ⛔ THE PILL CLAIMS SOMETHING IS SHOWN TO CUSTOMERS, so it may only
+         appear when an image ACTUALLY EXISTS (owner, 2026-08-27: "should not be
+         shown at all until a qualified pic is added"). It was keyed on which
+         tile was ACTIVE, so an empty placeholder wore a badge saying customers
+         could see it — announcing a picture that does not exist. */
+      var activeHasImage =
+        activeTile === picTileEl ? hasPhoto
+        : activeTile === logoTileEl ? hasLogo
+        : false;
+      [picTileEl, logoTileEl].forEach(function(t){
+        if(!t) return;
+        var active = (t === activeTile);
+        t.classList.toggle('is-active', active);
+        var flag = t.querySelector('.idtile-flag');
+        if(flag) flag.hidden = !(active && activeHasImage);
+      });
+      if(useEl){
+        useEl.classList.toggle('is-idle', !activeHasImage);
+        useEl.innerHTML = note;
+        useEl.hidden = false;
+      }
+
+      /* THE GATE ON THE SWITCH ITSELF.
+         ⛔ A BUSINESS LOGO SATISFIES IT TOO (owner, 2026-08-27: "once business
+         logo is added, remove the disclaimer"). The requirement was never "a
+         profile photo" for its own sake — it is that a business must have SOME
+         image, and the profile photo is only the fallback when there is no
+         logo. Someone who has uploaded a logo has already met it, and telling
+         them otherwise sends them after a fix they do not need. */
+      var blockEl = document.getElementById('bizShowAsBlock');
+      var identityOk = hasPhoto || hasLogo;
+      if(blockEl){
+        blockEl.hidden = identityOk;
+        showSw.classList.toggle('showas-blocked', !identityOk);
+        showSw.setAttribute('aria-disabled', String(!identityOk));
+      }
     };
     window.GoBiz = window.GoBiz || {};
     window.GoBiz.paintShowAs = paintShowAs;
     showSw.addEventListener('click', function(){
+      /* ⛔ Refuse the flip, don't just grey it: pointer-events can be defeated
+         by a keyboard activation, and a switch that moves and then silently
+         reverts is worse than one that will not move. */
+      var PIc = (window.GoBiz && window.GoBiz.providerImage) || null;
+      var pTile = document.getElementById('tileProfilePic');
+      var lTile = document.querySelector('.cred.uptile[data-cred="Business logo"]');
+      /* Same condition as the disclaimer above — a logo satisfies it. */
+      var photoOk = PIc
+        ? !!(PIc.profile_photo_url || PIc.business_logo_url)
+        : !!((pTile && pTile.querySelector('.bizlogo-img')) ||
+             (lTile && lTile.querySelector('.bizlogo-img')));
+      if(!showSw.classList.contains('on') && !photoOk){
+        var b = document.getElementById('bizShowAsBlock');
+        if(b){ b.hidden = false; b.scrollIntoView({block:'nearest'}); }
+        return;
+      }
       showSw.classList.toggle('on');
       showHid.value = showSw.classList.contains('on') ? 'business' : 'individual';
       showHid.dispatchEvent(new Event('input', { bubbles:true }));
@@ -8311,11 +9098,27 @@ window.showNoAccount = function(){
   kwInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addKw(); }});
   earn.addEventListener('input', function(){ var e=money(earn.value); pay.value=e?'$'+(e*1.10).toFixed(2):''; });
   reach.addEventListener('input', function(){ reachVal.textContent=reach.value+' mi'; });
+  var svcCat = document.getElementById('osfSvcCat');
+  var svcCatHint = document.getElementById('osfSvcCatHint');
+  /* `other` is the one category whose keywords ARE the category — surface that
+     when they pick it, not as a 422 after they press Submit. */
+  if(svcCat) svcCat.addEventListener('change', function(){
+    if(svcCatHint) svcCatHint.hidden = (svcCat.value !== 'other');
+  });
   function showErr(m){ err.textContent=m; err.hidden=false; }
   submit.addEventListener('click', function(){
     err.hidden=true;
+    if(!(svcCat && svcCat.value)) return showErr('Choose the service this deal is for.');
     if(!(deal.value||'').trim()) return showErr('Add the deal you’re offering.');
     if(keywords.length<1)       return showErr('Add at least one searchable keyword.');
+    /* ⛔ Ruling 9: for `other` the keywords are the ONLY thing a customer can find
+       this deal by, so they have to say something. Mirrors the server's
+       MIN_OTHER_KEYWORD_LEN — the server still re-checks; this is here so the worker
+       is told before the round trip. The first real SP deal shipped with keywords
+       ['1','2','3'], which is what free text does when nothing checks it. */
+    if(svcCat && svcCat.value === 'other' &&
+       !keywords.some(function(k){ return k.trim().length >= 3 && /[a-z]/i.test(k); }))
+      return showErr('For “Other”, add a keyword that describes the service — e.g. “dog grooming”.');
     if(!money(earn.value))       return showErr('Enter what you want to earn.');
     if(!money(normal.value))     return showErr('Enter your normal price.');
     /* The normal price is the struck-through comparison the customer sees, and the
@@ -8334,6 +9137,7 @@ window.showNoAccount = function(){
     submit.disabled = true; submit.textContent = 'Submitting…';
     GoAuth.submitDeal({
       dealText: (deal.value||'').trim(),
+      serviceCategory: svcCat ? svcCat.value : '',
       keywords: keywords,
       earn: _earn, normal: _norm,
       reachMiles: parseInt(reach.value, 10)
@@ -8359,6 +9163,8 @@ window.showNoAccount = function(){
   });
   function reset(){
     deal.value=''; earn.value=''; normal.value=''; pay.value='';
+    if(svcCat) svcCat.value='';
+    if(svcCatHint) svcCatHint.hidden=true;
     reach.value=25; reachVal.textContent='25 mi'; keywords=[]; renderChips();
     err.hidden=true; success.hidden=true; formWrap.hidden=false;
   }
@@ -8413,11 +9219,20 @@ window.showNoAccount = function(){
      ⚠️ FAILS CLOSED. Unknown eligibility or an unreachable deals endpoint
      leaves canBid false. !315 is not merged yet, so /deals/mine 404s today and
      this pane must read that as "no live deal", never as "go ahead". */
-  var GATE = { eligible:null, liveDeals:0, loaded:false };
+  /* boardLive is THREE-STATE on purpose: null = never attempted (signed out, the
+     showroom case), true = live standings loaded, false = the fetch failed and
+     bidding must close. A boolean would make "signed out" and "the server is
+     down" the same thing, and they are opposites. */
+  var GATE = { eligible:null, liveDeals:0, loaded:false, boardLive:null, boardError:null };
   function bidGate(){
     if(!GATE.loaded)   return { canBid:false, why:'Checking your Service Provider Deals\u2026' };
     if(!GATE.eligible) return { canBid:false, why:'Service Provider Deals unlock at Elite and 20+ completed service jobs, with a 4.75\u2605 average over your last 20. See what\u2019s needed \u2192', link:true };
     if(!GATE.liveDeals)return { canBid:false, why:'You can bid once your Service Provider Deal is live. Submit one, and bidding opens as soon as it\u2019s approved.' };
+    /* Checked LAST, so a worker who is simply not eligible gets the reason that
+       is actually about them rather than a server error they cannot act on. */
+    if(GATE.boardLive === false) return { canBid:false, why:'We could not load the live standings \u2014 '
+      + (GATE.boardError || 'the server did not answer')
+      + '. Bidding is closed until they load: bidding against numbers we cannot verify is worse than not bidding.' };
     return { canBid:true };
   }
 
@@ -8445,7 +9260,14 @@ window.showNoAccount = function(){
     GATE.loaded = false; GATE.eligible = null; GATE.liveDeals = 0; MY_SP_DEALS = [];
     if(!(window.GoAuth && window.GoSession && GoSession.token())){ GATE.loaded = true; return Promise.resolve(); }
     var elig = GoAuth.apiCall('/users/deals/eligibility', { method:'GET' })
-      .then(function(r){ GATE.eligible = !!(r.ok && r.body && (r.body.eligible || r.body.granted)); })
+      /* ⛔ `eligible` ALONE. This used to OR in `granted`, which was right when a
+         grant was the only override — but since 2026-08-27 a missing image
+         fails the bar for granted workers too, and the server already folds
+         both into `eligible`. Keeping the OR would open the deal form for a
+         granted worker whose submit is then refused server-side: the exact
+         "composed a deal for nothing" outcome fetchEligibility fails closed to
+         avoid. */
+      .then(function(r){ GATE.eligible = !!(r.ok && r.body && r.body.eligible); })
       .catch(function(){ GATE.eligible = false; });
     var mine = GoAuth.apiCall('/users/deals/mine', { method:'GET' })
       .then(function(r){
@@ -8459,7 +9281,32 @@ window.showNoAccount = function(){
     /* The business name the deal will publish under — the same value the deal
        form uses, so the board and the deal agree on who is bidding. */
     syncViewerName();
-    return Promise.all([elig, mine]).then(function(){ GATE.loaded = true; });
+    /* ⛔ THE STANDINGS WERE THE LAST DEMO DATA ON THIS SCREEN. Eligibility and
+       the worker's own deals were already read from the server; the BOARD was
+       still the brain's seed, so a signed-in worker saw an invented auction —
+       and the Deals portal, reading the same brain, showed the merchant a
+       different invented one. Both windows now read the same settlement.
+
+       Failure LOCKS bidding rather than falling back: bidding against numbers we
+       cannot verify is worse than not bidding. GATE.boardLive carries that. */
+    var standings = GoAuth.apiCall('/users/deals/bids/board', { method:'GET' })
+      .then(function(r){
+        if(r.ok && r.body && Array.isArray(r.body.board)){
+          BB.setLive(r.body);
+          if(r.body.viewerCategory) VIEWER.category = r.body.viewerCategory;
+          GATE.boardLive = true;
+        } else {
+          GATE.boardLive = false;
+          GATE.boardError = (r.body && (r.body.message || r.body.error))
+            || ('the server answered ' + (r.status || 'an error'));
+        }
+      })
+      .catch(function(e){
+        GATE.boardLive = false;
+        GATE.boardError = 'the request did not complete'
+          + (e && e.message ? ' \u2014 ' + e.message : '');
+      });
+    return Promise.all([elig, mine, standings]).then(function(){ GATE.loaded = true; });
   }
 
   var youEl = document.getElementById('gbbYou'),
@@ -8499,7 +9346,38 @@ window.showNoAccount = function(){
   /* Standings board — same card semantics as the Deals portal, restyled onto
      gopher-go's tokens. Every badge/lock decision comes off the brain's card. */
   function renderBoard(){
+    /* ⛔ THE DEMO DISCLAIMER MUST NOT OUTLIVE THE DEMO. This note told the truth
+       while the standings were seeded in memory. Left standing on a live board it
+       becomes the opposite of the earlier defect: not a fake auction presented as
+       real, but a REAL one — a commitment to pay — presented as a throwaway
+       prototype. Either way the worker cannot tell what they are looking at. */
+    var note=document.getElementById('gbbDemoNote');
+    if(note){
+      if(BB.isLive()){
+        note.textContent='Live standings, settled server-side. Bidding closes on the 20th; '
+          + 'nothing is charged unless your bid is the top bid on your category card when it closes.';
+      } else {
+        note.innerHTML='Prototype demo \u2014 standings and bids live in this page\u2019s memory only and '
+          + 'reset when you leave. Production settles the monthly auction server-side.';
+      }
+    }
     board.innerHTML='';
+
+    /* ⛔ A FAILED LOAD MUST NOT PAINT THE SEED. Locking the buttons was not
+       enough: renderBoard() still fell through to BB.board(), which answers from
+       the demo seed when the brain is not live, so a worker saw invented
+       standings under a "Bidding locked" button. Non-actionable is not the same
+       as honest — those numbers are still presented as this month's auction. */
+    if(GATE.boardLive === false){
+      board.innerHTML='<div class="gbb-board-err" style="padding:14px 16px;border:1px solid #f3c6c6;'
+        + 'background:#fff5f5;border-radius:10px;color:#3a3a3a">'
+        + '<div style="font-weight:800;color:#a8071a">We could not load the live standings.</div>'
+        + '<div style="font-size:13px;margin-top:4px">' + esc(GATE.boardError || 'the server did not answer') + '.</div>'
+        + '<div style="font-size:13px;margin-top:6px">Your bids are safe \u2014 this is a display problem. '
+        + 'Bidding is closed until the real standings load.</div></div>';
+      return;
+    }
+
     BB.board(VIEWER).forEach(function(c){
       /* `mine` is the brain's single-viewer DEMO flag (its seed belongs to the
          Deals-portal viewer). On this page an entry only reads as "you" inside
@@ -8619,6 +9497,52 @@ window.showNoAccount = function(){
     if(!d){ showErr('Pick a deal to feature.'); return; }
     var amt=parseInt(String(amtField.value).replace(/[^0-9]/g,''),10);
     /* The brain owns acceptance: category lock + amount validation. */
+    if(!amt || amt<1){ showErr('Enter a bid amount.'); return; }
+    var terms=document.getElementById('gbbTerms');
+    if(terms && !terms.checked){
+      showErr('Please confirm you agree to pay if your bid wins \u2014 that commitment is what holds the spot, since nothing is charged at bid time.');
+      return;
+    }
+
+    /* \u26D4 A LIVE BID IS SETTLED SERVER-SIDE, ALWAYS. The browser records a
+       commitment to pay; only the server can rank it against everyone else's.
+       The brain refuses client math on a live board for exactly this reason, and
+       `leading` comes back from the same settlement that draws the cards, so the
+       toast and the board cannot say different things about one bid. */
+    if(BB.isLive()){
+      var btn=document.getElementById('gbbPlace');
+      if(btn) btn.disabled=true;
+      GoAuth.apiCall('/users/deals/bids', { method:'POST', body:{
+        amount_cents: amt*100,
+        accept_terms: true,
+        category: VIEWER.category,
+        deal_id: d.id
+        /* holder_name is NOT sent: the endpoint shows it publicly, so a
+           caller-set value would let a worker post under another business's
+           name. Server-side derivation is the proper fix and is not built. */
+      }}).then(function(r){
+        if(btn) btn.disabled=false;
+        if(!r.ok){
+          showErr('Your bid was not placed \u2014 '
+            + ((r.body && (r.body.message || r.body.error)) || ('the server answered ' + (r.status||'an error')))
+            + '. Nothing has been committed.');
+          return;
+        }
+        gbbToast(r.body && r.body.leading
+          ? 'Top bid on the '+VIEWER.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+          : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+VIEWER.category+' yet \u2014 only the leading bid wins.');
+        if(terms) terms.checked=false;
+        closeOv();
+        loadBidData().then(function(){ renderBoard(); renderYou(); });
+      }).catch(function(e){
+        if(btn) btn.disabled=false;
+        showErr('Your bid was not placed \u2014 the request did not complete'
+          + (e && e.message ? ' \u2014 ' + e.message : '') + '. Nothing has been committed.');
+      });
+      return;
+    }
+
+    /* Showroom (signed out). The brain owns acceptance: category lock + amount. */
     var res=BB.placeBid(VIEWER, VIEWER.category, amt);
     if(!res.ok){
       showErr(res.reason==='category-locked'
@@ -8626,9 +9550,12 @@ window.showNoAccount = function(){
         : 'Enter a bid amount.');
       return;
     }
+    if(terms) terms.checked=false;
     gbbToast(res.beatsTop
       ? 'Top bid on the '+VIEWER.category+' card — '+money(amt)+' 🏆'
-      : 'Bid placed — '+money(amt)+'. Featured win locked in this month ✅');
+      /* ⛔ Ruling 7 retired the every-bid-wins promise: one winner per category,
+         and only the leading bid when bidding closes takes it. Say which this is. */
+      : 'Bid placed — '+money(amt)+'. You are not leading '+VIEWER.category+' yet — only the leading bid wins.');
     renderBoard(); renderYou();
     closeOv();
   }

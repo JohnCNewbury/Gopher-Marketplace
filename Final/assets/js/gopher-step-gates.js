@@ -131,8 +131,17 @@
       message: 'Add a drop-off address so your Gopher knows where to go.',
       needs: ['isVisible'],
       when: function (s, h) {
-        if (s.noSpecificPickup || !h.isVisible('pickupSection')) return false;
-        if (firstEmpty(s.pickupStops) > -1) return false;   // pick-up reports first
+        /* ⛔ DO NOT bail on !isVisible('pickupSection') here. That was the bug
+           (owner 2026-09-29): five of the eight categories HIDE the pick-up
+           section — home, labor, junk, yard, other — but still render a
+           Destination, which is unconditional markup on all three surfaces.
+           This gate used to switch itself off alongside the pick-up gate, so
+           those five advanced past step 4 with an empty destination and a live
+           green Continue. Junk Removal is the one the owner screenshotted.
+           noSpecificPickup is the same mistake in miniature: a flexible pick-up
+           does not make the DESTINATION optional. */
+        var pickupShown = !s.noSpecificPickup && h.isVisible('pickupSection');
+        if (pickupShown && firstEmpty(s.pickupStops) > -1) return false;  // pick-up reports first
         return firstEmpty(s.dropoffStops) > -1;
       },
       selectorFor: function (s) {
@@ -216,7 +225,7 @@
   var SURFACE_GATES = {
     /* ⛔⛔ 'identity' IS BACK ON THE WEB SURFACES — owner ruling 2026-08-25.
        This SUPERSEDES the 2026-08-23 G40-410 removal quoted below. That removal
-       existed for exactly one reason: iDenfy was being retired, so enrolment would
+       existed for exactly one reason: the third-party ID vendor was being retired, so enrolment would
        stop and under-30 (who then had no one-off path) would be left unable to
        order at all. TrustShield now runs INTERNALLY — enrolment never stops — so
        the reason is gone and the gate returns.
@@ -232,7 +241,7 @@
        ⛔ 'identity' REMOVED from both web surfaces — owner ruling 2026-08-23
        (trustshield-gate-removal-interim.md §8.1, G40-410). This SUPERSEDES the
        2026-08-22 D-038 Part 1 ruling that put it here; that gate was correct under
-       the policy then in force. iDenfy is being retired (~218 credits, ~6.6/day,
+       the policy then in force. The third-party ID vendor is being retired (~218 credits, ~6.6/day,
        cliff ~Sept 22-25) and cannot be topped up at a price the owner will pay, so
        when enrollment stops the badge would permanently block ~28 new requesters a
        week (76.7% of new enrollments are 21-29, who must verify to participate).
@@ -376,7 +385,7 @@
        modelled here — they ship via a store release (G40-410, Matt). */
     /* ⛔ INVERTED AGAIN, 2026-08-25 — third state for this guard, so read the date
        not the shape. It once required the gate, then required its ABSENCE (G40-410,
-       iDenfy retirement), and now requires its PRESENCE on the web surfaces again
+       ID-vendor retirement), and now requires its PRESENCE on the web surfaces again
        because TrustShield runs internally and identity is mandatory for A/R orders.
        The guard follows the ruling instead of being deleted with it, which is why it
        keeps flipping rather than quietly disappearing.

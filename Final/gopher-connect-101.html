@@ -213,7 +213,21 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .hint-wrap:hover .hint-pop,
 .hint-btn:focus-visible + .hint-pop,
 .hint-btn.open + .hint-pop{opacity:1;visibility:visible;transform:translateY(0);}
-@media (max-width:520px){ .hint-pop{left:auto;right:-10px;} .hint-pop::before{left:auto;right:16px;} }
+/* ⛔ The bubble hangs off an INLINE button that can sit anywhere on the line,
+   so anchoring it to that button (left:-10px, or right:-10px as this rule used
+   to) pushes it off whichever edge the button is nearest — at 375px the MY
+   Gophers bubble rendered at left:-78px, cut off (owner-reported 2026-08-26).
+   On phones it becomes a viewport-pinned sheet, which cannot overflow wherever
+   the button sits. The arrow is dropped because it no longer points at
+   anything. Verified no ancestor carries transform/filter, so position:fixed
+   resolves against the viewport here. */
+@media (max-width:520px){
+  .hint-pop{
+    position:fixed; left:12px; right:12px; top:auto; bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+    width:auto; max-height:60vh; overflow-y:auto;
+  }
+  .hint-pop::before{ display:none; }
+}
 
 /* mini mock UI elements (mirror the app) */
 .mock{margin-top:18px;background:linear-gradient(180deg,#fff,#fffdf8);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);}
@@ -312,12 +326,12 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .foot-bottom .scribble{font-size:21px;color:var(--green);}
 
 /* back to top */
-.totop{position:fixed;right:22px;bottom:22px;z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
+.totop{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom, 0px));z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
 .totop.show{opacity:1;pointer-events:auto;}
 .totop:hover{transform:translateY(-3px);}
 
 /* floating mobile "Sections" button (replaces old topbar toggle) */
-.qr-toggle{display:none;position:fixed;left:16px;bottom:18px;z-index:900;align-items:center;gap:8px;background:var(--midnight);color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:'Nunito';font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);}
+.qr-toggle{display:none;position:fixed;left:16px;bottom:calc(18px + env(safe-area-inset-bottom, 0px));z-index:900;align-items:center;gap:8px;background:var(--midnight);color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:'Nunito';font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);}
 .qr-toggle svg{width:16px;height:16px;}
 @media (max-width:980px){ .qr-toggle{display:inline-flex;} }
 /* mobile sidebar overlay */
@@ -390,7 +404,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <div class="side-group">After the job</div>
     <ul class="side-nav">
       <li><a href="#confirm">Confirm &amp; rate</a></li>
-      <li><a href="#history">Previous requests</a></li>
+      <li><a href="#history">Request History</a></li>
     </ul>
 
     <div class="side-group">Good to know</div>
@@ -548,7 +562,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
         <li><b>Active</b> — a worker is on the way or on the job.</li>
         <li><b>Scheduled</b> — booked for a future date and time.</li>
       </ul>
-      <p>The left rail also holds <b>Previous Requests</b>, your <b>Inbox</b>, your <b>Account</b> (Business info, Personal info, Payment Info, Users &amp; access, MY Gophers, Refer Gopher), and <b>Resources</b> — including <b>Ask Gopher</b>, the in-portal assistant.</p>
+      <p>The left rail also holds <b>Request History</b>, your <b>Inbox</b>, your <b>Account</b> (Business info, Personal info, Payment Info, Users &amp; access, MY Gophers, Refer Gopher), and <b>Resources</b> — including <b>Ask Gopher</b>, the in-portal assistant.</p>
     </section>
 
     <!-- SUBMITTING A REQUEST -->
@@ -580,7 +594,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <div class="note tip"><span class="nico">🎯</span><div><span class="h">Credentials or muscle — your call</span>Some jobs need a 30-year licensed electrician; some need three strong people for a Saturday morning. Connect never pretends every need is the same.</div></div>
 
       <h3>3 · Decide what to pay</h3>
-      <p>You set the price, and <b>100% of it goes to your Gopher</b>. Not sure what's fair? Tap <b>Suggested offer assistance</b> — a slider built from thousands of similar requests in your area shows a <b>Low / Fair / Generous</b> range. Drag to the number that works; you always have the final say. On many jobs you can also <b>request bids</b> from local workers instead.</p>
+      <p>You set the price, and <b>100% of it goes to your Gopher</b>. Not sure what's fair? Tap <b>Suggested offer assistance</b> — a slider built from thousands of similar requests in your area shows a <b>Low / Fair / Generous</b> range. Drag to the number that works; you always have the final say on the amount. Gophers choose which jobs to take, and the offer is the biggest factor in whether yours is picked up. On many jobs you can also <b>request bids</b> from local workers instead.</p>
 
       <h3>4 · Review, schedule &amp; submit</h3>
       <p>Confirm everything in one place, choose your <b>payment method</b>, and pick your timing — <b>ASAP</b>, <b>flexible</b>, or a <b>specific date &amp; time</b>. Accept the short <b>liability waiver</b> and the submit button turns on.</p>
@@ -594,6 +608,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <span class="eyebrow">Your Connect portal</span>
       <h2>Choosing &amp; hiring: <span class="scribble">Hire · Consider · Deny</span></h2>
       <p>Open your live request to see everyone who raised their hand. Every interested worker is a real choice you make — not an algorithm assigning a stranger. Review a profile, then pick an action.</p>
+      <p>A profile lists the worker&rsquo;s past jobs: all of them, or just the ones in your request&rsquo;s category. Each shows the month, the type of job, and the stars that customer gave. Other customers&rsquo; names, addresses, prices and comments are never shown.</p>
       <div class="mock">
         <div class="mock-label">Workers interested</div>
         <div class="wk">
@@ -648,6 +663,9 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <span class="eyebrow">Your Connect portal</span>
       <h2>Account &amp; users</h2>
       <p>Everything about your business lives under <b>Account</b>. From here you can review and edit <b>Business information</b>, <b>Personal information</b>, your plan, and your <b>Payment Methods</b> (added securely through <b>Stripe</b>).</p>
+      <h3>Adding a card</h3>
+      <p>Enter the card number, expiry and security code, the <b>name on the card</b>, and the <b>billing address on the card statement</b> (street, city, state, ZIP). The bank checks that address against the card. Then we text a <b>6-digit code</b> to the phone on the account adding the card — enter it and the card is saved. The code expires in 5 minutes and can be resent once. <b>The card is not saved until the code is confirmed.</b> Admins and Owners can add cards; a User seat cannot.</p>
+      <div class="note tip"><span class="nico">🛡️</span><div><span class="h">Why the extra step?</span>A card can only be added by the person who holds the phone on that account, and the address check stops stolen card numbers before a request is placed. We keep a record of each verification to resolve payment disputes.</div></div>
       <h3>Users &amp; access</h3>
       <p>Invite teammates and give each the right level of access. Roles are:</p>
       <ul class="brand">
@@ -695,8 +713,8 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <!-- HISTORY -->
     <section class="section" id="history">
       <span class="eyebrow">After the job</span>
-      <h2>Previous requests &amp; repeat jobs</h2>
-      <p>Every request lives under <b>Previous Requests</b>, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details, or re-run a job you liked.</p>
+      <h2>Request History &amp; repeat jobs</h2>
+      <p>Every request lives under <b>Request History</b>, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details, or re-run a job you liked.</p>
 
       <h3>Two ways to run a job again</h3>
       <ul class="brand">
@@ -713,12 +731,12 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
         <li><b>Set the payment to your Gopher.</b> It arrives carrying the amount a worker already accepted for that job — your best odds of it being picked up again — but you can change it.</li>
         <li><b>Choose the card</b> that gets charged, and <b>which MY Gophers</b> it goes to first.</li>
         <li><b>Accept the liability waiver</b>, pre-ticked directly above Save.</li>
-        <li><b>Save.</b> It appears as a card at the top of Previous Requests with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
+        <li><b>Save.</b> It appears as a card at the top of Request History with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
       </ol>
       <div class="note warn"><span class="nico">⚡</span><div><span class="h">One tap means one tap</span>There's no review step and no &ldquo;are you sure&rdquo; — the button sends the request and authorises the card straight away. That's why Save won't unlock until there's a payment above $0 and the waiver is accepted, and why only <b>Completed</b> requests can be saved: a job that already worked, at an amount a worker already took.</div></div>
       <div class="note info"><span class="nico">📋</span><div><span class="h">It's a copy, not a shortcut to the original</span>The request you saved it from stays in your history untouched, and every send gets a brand-new request ID. Save as many as you like from the same job — one for the small order, one for the big one — and edit or remove any of them any time.</div></div>
 
-      <div class="note tip"><span class="nico">🔁</span><div><span class="h">Cancelled isn't gone for good</span>Cancelling a live request notifies any interested workers — but you can always find it again under Previous Requests and post it back out in a few taps.</div></div>
+      <div class="note tip"><span class="nico">🔁</span><div><span class="h">Cancelled isn't gone for good</span>Cancelling a live request notifies any interested workers — but you can always find it again under Request History and post it back out in a few taps.</div></div>
     </section>
 
     <!-- PLANS & BILLING -->

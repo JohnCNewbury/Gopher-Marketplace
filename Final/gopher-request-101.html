@@ -200,7 +200,21 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 .hint-wrap:hover .hint-pop,
 .hint-btn:focus-visible + .hint-pop,
 .hint-btn.open + .hint-pop{opacity:1;visibility:visible;transform:translateY(0);}
-@media (max-width:520px){ .hint-pop{left:auto;right:-10px;} .hint-pop::before{left:auto;right:16px;} }
+/* ⛔ The bubble hangs off an INLINE button that can sit anywhere on the line,
+   so anchoring it to that button (left:-10px, or right:-10px as this rule used
+   to) pushes it off whichever edge the button is nearest — at 375px the MY
+   Gophers bubble rendered at left:-78px, cut off (owner-reported 2026-08-26).
+   On phones it becomes a viewport-pinned sheet, which cannot overflow wherever
+   the button sits. The arrow is dropped because it no longer points at
+   anything. Verified no ancestor carries transform/filter, so position:fixed
+   resolves against the viewport here. */
+@media (max-width:520px){
+  .hint-pop{
+    position:fixed; left:12px; right:12px; top:auto; bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+    width:auto; max-height:60vh; overflow-y:auto;
+  }
+  .hint-pop::before{ display:none; }
+}
 
 /* mini mock UI elements (mirror the app) */
 .mock{margin-top:18px;background:linear-gradient(180deg,#fff,#fffdf8);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--card-shadow);}
@@ -274,7 +288,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
 /* (page footer styles now provided by the shared .gopher-footer component) */
 
 /* back to top */
-.totop{position:fixed;right:22px;bottom:22px;z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
+.totop{position:fixed;right:22px;bottom:calc(22px + env(safe-area-inset-bottom, 0px));z-index:50;width:46px;height:46px;border-radius:50%;background:var(--midnight);color:#fff;border:none;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(0,36,97,.4);opacity:0;pointer-events:none;transition:opacity .25s, transform .2s;}
 .totop.show{opacity:1;pointer-events:auto;}
 .totop:hover{transform:translateY(-3px);}
 
@@ -285,7 +299,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
   :root{--sidebar-w:0px;}
   .page-sections-fab{
     display:inline-flex;align-items:center;gap:8px;
-    position:fixed;left:18px;bottom:22px;z-index:1190;
+    position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom, 0px));z-index:1190;
     background:var(--navy);color:#fff;border:none;border-radius:999px;
     padding:11px 18px;font-family:'Nunito';font-weight:800;font-size:13.5px;
     box-shadow:0 8px 24px rgba(0,36,97,.4);cursor:pointer;
@@ -414,6 +428,9 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <p>From your dashboard, open <b>Account → Personal Info</b> to review everything on file: your name, email, phone, address, date of birth, and how you found Gopher.</p>
       <h3>Payment method</h3>
       <p>You won't need this until your first request. When you're ready, your card is added securely through <b>Stripe</b>, our trusted payment partner — you can pick it (and apply a promo code) right on the Review step.</p>
+      <h3>Adding a card</h3>
+      <p>Enter the card number, expiry and security code, the <b>name on the card</b>, and the <b>billing address on your card statement</b> (street, city, state, ZIP). Your bank checks that address against the card. Then we text a <b>6-digit code</b> to the phone on your account — enter it and the card is saved. The code expires in 5 minutes and can be resent once. <b>The card is not saved until the code is confirmed.</b></p>
+      <div class="note tip"><span class="nico">🛡️</span><div><span class="h">Why the extra step?</span>It protects you and the Gophers you hire: a card can only be added by the person who holds the phone on the account, and the address check stops stolen card numbers before a request is ever placed. We keep a record of each verification to resolve payment disputes.</div></div>
       <div class="note info"><span class="nico">🔒</span><div>A photo, your contact details, and a payment method are all you need before making a request. Everything is stored securely and only used to fulfill your requests.</div></div>
     </section>
 
@@ -422,7 +439,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <span class="eyebrow"><span class="step-pill">Step 1 of 7</span> Pick a service</span>
       <h2>How to submit a request for a service</h2>
       <p>Start by tapping the service that fits best. The category you choose decides which workers see your request and what details we ask for next — so pick the closest match.</p>
-      <div class="note tip"><span class="nico">⏱️</span><div><span class="h">We'll go slow here — the real thing is fast</span>This guide walks through every option so nothing's a surprise, but actually <b>submitting a request takes less than a minute</b>. Once you've made one, saving it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> under <b>Previous requests</b> gets it down to a single tap.</div></div>
+      <div class="note tip"><span class="nico">⏱️</span><div><span class="h">We'll go slow here — the real thing is fast</span>This guide walks through every option so nothing's a surprise, but actually <b>submitting a request takes less than a minute</b>. Once you've made one, saving it as a <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span></b> under <b>Request History</b> gets it down to a single tap.</div></div>
       <div class="cat-grid">
         <div class="cat"><div class="thumb"><span class="badge">Errand</span><img src="assets/img/01-delivery.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Delivery / Errand</div><div class="tg">Pick-up &amp; drop-off</div></div></div>
         <div class="cat"><div class="thumb"><span class="badge">Hauling</span><img src="assets/img/05-junk.webp" alt="" loading="lazy"></div><div class="txt"><div class="nm">Junk Removal</div><div class="tg">Furniture &amp; debris haul-away</div></div></div>
@@ -479,7 +496,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <div class="mock">
         <div class="mock-label">Worker selection</div>
         <div class="radio-row sel"><span class="dot"></span>First available worker <small>— fastest match.</small></div>
-        <div class="radio-row"><span class="dot"></span>I'll select my worker <small>— review interested workers' ratings, reviews &amp; history, then choose.</small></div>
+        <div class="radio-row"><span class="dot"></span>I'll select my worker <small>— review interested workers' ratings and past jobs, then choose.</small></div>
         <div class="radio-row"><span class="dot"></span>Prioritize MY Gophers <small>— send it to your saved Gophers first. Unlocks once you've favorited a Gopher from a completed job.</small></div>
       </div>
       <div class="note tip"><span class="nico">⭐</span><div>
@@ -506,7 +523,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
         <li>For flexible <b>deliveries</b>, you can choose <b>“No specific pickup”</b> so your Gopher buys from the closest store.</li>
         <li>Got more than one stop? Enter the final destination here and list the other stops in your <b>description</b> — we recommend full store addresses, not just names.</li>
       </ul>
-      <div class="note info"><span class="nico">📍</span><div>Can't enter an address? That's usually a location-permission setting on your computer or phone — allow location access for the Gopher app and Google Maps will recognize the available addresses as you type.</div></div>
+      <div class="note info"><span class="nico">📍</span><div>Suggestions appear as you type — pick the matching address from the list so your Gopher gets the exact spot. If nothing appears, just finish typing the full street address; you can continue either way.</div></div>
     </section>
 
     <!-- STEP 5 -->
@@ -607,12 +624,14 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <section class="section" id="confirm">
       <span class="eyebrow">After you submit</span>
       <h2>Confirm &amp; rate</h2>
-      <p>When your Gopher marks the job complete, you'll get an app notification and a text. Tap through to the confirmation screen.</p>
+      <p>When your Gopher marks the job complete and has added their photos (or chosen to skip them), you'll get an app notification and a text. Tap through to the confirmation screen.</p>
       <ol class="brand">
+        <li><b>Check the photos, if your Gopher left any.</b> On most jobs your Gopher is asked for a photo of the finished work, and it appears under <b>View pic(s) of completed request</b> right above the Confirm button. Tap any thumbnail to see it full size.</li>
         <li>Tap <b>Confirm</b> once you've verified the job was done right.</li>
         <li>Rate your Gopher on accuracy, communication, quality, and timeliness — this shapes the jobs they see next, so a job well done deserves 5 stars.</li>
         <li>Optionally add them as <b>MY Gopher</b> for next time.</li>
       </ol>
+      <div class="note info"><span class="nico">📸</span><div><span class="h">No photos there?</span>Photos are optional for your Gopher, and some jobs don't suit one — so a request with no photo isn't a red flag on its own. You're only asked to confirm once your Gopher has finished adding photos or chosen to skip them, so what you see is what there is. Judge the work, not the photo count; if something's genuinely wrong, use <b>Dispute</b> rather than withholding confirmation.</div></div>
       <div class="note warn"><span class="nico">⏳</span><div><span class="h">Confirm promptly</span>Confirming releases your Gopher's payout, so please do it as soon as the job's done — especially if they paid for items out of pocket. If you don't confirm within <b>48 hours</b>, a non-refundable auto-confirmation kicks in. Only confirm if the task was truly completed.</div></div>
       <p style="margin-top:16px;">Something wrong? Use <b>Dispute</b> instead, add a comment, and give your Gopher a chance to make it right before escalating.</p>
     </section>
@@ -621,7 +640,8 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
     <section class="section" id="history">
       <span class="eyebrow">After you submit</span>
       <h2>History &amp; request again</h2>
-      <p>Every request you've made lives under <b>Previous requests</b> in the sidebar, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details.</p>
+      <p>Every request you've made lives under <b>Request History</b> in the sidebar, filtered by the pills across the top — <b>All</b> (the default), <b><span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To&rsquo;s</span></b>, <b>Completed</b>, <b>Expired</b>, and <b>Cancelled</b>. Open any one to see the full details.</p>
+      <p>Completed requests keep their <b>photos of the finished work</b> too — open one and they're on the card, same as on the confirmation screen.</p>
 
       <h3>Two ways to run a request again</h3>
       <ul class="brand">
@@ -638,7 +658,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
         <li><b>Set the payment to your Gopher.</b> It arrives carrying the amount a Gopher already accepted for that job — your best odds of it being picked up again — but you can change it.</li>
         <li><b>Choose the card</b> that gets charged, and <b>which MY Gophers</b> it goes to first.</li>
         <li><b>Accept the liability waiver</b>, pre-ticked directly above Save.</li>
-        <li><b>Save.</b> It appears as a card at the top of Previous requests with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
+        <li><b>Save.</b> It appears as a card at the top of Request History with one button: <b>Request my <span class="goto-word"><img class="go-mark" src="assets/img/go-mark.svg" alt="GO">-To</span> NOW ⚡️</b>.</li>
       </ol>
       <div class="note warn"><span class="nico">⚡</span><div><span class="h">One tap means one tap</span>There's no review step and no &ldquo;are you sure&rdquo; — the button sends the request and authorises the card straight away. That's why Save won't unlock until there's a payment above $0 and the waiver is accepted, and why only <b>Completed</b> requests can be saved: a job that already worked, at an amount a Gopher already took.</div></div>
       <div class="note info"><span class="nico">📋</span><div><span class="h">It's a copy, not a shortcut to the original</span>The request you saved it from stays in your history untouched, and every send gets a brand-new request ID. Save as many as you like from the same job — one for the small order, one for the big one — and edit or remove any of them any time.</div></div>
@@ -750,6 +770,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
         <li><b>No worker, no charge.</b> If we can't connect you with a Gopher, your request simply expires — with no charge and no authorization.</li>
         <li><b>Gopher isn't auto-fulfillment.</b> It's an open marketplace; a worker decides whether your offer is worth it. A fair offer in an active area is usually accepted fast.</li>
         <li><b>Cancelling.</b> Before your Gopher starts you can cancel or repost for free; once a Gopher marks a job in-progress and/or purchases items, cancelling is subject to a flat $5 fee, and if items were already purchased you are also responsible for their cost. See the Terms for full details.</li>
+        <li><b>If your Gopher cancels.</b> If your Gopher can't finish the job after accepting it, they can release it with a reason instead of just disappearing. You'll get a notification with two options: <b>Assign New Gopher</b> reposts your request with the same offer and terms — your funds stay held, nothing is re-charged — or <b>Cancel Request</b> to release your funds and start over. Details can't be changed while you decide — to change anything, cancel and submit a new request. No action within 15 minutes and the request cancels automatically. Can't get to it in time? Support can repost it for you — the same reposting, done on your behalf, with your funds still held.</li>
       </ul>
       <div class="note warn"><span class="nico">🚩</span><div><span class="h">Never pay outside the app</span>If a Gopher ever asks for money outside Gopher, that's a terms violation — don't do it, and report it to us right away.</div></div>
     </section>
@@ -760,7 +781,7 @@ ol.brand li::before{content:counter(bl);position:absolute;left:0;top:6px;width:2
       <h2>Need help?</h2>
       <p>You're ready to go! For anything else:</p>
       <ul class="brand">
-        <li>Tap <b>More → Help Center</b> in the app, then <b>“Send us a message.”</b></li>
+        <li>Tap <b>More → Help Center → Message Support</b> in the app — it opens a chat with us right there.</li>
         <li>Browse the full <a href="gopher-faqs.html">FAQs</a> — updated weekly.</li>
         <li>Email us at <a href="mailto:support@gophergo.io">support@gophergo.io</a>.</li>
       </ul>

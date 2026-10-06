@@ -1853,7 +1853,40 @@
   .dashboard { display:none; position:fixed; inset:0; background:#eef1f7; grid-template-columns:262px 1fr; font-family:'Nunito',sans-serif; color:var(--text); }
   .dashboard.open { display:grid; }
 
-  .dash-sidebar { background:linear-gradient(180deg,#002461 0%,#0f1a3d 100%); color:#fff; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto; }
+  /* ⛔ GOPHER'S BLUE IS FLAT #002461 — Midnight Blue, no gradient.
+     Owner 2026-10-04: "Go with flat", then "fix the Deals sidebar too". This is
+     the THIRD dashboard; Request and Connect were flattened earlier the same day
+     (06e6ca0). All three now carry one blue, and it is the same hex the Go
+     prototype uses for --navy — identical, not an approximation.
+
+     ⚠️ THE NOTE THAT STOOD HERE WAS STALE IN ALL THREE FILES. It said the
+     sidebar deliberately carried "the card's own ramp",
+     linear-gradient(150deg,#053a75,#002461), so the two biggest surfaces
+     matched. THAT CARD RAMP NO LONGER EXISTS — the home cards went white with
+     Sand logo panels on 2026-10-03/04, and #053a75 now appears in this file ONLY
+     on this one rule. Checked by grep before editing rather than trusting the
+     note. The 10-03 ruling it records is not overturned, it is satisfied more
+     completely: one flat brand value beats two ramps that merely agree.
+
+     Why flat and not a darker ramp: a flat value is a TOKEN — app, web, email
+     and the deck all carry one string. A two-stop gradient has to be
+     re-expressed in every medium that cannot render one, which is how the
+     non-palette #053a75 got loose in the first place. Contrast did NOT decide
+     it: white clears AA on all three candidates (11.24 / 14.74 / 16.95:1).
+
+     ⚠️ #053a75 was never in the palette — a more saturated azure — and it sat at
+     the TOP of the sidebar, behind the logo and the primary nav, while the brand
+     colour was pushed down to the footer links.
+
+     ⚠️ The two rejected options are recorded so they are not re-proposed:
+       · Card in Shamrock — the Deals card beside it carries its merchant
+         marquee on green bands, so both cards read green and stop being two
+         things; and the CTA has to invert to navy, spending green on the one
+         card whose whole job is go.
+       · Sidebar in Shamrock — legible (navy on Shamrock is 7.95:1) but the nav
+         badges are Shamrock pills: on a Shamrock sidebar that is 1.00:1. They
+         do not fade, they vanish, leaving a floating numeral. */
+  .dash-sidebar { background:#002461; color:#fff; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto; }
   .dash-sidebar-head { background:#fff; border-radius:18px; padding:16px 18px 14px; margin-bottom:16px; box-shadow:0 4px 14px rgba(0,0,0,0.18); min-height:122px; box-sizing:border-box; /* uniform platform card (owner, 2026-07-23) */ }
   .dash-logo-text { display:flex; align-items:center; gap:9px; }
   .dlt-mark { width:34px; height:34px; border-radius:9px; background:var(--green); display:flex; align-items:center; justify-content:center; font-family:'Nunito'; font-weight:900; font-size:19px; color:#fff; box-shadow:0 2px 6px rgba(51,217,117,.3); flex-shrink:0; }
@@ -3047,6 +3080,7 @@
         <li><span class="stat-dot stat-navy"></span><span class="stat-body"><span class="stat-kicker">Workers near by</span><span class="stat-txt"><strong id="worker-count">272</strong> Workers ready to help</span></span></li>
         <li class="stat-total"><span class="stat-eyes">👀💸</span><span class="stat-body"><span class="stat-kicker">Eyeballs on your deal!</span><span class="stat-txt"><strong id="audience-total">1,812</strong> Total Eyeballs</span></span></li>
       </ul>
+      <p class="radius-hint" style="margin:-14px 0 18px">Live from the Gopher marketplace. Each dot stands in a group of 3 or more, placed to within 1&ndash;10&nbsp;km.</p>
       <button class="panel-cta" onclick="closeAudience();openModal('merchant');">Add my business →</button>
     </aside>
     <div id="audience-map"><div class="map-loading" id="map-loading">Loading your audience…</div></div>
@@ -3741,19 +3775,36 @@
 
 </footer>
 
-<script src="assets/js/gopher-deals-audience.js"></script>
 <script>
-  // ── Audience map — data lives in assets/js/gopher-deals-audience.js ──
+  // ── Audience map — LIVE counts from the production API (2026-09-23) ──
   var MEDIAN_CENTER=[35.69331, -78.84201];
+  /* Owner, 2026-09-23: "It needs to read all real live data now."
+     The map used to read a baked file (assets/js/gopher-deals-audience.js):
+     26,133 points, North Carolina only, frozen in July, with ~1 m coordinates
+     served publicly — an address in Sherman Oaks showed zero. It now asks
+       GET https://api.gophergo.io/api/v1/deals/audience?lat=..&lng=..
+     (gopher-backend-api, helpers/deals_audience.js — MRs !638, !640), which
+     returns COUNTS ONLY:
+       rings.customers / rings.workers — people within 1..25 mi, exact, so the
+                                         slider never refetches;
+       cells [[lat,lng,customers,workers,size]] — groups of 3 or more, never a
+                                         person: ~1 km where dense, rolled up to
+                                         ~5 / ~10 km in thin markets.
+     Who counts (owner ruling): every account that can open an app, whatever
+     its status; deleted accounts do not; someone with both roles counts once,
+     as a Requester. Dots are scattered inside their group's cell from a seed of
+     the cell's own coordinates, so they hold still on redraw. Counts come ONLY
+     from rings — dots are illustration. */
+  var AUD_API='https://api.gophergo.io/api/v1/deals/audience';
+  var _aud=null,_audSeq=0;
 
   /* ===== Gopher Deals — Google Maps + real address + real audience =====
-     Address recognition uses Google Maps (Places + Geocoding). The audience dots
-     come from a privacy-safe, client-side dataset (assets/js/gopher-deals-audience.js:
-     ZIP-centroid + jitter, no real home coordinates, no backend / no network calls).
-     If Maps is briefly unavailable, we fall back to the regional view. */
+     Address recognition uses Google Maps (Places + Geocoding); the audience is
+     live from the API above. If Maps is briefly unavailable, we fall back to
+     the regional view. */
   var MARKER_CAP = 4000;   // max dots drawn (counts stay exact); evenly sampled, keeps it smooth
   var _map=null,_center=null,_ring=null,_pinMarkers=[],_centerMarker=null;
-  var _gmapsReady=false,_audience=[],_mapTries=0,_gcTries=0;
+  var _gmapsReady=false,_mapTries=0,_gcTries=0;
   var GOPHER_MAP_STYLE=[
     {elementType:'geometry',stylers:[{color:'#f6f7f9'}]},
     {elementType:'labels.text.fill',stylers:[{color:'#8a93a3'}]},
@@ -3857,17 +3908,39 @@
     }});
   }
 
-  // Open overlay for a resolved location: fetch real audience, then draw
+  // Open overlay for a resolved location: fetch the live audience, then draw.
+  // _audSeq drops a slow reply that lands after a newer address was picked.
   function viewAudienceAt(lat,lng){
-    _center=[lat,lng]; _mapTries=0;
-    // Load the baked audience dataset once (assets/js/gopher-deals-audience.js).
-    if(!_audience.length) _audience = window.AUDIENCE_POINTS || [];
+    _center=[lat,lng]; _mapTries=0; _aud=null;
     document.getElementById('audience-overlay').classList.add('open');
     document.body.style.overflow='hidden';
     var loaderEl=document.getElementById('map-loading');
     if(loaderEl){ loaderEl.style.display=''; loaderEl.textContent='Finding your audience…'; }
     _clearOverlays();
     setTimeout(initAudienceMap,60);
+    var mySeq=++_audSeq;
+    fetch(AUD_API+'?lat='+encodeURIComponent(lat.toFixed(5))+'&lng='+encodeURIComponent(lng.toFixed(5)),
+          {headers:{Accept:'application/json'}})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(j){
+        if(mySeq!==_audSeq) return;
+        if(!j || !j.success || !j.rings) throw new Error('bad payload');
+        _aud=j;
+        _audReadyDraw();
+      })
+      .catch(function(e){
+        if(mySeq!==_audSeq) return;
+        console.warn('[gopher-deals] live audience unavailable:', e && e.message);
+        if(loaderEl){ loaderEl.style.display=''; loaderEl.textContent='We couldn\u2019t load the live audience \u2014 please try again in a moment.'; }
+      });
+  }
+  // Draw once BOTH the map and the live data are in, whichever lands last.
+  function _audReadyDraw(){
+    if(!_map || !_ring || !_aud) return;
+    drawPins();
+    var loaderEl=document.getElementById('map-loading');
+    if(loaderEl) loaderEl.style.display='none';
+    updateCounts(true);
   }
 
   function _clearOverlays(){
@@ -3913,49 +3986,59 @@
         fillColor:'#002461', fillOpacity:1, strokeColor:'#ffffff', strokeWeight:2,
         scale:1.6, anchor:new google.maps.Point(12,22) } });
 
-    drawPins();
-    if(loaderEl) loaderEl.style.display='none';
-    updateCounts(true);
+    _audReadyDraw();   // draws now if the live data already arrived
     fitView();
     var sl=document.getElementById('radius-slider');
     if(sl){ sl.value=Math.round(RADIUS/1609.34);
       var lab=document.getElementById('radius-mi'); if(lab) lab.textContent=sl.value; }
   }
-  // iterate the FETCHED audience within the current radius (was POINTS)
-  function eachInRadius(cb){
-    var clat=_center[0], clng=_center[1];
-    var degLat=RADIUS/111320, degLng=RADIUS/(111320*Math.cos(clat*Math.PI/180));
-    for(var i=0;i<_audience.length;i++){
-      var p=_audience[i], lat=p[0], lng=p[1], role=p[2];
-      if(Math.abs(lat-clat)>degLat || Math.abs(lng-clng)>degLng) continue;
-      if(metersBetween(lat,lng,clat,clng)>RADIUS) continue;
-      cb(lat,lng,role);
+  /* Seeded scatter: the same cell always yields the same dots, so a redraw (the
+     slider) never reshuffles them. mulberry32 — a tiny, well-known PRNG. */
+  function _audRand(seed){
+    return function(){ seed|=0; seed=seed+0x6D2B79F5|0;
+      var t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t;
+      return ((t^t>>>14)>>>0)/4294967296; };
+  }
+  // Dots for the current radius, from the live cells. c[4] is the cell's own
+  // size (~1 / ~5 / ~10 km); a payload without it is all fine cells.
+  function audienceDots(){
+    var out=[]; if(!_aud || !_aud.cells) return out;
+    for(var i=0;i<_aud.cells.length;i++){
+      var c=_aud.cells[i], half=(c[4]||_aud.cell_deg||0.01)/2,
+          rnd=_audRand(Math.round(c[0]*1e4)*100003+Math.round(c[1]*1e4)+Math.round(half*1e5));
+      for(var r=0;r<2;r++){                 // r=0 customers (c[2]), r=1 workers (c[3])
+        for(var k=0;k<c[2+r];k++){
+          var lat=c[0]+(rnd()*2-1)*half, lng=c[1]+(rnd()*2-1)*half;
+          if(metersBetween(lat,lng,_center[0],_center[1])<=RADIUS) out.push([lat,lng,r]);
+        }
+      }
     }
+    return out;
   }
   function drawPins(){
     for(var i=0;i<_pinMarkers.length;i++){ _pinMarkers[i].setMap(null); }
     _pinMarkers=[];
-    // If a radius holds more points than we cap-draw, take an EVEN sample across the whole
-    // set (stride) so the dots stay spread out. Drawing the first N bunched them in one corner.
-    var total=0; eachInRadius(function(){ total++; });
-    var stride = total>MARKER_CAP ? Math.ceil(total/MARKER_CAP) : 1;
-    var idx=0;
-    eachInRadius(function(lat,lng,role){
-      if((idx++ % stride)!==0) return;
-      var color = role===1 ? '#002461' : '#33D975';   // worker navy / customer green
-      _pinMarkers.push(new google.maps.Marker({ map:_map, position:{lat:lat,lng:lng},
+    if(!_map || !_aud) return;
+    // More dots than we cap-draw: take an EVEN sample (stride) so they stay spread out.
+    var dots=audienceDots();
+    var stride = dots.length>MARKER_CAP ? Math.ceil(dots.length/MARKER_CAP) : 1;
+    for(var j=0;j<dots.length;j+=stride){
+      var color = dots[j][2]===1 ? '#002461' : '#33D975';   // worker navy / customer green
+      _pinMarkers.push(new google.maps.Marker({ map:_map, position:{lat:dots[j][0],lng:dots[j][1]},
         clickable:false, optimized:true,
         icon:{ path:google.maps.SymbolPath.CIRCLE, scale:4.5, fillColor:color,
           fillOpacity:1, strokeColor:'#ffffff', strokeWeight:1.4 } }));
-    });
+    }
   }
+  // Exact counts straight off the server's cumulative rings — no dot is counted.
   function computeCounts(){
-    var c=0,w=0,b=0;
-    eachInRadius(function(lat,lng,role){ if(role===0)c++; else if(role===1)w++; else b++; });
-    return {customers:c+b, workers:w+b, total:(c+b)+(w+b)};
+    var mi=Math.max(1,Math.min(25,Math.round(RADIUS/1609.34)));
+    var c=_aud.rings.customers[mi-1]||0, w=_aud.rings.workers[mi-1]||0;
+    return {customers:c, workers:w, total:c+w};
   }
   function setText(id,n){ var el=document.getElementById(id); if(el) el.textContent=Number(n).toLocaleString(); }
   function updateCounts(animate){
+    if(!_aud) return;
     var k=computeCounts();
     if(animate){ animateCount('audience-count',k.customers); animateCount('worker-count',k.workers); animateCount('audience-total',k.total); }
     else { setText('audience-count',k.customers); setText('worker-count',k.workers); setText('audience-total',k.total); }
@@ -5448,6 +5531,27 @@
              that this key would have 422'd the whole submission, and the other two were
              accepted and silently dropped. */
           channel_source: data.source,
+          /* ⛔ THE FOURTH FIELD THIS FORM VALIDATED AND NEVER SENT. The checkbox
+             above (#regAddrMobile) decides client-side whether an address is
+             required — and then this payload dropped it, so the server always saw
+             a FIXED business. Same shape as owner_dob, owner_address,
+             already_gopher and channel_source before it, each documented a few
+             lines up: on the intake allowlist, no 422, nothing stored.
+
+             ⚠️ WORSE THAN THE OTHERS, because it made the two halves disagree
+             about one rule. Tick mobile and leave the address blank: the form lets
+             you through, the server never hears about it, and 422s "Business
+             address is required (or tick that your business is mobile)" — telling
+             the merchant to tick a box they just ticked. Tick it AND give an
+             address: stored as NOT mobile, silently. MD1, the first real merchant
+             deal, was filed exactly that way.
+
+             It also stranded both halves of the food-truck path shipped
+             2026-08-28: the customer-supplied pickup field, and the geocode
+             fallback that lets a mobile merchant's deal be seen at all. Both key
+             off a flag that never arrived. */
+          address_is_mobile:
+            (modal.querySelector('#regAddrMobile') || {}).checked || undefined,
           /* The S3 key minted by POST /users/deals/logo — never a filename and never a
              data URL. The server re-checks it belongs to this caller. Omitted when no
              logo was uploaded; a deal without one is still a valid submission. */
@@ -6075,7 +6179,7 @@
           <div class="ps-ico">📣</div>
           <div class="ps-body">
             <h4>Bid on the Deals Home Page category card</h4>
-            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind — and every bid earns you a featured month, no matter the amount.</p>
+            <p>Each month the top spot for your category on the Deals Home Page goes up for bid. The current top bid is always shown — never blind. <b>Every top bid earns you a featured month, no matter the amount</b> — one winner per category, decided by whoever is leading when bidding closes on the 20th. A bid is a commitment to pay if you win, and you are only charged if you do.</p>
           </div>
           <button class="ps-btn" data-jump="advertise">Learn more</button>
         </div>
@@ -6488,7 +6592,7 @@
             <span class="bid-month" id="bidMonth"></span>
             <button class="bid-cta" id="bidStart">Place a bid &rarr;</button>
           </div>
-          <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal. Every business bids on its own category card &mdash; yours is <b>Restaurants &amp; Food Trucks</b>.</p>
+          <p class="bid-note">Live standings &mdash; the leading bid for each category is shown openly. Top bid in each category will be featured on all Gopher Marketplace app and web platforms next month. Top bid overall will headline as our Featured Deal. Every business bids on its own category card &mdash; yours is <b id="bidViewerCat">Restaurants &amp; Food Trucks</b>.</p>
           <div class="bid-layout">
             <div class="bid-left">
               <div class="bid-board" id="bidBoard"></div>
@@ -6531,6 +6635,22 @@
             <label for="bidAmount">Your monthly bid</label>
             <div class="bid-amount-row"><span class="bid-dollar">$</span><input type="number" id="bidAmount" min="1" step="5" placeholder="0"></div>
             <div class="nd-hint" id="bidAmountHint"></div>
+          </div>
+          <!-- ⛔ THE COMMITMENT, SHOWN BEFORE IT IS MADE. Nothing is charged at
+               bid time: a card authorization expires in about 7 days while
+               bidding runs across a month to the 20th, so an early bid could
+               not hold one (Ruling 7). What makes a win collectable instead is
+               this acceptance, recorded as placement_bids.terms_accepted_at.
+               The server REFUSES a bid without it (422) — so a merchant must be
+               shown what they are agreeing to, not have it sent on their
+               behalf. -->
+          <div class="nd-field bid-terms">
+            <label for="bidTerms" style="display:flex;gap:9px;align-items:flex-start;font-weight:600;cursor:pointer">
+              <input type="checkbox" id="bidTerms" style="margin-top:3px;flex:none">
+              <span>I understand a bid is a <b>commitment, not a charge</b>. Nothing is charged now.
+                If my bid is the top bid in my category when bidding closes on the 20th, I agree to
+                pay it for the following month&rsquo;s placement.</span>
+            </label>
           </div>
           <div class="biz-form-actions">
             <button class="nd-submit bid-place" id="bidPlace">Place bid &rarr;</button>
@@ -7777,10 +7897,50 @@ var PAY_BADGES = {
     });
   }
 
+  /* ⛔ A SIGNED-IN MERCHANT MUST NEVER SEE THE SHOWROOM.
+     Every failure path here used to `return` quietly — no token, a non-ok
+     response, or a throw — and each one left the d1/d2/d3 demo deals on screen.
+     The owner signed in on 2026-08-30 with a real account holding SIX real deals
+     (two live) and saw three fake restaurant offers, with nothing on screen
+     saying anything had gone wrong.
+
+     That is the same false-success shape as the campaign console reporting
+     "Sent" on a 500: the comfortable fallback is indistinguishable from success,
+     so the failure never gets investigated. A prospect who is signed OUT should
+     see the showroom; a merchant who is signed IN must see their deals or an
+     honest error naming why. */
+  function _myDealsError(msg){
+    MY_DEALS.length = 0;
+    _liveDealsCache = [];
+    /* The SAME host renderMyDeals writes to, and the same "keep the header"
+       rule — the "+ New deal" button in it already has a listener bound. */
+    var host = document.querySelector('[data-pane="mydeals"] .dash-block');
+    if(host){
+      Array.prototype.slice.call(host.children).forEach(function(n){
+        if(!n.classList.contains('dash-block-head')) host.removeChild(n);
+      });
+      var box = document.createElement('div');
+      box.style.cssText = 'padding:14px 16px';
+      box.innerHTML = '<div style="font-weight:700;color:#a8071a">We could not load your deals.</div>'
+        + '<div style="font-size:13px;color:#424242;margin-top:4px">' + mdEsc(msg) + '</div>'
+        + '<div style="font-size:13px;color:#424242;margin-top:6px">Your deals are safe \u2014 this is a display problem. '
+        + 'Reload the page, or reply to your Gopher email and we will sort it out.</div>';
+      host.appendChild(box);
+    }
+    if(typeof populateBidDeals === 'function') populateBidDeals();
+  }
+
   function loadMyDeals(){
-    if(typeof _authToken === 'undefined' || !_authToken) return;   // demo session: showroom stands
+    if(typeof _authToken === 'undefined' || !_authToken){
+      /* Signed OUT is the one case the showroom is correct for. */
+      return;
+    }
     apiCall('/users/deals/mine', { method: 'GET' }).then(function(r){
-      if(!r.ok) return;   // silent: a failed load must not blank a working page
+      if(!r.ok){
+        _myDealsError('The server answered ' + (r.status || 'an error')
+          + (r.body && r.body.message ? ' \u2014 ' + r.body.message : '') + '.');
+        return;
+      }
       var deals = (r.body && r.body.deals) || [];
       _liveDealsCache = deals;   // the modals prefill from this
       renderMyDeals(deals);
@@ -7796,7 +7956,9 @@ var PAY_BADGES = {
         });
       });
       if(typeof populateBidDeals === 'function') populateBidDeals();
-    }).catch(function(){ /* keep the showroom */ });
+    }).catch(function(e){
+      _myDealsError('The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+    });
   }
   /* ═══════════════════════════════════════════════════════════════════════
      PORTAL LIVE — the owner's real access (owner ruling 2026-08-25, all four:
@@ -7960,19 +8122,248 @@ var PAY_BADGES = {
       var av = document.getElementById('ph-avatar-img');
       if(av){ if(d.profile_photo){ av.src = d.profile_photo; } else { av.removeAttribute('src'); } }
     });
-    /* Payment: the honest state. Billing exists when the placement auction
-       does; showing a real merchant fake cards would be worse than nothing. */
-    var pay = document.getElementById('payMethodsList');
-    if(pay){
-      pay.innerHTML = '<div class="deal-row"><div class="deal-meta">'
-        + '<div class="dm-title">No payment method on file yet</div>'
-        + '<div class="dm-sub">Billing starts with featured-placement bidding at launch. '
-        + 'Card entry connects to Stripe here — nothing is charged before you add one and win a bid.</div>'
-        + '</div></div>';
-      var addBtn = document.getElementById('addPayBtn');
-      if(addBtn){ addBtn.onclick = function(){ alert('Card entry opens at launch — this is where the Stripe form plugs in.'); }; }
-    }
+    /* Payment: real cards now. This pane showed the showroom's fake wallets to
+       signed-out prospects and, for a signed-in merchant, an honest placeholder
+       whose Add button opened an alert — while the copy above it promised
+       "winning bids are billed to your default method below". Bidding is now
+       refused without a card (backend MR !452), so this had to become real. */
+    loadPayMethods();
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PAYMENT METHODS — Stripe Elements, so the card never touches our servers.
+
+     ⛔ NOT the /users/add_card endpoint the mobile apps use. That one takes the
+     raw number, expiry and CVC in the request body and builds the PaymentMethod
+     server-side; the apps are inside PCI scope because of it. The same form on a
+     public web page would pull gophergo.io in with them — SAQ D instead of
+     SAQ A — for one card box on a merchant portal.
+
+     Here the browser confirms a SetupIntent straight against Stripe
+     (POST /users/cards/setup_intent, MR !453) and Stripe attaches the resulting
+     method to the customer. Nothing card-shaped is ever posted to our API.
+
+     ⚠️ stripe.js is loaded LAZILY, on the first click of Add payment method —
+     not on every portal page load. It is a third-party script on a page that
+     also renders merchant data, and most sessions never open this pane.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var _stripeJs = null;
+  function loadStripeJs(){
+    if(_stripeJs) return _stripeJs;
+    _stripeJs = new Promise(function(resolve, reject){
+      if(window.Stripe) return resolve(window.Stripe);
+      var sc = document.createElement('script');
+      sc.src = 'https://js.stripe.com/v3/';
+      sc.onload = function(){ window.Stripe ? resolve(window.Stripe) : reject(new Error('Stripe.js loaded but did not initialise')); };
+      /* A blocked or failed script must say so. Silence here reads as a frozen
+         button, and the merchant retries instead of telling us. */
+      sc.onerror = function(){ _stripeJs = null; reject(new Error('Could not load Stripe. An ad blocker or network filter may be blocking js.stripe.com.')); };
+      document.head.appendChild(sc);
+    });
+    return _stripeJs;
+  }
+
+  function payCardLabel(pm){
+    var c = pm && pm.card ? pm.card : {};
+    var brand = (c.brand || 'card').replace(/^./, function(x){ return x.toUpperCase(); });
+    var exp = (c.exp_month && c.exp_year) ? ('  ·  expires ' + c.exp_month + '/' + String(c.exp_year).slice(-2)) : '';
+    return { name: brand + ' \u2022\u2022\u2022\u2022 ' + (c.last4 || '****'), sub: 'Card on file' + exp };
+  }
+
+  /* A card Stripe still holds but that has lapsed is not a usable method — the
+     same rule the backend applies when it decides whether a bid may be placed
+     (helpers/merchant_billing.js). Shown, but flagged, so the merchant can see
+     WHY bidding is refused rather than being told only that it is. */
+  function payIsExpired(pm){
+    var c = pm && pm.card ? pm.card : {};
+    if(!c.exp_year || !c.exp_month) return false;
+    var now = new Date(), y = +c.exp_year, m = +c.exp_month;
+    return (y < now.getFullYear()) || (y === now.getFullYear() && m < (now.getMonth() + 1));
+  }
+
+  function renderLivePayMethods(methods, note){
+    var el = document.getElementById('payMethodsList'); if(!el) return;
+    if(note){
+      el.innerHTML = '<div class="deal-row"><div class="deal-meta">'
+        + '<div class="dm-title">' + mdEsc(note.title) + '</div>'
+        + '<div class="dm-sub">' + mdEsc(note.sub) + '</div></div></div>';
+      return;
+    }
+    if(!methods.length){
+      el.innerHTML = '<div class="deal-row"><div class="deal-meta">'
+        + '<div class="dm-title">No payment method on file</div>'
+        + '<div class="dm-sub">Add one to bid on featured placement. Nothing is charged when you '
+        + 'bid \u2014 only if your bid is the top bid in your category when bidding closes on the 20th.</div>'
+        + '</div></div>';
+      return;
+    }
+    el.innerHTML = methods.map(function(pm){
+      var L = payCardLabel(pm), dead = payIsExpired(pm);
+      return '<div class="pay-card' + (pm._default ? ' default' : '') + '">'
+        + '<span class="pc-icon card">' + mdEsc((pm.card && pm.card.brand ? pm.card.brand : 'card').slice(0,2).toUpperCase()) + '</span>'
+        + '<div class="pc-body"><div class="pc-name">' + mdEsc(L.name) + '</div>'
+        +   '<div class="pc-sub"' + (dead ? ' style="color:#a8071a"' : '') + '>'
+        +     mdEsc(L.sub) + (dead ? ' \u2014 expired, bids will be refused' : '') + '</div></div>'
+        + (pm._default ? '<span class="pc-default">Default</span>' : '')
+        + '<div class="pc-actions">'
+        +   (pm._default ? '' : '<button class="pc-action" type="button" data-pm-default="' + mdEsc(pm.id) + '">Set default</button>')
+        +   '<button class="pc-action" type="button" data-pm-remove="' + mdEsc(pm.id) + '">Remove</button>'
+        + '</div></div>';
+    }).join('');
+  }
+
+  function loadPayMethods(){
+    if(typeof _authToken === 'undefined' || !_authToken) return;
+    var el = document.getElementById('payMethodsList');
+    if(el) el.innerHTML = '<div class="deal-row"><div class="deal-meta"><div class="dm-sub">Loading your payment methods\u2026</div></div></div>';
+    /* The list endpoint is keyed by the Stripe customer id, and the merchant may
+       not have one yet — setup_intent creates it on demand, so ask that first
+       and use the id it returns. */
+    apiCall('/users/cards/setup_intent', { method:'POST', body:{} }).then(function(r){
+      if(!r.ok || !r.body || !r.body.data || !r.body.data.customer_id){
+        renderLivePayMethods([], { title:'We could not load your payment methods.',
+          sub: apiMessage(r) + ' Your cards are safe \u2014 this is a display problem.' });
+        return;
+      }
+      _paySetup = r.body.data;   // client_secret + publishable_key, reused by the Add flow
+      return apiCall('/users/payment_methods/list/' + encodeURIComponent(r.body.data.customer_id), { method:'GET' })
+        .then(function(lr){
+          if(!lr.ok){
+            renderLivePayMethods([], { title:'We could not load your payment methods.',
+              sub: apiMessage(lr) + ' Your cards are safe \u2014 this is a display problem.' });
+            return;
+          }
+          var list = (lr.body && lr.body.data && lr.body.data.payment_methods) || [];
+          renderLivePayMethods(list);
+        });
+    }).catch(function(e){
+      renderLivePayMethods([], { title:'We could not load your payment methods.',
+        sub:'The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.' });
+    });
+  }
+  var _paySetup = null;
+
+  /* The Add flow. Mounts a Stripe card Element into the pane, confirms the
+     SetupIntent in the browser, then re-reads the list from Stripe rather than
+     assuming success — the source of truth is Stripe, not this page. */
+  function openAddCard(){
+    var host = document.getElementById('payMethodsList');
+    var btn = document.getElementById('addPayBtn');
+    if(!host) return;
+    if(!_paySetup || !_paySetup.client_secret){
+      toastPay('Still loading your billing profile — try again in a moment.');
+      loadPayMethods();
+      return;
+    }
+    if(btn){ btn.disabled = true; btn.textContent = 'Loading card form\u2026'; }
+
+    loadStripeJs().then(function(Stripe){
+      var stripe = Stripe(_paySetup.publishable_key);
+      var elements = stripe.elements();
+      host.insertAdjacentHTML('afterbegin',
+        '<div class="pay-card" id="payAddBox" style="display:block;padding:14px 16px">'
+        + '<div style="font-weight:700;margin-bottom:8px">Add a card</div>'
+        + '<div id="payCardEl" style="padding:11px 12px;border:1px solid var(--line,#e6eaee);border-radius:9px;background:#fff"></div>'
+        + '<div id="payCardErr" style="color:#a8071a;font-size:12.5px;margin-top:7px" hidden></div>'
+        + '<div style="font-size:11.5px;color:#666;margin-top:9px;line-height:1.5">'
+        +   'Your card details go straight to Stripe and are never sent to Gopher. '
+        +   'Nothing is charged now \u2014 only if your bid is the top bid in your category when bidding closes on the 20th.</div>'
+        + '<div style="margin-top:11px;display:flex;gap:8px">'
+        +   '<button class="nd-submit" id="payCardSave" type="button">Save card</button>'
+        +   '<button class="biz-cancel" id="payCardCancel" type="button">Cancel</button>'
+        + '</div></div>');
+      var card = elements.create('card', { hidePostalCode:false });
+      card.mount('#payCardEl');
+      if(btn){ btn.disabled = true; btn.textContent = '+ Add payment method'; }
+
+      var errEl = document.getElementById('payCardErr');
+      var showErr = function(m){ if(errEl){ errEl.textContent = m; errEl.hidden = false; } };
+      card.on('change', function(ev){ if(ev.error) showErr(ev.error.message); else if(errEl) errEl.hidden = true; });
+
+      document.getElementById('payCardCancel').onclick = function(){
+        card.unmount(); var b=document.getElementById('payAddBox'); if(b) b.remove();
+        if(btn){ btn.disabled = false; }
+      };
+      document.getElementById('payCardSave').onclick = function(){
+        var save = this; save.disabled = true; save.textContent = 'Saving\u2026';
+        if(errEl) errEl.hidden = true;
+        stripe.confirmCardSetup(_paySetup.client_secret, { payment_method:{ card:card } })
+          .then(function(res){
+            if(res.error){
+              /* Stripe's own message names the real problem (declined, expired,
+                 3DS failed). Ours would only be vaguer. */
+              showErr(res.error.message || 'That card could not be saved.');
+              save.disabled = false; save.textContent = 'Save card';
+              return;
+            }
+            card.unmount(); var b=document.getElementById('payAddBox'); if(b) b.remove();
+            if(btn){ btn.disabled = false; }
+            toastPay('Card saved. You can now bid on featured placement.');
+            /* ⛔ Re-read from Stripe rather than pushing the new card onto the
+               list optimistically. A SetupIntent that succeeds in the browser
+               but whose attach did not land would leave the merchant looking at
+               a card that will not be there on the 20th. */
+            _paySetup = null;
+            loadPayMethods();
+          })
+          .catch(function(e){
+            showErr('That card could not be saved' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+            save.disabled = false; save.textContent = 'Save card';
+          });
+      };
+    }).catch(function(e){
+      if(btn){ btn.disabled = false; btn.textContent = '+ Add payment method'; }
+      renderLivePayMethods([], { title:'Card entry could not start.',
+        sub:(e && e.message) || 'Stripe could not be reached.' });
+    });
+  }
+
+  function toastPay(msg){
+    var t = document.getElementById('toast');
+    if(!t){ alert(msg); return; }
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3200);
+  }
+
+  /* Delegated once on the pane — renderLivePayMethods replaces its innerHTML on
+     every reload, so per-button handlers would be discarded and re-added. */
+  (function bindPayPane(){
+    var pane = document.getElementById('payMethodsList');
+    if(!pane || pane.__payBound) return;
+    pane.__payBound = true;
+    pane.addEventListener('click', function(e){
+      var setBtn = e.target.closest && e.target.closest('[data-pm-default]');
+      var rmBtn  = e.target.closest && e.target.closest('[data-pm-remove]');
+      if(setBtn){
+        var pm = setBtn.getAttribute('data-pm-default');
+        setBtn.disabled = true; setBtn.textContent = 'Setting\u2026';
+        apiCall('/users/select_payment_method', { method:'POST', body:{ payment_method: pm } })
+          .then(function(r){
+            if(!r.ok){ toastPay('Could not set the default \u2014 ' + apiMessage(r)); setBtn.disabled=false; setBtn.textContent='Set default'; return; }
+            toastPay('Default payment method updated.');
+            _paySetup = null; loadPayMethods();
+          })
+          .catch(function(){ toastPay('Could not set the default.'); setBtn.disabled=false; setBtn.textContent='Set default'; });
+      }
+      if(rmBtn){
+        var pmid = rmBtn.getAttribute('data-pm-remove');
+        /* ⚠️ Confirmed, because removing the only card silently stops the
+           merchant being able to bid — and if they already hold a top bid, it
+           stops us billing it. */
+        if(!window.confirm('Remove this card? If it is your only one you will not be able to bid on featured placement.')) return;
+        rmBtn.disabled = true; rmBtn.textContent = 'Removing\u2026';
+        apiCall('/users/detach/' + encodeURIComponent(pmid), { method:'DELETE' })
+          .then(function(r){
+            if(!r.ok){ toastPay('Could not remove the card \u2014 ' + apiMessage(r)); rmBtn.disabled=false; rmBtn.textContent='Remove'; return; }
+            toastPay('Card removed.');
+            _paySetup = null; loadPayMethods();
+          })
+          .catch(function(){ toastPay('Could not remove the card.'); rmBtn.disabled=false; rmBtn.textContent='Remove'; });
+      }
+    });
+    var add = document.getElementById('addPayBtn');
+    if(add) add.onclick = openAddCard;
+  })();
 
   /* ── USERS & ACCESS: the demo array becomes the real roster ─────────────── */
   function hydrateUsers(){
@@ -8082,6 +8473,7 @@ var PAY_BADGES = {
   function portalLiveEnter(){
     hydrateProfile();
     hydrateUsers();
+    if(typeof loadBidBoard === 'function') loadBidBoard();
   }
 
   function money(n){ return '$' + Number(n||0).toLocaleString('en-US'); }
@@ -8093,10 +8485,97 @@ var PAY_BADGES = {
 
   if(bidMonthEl){ bidMonthEl.textContent = GopherBidBrain.closeLabel(); }
 
+  /* ⛔ A SIGNED-IN MERCHANT MUST NEVER SEE THE SHOWROOM AUCTION.
+
+     The board rendered from the demo seed for everyone, so the owner signed in
+     on 2026-08-30 and saw "You · My Way Tavern" holding Restaurants at $410 —
+     none of it his. On My Deals the same fallback showed the wrong list; here it
+     is worse, because these standings are what a merchant reads before deciding
+     what to bid. An invented top bid is a number someone spends real money to
+     beat.
+
+     Signed OUT is the one case the seed is correct for: a prospect looking at
+     the showroom. Signed IN, this loads the real settlement or says why it
+     could not — never both, and never neither. */
+  function _bidBoardError(msg){
+    if(!bidBoard) return;
+    bidBoard.innerHTML =
+      '<div style="grid-column:1/-1;padding:14px 16px;border:1px solid #ffccc7;background:#fff5f5;border-radius:10px">'
+      + '<div style="font-weight:700;color:#a8071a">We could not load the bid standings.</div>'
+      + '<div style="font-size:13px;color:#424242;margin-top:4px">' + mdEsc(msg) + '</div>'
+      + '<div style="font-size:13px;color:#424242;margin-top:6px">Your bids are safe \u2014 this is a display '
+      + 'problem. Bidding is closed on this screen until the real standings load, because bidding against '
+      + 'numbers we cannot verify is worse than not bidding.</div></div>';
+    if(bidForm) bidForm.hidden = true;
+  }
+
+  function loadBidBoard(){
+    if(typeof _authToken === 'undefined' || !_authToken) return;  /* showroom */
+    apiCall('/users/deals/bids/board', { method:'GET' }).then(function(r){
+      /* Not just !r.ok: a 200 whose body has no board is still a failure, and
+         the one that would silently leave the showroom on screen. */
+      if(!r.ok || !r.body || !Array.isArray(r.body.board)){
+        _bidBoardError(r.ok ? 'The server replied without any standings.' : apiMessage(r));
+        return;
+      }
+      GopherBidBrain.setLive(r.body);
+      /* The viewer's category is the server's answer, not a demo constant — the
+         category lock on every card is computed from it.
+
+         ⚠️ null is a REAL answer, not a missing one: a merchant with no approved
+         deal yet has no category and can bid nowhere. Leaving the demo value in
+         place would tell them "yours is Restaurants & Food Trucks", which is
+         simply untrue of them. */
+      BID_VIEWER.category = r.body.viewerCategory || null;
+      /* Drop the showroom name on a live session so nothing downstream can pick
+         it up and present a demo tavern as this merchant. */
+      BID_VIEWER.name = null;
+      /* ⚠️ THE PROSE HAS TO MOVE TOO. The intro paragraph named the demo
+         category in static markup, so a live board could read "Retail Merchants"
+         while the sentence above it insisted "yours is Restaurants & Food
+         Trucks" — caught on screen, not by any assertion. A rendered board and
+         the copy around it must come from the same source. */
+      var vcat = document.getElementById('bidViewerCat');
+      if(vcat){
+        if(BID_VIEWER.category){
+          vcat.textContent = BID_VIEWER.category;
+        } else {
+          /* No approved deal yet — there is no category to name, and inventing
+             one is how this went wrong in the first place. */
+          var note = vcat.parentNode;
+          if(note) note.innerHTML = 'Live standings \u2014 the leading bid for each category is shown '
+            + 'openly. Top bid in each category will be featured on all Gopher Marketplace app and web '
+            + 'platforms next month. Top bid overall will headline as our Featured Deal. '
+            + '<b>You can bid once one of your deals is approved</b> \u2014 a business bids on its own '
+            + 'category card.';
+        }
+      }
+      renderBidBoard();
+      if(typeof syncBidForm === 'function' && bidDeal && bidDeal.value) syncBidForm();
+    }).catch(function(e){
+      _bidBoardError('The request did not complete' + (e && e.message ? ' \u2014 ' + e.message : '') + '.');
+    });
+  }
+
   function renderBidBoard(){
     if(!bidBoard) return;
     bidBoard.innerHTML='';
-    GopherBidBrain.board(BID_VIEWER).forEach(function(c){
+    var cards = GopherBidBrain.board(BID_VIEWER);
+    /* An empty board is a real state on a live auction — nobody has bid this
+       month yet — and an empty grid with no words reads as a broken page. Only
+       possible when live; the seed always has rows. */
+    if(!cards.length){
+      bidBoard.innerHTML =
+        '<div style="grid-column:1/-1;padding:14px 16px;border:1px dashed #d9d9d9;border-radius:10px;color:#424242">'
+        + '<div style="font-weight:700">No bids yet this month.</div>'
+        + '<div style="font-size:13px;margin-top:4px">'
+        + (BID_VIEWER.category
+            ? 'The first bid on the ' + mdEsc(BID_VIEWER.category) + ' card takes the lead.'
+            : 'Once one of your deals is approved you can bid on its category card.')
+        + '</div></div>';
+      return;
+    }
+    cards.forEach(function(c){
       var card=document.createElement('div');
       card.className='bid-card'+(c.featured?' featured':(c.leading?' leading':''))+(c.leading?' has-sticker':'');
       card.innerHTML=
@@ -8107,7 +8586,10 @@ var PAY_BADGES = {
         '<div class="bid-holder'+(c.mine?' mine':'')+'">'+(c.mine?'You hold this spot':'Held by '+esc(c.holder))+'</div>'+
         (c.canBid
           ? '<button class="bid-btn" data-cat="'+esc(c.category)+'">'+(c.mine?'Raise your bid':'Bid here')+'</button>'
-          : '<span class="bid-cat-lock" title="Businesses bid in their own category \u2014 yours is '+esc(BID_VIEWER.category)+'">Not your category</span>');
+          : '<span class="bid-cat-lock" title="'+(BID_VIEWER.category
+                ? 'Businesses bid in their own category \u2014 yours is '+esc(BID_VIEWER.category)
+                : 'Bidding opens on your own category once one of your deals is approved')
+             +'">'+(BID_VIEWER.category?'Not your category':'No category yet')+'</span>');
       bidBoard.appendChild(card);
     });
   }
@@ -8144,21 +8626,84 @@ var PAY_BADGES = {
     $('bidStart').addEventListener('click', function(){ openBidForm(); });
     bidDeal.addEventListener('change', syncBidForm);
     $('bidCancel').addEventListener('click', function(){ bidForm.hidden=true; });
+    function _bidToast(msg){
+      toast.textContent=msg;
+      toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 3000);
+    }
     $('bidPlace').addEventListener('click', function(){
       var d=dealById(bidDeal.value); if(!d){ alert('Pick a deal to feature.'); return; }
       var amt=parseInt(bidAmount.value,10);
       if(!amt || amt<1){ alert('Enter a bid amount.'); return; }
-      /* Deals are always the merchant's own category, so the brain's category
-         lock only rejects here if that invariant ever breaks. */
+      var terms=$('bidTerms');
+      if(terms && !terms.checked){
+        alert('Please confirm you agree to pay if your bid wins \u2014 that commitment is what holds the spot, since nothing is charged at bid time.');
+        return;
+      }
+
+      /* ⛔ A LIVE BID IS SETTLED SERVER-SIDE, ALWAYS. The browser does not get to
+         decide whether a bid leads: it records a commitment to pay, and the only
+         thing that can rank it against everyone else's is the server. The brain
+         refuses to do client math on a live board for exactly this reason.
+
+         `leading` comes back from the same settlement that draws the board, so
+         the toast and the card cannot tell the merchant different things. */
+      if(GopherBidBrain.isLive()){
+        var btn=this; btn.disabled=true;
+        apiCall('/users/deals/bids', { method:'POST', body:{
+          amount_cents: amt*100,
+          accept_terms: true,
+          category: d.category,
+          deal_id: d.id
+          /* ⛔ holder_name IS DELIBERATELY NOT SENT.
+
+             BID_VIEWER.name is the showroom constant 'My Way Tavern' and nothing
+             ever replaces it with the real business, so sending it would stamp
+             one demo tavern's name onto every real merchant's bid — the same
+             demo-leak that put fake deals in front of the owner on 2026-08-30,
+             except this one would be visible to OTHER merchants on the public
+             board.
+
+             It should not come from the client at all: the server displays this
+             name to everyone, so a caller-set value lets a merchant post under a
+             competitor's name. Omitted, `placement_bids.holder_name` stays null
+             and the board falls back to "A nearby merchant"; the merchant's own
+             card still reads "You hold this spot", which is computed from the
+             owner id. ⚠️ Deriving the real business name server-side from the
+             owner's account is the proper fix and is NOT built. */
+        }}).then(function(r){
+          btn.disabled=false;
+          if(!r.ok){
+            alert('Your bid was not placed \u2014 ' + apiMessage(r) + '\n\nNothing has been committed.');
+            return;
+          }
+          _bidToast(r.body && r.body.leading
+            ? 'Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+            : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.');
+          bidAmount.value=''; if(terms) terms.checked=false; bidForm.hidden=true;
+          loadBidBoard();   /* redraw from the server, never from the guess */
+        }).catch(function(e){
+          btn.disabled=false;
+          alert('Your bid was not placed \u2014 the request did not complete'
+            + (e && e.message ? ' \u2014 ' + e.message : '') + '. Nothing has been committed.');
+        });
+        return;
+      }
+
+      /* Showroom (signed out). Deals are always the merchant's own category, so
+         the brain's category lock only rejects here if that invariant breaks. */
       var res = GopherBidBrain.placeBid(BID_VIEWER, d.category, amt);
       if(!res.ok){ alert('You can only bid on your own category \u2014 '+BID_VIEWER.category+'.'); return; }
-      if(res.beatsTop){
-        toast.textContent='Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6';
-      } else {
-        toast.textContent='Bid placed \u2014 '+money(amt)+'. Featured win locked in this month \u2705';
-      }
-      toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 3000);
-      renderBidBoard(); syncBidForm(); bidAmount.value=''; bidForm.hidden=true;
+      /* ⛔ THIS SAID "Featured win locked in this month" on a losing bid. Ruling 7
+         retired that promise: the top bid takes the category card, plus the top
+         overall bid as its own Featured Deal. Telling a merchant their losing bid
+         had won is a promise the model cannot keep, and they would find out a
+         month later. */
+      _bidToast(res.beatsTop
+        ? 'Top bid on the '+d.category+' card \u2014 '+money(amt)+' \uD83C\uDFC6'
+        : 'Bid placed \u2014 '+money(amt)+'. You are not leading '+d.category+' yet \u2014 only the leading bid wins.');
+      renderBidBoard(); syncBidForm(); bidAmount.value='';
+      if(terms) terms.checked=false;
+      bidForm.hidden=true;
     });
   }
 
