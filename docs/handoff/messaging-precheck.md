@@ -83,8 +83,12 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > it is deliberately NOT in the Terms yet (the Terms describe what the product does, not what it will do):
 > > When such content is detected before you send, the app will tell you and let you edit your message. If you send it anyway,
 > > it is delivered marked as flagged, Gopher, Inc. is notified, and, if the request has not yet been accepted and the message
-> > proposes payment or a transaction outside the app, the conversation about that request is placed on hold until Gopher, Inc.
+> > proposes payment or a transaction outside the app, the conversation about that request may be placed on hold until Gopher, Inc.
 > > reviews it. To ask us to review, contact support@gophergo.io.
+>
+> **Owner 2026-10-08 (pre-send pop-up picks, artifact `MSQDzwW68CwjZW968NwT88`):** the pop-up says the conversation "may" pause, so the
+> paragraph above says "may be placed on hold" (was "is placed on hold") — the two must read the same. Pop-up layout = a notice above the
+> message box; Send as-is = a plain text link; Edit message pulses green; copy as approved in chat 10/8.
 >
 > **The app's "In-App Messaging Terms" link targets the STATIC page's `#communication` section** (owner 2026-10-08); the WordPress
 > page has no such anchor. Still open (owner has not decided): the live WordPress line that off-app recruiting "will result in
