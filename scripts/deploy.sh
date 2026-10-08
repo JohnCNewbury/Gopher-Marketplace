@@ -2,6 +2,14 @@
 #
 # deploy.sh — publish Final/ to the `main` branch (GitHub Pages).
 #
+# ⛔ OWNER ACTION ONLY. AGENT SESSIONS MUST NOT RUN THIS — INCLUDING THE DRY RUN (2026-10-06).
+#   The dry run is not inert: it fetches, adds a git worktree and stages a full rsync. And its
+#   preflight report is what talks a session into appending --push, which from here publishes the
+#   WORKING TREE to the live site. To find out what a deploy would do, measure it read-only:
+#     git archive origin/main | tar -x -C "$(mktemp -d)"   # then rsync --dry-run --itemize-changes
+#     git hash-object Final/<f>  vs  git rev-parse origin/main:<f>
+#   See the ⛔ banner in CLAUDE.md, "Deploy & verification rules".
+#
 # WHY THIS EXISTS
 #   The deploy copies from the WORKING TREE, not from committed state. On
 #   2026-07-19 that silently shipped 141 uncommitted files to production

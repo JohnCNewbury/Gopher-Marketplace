@@ -230,6 +230,26 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
 
 ## Deploy & verification rules (hoisted 2026-08-26 — these are RULES, not history)
 
+> ### ⛔ DO NOT RUN `scripts/deploy.sh` — not even the dry run (2026-10-06)
+>
+> **Deploying is owner action only.** An agent session must not invoke `scripts/deploy.sh` in any
+> form: no `--push`, and **not the bare dry run either**. If you need to know what a deploy would
+> do, reproduce it read-only instead — check out `origin/main` into a temp dir with `git archive`
+> and run `rsync --dry-run --itemize-changes` with the script's own `PRESERVE` / `EXCLUDE` flags,
+> or compare `git hash-object Final/<f>` against `git rev-parse origin/main:<f>` per file. That is
+> how the 2026-10-06 reconcile measured drift and proved the 28 pending deletions, without
+> touching the deploy path.
+>
+> **Why the dry run is included.** It is not inert: it fetches, creates a git worktree, and stages
+> a full rsync of the tree. More to the point, the preflight's own report is what makes a session
+> feel licensed to add `--push` — and on this repo the gap between those two commands is the whole
+> live site, published from the **working tree**, with no deletion check anywhere in the preflight.
+> Sandbox policy blocks it as a production path; do not look for a way around that, and do not
+> hand a human a `--push` command you have not been asked for.
+>
+> **Ask the owner to run it**, and give them the content evidence alongside the request.
+
+
 These governed every deploy but were buried inside the old session log. They are load-bearing on a
 repo that publishes to **two live hosts** (GitHub Pages + TigerTech) from the **working tree**.
 Fuller narrative for each — the incident that produced it — is in
@@ -260,9 +280,12 @@ Fuller narrative for each — the incident that produced it — is in
 - ⚠️ **The deploy reads the WORKING TREE** (owner decision 2026-07-20, settled). So an
   `--allow-dirty` run publishes whatever other sessions have left uncommitted. Scope-check
   accordingly.
-- ⚠️ **A pinned worktree lacks the gitignored disk-only allowlisted prototype files**
+- ⚠️ ~~**A pinned worktree lacks the gitignored disk-only allowlisted prototype files**
   (`_prototypes/Go/gopher-banner.js`, `_prototypes/Request/gopher-banner.js`) — the preflight aborts
-  until you copy them in from the clone.
+  until you copy them in from the clone.~~ **Fixed 2026-10-06:** both are now tracked, via negation
+  rules beside the ones that already exempt the prototype HTML. They had drifted past "disk-only in
+  a worktree" into **disk-only everywhere** — absent from this clone too, so the preflight aborted
+  here and their only surviving copy was `origin/main`. Restored from it.
 - ⚠️ **A push to `main` publishes to BOTH hosts** (Pages + the TigerTech FTPS workflow) — scope-check
   for two destinations, and content-verify on both.
 - ⚠️ **`git` author does NOT identify a session** — every commit here is "John Newbury". To find
