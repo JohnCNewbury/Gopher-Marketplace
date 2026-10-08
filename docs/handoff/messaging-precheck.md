@@ -38,6 +38,37 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > `messageFlagged` socket event is reused or replaced by the persisted field. Tracking: G40-598 (server
 > gate + HQ alert) blocks G40-399 (the apps); both are in the active sprint.
 
+> **2026-10-08 update 2 (owner) — CONVERSATION BLOCK for payment / circumvention sent as-is on a SUBMITTED order.
+> This SUPERSEDES the 07-16 / 07-19 line "no hard block for this family" — for this one case only.**
+>
+> Owner, verbatim intent: *"If a message says 'pay me off the app using Venmo', the sender's message is flagged
+> with a pop-up on the spot telling them why. They can edit their message right there to avoid the flag. If they send
+> as-is, the message is flagged to Gopher Inc and the receiver's message indicates it is flagged. The conversation is
+> then blocked until an admin unblocks it."* Answers to the five open questions:
+> 1. **Blocks the CONVERSATION** — further messages between those two people on that order. Not the order, not the
+>    account, not the payout.
+> 2. **Trigger: `payment` and `circumvention` only.** Contact, social, conduct and every other category flag as before
+>    and never block.
+> 3. **SUBMITTED (unaccepted) orders only.** A connected order never blocks, whatever is said.
+> 4. **HQ unblocks.** (Cancelling the request already exists as the admin cancel.)
+> 5. **The sender** sees that their conversation is blocked; **the receiver** sees, on the flagged message,
+>    **"This message is currently flagged and under review"** (replacing the generic ⚑ note for a blocked message).
+>
+> **Sequence:** the flagged message IS delivered (flagged, with the receiver's note) and the conversation is blocked
+> from that point. Editing the message before sending so it no longer scores means no flag and no block — the server
+> decides on the text that actually arrives; it never trusts the client.
+>
+> **Defaults chosen where the owner has not yet said (overrule any of these):**
+> - **Not enforced until the sender can be warned first.** The block applies only to a client that reports it showed the
+>   pre-send warning (Stage B apps). Installed builds that cannot warn are flag-only — they would otherwise be blocked
+>   with no chance to edit, which the ruling above forbids. A switch (`CONVERSATION_BLOCK`, OFF by default) gates it.
+> - **Per pair:** the block is on (order, requester, that Gopher); other Gophers on the same order are unaffected.
+> - **No auto-release.** Only HQ lifts it.
+> - **The order stays open** (it can still be accepted); only the conversation is blocked.
+> - **Receiver's note after an unblock:** to be decided with the copy.
+> - **Sender's "blocked" copy:** to be approved by the owner (never names the rule — evasion).
+> Tracking: G40-599 (blocks on G40-598, coordinates with G40-399).
+
 > **2026-07-02 update (G40-35):** scope expanded to **all in-app communication
 > violations** — the off-platform families **plus a `conduct` family** for
 > foul/abusive language. A bare **`$`/dollar amount now flags** (CashApp
