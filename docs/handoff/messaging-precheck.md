@@ -6,6 +6,38 @@ source of truth for the messaging guard; it replaces scattered chat threads.
 Any session can pick the work up by reading this. Ticket-specific red-carpet
 handoff: `docs/handoff/G40-35-messaging-violations.md`._
 
+> **2026-10-08 update (owner) — pre-send guard PULLED FORWARD; the 2026-08-18 "wait for the Connect
+> launch" timing is SUPERSEDED. The 08-18 DESIGN ruling (below) still stands.**
+>
+> **Why:** order 66136 (2026-10-06). A new requester sent a bare phone number (9:33 AM ET) and offered
+> Cash App (9:34 AM). The server guard scored both (75 and 85, boosted by the unconnected-order rule) and
+> wrote two flag rows + the admin@ email — and delivered both messages instantly, because the guard only
+> detects and records. Nobody acted until both accounts were deactivated at 8:47 PM, ~11 hours later.
+> Owner: **a message must be recognized BEFORE sending; the sender is told and can edit; if they send it
+> anyway it is flagged and the recipient sees that it was flagged.** That is exactly this spec; production
+> has none of it (the web pages that have it are prototypes with a bypassable client-side check).
+>
+> **Ruling:** build it now, in two stages, in the order that is safe for installed app builds:
+> 1. **Stage A — server (no app release, backward compatible):** `POST /messages/precheck` reusing the
+>    live scorer (same corpus as HQ, connection-state aware, unconnected-order boost); a **persisted
+>    per-message `flagged`** on `orders_faqs` (the prerequisite this doc has required since July and
+>    that was never built) with a message reference on the flag row; and **send-path ordering** — the
+>    socket `newMessage` path and `POST /faq/message_send` emit to the recipient BEFORE saving/scoring, so
+>    score and stamp first, then emit. All three insert paths go through one helper; the server stamps
+>    `flagged` itself and never trusts the client. Fail-open throughout.
+> 2. **Stage B — both native apps (mobile release):** the pre-send call, the Edit message / Send as-is
+>    pair, and the recipient note rendered from the persisted `flagged` field — copy and behaviour exactly
+>    as specified below.
+>
+> **Interim, until Stage B ships (no app release):** the HQ shim texts + emails the owner within about a
+> minute of every new flag row (order, score, category, accepted or not, author account age — never the
+> message text), so a flag is acted on in minutes, not hours. Built in `serve/` of the Dashboard repo.
+>
+> **Still parked (owner, 2026-08-18):** storing the attempted message text; and homophone / letter-
+> substitution evasion, which needs a classifier. **Open for the Stage A design:** whether the dormant
+> `messageFlagged` socket event is reused or replaced by the persisted field. Tracking: G40-598 (server
+> gate + HQ alert) blocks G40-399 (the apps); both are in the active sprint.
+
 > **2026-07-02 update (G40-35):** scope expanded to **all in-app communication
 > violations** — the off-platform families **plus a `conduct` family** for
 > foul/abusive language. A bare **`$`/dollar amount now flags** (CashApp
