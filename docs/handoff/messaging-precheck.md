@@ -69,6 +69,27 @@ handoff: `docs/handoff/G40-35-messaging-violations.md`._
 > - **Sender's "blocked" copy:** to be approved by the owner (never names the rule — evasion).
 > Tracking: G40-599 (blocks on G40-598, coordinates with G40-399).
 
+> **2026-10-08 update 3 (owner) — TERMS GATE: the Terms must describe the flow BEFORE it is switched on.**
+> Found while auditing the Terms (item 14): the public static Terms promised a message "masked before it reaches the
+> recipient" (never built, and not the design) and screening of physical addresses / dollar amounts (not flagged). Fixed
+> 2026-10-08 in `Final/gopher-terms-of-service.html` §20 — present-tense, true today ("Messages are screened … flagged messages
+> are reviewed … consequences: a warning, restriction or loss of messaging, suspension, permanent removal"), and the "Deactivated
+> Accounts" line no longer promises deletion ("that account may be deactivated. To ask us to reconsider, contact
+> support@gophergo.io"). The live WordPress Terms never carried the masking promise; only its "Deactivated Accounts" sentence
+> changes (paste copies `gophergo-io-terms-CORRECTED*.html`).
+>
+> **Owner-approved paragraph — ADD to §20 of BOTH the static page and the WordPress page at the SAME RELEASE as the pre-send
+> pop-up (G40-399), and BEFORE `CONVERSATION_BLOCK` is switched on.** It describes behaviour that does not exist until then, so
+> it is deliberately NOT in the Terms yet (the Terms describe what the product does, not what it will do):
+> > When such content is detected before you send, the app will tell you and let you edit your message. If you send it anyway,
+> > it is delivered marked as flagged, Gopher, Inc. is notified, and, if the request has not yet been accepted and the message
+> > proposes payment or a transaction outside the app, the conversation about that request is placed on hold until Gopher, Inc.
+> > reviews it. To ask us to review, contact support@gophergo.io.
+>
+> **The app's "In-App Messaging Terms" link targets the STATIC page's `#communication` section** (owner 2026-10-08); the WordPress
+> page has no such anchor. Still open (owner has not decided): the live WordPress line that off-app recruiting "will result in
+> having your account permanently banned" is stricter than the warning-then-deactivation ladder actually used.
+
 > **2026-07-02 update (G40-35):** scope expanded to **all in-app communication
 > violations** — the off-platform families **plus a `conduct` family** for
 > foul/abusive language. A bare **`$`/dollar amount now flags** (CashApp
