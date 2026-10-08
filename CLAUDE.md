@@ -230,7 +230,7 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
 
 ## Deploy & verification rules (hoisted 2026-08-26 — these are RULES, not history)
 
-> ### ⛔ DO NOT RUN `scripts/deploy.sh` — not even the dry run (2026-10-06)
+> ### ⛔ DO NOT RUN `scripts/deploy.sh` — not even the dry run (owner, 2026-10-08)
 >
 > **Deploying is owner action only.** An agent session must not invoke `scripts/deploy.sh` in any
 > form: no `--push`, and **not the bare dry run either**. If you need to know what a deploy would

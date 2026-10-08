@@ -2,7 +2,7 @@
 #
 # deploy.sh — publish Final/ to the `main` branch (GitHub Pages).
 #
-# ⛔ OWNER ACTION ONLY. AGENT SESSIONS MUST NOT RUN THIS — INCLUDING THE DRY RUN (2026-10-06).
+# ⛔ OWNER ACTION ONLY. AGENT SESSIONS MUST NOT RUN THIS — INCLUDING THE DRY RUN (owner, 2026-10-08).
 #   The dry run is not inert: it fetches, adds a git worktree and stages a full rsync. And its
 #   preflight report is what talks a session into appending --push, which from here publishes the
 #   WORKING TREE to the live site. To find out what a deploy would do, measure it read-only:
