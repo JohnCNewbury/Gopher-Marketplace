@@ -6,6 +6,94 @@ source of truth for the messaging guard; it replaces scattered chat threads.
 Any session can pick the work up by reading this. Ticket-specific red-carpet
 handoff: `docs/handoff/G40-35-messaging-violations.md`._
 
+> **2026-10-08 update (owner) — pre-send guard PULLED FORWARD; the 2026-08-18 "wait for the Connect
+> launch" timing is SUPERSEDED. The 08-18 DESIGN ruling (below) still stands.**
+>
+> **Why:** order 66136 (2026-10-06). A new requester sent a bare phone number (9:33 AM ET) and offered
+> Cash App (9:34 AM). The server guard scored both (75 and 85, boosted by the unconnected-order rule) and
+> wrote two flag rows + the admin@ email — and delivered both messages instantly, because the guard only
+> detects and records. Nobody acted until both accounts were deactivated at 8:47 PM, ~11 hours later.
+> Owner: **a message must be recognized BEFORE sending; the sender is told and can edit; if they send it
+> anyway it is flagged and the recipient sees that it was flagged.** That is exactly this spec; production
+> has none of it (the web pages that have it are prototypes with a bypassable client-side check).
+>
+> **Ruling:** build it now, in two stages, in the order that is safe for installed app builds:
+> 1. **Stage A — server (no app release, backward compatible):** `POST /messages/precheck` reusing the
+>    live scorer (same corpus as HQ, connection-state aware, unconnected-order boost); a **persisted
+>    per-message `flagged`** on `orders_faqs` (the prerequisite this doc has required since July and
+>    that was never built) with a message reference on the flag row; and **send-path ordering** — the
+>    socket `newMessage` path and `POST /faq/message_send` emit to the recipient BEFORE saving/scoring, so
+>    score and stamp first, then emit. All three insert paths go through one helper; the server stamps
+>    `flagged` itself and never trusts the client. Fail-open throughout.
+> 2. **Stage B — both native apps (mobile release):** the pre-send call, the Edit message / Send as-is
+>    pair, and the recipient note rendered from the persisted `flagged` field — copy and behaviour exactly
+>    as specified below.
+>
+> **Interim, until Stage B ships (no app release):** the HQ shim texts + emails the owner within about a
+> minute of every new flag row (order, score, category, accepted or not, author account age — never the
+> message text), so a flag is acted on in minutes, not hours. Built in `serve/` of the Dashboard repo.
+>
+> **Still parked (owner, 2026-08-18):** storing the attempted message text; and homophone / letter-
+> substitution evasion, which needs a classifier. **Open for the Stage A design:** whether the dormant
+> `messageFlagged` socket event is reused or replaced by the persisted field. Tracking: G40-598 (server
+> gate + HQ alert) blocks G40-399 (the apps); both are in the active sprint.
+
+> **2026-10-08 update 2 (owner) — CONVERSATION BLOCK for payment / circumvention sent as-is on a SUBMITTED order.
+> This SUPERSEDES the 07-16 / 07-19 line "no hard block for this family" — for this one case only.**
+>
+> Owner, verbatim intent: *"If a message says 'pay me off the app using Venmo', the sender's message is flagged
+> with a pop-up on the spot telling them why. They can edit their message right there to avoid the flag. If they send
+> as-is, the message is flagged to Gopher Inc and the receiver's message indicates it is flagged. The conversation is
+> then blocked until an admin unblocks it."* Answers to the five open questions:
+> 1. **Blocks the CONVERSATION** — further messages between those two people on that order. Not the order, not the
+>    account, not the payout.
+> 2. **Trigger: `payment` and `circumvention` only.** Contact, social, conduct and every other category flag as before
+>    and never block.
+> 3. **SUBMITTED (unaccepted) orders only.** A connected order never blocks, whatever is said.
+> 4. **HQ unblocks.** (Cancelling the request already exists as the admin cancel.)
+> 5. **The sender** sees that their conversation is blocked; **the receiver** sees, on the flagged message,
+>    **"This message is currently flagged and under review"** (replacing the generic ⚑ note for a blocked message).
+>
+> **Sequence:** the flagged message IS delivered (flagged, with the receiver's note) and the conversation is blocked
+> from that point. Editing the message before sending so it no longer scores means no flag and no block — the server
+> decides on the text that actually arrives; it never trusts the client.
+>
+> **Defaults chosen where the owner has not yet said (overrule any of these):**
+> - **Not enforced until the sender can be warned first.** The block applies only to a client that reports it showed the
+>   pre-send warning (Stage B apps). Installed builds that cannot warn are flag-only — they would otherwise be blocked
+>   with no chance to edit, which the ruling above forbids. A switch (`CONVERSATION_BLOCK`, OFF by default) gates it.
+> - **Per pair:** the block is on (order, requester, that Gopher); other Gophers on the same order are unaffected.
+> - **No auto-release.** Only HQ lifts it.
+> - **The order stays open** (it can still be accepted); only the conversation is blocked.
+> - **Receiver's note after an unblock:** to be decided with the copy.
+> - **Sender's "blocked" copy:** to be approved by the owner (never names the rule — evasion).
+> Tracking: G40-599 (blocks on G40-598, coordinates with G40-399).
+
+> **2026-10-08 update 3 (owner) — TERMS GATE: the Terms must describe the flow BEFORE it is switched on.**
+> Found while auditing the Terms (item 14): the public static Terms promised a message "masked before it reaches the
+> recipient" (never built, and not the design) and screening of physical addresses / dollar amounts (not flagged). Fixed
+> 2026-10-08 in `Final/gopher-terms-of-service.html` §20 — present-tense, true today ("Messages are screened … flagged messages
+> are reviewed … consequences: a warning, restriction or loss of messaging, suspension, permanent removal"), and the "Deactivated
+> Accounts" line no longer promises deletion ("that account may be deactivated. To ask us to reconsider, contact
+> support@gophergo.io"). The live WordPress Terms never carried the masking promise; only its "Deactivated Accounts" sentence
+> changes (paste copies `gophergo-io-terms-CORRECTED*.html`).
+>
+> **Owner-approved paragraph — ADD to §20 of BOTH the static page and the WordPress page at the SAME RELEASE as the pre-send
+> pop-up (G40-399), and BEFORE `CONVERSATION_BLOCK` is switched on.** It describes behaviour that does not exist until then, so
+> it is deliberately NOT in the Terms yet (the Terms describe what the product does, not what it will do):
+> > When such content is detected before you send, the app will tell you and let you edit your message. If you send it anyway,
+> > it is delivered marked as flagged, Gopher, Inc. is notified, and, if the request has not yet been accepted and the message
+> > proposes payment or a transaction outside the app, the conversation about that request may be placed on hold until Gopher, Inc.
+> > reviews it. To ask us to review, contact support@gophergo.io.
+>
+> **Owner 2026-10-08 (pre-send pop-up picks, artifact `MSQDzwW68CwjZW968NwT88`):** the pop-up says the conversation "may" pause, so the
+> paragraph above says "may be placed on hold" (was "is placed on hold") — the two must read the same. Pop-up layout = a notice above the
+> message box; Send as-is = a plain text link; Edit message pulses green; copy as approved in chat 10/8.
+>
+> **The app's "In-App Messaging Terms" link targets the STATIC page's `#communication` section** (owner 2026-10-08); the WordPress
+> page has no such anchor. Still open (owner has not decided): the live WordPress line that off-app recruiting "will result in
+> having your account permanently banned" is stricter than the warning-then-deactivation ladder actually used.
+
 > **2026-07-02 update (G40-35):** scope expanded to **all in-app communication
 > violations** — the off-platform families **plus a `conduct` family** for
 > foul/abusive language. A bare **`$`/dollar amount now flags** (CashApp
