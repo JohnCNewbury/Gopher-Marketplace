@@ -8501,7 +8501,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
              display:flex; flex-direction:column; transition:transform .15s, box-shadow .15s; }
   .hv-tile:hover { transform:translateY(-2px); box-shadow:0 8px 20px -6px rgba(0,36,97,.18); }
   .hv-tile:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
-  .hv-art { display:grid; place-items:center; font-size:30px; }
+  /* ⚠️ The glyph is INTERIM. Emptying this box (tried 2026-10-11) left four wide
+     bands of flat colour that looked worse than the placeholder it replaced, so
+     the mark stays until real photography lands. Only 6 of the 8 categories have
+     a usable image in assets/img today (delivery, labor, junk, yard, ride and
+     hero-moving) — home services and custom task have none, and a half-photographed
+     set looks worse than a consistent one. Replace all eight at once. */
+  .hv-art { display:grid; place-items:center; border-bottom:1px solid rgba(0,36,97,.06); }
   .hv-nm { font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; color:var(--navy);
            padding:11px 13px; line-height:1.2; }
   .hv-ds { font-size:11.5px; color:var(--muted); padding:0 13px 11px; margin-top:-7px; }
@@ -8514,17 +8520,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hv-a-ride    {background:linear-gradient(140deg,#CFE0EC,#A2C2D9)}
   .hv-a-other   {background:linear-gradient(140deg,#E9DCE4,#CBAFC2)}
 
-  .hv-grid[data-hview="spot"] { grid-template-columns:repeat(3,1fr); }
-  .hv-grid[data-hview="spot"] .hv-art { height:132px; }
-  .hv-grid[data-hview="spot"] .hv-tile:nth-child(n+4) .hv-art { height:92px; }
+  /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
+     row half empty (3+3+2), which is the "not fitting" the owner called out. Two
+     divides evenly into four full rows and makes Spotlight genuinely the big view,
+     distinct from All-at-once rather than a slightly larger copy of it. If a ninth
+     category is ever added, check this again — 9 breaks 2 as surely as 8 breaks 3. */
+  .hv-grid[data-hview="spot"] { grid-template-columns:repeat(2,1fr); }
+  .hv-grid[data-hview="spot"] .hv-art { height:116px; font-size:40px; }
 
   .hv-grid[data-hview="all"] { grid-template-columns:repeat(4,1fr); gap:12px; }
-  .hv-grid[data-hview="all"] .hv-art { height:74px; font-size:24px; }
+  .hv-grid[data-hview="all"] .hv-art { height:74px; font-size:26px; }
   .hv-grid[data-hview="all"] .hv-nm { font-size:12.5px; padding:9px 11px; }
 
   .hv-grid[data-hview="list"] { grid-template-columns:1fr; gap:8px; }
   .hv-grid[data-hview="list"] .hv-tile { flex-direction:row; align-items:center; gap:12px; padding:9px 12px; }
-  .hv-grid[data-hview="list"] .hv-art { height:38px; width:46px; border-radius:9px; font-size:18px; flex:0 0 auto; }
+  .hv-grid[data-hview="list"] .hv-art { height:38px; width:46px; border-radius:9px; font-size:19px; flex:0 0 auto; border-bottom:0; }
   .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:13px; }
   @media (prefers-reduced-motion:reduce){ .hv-tile{transition:none} .hv-sb{transition:none} }
   @media (max-width:900px){
@@ -21363,7 +21373,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                "So, how can we help you today?" with nothing live, and
                "You have N current requests, M need attention" otherwise. -->
           <h2 class="choose-ask" id="rqChooseAsk">So, how can we help you today?</h2>
-          <p class="choose-sub" id="rqChooseSub">Two ways to go from here.</p>
+          <!-- ⛔ "Two ways to go from here." DROPPED 2026-10-11. It described the
+               two-card chooser, and there is one way now. renderHomeLive() guards
+               this element with if(sub), so its absence is safe; the empty-state
+               headline carries the screen on its own. -->
           <!-- Live-request container. Empty and hidden when nothing is live, so
                the two cards sit exactly where they do today. -->
           <div class="hlive" id="rqHomeLive" hidden></div>
