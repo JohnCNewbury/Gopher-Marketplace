@@ -15254,7 +15254,7 @@ const PAY_BADGES = {
         /* D-038 part 2: under-21 is a DEAD STOP, never the Yes/No confirmation
            (whose "Yes" would route the order to age-restricted Delivery). */
         if(!canSeeAgeRestricted()){
-          if(window.G40_REQ) G40_REQ.ageRestrictedNotEligible(kw);
+          if(window.G40_REQ) G40_REQ.ageRestrictedNotEligible();
           return;
         }
         if(window.__openAgeKeywordModal) window.__openAgeKeywordModal(kw); return;
@@ -15725,31 +15725,26 @@ const PAY_BADGES = {
          of TrustShield and no route to enable it.
          The term is named because a block with no reason is unactionable -- they have
          to know WHICH word to remove. */
-      ageRestrictedNotEligible: function(kw){
-        var safe = String(kw == null ? 'that item' : kw)
-                     .replace(/[&<>"]/g, function(c){
-                       return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; });
-        /* ⚠ BUILT INLINE, not via reqModal(): Connect has NO reqModal helper --
-           that is a gopher-request.html-only function. The first version of this
-           method was copied across from Request and threw "reqModal is not defined"
-           the moment it fired. It parsed clean and the object literal built fine;
-           only calling it showed the fault, which is why this was driven and not
-           just diffed. */
-        var ov = document.createElement('div');
-        ov.className = 'gr-modal-overlay';
-        ov.innerHTML = '<div class="gr-modal">'
-          + '<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">\u26d4</div>'
-          + '<h4>This item can\u2019t be requested</h4>'
-          + '<p class="gr-modal-sub">Your description mentions <b>\u201c' + safe
-          + '\u201d</b>, which is an age-restricted item. Age-restricted items cannot '
-          + 'be requested from this account. Please remove it from your description '
-          + 'to continue.</p>'
-          + '<button type="button" class="gr-modal-btn grx">Got it</button>'
-          + '</div>';
-        ov.addEventListener('click', function(e){
-          if(e.target === ov || e.target.classList.contains('grx')) ov.remove();
-        });
-        document.body.appendChild(ov); ov.hidden = false; return ov; },
+      /* ⛔ OWNER-PICKED WORDING, John 2026-10-11 ~11:2x ET, verbatim and NOT to be
+         reworded: "This request includes an item we can't deliver for you. Please edit
+         your request to continue." One button, "Edit my request".
+         NO term, NO age, NO "21", NO ID, NO "age-restricted" -- the ruling was "Block,
+         neutral words", and he was told it fires on EVERY web category before choosing
+         it. My first version named the matched term and said "age-restricted items
+         cannot be requested from this account"; that is what this replaces.
+         `kw` is deliberately NOT a parameter any more: the sentence cannot mention the
+         term, so passing it would only invite someone to put it back. */
+      /* ⚠ USES gcModal() AND THE gc-* CLASSES, like every sibling in this object.
+         My first version built the overlay inline with Request's gr-* classes, because
+         I had found Connect has no reqModal() and stopped there. It rendered the right
+         SENTENCE and I verified that by reading innerText -- but .gr-modal-overlay,
+         .gr-modal-icon-warn and .gr-modal-btn have ZERO css rules on this page, so it
+         was an unstyled block in the page flow rather than a modal. Reading text is not
+         seeing the render. Connect's helper existed all along: gcModal(). */
+      ageRestrictedNotEligible: function(){
+        return gcModal('<div class="gc-modal-icon">\u26d4</div>'
+          + '<p class="gc-modal-sub">This request includes an item we can\u2019t deliver for you. Please edit your request to continue.</p>'
+          + '<button type="button" class="gc-modal-btn grx">Edit my request</button>'); },
       phoneEntered: function(){ return wirePrimary(gcModal('<div class="gc-modal-icon">📵</div><h4>Remove the phone number</h4><p class="gc-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your worker in-app. Please edit your message to remove it.</p><button type="button" class="gc-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
       paymentNotAuthorized: function(){ return wirePrimary(gcModal('<div class="gc-modal-icon">💳</div><h4>Update your card to keep this request</h4><p class="gc-modal-sub">A worker accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast immediately.</p><button type="button" class="gc-modal-btn grx">Update payment</button>'), function(){ if(window.__openAddPaymentModal) window.__openAddPaymentModal(); }); },
       pickupSameAsDropoff: function(){ return gcModal('<div class="gc-modal-icon">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gc-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gc-modal-btn grx">Got it</button>'); },
