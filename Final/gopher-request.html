@@ -8473,7 +8473,67 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     .hlive-amt { display:none; }
     .hlive-turn { width:38px; }
   }
+  /* ⛔ .choose-two is retained for the Deals return (see the markup note); nothing
+     uses it while the chooser is out. */
   .choose-two { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+
+  /* ── Home category views (owner 2026-10-11, three views like the app's) ──
+     spot = Spotlight (mirrors the app's "Big cards") — the DEFAULT he picked
+     all  = All at once (mirrors "Doubles") — every category, no scroll
+     list = List with history (mirrors "Row with history") */
+  .hv-head { display:flex; align-items:center; gap:14px; margin:0 0 14px; }
+  .hv-lbl { font-family:'Nunito',sans-serif; font-weight:800; font-size:12px;
+            letter-spacing:1px; text-transform:uppercase; color:var(--navy); }
+  .hv-seg { margin-left:auto; display:flex; gap:4px; background:#fff;
+            border:1px solid #E6DECD; border-radius:12px; padding:4px; }
+  .hv-sb { width:46px; height:34px; border:0; border-radius:9px; background:#F1EADC;
+           cursor:pointer; display:grid; place-items:center; transition:background .16s; }
+  .hv-sb:hover { background:#E7DECB; }
+  .hv-sb[aria-pressed="true"] { background:var(--navy); }
+  .hv-sb:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  .hv-sb svg { width:19px; height:15px; }
+  .hv-sb svg rect { fill:#9A9382; }
+  .hv-sb[aria-pressed="true"] svg rect { fill:#fff; }
+
+  .hv-grid { display:grid; gap:16px; }
+  .hv-tile { position:relative; border:1px solid #EDE7D9; border-radius:14px; overflow:hidden;
+             background:#fff; cursor:pointer; text-align:left; padding:0; font:inherit;
+             display:flex; flex-direction:column; transition:transform .15s, box-shadow .15s; }
+  .hv-tile:hover { transform:translateY(-2px); box-shadow:0 8px 20px -6px rgba(0,36,97,.18); }
+  .hv-tile:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  .hv-art { display:grid; place-items:center; font-size:30px; }
+  .hv-nm { font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; color:var(--navy);
+           padding:11px 13px; line-height:1.2; }
+  .hv-ds { font-size:11.5px; color:var(--muted); padding:0 13px 11px; margin-top:-7px; }
+  .hv-a-delivery{background:linear-gradient(140deg,#CFE6D6,#9FCFB4)}
+  .hv-a-junk    {background:linear-gradient(140deg,#E2DCC9,#C2B69A)}
+  .hv-a-moving  {background:linear-gradient(140deg,#CBD9EA,#9FB6D4)}
+  .hv-a-home    {background:linear-gradient(140deg,#D9E3F0,#AFC2DC)}
+  .hv-a-labor   {background:linear-gradient(140deg,#E6DAC8,#CBAE8C)}
+  .hv-a-yard    {background:linear-gradient(140deg,#D4E5CB,#A6CE96)}
+  .hv-a-ride    {background:linear-gradient(140deg,#CFE0EC,#A2C2D9)}
+  .hv-a-other   {background:linear-gradient(140deg,#E9DCE4,#CBAFC2)}
+
+  .hv-grid[data-hview="spot"] { grid-template-columns:repeat(3,1fr); }
+  .hv-grid[data-hview="spot"] .hv-art { height:132px; }
+  .hv-grid[data-hview="spot"] .hv-tile:nth-child(n+4) .hv-art { height:92px; }
+
+  .hv-grid[data-hview="all"] { grid-template-columns:repeat(4,1fr); gap:12px; }
+  .hv-grid[data-hview="all"] .hv-art { height:74px; font-size:24px; }
+  .hv-grid[data-hview="all"] .hv-nm { font-size:12.5px; padding:9px 11px; }
+
+  .hv-grid[data-hview="list"] { grid-template-columns:1fr; gap:8px; }
+  .hv-grid[data-hview="list"] .hv-tile { flex-direction:row; align-items:center; gap:12px; padding:9px 12px; }
+  .hv-grid[data-hview="list"] .hv-art { height:38px; width:46px; border-radius:9px; font-size:18px; flex:0 0 auto; }
+  .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:13px; }
+  @media (prefers-reduced-motion:reduce){ .hv-tile{transition:none} .hv-sb{transition:none} }
+  @media (max-width:900px){
+    .hv-grid[data-hview="spot"]{grid-template-columns:repeat(2,1fr)}
+    .hv-grid[data-hview="all"]{grid-template-columns:repeat(3,1fr)}
+  }
+  @media (max-width:560px){
+    .hv-grid[data-hview="spot"],.hv-grid[data-hview="all"]{grid-template-columns:repeat(2,1fr)}
+  }
   .choose-card {
     position:relative; overflow:hidden; text-align:left; cursor:pointer; border:0;
     /* owner 2026-10-02 (slide 1): "Buttons can't ever be cramped" — extra room
@@ -21174,13 +21234,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <!-- Owner 2026-10-01: Deals gets its own sidebar entry under + New Request,
            carrying the same gold SPONSORED PICKS treatment as the home card. It
            routes through the same handler, so the eligibility gate still runs. -->
-      <button type="button" class="dash-sidebar-deals gopher-deals-btn" id="rqSidebarDeals" data-choose="deals">
-        <!-- Owner 2026-10-02 (slide 4): one label, matching the card's exactly.
-             The SPONSORED PICKS sub-line went with the pill he struck out — it is
-             what made this button two cramped lines of washed-out type, and the
-             card CTA he approved has never carried it. -->
-        <span class="dsd-main">View Local Deals</span>
-      </button>
+        <!-- ⛔ Sidebar "View Local Deals" REMOVED 2026-10-11 (owner: "we leave
+             deals out entirely right now. Just like the live apps."). This and the
+             home card were the only two ways into Deals from the dashboard; the
+             panel behind them is intact and hidden. gopher-deals.html itself stays
+             live and is linked from 36 pages including the public top nav, so
+             nothing is orphaned by removing these two. -->
+
     <nav class="dash-nav">
       <!-- Owner 2026-10-02: Home returns to the two-pathway choice screen.
            Before this there was NO route back to it — only a page reload —
@@ -21307,38 +21367,77 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
           <!-- Live-request container. Empty and hidden when nothing is live, so
                the two cards sit exactly where they do today. -->
           <div class="hlive" id="rqHomeLive" hidden></div>
-          <div class="choose-two">
-            <button type="button" class="choose-card svc" data-choose="services">
-              <!-- ⚠️ Owner 2026-10-03 REVERSED his 2026-10-01 ruling here. It read:
-                   "the Request logo is CENTRED at the top of the card, on its white
-                   chip". It is now TOP LEFT on a SAND chip. The reason the old note
-                   gave still holds and is why the chip exists at all — the wordmark
-                   is navy, so the mark needs a LIGHT ground. Sand qualifies; white
-                   is no longer required. See .cc-brand. -->
-              <span class="cc-brand"><img class="cc-brand-logo" src="assets/img/gopher-request-logo.svg" alt="Gopher Request"></span>
-              <span class="cc-media cc-quads" id="chooseSvcQuads" aria-hidden="true">
-                <span class="cc-quad"></span><span class="cc-quad"></span>
-                <span class="cc-quad"></span><span class="cc-quad"></span>
-              </span>
-              <span class="cc-h">Get connected to a great local worker</span>
-              <span class="cc-s">Delivery, moving, junk removal, home services, day labor, rides and more.</span>
-              <span class="cc-btn cc-btn-green">+ Make a request</span>
-            </button>
-            <button type="button" class="choose-card deals" data-choose="deals">
-              <span class="cc-brand"><img class="cc-brand-logo" src="assets/img/gopher-deals-logo.svg" alt="Gopher Deals"></span>
-              <!-- Two marquee rows of real merchant marks, running in OPPOSITE
-                   directions (owner 2026-10-01: "Top scrolling →, bottom
-                   scrolling ←"). Each row's track is duplicated so the loop has
-                   no seam; the copy is aria-hidden to keep it out of the a11y
-                   tree twice. -->
-              <span class="cc-media cc-marquee" aria-hidden="true">
-                <span class="cc-mq-row cc-mq-ltr"><span class="cc-mq-track" data-mq="a"></span></span>
-                <span class="cc-mq-row cc-mq-rtl"><span class="cc-mq-track" data-mq="b"></span></span>
-              </span>
-              <span class="cc-h">View hot local deals near you</span>
-              <span class="cc-s">Buy from the merchant direct &mdash; a Gopher brings it the last mile.</span>
-              <span class="cc-btn cc-btn-gold gopher-deals-btn">View Local Deals</span>
-            </button>
+          <!-- ⛔ THE TWO-CARD CHOOSER IS GONE (owner 2026-10-11). It was
+               "Get connected to a great local worker" beside "View hot local deals
+               near you". Two reasons, both his:
+                 1. "we leave deals out entirely right now. Just like the live apps."
+                    Deals ships AFTER Request. The Deals card was gated on
+                    isDealsEligible() and, for anyone ineligible, opened a COMING-SOON
+                    overlay — half the home chooser existed to say "not yet".
+                 2. The remaining card was an extra step. The app puts categories on
+                    the home and opens the flow already on job details; this now does
+                    the same, via __startRequestWithCategory(), which sets the category
+                    and jumps to step 2.
+               ⚠️ The Deals PANEL (#dashDealsHost) and its machinery are deliberately
+               LEFT IN PLACE, hidden and unreachable. Only the two doors were removed —
+               this card and the sidebar button — so Deals comes back by restoring them
+               rather than by rebuilding the panel. Do not delete the panel.
+               ⚠️ Category names come from CATEGORIES in this file. "Home Services" is
+               correct HERE and "Home / Office Services" is correct on Connect — owner
+               ruled the split twice on 2026-10-04 (G40-579). Do not harmonise them. -->
+          <div class="hv-head">
+            <span class="hv-lbl">Start a request</span>
+            <div class="hv-seg" role="group" aria-label="Choose how categories look">
+              <button type="button" class="hv-sb" data-hview="list" aria-pressed="false" aria-label="List with history" title="List with history">
+                <svg viewBox="0 0 24 18" aria-hidden="true"><rect x="1" y="1" width="9" height="7" rx="1.6"/><rect x="1" y="10" width="9" height="7" rx="1.6" opacity=".55"/><rect x="12.5" y="2" width="10.5" height="2.4" rx="1.2" opacity=".8"/><rect x="12.5" y="7.8" width="10.5" height="2.4" rx="1.2" opacity=".55"/><rect x="12.5" y="13.6" width="7" height="2.4" rx="1.2" opacity=".4"/></svg>
+              </button>
+              <button type="button" class="hv-sb" data-hview="spot" aria-pressed="true" aria-label="Spotlight" title="Spotlight">
+                <svg viewBox="0 0 24 18" aria-hidden="true"><rect x="1" y="1" width="14" height="16" rx="2"/><rect x="17" y="1" width="6" height="16" rx="2" opacity=".5"/></svg>
+              </button>
+              <button type="button" class="hv-sb" data-hview="all" aria-pressed="false" aria-label="All at once" title="All at once">
+                <svg viewBox="0 0 24 18" aria-hidden="true"><rect x="1" y="1" width="6.5" height="7" rx="1.4"/><rect x="9" y="1" width="6.5" height="7" rx="1.4"/><rect x="17" y="1" width="6" height="7" rx="1.4"/><rect x="1" y="10" width="6.5" height="7" rx="1.4" opacity=".6"/><rect x="9" y="10" width="6.5" height="7" rx="1.4" opacity=".6"/><rect x="17" y="10" width="6" height="7" rx="1.4" opacity=".6"/></svg>
+              </button>
+            </div>
+          </div>
+          <!-- ⚠️ TILES CARRY NO SUB-COPY YET, ON PURPOSE. The app shows a one-liner
+               under each name ("Groceries, takeout, pharmacy"). Those words are the
+               app's and are not in this file, so inventing them here would put copy
+               in front of requesters that nobody approved. Port them from the desk's
+               canonical master and drop them into .hv-ds. -->
+          <div class="hv-grid" id="rqHomeCats" data-hview="spot">
+              <button type="button" class="hv-tile" data-homecat="delivery">
+                <span class="hv-art hv-a-delivery" aria-hidden="true">🚚</span>
+                <span class="hv-nm">Delivery / Errand</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="junk">
+                <span class="hv-art hv-a-junk" aria-hidden="true">🗑️</span>
+                <span class="hv-nm">Junk Removal</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="moving">
+                <span class="hv-art hv-a-moving" aria-hidden="true">📦</span>
+                <span class="hv-nm">Moving</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="home">
+                <span class="hv-art hv-a-home" aria-hidden="true">🔧</span>
+                <span class="hv-nm">Home Services</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="labor">
+                <span class="hv-art hv-a-labor" aria-hidden="true">💪</span>
+                <span class="hv-nm">Hourly / Day Labor</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="yard">
+                <span class="hv-art hv-a-yard" aria-hidden="true">🌳</span>
+                <span class="hv-nm">Yard / Outdoor Projects</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="ride">
+                <span class="hv-art hv-a-ride" aria-hidden="true">🚗</span>
+                <span class="hv-nm">Need a Ride</span>
+              </button>
+              <button type="button" class="hv-tile" data-homecat="other">
+                <span class="hv-art hv-a-other" aria-hidden="true">✨</span>
+                <span class="hv-nm">Custom Task</span>
+              </button>
+          </div>
           </div>
         </div>
       </section>
@@ -21749,6 +21848,48 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       setRequestPath('new');
     }
   });
+
+  /* ── Home category views + tiles (owner 2026-10-11) ──────────────────────
+     Three views, mirroring the app's: Spotlight (default, his pick), All at
+     once, and List with history. The chosen view is a per-viewer convenience,
+     so it lives in localStorage — wrapped, because a private window or blocked
+     site data makes the accessor throw rather than return empty. */
+  (function(){
+    const grid = document.getElementById('rqHomeCats');
+    if(!grid) return;
+    const segs = Array.prototype.slice.call(document.querySelectorAll('.hv-sb'));
+    const VIEWS = ['spot','all','list'];
+
+    function setView(v, remember){
+      if(VIEWS.indexOf(v) === -1) v = 'spot';
+      grid.setAttribute('data-hview', v);
+      segs.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.hview === v)); });
+      if(remember){ try { localStorage.setItem('rqHomeView', v); } catch(e){} }
+    }
+    let saved = null;
+    try { saved = localStorage.getItem('rqHomeView'); } catch(e){}
+    setView(saved || 'spot', false);
+
+    segs.forEach(function(b){
+      b.addEventListener('click', function(){ setView(b.dataset.hview, true); });
+    });
+
+    /* A tile opens the flow ALREADY ON JOB DETAILS, which is what the app does —
+       __startRequestWithCategory sets the category and jumps to step 2. The three
+       lines before it are the same ones the old "services" card ran: without
+       moveFlowToDash() the flow node is still parented to the marketing page and
+       the section renders empty (the 2026-10-03 defect the owner reported). */
+    grid.addEventListener('click', function(e){
+      const tile = e.target.closest('[data-homecat]');
+      if(!tile) return;
+      showSection('new-request');
+      moveFlowToDash();
+      setRequestPath('new');
+      if(typeof window.__startRequestWithCategory === 'function'){
+        window.__startRequestWithCategory(tile.dataset.homecat);
+      }
+    });
+  })();
 
   const SECTION_TITLES = {
     choose:'', home:'Dashboard overview', previous:'Request History', inbox:'Inbox',
