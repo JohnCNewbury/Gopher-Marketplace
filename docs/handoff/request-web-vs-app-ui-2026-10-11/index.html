@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request flow — web vs app</title>
+<link rel="stylesheet" href="../../../Final/assets/css/gopher-fonts.css">
+<style>
+  :root{
+    --navy:#002461; --green:#33D975; --green-dark:#1CB061; --pine:#0F7A3F;
+    --sand:#FBF3E4; --paper:#FBF7EF; --body:#424242; --muted:#8C8675;
+    --terra:#D97757; --lava:#C44257; --line:#EAE3D5; --card:#fff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--body);
+       font-family:'DM Sans',system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-family:'Nunito',sans-serif;font-weight:900;font-size:30px;color:var(--navy);margin:0 0 6px}
+  .kicker{font-family:'Caveat',cursive;font-size:21px;color:var(--terra);transform:rotate(-2deg);
+          display:inline-block;margin:0 0 14px}
+  h2{font-family:'Nunito',sans-serif;font-weight:900;font-size:19px;color:var(--navy);
+     margin:0 0 4px}
+  h3{font-family:'Nunito',sans-serif;font-weight:800;font-size:14px;color:var(--navy);margin:18px 0 6px}
+  p{margin:0 0 10px}
+  .lede{font-size:15px;max-width:74ch}
+
+  .note{background:#fff;border:1px solid var(--line);border-left:4px solid var(--terra);
+        border-radius:11px;padding:14px 16px;margin:18px 0 26px}
+  .note h3{margin-top:0}
+  .note ul{margin:6px 0 0;padding-left:19px}
+  .note li{margin:4px 0;font-size:13.5px}
+
+  .step{background:#fff;border:1px solid var(--line);border-radius:15px;
+        padding:18px;margin:0 0 26px;box-shadow:0 2px 10px rgba(0,36,97,.05)}
+  .shead{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:3px}
+  .pill{font-family:'Nunito',sans-serif;font-weight:900;font-size:10px;letter-spacing:.7px;
+        text-transform:uppercase;background:var(--navy);color:#fff;padding:3px 9px;border-radius:99px}
+  .heads{font-size:13px;color:var(--muted);margin:0 0 12px}
+  .heads b{color:var(--navy)}
+  img{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line)}
+
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+  th{font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;letter-spacing:.5px;
+     text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 10px;
+     border-bottom:1.5px solid var(--line);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #f1ece0;vertical-align:top}
+  td:first-child{font-weight:700;color:var(--navy);width:21%}
+  tr:last-child td{border-bottom:0}
+  .w{color:var(--body)} .a{color:var(--pine)}
+
+  .tagrow{display:flex;gap:7px;margin:12px 0 0;flex-wrap:wrap}
+  .tag{font-family:'Nunito',sans-serif;font-weight:800;font-size:10.5px;padding:3px 9px;
+       border-radius:99px;border:1px solid var(--line);background:var(--sand);color:var(--navy)}
+  .tag.big{background:#fdecef;border-color:#f3c6ce;color:var(--lava)}
+
+  .global{background:var(--sand);border:1px solid var(--line);border-radius:15px;padding:20px;margin:0 0 30px}
+  .global table{margin-top:8px}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+         font-size:12.5px;color:var(--muted)}
+  @media (max-width:700px){ td:first-child{width:auto} .wrap{padding:22px 14px 50px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">web on the left, app on the right</div>
+  <h1>Request flow — web vs app</h1>
+  <p class="lede">A step-by-step look at the same Delivery request built twice: once in the web
+  portal and once in the app. Captured side by side, same category, same data, same moment in the
+  flow. The point is what the web would need to change to read like the app.</p>
+
+  <div class="note">
+    <h3>Read this first — what the right-hand column actually is</h3>
+    <ul>
+      <li><b>The “app” column is the Request flow prototype</b> (<code>_prototypes/Request/gopher-request-flow.html</code>),
+          not a screenshot from a handset. It is the artifact the team keeps in step with the app —
+          the 909 desk’s completed-category packages land there — so it is the best available
+          stand-in, but it is a stand-in. Anything you decide from it is worth a glance on a real
+          device before it ships.</li>
+      <li><b>Delivery only.</b> Other categories differ, and Delivery only joined the completed set
+          on 10/4, so it is the most current one to compare.</li>
+      <li><b>Step 1 is not shown as a pair.</b> The web has “Pick a service” as a step inside the
+          flow; the app enters with the category already chosen and carries a <i>Change</i> control
+          on every screen. That difference is described below rather than pictured.</li>
+      <li><b>The values are test data I typed in</b>, not seeded content.</li>
+      <li><b>Not a difference:</b> the web’s “Estimated trip distance: calculating…” — Maps cannot
+          resolve on localhost. On the live site it computes.</li>
+    </ul>
+  </div>
+
+  <div class="global">
+    <h2>The differences that repeat on every screen</h2>
+    <p style="font-size:13.5px;margin-bottom:2px">These are the ones worth deciding once, because
+    they set the character of the whole flow.</p>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Surface</td>
+          <td class="w">One flat white panel holding every section, divided by hairlines.</td>
+          <td class="a">Separate white cards per section on a tinted ground, with real padding between them.</td></tr>
+      <tr><td>Heading</td>
+          <td class="w">Centred.</td>
+          <td class="a">Left-aligned.</td></tr>
+      <tr><td>Type scale</td>
+          <td class="w">Noticeably smaller throughout — labels, values and body.</td>
+          <td class="a">Larger and more legible; the step reads at arm’s length.</td></tr>
+      <tr><td>Field labels</td>
+          <td class="w">Tiny uppercase micro-labels above each field (<i>PICKUP ADDRESS</i>, <i>YOUR OFFER TO YOUR GOPHER</i>).</td>
+          <td class="a">Normal-case labels inside the card, at readable size.</td></tr>
+      <tr><td>Progress</td>
+          <td class="w">Seven named chips in a row, plus “Step N of 7” and a red <i>Start over</i>.</td>
+          <td class="a">A seven-segment bar, plus a “Step N of 7” pill. No start-over.</td></tr>
+      <tr><td>Category</td>
+          <td class="w">A small chip in the header strip (<i>Delivery / Errand</i>).</td>
+          <td class="a">A full-width card with a thumbnail and <i>Change ›</i>, present on every step.</td></tr>
+      <tr><td>Primary buttons</td>
+          <td class="w">Small Back / Continue, right-aligned at the bottom of the panel.</td>
+          <td class="a">Full-width Back and Continue, pinned to the bottom of the screen.</td></tr>
+      <tr><td>Icons</td>
+          <td class="w">Emoji in section headers (📍 🏁 🛣).</td>
+          <td class="a">Drawn glyphs that match the rest of the UI.</td></tr>
+    </table>
+    <div class="tagrow">
+      <span class="tag big">biggest lever: flat panel → cards</span>
+      <span class="tag big">second: type scale</span>
+      <span class="tag">micro-labels</span>
+      <span class="tag">heading alignment</span>
+      <span class="tag">button weight &amp; placement</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 2</span><h2>Job details</h2></div>
+    <p class="heads">Headings differ: <b>web</b> “Tell us about your delivery / errand request” ·
+      <b>app</b> “Tell us about your delivery”.</p>
+    <img src="step2-job-details.jpg" alt="Job details, web left and app right">
+    <table>
+      <tr><td>Toggle copy</td>
+          <td class="w">“Slide if this delivery includes Age-restricted items” — an instruction.</td>
+          <td class="a">“Includes age-restricted items” — a label.</td></tr>
+      <tr><td>Add a pic</td>
+          <td class="w">Small dashed pill, low in the card.</td>
+          <td class="a">Full-width dashed card with a green + circle.</td></tr>
+      <tr><td>Section heads</td>
+          <td class="w">Carry small emoji.</td>
+          <td class="a">Plain bold text at the top of each card.</td></tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 3</span><h2>Who does the work</h2></div>
+    <p class="heads">Headings differ: <b>web</b> “How would you like us to find your Gopher?” ·
+      <b>app</b> “Who should do the work?”</p>
+    <img src="step3-gopher-selection.jpg" alt="Gopher selection, web left and app right">
+    <table>
+      <tr><td>Options count</td>
+          <td class="w">“(3 of 3 options available)” — all three selectable.</td>
+          <td class="a">“(2 of 3 options available)” — <i>Prioritize MY Gopher(s)</i> greyed, with a line saying why.</td></tr>
+      <tr><td>Rows</td>
+          <td class="w">Thin single-line rows with small radio dots.</td>
+          <td class="a">Tall cards; the selected one is tinted green with a green border.</td></tr>
+    </table>
+    <div class="tagrow"><span class="tag big">this one is behaviour, not just style — worth a ruling</span></div>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 4</span><h2>Locations</h2></div>
+    <p class="heads">Headings match: both “Where is this going?”</p>
+    <img src="step4-locations.jpg" alt="Locations, web left and app right">
+    <table>
+      <tr><td>Address fields</td>
+          <td class="w">Uppercase micro-labels above, and “From” / “To” prefixes inside the inputs.</td>
+          <td class="a">No micro-label; a pin and a flag glyph sit inside the field.</td></tr>
+      <tr><td>Unit / Apt</td>
+          <td class="w">A second bare input directly under each address.</td>
+          <td class="a">Same, but clearly its own field inside the card.</td></tr>
+      <tr><td>Distance</td>
+          <td class="w">Grey strip at the foot of the panel.</td>
+          <td class="a">Tinted strip with the value in bold.</td></tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 5</span><h2>Pay</h2></div>
+    <p class="heads">Headings match: both “How would you like to pay your Gopher?”</p>
+    <img src="step5-pay.jpg" alt="Pay, web left and app right">
+    <table>
+      <tr><td>Offer field</td>
+          <td class="w">Micro-label <i>YOUR OFFER TO YOUR GOPHER</i>; small input.</td>
+          <td class="a">Normal label with the <i>?</i>; large input filling the card.</td></tr>
+      <tr><td>Gopher iQ</td>
+          <td class="w">Small green pill, “Get a suggested offer”, plus an extra sentence about historical DMA data.</td>
+          <td class="a">Full-width tinted card, “Tap here for a suggested offer range”, no extra sentence.</td></tr>
+      <tr><td>Hint line</td>
+          <td class="w" colspan="2">Matches on both — “Exact amount each Gopher takes home — 100% of your offer. Request fees are shown at review.”</td></tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 6</span><h2>Review</h2></div>
+    <p class="heads">Headings match: both “Let’s review your request”. This is where the density gap is widest.</p>
+    <img src="step6-review.jpg" alt="Review, web left and app right">
+    <table>
+      <tr><td>Rows</td>
+          <td class="w">Dense table, uppercase labels, values right-aligned and small.</td>
+          <td class="a">Airy rows, normal-case labels, values bold navy.</td></tr>
+      <tr><td>Total</td>
+          <td class="w">Same size as every other row.</td>
+          <td class="a">Large and bold — the thing your eye lands on.</td></tr>
+      <tr><td>Payment</td>
+          <td class="w">Text, “Visa ▾”.</td>
+          <td class="a">A VISA badge.</td></tr>
+      <tr><td>Timing</td>
+          <td class="w">Two buttons, <i>Need ASAP</i> / <i>Schedule for later</i>.</td>
+          <td class="a">Two selectable cards with a line of explanation each.</td></tr>
+    </table>
+    <div class="tagrow"><span class="tag big">if one screen gets done first, this is the one</span></div>
+  </div>
+
+  <div class="step">
+    <div class="shead"><span class="pill">Step 7</span><h2>Submitted</h2></div>
+    <p class="heads">Capitalisation differs: <b>web</b> “Request Submitted!” · <b>app</b> “Request submitted!”.
+      The app’s submit button reads <b>Submit request</b>; the web’s reads <b>Submit</b>.</p>
+    <img src="step7-submitted.jpg" alt="Submitted, web left and app right">
+    <table>
+      <tr><td>Summary</td>
+          <td class="w">Dense table again; Total not emphasised.</td>
+          <td class="a">Airy card; Total large.</td></tr>
+      <tr><td>Interest</td>
+          <td class="w">“8 Gophers already interested” strip with a <i>See Gophers in dashboard</i> button.</td>
+          <td class="a">“5 Gophers already interested” below the summary.</td></tr>
+      <tr><td>Next actions</td>
+          <td class="w">Edit request / Cancel request, then Back / Start New Request.</td>
+          <td class="a">A <i>Done</i> pill in the header.</td></tr>
+    </table>
+  </div>
+
+  <footer>
+    Captured 2026-10-11 from <code>Final/gopher-request.html</code> and
+    <code>_prototypes/Request/gopher-request-flow.html</code> at commit <code>34fd47e</code>,
+    both served locally and driven step by step. Category: Delivery.
+  </footer>
+
+</div>
+</body>
+</html>
