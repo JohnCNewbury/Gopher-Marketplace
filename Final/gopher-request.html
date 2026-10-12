@@ -8638,6 +8638,76 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .iqs-else:hover { text-decoration:underline; }
   @media (prefers-reduced-motion:reduce){ .hv-pill,.iqs-i,.hv-iq{transition:none} }
 
+  /* ── ALL-AT-ONCE ONLY: an iQ mark in the footer, and the same hover popover
+     Connect has had on its Step 1 tiles (owner 2026-10-12: "on the right side of
+     each category card, i want the iQ logo and when the user hovers over the
+     bottom white footer, the pre-populated suggestions pop-up (exactly like on
+     the connect site currently)").
+     ⛔ CONNECT ITSELF IS UNTOUCHED — owner, same message: "I do not want to
+     change the connect platfrom at all right now either for the record." This is
+     a PORT of its look and behaviour into Request's own markup, read from
+     gopher-connect.html and rebuilt here. Nothing was shared or moved, and the
+     two files stay independent (see the standing note that mirroring code
+     between Request and Connect is not safe — Connect has no reqModal()).
+     ⚠️ Set as TYPE, not the logo file. GOPHER_IQ_SRC is the full "gopher iQ"
+     lockup at 4.21:1 — it is illegible shrunk into a card corner, and the
+     owner's own sketch shows the two letters. There is no square iQ asset. */
+  .hv-iqm { display:none; }
+  .hv-grid[data-hview="all"] .hv-iqm {
+    display:block; position:absolute; right:11px; bottom:9px; z-index:3;
+    font-family:'Nunito',sans-serif; font-weight:900; font-size:13px;
+    letter-spacing:-.2px; color:var(--navy); opacity:.72; pointer-events:none;
+  }
+  .hv-grid[data-hview="all"] .hv-cell:hover .hv-iqm { opacity:1; }
+
+  .hv-pop { display:none; }
+  .hv-grid[data-hview="all"] .hv-pop {
+    display:block; position:absolute; left:50%; top:calc(100% + 11px);
+    transform:translateX(-50%) translateY(6px);
+    width:max(100%, 232px);
+    background:var(--navy); color:#fff;
+    border-radius:13px; padding:13px 15px 14px;
+    box-shadow:0 16px 38px rgba(0,36,97,.32);
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .16s ease, transform .16s ease;
+    z-index:40;
+  }
+  /* The trigger is the FOOTER, not the whole card — the photo above it still
+     goes straight to Step 2, so hovering the picture must not cover the grid. */
+  .hv-grid[data-hview="all"] .hv-cell:has(.hv-nm:hover) .hv-pop,
+  .hv-grid[data-hview="all"] .hv-cell:has(.hv-iqm:hover) .hv-pop {
+    opacity:1; visibility:visible; transform:translateX(-50%) translateY(0);
+  }
+  .hv-grid[data-hview="all"] .hv-pop::after {
+    content:''; position:absolute; bottom:100%; left:50%; transform:translateX(-50%);
+    border:7px solid transparent; border-bottom-color:var(--navy);
+  }
+  /* The bottom row opens UPWARD or the dashboard's own overflow clips it —
+     Connect learned this the same way. Eight tiles in four columns means
+     children 5-8 are the bottom row. */
+  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5) .hv-pop {
+    top:auto; bottom:calc(100% + 11px); transform:translateX(-50%) translateY(-6px);
+  }
+  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5):has(.hv-nm:hover) .hv-pop,
+  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5):has(.hv-iqm:hover) .hv-pop {
+    transform:translateX(-50%) translateY(0);
+  }
+  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5) .hv-pop::after {
+    bottom:auto; top:100%; border-bottom-color:transparent; border-top-color:var(--navy);
+  }
+  .hv-pop-t { font-family:'Nunito',sans-serif; font-weight:900; font-size:11px;
+              letter-spacing:.5px; text-transform:uppercase; color:var(--green);
+              margin-bottom:9px; }
+  .hv-pop-l { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+  .hv-pop-l li { font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.35;
+                 color:#eaf0fb; padding-left:18px; position:relative; }
+  .hv-pop-l li::before { content:'✓'; position:absolute; left:0; top:0;
+                         color:var(--green); font-weight:800; font-size:11px; }
+  .hv-pop-f { margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.16);
+              font-family:'DM Sans',sans-serif; font-size:11px; font-style:italic; color:#b9c6e0; }
+  /* No hover on touch — a tap opens the category, same as Connect. */
+  @media (max-width:760px){ .hv-grid[data-hview="all"] .hv-pop { display:none; } }
+
   /* ── "Request again" / "Popular near you" — the home's bottom section. ── */
   .hra { margin-top:30px; }
   .hra-h { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 2px 12px; }
@@ -14298,6 +14368,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     ride:     ['Ride to the airport', 'Doctor appointment', 'Late-night ride home', 'Senior transportation', 'Wait & return trip'],
     other:    ['Pet sitting', 'Change a tire', 'Stereo install', 'Wait for a delivery', 'Assemble a grill'],
   };
+  /* Exposed, not copied. The home screen's All-at-once hover popover reads THIS
+     map — the same one Step 1's popups use — so the two can never disagree.
+     ⚠️ These forty names are also the names in window.HOME_IDEAS, which pairs
+     each with its Step 2 guidance line. If this list ever changes, HOME_IDEAS
+     has to change with it; they are keyed the same and were verified identical
+     when HOME_IDEAS was ported from the app on 2026-10-12. */
+  window.CAT_EXAMPLES = CAT_EXAMPLES;
 
   // ---- Pool of stock photos used for the Add-a-pic demo (max 3 per request).
   // Each click on "Add a pic" picks a random one not already attached.
@@ -22309,6 +22386,41 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
         return '<button type="button" class="hv-pill" data-idea="' + esc(pair[0]) + '">'
              + esc(pair[0]) + '</button>';
       }).join('');
+    });
+
+    /* ── All-at-once: the iQ mark and the hover popover. Built from the page's
+       OWN CAT_EXAMPLES — the same map Step 1's popups read — so the home screen
+       and Step 1 cannot drift apart. Title follows Connect's rule exactly:
+       the category name up to " / " ("Delivery / Errand" -> "Delivery"), which
+       the CSS uppercases. Custom Task gets Connect's closing line.
+       Both nodes are inert: the popover is a tooltip with pointer-events:none
+       and the mark is not a control, so neither intercepts the card's click. */
+    const EXAMPLES = window.CAT_EXAMPLES || {};
+    Array.prototype.forEach.call(grid.querySelectorAll('.hv-cell'), function(cell){
+      const tile = cell.querySelector('[data-homecat]');
+      if(!tile) return;
+      const key  = tile.dataset.homecat;
+      const list = EXAMPLES[key] || [];
+
+      const mark = document.createElement('span');
+      mark.className = 'hv-iqm';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = 'iQ';
+      cell.appendChild(mark);
+
+      if(!list.length) return;
+      const nameEl = cell.querySelector('.hv-nm');
+      const noun = String(nameEl ? nameEl.textContent : '').split(' / ')[0].trim();
+      const pop = document.createElement('div');
+      pop.className = 'hv-pop';
+      pop.setAttribute('role', 'tooltip');
+      pop.innerHTML =
+        '<div class="hv-pop-t">Popular ' + esc(noun) + ' requests</div>'
+        + '<ul class="hv-pop-l">' + list.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'
+        + (key === 'other'
+            ? '<div class="hv-pop-f">\u2026or anything you\u2019d normally ask a neighbor for.</div>'
+            : '');
+      cell.appendChild(pop);
     });
 
     grid.addEventListener('click', function(e){
