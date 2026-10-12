@@ -7361,23 +7361,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   /* Out of the bar and into the content column (owner 2026-10-02, slide 2), so
      it is sized to sit above the page heading rather than beside an avatar. */
-  .dash-greeting {
-    /* #5a6270, not var(--muted): Sand is warmer than the grey it replaced, so
-       --muted #6b7280 fell from 4.51:1 to 4.38:1 — just under AA. This is 5.57:1. */
-    font-family:'DM Sans'; font-size:14px; color:#5a6270;
-    font-weight:600; margin:0 0 2px;
-  }
-  /* Owner 2026-10-03: "the 'Welcome back' is ONLY on the home screen. It doesn't
-     need to be shown anywhere else which allows the new request details container
-     to move up appropriately a little."
-
-     It is a sibling ABOVE every .dash-section, so it was rendering on Request
-     History, Payment info, Refer and the new-request flow as well. Keyed off
-     which section is actually .active rather than a JS-set class, so it cannot
-     fall out of step with whichever path opened the dashboard. :has() is already
-     used elsewhere in this file. */
-  .dashboard .dash-greeting { display:none; }
-  .dashboard:has(.dash-section[data-rqsec="choose"].active) .dash-greeting { display:block; }
+  /* ⛔ .dash-greeting REMOVED 2026-10-12 with the element it styled (owner:
+     "Move the name into the headline like the app"). It carried a contrast note
+     worth keeping if a muted line ever returns on Sand: --muted #6b7280 falls to
+     4.38:1 there, just under AA; #5a6270 is 5.57:1. It also carried the owner's
+     2026-10-03 rule that the greeting showed ONLY on the home screen, which the
+     :has() selector enforced — moot now, since the headline lives inside the
+     choose section already. */
   .dash-topbar-right .dash-avatar-lead {
     /* The topbar circle is the TALLEST thing in the bar, so it — not the padding —
        sets the bar's height. .dash-avatar-lead is 46px and outranks the 36px base
@@ -21557,7 +21547,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       <!-- Owner 2026-10-02 (slide 2): "Move Welcome back… to space between bottom
            of header bar and 'So, how can we…'". It sat inside the header bar
            beside the avatar; both moved in the same pass. -->
-      <div class="dash-greeting" id="rqDashGreeting">Welcome back, Jamie 👋</div>
+      <!-- ⛔ "Welcome back, <first> 👋" REMOVED 2026-10-12 (owner: "Move the name
+           into the headline like the app"). The app has no greeting line — it
+           carries the name inside the empty-state headline instead, which
+           homeLiveHeadline() now does. Nothing else read this element. -->
 
       <!-- ── CHOOSE: the dashboard's home screen ──────────────────────────────
            Owner 2026-09-30, slide 2: "I want the initially home screen of the
@@ -21569,10 +21562,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
            #pathTabDeals — so this adds a front door, not a third surface. -->
       <section class="dash-section active" data-rqsec="choose">
         <div class="choose-stage">
-          <!-- The headline is a TEMPLATE driven by renderHomeLive(): it reads
-               "So, how can we help you today?" with nothing live, and
-               "You have N current requests, M need attention" otherwise. -->
-          <h2 class="choose-ask" id="rqChooseAsk">So, how can we help you today?</h2>
+          <!-- The headline is a TEMPLATE driven by renderHomeLive(): with nothing
+               live it reads "What can we help you with today, <first>?" (the app's
+               line, owner ruling 10/4), and "You have N current requests, M need
+               attention" otherwise. The literal below is only what ships before
+               the first render; it carries no name, because at that point we do
+               not have one. -->
+          <h2 class="choose-ask" id="rqChooseAsk">What can we help you with today?</h2>
           <!-- ⛔ "Two ways to go from here." DROPPED 2026-10-11. It described the
                two-card chooser, and there is one way now. renderHomeLive() guards
                this element with if(sub), so its absence is safe; the empty-state
@@ -24489,11 +24485,34 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     return all;
   }
 
+  /* The requester's first name, for the empty-state headline. '' when we do not
+     know it yet, which is the case the app handles by dropping the name. */
+  function homeFirstName(){
+    var n = '';
+    try { n = (DASH_DATA && DASH_DATA.profile && DASH_DATA.profile.name) || ''; } catch(e){ n = ''; }
+    n = String(n).trim().split(/\s+/)[0] || '';
+    return (n && n.toLowerCase() !== 'a') ? n : '';
+  }
+
   /* n = live requests, a = how many of them want something. Both plurals are
      computed, never hard-coded, and the attention clause disappears entirely
-     at a === 0 rather than reading "0 need attention". */
+     at a === 0 rather than reading "0 need attention".
+
+     ⛔ THE EMPTY-STATE LINE IS THE APP'S, WORD FOR WORD, and it is an owner
+     ruling: "What can we help you with today, John?" (John, 18:48 ET 10/4,
+     recorded in the app's src/component/home/HomeScreen.js). Owner 2026-10-12:
+     "Move the name into the headline like the app." The app drops the name
+     when it does not have one, and so does this — same two forms, same file.
+     The separate "Welcome back, <first> 👋" greeting was REMOVED in the same
+     change: the app has no greeting line, and keeping both would say the name
+     twice. Only the EMPTY state carries the name; the live-requests line below
+     is a different sentence and is unchanged. */
   function homeLiveHeadline(n, a){
-    if(!n) return 'So, how can we help you today?';
+    if(!n){
+      var f = homeFirstName();
+      return f ? 'What can we help you with today, ' + f + '?'
+               : 'What can we help you with today?';
+    }
     return 'You have ' + n + (n === 1 ? ' current request' : ' current requests')
       + (a ? ', <em>' + a + (a === 1 ? ' needs' : ' need') + ' attention</em>' : '');
   }
@@ -28401,7 +28420,6 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     // Populate identity fields
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     set('rqDashUserName', name);
-    set('rqDashGreeting', 'Welcome back, ' + first + ' 👋');
     set('rqDashAvatar', initials(name) || 'GR');
     set('rqPhAvatar', initials(name) || 'GR');
     // If the user added a profile photo at signup, show it in both avatars
