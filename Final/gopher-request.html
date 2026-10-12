@@ -8525,24 +8525,38 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      divides evenly into four full rows and makes Spotlight genuinely the big view,
      distinct from All-at-once rather than a slightly larger copy of it. If a ninth
      category is ever added, check this again — 9 breaks 2 as surely as 8 breaks 3. */
-  .hv-grid[data-hview="spot"] { grid-template-columns:repeat(2,1fr); }
-  .hv-grid[data-hview="spot"] .hv-art { height:116px; font-size:40px; }
+  /* Spotlight: real cards, not wide strips — owner 2026-10-12, "MUCH bigger…
+     1 card is the size of 2 tall and as wide as 1/2 of 1". So HALF the width
+     (2 columns -> 4) and roughly TWICE the height (116px art -> 248px). The
+     glyph scales with the box or it swims in it. */
+  .hv-grid[data-hview="spot"] { grid-template-columns:repeat(4,1fr); }
+  .hv-grid[data-hview="spot"] .hv-art { height:248px; font-size:76px; }
+  .hv-grid[data-hview="spot"] .hv-nm { font-size:15px; padding:13px 14px; }
 
   .hv-grid[data-hview="all"] { grid-template-columns:repeat(4,1fr); gap:12px; }
   .hv-grid[data-hview="all"] .hv-art { height:74px; font-size:26px; }
   .hv-grid[data-hview="all"] .hv-nm { font-size:12.5px; padding:9px 11px; }
 
-  .hv-grid[data-hview="list"] { grid-template-columns:1fr; gap:8px; }
-  .hv-grid[data-hview="list"] .hv-tile { flex-direction:row; align-items:center; gap:12px; padding:9px 12px; }
-  .hv-grid[data-hview="list"] .hv-art { height:38px; width:46px; border-radius:9px; font-size:19px; flex:0 0 auto; border-bottom:0; }
-  .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:13px; }
+  /* List rows were 56px tall and read as a thin index rather than a way in —
+     owner 2026-10-12, "this need to be taller". Raised to ~88px: the art box is
+     the lever, with the padding following it. Deliberately set so the row still
+     sits right once .hv-ds carries the one-line description (it is styled and
+     empty until the desk's master supplies the words) — the second line lands
+     inside this height instead of growing the row again. */
+  .hv-grid[data-hview="list"] { grid-template-columns:1fr; gap:10px; }
+  .hv-grid[data-hview="list"] .hv-tile { flex-direction:row; align-items:center; gap:15px; padding:14px 16px; }
+  .hv-grid[data-hview="list"] .hv-art { height:60px; width:74px; border-radius:11px; font-size:29px; flex:0 0 auto; border-bottom:0; }
+  .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:14.5px; }
+  .hv-grid[data-hview="list"] .hv-ds { padding:0; margin-top:2px; }
   @media (prefers-reduced-motion:reduce){ .hv-tile{transition:none} .hv-sb{transition:none} }
   @media (max-width:900px){
-    .hv-grid[data-hview="spot"]{grid-template-columns:repeat(2,1fr)}
+    .hv-grid[data-hview="spot"]{grid-template-columns:repeat(3,1fr)}
+    .hv-grid[data-hview="spot"] .hv-art{height:210px;font-size:66px}
     .hv-grid[data-hview="all"]{grid-template-columns:repeat(3,1fr)}
   }
   @media (max-width:560px){
     .hv-grid[data-hview="spot"],.hv-grid[data-hview="all"]{grid-template-columns:repeat(2,1fr)}
+    .hv-grid[data-hview="spot"] .hv-art{height:168px;font-size:54px}
   }
   .choose-card {
     position:relative; overflow:hidden; text-align:left; cursor:pointer; border:0;
