@@ -8637,6 +8637,38 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .iqs-else:hover { text-decoration:underline; }
   @media (prefers-reduced-motion:reduce){ .hv-pill,.iqs-i,.hv-iq{transition:none} }
 
+  /* ── "Request again" / "Popular near you" — the home's bottom section. ── */
+  .hra { margin-top:30px; }
+  .hra-h { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 2px 12px; }
+  .hra-h h2 { font-family:'Nunito',sans-serif; font-weight:900; font-size:17px; color:var(--navy); margin:0; }
+  .hra-link { background:none; border:0; cursor:pointer; font-family:'Nunito',sans-serif;
+              font-weight:800; font-size:13px; color:var(--green-text,#0F7A3F); padding:2px; }
+  .hra-link:hover { text-decoration:underline; }
+  .hra-rows { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .hra-card { display:flex; flex-direction:column; background:#fff; border:1px solid #EDE7D9;
+              border-radius:14px; overflow:hidden; min-width:0; }
+  .hra-card .hv-art { height:92px; border-bottom:1px solid rgba(0,36,97,.06); font-size:0; }
+  .hra-b { padding:11px 13px 13px; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .hra-t { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy);
+           line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hra-s { font-size:11.5px; color:var(--muted,#8C8675); }
+  .hra-go { margin-top:8px; align-self:flex-start; cursor:pointer;
+            font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; color:var(--navy);
+            background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px; padding:7px 14px;
+            transition:background .14s; }
+  .hra-go:hover { background:#F4E9D2; }
+  .hra-go:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  .hra-chips { display:flex; flex-wrap:wrap; gap:9px; }
+  .hra-chip { display:inline-flex; align-items:center; gap:9px; cursor:pointer;
+              font-family:'DM Sans',system-ui,sans-serif; font-size:13px; color:var(--navy);
+              background:#fff; border:1px solid #EDE7D9; border-radius:999px; padding:6px 14px 6px 6px;
+              transition:background .14s, border-color .14s; }
+  .hra-chip .hv-art { width:30px; height:30px; border-radius:999px; border-bottom:0; font-size:0; flex:0 0 auto; }
+  .hra-chip:hover { background:var(--sand,#FBF3E4); border-color:#DED2B8; }
+  .hra-chip:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  @media (max-width:1180px){ .hra-rows{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:640px){ .hra-rows{grid-template-columns:1fr} }
+
   /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
      row half empty (3+3+2), which is the "not fitting" the owner called out. Two
      divides evenly into four full rows and makes Spotlight genuinely the big view,
@@ -17579,28 +17611,34 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   //      jump straight to Review (step 6) with all earlier steps unlocked for
   //      edits. The dashboard's modal handler calls this, then hosts + shows the
   //      flow (navigation helpers live in the dashboard closure, not here). ----
+  /* History rows carry the OLDER display labels ("Handyman", "Day Labor",
+     "Yard Work"); the flow keys on 'home' / 'labor' / 'yard'. One mapping,
+     exported, because two copies of this WILL drift — and the ordering below
+     is load-bearing, not stylistic.
+     ⛔ junk MUST be tested before moving: "Junk Removal" contains "mov"
+     (re-MOV-al), so the moving test matched it first and every junk haul
+     re-requested as a MOVE. Verified against all nine category labels.
+     Was local to __startRequestAgainFast until 2026-10-12, when the home
+     screen's Request again rail needed the same answer for its thumbnails. */
+  window.__mapHistoryCategory = function(label){
+    const c = String(label || '').toLowerCase();
+    if(c.indexOf('deliv') !== -1) return 'delivery';
+    if(c.indexOf('day labor') !== -1 || c.indexOf('labor') !== -1) return 'labor';
+    if(c.indexOf('home') !== -1 || c.indexOf('handy') !== -1) return 'home';
+    if(c.indexOf('junk') !== -1) return 'junk';
+    if(c.indexOf('mov') !== -1) return 'moving';
+    if(c.indexOf('yard') !== -1) return 'yard';
+    if(c.indexOf('ride') !== -1) return 'ride';
+    return 'other';
+  };
+
   window.__startRequestAgainFast = function(prev, selected){
     if(!prev) return false;
     selected = Array.isArray(selected) ? selected : [];
     resetFlowState();
 
     // Map the previous request's category label to this flow's category key.
-    const mapCat = (label) => {
-      const c = String(label || '').toLowerCase();
-      if(c.indexOf('deliv') !== -1) return 'delivery';
-      if(c.indexOf('day labor') !== -1 || c.indexOf('labor') !== -1) return 'labor';
-      if(c.indexOf('home') !== -1 || c.indexOf('handy') !== -1) return 'home';
-      /* ⛔ junk MUST be tested before moving: "Junk Removal" contains "mov"
-         (re-MOV-al), so the moving test matched it first and every junk haul
-         re-requested as a MOVE. Pre-existing and already reachable on COMPLETED
-         rows — found while fixing the cancelled/expired lookup above, not caused
-         by it. Verified against all nine category labels, not just this one. */
-      if(c.indexOf('junk') !== -1) return 'junk';
-      if(c.indexOf('mov') !== -1) return 'moving';
-      if(c.indexOf('yard') !== -1) return 'yard';
-      if(c.indexOf('ride') !== -1) return 'ride';
-      return 'other';
-    };
+    const mapCat = window.__mapHistoryCategory;
     state.category = mapCat(prev.category);
 
     // Description / details from history.
@@ -21645,6 +21683,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 <div class="hv-pills" data-pills="other"></div>
               </div>
           </div>
+
+          <!-- Request again — the home's bottom section (owner 2026-10-12: "the
+               bottom section has 4 most recent completed requests similar to
+               live apps"). Filled from DASH_DATA.previousRequests; falls back to
+               the app's "Popular near you" chips when there is no history.
+               Hidden until the script decides which of the two it is. -->
+          <div class="hra" id="rqHomeAgain" hidden></div>
           </div>
         </div>
       </section>
@@ -22296,6 +22341,96 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       const first = ov.querySelector('.iqs-i'); if(first) first.focus();
     }
     function closeIdeas(){ if(ov) ov.hidden = true; }
+
+    /* ── Request again — the bottom section (owner 2026-10-12: "the bottom
+       section has 4 most recent completed requests similar to live apps").
+       The app shows the last THREE (lastCompleted(3)); the web shows FOUR, as
+       asked, which is also what the wider grid wants. Falls back to the app's
+       "Popular near you" chips when there is no history, exactly as the app
+       does — POPULAR is ported from src/component/home/homeNav.js at
+       origin/production bca7d23b4, and every chip label is one of the same
+       forty iQ ideas, so the two never disagree. ─────────────────────────── */
+    const POPULAR = [
+      ['delivery','Groceries dropped off'], ['junk','Haul an old couch'],
+      ['home','Mount a TV'],                ['moving','Load or unload a U-Haul'],
+      ['yard','Mow & edge the lawn'],       ['ride','Ride to the airport'],
+      ['labor','Event setup & teardown']
+    ];
+
+    const againEl = document.getElementById('rqHomeAgain');
+
+    /* "Completed May 14 · Priya N." — the app's completedOn(). The web's rows
+       carry date as M/D/YY strings, so they are formatted here rather than
+       parsed as ISO. */
+    function completedOn(r){
+      const d = new Date(r.completedAt || r.date);
+      const when = isNaN(d.getTime())
+        ? String(r.date || '')
+        : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      const who = String(r.worker || '').trim();
+      return ['Completed', when].filter(Boolean).join(' ') + (who ? ' \u00B7 ' + who : '');
+    }
+
+    function renderAgain(){
+      if(!againEl) return;
+      const mapCat = window.__mapHistoryCategory || function(){ return 'other'; };
+      /* ⚠️ `typeof DASH_DATA !== 'undefined'` DOES NOT GUARD THIS. DASH_DATA is a
+         `const` declared further down this same closure, so while this runs it
+         is in the temporal dead zone — and typeof throws a ReferenceError on a
+         TDZ binding, unlike on an undeclared name. The guard reads as safe and
+         is not; it threw "Cannot access 'DASH_DATA' before initialization" and
+         left the section hidden. try/catch is the only guard that works here. */
+      let prev = [];
+      try { prev = DASH_DATA.previousRequests || []; } catch(e){ prev = []; }
+      const rows = prev.slice(0, 4);
+
+      if(rows.length){
+        againEl.innerHTML =
+          '<div class="hra-h"><h2>Request again</h2>'
+          + '<button type="button" class="hra-link" data-hra-history>Request History \u203A</button></div>'
+          + '<div class="hra-rows">' + rows.map(function(r, i){
+              const k = mapCat(r.category);
+              return '<div class="hra-card">'
+                + '<span class="hv-art hv-a-' + k + '" aria-hidden="true"></span>'
+                + '<div class="hra-b">'
+                +   '<div class="hra-t" title="' + esc(r.type || r.category) + '">'
+                +     esc(r.type || r.category) + '</div>'
+                +   '<div class="hra-s">' + esc(completedOn(r)) + '</div>'
+                +   '<button type="button" class="hra-go" data-hra-again="' + i + '">Request again</button>'
+                + '</div></div>';
+            }).join('') + '</div>';
+      } else {
+        againEl.innerHTML =
+          '<div class="hra-h"><h2>Popular near you</h2></div>'
+          + '<div class="hra-chips">' + POPULAR.map(function(pair){
+              return '<button type="button" class="hra-chip" data-hra-pop="' + esc(pair[0]) + '"'
+                + ' data-hra-idea="' + esc(pair[1]) + '">'
+                + '<span class="hv-art hv-a-' + pair[0] + '" aria-hidden="true"></span>'
+                + esc(pair[1]) + '</button>';
+            }).join('') + '</div>';
+      }
+      againEl.hidden = false;
+
+      againEl.onclick = function(e){
+        const pop = e.target.closest('[data-hra-pop]');
+        if(pop){ start(pop.dataset.hraPop, pop.dataset.hraIdea); return; }
+        const hist = e.target.closest('[data-hra-history]');
+        if(hist){ showSection('history'); return; }
+        const go = e.target.closest('[data-hra-again]');
+        if(!go) return;
+        /* Reuse the dashboard's own Request-again path — the MY Gophers
+           checklist, or straight to Review when there are none. Building a
+           second route to the same place is how the two drift. */
+        const r = rows[Number(go.dataset.hraAgain)];
+        if(r && typeof openRaFastModal === 'function') openRaFastModal(r);
+      };
+    }
+    /* Deferred to a macrotask: this IIFE runs inside rqDashboardInit(), which is
+       reached BEFORE the `const DASH_DATA` below it has initialised. A timeout
+       lets the whole synchronous block finish first, so the history is really
+       there. Re-exported so a later data change can refresh the rail. */
+    window.__renderHomeAgain = renderAgain;
+    setTimeout(renderAgain, 0);
   })();
 
   const SECTION_TITLES = {
