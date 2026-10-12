@@ -8511,14 +8511,50 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hv-nm { font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; color:var(--navy);
            padding:11px 13px; line-height:1.2; }
   .hv-ds { font-size:11.5px; color:var(--muted); padding:0 13px 11px; margin-top:-7px; }
-  .hv-a-delivery{background:linear-gradient(140deg,#CFE6D6,#9FCFB4)}
-  .hv-a-junk    {background:linear-gradient(140deg,#E2DCC9,#C2B69A)}
-  .hv-a-moving  {background:linear-gradient(140deg,#CBD9EA,#9FB6D4)}
-  .hv-a-home    {background:linear-gradient(140deg,#D9E3F0,#AFC2DC)}
-  .hv-a-labor   {background:linear-gradient(140deg,#E6DAC8,#CBAE8C)}
-  .hv-a-yard    {background:linear-gradient(140deg,#D4E5CB,#A6CE96)}
-  .hv-a-ride    {background:linear-gradient(140deg,#CFE0EC,#A2C2D9)}
-  .hv-a-other   {background:linear-gradient(140deg,#E9DCE4,#CBAFC2)}
+  /* Category art. Each category declares its two ingredients ONCE as custom
+     properties — its gradient and, where one exists, its photograph — and the
+     views compose them. The earlier version declared every gradient twice, which
+     is how `background-image:none` in the list view silently took the gradient
+     out along with the photo.
+     The gradient is the bottom layer, so it is what shows if a photo 404s: a CSS
+     background has no onerror, so the fallback has to be in the stack.
+     Photos are the deliberate consumer set — neighbour-to-neighbour, faces, warm
+     — not the `uc-` commercial shots, which are dark contractor stock and read as
+     a different company on a requester's home screen.
+     ⚠️ Relative paths, exact case: this site is served from a SUBDIRECTORY on
+     case-sensitive Linux, so a leading slash or wrong case 404s live only. */
+  .hv-a-delivery{--grad:linear-gradient(140deg,#CFE6D6,#9FCFB4); --photo:url('assets/img/01-delivery.webp')}
+  .hv-a-junk    {--grad:linear-gradient(140deg,#E2DCC9,#C2B69A); --photo:url('assets/img/05-junk.webp')}
+  .hv-a-moving  {--grad:linear-gradient(140deg,#CBD9EA,#9FB6D4); --photo:url('assets/img/hero-moving.webp')}
+  .hv-a-home    {--grad:linear-gradient(140deg,#D9E3F0,#AFC2DC); --photo:url('assets/img/go101-home-office.webp')}
+  .hv-a-labor   {--grad:linear-gradient(140deg,#E6DAC8,#CBAE8C); --photo:url('assets/img/04-labor.jpg')}
+  .hv-a-yard    {--grad:linear-gradient(140deg,#D4E5CB,#A6CE96); --photo:url('assets/img/06-yard.webp')}
+  .hv-a-ride    {--grad:linear-gradient(140deg,#CFE0EC,#A2C2D9); --photo:url('assets/img/07-ride.webp')}
+  .hv-a-other   {--grad:linear-gradient(140deg,#E9DCE4,#CBAFC2)}   /* no photograph for "anything else" */
+
+  /* Default (Spotlight, All at once): photo over gradient. Custom Task has no
+     --photo, so var() falls back to `none` and its gradient shows alone. */
+  .hv-art{ background-image:var(--photo,none),var(--grad);
+           background-size:cover; background-position:center; background-repeat:no-repeat; }
+
+  /* ⚠️ LIST VIEW DROPS THE PHOTO AND KEEPS THE GLYPH, DELIBERATELY. The list
+     thumbnail is 74x60. A cover-crop of a 620x400 photograph at that size is an
+     unreadable fragment — side by side, Junk Removal and Moving were the same
+     brown smudge. An icon is legible at 74px and a photograph is not, so the
+     photo belongs to the two big views and the glyph to the compact one. The
+     gradient stays, because it is the per-category colour cue.
+     Caught by looking at all eight in a row, not by reasoning about it.
+     The glyph comes from ::before because the markup's own glyph was removed
+     when the photos landed; Custom Task still carries its ✨ inline, so it is
+     the one category with no ::before rule here. */
+  .hv-grid[data-hview="list"] .hv-art{ background-image:var(--grad); }
+  .hv-grid[data-hview="list"] .hv-a-delivery::before{content:'\1F69A'}
+  .hv-grid[data-hview="list"] .hv-a-junk::before    {content:'\1F5D1'}
+  .hv-grid[data-hview="list"] .hv-a-moving::before  {content:'\1F4E6'}
+  .hv-grid[data-hview="list"] .hv-a-home::before    {content:'\1F527'}
+  .hv-grid[data-hview="list"] .hv-a-labor::before   {content:'\1F4AA'}
+  .hv-grid[data-hview="list"] .hv-a-yard::before    {content:'\1F333'}
+  .hv-grid[data-hview="list"] .hv-a-ride::before    {content:'\1F697'}
 
   /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
      row half empty (3+3+2), which is the "not fitting" the owner called out. Two
@@ -21433,31 +21469,31 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                canonical master and drop them into .hv-ds. -->
           <div class="hv-grid" id="rqHomeCats" data-hview="spot">
               <button type="button" class="hv-tile" data-homecat="delivery">
-                <span class="hv-art hv-a-delivery" aria-hidden="true">🚚</span>
+                <span class="hv-art hv-a-delivery" aria-hidden="true"></span>
                 <span class="hv-nm">Delivery / Errand</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="junk">
-                <span class="hv-art hv-a-junk" aria-hidden="true">🗑️</span>
+                <span class="hv-art hv-a-junk" aria-hidden="true"></span>
                 <span class="hv-nm">Junk Removal</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="moving">
-                <span class="hv-art hv-a-moving" aria-hidden="true">📦</span>
+                <span class="hv-art hv-a-moving" aria-hidden="true"></span>
                 <span class="hv-nm">Moving</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="home">
-                <span class="hv-art hv-a-home" aria-hidden="true">🔧</span>
+                <span class="hv-art hv-a-home" aria-hidden="true"></span>
                 <span class="hv-nm">Home Services</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="labor">
-                <span class="hv-art hv-a-labor" aria-hidden="true">💪</span>
+                <span class="hv-art hv-a-labor" aria-hidden="true"></span>
                 <span class="hv-nm">Hourly / Day Labor</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="yard">
-                <span class="hv-art hv-a-yard" aria-hidden="true">🌳</span>
+                <span class="hv-art hv-a-yard" aria-hidden="true"></span>
                 <span class="hv-nm">Yard / Outdoor Projects</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="ride">
-                <span class="hv-art hv-a-ride" aria-hidden="true">🚗</span>
+                <span class="hv-art hv-a-ride" aria-hidden="true"></span>
                 <span class="hv-nm">Need a Ride</span>
               </button>
               <button type="button" class="hv-tile" data-homecat="other">
