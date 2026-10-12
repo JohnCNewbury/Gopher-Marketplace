@@ -8524,7 +8524,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hv-a-labor   {--grad:linear-gradient(140deg,#E6DAC8,#CBAE8C); --photo:url('assets/img/04-labor.jpg')}
   .hv-a-yard    {--grad:linear-gradient(140deg,#D4E5CB,#A6CE96); --photo:url('assets/img/06-yard.webp')}
   .hv-a-ride    {--grad:linear-gradient(140deg,#CFE0EC,#A2C2D9); --photo:url('assets/img/07-ride.webp')}
-  .hv-a-other   {--grad:linear-gradient(140deg,#E9DCE4,#CBAFC2)}   /* no photograph for "anything else" */
+  /* Custom Task, added 2026-10-12 on the owner's "need custom pic". It was the
+     one category with no photograph; community.webp is it — a neighbour and a
+     worker with a toolbox shaking hands in a kitchen, 1600x1066, the same warm
+     consumer register as the other seven. NOT go101-other.webp, which exists
+     and looks like the obvious choice: it is a corporate "hands in" stock shot
+     over a desk of charts and a laptop, and at 300x198 it upscales badly in a
+     330px card. Looked at both before choosing. */
+  .hv-a-other   {--grad:linear-gradient(140deg,#E9DCE4,#CBAFC2); --photo:url('assets/img/community.webp')}
 
   /* Default (Spotlight, All at once): photo over gradient. Custom Task has no
      --photo, so var() falls back to `none` and its gradient shows alone. */
@@ -8541,14 +8548,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      The glyph comes from ::before because the markup's own glyph was removed
      when the photos landed; Custom Task still carries its ✨ inline, so it is
      the one category with no ::before rule here. */
-  .hv-grid[data-hview="list"] .hv-art{ background-image:var(--grad); }
-  .hv-grid[data-hview="list"] .hv-a-delivery::before{content:'\1F69A'}
-  .hv-grid[data-hview="list"] .hv-a-junk::before    {content:'\1F5D1'}
-  .hv-grid[data-hview="list"] .hv-a-moving::before  {content:'\1F4E6'}
-  .hv-grid[data-hview="list"] .hv-a-home::before    {content:'\1F527'}
-  .hv-grid[data-hview="list"] .hv-a-labor::before   {content:'\1F4AA'}
-  .hv-grid[data-hview="list"] .hv-a-yard::before    {content:'\1F333'}
-  .hv-grid[data-hview="list"] .hv-a-ride::before    {content:'\1F697'}
+  /* ⚠️ REVERSED 2026-10-12 — owner, looking at the glyph version: "need pics for
+     this screen". The glyphs were my call, on the grounds that a cover-crop of a
+     620x400 photograph was mud at 74x60. The owner's answer is the right one and
+     the fix is the SIZE, not the glyph: the thumbnail is now 118x84, where the
+     photographs read. Keeping a rule that loses the argument is how a screen
+     ends up half one idea and half another. */
 
   /* ── The cell. The tile is a <button>, and a button cannot contain buttons —
      so the example pills and the iQ pill live in a WRAPPER beside it, not
@@ -8586,18 +8591,24 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     transition:box-shadow .15s, transform .15s;
   }
   .hv-grid[data-hview="list"] .hv-cell:hover { transform:translateY(-1px); box-shadow:0 8px 20px -6px rgba(0,36,97,.14); }
+  /* 232px here made Delivery's row a 182px outlier against everyone else's 138:
+     its five pills — "Tobacco, vape and nicotine delivery (21+ only)" among them
+     — could not fit beside a name column that wide, so the whole rail wrapped to
+     a second line. 196px lets the longest set sit on one line. Measured, not
+     guessed; and at narrow widths every row wraps together, which reads as
+     responsive rather than as one broken row. */
   .hv-grid[data-hview="list"] .hv-tile {
     flex:0 0 auto; background:none; border:0; border-radius:0; box-shadow:none;
-    padding:0; width:auto; min-width:232px;
+    padding:0; width:auto; min-width:196px;
   }
   .hv-grid[data-hview="list"] .hv-tile:hover { transform:none; box-shadow:none; }
   .hv-grid[data-hview="list"] .hv-pills {
     display:flex; flex-wrap:wrap; gap:7px; flex:1 1 auto; min-width:0; justify-content:flex-end;
   }
   .hv-pill {
-    font-family:'DM Sans',system-ui,sans-serif; font-size:12px; color:var(--navy);
+    font-family:'DM Sans',system-ui,sans-serif; font-size:11.5px; color:var(--navy);
     background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px;
-    padding:6px 12px; cursor:pointer; white-space:nowrap;
+    padding:6px 11px; cursor:pointer; white-space:nowrap;
     transition:background .14s, border-color .14s;
   }
   .hv-pill:hover { background:#F4E9D2; border-color:#D9CBAE; }
@@ -8634,18 +8645,32 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hra-link { background:none; border:0; cursor:pointer; font-family:'Nunito',sans-serif;
               font-weight:800; font-size:13px; color:var(--green-text,#0F7A3F); padding:2px; }
   .hra-link:hover { text-decoration:underline; }
-  .hra-rows { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
-  .hra-card { display:flex; flex-direction:column; background:#fff; border:1px solid #EDE7D9;
-              border-radius:14px; overflow:hidden; min-width:0; }
-  .hra-card .hv-art { height:92px; border-bottom:1px solid rgba(0,36,97,.06); font-size:0; }
-  .hra-b { padding:11px 13px 13px; display:flex; flex-direction:column; gap:3px; min-width:0; }
-  .hra-t { font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px; color:var(--navy);
+  /* ⚠️ DELIBERATELY NOT A CATEGORY CARD. Owner 2026-10-12: "make the request
+     again cards look entirely different than the category cards. Otherwise it
+     doesnt look right." He was right — four photo-top cards under eight photo-top
+     cards read as twelve categories, not as two different things.
+     So this is a ROW: circular thumbnail, text in the middle, the action on the
+     right, two across instead of four. That is also the app's own shape for it
+     (gh-ra-row in HomeCategories.js — image, title, button, subtitle), so the
+     two surfaces agree rather than diverging to solve the same problem. */
+  .hra-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .hra-card { display:flex; flex-direction:row; align-items:center; gap:14px;
+              background:#fff; border:1px solid #EDE7D9; border-radius:14px;
+              padding:12px 14px; min-width:0;
+              transition:box-shadow .15s, transform .15s; }
+  .hra-card:hover { transform:translateY(-1px); box-shadow:0 8px 20px -6px rgba(0,36,97,.14); }
+  /* A CIRCLE, which no category card uses — the clearest single signal that this
+     row is a past request and not somewhere new to start. */
+  .hra-card .hv-art { width:58px; height:58px; border-radius:999px; border-bottom:0;
+                      font-size:0; flex:0 0 auto; }
+  .hra-b { padding:0; display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 1 auto; }
+  .hra-t { font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; color:var(--navy);
            line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .hra-s { font-size:11.5px; color:var(--muted,#8C8675); }
-  .hra-go { margin-top:8px; align-self:flex-start; cursor:pointer;
+  .hra-go { flex:0 0 auto; align-self:center; cursor:pointer;
             font-family:'Nunito',sans-serif; font-weight:800; font-size:12.5px; color:var(--navy);
-            background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px; padding:7px 14px;
-            transition:background .14s; }
+            background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px; padding:8px 15px;
+            white-space:nowrap; transition:background .14s; }
   .hra-go:hover { background:#F4E9D2; }
   .hra-go:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
   .hra-chips { display:flex; flex-wrap:wrap; gap:9px; }
@@ -8656,8 +8681,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hra-chip .hv-art { width:30px; height:30px; border-radius:999px; border-bottom:0; font-size:0; flex:0 0 auto; }
   .hra-chip:hover { background:var(--sand,#FBF3E4); border-color:#DED2B8; }
   .hra-chip:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
-  @media (max-width:1180px){ .hra-rows{grid-template-columns:repeat(2,1fr)} }
-  @media (max-width:640px){ .hra-rows{grid-template-columns:1fr} }
+  @media (max-width:980px){ .hra-rows{grid-template-columns:1fr} }
 
   /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
      row half empty (3+3+2), which is the "not fitting" the owner called out. Two
@@ -8693,7 +8717,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      inside this height instead of growing the row again. */
   .hv-grid[data-hview="list"] { grid-template-columns:1fr; gap:10px; }
   .hv-grid[data-hview="list"] .hv-tile { flex-direction:row; align-items:center; gap:15px; padding:14px 16px; }
-  .hv-grid[data-hview="list"] .hv-art { height:60px; width:74px; border-radius:11px; font-size:29px; flex:0 0 auto; border-bottom:0; }
+  .hv-grid[data-hview="list"] .hv-art { height:84px; width:118px; border-radius:11px; font-size:29px; flex:0 0 auto; border-bottom:0; }
   .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:14.5px; }
   .hv-grid[data-hview="list"] .hv-ds { padding:0; margin-top:2px; }
   @media (prefers-reduced-motion:reduce){ .hv-tile{transition:none} .hv-sb{transition:none} }
@@ -21672,7 +21696,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
               </div>
               <div class="hv-cell">
                 <button type="button" class="hv-tile" data-homecat="other">
-                  <span class="hv-art hv-a-other" aria-hidden="true">✨</span>
+                  <span class="hv-art hv-a-other" aria-hidden="true"></span>
                   <span class="hv-nm">Custom Task</span>
                 </button>
                 <button type="button" class="hv-iq" data-iq="other" aria-haspopup="dialog">iQ Ideas ▲</button>
@@ -22392,8 +22416,9 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                 +   '<div class="hra-t" title="' + esc(r.type || r.category) + '">'
                 +     esc(r.type || r.category) + '</div>'
                 +   '<div class="hra-s">' + esc(completedOn(r)) + '</div>'
-                +   '<button type="button" class="hra-go" data-hra-again="' + i + '">Request again</button>'
-                + '</div></div>';
+                + '</div>'
+                + '<button type="button" class="hra-go" data-hra-again="' + i + '">Request again</button>'
+                + '</div>';
             }).join('') + '</div>';
       } else {
         againEl.innerHTML =
