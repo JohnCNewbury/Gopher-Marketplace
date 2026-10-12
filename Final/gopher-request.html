@@ -3781,6 +3781,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .field-textarea:focus { border-color:var(--green); }
   .field-textarea::placeholder { color:#94a0b8; font-style:italic; }
+  /* iQ guidance reads as instructions, so it is darker than a normal
+     placeholder. #707070 is the owner's own value (4.9:1): "much better,
+     readable now". A normal placeholder stays faint. */
+  .field-textarea[data-iq-guidance]::placeholder { color:#707070; font-style:normal; }
 
   /* Add-a-pic chip (Page 1) */
   .field-addpic {
@@ -8556,6 +8560,83 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hv-grid[data-hview="list"] .hv-a-yard::before    {content:'\1F333'}
   .hv-grid[data-hview="list"] .hv-a-ride::before    {content:'\1F697'}
 
+  /* ── The cell. The tile is a <button>, and a button cannot contain buttons —
+     so the example pills and the iQ pill live in a WRAPPER beside it, not
+     inside it. That is why .hv-cell exists; it is not decoration. ───────── */
+  .hv-cell { position:relative; display:flex; flex-direction:column; min-width:0; }
+  .hv-cell .hv-tile { flex:1 1 auto; }
+  .hv-pills { display:none; }
+  .hv-iq    { display:none; }
+
+  /* ── Spotlight: the "iQ Ideas ▲" pill, bottom-right of the photo.
+     Label, placement and behaviour are the app's (G40-549, canonical master
+     H-06/H-08): the photo goes straight to Step 2, the pill opens a sheet.
+     Big cards only — the app scopes it to the Big view, so List and All at
+     once do not show it. ──────────────────────────────────────────────── */
+  .hv-grid[data-hview="spot"] .hv-iq {
+    display:inline-flex; align-items:center; gap:5px; position:absolute;
+    right:12px; bottom:58px; z-index:2;   /* just above the name strip, so it
+                                             rides the bottom of the PHOTO and
+                                             survives the next art-height change */
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px; letter-spacing:.2px;
+    color:var(--navy); background:rgba(255,255,255,.94); border:1px solid rgba(0,36,97,.14);
+    border-radius:999px; padding:6px 11px; cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,36,97,.16); transition:background .15s, transform .15s;
+  }
+  .hv-grid[data-hview="spot"] .hv-iq:hover { background:#fff; transform:translateY(-1px); }
+  .hv-grid[data-hview="spot"] .hv-iq:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+
+  /* ── List: a rail of example pills per category (owner 2026-10-12, "pills of
+     examples of requests in that category"). In this view the CELL is the card
+     and the tile inside it is transparent, because the pills have to be real
+     buttons sitting beside the row's own click target. ─────────────────── */
+  .hv-grid[data-hview="list"] .hv-cell {
+    flex-direction:row; align-items:center; gap:14px; flex-wrap:wrap;
+    background:#fff; border:1px solid #EDE7D9; border-radius:14px; padding:12px 16px;
+    transition:box-shadow .15s, transform .15s;
+  }
+  .hv-grid[data-hview="list"] .hv-cell:hover { transform:translateY(-1px); box-shadow:0 8px 20px -6px rgba(0,36,97,.14); }
+  .hv-grid[data-hview="list"] .hv-tile {
+    flex:0 0 auto; background:none; border:0; border-radius:0; box-shadow:none;
+    padding:0; width:auto; min-width:232px;
+  }
+  .hv-grid[data-hview="list"] .hv-tile:hover { transform:none; box-shadow:none; }
+  .hv-grid[data-hview="list"] .hv-pills {
+    display:flex; flex-wrap:wrap; gap:7px; flex:1 1 auto; min-width:0; justify-content:flex-end;
+  }
+  .hv-pill {
+    font-family:'DM Sans',system-ui,sans-serif; font-size:12px; color:var(--navy);
+    background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px;
+    padding:6px 12px; cursor:pointer; white-space:nowrap;
+    transition:background .14s, border-color .14s;
+  }
+  .hv-pill:hover { background:#F4E9D2; border-color:#D9CBAE; }
+  .hv-pill:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+
+  /* ── The "What kind of …?" sheet the iQ pill opens. ──────────────────── */
+  .iqs-ov { position:fixed; inset:0; z-index:9400; background:rgba(0,20,54,.46);
+            display:grid; place-items:center; padding:20px; }
+  .iqs-ov[hidden]{ display:none; }
+  .iqs { background:#fff; border-radius:18px; width:min(560px,100%); max-height:82vh;
+         overflow:auto; box-shadow:0 20px 60px rgba(0,20,54,.3); }
+  .iqs-h { display:flex; align-items:flex-start; gap:12px; padding:20px 22px 6px; }
+  .iqs-h h3 { font-family:'Nunito',sans-serif; font-weight:900; font-size:21px; color:var(--navy);
+              margin:0; flex:1 1 auto; }
+  .iqs-x { background:none; border:0; font-size:22px; line-height:1; color:var(--muted,#8C8675);
+           cursor:pointer; padding:0 2px; }
+  .iqs-sub { padding:0 22px 12px; font-size:13px; color:var(--muted,#8C8675); margin:0; }
+  .iqs-list { padding:4px 14px 16px; display:flex; flex-direction:column; gap:7px; }
+  .iqs-i { text-align:left; font-family:'DM Sans',system-ui,sans-serif; font-size:14.5px;
+           font-weight:600; color:var(--navy); background:#FBF7EF; border:1px solid #EDE7D9;
+           border-radius:12px; padding:13px 15px; cursor:pointer; transition:background .14s, border-color .14s; }
+  .iqs-i:hover { background:var(--sand,#FBF3E4); border-color:#DED2B8; }
+  .iqs-i:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  .iqs-else { margin-top:3px; background:none; border:0; text-align:left; cursor:pointer;
+              font-family:'Nunito',sans-serif; font-weight:800; font-size:13.5px;
+              color:var(--green-text,#0F7A3F); padding:10px 15px; }
+  .iqs-else:hover { text-decoration:underline; }
+  @media (prefers-reduced-motion:reduce){ .hv-pill,.iqs-i,.hv-iq{transition:none} }
+
   /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
      row half empty (3+3+2), which is the "not fitting" the owner called out. Two
      divides evenly into four full rows and makes Spotlight genuinely the big view,
@@ -8565,13 +8646,22 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      1 card is the size of 2 tall and as wide as 1/2 of 1". So HALF the width
      (2 columns -> 4) and roughly TWICE the height (116px art -> 248px). The
      glyph scales with the box or it swims in it. */
+  /* Owner 2026-10-12, twice: "MUCH bigger", then "even bigger". Art 248 -> 330px,
+     card ~294 -> ~380px. Still FOUR across and two rows: eight categories divide
+     by 4 and not by 3, so going wider would put an orphan row back on the home —
+     the thing dropped yesterday. Height is the lever, not the column count.
+     Two rows at 380 + the header still clear 950px without scrolling. */
   .hv-grid[data-hview="spot"] { grid-template-columns:repeat(4,1fr); }
-  .hv-grid[data-hview="spot"] .hv-art { height:248px; font-size:76px; }
-  .hv-grid[data-hview="spot"] .hv-nm { font-size:15px; padding:13px 14px; }
+  .hv-grid[data-hview="spot"] .hv-art { height:330px; font-size:92px; }
+  .hv-grid[data-hview="spot"] .hv-nm { font-size:16px; padding:15px 16px; }
 
+  /* Owner 2026-10-12, "a little taller". 74 -> 112px. This also fixes the thing
+     flagged on the same screen: at 74px the photographs were letterbox slivers
+     you could not identify. At 112 they read, and the view is still plainly the
+     compact one against Spotlight's 330. */
   .hv-grid[data-hview="all"] { grid-template-columns:repeat(4,1fr); gap:12px; }
-  .hv-grid[data-hview="all"] .hv-art { height:74px; font-size:26px; }
-  .hv-grid[data-hview="all"] .hv-nm { font-size:12.5px; padding:9px 11px; }
+  .hv-grid[data-hview="all"] .hv-art { height:112px; font-size:34px; }
+  .hv-grid[data-hview="all"] .hv-nm { font-size:13px; padding:10px 12px; }
 
   /* List rows were 56px tall and read as a thin index rather than a way in —
      owner 2026-10-12, "this need to be taller". Raised to ~88px: the art box is
@@ -13169,7 +13259,19 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     yard:     'Please be as descriptive as possible. Tell your worker exactly what needs to be done in the yard, and any equipment needed.',
     other:    'Please be as descriptive as possible. Tell your worker exactly what you need done.'
   };
-  const describeHint = () => DESCRIBE_HINT[state.category] || state.descriptionPlaceholder;
+  /* An iQ idea tapped on the home screen wins over the category's own hint.
+     ⛔ It is PLACEHOLDER text, never a value — owner 10/5, in the app's own
+     source: "do NOT pre-populate with real text (because that wont give the
+     worker enough info anyways so it will need to by edited) what needs to
+     happen is the description has the example text pre-populated for each
+     option we show, that explains to them what should be written inside."
+     So Step 2 opens EMPTY with the idea's guidance showing through. */
+  const describeHint = () =>
+    (state.iqGuidanceField === 'description' && state.iqGuidance)
+      || DESCRIBE_HINT[state.category] || state.descriptionPlaceholder;
+  const rideHint = () =>
+    (state.iqGuidanceField === 'specialInstructions' && state.iqGuidance)
+      || 'e.g. ring the front desk on arrival';
 
   function getCurrentOfferModel(){
     const isRide = state.category === 'ride';
@@ -15027,7 +15129,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ${isVisible('describe') ? `
       <div class="step-section">
         <div class="step-section-title">${sstIco('✏️')}Describe what you need</div>
-        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3">${state.description}</textarea>
+        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3"${state.iqGuidanceField === 'description' && state.iqGuidance ? ' data-iq-guidance="true"' : ''}>${state.description}</textarea>
         ${isVisible('addPic') ? (
           state.picThumbs.length === 0
             ? `<button class="field-addpic" data-action="add-pic">
@@ -15133,8 +15235,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
                 tagName DIV, isContentEditable false. Now a real textarea, bound
                 like #descriptionInput. */}
           <textarea class="field-textarea" id="specialInstructionsInput" data-field="specialInstructions"
-                    style="min-height:42px;" rows="2"
-                    placeholder="e.g. ring the front desk on arrival">${escText(state.specialInstructions)}</textarea>
+                    style="min-height:42px;" rows="2"${state.iqGuidanceField === 'specialInstructions' && state.iqGuidance ? ' data-iq-guidance="true"' : ''}
+                    placeholder="${escText(rideHint())}">${escText(state.specialInstructions)}</textarea>
         </div>
         ${''/* G40-580: no TrustShield banner on a ride. The promo stays on the
               delivery age-restricted path above, where it buys the requester
@@ -17450,10 +17552,20 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   // Used by the homepage AI search "Start a request" suggestions. Resets the
   // flow, selects the category, advances to Step 2 (Job details), and makes the
   // flow visible (scrolls it into view). Returns true on success.
-  window.__startRequestWithCategory = function(catKey){
+  window.__startRequestWithCategory = function(catKey, idea){
     if(!CATEGORIES[catKey]) return false;
     resetFlowState();
     state.category = catKey;
+    /* An iQ idea tapped on the home screen travels as GUIDANCE, never as text.
+       Need a Ride has no description box, so its line goes to the special
+       instructions — the app's guidanceField(), same rule. */
+    if(idea && window.HOME_IDEAS && window.HOME_IDEAS[catKey]){
+      const hit = window.HOME_IDEAS[catKey].find(function(x){ return x[0] === idea; });
+      if(hit){
+        state.iqGuidance = hit[1];
+        state.iqGuidanceField = (catKey === 'ride') ? 'specialInstructions' : 'description';
+      }
+    }
     state.step = 2;                 // skip "pick a service" — already chosen
     if(state.maxStepReached < 2) state.maxStepReached = 2;
     render();
@@ -21468,38 +21580,70 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
                in front of requesters that nobody approved. Port them from the desk's
                canonical master and drop them into .hv-ds. -->
           <div class="hv-grid" id="rqHomeCats" data-hview="spot">
-              <button type="button" class="hv-tile" data-homecat="delivery">
-                <span class="hv-art hv-a-delivery" aria-hidden="true"></span>
-                <span class="hv-nm">Delivery / Errand</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="junk">
-                <span class="hv-art hv-a-junk" aria-hidden="true"></span>
-                <span class="hv-nm">Junk Removal</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="moving">
-                <span class="hv-art hv-a-moving" aria-hidden="true"></span>
-                <span class="hv-nm">Moving</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="home">
-                <span class="hv-art hv-a-home" aria-hidden="true"></span>
-                <span class="hv-nm">Home Services</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="labor">
-                <span class="hv-art hv-a-labor" aria-hidden="true"></span>
-                <span class="hv-nm">Hourly / Day Labor</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="yard">
-                <span class="hv-art hv-a-yard" aria-hidden="true"></span>
-                <span class="hv-nm">Yard / Outdoor Projects</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="ride">
-                <span class="hv-art hv-a-ride" aria-hidden="true"></span>
-                <span class="hv-nm">Need a Ride</span>
-              </button>
-              <button type="button" class="hv-tile" data-homecat="other">
-                <span class="hv-art hv-a-other" aria-hidden="true">✨</span>
-                <span class="hv-nm">Custom Task</span>
-              </button>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="delivery">
+                  <span class="hv-art hv-a-delivery" aria-hidden="true"></span>
+                  <span class="hv-nm">Delivery / Errand</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="delivery" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="delivery"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="junk">
+                  <span class="hv-art hv-a-junk" aria-hidden="true"></span>
+                  <span class="hv-nm">Junk Removal</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="junk" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="junk"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="moving">
+                  <span class="hv-art hv-a-moving" aria-hidden="true"></span>
+                  <span class="hv-nm">Moving</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="moving" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="moving"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="home">
+                  <span class="hv-art hv-a-home" aria-hidden="true"></span>
+                  <span class="hv-nm">Home Services</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="home" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="home"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="labor">
+                  <span class="hv-art hv-a-labor" aria-hidden="true"></span>
+                  <span class="hv-nm">Hourly / Day Labor</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="labor" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="labor"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="yard">
+                  <span class="hv-art hv-a-yard" aria-hidden="true"></span>
+                  <span class="hv-nm">Yard / Outdoor Projects</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="yard" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="yard"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="ride">
+                  <span class="hv-art hv-a-ride" aria-hidden="true"></span>
+                  <span class="hv-nm">Need a Ride</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="ride" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="ride"></div>
+              </div>
+              <div class="hv-cell">
+                <button type="button" class="hv-tile" data-homecat="other">
+                  <span class="hv-art hv-a-other" aria-hidden="true">✨</span>
+                  <span class="hv-nm">Custom Task</span>
+                </button>
+                <button type="button" class="hv-iq" data-iq="other" aria-haspopup="dialog">iQ Ideas ▲</button>
+                <div class="hv-pills" data-pills="other"></div>
+              </div>
           </div>
           </div>
         </div>
@@ -21912,6 +22056,127 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     }
   });
 
+
+  /* ── iQ Ideas (owner 2026-10-12: "iQ badge here that opens up with examples
+     just like the live app", and "pills of examples of requests in that
+     category") ────────────────────────────────────────────────────────────
+     ⛔ THIS COPY IS NOT MINE AND MUST NOT BE EDITED HERE. It is ported verbatim
+     from the live Request app, src/component/home/iqIdeas.js at
+     origin/production bca7d23b4, generated rather than retyped so no word
+     drifts. Five ideas per category, each paired with the guidance it puts in
+     the Step 2 box. If the app's list changes, re-port it; do not hand-edit.
+
+     The app's own note records WHY each line asks only what the flow does not
+     already ask (John, 10/5): never addresses, timing, price, purchase/cost,
+     riders or bags, item counts, # of Gophers or hours, or stairs — "BOTH
+     passengers and luggage are inputs we ask for so that would be redundant
+     and creating EXTRA work for the customer when our experience goal for
+     customers is 'easy to use'". "Beer & liquor run" is the owner's own line.
+
+     Keyed by the WEB's category keys; the app keys by stored category name
+     (Delivery, Junk Removal, Moving, Home Services, Hourly / Day Labor,
+     Yard Project, Need a Ride, Other). */
+  window.HOME_IDEAS = {
+    delivery: [
+      ['Beer & liquor run',
+       'Explain here what specific brand, size and quantity of alcohol you want purchased.'],
+      ['Groceries dropped off',
+       'Explain here your grocery list (brands and sizes) and what your Gopher should do if something is out of stock.'],
+      ['Pharmacy pickup',
+       'Explain here the name the prescription is under and anything else to grab while there.'],
+      ['Tobacco, vape and nicotine delivery (21+ only)',
+       'Explain here the specific brand, type, flavor and quantity you want purchased.'],
+      ['Takeout delivered',
+       'Explain here the name the order is under and the order number, if you have one.'],
+    ],
+    junk: [
+      ['Haul an old couch',
+       'Explain here the couch size and type (sleeper, sectional) and where it sits in the home.'],
+      ['Garage cleanout',
+       'Explain here what kinds of items are going and anything that should stay.'],
+      ['Mattress to the dump',
+       'Explain here the mattress size and whether a box spring or bed frame goes too.'],
+      ['Construction debris',
+       'Explain here what the debris is (drywall, wood, tile) and whether it is bagged or loose.'],
+      ['Scrap metal pickup',
+       'Explain here what the metal items are and whether anything needs to be taken apart first.'],
+    ],
+    moving: [
+      ['Load or unload a U-Haul',
+       'Explain here the truck size and the heaviest items going in or out.'],
+      ['Move heavy furniture',
+       'Explain here which pieces, roughly how heavy, and any tight spots like narrow doorways.'],
+      ['Whole-apartment move',
+       'Explain here the apartment size, whether there is an elevator, and any oversized items.'],
+      ['Dorm move-out',
+       'Explain here what is going (boxes, mini fridge, furniture) and whether there is an elevator.'],
+      ['Rearrange a room',
+       'Explain here which room, what needs to move, and how you would like it set up.'],
+    ],
+    home: [
+      ['Mount a TV',
+       'Explain here the TV size, the wall type (drywall, brick), and whether you have the mount.'],
+      ['Assemble furniture',
+       'Explain here what needs assembling (the brand and item if you know it) and whether you have the tools.'],
+      ['Fix a leaky faucet',
+       'Explain here where the faucet is, how bad the leak is, and whether you have the parts.'],
+      ['Hang shelves & art',
+       'Explain here how many pieces, the wall type, and whether you have the hardware.'],
+      ['Deep clean',
+       'Explain here which rooms, the size of the home, and anything that needs extra attention.'],
+    ],
+    labor: [
+      ['An extra set of hands',
+       'Explain here what the job is and anything your Gopher should bring.'],
+      ['Event setup & teardown',
+       'Explain here the type of event and what needs setting up and taking down.'],
+      ['Load / haul materials',
+       'Explain here what the materials are, roughly how heavy, and where they go on site.'],
+      ['Warehouse help',
+       'Explain here the tasks and any heavy lifting or equipment involved.'],
+      ['General cleanup',
+       'Explain here what needs cleaning up, how big the area is, and where the debris should go.'],
+    ],
+    yard: [
+      ['Mow & edge the lawn',
+       'Explain here the size of the yard, front and/or back, and whether a mower is available.'],
+      ['Leaf & yard cleanup',
+       'Explain here how big the area is, front and/or back, and whether leaves are bagged or hauled away.'],
+      ['Trim hedges & bushes',
+       'Explain here how many hedges or bushes, roughly how tall, and what to do with the clippings.'],
+      ['Pressure wash',
+       'Explain here what needs washing (driveway, deck, siding), roughly how big, and whether a washer is available.'],
+      ['Spread mulch',
+       'Explain here how much mulch, whether it is already on site, and which beds.'],
+    ],
+    ride: [
+      ['Ride to the airport',
+       'Explain here your airline or terminal and anything your Gopher should know at pick-up.'],
+      ['Doctor appointment',
+       'Explain here which entrance to use and any help needed getting in or out of the car.'],
+      ['Late-night ride home',
+       'Explain here exactly where you will be waiting and anything that helps your Gopher spot you.'],
+      ['Senior transportation',
+       'Explain here any help needed getting in and out of the car and any walker or wheelchair coming along.'],
+      ['Wait & return trip',
+       'Explain here about how long your Gopher should wait and where to meet for the return.'],
+    ],
+    other: [
+      ['Pet sitting',
+       'Explain here what pets, for how long, and what care they need (feeding, walks, meds).'],
+      ['Change a tire',
+       'Explain here the vehicle and whether you have a spare and a jack.'],
+      ['Stereo install',
+       'Explain here the vehicle or room and the equipment being installed.'],
+      ['Wait for a delivery',
+       'Explain here the delivery window and what to do when it arrives.'],
+      ['Assemble a grill',
+       'Explain here the grill brand and model, and whether you have the tools.'],
+    ],
+  };
+  /* "What kind of delivery?" — the app's IDEAS_NOUN. */
+  window.HOME_IDEAS_NOUN = { delivery:'delivery', junk:'junk removal', moving:'move', home:'home service', labor:'labor job', yard:'yard project', ride:'ride', other:'custom task' };
+
   /* ── Home category views + tiles (owner 2026-10-11) ──────────────────────
      Three views, mirroring the app's: Spotlight (default, his pick), All at
      once, and List with history. The chosen view is a per-viewer convenience,
@@ -21942,16 +22207,95 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
        lines before it are the same ones the old "services" card ran: without
        moveFlowToDash() the flow node is still parented to the marketing page and
        the section renders empty (the 2026-10-03 defect the owner reported). */
-    grid.addEventListener('click', function(e){
-      const tile = e.target.closest('[data-homecat]');
-      if(!tile) return;
+    /* One way in for all three entry points — the photo, an example pill and an
+       idea in the sheet. `idea` is the idea's NAME; the flow looks up its
+       guidance and shows it as placeholder text. A tapped example never fills
+       real text (owner 10/5). */
+    function start(catKey, idea){
       showSection('new-request');
       moveFlowToDash();
       setRequestPath('new');
       if(typeof window.__startRequestWithCategory === 'function'){
-        window.__startRequestWithCategory(tile.dataset.homecat);
+        window.__startRequestWithCategory(catKey, idea);
       }
+    }
+
+    const esc = function(s){ return String(s == null ? '' : s)
+      .replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+
+    /* Fill the per-category example rails from HOME_IDEAS, so the forty labels
+       live in ONE place and the markup carries none of them. */
+    const IDEAS = window.HOME_IDEAS || {};
+    Array.prototype.forEach.call(grid.querySelectorAll('[data-pills]'), function(rail){
+      const list = IDEAS[rail.dataset.pills] || [];
+      rail.innerHTML = list.map(function(pair){
+        return '<button type="button" class="hv-pill" data-idea="' + esc(pair[0]) + '">'
+             + esc(pair[0]) + '</button>';
+      }).join('');
     });
+
+    grid.addEventListener('click', function(e){
+      /* A pill or the iQ pill sits INSIDE the cell but is its own control, so
+         each returns before the row's own handler can also fire. */
+      const pill = e.target.closest('.hv-pill');
+      if(pill){
+        e.preventDefault(); e.stopPropagation();
+        const cell = pill.closest('.hv-cell');
+        const tl = cell && cell.querySelector('[data-homecat]');
+        if(tl) start(tl.dataset.homecat, pill.dataset.idea);
+        return;
+      }
+      const iq = e.target.closest('.hv-iq');
+      if(iq){ e.preventDefault(); e.stopPropagation(); openIdeas(iq.dataset.iq); return; }
+
+      const tile = e.target.closest('[data-homecat]');
+      if(!tile) return;
+      start(tile.dataset.homecat);
+    });
+
+    /* ── "What kind of …?" — the app's iQ Ideas sheet (canonical master H-06 /
+       H-08): five ideas plus "Something else →", which simply opens Step 2 with
+       no guidance. Built once, reused for every category. ───────────────── */
+    let ov = null;
+    function buildSheet(){
+      ov = document.createElement('div');
+      ov.className = 'iqs-ov'; ov.hidden = true;
+      ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true');
+      ov.innerHTML =
+        '<div class="iqs">'
+        + '<div class="iqs-h"><h3 data-iqs-title></h3>'
+        + '<button type="button" class="iqs-x" aria-label="Close">\u00D7</button></div>'
+        + '<p class="iqs-sub">Pick one and we\u2019ll show you what to write \u2014 '
+        + 'nothing is filled in for you.</p>'
+        + '<div class="iqs-list" data-iqs-list></div>'
+        + '</div>';
+      document.body.appendChild(ov);
+      ov.addEventListener('click', function(e){
+        if(e.target === ov || e.target.closest('.iqs-x')) return closeIdeas();
+        const it = e.target.closest('[data-iqs-idea]');
+        if(it){ const cat = ov.dataset.cat; closeIdeas(); start(cat, it.dataset.iqsIdea || undefined); }
+      });
+      document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape' && ov && !ov.hidden) closeIdeas();
+      });
+    }
+    function openIdeas(catKey){
+      const list = IDEAS[catKey] || [];
+      if(!list.length) return start(catKey);
+      if(!ov) buildSheet();
+      ov.dataset.cat = catKey;
+      const noun = (window.HOME_IDEAS_NOUN || {})[catKey] || 'request';
+      ov.querySelector('[data-iqs-title]').textContent = 'What kind of ' + noun + '?';
+      ov.querySelector('[data-iqs-list]').innerHTML =
+        list.map(function(pair){
+          return '<button type="button" class="iqs-i" data-iqs-idea="' + esc(pair[0]) + '">'
+               + esc(pair[0]) + '</button>';
+        }).join('')
+        + '<button type="button" class="iqs-else" data-iqs-idea="">Something else \u2192</button>';
+      ov.hidden = false;
+      const first = ov.querySelector('.iqs-i'); if(first) first.focus();
+    }
+    function closeIdeas(){ if(ov) ov.hidden = true; }
   })();
 
   const SECTION_TITLES = {
