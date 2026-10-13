@@ -7436,8 +7436,51 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     padding:28px 32px;
     max-width:none;
   }
-  .dash-section { display:none; animation:fadeStep 0.25s ease; }
+  /* ══ THE DASHBOARD'S CONTENT COLUMN — one cap, one gutter, every section ══
+     Owner 2026-10-12, on the dashboard looking cramped and unsymmetrical, then
+     picking A from three: a 1120 cap with a shared 32px gutter.
+
+     ⚠️ WHY IT WAS WRONG BEFORE, because the cause was not where it looked.
+     `.dash-content` carries `padding: 0 32px` and HAS NEVER APPLIED TO ANY
+     SECTION — it is not an ancestor of one. The real chain is
+     block → .dash-section → .dash-main, and `.dash-main` is `padding: 0`.
+     So five of six sections rendered flush to the viewport edge (measured
+     right-gutter: 0) while the home alone had an inset, which is exactly the
+     "not symmetrical" the owner saw. Putting the gutter HERE is what makes it
+     reach every section, because this is the element they all share.
+
+     The cap matters as much as the gutter: a Request History row is
+     "type · date · detail — Total Spent — Gopher — Rating — buttons", and past
+     ~1100px those fields drift so far apart the row stops being scannable.
+     1120 holds that line at any window width.
+
+     ⚠️ The gutter SHRINKS ON A PHONE. 32px each side is 17% of a 375px screen;
+     16px leaves the cards their width back. */
+  .dash-section {
+    display:none; animation:fadeStep 0.25s ease;
+    max-width:1120px; margin-inline:auto; padding-inline:32px;
+  }
   .dash-section.active { display:block; }
+
+  /* ⚠️ PHONE: the Request History filter row (All · GO-To's · Completed ·
+     Expired · Cancelled) is wider than 375 and was clipping the last tab.
+     It scrolls sideways in its own track rather than wrapping, so the row
+     stays one line and the page itself still never scrolls horizontally. */
+  @media (max-width:760px){
+    .prev-tabs, #prevTabs {
+      display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px;
+      scrollbar-width:none; -webkit-overflow-scrolling:touch;
+      margin-inline:-16px; padding-inline:16px;
+    }
+    .prev-tabs::-webkit-scrollbar, .prev-tabrow::-webkit-scrollbar { display:none; }
+    .prev-tab { flex:0 0 auto; }
+  }
+  @media (max-width:760px){
+    .dash-section { padding-inline:16px; }
+  }
+  /* The home set its own inset before there was a shared one; it would now
+     double up. The shared gutter is the only one. */
+  .choose-stage { padding-inline:0; }
 
   /* ─── KPI filter buttons (replaced the old static KPI cards) ─── */
   .kpi-grid {
@@ -8845,6 +8888,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hra-chip:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
   @media (max-width:980px){ .hra-rows{grid-template-columns:1fr} }
 
+  /* ⚠️ PHONE: the Request again card has TWO actions since Create a GO-To was
+     added, and side by side they ran past the right edge at 375 (measured —
+     .hra-acts and .hra-goto were the only things clipping on the home). The
+     card stacks instead: thumbnail and text on the first line, both actions
+     full width beneath, so neither is cramped and nothing is cut. */
+  @media (max-width:760px){
+    .hra-card { flex-wrap:wrap; }
+    .hra-b    { flex:1 1 60%; min-width:0; }
+    .hra-acts { flex:1 1 100%; margin-left:72px; }
+    .hra-go, .hra-goto { flex:0 1 auto; }
+  }
+
   /* ══ ALL-AT-ONCE ONLY: 2 wide x 4 down, with Request again alongside ══════
      Owner 2026-10-12: "Make this page 4 down x 2 wide and add 30% more height
      and keep the width. Then put the request history cards on the right and we
@@ -8924,6 +8979,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      Two rows at 380 + the header still clear 950px without scrolling. */
   .hv-grid[data-hview="spot"] { grid-template-columns:repeat(4,1fr); }
   .hv-grid[data-hview="spot"] .hv-art { height:330px; font-size:92px; }
+  /* ⚠️ EVERY art height in this file needs the pill top beside it — including
+     the ones inside media queries. I set the base pair and missed the two
+     breakpoint overrides, so on a phone the pill rendered 290px down a 168px
+     photo and landed on the NEXT card. Change one, change the other. */
   .hv-grid[data-hview="spot"] .hv-iq  { top:290px; }   /* art 330 − pill − 12 */
   .hv-grid[data-hview="spot"] .hv-nm { font-size:16px; padding:15px 16px; }
 
@@ -8955,11 +9014,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   @media (max-width:900px){
     .hv-grid[data-hview="spot"]{grid-template-columns:repeat(3,1fr)}
     .hv-grid[data-hview="spot"] .hv-art{height:210px;font-size:66px}
+    .hv-grid[data-hview="spot"] .hv-iq {top:170px}   /* moves WITH the art above */
     .hv-grid[data-hview="all"]{grid-template-columns:repeat(3,1fr)}
   }
   @media (max-width:560px){
     .hv-grid[data-hview="spot"],.hv-grid[data-hview="all"]{grid-template-columns:repeat(2,1fr)}
     .hv-grid[data-hview="spot"] .hv-art{height:168px;font-size:54px}
+    .hv-grid[data-hview="spot"] .hv-iq {top:128px}   /* moves WITH the art above */
   }
   .choose-card {
     position:relative; overflow:hidden; text-align:left; cursor:pointer; border:0;
