@@ -8558,7 +8558,25 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* Default (Spotlight, All at once): photo over gradient. Custom Task has no
      --photo, so var() falls back to `none` and its gradient shows alone. */
   .hv-art{ background-image:var(--photo,none),var(--grad);
-           background-size:cover; background-position:center; background-repeat:no-repeat; }
+           background-size:cover; background-position:var(--focal,center); background-repeat:no-repeat; }
+
+  /* ⚠️ TWO PHOTOGRAPHS NEED THEIR OWN FOCAL POINT, because the card is PORTRAIT
+     (273x330) and the sources are wide — `cover` at centre throws the subject
+     away. Owner 2026-10-12: "can this pics be cropped to show more of whats in
+     them. Moving and delivery are hard to make out."
+     Chosen by rendering each at 0 / 25 / 50 / 75 / 100% in the real 273x330 box
+     and looking, not by estimating:
+       · Delivery (600x387) at centre is the grocery bag alone. At 25% it is the
+         neighbour's face, her hands and the full bag — the actual story.
+       · Moving (1220x508, a 2.4:1 frame of two movers and a sofa) at centre is
+         sofa cushions. At 25% it is a mover's face, the sofa, the boxes and the
+         truck.
+     Carried as --focal beside --photo and --grad, so a category's picture and
+     its crop stay declared in one place. The other six read correctly at centre
+     and set nothing. If a photograph is ever swapped, re-check its focal point
+     the same way — a new image will not share the old one's composition. */
+  .hv-a-delivery{ --focal:25% center; }
+  .hv-a-moving  { --focal:25% center; }
 
   /* ⚠️ LIST VIEW DROPS THE PHOTO AND KEEPS THE GLYPH, DELIBERATELY. The list
      thumbnail is 74x60. A cover-crop of a 620x400 photograph at that size is an
