@@ -215,6 +215,220 @@ def matrix_js():
             "return (t[2]===null)?(r===null):(!!r&&g===t[2]);}));")
 
 
+# ---------------------------------------------------------------- 8. APP
+# Until 2026-10-13 every check above compared the two web pages with a THIRD web
+# file — `_prototypes/Request/gopher-request-flow.html`, a hand-built MODEL of the
+# app. Nothing here had ever read the app. Owner, 2026-10-13: the store releases
+# are done and the LIVE APPS are canonical; the web should share the app's logic.
+# This section is where the app enters: it reads gopher-mobile-request at
+# `origin/production`, through git.
+#
+# ⛔ NEVER the clone's checkout. On 2026-10-13 that checkout sat on a 2026-09-02
+# feature branch, a month behind production. A check graded against a working
+# tree grades whatever happens to be checked out (noshow-freshness.js, step 12 of
+# run-all, still does exactly that). `git show origin/production:<path>` cannot.
+# It reads the last FETCH, so the ref and its date are printed: a stale fetch is
+# then visible rather than silent.
+#
+# ⛔ "Canonical" means the app's BEHAVIOUR, ruled rule by rule — not copying the
+# app's files. Its src/helpers/gopherStepGates.js still has `identity` ON, which
+# the owner ruled OFF on the web on 2026-10-04 ("No block, match the app") — and
+# nothing in the app calls that file's evaluate(). Copying it would revert him.
+APP_REF = "origin/production"
+
+
+def sibling_clone(repo, env_var):
+    """A Dev/<repo> clone beside this one, found from the MAIN Code clone so a
+    worktree under /tmp still resolves it. <env_var> overrides."""
+    env = os.environ.get(env_var)
+    if env:
+        return env
+    out = subprocess.run(["git", "-C", ROOT, "rev-parse", "--path-format=absolute",
+                          "--git-common-dir"], capture_output=True, text=True)
+    main_clone = os.path.dirname(out.stdout.strip()) if out.returncode == 0 else ROOT
+    return os.path.normpath(os.path.join(main_clone, "..", "..", "..", "Dev", repo))
+
+
+def app_clone():
+    return sibling_clone("gopher-mobile-request", "GOPHER_REQUEST_APP")
+
+
+def app_show(clone, rel):
+    out = subprocess.run(["git", "-C", clone, "show", "%s:%s" % (APP_REF, rel)],
+                         capture_output=True)
+    if out.returncode != 0:
+        raise RuntimeError("git show %s:%s failed: %s"
+                           % (APP_REF, rel, out.stderr.decode()[:160]))
+    return out.stdout
+
+
+def app_grep_files(clone, pattern, path="src"):
+    """Files at APP_REF whose text matches `pattern` (git grep -E), tests excluded."""
+    out = subprocess.run(["git", "-C", clone, "grep", "-lE", pattern, APP_REF, "--", path],
+                         capture_output=True, text=True)
+    files = [l.split(":", 1)[1] for l in out.stdout.splitlines() if ":" in l]
+    return sorted(f for f in files if ".test." not in f)
+
+
+def app_section():
+    import tempfile
+    print("\n8. APP — the web vs the LIVE Request app (%s)" % APP_REF)
+    clone = app_clone()
+    ref = subprocess.run(["git", "-C", clone, "log", "-1", "--format=%h %ci", APP_REF],
+                         capture_output=True, text=True)
+    if ref.returncode != 0:
+        # Loud, not silent: an absent clone must never read as parity.
+        WARNS.append("APP section NOT RUN — no gopher-mobile-request clone with %s at %s. "
+                     "Nothing here compared the web with the live app. Set "
+                     "GOPHER_REQUEST_APP to the clone." % (APP_REF, clone))
+        print("  [SKIP] no app clone at %s" % clone)
+        return
+    print("  app = %s @ %s  (last fetch — `git -C <clone> fetch origin production` "
+          "to refresh)" % (APP_REF, ref.stdout.strip()))
+
+    # ---- AGE: the app says its detector is the web's, copied. Prove it by behaviour.
+    # Holds today (2026-10-13: four lists identical, 0 differences on 8,053 inputs),
+    # so a break is a FAIL — whichever side moved, the other has to follow or the
+    # owner has to rule that they part.
+    tmp = tempfile.mkdtemp(prefix="gopher-app-age-")
+    try:
+        for f in ("ageKeywords.js", "ageKeywordsData.json"):
+            open(os.path.join(tmp, f), "wb").write(app_show(clone, "src/helpers/" + f))
+        probe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-age-probe.js")
+        out = subprocess.run(["node", probe, os.path.join(ROOT, "Final/assets/js"), tmp,
+                              json.dumps([c for c, _ in AGE_CASES])],
+                             capture_output=True, text=True, timeout=120)
+        info = json.loads(out.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "app age detector runs beside the web's", str(e)[:160])
+        return
+    finally:
+        for f in os.listdir(tmp):
+            os.unlink(os.path.join(tmp, f))
+        os.rmdir(tmp)
+    if info.get("error"):
+        check(False, "app age detector runs beside the web's", info["error"])
+        return
+    for k, v in sorted(info["lists"].items()):
+        check(v["same"], "age list '%s' identical web/app" % k,
+              "web %d / app %d" % (v["web"], v["app"]))
+    check(info["ndiff"] == 0,
+          "age detector: same verdict web/app on %d inputs" % info["inputs"],
+          "" if not info["ndiff"] else "%d differ, e.g. %s" % (info["ndiff"], info["diffs"][:3]))
+
+    # ---- KNOWN DIVERGENCES — WARN until the owner rules each one. Every line
+    # below is DETECTED from both sides, not printed from a list: when either
+    # side moves, the warning changes or clears by itself. Full write-up and the
+    # rulings each one needs: APP-DIVERGENCE-2026-10-13.md (this folder).
+    req = read(SURFACES["request"])
+
+    # Same detector, different REACH. The app calls it from exactly one place —
+    # Delivery Step 2, age switch off (flows/delivery.js deliveryContinueCheck).
+    # The web's backstop runs on EVERY category, which is how "a wine fridge"
+    # blocks a Moving job on the web and not in the app.
+    callers = [f for f in app_grep_files(clone, r"findAgeRestrictedKeyword\(")
+               if not f.startswith("src/helpers/")]
+    web_all = ("state.step === 2 && !state.ageKeywordAck && "
+               "!(state.category === 'delivery' && state.ageRestricted)") in req
+    if web_all and callers == ["src/component/stepFlow/flows/delivery.js"]:
+        WARNS.append("APP DIVERGENCE age-keyword scan: the app scans DELIVERY only "
+                     "(flows/delivery.js); web Request scans EVERY category")
+
+    # The in-form "this looks like a different category" nudge. The app's
+    # classifier runs only in the home search sheet, before a flow opens.
+    # Detected by CALLERS of the app's classify(), not by the word "mismatch" —
+    # that word is in ten unrelated comments there, which hid this the first time.
+    # (No \b: git grep -E on macOS does not support it.)
+    cls_callers = [f for f in app_grep_files(clone, r"(^|[^A-Za-z_])classify\(")
+                   if not f.endswith("/iqEngine.js")]
+    if "__checkCategoryMismatch" in req and cls_callers == ["src/component/home/HomeIq.js"]:
+        WARNS.append("APP DIVERGENCE category nudge: web blocks Continue once when the "
+                     "description points elsewhere; the app has no in-form nudge")
+
+    # Pick-up and drop-off must differ. In the app the rule exists only inside
+    # the vendored gopherStepGates.js, which nothing there evaluates.
+    differ_app = [f for f in app_grep_files(clone, r"normAddr|different addresses")
+                  if not f.endswith("gopherStepGates.js")]
+    if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and not differ_app:
+        WARNS.append("APP DIVERGENCE addresses-differ: web blocks identical pick-up and "
+                     "drop-off; the app does not check")
+
+    # ---- FEES. The app holds NO fee constants: it shows what the server's
+    # POST orders/summary returns (pages/summary.js adds the returned lines up).
+    # So the canonical fee behaviour lives in gopher-backend-api, read the same
+    # way: origin/production, through git.
+    api = sibling_clone("gopher-backend-api", "GOPHER_BACKEND_API")
+    try:
+        consts = app_show(api, "constants/index.js").decode()
+        create = app_show(api, "controllers/order/create.js").decode()
+    except Exception as e:
+        WARNS.append("APP fee comparison NOT RUN — no gopher-backend-api clone with %s "
+                     "at %s (%s)" % (APP_REF, api, str(e)[:80]))
+        return
+    sref = subprocess.run(["git", "-C", api, "log", "-1", "--format=%h %ci", APP_REF],
+                          capture_output=True, text=True).stdout.strip()
+    print("  api = %s @ %s  (fees: the app displays what this server returns)" % (APP_REF, sref))
+    cents = dict((k, int(v)) for k, v in re.findall(r"\b([A-Z_]+):\s*(\d+(?:\.\d+)?)\b", consts)
+                 if "." not in v)
+    SERVER_KEY = {"delivery": "APPLICATION_FEE_DELIVERY", "ride": "APPLICATION_FEE_NEED_A_RIDE",
+                  "labor": "APPLICATION_FEE_HOURLY_DAY_LABOR",
+                  "junk": "APPLICATION_FEE_MOVING_JUNK_REMOVAL",
+                  "moving": "APPLICATION_FEE_MOVING_JUNK_REMOVAL",
+                  "yard": "APPLICATION_FEE_YARD_PROJECT", "home": "APPLICATION_FEE_HOME_SEVICES",
+                  "other": "APPLICATION_FEE_OTHER"}
+    web_fee = fee_table(req, "GOPHER_FEE") or {}
+    bad = [(k, web_fee.get(k), cents.get(v)) for k, v in sorted(SERVER_KEY.items())
+           if cents.get(v) is None or round(float(web_fee.get(k, -1)) * 100) != cents[v]]
+    check(not bad, "request per-category fees == the live server's (%d categories)" % len(SERVER_KEY),
+          "" if not bad else "web $ vs server cents: %s" % bad)
+    age = re.search(r"\bAGE_FEE\b\s*=\s*([0-9.]+)", req)
+    check(bool(age) and round(float(age.group(1)) * 100) == cents.get("AGE_RESTRICTED_FEE"),
+          "request age-restricted fee == the live server's",
+          "web %s, server %s cents" % (age and age.group(1), cents.get("AGE_RESTRICTED_FEE")))
+    itf = re.search(r"PAYOUT_FEE:\s*([0-9.]+)", consts)
+    check(bool(itf) and itf.group(1) == "0.08", "the live server's instant-transfer rate is 8%",
+          "server PAYOUT_FEE %s" % (itf and itf.group(1)))
+
+    # TrustShield $1 scope. Server: `trust_shield_verified && age_restricted_fee`
+    # (create.js; summary via getAgeRestrictedDiscount under has_age_restriction)
+    # — age-restricted orders only. Web Request also gives it to EVERY Ride.
+    # ⚠️ §7 above still REQUIRES the web's ride arm. It pins the web's rule, not
+    # the live one, and is left alone until the owner rules on Ride (item 2).
+    server_ar_only = re.search(r"trust_shield_verified\s*&&\s*age_restricted_fee", create)
+    web_ride = re.search(r"tsEligible\s*=[^;]*state\.category\s*===\s*'ride'", req)
+    if server_ar_only and web_ride:
+        WARNS.append("APP DIVERGENCE TrustShield $1: the live server gives it on "
+                     "age-restricted orders only; web Request also gives it on every Ride")
+
+    # The 8% base. Server: (offer + fee + (A/R fee - TrustShield)) * 0.08, ceil'd
+    # to the cent. Web: (offer + fee + A/R fee) * 0.08, unrounded — 8 cents more
+    # for a TrustShield holder on an A/R delivery, and fractional cents on every row.
+    server_net = re.search(r"trustshield_fee\s*=\s*age_restricted_fee\s*-\s*trust_shield_discount",
+                           create) and "Math.ceil(" in create
+    web_gross = "INSTANT_TRANSFER_RATE * (cogOffer + feeSubtotal)" in req
+    if server_net and web_gross:
+        WARNS.append("APP DIVERGENCE 8% transfer fee: the server takes it on the A/R fee NET of "
+                     "TrustShield and rounds UP to the cent; web Request uses the gross A/R fee "
+                     "and does not round")
+
+
+def fee_table(src, name):
+    m = re.search(r"\b" + name + r"\b\s*=\s*\{", src)
+    if not m:
+        return None
+    st = m.end() - 1
+    d, j = 0, st
+    while j < len(src):
+        if src[j] == "{":
+            d += 1
+        elif src[j] == "}":
+            d -= 1
+            if d == 0:
+                break
+        j += 1
+    return dict(re.findall(r"([A-Za-z_]+)\s*:\s*([0-9.]+)", src[st:j + 1]))
+
+
 def main():
     print("== 1. CATEGORY — shared module vs the mismatch matrix ==")
     mod, cls = read(LOGIC), read(CLASSIFIER)
@@ -937,6 +1151,8 @@ def main():
               (k, req_fee.get(k), biz_fee.get(k))
               for k in sorted(set(req_fee or {}) | set(biz_fee or {}))
               if (req_fee or {}).get(k) != (biz_fee or {}).get(k)])
+
+    app_section()
 
     print()
     for w in WARNS:
