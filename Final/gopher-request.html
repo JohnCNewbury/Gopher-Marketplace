@@ -8777,9 +8777,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     z-index:40;
   }
   /* The trigger is the FOOTER, not the whole card — the photo above it still
-     goes straight to Step 2, so hovering the picture must not cover the grid. */
-  .hv-grid[data-hview="all"] .hv-cell:has(.hv-nm:hover) .hv-pop,
-  .hv-grid[data-hview="all"] .hv-cell:has(.hv-iqm:hover) .hv-pop {
+     goes straight to Step 2, so hovering the picture must not cover the grid.
+     ⚠️ EXPRESSED AS "the tile, minus the photo" ON PURPOSE — do not go back to
+     listing the text spans. It was `:has(.hv-nm:hover)` + `:has(.hv-iqm:hover)`,
+     and BOTH were wrong: .hv-iqm is pointer-events:none so that half never fired
+     at all, and .hv-nm is a bare text span covering only the footer's top 36px of
+     58 — so the bottom strip, the very strip the iQ mark sits in, was dead. The
+     owner reported it as "some of the bottom activates it, in other parts it
+     doesn't" (2026-10-13). Naming the spans also left the seams, the padding and
+     the tile's bottom edge dead, and would silently lose a cell whose hint is
+     missing (the injector does `if(!h) return`, so no .hv-ds is created).
+     :not(:has(.hv-art:hover)) keeps the photo going straight to Step 2. */
+  .hv-grid[data-hview="all"] .hv-cell:has(.hv-tile:hover):not(:has(.hv-art:hover)) .hv-pop {
     opacity:1; visibility:visible; transform:translateX(-50%) translateY(0);
   }
   .hv-grid[data-hview="all"] .hv-pop::after {
@@ -8792,8 +8801,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5) .hv-pop {
     top:auto; bottom:calc(100% + 11px); transform:translateX(-50%) translateY(-6px);
   }
-  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5):has(.hv-nm:hover) .hv-pop,
-  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5):has(.hv-iqm:hover) .hv-pop {
+  .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5):has(.hv-tile:hover):not(:has(.hv-art:hover)) .hv-pop {
     transform:translateX(-50%) translateY(0);
   }
   .hv-grid[data-hview="all"] .hv-cell:nth-child(n+5) .hv-pop::after {
