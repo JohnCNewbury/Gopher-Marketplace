@@ -8791,6 +8791,16 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
             background:var(--sand,#FBF3E4); border:1px solid #E6DCC6; border-radius:999px; padding:8px 15px;
             white-space:nowrap; transition:background .14s; }
   .hra-go:hover { background:#F4E9D2; }
+  /* Two actions per card now, so they share a row and the second one is
+     quieter: Request again is the common case, a GO-To is the deliberate one. */
+  .hra-acts { display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:0 0 auto; }
+  .hra-goto { display:inline-flex; align-items:center; gap:6px; cursor:pointer; white-space:nowrap;
+              font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; color:var(--navy);
+              background:none; border:1px solid var(--line,#EAE3D5); border-radius:999px;
+              padding:7px 13px; transition:background .14s, border-color .14s; }
+  .hra-goto:hover { background:#fff; border-color:#D9CBAE; }
+  .hra-goto:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  .hra-goto .go-mark { height:12px; width:auto; display:block; }
   .hra-go:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
   .hra-chips { display:flex; flex-wrap:wrap; gap:9px; }
   .hra-chip { display:inline-flex; align-items:center; gap:9px; cursor:pointer;
@@ -22709,7 +22719,11 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
                 +     esc(r.type || r.category) + '</div>'
                 +   '<div class="hra-s">' + esc(completedOn(r)) + '</div>'
                 + '</div>'
-                + '<button type="button" class="hra-go" data-hra-again="' + i + '">Request again</button>'
+                + '<div class="hra-acts">'
+                +   '<button type="button" class="hra-go" data-hra-again="' + i + '">Request again</button>'
+                +   '<button type="button" class="hra-goto" data-hra-goto="' + esc(r.id) + '">'
+                +     '<img class="go-mark" src="assets/img/go-mark.svg" alt="">Create a GO-To</button>'
+                + '</div>'
                 + '</div>';
             }).join('') + '</div>';
       } else {
@@ -22729,6 +22743,30 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         if(pop){ start(pop.dataset.hraPop, pop.dataset.hraIdea); return; }
         const hist = e.target.closest('[data-hra-history]');
         if(hist){ showSection('history'); return; }
+        /* ⛔ A GO-To can only come from a COMPLETED request — it fires with no
+           review step, so it has to start from a job that worked at a price a
+           Gopher already accepted. Every card in this rail is completed, so
+           the rule holds here by construction rather than by a check.
+           This calls the Request History section's OWN entry point, the same
+           one its "Create a GO-To" button uses, which shows the one-time intro
+           and then opens the prefilled setup sheet. The sheet lives inside that
+           section's panels, so the section has to be showing first — that is
+           the only thing this adds. */
+        const gt = e.target.closest('[data-hra-goto]');
+        if(gt){
+          showSection('previous');
+          /* ⚠️ BIND BEFORE OPENING. The intro overlay's buttons are wired by
+             initPrevRequestsControls(), which normally runs once inside the
+             sign-in routine — so every pre-existing caller happened to be
+             downstream of it. Reaching the intro from the HOME screen is a new
+             path that is not, and without this the overlay opens with a dead
+             "Got it" button and no way forward but the X. Found by clicking it.
+             The function guards itself with dataset.bound, so calling it here
+             is free when it has already run. */
+          if(typeof initPrevRequestsControls === 'function') initPrevRequestsControls();
+          if(typeof introThenGoToEditor === 'function') introThenGoToEditor(gt.dataset.hraGoto);
+          return;
+        }
         const go = e.target.closest('[data-hra-again]');
         if(!go) return;
         /* Reuse the dashboard's own Request-again path — the MY Gophers
