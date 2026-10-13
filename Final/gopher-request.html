@@ -22897,7 +22897,13 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         const pop = e.target.closest('[data-hra-pop]');
         if(pop){ start(pop.dataset.hraPop, pop.dataset.hraIdea); return; }
         const hist = e.target.closest('[data-hra-history]');
-        if(hist){ showSection('history'); return; }
+        /* ⛔ 'previous', NOT 'history'. The section's key is data-rqsec="previous"
+           — there has never been a 'history' section. showSection() ignores an
+           unknown key and returns silently, so the link looked enabled, did
+           nothing, and reported nothing. Owner found it; I shipped it.
+           Every other caller in this file passes 'previous'; this one was the
+           odd one out, written from the label rather than from the key. */
+        if(hist){ showSection('previous'); return; }
         /* ⛔ A GO-To can only come from a COMPLETED request — it fires with no
            review step, so it has to start from a job that worked at a price a
            Gopher already accepted. Every card in this rail is completed, so
