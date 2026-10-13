@@ -8812,6 +8812,69 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hra-chip:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
   @media (max-width:980px){ .hra-rows{grid-template-columns:1fr} }
 
+  /* ══ ALL-AT-ONCE ONLY: 2 wide x 4 down, with Request again alongside ══════
+     Owner 2026-10-12: "Make this page 4 down x 2 wide and add 30% more height
+     and keep the width. Then put the request history cards on the right and we
+     can add as many as we need to make it look even."
+     "Keep the width" falls out of the split rather than being forced: the grid
+     loses half its columns and the page loses that width to the new right
+     column, so the card stays ~195px. The art goes 112 -> 146px, which is the
+     +30%.
+     ⛔ ALL-AT-ONCE ONLY, deliberately. Spotlight's cards are 330px tall and
+     List's rows run the full width, so neither leaves room for a column beside
+     them; both keep Request again underneath. */
+  .choose-stage:has(.hv-grid[data-hview="all"]){
+    display:grid; grid-template-columns:minmax(0,1.46fr) minmax(300px,1fr);
+    column-gap:22px; align-items:start; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) > .choose-ask,
+  .choose-stage:has(.hv-grid[data-hview="all"]) > .hlive,
+  .choose-stage:has(.hv-grid[data-hview="all"]) > .hv-head { grid-column:1 / -1; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) > .hv-grid { grid-column:1; }
+
+  /* The rail STRETCHES to the grid's height and its cards divide it between
+     them, so the two columns end level whatever the history holds. Chasing a
+     card count instead is only even at one width: at 1440 the pitch is 111px
+     against a 770px grid, so six fell 78px short and seven ran 33px over — and
+     seven is all the history there is. */
+  .choose-stage:has(.hv-grid[data-hview="all"]) > .hra {
+    grid-column:2; margin-top:0; align-self:stretch;
+    display:flex; flex-direction:column; min-height:0; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-rows {
+    grid-template-columns:1fr; gap:10px; flex:1 1 auto; grid-auto-rows:1fr; }
+
+  /* The grid's own columns and art height are set with the rest of the
+     all-view rules further down, NOT here: a copy at this point in the sheet
+     is overridden by that block and silently does nothing. Found exactly that
+     way — the split applied while the grid stayed four across. */
+
+  /* ⚠️ The card is rebuilt for a NARROW column. The horizontal version
+     ellipsised the title and broke "Completed May 14 · Priya N." over three
+     lines. A flex-wrap fix was NOT reliable — the actions only dropped to
+     their own line when the content happened to overflow, so the card
+     silently reflowed between two shapes as the column width changed. This is
+     an explicit 2-col GRID: thumbnail spanning both rows, text top-right,
+     actions bottom-right. It lands the same way at every width. */
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-card{
+    display:grid; grid-template-columns:auto 1fr; column-gap:12px; row-gap:0;
+    align-items:start; padding:12px; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-card .hv-art{
+    width:50px; height:50px; grid-row:1 / span 2; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-b{ grid-column:2; grid-row:1; gap:3px; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-t{ white-space:normal; font-size:13.5px; line-height:1.3; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-s{ white-space:nowrap; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-acts{
+    grid-column:2; grid-row:2; margin-top:8px; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-go,
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-goto{ padding:6px 12px; font-size:11.5px; }
+  .choose-stage:has(.hv-grid[data-hview="all"]) .hra-goto .go-mark{ height:11px; }
+
+  /* Below this the split has no room: back to one column, rail underneath. */
+  @media (max-width:1100px){
+    .choose-stage:has(.hv-grid[data-hview="all"]){ display:block; }
+    .choose-stage:has(.hv-grid[data-hview="all"]) > .hra{ margin-top:30px; display:block; }
+    .hv-grid[data-hview="all"]{ grid-template-columns:repeat(3,1fr); }
+  }
+
   /* ⛔ TWO columns, not three. There are EIGHT categories: 3-across leaves the last
      row half empty (3+3+2), which is the "not fitting" the owner called out. Two
      divides evenly into four full rows and makes Spotlight genuinely the big view,
@@ -8834,8 +8897,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      flagged on the same screen: at 74px the photographs were letterbox slivers
      you could not identify. At 112 they read, and the view is still plainly the
      compact one against Spotlight's 330. */
-  .hv-grid[data-hview="all"] { grid-template-columns:repeat(4,1fr); gap:12px; }
-  .hv-grid[data-hview="all"] .hv-art { height:112px; font-size:34px; }
+  /* TWO across, four down (owner 2026-10-12: "Make this page 4 down x 2 wide
+     and add 30% more height and keep the width"). The card stays ~195px wide
+     because the page gives the other half to the Request again column beside
+     it — see the split-layout block above. Art 112 -> 146 is the +30%. */
+  .hv-grid[data-hview="all"] { grid-template-columns:repeat(2,1fr); gap:12px; }
+  .hv-grid[data-hview="all"] .hv-art { height:146px; font-size:38px; }
   .hv-grid[data-hview="all"] .hv-nm { font-size:13px; padding:10px 12px; }
 
   /* List rows were 56px tall and read as a thin index rather than a way in —
@@ -22704,7 +22771,13 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
          left the section hidden. try/catch is the only guard that works here. */
       let prev = [];
       try { prev = DASH_DATA.previousRequests || []; } catch(e){ prev = []; }
-      const rows = prev.slice(0, 4);
+      /* SIX, not four. Four was right when this was a strip under the grid
+         (owner 10/12, "4 most recent completed"); beside a four-row category
+         grid the cards had to stretch to ~190px each to fill the column and
+         looked sparse. Owner, on the new layout: "we can add as many as we
+         need to make it look even." Six lands at ~114px, close to the natural
+         card height. */
+      const rows = prev.slice(0, 6);
 
       if(rows.length){
         againEl.innerHTML =
