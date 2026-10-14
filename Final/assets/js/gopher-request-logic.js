@@ -228,7 +228,7 @@
     return false;
   }
 
-  function findAgeRestrictedKeyword(text){
+  function ageMatch(text){
     var orig = String(text || '');
     if(!orig.trim()) return null;
     var hay = foldPunct(orig);
@@ -245,7 +245,8 @@
         while((m = re.exec(hay)) !== null){
           var s0 = m.index + m[0].indexOf(m[1]);
           /* Offsets survive the fold, so report the customer's own characters. */
-          if(!ageExcepted(orig, s0, s0 + m[1].length, list[i])) return orig.substr(s0, m[1].length);
+          if(!ageExcepted(orig, s0, s0 + m[1].length, list[i]))
+            return { term: orig.substr(s0, m[1].length), start: s0, end: s0 + m[1].length };
           re.lastIndex = s0 + 1;
         }
       }
@@ -271,13 +272,24 @@
           if(ob === undefined) continue;
           if(ageIsAlnum(orig[ob + 1])) continue;          // must end a word
           if(ageExcepted(orig, oa, ob + 1, kw)) continue;  // ruled exception: keep looking
-          return orig.substring(oa, ob + 1);
+          return { term: orig.substring(oa, ob + 1), start: oa, end: ob + 1 };
         }
       }
     }
     /* Nothing literal and nothing normalised. Last pass: CONTEXT. */
-    return findAgeContextPair(orig);
+    return findAgeContextMatch(orig);
   }
+  /* The matched term, in the customer's own characters, or null. */
+  function findAgeRestrictedKeyword(text){ var m = ageMatch(text); return m ? m.term : null; }
+  /* ...and WHERE it is: { term, start, end }, offsets into the text as given, or null.
+     Owner ruling 2026-10-13 ("Both"): the under-21 sheet never names the word, so the
+     page shows it where the requester can fix it -- selected in their own description
+     box. It has to be the occurrence that actually tripped the gate, which a text
+     search for the term cannot know: in "wine glasses and a bottle of wine" it is the
+     SECOND wine. start/end are -1 when the context pass cannot place the phrase
+     exactly (a lower-casing that changed the text's length) -- the verdict stands, the
+     page just has nothing to select. */
+  function findAgeRestrictedMatch(text){ return ageMatch(text); }
 
   /* ── "Has the hiring stage ended?" — ONE definition for every surface ─────
      Request web, Connect and the Request App all render a request detail, and
@@ -349,11 +361,17 @@
     _ageCtx = { f: F, g: G, ok: flav.length > 0 && forms.length > 0 };
     return _ageCtx;
   }
-  function findAgeContextPair(orig){
+  function findAgeContextMatch(orig){
     var C = ageCtxSets();
     if(!C.ok) return null;                                  // lists absent — stay silent
-    var toks = String(orig || '').toLowerCase().match(/[a-z0-9]+/g);
-    if(!toks) return null;
+    var low = String(orig || '').toLowerCase();
+    /* Same tokens as before (the verdict must not move); their offsets are kept so the
+       page can select the phrase. They are offsets into the LOWER-CASED text, which is
+       the original's only while lower-casing kept its length — otherwise -1. */
+    var toks = [], offs = [], tm, tre = /[a-z0-9]+/g;
+    while((tm = tre.exec(low)) !== null){ toks.push(tm[0]); offs.push(tm.index); }
+    if(!toks.length) return null;
+    var exact = low.length === String(orig || '').length;
     var fi = [], gi = [], t;
     for(t = 0; t < toks.length; t++){
       if(C.f[toks[t]]) fi.push(t);
@@ -363,7 +381,9 @@
       for(var b = 0; b < gi.length; b++){
         if(Math.abs(fi[a] - gi[b]) <= AGE_CTX_WINDOW){
           var lo = Math.min(fi[a], gi[b]), hi = Math.max(fi[a], gi[b]);
-          return toks.slice(lo, hi + 1).join(' ');          // the phrase, for the modal
+          return { term: toks.slice(lo, hi + 1).join(' '),  // the phrase, for the modal
+                   start: exact ? offs[lo] : -1,
+                   end:   exact ? offs[hi] + toks[hi].length : -1 };
         }
       }
     }
@@ -771,6 +791,7 @@
     MIN_CONTENT_WORDS: MIN_CONTENT_WORDS, STRONG_BAR: STRONG_BAR, MARGIN: MARGIN,
     DOMINANCE_RATIO: DOMINANCE_RATIO,
     findAgeRestrictedKeyword: findAgeRestrictedKeyword,
+    findAgeRestrictedMatch: findAgeRestrictedMatch,
     suggestedOffer: suggestedOffer,
     regionIsNC: regionIsNC,
     regionStateFromAddress: regionStateFromAddress,

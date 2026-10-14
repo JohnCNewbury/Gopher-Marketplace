@@ -72,6 +72,27 @@ for (const [t, want, why] of STILL) {
   ok(got !== null && got.toLowerCase() === want, `still flags "${want}" (${why}): ${JSON.stringify(t)} -> ${got}`);
 }
 
+// ---- WHERE it matched: the under-21 sheet's word selection (owner 10/13, "Both") ---
+// The sheet names nothing, so the page selects the word in the requester's own box.
+// It must be the occurrence that TRIPPED the gate, and findAgeRestrictedMatch must never
+// disagree with findAgeRestrictedKeyword (it is the same pass; one wraps the other).
+const match = win.GopherRequestLogic.findAgeRestrictedMatch;
+ok(typeof match === 'function', 'findAgeRestrictedMatch is exported');
+{
+  const t = 'wine glasses and a bottle of wine', m = match(t);
+  ok(m && m.start === 29 && t.slice(m.start, m.end) === 'wine',
+     `the SECOND "wine" is the one selected in ${JSON.stringify(t)} -> ${JSON.stringify(m)}`);
+}
+for (const [t] of FREE) ok(match(t) === null, `nothing to select: ${JSON.stringify(t)}`);
+for (const t of [...STILL.map(r => r[0]), 'Please pick up beer for me', 'I need some Tito’s',
+                 'Other - Black and milds', 'a can of Gizzly wintergreen pouches']) {
+  const m = match(t), k = find(t);
+  const placed = m && m.start >= 0 &&
+    (t.slice(m.start, m.end) === m.term ||                       // literal / normalised pass
+     (t.slice(m.start, m.end).toLowerCase().match(/[a-z0-9]+/g) || []).join(' ') === m.term);  // context pass
+  ok(m && m.term === k && placed, `selects exactly what tripped: ${JSON.stringify(t)} -> ${JSON.stringify(m)}`);
+}
+
 // ---- the data is what the ruling says, and nothing more ------------------------
 const EX = win.GopherAgeExceptions || {};
 ok(JSON.stringify(Object.keys(EX).sort()) === JSON.stringify(['1792', 'corona', 'game', 'wine']),

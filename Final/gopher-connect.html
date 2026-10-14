@@ -12132,6 +12132,26 @@ const PAY_BADGES = {
   // Returns the matched keyword AS THE USER TYPED IT (for the pop-up message),
   // or null if none. Whole-word / whole-phrase match, case-insensitive.
   function findAgeRestrictedKeyword(text){ var L=window.GopherRequestLogic; return L ? L.findAgeRestrictedKeyword(text) : null; }   // SHARED — detection lives in assets/js/gopher-request-logic.js (brain + supplement)
+  function findAgeRestrictedMatch(text){ var L=window.GopherRequestLogic; return (L && L.findAgeRestrictedMatch) ? L.findAgeRestrictedMatch(text) : null; }   // SHARED — { term, start, end }
+  /* ⛔ OWNER RULING 2026-10-13 ("Both"): the under-21 sheet never names the word (his
+     10/11 "Block, neutral words"), so a requester could not tell WHAT to edit -- a dead
+     end on any false hit. When the sheet closes ("Edit my request", or a tap outside),
+     the word is SELECTED in their own description box instead: the exact occurrence
+     that tripped the gate (findAgeRestrictedMatch -- a text search cannot know which
+     "wine" in "wine glasses and a bottle of wine"), so typing replaces it. The sheet
+     itself is untouched. Read from the box's CURRENT value, so the offsets are its own. */
+  function selectAgeTermOnClose(ov){
+    if(!ov) return;
+    ov.addEventListener('click', function(e){
+      if(e.target !== ov && !(e.target.classList && e.target.classList.contains('grx'))) return;
+      var d = document.getElementById('descriptionInput');
+      if(!d) return;
+      var m = findAgeRestrictedMatch(d.value);
+      try { d.focus({ preventScroll: true }); } catch(_){ try { d.focus(); } catch(__){} }
+      if(m && m.start >= 0){ try { d.setSelectionRange(m.start, m.end); } catch(_){} }
+      try { d.scrollIntoView({ block: 'center' }); } catch(_){}
+    });
+  }
 
   // Sample addresses to populate as stops are added (so the demo feels real)
   const PICKUP_SAMPLES = [
@@ -15254,7 +15274,7 @@ const PAY_BADGES = {
         /* D-038 part 2: under-21 is a DEAD STOP, never the Yes/No confirmation
            (whose "Yes" would route the order to age-restricted Delivery). */
         if(!canSeeAgeRestricted()){
-          if(window.G40_REQ) G40_REQ.ageRestrictedNotEligible();
+          if(window.G40_REQ) selectAgeTermOnClose(G40_REQ.ageRestrictedNotEligible());
           return;
         }
         if(window.__openAgeKeywordModal) window.__openAgeKeywordModal(kw); return;
@@ -15723,8 +15743,10 @@ const PAY_BADGES = {
          thing they must never be offered (owner: "No-one under 21 should see anything
          AR or trustshield related"). So they get a dead-stop instead, with no mention
          of TrustShield and no route to enable it.
-         The term is named because a block with no reason is unactionable -- they have
-         to know WHICH word to remove. */
+         ~~The term is named because a block with no reason is unactionable.~~ SUPERSEDED:
+         the sheet names nothing (owner 10/11, below); the word is SELECTED in the
+         requester's own description box when the sheet closes (owner 10/13, "Both")
+         -- see selectAgeTermOnClose(). They still learn WHICH word to remove. */
       /* ⛔ OWNER-PICKED WORDING, John 2026-10-11 ~11:2x ET, verbatim and NOT to be
          reworded: "This request includes an item we can't deliver for you. Please edit
          your request to continue." One button, "Edit my request".

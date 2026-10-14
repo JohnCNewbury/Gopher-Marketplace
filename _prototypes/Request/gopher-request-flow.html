@@ -1158,6 +1158,7 @@ const prevVisibleStep = (from)=>{ let s=from; while(s>1 && stepIsEmpty(s-1)) s--
    here — the false-positive friction isn't worth it for this prototype. */
    // hand-maintained supplement is SHARED — edit assets/js/gopher-age-supplement.js, never here
 function findAgeRestrictedKeyword(text){ var L=window.GopherRequestLogic; return L ? L.findAgeRestrictedKeyword(text) : null; }   // SHARED — detection lives in assets/js/gopher-request-logic.js (brain + supplement)
+function findAgeRestrictedMatch(text){ var L=window.GopherRequestLogic; return (L && L.findAgeRestrictedMatch) ? L.findAgeRestrictedMatch(text) : null; }   // SHARED — { term, start, end }: the under-21 sheet's word selection
 
 /* ---- Popular-requests examples (verbatim from Gopher Request) ---- */
 const CAT_EXAMPLES = {
@@ -2616,14 +2617,29 @@ function openAgeKwModal(){
   const e=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const old=document.getElementById('ageKwModalOv'); if(old) old.remove();
   if(!canRequestRestricted()){   // D-038 part 2: a requester who can't request age-restricted items cannot go on while the term is there
+    /* ⛔ OWNER-PICKED WORDING, John 2026-10-11, verbatim and NOT to be reworded: "This
+       request includes an item we can't deliver for you. Please edit your request to
+       continue." One button, "Edit my request". NO term, NO age, NO "21", NO ID, no title
+       and not red (red is for a failed payment) -- the live app's UNDER_21_BLOCK_SENTENCE
+       (flows/delivery.js). This sheet still carried the PRE-ruling version (named the term,
+       "21 or older with a verified ID") after d605e3b fixed Request and Connect on the web;
+       brought into line 2026-10-14 (rule 12b).
+       Owner 2026-10-13 ("Both"): because the sheet names nothing, "Edit my request" SELECTS
+       the word in the description box -- the exact occurrence that tripped the gate. */
     const bv=document.createElement('div'); bv.id='ageKwModalOv';
     bv.setAttribute('style','position:fixed;inset:0;z-index:99999;background:rgba(0,18,49,.55);display:flex;align-items:center;justify-content:center;padding:22px;');
     bv.innerHTML='<div role="dialog" aria-modal="true" style="background:#fff;width:100%;max-width:340px;border-radius:22px;padding:24px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,18,55,.5);font-family:Nunito,sans-serif;">'
-      +'<h4 style="font-weight:900;font-size:19px;color:#c44257;margin:0 0 10px;">This looks age-restricted</h4>'
-      +'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#5b6472;line-height:1.5;margin:0 0 10px;">Your request mentions <b style="color:#c44257;">&ldquo;'+e(kw)+'&rdquo;</b>, which is commonly an age-restricted item.</p>'
-      +'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#5b6472;line-height:1.5;margin:0 0 18px;">Age-restricted requests can only be placed by requesters 21 or older with a verified ID. Please edit your request to continue.</p>'
+      +'<div style="font-size:26px;line-height:1;margin:0 0 10px;">⛔</div>'
+      +'<p style="font-family:\'DM Sans\',sans-serif;font-size:14px;color:#3b4250;line-height:1.5;margin:0 0 18px;">This request includes an item we can’t deliver for you. Please edit your request to continue.</p>'
       +'<button class="js-agekw-edit" style="width:100%;border:0;background:#1CB061;color:#fff;border-radius:13px;padding:14px;font-family:Nunito;font-weight:900;font-size:14px;cursor:pointer;">Edit my request</button></div>';
-    document.body.appendChild(bv); bv.querySelector('.js-agekw-edit').onclick=function(){ bv.remove(); const d=document.getElementById('descriptionInput'); if(d){ try{ d.focus(); }catch(_){} } };
+    document.body.appendChild(bv); bv.querySelector('.js-agekw-edit').onclick=function(){
+      bv.remove();
+      const d=document.getElementById('descriptionInput'); if(!d) return;
+      const m=findAgeRestrictedMatch(d.value);
+      try{ d.focus({preventScroll:true}); }catch(_){ try{ d.focus(); }catch(__){} }
+      if(m && m.start>=0){ try{ d.setSelectionRange(m.start, m.end); }catch(_){} }
+      try{ d.scrollIntoView({block:'center'}); }catch(_){}
+    };
     return;
   }
   const ov=document.createElement('div'); ov.id='ageKwModalOv';
