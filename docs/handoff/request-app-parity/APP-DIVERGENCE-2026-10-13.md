@@ -332,7 +332,27 @@ In D10 both sides change, and the app half is ticketed.
 
 **Canon:** the 909 desk published the second pass as master rows **RQ-41 to RQ-45** (ruled) on 2026-10-13. The parity list is logged without rows. The desk re-ran the app's phone pattern independently and confirmed the three common formats are not masked.
 
-## G40-623, the app half (2026-10-14, Website Code/Logic seat): MR !500 open, awaiting a phone build
+## G40-623, the app half (2026-10-14, Website Code/Logic seat): ✅ MERGED, production `4232d4507`, 9:52 AM ET
+
+**Merged** on John's word ("merge, report it"): MR !500 → Request `production` **`4232d4507`**,
+2026-10-14 **9:52:18 AM ET**. Pinned to the tested head `9bab9ea4d` (pipeline 2947053992 passed). No
+squash, so `1564d016d` and `9bab9ea4d` keep their SHAs. The source branch is kept. Production's tree
+equals `9bab9ea4d`, so the tested builds (iOS **5691**, Android **991**) carry exactly this code. It
+reaches customers only with the **next store release**: live 872/873 don't have it.
+
+**Device test (A50):**
+- **990** (9:22–9:29 AM ET) passed (b) and found one defect: after the move to Delivery, ✕ went back
+  to the Yard form with a leftover draft.
+- Fixed in `9bab9ea4d`: the move replaces the screen, remounts Delivery, and drops the source draft.
+- **991** retest (9:46–9:50 AM ET) passed: ✕ and Android Back go home; no leftover draft; Delivery
+  keeps its own draft.
+- **Test (a), under 21, is still not run on a device:** it waits on John's under-21 account.
+
+**Harness:** `PENDING_G40_623` is deleted. Against production `4232d4507` the lists, the exceptions
+and all 8,058 verdicts are identical. Any difference now FAILS, and so does a return to a
+Delivery-only scan.
+
+### Before the merge
 
 App repo `gophergo/gopher-mobile-requester-capacitorjs`, branch **`G40-623`**, commit **`1564d016d`**
 (on `production` ab399d3f7). Pushed on John's "yes push it" (10/14). **MR !500** →
