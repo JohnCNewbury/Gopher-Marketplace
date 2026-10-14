@@ -345,13 +345,28 @@ def app_section():
         WARNS.append("APP DIVERGENCE category nudge: web blocks Continue once when the "
                      "description points elsewhere; the app has no in-form nudge")
 
-    # Pick-up and drop-off must differ. In the app the rule exists only inside
-    # the vendored gopherStepGates.js, which nothing there evaluates.
-    differ_app = [f for f in app_grep_files(clone, r"normAddr|different addresses")
-                  if not f.endswith("gopherStepGates.js")]
-    if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and not differ_app:
-        WARNS.append("APP DIVERGENCE addresses-differ: web blocks identical pick-up and "
-                     "drop-off; the app does not check")
+    # Pick-up and drop-off must differ.
+    # ⛔ CORRECTED 2026-10-13, same evening. The first version of this check said
+    # "the app does not check", because it searched the app for the rule's WORDS
+    # ("different addresses", normAddr) outside gopherStepGates.js and found
+    # none. The owner knew better. The app checks by MEASUREMENT: helpers/
+    # getDistance.js asks the server for the trip distance and, at "0", opens an
+    # "Oops!" sheet — "It looks like your pick up and drop off addresses are the
+    # same." — whose only button closes it. None of the searched words occur in
+    # it. So: a rule is found by following its DATA (what reads both addresses?),
+    # and a search that finds nothing is reported as that, never as "the app
+    # does not". This detector now looks for the app's actual mechanism.
+    zero_modal = app_grep_files(clone, r"bothAddressSameModal")
+    mounted = [f for f in app_grep_files(clone, r'"type": "getDistance"', "src/json/requester")
+               if f.endswith("flow.json")]
+    if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and zero_modal:
+        WARNS.append("APP DIVERGENCE same-address: the app WARNS (trip distance 0 -> a "
+                     "dismissible 'Oops!' sheet) on %s only; web Request BLOCKS Continue "
+                     "on matching address text wherever a pick-up shows, Moving included"
+                     % ", ".join(sorted(os.path.basename(f)[:-9] for f in mounted)))
+    elif "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js"):
+        WARNS.append("APP same-address check NOT FOUND: getDistance's zero-distance sheet "
+                     "is gone or renamed — re-find the app's mechanism before trusting this")
 
     # ---- FEES. The app holds NO fee constants: it shows what the server's
     # POST orders/summary returns (pages/summary.js adds the returned lines up).

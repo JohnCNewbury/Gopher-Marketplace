@@ -57,8 +57,21 @@ the web's fee math has to match.
 | D1 | **Where the age-keyword scan runs** | **Delivery only**: Step 2, age switch off (`flows/delivery.js:218-223`) | **Every category** (~17141 "Runs for EVERY category") | **Item 1.** "a wine fridge" blocks a Moving job on the web, never in the app. Matching the app removes the cross-category false positives with no matcher change. |
 | D2 | **TrustShield $1 scope** | `trust_shield_verified && age_restricted_fee`: **A/R orders only** (`create.js:552`, `update.js:888`, summary via `getAgeRestrictedDiscount`) | A/R delivery **or every Ride** (`tsEligible`, ~12687; Connect ~11865 the same) | **Item 2.** Real logic, not just copy. ⚠️ Harness §7 still *requires* the Ride arm; it pins the web's rule, not the live one. |
 | D3 | **8% transfer-fee base and rounding** | `ceil((offer + fee + (A/R fee − TrustShield)) × 0.08)` in cents (`create.js` summary ~98) | `0.08 × (offer + fee + A/R fee)`, unrounded | A TrustShield holder on an A/R delivery pays **8¢ more** on the web; every web total carries fractional cents. |
-| D4 | **Pick-up ≠ drop-off** | Not checked (exists only in the vendored `gopherStepGates.js`, which nothing evaluates) | Blocks (`addressesDiffer`, owner-ruled "data quality") | Either the app is missing a ruled rule, or the web's ruling predates the app being canonical. |
+| D4 | **Pick-up ≠ drop-off** ⛔ *corrected, see below* | **Warns, does not block**: trip distance `"0"` from the server's `get_distance` opens an "Oops!" sheet, *"It looks like your pick up and drop off addresses are the same."*, button "Back" (closes it). Nothing in the step checks reads the distance (code reading, not driven). Mounted in **Delivery and Ride only** (`getDistance.js`; `deliveryflow.json`, `rideflow.json`) | **Blocks** Continue on matching normalised address text (`addressesDiffer`), wherever a pick-up shows, **Moving included** | The two check different things in different ways. |
 | D5 | **"Looks like a different category" nudge** | None in a flow. The classifier runs only in the home search sheet (`HomeIq.js:116`), before a flow opens | Blocks Continue once on Step 2 | Web-only friction. |
+
+> ⛔ **D4 CORRECTED 2026-10-13, same evening, after the owner said the app already checks.**
+> This row first read *"Not checked (exists only in the vendored `gopherStepGates.js`, which
+> nothing evaluates)"*. **That was false.** The app checks by **measurement**, not by wording:
+> `helpers/getDistance.js` asks the server for the trip distance and opens a sheet at `"0"`.
+> Every search (mine and a background agent's) looked for the rule's *words* ("same address",
+> "different addresses", `normAddr`, `pickup === dropoff`), and the app's sheet says "addresses
+> are the same" with "pick up" as two words and compares coordinates. **A search that found
+> nothing was written down as "the app does not check"**, and the harness warning was built on
+> the same blind search. Both are fixed. The method change: a rule is found by following its
+> data (what reads both addresses?), and "not found" is reported as "not found by these
+> searches", never as a fact about the app. D1 and D5, the other two negative claims the
+> rulings rest on, were re-checked that way the same evening (below) and hold.
 
 ### Divergences found by reading, not yet mechanised
 
@@ -104,6 +117,8 @@ the web's fee math has to match.
 
 ## Rulings needed before Steps 2–4
 
+*Answered the same evening — see **Owner rulings** below. Kept as asked.*
+
 1. **Does "the live apps are canonical" cover the fee *math* too** (D3, D8), or
    only the rules? D3 changes what a web customer is quoted by up to 8¢.
 2. **D2 Ride**: already ruled 10/4, "AR only for live right now". The live
@@ -113,3 +128,32 @@ the web's fee math has to match.
 4. **D4 addresses-differ**: keep the web's rule and ask the app to add it, or
    drop it to match the app?
 5. **D5 category nudge, D6 "No" path**: match the app, or keep?
+
+## Owner rulings — 2026-10-13 evening (John, to the Website Code/Logic seat)
+
+**The direction:** *"The logic MUST be the same on Web and App."* The divergences settle with the
+**next app release**; tickets go in the sprint starting 2026-10-14. Where a ruling picks the web's
+rule, the **app** (or the server behind it) changes, not the web.
+
+| # | Ruling | What changes | Status |
+|---|---|---|---|
+| D1 | Age-keyword check runs on **every category** (the web's rule) | App: scan every flow, not just Delivery. ⚠️ That takes the under-21 block to every app category, so the item-1 fixes (highlight the tripping word; cut matcher false positives; owner "Both", same evening) have to ship **in the app too**, from the same re-extracted lists, or the app gets the web's false positives everywhere. | Ruled |
+| D2 | TrustShield $1 = **age-restricted + Ride Sharing** (the web's rule) | Server: owner adds Ride next sprint (today `trust_shield_verified && age_restricted_fee`). App copy changes with it: `trustShieldEnroll.js:675` "discount applies to age-restricted requests", iQ FAQ "$1 off each age-restricted order". **Supersedes the 10/4 "AR only for live right now" as the target**: the web is NOT narrowed, and harness §7's Ride pin is now the correct rule. | Ruled |
+| D3 | 8% fee taken **before** the TrustShield $1, i.e. on the gross A/R fee (the web's rule) | Server: `summary`/`create`/`update` stop netting TrustShield out of the 8% base. | **Base ruled. Rounding OPEN**: a card is charged whole cents, so "not rounded" cannot hold at the charge. The web rounds each line to the nearest cent for display only; the server rounds the 8% **up**. Needs one rule for both. |
+| D4 | Owner: "already the same with both". **It is not** (see the correction above): app warns on distance 0, Delivery + Ride; web blocks on text, Moving included. | — | **OPEN**: one rule for both. |
+| D5 | **Blocks Continue once** (the web's rule) | App: add the in-flow nudge. | Ruled |
+| CT | **Web gets the live app's Custom Task logic** | Web `other` ⇄ app Custom Task: description, the A/R switch, purchase + cost, pick-up/destination vs one address, bids. Per the server, the $1.99 A/R fee and the TrustShield $1 apply on **any** category with the switch on (D7 settles with this). | Ruled. **OPEN**: the app shows that A/R switch to under-21s (no `profileFlag`) and the server then refuses at submit with a bare 403 "Unauthorized." The web port keeps under-21 suppression unless the owner says otherwise. |
+| D6, D8, D9 | Not ruled | — | Open |
+
+### Re-checked by mechanism the same evening (because D4 was missed)
+
+- **D1 holds.** The server does not scan descriptions: `AGE_RESTRICTED_KEYWORDS` (`constants/index.js:302`)
+  is matched against the order's **title**, inside an under-21 guard: under-21 or unknown age plus an
+  A/R title or `age_restricted?` gives **403 "Unauthorized."** (`create.js:492`, twin in `update.js`).
+  In the app, `findAgeRestrictedKeyword` has one caller (`flows/delivery.js:222`).
+- **D5 holds.** Inside the app's flows the description is read only to check it is not empty (every
+  flow), for Delivery's age scan, for Home's checklist and for drafts. No classifier runs in a flow;
+  `classify()`'s only caller is the home search sheet.
+- **Still not compared** (where more can hide): field visibility per category, suggested-offer
+  values, the app-only step checks, phone numbers in the description. Listed above; no claims made.
+
