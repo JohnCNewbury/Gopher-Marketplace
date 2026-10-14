@@ -67,7 +67,7 @@
       var bh=Math.round(ink/fills), bw=Math.round(bh*mi[1]);
       // the grown box overhangs the row rather than making this one row taller
       var bleed=Math.round((bh-ink)/2);
-      return '<img src="../../Final/assets/marks/'+mi[0]+'" alt="'+mi[2]+'" height="'+bh+'" width="'+bw+'" style="display:block;flex:0 0 auto;margin:'+(-bleed)+'px 0;">';
+      return '<img src="../../assets/marks/'+mi[0]+'" alt="'+mi[2]+'" height="'+bh+'" width="'+bw+'" style="display:block;flex:0 0 auto;margin:'+(-bleed)+'px 0;">';
     }
     var bg=MARK_BG[b]||'#5b6472', fg='#fff', txt=({visa:'VISA',mastercard:'MC',amex:'AMEX',discover:'DISC',applepay:' Pay',googlepay:'G Pay',paypal:'PayPal',cashapp:'Cash',venmo:'venmo'})[b]||String(b||'?').slice(0,4).toUpperCase();
     if(b==='googlepay') fg='#5f6368';
