@@ -158,7 +158,9 @@ rule, the **app** (or the server behind it) changes, not the web.
   values, the app-only step checks, phone numbers in the description. Listed above; no claims made.
 
 
-### Tickets: sprint "iQ Boost" (2026-10-14 → 10-21), created or moved the same evening on the owner's "All six"
+### Tickets: sprint 908 "iQ | Brain" (2026-10-14 → 10-21; it was named "iQ Boost" when they were filed the same evening), created or moved on the owner's "All six"
+
+**Canonical writer for sprint 908:** the "iQ | Brain Sprint" desk (handed over from the 909 desk, 2026-10-13). Rows for canon go there.
 
 The tickets point here; this doc is the source of truth. Three already existed, so they were moved
 into the sprint with a dated comment instead of being duplicated.
