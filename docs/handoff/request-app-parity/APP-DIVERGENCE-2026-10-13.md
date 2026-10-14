@@ -352,6 +352,26 @@ reaches customers only with the **next store release**: live 872/873 don't have 
 and all 8,058 verdicts are identical. Any difference now FAILS, and so does a return to a
 Delivery-only scan.
 
+### Follow-up ✅ MERGED: MR !503 → production `7f1718264`, 1:36:03 PM ET, 10/14
+
+The G40-274 session merged it on John's "merge !503", and I verified it: the tree equals the tested
+head `097d9db4b`, no squash, branch `G40-623-select-fix` kept. Builds iOS **5692** / Android **992**.
+
+- **`5a4b57333`:** the under-21 block now highlights the word. `DescriptionField` puts the same id
+  on its wrapper div and its textarea, and `getElementById` returned the div.
+- **`097d9db4b`:** `ContinueCheckSheet` now uses the G40-595 sheet standard (S-01 bar, S-03
+  pills, S-04 black/red title and navy ✕, centred words). This was on John's "update the
+  ContinueCheckSheet so no one make that mistake again". A guard test fails on the old look.
+- **Under-21 device walk (A50, 992), all PASS:**
+  - Delivery hides the age switch.
+  - The block shows on every attempt.
+  - Edit my request and ✕ both highlight the word with the keyboard up.
+  - Ride highlights it in special instructions.
+  - A replaced word continues to Step 3.
+- **Not tested on a device:**
+  - The GO-To path. The minor account has no requests, and the toast is 21+ only.
+  - The 21+ question sheet and Delivery's "Attention!" in the new look. The guard test covers them.
+
 ### Before the merge
 
 App repo `gophergo/gopher-mobile-requester-capacitorjs`, branch **`G40-623`**, commit **`1564d016d`**
