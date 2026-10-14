@@ -480,16 +480,35 @@ def app_section():
                      "age-restricted orders only; web Request also gives it on every Ride. RULED 10/13: A/R + Ride, the "
                      "SERVER changes (G40-365, after G40-625)")
 
-    # The 8% base. Server: (offer + fee + (A/R fee - TrustShield)) * 0.08, ceil'd
-    # to the cent. Web: (offer + fee + A/R fee) * 0.08, unrounded — 8 cents more
-    # for a TrustShield holder on an A/R delivery, and fractional cents on every row.
+    # The 8% (D3, RULED 10/13; G40-625): ONE formula on web AND server.
+    #   ITF = nearest cent( 8% x (offer + cost + Gopher fee + FULL A/R fee) ),
+    #   TrustShield $1 off the total, last. Web: itfCents() in
+    #   computeRequestFee. Server: helpers/instant_transfer_fee.js, used by the
+    #   quote (create.js summary), authorise, capture and get_charge_details.
+    #   Until the G40-625 backend MR is live on API_REF, the old server formula
+    #   (net of TrustShield, Math.ceil) is a PENDING warning, not a fail.
+    web_one = ("const instantTransfer = itfCents(cogOffer + feeSubtotal);" in req and
+               re.search(r"function itfCents\(baseDollars\)\{.*?Math\.round\(baseCents \* "
+                         r"INSTANT_TRANSFER_RATE\)", req, re.S))
+    check(bool(web_one), "web Request ITF = nearest cent of 8% x (offer + fee + FULL A/R fee) (G40-625)")
+    try:
+        itf_helper = app_show(api, "helpers/instant_transfer_fee.js", API_REF).decode()
+    except Exception:
+        itf_helper = ""
+    server_one = (re.search(r"Math\.round\(\(\+base_cents \|\| 0\) \* PAYOUT_FEE\)", itf_helper) and
+                  re.search(r"instant_transfer_fee\(\s*combined_offering \+ application_fee \+ "
+                            r"age_restricted_fee\s*\)", create))
     server_net = re.search(r"trustshield_fee\s*=\s*age_restricted_fee\s*-\s*trust_shield_discount",
-                           create) and "Math.ceil(" in create
-    web_gross = "INSTANT_TRANSFER_RATE * (cogOffer + feeSubtotal)" in req
-    if server_net and web_gross:
-        WARNS.append("APP DIVERGENCE 8% transfer fee: the server takes it on the A/R fee NET of "
-                     "TrustShield and rounds UP to the cent; web Request uses the gross A/R fee "
-                     "and does not round. RULED 10/13: the web's base, NEAREST CENT on both (G40-625)")
+                           create) and "Math.ceil(" in create and not server_one
+    if server_one:
+        check(True, "the live server's ITF is the same formula (helpers/instant_transfer_fee.js)")
+    elif server_net:
+        WARNS.append("PENDING G40-625: the live server still takes the 8%% on the A/R fee NET of "
+                     "TrustShield and rounds UP; the web already uses the ruled formula. Clears "
+                     "when the G40-625 backend MR is live on %s" % API_REF)
+    else:
+        check(False, "the live server's ITF is the G40-625 formula",
+              "neither the G40-625 helper nor the old netted formula found in create.js")
 
     # ---- SUGGESTED OFFER. The app shows POST orders/smart_price, i.e. the server's
     # pure helpers/suggested_pricing.js. Both sides are RUN by app-offer-probe.js.
