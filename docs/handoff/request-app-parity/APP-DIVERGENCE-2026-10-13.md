@@ -160,7 +160,7 @@ rule, the **app** (or the server behind it) changes, not the web.
 
 ### Tickets: sprint 908 "iQ | Brain" (2026-10-14 → 10-21; it was named "iQ Boost" when they were filed the same evening), created or moved on the owner's "All six"
 
-**Canonical writer for sprint 908:** the "iQ | Brain Sprint" desk (handed over from the 909 desk, 2026-10-13). Rows for canon go there.
+**Canonical writer:** ~~the "iQ | Brain Sprint" desk~~. ⛔ **Corrected the same night: John keeps the 909 desk on the canonicals until he retires it.** Rows for canon go to the 909 desk "(!)Gopher 4.0 UI/UX Update(!) Sprint". It published D1–D5 + Custom Task as master rows **RQ-35 to RQ-40** (ruled).
 
 The tickets point here; this doc is the source of truth. Three already existed, so they were moved
 into the sprint with a dated comment instead of being duplicated.
@@ -306,3 +306,18 @@ Custom Task port.
 **Needs a ruling:** D13 Yard (show the app's two-option choice on the web?) and D14 (hourly only on
 Labor, as the app has it, or also on Yard / Custom Task / Junk?).
 
+
+## Owner rulings on the second pass (2026-10-13, late)
+
+All four answered as recommended. **In D11–D14 the WEB changes** (Website Code/Logic seat, no ticket).
+In D10 both sides change, and the app half is ticketed.
+
+| # | Ruling | Who changes |
+|---|---|---|
+| D10 | **Mask the phone number as it is typed** (the app's behaviour), with the **web's wider pattern** on both sides | **App:** the pattern (fixes `919-555-1234` / `(919) 555-1234` / `919.555.1234` going out unmasked); ticket below. **Web:** stop blocking Continue and mask instead. |
+| D11 | Web adopts the server's **G40-502 Delivery anchors** ($10→10, $100→20, $200→30, then +$0.10/$) | **Web.** Harness §4's pinned spot values change with it. |
+| D12 | Web adopts the server's **G40-535 worker-pay Ride model** (no $2.99 fee, no 8% in the suggestion) | **Web** |
+| D13 | **Yard shows the app's two options** (I'll select my worker · Prioritize MY Gophers; no First Available) | **Web** |
+| D14 | **Pay by the hour on Labor only** | **Web:** remove it from Yard, Custom Task and Junk |
+
+**D10 app ticket:** **G40-626** (Bug, sprint 908 "iQ | Brain"). Do it with G40-615 (the sheet's typos).

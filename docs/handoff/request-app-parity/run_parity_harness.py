@@ -388,12 +388,14 @@ def app_section():
     if app_ctrl.get("yard") is not None and "yard" in web_no_choice \
             and {"select_gopher", "notify_fav_gopher"} <= app_ctrl["yard"]:
         WARNS.append("APP DIVERGENCE D13 worker choice on Yard: the app offers I'll select / "
-                     "Prioritize MY Gophers; the web shows no choice and forces 'select'")
+                     "Prioritize MY Gophers; the web shows no choice and forces 'select'. RULED 10/13: the WEB "
+                     "shows the app's two options")
     hourly_app = sorted(c for c, k in app_ctrl.items() if k and "paying_by_hour" in k)
     web_no_hourly = re.search(r"const noHourly = state\.category === '(\w+)';", req)
     if hourly_app == ["labor"] and web_no_hourly and web_no_hourly.group(1) == "moving":
         WARNS.append("APP DIVERGENCE D14 pay by the hour: the app offers it on Labor only; the "
-                     "web also offers it on Yard, Custom Task and Junk (hidden only for Moving)")
+                     "web also offers it on Yard, Custom Task and Junk (hidden only for Moving). RULED 10/13: "
+                     "Labor only, the WEB changes")
 
     # ---- FEES. The app holds NO fee constants: it shows what the server's
     # POST orders/summary returns (pages/summary.js adds the returned lines up).
@@ -488,8 +490,10 @@ def app_section():
     check(not bad, "junk + moving tier detection == the live server's (%d descriptions)"
           % len(offer["detect"]), "" if not bad else "differ: %s" % bad[:3])
     for kind, tag, why in (
-            ("delivery", "D11", "web uses the 7/09 NC table; the server, G40-502 owner anchors (9/21)"),
-            ("ride", "D12", "web adds the $2.99 fee + 8% (rider all-in); the server is worker pay only (G40-535, 9/23)")):
+            ("delivery", "D11", "web uses the 7/09 NC table; the server, G40-502 owner anchors (9/21). "
+             "RULED 10/13: the WEB adopts the server's curve"),
+            ("ride", "D12", "web adds the $2.99 fee + 8% (rider all-in); the server is worker pay only (G40-535, 9/23). "
+             "RULED 10/13: the WEB adopts the server's model")):
         diff = [r for r in offer[kind] if not r["same"]]
         if diff:
             ex = diff[min(1, len(diff) - 1)]
