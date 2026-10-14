@@ -157,3 +157,20 @@ rule, the **app** (or the server behind it) changes, not the web.
 - **Still not compared** (where more can hide): field visibility per category, suggested-offer
   values, the app-only step checks, phone numbers in the description. Listed above; no claims made.
 
+
+### Tickets: sprint "iQ Boost" (2026-10-14 → 10-21), created or moved the same evening on the owner's "All six"
+
+The tickets point here; this doc is the source of truth. Three already existed, so they were moved
+into the sprint with a dated comment instead of being duplicated.
+
+| Ruling | Ticket | Note |
+|---|---|---|
+| D1 + item 1 (app scans every category; highlight; false positives) | **G40-623** (new) | Matcher fix is made on the web first, then re-extracted into the app |
+| D5 (app adds the in-flow category check) | **G40-624** (new) | |
+| D3 (server: one 8% formula, full A/R base, nearest cent) | **G40-625** (new) | The server has THREE 8% formulas today: summary + charge net TrustShield out, and `update.js` leaves the A/R fee out entirely. Build with G40-612 |
+| D2 (TrustShield $1 on Ride) | **G40-365** (existing, moved in) | ⚠️ After/with G40-625: the charge path subtracts TrustShield from the A/R fee, so a Ride's $1 would enter the 8% base as a negative A/R fee |
+| D4 (block by place, Delivery/Ride/Moving) | **G40-274** (existing, In Progress since April, moved in) | Its 07-19 scrub said the app had "zero same-address validation". Wrong, the same miss as this doc's first D4 |
+| CT under-21 (app hides the switch) | **G40-614** (already in sprint) | Matches the ruling; unchanged |
+
+Web-side work (this seat, no ticket): Custom Task logic on `other`, under-21 suppression kept; D4
+location comparison on the web; the item-1 matcher fix upstream for G40-623.
