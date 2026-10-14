@@ -234,7 +234,12 @@ def matrix_js():
 # app's files. Its src/helpers/gopherStepGates.js still has `identity` ON, which
 # the owner ruled OFF on the web on 2026-10-04 ("No block, match the app") — and
 # nothing in the app calls that file's evaluate(). Copying it would revert him.
-APP_REF = "origin/production"
+APP_REF = os.environ.get("GOPHER_REQUEST_APP_REF") or "origin/production"
+# GOPHER_REQUEST_APP_REF: read an UNMERGED app branch instead (e.g. G40-623),
+# to see what this section will say once it merges. The default is the truth.
+# The SERVER is always read at origin/production (API_REF): the override is for
+# the app only.
+API_REF = "origin/production"
 
 
 def sibling_clone(repo, env_var):
@@ -253,12 +258,13 @@ def app_clone():
     return sibling_clone("gopher-mobile-request", "GOPHER_REQUEST_APP")
 
 
-def app_show(clone, rel):
-    out = subprocess.run(["git", "-C", clone, "show", "%s:%s" % (APP_REF, rel)],
+def app_show(clone, rel, ref=None):
+    ref = ref or APP_REF
+    out = subprocess.run(["git", "-C", clone, "show", "%s:%s" % (ref, rel)],
                          capture_output=True)
     if out.returncode != 0:
         raise RuntimeError("git show %s:%s failed: %s"
-                           % (APP_REF, rel, out.stderr.decode()[:160]))
+                           % (ref, rel, out.stderr.decode()[:160]))
     return out.stdout
 
 
@@ -366,6 +372,22 @@ def app_section():
     if web_all and callers == ["src/component/stepFlow/flows/delivery.js"]:
         WARNS.append("APP DIVERGENCE age-keyword scan: the app scans DELIVERY only "
                      "(flows/delivery.js); web Request scans EVERY category. RULED 10/13: every category, the APP changes (G40-623)")
+    elif callers == ["src/component/stepFlow/ageKeywordCheck.js"]:
+        # G40-623's shape: one check, run by the step bar for EVERY flow, and
+        # Need a Ride reading its special instructions (owner 10/14).
+        nav = app_show(clone, "src/component/yardFlow/YardStepNav.js").decode()
+        ride = app_show(clone, "src/component/stepFlow/flows/ride.js").decode()
+        ok_nav = "ageKeywordCheck(flow, s, values)" in nav
+        ok_ride = 'ageScanField: "special_instructions"' in ride
+        if web_all and ok_nav and ok_ride:
+            print("  PASS age-keyword scan: every flow on both (app: stepFlow/ageKeywordCheck.js via YardStepNav; Ride reads its special instructions)")
+        else:
+            FAILS.append("APP age-keyword scan: ageKeywordCheck.js is the caller, but %s"
+                         % ("YardStepNav no longer runs it for every flow" if not ok_nav else
+                            "Ride no longer reads its special instructions" if not ok_ride else
+                            "the WEB no longer scans every category"))
+    else:
+        FAILS.append("APP age-keyword scan: unrecognised callers %s -- re-read both before trusting this section" % callers)
 
     # The in-form "this looks like a different category" nudge. The app's
     # classifier runs only in the home search sheet, before a flow opens.
@@ -436,15 +458,15 @@ def app_section():
     # way: origin/production, through git.
     api = sibling_clone("gopher-backend-api", "GOPHER_BACKEND_API")
     try:
-        consts = app_show(api, "constants/index.js").decode()
-        create = app_show(api, "controllers/order/create.js").decode()
+        consts = app_show(api, "constants/index.js", API_REF).decode()
+        create = app_show(api, "controllers/order/create.js", API_REF).decode()
     except Exception as e:
         WARNS.append("APP fee comparison NOT RUN — no gopher-backend-api clone with %s "
-                     "at %s (%s)" % (APP_REF, api, str(e)[:80]))
+                     "at %s (%s)" % (API_REF, api, str(e)[:80]))
         return
-    sref = subprocess.run(["git", "-C", api, "log", "-1", "--format=%h %ci", APP_REF],
+    sref = subprocess.run(["git", "-C", api, "log", "-1", "--format=%h %ci", API_REF],
                           capture_output=True, text=True).stdout.strip()
-    print("  api = %s @ %s  (fees: the app displays what this server returns)" % (APP_REF, sref))
+    print("  api = %s @ %s  (fees: the app displays what this server returns)" % (API_REF, sref))
     cents = dict((k, int(v)) for k, v in re.findall(r"\b([A-Z_]+):\s*(\d+(?:\.\d+)?)\b", consts)
                  if "." not in v)
     SERVER_KEY = {"delivery": "APPLICATION_FEE_DELIVERY", "ride": "APPLICATION_FEE_NEED_A_RIDE",
@@ -500,7 +522,7 @@ def app_section():
     tmp = tempfile.mkdtemp(prefix="gopher-api-offer-")
     try:
         for f in ("suggested_pricing.js", "deals_geo.js", "served_zips.js"):
-            open(os.path.join(tmp, f), "wb").write(app_show(api, "helpers/" + f))
+            open(os.path.join(tmp, f), "wb").write(app_show(api, "helpers/" + f, API_REF))
         probe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-offer-probe.js")
         out = subprocess.run(["node", probe, ROOT, tmp], capture_output=True, text=True, timeout=60)
         offer = json.loads(out.stdout.strip().splitlines()[-1])

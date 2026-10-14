@@ -160,7 +160,11 @@ rule, the **app** (or the server behind it) changes, not the web.
 
 ### Tickets: sprint 908 "iQ | Brain" (2026-10-14 → 10-21; it was named "iQ Boost" when they were filed the same evening), created or moved on the owner's "All six"
 
-**Canonical writer:** ~~the "iQ | Brain Sprint" desk~~. ⛔ **Corrected the same night: John keeps the 909 desk on the canonicals until he retires it.** Rows for canon go to the 909 desk "(!)Gopher 4.0 UI/UX Update(!) Sprint". It published D1–D5 + Custom Task as master rows **RQ-35 to RQ-40** (ruled).
+**Canonical writer (2026-10-14, current):** the **"iQ | Brain Sprint" desk**. The 909 desk
+"(!)Gopher 4.0 UI/UX Update(!) Sprint" said the same morning, relaying John, that it is now the
+PENDING-RELEASE (14.0.0) desk only: *"Send all further comparisons, rulings and DOC UPDATEs to the
+"iQ | Brain Sprint" desk"*. RQ-35..45 are already in the master. *History:* ~~the "iQ | Brain Sprint"
+desk~~, then **corrected the same night (10/13): John keeps the 909 desk on the canonicals until he retires it.** Rows for canon go to the 909 desk "(!)Gopher 4.0 UI/UX Update(!) Sprint". It published D1–D5 + Custom Task as master rows **RQ-35 to RQ-40** (ruled).
 
 The tickets point here; this doc is the source of truth. Three already existed, so they were moved
 into the sprint with a dated comment instead of being duplicated.
@@ -323,3 +327,51 @@ In D10 both sides change, and the app half is ticketed.
 **D10 app ticket:** **G40-626** (Bug, sprint 908 "iQ | Brain"). Do it with G40-615 (the sheet's typos).
 
 **Canon:** the 909 desk published the second pass as master rows **RQ-41 to RQ-45** (ruled) on 2026-10-13. The parity list is logged without rows. The desk re-ran the app's phone pattern independently and confirmed the three common formats are not masked.
+
+## G40-623, the app half (2026-10-14, Website Code/Logic seat): built, committed, NOT pushed
+
+App repo `gophergo/gopher-mobile-requester-capacitorjs`, branch **`G40-623`**, commit **`1564d016d`**
+(on `production` ab399d3f7, unchanged at the last fetch). Not pushed: push is John's call.
+
+**What it does (D1 + item 1, as ruled):**
+- The age-keyword check runs on **Step 2 of all eight flows** (`stepFlow/ageKeywordCheck.js`, run by
+  `YardStepNav` ahead of each flow's own check, on Continue and again before Review). On Need a Ride
+  it reads the **special instructions** (owner 10/14).
+- **Under 21:** the neutral block on every attempt. Closing it (Edit my request, ✕ or a swipe) selects
+  the tripping word in the box (owner 10/13, "Both").
+- **21+:** "This looks age-restricted" once per wording. "No" goes on (D6 is still unruled; the app's
+  behaviour is kept). "Yes" on Delivery is unchanged. "Yes" anywhere else moves the request to
+  **Delivery Step 2** with the age switch and the purchase ON (owner 10/14, "same as web").
+- The lists and the matcher are re-extracted from the web (live `dfce6fd`), with the ruled cuts
+  (P1, P2, P4; P3 declined).
+
+**Proof:**
+- Harness §8 run on the branch (`GOPHER_REQUEST_APP_REF=G40-623`, added for this): lists, exceptions
+  and verdicts are identical on 8,058 inputs; "age-keyword scan: every flow on both" PASSES. The two
+  G40-623 warnings are gone.
+- `app-age-probe.js`: 0 verdict, 0 code and 0 range differences.
+- App: 187/187 suites, 3,152 tests, eslint 0, Prettier clean, all 26 CI node guards pass.
+- The Delivery onload change gives **every stored order shape exactly what it gave before** (test over
+  `cost_of_goods` INTEGER/null × `age_restricted?` BOOLEAN/null). It only differs for the moved request.
+
+**Judgement calls John has not ruled:**
+
+1. **The move to Delivery carries the description and photos, NOT the addresses.** The web keeps
+   addresses across a category switch. But a ride's pick-up is the rider's own location, while a
+   delivery's pick-up is the store, so carrying them would point the Gopher at the wrong end. A ride
+   carries no description (it has none), as on the web.
+2. **A request already marked age-restricted is not asked again** on any flow: Delivery's switch, as
+   before, and now also **Custom Task's switch**. Otherwise "bartender for my event, wine" with the
+   switch already on would be asked and moved to Delivery. The web has no Custom Task switch yet
+   (the CT port), so this has no web counterpart today. **Under 21 is blocked regardless.**
+3. **A GO-To does not move.** "Yes" there shows a toast: "A GO-To can’t move to Delivery. Please edit
+   your request to continue." Moving it would drop GO-To mode and carry its values into a live request.
+
+**Not proven yet (needs a phone build):** whether the keyboard comes up on the selected word. jsdom's
+focus model differs from a WebView: a negative control (focus release off) still passed 5 of 6, so the
+mount test does not prove the focus release. That needs a device check. So does the Delivery screen
+opening with age + purchase ON after a move. The onload mapping is tested with the real
+`mappingVariable`, but the screen itself has not been run.
+
+**After it merges:** delete `PENDING_G40_623` from `run_parity_harness.py`. The D1 detector already
+recognises the new shape and FAILS if it regresses.
