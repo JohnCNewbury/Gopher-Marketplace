@@ -321,3 +321,5 @@ In D10 both sides change, and the app half is ticketed.
 | D14 | **Pay by the hour on Labor only** | **Web:** remove it from Yard, Custom Task and Junk |
 
 **D10 app ticket:** **G40-626** (Bug, sprint 908 "iQ | Brain"). Do it with G40-615 (the sheet's typos).
+
+**Canon:** the 909 desk published the second pass as master rows **RQ-41 to RQ-45** (ruled) on 2026-10-13. The parity list is logged without rows. The desk re-ran the app's phone pattern independently and confirmed the three common formats are not masked.
