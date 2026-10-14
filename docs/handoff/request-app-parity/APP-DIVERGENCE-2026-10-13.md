@@ -328,10 +328,12 @@ In D10 both sides change, and the app half is ticketed.
 
 **Canon:** the 909 desk published the second pass as master rows **RQ-41 to RQ-45** (ruled) on 2026-10-13. The parity list is logged without rows. The desk re-ran the app's phone pattern independently and confirmed the three common formats are not masked.
 
-## G40-623, the app half (2026-10-14, Website Code/Logic seat): built, committed, NOT pushed
+## G40-623, the app half (2026-10-14, Website Code/Logic seat): MR !500 open, awaiting a phone build
 
 App repo `gophergo/gopher-mobile-requester-capacitorjs`, branch **`G40-623`**, commit **`1564d016d`**
-(on `production` ab399d3f7, unchanged at the last fetch). Not pushed: push is John's call.
+(on `production` ab399d3f7). Pushed on John's "yes push it" (10/14). **MR !500** →
+`production`, squash **NO**, delete source **YES**, John merges:
+https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/500
 
 **What it does (D1 + item 1, as ruled):**
 - The age-keyword check runs on **Step 2 of all eight flows** (`stepFlow/ageKeywordCheck.js`, run by
@@ -354,7 +356,7 @@ App repo `gophergo/gopher-mobile-requester-capacitorjs`, branch **`G40-623`**, c
 - The Delivery onload change gives **every stored order shape exactly what it gave before** (test over
   `cost_of_goods` INTEGER/null × `age_restricted?` BOOLEAN/null). It only differs for the moved request.
 
-**Judgement calls John has not ruled:**
+**Three calls, RULED by John 10/14 ("keep all three"):**
 
 1. **The move to Delivery carries the description and photos, NOT the addresses.** The web keeps
    addresses across a category switch. But a ride's pick-up is the rider's own location, while a
