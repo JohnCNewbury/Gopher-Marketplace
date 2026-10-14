@@ -116,6 +116,15 @@ AMBIGUOUS_REQUIRE_CONTEXT = {
     #             the hyphen counts as a word boundary, so both halves matched)
     #   "game"    flagged "board game for a birthday"
     "winston", "game",
+    # OWNER RULING 2026-10-14 (John, "P1"), measured before applying: bare "on the" is
+    # in the xlsx, and the matcher tolerates any run of whitespace between words, so it
+    # fired on ordinary English: "leave it on the porch", "live on the 3rd floor",
+    # "knock on the door". Over all 65,325 production orders it flagged 202 that were not
+    # age-restricted, and released NO real one -- the 37 age-restricted orders it also
+    # matched carry no age-restricted word in their description (they were flagged by
+    # their own switch). Since the 10/11 under-21 block, each false hit is a dead end for
+    # an under-21 requester, not just one extra question. "on the rocks" stays.
+    "on the",
 }
 
 def collect(fname, sheet, col, acc, type_col=None):

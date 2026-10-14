@@ -27,8 +27,9 @@ run node scripts/web-checks/maps-callback-shim.js
 step "4/18 requester <-> Gopher messaging crosses the PT bridge"
 run node scripts/web-checks/pt-message-relay.js
 
-step "5/18 the age gate: flavour + product form (the context pass)"
+step "5/18 the age gate: flavour + product form (the context pass), and the ruled false-positive cuts"
 run node scripts/web-checks/age-context-pass.js
+run node scripts/web-checks/age-false-positives.js
 
 step "6/18 one lifecycle definition — Request and Connect both delegate"
 run node scripts/web-checks/lifecycle-parity.js

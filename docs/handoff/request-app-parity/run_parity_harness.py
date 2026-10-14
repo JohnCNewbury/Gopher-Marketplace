@@ -309,12 +309,45 @@ def app_section():
     if info.get("error"):
         check(False, "app age detector runs beside the web's", info["error"])
         return
+    # ⭐ RULED BUT NOT YET IN THE APP. Owner 2026-10-14 cut the web's false positives (drop the
+    # keyword "on the"; exceptions for game / 1792 / corona / wine). The app copies the matcher
+    # and its data, so it differs until G40-623 re-extracts them. That difference -- and ONLY
+    # that difference -- is a WARN. It is proved, not assumed: the web's matcher CODE is run on
+    # the app's DATA and must reproduce the app's verdicts exactly, so the two differ by data
+    # alone; and the data may differ by exactly the set below. Anything else still FAILS. When
+    # the app ships G40-623 the lists match, this set stops applying, and it should be deleted.
+    PENDING_G40_623 = {"keywords_only_app": ["on the"],
+                       "exceptions": ["1792", "corona", "game", "wine"]}
+    check(info["ncodeDiff"] == 0,
+          "age matcher CODE: the web's code on the app's data reproduces the app (%d inputs)"
+          % info["inputs"],
+          "" if not info["ncodeDiff"] else "%d differ, e.g. %s" % (info["ncodeDiff"], info["codeDiffs"][:3]))
+    pending = []
     for k, v in sorted(info["lists"].items()):
-        check(v["same"], "age list '%s' identical web/app" % k,
-              "web %d / app %d" % (v["web"], v["app"]))
-    check(info["ndiff"] == 0,
-          "age detector: same verdict web/app on %d inputs" % info["inputs"],
-          "" if not info["ndiff"] else "%d differ, e.g. %s" % (info["ndiff"], info["diffs"][:3]))
+        if v["same"]:
+            check(True, "age list '%s' identical web/app" % k, "web %d / app %d" % (v["web"], v["app"]))
+        elif (k == "keywords" and not v["onlyWeb"]
+              and sorted(v["onlyApp"]) == PENDING_G40_623["keywords_only_app"]):
+            pending.append("keywords: the app still has %s" % v["onlyApp"])
+        else:
+            check(False, "age list '%s' identical web/app" % k,
+                  "web %d / app %d; only web %s; only app %s"
+                  % (v["web"], v["app"], v["onlyWeb"][:5], v["onlyApp"][:5]))
+    ex = info["exceptions"]
+    if ex["same"]:
+        check(True, "age exceptions identical web/app", "%s" % ex["webKeys"])
+    elif not ex["appKeys"] and ex["webKeys"] == PENDING_G40_623["exceptions"]:
+        pending.append("exceptions %s: the app has none yet" % ex["webKeys"])
+    else:
+        check(False, "age exceptions identical web/app", "web %s / app %s" % (ex["webKeys"], ex["appKeys"]))
+    if pending and info["ncodeDiff"] == 0:
+        WARNS.append("APP PENDING G40-623 age matcher: the web carries the owner's 10/14 false-positive "
+                     "cuts and the app does not yet (%s); %d of %d verdicts differ, all explained by "
+                     "that data" % ("; ".join(pending), info["ndiff"], info["inputs"]))
+    else:
+        check(info["ndiff"] == 0,
+              "age detector: same verdict web/app on %d inputs" % info["inputs"],
+              "" if not info["ndiff"] else "%d differ, e.g. %s" % (info["ndiff"], info["diffs"][:3]))
 
     # ---- KNOWN DIVERGENCES — WARN until the owner rules each one. Every line
     # below is DETECTED from both sides, not printed from a list: when either

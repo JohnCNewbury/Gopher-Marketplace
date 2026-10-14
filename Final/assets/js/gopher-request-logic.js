@@ -191,6 +191,43 @@
   }
   function ageIsAlnum(c){ return !!c && /[A-Za-z0-9]/.test(c); }
 
+  /* ── Ruled EXCEPTIONS — gopher-age-supplement.js GopherAgeExceptions ───────
+     OWNER RULING 2026-10-14 ("P2" game, "P4" 1792 / corona / wine), measured on all
+     65,325 production orders before applying: 14 released, 0 real ones lost. An
+     occurrence of an excepted keyword is SKIPPED when the word right before it is
+     in `before`, or one of the next `afterWithin` words is in `after`; the search
+     then CONTINUES, so a later, genuine occurrence still flags ("wine glasses and a
+     bottle of wine"). Keyed on the keyword with everything but letters/digits
+     stripped, so both passes below find the same rule. The Request app copies this
+     logic and the table (G40-623) — change it here, then re-extract there. */
+  var _ageEx = null;
+  function ageExceptions(){
+    if(_ageEx) return _ageEx;
+    _ageEx = {};
+    var src = window.GopherAgeExceptions || {};
+    for(var k in src){
+      if(!Object.prototype.hasOwnProperty.call(src, k)) continue;
+      var r = src[k] || {}, b = {}, a = {}, i;
+      for(i = 0; i < (r.before || []).length; i++) b[String(r.before[i]).toLowerCase()] = 1;
+      for(i = 0; i < (r.after || []).length; i++)  a[String(r.after[i]).toLowerCase()] = 1;
+      _ageEx[String(k).toLowerCase().replace(/[^a-z0-9]+/g, '')] =
+        { b: b, a: a, n: Math.max(1, parseInt(r.afterWithin, 10) || 1) };
+    }
+    return _ageEx;
+  }
+  /* Is THIS occurrence — orig[start, end) of keyword kw — a ruled exception? */
+  function ageExcepted(orig, start, end, kw){
+    var r = ageExceptions()[String(kw).toLowerCase().replace(/[^a-z0-9]+/g, '')];
+    if(!r) return false;
+    var prev = orig.slice(0, start).toLowerCase().match(/([a-z0-9]+)[^a-z0-9]*$/);
+    if(prev && r.b[prev[1]]) return true;
+    var next = orig.slice(end).toLowerCase().match(/[a-z0-9]+/g) || [];
+    for(var i = 0; i < r.n && i < next.length; i++){
+      if(r.a[next[i]]) return true;
+    }
+    return false;
+  }
+
   function findAgeRestrictedKeyword(text){
     var orig = String(text || '');
     if(!orig.trim()) return null;
@@ -200,10 +237,17 @@
       var list = lists[li];
       for(var i = 0; i < list.length; i++){
         var esc = foldPunct(list[i]).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
-        var re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','i');
-        var m = hay.match(re);
-        /* Offsets survive the fold, so report the customer's own characters. */
-        if(m) return orig.substr(m.index + m[0].indexOf(m[1]), m[1].length);
+        var re = new RegExp('(?:^|[^A-Za-z0-9])(' + esc + ')(?:[^A-Za-z0-9]|$)','ig');
+        var m;
+        /* EVERY occurrence, not just the first: an excepted one is skipped and the
+           next is tried (resume one character past its start, because the match
+           consumed the boundary character the next occurrence needs). */
+        while((m = re.exec(hay)) !== null){
+          var s0 = m.index + m[0].indexOf(m[1]);
+          /* Offsets survive the fold, so report the customer's own characters. */
+          if(!ageExcepted(orig, s0, s0 + m[1].length, list[i])) return orig.substr(s0, m[1].length);
+          re.lastIndex = s0 + 1;
+        }
       }
     }
     /* Nothing literal. Try again with spacing/punctuation/plurals normalised. */
@@ -226,6 +270,7 @@
           var ob = nMap[ends[e] - 1];
           if(ob === undefined) continue;
           if(ageIsAlnum(orig[ob + 1])) continue;          // must end a word
+          if(ageExcepted(orig, oa, ob + 1, kw)) continue;  // ruled exception: keep looking
           return orig.substring(oa, ob + 1);
         }
       }
