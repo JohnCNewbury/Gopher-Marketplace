@@ -332,7 +332,7 @@ def app_section():
                "!(state.category === 'delivery' && state.ageRestricted)") in req
     if web_all and callers == ["src/component/stepFlow/flows/delivery.js"]:
         WARNS.append("APP DIVERGENCE age-keyword scan: the app scans DELIVERY only "
-                     "(flows/delivery.js); web Request scans EVERY category")
+                     "(flows/delivery.js); web Request scans EVERY category. RULED 10/13: every category, the APP changes (G40-623)")
 
     # The in-form "this looks like a different category" nudge. The app's
     # classifier runs only in the home search sheet, before a flow opens.
@@ -343,7 +343,7 @@ def app_section():
                    if not f.endswith("/iqEngine.js")]
     if "__checkCategoryMismatch" in req and cls_callers == ["src/component/home/HomeIq.js"]:
         WARNS.append("APP DIVERGENCE category nudge: web blocks Continue once when the "
-                     "description points elsewhere; the app has no in-form nudge")
+                     "description points elsewhere; the app has no in-form nudge. RULED 10/13: block once, the APP changes (G40-624)")
 
     # Pick-up and drop-off must differ.
     # ⛔ CORRECTED 2026-10-13, same evening. The first version of this check said
@@ -362,7 +362,8 @@ def app_section():
     if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and zero_modal:
         WARNS.append("APP DIVERGENCE same-address: the app WARNS (trip distance 0 -> a "
                      "dismissible 'Oops!' sheet) on %s only; web Request BLOCKS Continue "
-                     "on matching address text wherever a pick-up shows, Moving included"
+                     "on matching address text wherever a pick-up shows, Moving included. RULED 10/13: BLOCK by PLACE on "
+                     "Delivery/Ride/Moving, BOTH change (G40-274)"
                      % ", ".join(sorted(os.path.basename(f)[:-9] for f in mounted)))
     elif "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js"):
         WARNS.append("APP same-address check NOT FOUND: getDistance's zero-distance sheet "
@@ -413,7 +414,8 @@ def app_section():
     web_ride = re.search(r"tsEligible\s*=[^;]*state\.category\s*===\s*'ride'", req)
     if server_ar_only and web_ride:
         WARNS.append("APP DIVERGENCE TrustShield $1: the live server gives it on "
-                     "age-restricted orders only; web Request also gives it on every Ride")
+                     "age-restricted orders only; web Request also gives it on every Ride. RULED 10/13: A/R + Ride, the "
+                     "SERVER changes (G40-365, after G40-625)")
 
     # The 8% base. Server: (offer + fee + (A/R fee - TrustShield)) * 0.08, ceil'd
     # to the cent. Web: (offer + fee + A/R fee) * 0.08, unrounded — 8 cents more
@@ -424,7 +426,50 @@ def app_section():
     if server_net and web_gross:
         WARNS.append("APP DIVERGENCE 8% transfer fee: the server takes it on the A/R fee NET of "
                      "TrustShield and rounds UP to the cent; web Request uses the gross A/R fee "
-                     "and does not round")
+                     "and does not round. RULED 10/13: the web's base, NEAREST CENT on both (G40-625)")
+
+    # ---- SUGGESTED OFFER. The app shows POST orders/smart_price, i.e. the server's
+    # pure helpers/suggested_pricing.js. Both sides are RUN by app-offer-probe.js.
+    # Junk and Moving agree today (bands + detected tier), so a break FAILS.
+    # Delivery (D11) and Ride (D12) differ, and in both the SERVER carries the
+    # newer owner decision (G40-502 anchors 9/21; G40-535 worker-pay 9/23): WARN
+    # until the owner rules. ⚠️ When the web adopts them, §4's spot values
+    # ($100 -> 16/21/26 ...) are what change.
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="gopher-api-offer-")
+    try:
+        for f in ("suggested_pricing.js", "deals_geo.js", "served_zips.js"):
+            open(os.path.join(tmp, f), "wb").write(app_show(api, "helpers/" + f))
+        probe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-offer-probe.js")
+        out = subprocess.run(["node", probe, ROOT, tmp], capture_output=True, text=True, timeout=60)
+        offer = json.loads(out.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "server suggested-offer model runs beside the web's", str(e)[:160])
+        return
+    finally:
+        for f in os.listdir(tmp):
+            os.unlink(os.path.join(tmp, f))
+        os.rmdir(tmp)
+    if offer.get("error"):
+        check(False, "server suggested-offer model runs beside the web's", offer["error"])
+        return
+    for kind in ("junk", "moving"):
+        bad = [r for r in offer[kind] if not r["same"]]
+        check(offer[kind] and not bad,
+              "%s suggested offer == the live server's (%d tiers)" % (kind, len(offer[kind])),
+              "" if not bad else "differ: %s" % bad)
+    bad = [r for r in offer["detect"] if not r["same"]]
+    check(not bad, "junk + moving tier detection == the live server's (%d descriptions)"
+          % len(offer["detect"]), "" if not bad else "differ: %s" % bad[:3])
+    for kind, tag, why in (
+            ("delivery", "D11", "web uses the 7/09 NC table; the server, G40-502 owner anchors (9/21)"),
+            ("ride", "D12", "web adds the $2.99 fee + 8% (rider all-in); the server is worker pay only (G40-535, 9/23)")):
+        diff = [r for r in offer[kind] if not r["same"]]
+        if diff:
+            ex = diff[min(1, len(diff) - 1)]
+            WARNS.append("APP DIVERGENCE %s suggested %s offer: %d of %d cases differ (e.g. %s: web %s, server %s) - %s"
+                         % (tag, kind, len(diff), len(offer[kind]),
+                            ex.get("cost", ex.get("trip")), ex["web"], ex["server"], why))
 
 
 def fee_table(src, name):

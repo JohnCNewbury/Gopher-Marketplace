@@ -176,3 +176,90 @@ into the sprint with a dated comment instead of being duplicated.
 
 Web-side work (this seat, no ticket): Custom Task logic on `other`, under-21 suppression kept; D4
 location comparison on the web; the item-1 matcher fix upstream for G40-623.
+
+## Second pass: the four areas not compared on the first pass (2026-10-13, late)
+
+Each rule was found by following its data, not by searching for words. A "not found" says what was
+traced.
+
+### Phone numbers in the description: D10 (DIVERGES) and a live app bug
+
+| | App (`component/discriptionElement.js` ~39-66, the description field every flow draws) | Web (`gopher-request.html` ~17166) |
+|---|---|---|
+| Behaviour | **Masks as you type**: the matched number is replaced in the box with `**********`, then a sheet opens: "It looks like you've entered a phone number. … Please select Edit Request to remove the phone number." with a "Do not show me this again" box. The number never reaches the server; Continue is not blocked. | **Blocks Continue** (`G40_REQ.phoneEntered()`, no acknowledgement) until the number is edited out. |
+| Pattern | `/\b(?:\d[ -()]?){9}\d\b(?!\d)/g` | `/(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/` |
+
+⚠️ **LIVE APP BUG, found by running both patterns.** In `[ -()]` the unescaped hyphen makes a
+**range**, space (0x20) through `(` (0x28). So `-` and `.` are NOT separators. The app's mask
+misses the most common US formats:
+
+| Typed | App masks? | Web blocks? |
+|---|---|---|
+| `9195551234`, `919 555 1234`, `+1 919 555 1234` | yes | yes |
+| **`919-555-1234`** | **NO** | yes |
+| **`(919) 555-1234`**, **`(919)555-1234`** | **NO** | yes |
+| **`919.555.1234`**, **`1-919-555-1234`** | **NO** | yes |
+
+So a phone number typed with dashes goes out unmasked in a description that is broadcast to Gophers,
+against "phone numbers are never broadcast". This is the Request-app seat's code; reported, not
+touched. The sheet's wording ("phones numbers", "Ones your") is already G40-615.
+**Needs a ruling:** one pattern (the web's is the wider one), and mask-as-you-type (app) or block
+Continue (web).
+
+### App-only step checks: equivalent, except one small difference
+
+| App check (code read line by line) | Web |
+|---|---|
+| Yard and Moving: crew switch on → at least 2 workers (`yardFlowSteps.js` ~286, `movingFlowSteps.js` ~199) | The crew counter's minimum is 2 (`dec-workers` → `Math.max(2, …)`, ~16528), so fewer than 2 cannot happen. **Equivalent.** |
+| Moving: at least 1 item, or "multiple" (`movingFlowSteps.js` ~195) | The item counter's minimum is 1 (~15035). **Equivalent.** |
+| Labor: hourly offer > 0, or per-worker wage > 0 unless bids (`laborFlowSteps.js` ~203-212) | `workerPay` gate: pay > 0 unless bids. **Equivalent** (by reading; not driven). |
+| Custom Task: cost of items required with a purchase, **waived when bids are on** (`customTaskFlowSteps.js` ~144) | `costOfItems` gate has no bids exemption. **Small divergence**; settled by the Custom Task port. |
+| **First Available**: offered on Delivery, Ride, Yard, Custom Task; **not** on Moving, Junk, Labor, Home (only the first four flows' JSON carry `available`; the other four's step-3 checks demand Select My Gopher or favourites) | `NO_FIRST_AVAILABLE = ['moving','junk','labor','home']` (~14261). **Parity**, confirmed in code on both sides. |
+
+### Suggested offer: the app shows the server's `POST orders/smart_price`
+
+Both implementations were RUN on the same inputs: the server's `helpers/suggested_pricing.js` at
+`origin/production` (a pure module, no database) against the web's real files, by
+`app-offer-probe.js` (this folder), which harness §8 runs every time. Junk and Moving FAIL on a break;
+D11 and D12 WARN.
+
+**Scope: parity.** Both price Delivery, Ride, Junk and Moving only (web `PRICED_CATEGORIES`; app
+`smart_price` in those four flows' JSON).
+
+| Model | Result |
+|---|---|
+| **Junk** (single / half / full: 40 / 60 / 100, ±25% on a $5 grid) | **Parity**: same bands, and the same detected tier on 8 sample descriptions |
+| **Moving** (few / truck / home_small / home_large: 75 / 110 / 225 / 375) | **Parity**: same bands, and the same detected tier on the same samples |
+| **D11 · Delivery** | **DIVERGES from $25 of items upward.** |
+| **D12 · Ride** | **DIVERGES on what the number means.** |
+
+**D11 · Delivery, by cost of items:**
+
+| Items | $25 | $100 | $150 | $200 | $300 | $500 |
+|---|---|---|---|---|---|---|
+| Web (low/suggested/generous) | 8/11/14 | 16/21/26 | 23/30/38 | 34/45/56 | 64/85/106 | 124/165/206 |
+| Server | 9/12/15 | 15/20/25 | 19/25/31 | 23/30/38 | 30/40/50 | 45/60/75 |
+
+* **Server:** `MODEL_VERSION 'g40-502-owner-anchors-2026-09-21'`, `OWNER_ANCHORS` $10→10, $100→20,
+  $200→30, then +$0.10 per $.
+* **Web:** `OFFER_TABLE` "NC" column, from the 2026-07-09 directive, then +$0.40 per $ above $200.
+* **The server carries the NEWER owner decision (G40-502, 9/21); the web never took it.** Harness §4
+  pins the web's numbers ($100 → 16/21/26), so it changes with the fix.
+
+**D12 · Ride:**
+
+| Trip | 4.3 mi / 13 min | 12 / 20 | 15.1 / 24 | 15.1 / 24 scheduled | 30 / 40 |
+|---|---|---|---|---|---|
+| Web | 10/13/15 | 18/22/27 | 21/27/32 | 24/31/37 | 32/42/52 |
+| Server | 8/9/11 | 13/18/22 | 16/22/27 | 19/25/31 | 27/36/45 |
+
+* Same mileage tiers, per-minute rate, $8 floor, scheduled uplift and band.
+* **Server:** `'g40-535-ride-worker-pay-2026-09-23'`, worker pay only:
+  `max(variable × m, 8)` (`is_worker_pay: true`).
+* **Web** (`rideSuggestedOffer`, ~12923): adds the $2.99 platform fee and the 8%,
+  `max(2.99 + variable × m, 8) × 1.08`. That is a rider all-in figure, shown in the slot where the
+  requester sets the WORKER's offer, so the web suggests about $4–6 more than the app.
+* **The server again carries the newer decision (G40-535, 9/23).**
+
+**Needs a ruling:** adopt the server's G40-502 Delivery anchors and G40-535 worker-pay Ride model on
+the web? Recommended: both are the owner's later decisions, and the app already shows them.
