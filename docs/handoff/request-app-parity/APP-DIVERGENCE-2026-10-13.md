@@ -178,8 +178,12 @@ into the sprint with a dated comment instead of being duplicated.
 | D4 (block by place, Delivery/Ride/Moving) | **G40-274** (existing, In Progress since April, moved in) | Its 07-19 scrub said the app had "zero same-address validation". Wrong, the same miss as this doc's first D4 |
 | CT under-21 (app hides the switch) | **G40-614** (already in sprint) | Matches the ruling; unchanged |
 
-Web-side work (this seat, no ticket): Custom Task logic on `other`, under-21 suppression kept; D4
-location comparison on the web; the item-1 matcher fix upstream for G40-623.
+Web-side work (this seat, no ticket): Custom Task logic on `other`, under-21 suppression kept; the
+item-1 matcher fix upstream for G40-623 (done, live dfce6fd). ~~D4 location comparison on the web~~:
+**moved to G40-274 (10/14)**. John spawned a G40-274 session that owns BOTH halves of D4. This seat
+wrote no D4 code: on 10/14 `gopher-step-gates.js` and `gopher-request.html` on G40-623-web were
+byte-identical to live. ⚠️ G40-274's app half touches the same files as G40-623's MR !500
+(delivery.js, ride.js, YardStepNav.js, stepFlows.js), so it waits for !500 to merge.
 
 ## Second pass: the four areas not compared on the first pass (2026-10-13, late)
 
