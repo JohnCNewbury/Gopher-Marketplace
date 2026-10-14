@@ -4484,6 +4484,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; align-items:center; justify-content:center; padding:24px;
   }
   .gr-modal-overlay[hidden] { display:none; }
+  /* G40-274 — same-place sheets (owner picks 10/14: S1 = B, S2 = C). Amber,
+     never red: red is for a failed payment only. */
+  .gr-modal .sp-link { display:block; width:100%; margin-top:10px; background:none; border:0;
+    color:var(--navy); font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .gr-modal .sp-blunt { font-size:17px; line-height:1.35; }
+  .field-input.same-place-flag { outline:2px solid #E59A1A; outline-offset:2px; }
+  .same-place-note { font-size:12px; font-weight:700; color:#9A5B00; margin:4px 2px 0; }
   .gr-modal {
     background:white; border-radius:18px; padding:28px 26px 24px;
     width:100%; max-width:380px; position:relative; text-align:center;
@@ -13468,6 +13475,42 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(pl.name && addr && addr.indexOf(pl.name) === -1) return pl.name + ', ' + addr;
     return addr || pl.name || '';
   }
+  /* ── G40-274: where each typed address IS on the map ──────────────────────
+     Owner, 2026-10-14: the same place is compared by LOCATION ("Same point,
+     ~80 ft"), not by address text, so "123 Main St" and "123 Main Street" are
+     one place. The flow keeps addresses as TEXT (and so do drafts — points are
+     never written into one, they are looked up again), so this keeps a
+     text → {lat, lng} store beside it, filled by an autocomplete pick or a
+     geocode. A text Google can't place is remembered as null, and the gate then
+     falls back to the old text match: missing data never blocks on its own. */
+  window.__gopherPlaces = window.__gopherPlaces || (function(){
+    var cache = {};
+    function key(t){ return String(t == null ? '' : t).toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    function known(t){ return Object.prototype.hasOwnProperty.call(cache, key(t)); }
+    function of(t){ return cache[key(t)] || null; }
+    function remember(t, d){
+      var k = key(t); if(!k) return;
+      var ok = d && d.lat != null && d.lng != null && isFinite(+d.lat) && isFinite(+d.lng);
+      cache[k] = ok ? { lat:+d.lat, lng:+d.lng } : null;
+    }
+    /* Geocode every text not yet known; resolves when all answer or after `ms`. */
+    function ensure(texts, ms){
+      var todo = (texts || []).filter(function(t){ return key(t) && !known(t); })
+        .filter(function(t, i, a){ return a.indexOf(t) === i; });
+      if(!todo.length || !window.GopherAddressAC || !GopherAddressAC.ready()) return Promise.resolve();
+      return new Promise(function(done){
+        var left = todo.length, fin = false;
+        var timer = setTimeout(function(){ if(!fin){ fin = true; done(); } }, ms || 4000);
+        todo.forEach(function(text){
+          GopherAddressAC.geocode(text, function(d){
+            remember(text, d);
+            if(--left === 0 && !fin){ fin = true; clearTimeout(timer); done(); }
+          });
+        });
+      });
+    }
+    return { of:of, known:known, remember:remember, ensure:ensure };
+  })();
   function bindAddressAutocomplete(){
     if(!window.GopherAddressAC) return;
     ['g40EditPickup','g40EditDropoff','dealPickup','dealDropoff'].forEach(function(id){
@@ -13489,6 +13532,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const kind = el.getAttribute('data-locedit'), idx = parseInt(el.getAttribute('data-idx'),10) || 0;
     const arr = kind==='dropoff' ? state.dropoffStops : state.pickupStops;
     if(arr){ arr[idx] = el.value.trim(); }
+    /* G40-274: an address changed, so any "Same place as …" flag is stale, and
+       the new text's map point is looked up in the background (after the
+       autocomplete's own pick geocode has had its chance). */
+    document.querySelectorAll('.same-place-flag').forEach(function(n){ n.classList.remove('same-place-flag'); });
+    document.querySelectorAll('.same-place-note').forEach(function(n){ n.remove(); });
+    if(window.__gopherSamePlaceReset) window.__gopherSamePlaceReset();
+    (function(v){ setTimeout(function(){
+      window.__gopherPlaces.ensure([v]).then(function(){ if(window.__gopherSyncGate) window.__gopherSyncGate(); });
+    }, 1200); })(el.value.trim());
     refreshTripDistance();
     // Filling/clearing an address changes the required-field gate — re-sync the Continue
     // button live via the window helper (defined in stepGate's scope, so scope doesn't matter).
@@ -13496,7 +13548,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   function bindStopAutocomplete(el){
     if(!window.GopherAddressAC || !el) return;
-    GopherAddressAC.attach(el, { onPick:function(){ _writeStop(el); } });
+    GopherAddressAC.attach(el, { onPick:function(d){ window.__gopherPlaces.remember(el.value.trim(), d); _writeStop(el); } });
   }
   document.addEventListener('change', function(e){
     if(e.target && e.target.matches && e.target.matches('input[data-locedit]')) _writeStop(e.target);
@@ -17642,6 +17694,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         isVisible: isVisible,
         /* This surface calls it bidsAllowed(); the module asks for bidsAllowed. */
         bidsAllowed: function(){ return bidsAllowed(); },
+        /* G40-274: an address text's map point, or null (the gate then falls
+           back to matching the text). */
+        placeOf: function(t){ return window.__gopherPlaces ? window.__gopherPlaces.of(t) : null; },
         /* TrustShield OR a submitted/on-file ID. Identical on both web surfaces;
            the prototype derives the same answer through idVerifiedNow(). */
         identityVerified: function(s){
@@ -17785,18 +17840,89 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   $btnBack.addEventListener('click', () => {
     if(state.step > 1){ state.step = prevVisibleStep(state.step); render(); }
   });
+  /* ── G40-274: same pick-up and drop-off ───────────────────────────────────
+     Owner rulings 2026-10-14: same place = map points within ~80 ft (25 m),
+     Unit/Apt ignored; Delivery, Ride and Moving; the server refuses it too.
+     The shared addressesDiffer gate (steps 4 AND 6) blocks every time until the
+     two places differ; these sheets are presentation, not policy.
+       1st Continue on an unchanged pair → S1 "B": friendly title + one-tap fix.
+       2nd and later                     → S2 "C": the owner's blunt sentence,
+                                           and both address fields flagged amber.
+     Changing either address starts the count again. */
+  let __samePlaceTry = { key:'', n:0 };
+  /* Any address edit starts the count again, even one that lands back on the
+     same pair (called from _writeStop). */
+  window.__gopherSamePlaceReset = function(){ __samePlaceTry = { key:'', n:0 }; };
+  let __placesLookedUp = false;
+  function samePlaceStops(){ return [].concat(state.pickupStops || [], state.dropoffStops || []); }
+  function needsPlaceLookup(){
+    if(__placesLookedUp || !window.__gopherPlaces) return false;
+    if(!(state.step === 4 || state.step === 6)) return false;
+    if(state.noSpecificPickup || !isVisible('pickupSection')) return false;
+    return samePlaceStops().some(function(t){ return String(t || '').trim() && !window.__gopherPlaces.known(t); });
+  }
+  function samePlacePair(){
+    const host = { placeOf: function(t){ return window.__gopherPlaces ? window.__gopherPlaces.of(t) : null; } };
+    return (window.GopherStepGates && GopherStepGates.samePlacePair(state, host)) || { pickup:0, dropoff:0 };
+  }
+  function flagSamePlace(pair){
+    [['pickup', pair.pickup, 'Same place as the destination'],
+     ['dropoff', pair.dropoff, 'Same place as the pick-up']].forEach(function(f){
+      const input = $content.querySelector('input[data-locedit="' + f[0] + '"][data-idx="' + f[1] + '"]');
+      const box = input && input.closest('.field-input');
+      if(!box) return;
+      box.classList.add('same-place-flag');
+      const note = document.createElement('div');
+      note.className = 'same-place-note'; note.textContent = f[2];
+      box.insertAdjacentElement('afterend', note);
+    });
+  }
+  function backToAddresses(pair, flag){
+    if(state.step !== 4){ state.step = 4; render(); scrollFlowToTop(); }
+    if(flag) flagSamePlace(pair);
+    const input = $content.querySelector('input[data-locedit="dropoff"][data-idx="' + pair.dropoff + '"]');
+    if(input){ input.scrollIntoView({ behavior:'smooth', block:'center' }); input.focus(); }
+  }
+  function showSamePlaceSheet(){
+    const pair = samePlacePair();
+    const key = JSON.stringify([state.category, state.pickupStops, state.dropoffStops]);
+    __samePlaceTry = (__samePlaceTry.key === key) ? { key:key, n:__samePlaceTry.n + 1 } : { key:key, n:1 };
+    const again = __samePlaceTry.n >= 2;
+    const canSwitch = isVisible('noSpecificPickup');
+    G40_REQ.samePlace({
+      again: again,
+      category: state.category,
+      /* The switch's own on-screen label, so the button names what they see. */
+      switchLabel: canSwitch ? (state.category === 'moving' ? 'Single-location move' : 'Gopher can purchase from anywhere') : '',
+      onChange: function(){ backToAddresses(pair, again); },
+      onSwitch: function(){
+        if(state.step !== 4){ state.step = 4; render(); scrollFlowToTop(); }
+        /* Click the REAL switch, so its own handler runs (state + re-render),
+           never a value set behind the form's back. */
+        const sw = $content.querySelector('.toggle-switch[data-toggle="noSpecificPickup"]');
+        if(sw && !state.noSpecificPickup) sw.click();
+      }
+    });
+    if(again && state.step === 4) flagSamePlace(pair);
+  }
+
   $btnNext.addEventListener('click', () => {
+    /* G40-274: before the address gate reads them, find where any not-yet-placed
+       address is on the map (typed, saved, or resumed from a draft). Once per
+       click; if Google is slow or can't place it, the gate falls back to text. */
+    if(needsPlaceLookup()){
+      $btnNext.classList.add('is-disabled');
+      window.__gopherPlaces.ensure(samePlaceStops()).then(function(){
+        __placesLookedUp = true;
+        try { $btnNext.click(); } finally { __placesLookedUp = false; }
+      });
+      return;
+    }
     // Universal gate: if this step has an unmet requirement, don't advance —
     // flash the missing field and tell the user which one is required.
     const gate = stepGate();
     if(!gate.ok){
-      // G40 modal: pickupSameAsDropoff — the shared addressesDiffer gate
-      // (gopher-step-gates.js, steps 4 AND 6) already hard-blocks identical
-      // ends; this swaps its generic field-flash for the purpose-built modal,
-      // which tells the user about the two sliders that resolve it. The gate
-      // still blocks every time until the addresses differ — the modal is
-      // presentation, not policy.
-      if(gate.id === 'addressesDiffer' && window.G40_REQ){ G40_REQ.pickupSameAsDropoff(); return; }
+      if(gate.id === 'addressesDiffer' && window.G40_REQ){ showSamePlaceSheet(); return; }
       showGatePrompt(gate); return;
     }
     // ── Age-restricted keyword backstop (ALL categories — compliance) ──
@@ -17912,7 +18038,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      __g40ReqMenu are GONE (they shipped dev chrome to every real visitor);
      every modal now fires from its real flow point:
        phoneEntered             → step-2 Continue, phone number in the description
-       pickupSameAsDropoff      → address-step Continue, pick-up == drop-off (warn once)
+       samePlace                → address-step Continue / Submit, pick-up and drop-off at the
+                                  same place (G40-274: S1 first, S2 from the second try)
        selectedGopherBusy       → Hire/Approve on a worker flagged busy:true
        expiredInterestedWorkers → the EXPIRY moment of an active request where a
                                   worker accepted but the requester never approved
@@ -17970,7 +18097,27 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           + '<button type="button" class="gr-modal-btn grx">Edit my request</button>'); },
       phoneEntered: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
       paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
-      pickupSameAsDropoff: function(){ return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📍</div><h4>Pick-up and drop-off are the same</h4><p class="gr-modal-sub">If you don’t have a preferred pickup spot, slide <b>“Gopher can purchase from anywhere.”</b> (Moving at one location? Slide the pick-up toggle to <b>“Single-location move.”</b>)</p><button type="button" class="gr-modal-btn grx">Got it</button>'); },
+      /* G40-274 — owner picks 2026-10-14 (pick-doc 8RzFQm38iwrSZ5na7uMei4):
+         S1 = B on the first try, S2 = C from the second ("i like the option for
+         the user to be given the option right then and there"). The S2 sentence
+         is the owner's own, verbatim from the ticket. Both carry the one-tap
+         switch (Delivery / Moving; Ride has none). */
+      samePlace: function(o){
+        o = o || {};
+        var tip = !o.switchLabel ? '' : (o.category === 'moving'
+          ? 'Moving within one place? Turn on \u201c' + o.switchLabel + '\u201d'
+          : 'No preference where it\u2019s bought? Turn on \u201c' + o.switchLabel + '\u201d');
+        var head = o.again
+          ? '<h4 class="sp-blunt">To proceed with your request, the pick up and drop off must be different.</h4>'
+          : '<h4>Same pick-up and destination</h4><p class="gr-modal-sub">Your pick-up and destination are the same place. Change one so your worker knows where to go.</p>';
+        var ov = reqModal(head
+          + '<button type="button" class="gr-modal-btn grx" data-sp="change">Change an address</button>'
+          + (tip ? '<button type="button" class="sp-link grx" data-sp="switch">' + tip + '</button>' : ''));
+        var c = ov.querySelector('[data-sp="change"]'), w = ov.querySelector('[data-sp="switch"]');
+        if(c && o.onChange) c.addEventListener('click', function(){ setTimeout(o.onChange, 0); });
+        if(w && o.onSwitch) w.addEventListener('click', function(){ setTimeout(o.onSwitch, 0); });
+        return ov;
+      },
       selectedGopherBusy: function(onMessage){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">⚠️</div><h4>That Gopher is on another job</h4><p class="gr-modal-sub">The Gopher you’re accepting is currently on an active request, and Standard Gophers can only take one at a time. Message them to ask when they’ll finish, or choose another Gopher.</p><button type="button" class="gr-modal-btn grx">Message the Gopher</button>'+b2('Choose another Gopher')), onMessage); },
       expiredInterestedWorkers: function(){ return reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;">⏰</div><h4>Your request expired — workers are interested</h4><p class="gr-modal-sub">Your request expired, but you have workers interested in helping. View them to keep going, or cancel if you no longer need it.</p><button type="button" class="gr-modal-btn grx">View interested workers</button>'+b2('Cancel request')); }
     };

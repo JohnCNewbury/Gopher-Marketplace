@@ -417,8 +417,8 @@ def app_section():
     if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and zero_modal:
         WARNS.append("APP DIVERGENCE same-address: the app WARNS (trip distance 0 -> a "
                      "dismissible 'Oops!' sheet) on %s only; web Request BLOCKS Continue "
-                     "on matching address text wherever a pick-up shows, Moving included. RULED 10/13: BLOCK by PLACE on "
-                     "Delivery/Ride/Moving, BOTH change (G40-274)"
+                     "by PLACE (map points within 25 m, G40-274 web) on Delivery/Ride/Moving. RULED 10/13: BLOCK by PLACE on "
+                     "Delivery/Ride/Moving; the APP changes after Request !500 (G40-274); server !746"
                      % ", ".join(sorted(os.path.basename(f)[:-9] for f in mounted)))
     elif "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js"):
         WARNS.append("APP same-address check NOT FOUND: getDistance's zero-distance sheet "

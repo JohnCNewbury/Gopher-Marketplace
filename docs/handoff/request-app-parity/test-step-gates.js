@@ -143,6 +143,57 @@ section('2. Gates fire');
   ok(ev(state({ step: 6, waiverChecked: false })).id === 'waiver', 'unchecked waiver blocks');
 })();
 
+/* ═══ 3b. G40-274 — the SAME PLACE, by map point (owner, 2026-10-14) ════════════
+   "Same point, ~80 ft": two map points within 25 m are one place, whatever the
+   Unit/Apt # says. host.placeOf(text) is optional; without it, or where a point
+   is unknown, the old text match stands (Connect / the prototype unchanged). */
+section('3b. Same place by map point (G40-274)');
+(function () {
+  var BASE = { lat: 35.7796, lng: -78.6382 };
+  var north = function (m) { return { lat: BASE.lat + m / 111195, lng: BASE.lng }; };
+  function placesHost(map) {
+    return host({ placeOf: function (t) { return Object.prototype.hasOwnProperty.call(map, t) ? map[t] : null; } });
+  }
+  var pair = function (a, b, map, step) {
+    return G.evaluate(state({ step: step || 4, pickupStops: [a], dropoffStops: [b] }),
+                      placesHost(map), 'request');
+  };
+  ok(G.SAME_PLACE_METERS === 25, 'the threshold is 25 m (~80 ft), the same number as the server');
+  ok(Math.abs(G.haversineMeters(BASE, north(100)) - 100) < 0.5, 'haversine measures ~100 m as ~100 m');
+  ok(pair('123 Main St', '123 Main Street', { '123 Main St': BASE, '123 Main Street': BASE }).id === 'addressesDiffer',
+     '"123 Main St" vs "123 Main Street" at one point → BLOCKED (text differs, place does not)');
+  ok(pair('40 Oak Ave, Apt 2', '40 Oak Ave, Apt 5', { '40 Oak Ave, Apt 2': BASE, '40 Oak Ave, Apt 5': BASE }).id === 'addressesDiffer',
+     'a different Unit/Apt # at the same point → still BLOCKED (owner: "Block")');
+  ok(pair('A', 'B', { A: BASE, B: north(10) }).id === 'addressesDiffer', '~10 m apart → the same place');
+  ok(pair('A', 'B', { A: BASE, B: north(24) }).id === 'addressesDiffer', '~24 m apart → the same place');
+  ok(pair('A', 'B', { A: BASE, B: north(26) }).ok === true, '~26 m apart → different places, Continue allowed');
+  ok(pair('A', 'B', { A: BASE, B: north(40) }).ok === true, '~40 m apart → different places');
+  ok(pair('123 Main St', '123 Main St', { '123 Main St': BASE }).id === 'addressesDiffer',
+     'identical text with a known point → blocked');
+  ok(pair('123 Main St', '123 main st.', {}).id === 'addressesDiffer',
+     'no points known → falls back to the text match (identical text still blocks)');
+  ok(pair('123 Main St', '400 Oak Ave', { '123 Main St': BASE }).ok === true,
+     'one point unknown and the text differs → NOT blocked (missing data never blocks)');
+  ok(pair('A', 'A', { A: { lat: 0, lng: 0 } }).id === 'addressesDiffer',
+     'a 0,0 placeholder is not a point; identical text still blocks via the fallback');
+  ok(pair('A', 'B', { A: { lat: 0, lng: 0 }, B: { lat: 0, lng: 0 } }).ok === true,
+     '0,0 placeholders never make two different texts "the same place"');
+  ok(pair('A', 'B', { A: BASE, B: BASE }, 6).id === 'addressesDiffer', 'the step-6 submit backstop uses the place rule too');
+  ok(G.evaluate(state({ step: 4, noSpecificPickup: true, pickupStops: ['A'], dropoffStops: ['B'] }),
+                placesHost({ A: BASE, B: BASE }), 'request').ok === true,
+     'no specific pick-up (purchase from anywhere / single-location) → inert');
+  var multi = G.evaluate(state({ step: 4, pickupStops: ['P1', 'P2'], dropoffStops: ['D1', 'D2'] }),
+                         placesHost({ P1: BASE, P2: north(500), D1: north(900), D2: north(505) }), 'request');
+  ok(multi.id === 'addressesDiffer' && multi.selector === 'input[data-locedit="dropoff"][data-idx="1"]',
+     'multi-stop: any pick-up at any drop-off blocks, and the selector names the offending drop-off',
+     JSON.stringify(multi));
+  var p = G.samePlacePair(state({ pickupStops: ['P1', 'P2'], dropoffStops: ['D1', 'D2'] }),
+                          { placeOf: function (t) { return { P1: BASE, P2: north(500), D1: north(900), D2: north(505) }[t]; } });
+  ok(p && p.pickup === 1 && p.dropoff === 1, 'samePlacePair names pick-up 2 and drop-off 2', JSON.stringify(p));
+  ok(G.evaluate(state({ step: 4, pickupStops: ['123 Main St'], dropoffStops: ['123 Main Street'] }), host(), 'connect').ok === true,
+     'a surface WITHOUT placeOf (Connect) behaves exactly as before');
+})();
+
 /* ═══ 3. Addresses — the normaliser is the subtle part ════════════════════════ */
 section('3. Addresses');
 (function () {
