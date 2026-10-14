@@ -8262,8 +8262,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .wsection-hired .wsection-head { color:var(--green-dark); }
   .wsection-hired .wsection-count { background:var(--green); }
-  .wsection-considered .wsection-head { color:var(--navy); }
-  .wsection-considered .wsection-count { background:var(--navy); }
 
   /* ⛔ OPTION B (owner pick, 2026-10-14). Stage 2's lifted card, kept as a ROW:
      the live app stacks these vertically because a phone is narrow, but on the
@@ -16773,7 +16771,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           <h5>Broadcasting to Gophers nearby</h5>
           <p>You'll be notified the moment a Gopher accepts.</p>` : `
           <h5>${workers.length} ${saysGopher() ? 'Gopher' : 'worker'}${workers.length!==1?'s':''} already interested</h5>
-          <p>Review profiles, hire, or consider ${saysGopher() ? 'Gophers' : 'workers'} from your dashboard.</p>`}
+          <p>Review profiles, hire, or message ${saysGopher() ? 'Gophers' : 'workers'} from your dashboard.</p>`}
         </div>
         <button class="si-workers-btn attn-pulse" data-action="see-workers-dashboard">See ${saysGopher() ? 'Gophers' : 'workers'} in dashboard →</button>
       </div>`}
@@ -26153,11 +26151,6 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         if(isLive){
           // Job is running — only contact actions remain.
           actions = '';   // Review profile + Message render in the .wcard-sub row regardless
-        } else if(w.status === 'considered'){
-          actions = `
-            <button class="wbtn wbtn-green wbtn-lg" data-wact="approve" data-i="${realIdx}">Approve</button>
-            <button class="wbtn wbtn-red-soft" data-wact="deny" data-i="${realIdx}">Deny</button>
-          `;
         } else if(w.status === 'hired'){
           actions = `<button class="wbtn wbtn-red-ghost" data-wact="unhire" data-i="${realIdx}">Remove</button>`;
         } else {
@@ -26223,7 +26216,9 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
          still could carry it — and the v55 note above records what happens
          then: with no Considered bucket the worker "silently disappears".
          So 'considered' is folded back into interested rather than filtered
-         out. Do not "tidy" that clause away. */
+         out, and card() gives it the same Hire / Deny / Message as any other
+         interested worker (it used to get Approve / Deny and no way to message).
+         Do not "tidy" that clause away. */
       const interested = r.interestedWorkers.filter(w => w.status === 'interested' || w.status === 'considered' || !w.status);
       const hired      = r.interestedWorkers.filter(w => w.status === 'hired');
       /* REQUEST HIRE RULE — Request hires exactly ONE worker, always. Individually selecting >1 worker is a CONNECT-ONLY capability (Connect's laborManagement radio: 'individually' | 'one-hires'). In Request the requester picks ONE lead worker who is responsible for bringing the rest. r.workersNeeded stays the CREW SIZE and still drives pricing/labels. Canon: owner 2026-07-27; matches live production. */
@@ -26441,11 +26436,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           ${counterSection}
         `;
       } else {
-        // Single-worker (or non-multi-individual) requests: Considered must
-        // ALSO render here. Without this section, a worker tagged status:
-        // 'considered' has no bucket to surface in and silently disappears
-        // from the list — visible on multi-individual flows but not here
-        // (the bug v55 fixed). Approve/Deny from this section still work.
+        // Single-worker (or non-multi-individual) requests. A worker tagged
+        // status:'considered' used to need its own section here or it silently
+        // disappeared (the bug v55 fixed); since Consider left Request
+        // (2026-10-14) that status is folded into the interested list above.
         workersHtml = `
           ${section('Hired', `${hired.length}`, hired, 'wsection-hired')}
           ${window.__g40PayDeclineBar ? __g40PayDeclineBar(hired.length) : ''}
@@ -26636,7 +26630,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           }
           else return;
           // Keep the header's "N workers interested" count in sync.
-          const stillInterested = list.filter(w => w.status === 'interested' || !w.status).length;
+          // 'considered' counts: it is folded into the interested list (Consider left Request).
+          const stillInterested = list.filter(w => w.status === 'interested' || w.status === 'considered' || !w.status).length;
           r.worker = `${stillInterested} worker${stillInterested!==1?'s':''} interested`;
           renderRequestDetail();
           renderActiveRequests();
