@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request home — web vs app, after the 10/14 pass</title>
+<link rel="stylesheet" href="../../../Final/assets/css/gopher-fonts.css">
+<style>
+  :root{ --navy:#002461; --green:#33D975; --pine:#0F7A3F; --sand:#FBF3E4; --paper:#FBF7EF;
+         --body:#424242; --muted:#8C8675; --terra:#D97757; --lava:#C44257; --line:#EAE3D5; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--body);font-family:'DM Sans',system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-family:'Nunito',sans-serif;font-weight:900;font-size:30px;color:var(--navy);margin:0 0 6px}
+  h2{font-family:'Nunito',sans-serif;font-weight:900;font-size:20px;color:var(--navy);margin:0 0 3px}
+  .kicker{font-family:'Caveat',cursive;font-size:21px;color:var(--terra);transform:rotate(-2deg);display:inline-block;margin-bottom:10px}
+  p{margin:0 0 10px} .lede{font-size:15px;max-width:78ch}
+
+  .note{background:#fff;border:1px solid var(--line);border-left:4px solid var(--terra);
+        border-radius:11px;padding:14px 16px;margin:18px 0 26px}
+  .note h3{font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;color:var(--navy);margin:0 0 7px}
+  .note ul{margin:0;padding-left:19px} .note li{margin:5px 0;font-size:13.5px}
+
+  .block{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin:0 0 26px;
+         box-shadow:0 2px 10px rgba(0,36,97,.05)}
+  .sub{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+  .pair{display:grid;grid-template-columns:1.9fr 1fr;gap:16px;align-items:start}
+  .shot{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fafbfd;min-width:0}
+  .shot .lbl{font-family:'Nunito',sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.6px;
+             text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--line);color:#fff}
+  .shot.web .lbl{background:var(--navy)} .shot.app .lbl{background:var(--pine)}
+  .shot.code{display:flex;flex-direction:column}
+  .shot.code .body{padding:12px 14px;font-size:13px}
+  .shot.code .body p{margin:0 0 8px}
+  img{width:100%;height:auto;display:block}
+  .phone{max-width:300px}
+
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+  th{font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+     color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #f1ece0;vertical-align:top}
+  td:first-child{font-weight:700;color:var(--navy);width:19%}
+  tr:last-child td{border-bottom:0}
+  .same{color:var(--pine);font-weight:700}
+  .diff{color:var(--lava);font-weight:700}
+  .tag{display:inline-block;font-family:'Nunito',sans-serif;font-weight:800;font-size:10px;letter-spacing:.5px;
+       text-transform:uppercase;border-radius:99px;padding:1px 8px;margin-right:4px;vertical-align:1px}
+  .tag.closed{background:#E6F6EC;color:var(--pine)} .tag.open{background:#FCEBEE;color:var(--lava)}
+  .tag.new{background:#E8EEF8;color:var(--navy)} .tag.fix{background:#FFF1E2;color:#9A5A12}
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:var(--sand);padding:1px 5px;border-radius:4px}
+  @media (max-width:860px){ .pair{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">same screens, two days on</div>
+  <h1>Request home — web vs app, after the 10/14 pass</h1>
+  <p class="lede">The web Request dashboard as it is live after 10/14, set against the live app.
+  This replaces the 10/12 comparison. Since then the web gained List view B with a sixth example,
+  the worker list was rebuilt, the dashboard now works on a phone, and two of the 10/12 open
+  items quietly closed. One 10/12 claim was also wrong and is corrected below.</p>
+
+  <div class="note">
+    <h3>What each column is, and how sure each line is</h3>
+    <ul>
+      <li><b>Web</b>: captured 2026-10-14 at 1440&times;1080 (and 390 for the phone) from
+          <code>Final/gopher-request.html</code>, <b>byte-identical to live <code>4624367</code></b>
+          (deployed 4:40 PM ET, verified on Pages, TigerTech and the twin).</li>
+      <li><b>App, images</b>: the desk's canonical <code>N-</code> shell set, the same four images as
+          10/12. They are <b>still current</b>: the app's home layout has not changed since. Every
+          production commit to <code>src/component/home</code> after 10/12 21:17 is iQ answers or the
+          dispute flow.</li>
+      <li><b>App, every claim in a table</b>: read first-hand from
+          <code>gopher-mobile-requester-capacitorjs</code> <code>origin/production</code>
+          <code>f320e7ec5</code>. Files: <code>home/HomeCategories.js</code>,
+          <code>home/homeNav.js</code>, <code>home/iqIdeas.js</code>,
+          <code>live/OffersSheet.js</code>, <code>live/offerRows.js</code>,
+          <code>helpers/categoryLabel.js</code>, <code>css/iqGuidance.css</code>. Nothing here is
+          inherited from another session.</li>
+      <li>⚠️ <b>Form factor is still the honest difference.</b> Where the web differs because a
+          dashboard is 1440px wide, that is noted as width, not drift. Since 10/13 the
+          <b>live apps are the truth</b> for words and logic (owner), so where the two disagree on
+          copy, the app's words win.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Big cards — the app's default</h2>
+    <p class="sub">The app shows one card at a time; the web shows four across. Both carry the
+    <i>iQ Ideas ▲</i> pill in the same corner and, <b>since 10/12, the same one-line hint</b> under
+    each name.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · Spotlight</div><img src="web-spotlight.jpg" alt="Web Spotlight view, eight photo cards four across, each with a one-line hint and an iQ Ideas pill"></div>
+      <div class="shot app"><div class="lbl">App · Big cards</div><img src="app-big-cards.jpg" alt="App big-cards view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>iQ Ideas pill</td><td class="same">Bottom right of the photo, on all 8</td><td class="same">Bottom right of the photo</td></tr>
+      <tr><td>Photo tap</td><td class="same">Straight to Step 2</td><td class="same">Straight to Step 2</td></tr>
+      <tr><td>Cards visible</td><td>Eight, four across</td><td>One, swiped</td></tr>
+      <tr><td>Hint under the name</td><td class="same"><span class="tag closed">closed</span>All 8, word for word ("Groceries, takeout, pharmacy" …)</td><td class="same"><code>CATEGORY_HINT</code></td></tr>
+      <tr><td>Category names</td><td class="diff"><b>Delivery / Errand</b> · <b>Yard / Outdoor Projects</b> · the other six the same</td><td><b>Delivery</b> · <b>Yard Project</b> · Other shows as Custom Task on both</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>List (web) vs Row (app)</h2>
+    <p class="sub">These are no longer the same idea in two sizes. The web's List puts each
+    category's examples beside it. The app's Row is a sliding strip of categories with
+    <i>Request again</i> under it, and <b>no examples at all</b>.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · List (option B, live since 10/13)</div><img src="web-list.jpg" alt="Web list view: each row a floating photo, the category name, and six example pills in a three by two grid"></div>
+      <div class="shot app"><div class="lbl">App · Row</div><img src="app-row.jpg" alt="App row view: a sliding row of category photos with Request again below"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Examples</td><td><b>Six</b> per category, a fixed 3&times;2 block</td><td class="diff"><span class="tag fix">corrected</span>None on the Row. The ideas live in the iQ Ideas sheet (five per category). The only examples on the Row are <i>Popular near you</i>, one per category, shown when there is no history.</td></tr>
+      <tr><td>The first five</td><td class="same">The app's five, same words, same order, in all 8 categories</td><td class="same"><code>IDEAS</code> in <code>iqIdeas.js</code></td></tr>
+      <tr><td>The sixth</td><td class="diff">Web-only, in all 8: Store return drop-off · Appliance removal · Storage unit load-in · Install a ceiling fan · Unload a delivery truck · Weed the beds &amp; borders · Pick up a family member · Hang holiday lights</td><td>—</td></tr>
+      <tr><td>Photo</td><td>104&times;104, rounded 20, floating</td><td>Photo card in the strip</td></tr>
+      <tr><td>Rows</td><td>Every row the same height (138px at 1440); the owner's 10/13 symmetry ruling</td><td>One strip</td></tr>
+    </table>
+    <p class="sub" style="margin:10px 0 0"><span class="tag fix">corrected</span>The 10/12 doc said the app
+    shows "the same five, as chips" under the rail. The image it sat next to shows no chips, and the
+    code has none. That row was wrong.</p>
+  </div>
+
+  <div class="block">
+    <h2>Doubles — two across</h2>
+    <p class="sub">Unchanged since 10/12, and still the closest match. The web spends its spare width
+    on a Request again column.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · All at once</div><img src="web-all.jpg" alt="Web all-at-once, two across, four down, with a Request again column"></div>
+      <div class="shot app"><div class="lbl">App · Doubles</div><img src="app-doubles.jpg" alt="App doubles view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Grid</td><td class="same">Two across, four down</td><td class="same">Two across</td></tr>
+      <tr><td>Request again</td><td>A column to the right, level with the grid</td><td>None in Doubles. The app shows it only in the Row view, under the strip (<code>view === "row"</code>).</td></tr>
+      <tr><td>Per card</td><td class="diff">Request again <i>and</i> Create a GO-To</td><td>Request again</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>Step 2 — a tapped example</h2>
+    <p class="sub">The owner's 10/5 behaviour holds on both: the box opens <b>empty</b> and the idea
+    shows as guidance. What changed is the guidance's <b>wording</b>: the app moved to "worker" on
+    10/12 and the web did not.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · Step 2 after "Groceries dropped off"</div><img src="web-step2.jpg" alt="Web step 2: empty box with grey guidance, category chip beside the title, seven labelled tabs"></div>
+      <div class="shot app"><div class="lbl">App · Step 2 faded guidance</div><img src="app-step2.jpg" alt="App step 2 with faded guidance and a category card with Change"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Box contents</td><td class="same">Empty (value "")</td><td class="same">Empty</td></tr>
+      <tr><td>Guidance colour</td><td class="same">Placeholder, <code>#707070</code> (measured rgb 112,112,112)</td><td class="same">Placeholder, <code>#707070</code></td></tr>
+      <tr><td>Guidance words</td><td class="diff"><span class="tag open">open</span>"…what <b>your Gopher</b> should do…" on 5 of the 48 lines</td><td>"…what <b>your worker</b> should do…" (G40-549, 10/12, John 10/11)</td></tr>
+      <tr><td>Step tracker</td><td>Seven-segment bar, "Step 2 of 7", <i>and</i> seven labelled tabs</td><td>Seven-segment bar, "Step 2 of 7"</td></tr>
+      <tr><td>Category shown as</td><td>A chip beside the title; the <i>Pick a service</i> tab is the way back</td><td>A full-width card with <i>Change ›</i></td></tr>
+      <tr><td>Purchase switch</td><td class="same">"…requires a purchase" (G40-623, 10/14)</td><td class="same">"This delivery requires a purchase"</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2><span class="tag new">new</span>The worker list — who is interested in a request</h2>
+    <p class="sub">Rebuilt 10/14 (Stage 3 option B) and live. The <b>actions now match the app</b>:
+    Hire / Deny / Message, Hire first and widest. "Consider" is gone; it is Connect-only (owner
+    10/14). There is no app screenshot of the offers sheet in the desk's set, so the app column is
+    read from the code.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · Request detail, workers interested</div><img src="web-workers.jpg" alt="Web request detail: six worker rows, each with Hire, Deny and Message"></div>
+      <div class="shot app code"><div class="lbl">App · OffersSheet (from code)</div>
+        <div class="body">
+          <p><b>OfferCard</b>: name and stats on top, then <b>Hire · Deny · Message</b>.</p>
+          <p>Stats: <code>Jobs: 396 | Rating: 5.00</code></p>
+          <p>Badge: <code>PRO</code> / <code>PRO+</code> (<code>gopher_type_id</code> 1 / 2)</p>
+          <p>Distance: only when <code>require_distance_approval</code>, as "4.2 mi from your drop-off"</p>
+          <p>Price: per offer, the previous price struck through</p>
+        </div></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Actions</td><td class="same"><span class="tag closed">closed</span>Hire · Deny · Message</td><td class="same">Hire · Deny · Message</td></tr>
+      <tr><td>Badge</td><td class="diff">elite / elite+</td><td>PRO / PRO+ · <b>deferred by the owner</b>, 10/14: "Pro and Pro+ are current. Elite / Pro conversion later."</td></tr>
+      <tr><td>Stats</td><td class="diff">"⭐ 4.95 (180 jobs)"</td><td>"Jobs: 396 | Rating: 5.00"</td></tr>
+      <tr><td>Distance</td><td class="diff">Always: "3.0 mi → destination"</td><td>Only when distance approval is needed</td></tr>
+      <tr><td>Price</td><td class="diff">None on the row (a Bid amount only on ask-for-bids requests)</td><td>Every offer, with the previous one struck through</td></tr>
+      <tr><td>Layout</td><td>A row: actions on the right, all six on one screen</td><td>A column card. The width, not drift; on a phone the web row wraps to the same shape.</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2><span class="tag new">new</span>On a phone</h2>
+    <p class="sub">Live 10/14 (Stage 4 option C). Below 1150px each List row stacks, with photo and
+    name on top and <b>three examples plus "+3 more"</b> beneath. The last chip expands in place.
+    Before this, all 48 examples were cut off on a 390 phone.</p>
+    <div class="pair">
+      <div class="shot web phone"><div class="lbl">Web · List at 390</div><img src="web-phone-list.jpg" alt="Web list view at phone width: three examples and a +3 more chip per category"></div>
+      <div class="shot app"><div class="lbl">App · Row (same image as above)</div><img src="app-row.jpg" alt="App row view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web at 390</th><th>App</th></tr>
+      <tr><td>Examples</td><td>3 + "+3 more", every row 194px</td><td>None on the Row (see above)</td></tr>
+      <tr><td>Side gutter</td><td class="same">One gutter: 18px on home, 16px everywhere else (it was 36 on home)</td><td>—</td></tr>
+      <tr><td>Inbox head</td><td class="same">Fits: Back on its own line, Call icon-only (Block was clipped 27px)</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>What is still different, and whether it should be</h2>
+    <table>
+      <tr><th>Difference</th><th>Why</th><th>Worth closing?</th></tr>
+      <tr><td>Guidance wording</td><td>Five web lines say "your Gopher" where the app now says "worker" (Delivery groceries; Labor; three on Ride). The app changed on 10/12 and the web's <code>HOME_IDEAS</code> was not swept.</td><td class="diff">Yes. The app's words win (owner, 10/13). A five-word copy fix in <code>HOME_IDEAS</code>.</td></tr>
+      <tr><td>The sixth example</td><td>Web-only in all 8 categories. Added on 10/13 so List view's 3&times;2 block is full, the owner's symmetry ruling.</td><td class="diff">Owner's call: the app gains a sixth, or this stays a deliberate web divergence. Not drift either way; it was added on purpose.</td></tr>
+      <tr><td>Category names</td><td>Web "Delivery / Errand" and "Yard / Outdoor Projects"; the app "Delivery" and "Yard Project". The other six match.</td><td class="diff">Probably. The app's home uses the live names on purpose (its own comment: "Live names"). An owner call, since the web's two are what its customers have been reading.</td></tr>
+      <tr><td>Worker stats, distance, price</td><td>See the worker list above. Logic parity, not styling.</td><td class="diff">Yes, under the 10/13 "logic must be identical" ruling. Needs a ticket through the desk.</td></tr>
+      <tr><td>Badge names</td><td>elite / elite+ on web, PRO / PRO+ in the app.</td><td class="same"><b>Deferred by the owner</b> (10/14). Do not bundle into a styling stage.</td></tr>
+      <tr><td>Message before hire (web only)</td><td>On a worker not yet hired, Message opens the Inbox, but no thread exists for the request yet, so it lands on an unrelated conversation. The old inline "Text" link did the same; Stage 3 made Message a primary button.</td><td class="diff">Yes. A web behaviour defect, not a parity item.</td></tr>
+      <tr><td>Card hint</td><td>Ported on 10/12; all 8 match the app's <code>CATEGORY_HINT</code>.</td><td class="same"><span class="tag closed">closed</span></td></tr>
+      <tr><td>Per-request icons</td><td><code>recMark()</code> now draws the one-tone category mark from the record's category; the emoji is only a fallback for a record with no category.</td><td class="same"><span class="tag closed">closed</span></td></tr>
+      <tr><td>"Consider" on the worker list</td><td>Removed 10/14. It is a Connect feature that leaked into Request.</td><td class="same"><span class="tag closed">closed</span></td></tr>
+      <tr><td>Step tracker</td><td>Web keeps its labelled, clickable tabs above the same bar the app has.</td><td class="same"><span class="tag closed">closed</span>Owner 2026-10-12: "disregard my 1. web stays and app stays." Do not re-raise.</td></tr>
+      <tr><td>Category card at Step 2</td><td>The app's card has <i>Change ›</i>; the web shows a chip.</td><td class="same"><span class="tag closed">closed</span>The 10/12 doc left this "probably". The same day's ruling settles it: the web's <i>Pick a service</i> tab <b>is</b> the way back, which is why it needs no card.</td></tr>
+      <tr><td>Request again placement</td><td>Web: a column to the right; app: below.</td><td class="same">No. This is the width.</td></tr>
+      <tr><td>Create a GO-To on the card</td><td>Web only; the app makes a GO-To from Request History.</td><td class="same">No. The owner asked for it on 10/12.</td></tr>
+      <tr><td>Greeting</td><td>Closed 10/12: name in the headline, like the app.</td><td class="same">Done.</td></tr>
+    </table>
+  </div>
+
+  <footer>
+    Built 2026-10-14. Web: <code>Final/gopher-request.html</code> == live <code>4624367</code>. App:
+    production <code>f320e7ec5</code>; images are the desk's canonical <code>N-</code> shell set,
+    read-only (the desk is their only writer). Supersedes
+    <code>docs/handoff/request-home-web-vs-app-2026-10-12/</code>.
+  </footer>
+
+</div>
+</body>
+</html>
