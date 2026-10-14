@@ -369,6 +369,32 @@ def app_section():
         WARNS.append("APP same-address check NOT FOUND: getDistance's zero-distance sheet "
                      "is gone or renamed — re-find the app's mechanism before trusting this")
 
+    # Worker choice + pay-by-hour, read from each app flow's own JSON (a control is
+    # a TOP-LEVEL key there). ⛔ Not by grepping for the word: "available" also
+    # appears in yardflow.json as a targetControl inside OTHER controls' actions,
+    # and a grep for it once produced a false "Yard has First Available" parity.
+    FLOWS = {"delivery": "deliveryflow", "ride": "rideflow", "yard": "yardflow",
+             "other": "customtaskflow", "moving": "movingflow", "junk": "junkflow",
+             "labor": "laborflow", "home": "homeflow"}
+    app_ctrl = {}
+    for cat, f in FLOWS.items():
+        try:
+            app_ctrl[cat] = set(json.loads(app_show(clone, "src/json/requester/%s.json" % f)))
+        except Exception:
+            app_ctrl[cat] = None
+    rules_src = read("Final/assets/js/gopher-flow-rules.js")
+    wsc = re.search(r"workerSelectChoice:\s*\[([^\]]*)\]", rules_src)
+    web_no_choice = set(re.findall(r"'(\w+)'", wsc.group(1))) if wsc else set()
+    if app_ctrl.get("yard") is not None and "yard" in web_no_choice \
+            and {"select_gopher", "notify_fav_gopher"} <= app_ctrl["yard"]:
+        WARNS.append("APP DIVERGENCE D13 worker choice on Yard: the app offers I'll select / "
+                     "Prioritize MY Gophers; the web shows no choice and forces 'select'")
+    hourly_app = sorted(c for c, k in app_ctrl.items() if k and "paying_by_hour" in k)
+    web_no_hourly = re.search(r"const noHourly = state\.category === '(\w+)';", req)
+    if hourly_app == ["labor"] and web_no_hourly and web_no_hourly.group(1) == "moving":
+        WARNS.append("APP DIVERGENCE D14 pay by the hour: the app offers it on Labor only; the "
+                     "web also offers it on Yard, Custom Task and Junk (hidden only for Moving)")
+
     # ---- FEES. The app holds NO fee constants: it shows what the server's
     # POST orders/summary returns (pages/summary.js adds the returned lines up).
     # So the canonical fee behaviour lives in gopher-backend-api, read the same

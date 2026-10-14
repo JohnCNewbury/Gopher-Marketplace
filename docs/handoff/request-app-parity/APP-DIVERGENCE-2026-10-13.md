@@ -214,7 +214,7 @@ Continue (web).
 | Moving: at least 1 item, or "multiple" (`movingFlowSteps.js` ~195) | The item counter's minimum is 1 (~15035). **Equivalent.** |
 | Labor: hourly offer > 0, or per-worker wage > 0 unless bids (`laborFlowSteps.js` ~203-212) | `workerPay` gate: pay > 0 unless bids. **Equivalent** (by reading; not driven). |
 | Custom Task: cost of items required with a purchase, **waived when bids are on** (`customTaskFlowSteps.js` ~144) | `costOfItems` gate has no bids exemption. **Small divergence**; settled by the Custom Task port. |
-| **First Available**: offered on Delivery, Ride, Yard, Custom Task; **not** on Moving, Junk, Labor, Home (only the first four flows' JSON carry `available`; the other four's step-3 checks demand Select My Gopher or favourites) | `NO_FIRST_AVAILABLE = ['moving','junk','labor','home']` (~14261). **Parity**, confirmed in code on both sides. |
+| ~~**First Available**: offered on Delivery, Ride, Yard, Custom Task … **Parity**~~ ⛔ **WRONG, corrected below (same night).** I matched the word `"available"` in `yardflow.json`, but there it is only a `targetControl` inside other controls' actions. See **D13** in the field-visibility section. | — |
 
 ### Suggested offer: the app shows the server's `POST orders/smart_price`
 
@@ -263,3 +263,46 @@ D11 and D12 WARN.
 
 **Needs a ruling:** adopt the server's G40-502 Delivery anchors and G40-535 worker-pay Ride model on
 the web? Recommended: both are the owner's later decisions, and the app already shows them.
+
+### Field visibility per category: D13, D14 and parity
+
+The app's map was traced from each flow's `STEP_FIELDS` / `SHOW_WHEN` and the components that draw
+them (background agent; every divergence below re-read by me). The web's is
+`gopher-flow-rules.js` `tableFor()` plus the page's own render conditions.
+
+**D13 · Worker choice on Step 3, which corrects the First Available row above.** First Available is a
+real control (`"available"`, type checkbox) **only in the Delivery, Ride and Custom Task flows**.
+
+| Category | App | Web |
+|---|---|---|
+| Delivery, Ride | First Available · I'll select my worker · Prioritize MY Gophers | same (**parity**) |
+| Moving, Junk, Labor, Home | I'll select · Prioritize (no First Available) | same (`NO_FIRST_AVAILABLE`) (**parity**) |
+| **Yard** | I'll select · Prioritize (`yardFlowSteps.js` ~47-56, "no First Available (Y-05)") | **no choice shown at all**: `workerSelectChoice` is hidden for `yard`, and the page forces `'select'` (~16389) |
+| **Custom Task** (web `other`) | First Available · I'll select · Prioritize | **no choice shown** (forced `'select'`). Settled by the Custom Task port. |
+
+**D14 · Pay by the hour.**
+* **App:** `paying_by_hour` exists only in the **Labor** flow (`laborflow.json`; `isHourly`).
+* **Web:** the "Pay by the hour" toggle sits in Worker setup (`workerSetup`: Yard, Other, Moving,
+  Junk, Labor) and is removed only for Moving (`noHourly`, MV-05, ~15109). So the web offers hourly on
+  **Yard, Custom Task and Junk**, where the app does not. A page comment says "Junk keeps it too";
+  that is not a dated owner ruling I could find.
+
+**Parity, read on both sides:**
+* photos and description hidden on Ride;
+* Gopher iQ suggestion on Delivery / Ride / Junk / Moving only;
+* bids off on Delivery and Ride (app forces `gopher_bid:false`); Labor's bids are off while hourly;
+* hazardous on Junk only; item info on Moving and Junk (5+ means "multiple" on both);
+* stairs at pick-up on Moving only; stairs at destination on Moving and Labor;
+* rider info and special instructions on Ride only;
+* no service elevator on Request (app MV-11 "not built"; web hides `serviceElevator` everywhere);
+* Unit/Apt everywhere except Yard;
+* the age switch on Delivery behind the under-21 flag;
+* timing (ASAP / schedule) and the liability waiver on every category.
+
+**Custom Task differs in many fields** (pick-up switch "No pick up, work happens on site", the A/R
+and purchase switches, cost, bids note, crew, destination stairs). All of it is settled by the ruled
+Custom Task port.
+
+**Needs a ruling:** D13 Yard (show the app's two-option choice on the web?) and D14 (hourly only on
+Labor, as the app has it, or also on Yard / Custom Task / Junk?).
+
