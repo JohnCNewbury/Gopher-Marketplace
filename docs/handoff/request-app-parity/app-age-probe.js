@@ -30,11 +30,16 @@ if (!IMP.test(src) || !EXP.test(src)) {
   console.log(JSON.stringify({ error: "the app's ageKeywords.js no longer has the import/export shape this probe rewrites" }));
   process.exit(0);
 }
+// Every `export function` becomes a plain declaration (G40-623 added a second export,
+// findAgeRestrictedMatch); then hand back whichever of the two the file defines.
+const appHasMatch = /^export function findAgeRestrictedMatch\(/m.test(src);
 src = src.replace(IMP, 'const DATA = require(' + JSON.stringify(path.join(appDir, 'ageKeywordsData.json')) + ');')
-         .replace(EXP, 'function findAgeRestrictedKeyword(') + '\nmodule.exports = { findAgeRestrictedKeyword };';
+         .replace(/^export function /gm, 'function ')
+  + '\nmodule.exports = { findAgeRestrictedKeyword' + (appHasMatch ? ', findAgeRestrictedMatch' : '') + ' };';
 const m = { exports: {} };
 new Function('module', 'require', src)(m, require);
 const appFind = m.exports.findAgeRestrictedKeyword;
+const appMatch = m.exports.findAgeRestrictedMatch || null;
 const DATA = JSON.parse(fs.readFileSync(path.join(appDir, 'ageKeywordsData.json'), 'utf8'));
 
 const webLists = { keywords: win.GopherAgeKeywords, supplement: win.GopherAgeSupplement,
@@ -69,13 +74,19 @@ corpus.push(...JSON.parse(process.argv[4] || '[]'));
 // The ruled exceptions' own cases, so the probe exercises the table either way.
 corpus.push('leave it on the porch', 'board game for a birthday', '1792 Maple Ave', 'corona virus signage',
   'a wine fridge', 'wine cooler', 'game grape', 'a game cigarello', 'wine glasses and a bottle of wine');
-const diffs = [], codeDiffs = [];
+const diffs = [], codeDiffs = [], rangeDiffs = [];
+const webMatch = win.GopherRequestLogic.findAgeRestrictedMatch || null;
+const rng = (x) => (x ? [x.term, x.start, x.end] : null);
 for (const t of corpus) {
   const a = webFind(t) || null, b = appFind(t) || null, c = webCodeOnAppData(t) || null;
   if (a !== b) diffs.push({ text: t, web: a, app: b });
   if (c !== b) codeDiffs.push({ text: t, webCodeOnAppData: c, app: b });
+  // WHERE it matched too, once both sides report it (G40-623): the under-21 block selects it.
+  if (webMatch && appMatch && JSON.stringify(rng(webMatch(t))) !== JSON.stringify(rng(appMatch(t))))
+    rangeDiffs.push({ text: t, web: rng(webMatch(t)), app: rng(appMatch(t)) });
 }
 console.log(JSON.stringify({ lists, exceptions: { webKeys: Object.keys(exceptions.web).sort(),
   appKeys: Object.keys(exceptions.app).sort(), same: exceptions.same },
   inputs: corpus.length, diffs: diffs.slice(0, 10), ndiff: diffs.length,
-  codeDiffs: codeDiffs.slice(0, 10), ncodeDiff: codeDiffs.length }));
+  codeDiffs: codeDiffs.slice(0, 10), ncodeDiff: codeDiffs.length,
+  rangesCompared: !!(webMatch && appMatch), rangeDiffs: rangeDiffs.slice(0, 5), nrangeDiff: rangeDiffs.length }));

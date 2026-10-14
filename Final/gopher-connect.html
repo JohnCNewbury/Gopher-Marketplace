@@ -12140,11 +12140,22 @@ const PAY_BADGES = {
      that tripped the gate (findAgeRestrictedMatch -- a text search cannot know which
      "wine" in "wine glasses and a bottle of wine"), so typing replaces it. The sheet
      itself is untouched. Read from the box's CURRENT value, so the offsets are its own. */
-  function selectAgeTermOnClose(ov){
+  /* ⛔ WHICH free text the age check reads (owner 2026-10-14, G40-623): the description --
+     and on RIDE, which has no description, the special instructions, "as a safety
+     precaution" ("need a ride the the liquor store", "need a ride to pick up cigs").
+     Mirrors gopher-request.html. ⚠ On THIS page Ride's "Special instructions for your
+     Gopher" is a display box, not an input (pre-existing), so state.specialInstructions
+     stays empty here until that box is made editable -- the check is wired regardless. */
+  function ageScanField(){
+    return state.category === 'ride'
+      ? { text: state.specialInstructions || '', inputId: 'specialInstructionsInput' }
+      : { text: state.description || '',         inputId: 'descriptionInput' };
+  }
+  function selectAgeTermOnClose(ov, inputId){
     if(!ov) return;
     ov.addEventListener('click', function(e){
       if(e.target !== ov && !(e.target.classList && e.target.classList.contains('grx'))) return;
-      var d = document.getElementById('descriptionInput');
+      var d = document.getElementById(inputId || 'descriptionInput');
       if(!d) return;
       var m = findAgeRestrictedMatch(d.value);
       try { d.focus({ preventScroll: true }); } catch(_){ try { d.focus(); } catch(__){} }
@@ -15269,12 +15280,13 @@ const PAY_BADGES = {
     // requested under Other / Ride / etc. can't bypass the ID/waiver flow. "Yes"
     // routes it to age-restricted Delivery; "No" force-flags ID-at-drop-off.
     if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
-      const kw = findAgeRestrictedKeyword(state.description);
+      const scan = ageScanField();   // the description, or Ride's special instructions
+      const kw = findAgeRestrictedKeyword(scan.text);
       if(kw){
         /* D-038 part 2: under-21 is a DEAD STOP, never the Yes/No confirmation
            (whose "Yes" would route the order to age-restricted Delivery). */
         if(!canSeeAgeRestricted()){
-          if(window.G40_REQ) selectAgeTermOnClose(G40_REQ.ageRestrictedNotEligible());
+          if(window.G40_REQ) selectAgeTermOnClose(G40_REQ.ageRestrictedNotEligible(), scan.inputId);
           return;
         }
         if(window.__openAgeKeywordModal) window.__openAgeKeywordModal(kw); return;
@@ -15376,7 +15388,7 @@ const PAY_BADGES = {
     // completion, then proceed with submission.
     if(noBtn) noBtn.addEventListener('click', () => {
       state.ageKeywordAck = true;
-      if(findAgeRestrictedKeyword(state.description)){
+      if(findAgeRestrictedKeyword(ageScanField().text)){
         state.idRequiredAtCompletion = true;
       }
       closeModal();

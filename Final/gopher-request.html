@@ -13318,11 +13318,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      that tripped the gate (findAgeRestrictedMatch -- a text search cannot know which
      "wine" in "wine glasses and a bottle of wine"), so typing replaces it. The sheet
      itself is untouched. Read from the box's CURRENT value, so the offsets are its own. */
-  function selectAgeTermOnClose(ov){
+  /* ⛔ WHICH free text the age check reads (owner 2026-10-14, G40-623): the description --
+     and on RIDE, which has no description on web or app, the special instructions, "as a
+     safety precaution ... in case someone writes 'need a ride the the liquor store' or
+     'need a ride to pick up cigs'". The same sheets apply. One place, so the scan, the
+     "No" path and the highlight can never read different fields. */
+  function ageScanField(){
+    return state.category === 'ride'
+      ? { text: state.specialInstructions || '', inputId: 'specialInstructionsInput' }
+      : { text: state.description || '',         inputId: 'descriptionInput' };
+  }
+  function selectAgeTermOnClose(ov, inputId){
     if(!ov) return;
     ov.addEventListener('click', function(e){
       if(e.target !== ov && !(e.target.classList && e.target.classList.contains('grx'))) return;
-      var d = document.getElementById('descriptionInput');
+      var d = document.getElementById(inputId || 'descriptionInput');
       if(!d) return;
       var m = findAgeRestrictedMatch(d.value);
       try { d.focus({ preventScroll: true }); } catch(_){ try { d.focus(); } catch(__){} }
@@ -17217,7 +17227,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     });
     /* Same no-re-render pattern: re-rendering per keystroke drops focus mid-word. */
     const $si = $content.querySelector('#specialInstructionsInput');
-    if($si) $si.addEventListener('input', () => { state.specialInstructions = $si.value; });
+    if($si) $si.addEventListener('input', () => {
+      state.specialInstructions = $si.value;
+      // Ride's age check reads this field (G40-623), so editing it re-arms the check
+      // exactly as editing the description does.
+      if(state.category === 'ride'){ state.ageKeywordAck = false; state.idRequiredAtCompletion = false; }
+    });
 
     // Update state on input WITHOUT a full re-render so the field keeps focus
     // while typing. Values are picked up when the review step renders.
@@ -17779,13 +17794,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // block Continue and confirm; the modal's "Yes" routes it to age-restricted
     // Delivery, "No" force-flags ID-at-drop-off (no silent bypass).
     if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
-      const kw = findAgeRestrictedKeyword(state.description);
+      const scan = ageScanField();   // the description, or Ride's special instructions
+      const kw = findAgeRestrictedKeyword(scan.text);
       if(kw){
         /* D-038 part 2: under-21 is a DEAD STOP, never the Yes/No confirmation.
            ageKeywordAck is deliberately NOT set, so it blocks on every attempt
            until the term is removed -- an ack would let one dismissal through. */
         if(!canSeeAgeRestricted()){
-          if(window.G40_REQ) selectAgeTermOnClose(G40_REQ.ageRestrictedNotEligible());
+          if(window.G40_REQ) selectAgeTermOnClose(G40_REQ.ageRestrictedNotEligible(), scan.inputId);
           return;
         }
         // Block Continue only if the confirmation actually opened; if the modal
@@ -18167,7 +18183,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       if(noBtn) noBtn.addEventListener('click', () => {
         state.ageKeywordAck = true;
         // If a keyword is still present, flag ID-required-at-completion and proceed.
-        if(findAgeRestrictedKeyword(state.description)) state.idRequiredAtCompletion = true;
+        if(findAgeRestrictedKeyword(ageScanField().text)) state.idRequiredAtCompletion = true;
         overlay.hidden = true;
         advanceFromJobDetails();
       });
