@@ -334,6 +334,58 @@ In D10 both sides change, and the app half is ticketed.
 
 ## G40-623, the app half (2026-10-14, Website Code/Logic seat): ✅ MERGED, production `4232d4507`, 9:52 AM ET
 
+### ⭐ Final state, 10/14 ~5:45 PM ET: ✅ Ready for Release (Jira 14 on John's word)
+
+**Everything is merged and live.** The app half reaches customers with the **next store release**;
+the web half is live now.
+
+**App merges** (Request `production`; no squash, every source branch kept):
+
+| MR | What | Merge commit | Time (ET) |
+|---|---|---|---|
+| !500 | the check on every flow, the highlight, the matcher cuts | `4232d4507` | 9:52 AM |
+| !503 | the word selection fix + the sheet on the G40-595 standard | `7f1718264` | 1:36 PM |
+| !504 | the sheets in the G40-308 shape ("308 shapes, 595 colours") + the no-purchase sheet in the website's words | `11ec17b67` | 3:24 PM |
+| !505 | the no-purchase sheet names the real switch | `d84be5011` | 4:23 PM |
+| !506 | Ride's special instructions carry into the Delivery description | `557eb6c2f` | 5:25 PM |
+
+Production `557eb6c2f` also carries G40-274's !502 and G40-611's !501.
+
+**Web deploys** (live / twin): `dfce6fd` 8:08 AM · `f24429a` 2:48 PM · `16e833e` 3:13 PM ·
+`21c2028` / `33ce759` 4:29 PM · `35c303f` / `d641690` 5:08 PM. Each was verified by content on
+Pages, the twin and TigerTech.
+
+**Rulings added 10/14** (John):
+- **"308 shapes, 595 colours":** the app sheets use G40-308 Guide B (grab handle, badge, title,
+  only as tall as their content); the web uses Guide A cards. Picks: **U21-TITLE = A** ("One thing
+  to change", 1:46 PM), **AR-NO-BUTTON = A** (the outlined No, 2:23 PM).
+- **The no-purchase sheet uses the website's words, on both.**
+- **The sheet names the switch the requester sees:** "turned off **This delivery requires a
+  purchase**". The web switch reads "Slide if this delivery requires a purchase"; it used to say
+  "…a purchase needed". John on build 993: "yes change it on both".
+- **Ride → Yes carries the rider's text** (John: "Carry it over"). The text that tripped the check
+  moves as Delivery's description; on Ride that is the special instructions. This **supersedes**
+  call 1's "a ride carries no description" below. Same rule on the web (`#ageKwYes`), the app
+  (`deliveryCarryValues(values, flow)`) and the Request prototype.
+
+**Device passes (A50, Android):**
+- Under 21: **992** and **993**.
+- 21+: **993**, **995** and **996**. 996 is exactly production `557eb6c2f`; the full pass ran
+  5:30–5:34 PM. John: the A50 pass is the Android pass.
+
+**iOS:** 5690–5698 were installed for the earlier heads. !505 and !506 are JS only and were
+device-tested on Android.
+
+**Not run on a device:** the GO-To toast. Neither testing account has a GO-To, and none was created.
+`YardStepNav.g40623.test.js` covers it.
+
+**Carried to the desk:**
+- The Request 101 age paragraph, after the store release.
+- The parking lot:
+  - the GO-To's pill logo goes blank when selected (Request History);
+  - PL-280: `run-all.sh` is red on 3 checks that aren't from this ticket;
+  - PL-284: the Request prototype's age sheet is still pre-kit.
+
 **Merged** on John's word ("merge, report it"): MR !500 → Request `production` **`4232d4507`**,
 2026-10-14 **9:52:18 AM ET**. Pinned to the tested head `9bab9ea4d` (pipeline 2947053992 passed). No
 squash, so `1564d016d` and `9bab9ea4d` keep their SHAs. The source branch is kept. Production's tree
@@ -404,8 +456,10 @@ https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests
 
 1. **The move to Delivery carries the description and photos, NOT the addresses.** The web keeps
    addresses across a category switch. But a ride's pick-up is the rider's own location, while a
-   delivery's pick-up is the store, so carrying them would point the Gopher at the wrong end. A ride
-   carries no description (it has none), as on the web.
+   delivery's pick-up is the store, so carrying them would point the Gopher at the wrong end.
+   ~~A ride carries no description (it has none), as on the web.~~ ⛔ **Superseded 10/14:** a ride
+   now carries its special instructions as the description (John: "Carry it over"; !506 and web
+   `35c303f`). The addresses rule is unchanged.
 2. **A request already marked age-restricted is not asked again** on any flow: Delivery's switch, as
    before, and now also **Custom Task's switch**. Otherwise "bartender for my event, wine" with the
    switch already on would be asked and moved to Delivery. The web has no Custom Task switch yet
@@ -413,7 +467,7 @@ https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests
 3. **A GO-To does not move.** "Yes" there shows a toast: "A GO-To can’t move to Delivery. Please edit
    your request to continue." Moving it would drop GO-To mode and carry its values into a live request.
 
-**Not proven yet (needs a phone build):** whether the keyboard comes up on the selected word. jsdom's
+~~**Not proven yet (needs a phone build):**~~ ✅ **Both proven on the A50:** the selected word with the keyboard up (992/993), and Delivery opening with age + purchase ON after a move (993, 996). Original note: whether the keyboard comes up on the selected word. jsdom's
 focus model differs from a WebView: a negative control (focus release off) still passed 5 of 6, so the
 mount test does not prove the focus release. That needs a device check. So does the Delivery screen
 opening with age + purchase ON after a move. The onload mapping is tested with the real
