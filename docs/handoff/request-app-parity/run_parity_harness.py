@@ -148,6 +148,22 @@ def extract_const(src, name, start=0):
 
 def engine_deps():
     eng = read(ENGINE)
+    # G40-611 (2026-10-14): the engine is now the ONE brain (gopher-iq build_web.mjs): the brain bundle (an IIFE that sets
+    # window.GopherIQBrain), the shared place words, then the pill. Its category scoring lives inside the brain
+    # (makeCategories), so slicing named functions out of the file no longer works (the cut ends mid-closure: "Unexpected
+    # EOF", PL-270). Run the brain bundle itself and expose ITS scorer the way the pill does for GopherRequestLogic, so this
+    # path still proves the engine's own classifier against the matrix.
+    marker = "window.GopherIQBrain = {"
+    if marker in eng:
+        end = eng.index("})();", eng.index(marker)) + len("})();")
+        start = eng.rfind("(function(){", 0, eng.index(marker))
+        bundle = eng[start:end]
+        return bundle + "\n" + (
+            "var __iqb = window.GopherIQBrain.makeBrain({ faqs: [], categories: window.GopherIQBrain.CATEGORIES, scope: 'public' });\n"
+            "window.GopherCategoryClassifier = { scoreCategories: __iqb.categories.scoreCategories, catWords: __iqb.categories.catWords,\n"
+            "  CATEGORIES: window.GopherIQBrain.CATEGORIES, CAT_THRESH: __iqb.categories.CAT_THRESH, CAT_HIGH: __iqb.categories.CAT_HIGH };\n"
+            "var CATEGORIES = window.GopherIQBrain.CATEGORIES, CAT_THRESH = __iqb.categories.CAT_THRESH;\n"
+            "var scoreCategories = __iqb.categories.scoreCategories, catWords = __iqb.categories.catWords;\n")
     parts = [extract_const(eng, "CATEGORIES"), extract_const(eng, "CAT_STOP"),
              extract_const(eng, "STEM_KEEP"), "var CAT_THRESH=4;"]
     for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
