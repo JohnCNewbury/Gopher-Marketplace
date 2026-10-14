@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request home — web vs app, after the 10/12 pass</title>
+<link rel="stylesheet" href="../../../Final/assets/css/gopher-fonts.css">
+<style>
+  :root{ --navy:#002461; --green:#33D975; --pine:#0F7A3F; --sand:#FBF3E4; --paper:#FBF7EF;
+         --body:#424242; --muted:#8C8675; --terra:#D97757; --lava:#C44257; --line:#EAE3D5; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--body);font-family:'DM Sans',system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-family:'Nunito',sans-serif;font-weight:900;font-size:30px;color:var(--navy);margin:0 0 6px}
+  h2{font-family:'Nunito',sans-serif;font-weight:900;font-size:20px;color:var(--navy);margin:0 0 3px}
+  .kicker{font-family:'Caveat',cursive;font-size:21px;color:var(--terra);transform:rotate(-2deg);display:inline-block;margin-bottom:10px}
+  p{margin:0 0 10px} .lede{font-size:15px;max-width:78ch}
+
+  .note{background:#fff;border:1px solid var(--line);border-left:4px solid var(--terra);
+        border-radius:11px;padding:14px 16px;margin:18px 0 26px}
+  .note h3{font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;color:var(--navy);margin:0 0 7px}
+  .note ul{margin:0;padding-left:19px} .note li{margin:5px 0;font-size:13.5px}
+
+  .block{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin:0 0 26px;
+         box-shadow:0 2px 10px rgba(0,36,97,.05)}
+  .sub{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+  .pair{display:grid;grid-template-columns:1.9fr 1fr;gap:16px;align-items:start}
+  .shot{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fafbfd;min-width:0}
+  .shot .lbl{font-family:'Nunito',sans-serif;font-weight:800;font-size:10.5px;letter-spacing:.6px;
+             text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--line);color:#fff}
+  .shot.web .lbl{background:var(--navy)} .shot.app .lbl{background:var(--pine)}
+  img{width:100%;height:auto;display:block}
+
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px}
+  th{font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+     color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid #f1ece0;vertical-align:top}
+  td:first-child{font-weight:700;color:var(--navy);width:19%}
+  tr:last-child td{border-bottom:0}
+  .same{color:var(--pine);font-weight:700}
+  .diff{color:var(--lava);font-weight:700}
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:var(--sand);padding:1px 5px;border-radius:4px}
+  @media (max-width:860px){ .pair{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">same three views, two screen sizes</div>
+  <h1>Request home — web vs app, after the 10/12 pass</h1>
+  <p class="lede">The web home as it stands after a day of changes, against the app as the desk
+  has it built. This replaces the 10/11 comparison, which described a web home that no longer
+  exists.</p>
+
+  <div class="note">
+    <h3>What each column is</h3>
+    <ul>
+      <li><b>Web</b> — captured today from <code>Final/gopher-request.html</code> at 1440&times;1080,
+          after the deploy of <code>b11226e</code>. Live on both hosts.</li>
+      <li><b>App</b> — the desk's canonical <code>N-</code> shell set from
+          <code>live-to-new-flow-master-assets/</code>. Not the prototype.</li>
+      <li>⚠️ <b>Form factor is the honest difference</b> and most of what follows comes from it:
+          a phone shows one column, a 1440px dashboard shows four or has room for a second
+          column beside the grid. Where the web diverges for that reason it is noted as such,
+          not as drift.</li>
+    </ul>
+  </div>
+
+  <div class="block">
+    <h2>Big cards — the app's default</h2>
+    <p class="sub">The app shows one card at a time with an <i>iQ Ideas ▲</i> pill; the web shows
+    four across with the same pill in the same corner.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · Spotlight</div><img src="web-spotlight.jpg" alt="Web Spotlight view, four large photo cards across"></div>
+      <div class="shot app"><div class="lbl">App · Big cards</div><img src="app-big-cards.jpg" alt="App big-cards view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>iQ Ideas pill</td><td class="same">Bottom right of the photo</td><td class="same">Bottom right of the photo</td></tr>
+      <tr><td>Photo tap</td><td class="same">Straight to Step 2</td><td class="same">Straight to Step 2</td></tr>
+      <tr><td>Cards visible</td><td>Eight, four across</td><td>One, swiped</td></tr>
+      <tr><td>Sub-copy</td><td class="diff">None — the app's one-liner per card is not ported</td><td>One line under each name</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>Row — the compact list</h2>
+    <p class="sub">The app stacks its categories with history beneath. The web uses the width to
+    put each category's five examples on its own row.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · List</div><img src="web-list.jpg" alt="Web list view with example pills per row"></div>
+      <div class="shot app"><div class="lbl">App · Row</div><img src="app-row.jpg" alt="App row view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Examples</td><td class="same">Five pills per row, the app's own words</td><td class="same">The same five, as chips</td></tr>
+      <tr><td>Thumbnail</td><td>118&times;84 photo</td><td>Photo</td></tr>
+      <tr><td>Where they sit</td><td>Beside each category, using the width</td><td>Under the rail</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>Doubles — two across</h2>
+    <p class="sub">The closest the two have come. The app calls this <i>doubles</i>; the web's
+    All-at-once became two across on 10/12, so the grids now match — and the web spends its
+    spare width on Request again rather than on more columns.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · All at once</div><img src="web-all.jpg" alt="Web all-at-once, two across with Request again alongside"></div>
+      <div class="shot app"><div class="lbl">App · Doubles</div><img src="app-doubles.jpg" alt="App doubles view"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Grid</td><td class="same">Two across, four down</td><td class="same">Two across</td></tr>
+      <tr><td>Request again</td><td>A column to the right, level with the grid</td><td>Below the categories</td></tr>
+      <tr><td>Per card</td><td class="diff">Request again <i>and</i> Create a GO-To</td><td>Request again</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>Step 2 — a tapped example</h2>
+    <p class="sub">The behaviour the owner ruled on 10/5, now on both: the box opens <b>empty</b>
+    and the chosen idea shows as guidance, never as text to delete.</p>
+    <div class="pair">
+      <div class="shot web"><div class="lbl">Web · Step 2 after "Groceries dropped off"</div><img src="web-step2.jpg" alt="Web step 2 with guidance placeholder"></div>
+      <div class="shot app"><div class="lbl">App · Step 2 faded guidance</div><img src="app-step2.jpg" alt="App step 2 with faded guidance"></div>
+    </div>
+    <table>
+      <tr><th></th><th>Web</th><th>App</th></tr>
+      <tr><td>Box contents</td><td class="same">Empty</td><td class="same">Empty</td></tr>
+      <tr><td>Guidance</td><td class="same">Placeholder, <code>#707070</code></td><td class="same">Placeholder, <code>#707070</code></td></tr>
+      <tr><td>Wording</td><td class="same">Ported from <code>iqIdeas.js</code>, unedited</td><td>Source of truth</td></tr>
+      <tr><td>Category chip</td><td class="same">One-tone mark</td><td>Mark</td></tr>
+      <tr><td>Step tracker</td><td>Seven labelled tabs, clickable</td><td>A seven-segment bar plus &ldquo;Step 2 of 7&rdquo;</td></tr>
+      <tr><td>Category shown as</td><td>A small chip beside the title</td><td class="diff">A full-width card with <i>Change &rsaquo;</i></td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>What is still different, and whether it should be</h2>
+    <table>
+      <tr><th>Difference</th><th>Why</th><th>Worth closing?</th></tr>
+      <tr><td>Card sub-copy</td><td>The app shows a one-liner under each category name. The web shows none — those words are in the desk's master and were never ported.</td><td class="diff">Yes. <code>.hv-ds</code> is already styled and empty, waiting for them.</td></tr>
+      <tr><td>Per-request icons</td><td>The live strip, request cards and detail title still draw emoji from each record (👷, 🛒). Records carry no category, so nothing maps a mark to them.</td><td class="diff">Yes, but it needs a decision: add a category per record, or choose an icon each.</td></tr>
+      <tr><td>Request again placement</td><td>Web puts it in a right-hand column; the app stacks it below.</td><td class="same">No — this is the width, not drift.</td></tr>
+      <tr><td>Create a GO-To on the card</td><td>Web only. The app creates a GO-To from Request History.</td><td class="same">No — owner asked for it on 10/12.</td></tr>
+      <tr><td>Step tracker</td><td><b>&#9888; Corrected 2026-10-12, same day.</b> This row first said the app has no step tracker. It does — a seven-segment bar with &ldquo;Step 2 of 7&rdquo;. The &ldquo;no tracker&rdquo; ruling I took that from describes the <i>GO-To setup sheet</i>, a different screen, and I generalised it to the whole flow. The real difference is that the web's seven are <b>labelled and clickable</b> and the app's are plain segments.</td><td class="same"><b>CLOSED — owner 2026-10-12: &ldquo;disregard my 1. web stays and app stays.&rdquo;</b> A deliberate divergence, not drift. Do not re-raise it.</td></tr>
+      <tr><td>Category card</td><td>The app puts the category in a full-width card with a <i>Change &rsaquo;</i> link at Step 2. The web shows a small chip beside the page title, with no way back to the picker from there.</td><td class="diff">Probably. The chip says which category; it does not offer the way out that the card does.</td></tr>
+      <tr><td>Greeting</td><td>Closed 10/12: the web dropped "Welcome back" and moved the name into the headline, matching the app.</td><td class="same">Done.</td></tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <h2>The step tracker — three ways, none of them obvious</h2>
+    <p class="sub">Not a parity fix, because the web has something the app cannot: room for labels,
+    and therefore the option of letting someone jump straight back to a step. Worth a decision
+    rather than a default.</p>
+    <table>
+      <tr><th>Option</th><th>What it is</th><th>What it costs</th></tr>
+      <tr><td>A &mdash; keep the tabs</td>
+          <td>Leave it as it is. Seven labelled, clickable tabs, which is more than the phone can
+              offer and uses the width the dashboard actually has.</td>
+          <td>The two surfaces keep looking different at the top of every step.</td></tr>
+      <tr><td>B &mdash; the app's bar</td>
+          <td>Replace the tabs with the app's seven-segment bar and &ldquo;Step N of 7&rdquo;.
+              Identical to the phone.</td>
+          <td>Loses direct navigation. Going back three steps becomes three taps of Back.</td></tr>
+      <tr><td>C &mdash; the bar, plus the labels under it</td>
+          <td>The app's segmented bar for the progress read, with the step names kept beneath it
+              and still clickable.</td>
+          <td>Taller than either, and it is a web-only shape &mdash; a third thing rather than
+              one of the two.</td></tr>
+    </table>
+    <p style="margin:12px 0 0;font-size:13.5px"><b>⛔ DECIDED — A, by the owner, 2026-10-12:</b>
+    &ldquo;disregard my 1. web stays and app stays.&rdquo; He first said to match the apps, then
+    withdrew it once the conflict was put to him: the web's bar <b>already</b> matches the app's
+    seven segments and &ldquo;Step 2 of 7&rdquo;, so &ldquo;match the apps&rdquo; would only have
+    deleted the labelled tabs underneath — and those tabs are the tap-to-change affordance he had
+    just given as the reason the web needs no category card. B would have removed the thing that
+    made 3 the right answer. <b>Both surfaces stay as they are, on purpose.</b></p>
+  </div>
+
+  <footer>
+    Built 2026-10-12. Web captured from the deployed build <code>b11226e</code>; app images are the
+    desk's canonical <code>N-</code> shell set, read-only — the 909 desk is their only writer.
+    Supersedes <code>docs/handoff/request-home-web-vs-app-2026-10-11/</code>.
+  </footer>
+
+</div>
+</body>
+</html>
