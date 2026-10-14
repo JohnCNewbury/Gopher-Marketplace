@@ -4486,9 +4486,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .gr-modal-overlay[hidden] { display:none; }
   /* G40-274 — same-place sheets (owner picks 10/14: S1 = B, S2 = C). Amber,
      never red: red is for a failed payment only. */
-  .gr-modal .sp-link { display:block; width:100%; margin-top:10px; background:none; border:0;
-    color:var(--navy); font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; }
-  .gr-modal .sp-blunt { font-size:17px; line-height:1.35; }
+  /* (the sheets themselves are G40-308 Guide A: .gr-modal-icon, h4,
+     .gr-modal-sub, .gr-modal-btn + .gr-modal-btn-secondary; nothing local) */
   .field-input.same-place-flag { outline:2px solid #E59A1A; outline-offset:2px; }
   .same-place-note { font-size:12px; font-weight:700; color:#9A5B00; margin:4px 2px 0; }
   .gr-modal {
@@ -4618,9 +4617,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
   /* ─── Age-restricted keyword modal ─── */
   .gr-modal-icon-warn { background:#fdeaec; }
-  .age-kw-term {
-    font-family:'Nunito',sans-serif; font-weight:900; color:#c44257;
-  }
   .age-kw-consequences {
     text-align:center; background:#fdf3f4; border:1px solid #f0d2d7; border-radius:12px;
     padding:13px 15px; margin:4px 0 16px;
@@ -4633,8 +4629,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     box-shadow:0 6px 18px rgba(196,66,87,0.3);
   }
   .gr-modal-btn-danger:hover { background:#a83648; }
-  /* Age-restricted modal — clear separation between the two stacked choices */
-  #ageKwOverlay .gr-modal-btn + .gr-modal-btn { margin-top:12px; }
 
   /* ─── Personal info edit modal — canonical Gopher profile form (mirrors Connect) ─── */
   .gr-modal.pe-modal { max-width:600px; text-align:left; padding:26px 26px 22px; max-height:90vh; overflow-y:auto; }
@@ -18113,12 +18107,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         var tip = !o.switchLabel ? '' : (o.category === 'moving'
           ? 'Moving within one place? Turn on \u201c' + o.switchLabel + '\u201d'
           : 'No preference where it\u2019s bought? Turn on \u201c' + o.switchLabel + '\u201d');
+        /* G40-308 Guide A (owner 10/14: "308 shapes, 595 colours"): centred
+           icon in the amber info tint (never red), h4 title, body, then the
+           primary and an outlined secondary stacked. */
         var head = o.again
-          ? '<h4 class="sp-blunt">To proceed with your request, the pick up and drop off must be different.</h4>'
-          : '<h4>Same pick-up and destination</h4><p class="gr-modal-sub">Your pick-up and destination are the same place. Change one so your worker knows where to go.</p>';
+          ? '<div class="gr-modal-icon" style="font-size:26px;line-height:1;">\u26a0\ufe0f</div>'
+            + '<h4>To proceed with your request, the pick up and drop off must be different.</h4>'
+          : '<div class="gr-modal-icon" style="font-size:26px;line-height:1;">\ud83d\udccd</div>'
+            + '<h4>Same pick-up and destination</h4><p class="gr-modal-sub">Your pick-up and destination are the same place. Change one so your worker knows where to go.</p>';
         var ov = reqModal(head
           + '<button type="button" class="gr-modal-btn grx" data-sp="change">Change an address</button>'
-          + (tip ? '<button type="button" class="sp-link grx" data-sp="switch">' + tip + '</button>' : ''));
+          + (tip ? '<button type="button" class="gr-modal-btn gr-modal-btn-secondary grx" data-sp="switch" style="margin-top:8px;">' + tip + '</button>' : ''));
         var c = ov.querySelector('[data-sp="change"]'), w = ov.querySelector('[data-sp="switch"]');
         if(c && o.onChange) c.addEventListener('click', function(){ setTimeout(o.onChange, 0); });
         if(w && o.onSwitch) w.addEventListener('click', function(){ setTimeout(o.onSwitch, 0); });
@@ -20477,10 +20476,14 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
       </svg>
     </div>
     <h4 id="ageKwTitle">This looks age-restricted</h4>
-    <p class="gr-modal-sub">Your request mentions <span class="age-kw-term">"<span id="ageKwTerm">this item</span>"</span>, which is commonly an age-restricted item. To keep everyone compliant with legal and safe-guarding protocols, please confirm whether this is an age-restricted request before continuing.</p>
+    <p class="gr-modal-sub">Your request mentions <b>"<span id="ageKwTerm">this item</span>"</b>, which is commonly an age-restricted item. To keep everyone compliant with legal and safe-guarding protocols, please confirm whether this is an age-restricted request before continuing.</p>
     <p class="age-kw-consequences">Submitting an age-restricted request <b>without a valid ID at completion</b> means the worker <b>cannot release the items</b>. The order may be canceled, you may still be charged worker time/fees, and repeat issues can lead to account review.</p>
     <button type="button" class="gr-modal-btn" id="ageKwYes">Yes — this IS an age-restricted request</button>
-    <button type="button" class="gr-modal-btn gr-modal-btn-danger" id="ageKwNo">No — this is NOT age-restricted</button>
+    <!-- G40-308 Guide A + owner's pick AR-NO-BUTTON = A (2:23 PM ET 10/14):
+         the outlined secondary, not red (red is for destructive confirms only),
+         stacked under Yes as the app's BackPill. Spacing inline, as the
+         sibling sheets do (no local modal CSS). -->
+    <button type="button" class="gr-modal-btn gr-modal-btn-secondary" id="ageKwNo" style="margin-top:8px;">No — this is NOT age-restricted</button>
   </div>
 </div>
 
