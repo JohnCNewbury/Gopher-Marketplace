@@ -27084,8 +27084,46 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(bidsMode && w && w.bidAmount != null) return Number(w.bidAmount) || 0;
     return Number(r && r.perWorkerCost) || 0;
   };
-  window.__agreedTotalFor = function(r, hiredList){
-    return (hiredList || []).reduce((sum, w) => sum + window.__agreedAmountFor(r, w), 0);
+  /* ── The agreed TOTAL after a hire: what the REQUESTER pays ───────────────
+     ⛔ PL-291 (John 10/15): this used to SUM __agreedAmountFor above, which is
+     WORKER PAY, and startJob() printed it as "$X total". Accepting Tess B.'s
+     $85.31 counter on GR-00129 then read "$28.00 total" directly above a recap
+     saying Total $85.31, and a bid hire read the bare bid.
+     The app shows the order's total_charge after every hire (offer + items +
+     fees − discounts: livePriceRows.js "Total", LiveReviewCard.js), so this is
+     the request's frozen deal total. acceptCounterOffer and the cost
+     adjustment already keep reviewSnapshot.total current, and a bid hire
+     writes the bid onto it (__applyHiredBid). Null when there is no snapshot
+     (a seeded demo row): the caller keeps the label it already has. */
+  window.__agreedTotalFor = function(r){
+    const snap = r && r.reviewSnapshot;
+    const t = snap ? Number(snap.total) : NaN;
+    return (snap && snap.total != null && isFinite(t)) ? t : null;
+  };
+  /* PL-291: hiring a BID agrees that bid's price. The app prices the hired bid
+     (orders/summary with the bid as the offer, requestOrder.js hireBid) and the
+     order then carries it, so the recap and the total both show the bid's deal.
+     Written onto the frozen deal exactly as acceptCounterOffer writes a
+     counter's. Idempotent: the breakdown reads only the flat fees and the
+     recorded discounts, so a second call lands on the same numbers. */
+  window.__applyHiredBid = function(r, w){
+    const snap = r && r.reviewSnapshot;
+    if(!snap || !w || w.bidAmount == null) return false;
+    const b = window.__bidBreakdown(r, w);
+    const fullFees = b.gopherFee + b.ageFee + b.instantTransfer;
+    snap.fee = Object.assign({}, snap.fee || {}, {
+      gopherFee: b.gopherFee, fullGopherFee: b.gopherFee,
+      ageFee: b.ageFee, fullAgeFee: b.ageFee,
+      instantTransfer: b.instantTransfer, fullInstantTransfer: b.instantTransfer,
+      promoDiscount: b.promoDiscount, trustShieldDiscount: b.tsDiscount,
+      fullRequestFee: fullFees,
+      requestFee: fullFees - b.promoDiscount - b.tsDiscount,
+      cogOffer: b.cog + b.offer, gmvTotal: b.total,
+    });
+    snap.workerPay = b.offer;
+    snap.total = b.total;
+    r.perWorkerCost = b.offer;   // the worker's agreed pay, as a counter sets it
+    return true;
   };
   /* bidsMode is recorded in BOTH places at creation — on the record (read by the
      worker-card bid column) and inside reviewSnapshot. Demo/seeded requests set
@@ -27140,7 +27178,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     /* Discounts carry across as the snapshot recorded them, capped so they can
        never exceed the fee side — the same cap computeConnectFee applies. */
     const promoDisc = Math.min(num(fee.promoDiscount), feesPre);
-    const tsDisc    = Math.min(num(fee.tsDiscount), feesPre - promoDisc);
+    /* PL-291: computeRequestFee stores the TrustShield $1 as
+       trustShieldDiscount; reading only fee.tsDiscount (never set) dropped it,
+       so a TrustShield holder's bid total was $1 high. */
+    const tsDisc    = Math.min(num(fee.trustShieldDiscount != null ? fee.trustShieldDiscount : fee.tsDiscount), feesPre - promoDisc);
 
     const feesPost = feesPre - promoDisc - tsDisc;
     const total    = cog + offer + feesPost;
@@ -27210,7 +27251,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       delete r.threads[nm];
       if(dashState.inboxThreadId === r.id + '::' + nm) dashState.inboxThreadId = r.id;
     }
-    const finalTotal = window.__agreedTotalFor(r, hiredList);
+    /* PL-291: the total is what the requester pays (see __agreedTotalFor). A
+       hired bid becomes the agreed deal first, as an accepted counter does. */
+    if(window.__isBidsRequest(r) && hiredCount === 1) window.__applyHiredBid(r, hiredList[0]);
+    const finalTotal = window.__agreedTotalFor(r);
 
     const goScheduled = !!r.scheduledForLater;
     r.status         = goScheduled ? 'scheduled' : 'in-progress';
@@ -27225,7 +27269,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     r.worker = hiredCount === 1
       ? `${lead.name} (${tierLabel(lead.badge || lead.tier)})`
       : `${leadName} +${hiredCount - 1} · crew of ${hiredCount}`;
-    r.amount = `$${finalTotal.toFixed(2)} total`;
+    if(finalTotal != null) r.amount = `$${finalTotal.toFixed(2)} total`;
     r.when   = goScheduled ? r.when : 'Started just now · matching complete';
 
     // Per-worker enrichment — each crew member gets their own phone, rating,
