@@ -148,6 +148,60 @@ rule, the **app** (or the server behind it) changes, not the web.
 | D9 | **Ruled 2026-10-15 (John): the website copies the REAL coupon rules** (his pick: "Copy the real rules"). The website's promo box uses the server's exact discount: off the **Gopher fee + the transfer fee always**, plus the **$1.99 age-restricted fee only for a 21+ coupon** (owner rule 2026-09-10, `helpers/coupon_discount.js`); percent-off or dollar-off. Demo codes stay until the website places real orders; then it checks codes with the server as the app does (HQ coupons: expiry, once per account, caps, requester/worker/both). | **Web** (this seat, no ticket). Today `GOPHER50` takes 50% off the WHOLE fee bundle, the A/R fee included, every time. | **Ruled.** |
 | PL-289 | **Server coupon over-discount, FIXED 2026-10-15** (found while copying D9). An `amountOff` coupon with the 21+ flag also took the A/R leg whenever the Gopher fee alone covered it (the remainder was reduced only on the transfer-fee branch): a $2 coupon took $3.99, and a $0.50 coupon on an A/R delivery took $1.00. John: "Fix it, server + web". | **Server:** gopher-backend-api !752 → production `7b8c74d6`, 6:33 AM ET; CodePipeline Succeeded, EB Green/Ok 6:37, 0 5xx. Tests: section 7 of `coupon-discount-always-both-fees.test.js`. **Web:** the same one-line fix in `gopher-request-logic.js` `couponDiscount` (branch `code-logic/coupon-pl289-web`), 960/960 identical to the live server; it ships with the D9/D11/D12 batch. | **Server live; web ships with the batch.** |
 
+### D6 SPEC — John, 2026-10-15 (the build follows this; it refines "Enforce it")
+
+**Who:** 21+ requesters only. Under-21s are still blocked outright (G40-623).
+
+**Flow, web and app alike:**
+1. A clear age-restricted keyword opens the existing **"This looks age-restricted"** sheet
+   (Yes / No).
+2. **No** now opens a **second sheet** (owner-approved words, verbatim; the keyword in quotes):
+   > **You'll need your ID for this one**
+   >
+   > Your request mentions **"alcohol"**, which is almost always an age-restricted item. Only
+   > submit it if you can show a valid ID proving you're 21 or older when it's delivered.
+   >
+   > If you can't show ID, your worker can't hand over the items. The order is non-refundable:
+   > it pays your worker for their time and anything they bought for you.
+   >
+   > *Flagged by mistake? Sorry about that. Age-restricted items are tightly regulated, and these
+   > checks protect you, your worker and Gopher. A real person reviews every request flagged
+   > like this.*
+   >
+   > **[ Edit my request ]** · [ Submit as-is ]
+   - **Edit my request** is the final backstop: it returns to the box with the word selected,
+     as the under-21 block does.
+   - The sheet is on the modal kit: G40-308 Guide B on the app, Guide A on the web, G40-595
+     pills.
+3. **Submit as-is** makes the order **DOUBLE-FLAGGED**:
+   - **ID required at completion:** Gopher Go's Complete step checks the ID as on an
+     age-restricted job.
+   - **Tracked:** the order stores the flag AND the word that triggered it, and HQ shows a tag
+     and a filter. This is the data for deciding whether to add the $1.99 A/R fee to these
+     automatically ("if we find the process is being circumvented for legit AR items").
+   - Today: no $1.99 fee and no TrustShield $1 on these orders.
+
+**Rulings with it (John 10/15):**
+- **"A real person reviews every request flagged like this" STAYS:** HQ reviews the flagged list.
+- **NON-REFUNDABLE on both sheets.** The first sheet's note ("the order may be canceled, you may
+  still be charged worker time/fees") changes to match:
+  > *Submitting an age-restricted request without a valid ID at completion means the worker
+  > cannot release the items. The order is non-refundable: it pays your worker for their time and
+  > anything they bought for you, and repeat issues can lead to account review.*
+  - ⚠️ The customer-service reference, the Request 101 and the Terms must agree. That is copy
+    for their owners; John publishes the Terms himself.
+- **Tracking = orders + the word** (not a count of every warning shown).
+
+**Build:**
+- **Server:** two order columns (the double flag + the word), accepted on create/update,
+  returned to Go and HQ. ⛔ The raw-SQL rule applies: a .db test on local Postgres with
+  production column types.
+- **Request app:** the second sheet, the flag + word on submit, the first sheet's note.
+- **Gopher Go:** the Complete ID step when `isAgeRestricted(request) || flag`.
+- **HQ:** the tag + filter.
+- **Web:** the same sheets and logic. The web's `idRequiredAtCompletion` becomes this flag
+  and reaches the server once the web places real orders.
+
 ### Re-checked by mechanism the same evening (because D4 was missed)
 
 - **D1 holds.** The server does not scan descriptions: `AGE_RESTRICTED_KEYWORDS` (`constants/index.js:302`)
