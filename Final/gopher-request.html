@@ -14921,6 +14921,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         // back to steps already reached, or to the current step.
         if(target > state.maxStepReached) return;
         if(target > 1 && !state.category){ showGatePrompt(stepGate()); return; }
+        // PL-321: Review is reached only through every earlier step's checks.
+        if(target === 6 && state.step !== 6){ jumpToReviewChecked(); return; }
         state.step = target;
         render();
       });
@@ -14942,6 +14944,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           // furthest step reached via Continue.
           if(target > state.maxStepReached) return;
           if(target > 1 && !state.category){ showGatePrompt(stepGate()); return; }
+          // PL-321: Review is reached only through every earlier step's checks.
+          if(target === 6 && state.step !== 6){ jumpToReviewChecked(); return; }
           state.step = target;
           render();
         });
@@ -18045,7 +18049,60 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(again && state.step === 4) flagSamePlace(pair);
   }
 
-  $btnNext.addEventListener('click', () => {
+  /* PL-321 (audit 10/15, John: "App wins; bugs fixed on both"). Every check
+     before Review and Submit, as the app does it. The app's goToReview re-runs
+     every earlier step's checks (YardStepNav.js goToReview -> firstProblemStep +
+     checkFor(s) for each step); this page only ran the gates of the step it was
+     ON, so a Step-2 edit followed by a tab-jump to Review -- or Request Again /
+     Request NOW / GO To NOW / a Deal, which all land on Review -- submitted with
+     no age prompt, no under-21 block and an empty description or address
+     (executed: GopherStepGates.evaluate({step:6, description:'', ...}) -> ok).
+     This replays Continue from Step 1 through every earlier step, so EVERY check
+     those Continue taps run (field gates, the age scan + under-21 dead stop, the
+     phone block, the category nudge, the no-purchase and low-offer notices)
+     runs again, and stops on the first that does not pass -- on its own step,
+     with its own prompt. Returns true when it reaches Review untouched. */
+  let __walkingSteps = false;
+  function walkEarlierStepsOk(){
+    const wasLookedUp = __placesLookedUp;
+    __walkingSteps = true;
+    /* Addresses are placed on the map before this runs (the Submit path does it
+       at the top of the Continue handler; the tab path below waits for it), so
+       the inner taps must not go async. */
+    __placesLookedUp = true;
+    try {
+      state.step = 1;
+      render();
+      let guard = 0;
+      while(state.step < 6 && guard++ < 12){
+        const before = state.step;
+        onContinue();
+        if(state.step === before) return false;   // stopped here, its prompt is up
+      }
+      return state.step === 6;
+    } finally {
+      __walkingSteps = false;
+      __placesLookedUp = wasLookedUp;
+    }
+  }
+  /* The tab path: a jump to Review checks every earlier step first. Not inside
+     a Continue tap, so place any unplaced address before walking. */
+  function jumpToReviewChecked(){
+    const stops = (typeof samePlaceStops === 'function') ? samePlaceStops() : [];
+    const unplaced = window.__gopherPlaces && !state.noSpecificPickup && isVisible('pickupSection')
+      && stops.some(function(t){ return String(t || '').trim() && !window.__gopherPlaces.known(t); });
+    if(unplaced){
+      window.__gopherPlaces.ensure(stops).then(function(){ walkEarlierStepsOk(); });
+      return;
+    }
+    walkEarlierStepsOk();
+  }
+
+  /* PL-321: the Continue tap is a named function so the walk above can run it
+     directly. HTMLElement.click() is a no-op while that element's own click is
+     in progress (the HTML "click in progress" flag), and Submit -- which walks --
+     IS a Continue click, so re-clicking from inside it did nothing. */
+  function onContinue(){
     /* G40-274: before the address gate reads them, find where any not-yet-placed
        address is on the map (typed, saved, or resumed from a draft). Once per
        click; if Google is slow or can't place it, the gate falls back to text. */
@@ -18057,6 +18114,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       });
       return;
     }
+    // PL-321: Submit re-checks every earlier step first (see walkEarlierStepsOk).
+    if(state.step === 6 && !__walkingSteps && !walkEarlierStepsOk()) return;
     // Universal gate: if this step has an unmet requirement, don't advance —
     // flash the missing field and tell the user which one is required.
     const gate = stepGate();
@@ -18163,7 +18222,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       if(state.step > state.maxStepReached) state.maxStepReached = state.step;
     }
     render();
-  });
+  }
+  $btnNext.addEventListener('click', onContinue);
 
   // ---- Reset hook: dashboard calls this to start the flow fresh at step 1.
   //      (The dashboard owns where the flow is hosted; this only resets state.) ----
@@ -18369,6 +18429,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(prev.details){
       state.description = prev.details;
       state.descriptionIsPlaceholder = false;
+    }
+
+    /* PL-321 / D-56 (App wins): the app's Request Again reopens with the old
+       pick-up and drop-off filled (helpers/requestAgain.js); this left them
+       empty, and Review then submitted them empty. Carried when the record has
+       them; the Submit path re-checks them either way. */
+    if(Array.isArray(prev.pickups) && prev.pickups.some(function(t){ return String(t || '').trim(); })){
+      state.pickupStops = prev.pickups.slice();
+    }
+    if(Array.isArray(prev.dropoffs) && prev.dropoffs.some(function(t){ return String(t || '').trim(); })){
+      state.dropoffStops = prev.dropoffs.slice();
     }
 
     // Worker pay → set a flat offer when the prior request paid the worker.
