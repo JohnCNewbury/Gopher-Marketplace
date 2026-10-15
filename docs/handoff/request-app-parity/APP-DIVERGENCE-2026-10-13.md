@@ -192,10 +192,18 @@ rule, the **app** (or the server behind it) changes, not the web.
     for their owners; John publishes the Terms himself.
 - **Tracking = orders + the word** (not a count of every warning shown).
 
+**Ticket: G40-628** (sprint 908, created on John's yes 2026-10-15).
+
 **Build:**
-- **Server:** two order columns (the double flag + the word), accepted on create/update,
-  returned to Go and HQ. ⛔ The raw-SQL rule applies: a .db test on local Postgres with
-  production column types.
+- **Server: ✅ LIVE 2026-10-15.**
+  - gopher-backend-api !754 → production `dbb41cb5`, 8:19 AM ET.
+  - Deploy: CodePipeline Succeeded; EB Green/Ok 8:25, 0 5xx; the new instance logged
+    "Database initialization complete!" at 8:21 (the boot DDL ran).
+  - Fields: `orders.age_keyword_declined` (boolean NOT NULL DEFAULT false) and
+    `orders.age_keyword` (varchar(100)). Rule: `helpers/age_keyword_flag.js` (an A/R order is
+    never double-flagged; an older app's edit keeps the flag); GO-To keeps both.
+  - Tests: `d6-age-keyword-flag.test.js` 16/16, `d6-age-keyword-columns.db.test.js` 8/8 on a
+    real Postgres 15 (the control fails 5/8 without the change).
 - **Request app:** the second sheet, the flag + word on submit, the first sheet's note.
 - **Gopher Go:** the Complete ID step when `isAgeRestricted(request) || flag`.
 - **HQ:** the tag + filter.
