@@ -17129,7 +17129,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const num = (v) => parseFloat(String(v).replace(/[^0-9.]/g,'')) || 0;
     const workerPayNum = num(rec.workerPay);
     const goodsNum     = num(rec.goodsCost);
-    const fee   = computeRequestFee(workerPayNum + goodsNum);
+    /* MONEY-38 (App wins): the app prices a GO-To with the form's OWN
+       orders/summary. computeRequestFee reads the MAIN form's category, A/R and
+       promo, so a Delivery GO-To was priced as whatever the form last held
+       ("Other" when unused: $23.75 vs the app's $22.67). Price it as the GO-To,
+       with no promo (a GO-To carries none), then put the form back. */
+    const fee = (function(){
+      const keep = { c: state.category, a: state.ageRestricted, p: state.promoApplied };
+      try {
+        state.category = window.__mapHistoryCategory ? window.__mapHistoryCategory(rec.category) : state.category;
+        state.ageRestricted = !!rec.ageRestricted && state.category === 'delivery'
+          && (typeof canSeeAgeRestricted !== 'function' || canSeeAgeRestricted());
+        state.promoApplied = false;
+        return computeRequestFee(workerPayNum + goodsNum);
+      } finally { state.category = keep.c; state.ageRestricted = keep.a; state.promoApplied = keep.p; }
+    })();
     const money = (n) => '$' + Number(n || 0).toFixed(2);
     const gophers = rec.gophers || [];
     const methods = (window.__getPayMethods ? window.__getPayMethods() : []);
@@ -18469,6 +18483,19 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     }
     if(Array.isArray(prev.dropoffs) && prev.dropoffs.some(function(t){ return String(t || '').trim(); })){
       state.dropoffStops = prev.dropoffs.slice();
+    }
+
+    /* D-55: a GO-To's purchase and A/R travel with it. A/R only for an account
+       that may carry it, and only on Delivery (the server's rule); the walk
+       on Submit re-checks everything. */
+    if(prev.itemsPurchased){
+      state.itemsPurchased = true;
+      const cost = parseFloat(String(prev.costOfItems == null ? '' : prev.costOfItems).replace(/[^0-9.]/g,''));
+      if(cost > 0) state.costOfItems = '$' + cost;
+    }
+    if(prev.ageRestricted && state.category === 'delivery'
+       && (typeof canSeeAgeRestricted !== 'function' || canSeeAgeRestricted())){
+      state.ageRestricted = true;
     }
 
     // Worker pay → set a flat offer when the prior request paid the worker.
@@ -29320,9 +29347,13 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
              separated by an unrelated switch and the section read as three
              disconnected rows. -->
         <div class="goto-field goto-toggles">
+          ${''/* AGE-12 (App wins): under 21 sees NOTHING age-restricted, as the app's
+                GO-To (set up inside the step flow, A/R switch behind its profile
+                flag). This toggle was drawn for everyone. */}
+          ${(typeof canSeeAgeRestricted === 'function' && canSeeAgeRestricted()) ? `
           <button type="button" class="goto-tog ${draft.ageRestricted ? 'checked' : ''}" data-goto-tog="ageRestricted">
             <span class="prev-check-box"></span><span>My order includes age-restricted items</span>
-          </button>
+          </button>` : ''}
           <button type="button" class="goto-tog ${draft.itemsPurchased ? 'checked' : ''}" data-goto-tog="itemsPurchased">
             <span class="prev-check-box"></span><span>Select if you need items purchased</span>
           </button>
@@ -29550,7 +29581,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         dropoff: val('gotoDropoff').trim(),
         goodsCost: val('gotoGoods').trim() === '' ? '' : Number(val('gotoGoods')),
         itemsPurchased: tog('itemsPurchased'),
-        ageRestricted:  tog('ageRestricted'),
+        ageRestricted:  tog('ageRestricted') && (typeof canSeeAgeRestricted === 'function' && canSeeAgeRestricted()),
         counterOffers:  tog('counterOffers'),
         chosenHow: (panel.querySelector('[data-goto-who].checked') || {}).dataset
                      ? ((panel.querySelector('[data-goto-who].checked').dataset.gotoWho === 'my')
@@ -29559,6 +29590,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         payKey: selPayKey || null,   // the method is CHOSEN on the review sheet
         gophers: gophers
       };
+      /* AGE-12 (App wins): the app sets a GO-To up inside the step flow, so its
+         under-21 dead stop applies to the words. Same check and the same sheet
+         as Step 2's Continue; the 21+ "This looks age-restricted" question runs
+         when the GO-To is SENT (it submits through every step's checks, PL-321). */
+      if(typeof canSeeAgeRestricted === 'function' && !canSeeAgeRestricted()
+         && typeof findAgeRestrictedKeyword === 'function' && findAgeRestrictedKeyword(rec.details)){
+        if(window.G40_REQ && G40_REQ.ageRestrictedNotEligible) G40_REQ.ageRestrictedNotEligible();
+        return;
+      }
       if(!(window.__openGoToReview && window.__openGoToReview(rec, (finalRec) => {
         GoTos.save(finalRec);
         closeGoToEditor();
@@ -29601,10 +29641,18 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(g.payKey && typeof window.__setSelectedPayKey === 'function'){
       window.__setSelectedPayKey(g.payKey);
     }
+    /* D-55 (App wins): the app's GO-To send posts the FULL stored body
+       (GET /go_tos/:id/send_body). This sent only category, words and pay, so
+       a "weekly grocery run" went out with no addresses and $0 of items. */
     const asPrev = {
       category:  g.category,
       details:   g.details,
-      breakdown: { workerPay: Number(g.workerPay) || 0 }
+      breakdown: { workerPay: Number(g.workerPay) || 0 },
+      pickups:   (!g.anyPickup && g.pickup) ? [g.pickup] : [],
+      dropoffs:  g.dropoff ? [g.dropoff] : [],
+      itemsPurchased: !!g.itemsPurchased,
+      costOfItems: g.goodsCost,
+      ageRestricted: !!g.ageRestricted
     };
     if(typeof window.__startRequestAgainNow === 'function'){
       window.__startRequestAgainNow(asPrev, (g.gophers || []).slice());
