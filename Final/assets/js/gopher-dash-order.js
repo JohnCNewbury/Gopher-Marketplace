@@ -49,6 +49,9 @@
    noShow (a worker-raised review)               disputed + the server's reason
    completion photos / photoStepResolved         photo_step_resolved
    noShowReminded, noShowRemindedAt              requestor_reminded, _at
+   __ptGopherCancelled + __ptCancelReason (the   gopher_released_at,
+     Go app's cancel over PT), until the           cancellation_reason
+     requester picks "Assign new worker"
    category / cat / reviewSnapshot.category      category_type, title
    dropoffs / pickups / snapshot addresses       address, dropoff_address
    reviewSnapshot.costOfItems                    cost_of_goods (cents)
@@ -221,8 +224,13 @@
     now = now == null ? Date.now() : now;
     var aasm = aasmStateOf(r);
     var w = hiredWorker(r);
-    var lead = crewLead(r) || w;
-    var assigned = !!lead && aasm !== 'pending';
+    var released = !!(r.__ptGopherCancelled && !r.workerCancelChoice);
+    /* A worker who cancels is NOT detached: cancel.js keeps gopher_id so the
+       cancellation stays attributable (owner, 2026-09-13), and the app's
+       "Worker cancelled" page names them. The PT bridge clears the web's
+       worker list, so the last assigned worker (remembered by sync) stands in. */
+    var lead = crewLead(r) || w || (released ? r.lastGopher || null : null);
+    var assigned = !!lead && (aasm !== 'pending' || released);
     var snap = r.reviewSnapshot || {};
     var type = categoryType(r);
     var name = str(lead && lead.name).trim();
@@ -276,6 +284,14 @@
          resolved unless the record says otherwise. Strict `false` holds the
          confirm screen, exactly as helpers/photoStep.js reads it. */
       photo_step_resolved: aasm === 'delivered' ? r.photoStepResolved !== false : undefined,
+      /* The worker walked away (cancel.js keeps the order and stamps
+         gopher_released_at; the app's "Worker cancelled" page reads it and the
+         worker's reason). "Assign new worker" (keep_listed) clears it. The
+         server's release_expires_at deadline is NOT invented here: without the
+         server there is no clock to show, so none is shown. */
+      gopher_released_at: (r.__ptGopherCancelled && !r.workerCancelChoice)
+        ? iso(r.gopherReleasedAt) : null,
+      cancellation_reason: r.__ptGopherCancelled ? (r.__ptCancelReason || null) : null,
       requestor_reminded: !!r.noShowReminded,
       requestor_reminded_at: iso(r.noShowRemindedAt),
       updated_at: iso(r.updatedAt || r.submittedAt) || null
@@ -291,6 +307,13 @@
   function sync(r, now) {
     if (!r) return null;
     if (r.order && r.order.__source === 'api') return r.order;
+    /* The PT bridge flags a worker's cancel without a time; the first sync
+       that sees it stamps one, as the server stamps gopher_released_at. */
+    if (r.__ptGopherCancelled && !r.gopherReleasedAt) r.gopherReleasedAt = now == null ? Date.now() : now;
+    var lead = crewLead(r) || hiredWorker(r);
+    if (lead && lead.name) {
+      r.lastGopher = { name: lead.name, photo: lead.photo || '', rating: lead.rating, reviews: lead.reviews, id: lead.id };
+    }
     r.order = build(r, now);
     return r.order;
   }

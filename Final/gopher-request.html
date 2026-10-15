@@ -7616,6 +7616,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .req-status.status-matching    { background:rgba(251,191,36,0.18); color:#92580d; }
   .req-status.status-scheduled   { background:rgba(26,42,94,0.10); color:var(--navy); }
   .req-status.status-dispute     { background:#fbeeef; color:#c44257; }
+  /* The requester's cancel sheet (the app's CancelReasonSheet): the reason list
+     is single-select radio rows; "Other" opens a 150-character box. */
+  .rc-reasons { display:flex; flex-direction:column; gap:8px; margin:4px 0 12px; text-align:left; }
+  .rc-reason { display:flex; align-items:center; gap:10px; width:100%; padding:11px 13px; cursor:pointer;
+    border:1.5px solid #eae3d5; border-radius:12px; background:#fff; color:var(--navy);
+    font-family:'DM Sans',sans-serif; font-size:14px; text-align:left; }
+  .rc-reason[aria-checked="true"] { border-color:var(--navy); background:#f4f6fb; }
+  .rc-dot { width:16px; height:16px; flex:none; border-radius:50%; border:2px solid #b3bcc9; box-sizing:border-box; }
+  .rc-reason[aria-checked="true"] .rc-dot { border:5px solid var(--navy); }
+  .rc-other { width:100%; box-sizing:border-box; min-height:72px; resize:vertical; margin:0 0 4px;
+    border:1.5px solid var(--navy); border-radius:12px; padding:10px; font-family:'DM Sans',sans-serif; font-size:14px; }
+  .rc-count { font-size:12px; color:var(--muted); text-align:right; margin:0 0 12px; }
+  .rc-note { font-size:12px; margin:6px 0 10px; }
+  .gr-modal-btn-text.rc-quiet { color:var(--muted); }
+  .gr-modal-btn-text:disabled { opacity:.45; cursor:not-allowed; }
   /* The app's card kinds (homeCards.cardModel) on the list pill. */
   .req-status.k-good  { background:#33d975; color:var(--navy); }
   .req-status.k-bad   { background:#c44257; color:#fff; }
@@ -7668,14 +7683,43 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .rate-opt { display:flex; align-items:center; gap:9px; font-family:'DM Sans'; font-size:14px; color:var(--navy); font-weight:600; cursor:pointer; }
   .rate-opt-block { color:#c0392b; }
   .rate-submit { width:100%; }
-  .cmp-dispute { border-color:#f0c9c9; background:#fbeeef; }
+  /* Grey, never red: a dispute is between the requester and the worker (owner
+     10/11), "grey dispute is fine", and red is only for a failed payment (owner
+     10/4). The app's Dispute button "is never red" (CompletedView.js). */
+  .cmp-dispute { border-color:#e7e2d6; background:#f6f4ef; }
   .cmp-dispute .cmp-title { color:var(--navy); }
   .cmp-disclaimer { font-family:'DM Sans'; font-size:12px; line-height:1.5; color:var(--muted); margin:10px 0; }
   .cmp-dispute-box { width:100%; min-height:90px; border:1px solid #dfe3ee; border-radius:10px; padding:10px 12px; font-family:'DM Sans'; font-size:13px; resize:vertical; box-sizing:border-box; margin-bottom:12px; }
-  .cmp-dispute-btn, .cmp-unable-btn { width:100%; background:#fff; color:var(--error,#c44257); border:1px solid var(--error,#c44257); border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
-  .cmp-dispute-btn:hover, .cmp-unable-btn:hover { background:rgba(196,66,87,0.08); }
+  .cmp-dispute-btn, .cmp-unable-btn { width:100%; background:#fff; color:var(--navy); border:1px solid #c9cfdc; border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
+  .cmp-dispute-btn:hover, .cmp-unable-btn:hover { background:#f4f6fb; }
   .cmp-pill-dispute { display:inline-block; background:#c44257; color:#fff; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:4px 12px; margin-bottom:10px; }
   .cmp-modal-copy { font-family:'DM Sans'; font-size:13px; line-height:1.6; color:var(--text,#13233f); margin:0 0 4px; }
+  /* The app's after-submit screens (2026-10-15): grey dispute (owner: "grey
+     dispute is fine"), the reason chips, the dispute timeline, the worker-
+     cancelled choices and the rating's hint and note. */
+  .cmp-pill-grey { display:inline-block; background:#f1efea; color:#5d5a52; font-family:'Nunito'; font-weight:800; font-size:11px; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:4px 12px; margin-bottom:10px; }
+  .cmp-back { display:block; background:none; border:none; padding:0 0 8px; color:var(--navy); font-family:'DM Sans'; font-weight:700; font-size:13px; cursor:pointer; text-align:left; }
+  .dsp-reasons { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:6px 0 12px; }
+  .dsp-chip { border:1.5px solid #eae3d5; background:#fff; color:var(--navy); border-radius:999px; padding:8px 14px; font-family:'Nunito'; font-weight:700; font-size:13px; cursor:pointer; }
+  .dsp-chip.on { border-color:var(--navy); background:var(--navy); color:#fff; }
+  .dsp-label { display:block; text-align:left; font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--navy); margin:0 0 6px; }
+  .dsp-timeline { list-style:none; margin:4px 0 14px; padding:0; text-align:left; }
+  .dsp-timeline li { position:relative; padding:0 0 10px 24px; font-family:'DM Sans'; font-size:13px; color:var(--muted); }
+  .dsp-timeline li::before { content:''; position:absolute; left:0; top:3px; width:12px; height:12px; border-radius:50%; background:#e2dccd; }
+  .dsp-timeline li.on::before { background:#1cb061; }
+  .dsp-timeline li.cur::before { background:#fff; border:3px solid #1cb061; box-sizing:border-box; }
+  .dsp-timeline li b { display:block; color:var(--navy); font-family:'Nunito'; font-size:14px; }
+  .cmp-unable-btn:disabled { opacity:.45; cursor:not-allowed; }
+  .wc-head { font-family:'Nunito'; font-weight:800; font-size:14px; color:var(--navy); margin:12px 0 8px; text-align:left; }
+  .wc-opt { background:#fff; border:1px solid #e7eaf2; border-radius:12px; padding:12px 14px; margin:0 0 10px; text-align:left; }
+  .wc-opt-title { font-family:'Nunito'; font-weight:900; font-size:15px; color:var(--navy); }
+  .wc-opt-sub { font-family:'DM Sans'; font-size:12px; color:var(--muted); line-height:1.45; margin:3px 0 10px; }
+  .wc-cancel { text-align:left; padding:0; }
+  .rate-sent { font-family:'DM Sans'; font-size:12px; color:var(--muted); margin:0 0 10px; }
+  .rate-hint { font-family:'DM Sans'; font-size:13px; color:var(--muted); text-align:center; margin:4px 0 8px; }
+  .rate-note { font-family:'DM Sans'; font-size:12px; color:var(--muted); text-align:center; line-height:1.45; margin:8px 0 0; }
+  .rate-submit:disabled { opacity:.45; cursor:not-allowed; }
+  .dash-alert-msg { color:var(--navy); font-size:14px; }
   .req-action {
     background:var(--navy); color:white; border:none; border-radius:7px;
     padding:7px 13px;
@@ -20588,20 +20632,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   </div>
 </div>
 
-<!-- EARLY-CANCELLATION MODAL — shown when cancelling a request that is
-     still broadcasting (pending, pre-acceptance). Body is filled by JS: variant A
-     (fresh + strong coverage → reassure) or B (standard). -->
-<div class="gr-modal-overlay" id="earlyCancelOverlay" hidden>
-  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="earlyCancelTitle">
-    <button type="button" class="gr-modal-close" id="earlyCancelClose" aria-label="Close">×</button>
-    <div id="earlyCancelBody"></div>
-  </div>
-</div>
-
-<!-- ACCEPTED-CANCELLATION MODAL — shown when cancelling a request a
-     Gopher has ACCEPTED but has NOT yet started (not in-progress). Offers
-     "Repost to new Gophers" (release this Gopher + re-broadcast the same
-     request) or "Cancel request". Body is filled by JS. -->
+<!-- THE REQUESTER'S CANCEL — the app's CancelReasonSheet: the fork (find a
+     different worker / cancel it altogether) when a worker is booked, the
+     reasons, or the server's "already started" refusal. Body is filled by JS
+     (initRequesterCancel). -->
 <div class="gr-modal-overlay" id="acceptedCancelOverlay" hidden>
   <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="acceptedCancelTitle">
     <button type="button" class="gr-modal-close" id="acceptedCancelClose" aria-label="Close">×</button>
@@ -25446,38 +25480,32 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(typeof arg === 'function'){
       _cancelConfirmCb = arg;
     } else if(typeof arg === 'string' && arg){
-      // Status-aware cancel routing:
-      //   • in-progress  → cancel is NOT allowed once the Gopher has
-      //     started. Show the "already started" note and stop.
-      //   • pending + a Gopher hired (accepted, not started) → offer
-      //     Repost (release + re-broadcast) or Cancel.
-      //   • pending, no Gopher hired (still broadcasting) → early-cancel.
-      //   • anything else → the generic confirm.
+      /* The APP's cancel window over the server's order state (E-11, E-12,
+         E-14, E-17) — services/requesterCancelWindow.js via dashCanCancel:
+           • the worker has started (picked_up / purchased / delivered) →
+             the server's refusal, nothing cancels
+           • a worker booked, not started (scheduled / accepted) → the fork:
+             find a different worker, or cancel it altogether
+           • nobody has taken it yet → the reasons, free
+         Until the helpers module has loaded there is no answer, so nothing
+         opens (the Cancel button is hidden then too). */
       const r = (DASH_DATA.activeRequests || []).find(x => x.id === arg);
-      const started = ((window.GopherRequestLogic && window.GopherRequestLogic.jobBlocksCancel)
-        ? window.GopherRequestLogic.jobBlocksCancel(r)
-        : (r.status === 'in-progress' || r.status === 'active' || r.status === 'completed'));
-      const hasHired = r && (r.interestedWorkers || []).some(w => w.status === 'hired');
-      if(started && typeof window.__openStartedCantCancel === 'function'){
-        window.__openStartedCantCancel(arg);
-        return;
-      }
-      if(r && r.status === 'pending' && hasHired && typeof window.__openAcceptedCancelModal === 'function'){
+      const o = dashOrder(r);
+      if(!r || !o || !appShared()) return;
+      if(!dashCanCancel(r)){ window.__openStartedCantCancel(arg); return; }
+      if(o.gopher_id && (o.aasm_state === 'scheduled' || o.aasm_state === 'accepted')){
         window.__openAcceptedCancelModal(arg);
         return;
       }
-      if(r && r.status === 'pending' && typeof window.__openEarlyCancelModal === 'function'){
-        window.__openEarlyCancelModal(arg);
-        return;
-      }
-      _pendingCancelDashId = arg;
+      window.__openCancelReasons(arg);
+      return;
     }
     const overlay = document.getElementById('cancelReqOverlay');
     if(overlay) overlay.hidden = false;
   };
   // Spec-compliant standalone cancel routine, used by mode B and exposed
   // for any caller that wants to skip the modal (programmatic cancellation).
-  window.__cancelDashboardRequest = (dashRequestId) => {
+  window.__cancelDashboardRequest = (dashRequestId, cancellationReason) => {
     const i = (DASH_DATA.activeRequests || []).findIndex(r => r.id === dashRequestId);
     if(i === -1) return;
     const r = DASH_DATA.activeRequests[i];
@@ -25492,7 +25520,9 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       id: r.id,
       category,
       details,
-      reason: 'Cancelled by you',
+      /* The reason the requester picked is what the server stores as
+         cancellation_reason and emails to the worker (cancelReasons.js). */
+      reason: cancellationReason ? 'Cancelled by you \u00b7 ' + cancellationReason : 'Cancelled by you',
     });
     // Remove from active. Clear the open detail if it was this one.
     DASH_DATA.activeRequests.splice(i, 1);
@@ -25568,224 +25598,212 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !overlay.hidden) close(); });
   })();
 
-  // ── Early-cancellation flow ──
-  // While a request is still BROADCASTING (status 'pending', not yet accepted),
-  // cancelling opens THIS modal instead of the generic confirm. Variant A
-  // (reassure) shows when the request is fresh (≤20 min since submit) AND the
-  // area has strong coverage — >20 Gophers with ≥1 recent completed order, read
-  // live from GopherIQData (workers / activeLast3mo). Otherwise variant B.
-  //   "Still need it" → re-broadcast (demo: confirmation panel; real push =
-  //                     backend) — request stays as-is so less time is left.
-  //   "Still cancel"  → routes into the normal __cancelDashboardRequest path.
-  (function initEarlyCancel(){
-    const overlay = document.getElementById('earlyCancelOverlay');
-    if(!overlay) return;
-    const body = document.getElementById('earlyCancelBody');
-    let _dashId = null;
-
-    function coverageFor(req){
-      // Derive an area string from the request's drop-off / pickup, then ask the
-      // Gopher iQ data brain how many Gophers cover it.
-      const pick = (arr) => {
-        if(Array.isArray(arr)){ for(const s of arr){ const v = (s && (s.city || s.zip || s.address || s.label)) || (typeof s === 'string' ? s : ''); if(v) return v; } }
-        return '';
-      };
-      const place = pick(req && req.dropoffs) || pick(req && req.pickups) || '';
-      let workers = 0, active = 0, area = '';
-      try{
-        if(place && window.GopherIQData && typeof GopherIQData.lookup === 'function'){
-          const r = GopherIQData.lookup(place);
-          if(r && !r.ambiguous && r.inData){ workers = r.workers || 0; active = r.activeLast3mo || 0; area = r.city || ''; }
-        }
-      }catch(_e){}
-      // Prototype fallback: a representative strong-coverage area so variant A is
-      // demonstrable when the request has no resolvable/known location.
-      if(!area){ workers = 24; active = 3; area = ''; }
-      return { workers, active, area };
-    }
-
-    function pickVariant(req){
-      const elapsedMin = (req && req.submittedAt) ? (Date.now() - req.submittedAt) / 60000 : 999;
-      const cov = coverageFor(req);
-      const strong = cov.workers > 20 && cov.active >= 1;
-      return { v: (elapsedMin <= 20 && strong) ? 'A' : 'B', cov };
-    }
-
-    function areaTxt(cov){ return cov.area ? ('near <b>' + cov.area + '</b>') : 'in your area'; }
-
-    function render(variant, cov){
-      if(variant === 'A'){
-        body.innerHTML =
-            '<div class="gr-modal-icon gr-modal-icon-go">📣</div>'
-          + '<h4 id="earlyCancelTitle">Hang tight — a Gopher’s likely close</h4>'
-          + '<p class="gr-modal-sub">You sent this out just moments ago, and there are <b>' + cov.workers + '+ Gophers</b> active ' + areaTxt(cov) + ' right now. Requests like yours usually get picked up within minutes. Want us to keep looking?</p>'
-          + '<button type="button" class="gr-modal-btn" id="earlyCancelKeep">Still need it — keep looking</button>'
-          + '<button type="button" class="gr-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
-      } else {
-        body.innerHTML =
-            '<div class="gr-modal-icon">🔎</div>'
-          + '<h4 id="earlyCancelTitle">Still want us to keep looking?</h4>'
-          + '<p class="gr-modal-sub">We’re still broadcasting your request to Gophers ' + areaTxt(cov) + '. Tap <b>Still need it</b> and we’ll send a fresh alert to local Gophers — your request stays exactly as it is, so there may be less time left on the clock. Changed your plans? You can cancel below.</p>'
-          + '<button type="button" class="gr-modal-btn" id="earlyCancelKeep">Still need it — re-alert Gophers</button>'
-          + '<button type="button" class="gr-modal-btn-text ec-danger" id="earlyCancelStop">Still cancel</button>';
-      }
-      const keep = document.getElementById('earlyCancelKeep');
-      const stop = document.getElementById('earlyCancelStop');
-      if(keep) keep.addEventListener('click', showRebroadcast);   // Still need! → re-broadcast
-      if(stop) stop.addEventListener('click', doCancel);           // Still cancel → normal cancel path
-    }
-
-    function showRebroadcast(){
-      body.innerHTML =
-          '<div class="gr-modal-icon gr-modal-icon-go">✅</div>'
-        + '<h4>On it!</h4>'
-        + '<p class="gr-modal-sub">We’ve sent a fresh alert to Gophers near you. Hang tight — we’ll let you know the moment someone accepts.</p>'
-        + '<button type="button" class="gr-modal-btn" id="earlyCancelDone">Got it</button>';
-      const d = document.getElementById('earlyCancelDone');
-      if(d) d.addEventListener('click', close);
-    }
-
-    function doCancel(){
-      const id = _dashId;
-      close();
-      if(id && typeof window.__cancelDashboardRequest === 'function'){
-        window.__cancelDashboardRequest(id);
-        if(typeof showSection === 'function') showSection('previous');
-      }
-    }
-
-    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
-
-    window.__openEarlyCancelModal = (dashId, forceVariant) => {
-      const req = (DASH_DATA.activeRequests || []).find(r => r.id === dashId) || null;
-      _dashId = dashId;
-      const info = pickVariant(req || {});
-      render((forceVariant === 'A' || forceVariant === 'B') ? forceVariant : info.v, info.cov);
-      overlay.hidden = false;
-    };
-    // Demo helper (console): __previewEarlyCancel('A'|'B') — preview either variant.
-    window.__previewEarlyCancel = (v) => { _dashId = null; render((v === 'B') ? 'B' : 'A', { workers:24, active:3, area:'Holly Springs' }); overlay.hidden = false; };
-
-    overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
-    document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
-    const x = document.getElementById('earlyCancelClose');
-    if(x) x.addEventListener('click', close);
-  })();
-
-  // ── Accepted-cancellation flow ──
-  // When cancelling a request a Gopher has ACCEPTED but has NOT started
-  // (r.status 'pending' with a hired worker), offer two paths instead of the
-  // generic confirm:
-  //   "Repost to new Gophers" → release the hired Gopher(s) and re-broadcast the
-  //     SAME request. Released Gophers are excluded from re-accepting (recorded
-  //     in r.excludedGophers) and — in production — notified (BACKEND SEAM).
-  //   "Cancel request"        → routes into the normal __cancelDashboardRequest.
-  // Decisions (John, 2026-07-02): no cancel fee before the job starts; once
-  // in-progress, cancel is removed (see __openStartedCantCancel + the detail
-  // header gate in renderRequestDetail).
-  (function initAcceptedCancel(){
+  // ── The requester's cancel — the APP's sheet (CancelReasonSheet.js) ──
+  // Ported 2026-10-15 (owner: "Port the app's logic + drop the demos"). Which
+  // door opens is the app's rule over r.order (window.__openCancelModal above):
+  //   • not cancellable (the worker tapped In Progress, or later) → the
+  //     server's own refusal sentence (cancel.js STARTED_REFUSAL)   — E-11
+  //   • a worker booked (scheduled / accepted) → the FORK: "Find a different
+  //     worker" (repost, same request, same time) or "Cancel it altogether"
+  //                                                   — E-12, repost.js
+  //   • nobody has taken it yet → straight to the reasons, "cancelling is
+  //     free" — no keep-looking / re-alert step (the app has none)   — E-14
+  // The reasons and the "Other needs 3 words" rule are the app's own
+  // (services/cancelReasons.js, via GopherAppShared); a repost asks only inside
+  // 24 hours of the start (repostNeedsReason). After a cancel or a repost the
+  // app goes Home, so this does too.
+  // ⛔ No cancel fee, before the worker starts (canon 2026-07-10; cancel.js).
+  (function initRequesterCancel(){
     const overlay = document.getElementById('acceptedCancelOverlay');
     if(!overlay) return;
     const body = document.getElementById('acceptedCancelBody');
     let _dashId = null;
+    let _st = null;   // { mode:'cancel'|'repost', fromFork, subtitle, selected, other, intercept }
 
-    function hiredNames(r){
-      const names = (r.interestedWorkers || []).filter(w => w.status === 'hired')
-                      .map(w => w.name || 'your Gopher');
-      if(!names.length) return 'Your Gopher';
-      if(names.length === 1) return names[0];
-      if(names.length === 2) return names[0] + ' and ' + names[1];
-      return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+    const rec = () => (DASH_DATA.activeRequests || []).find(x => x.id === _dashId) || null;
+    /* The worker's first name, as the app's sheet reads order.gopher.first_name. */
+    const firstName = (r) => {
+      const o = dashOrder(r);
+      return (o && o.gopher && o.gopher.first_name) || '';
+    };
+    const goHome = () => { if(typeof showSection === 'function') showSection('home'); };
+
+    function renderFork(r){
+      const name = firstName(r);
+      body.innerHTML =
+          '<h4 id="acceptedCancelTitle">' + escHtml(name ? name + ' is booked for this' : 'Your worker is booked for this') + '</h4>'
+        + '<p class="gr-modal-sub">You can put the request back out to other workers and keep it on, or cancel it altogether.</p>'
+        + '<button type="button" class="gr-modal-btn" data-rc="repost">Find a different worker</button>'
+        + '<p class="gr-modal-sub rc-note">Your request stays on for the same time, and your card is not charged or refunded — the hold just carries over.</p>'
+        + '<button type="button" class="gr-modal-btn gr-modal-btn-secondary" data-rc="message">' + escHtml(name ? 'Message ' + name : 'Message my worker') + '</button>'
+        + '<button type="button" class="gr-modal-btn-text" data-rc="cancel">Cancel it altogether</button>'
+        + '<button type="button" class="gr-modal-btn-text rc-quiet" data-rc="close">Keep my worker</button>';
     }
 
-    function renderChoice(r){
+    function renderReasons(){
+      const r = rec(); if(!r){ close(); return; }
+      const S = appShared(); if(!S){ close(); return; }
+      const name = firstName(r);
+      const o = dashOrder(r);
+      const repost = _st.mode === 'repost';
+      const reasons = repost ? S.REPOST_REASONS : S.REQUESTER_REASONS;
+      const chosen = reasons.find(x => x.key === _st.selected) || null;
+      if(_st.intercept && chosen && chosen.intercept && name){
+        body.innerHTML =
+            '<h4 id="acceptedCancelTitle">Change the time instead?</h4>'
+          + '<p class="gr-modal-sub">' + escHtml('Ask ' + name + ' about a different time. Keeping your worker keeps your price — cancelling puts the request back out to everyone.') + '</p>'
+          + '<button type="button" class="gr-modal-btn" data-rc="message">' + escHtml('Message ' + name) + '</button>'
+          + '<button type="button" class="gr-modal-btn-text" data-rc="no-intercept">No — cancel the request</button>';
+        return;
+      }
+      const subtitle = _st.subtitle || (repost
+        ? (name || 'Your worker') + ' starts within a day and has held the time for you. They will see this, so a short line is kinder than nothing.'
+        : (o && o.gopher_id)
+          ? (name ? name + ' has' : 'Your worker has') + ' held this time for you. Telling them why takes a second, and it is free to cancel before they start.'
+          : 'No worker has taken this yet, so cancelling is free. Telling us why takes a second.');
+      const words = String(_st.other || '').trim().split(/\s+/).filter(Boolean).length;
+      const complete = S.isReasonComplete(chosen, _st.other);
       body.innerHTML =
-          '<div class="gr-modal-icon">🔄</div>'
-        + '<h4 id="acceptedCancelTitle">Cancel this request?</h4>'
-        + '<p class="gr-modal-sub">' + hiredNames(r) + ' accepted but hasn’t started yet, so you’re '
-        + 'free to make a change — no fee. Want us to line up someone else, or cancel altogether?</p>'
-        + '<button type="button" class="gr-modal-btn" id="acceptedRepost">Repost to new Gophers</button>'
-        + '<button type="button" class="gr-modal-btn-text ec-danger" id="acceptedCancelStop">Cancel request</button>';
-      const rp = document.getElementById('acceptedRepost');
-      const st = document.getElementById('acceptedCancelStop');
-      if(rp) rp.addEventListener('click', doRepost);
-      if(st) st.addEventListener('click', doCancel);
+          '<h4 id="acceptedCancelTitle">' + (repost ? 'Why are you changing worker?' : 'Cancel this request?') + '</h4>'
+        + '<p class="gr-modal-sub">' + escHtml(subtitle) + '</p>'
+        + '<div class="rc-reasons" role="radiogroup" aria-label="Reason">'
+        +   reasons.map(x => '<button type="button" role="radio" class="rc-reason" data-rc-reason="' + x.key + '" aria-checked="' + (x.key === _st.selected) + '">'
+              + '<span class="rc-dot" aria-hidden="true"></span><span>' + escHtml(x.label) + '</span></button>').join('')
+        + '</div>'
+        + (chosen && chosen.other
+            ? '<textarea class="rc-other" id="rcOther" maxlength="' + S.MAX_REASON_LENGTH + '" placeholder="Tell us what happened…">' + escHtml(_st.other || '') + '</textarea>'
+              + '<div class="rc-count" id="rcCount">' + (words < S.MIN_REASON_WORDS
+                  ? 'Please use at least ' + S.MIN_REASON_WORDS + ' words'
+                  : String(_st.other || '').length + ' / ' + S.MAX_REASON_LENGTH) + '</div>'
+            : '')
+        + (repost
+            ? '<button type="button" class="gr-modal-btn" data-rc="submit"' + (complete ? '' : ' disabled') + '>Send it back out</button>'
+            : '<button type="button" class="gr-modal-btn" data-rc="close">Keep my request</button>'
+              + '<button type="button" class="gr-modal-btn-text" data-rc="submit"' + (complete ? '' : ' disabled') + '>Cancel request</button>')
+        + (_st.fromFork ? '<button type="button" class="gr-modal-btn-text rc-quiet" data-rc="back">Back</button>' : '');
+      const ta = document.getElementById('rcOther');
+      if(ta && _st.focusOther){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
     }
 
     function renderStartedNote(){
+      /* The app hides Cancel once the worker has started, and the server
+         refuses it with exactly this sentence (cancel.js STARTED_REFUSAL). */
       body.innerHTML =
           '<div class="gr-modal-icon">🔒</div>'
         + '<h4 id="acceptedCancelTitle">This request is already in progress</h4>'
-        + '<p class="gr-modal-sub">Your Gopher has started, so it can’t be cancelled here. Message your '
-        + 'Gopher below, or contact support if there’s a problem.</p>'
-        + '<button type="button" class="gr-modal-btn" id="acceptedMsg">Message your Gopher</button>'
-        + '<button type="button" class="gr-modal-btn-text" id="acceptedGotIt">Got it</button>';
-      const msg = document.getElementById('acceptedMsg');
-      const ok  = document.getElementById('acceptedGotIt');
-      if(msg) msg.addEventListener('click', () => { const id=_dashId; close(); if(id && typeof openInboxThread==='function') openInboxThread(id); });
-      if(ok)  ok.addEventListener('click', close);
+        + '<p class="gr-modal-sub">Your Gopher has already started this request, so it can no longer be cancelled in the app. Please message your Gopher or contact Support.</p>'
+        + '<button type="button" class="gr-modal-btn" data-rc="message">Message your Gopher</button>'
+        + '<button type="button" class="gr-modal-btn-text" data-rc="close">Got it</button>';
     }
 
-    function doRepost(){
-      const id = _dashId;
-      const r = (DASH_DATA.activeRequests || []).find(x => x.id === id);
-      if(!r){ close(); return; }
-      // Release every hired Gopher and exclude them from re-accepting this repost
-      // (they were dropped on purpose). Production: notify them + push a fresh
-      // broadcast to nearby Gophers (BACKEND SEAM).
+    /* "Find a different worker" — the server's repost (PATCH /orders/:id/repost):
+       the worker is detached, the SAME request goes back to the marketplace at
+       the same time, and the card hold carries over. Here: release the hired
+       worker (excluded from re-accepting), drop the live job, back to pending. */
+    function doRepost(reason){
+      const r = rec(); if(!r){ close(); return; }
       r.excludedGophers = r.excludedGophers || [];
       (r.interestedWorkers || []).forEach(w => {
         if(w.status === 'hired') r.excludedGophers.push(w.id != null ? w.id : w.name);
       });
       r.interestedWorkers = (r.interestedWorkers || []).filter(w => w.status !== 'hired');
-      // Back to broadcasting, same request record (no repost-from-scratch).
+      r.live = null;
+      r.userStarted = false;
       r.status = 'pending';
-      r.statusLabel = 'Reposted · Live';
-      r.needsAttention = true;
-      r.worker = 'Finding your Gopher…';
+      r.statusLabel = 'Pending';
+      r.worker = 'Finding your worker…';
+      r.repostReason = reason || null;   // the server stores it as cancellation_reason
+      dashOrder(r);
+      close();
       if(typeof renderActiveRequests === 'function') renderActiveRequests();
       if(typeof renderRequestDetail === 'function') renderRequestDetail();
-      if(typeof recountKpis === 'function') recountKpis();
-      showReposted();
+      goHome();
     }
 
-    function showReposted(){
-      body.innerHTML =
-          '<div class="gr-modal-icon gr-modal-icon-go">✅</div>'
-        + '<h4 id="acceptedCancelTitle">Done — we’re on it</h4>'
-        + '<p class="gr-modal-sub">We’ve released your previous Gopher and re-posted your request to nearby '
-        + 'Gophers. We’ll let you know the moment someone new accepts.</p>'
-        + '<button type="button" class="gr-modal-btn" id="acceptedRepostDone">Got it</button>';
-      const d = document.getElementById('acceptedRepostDone');
-      if(d) d.addEventListener('click', close);
-    }
-
-    function doCancel(){
+    function doCancel(reason){
       const id = _dashId;
       close();
       if(id && typeof window.__cancelDashboardRequest === 'function'){
-        window.__cancelDashboardRequest(id);
-        if(typeof showSection === 'function') showSection('previous');
+        window.__cancelDashboardRequest(id, reason);
+        goHome();
       }
     }
 
-    function close(){ overlay.hidden = true; _dashId = null; body.innerHTML = ''; }
+    function submit(){
+      const S = appShared(); const r = rec();
+      if(!S || !r) return;
+      const reasons = _st.mode === 'repost' ? S.REPOST_REASONS : S.REQUESTER_REASONS;
+      const chosen = reasons.find(x => x.key === _st.selected) || null;
+      if(!S.isReasonComplete(chosen, _st.other)) return;
+      const reason = chosen.other ? String(_st.other || '').trim() : chosen.label;
+      if(_st.mode === 'repost') doRepost(reason); else doCancel(reason);
+    }
 
+    body.addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-rc-reason]');
+      if(pick){
+        _st.selected = pick.dataset.rcReason;
+        _st.intercept = true;   // a scheduling conflict offers the time change first
+        _st.focusOther = true;
+        renderReasons();
+        _st.focusOther = false;
+        return;
+      }
+      const b = e.target.closest('[data-rc]');
+      if(!b || b.disabled) return;
+      const act = b.dataset.rc;
+      const r = rec();
+      if(act === 'close'){ close(); return; }
+      if(act === 'message'){ const id = _dashId; close(); if(id && typeof openInboxThread === 'function') openInboxThread(id); return; }
+      if(act === 'cancel'){ _st = { mode:'cancel', fromFork:true }; renderReasons(); return; }
+      if(act === 'repost'){
+        const S = appShared(), o = dashOrder(r);
+        const at = o && (o.request_schedule_time || o.delivery_eta);
+        if(S && !S.repostNeedsReason(at)){ doRepost(null); return; }   // outside 24 h: nothing to ask
+        _st = { mode:'repost', fromFork:true }; renderReasons(); return;
+      }
+      if(act === 'back'){ _st = null; renderFork(r); return; }
+      if(act === 'no-intercept'){ _st.intercept = false; renderReasons(); return; }
+      if(act === 'submit'){ submit(); return; }
+    });
+    body.addEventListener('input', (e) => {
+      if(e.target.id !== 'rcOther' || !_st) return;
+      _st.other = e.target.value;
+      const S = appShared(); if(!S) return;
+      const words = String(_st.other).trim().split(/\s+/).filter(Boolean).length;
+      const c = document.getElementById('rcCount');
+      if(c) c.textContent = words < S.MIN_REASON_WORDS
+        ? 'Please use at least ' + S.MIN_REASON_WORDS + ' words'
+        : _st.other.length + ' / ' + S.MAX_REASON_LENGTH;
+      const reasons = _st.mode === 'repost' ? S.REPOST_REASONS : S.REQUESTER_REASONS;
+      const ok = S.isReasonComplete(reasons.find(x => x.key === _st.selected) || null, _st.other);
+      const sb = body.querySelector('[data-rc="submit"]'); if(sb) sb.disabled = !ok;
+    });
+
+    function close(){ overlay.hidden = true; _dashId = null; _st = null; body.innerHTML = ''; }
+
+    /* The fork (E-12): a worker is booked and has not started. */
     window.__openAcceptedCancelModal = (dashId) => {
-      const r = (DASH_DATA.activeRequests || []).find(x => x.id === dashId) || null;
-      if(!r) return;
+      _dashId = dashId; _st = null;
+      const r = rec(); if(!r) return;
+      renderFork(r);
+      overlay.hidden = false;
+    };
+    /* The reasons (E-14, and the worker-cancelled page's Cancel). opts.subtitle
+       replaces the default line where it would be untrue (the app passes its
+       own on the worker-cancelled page). */
+    window.__openCancelReasons = (dashId, opts) => {
       _dashId = dashId;
-      renderChoice(r);
+      _st = { mode:'cancel', fromFork:false, subtitle:(opts && opts.subtitle) || null };
+      if(!rec()) return;
+      renderReasons();
       overlay.hidden = false;
     };
     window.__openStartedCantCancel = (dashId) => {
-      _dashId = dashId;
+      _dashId = dashId; _st = null;
       renderStartedNote();
       overlay.hidden = false;
     };
-    // Demo helpers (console): preview either state without a live request.
-    window.__previewAcceptedCancel = () => { _dashId = null; renderChoice({ interestedWorkers:[{status:'hired',name:'Marcus T.'}] }); overlay.hidden = false; };
-    window.__previewStartedCantCancel = () => { _dashId = null; renderStartedNote(); overlay.hidden = false; };
 
     overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
     document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.hidden) close(); });
@@ -25936,7 +25954,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     var S = appShared(), o = dashOrder(r);
     if(!S || !o) return null;
     var card = S.cardModel(o);
-    r.needsAttention = needsYouKind(card.kind);
+    // Off the app's Home (confirmed and paid) nothing needs the requester.
+    r.needsAttention = needsYouKind(card.kind) && GopherDashOrder.onHome(o);
     return card;
   }
   /* May the requester cancel? The app's rule, requesterCancelWindow.js —
@@ -26122,7 +26141,13 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
          worker starts, a waiting cost adjustment NEEDS YOU. Green for good
          news to act on, red only for a failed payment (owner, 10/4). null for
          the moment before the helpers load; the ready event redraws. */
-      const card = dashCard(r);
+      /* A confirmed, paid order has left the app's Home (GET /orders/v3) and
+         sits in its Request History as "Completed" (services/requestHistory.js
+         STATUS_BADGE), so here it reads that, never "needs you". */
+      const _o = dashOrder(r);
+      const _left = !!(_o && window.GopherDashOrder && !GopherDashOrder.onHome(_o));
+      if(_left) r.needsAttention = false;
+      const card = _left ? { kind:'calm', pill:'Completed', go:'View \u203a' } : dashCard(r);
       const kind = card ? card.kind : '';
       const needs = card ? needsYouKind(kind) : false;
       const actionBtn = needs
@@ -26517,9 +26542,11 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     // longer an option — hide the header Cancel button and show a short note.
     // Before start (pending, incl. an accepted-but-not-started Gopher) the
     // button stays; __openCancelModal routes it to the right cancel flow.
-    const _started = ((window.GopherRequestLogic && window.GopherRequestLogic.jobBlocksCancel)
-      ? window.GopherRequestLogic.jobBlocksCancel(r)
-      : (r.status === 'in-progress' || r.status === 'active' || r.status === 'completed'));
+    /* The APP's cancel window (requesterCancelWindow.js, E-11): open while the
+       request is pending, scheduled, or accepted — a worker booked but not yet
+       started — and closed from the worker's In Progress on, as the server
+       refuses (cancel.js job_has_started). */
+    const _started = !dashCanCancel(r);
     const _cancelBtnEl = document.getElementById('reqDetailCancelBtn');
     if(_cancelBtnEl) _cancelBtnEl.style.display = _started ? 'none' : '';
     /* ⛔ REMOVED (owner deck, 2026-09-27). The cancel BUTTON is already hidden
@@ -26945,7 +26972,12 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     // Cost-adjustment card sits directly below the request header and ABOVE the
     // assigned-worker block — in-progress + r.pendingAdjustment only. The breakdown
     // modal (fixed overlay, hidden) is appended once at the end of the detail body.
-    const _showAdj = (r.status === 'in-progress' && r.pendingAdjustment);
+    /* Every live state, as the app shows it (requestOrder.js: isLiveState &&
+       hasActiveCog) — accepted, scheduled, picked_up, purchased, delivered —
+       not only "in progress" (E-22). */
+    const _o = dashOrder(r);
+    const _showAdj = !!(r.pendingAdjustment && _o
+      && ['accepted','scheduled','picked_up','purchased','delivered'].indexOf(_o.aasm_state) !== -1);
     const adjustmentCard  = _showAdj ? buildAdjustmentCard(r)  : '';
     const adjustmentModal = _showAdj ? buildAdjustmentModal(r) : '';
     // One hidden Details modal per counter-offer (opened by that card's Details button).
@@ -26953,7 +26985,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       ? r.counterOffers.map((co, ci) => buildCounterModal(r, co, ci)).join('')
       : '';
     const completionModals = buildCompletionModals(r);
-    body.innerHTML = buildReportModal(r) + buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
+    body.innerHTML = buildReportModal(r) + buildWorkerCancelledBlock(r) + buildNoShowBlock(r) + buildCompletionBlock(r) + headerHtml + adjustmentCard + workersHtml + adjustmentModal + counterModals + completionModals;
 
     // ── EVENT DELEGATION — attached ONCE per body element ───────────────
     // All buttons inside body (worker actions, assigned-card Message,
@@ -26986,7 +27018,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         if(target.closest('[data-confirm-complete]')){ const r = getR(); if(r) resolveCompletion(r); return; }
         if(target.closest('[data-rate-open]')){
           const r = getR(); if(!r) return;
-          if(r.ratingValue == null) r.ratingValue = 5;
+          // No score until the requester taps one — the app's rating starts empty (E-44).
           const o = document.getElementById('ratingOverlay'); if(o) o.hidden = false;
           paintRating(r); return;
         }
@@ -26996,7 +27028,23 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           r.ratingValue = parseInt(target.closest('[data-star]').dataset.star, 10);
           paintRating(r); return;
         }
-        if(target.closest('[data-rate-submit]')){ const r = getR(); if(r) submitRating(r); return; }
+        if(target.closest('[data-rate-fav]')){
+          /* The app saves MY Gopher the moment the box is ticked (rating.js →
+             PATCH /favgopher/:id), not on Done. */
+          const r = getR(); if(!r) return;
+          const w = ratingWorker(r);
+          if(w && w.name){
+            if(MyGophers.has(w.name)) MyGophers.remove(w.name);
+            else {
+              MyGophers.add({ name: w.name, rating: r.ratingValue, photo: w.photo, badge: w.badge,
+                              tier: w.tier || w.badge, lastCategory: r.title || '', lastUsed: r.when || '' });
+              r.favoritedByRequestor = true;
+            }
+            if(typeof renderGophers === 'function') renderGophers();
+          }
+          paintRating(r); return;
+        }
+        if(target.closest('[data-rate-submit]')){ const r = getR(); if(r && r.ratingValue) submitRating(r); return; }
         // ── Report a request (see REPORT_REASONS above) ──
         if(target.closest('[data-report-open]')){
           const o = document.getElementById('reportOverlay'); if(o) o.hidden = false; return;
@@ -27046,16 +27094,68 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           renderActiveRequests();
           return;
         }
-        if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
-        if(target.closest('[data-dispute-submit]')){
+        const wc = target.closest('[data-wc]');
+        if(wc){
           const r = getR(); if(!r) return;
-          const box = document.getElementById('disputeReason'); r.disputeReason = box ? box.value : '';
+          if(wc.dataset.wc === 'keep'){
+            /* PATCH /orders/:id/keep_listed: the same request stays out to
+               workers; the hold carries over. */
+            r.workerCancelChoice = 'keep_listed';
+            dashOrder(r); renderActiveRequests(); renderRequestDetail();
+          } else if(wc.dataset.wc === 'cancel' && window.__openCancelReasons){
+            window.__openCancelReasons(r.id, { subtitle: 'This closes the request and releases your payment hold straight away. A short reason helps us understand what happened.' });
+          }
+          return;
+        }
+        if(target.closest('[data-dispute-open]')){ const r = getR(); if(!r) return; r.disputeState = 'entry'; renderRequestDetail(); return; }
+        if(target.closest('[data-dispute-back]')){ const r = getR(); if(!r) return; r.disputeState = null; renderRequestDetail(); return; }
+        const dChip = target.closest('[data-dispute-reason]');
+        if(dChip){
+          /* One reason, tap again to clear — the app's chips (DisputeViews.js).
+             Toggled in place so the details typed so far are kept. */
+          const r = getR(); if(!r) return;
+          const v = dChip.dataset.disputeReason;
+          r.disputeChip = (r.disputeChip === v) ? '' : v;
+          document.querySelectorAll('[data-dispute-reason]').forEach(c => {
+            const on = c.dataset.disputeReason === r.disputeChip;
+            c.classList.toggle('on', on); c.setAttribute('aria-checked', String(on));
+          });
+          return;
+        }
+        if(target.closest('[data-dispute-submit]')){
+          const r = getR(); const S = appShared(); if(!r || !S) return;
+          const box = document.getElementById('disputeReason');
+          /* "Reason: details", as the app sends it (dispute.js disputeText), and
+             the server's own floor: under 10 characters is refused with its own
+             sentence (report_dispute.js MIN_DISPUTE_REASON) — E-38. */
+          const text = S.disputeText(r.disputeChip || '', box ? box.value : '');
+          if(String(text).trim().length < 10){
+            dashAlert('Please tell us what went wrong before opening a dispute. Your Gopher only sees what you write here, so a short sentence about the problem is enough \u2014 for example what was missing, wrong or damaged.');
+            return;
+          }
+          r.disputeReason = text;
           r.disputeState = 'disputed';
-          if(typeof toast === 'function') toast('Dispute submitted — your Gopher has been notified.');
+          r.disputedAt = Date.now();     // the server's disputed_at: the 24 h clock starts here
           renderActiveRequests(); renderRequestDetail(); return;
         }
-        if(target.closest('[data-dispute-unable]')){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = false; return; }
-        if(target.closest('[data-unable-close]') || target.id === 'unableOverlay'){ const o = document.getElementById('unableOverlay'); if(o) o.hidden = true; return; }
+        if(target.closest('[data-dispute-unable]')){
+          /* Only once the server says so: is_dispute_unable_to_resolve is true
+             for 24 h after the dispute opened (retrieve.js) — E-40. Then the
+             app sends PUT unable_to_dispute and shows "Sent to Gopher support";
+             from there Gopher support owns it — E-41. */
+          const r = getR(); if(!r) return;
+          const o = dashOrder(r);
+          if(!o || o.is_dispute_unable_to_resolve !== false) return;
+          r.unableToDispute = true;
+          dashOrder(r);
+          renderActiveRequests();
+          const ov = document.getElementById('unableOverlay'); if(ov) ov.hidden = false;
+          return;
+        }
+        if(target.closest('[data-unable-close]') || target.id === 'unableOverlay'){
+          const o = document.getElementById('unableOverlay'); if(o) o.hidden = true;
+          renderRequestDetail(); return;
+        }
 
 
         // 1) Worker action buttons (Hire / Consider / Deny / Approve / Remove / profile / message)
@@ -27600,7 +27700,9 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
   // "Rate now" CTA can reopen them; options filled live by the delegated handler
   // based on the star value stored on r.ratingValue.
   function buildCompletionModals(r){
-    if(!r || !(r.awaitingConfirmation || (r.confirmed && !r.rated))) return '';
+    const _o = dashOrder(r);
+    const _paidDecided = !!(_o && appShared() && appShared().disputeResolution(_o) === 'paid_worker');
+    if(!r || !(r.awaitingConfirmation || ((r.confirmed || _paidDecided) && !r.rated))) return '';
     const w = (r.live && (Array.isArray(r.live.crew) ? r.live.crew[0] : r.live.worker)) || {};
     const photos = r.completionPhotos || [];
     const snap = r.reviewSnapshot || {};
@@ -27622,23 +27724,29 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       </div>`;
     const ratingModal = `
       <div class="gr-modal-overlay gr-mo--tall" id="ratingOverlay" hidden>
-        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Rate your Gopher">
-          <div class="ca-head"><h3>Rate your Gopher</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Rate your worker">
+          <div class="ca-head"><h3>Thanks for confirming</h3><button class="ca-x" data-rate-close aria-label="Close">✕</button></div>
           <div class="ca-body">
-            <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${w.name}">` : ''}<div class="rate-name">Please rate ${w.name}</div></div>
-            <div class="rate-stars" id="rateStars">${[1,2,3,4,5].map(n => `<button class="rate-star on" data-star="${n}" aria-label="${n} star">★</button>`).join('')}</div>
-            <textarea class="rate-comment" id="rateComment" placeholder="Please feel free to leave a comment"></textarea>
+            <div class="rate-sent">Receipt sent to your email</div>
+            <div class="rate-worker">${w.photo ? `<img class="rate-photo" src="${w.photo}" alt="${escHtml(w.name || '')}">` : ''}<div class="rate-name">${escHtml('How did ' + (w.name || 'your worker') + ' do?')}</div></div>
+            <div class="rate-stars" id="rateStars" role="radiogroup" aria-label="${escHtml('Rate ' + (w.name || 'your worker'))}">${[1,2,3,4,5].map(n => `<button class="rate-star" role="radio" aria-checked="false" data-star="${n}" aria-label="${n} of 5">★</button>`).join('')}</div>
+            <textarea class="rate-comment" id="rateComment" placeholder="Please feel free to leave a comment..."></textarea>
             <div class="rate-opts" id="rateOpts"></div>
-            <div class="ca-actions"><button class="ca-approve rate-submit" data-rate-submit>Done</button></div>
+            <div class="ca-actions"><button class="ca-approve rate-submit" data-rate-submit disabled>Done</button></div>
           </div>
         </div>
       </div>`;
+    /* The app's "Sent to Gopher support" sheet (Orderdispute.js), word for word. */
     const unableModal = `
       <div class="gr-modal-overlay gr-mo--tall" id="unableOverlay" hidden>
-        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Dispute escalated">
-          <div class="ca-head"><h3>Unable to resolve</h3><button class="ca-x" data-unable-close aria-label="Close">✕</button></div>
+        <div class="gr-modal gr-m--flush" role="dialog" aria-modal="true" aria-label="Unable to resolve">
+          <div class="ca-head"><h3>Sent to Gopher support</h3><button class="ca-x" data-unable-close aria-label="Close">✕</button></div>
           <div class="ca-body">
-            <p class="cmp-modal-copy">We're sorry things didn't go as originally planned. Gopher, Inc has been notified of the unresolved dispute and will be in touch timely. Please make sure you have saved any/all correspondence and/or pictures related to the disputed request. While your dispute is being investigated, you can continue to use the Gopher. If you need further assistance, please contact Gopher Support.</p>
+            <p class="cmp-modal-copy">We're sorry things didn't go as originally planned.</p>
+            <p class="cmp-modal-copy">Gopher, Inc has been notified of the unresolved dispute and will be in touch timely.</p>
+            <p class="cmp-modal-copy">Please make sure you have saved any/all correspondence and/or pictures related to the disputed request.</p>
+            <p class="cmp-modal-copy">While your dispute is being investigated, you can continue to use the Gopher.</p>
+            <p class="cmp-modal-copy">If you need further assistance, please contact <b>Gopher Support.</b></p>
             <div class="ca-actions"><button class="ca-approve" data-unable-close>Done</button></div>
           </div>
         </div>
@@ -27646,104 +27754,74 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     return detailsModal + ratingModal + unableModal;
   }
 
-  // Paint the rating stars + star-conditional options from r.ratingValue (default 5).
-  // Request has no per-element closure (single delegated listener), so rating state
-  // lives on the request object and the DOM is updated in place.
+  /* ── Rating — the app's rating screen (src/component/rating.js), E-44 ──
+     No score until the requester taps one, and Done stays off until then.
+     Once scored: a comment, and ONE box — "Add {name} as a MY Gopher", ticked
+     only if they already are one ("{name} is one of your MY Gophers"), saved
+     the moment it is ticked. No "Recommend", no "Do not send requests again":
+     the app has neither. Its band reads "Thanks for confirming" / "Receipt
+     sent to your email". The app's holes are stars here, so its "Tap a hole
+     to rate" reads "Tap a star to rate". */
+  function ratingWorker(r){
+    const crew = r && r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
+    return crew[0] || (r && r.live && r.live.worker)
+      || ((r && r.interestedWorkers) || []).find(w => w.status === 'hired') || null;
+  }
   function paintRating(r){
-    const val = (r.ratingValue == null) ? 5 : r.ratingValue;
-    document.querySelectorAll('#rateStars .rate-star').forEach(s => s.classList.toggle('on', parseInt(s.dataset.star, 10) <= val));
+    const val = r.ratingValue || 0;
+    document.querySelectorAll('#rateStars .rate-star').forEach(s => {
+      const n = parseInt(s.dataset.star, 10);
+      s.classList.toggle('on', n <= val);
+      s.setAttribute('aria-checked', String(n === val));
+    });
     const opts = document.getElementById('rateOpts');
+    const done = document.querySelector('#ratingOverlay [data-rate-submit]');
+    if(done) done.disabled = !val;
     if(!opts) return;
-    const w = (r.live && (Array.isArray(r.live.crew) ? r.live.crew[0] : r.live.worker)) || {};
-    const wname = w.name || 'your Gopher';
-    opts.innerHTML = (val >= 4)
-      ? `<label class="rate-opt"><input type="checkbox" id="optFav" checked> Add as MY Gopher</label>
-         <label class="rate-opt"><input type="checkbox" id="optRec" checked> Recommend ${wname} for similar jobs</label>`
-      : `<label class="rate-opt rate-opt-block"><input type="checkbox" id="optBlock"> Do not send requests to ${wname} again</label>`;
+    const w = ratingWorker(r) || {};
+    const name = w.name || 'your worker';
+    const short = String(name).split(/\s+/)[0] || name;
+    if(!val){ opts.innerHTML = '<div class="rate-hint">Tap a star to rate</div>'; return; }
+    const isMine = !!(w.name && MyGophers.has(w.name));
+    opts.innerHTML =
+        '<label class="rate-opt"><input type="checkbox" data-rate-fav' + (isMine ? ' checked' : '') + '> '
+      +   escHtml(isMine ? short + ' is one of your MY Gophers' : 'Add ' + short + ' as a MY Gopher') + '</label>'
+      + '<p class="rate-note">Please remind ' + escHtml(name) + ' to select “confirmed” in the app to initiate your payout!</p>';
   }
 
-  // Confirm finalizes IMMEDIATELY; rating is decoupled and optional (INV-RATING,
-  // ruled Jul 12 2026). Mirrors Connect resolveCompletion: the re-render rebuilds a
-  // fresh rating modal (kept in the DOM until rated), which we then open as a prompt.
+  // Confirm finalizes IMMEDIATELY; the rating follows, as in the app.
   function resolveCompletion(r){
+    /* The server refuses Confirm while a cost adjustment is unanswered
+       (update.js find_pending_cost_adjustment → 400) and the app shows its
+       sentence (E-24). */
+    if(r.pendingAdjustment){
+      dashAlert('Please wait for Cost Adjustment Accept Or Decline');
+      return;
+    }
     r.awaitingConfirmation = false;
     r.confirmed = true;
     r.statusLabel = 'Completed';
-    if(typeof toast === 'function') toast('Completion confirmed — receipt emailed, payment released');
     renderActiveRequests();
     renderRequestDetail();
-    if(r.ratingValue == null) r.ratingValue = 5;
+    // Straight to the rating, as the app goes from Confirm to its rating screen.
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = false;
     paintRating(r);
   }
 
-  // Rating submit — records the score and clears the card's "Rate now" CTA. The
+  // Rating submit — records the score (POST /ratings in the app) and clears the
+  // card's "Rate now". MY Gopher was already saved when its box was ticked. The
   // toast never echoes the star to the worker (INV-RATING: other-party privacy).
   function submitRating(r){
+    if(!r.ratingValue) return;           // Done is off until a score is tapped
     r.rated = true;
-    const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
-    const _w    = _crew[0] || (r.live && r.live.worker) || null;
-    const wnm = (_w && _w.name) || 'your Gopher';
-    // G40-300 Scenario 4 — the follow-up options are ACTED ON, not just shown.
-    // paintRating() renders #optFav/#optRec (≥4★) or #optBlock (≤3★) with the
-    // favorite/recommend boxes CHECKED BY DEFAULT. Before this, submitRating
-    // ignored all three, so the default-on "Add as MY Gopher" was collected and
-    // silently discarded — the requester saw a ticked box and nothing happened.
-    // Read them here, while the overlay is still in the DOM (it is hidden below,
-    // and paintRating rebuilds #rateOpts on every open, so there is no stale
-    // node to read from a previous rating).
-    const optFav   = document.getElementById('optFav');
-    const optRec   = document.getElementById('optRec');
-    const optBlock = document.getElementById('optBlock');
-    const wantFav = !!(optFav && optFav.checked);
-    const wantRec = !!(optRec && optRec.checked);
-    let favAdded = false;
-    if(wantFav && _w && _w.name){
-      // Upsert through the canonical API — never touch DASH_DATA.myGophers
-      // directly (see the MY Gophers store contract above). `has()` is checked
-      // first only so the toast can tell the truth about whether this ADDED
-      // someone; add() is an idempotent upsert either way.
-      favAdded = !MyGophers.has(_w.name);
-      MyGophers.add({
-        name: _w.name,
-        rating: r.ratingValue,
-        photo: _w.photo,
-        badge: _w.badge,
-        tier: _w.tier || _w.badge,
-        // Recency comes from the request's own `when` string ('Completed Today,
-        // 1:42 PM'). There is NO `category`/`date` field on a request record —
-        // verified at runtime, where guessing those names produced a record with
-        // every enrichment field blank. `title` is the closest thing to a
-        // specialty, so it seeds lastCategory rather than leaving the card line
-        // empty; MyGophers.add() preserves any richer existing value.
-        lastCategory: r.title || '',
-        lastUsed: r.when || ''
-      });
-      // Canonical favourite flag on the request record. Currently a dormant seam
-      // (seeded, no consumer yet) — but it is the name the backend reads, so the
-      // Favorite recognition is recorded where the rebuild will look for it.
-      r.favoritedByRequestor = true;
-    }
-    if(wantRec && _w && _w.name){
-      // Recommendations are a flat, de-duplicated name list on the request
-      // record; the recommend modal is the surface that consumes them.
-      DASH_DATA.recommended = DASH_DATA.recommended || [];
-      if(!DASH_DATA.recommended.includes(_w.name)) DASH_DATA.recommended.push(_w.name);
-    }
-    // ≤3★ block path: the option is rendered and its state captured on the
-    // request, but there is NO customer-side blocked-worker store on this
-    // surface to route it into (the existing block list is worker-side, in Go).
-    // Recorded rather than silently dropped so the backend seam is visible.
-    if(optBlock && optBlock.checked && _w && _w.name) r.doNotSendAgain = _w.name;
+    const c = document.getElementById('rateComment');
+    r.ratingComment = c ? c.value.trim() : '';
+    const w = ratingWorker(r);
+    const wnm = (w && w.name) || 'your worker';
     const ov = document.getElementById('ratingOverlay'); if(ov) ov.hidden = true;
-    if(typeof toast === 'function'){
-      toast(favAdded
-        ? 'Thanks — your rating was submitted and ' + wnm + ' was added to MY Gophers'
-        : 'Thanks — your rating of ' + wnm + ' was submitted');
-    }
+    if(typeof toast === 'function') toast('Thanks — your rating of ' + wnm + ' was submitted');
     renderActiveRequests();
     renderRequestDetail();
-    if(typeof renderGophers === 'function' && favAdded) renderGophers();
   }
 
   function buildAdjustmentModal(r){
@@ -28184,45 +28262,140 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     }, 1000);
   })();
 
+  /* A one-button alert in the G40-308 modal kit — where the app shows the
+     server's sentence (showAlert / serverAlert), the web shows the same one. */
+  function dashAlert(message){
+    const ov = document.createElement('div');
+    ov.className = 'gr-modal-overlay';
+    ov.innerHTML = '<div class="gr-modal" role="alertdialog" aria-modal="true">'
+      + '<p class="gr-modal-sub dash-alert-msg">' + escHtml(message) + '</p>'
+      + '<button type="button" class="gr-modal-btn" data-dash-alert-ok>OK</button></div>';
+    ov.addEventListener('click', (e) => { if(e.target === ov || e.target.closest('[data-dash-alert-ok]')) ov.remove(); });
+    document.body.appendChild(ov);
+    ov.hidden = false;
+    const b = ov.querySelector('[data-dash-alert-ok]'); if(b) b.focus();
+    return ov;
+  }
+
+  /* ── The worker cancelled (E-18) — the app's "Worker cancelled" page
+     (ReleaseRecoveryWatcher.js), read from r.order: gopher_released_at and
+     the worker's cancellation_reason. Two choices only, as the app has them:
+     "Assign new worker" (keep_listed — the same request goes back out, the
+     card hold covers it) and "Cancel request" (the reasons, with the app's
+     own subtitle for this screen). No Edit (owner, 2026-09-02: blocked), and
+     no clock: the app's countdown is the server's release_expires_at, which
+     the web does not have. Reached today only through the PT harness. */
+  function buildWorkerCancelledBlock(r){
+    const o = dashOrder(r);
+    if(!o || !o.gopher_released_at) return '';
+    const first = (o.gopher && o.gopher.first_name) || '';
+    return `
+      <div class="cmp-block cmp-dispute wc-block">
+        <div class="cmp-pill-grey">Worker cancelled</div>
+        <div class="cmp-title">${escHtml(first ? first + ' cancelled your request' : 'Your worker cancelled your request')}</div>
+        ${o.cancellation_reason ? `<div class="cmp-sub"><b>${escHtml(first ? first + '’s reason:' : 'Their reason:')}</b> “${escHtml(o.cancellation_reason)}”</div>` : ''}
+        <div class="wc-head">What would you like to do?</div>
+        <div class="wc-opt">
+          <div class="wc-opt-title">Assign new worker</div>
+          <div class="wc-opt-sub">Goes back to the marketplace with your original offer and terms. Your existing payment hold covers it — nothing is re-charged.</div>
+          <button class="cmp-confirm-btn" data-wc="keep">Assign new worker</button>
+        </div>
+        <div class="wc-opt">
+          <div class="wc-opt-title">Cancel request</div>
+          <div class="wc-opt-sub">Closes this request and releases your funds straight away. To change any details, cancel and submit a new request.</div>
+          <button class="cmp-details-link wc-cancel" data-wc="cancel">Cancel request</button>
+        </div>
+      </div>`;
+  }
+
+  /* ── Completion, dispute and what follows — the app's screens, chosen by the
+     app's own router (openRequest.js orderScreenState over r.order):
+       startDispute       → "Completed by …" with Confirm, or the dispute form,
+                            or the open dispute (Confirm still allowed, E-39)
+       unresolvedDispute  → Gopher support has it; no Confirm (E-41)
+       disputeResolved    → the outcome support decided (E-43)
+       requestorder       → nothing here: a delivered order whose photo step is
+                            still open (E-35), a worker-raised review (E-46) */
   function buildCompletionBlock(r){
-    if(!r || !(r.confirmed || r.awaitingConfirmation)) return '';
-    const _crew = r.live && Array.isArray(r.live.crew) ? r.live.crew : [];
-    const wnm = (_crew[0] && _crew[0].name)
-      ? _crew[0].name
-      : (r.worker || 'your Gopher').replace(/\s*\(.*$/, '').replace(/\s*·.*$/, '');
+    if(!r) return '';
+    const S = appShared(), o = dashOrder(r);
+    if(!S || !o) return '';
+    const w = ratingWorker(r) || {};
+    const wnm = w.name || (r.worker || 'your worker').replace(/\s*\(.*$/, '').replace(/\s*·.*$/, '');
+    const first = (o.gopher && o.gopher.first_name) || wnm;
     if(r.confirmed){
-      return `<div class="cmp-confirmed">✓ Completion confirmed — payment released to ${wnm}.</div>`
+      return `<div class="cmp-confirmed">✓ Thanks for confirming · Receipt sent to your email</div>`
         + (r.rated ? '' : `<button class="cmp-rate-now" data-rate-open>Rate now →</button>`);
     }
+    const next = S.orderScreenState(o).next;
+    if(next === 'disputeResolved'){
+      const paid = S.disputeResolution(o) === 'paid_worker';
+      const line = paid ? `Gopher support reviewed it and paid ${first}.`
+        : S.disputeResolution(o) === 'cancelled_refunded'
+          ? 'Gopher support reviewed it, cancelled the request and refunded you.'
+          : 'Gopher support reviewed it and closed it.';
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-pill-grey">Resolved</div>
+        <div class="cmp-title">Your dispute was settled</div>
+        <div class="cmp-sub">${escHtml(line)}</div>
+        ${paid && !r.rated ? `<button class="cmp-confirm-btn" data-rate-open>${escHtml('Rate ' + first + ' →')}</button>` : ''}
+      </div>`;
+    }
+    if(next === 'unresolvedDispute'){
+      const opened = o.disputed_at ? new Date(o.disputed_at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
+      return `
+      <div class="cmp-block cmp-dispute">
+        <div class="cmp-pill-grey">Pending dispute resolution</div>
+        <div class="cmp-sub">${escHtml(opened ? 'Gopher support has it · opened ' + opened : 'Gopher support has it')}</div>
+        ${o.dispute_reason ? `<div class="cmp-sub"><b>Your dispute</b> “${escHtml(o.dispute_reason)}”</div>` : ''}
+        <div class="cmp-sub"><b>${escHtml(wnm)}</b> · Text or call is still available</div>
+      </div>`;
+    }
+    if(next !== 'startDispute') return '';
     if(r.disputeState === 'entry'){
       return `
       <div class="cmp-block cmp-dispute">
-        <div class="cmp-title">Dispute Request</div>
-        <div class="cmp-sub">Please enter the reason you're disputing the request below. Once done, your Gopher will be notified. Keep in mind a cost adjustment can still be made if it is an issue with the total price offered. You can also still message and/or call your Gopher.</div>
-        <textarea class="cmp-dispute-box" id="disputeReason" placeholder="Enter a comment"></textarea>
-        <button class="cmp-confirm-btn" data-dispute-submit>Submit</button>
+        <button class="cmp-back" data-dispute-back>← Back</button>
+        <div class="cmp-title">What went wrong?</div>
+        <div class="dsp-reasons" role="radiogroup" aria-label="Reason">
+          ${S.DISPUTE_REASONS.map(x => `<button type="button" role="radio" class="dsp-chip${r.disputeChip === x ? ' on' : ''}" aria-checked="${r.disputeChip === x}" data-dispute-reason="${escHtml(x)}">${escHtml(x)}</button>`).join('')}
+        </div>
+        <label class="dsp-label" for="disputeReason">Details</label>
+        <textarea class="cmp-dispute-box" id="disputeReason" placeholder="Enter dispute details here..."></textarea>
+        <div class="cmp-disclaimer">You and your worker can work it out together. Everything in the app still works during a dispute.</div>
+        <button class="cmp-confirm-btn" data-dispute-submit>Submit dispute</button>
       </div>`;
     }
-    if(r.disputeState === 'disputed'){
+    if(o.disputed){
+      /* The app's open dispute (DisputeViews.js DisputePending): Confirm stays
+         (E-39); "Unable to resolve" only once the server allows it, 24 h after
+         the dispute opened, with the app's own countdown words (E-40). */
+      const canEscalate = o.is_dispute_unable_to_resolve === false;
+      const wait = S.escalationLabel(o.disputed_at);
+      const opened = o.disputed_at ? new Date(o.disputed_at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
       return `
       <div class="cmp-block cmp-dispute">
-        <div class="cmp-title">Request Disputed</div>
-        <div class="cmp-pill-dispute">Dispute pending</div>
-        <div class="cmp-disclaimer">If your request has been resolved between you and your Gopher, please confirm below.</div>
-        <button class="cmp-confirm-btn" data-confirm-complete>Confirm completion</button>
-        <div class="cmp-disclaimer">If after contacting your Gopher, you are still unable to resolve the dispute, please select Unable to resolve below.</div>
-        <button class="cmp-unable-btn" data-dispute-unable>Unable to resolve</button>
+        <div class="cmp-pill-grey">Dispute open</div>
+        <div class="cmp-title">Dispute in progress</div>
+        ${o.dispute_reason ? `<div class="cmp-sub"><b>Your dispute</b> “${escHtml(o.dispute_reason)}”</div>` : ''}
+        <ol class="dsp-timeline">
+          <li class="on"><b>Dispute opened</b><span>${escHtml(opened)}</span></li>
+          <li class="cur"><b>${escHtml(first + ' is making it right')}</b><span>Message, call, or review their cost adjustment</span></li>
+          <li><b>Gopher support steps in</b><span>${escHtml(canEscalate ? 'Available now' : wait)}</span></li>
+        </ol>
+        <button class="cmp-confirm-btn" data-confirm-complete>Resolved? Confirm completion</button>
+        <button class="cmp-unable-btn" data-dispute-unable${canEscalate ? '' : ' disabled'}>Unable to resolve</button>
+        ${canEscalate ? '' : `<div class="cmp-disclaimer" data-escalation-wait>${escHtml(wait)}</div>`}
       </div>`;
     }
     return `
       <div class="cmp-block">
-        <div class="cmp-title">Request Completed by ${wnm}!</div>
-        <div class="cmp-sub">Review the completed delivery, then confirm to finalize your order and release payment to your Gopher.</div>
+        <div class="cmp-title">${escHtml('Completed by ' + wnm)}</div>
         <button class="cmp-details-link" data-completion-details>Tap to view details</button>
         <button class="cmp-confirm-btn" data-confirm-complete>Confirm completion</button>
-        <div class="cmp-disclaimer">Selecting Confirm completion will finalize your order. Your receipt will be emailed immediately after. Once this request is confirmed, it cannot be cancelled or refunded.</div>
-        <button class="cmp-dispute-btn" data-dispute-open>Dispute</button>
-        <div class="cmp-disclaimer">If request is disputed, you and your Gopher will have the ability to work together to resolve any issues. All app features will still be available during a dispute.</div>
+        <div class="cmp-disclaimer">Confirming finalizes your order and emails your receipt. It can’t be cancelled or refunded after.</div>
+        <button class="cmp-dispute-btn" data-dispute-open>Something wrong? Dispute</button>
       </div>`;
   }
 

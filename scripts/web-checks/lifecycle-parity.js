@@ -39,7 +39,16 @@ for (const f of ['Final/gopher-request.html', 'Final/gopher-connect.html']) {
   const src = fs.readFileSync(path.join(R, f), 'utf8');
   ok(/GopherRequestLogic\s*&&\s*window\.GopherRequestLogic\.jobHasStarted|GopherRequestLogic\.jobHasStarted/.test(src),
      `${path.basename(f)} calls the shared jobHasStarted()`);
-  ok(/jobBlocksCancel/.test(src), `${path.basename(f)} calls the shared jobBlocksCancel()`);
+  /* Request's cancel window is now the Request APP's own rule
+     (services/requesterCancelWindow.js, vendored by scripts/sync-app-helpers.py
+     — owner 2026-10-15, "Port the app's logic"): cancel stays open after a hire
+     until the worker taps In Progress. Still ONE definition, still delegated;
+     it is just the app's instead of a web list. Connect keeps the shared one. */
+  if (/gopher-request\.html$/.test(f)) {
+    ok(/S\.requesterCanCancel\(/.test(src), `${path.basename(f)} calls the app's requesterCanCancel() (vendored)`);
+  } else {
+    ok(/jobBlocksCancel/.test(src), `${path.basename(f)} calls the shared jobBlocksCancel()`);
+  }
   /* ⚠️ NOT asserting "only one status list in the file". Tried it; it counts
      SEMANTICALLY DIFFERENT tests as duplication — the cost-adjustment window
      (`in-progress` only), the substage map, "find the active request". They

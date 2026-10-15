@@ -145,6 +145,14 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
   ok(M.wholeOffer({ cat: 'moving', perWorkerCost: 100, workersNeeded: 3 }) === 100
      && M.wholeOffer({ cat: 'labor', perWorkerCost: 120, workersNeeded: 3 }) === 360,
      'RQ-51: the offer is for the whole job; only Labor is per Gopher × crew');
+  const quit = hiredAt(0); M.sync(quit, NOW);
+  Object.assign(quit, { __ptGopherCancelled: true, __ptCancelReason: 'Flat tyre', status: 'pending', live: null, interestedWorkers: [] });
+  const released = M.sync(quit, NOW);
+  ok(released.aasm_state === 'pending' && !!released.gopher_released_at && released.gopher && released.gopher.first_name === 'Marcus'
+     && released.cancellation_reason === 'Flat tyre',
+     'a worker who cancels stays named, with their reason, until the requester chooses (E-18)');
+  quit.workerCancelChoice = 'keep_listed';
+  ok(M.sync(quit, NOW).gopher_released_at === null, '..."Assign new worker" (keep_listed) closes that page');
   const api = { __source: 'api', aasm_state: 'picked_up' };
   ok(M.sync({ order: api, status: 'pending' }) === api, 'an order that came from the API is never overwritten');
 
@@ -162,7 +170,25 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
     ['S.headline(', 'headline from homeCards.headline (E-50)'],
     ['S.liveSteps(', 'step bar from liveStatus.liveSteps (E-33)'],
     ['S.requesterCanCancel(', 'cancel window from requesterCancelWindow (E-11)'],
+    ['S.REQUESTER_REASONS', 'cancel reasons from cancelReasons (E-13, E-14)'],
+    ['S.repostNeedsReason(', 'the 24 h repost-reason rule from cancelReasons (E-12)'],
+    ['S.orderScreenState(', 'which completion screen from openRequest.orderScreenState (E-35, E-41, E-43)'],
+    ['S.disputeText(', 'the dispute text from dispute.disputeText (E-38)'],
+    ['S.escalationLabel(', 'the 24 h escalation words from dispute.escalationLabel (E-40)'],
+    ['S.DISPUTE_REASONS', 'the dispute reason chips from dispute.DISPUTE_REASONS (E-38)'],
   ]) ok(page.includes(needle), `the dashboard reads ${what}`);
+  /* The server's own sentences, where the app shows them verbatim. */
+  for (const [needle, what] of [
+    ['Please wait for Cost Adjustment Accept Or Decline', 'Confirm refused while an adjustment is unanswered (E-24, update.js)'],
+    ['Please tell us what went wrong before opening a dispute.', 'a dispute reason under 10 characters is refused (E-38, report_dispute.js)'],
+    ['so it can no longer be cancelled in the app.', 'the started-job refusal (E-11, cancel.js STARTED_REFUSAL)'],
+  ]) ok(page.includes(needle), `the server's words: ${what}`);
+  for (const [needle, what] of [
+    ['id="optRec"', 'a "Recommend" box on the rating (the app has none, E-44)'],
+    ['id="optBlock"', 'a "Do not send requests again" box on the rating (the app has none, E-44)'],
+    ['if(r.ratingValue == null) r.ratingValue = 5', 'a pre-selected 5-star score (the app starts empty, E-44)'],
+    ['re-alert Gophers', 'a "keep looking / re-alert" step before cancelling (the app has none, E-14)'],
+  ]) ok(!page.includes(needle), `no ${what}`);
   for (const [needle, what] of [
     ['data-g40-paydecline', '"Simulate decline" (a 5-minute reassign the server does not do, E-19)'],
     ['data-g40-expiresim', '"Simulate expiry" ("expired — workers are interested", E-9)'],
