@@ -15189,6 +15189,31 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      $58.31 in the app. Every PRICE uses payCrew(); crewCount() stays the head
      count for display. */
   const payCrew = () => state.category === 'labor' ? crewCount() : 1;
+  /* MONEY-26 (App wins): the hold the SERVER authorises -- the total plus 20%
+     rounded UP to the cent (helpers/functions.js: Math.ceil(total * 20 / 100) +
+     total, in cents; ADJUSTABLE_AMOUNT_PER 20), the figure the app shows
+     (adjustable_amount). total * 1.20 rounded to nearest showed $31.09 for a
+     $25.91 total; the card was held $31.10 (order 66493). */
+  /* MONEY-17: the app's low-offer note, same words and same "Send as-is". */
+  function lowOfferShows(){
+    if(state.step !== 5 || state.payMode !== 'set' || state.payByHour || state.lowOfferAck) return false;
+    const m = (typeof getCurrentOfferModel === 'function') ? getCurrentOfferModel() : null;
+    const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,'')) || 0;
+    return !!(m && payNum > 0 && payNum < m.low);
+  }
+  function lowOfferNoteHtml(){
+    return '<div class="low-offer-note" data-low-offer' + (lowOfferShows() ? '' : ' hidden') + ' style="margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF7E6;border:1px solid #F5D9A6;font-family:\'DM Sans\';font-size:13px;color:var(--navy);">'
+      + '<div style="display:flex;gap:8px;align-items:flex-start;"><span aria-hidden="true">⚠️</span><p style="margin:0;">That’s a little on the low side for a request like this. An offer in the “fair” range gets accepted faster — but you can still send as-is if you prefer.</p></div>'
+      + '<button type="button" data-low-offer-ack style="margin-top:8px;background:transparent;border:0;color:var(--navy);font-weight:700;text-decoration:underline;cursor:pointer;padding:0;">Send as-is</button></div>';
+  }
+  function syncLowOfferNote(){
+    const n = $content && $content.querySelector('[data-low-offer]');
+    if(n) n.hidden = !lowOfferShows();
+  }
+  const holdFor = (total) => {
+    const c = Math.round(Number(total || 0) * 100);
+    return (c + Math.ceil(c * 20 / 100)) / 100;
+  };
   /* John 10/15, "300 on every category": one rule on web and app, every
      description holds at most 300 characters. (The app had it on Moving and
      Custom Task only; its other flows get it in the same pass.) */
@@ -16299,6 +16324,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
             </div>
             ${''/* ⛔ OFFER-FIELD LINE — keep these THREE in sync: gopher-request.html, gopher-connect.html and _prototypes/Request/gopher-request-flow.html. Owner 2026-10-04. They had drifted into three different sentences; two of them never stated the 100% point at all, and Connect's named the WRONG FEE. "each" was load-bearing when the offer was PER WORKER on every crew; RQ-51 (John 10/15, "Whole job (app)") made it per worker on LABOR ONLY (workerPayNum = perWorkerPay * payCrew()), so John ruled 10/15 "The app's words everywhere": "Exact amount your worker takes home: 100% of your offer. Request fees are shown at review." Connect (parked) and the prototype (lame duck) keep the old line until they are rebuilt. The fee noun is surface-specific — Request Fee here, Connect Fee on Connect. */}
             <div style="font-family:'DM Sans';font-size:12px;color:var(--muted);margin-top:6px;">Exact amount your worker takes home: 100% of your offer. Request fees are shown at review.</div>
+            ${state.payMode === 'set' && !state.payByHour ? lowOfferNoteHtml() : ''}
             ${state.payByHour ? (() => {
               // Compute per-worker wage and combined total based on hours × $/hr × workers
               const rate = parseFloat(state.payAmount.replace(/[^\d.]/g,'')) || 0;
@@ -16727,7 +16753,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
         ] : [
           `Your payment method <b>won't be authorized</b> until a ${saysGopher() ? 'Gopher' : 'worker'} is matched to your request.`,
-          `When a ${saysGopher() ? 'Gopher' : 'worker'} accepts, we'll pre-authorize your card for an additional 20% — bringing the hold to <b>${fmt(totalNum * 1.20)}</b>. If no cost adjustments are needed, you'll only be charged the original total of <b>${fmt(totalNum)}</b>.`,
+          `When a ${saysGopher() ? 'Gopher' : 'worker'} accepts, we'll pre-authorize your card for an additional 20% — bringing the hold to <b>${fmt(holdFor(totalNum))}</b>. If no cost adjustments are needed, you'll only be charged the original total of <b>${fmt(totalNum)}</b>.`,
           `Once accepted, you can <b>text or call your ${saysGopher() ? 'Gopher' : 'worker'}</b> directly, and <b>track route progress in real time</b> when applicable.`,
           `When the request is completed, you'll be prompted to <b>confirm on your end</b> before final billing.`
         ];
@@ -17576,7 +17602,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         let v = $cost.value.replace(/[^0-9.]/g,'');
         const firstDot = v.indexOf('.');
         if(firstDot !== -1){
-          v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
+          // MONEY-2 (App wins): two decimals, as the app's currency field
+          // (decimalsLimit 2). "0.004" passed the > $0 check here and was $0.
+          v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g,'').slice(0, 2);
         }
         if(v !== $cost.value) $cost.value = v;
         state.costOfItems = v ? '$' + v : '';   // empty when cleared (no pre-fill)
@@ -17587,17 +17615,22 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       });
     }
     const $pay = $content.querySelector('#payAmountInput');
+    const $lowAck = $content.querySelector('[data-low-offer-ack]');
+    if($lowAck) $lowAck.addEventListener('click', () => { state.lowOfferAck = true; syncLowOfferNote(); });
     if($pay){
       $pay.addEventListener('input', () => {
         let v = $pay.value.replace(/[^0-9.]/g,'');
         const firstDot = v.indexOf('.');
         if(firstDot !== -1){
-          v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g,'');
+          // MONEY-2 (App wins): two decimals, as the app's currency field
+          // (decimalsLimit 2). "0.004" passed the > $0 check here and was $0.
+          v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g,'').slice(0, 2);
         }
         if(v !== $pay.value) $pay.value = v;
         state.payAmount = v ? '$' + v : '';   // empty when cleared (no pre-fill)
         state.suggestedOfferUsed = false;     // manual entry overrides — iQ suggestion not used → N
         state.lowOfferAck = false;            // re-arm: a changed amount can re-trigger the low-offer notice
+        syncLowOfferNote();                   // MONEY-17: the note follows the typing
         if(state.step === 5 && state.payMode === 'set'){
           const payNum = parseFloat(v);
           $btnNext.classList.toggle('is-disabled', !(payNum > 0));
@@ -18288,13 +18321,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // Skipped in hourly mode (owner, 2026-08-26, same ruling as hiding the iQ
     // helper there): the model is a WHOLE-JOB figure and payAmount is a per-hour
     // rate — comparing them warns on fair rates and blesses low ones.
-    if(state.step === 5 && state.payMode === 'set' && !state.payByHour && !state.lowOfferAck){
-      const offerModel = getCurrentOfferModel();
-      const payNum = parseFloat(String(state.payAmount).replace(/[^\d.]/g,'')) || 0;
-      if(offerModel && payNum > 0 && payNum < offerModel.low){
-        if(window.__openLowOfferNotice && window.__openLowOfferNotice(offerModel)) return;
-      }
-    }
+    /* MONEY-17 (App wins): the app shows this as a note under the offer field
+       that never stops Continue (smartPriceSuggestion.js: "a helper, never a
+       gate"). It is drawn by lowOfferNoteHtml() / syncLowOfferNote() now. */
     // ── Low-availability backstop ── On the address step (detected by the
     // route-availability line, which only renders there), if the Gopher coverage for the
     // route is in the Gopher iQ low tier (<20 — same threshold the website uses), warn once
