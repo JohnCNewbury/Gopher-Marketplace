@@ -26,8 +26,8 @@ const send = src.slice(src.indexOf('function launchGoToNow('), src.indexOf('func
 for (const f of ['pickups:', 'dropoffs:', 'itemsPurchased:', 'costOfItems:', 'ageRestricted:'])
   ok(send.includes(f), `D-55: a GO-To send carries ${f.replace(':', '')}`);
 const again = src.slice(src.indexOf('window.__startRequestAgainFast = function'), src.indexOf('window.__startRequestAgainNow = function'));
-ok(/if\(prev\.itemsPurchased\)\{/.test(again) && /if\(prev\.ageRestricted && state\.category === 'delivery'/.test(again),
-   'D-55: the prefill takes the purchase and (Delivery-only, gated) A/R');
+ok(/if\(prev\.itemsPurchased\)\{/.test(again) && /if\(prev\.ageRestricted && AGE_SWITCH_CATEGORIES\.indexOf\(state\.category\) !== -1/.test(again),
+   'D-55: the prefill takes the purchase and (gated) A/R on the A/R-switch categories (Delivery + Custom Task, CT port)');
 
 console.log(bad ? `\n${bad} FAILED` : '\nALL PASS — GO-To set-up, price and send match the app (AGE-12, MONEY-38, D-55)');
 process.exit(bad ? 1 : 0);

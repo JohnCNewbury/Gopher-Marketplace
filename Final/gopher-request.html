@@ -13331,7 +13331,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   // ---- Request Fee model ----
   // Total = COG+Offer + Request Fee, where COG+Offer = worker payment + cost of
   // items (both user-entered), and the Request Fee = per-category base fee +
-  // age-restricted surcharge (delivery only) + an 8% instant-transfer fee.
+  // age-restricted surcharge (Delivery + Custom Task, AGE_SWITCH_CATEGORIES) + an
+  // 8% instant-transfer fee.
   // Source of truth: Gopher_Connect_Pricing.xlsx → "Gopher App" column (the
   // consumer Gopher Request schedule, NOT Connect's Standard/Business columns).
   const GOPHER_FEE = {
@@ -13345,6 +13346,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     other:    1.99,   // Other / Custom
   };
   const AGE_FEE = 1.99;          // Age-Restricted Delivery surcharge (Request) — workbook "Gopher App" A/R Fee
+  /* CT port (MONEY-5 / D-7, owner 10/13 "Web `other` gets the app's Custom Task
+     logic"): the categories with an age-restricted SWITCH, as the app has them --
+     Delivery (deliveryflow.json has_age_restriction) and Custom Task
+     (CustomTaskDetails.js "Slide if this custom task includes Age-restricted
+     items"). On these the A/R flag carries the $1.99 fee and the TrustShield $1,
+     exactly as the server prices `age_restricted?` (create.js summary:
+     has_age_restriction -> AGE_RESTRICTED_FEE + getAgeRestrictedDiscount; create:
+     trust_shield_verified && age_restricted_fee -> TRUST_SHIELD_DISCOUNT). The
+     switch itself is drawn only for canSeeAgeRestricted() (under 21 sees nothing
+     A/R). Custom Task $40, A/R, TrustShield: 40 + 1.99 + 1.99 + 3.52 - 1.00 = $46.50. */
+  const AGE_SWITCH_CATEGORIES = ['delivery', 'other'];
   const INSTANT_TRANSFER_RATE = 0.08;  // 8% — always applied
   // G40-625: the one 8% formula (web = server = app). Base in dollars; the
   // base is taken to whole cents first, the 8% is rounded to the nearest
@@ -13406,7 +13418,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const promo = getPromo(state.promoApplied ? state.promoCode : null);
 
     const baseGopher = (GOPHER_FEE[state.category] ?? GOPHER_FEE.other);
-    const baseAge = (state.category === 'delivery' && state.ageRestricted) ? AGE_FEE : 0;
+    const baseAge = (AGE_SWITCH_CATEGORIES.indexOf(state.category) !== -1 && state.ageRestricted) ? AGE_FEE : 0;
     const feeSubtotal = baseGopher + baseAge;   // Gopher + A/R, pre-ITF
 
     // ITF — 8% of the FULL, pre-discount base (the FULL A/R fee, before the
@@ -13420,11 +13432,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const totalFees = feeSubtotal + instantTransfer;
 
     // TrustShield: flat $1.00 off the TOTAL, verified person. Applies ONLY to
-    // AGE-RESTRICTED delivery, or ALL ride-share (ride is not sub-categorized by age).
-    // NOT non-age-restricted delivery, and not any other category.
+    // AGE-RESTRICTED delivery or Custom Task (the A/R fee's own categories, as the
+    // server: TrustShield only where an A/R fee is charged), or ALL ride-share (ride
+    // is not sub-categorized by age). NOT a non-age-restricted request.
     const hasTS = (typeof window.__hasTrustShield === 'function')
       ? !!window.__hasTrustShield() : !!(state && state.trustShield);
-    const tsEligible = hasTS && ((state.category === 'delivery' && state.ageRestricted) || state.category === 'ride');
+    const tsEligible = hasTS && ((AGE_SWITCH_CATEGORIES.indexOf(state.category) !== -1 && state.ageRestricted) || state.category === 'ride');
     const tsRaw = tsEligible ? 1.00 : 0;
 
     // D9: the promo is the SERVER's coupon discount (shared module couponDiscount):
@@ -14445,15 +14458,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        The numbers are the ones Step 7 already foots for the confirmation screen
        — computeRequestFee() on the same COG+offer base — so the frozen deal and
        the screen the customer agreed on cannot disagree. Do NOT re-derive them. */
-    const snapCostItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
+    const snapCostItems = showsPurchase() ? toNum(state.costOfItems) : 0;   // CT port: Delivery + Custom Task
     const snapWorkerPay = perWorker * payCrew();   // RQ-51: Labor only
     const snapFee = computeRequestFee(snapCostItems + snapWorkerPay);
     const reviewSnapshot = {
       category: c.name,
       description: (state.description || '').trim(),
       urgency: state.scheduleType === 'now' ? 'Customer needs ASAP' : null,
+      /* CT port (B-2): a Custom Task with no pick-up HAS no pick-up (the app sends
+         none) -- not the 'Any location' sentinel, which reads as Delivery's
+         "Gopher's choice" in the recap and on the map. */
       pickup: state.noSpecificPickup
-        ? 'Any location'
+        ? (state.category === 'other' ? '' : 'Any location')
         : ((Array.isArray(state.pickupStops) && state.pickupStops[0]) || ''),
       dropoff: (Array.isArray(state.dropoffStops) && state.dropoffStops[0]) || '',
       costOfItems: snapCostItems,
@@ -14472,7 +14488,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       // record, so anything reading it downstream (the Go app's category feed,
       // the worker's cost-of-items, the job description) had nothing to read.
       category: state.category || null,
-      costOfItems: state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
+      costOfItems: purchaseCounts() ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0,
       descriptionFull: (state.description || '').trim(),
       dupKey: computeRequestDupKey(),
       perWorkerCost: perWorker,
@@ -14483,7 +14499,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
          and this app's OWN detail sheet already itemised Total $121.00. Three
          surfaces, two answers. */
       amountLabel: (function(){
-        var cog = state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0;
+        var cog = purchaseCounts() ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0;
         var tot = perWorker * payCrew() + cog;   // RQ-51: Labor only
         return tot ? `$${tot.toFixed(2)} total` : '';
       })(),
@@ -14782,6 +14798,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     ['pickupStops', 'dropoffStops', 'pickupUnit', 'destUnit'].forEach(k => {
       if(k in fresh) state[k] = JSON.parse(JSON.stringify(fresh[k]));
     });
+    ctPickupDefault();           // CT port: Custom Task opens with "No pick up" ON
     state.step = 2;              // Job details — re-walk this category's gates
     state.maxStepReached = 2;
     return true;
@@ -15045,7 +15062,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // Junk (Moving keeps item count + "Multiple items"). state.hazardous stays.
     hazardous:    ['delivery','moving','home','labor','yard','ride','other'], // Junk Removal only
     // ──── Step 3 Worker info gating ────
-    workerSetup:  ['delivery','home','ride'],                        // hidden for Delivery, Home, Ride
+    /* CT port 2026-10-15 (B-19): 'other' joined workerSetup -- the app's Custom
+       Task has no crew ("Custom Task has no crew", YardReviewExtras.js; no
+       crew card in customTaskFlowSteps.js CT_STEP_FIELDS). */
+    workerSetup:  ['delivery','home','ride','other'],                // hidden for Delivery, Home, Ride, Custom Task
     laborMgmt:    ['delivery','home','ride'],                        // hidden for Delivery, Home, Ride
     /* "How is the worker selected?" choice.
        MOVING shows it (owner 2026-10-03, spec v3.20 / MV-03): "Web and PT
@@ -15053,10 +15073,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        category with NO First Available — the live app has never had it — so the
        `first` row is suppressed for Moving in renderStep3() and render()
        coerces any stale 'first' away. The rest still force 'select'. */
-    workerSelectChoice: ['other'],                                    // + Labor (G40-578) and Home Services (G40-579), 2026-10-04; + Yard (D13, John 10/13) 2026-10-15: all show the two-option Gopher choice
+    workerSelectChoice: [],                                           // + Labor (G40-578) and Home Services (G40-579), 2026-10-04; + Yard (D13, John 10/13) 2026-10-15: all show the two-option Gopher choice; + Custom Task (CT port, B-15/D-46) 2026-10-15: the app's THREE choices, First available the default
     // ──── Step 4 Location-section visibility ────
-    pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
-    noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
+    /* CT port 2026-10-15 (B-2): Custom Task left both lists. The app's Step 4 is
+       a Pick-up location card with "No pick up — work happens on site" (ON by
+       default) and a Destination with its Unit/Apt # (customTaskFlowSteps.js;
+       CustomTaskPickupSwitch.js). Switched OFF it is a pick-up + a destination. */
+    pickupSection:    ['home','labor','junk','yard'],                 // Delivery, Moving, Ride, Custom Task
+    noSpecificPickup: ['home','labor','junk','yard','ride'],          // Delivery, Moving, Custom Task
     pickupStairs:     ['delivery','home','labor','junk','yard','ride','other'], // Moving only
     // Service-elevator toggle — Moving only. One gate row reused by both the
     // Pickup and Destination toggles (modeled like stairs, tracked per-end).
@@ -15067,7 +15091,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        for EVERY category, which is how it leaves Request without deleting the
        state (the payload snapshot already zeroes it when not visible). */
     serviceElevator:  ['delivery','moving','home','labor','junk','yard','ride','other'], // Connect-only: never shown
-    destStairs:       ['delivery','home','junk','yard','ride'],       // Moving, Labor, Other only -- Junk removed 2026-10-04 (JR-34, ruled NO stairs for Junk)
+    destStairs:       ['delivery','home','junk','yard','ride','other'], // Moving, Labor only -- Junk removed 2026-10-04 (JR-34, ruled NO stairs for Junk); Custom Task removed 2026-10-15 (CT port, B-36: the app asks no stairs on Custom Task)
     multiStop:        ['delivery','moving','home','labor','junk','yard','ride','other'], // Request: single pickup + single destination only (no multi-stop)
     // ──── Step 5 Worker pay ────
     aiPaySuggest: ['home','labor','yard','other'],   // Delivery + Ride + Junk (junk = volume-tier model, owner 2026-07-19)
@@ -15136,7 +15160,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      category marked complete silently grows a Unit/Apt box nobody asked for --
      which is exactly how `mv` came to mean two things and deleted Labor's
      hourly toggle when it was widened (2026-10-04). Keep them apart. */
-  const UNIT_CATEGORIES = ['moving', 'junk', 'labor', 'home', 'ride', 'delivery'];   // ride + delivery take one at BOTH ends
+  /* 'other' joined 2026-10-15 (CT port, B-2): the app's Custom Task has a Unit/Apt #
+     under its destination -- `apt` on the one address, `dropoffapt` on the drop-off
+     when there is a pick-up -- and NONE under the pick-up (customtaskflow.json), so
+     it is not in PICKUP_UNIT. */
+  const UNIT_CATEGORIES = ['moving', 'junk', 'labor', 'home', 'ride', 'delivery', 'other'];   // ride + delivery take one at BOTH ends
   /* Unit/Apt under the PICK-UP address specifically. UNIT_CATEGORIES above answers
      "does this category take a Unit/Apt at all" (it gates the DESTINATION one); this
      answers "at the pick-up end too". Was an inline (moving || ride) check until
@@ -15272,6 +15300,73 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* D14 / B-22: paying by the hour turns bids off, as the app's Labor flow does
      (laborFlowSteps.js: bidsAllowed = !isHourly). Hourly now exists on Labor only. */
   const bidsAllowed = () => isVisible('bidsOption') && !state.payByHour;
+
+  /* ── Custom Task ('other'): the live app's logic (CT port, John 10/13: "Web
+     `other` gets the app's Custom Task logic, A/R switch hidden from under-21";
+     10/15 "App wins") ─────────────────────────────────────────────────────────
+     Reference: app src/component/yardFlow/customTaskFlowSteps.js,
+     CustomTaskDetails.js, CustomTaskPickupSwitch.js, json/requester/customtaskflow.json.
+
+     PURCHASE (CT-1, CT-3, D-24). Delivery and Custom Task ask "requires a
+     purchase" + cost of items. A Custom Task request for BIDS never carries a
+     purchase: choosing bids turns it off and zeroes the cost (customtaskflow.json
+     gopher_bid on_checked_actions), the Step-2 cost check is skipped while bids
+     are on (ctStepProblem), and pricing drops a purchase switched back on
+     (ctValuesBeforePricing: gopher_bid -> need_purchase false, cost 0). */
+  const PURCHASE_CATEGORIES = ['delivery', 'other'];
+  function purchaseCounts(){
+    if(!state.itemsPurchased) return false;
+    return !(state.category === 'other' && state.payMode === 'bids' && bidsAllowed());
+  }
+  const showsPurchase = () => purchaseCounts() && PURCHASE_CATEGORIES.indexOf(state.category) !== -1;
+
+  /* PICK-UP (B-2). Custom Task's "No pick up — work happens on site" switch is ON
+     by default: only an explicit OFF shows the pick-up (CT_SHOW_WHEN pickup_), and
+     a request re-opened with a pick-up opens with it OFF (customTaskReopenFields).
+     Run wherever a request ENTERS Custom Task, after its addresses are set. Here
+     the switch is noSpecificPickup -- the same "no pick-up" meaning it has on
+     Delivery and Moving, so the gates, the payload and the review read one key. */
+  function ctPickupDefault(){
+    if(state.category !== 'other') return;
+    state.noSpecificPickup = !(Array.isArray(state.pickupStops)
+      && state.pickupStops.some(t => String(t || '').trim()));
+  }
+  /* A Custom Task is not a two-address category for the same-place check (D4):
+     the app runs none on it (stepFlows.js: no samePlace on the Custom Task flow)
+     and the server's TWO_ADDRESS_CATEGORIES has no "Other" (helpers/same_place.js).
+     No trip-distance pill either (no tripDistance field on its Step 4). */
+  const twoAddressRoute = () => isVisible('pickupSection') && !state.noSpecificPickup
+    && state.category !== 'other';
+  /* WHO (B-15, D-46). Custom Task offers the app's THREE choices, First available
+     the default (customtaskflow.json `available` defaultValue true). Names are
+     John's for Custom Task (CT_GOPHER_CHOICE_NAMES, 10/03: "First available, I'll
+     select my worker, Prioritize MY Gopher(s)"); each ? carries the app's sheet
+     words for that option with those names (InfoSheetContent.js firstAvailable /
+     smg / favGopher, optionNames from tip3-tip5) -- "worker", as the app says it. */
+  const CT_CHOICE = {
+    first: ['First available', [
+      'When selecting <b>First available</b>, the first worker to accept your request is off to the races to get what you need done!',
+      'This option requires little to no engagement on your part.']],
+    select: ['I&rsquo;ll select my worker', [
+      'When choosing <b>I&rsquo;ll select my worker</b>, each worker interested will create an alert in the app for you.',
+      'You can see their rating, reviews and job history before making your selection!',
+      'This option requires some engagement during the selection process.']],
+    my: ['Prioritize MY Gopher(s)', [
+      'When selecting <b>Prioritize MY Gopher(s)</b>, each favorite you select will be notified of your request.',
+      'If none of your MY Gophers have accepted within about a minute, all other workers in the area will see your request and you will be able to choose the same way as I&rsquo;ll select my worker.',
+      'This option requires some engagement during the selection process, yet only if your MY Gopher is unavailable.']]
+  };
+  function ctChoiceLabel(kind){
+    const c = CT_CHOICE[kind];
+    return `${c[0]}
+              <span class="info-tip" onclick="event.stopPropagation()">
+                <button class="info-btn" aria-label="About ${c[0]}">?</button>
+                <div class="info-popover" role="tooltip">
+                  <h5>${c[0]}</h5>
+                  ${c[1].map(p => `<p>${p}</p>`).join('')}
+                </div>
+              </span>`;
+  }
 
   // ─── TrustShield reminder card (v72) ────────────────────────────────
   // Used identically in two render paths:
@@ -15918,6 +16013,42 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       </div>
       ` : ''}
 
+      ${''/* ░ Custom Task — "Optional criteria" (CT port, CT-1 / CT-2) ░
+            The app's second Step-2 card, in its words and order
+            (CustomTaskDetails.js CUSTOM_TASK_CRITERIA + DEFAULTS): the A/R switch,
+            then "This task requires a purchase", which reveals "Cost of items
+            needed" (placeholder 0.00, no hint, no ?). The A/R switch is drawn ONLY
+            for an account that may carry it -- John 10/13 "A/R switch hidden from
+            under-21" (G40-614); unknown age is not eligible (canSeeAgeRestricted).
+            ⚠ The live app still shows it to everyone (audit CT-2): the web follows
+            the ruling, the app is the one to fix. Unlike Delivery, turning it on
+            does NOT turn the purchase on (the app's Custom Task criterion has no
+            onSet) and there is no TrustShield row on this card. */}
+      ${state.category === 'other' ? `
+      <div class="step-section">
+        <div class="step-section-title">${sstIco('📋')}Optional criteria</div>
+        ${canSeeAgeRestricted() ? `
+        <div class="toggle-row">
+          <button class="toggle-switch ${state.ageRestricted?'on':''}" data-toggle="ageRestricted" aria-label="Slide if this custom task includes Age-restricted items"></button>
+          <span class="tr-label">Slide if this custom task includes Age-restricted items</span>
+        </div>
+        ` : ''}
+        <div class="toggle-row">
+          <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="This task requires a purchase"></button>
+          <span class="tr-label">This task requires a purchase</span>
+        </div>
+        ${state.itemsPurchased ? `
+          <div class="sub-field">
+            <div class="sf-label">Cost of items needed</div>
+            <div class="cost-input-box" id="costOfItemsBox">
+              <span class="ci-currency">$</span>
+              <input type="text" inputmode="decimal" class="cost-amount-input" id="costOfItemsInput" data-field="costOfItems" value="${state.costOfItems.replace(/^\$/,'')}" placeholder="0.00" autocomplete="off" aria-label="Cost of items needed">
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      ` : ''}
+
       <!-- ░ Page 3 — Rider(s) Info (Delivery + Ride only) ░ -->
       ${isVisible('riderInfo') ? `
       <div class="step-section">
@@ -16105,7 +16236,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${hidesFirstAvailable() ? '' : `
           <div class="radio-row ${state.workerSelection==='first'?'selected':''}" data-radio="workerSelection" data-val="first">
             <span class="radio-dot"></span>
-            <span class="rr-label">${isCompletedFlow() ? `First Available
+            <span class="rr-label">${state.category === 'other' ? ctChoiceLabel('first') : isCompletedFlow() ? `First Available
               <span class="info-tip" onclick="event.stopPropagation()">
                 <button class="info-btn" aria-label="About First Available">?</button>
                 <div class="info-popover" role="tooltip">
@@ -16127,7 +16258,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
                 sheet will describe a control that no longer exists. */}
           <div class="radio-row ${state.workerSelection==='select'?'selected':''}" data-radio="workerSelection" data-val="select">
             <span class="radio-dot"></span>
-            <span class="rr-label">${isCompletedFlow() ? `I'll select my worker
+            <span class="rr-label">${state.category === 'other' ? ctChoiceLabel('select') : isCompletedFlow() ? `I'll select my worker
               <span class="info-tip" onclick="event.stopPropagation()">
                 <button class="info-btn" aria-label="About I'll select my worker">?</button>
                 <div class="info-popover" role="tooltip">
@@ -16141,7 +16272,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           ${myUnlocked ? `
           <div class="radio-row ${state.workerSelection==='my'?'selected':''}" data-radio="workerSelection" data-val="my">
             <span class="radio-dot"></span>
-            <span class="rr-label">${isCompletedFlow() ? `Prioritize MY Gopher(s)
+            <span class="rr-label">${state.category === 'other' ? ctChoiceLabel('my') : isCompletedFlow() ? `Prioritize MY Gopher(s)
               <span class="info-tip" onclick="event.stopPropagation()">
                 <button class="info-btn" aria-label="About Prioritize MY Gophers">?</button>
                 <div class="info-popover" role="tooltip">
@@ -16208,7 +16339,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ${isVisible('pickupSection') ? `
       <div class="step-section">
         <div class="step-section-title">${sstIco('📍')}Pick-up location</div>
-        ${isVisible('noSpecificPickup') ? `
+        ${''/* CT port (B-2): Custom Task's switch is the app's "No pick up — work
+              happens on site" (CustomTaskPickupSwitch.js NO_PICKUP_LABEL, ON by
+              default), with no note and no ? ("Like the web, no note and no ?"). */}
+        ${(isVisible('noSpecificPickup') && state.category === 'other') ? `
+        <div class="toggle-row">
+          <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup" aria-label="No pick up — work happens on site"></button>
+          <span class="tr-label">No pick up — work happens on site</span>
+        </div>
+        ` : isVisible('noSpecificPickup') ? `
         <div class="toggle-row">
           <button class="toggle-switch ${state.noSpecificPickup?'on':''}" data-toggle="noSpecificPickup"></button>
           <span class="tr-label">${state.category === 'moving' ? 'Single-location move' : 'Gopher can purchase from anywhere'}
@@ -16216,7 +16355,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           </span>
         </div>
         ` : ''}
-        ${state.noSpecificPickup && isVisible('noSpecificPickup') ? `
+        ${state.category === 'other' && state.noSpecificPickup ? '' : state.noSpecificPickup && isVisible('noSpecificPickup') ? `
           <div class="sub-field">
             <div class="sf-label">${state.category === 'moving' ? 'Single-location move' : 'Pick-up flexibility'}</div>
             <div class="sf-value">${state.category === 'moving' ? 'Your Gopher helps at ONE address only — loading, unloading, or rearranging items on site. This is not a two-location move. Enter the move address under Destination below.' : "Either your Gopher can make the purchase anywhere that has your items, or there's no actual pick-up location for this request."}</div>
@@ -16400,6 +16539,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
             <button class="info-btn" title="${saysGopher() ? 'Gophers' : 'Workers'} send their offers — pick the best one">?</button>
           </span>
         </div>
+        ${''/* CT port (CT-3): the app's Custom Task note under bids, its words
+              (customtaskflow.json bid_note) -- choosing bids turned the purchase off. */}
+        ${(state.category === 'other' && state.payMode === 'bids') ? `
+          <div class="sf-hint" data-ct-bid-note style="margin:4px 0 0;">Requests for bids can’t include buying items, so no cost of items is sent.</div>
+        ` : ''}
         ` : ''}
       </div>
     `;
@@ -16616,7 +16760,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // ── Live cost calculation ──
     const toNum = (v) => parseFloat(String(v).replace(/[^0-9.]/g,'')) || 0;
     const fmt   = (n) => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-    const showCostOfItems = state.itemsPurchased && state.category === 'delivery';
+    const showCostOfItems = showsPurchase();   // CT port: Delivery + Custom Task (never on a Custom Task bid)
     // Worker payment = per-worker amount × number of workers, for BOTH flat and
     // hourly pay. Per-worker is the flat amount, or (rate × hours) when hourly.
     const workerCount = crewCount();
@@ -16656,7 +16800,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         ${(isVisible('riderInfo') && (parseInt(state.numBags, 10) || 0) > 0) ? `<div class="review-row"><span class="rl">Large bags</span><span class="rv">${state.numBags} bag${state.numBags!=='1'?'s':''}</span></div>` : ''}
         ${isVisible('workerSetup') ? `<div class="review-row"><span class="rl">${saysGopher() ? 'Gopher info' : 'Worker info'}</span><span class="rv">${workerInfoStr}</span></div>` : ''}
         ${isVisible('itemInfo') ? `<div class="review-row"><span class="rl">Item info</span><span class="rv">${itemInfoStr}</span></div>` : ''}
-        ${isVisible('pickupSection') ? pickupRows : ''}
+        ${''/* CT port (B-2): a Custom Task with no pick-up shows no Pick-up row
+              (the app's review card draws one only when a pick-up was sent). */}
+        ${(isVisible('pickupSection') && !(state.category === 'other' && state.noSpecificPickup)) ? pickupRows : ''}
         ${isVisible('pickupSection') ? pickupAccessRow : ''}
         ${dropoffRows}
         ${dropoffAccessRow}
@@ -16664,7 +16810,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
               before G40-580, though both are customer input. Distance shows
               only once it has resolved -- its initial value is an em dash, and
               a row reading "Trip distance —" tells the requester nothing. */}
-        ${(isVisible('pickupSection') && !state.noSpecificPickup && state.tripDistance && state.tripDistance !== '\u2014')
+        ${(twoAddressRoute() && state.tripDistance && state.tripDistance !== '\u2014')
             ? `<div class="review-row"><span class="rl">Trip distance</span><span class="rv">${state.tripDistance}</span></div>` : ''}
         ${(isVisible('riderInfo') && (state.specialInstructions || '').trim())
             ? `<div class="review-row"><span class="rl">Special instructions</span><span class="rv" style="text-align:right;max-width:60%;">${escText(state.specialInstructions.trim())}</span></div>` : ''}
@@ -16939,7 +17085,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const s7payHours = state.payByHour ? (parseInt(state.numHours, 10) || 1) : 1;
     const s7perWorkerPay = state.payByHour ? (s7payRate * s7payHours) : s7payRate;
     const s7workerPayNum = s7perWorkerPay * payCrew();   // RQ-51: Labor only
-    const s7costItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
+    const s7costItems = showsPurchase() ? toNum(state.costOfItems) : 0;   // CT port: Delivery + Custom Task
     const s7bids = state.payMode !== 'set';
     const s7fee = computeRequestFee(s7costItems + s7workerPayNum);
     const isServiceDeal = !!(state.fromDeal && state.dealKind === 'service');
@@ -17216,7 +17362,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
               different question. Suppressed on a multi-stop drop-off: one unit
               box under several addresses cannot say which it belongs to. */}
         ${(asksForUnit() && !dropoffExpanded) ? renderUnitInput('dest') : ''}
-        ${(isVisible('pickupSection') && !state.noSpecificPickup) ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
+        ${twoAddressRoute() ? `<div class="trip-distance" style="margin-top:10px;">🛣 Estimated trip distance: <strong id="tripDistanceVal">${state.tripDistance}</strong></div>` : ''}
         ${footer}
       </div>
     `;
@@ -17246,7 +17392,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       const keep = { c: state.category, a: state.ageRestricted, p: state.promoApplied };
       try {
         state.category = window.__mapHistoryCategory ? window.__mapHistoryCategory(rec.category) : state.category;
-        state.ageRestricted = !!rec.ageRestricted && state.category === 'delivery'
+        state.ageRestricted = !!rec.ageRestricted && AGE_SWITCH_CATEGORIES.indexOf(state.category) !== -1
           && (typeof canSeeAgeRestricted !== 'function' || canSeeAgeRestricted());
         state.promoApplied = false;
         return computeRequestFee(workerPayNum + goodsNum);
@@ -17444,11 +17590,24 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         // Age-Restricted slider ON auto-enables "purchase needed" (surfaces the
         // Cost-of-Items field). Turning purchase back ON re-arms the guardrail so
         // it fires again if they toggle it off before Continue.
-        if(key === 'ageRestricted' && state.ageRestricted && !state.itemsPurchased){
+        /* DELIVERY ONLY (CT port): the app's Delivery A/R switch turns the purchase
+           on (deliveryflow.json onSet need_purchase); Custom Task's does not. */
+        if(key === 'ageRestricted' && state.category === 'delivery' && state.ageRestricted && !state.itemsPurchased){
           state.itemsPurchased = true;
         }
         if(key === 'itemsPurchased' && state.itemsPurchased){
           state.agePurchaseAck = false;
+        }
+        /* CT port: Custom Task, as the app's switches (CustomTaskDetails.js toggle;
+           CustomTaskPickupSwitch.js pickupSwitchChanges): purchase OFF zeroes the
+           cost; "No pick up" back ON clears the pick-up, so no stale pick-up is
+           ever sent. */
+        if(state.category === 'other'){
+          if(key === 'itemsPurchased' && !state.itemsPurchased) state.costOfItems = '';
+          if(key === 'noSpecificPickup' && state.noSpecificPickup){
+            state.pickupStops = [''];
+            state.pickupUnit = '';
+          }
         }
         // Bids stay valid for >1-worker requests; only fall back to a set price when bids are truly
         // unavailable (Labor/Yard paying by the hour). NOT triggered by moreThanOneWorker.
@@ -17469,6 +17628,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           } else {
             state.hireAgainGophers = [];
           }
+        }
+        /* CT port (CT-3): on Custom Task, choosing bids turns the purchase off and
+           zeroes the cost, as the app's "Allow workers to bid" does
+           (customtaskflow.json gopher_bid: setUncheck need_purchase, cost_of_goods 0). */
+        if(key === 'payMode' && r.dataset.val === 'bids' && state.category === 'other'){
+          state.itemsPurchased = false;
+          state.costOfItems = '';
         }
         render();
       });
@@ -18187,7 +18353,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   function needsPlaceLookup(){
     if(__placesLookedUp || !window.__gopherPlaces) return false;
     if(!(state.step === 4 || state.step === 6)) return false;
-    if(state.noSpecificPickup || !isVisible('pickupSection')) return false;
+    if(!twoAddressRoute()) return false;   // CT port: no same-place check on Custom Task
     return samePlaceStops().some(function(t){ return String(t || '').trim() && !window.__gopherPlaces.known(t); });
   }
   function samePlacePair(){
@@ -18280,7 +18446,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      a Continue tap, so place any unplaced address before walking. */
   function jumpToReviewChecked(){
     const stops = (typeof samePlaceStops === 'function') ? samePlaceStops() : [];
-    const unplaced = window.__gopherPlaces && !state.noSpecificPickup && isVisible('pickupSection')
+    const unplaced = window.__gopherPlaces && twoAddressRoute()
       && stops.some(function(t){ return String(t || '').trim() && !window.__gopherPlaces.known(t); });
     if(unplaced){
       window.__gopherPlaces.ensure(stops).then(function(){ walkEarlierStepsOk(); });
@@ -18321,7 +18487,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // requested under Other / Ride / etc. can't bypass the ID/waiver flow. If found,
     // block Continue and confirm; the modal's "Yes" routes it to age-restricted
     // Delivery, "No" force-flags ID-at-drop-off (no silent bypass).
-    if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)){
+    /* CT port (owner 10/14 R2): a Custom Task already marked age-restricted is not
+       asked again either, as the app's ageKeywordCheck (`has_age_restriction` ->
+       no sheet) -- the switch is only drawn for an account that may carry it. */
+    if(state.step === 2 && !state.ageKeywordAck && !(state.category === 'delivery' && state.ageRestricted)
+       && !(state.category === 'other' && state.ageRestricted)){
       const scan = ageScanField();   // the description, or Ride's special instructions
       const kw = findAgeRestrictedKeyword(scan.text);
       if(kw){
@@ -18554,6 +18724,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(!CATEGORIES[catKey]) return false;
     resetFlowState();
     state.category = catKey;
+    ctPickupDefault();              // CT port: Custom Task opens with "No pick up" ON
     /* An iQ idea tapped on the home screen travels as GUIDANCE, never as text.
        Need a Ride has no description box, so its line goes to the special
        instructions — the app's guidanceField(), same rule. */
@@ -18623,16 +18794,20 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(Array.isArray(prev.dropoffs) && prev.dropoffs.some(function(t){ return String(t || '').trim(); })){
       state.dropoffStops = prev.dropoffs.slice();
     }
+    /* CT port: a Custom Task with a pick-up re-opens with "No pick up" OFF, one
+       without with it ON (the app's customTaskReopenFields). */
+    ctPickupDefault();
 
     /* D-55: a GO-To's purchase and A/R travel with it. A/R only for an account
-       that may carry it, and only on Delivery (the server's rule); the walk
-       on Submit re-checks everything. */
+       that may carry it, and only where the category has the switch -- Delivery
+       and, since the CT port, Custom Task (the app's customTaskRequestAgainData
+       carries "the age flag"); the walk on Submit re-checks everything. */
     if(prev.itemsPurchased){
       state.itemsPurchased = true;
       const cost = parseFloat(String(prev.costOfItems == null ? '' : prev.costOfItems).replace(/[^0-9.]/g,''));
       if(cost > 0) state.costOfItems = '$' + cost;
     }
-    if(prev.ageRestricted && state.category === 'delivery'
+    if(prev.ageRestricted && AGE_SWITCH_CATEGORIES.indexOf(state.category) !== -1
        && (typeof canSeeAgeRestricted !== 'function' || canSeeAgeRestricted())){
       state.ageRestricted = true;
     }

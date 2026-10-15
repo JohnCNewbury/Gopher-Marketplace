@@ -19,8 +19,10 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
 
 /* D13 */
 ok(FR.isVisible('workerSelectChoice', 'yard'), 'module: Yard shows the worker choice (request)');
-ok(!FR.isVisible('workerSelectChoice', 'other'), 'module: Custom Task still hides it (until the CT port)');
-ok(/workerSelectChoice: \['other'\],/.test(src), "page table: workerSelectChoice hidden for 'other' only");
+/* The CT port (10/15) gave Custom Task the app's three choices, so no Request
+   category hides the choice now (custom-task-port.js checks the three). */
+ok(FR.isVisible('workerSelectChoice', 'other'), 'module: Custom Task shows the worker choice (CT port)');
+ok(/workerSelectChoice: \[\],/.test(src), 'page table: workerSelectChoice hidden for no category');
 ok(/const NO_FIRST_AVAILABLE = \['moving', 'junk', 'labor', 'home', 'yard'\];/.test(src), 'Yard has no First Available');
 
 /* D14 */
