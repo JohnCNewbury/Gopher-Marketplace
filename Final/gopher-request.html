@@ -15189,6 +15189,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      $58.31 in the app. Every PRICE uses payCrew(); crewCount() stays the head
      count for display. */
   const payCrew = () => state.category === 'labor' ? crewCount() : 1;
+  /* The app caps the description at 300 on Moving and Custom Task only. */
+  const DESC_CAP_CATEGORIES = ['moving', 'other'];
 
   // Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
   // crew, so one bid covers every worker (no discrepancy). Hidden only by category (bidsOption matrix)
@@ -15762,7 +15764,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ${isVisible('describe') ? `
       <div class="step-section">
         <div class="step-section-title">${sstIco('✏️')}Describe what you need</div>
-        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3"${state.iqGuidanceField === 'description' && state.iqGuidance ? ' data-iq-guidance="true"' : ''}>${state.description}</textarea>
+        <textarea class="field-textarea" id="descriptionInput" data-field="description" placeholder="${describeHint()}" rows="3"${DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 ? ' maxlength="300"' : ''}${state.iqGuidanceField === 'description' && state.iqGuidance ? ' data-iq-guidance="true"' : ''}>${state.description}</textarea>
+        ${DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 ? `<div class="field-max-note" data-desc-cap${String(state.description || '').length >= 300 ? '' : ' hidden'}>Max characters reached</div>` : ''}
         ${isVisible('addPic') ? (
           state.picThumbs.length === 0
             ? `<button class="field-addpic" data-action="add-pic">
@@ -17469,13 +17472,38 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     $content.querySelectorAll('input[data-field="pickupUnit"], input[data-field="destUnit"]').forEach(el => {
       el.addEventListener('input', () => { state[el.getAttribute('data-field')] = el.value; });
     });
+    /* AGE-8 (App wins): the app keeps the age answer PER WORDING -- the same words
+       are never asked twice (stepFlow/ageKeywordCheck.js). This re-armed the
+       question AND cleared the D6 ID flags on any keystroke, so typing a space
+       and deleting it asked again and dropped the flags. Now: the answer is
+       remembered against the words it was given for, cleared when the words
+       change, and restored if they change back. */
+    function ageAnswerFollowsText(prevText, nextText){
+      if(state.ageKeywordAck && !(state.ageAnswer && state.ageAnswer.text === prevText)){
+        state.ageAnswer = { text: prevText, id: state.idRequiredAtCompletion,
+                            declined: state.ageKeywordDeclined, kw: state.ageKeyword };
+      }
+      if(state.ageAnswer && state.ageAnswer.text === nextText){
+        state.ageKeywordAck = true;
+        state.idRequiredAtCompletion = state.ageAnswer.id;
+        state.ageKeywordDeclined = state.ageAnswer.declined;
+        state.ageKeyword = state.ageAnswer.kw;
+      } else {
+        state.ageKeywordAck = false;
+        state.idRequiredAtCompletion = false;
+        state.ageKeywordDeclined = false;
+        state.ageKeyword = '';
+      }
+    }
+
     /* Same no-re-render pattern: re-rendering per keystroke drops focus mid-word. */
     const $si = $content.querySelector('#specialInstructionsInput');
     if($si) $si.addEventListener('input', () => {
+      const prevSi = state.specialInstructions || '';
       state.specialInstructions = $si.value;
       // Ride's age check reads this field (G40-623), so editing it re-arms the check
       // exactly as editing the description does.
-      if(state.category === 'ride'){ state.ageKeywordAck = false; state.idRequiredAtCompletion = false; state.ageKeywordDeclined = false; state.ageKeyword = ''; }
+      if(state.category === 'ride'){ ageAnswerFollowsText(prevSi, $si.value); }
     });
 
     // Update state on input WITHOUT a full re-render so the field keeps focus
@@ -17483,15 +17511,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const $desc = $content.querySelector('#descriptionInput');
     if($desc){
       $desc.addEventListener('input', () => {
+        /* App wins: Moving and Custom Task cap the description at 300 characters
+           (app MovingDetails.js / CustomTaskDetails.js maxCharLimit 300; the
+           app's other flows set none), paste included. */
+        if(DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 && $desc.value.length > 300){
+          $desc.value = $desc.value.slice(0, 300);
+        }
+        const descNote = $content.querySelector('[data-desc-cap]');
+        if(descNote) descNote.hidden = !(DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 && $desc.value.length >= 300);
+        const prevDesc = state.description || '';
         state.description = $desc.value;
         state.descriptionIsPlaceholder = $desc.value.trim() === '';
         // Editing the description re-arms the age-restricted keyword backstop AND
         // the category-mismatch nudge so newly typed text re-triggers on the next
-        // blur / Continue.
-        state.ageKeywordAck = false;
-        state.idRequiredAtCompletion = false;
-        state.ageKeywordDeclined = false;
-        state.ageKeyword = '';
+        // blur / Continue -- the age answer per wording (AGE-8, above).
+        ageAnswerFollowsText(prevDesc, $desc.value);
         state.userAcknowledgedCategory = false;
         if(state.step === 2 && isVisible('describe')){
           $btnNext.classList.toggle('is-disabled', !$desc.value.trim());
