@@ -233,8 +233,10 @@ rule, the **app** (or the server behind it) changes, not the web.
   worker's ID result only when `age_restricted?` (`update.js` ~2784), and the can't-show-ID path
   (~3467) and the photo policy key on it too. The picks go to John before building.
 - **HQ:** the tag + filter. Not started.
-- **Web: BUILT, waiting for its deploy slot.** Branch `code-logic/pl291-web` (`2414454` + guard
-  `8e3009a`), on the live source.
+- **Web: ✅ DEPLOYED 2026-10-15 10:51 AM ET** (John: "Push + deploy"), together with PL-291.
+  - Live `ec0310f`, twin `06ed602`, from `code-logic/pl291-web` @ `23e0077` (on source `20ebfe4` =
+    live c350380). Exactly 1 file, gopher-request.html.
+  - Content-verified on GitHub Pages, the twin and TigerTech at 10:52.
   - The same sheets and words (Guide A).
   - "No" opens the warning; Edit selects the word and acknowledges nothing; Submit as-is sets
     `idRequiredAtCompletion` + `ageKeywordDeclined` + `ageKeyword` on the request record.
@@ -571,3 +573,21 @@ opening with age + purchase ON after a move. The onload mapping is tested with t
 
 **After it merges:** delete `PENDING_G40_623` from `run_parity_harness.py`. The D1 detector already
 recognises the new shape and FAILS if it regresses.
+
+### PL-291 — web post-hire total (John via UI/UX 10/15 ~9:20 AM; ✅ DEPLOYED 10:51 AM, live `ec0310f`)
+
+- **Defect:** after a hire, web `startJob()` printed the SUM OF WORKER PAY as "$X total".
+  Accepting Tess B.'s $85.31 counter on GR-00129 read "$28.00 total" over a recap saying $85.31.
+- **App truth:** after every hire the app shows the order's `total_charge` (offer + items + fees −
+  discounts; `livePriceRows.js` "Total"). The home card shows no amount.
+- **Fix:**
+  - `__agreedTotalFor(r)` = the frozen deal total (`reviewSnapshot.total`, kept current by counters
+    and cost adjustments).
+  - `__applyHiredBid` writes a hired bid onto the deal, as a counter does.
+  - `__bidBreakdown` reads `trustShieldDiscount` (it read `tsDiscount`, which is never set, so a
+    TrustShield holder's bid was $1 high).
+- **Results (old → new):** counter $28.00 → $85.31 · bid $149.00 → $183.59 · set price $30.00 →
+  $55.07 · TrustShield bid $186.90 (header = recap in each).
+- **Guard:** `scripts/web-checks/post-hire-total.js` (19/20).
+- The bid CARD's all-in price is a deliberate web↔app difference (John 10/15, canon RQ-47): the
+  app's card shows the worker's offer.
