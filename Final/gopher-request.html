@@ -14713,8 +14713,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      Delivery request. These keys are owned by the category and snap back to
      their initial values on every switch.
      Deliberately NOT reset: user-typed, category-agnostic input (description,
-     pics, addresses, specialInstructions), and agePurchaseDismissed, which is a
-     session-level "don't show me this again" preference. */
+     pics, specialInstructions), and agePurchaseDismissed, which is a
+     session-level "don't show me this again" preference. ADDRESSES were in this
+     list until 10/15: John ruled "Carry words + photos, not addresses", so
+     switchCategory() clears them (they are not category-scoped KEYS, because the
+     prefill entry points set them deliberately). */
   const CATEGORY_SCOPED_KEYS = [
     // Delivery — age-restricted + purchase gates
     'ageRestricted','ageKeywordAck','ageKeywordDeclined','ageKeyword','agePurchaseAck','idRequiredAtCompletion','idVerification',
@@ -14758,6 +14761,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     if(!cat || state.category === cat) return false;
     state.category = cat;
     realignCategoryState();
+    /* John 10/15, "Carry words + photos, not addresses" -- every switch, web and
+       app (tiles, tabs, the category nudge's Switch, the age "Yes" move). The
+       description, Ride's instructions and the photos move with it; the
+       ADDRESSES do not (his 10/14 app ruling for the age move, now the rule for
+       every switch). This supersedes the 7/19 note above that kept addresses. */
+    const fresh = makeInitialState();
+    ['pickupStops', 'dropoffStops', 'pickupUnit', 'destUnit'].forEach(k => {
+      if(k in fresh) state[k] = JSON.parse(JSON.stringify(fresh[k]));
+    });
     state.step = 2;              // Job details — re-walk this category's gates
     state.maxStepReached = 2;
     return true;
