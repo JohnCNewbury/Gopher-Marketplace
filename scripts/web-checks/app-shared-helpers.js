@@ -148,6 +148,28 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
   const api = { __source: 'api', aasm_state: 'picked_up' };
   ok(M.sync({ order: api, status: 'pending' }) === api, 'an order that came from the API is never overwritten');
 
+  /* 5 — the page itself: it loads the bridge, reads the app's helpers where the
+     audit said the web kept its own rule, and ships no Demo / Simulate control
+     whose copy promised server behaviour that does not exist (E-9, E-18, E-19). */
+  const page = fs.readFileSync(path.join(REPO, 'Final', 'gopher-request.html'), 'utf8');
+  ok(/<script src="assets\/js\/gopher-dash-order\.js"><\/script>/.test(page),
+     'gopher-request.html loads the order mapping (relative path)');
+  ok(/<script type="module" src="assets\/js\/gopher-app-shared\.js"><\/script>/.test(page),
+     'gopher-request.html loads the app helpers as a module (relative path)');
+  for (const [needle, what] of [
+    ['S.orderCards(', 'Home order + cards from homeCards.orderCards (E-49)'],
+    ['S.cardModel(', 'card words from homeCards.cardModel (E-47, E-48, E-51)'],
+    ['S.headline(', 'headline from homeCards.headline (E-50)'],
+    ['S.liveSteps(', 'step bar from liveStatus.liveSteps (E-33)'],
+    ['S.requesterCanCancel(', 'cancel window from requesterCancelWindow (E-11)'],
+  ]) ok(page.includes(needle), `the dashboard reads ${what}`);
+  for (const [needle, what] of [
+    ['data-g40-paydecline', '"Simulate decline" (a 5-minute reassign the server does not do, E-19)'],
+    ['data-g40-expiresim', '"Simulate expiry" ("expired — workers are interested", E-9)'],
+    ['g40SimGopherCancel', '"Simulate: Gopher cancelled" (Edit-and-repost the owner blocked, E-18)'],
+    ['class="g40-demo-tag"', 'a DEMO tag'],
+  ]) ok(!page.includes(needle), `no live demo control: ${what}`);
+
   console.log(bad ? `\nFAIL — ${bad} check(s)` : '\nPASS — the dashboard runs the app\'s own helpers, byte for byte');
   process.exit(bad ? 1 : 0);
 })().catch((e) => { console.log('  ✗ FAIL ' + (e && e.stack || e)); process.exit(1); });
