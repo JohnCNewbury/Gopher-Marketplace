@@ -536,6 +536,40 @@ def app_section():
               "%s suggested %s offer == the live server's (%d cases)" % (tag, kind, len(offer[kind])),
               "" if not diff else "differ: %s" % diff[:3])
 
+    # ---- PROMO CODES (D9, ruled 2026-10-15: the web copies the REAL coupon rule).
+    # helpers/coupon_discount.js is pure (it needs only constants/index.js and a
+    # logger), so both sides are RUN by app-coupon-probe.js on 960 cases. Any
+    # difference FAILS, including the server's known amountOff behaviour, which the
+    # web copies on purpose until John rules on a fix for BOTH (see the module).
+    tmpc = tempfile.mkdtemp(prefix="gopher-api-coupon-")
+    try:
+        for sub in ("helpers", "constants", "shared"):
+            os.makedirs(os.path.join(tmpc, sub))
+        open(os.path.join(tmpc, "helpers", "coupon_discount.js"), "wb").write(
+            app_show(api, "helpers/coupon_discount.js", API_REF))
+        open(os.path.join(tmpc, "constants", "index.js"), "wb").write(
+            app_show(api, "constants/index.js", API_REF))
+        open(os.path.join(tmpc, "shared", "Logger.js"), "w").write(
+            "exports.logger = { info(){}, error(){}, warn(){} };\n")
+        cprobe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-coupon-probe.js")
+        cout = subprocess.run(["node", cprobe, ROOT, tmpc], capture_output=True, text=True, timeout=60)
+        coup = json.loads(cout.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "server coupon rule runs beside the web's", str(e)[:160])
+        coup = None
+    finally:
+        import shutil
+        shutil.rmtree(tmpc, ignore_errors=True)
+    if coup is not None:
+        if coup.get("error"):
+            check(False, "server coupon rule runs beside the web's", coup["error"])
+        else:
+            check(coup.get("delegates") is True, "Request page's promo uses the server's coupon rule",
+                  "computeRequestFee no longer calls GopherRequestLogic.couponDiscount (or feeMultiplier is back)")
+            check(coup.get("n", 0) > 0 and not coup["diff"],
+                  "D9 promo discount == the live server's (%d cases)" % coup.get("n", 0),
+                  "" if not coup["diff"] else "differ: %s" % coup["diff"][:3])
+
 
 def fee_table(src, name):
     m = re.search(r"\b" + name + r"\b\s*=\s*\{", src)

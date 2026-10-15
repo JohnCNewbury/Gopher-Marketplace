@@ -474,6 +474,45 @@
     };
   }
 
+  /* ── THE SERVER'S coupon discount, for Request (D9, ruled 2026-10-15) ──────────
+     John: the website copies the REAL coupon rules. This is gopher-backend-api
+     helpers/coupon_discount.js couponDiscount(), step for step: a coupon reduces
+     the Gopher fee AND the instant-transfer fee always (owner rule 2026-09-10),
+     plus the age-restricted fee NET of TrustShield only when the coupon carries
+     its 21+ flag (age_restricted_discount); percentOff or amountOff. All amounts
+     in dollars, as the server's summary passes them. Harness section 8 RUNS the
+     server's function beside this one and FAILS on any difference.
+     ⚠️ KNOWN SERVER BEHAVIOUR, COPIED ON PURPOSE (found 2026-10-15): an amountOff
+     21+ coupon whose value the Gopher fee alone covers ALSO takes the A/R portion
+     (rest_to_discount is only reduced on the transfer-fee branch), so a $2 coupon
+     can take $3.99. Raised with John; a fix changes BOTH sides together, so the web
+     never quotes a different total from the app. */
+  function couponDiscount(gopherFee, transferFee, coupon, ageRestrictedFee){
+    var transfer_fee = +transferFee, gopher_fee = +gopherFee;
+    var age_restricted_fee = ageRestrictedFee || 0;
+    var discount_amount = coupon.value, rest_to_discount = coupon.value;
+    var calc = 0;
+    if(coupon.type === 'amountOff'){
+      if(gopher_fee < discount_amount) calc += gopher_fee; else calc += discount_amount;
+      if(calc < discount_amount){
+        discount_amount -= calc;
+        if(transfer_fee < discount_amount) calc += transfer_fee; else calc += discount_amount;
+        rest_to_discount -= calc;
+      }
+      if(coupon.age_restricted_discount && age_restricted_fee){
+        if(rest_to_discount > age_restricted_fee) calc += age_restricted_fee;
+        else calc += rest_to_discount;
+      }
+    }
+    if(coupon.type === 'percentOff'){
+      calc += gopher_fee * (+discount_amount / 100);
+      calc += transfer_fee * (+discount_amount / 100);
+      if(coupon.age_restricted_discount && age_restricted_fee)
+        calc += age_restricted_fee * (+discount_amount / 100);
+    }
+    return { discount_amount: +calc.toFixed(2) };
+  }
+
   var RIDE_MODEL_VERSION = 'g40-535-ride-worker-pay-2026-09-23';
   var RIDE_PER_MINUTE = 0.55, RIDE_MIN_FLOOR = 8.0, RIDE_SCHEDULED_UPLIFT = 0.15;
   var RIDE_MILE_TIERS_SRV = [[0, 5, 2.4], [5, 15, 1.8], [15, 40, 1.35], [40, Infinity, 1.05]];
@@ -873,6 +912,7 @@
     // The server's models, for Request (D11 + D12, 2026-10-15)
     deliverySuggestedOffer: deliverySuggestedOffer,
     rideWorkerPayOffer: rideWorkerPayOffer,
+    couponDiscount: couponDiscount,
     DELIVERY_MODEL_VERSION: DELIVERY_MODEL_VERSION,
     RIDE_MODEL_VERSION: RIDE_MODEL_VERSION,
     regionIsNC: regionIsNC,
