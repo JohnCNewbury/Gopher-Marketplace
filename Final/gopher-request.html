@@ -16416,15 +16416,43 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const n = new Date();
     return new Date(n.getFullYear(), n.getMonth(), n.getDate());
   }
-  // First valid bookable day = tomorrow (can't schedule a "later" job for today).
+  /* B-27 (App wins, audit 10/15): the app books an exact time from ONE HOUR
+     from now up to 14 DAYS ahead (datetimepicker.js minDate now + 1 h, maxDate
+     now + 14 days; a time must be strictly after now + 1 h). This booked from
+     TOMORROW with no end date. The day range and the times offered now follow
+     the app. (The 30-minute, 6 AM - 9 PM slot grid itself is a picker-design
+     question for the owner: the app allows any time in 5-minute steps.) */
+  const LEAD_MS = 60 * 60 * 1000;
+  const MAX_DAYS_AHEAD = 14;
+  function slotDate(iso, slot){
+    const m = /^(\d{1,2}):(\d{2})\s*([AP]M)$/i.exec(String(slot).trim());
+    const d = isoToDate(iso);
+    if(!m || !d) return null;
+    d.setHours((+m[1]) % 12 + (/pm/i.test(m[3]) ? 12 : 0), +m[2], 0, 0);
+    return d;
+  }
+  function slotsFor(iso){
+    const now = Date.now(), lo = now + LEAD_MS, hi = now + MAX_DAYS_AHEAD * 86400000;
+    return TIME_SLOTS.filter(t => { const at = slotDate(iso, t); return at && at.getTime() > lo && at.getTime() <= hi; });
+  }
+  // First bookable day: today when a slot one hour out is still left, else tomorrow.
   function firstBookableISO(){
     const t = todayMidnight();
-    t.setDate(t.getDate() + 1);
+    if(!slotsFor(dateToISO(t)).length) t.setDate(t.getDate() + 1);
+    return dateToISO(t);
+  }
+  function lastBookableISO(){
+    const t = todayMidnight();
+    t.setDate(t.getDate() + MAX_DAYS_AHEAD);
     return dateToISO(t);
   }
   // Make sure schedDate / calViewISO are initialised before the picker shows.
   function ensureScheduleDefaults(){
-    if(!state.schedDate) state.schedDate = firstBookableISO();
+    if(!state.schedDate || state.schedDate < firstBookableISO() || state.schedDate > lastBookableISO()){
+      state.schedDate = firstBookableISO();
+    }
+    // B-27: a slot that has slipped inside the one-hour lead (or off the day) is not bookable.
+    if(state.timeSlot && slotsFor(state.schedDate).indexOf(state.timeSlot) === -1) state.timeSlot = '';
     if(!state.calViewISO){
       const d = isoToDate(state.schedDate);
       state.calViewISO = dateToISO(new Date(d.getFullYear(), d.getMonth(), 1));
@@ -16467,13 +16495,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const minDate    = isoToDate(minISO);
     const prevMonthLast = new Date(vYear, vMonth, 0);
     const canPrev = prevMonthLast >= minDate;
+    const maxDate    = isoToDate(lastBookableISO());
+    const canNext = new Date(vYear, vMonth + 1, 1) <= maxDate;   // B-27: nothing past 14 days
 
     let cells = '';
     for(let i = 0; i < firstDow; i++) cells += `<span class="cal-cell cal-empty"></span>`;
     for(let day = 1; day <= daysInMon; day++){
       const cellDate = new Date(vYear, vMonth, day);
       const iso = dateToISO(cellDate);
-      const disabled = cellDate < minDate;
+      const disabled = cellDate < minDate || cellDate > maxDate || !slotsFor(iso).length;
       const selected = iso === state.schedDate;
       const cls = ['cal-cell','cal-day',
         disabled ? 'cal-disabled' : '',
@@ -16484,7 +16514,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     }
 
     const timeOpts = `<option value="" ${!state.timeSlot?'selected':''} disabled>Select time</option>` +
-      TIME_SLOTS.map(t =>
+      slotsFor(state.schedDate).map(t =>
       `<option value="${t}" ${t===state.timeSlot?'selected':''}>${t}</option>`).join('');
 
     return `
@@ -16492,7 +16522,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         <div class="cal-head">
           <button type="button" class="cal-nav" data-cal-nav="prev" ${canPrev?'':'disabled'} aria-label="Previous month">‹</button>
           <div class="cal-title">${MONTHS_LONG[vMonth]} ${vYear}</div>
-          <button type="button" class="cal-nav" data-cal-nav="next" aria-label="Next month">›</button>
+          <button type="button" class="cal-nav" data-cal-nav="next" ${canNext?'':'disabled'} aria-label="Next month">›</button>
         </div>
         <div class="cal-dow">${DOW_SHORT.map(d=>`<span>${d[0]}</span>`).join('')}</div>
         <div class="cal-grid">${cells}</div>
