@@ -23,6 +23,10 @@ site + the Request web dashboard). You work **directly with John** (stage by sta
    Framing script: **`docs/handoff/website-uiux-tools/phone_frame.py`**.
 4. Open work, in order: **(A) refer QR without coordinates**, **(B) Deals = web panel**, then
    **(C) the post-G40-604 recapture** when the desk says phase 2 has merged.
+   **UPDATE 10/15 ~1:30 PM ET:** (A) is LIVE (`925c761`, John's run sheet 8/8 PASS). The Go hero was
+   re-done in the July silver phone + tilt (`e8e4ddc`, run sheet 7/7 PASS; tools in
+   `website-uiux-tools/`). ⛔ **(B) is PARKED by John:** *"WE're not doing anything deals or connect
+   yet. Leave them."* Do not edit Deals or Connect pages/copy until he reopens it. Only (C) remains.
 
 ---
 
@@ -87,7 +91,14 @@ Earlier (10/14): Request dashboard Stages 1–4 (shell, sections, worker list B,
   it from `Final/` removes it on the next deploy — include that (and grep all `Final/*.html` +
   blog pages first; at handoff nothing referenced it).
 
-### (B) Deals = the WEB dashboard panel (John 10/15 chose option (a), not built)
+### (B) Deals = the WEB dashboard panel — ⛔ PARKED (John 10/15 ~1:17 PM: "not doing anything deals or connect yet. Leave them")
+
+> The findings stand and are kept for when he reopens it, in the pick doc
+> https://claude.ai/artifact/6Wty7RS8f6Sfiu46rCYbcK (16 lines, verified 10/15). Neither app has Deals
+> (Request `ada5e1532` / Go `cfac0396d`: zero "deal"). Ruling 7 promises paid placement on "app and
+> web" (his D1 pick: B, keep as is). Bid winners render only in the web Request/Connect dashboards;
+> SP deals submit from the WEB Go dashboard. Two iQ FAQ answers say the same; not sent to the iQ
+> seat, parked with the rest. Nothing below was built.
 
 - Finding: **neither app has a Deals surface** (requester production `80cd8ada3` and Go
   `1f5a13caf`: no Deals component/route). Only the **web** Request dashboard has a Local Deals
