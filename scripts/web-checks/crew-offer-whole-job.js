@@ -26,5 +26,8 @@ ok(!/perWorkerPay \* workerCount|s7perWorkerPay \* s7workerCount|perWorker \* wo
 ok(/!isCompletedFlow\(\) && payCrew\(\) > 1 && !bidsMode/.test(src),
    'the per-worker breakdown shows for Labor crews only');
 
+ok(src.includes('Exact amount your worker takes home: 100% of your offer. Request fees are shown at review.</div>')
+   && !src.includes('Exact amount each Gopher takes home'), 'the offer line is the app\'s words (John 10/15)');
+
 console.log(bad ? `\n${bad} FAILED` : '\nALL PASS — crew offer is the whole job except Labor (RQ-51)');
 process.exit(bad ? 1 : 0);

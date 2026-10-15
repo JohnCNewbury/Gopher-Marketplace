@@ -15189,8 +15189,33 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      $58.31 in the app. Every PRICE uses payCrew(); crewCount() stays the head
      count for display. */
   const payCrew = () => state.category === 'labor' ? crewCount() : 1;
-  /* The app caps the description at 300 on Moving and Custom Task only. */
-  const DESC_CAP_CATEGORIES = ['moving', 'other'];
+  /* John 10/15, "300 on every category": one rule on web and app, every
+     description holds at most 300 characters. (The app had it on Moving and
+     Custom Task only; its other flows get it in the same pass.) */
+  const DESC_CAP_CATEGORIES = ['delivery', 'home', 'junk', 'labor', 'moving', 'other', 'ride', 'yard'];
+  /* D10 (John 10/13: MASK as typed, the web's WIDER pattern, both sides; 10/15:
+     the "Phone number hidden" notice on both). A number in the description or
+     Ride's special instructions is replaced with ********** as it is typed --
+     never broadcast, never a dead stop. The pattern is the one this page used to
+     BLOCK with, made global; it also catches any 10+ digit run (owner-ruled). */
+  const PHONE_PATTERN = /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/g;
+  const maskPhones = (t) => String(t == null ? '' : t).replace(PHONE_PATTERN, '**********');
+  function phoneNoticeOff(){ try { return localStorage.getItem('gopherPhoneNoticeOff') === '1'; } catch(_){ return false; } }
+  function showPhoneHidden(){
+    if(phoneNoticeOff() || !(window.G40_REQ && G40_REQ.phoneHidden)) return;
+    G40_REQ.phoneHidden();
+  }
+  /* Masks an input in place, keeping the caret where the user was typing. */
+  function maskInputPhones(el){
+    const before = el.value, after = maskPhones(before);
+    if(after === before) return false;
+    const pos = (typeof el.selectionStart === 'number') ? el.selectionStart : after.length;
+    el.value = after;
+    const np = Math.max(0, pos - (before.length - after.length));
+    try { el.setSelectionRange(np, np); } catch(_){}
+    showPhoneHidden();
+    return true;
+  }
 
   // Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
   // crew, so one bid covers every worker (no discrepancy). Hidden only by category (bidsOption matrix)
@@ -16272,8 +16297,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
               <span class="cib-currency">$</span>
               <input type="text" inputmode="decimal" class="cost-amount-input" id="payAmountInput" data-field="payAmount" value="${state.payAmount.replace(/^\$/,'')}" placeholder="0.00" aria-label="Your offer to the ${saysGopher() ? 'Gopher' : 'worker'}">
             </div>
-            ${''/* ⛔ OFFER-FIELD LINE — keep these THREE in sync: gopher-request.html, gopher-connect.html and _prototypes/Request/gopher-request-flow.html. Owner 2026-10-04. They had drifted into three different sentences; two of them never stated the 100% point at all, and Connect's named the WRONG FEE. "each" was load-bearing when the offer was PER WORKER on every crew; RQ-51 (John 10/15, "Whole job (app)") made it per worker on LABOR ONLY (workerPayNum = perWorkerPay * payCrew()), so on a Yard/Moving/Junk crew this line's "each" is now an OPEN owner copy question -- the app says "Exact amount your worker takes home: 100% of your offer." The fee noun is surface-specific — Request Fee here, Connect Fee on Connect. */}
-            <div style="font-family:'DM Sans';font-size:12px;color:var(--muted);margin-top:6px;">Exact amount each Gopher takes home — 100% of your offer. Request fees are shown at review.</div>
+            ${''/* ⛔ OFFER-FIELD LINE — keep these THREE in sync: gopher-request.html, gopher-connect.html and _prototypes/Request/gopher-request-flow.html. Owner 2026-10-04. They had drifted into three different sentences; two of them never stated the 100% point at all, and Connect's named the WRONG FEE. "each" was load-bearing when the offer was PER WORKER on every crew; RQ-51 (John 10/15, "Whole job (app)") made it per worker on LABOR ONLY (workerPayNum = perWorkerPay * payCrew()), so John ruled 10/15 "The app's words everywhere": "Exact amount your worker takes home: 100% of your offer. Request fees are shown at review." Connect (parked) and the prototype (lame duck) keep the old line until they are rebuilt. The fee noun is surface-specific — Request Fee here, Connect Fee on Connect. */}
+            <div style="font-family:'DM Sans';font-size:12px;color:var(--muted);margin-top:6px;">Exact amount your worker takes home: 100% of your offer. Request fees are shown at review.</div>
             ${state.payByHour ? (() => {
               // Compute per-worker wage and combined total based on hours × $/hr × workers
               const rate = parseFloat(state.payAmount.replace(/[^\d.]/g,'')) || 0;
@@ -17499,6 +17524,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     /* Same no-re-render pattern: re-rendering per keystroke drops focus mid-word. */
     const $si = $content.querySelector('#specialInstructionsInput');
     if($si) $si.addEventListener('input', () => {
+      maskInputPhones($si);   // D10: Ride's instructions are broadcast too (app PHONE-2)
       const prevSi = state.specialInstructions || '';
       state.specialInstructions = $si.value;
       // Ride's age check reads this field (G40-623), so editing it re-arms the check
@@ -17517,6 +17543,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         if(DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 && $desc.value.length > 300){
           $desc.value = $desc.value.slice(0, 300);
         }
+        maskInputPhones($desc);   // D10: mask as typed
         const descNote = $content.querySelector('[data-desc-cap]');
         if(descNote) descNote.hidden = !(DESC_CAP_CATEGORIES.indexOf(state.category) !== -1 && $desc.value.length >= 300);
         const prevDesc = state.description || '';
@@ -18229,9 +18256,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // HARD block (no ack flag) until the number is edited out — that is the
     // rule the modal states. Fails open if the modal library is missing,
     // matching the age-keyword precedent (never trap the user on a dead modal).
-    if(state.step === 2 && window.G40_REQ
-       && /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b/.test(String(state.description||''))){
-      G40_REQ.phoneEntered(); return;
+    /* D10: no longer a dead stop. Text that arrived pre-filled (Request Again,
+       a GO-To, a draft, an iQ idea) is masked here; typed text already was. */
+    if(state.step === 2){
+      const md = maskPhones(state.description), ms = maskPhones(state.specialInstructions);
+      if(md !== String(state.description || '') || ms !== String(state.specialInstructions || '')){
+        state.description = md; state.specialInstructions = ms;
+        showPhoneHidden();
+      }
     }
     // ── Category-mismatch nudge (worker visibility) ──
     // After the age gate (which takes precedence): if no age-restricted keyword is
@@ -18313,7 +18345,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      Dynamic .gr-modal overlays. The bottom-right "G40" preview chip and
      __g40ReqMenu are GONE (they shipped dev chrome to every real visitor);
      every modal now fires from its real flow point:
-       phoneEntered             → step-2 Continue, phone number in the description
+       phoneHidden              → a phone number masked in the description / Ride instructions
+                                  (D10, 10/15; phoneEntered's dead stop is no longer wired)
        samePlace                → address-step Continue / Submit, pick-up and drop-off at the
                                   same place (G40-274: S1 first, S2 from the second try)
        selectedGopherBusy       → Hire/Approve on a worker flagged busy:true
@@ -18384,6 +18417,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           + '<h4>Photo is too large</h4>'
           + '<p class="gr-modal-sub">This image is too large. Please choose a smaller photo.</p>'
           + '<button type="button" class="gr-modal-btn grx">OK</button>'); },
+      /* D10 notice, John 10/15 "Short notice, both": the number is already
+         hidden (**********), so it informs, it does not ask. OK closes; "Don't
+         show again" closes and remembers (this browser only). */
+      phoneHidden: function(){
+        var ov = reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;">📵</div><h4>Phone number hidden</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you can text or call your Gopher in-app.</p><button type="button" class="gr-modal-btn grx">OK</button>' + b2('Don’t show again'));
+        var btns = ov.querySelectorAll('.gr-modal-btn');
+        if(btns[1]) btns[1].addEventListener('click', function(){ try { localStorage.setItem('gopherPhoneNoticeOff', '1'); } catch(_){} });
+        return ov;
+      },
       phoneEntered: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
       paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
       /* G40-274 — owner picks 2026-10-14 (pick-doc 8RzFQm38iwrSZ5na7uMei4):
