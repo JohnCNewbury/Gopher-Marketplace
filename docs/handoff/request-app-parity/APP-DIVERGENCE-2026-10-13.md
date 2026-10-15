@@ -229,9 +229,34 @@ rule, the **app** (or the server behind it) changes, not the web.
   - **Android pass:** A50, Request **1002** from `ffca20c1d` (9:23 AM). No iOS build of 628 yet;
     the desk will ask for an iOS check on the next iOS Request build. No live order submitted
     (John: skip).
-- **Gopher Go: NOT built. Server changes are needed first.** The complete handler stores the
-  worker's ID result only when `age_restricted?` (`update.js` ~2784), and the can't-show-ID path
-  (~3467) and the photo policy key on it too. The picks go to John before building.
+- **Gopher Go + server completion rules: BUILT 2026-10-15.** John: "Proceed with your
+  thoughtful recommendation", plus "Hide from under-21". The rule (server and Go alike):
+  `needsIdCheck` = age-restricted OR `age_keyword_declined`.
+  - **Why the server first:** today's server stored the worker's ID result and photo only on
+    A/R orders, and sent "ID not confirmed" or "requester no-show" on a non-A/R order straight to
+    an immediate capture and payout. Showing the ID check on a flagged order without the server
+    change would have paid out instantly.
+  - **John's picks (on the seat's recommendation):**
+    - the ID check at Complete as on A/R (TrustShield requesters get the identity check, the
+      rest an ID photo);
+    - the result and photo stored in the existing fields;
+    - ID-not-confirmed and no-show go to HQ review with the payout held, worded
+      "keyword-flagged order";
+    - Pro 1h auto-confirm needs TrustShield or a confirmed ID;
+    - under-21 workers neither see nor are sent a flagged order (feed + broadcast; the
+      broadcast fails closed);
+    - **completion photos stay**;
+    - money unchanged.
+  - **Server:** gopher-backend-api `G40-628-complete` @ `0038ccf5` on efba917f (pushed; the MR
+    opens after G40-607's update.js merge). Tests: `g40-628-id-check-at-completion` and
+    `g40-628-auto-confirm-flagged.db` (7/7 on real Postgres; 3 fail on the old query, which
+    let a flagged order with no ID auto-pay). Full suite 431/433; the 2 failures fail on
+    production too (PL-302, PL-298).
+  - **Go:** MR !451 (`G40-628-go` @ `54b9e0ac3`). The same ID sheet (no new modal); both
+    completion screens send the ID photo and result. Tests: `goJob.g40628` 13/13; services
+    89/89.
+  - ⛔ **Release order:** the server goes live BEFORE any Go build with this. The desk holds
+    the Go build numbers until the server merge is verified live.
 - **HQ:** the tag + filter. Not started.
 - **Web: ✅ DEPLOYED 2026-10-15 10:51 AM ET** (John: "Push + deploy"), together with PL-291.
   - Live `ec0310f`, twin `06ed602`, from `code-logic/pl291-web` @ `23e0077` (on source `20ebfe4` =
