@@ -148,6 +148,19 @@ rule, the **app** (or the server behind it) changes, not the web.
 | D9 | **Ruled 2026-10-15 (John): the website copies the REAL coupon rules** (his pick: "Copy the real rules"). The website's promo box uses the server's exact discount: off the **Gopher fee + the transfer fee always**, plus the **$1.99 age-restricted fee only for a 21+ coupon** (owner rule 2026-09-10, `helpers/coupon_discount.js`); percent-off or dollar-off. Demo codes stay until the website places real orders; then it checks codes with the server as the app does (HQ coupons: expiry, once per account, caps, requester/worker/both). | **Web** (this seat, no ticket). Today `GOPHER50` takes 50% off the WHOLE fee bundle, the A/R fee included, every time. | **Ruled.** |
 | PL-289 | **Server coupon over-discount, FIXED 2026-10-15** (found while copying D9). An `amountOff` coupon with the 21+ flag also took the A/R leg whenever the Gopher fee alone covered it (the remainder was reduced only on the transfer-fee branch): a $2 coupon took $3.99, and a $0.50 coupon on an A/R delivery took $1.00. John: "Fix it, server + web". | **Server:** gopher-backend-api !752 → production `7b8c74d6`, 6:33 AM ET; CodePipeline Succeeded, EB Green/Ok 6:37, 0 5xx. Tests: section 7 of `coupon-discount-always-both-fees.test.js`. **Web:** the same one-line fix in `gopher-request-logic.js` `couponDiscount` (branch `code-logic/coupon-pl289-web`), 960/960 identical to the live server; it ships with the D9/D11/D12 batch. | **Server live; web ships with the batch.** |
 
+### ✅ WEB DEPLOYED 2026-10-15 8:39 AM ET: D11 + D12 + D9 + the PL-289 web copy
+
+- **Deploy:** live `ba27771` (twin `02afbf4`) from `code-logic/coupon-pl289-web` @ `cd93bf8`. Two
+  files: `assets/js/gopher-request-logic.js` + `gopher-request.html`.
+- **Verified:** by content on Pages, the twin and TigerTech at 8:40.
+- **What Request web now does:**
+  - **D11:** shows the server's G40-502 Delivery suggestion.
+  - **D12:** shows the G40-535 Ride worker-pay suggestion.
+  - **D9 + PL-289:** takes promo codes by the server's coupon rule.
+- **Parity:** identical to the live server on 15 Delivery + 10 Ride + 960 coupon cases. Harness
+  §8 FAILS on any drift.
+- **Connect** and the Request prototype are unchanged (they don't call the new functions).
+
 ### D6 SPEC — John, 2026-10-15 (the build follows this; it refines "Enforce it")
 
 **Who:** 21+ requesters only. Under-21s are still blocked outright (G40-623).
