@@ -529,6 +529,8 @@ only closed on live order #65330. **Add one Bank order to the §8 device runbook
 Link → place a request → confirm the hold lands as `requires_capture` at total + 20% → complete →
 capture and transfer. One order closes it.
 
+> **Update 2026-10-15 (G40-607):** the first Link-funded order a Gopher claimed (**66352**, 10/11, `pi_3UPVTmCQp3eawbpn1SQUL3AH`) did **not** fail at the bank or in our hold: **Stripe Radar blocked it** (charge `outcome.type` = `blocked`, `risk_level` = `highest`, `network_status` = `not_sent_to_network`). The bank never saw it, and our manual-capture / 120% hold never ran, so **this gap stays open** (PL-307). Link stays offered (John, 10/15). Stripe's API does not expose a Link wallet's funding source. Since backend !757 (`501fb9e96`, 10/15) the claim failure stores a reason code (`stripe_blocked` / `bank_declined` / `needs_approval` / `payment_failed`) and the requester is told who declined: see gopher-dev-handoff `platform/payment-flow.md` §5.0. Android Request now has "Scan card" (Stripe's scanner, Request !512); iOS already had it (G40-38).
+
 📌 **Announcement note, for accuracy not action:** the sent launch announcement names four methods
 and does not mention bank or ACH. Offering more than was announced harms nobody, and announcements
 are never re-sent — but if any future copy lists the methods, **five** is the right number.
