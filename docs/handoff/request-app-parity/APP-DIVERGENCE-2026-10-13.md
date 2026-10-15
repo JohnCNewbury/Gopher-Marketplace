@@ -257,7 +257,17 @@ rule, the **app** (or the server behind it) changes, not the web.
     89/89.
   - ⛔ **Release order:** the server goes live BEFORE any Go build with this. The desk holds
     the Go build numbers until the server merge is verified live.
-- **HQ:** the tag + filter. Not started.
+- **HQ: PUSHED 2026-10-15 12:34 PM ET** (John: "This session builds it", then "Push; I'll run the
+  deploy"). The HQ Dashboard (github The-Gopher-Marketplace/gopher-hq-dashboard) `main` = `380e177`.
+  - New read-only feed `GET /data/orders/keyword-flagged` (`orders.age_keyword_declined` +
+    `age_keyword`).
+  - Orders page: a **KEYWORD: <word>** tag in the Category cell, a **Keyword flag** filter,
+    `keyword_flagged` + `age_keyword` export columns, and the iQ phrase "keyword-flagged orders".
+  - The order page gets a **Keyword-flagged** badge.
+  - No backend change was needed: HQ's Orders page reads its own read-only DB feed, not
+    `/admin/orders/by_filter`. ⚠ Any future backend getCSV columns go at the END (HQ's hourly
+    merge writes by position).
+  - Live once John runs `deploy-hq.sh` plus a shim restart.
 - **Web: ✅ DEPLOYED 2026-10-15 10:51 AM ET** (John: "Push + deploy"), together with PL-291.
   - Live `ec0310f`, twin `06ed602`, from `code-logic/pl291-web` @ `23e0077` (on source `20ebfe4` =
     live c350380). Exactly 1 file, gopher-request.html.
