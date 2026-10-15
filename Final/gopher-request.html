@@ -14434,7 +14434,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        — computeRequestFee() on the same COG+offer base — so the frozen deal and
        the screen the customer agreed on cannot disagree. Do NOT re-derive them. */
     const snapCostItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
-    const snapWorkerPay = perWorker * workersNeeded;
+    const snapWorkerPay = perWorker * payCrew();   // RQ-51: Labor only
     const snapFee = computeRequestFee(snapCostItems + snapWorkerPay);
     const reviewSnapshot = {
       category: c.name,
@@ -14472,7 +14472,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
          surfaces, two answers. */
       amountLabel: (function(){
         var cog = state.itemsPurchased ? (parseFloat(String(state.costOfItems).replace(/[^0-9.]/g,'')) || 0) : 0;
-        var tot = perWorker * workersNeeded + cog;
+        var tot = perWorker * payCrew() + cog;   // RQ-51: Labor only
         return tot ? `$${tot.toFixed(2)} total` : '';
       })(),
       when: whenForDash,
@@ -15179,6 +15179,16 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      scoping would miss. */
   const crewCount = () => (isVisible('workerSetup') && state.moreThanOneWorker)
     ? (parseInt(state.numWorkers, 10) || 1) : 1;
+  /* RQ-51 (John 10/15, "Whole job (app)"): on Yard, Moving and Junk the offer
+     the requester types is for the WHOLE job. One Gopher is hired and paid one
+     offer (server create.js prices what it is sent; its Moving/Junk suggested
+     offers are whole-job figures), and the app sends the typed offer unchanged
+     (yardFlowSteps / movingFlowSteps / junk.js). Only Labor is per Gopher x the
+     crew, on both (app laborFlowSteps.js: combined = perGopher * gophers). This
+     page multiplied every crew: Yard $50 with 3 workers came to $166.31 here and
+     $58.31 in the app. Every PRICE uses payCrew(); crewCount() stays the head
+     count for display. */
+  const payCrew = () => state.category === 'labor' ? crewCount() : 1;
 
   // Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
   // crew, so one bid covers every worker (no discrepancy). Hidden only by category (bidsOption matrix)
@@ -16500,7 +16510,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const payRate = toNum(state.payAmount);
     const payHours = state.payByHour ? (parseInt(state.numHours, 10) || 1) : 1;
     const perWorkerPay = state.payByHour ? (payRate * payHours) : payRate;
-    const workerPayNum = perWorkerPay * workerCount;
+    const workerPayNum = perWorkerPay * payCrew();   // RQ-51: Labor only
     const costItemsNum = showCostOfItems ? toNum(state.costOfItems) : 0;
     const bidsMode = state.payMode !== 'set';
     // COG+Offer = worker payment + cost of items (user-entered). Request fee + total
@@ -16550,11 +16560,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         <div class="review-row">
           ${''/* MOVING: "Your offer to your Gopher", and NO ? — master doc Step 6
                 row, which marks the Request fee as the only ? on this screen. */}
+          ${''/* RQ-51: the per-worker breakdown (× crew) is LABOR only; on Yard,
+                Moving and Junk the offer is the whole job, so there is no split to
+                show (it would print "Workers × 3" beside an un-multiplied total). */}
           ${''/* G40-578 / JR: a completed flow shows the offer row with NO ?. The
                 split-across-workers popover stays for the categories that have
                 not been signed off, where the multi-worker arithmetic is still
                 the thing people ask about. */}
-          <span class="rl">${saysGopher() ? 'Your offer to your Gopher' : ('Your offer to the worker' + (workerCount > 1 ? 's' : ''))}${!isCompletedFlow() && workerCount > 1 && !bidsMode ? `
+          <span class="rl">${saysGopher() ? 'Your offer to your Gopher' : ('Your offer to the worker' + (workerCount > 1 ? 's' : ''))}${!isCompletedFlow() && payCrew() > 1 && !bidsMode ? `
             <span class="info-tip fee-tip" onclick="event.stopPropagation()">
               <button class="info-btn" aria-label="How payment is split across ${saysGopher() ? 'Gophers' : 'workers'}">?</button>
               <div class="info-popover fee-popover" role="tooltip">
@@ -16812,7 +16825,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const s7payRate = toNum(state.payAmount);
     const s7payHours = state.payByHour ? (parseInt(state.numHours, 10) || 1) : 1;
     const s7perWorkerPay = state.payByHour ? (s7payRate * s7payHours) : s7payRate;
-    const s7workerPayNum = s7perWorkerPay * s7workerCount;
+    const s7workerPayNum = s7perWorkerPay * payCrew();   // RQ-51: Labor only
     const s7costItems = (state.itemsPurchased && state.category === 'delivery') ? toNum(state.costOfItems) : 0;
     const s7bids = state.payMode !== 'set';
     const s7fee = computeRequestFee(s7costItems + s7workerPayNum);
