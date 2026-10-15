@@ -146,12 +146,39 @@ def extract_const(src, name, start=0):
         k += 1
 
 
+def extract_array(src, marker):
+    """The bracketed literal that follows `marker` (e.g. 'var CATEGORIES = ')."""
+    i = src.index(marker); k = src.index("[", i); d = 0; q = None; esc = False
+    while k < len(src):
+        c = src[k]
+        if q:
+            if esc: esc = False
+            elif c == "\\": esc = True
+            elif c == q: q = None
+        elif c in "\"'": q = c
+        elif c == "[": d += 1
+        elif c == "]":
+            d -= 1
+            if d == 0: return src[i:k + 1] + ";"
+        k += 1
+
+
 def engine_deps():
-    eng = read(ENGINE)
-    parts = [extract_const(eng, "CATEGORIES"), extract_const(eng, "CAT_STOP"),
-             extract_const(eng, "STEM_KEEP"), "var CAT_THRESH=4;"]
-    for f in ("catNorm", "catWords", "stem", "stemSet", "scoreCategories"):
-        parts.append(extract_fn(eng, f))
+    """The category classifier EXACTLY as the live request page builds it.
+
+    G40-611 ("one brain", 10/14) moved the scorer into makeCategories(CATEGORIES)
+    and the category data into the inlined brain; the page then sets
+    window.GopherCategoryClassifier = BRAIN.categories. The old version of this
+    function lifted the pre-611 globals out of gopher-ai-engine.js and broke on
+    the restructure (SyntaxError: Unexpected EOF), which stopped the whole harness
+    at check 1 -- so nothing after it ran. Read the page itself instead: what it
+    runs is what is tested."""
+    page = read(SURFACES["request"])
+    parts = [extract_fn(page, "makeCategories"),
+             extract_array(page, "var CATEGORIES = "),
+             "var __C = makeCategories(CATEGORIES);",
+             "window.GopherCategoryClassifier = { scoreCategories: __C.scoreCategories, "
+             "catWords: __C.catWords, CAT_THRESH: __C.CAT_THRESH, CAT_HIGH: __C.CAT_HIGH };"]
     return "\n".join(parts)
 
 
@@ -215,13 +242,386 @@ def matrix_js():
             "return (t[2]===null)?(r===null):(!!r&&g===t[2]);}));")
 
 
+# ---------------------------------------------------------------- 8. APP
+# Until 2026-10-13 every check above compared the two web pages with a THIRD web
+# file — `_prototypes/Request/gopher-request-flow.html`, a hand-built MODEL of the
+# app. Nothing here had ever read the app. Owner, 2026-10-13: the store releases
+# are done and the LIVE APPS are canonical; the web should share the app's logic.
+# This section is where the app enters: it reads gopher-mobile-request at
+# `origin/production`, through git.
+#
+# ⛔ NEVER the clone's checkout. On 2026-10-13 that checkout sat on a 2026-09-02
+# feature branch, a month behind production. A check graded against a working
+# tree grades whatever happens to be checked out (noshow-freshness.js, step 12 of
+# run-all, still does exactly that). `git show origin/production:<path>` cannot.
+# It reads the last FETCH, so the ref and its date are printed: a stale fetch is
+# then visible rather than silent.
+#
+# ⛔ "Canonical" means the app's BEHAVIOUR, ruled rule by rule — not copying the
+# app's files. Its src/helpers/gopherStepGates.js still has `identity` ON, which
+# the owner ruled OFF on the web on 2026-10-04 ("No block, match the app") — and
+# nothing in the app calls that file's evaluate(). Copying it would revert him.
+APP_REF = os.environ.get("GOPHER_REQUEST_APP_REF") or "origin/production"
+# GOPHER_REQUEST_APP_REF: read an UNMERGED app branch instead (e.g. G40-623),
+# to see what this section will say once it merges. The default is the truth.
+# The SERVER is always read at origin/production (API_REF): the override is for
+# the app only.
+API_REF = "origin/production"
+
+
+def sibling_clone(repo, env_var):
+    """A Dev/<repo> clone beside this one, found from the MAIN Code clone so a
+    worktree under /tmp still resolves it. <env_var> overrides."""
+    env = os.environ.get(env_var)
+    if env:
+        return env
+    out = subprocess.run(["git", "-C", ROOT, "rev-parse", "--path-format=absolute",
+                          "--git-common-dir"], capture_output=True, text=True)
+    main_clone = os.path.dirname(out.stdout.strip()) if out.returncode == 0 else ROOT
+    return os.path.normpath(os.path.join(main_clone, "..", "..", "..", "Dev", repo))
+
+
+def app_clone():
+    return sibling_clone("gopher-mobile-request", "GOPHER_REQUEST_APP")
+
+
+def app_show(clone, rel, ref=None):
+    ref = ref or APP_REF
+    out = subprocess.run(["git", "-C", clone, "show", "%s:%s" % (ref, rel)],
+                         capture_output=True)
+    if out.returncode != 0:
+        raise RuntimeError("git show %s:%s failed: %s"
+                           % (ref, rel, out.stderr.decode()[:160]))
+    return out.stdout
+
+
+def app_grep_files(clone, pattern, path="src"):
+    """Files at APP_REF whose text matches `pattern` (git grep -E), tests excluded."""
+    out = subprocess.run(["git", "-C", clone, "grep", "-lE", pattern, APP_REF, "--", path],
+                         capture_output=True, text=True)
+    files = [l.split(":", 1)[1] for l in out.stdout.splitlines() if ":" in l]
+    return sorted(f for f in files if ".test." not in f)
+
+
+def app_section():
+    import tempfile
+    print("\n8. APP — the web vs the LIVE Request app (%s)" % APP_REF)
+    clone = app_clone()
+    ref = subprocess.run(["git", "-C", clone, "log", "-1", "--format=%h %ci", APP_REF],
+                         capture_output=True, text=True)
+    if ref.returncode != 0:
+        # Loud, not silent: an absent clone must never read as parity.
+        WARNS.append("APP section NOT RUN — no gopher-mobile-request clone with %s at %s. "
+                     "Nothing here compared the web with the live app. Set "
+                     "GOPHER_REQUEST_APP to the clone." % (APP_REF, clone))
+        print("  [SKIP] no app clone at %s" % clone)
+        return
+    print("  app = %s @ %s  (last fetch — `git -C <clone> fetch origin production` "
+          "to refresh)" % (APP_REF, ref.stdout.strip()))
+
+    # ---- AGE: the app says its detector is the web's, copied. Prove it by behaviour.
+    # Holds today (2026-10-13: four lists identical, 0 differences on 8,053 inputs),
+    # so a break is a FAIL — whichever side moved, the other has to follow or the
+    # owner has to rule that they part.
+    tmp = tempfile.mkdtemp(prefix="gopher-app-age-")
+    try:
+        for f in ("ageKeywords.js", "ageKeywordsData.json"):
+            open(os.path.join(tmp, f), "wb").write(app_show(clone, "src/helpers/" + f))
+        probe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-age-probe.js")
+        out = subprocess.run(["node", probe, os.path.join(ROOT, "Final/assets/js"), tmp,
+                              json.dumps([c for c, _ in AGE_CASES])],
+                             capture_output=True, text=True, timeout=120)
+        info = json.loads(out.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "app age detector runs beside the web's", str(e)[:160])
+        return
+    finally:
+        for f in os.listdir(tmp):
+            os.unlink(os.path.join(tmp, f))
+        os.rmdir(tmp)
+    if info.get("error"):
+        check(False, "app age detector runs beside the web's", info["error"])
+        return
+    # G40-623 SHIPPED in the app (production 4232d4507, merged 2026-10-14 9:52 AM ET): the
+    # owner's 10/14 false-positive cuts are in both, so the lists, the exceptions and every
+    # verdict must now be IDENTICAL. The PENDING_G40_623 allowance that let them differ by
+    # exactly that data is deleted; any difference FAILS.
+    check(info["ncodeDiff"] == 0,
+          "age matcher CODE: the web's code on the app's data reproduces the app (%d inputs)"
+          % info["inputs"],
+          "" if not info["ncodeDiff"] else "%d differ, e.g. %s" % (info["ncodeDiff"], info["codeDiffs"][:3]))
+    for k, v in sorted(info["lists"].items()):
+        check(v["same"], "age list '%s' identical web/app" % k,
+              "web %d / app %d" % (v["web"], v["app"]) if v["same"] else
+              "web %d / app %d; only web %s; only app %s"
+              % (v["web"], v["app"], v["onlyWeb"][:5], v["onlyApp"][:5]))
+    ex = info["exceptions"]
+    check(ex["same"], "age exceptions identical web/app",
+          "%s" % ex["webKeys"] if ex["same"] else "web %s / app %s" % (ex["webKeys"], ex["appKeys"]))
+    check(info["ndiff"] == 0,
+          "age detector: same verdict web/app on %d inputs" % info["inputs"],
+          "" if not info["ndiff"] else "%d differ, e.g. %s" % (info["ndiff"], info["diffs"][:3]))
+
+    # ---- KNOWN DIVERGENCES — WARN until the owner rules each one. Every line
+    # below is DETECTED from both sides, not printed from a list: when either
+    # side moves, the warning changes or clears by itself. Full write-up and the
+    # rulings each one needs: APP-DIVERGENCE-2026-10-13.md (this folder).
+    req = read(SURFACES["request"])
+
+    # Same detector, different REACH. The app calls it from exactly one place —
+    # Delivery Step 2, age switch off (flows/delivery.js deliveryContinueCheck).
+    # The web's backstop runs on EVERY category, which is how "a wine fridge"
+    # blocks a Moving job on the web and not in the app.
+    callers = [f for f in app_grep_files(clone, r"findAgeRestrictedKeyword\(")
+               if not f.startswith("src/helpers/")]
+    web_all = ("state.step === 2 && !state.ageKeywordAck && "
+               "!(state.category === 'delivery' && state.ageRestricted)") in req
+    if callers == ["src/component/stepFlow/flows/delivery.js"]:
+        FAILS.append("APP age-keyword scan went back to DELIVERY ONLY (flows/delivery.js). G40-623 "
+                     "(production 4232d4507, 10/14) runs it on every flow: owner ruling D1, 10/13")
+    elif callers == ["src/component/stepFlow/ageKeywordCheck.js"]:
+        # G40-623's shape: one check, run by the step bar for EVERY flow, and
+        # Need a Ride reading its special instructions (owner 10/14).
+        nav = app_show(clone, "src/component/yardFlow/YardStepNav.js").decode()
+        ride = app_show(clone, "src/component/stepFlow/flows/ride.js").decode()
+        ok_nav = "ageKeywordCheck(flow, s, values)" in nav
+        ok_ride = 'ageScanField: "special_instructions"' in ride
+        if web_all and ok_nav and ok_ride:
+            print("  PASS age-keyword scan: every flow on both (app: stepFlow/ageKeywordCheck.js via YardStepNav; Ride reads its special instructions)")
+        else:
+            FAILS.append("APP age-keyword scan: ageKeywordCheck.js is the caller, but %s"
+                         % ("YardStepNav no longer runs it for every flow" if not ok_nav else
+                            "Ride no longer reads its special instructions" if not ok_ride else
+                            "the WEB no longer scans every category"))
+    else:
+        FAILS.append("APP age-keyword scan: unrecognised callers %s -- re-read both before trusting this section" % callers)
+
+    # The in-form "this looks like a different category" nudge. The app's
+    # classifier runs only in the home search sheet, before a flow opens.
+    # Detected by CALLERS of the app's classify(), not by the word "mismatch" —
+    # that word is in ten unrelated comments there, which hid this the first time.
+    # (No \b: git grep -E on macOS does not support it.)
+    cls_callers = [f for f in app_grep_files(clone, r"(^|[^A-Za-z_])classify\(")
+                   if not f.endswith("/iqEngine.js")]
+    if "__checkCategoryMismatch" in req and cls_callers == ["src/component/home/HomeIq.js"]:
+        WARNS.append("APP DIVERGENCE category nudge: web blocks Continue once when the "
+                     "description points elsewhere; the app has no in-form nudge. RULED 10/13: block once, the APP changes (G40-624)")
+
+    # Pick-up and drop-off must differ.
+    # ⛔ CORRECTED 2026-10-13, same evening. The first version of this check said
+    # "the app does not check", because it searched the app for the rule's WORDS
+    # ("different addresses", normAddr) outside gopherStepGates.js and found
+    # none. The owner knew better. The app checks by MEASUREMENT: helpers/
+    # getDistance.js asks the server for the trip distance and, at "0", opens an
+    # "Oops!" sheet — "It looks like your pick up and drop off addresses are the
+    # same." — whose only button closes it. None of the searched words occur in
+    # it. So: a rule is found by following its DATA (what reads both addresses?),
+    # and a search that finds nothing is reported as that, never as "the app
+    # does not". This detector now looks for the app's actual mechanism.
+    zero_modal = app_grep_files(clone, r"bothAddressSameModal")
+    mounted = [f for f in app_grep_files(clone, r'"type": "getDistance"', "src/json/requester")
+               if f.endswith("flow.json")]
+    if "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js") and zero_modal:
+        WARNS.append("APP DIVERGENCE same-address: the app WARNS (trip distance 0 -> a "
+                     "dismissible 'Oops!' sheet) on %s only; web Request BLOCKS Continue "
+                     "on matching address text wherever a pick-up shows, Moving included. RULED 10/13: BLOCK by PLACE on "
+                     "Delivery/Ride/Moving, BOTH change (G40-274)"
+                     % ", ".join(sorted(os.path.basename(f)[:-9] for f in mounted)))
+    elif "addressesDiffer" in read("Final/assets/js/gopher-step-gates.js"):
+        WARNS.append("APP same-address check NOT FOUND: getDistance's zero-distance sheet "
+                     "is gone or renamed — re-find the app's mechanism before trusting this")
+
+    # Worker choice + pay-by-hour, read from each app flow's own JSON (a control is
+    # a TOP-LEVEL key there). ⛔ Not by grepping for the word: "available" also
+    # appears in yardflow.json as a targetControl inside OTHER controls' actions,
+    # and a grep for it once produced a false "Yard has First Available" parity.
+    FLOWS = {"delivery": "deliveryflow", "ride": "rideflow", "yard": "yardflow",
+             "other": "customtaskflow", "moving": "movingflow", "junk": "junkflow",
+             "labor": "laborflow", "home": "homeflow"}
+    app_ctrl = {}
+    for cat, f in FLOWS.items():
+        try:
+            app_ctrl[cat] = set(json.loads(app_show(clone, "src/json/requester/%s.json" % f)))
+        except Exception:
+            app_ctrl[cat] = None
+    rules_src = read("Final/assets/js/gopher-flow-rules.js")
+    wsc = re.search(r"workerSelectChoice:\s*\[([^\]]*)\]", rules_src)
+    web_no_choice = set(re.findall(r"'(\w+)'", wsc.group(1))) if wsc else set()
+    if app_ctrl.get("yard") is not None and "yard" in web_no_choice \
+            and {"select_gopher", "notify_fav_gopher"} <= app_ctrl["yard"]:
+        WARNS.append("APP DIVERGENCE D13 worker choice on Yard: the app offers I'll select / "
+                     "Prioritize MY Gophers; the web shows no choice and forces 'select'. RULED 10/13: the WEB "
+                     "shows the app's two options")
+    hourly_app = sorted(c for c, k in app_ctrl.items() if k and "paying_by_hour" in k)
+    web_no_hourly = re.search(r"const noHourly = state\.category === '(\w+)';", req)
+    if hourly_app == ["labor"] and web_no_hourly and web_no_hourly.group(1) == "moving":
+        WARNS.append("APP DIVERGENCE D14 pay by the hour: the app offers it on Labor only; the "
+                     "web also offers it on Yard, Custom Task and Junk (hidden only for Moving). RULED 10/13: "
+                     "Labor only, the WEB changes")
+
+    # ---- FEES. The app holds NO fee constants: it shows what the server's
+    # POST orders/summary returns (pages/summary.js adds the returned lines up).
+    # So the canonical fee behaviour lives in gopher-backend-api, read the same
+    # way: origin/production, through git.
+    api = sibling_clone("gopher-backend-api", "GOPHER_BACKEND_API")
+    try:
+        consts = app_show(api, "constants/index.js", API_REF).decode()
+        create = app_show(api, "controllers/order/create.js", API_REF).decode()
+    except Exception as e:
+        WARNS.append("APP fee comparison NOT RUN — no gopher-backend-api clone with %s "
+                     "at %s (%s)" % (API_REF, api, str(e)[:80]))
+        return
+    sref = subprocess.run(["git", "-C", api, "log", "-1", "--format=%h %ci", API_REF],
+                          capture_output=True, text=True).stdout.strip()
+    print("  api = %s @ %s  (fees: the app displays what this server returns)" % (API_REF, sref))
+    cents = dict((k, int(v)) for k, v in re.findall(r"\b([A-Z_]+):\s*(\d+(?:\.\d+)?)\b", consts)
+                 if "." not in v)
+    SERVER_KEY = {"delivery": "APPLICATION_FEE_DELIVERY", "ride": "APPLICATION_FEE_NEED_A_RIDE",
+                  "labor": "APPLICATION_FEE_HOURLY_DAY_LABOR",
+                  "junk": "APPLICATION_FEE_MOVING_JUNK_REMOVAL",
+                  "moving": "APPLICATION_FEE_MOVING_JUNK_REMOVAL",
+                  "yard": "APPLICATION_FEE_YARD_PROJECT", "home": "APPLICATION_FEE_HOME_SEVICES",
+                  "other": "APPLICATION_FEE_OTHER"}
+    web_fee = fee_table(req, "GOPHER_FEE") or {}
+    bad = [(k, web_fee.get(k), cents.get(v)) for k, v in sorted(SERVER_KEY.items())
+           if cents.get(v) is None or round(float(web_fee.get(k, -1)) * 100) != cents[v]]
+    check(not bad, "request per-category fees == the live server's (%d categories)" % len(SERVER_KEY),
+          "" if not bad else "web $ vs server cents: %s" % bad)
+    age = re.search(r"\bAGE_FEE\b\s*=\s*([0-9.]+)", req)
+    check(bool(age) and round(float(age.group(1)) * 100) == cents.get("AGE_RESTRICTED_FEE"),
+          "request age-restricted fee == the live server's",
+          "web %s, server %s cents" % (age and age.group(1), cents.get("AGE_RESTRICTED_FEE")))
+    itf = re.search(r"PAYOUT_FEE:\s*([0-9.]+)", consts)
+    check(bool(itf) and itf.group(1) == "0.08", "the live server's instant-transfer rate is 8%",
+          "server PAYOUT_FEE %s" % (itf and itf.group(1)))
+
+    # TrustShield $1 scope. Server: `trust_shield_verified && age_restricted_fee`
+    # (create.js; summary via getAgeRestrictedDiscount under has_age_restriction)
+    # — age-restricted orders only. Web Request also gives it to EVERY Ride.
+    # ⚠️ §7 above still REQUIRES the web's ride arm. It pins the web's rule, not
+    # the live one, and is left alone until the owner rules on Ride (item 2).
+    server_ar_only = re.search(r"trust_shield_verified\s*&&\s*age_restricted_fee", create)
+    web_ride = re.search(r"tsEligible\s*=[^;]*state\.category\s*===\s*'ride'", req)
+    if server_ar_only and web_ride:
+        WARNS.append("APP DIVERGENCE TrustShield $1: the live server gives it on "
+                     "age-restricted orders only; web Request also gives it on every Ride. RULED 10/13: A/R + Ride, the "
+                     "SERVER changes (G40-365, after G40-625)")
+
+    # The 8% base. Server: (offer + fee + (A/R fee - TrustShield)) * 0.08, ceil'd
+    # to the cent. Web: (offer + fee + A/R fee) * 0.08, unrounded — 8 cents more
+    # for a TrustShield holder on an A/R delivery, and fractional cents on every row.
+    server_net = re.search(r"trustshield_fee\s*=\s*age_restricted_fee\s*-\s*trust_shield_discount",
+                           create) and "Math.ceil(" in create
+    web_gross = "INSTANT_TRANSFER_RATE * (cogOffer + feeSubtotal)" in req
+    if server_net and web_gross:
+        WARNS.append("APP DIVERGENCE 8% transfer fee: the server takes it on the A/R fee NET of "
+                     "TrustShield and rounds UP to the cent; web Request uses the gross A/R fee "
+                     "and does not round. RULED 10/13: the web's base, NEAREST CENT on both (G40-625)")
+
+    # ---- SUGGESTED OFFER. The app shows POST orders/smart_price, i.e. the server's
+    # pure helpers/suggested_pricing.js. Both sides are RUN by app-offer-probe.js.
+    # Junk and Moving agree today (bands + detected tier), so a break FAILS.
+    # Delivery (D11) and Ride (D12) differ, and in both the SERVER carries the
+    # newer owner decision (G40-502 anchors 9/21; G40-535 worker-pay 9/23): WARN
+    # until the owner rules. ⚠️ When the web adopts them, §4's spot values
+    # ($100 -> 16/21/26 ...) are what change.
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="gopher-api-offer-")
+    try:
+        for f in ("suggested_pricing.js", "deals_geo.js", "served_zips.js"):
+            open(os.path.join(tmp, f), "wb").write(app_show(api, "helpers/" + f, API_REF))
+        probe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-offer-probe.js")
+        out = subprocess.run(["node", probe, ROOT, tmp], capture_output=True, text=True, timeout=60)
+        offer = json.loads(out.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "server suggested-offer model runs beside the web's", str(e)[:160])
+        return
+    finally:
+        for f in os.listdir(tmp):
+            os.unlink(os.path.join(tmp, f))
+        os.rmdir(tmp)
+    if offer.get("error"):
+        check(False, "server suggested-offer model runs beside the web's", offer["error"])
+        return
+    for kind in ("junk", "moving"):
+        bad = [r for r in offer[kind] if not r["same"]]
+        check(offer[kind] and not bad,
+              "%s suggested offer == the live server's (%d tiers)" % (kind, len(offer[kind])),
+              "" if not bad else "differ: %s" % bad)
+    bad = [r for r in offer["detect"] if not r["same"]]
+    check(not bad, "junk + moving tier detection == the live server's (%d descriptions)"
+          % len(offer["detect"]), "" if not bad else "differ: %s" % bad[:3])
+    # D11 + D12: RULED 10/13, BUILT 10/15. The web shows the server's G40-502 Delivery curve
+    # and G40-535 worker-pay Ride model, so a difference is now a FAILURE, not a warning; so
+    # is the Request page no longer delegating to them (a model pasted back inline).
+    check(offer.get("delegates") is True,
+          "Request page delegates Delivery + Ride suggestions to the server's models",
+          "suggestedOffer / rideSuggestedOffer no longer call deliverySuggestedOffer / rideWorkerPayOffer")
+    for kind, tag in (("delivery", "D11"), ("ride", "D12")):
+        diff = [r for r in offer[kind] if not r["same"]]
+        check(offer[kind] and not diff,
+              "%s suggested %s offer == the live server's (%d cases)" % (tag, kind, len(offer[kind])),
+              "" if not diff else "differ: %s" % diff[:3])
+
+    # ---- PROMO CODES (D9, ruled 2026-10-15: the web copies the REAL coupon rule).
+    # helpers/coupon_discount.js is pure (it needs only constants/index.js and a
+    # logger), so both sides are RUN by app-coupon-probe.js on 960 cases. Any
+    # difference FAILS, including the server's known amountOff behaviour, which the
+    # web copies on purpose until John rules on a fix for BOTH (see the module).
+    tmpc = tempfile.mkdtemp(prefix="gopher-api-coupon-")
+    try:
+        for sub in ("helpers", "constants", "shared"):
+            os.makedirs(os.path.join(tmpc, sub))
+        open(os.path.join(tmpc, "helpers", "coupon_discount.js"), "wb").write(
+            app_show(api, "helpers/coupon_discount.js", API_REF))
+        open(os.path.join(tmpc, "constants", "index.js"), "wb").write(
+            app_show(api, "constants/index.js", API_REF))
+        open(os.path.join(tmpc, "shared", "Logger.js"), "w").write(
+            "exports.logger = { info(){}, error(){}, warn(){} };\n")
+        cprobe = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app-coupon-probe.js")
+        cout = subprocess.run(["node", cprobe, ROOT, tmpc], capture_output=True, text=True, timeout=60)
+        coup = json.loads(cout.stdout.strip().splitlines()[-1])
+    except Exception as e:
+        check(False, "server coupon rule runs beside the web's", str(e)[:160])
+        coup = None
+    finally:
+        import shutil
+        shutil.rmtree(tmpc, ignore_errors=True)
+    if coup is not None:
+        if coup.get("error"):
+            check(False, "server coupon rule runs beside the web's", coup["error"])
+        else:
+            check(coup.get("delegates") is True, "Request page's promo uses the server's coupon rule",
+                  "computeRequestFee no longer calls GopherRequestLogic.couponDiscount (or feeMultiplier is back)")
+            check(coup.get("n", 0) > 0 and not coup["diff"],
+                  "D9 promo discount == the live server's (%d cases)" % coup.get("n", 0),
+                  "" if not coup["diff"] else "differ: %s" % coup["diff"][:3])
+
+
+def fee_table(src, name):
+    m = re.search(r"\b" + name + r"\b\s*=\s*\{", src)
+    if not m:
+        return None
+    st = m.end() - 1
+    d, j = 0, st
+    while j < len(src):
+        if src[j] == "{":
+            d += 1
+        elif src[j] == "}":
+            d -= 1
+            if d == 0:
+                break
+        j += 1
+    return dict(re.findall(r"([A-Za-z_]+)\s*:\s*([0-9.]+)", src[st:j + 1]))
+
+
 def main():
     print("== 1. CATEGORY — shared module vs the mismatch matrix ==")
     mod, cls = read(LOGIC), read(CLASSIFIER)
     resA = jxa("var window={};\n" + cls + "\n" + mod + "\n" + matrix_js())
     check(all(resA), "matrix via shared-classifier path (%d/%d)" % (sum(resA), len(resA)))
     resB = jxa("var window={};\n" + engine_deps() + "\n" + mod + "\n" + matrix_js())
-    check(all(resB), "matrix via inlined-engine path (%d/%d)" % (sum(resB), len(resB)))
+    check(all(resB), "matrix via the LIVE page's inlined brain (makeCategories) (%d/%d)" % (sum(resB), len(resB)))
 
     print("== 2. DELEGATE — one source of truth, no local copies ==")
     for name, rel in SURFACES.items():
@@ -262,10 +662,23 @@ def main():
                 {"low":64,"suggested":85,"generous":106},{"low":50,"suggested":66,"generous":83}]
     for lbl, got, exp in zip(["NC $100","US $100","NC $300","US $300"], spots, expected):
         check(got == exp, "offer %s == %s" % (lbl, exp), "got %s" % got)
+    # D11 + D12 (built 2026-10-15): Request web now shows the SERVER's models (what the
+    # Request app shows). Lock their spot values here too; section 8 RUNS the server's
+    # module beside them on every case. The old table above stays for Connect.
+    srv_spots = jxa("var window={};\n" + mod +
+                    "\nvar L=window.GopherRequestLogic;" +
+                    "JSON.stringify([L.deliverySuggestedOffer(100),L.deliverySuggestedOffer(300),"
+                    "L.deliverySuggestedOffer(5),L.rideWorkerPayOffer(4.3,13,false),"
+                    "L.rideWorkerPayOffer(1,2,true)].map(function(o){return [o.low,o.suggested,o.generous];}));")
+    for lbl, got, exp in zip(["Request delivery $100 (G40-502)", "Request delivery $300", "Request delivery $5 (floor $10)",
+                              "Request ride 4.3mi/13min (G40-535 worker pay)", "Request ride 1mi/2min scheduled (floor, then x1.15)"],
+                             srv_spots, [[15, 20, 25], [30, 40, 50], [8, 10, 13], [8, 9, 11], [9, 9, 9]]):
+        check(got == exp, "offer %s == %s" % (lbl, exp), "got %s" % got)
     for name, rel in SURFACES.items():
         src = read(rel)
         no_table = "const OFFER_TABLE" not in src
-        shim = "GopherRequestLogic.suggestedOffer" in src
+        shim = ("GopherRequestLogic.suggestedOffer" in src
+                or "GopherRequestLogic.deliverySuggestedOffer" in src)
         check(no_table and shim, "%s pricing is a delegating shim" % name,
               "(localTable:%s shim:%s)" % (not no_table, shim))
 
@@ -937,6 +1350,8 @@ def main():
               (k, req_fee.get(k), biz_fee.get(k))
               for k in sorted(set(req_fee or {}) | set(biz_fee or {}))
               if (req_fee or {}).get(k) != (biz_fee or {}).get(k)])
+
+    app_section()
 
     print()
     for w in WARNS:
