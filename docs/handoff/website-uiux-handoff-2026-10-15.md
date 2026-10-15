@@ -119,9 +119,9 @@ Earlier (10/14): Request dashboard Stages 1–4 (shell, sections, worker list B,
 |---|---|---|---|
 | `request-home.webp` | gopher-request, gopher-services | `101-request/home-submitted.webp` | `phone_frame.py … 640` → 640×1379 |
 | `request-in-progress.webp` | same | `101-request/live-accepted.webp` | `phone_frame.py … 640` |
-| `go-get-it-on-google-play.webp` (hero 1, tilted) | gopher-go | `101-go/home-active.webp` | `phone_frame.py … 700` then `tilt.py … 839 1400 --deg 9 --persp 0.11` |
+| `go-get-it-on-google-play.webp` (hero 1, tilted) | gopher-go | `101-go/home-active.webp` | ⛔ NOT phone_frame/tilt (John rejected that look 10/15). `mockup_warp.py mockups/go-hero-1-silver-island.webp <capture> <out> --quad "$(fitquad.py mockups/go-hero-1-silver-island.webp)" --band 0.105 --cy 0.082 --icons 0.81` |
 | `go-gopher-go-app-home-screen.webp` (hero 2, flat) | gopher-go, gopher-marketplace | `101-go/home.webp` | `phone_frame.py … 678` |
-| `go-gopher-go-app-available-requests.webp` (hero 3, tilted) | gopher-go | `101-go/preaccept.webp` | as hero 1 |
+| `go-gopher-go-app-available-requests.webp` (hero 3, tilted) | gopher-go | `101-go/preaccept.webp` | `mockup_warp.py mockups/go-hero-3-silver.webp <capture> <out> --quad "$(fitquad.py mockups/go-hero-3-silver.webp)" --band 0.105 --cy 0.082 --icons 0.81 --island-from mockups/go-hero-1-silver-island.webp --island-quad "$(fitquad.py mockups/go-hero-1-silver-island.webp)" --no-restore` (its July "notch" was drawn into the prototype screenshot, not hardware) |
 | `go-refer-yourself-phone.webp` | gopher-go | `101-go/refer.webp` + QR composite (A) | `phone_frame.py … 640` |
 | `go-feed-card-expanded.webp`, `go-feed-offer.webp`, `go-feed-history.webp` | gopher-go | `101-go/card-expanded`, `offer`, `history` | `phone_frame.py … 520` |
 
@@ -154,7 +154,8 @@ Earlier (10/14): Request dashboard Stages 1–4 (shell, sections, worker list B,
 | `splice.py`, `shim.html` | Used by `resync.sh` |
 | `parsecheck.js <files…>` | Parse every inline `<script>` with node's `vm.Script` |
 | `phone_frame.py <capture> <out.webp> <width>` | Titanium bezel + 9:41 status bar ADDED above the content (101 captures have none). Prints the output size → set `width`/`height` attributes to match |
-| `tilt.py <framed> <out.webp> 839 1400 --deg 9 --persp 0.11` | The Go-hero lean |
+| `tilt.py <framed> <out.webp> 839 1400 --deg 9 --persp 0.11` | ⛔ RETIRED for the Go hero — John 10/15: "the tilted phone looks terrible" |
+| `fitquad.py <mockup>` / `mockup_warp.py …` | The APPROVED Go-hero look (John 10/15): the July silver iPhone + its 3D tilt (`mockups/`, Mockuuups Studio renders) with the real screen perspective-warped in. fitquad fits the screen's four bezel edges (~1px); mockup_warp builds status band + capture and warps it in |
 | `qr.swift <png…>` / `qrbox.swift <capture.png> <url> <out_qr.png>` | CoreImage QR decode / locate-and-generate (`swift qr.swift x.png`). WebP → PNG first via PIL |
 
 Other pages: serve `Final/` with `python3 -m http.server 8972` from `Final/` for a visual check.
