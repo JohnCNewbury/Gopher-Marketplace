@@ -482,11 +482,10 @@
      its 21+ flag (age_restricted_discount); percentOff or amountOff. All amounts
      in dollars, as the server's summary passes them. Harness section 8 RUNS the
      server's function beside this one and FAILS on any difference.
-     ⚠️ KNOWN SERVER BEHAVIOUR, COPIED ON PURPOSE (found 2026-10-15): an amountOff
-     21+ coupon whose value the Gopher fee alone covers ALSO takes the A/R portion
-     (rest_to_discount is only reduced on the transfer-fee branch), so a $2 coupon
-     can take $3.99. Raised with John; a fix changes BOTH sides together, so the web
-     never quotes a different total from the app. */
+     ⛔ PL-289 (2026-10-15, John: "Fix it, server + web"): a fixed-amount 21+
+     coupon never takes more than its value. The remainder used to be reduced only
+     on the transfer-fee branch, so a $2 coupon could take $3.99. Fixed here in
+     step with gopher-backend-api !752; ship this copy only once that is live. */
   function couponDiscount(gopherFee, transferFee, coupon, ageRestrictedFee){
     var transfer_fee = +transferFee, gopher_fee = +gopherFee;
     var age_restricted_fee = ageRestrictedFee || 0;
@@ -497,8 +496,8 @@
       if(calc < discount_amount){
         discount_amount -= calc;
         if(transfer_fee < discount_amount) calc += transfer_fee; else calc += discount_amount;
-        rest_to_discount -= calc;
       }
+      rest_to_discount = coupon.value - calc;   // PL-289: whatever legs ran, never the full value again
       if(coupon.age_restricted_discount && age_restricted_fee){
         if(rest_to_discount > age_restricted_fee) calc += age_restricted_fee;
         else calc += rest_to_discount;
