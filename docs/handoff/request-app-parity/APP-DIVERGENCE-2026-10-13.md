@@ -217,11 +217,29 @@ rule, the **app** (or the server behind it) changes, not the web.
     never double-flagged; an older app's edit keeps the flag); GO-To keeps both.
   - Tests: `d6-age-keyword-flag.test.js` 16/16, `d6-age-keyword-columns.db.test.js` 8/8 on a
     real Postgres 15 (the control fails 5/8 without the change).
-- **Request app:** the second sheet, the flag + word on submit, the first sheet's note.
-- **Gopher Go:** the Complete ID step when `isAgeRestricted(request) || flag`.
-- **HQ:** the tag + filter.
-- **Web:** the same sheets and logic. The web's `idRequiredAtCompletion` becomes this flag
-  and reaches the server once the web places real orders.
+- **Request app: ✅ MERGED 2026-10-15 10:24 AM ET** (John: "Merge !510").
+  - gopher-mobile-requester-capacitorjs !510 → production `709737a49` (parents `c8bbc4526` +
+    `ffca20c1d`; no squash; source branch kept). It reaches users with the next store build.
+  - The second sheet (Guide B, kit pills), the first sheet's non-refundable note, and the flag +
+    word on create, update and bid (`helpers/ageKeywordDeclined.js`; sent only when true). A GO-To
+    keeps both (`GOTO_BODY_KEYS`, matching the server).
+  - Each check gets its own sheet (`key={pending.check.id}`). Found on the A50 (1001): the warning
+    reused the open sheet, MUI's focus trap reads releaseFocus only at open, and focus went back
+    to the tapped Continue, so Edit selected no word. Guard: `YardStepNav.focus.g40628.test.js`.
+  - **Android pass:** A50, Request **1002** from `ffca20c1d` (9:23 AM). No iOS build of 628 yet;
+    the desk will ask for an iOS check on the next iOS Request build. No live order submitted
+    (John: skip).
+- **Gopher Go: NOT built. Server changes are needed first.** The complete handler stores the
+  worker's ID result only when `age_restricted?` (`update.js` ~2784), and the can't-show-ID path
+  (~3467) and the photo policy key on it too. The picks go to John before building.
+- **HQ:** the tag + filter. Not started.
+- **Web: BUILT, waiting for its deploy slot.** Branch `code-logic/pl291-web` (`2414454` + guard
+  `8e3009a`), on the live source.
+  - The same sheets and words (Guide A).
+  - "No" opens the warning; Edit selects the word and acknowledges nothing; Submit as-is sets
+    `idRequiredAtCompletion` + `ageKeywordDeclined` + `ageKeyword` on the request record.
+  - Web-check 20/20 `age-id-warning.js`.
+  - The record reaches the server once the web places real orders.
 
 ### Re-checked by mechanism the same evening (because D4 was missed)
 
