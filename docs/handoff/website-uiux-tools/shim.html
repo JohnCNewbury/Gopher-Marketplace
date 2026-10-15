@@ -1,0 +1,40 @@
+
+<!-- LOCAL PREVIEW SHIM — scratchpad snapshot ONLY, never in the repo.
+     Opens the dashboard on ?preview=home (sign-in sends a real SMS) and honours
+     ?view= and ?sec= so any view or section can be linked directly. -->
+<script>
+(function(){
+  function open(){
+    try{
+      var q = new URLSearchParams(location.search);
+      if (q.get('preview') !== 'home') return;
+      var d = document.getElementById('rqDashboard'); if (!d) return;
+      document.body.classList.add('dashboard-mode'); d.classList.add('open');
+      var v = q.get('view');
+      if (v) { var g=document.getElementById('rqHomeCats'); if(g){ g.setAttribute('data-hview', v);
+        document.querySelectorAll('.hv-sb').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.hview===v))}); } }
+      var sec = q.get('sec');
+      if (sec) { var nav=document.querySelector('[data-rqsection="'+sec+'"]'); if(nav) nav.click(); }
+    }catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', open); else open();
+  window.addEventListener('load', open);
+})();
+</script>
+<script>
+(function(){ // preview-only: ?detail=1 opens the dashboard and a request with workers
+  var n=0;
+  function go(){
+    if(!/[?&]detail=1/.test(location.search)) return;
+    if(n++>40) return;
+    var d=document.querySelector('.dash-section[data-rqsec="request-detail"]');
+    if(d&&d.classList.contains('active')&&d.querySelector('.wcard')) return;
+    var dash=document.getElementById('rqDashboard');
+    if(!dash||!dash.classList.contains('open')){ try{window.openRequestDashboard({name:'John'});}catch(e){} return; }
+    var t=[].slice.call(dash.querySelectorAll('*')).filter(function(e){
+      return e.children.length===0 && /workers interested/i.test(e.textContent||''); })[0];
+    if(t) t.click();
+  }
+  setInterval(go,700); go();
+})();
+</script>
