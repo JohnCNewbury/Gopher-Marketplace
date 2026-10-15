@@ -13442,7 +13442,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     return isNaN(n) ? 0 : n;
   }
   function currentRegionIsNC(){ var L=window.GopherRequestLogic; return L ? L.regionIsNC() : true; }   // SHARED policy — NC pricing platform-wide (owner 2026-07-09); see gopher-request-logic.js
-  function suggestedOffer(itemCost, isNC){ return window.GopherRequestLogic.suggestedOffer(itemCost, isNC); }   // SHARED — table, interpolation and >$200 extrapolation live in assets/js/gopher-request-logic.js
+  /* D11 (ruled 10/13, built 10/15): the SERVER's G40-502 Delivery curve, the number the
+     Request app shows (POST orders/smart_price). Region no longer applies (the server has
+     none); the second argument is ignored. Connect still uses the old NC table. */
+  function suggestedOffer(itemCost){ return window.GopherRequestLogic.deliverySuggestedOffer(itemCost); }
 
   // ─── RIDE suggested-offer model (distance-based) ───────────────────────────
   // Mirrors the delivery rail shape { low, suggested, generous } so it flows
@@ -13669,20 +13672,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   document.addEventListener('mousedown', function(e){ if(_savedPickerEl && !_savedPickerEl.contains(e.target) && !(e.target.matches && e.target.matches('input[data-locedit]'))) hideSavedPicker(); }, true);
   window.addEventListener('scroll', hideSavedPicker, true);
 
+  /* D12 (ruled 10/13, built 10/15): the SERVER's G40-535 WORKER-PAY Ride model, the number
+     the Request app shows. It is what the worker is offered, so no $2.99 platform fee and no
+     8% (checkout adds both; the old all-in figure here charged them twice, about $4-6 high).
+     RIDE_RATES / RIDE_MILE_TIERS / rideMileageCost above are no longer used by the suggestion. */
   function rideSuggestedOffer(miles, minutes, scheduled){
-    const r = RIDE_RATES;
-    const variable = (rideMileageCost(miles) + minutes * r.perMin) / 2;
-    const calc = (mult) => {
-      let base = Math.max(r.fee + variable * mult, r.minRide);
-      if(scheduled) base *= (1 + r.schedUplift);
-      return base * (1 + r.itf);
-    };
-    return {
-      low:       Math.round(calc(1 - r.band)),
-      suggested: Math.round(calc(1)),
-      generous:  Math.round(calc(1 + r.band)),
-      miles, minutes
-    };
+    return window.GopherRequestLogic.rideWorkerPayOffer(miles, minutes, scheduled);
   }
 
   // Shared fair-range model for the categories we price (Delivery + Ride Share).

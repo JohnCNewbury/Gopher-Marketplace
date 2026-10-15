@@ -22,25 +22,15 @@ const ctx = vm.createContext({ window: win, console, localStorage: store });
 vm.runInContext(fs.readFileSync(path.join(root, 'Final/assets/js/gopher-request-logic.js'), 'utf8'), ctx);
 const L = win.GopherRequestLogic;
 
-// The web's Ride model is inline in the page. Lift its own constants and functions verbatim;
-// if any of them has moved, say so rather than compare against a guess.
+// D11 + D12 (built 2026-10-15): Request's Delivery and Ride suggestions DELEGATE to the
+// shared module's copies of the server's models. Prove the page still delegates, so a model
+// pasted back inline (the old drift) fails here instead of quietly diverging.
 const page = fs.readFileSync(path.join(root, 'Final/gopher-request.html'), 'utf8');
-const grab = (re) => { const m = page.match(re); if (!m) throw new Error('web ride model not found: ' + re); return m[0]; };
-let webRide;
-try {
-  const fee = (page.match(/const GOPHER_FEE = \{[\s\S]*?\bride:\s*([0-9.]+)/) || [])[1];
-  const itf = (page.match(/const INSTANT_TRANSFER_RATE = ([0-9.]+)/) || [])[1];
-  if (!fee || !itf) throw new Error('GOPHER_FEE.ride / INSTANT_TRANSFER_RATE not found');
-  const src = `const GOPHER_FEE={ride:${fee}}; const INSTANT_TRANSFER_RATE=${itf};\n` +
-    grab(/const RIDE_RATES = \{[\s\S]*?\n  \};/) + '\n' + grab(/const RIDE_MILE_TIERS = [^\n]*/) + '\n' +
-    grab(/function rideMileageCost\(miles\)\{[\s\S]*?\n  \}/) + '\n' +
-    grab(/function rideSuggestedOffer\(miles, minutes, scheduled\)\{[\s\S]*?\n  \}/) +
-    '\nmodule.exports = rideSuggestedOffer;';
-  const m = { exports: null };
-  new Function('module', src)(m);
-  webRide = m.exports;
-} catch (e) {
-  console.log(JSON.stringify({ error: String(e.message || e) }));
+const delegates =
+  /function suggestedOffer\(itemCost\)\{\s*return window\.GopherRequestLogic\.deliverySuggestedOffer\(itemCost\);\s*\}/.test(page) &&
+  /function rideSuggestedOffer\(miles, minutes, scheduled\)\{\s*return window\.GopherRequestLogic\.rideWorkerPayOffer\(miles, minutes, scheduled\);\s*\}/.test(page);
+if (typeof L.deliverySuggestedOffer !== 'function' || typeof L.rideWorkerPayOffer !== 'function') {
+  console.log(JSON.stringify({ error: 'shared module lacks deliverySuggestedOffer / rideWorkerPayOffer' }));
   process.exit(0);
 }
 
@@ -48,7 +38,7 @@ const b = (o) => (o ? [o.low, o.suggested, o.generous] : null);
 const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
 const tierOf = (x) => (x && typeof x === 'object' ? (x.tier || x.key) : x);
 
-const out = { junk: [], moving: [], detect: [], delivery: [], ride: [] };
+const out = { junk: [], moving: [], detect: [], delivery: [], ride: [], delegates };
 for (const t of ['single', 'half', 'full']) {
   const w = b(L.suggestedJunkOffer(t)), s = b(srv({ request_type: 'Junk Removal', iq_tier: t, iq_tier_source: 'corrected' }));
   out.junk.push({ tier: t, web: w, server: s, same: same(w, s) });
@@ -64,12 +54,19 @@ for (const d of ['haul away an old couch', 'clean out my garage, about half a tr
   const mv = [tierOf(L.detectMovingTier(d)), tierOf(S.detectMovingTier(d))];
   out.detect.push({ text: d, junk: j, moving: mv, same: j[0] === j[1] && mv[0] === mv[1] });
 }
-for (const c of [0, 10, 25, 50, 100, 150, 200, 300, 500]) {
-  const w = b(L.suggestedOffer(c, true)), s = b(srv({ request_type: 'Delivery', service_cost: c }));
+for (const c of [0, 5, 10, 12.5, 25, 37, 50, 99.99, 100, 150, 200, 250, 300, 500, 1000]) {
+  const w = b(L.deliverySuggestedOffer(c)), s = b(srv({ request_type: 'Delivery', service_cost: c }));
   out.delivery.push({ cost: c, web: w, server: s, same: same(w, s) });
 }
-for (const [mi, mn, sc] of [[4.3, 13, false], [12, 20, false], [15.1, 24, false], [15.1, 24, true], [30, 40, false]]) {
-  const w = b(webRide(mi, mn, sc)), s = b(srv({ request_type: 'Need a Ride', trip_distance: mi, trip_duration: mn, request_schedule_later: sc }));
-  out.ride.push({ trip: `${mi}mi/${mn}min${sc ? ' sched' : ''}`, web: w, server: s, same: same(w, s) });
+/* [miles, minutes or null (= not measured), scheduled]. null minutes exercises the server's
+   minutes-from-miles fit; 0 miles is "no route yet" (the $8 floor); 1 mi scheduled is the
+   floor-then-uplift order ($9.20, not $8). */
+for (const [mi, mn, sc] of [[4.3, 13, false], [12, 20, false], [15.1, 24, false], [15.1, 24, true],
+  [30, 40, false], [0, null, false], [1, 2, true], [8, null, false], [45, 55, true], [60, null, false]]) {
+  const body = { request_type: 'Need a Ride', request_schedule_later: sc };
+  if (mi) body.trip_distance = mi;
+  if (mn != null) body.trip_duration = mn;
+  const w = b(L.rideWorkerPayOffer(mi, mn == null ? undefined : mn, sc)), s = b(srv(body));
+  out.ride.push({ trip: `${mi}mi/${mn == null ? 'est' : mn}min${sc ? ' sched' : ''}`, web: w, server: s, same: same(w, s) });
 }
 console.log(JSON.stringify(out));

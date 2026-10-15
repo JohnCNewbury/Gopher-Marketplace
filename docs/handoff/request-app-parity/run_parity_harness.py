@@ -524,17 +524,17 @@ def app_section():
     bad = [r for r in offer["detect"] if not r["same"]]
     check(not bad, "junk + moving tier detection == the live server's (%d descriptions)"
           % len(offer["detect"]), "" if not bad else "differ: %s" % bad[:3])
-    for kind, tag, why in (
-            ("delivery", "D11", "web uses the 7/09 NC table; the server, G40-502 owner anchors (9/21). "
-             "RULED 10/13: the WEB adopts the server's curve"),
-            ("ride", "D12", "web adds the $2.99 fee + 8% (rider all-in); the server is worker pay only (G40-535, 9/23). "
-             "RULED 10/13: the WEB adopts the server's model")):
+    # D11 + D12: RULED 10/13, BUILT 10/15. The web shows the server's G40-502 Delivery curve
+    # and G40-535 worker-pay Ride model, so a difference is now a FAILURE, not a warning; so
+    # is the Request page no longer delegating to them (a model pasted back inline).
+    check(offer.get("delegates") is True,
+          "Request page delegates Delivery + Ride suggestions to the server's models",
+          "suggestedOffer / rideSuggestedOffer no longer call deliverySuggestedOffer / rideWorkerPayOffer")
+    for kind, tag in (("delivery", "D11"), ("ride", "D12")):
         diff = [r for r in offer[kind] if not r["same"]]
-        if diff:
-            ex = diff[min(1, len(diff) - 1)]
-            WARNS.append("APP DIVERGENCE %s suggested %s offer: %d of %d cases differ (e.g. %s: web %s, server %s) - %s"
-                         % (tag, kind, len(diff), len(offer[kind]),
-                            ex.get("cost", ex.get("trip")), ex["web"], ex["server"], why))
+        check(offer[kind] and not diff,
+              "%s suggested %s offer == the live server's (%d cases)" % (tag, kind, len(offer[kind])),
+              "" if not diff else "differ: %s" % diff[:3])
 
 
 def fee_table(src, name):
@@ -601,10 +601,23 @@ def main():
                 {"low":64,"suggested":85,"generous":106},{"low":50,"suggested":66,"generous":83}]
     for lbl, got, exp in zip(["NC $100","US $100","NC $300","US $300"], spots, expected):
         check(got == exp, "offer %s == %s" % (lbl, exp), "got %s" % got)
+    # D11 + D12 (built 2026-10-15): Request web now shows the SERVER's models (what the
+    # Request app shows). Lock their spot values here too; section 8 RUNS the server's
+    # module beside them on every case. The old table above stays for Connect.
+    srv_spots = jxa("var window={};\n" + mod +
+                    "\nvar L=window.GopherRequestLogic;" +
+                    "JSON.stringify([L.deliverySuggestedOffer(100),L.deliverySuggestedOffer(300),"
+                    "L.deliverySuggestedOffer(5),L.rideWorkerPayOffer(4.3,13,false),"
+                    "L.rideWorkerPayOffer(1,2,true)].map(function(o){return [o.low,o.suggested,o.generous];}));")
+    for lbl, got, exp in zip(["Request delivery $100 (G40-502)", "Request delivery $300", "Request delivery $5 (floor $10)",
+                              "Request ride 4.3mi/13min (G40-535 worker pay)", "Request ride 1mi/2min scheduled (floor, then x1.15)"],
+                             srv_spots, [[15, 20, 25], [30, 40, 50], [8, 10, 13], [8, 9, 11], [9, 9, 9]]):
+        check(got == exp, "offer %s == %s" % (lbl, exp), "got %s" % got)
     for name, rel in SURFACES.items():
         src = read(rel)
         no_table = "const OFFER_TABLE" not in src
-        shim = "GopherRequestLogic.suggestedOffer" in src
+        shim = ("GopherRequestLogic.suggestedOffer" in src
+                or "GopherRequestLogic.deliverySuggestedOffer" in src)
         check(no_table and shim, "%s pricing is a delegating shim" % name,
               "(localTable:%s shim:%s)" % (not no_table, shim))
 
