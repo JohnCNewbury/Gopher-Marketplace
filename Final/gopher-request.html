@@ -15029,7 +15029,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        category with NO First Available — the live app has never had it — so the
        `first` row is suppressed for Moving in renderStep3() and render()
        coerces any stale 'first' away. The rest still force 'select'. */
-    workerSelectChoice: ['yard','other'],                             // + Labor (G40-578) and Home Services (G40-579), 2026-10-04: both now show the two-option Gopher choice
+    workerSelectChoice: ['other'],                                    // + Labor (G40-578) and Home Services (G40-579), 2026-10-04; + Yard (D13, John 10/13) 2026-10-15: all show the two-option Gopher choice
     // ──── Step 4 Location-section visibility ────
     pickupSection:    ['home','labor','junk','yard','other'],         // Delivery, Moving, Ride only
     noSpecificPickup: ['home','labor','junk','yard','ride','other'],  // Delivery, Moving only
@@ -15101,7 +15101,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      questions: `mv` was vocabulary AND the Moving-only no-hourly ruling, and
      the unit box was gated on "flow is finished" when it meant "address worth
      a unit number". Each one only bit when a new category disagreed. */
-  const NO_FIRST_AVAILABLE = ['moving', 'junk', 'labor', 'home'];
+  const NO_FIRST_AVAILABLE = ['moving', 'junk', 'labor', 'home', 'yard'];   // + Yard (D13): the app's Yard has no First Available (Y-05)
   const hidesFirstAvailable = () => NO_FIRST_AVAILABLE.indexOf(state.category) !== -1;
 
   /* ── Categories that ask for a Unit/Apt # ──────────────────────────────────
@@ -15193,7 +15193,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   // Bids stay available for >1-worker requests — the single bidder is responsible for paying the WHOLE
   // crew, so one bid covers every worker (no discrepancy). Hidden only by category (bidsOption matrix)
   // and, for Labor/Yard, when paying by the hour. NOT gated by moreThanOneWorker.
-  const bidsAllowed = () => isVisible('bidsOption') && !(state.payByHour && (state.category === 'labor' || state.category === 'yard'));
+  /* D14 / B-22: paying by the hour turns bids off, as the app's Labor flow does
+     (laborFlowSteps.js: bidsAllowed = !isHourly). Hourly now exists on Labor only. */
+  const bidsAllowed = () => isVisible('bidsOption') && !state.payByHour;
 
   // ─── TrustShield reminder card (v72) ────────────────────────────────
   // Used identically in two render paths:
@@ -15958,7 +15960,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
                     flow silently deleted Labor's hourly toggle and its "# of
                     hours needed" field. Caught by driving the flow, not by
                     reading it. Keep them separate. */
-                 const noHourly = state.category === 'moving'; return `
+                 /* D14 (John 10/13: pay by the hour = LABOR ONLY, the web removes it
+                    from Yard, Custom Task and Junk), as the app (paying_by_hour lives only
+                    in laborflow.json). Labor KEEPS it -- see the warning above. */
+                 const noHourly = state.category !== 'labor'; return `
       <div class="step-section">
         <div class="step-section-title">${sstIco('👷')}${mv ? 'Gopher setup' : 'Worker setup'}</div>
         <div class="toggle-row">
@@ -16232,7 +16237,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     //  - Hidden for Labor / Yard when paying by the hour (a bid is a fixed price; hourly is open-ended)
     //  - Otherwise shown (Moving, Hourly/Day, Junk, Yard, Other)
     const bidsHiddenByCategory = !isVisible('bidsOption');
-    const bidsHiddenByHourly = state.payByHour && (state.category === 'labor' || state.category === 'yard');
+    const bidsHiddenByHourly = !!state.payByHour;   // D14: hourly = Labor only, and it turns bids off
     const showBidsOption = !bidsHiddenByCategory && !bidsHiddenByHourly;
     return `
       <h3>How would you like to pay your ${saysGopher() ? 'Gopher' : 'worker'}?</h3>
@@ -17257,7 +17262,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
          this only fires on the untouched 'first'. */
       const myN = (window.__myGophersCount ? window.__myGophersCount() : 0);
       state.workerSelection = myN > 0 ? 'my' : 'select';
+      /* B-17 (App wins): when the default lands on Prioritize MY Gophers the app
+         hand-picks EVERY saved Gopher (favgophercheckbox.js initialFavGopherSelection);
+         this left none picked ("None selected — opens to everyone"). Same seed the
+         row tap uses. */
+      if(state.workerSelection === 'my' && !(state.hireAgainGophers && state.hireAgainGophers.length)){
+        state.hireAgainGophers = (window.__myGopherNames ? window.__myGopherNames() : []).slice();
+      }
     }
+    /* D14: hourly exists on Labor only. A request (or a draft saved before this
+       change) that carries payByHour on another category must not be priced by
+       the hour behind a hidden toggle. */
+    if(state.payByHour && state.category !== 'labor') state.payByHour = false;
     // Never sit on an auto-hidden empty detail section — advance past it.
     if(state.step > 1 && state.step < 7 && stepIsEmpty(state.step)){
       state.step = nextVisibleStep(state.step);

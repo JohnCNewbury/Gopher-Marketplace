@@ -77,7 +77,11 @@
        both now show the two-option Gopher choice. 'junk' joined destStairs the same day (JR-34) -- owner:
        "Web, Connect and prototype match the app: no stairs question on Junk.
        Junk sends total_stair_flight 0 everywhere, as the app does." */
-    workerSelectChoice:   ['other', 'yard'],
+    /* D13 (John 10/13: "the WEB shows the app's 2 options on Yard"): 'yard' left
+       on 2026-10-15. The app's Yard step offers I'll select my worker and
+       Prioritize MY Gopher(s), no First Available (yardFlowSteps.js Y-05). Only
+       Custom Task ('other') still hides it, until the Custom Task port. */
+    workerSelectChoice:   ['other'],
     workerSetup:          ['delivery', 'home', 'ride']
   };
 
@@ -106,6 +110,13 @@
          Connect keeps hiding workerSelectChoice for BOTH 'moving' and 'labor',
          permanently. This is not a parity gap to be closed later. */
   var SURFACE_OVERRIDES = {
+    /* The app PROTOTYPE keeps the pre-D13 Yard value on purpose: John 10/14, the
+       prototype is a lame duck, "redone after web code/logic". This override is
+       the declared lag, so the harness stays honest instead of the base drifting
+       back. Remove it when the prototype is rebuilt. */
+    prototype: {
+      workerSelectChoice:   ['other', 'yard']
+    },
     connect: {
       multiStop:            ['home', 'junk', 'labor', 'moving', 'other', 'yard'],
       serviceElevator:      ['delivery', 'home', 'junk', 'labor', 'other', 'ride', 'yard'],

@@ -810,6 +810,7 @@ def main():
             M = jxa("var module={exports:{}};" + read("Final/assets/js/gopher-flow-rules.js") +
                     ";JSON.stringify({base:module.exports.tableFor(),"
                     "connect:module.exports.tableFor('connect'),"
+                    "prototype:module.exports.tableFor('prototype'),"
                     "scoped:module.exports.CATEGORY_SCOPED_KEYS,"
                     "bad:module.exports.assertInvariants()})")
         except Exception as e:
@@ -821,7 +822,10 @@ def main():
             M_SCOPED = M["scoped"]
             # Each surface is compared against the table for ITS surface.
             for name, rel in SURFACES.items():
-                want = M["connect"] if name == "connect" else M["base"]
+                # Each surface against its OWN table: a declared override (the
+                # prototype's D13 lag, John 10/14 "lame duck") must count, or the
+                # base could never move ahead of a frozen surface.
+                want = M.get(name) or M["base"]
                 got = surface_hidden_for(read(rel))
                 if got is None:
                     check(False, "%s exposes a FIELD_HIDDEN_FOR table" % name)
