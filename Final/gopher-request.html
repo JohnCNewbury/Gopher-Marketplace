@@ -7616,6 +7616,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .req-status.status-matching    { background:rgba(251,191,36,0.18); color:#92580d; }
   .req-status.status-scheduled   { background:rgba(26,42,94,0.10); color:var(--navy); }
   .req-status.status-dispute     { background:#fbeeef; color:#c44257; }
+  /* The app's card kinds (homeCards.cardModel) on the list pill. */
+  .req-status.k-good  { background:#33d975; color:var(--navy); }
+  .req-status.k-bad   { background:#c44257; color:#fff; }
+  .req-status.k-calm  { background:#e8f5ee; color:#127a45; }
+  .req-status.k-sched { background:#e7eefa; color:var(--navy); }
+  .req-status.k-hold, .req-status.k-ended { background:#f1efea; color:#5d5a52; }
 
   /* ─── Customer post-completion + rating + dispute (mirrors Connect) ─── */
   .cmp-block { border:1px solid #cfeede; background:#f1faf4; border-radius:14px; padding:18px 16px; margin:18px 0 4px; text-align:center; }
@@ -7703,6 +7709,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     text-transform:uppercase;
   }
   .req-action.attention:hover { background:var(--green-dark); }
+  .req-action.attention.bad { background:#c44257; color:#fff; }
+  .attn-pulse-g { animation:attnGreenGlow 2.6s ease-in-out infinite; }
+  @keyframes attnGreenGlow {
+    0%, 100% { box-shadow:0 2px 8px rgba(51,217,117,0.30); }
+    50%      { box-shadow:0 4px 22px rgba(51,217,117,0.62); }
+  }
+  @media (prefers-reduced-motion: reduce){ .attn-pulse-g { animation:none; } }
 
   /* ─── Shared "needs-your-attention" pulse ─────────────────────────────────
      Reusable across the dashboard. Keeps whatever green background the button
@@ -7733,6 +7746,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .req-card.has-attention {
     border-color:rgba(196,66,87,0.45);
     background:linear-gradient(90deg, rgba(196,66,87,0.04), white 30%);
+  }
+  /* Good news to act on is GREEN (owner 10/4); red stays for a failed payment. */
+  .req-card.has-attention.k-good {
+    border-color:rgba(51,217,117,0.6);
+    background:linear-gradient(90deg, rgba(51,217,117,0.07), white 30%);
   }
 
   /* ─── "Just Accepted" badge — green pill, pulsing, sits on the worker card ─── */
@@ -7784,6 +7802,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .req-detail-header.has-attention {
     border-left:4px solid #C44257;
   }
+  .req-detail-header.has-attention.k-good { border-left-color:#33d975; }
   .req-detail-title {
     font-family:'Nunito'; font-weight:800; font-size:18px;
     color:var(--navy); line-height:1.25;
@@ -8560,10 +8579,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:#fff; border:1px solid #e9e3d4; border-radius:15px;
     box-shadow:0 2px 10px rgba(0,36,97,.06);
   }
-  .hlive-card.has-attention {
-    border-color:#C44257;
-    box-shadow:0 0 0 1.4px #C44257, 0 4px 14px -3px rgba(196,66,87,.3);
-  }
   .hlive-body {
     flex:1; min-width:0; padding:15px 17px; display:flex; align-items:center; gap:13px;
     background:none; border:0; text-align:left; cursor:pointer; font:inherit; color:inherit;
@@ -8576,10 +8591,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hlive-pill {
     font-family:'Nunito',sans-serif; font-weight:900; font-size:10px; letter-spacing:.8px;
     text-transform:uppercase; padding:3px 9px; border-radius:14px;
-    background:var(--green); color:var(--ink-on-green);
+    background:#e8f5ee; color:#127a45;
   }
-  .hlive-pill.at  { background:#C44257; color:#fff; }
-  .hlive-pill.sch { background:#BADBFC; color:var(--navy); }
   .hlive-ttl {
     font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; line-height:1.2;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -8588,8 +8601,29 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-size:12px; color:var(--muted); line-height:1.35;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .hlive-sub.hot { color:#C44257; font-weight:700; }
-  .hlive-amt { font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; white-space:nowrap; }
+  .hlive-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px;
+    vertical-align:1px; background:#1cb061; }
+  .hlive-go { font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; white-space:nowrap; color:var(--navy); }
+  /* The app's card states (src/css/homeV2.css, colour = John 10/4: "the green
+     with container pulse is good and red with container pulse is bad"):
+     good = needs you, green + pulse · bad = a failed payment, red + pulse ·
+     calm = nothing to do · sched = booked for later · hold = a dispute (grey,
+     no pulse) · ended = no worker found. The kind comes from cardModel. */
+  .hlive-card.k-good { border-color:#33d975; animation:hlive-ring-g 1.8s infinite; }
+  .hlive-card.k-good .hlive-pill, .hlive-card.k-good .hlive-go { background:#33d975; color:var(--navy); }
+  .hlive-card.k-good .hlive-go, .hlive-card.k-bad .hlive-go { border-radius:999px; padding:7px 12px; }
+  .hlive-card.k-good .hlive-sub { color:#127a45; }
+  .hlive-card.k-bad { border-color:#c44257; animation:hlive-ring-r 1.8s infinite; }
+  .hlive-card.k-bad .hlive-pill, .hlive-card.k-bad .hlive-go { background:#c44257; color:#fff; }
+  .hlive-card.k-bad .hlive-sub { color:#c44257; }
+  .hlive-card.k-bad .hlive-dot { background:#c44257; }
+  .hlive-card.k-sched .hlive-pill { background:#e7eefa; color:var(--navy); }
+  .hlive-card.k-hold .hlive-pill, .hlive-card.k-ended .hlive-pill { background:#f1efea; color:#5d5a52; }
+  .hlive-card.k-sched .hlive-dot, .hlive-card.k-hold .hlive-dot, .hlive-card.k-ended .hlive-dot { background:#9aa3b2; }
+  .hlive-card.k-looking .hlive-dot { background:#e0a526; }
+  @keyframes hlive-ring-g { 0% { box-shadow:0 0 0 0 rgba(51,217,117,.55); } 70%,100% { box-shadow:0 0 0 8px rgba(51,217,117,0); } }
+  @keyframes hlive-ring-r { 0% { box-shadow:0 0 0 0 rgba(196,66,87,.45); } 70%,100% { box-shadow:0 0 0 8px rgba(196,66,87,0); } }
+  @media (prefers-reduced-motion: reduce){ .hlive-card.k-good, .hlive-card.k-bad { animation:none; } }
   .hlive-turn {
     width:46px; flex:0 0 auto; border:0; background:#f4f0e6; color:var(--navy); cursor:pointer;
     font-family:'Nunito',sans-serif; font-weight:900; font-size:19px;
@@ -8600,9 +8634,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hlive-turn.l { border-right:1px solid #e9e3d4; }
   .hlive-turn.r { border-left:1px solid #e9e3d4; }
   /* the attention clause inside the headline */
-  .choose-ask em { font-style:normal; color:#C44257; }
+  .choose-ask em { font-style:normal; color:#127a45; }
+  .choose-ask em.bad { color:#C44257; }
   @media (max-width:760px){
-    .hlive-amt { display:none; }
+    .hlive-go { font-size:13px; }
     .hlive-turn { width:38px; }
   }
   /* ⛔ .choose-two is retained for the Deals return (see the markup note); nothing
@@ -23162,6 +23197,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
 </div>
 
 
+<!-- The Request APP's own after-submit logic (owner 2026-10-15: "Port the app's
+     logic + drop the demos"). gopher-dash-order.js is the ONE mapping from a
+     dashboard record to the server's order shape (r.order); gopher-app-shared.js
+     publishes the app's helpers, copied byte for byte by
+     scripts/sync-app-helpers.py, as window.GopherAppShared. A module runs after
+     the page parses, so the dashboard re-renders on "gopher-app-shared-ready". -->
+<script src="assets/js/gopher-dash-order.js"></script>
+<script type="module" src="assets/js/gopher-app-shared.js"></script>
+
 <!-- ============================================================
      GOPHER REQUEST — DASHBOARD JS (Stage 3, isolated + namespaced)
      ============================================================ -->
@@ -24873,6 +24917,16 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
   }
   function buildSeedRequests(){
     const tierLabel = (t) => (t==='pro+'||t==='pro') ? 'Pro' : 'Elite+';
+    /* The scheduled seeds' start, as the server's request_schedule_time, so
+       their cards carry the date the way the app's do ("Fri, Oct 16 ·
+       9:00 AM"). `weekday` 0-6 picks the next such day; omitted = tomorrow. */
+    const seedAt = (hour, minute, weekday) => {
+      const d = new Date(); d.setHours(hour, minute, 0, 0);
+      let add = 1;
+      if(weekday != null){ add = (weekday - d.getDay() + 7) % 7 || 7; }
+      d.setDate(d.getDate() + add);
+      return d.toISOString();
+    };
     return [
       // 1) PENDING — needs attention, worker = count, no name yet
       {
@@ -25175,7 +25229,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         status:'scheduled', statusLabel:'Scheduled', needsAttention:false, userCreated:false,
         scheduledForLater:true, workersNeeded:1, perWorkerCost:145, multiIndividual:false,
         worker:'Rosa P. (Pro)', amount:'$145.00 total',
-        when:'Tomorrow, 9:00 AM',
+        when:'Tomorrow, 9:00 AM', requestScheduleTime: seedAt(9, 0),
         interestedWorkers:[ makeSeedWorker('RP','Rosa P.','pro+','hired') ],
       },
       // 4) SCHEDULED — worker hired, booked for later
@@ -25198,7 +25252,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         status:'scheduled', statusLabel:'Scheduled', needsAttention:false, userCreated:false,
         scheduledForLater:true, workersNeeded:1, perWorkerCost:280, multiIndividual:false,
         worker:'Diego R. (Elite+)', amount:'$280.00 total',
-        when:'Thursday, 1:00 PM',
+        when:'Thursday, 1:00 PM', requestScheduleTime: seedAt(13, 0, 4),
         interestedWorkers:[ makeSeedWorker('DR','Diego R.','elite+','hired') ],
       },
       // ── Worker-completed delivery AWAITING REQUESTOR CONFIRMATION (requestor-facing
@@ -25256,6 +25310,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
   // Reset the store back to just the seed reference requests (fresh on each sign-in).
   function seedDashboardRequests(){
     DASH_DATA.activeRequests = buildSeedRequests();
+    DASH_DATA.activeRequests.forEach(dashOrder);   // each seed carries r.order
     _userReqSeq = 1;
     dashState.requestDetailId = null;
     // Restore MY Gophers to match the (freshly restored) completed history.
@@ -25369,6 +25424,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       when: data.when || 'Just now · awaiting your selection',
       dupKey: data.dupKey || null,
       interestedWorkers: interested,
+      /* Read by the order mapping (gopher-dash-order.js) when the flow passes
+         them: the scheduled start (request_schedule_time — the app's
+         "Fri, Oct 16 · 9:00 AM") and the open-until time (delivery_eta — the
+         app's "open for about 3 more hours"). Without them the card simply
+         leaves those words out, as the app does when the server has none. */
+      requestScheduleTime: data.requestScheduleTime || null,
+      deliveryEta: data.deliveryEta || null,
+      subCategory: data.subCategory || null,
+      deliveryNeeded: data.deliveryNeeded != null ? !!data.deliveryNeeded : null,
     };
     DASH_DATA.activeRequests.unshift(req);  // newest on top
     // Service-provider deal: provider already accepted → connect immediately
@@ -25421,6 +25485,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(data.dealKind !== 'service' && (req.interestedWorkers || []).some(w => w.status === 'hired')){
       startJob(req, { navigate:false });
     }
+    dashOrder(req);   // r.order: the server's fields for this request, from birth
     renderActiveRequests();
     return id;
   };
@@ -25950,25 +26015,97 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     });
   }
 
-  /* ══ HOME: the live-request container ═══════════════════════════════════
-     Settled design, owner-approved 2026-10-03. See the .hlive CSS block for
-     the rules; this is the half that has to stay honest about SCALE.
+  /* ══ THE APP'S AFTER-SUBMIT LOGIC (owner 2026-10-15) ═══════════════════════
+     "Port the app's logic + drop the demos", under the standing rule "The
+     logic MUST be the same on Web and App" — the live Request app is the
+     reference.
 
-     ⛔ Every string here is a TEMPLATE. Owner: "I dont have realtime AI for
-     this. You need to be thinking SCALE." Nothing is written per-request and
-     nothing assumes a name exists — an earlier draft used "Marcus is on the
-     way" as a headline, which needs a name that may not be there, and "One
-     needs a yes from you", which is false when two do. */
+     Every request record carries the SERVER's order fields in r.order, built
+     by the one mapping, assets/js/gopher-dash-order.js (read its header for
+     which web field becomes which server field). The Home card, the list pill,
+     what "needs you", the card order, the step bar and the cancel / confirm /
+     dispute doors are then decided by the Request APP's own helpers —
+     window.GopherAppShared, copied byte for byte from gopher-mobile-request by
+     scripts/sync-app-helpers.py and held to it by
+     scripts/web-checks/app-shared-helpers.js. The web keeps no rule of its own
+     for any of them. When the real API is wired, r.order is the API's row and
+     none of the renderers change. */
+  function dashOrder(r){
+    return (r && window.GopherDashOrder) ? window.GopherDashOrder.sync(r) : null;
+  }
+  function appShared(){ return window.GopherAppShared || null; }
+  function needsYouKind(kind){ return kind === 'good' || kind === 'bad'; }
+  /* The app's Home card for this request — {kind, pill, title, status, go} —
+     or null for the moment before the helpers module has loaded. It also
+     settles r.needsAttention, so every older reader of that flag agrees with
+     the card instead of keeping a second opinion. */
+  function dashCard(r){
+    var S = appShared(), o = dashOrder(r);
+    if(!S || !o) return null;
+    var card = S.cardModel(o);
+    r.needsAttention = needsYouKind(card.kind);
+    return card;
+  }
+  /* May the requester cancel? The app's rule, requesterCancelWindow.js —
+     pending, scheduled, or accepted (a worker booked but not yet started);
+     never once the worker taps In Progress (E-11). The server refuses the
+     same states (cancel.js job_has_started). */
+  function dashCanCancel(r){
+    var S = appShared(), o = dashOrder(r);
+    return !!(S && o && S.requesterCanCancel(o.aasm_state));
+  }
+  /* The request screen's pill — the app's live band (requestOrder.js, the
+     `livePill` map and the waiting band's "Submitted"). Hand-ported: it lives
+     inside a React screen, not a helper the sync can copy, so it reads the
+     app's own itemStep() for the item row. */
+  function detailPill(r){
+    var S = appShared(), o = dashOrder(r);
+    if(!S || !o) return '';
+    var item = S.itemStep(o);
+    return {
+      pending: 'Submitted',
+      accepted: 'Accepted',
+      scheduled: 'Scheduled',
+      picked_up: 'In progress',
+      purchased: item === 'purchased' ? 'Item purchased'
+        : item === 'picked_up' ? 'Item picked up' : 'In progress',
+      delivered: 'Completed'
+    }[o.aasm_state] || '';
+  }
+  /* A module runs after the page has parsed, so anything drawn before it
+     arrived is drawn again now. */
+  window.addEventListener('gopher-app-shared-ready', function(){
+    renderActiveRequests();
+    if(dashState.requestDetailId) renderRequestDetail();
+  });
+
+  /* ══ HOME: the live-request container ═══════════════════════════════════
+     Settled design, owner-approved 2026-10-03: ONE container, page-turn edges,
+     no dots. What it SAYS is the app's (src/component/home/homeCards.js):
+     which requests are on Home and in what order (orderCards: a failed
+     payment, then the ones that need you, then live, then scheduled, newest
+     first in each), each card's pill, title, sentence, colour and the label
+     naming where the tap goes (cardModel), and the headline (headline). */
   var HOME_LIVE_IX = 0;
 
-  // Attention sorts to index 0 so you always land on the one that wants you.
-  // Array.prototype.sort is stable, so the store's own order survives inside
-  // each group — this re-orders, it does not shuffle.
+  /* [{r, card}] in the app's order — only the requests GET /orders/v3 would
+     put on the app's Home (GopherDashOrder.onHome: a confirmed, paid order
+     has left it). Empty until the helpers have loaded. */
   function homeLiveList(){
+    var S = appShared();
     var all = (typeof DASH_DATA === 'object' && DASH_DATA && DASH_DATA.activeRequests)
-      ? DASH_DATA.activeRequests.slice() : [];
-    all.sort(function(a,b){ return (b.needsAttention?1:0) - (a.needsAttention?1:0); });
-    return all;
+      ? DASH_DATA.activeRequests : [];
+    if(!S || !window.GopherDashOrder) return [];
+    var orders = [], recOf = new Map();
+    all.forEach(function(r){
+      var o = dashOrder(r);
+      if(o && GopherDashOrder.onHome(o)){ orders.push(o); recOf.set(o, r); }
+    });
+    return S.orderCards(orders).map(function(x){
+      var r = recOf.get(x.item);
+      r.needsAttention = needsYouKind(x.card.kind);
+      return { r: r, card: x.card };
+    });
   }
 
   /* The requester's first name, for the empty-state headline. '' when we do not
@@ -25980,27 +26117,28 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     return (n && n.toLowerCase() !== 'a') ? n : '';
   }
 
-  /* n = live requests, a = how many of them want something. Both plurals are
-     computed, never hard-coded, and the attention clause disappears entirely
-     at a === 0 rather than reading "0 need attention".
-
-     ⛔ THE EMPTY-STATE LINE IS THE APP'S, WORD FOR WORD, and it is an owner
-     ruling: "What can we help you with today, John?" (John, 18:48 ET 10/4,
-     recorded in the app's src/component/home/HomeScreen.js). Owner 2026-10-12:
-     "Move the name into the headline like the app." The app drops the name
-     when it does not have one, and so does this — same two forms, same file.
-     The separate "Welcome back, <first> 👋" greeting was REMOVED in the same
-     change: the app has no greeting line, and keeping both would say the name
-     twice. Only the EMPTY state carries the name; the live-requests line below
-     is a different sentence and is unchanged. */
-  function homeLiveHeadline(n, a){
-    if(!n){
+  /* The app's headline (src/component/home/HomeScreen.js): homeCards.headline
+     with the attention clause after ", ", green unless every request that needs
+     you is a failed payment. ⛔ THE EMPTY-STATE LINE IS THE APP'S, WORD FOR
+     WORD, and an owner ruling: "What can we help you with today, John?" (John,
+     18:48 ET 10/4); the app drops the name when it does not have one, and so
+     does this. */
+  function homeLiveHeadline(items){
+    var S = appShared();
+    if(!items.length || !S){
       var f = homeFirstName();
       return f ? 'What can we help you with today, ' + f + '?'
                : 'What can we help you with today?';
     }
-    return 'You have ' + n + (n === 1 ? ' current request' : ' current requests')
-      + (a ? ', <em>' + a + (a === 1 ? ' needs' : ' need') + ' attention</em>' : '');
+    var h = S.headline(items.map(function(x){ return { card: x.card }; }));
+    return escHtml(h.lead)
+      + (h.attention ? ', <em class="' + (h.attentionBad ? 'bad' : 'good') + '">'
+          + escHtml(h.attention) + '</em>' : '');
+  }
+  function escHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+    });
   }
 
   function renderHomeLive(){
@@ -26008,11 +26146,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(!host) return;
     var list = homeLiveList();
     var n    = list.length;
-    var attn = list.filter(function(r){ return r.needsAttention; }).length;
 
     var ask = document.getElementById('rqChooseAsk');
     var sub = document.getElementById('rqChooseSub');
-    if(ask) ask.innerHTML = homeLiveHeadline(n, attn);
+    if(ask) ask.innerHTML = homeLiveHeadline(list);
     // "Two ways to go from here" is the EMPTY state's sub-head. Under
     // "You have 2 current requests" it reads as a non-sequitur.
     if(sub) sub.hidden = n > 0;
@@ -26024,38 +26161,25 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     // the detail page is open), so clamp rather than render undefined.
     if(HOME_LIVE_IX > n - 1) HOME_LIVE_IX = 0;
     if(HOME_LIVE_IX < 0)     HOME_LIVE_IX = 0;
-    var r = list[HOME_LIVE_IX];
-
-    var bucket  = (typeof statusBucket === 'function') ? statusBucket(r.status) : '';
-    var pillCls = r.needsAttention ? ' at' : (bucket === 'scheduled' ? ' sch' : '');
-    var pillTxt = r.needsAttention ? 'Needs you' : (r.statusLabel || '');
-    /* ⚠️ Final's request store carries only a needsAttention BOOLEAN — it has no
-       attention TYPE, so there is no honest way to say which of the five
-       moments this is (bid · rate · gcancel · confirm · adjust). Those labels
-       exist in _prototypes/Request/gopher-request-home.html and are reviewed in
-       docs/handoff/attention-labels-2026-10-03.md. When the type reaches this
-       store, THIS is the line that becomes the real sentence. Until then the
-       copy is deliberately generic rather than invented per request. */
-    var subTxt  = r.needsAttention
-      ? 'Open this request \u2014 it needs your response'
-      : [r.worker, r.when].filter(Boolean).join(' \u00b7 ');
+    var r = list[HOME_LIVE_IX].r, card = list[HOME_LIVE_IX].card;
+    var k = ' k-' + card.kind + (card.looking ? ' k-looking' : '');
 
     var left  = HOME_LIVE_IX > 0
-      ? '<button type="button" class="hlive-turn l" data-hlive-turn="-1" aria-label="Previous request">\u2039</button>' : '';
+      ? '<button type="button" class="hlive-turn l" data-hlive-turn="-1" aria-label="Previous request">‹</button>' : '';
     var right = HOME_LIVE_IX < n - 1
-      ? '<button type="button" class="hlive-turn r" data-hlive-turn="1" aria-label="Next request">\u203a</button>' : '';
+      ? '<button type="button" class="hlive-turn r" data-hlive-turn="1" aria-label="Next request">›</button>' : '';
 
     host.innerHTML =
-      '<div class="hlive-card' + (r.needsAttention ? ' has-attention' : '') + '">'
+      '<div class="hlive-card' + k + '">'
       +   left
       +   '<button type="button" class="hlive-body" data-hlive-open="' + r.id + '">'
       +     '<span class="hlive-ico">' + recMark(r) + '</span>'
       +     '<span class="hlive-tx">'
-      +       (pillTxt ? '<span class="hlive-pill' + pillCls + '">' + pillTxt + '</span>' : '')
-      +       '<span class="hlive-ttl">' + (r.title || ('Request #' + r.id)) + '</span>'
-      +       (subTxt ? '<span class="hlive-sub' + (r.needsAttention ? ' hot' : '') + '">' + subTxt + '</span>' : '')
+      +       '<span class="hlive-pill">' + escHtml(card.pill) + '</span>'
+      +       '<span class="hlive-ttl">' + escHtml(card.title) + '</span>'
+      +       '<span class="hlive-sub"><i class="hlive-dot" aria-hidden="true"></i>' + escHtml(card.status) + '</span>'
       +     '</span>'
-      +     (r.amount ? '<span class="hlive-amt">' + r.amount + '</span>' : '')
+      +     '<span class="hlive-go">' + escHtml(card.go) + '</span>'
       +   '</button>'
       +   right
       + '</div>';
@@ -26098,28 +26222,37 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
 
     const frag = [];
     DASH_DATA.activeRequests.forEach(r => {
-      const pillCls  = statusPillClass(r.status);
       const rqstatus = statusBucket(r.status);
-      // Per spec §4: red NEEDS ATTENTION button when flagged, else plain View.
-      const actionBtn = r.needsAttention
-        ? `<button class="req-action attention attn-pulse" data-open-req="${r.id}">NEEDS ATTENTION</button>`
-        : `<button class="req-action" data-open-req="${r.id}">View</button>`;
+      /* The pill, "needs you" and the button's words are the APP's Home card
+         for this order (homeCards.cardModel via dashCard — E-47, E-48, E-51):
+         an open dispute reads DISPUTE OPEN, a hire reads ACCEPTED until the
+         worker starts, a waiting cost adjustment NEEDS YOU. Green for good
+         news to act on, red only for a failed payment (owner, 10/4). null for
+         the moment before the helpers load; the ready event redraws. */
+      const card = dashCard(r);
+      const kind = card ? card.kind : '';
+      const needs = card ? needsYouKind(kind) : false;
+      const actionBtn = needs
+        ? `<button class="req-action attention ${kind === 'bad' ? 'bad attn-pulse' : 'attn-pulse-g'}" data-open-req="${r.id}">${escHtml(card.go)}</button>`
+        : `<button class="req-action" data-open-req="${r.id}">${card ? escHtml(card.go) : 'View'}</button>`;
       // Meta: #id · worker · amount · when  (amount omitted only if empty)
       const metaBits = [`Request <b>#${r.id}</b>`, r.worker];
       if(r.amount) metaBits.push(r.amount);
       metaBits.push(r.when);
-      // Only user-submitted requests get the red X; seeded reference requests don't.
-      const deleteX = r.userCreated
-        ? `<button class="req-delete-x" data-del-req="${r.id}" title="Delete this request" aria-label="Delete request #${r.id}">✕</button>`
+      /* Only user-submitted requests get the ✕, and only while the requester
+         may still cancel (E-17): it opens the same status-aware cancel as the
+         detail page, never a bare delete. */
+      const deleteX = (r.userCreated && dashCanCancel(r))
+        ? `<button class="req-delete-x" data-del-req="${r.id}" title="Cancel this request" aria-label="Cancel request #${r.id}">✕</button>`
         : '';
       frag.push(`
-        <div class="req-card is-clickable ${r.needsAttention?'has-attention':''}" data-dynamic data-rqstatus="${rqstatus}" data-open-req="${r.id}">
+        <div class="req-card is-clickable ${needs ? 'has-attention k-' + kind : ''}" data-dynamic data-rqstatus="${rqstatus}" data-open-req="${r.id}">
           <div class="req-icon">${recMark(r)}</div>
           <div class="req-info">
             <div class="req-title">${r.title}</div>
             <div class="req-meta">${metaBits.join(' · ')}</div>
           </div>
-          <span class="req-status ${r.disputeState === 'disputed' ? 'status-dispute' : pillCls}">${r.disputeState === 'disputed' ? 'PENDING DISPUTE' : r.statusLabel}</span>
+          <span class="req-status k-${kind || 'calm'}">${card ? escHtml(card.pill) : ''}</span>
           ${actionBtn}
           ${deleteX}
         </div>
@@ -26137,19 +26270,14 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         showSection('request-detail');
       });
     });
-    // Wire: red X → confirm, then delete the request from the store.
+    /* Wire: ✕ → the request's own cancel, by id (E-17). It used to pass a
+       callback that spliced the record out, which skipped the started-job
+       block and filed nothing to Cancelled; by id it gets the same rules as
+       the detail page's Cancel (window.__openCancelModal mode B). */
     host.querySelectorAll('[data-del-req]').forEach(x => {
       x.addEventListener('click', (e) => {
         e.stopPropagation();
-        const id = x.dataset.delReq;
-        const doDelete = () => {
-          const i = DASH_DATA.activeRequests.findIndex(r => r.id === id);
-          if(i !== -1) DASH_DATA.activeRequests.splice(i, 1);
-          if(dashState.requestDetailId === id) dashState.requestDetailId = null;
-          renderActiveRequests();
-        };
-        if(window.__openCancelModal){ window.__openCancelModal(doDelete); }
-        else { doDelete(); }
+        if(window.__openCancelModal) window.__openCancelModal(x.dataset.delReq);
       });
     });
 
@@ -26228,7 +26356,11 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     // A bid is only meaningful on bids requests. Assign a stable demo offer once,
     // spread around the request's price basis so the Bid sort is demonstrable.
     if(bidsMode && w.bidAmount == null){
-      const base = (r.perWorkerCost && r.perWorkerCost > 0) ? r.perWorkerCost : 120;
+      /* RQ-51 (owner 10/15, "Whole job (app)"): the offer is for the WHOLE job
+         — one Gopher, one offer — except Labor, which is per Gopher × crew.
+         GopherDashOrder.wholeOffer is that one rule. */
+      const whole = window.GopherDashOrder ? GopherDashOrder.wholeOffer(r) : (Number(r.perWorkerCost) || 0);
+      const base = whole > 0 ? whole : 120;
       const seed = (w.name || '').split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
       w.bidAmount = Math.round(base * (0.85 + (seed % 40) / 100)); // ~85%–124% of base
     }
@@ -26503,14 +26635,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
        cancel another way — that one is deliberately untouched. */
     const startedNote = '';
 
+    const _card = dashCard(r);   // the app's card: settles needsAttention + its colour
     const headerHtml = `
-      <div class="req-detail-header ${r.needsAttention?'has-attention':''}">
+      <div class="req-detail-header ${r.needsAttention ? 'has-attention k-' + (_card ? _card.kind : '') : ''}">
         <div style="flex:1;">
           <div class="req-detail-title">${recMark(r)} ${r.title}</div>
           <div class="req-detail-sub"><b>#${r.id}</b> · ${r.amount} · ${r.when}</div>
           <div class="req-detail-sub" style="margin-top:4px;">${r.worker}</div>
         </div>
-        <span class="req-detail-status ${r.status}">${r.statusLabel}</span>
+        <span class="req-detail-status ${r.status}">${escHtml(detailPill(r))}</span>
       </div>
       ${startedNote}
     `;
@@ -27091,9 +27224,14 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
              fell back to whichever conversation it had first. */
           else if(act === 'message')  { openInboxThread(r.id + '::' + list[i].name); return; }
           else if(act === 'profile')  {                 // open full profile view
+            /* Opening an offer is what the server counts as VIEWING it
+               (order_gophers.js view_gopher → set_viewed), and only unviewed
+               offers make the Home card say NEEDS YOU (requestor_alerts). */
+            list[i].viewed = true;
             dashState.profileWorkerIdx = i;
             dashState.profileReqId = r.id;
             renderRequestDetail();
+            renderActiveRequests();
             return;
           }
           else return;
@@ -27168,6 +27306,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         //     modal's Approve/Decline both carry data-adj-action, so both resolve here.
         if(target.closest('[data-adj-open]')){
           const ov = document.getElementById('caOverlay'); if(ov) ov.hidden = false;
+          const r = getR();   // seen → no longer an unviewed adjustment on Home
+          if(r && r.pendingAdjustment && !r.pendingAdjustment.viewed){ r.pendingAdjustment.viewed = true; renderActiveRequests(); }
           return;
         }
         if(target.closest('[data-adj-close]') || target.classList.contains('gr-mo--tall')){
@@ -27195,6 +27335,11 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           const counters = r.counterOffers || [];
           if(isNaN(ci) || !counters[ci]) return;
           if(act === 'message'){ openInboxThread(r.id + '::' + counters[ci].worker.name); return; }
+          /* Opening a counter is the server's set_counter_viewed (it clears
+             that counter from requestor_alerts.counter). */
+          if(act === 'changes' || act === 'profile' || act === 'details'){
+            if(!counters[ci].viewed){ counters[ci].viewed = true; renderActiveRequests(); }
+          }
           if(act === 'changes'){
             const tbl = coBtn.closest('.wcard') && coBtn.closest('.wcard').querySelector('.wcard-cmp');
             if(tbl){
@@ -27419,8 +27564,12 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     const finalTotal = window.__agreedTotalFor(r);
 
     const goScheduled = !!r.scheduledForLater;
+    /* `status` is the web's coarse bucket (the Active / Scheduled KPI tiles and
+       the PT harness's stage). What the requester is TOLD comes from r.order:
+       a hire is the server's `accepted` (or `scheduled`), and the worker has
+       not started — E-32. */
     r.status         = goScheduled ? 'scheduled' : 'in-progress';
-    r.statusLabel    = goScheduled ? 'Scheduled' : 'In Progress';
+    r.statusLabel    = goScheduled ? 'Scheduled' : 'Accepted';
     r.needsAttention = false;
 
     // Summarize the started crew on the dashboard card meta line.
@@ -27432,7 +27581,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       ? `${lead.name} (${tierLabel(lead.badge || lead.tier)})`
       : `${leadName} +${hiredCount - 1} · crew of ${hiredCount}`;
     if(finalTotal != null) r.amount = `$${finalTotal.toFixed(2)} total`;
-    r.when   = goScheduled ? r.when : 'Started just now · matching complete';
+    r.when   = goScheduled ? r.when : 'Accepted just now';
 
     // Per-worker enrichment — each crew member gets their own phone, rating,
     // reviews, and tagline so cards render fully and Call works.
@@ -27455,10 +27604,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       };
       const crew = hiredList.map((w, i) => enrich(w, i));
 
+      /* The worker's progress, as the WORKER reports it (the Go app advances
+         these over the PT bridge; nothing on the live site does). A hire ticks
+         Accepted only: In-Progress is the worker's own tap (the server's
+         picked_up), so it starts undone — E-32 / E-33. The bar the requester
+         SEES is the app's liveSteps() over r.order, not this list. */
       const statusSteps = goScheduled
         ? [{k:'Accepted',done:true},  {k:'Scheduled',done:true},
            {k:'In-Progress',done:false}, {k:'Completed',done:false}]
-        : [{k:'Accepted',done:true},  {k:'In-Progress',done:true},
+        : [{k:'Accepted',done:true},  {k:'In-Progress',done:false},
            {k:'Items Purchased',done:false}, {k:'Completed',done:false}];
 
       r.live = {
@@ -27480,6 +27634,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       };
       r.userStarted = true;
     }
+    dashOrder(r);
 
     recountKpis && recountKpis();
     renderActiveRequests();
@@ -28310,36 +28465,34 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       </div>
       <div class="map-seam">🔌 <b>Integration seam (human dev):</b> real map tiles, live worker GPS, and turn-by-turn ETA come from Google Maps + the live location feed. This faked SVG map and the simulated ETA are stand-ins so the UX can be validated now.</div>`;
 
-    // ── Status — terracotta 3-state stepper (done / current / upcoming), mirroring
-    //    Connect. The CURRENT step is the FIRST not-yet-completed step (terracotta
-    //    highlight); completed steps are checked-green; upcoming steps are muted.
-    //    The "items" step's label is DERIVED from the agreed delivery type so it is
-    //    correct for ANY request, not hardcoded: "Items Purchased" when the request
-    //    requires purchasing (the flow's state.itemsPurchased, frozen onto the
-    //    reviewSnapshot), else "Items Picked-Up" (items already in hand). Falls back
-    //    to costOfItems > 0 only when no explicit flag is present.
-    const purchaseNeeded = (snap.itemsPurchased != null) ? !!snap.itemsPurchased
-      : (r.itemsPurchased != null) ? !!r.itemsPurchased
-      : (Number(snap.costOfItems != null ? snap.costOfItems : (live.costOfItems || 0)) > 0);
-    const itemsStepLabel = purchaseNeeded ? 'Items Purchased' : 'Items Picked-Up';
-    const currentIdx = steps.findIndex(s => !s.done);   // first not-done step; -1 when all done
+    // ── Status — 3-state stepper (done / current / upcoming). The CURRENT step is
+    //    the first not-yet-completed one. Which steps exist, and their words, are
+    //    the app's (see the note on statusHtml below).
     // Simulated-ETA line sits above the stepper (in-progress only), mirroring Connect.
     const etaLine = (inProgress && !r.awaitingConfirmation) ? `
       <div class="eta-line">
         <span class="eta-ico">⏱️</span>
         <div><div class="eta-big">Est. arrival ~${etaMin} min</div><div class="eta-sub">${etaSub}</div></div>
       </div>` : '';
+    /* ⛔ THE STEP BAR IS THE APP'S (E-33): live/liveStatus.js liveSteps() over
+       the server's order state — Accepted, In progress (only once the worker
+       taps In Progress), an "Item purchased" / "Item picked up" row ONLY on a
+       goods run (Delivery, Custom Task, a Mulch Project with delivery), then
+       Completed. `steps` above is the worker's own progress log, which the
+       mapping reads to know the state; it is not drawn. (A scheduled order
+       shows nothing done, exactly as the app's ORDER_STATE has no `scheduled`.) */
+    const S = appShared(), order = dashOrder(r);
+    const appSteps = (S && order) ? S.liveSteps(order, order.aasm_state) : [];
     const statusHtml = `
       <div class="la-section-title">Status</div>
       ${etaLine}
       <div class="steps">
-        ${steps.map((s, i) => {
-          const stState = s.done ? 'completed' : (i === currentIdx ? 'current' : 'remaining');
-          const label = /picked.?up|purchas/i.test(s.k) ? itemsStepLabel : s.k;
+        ${appSteps.map((st) => {
+          const stState = st.done ? 'completed' : (st.current ? 'current' : 'remaining');
           return `<div class="step ${stState}">
             <span class="bar"></span>
             <span class="dot">${stState === 'completed' ? '✓' : ''}</span>
-            <span class="step-label">${label}</span>
+            <span class="step-label">${escHtml(st.label)}</span>
           </div>`;
         }).join('')}
       </div>`;

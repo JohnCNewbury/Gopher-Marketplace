@@ -80,6 +80,74 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
   same('REQUESTER_REASONS', 'services/cancelReasons.js');
   same('isReasonComplete', 'services/cancelReasons.js');
 
+  /* 4 — the ONE mapping (gopher-dash-order.js): a web record, at each moment of
+     its life, becomes the server order the app would be showing — and the
+     app's own helpers then say what the app says. The expected words are the
+     app's (homeCards.js), quoted, so a mapping change that moves a request into
+     the wrong state fails here by name. */
+  const M = require(path.join(REPO, 'Final', 'assets', 'js', 'gopher-dash-order.js'));
+  const W = (name, extra) => Object.assign({ name, status: 'hired', rating: 4.9, reviews: 180 }, extra || {});
+  const base = (extra) => Object.assign({
+    id: 'GR-00999', cat: 'delivery', status: 'pending', scheduledForLater: false,
+    dropoffs: ['412 Oakwood Ave, Raleigh, NC 27601'], workersNeeded: 1, perWorkerCost: 20,
+    interestedWorkers: []
+  }, extra || {});
+  const live = (steps) => ({ crew: [{ name: 'Marcus B.', rating: 4.9, reviews: 180 }],
+    statusSteps: steps.map(([k, done]) => ({ k, done })) });
+  const hiredAt = (done) => base({ status: 'in-progress', interestedWorkers: [W('Marcus B.')],
+    live: live([['Accepted', true], ['In-Progress', done > 0], ['Items Purchased', done > 1], ['Completed', done > 2]]) });
+  const NOW = Date.parse('2026-10-15T18:00:00Z');
+  const cases = [
+    ['submitted, offers not yet opened', base({ interestedWorkers: [W('Ana', { status: 'interested' })] }),
+      'pending', 'NEEDS YOU', 'New offers from workers · choose one'],
+    ['submitted, every offer opened', base({ interestedWorkers: [W('Ana', { status: 'interested', viewed: true })] }),
+      'pending', 'SUBMITTED', 'Looking for your worker…'],
+    ['a counter-offer nobody has opened', base({ counterOffers: [{ worker: { name: 'Tess' } }] }),
+      'pending', 'NEEDS YOU', 'A worker sent a counter-offer'],
+    ['just hired (E-32)', hiredAt(0), 'accepted', 'ACCEPTED', 'Marcus accepted · ★ 4.9'],
+    ['worker tapped In Progress', hiredAt(1), 'picked_up', 'IN PROGRESS', 'Marcus is on the job'],
+    ['items bought', hiredAt(2), 'purchased', 'ON THE WAY', 'Marcus has your items and is on the way'],
+    ['an unanswered cost adjustment (E-48)', Object.assign(hiredAt(1), { pendingAdjustment: { adjusted: {} } }),
+      'picked_up', 'NEEDS YOU', 'Cost adjustment approval needed'],
+    ['booked for later', base({ scheduledForLater: true, status: 'scheduled', interestedWorkers: [W('Rosa P.')],
+      requestScheduleTime: '2026-10-16T13:00:00Z' }), 'scheduled', 'SCHEDULED', null],
+    ['completed, photos in', Object.assign(hiredAt(3), { awaitingConfirmation: true }),
+      'delivered', 'NEEDS YOU', 'Marcus marked it complete · confirm or dispute'],
+    ['completed, photo step still open (E-35)', Object.assign(hiredAt(3), { awaitingConfirmation: true, photoStepResolved: false }),
+      'delivered', 'WRAPPING UP', 'Marcus marked it complete'],
+    ['the requester disputed (E-51)', Object.assign(hiredAt(3), { awaitingConfirmation: true, disputeState: 'disputed',
+      disputedAt: NOW - 3600000, disputeReason: 'Late: an hour late' }), 'delivered', 'DISPUTE OPEN', 'Marcus is making it right'],
+    ['...and escalated (E-41)', Object.assign(hiredAt(3), { awaitingConfirmation: true, disputeState: 'disputed',
+      disputedAt: NOW - 30 * 3600000, unableToDispute: true }), 'delivered', 'DISPUTE OPEN', 'Gopher support is stepping in'],
+    ['a card declined after a hire (E-19)', Object.assign(hiredAt(0), { paymentFailed: true, stripeError: 'bank_declined' }),
+      'accepted', 'PAYMENT FAILED', 'Your bank declined the card · update payment info'],
+  ];
+  for (const [label, rec, state, pill, status] of cases) {
+    const o = M.build(rec, NOW);
+    const c = S.cardModel(o, NOW);
+    ok(o.aasm_state === state && c.pill === pill && (status == null || c.status === status),
+       `${label}: ${o.aasm_state} → ${c.pill} · ${c.status}`);
+  }
+  const confirmed = M.build(Object.assign(hiredAt(3), { confirmed: true }), NOW);
+  ok(confirmed.payment_status === 'paid' && !M.onHome(confirmed, NOW),
+     'a confirmed (paid) order leaves Home, as GET /orders/v3 drops it');
+  const disputed = M.build(Object.assign(hiredAt(3), { awaitingConfirmation: true, disputeState: 'disputed', disputedAt: NOW - 3600000 }), NOW);
+  ok(disputed.is_dispute_unable_to_resolve === true && S.escalationLabel(disputed.disputed_at, NOW) === 'Available in 23 h 0 min',
+     `"Unable to resolve" waits 24 h (E-40): ${S.escalationLabel(disputed.disputed_at, NOW)}`);
+  const noShow = M.build(Object.assign(hiredAt(2), { noShow: true, ageRestricted: true }), NOW);
+  ok(noShow.disputed === true && noShow.dispute_reason === 'Requester no show - Age restricted order' && noShow.aasm_state === 'purchased',
+     'a worker-raised no-show carries the server\'s own reason and leaves the state alone (E-46)');
+  ok(S.requesterCanCancel(M.build(hiredAt(0), NOW).aasm_state) && !S.requesterCanCancel(M.build(hiredAt(1), NOW).aasm_state),
+     'cancel is open after a hire and closed once the worker taps In Progress (E-11)');
+  const moving = Object.assign(hiredAt(0), { cat: 'moving' });
+  ok(JSON.stringify(S.liveSteps(M.build(moving, NOW), 'accepted').map((s) => s.label)) === '["Accepted","In progress","Completed"]',
+     'a Moving job has no item row on the step bar (E-33)');
+  ok(M.wholeOffer({ cat: 'moving', perWorkerCost: 100, workersNeeded: 3 }) === 100
+     && M.wholeOffer({ cat: 'labor', perWorkerCost: 120, workersNeeded: 3 }) === 360,
+     'RQ-51: the offer is for the whole job; only Labor is per Gopher × crew');
+  const api = { __source: 'api', aasm_state: 'picked_up' };
+  ok(M.sync({ order: api, status: 'pending' }) === api, 'an order that came from the API is never overwritten');
+
   console.log(bad ? `\nFAIL — ${bad} check(s)` : '\nPASS — the dashboard runs the app\'s own helpers, byte for byte');
   process.exit(bad ? 1 : 0);
 })().catch((e) => { console.log('  ✗ FAIL ' + (e && e.stack || e)); process.exit(1); });
