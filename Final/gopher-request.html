@@ -10749,7 +10749,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .goto-intro-never .prev-check-box { width:19px; height:19px; }
   /* CAT-3: the app's "Before you continue" sheet (navy and grey, its tiles). */
   .gr-modal.ct-sheet { max-width:440px; }
-  .ct-sheet-pill { display:inline-block; margin-bottom:10px; padding:4px 10px; border-radius:99px; background:#eef0f4; color:#5c6a88; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; letter-spacing:.04em; }
   .gr-modal.ct-sheet h4 { font-size:17px; line-height:1.3; }
   .ct-sheet-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 16px; text-align:left; }
   .ct-sheet-tile { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1.5px solid #e3e6ee; border-radius:12px; background:#fff; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy); text-align:left; }
@@ -18770,12 +18769,18 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         try { return localStorage.getItem('doNotShowPreOtherModal') === 'true'; } catch(_){ return false; }
       },
       customTaskSheet: function(o){
+        /* (the kit pieces: gr-modal-icon, h4, gr-modal-sub, one gr-modal-btn,
+           the goto-intro-never row; the tile grid is this sheet's own) */
         o = o || {};
         var tiles = ['delivery','junk','moving','home','labor','yard','ride'].filter(function(k){ return CATEGORIES[k]; }).map(function(k){
           var ph = (CAT_PHOTOS && CAT_PHOTOS[k]) ? '<span class="ct-sheet-ic"><img src="' + CAT_PHOTOS[k] + '" alt=""></span>' : '';
           return '<button type="button" class="ct-sheet-tile" data-ct-pick="' + k + '">' + ph + '<span>' + CATEGORIES[k].name + '</span></button>';
         }).join('');
-        var ov = reqModal('<span class="ct-sheet-pill">Custom Task</span>'
+        /* G40-308 Guide A, the web's modal standard (desk modal gate 10/16): the
+           circle icon, the h4, the sub line, one kit pill. The app's grey
+           "Custom Task" chip is replaced by the circle; 🤝 is the web's own
+           Custom Task mark (iQ's category icons). */
+        var ov = reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;" aria-hidden="true">🤝</div>'
           + '<h4>Please ensure the request you’re looking for isn’t already included in our category menu.</h4>'
           + '<p class="gr-modal-sub">Workers select the categories they see so being accurate here helps everyone. If your request is truly custom, that’s great, proceed with Custom Task.</p>'
           + '<div class="ct-sheet-grid">' + tiles + '</div>'
