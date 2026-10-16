@@ -41,6 +41,19 @@ before you touch anything. **Nothing listed here is merged or deployed unless it
 >   sentry worktrees.
 > - This seat answered "none" (8:12). Answer the desk yourself if it asks again.
 
+> **⛔ NEW RULE (John 10/16, in the desk's PORT-PLAYBOOK): the "101 UPDATE".** Every ticket
+> close-out, and every merge or deploy that changes what a user sees, sends the desk a
+> **101 UPDATE**: what Request or Go users now see or do differently, with live SHAs and screenshot
+> paths, or "no user-facing change" with the reason.
+> - The **101 Tutorials session is the single writer** of `Final/gopher-request-101.html` and
+>   `gopher-go-101.html`, and it deploys them after each ticket. **Never edit them yourself.**
+> - Checked 10/16: `code-logic/request-sync` touches **no** 101 file. Its `Final/` changes are
+>   `gopher-request.html`, `gopher-flow-rules.js`, `gopher-step-gates.js`,
+>   `gopher-request-draft.js`, the new `gopher-app-shared.js` + `gopher-dash-order.js` + the
+>   `app-shared/` helper copies.
+> - The web deploy WILL change what users see, so send a 101 UPDATE with it. The commit messages
+>   on the branch are the source for that list.
+
 ## 1. The objective (John 10/15)
 
 > "Web and App logic in sync … it's not just documentation. It's synchronization. We're already
