@@ -96,8 +96,18 @@ section('3. Surface overrides');
   var differing = Object.keys(base).filter(function (f) {
     return base[f].join(',') !== connect[f].join(',');
   });
-  ok(differing.join(',') === 'multiStop,serviceElevator,workerSelectChoice',
-     'exactly THREE fields differ between the surfaces', differing.join(','));
+  /* ⚠️ UPDATED 2026-10-15 (the Custom Task port). Request's base moved four more
+     rows for 'other' -- destStairs, noSpecificPickup, pickupSection, workerSetup --
+     to the live app's Custom Task; Connect is not ported (parked) and holds its old
+     values as overrides. Still an EXACT set, so an eighth difference fails here. */
+  ok(differing.join(',') === 'destStairs,multiStop,noSpecificPickup,pickupSection,serviceElevator,workerSelectChoice,workerSetup',
+     'exactly SEVEN fields differ between the surfaces (three products + the CT port on Request)', differing.join(','));
+  ['destStairs', 'noSpecificPickup', 'pickupSection', 'workerSetup'].forEach(function (f) {
+    var onlyOther = base[f].concat(connect[f]).filter(function (c) {
+      return (base[f].indexOf(c) === -1) !== (connect[f].indexOf(c) === -1);
+    });
+    ok(onlyOther.join(',') === 'other', f + ': Request and Connect differ on Custom Task ONLY', onlyOther.join(','));
+  });
 
   /* The two rulings behind the new overrides, asserted as behaviour and not as
      table shape — a future edit that flips either one fails here by name. */
@@ -128,6 +138,21 @@ section('3. Surface overrides');
      'request=' + R.isVisible('destStairs', 'junk') + ' connect=' + R.isVisible('destStairs', 'junk', 'connect'));
   ok(R.isVisible('destStairs', 'labor') === true,
      'Labor DOES keep its destination stairs question (INV-13) -- JR-34 is Junk only');
+
+  /* The CT port (John 10/13, "Web `other` gets the app's Custom Task logic"),
+     pinned as behaviour on Request, and pinned NOT to have moved Connect or the
+     prototype. */
+  ok(R.isVisible('workerSelectChoice', 'other') === true && R.isVisible('workerSetup', 'other') === false,
+     'Custom Task: the worker choice, no crew (CT port, B-15 / B-19)');
+  ok(R.isVisible('pickupSection', 'other') === true && R.isVisible('noSpecificPickup', 'other') === true &&
+     R.isVisible('destStairs', 'other') === false,
+     'Custom Task: pick-up switch + pick-up, no stairs (CT port, B-2 / B-36)');
+  ['connect', 'prototype'].forEach(function (sf) {
+    ok(R.isVisible('workerSelectChoice', 'other', sf) === false && R.isVisible('workerSetup', 'other', sf) === true &&
+       R.isVisible('pickupSection', 'other', sf) === false && R.isVisible('noSpecificPickup', 'other', sf) === false &&
+       R.isVisible('destStairs', 'other', sf) === true,
+       sf + ' keeps its pre-port Custom Task rows (not ported)');
+  });
 })();
 
 /* ═══ 4. The pricing invariant — the one that caught a real defect ════════════ */
