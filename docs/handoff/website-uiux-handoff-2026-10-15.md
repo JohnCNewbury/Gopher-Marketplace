@@ -1,5 +1,30 @@
 # Website UI/UX seat — handoff, 2026-10-15 ~11:10 AM ET
 
+> ⛔ **SUPERSEDED by `website-uiux-handoff-2026-10-16.md`** (live `a9aa51ce`). Start there; this file is history.
+
+> ## ⭐ END OF DAY 10/15, ~6:10 PM ET — read this first (John called it a night)
+>
+> - **Live `9e29366`** (G40-216's web inbox camera, 1:17 PM) · **twin `e555935`**. Nothing of mine is unshipped
+>   except the item below.
+> - **WAITING ON JOHN'S "deploy":** the rebuilt **"Yes, we can Gopher that too."** section
+>   (`Final/gopher-request.html` BITE ~L11696 + its `.bite-*` CSS + a 13-line play-on-screen script),
+>   commit **`e65c776a`**, LOCAL on `brand-audit-corrections-2026-10-02`, not pushed. Dry run at 6 PM on live
+>   `9e29366`: 9 files on both sites, 0 strays, +660 KB new (2 clips, 4 webp posters, 2 SVGs); the desk OK'd
+>   it and holds the slot. **In the morning:** re-fetch; if live has moved, re-sync and re-run the dry run;
+>   then on John's word push the branch + `scripts/deploy.sh --push` guarded on the then-live SHA, verify
+>   the 9 files on 3 hosts (sha256 for the media, a `grep -F` sentinel such as `gopher-head-mask.svg` for
+>   the page), report to the desk, and send John a run sheet (G40-604 model). **Website Code/Logic deploys
+>   after this** (two branches touch other regions of `gopher-request.html`; they rebase).
+> - **What John picked** (pick doc https://claude.ai/artifact/Y9Zxohy4k8zNo2kgxjYjb3, db `rulings`):
+>   frame = the **Gopher character outline**, ears filled, line ~25% thinner than his reference (FR=B);
+>   1 beer at the grill (`Beer-Delivery.mp4`), 2 **his** backpack clip, 3 the couch through the door
+>   (library Couch Moving), 4 the movers from tour.gophergo.io (= `Movers.mp4`). Card 2 body = his wording
+>   ("Forgotten cord. Last-minute gift. Something you kinda need a vetted neighbor to help with.").
+>   How the outline/mask were traced: `website-uiux-tools/gopher-outline/README.md`.
+> - **Also shipped today:** (A) refer QR without coordinates `925c761` (run sheet 8/8) · Go hero redo in the
+>   July silver phone `e8e4ddc` (run sheet 7/7). **(B) Deals is PARKED** by John. **(C)** recapture waits on
+>   G40-604 phase 2.
+
 Paste the **"Start here"** block into a new session. Everything below it is the reference.
 
 ---
