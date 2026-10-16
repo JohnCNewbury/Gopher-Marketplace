@@ -8,8 +8,9 @@ before you touch anything. **Nothing listed here is merged or deployed unless it
 ## 0. Who you are, and the rules you work under
 
 - **You are the Website Code/Logic seat.** It is a standing seat. You report to the sprint desk,
-  the **908 "iQ | Brain Sprint"** session. Message it with `mcp__ccd_session_mgmt__send_message`,
-  `session_id local_80fa74d0-6e10-497a-9b94-ed46e4b5ed29`.
+  the **908 "iQ | Brain Sprint"** session. The desk ALSO handed off at 7:52 AM 10/16: the new
+  desk is `session_id local_33f66501-12aa-4607-a035-a156309ee978` (same name). Find it by name with
+  ListAgents if that changes again. Message it with `mcp__ccd_session_mgmt__send_message`.
 - **Scope (John 10/14):** "exclusively code and logic synchronized with App/Web" (the Request
   app ↔ the Request website ↔ the server rules both use). Connect and Deals are parked. Go is
   in scope only where server logic is shared.
@@ -211,8 +212,12 @@ It needs a rebase onto Go production **9099b5828** (G40-604 phase 2 restyled the
 
 1. **Web deploy (the desk gave this seat the slot at 6:51 AM 10/16).**
    - Live main is **a9aa51ce** (UI/UX's BITE section).
-   - Source = `origin/brand-audit-corrections-2026-10-02` @ **db8654c9**.
-   - Merge that into `code-logic/request-sync`. NOT a rebase: the branch has a merge commit.
+   - Source = `origin/brand-audit-corrections-2026-10-02` @ **9ae536ae** (moved from db8654c9
+     at 7:41 AM 10/16, docs only, per the desk at 7:52). Re-check with `git ls-remote` first; it
+     keeps moving.
+   - Merge that into `code-logic/request-sync` (the desk says "rebase"; a merge is equivalent for
+     the deploy, because the deploy reads the tree, and it is safer since the branch has a merge
+     commit).
      The fetch hung once; use `GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=15`.
    - Re-run run-all + the harness, then the whole-repo dry run (`scripts/deploy.sh`, dry run by
      default; read CLAUDE.md's deploy rules: content verification, both sites, scope check).
