@@ -378,22 +378,29 @@ print("\nF · Single-surface facts (no app counterpart — guarded for history)"
 # AI-generated tiers card listed MVR under Elite, and Gopher-Deals-Build-Spec
 # D-015 inherited the error verbatim while citing the page as its source. Owner
 # corrected it 2026-07-24: MVR belongs to ELITE+.
+#
+# 2026-10-16: the page now uses today's names (John's Pro/Pro+ stage 2): Elite+ IS today's
+# Gopher Pro+, Elite IS today's Gopher Pro, and the cards became a Standard / Pro / Pro+
+# table. The rule is unchanged — MVR belongs to the TOP tier only — so the check now reads
+# the table's MVR row instead of looking for the old "Everything in Elite," card lede.
 try:
-    tiers = plain(read("Final/gopher-tiers.html"))
+    tiers_raw = read("Final/gopher-tiers.html")
+    tiers = plain(tiers_raw)
 except OSError:
-    tiers = ""
+    tiers_raw, tiers = "", ""
 check(
     "gopher-tiers.html is readable (probe guard)",
     len(tiers) > 3000,
     f"got {len(tiers)} chars",
 )
 if tiers:
-    mvr_at = tiers.find("MVR")
-    eliteplus_at = tiers.find("Everything in Elite,")
+    m = re.search(r'<th scope="row">MVR \(Motor Vehicle Record\)</th>(.*?)</tr>', tiers_raw, re.S)
+    cells = re.findall(r"<td>(.*?)</td>", m.group(1), re.S) if m else []
+    yes = ["tt-yes" in c for c in cells]
     check(
-        "MVR sits in the ELITE+ section, not Elite (owner correction 2026-07-24)",
-        mvr_at > 0 and eliteplus_at > 0 and mvr_at > eliteplus_at,
-        f"MVR@{mvr_at} Elite+@{eliteplus_at} — MVR must follow the Elite+ lede; "
+        "MVR sits under Pro+ only, not Pro or Standard (owner correction 2026-07-24; Elite+ = today's Pro+)",
+        yes == [False, False, True],
+        f"MVR row Standard/Pro/Pro+ = {yes or 'row not found'} — MVR must be Pro+ only; "
         "the tier-grant emails were always right, the CARD was wrong",
     )
 
