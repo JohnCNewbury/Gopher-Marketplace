@@ -1,5 +1,7 @@
 # Website UI/UX seat — handoff, 2026-10-15 ~11:10 AM ET
 
+> ⛔ **SUPERSEDED by `website-uiux-handoff-2026-10-16.md`** (live `a9aa51ce`). Start there; this file is history.
+
 > ## ⭐ END OF DAY 10/15, ~6:10 PM ET — read this first (John called it a night)
 >
 > - **Live `9e29366`** (G40-216's web inbox camera, 1:17 PM) · **twin `e555935`**. Nothing of mine is unshipped
