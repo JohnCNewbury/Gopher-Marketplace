@@ -1,0 +1,143 @@
+<title>Blog Pro Run Sheet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: one phone-width column of test rows, grouped by who checks; each row = what to open, what to see, Pass / Fail / note. Same model as the G40-604 and "Gopher that too" run sheets. */
+:root{
+  --bg:#fbf7ef; --panel:#ffffff; --ink:#0f1f3d; --muted:#5b6782; --line:#e6e0d3;
+  --pass:#1CB061; --pass-bg:#e6f7ee; --fail:#C44257; --fail-bg:#fbe9ec; --chip:#eef1f7; --link:#0b4bb3; --quote:#f3efe4;
+  --head:"Nunito",system-ui,sans-serif; --body:"DM Sans",system-ui,sans-serif; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d1526; --panel:#15203a; --ink:#e9edf5; --muted:#a3aec4; --line:#2a3858;
+  --pass:#33D975; --pass-bg:#173326; --fail:#ff7a8e; --fail-bg:#3a1a22; --chip:#1d2a47; --link:#9cc2ff; --quote:#1b2742; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1526; --panel:#15203a; --ink:#e9edf5; --muted:#a3aec4; --line:#2a3858;
+  --pass:#33D975; --pass-bg:#173326; --fail:#ff7a8e; --fail-bg:#3a1a22; --chip:#1d2a47; --link:#9cc2ff; --quote:#1b2742; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 60px;display:flex;flex-direction:column;gap:16px}
+h1,h2{font-family:var(--head);margin:0;text-wrap:balance}
+h1{font-weight:800;font-size:26px;line-height:1.15;letter-spacing:-.015em}
+h2{font-weight:800;font-size:19px}
+.meta{display:flex;flex-wrap:wrap;gap:6px}
+.meta span{background:var(--chip);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.tip{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.tip p{margin:0}
+.tip b{font-family:var(--head);font-weight:800}
+.sum{position:sticky;top:env(safe-area-inset-top,0px);z-index:2;background:var(--bg);padding-block:8px;display:flex;gap:8px;flex-wrap:wrap;font:700 13px/1 var(--head)}
+.sum span{padding:7px 11px;border-radius:999px;background:var(--chip)}
+.sum .p{background:var(--pass-bg);color:var(--pass)} .sum .f{background:var(--fail-bg);color:var(--fail)}
+.group{display:flex;flex-direction:column;gap:10px}
+.group > div{display:flex;flex-direction:column;gap:10px}
+.sub{font-size:13.5px;color:var(--muted);margin:-4px 0 0}
+.row{background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.row[data-s="pass"]{border-color:var(--pass)} .row[data-s="fail"]{border-color:var(--fail)}
+.top{display:flex;gap:10px;align-items:baseline;min-width:0}
+.id{font:800 12px/1 var(--head);color:var(--muted);flex:none;min-width:26px}
+.where{font:800 15.5px/1.3 var(--head);min-width:0;overflow-wrap:anywhere}
+.where a{color:var(--link);text-decoration:underline;text-underline-offset:2px}
+.see{font-size:14px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+.see b{color:var(--ink);font-weight:700}
+.see q{display:block;quotes:none;margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--quote);color:var(--ink);font-style:normal}
+.act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.act button{font:800 14px/1 var(--head);padding:10px 16px;border-radius:8px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.act button.pb[aria-pressed="true"]{background:var(--pass);border-color:var(--pass);color:#002461}
+.act button.fb[aria-pressed="true"]{background:var(--fail);border-color:var(--fail);color:#fff}
+.act button:focus-visible,.act input:focus-visible,.where a:focus-visible{outline:3px solid #33D975;outline-offset:2px}
+.act input{flex:1 1 180px;min-width:0;font:14px var(--body);padding:9px 11px;border-radius:8px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.saved{font-size:12px;color:var(--muted)}
+.status{font-size:13px;color:var(--muted);margin:0}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Four blog posts · Pro and Pro+</h1>
+    <div class="meta"><span>Stage 5 (your pick A)</span><span>Live 543b3ba8</span><span>Twin 33878acc</span><span>Deployed 3:31 PM ET 10/16</span></div>
+  </header>
+
+  <div class="tip">
+    <p><b>What changed:</b> ten sentences across four posts now say <b>Gopher Pro</b> and <b>Pro+</b>. The worker post no longer says the badge is “earned one solid job at a time”, and the neighbor post no longer says “pick the tier you want”.</p>
+    <p>Each row opens one post. Use your browser’s Find (⌘F) for “Pro” to jump to the changed lines. The <b>C</b> rows at the bottom are already done by Claude.</p>
+  </div>
+
+  <div class="sum" aria-live="polite"><span class="p" id="nPass">0 pass</span><span class="f" id="nFail">0 fail</span><span id="nLeft">… to go</span></div>
+  <p class="status" id="status">Connecting…</p>
+
+  <section class="group" aria-labelledby="hW"><h2 id="hW">You · computer, then iPhone</h2><div id="W"></div></section>
+  <section class="group" aria-labelledby="hC"><h2 id="hC">Done by Claude · 3:33 PM ET</h2><p class="sub">Checked from the servers, with the cache bypassed.</p><div id="C"></div></section>
+</div>
+
+<script>
+(function(){
+  const BASE = "https://johncnewbury.github.io/Gopher-Marketplace/";
+  const TT = "https://gophergo.io.customers.tigertech.net/preview/";
+  const TWIN = "https://johncnewbury.github.io/Gopher-Marketplace-Prototype/";
+  const ROWS = {
+    W: [
+      ["G1", `<a href="${BASE}blog-worker-centric-way-to-earn.html" target="_blank" rel="noopener">The most worker-centric way to earn</a>`,
+        "Twice: “you build a reputation your neighbors can see, one solid job at a time, and you can add a <b>Gopher Pro</b> or <b>Pro+</b> badge with an optional background check.” Near the end: “…with a Gopher Pro or Pro+ badge if you want one.” No Elite."],
+      ["G2", `<a href="${BASE}blog-the-marketplace-your-community-runs-on.html" target="_blank" rel="noopener">The marketplace your community runs on</a>`,
+        "“Gopher Pro and Pro+ Gophers add a clean background check on top, and with <b>Select My Gopher</b> you can see who wants the job and pick the one you want.” No “pick the tier you want”."],
+      ["G3", `<a href="${BASE}blog-a-marketplace-seniors-can-trust.html" target="_blank" rel="noopener">A marketplace seniors can trust</a> and <a href="${BASE}blog-gopher-marketplace-on-one-page.html" target="_blank" rel="noopener">the marketplace on one page</a>`,
+        "Seniors: “a clean background check on <b>Gopher Pro and Pro+</b> Gophers” (twice). One page: Gophers “can add a Gopher Pro or Pro+ background-check badge on top” (twice)."],
+      ["G4", `One of them on <b>TigerTech</b> (<a href="${TT}blog-worker-centric-way-to-earn.html" target="_blank" rel="noopener">link</a>) and the <b>twin</b> (<a href="${TWIN}blog-worker-centric-way-to-earn.html" target="_blank" rel="noopener">link</a>)`,
+        "Both show the same new worker-post wording."]
+    ],
+    C: [
+      ["C1", "All three sites serve the new posts",
+        "On <b>GitHub Pages</b>, <b>TigerTech /preview</b> and the <b>twin</b>: all four posts have the new wording and the Oct 16 date, no “Elite”, and neither old claim. On Pages and TigerTech each post matches Claude’s copy byte for byte."],
+      ["C2", "Only these four files changed",
+        "The deploy shipped exactly <b>4 files</b> on each site, built on the Marketplace deploy (2:10 PM), with Website Code/Logic’s Go dashboard still live."],
+      ["C3", "Checked before shipping",
+        "Every search-engine data block on the four posts still parses (checked again right before the push). The web checks show only the known old failures, and the worker post was looked at on a phone."]
+    ]
+  };
+  const ALL = [].concat(...Object.values(ROWS));
+  const state = {}; let db = null;
+  function render(){
+    for (const g of Object.keys(ROWS)) {
+      document.getElementById(g).innerHTML = ROWS[g].map(([id,where,see]) =>
+        `<div class="row" id="row-${id}"><div class="top"><span class="id">${id}</span><span class="where">${where}</span></div>
+         <p class="see">${see}</p>
+         <div class="act"><button type="button" class="pb" data-id="${id}" data-v="pass" aria-pressed="false">Pass</button>
+         <button type="button" class="fb" data-id="${id}" data-v="fail" aria-pressed="false">Fail</button>
+         <input id="note-${id}" type="text" placeholder="Note (what looked off?)" aria-label="Note for ${id}"></div>
+         <span class="saved" id="saved-${id}"></span></div>`).join("");
+    }
+    count();
+  }
+  function count(){
+    let p=0,f=0; ALL.forEach(([id]) => { const s=(state[id]||{}).status; if(s==="pass")p++; else if(s==="fail")f++; });
+    document.getElementById("nPass").textContent = p+" pass"; document.getElementById("nFail").textContent = f+" fail";
+    document.getElementById("nLeft").textContent = (ALL.length-p-f)+" to go";
+  }
+  function paint(id){
+    const d = state[id] || {}; const row = document.getElementById("row-"+id); if(!row) return;
+    row.dataset.s = d.status || "";
+    row.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === d.status)));
+    const n = document.getElementById("note-"+id); if (document.activeElement !== n) n.value = d.note || "";
+    const who = d.by ? " · " + d.by : "";
+    document.getElementById("saved-"+id).textContent = d.at ? "Saved " + new Date(d.at).toLocaleTimeString("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"2-digit"}) + " ET" + who : "";
+    count();
+  }
+  async function save(id, patch){
+    state[id] = Object.assign({}, state[id], patch, {at:new Date().toISOString(), by:""}); paint(id);
+    if (!db) { document.getElementById("saved-"+id).textContent = "Not saved: this view can't save. Tell the Website UI/UX session in chat."; return; }
+    try { await db.collection("results").doc(id).set(state[id]); }
+    catch(e){ document.getElementById("status").textContent = "Couldn't save (" + (e && e.code || "error") + "). Tell the Website UI/UX session in chat."; }
+  }
+  render();
+  document.addEventListener("click", e => { const b = e.target.closest(".act button"); if (!b) return;
+    const id = b.dataset.id; const cur = (state[id]||{}).status;
+    save(id, {status: cur === b.dataset.v ? "" : b.dataset.v, note: document.getElementById("note-"+id).value.trim()}); });
+  document.addEventListener("change", e => { if (!e.target.id || !e.target.id.startsWith("note-")) return;
+    const id = e.target.id.slice(5); save(id, {note: e.target.value.trim(), status:(state[id]||{}).status||""}); });
+  (async () => {
+    try { db = window.claude && await window.claude.use("db"); } catch(e) { db = null; }
+    const st = document.getElementById("status");
+    if (!db) { st.textContent = "Saving isn't available in this view: results stay on this page only. Tell the Website UI/UX session in chat."; return; }
+    st.textContent = "Results save as you tap; the Website UI/UX session reads them from here.";
+    db.collection("results").onSnapshot(q => { q.docs.forEach(d => { state[d.id] = d.data(); paint(d.id); }); }, () => {});
+  })();
+})();
+</script>

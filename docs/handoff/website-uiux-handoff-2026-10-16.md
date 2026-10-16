@@ -1,5 +1,8 @@
 # Website UI/UX seat — handoff, 2026-10-16 ~7:05 AM ET
 
+> ⛔ **SUPERSEDED 4:20 PM ET by `website-uiux-handoff-2026-10-16-pm.md`** — start there. This file's tool table,
+> asset sources, item C file table and "Gopher that too" notes are still correct; its live SHAs and open work are not.
+
 Supersedes `website-uiux-handoff-2026-10-15.md` (keep it for history). Paste the **"Start here"** block
 into the new session. Everything below it is the reference, written for someone who has never seen this
 seat.
