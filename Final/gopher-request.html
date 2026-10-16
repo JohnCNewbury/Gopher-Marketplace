@@ -2600,7 +2600,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 .answer-panel .ap-tag.Customers { background:#e7f0ff; color:#2256b5; }
 .answer-panel .ap-tag.Workers { background:var(--green-light); color:var(--green-dark); }
 .answer-panel .ap-tag.Businesses { background:#ede7ff; color:#5b3fb5; }
-.answer-panel h3 { font-family:'Nunito',sans-serif; font-weight:900; font-size:19px; color:var(--navy); margin:12px 0 12px; line-height:1.3; }
+.answer-panel h3 { font-family:'Nunito',sans-serif; font-weight:800; font-size:19px; color:var(--navy); margin:12px 0 12px; line-height:1.3; }
 .answer-panel p { font-size:15px; line-height:1.7; color:var(--text); }
 .answer-panel .ap-close {
     display:inline-flex; align-items:center; justify-content:center;
@@ -2712,9 +2712,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* heading matches the hero "Request Any..." h1, right-aligned */
   .onthego-text { text-align:right; }
   .onthego-text h2 {
-    font-family:'Nunito',sans-serif; font-weight:900;
-    font-size:62px; line-height:1.02; color:var(--navy);
-    letter-spacing:-1.5px;
+    font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:40px; line-height:1.02; color:var(--navy);
+    letter-spacing:-.015em;
   }
   .onthego-text h2 .go { color:var(--green); }
   .onthego-badges {
@@ -2738,9 +2738,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     margin-bottom:8px; transform:rotate(-1deg);
   }
   .section-title {
-    font-family:'Nunito',sans-serif; font-weight:900;
-    font-size:44px; color:var(--navy); line-height:1.1;
-    margin-bottom:18px; letter-spacing:-1px;
+    font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:40px; color:var(--navy); line-height:1.1;
+    margin-bottom:18px; letter-spacing:-.015em;
   }
   .section-title em { font-style:normal; color:var(--green); }
   .section-sub {
@@ -2791,42 +2791,46 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
   /* ── BITE — "Yes, we can Gopher that, too." ── */
   .bite { background:var(--tan); }
+  /* v28 (John 10/15, picked card by card): each topic is the Gopher character's outline (ears and
+     dirt mound, line ~25% thinner than the reference) with a real moment playing inside it. The white
+     cards, colored top borders and pill tags are gone. Outline + mask were traced from John's outline
+     (assets/img/gopher-outline-thin.svg, gopher-head-mask.svg); .bite-clip's box is the traced inside,
+     ears included, so its numbers move only with those two files. */
   .bite-grid {
     margin-top:56px;
-    display:grid; grid-template-columns:repeat(4, 1fr); gap:22px;
+    display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:28px;
+    text-align:left; align-items:start;
   }
-  .bite-card {
-    background:white; border-radius:18px; padding:32px 26px 30px;
-    position:relative;
-    box-shadow:0 4px 16px rgba(42,54,84,0.06);
-    border-top:4px solid var(--green);
-    text-align:left;
-    transition:transform 0.25s, box-shadow 0.25s;
+  .bite-g { margin:0; min-width:0; }
+  .bite-gd { position:relative; width:110%; margin-left:-5%; aspect-ratio:1240/1220; }   /* ears reach into the gaps */
+  .bite-clip {
+    position:absolute; left:11.29%; top:3.607%; width:80.645%; height:83.607%;
+    overflow:hidden; background:var(--sand);
+    -webkit-mask:url(assets/img/gopher-head-mask.svg) 0 0/100% 100% no-repeat;
+            mask:url(assets/img/gopher-head-mask.svg) 0 0/100% 100% no-repeat;
   }
-  .bite-card:nth-child(2) { border-top-color:var(--terracotta); }
-  .bite-card:nth-child(3) { border-top-color:var(--navy); }
-  .bite-card:nth-child(4) { border-top-color:var(--green-dark); }
-  .bite-card:hover {
-    transform:translateY(-4px);
-    box-shadow:0 14px 30px rgba(42,54,84,0.12);
-  }
+  .bite-vid { display:block; width:100%; height:100%; object-fit:cover; }
+  .bite-line { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .bite-txt { display:flex; flex-direction:column; gap:8px; margin-top:6px; }
   .bite-tag {
-    display:inline-block;
-    font-family:'Nunito',sans-serif; font-weight:800; font-size:11px;
-    letter-spacing:1.5px; text-transform:uppercase;
-    color:var(--green-text); background:var(--green-light);
-    padding:5px 10px; border-radius:99px;
-    margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:12px; line-height:1;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--navy);
   }
-  .bite-card:nth-child(2) .bite-tag { color:var(--terracotta); background:var(--terracotta-soft); }
-  .bite-card:nth-child(3) .bite-tag { color:var(--navy); background:var(--navy-light); }
-  .bite-card:nth-child(4) .bite-tag { color:var(--green-text); background:var(--green-light); }
-  .bite-card h4 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:21px;
-    color:var(--navy); line-height:1.2; margin-bottom:10px;
+  .bite-tag::before { content:""; width:22px; height:3px; border-radius:2px; background:var(--green); flex:none; }
+  .bite-g h4 {
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:21px;
+    color:var(--navy); line-height:1.2; margin:0;
     letter-spacing:-0.3px;
   }
-  .bite-card p { font-size:15px; color:var(--muted); line-height:1.6; }
+  .bite-g p { font-size:15px; color:var(--muted); line-height:1.6; margin:0; }
+  @media (max-width:1000px) {
+    .bite-grid { grid-template-columns:repeat(2, minmax(0,1fr)); gap:44px 40px; max-width:720px; margin-left:auto; margin-right:auto; }
+  }
+  @media (max-width:560px) {
+    .bite-grid { max-width:420px; }
+    .bite-gd { width:100%; margin-left:0; }
+  }
   .bite-footer {
     margin-top:40px; text-align:center;
     font-family:'Nunito',sans-serif; font-weight:700; font-size:15px;
@@ -3145,9 +3149,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     line-height:1; margin-bottom:6px; transform:rotate(-1deg);
   }
   .flow-demo-header h2 {
-    font-family:'Nunito',sans-serif; font-weight:900;
-    font-size:clamp(30px, 5.2vw, 62px); color:var(--navy); line-height:1.12;
-    letter-spacing:-1px; max-width:1000px; margin:0 auto;
+    font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:clamp(30px,5.2vw,40px); color:var(--navy); line-height:1.12;
+    letter-spacing:-.015em; max-width:1000px; margin:0 auto;
   }
   .flow-demo-header h2 em { font-style:normal; color:var(--green); }
   .flow-demo-header .flow-demo-aside { margin-top:14px; margin-bottom:0; font-size:clamp(30px, 4.2vw, 50px); }
@@ -3595,8 +3599,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     bottom:100%; border:7px solid transparent; border-bottom-color:var(--navy);
   }
   .ct-pop-title {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:11px;
-    letter-spacing:0.5px; text-transform:uppercase;
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:.16em; text-transform:uppercase;
     color:var(--green); margin-bottom:9px;
   }
   .ct-pop-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
@@ -3978,7 +3982,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .idsub-stepchip.active { background:var(--navy); color:#fff; }
   .idsub-step { display:none; }
   .idsub-step.active { display:block; }
-  .idsub-step h5 { font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; color:var(--navy); margin:0 0 4px; }
+  .idsub-step h5 { font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; color:var(--navy); margin:0 0 4px; }
   .idsub-step .idsub-hint { font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); margin:0 0 14px; }
   .idsub-captures { display:flex; gap:10px; }
   .idsub-cap {
@@ -5433,7 +5437,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .sse-brain img { height:42px; width:auto; display:block; }
   .sse-head-text { flex:1; }
   .sse-head-text h4 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; color:var(--navy);
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; color:var(--navy);
     margin:0 0 2px;
   }
   .sse-head-text p {
@@ -5917,7 +5921,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     100% { transform:scale(1); opacity:1; }
   }
   .matched-burst h4 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:20px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:20px;
     color:var(--navy); margin-bottom:4px;
   }
   .matched-burst p {
@@ -6222,7 +6226,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .si-workers-text { flex:1; }
   .si-workers-text h5 {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:15px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px;
     color:var(--navy); margin:0 0 2px;
   }
   .si-workers-text p {
@@ -6432,9 +6436,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-size:22px; margin-bottom:8px; display:inline-block;
   }
   .ts-card h2 {
-    font-family:'Nunito',sans-serif; font-weight:900;
+    font-family:'Nunito',sans-serif; font-weight:800;
     font-size:36px; line-height:1.15; margin-bottom:16px;
     color:var(--navy);
+    letter-spacing:-.015em;
   }
   .ts-card h2 em { font-style:normal; color:var(--green); }
   .ts-card .ts-eyebrow-tilt {
@@ -6489,9 +6494,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:grid; grid-template-columns:1fr 1.2fr; gap:48px; align-items:center;
   }
   .gs-text h2 {
-    font-family:'Nunito',sans-serif; font-weight:900;
+    font-family:'Nunito',sans-serif; font-weight:800;
     font-size:38px; color:var(--navy); line-height:1.1;
     margin-bottom:16px;
+    letter-spacing:-.015em;
   }
   .gs-text p { color:var(--muted); font-size:16px; line-height:1.7; margin-bottom:24px; }
   .gs-text .gs-handwritten {
@@ -6946,7 +6952,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; align-items:center; justify-content:center; margin:0 auto 18px;
     font-size:32px; color:var(--green-dark);
   }
-  .rq-signedin-card h3 { font-family:'Nunito',sans-serif; font-weight:900; font-size:22px; color:var(--navy); margin-bottom:8px; }
+  .rq-signedin-card h3 { font-family:'Nunito',sans-serif; font-weight:800; font-size:22px; color:var(--navy); margin-bottom:8px; }
   .rq-signedin-card p { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:22px; }
   .rq-signedin-card .si-name { color:var(--navy); font-weight:700; }
   .rq-signedin-card button {
@@ -7400,8 +7406,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     box-shadow:0 0 0 3px rgba(51,217,117,.45); transform:translateY(-1px); outline:none;
   }
   .dash-section-title {
-    font-family:'Nunito'; font-weight:800; font-size:22px;
+    font-family:'Nunito'; font-weight:800; font-size:28px;
     color:var(--navy); margin-top:2px;
+    line-height:1.1;
+    letter-spacing:-.015em;
   }
   .dash-topbar-right {
     display:flex; align-items:center; gap:14px;
@@ -7540,7 +7548,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      instead of competing with the page's own h2, which is what made the
      stacked blocks feel unordered. */
   .dash-block-head h3 {
-    font-family:'Nunito'; font-weight:800; font-size:13px; letter-spacing:.8px;
+    font-family:'Nunito'; font-weight:700; font-size:12px; letter-spacing:.16em;
     text-transform:uppercase; color:#5A6682; margin:0;
   }
   .dash-block-head .view-all {
@@ -7615,7 +7623,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
   /* ─── Customer post-completion + rating + dispute (mirrors Connect) ─── */
   .cmp-block { border:1px solid #cfeede; background:#f1faf4; border-radius:14px; padding:18px 16px; margin:18px 0 4px; text-align:center; }
-  .cmp-title { font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--green-dark,#1CB061); margin-bottom:6px; }
+  .cmp-title { font-family:'Nunito'; font-weight:800; font-size:18px; color:var(--green-dark,#1CB061); margin-bottom:6px; }
   .cmp-sub { font-family:'DM Sans'; font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
   .cmp-details-link { display:block; width:100%; background:none; border:none; color:var(--navy); font-family:'DM Sans'; font-weight:700; font-size:14px; text-decoration:underline; cursor:pointer; padding:6px 0 12px; }
   .cmp-confirm-btn { width:100%; background:var(--navy); color:#fff; border:none; border-radius:12px; padding:13px; font-family:'Nunito'; font-weight:800; font-size:15px; cursor:pointer; }
@@ -7638,7 +7646,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .rep-opt.sel { background:#E8F5EE; border-color:#1CB061; color:#0a7d44; }
   .rep-done { text-align:center; padding:8px 4px 4px; }
   .rep-done .rep-done-ico { font-size:30px; line-height:1; margin-bottom:8px; }
-  .rep-done h4 { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); margin:0 0 6px; }
+  .rep-done h4 { font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; color:var(--navy); margin:0 0 6px; }
   #reportSubmit[disabled] { opacity:.45; cursor:default; }
 
   .cmp-drow { display:flex; justify-content:space-between; gap:16px; font-family:'DM Sans'; font-size:13px; padding:7px 0; border-bottom:1px solid #eef0f5; }
@@ -7781,7 +7789,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     border-left:4px solid #C44257;
   }
   .req-detail-title {
-    font-family:'Nunito'; font-weight:900; font-size:18px;
+    font-family:'Nunito'; font-weight:800; font-size:18px;
     color:var(--navy); line-height:1.25;
   }
   .req-detail-sub {
@@ -7824,9 +7832,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     border-color:#a4364a; color:#a4364a; background:rgba(196,66,87,0.04);
   }
   .interested-head {
-    font-family:'Nunito'; font-weight:900; font-size:13px;
+    font-family:'Nunito'; font-weight:700; font-size:12px;
     color:var(--muted);
-    text-transform:uppercase; letter-spacing:1.4px;
+    text-transform:uppercase; letter-spacing:.16em;
     padding:14px 4px 10px;
     display:flex; align-items:center; gap:10px;
   }
@@ -7865,7 +7873,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      map shrinks to a stamp on a phone. */
   .la-live-row { display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
   @media (max-width: 860px) { .la-live-row { grid-template-columns:1fr; gap:0; } }
-  .la-section-title { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); text-align:center; margin:24px 0 12px; padding-top:20px; border-top:1px solid #e7eaf2; }
+  .la-section-title { font-family:'Nunito'; font-weight:800; font-size:17px; color:var(--navy); text-align:center; margin:24px 0 12px; padding-top:20px; border-top:1px solid #e7eaf2; }
 
   .live-map-wrap { border-radius:16px; overflow:hidden; border:1px solid #e1e6f0; position:relative; }
   .live-map-svg { width:100%; height:auto; display:block; }
@@ -7916,7 +7924,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .adj { border:1.5px solid var(--terracotta); background:linear-gradient(180deg, rgba(217,119,87,0.08), #fff); border-radius:16px; box-shadow:var(--card-shadow); overflow:hidden; margin-bottom:16px; }
   .adj-top { display:flex; gap:12px; align-items:center; padding:14px 18px; border-bottom:1px dashed rgba(217,119,87,0.32); }
   .adj-ico { width:34px; height:34px; border-radius:10px; background:var(--terracotta); display:grid; place-items:center; font-size:18px; flex:0 0 auto; }
-  .adj-h { font-family:'Nunito'; font-weight:900; font-size:16px; color:var(--navy); }
+  .adj-h { font-family:'Nunito'; font-weight:800; font-size:16px; color:var(--navy); }
   .adj-s { color:var(--muted); font-size:13px; margin-top:1px; }
   .adj-body { padding:16px 18px; }
   .adj-reason { font-family:'DM Sans'; font-size:14px; background:#fff; border:1px solid #e7eaf2; border-radius:12px; padding:11px 13px; line-height:1.45; }
@@ -7951,7 +7959,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
        hence max-width:100%), zero padding (sections pad themselves), left-aligned
        (base centers; this card never inherited centering), clipped corners. */
   .ca-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #e7eaf2; }
-  .ca-head h3 { margin:0; font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); }
+  .ca-head h3 { margin:0; font-family:'Nunito'; font-weight:900; font-size:19px; color:var(--navy); letter-spacing:-.3px; }
   .ca-x { border:none; background:var(--gray); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:16px; color:var(--muted); }
   .ca-x:hover { color:var(--navy); }
   .ca-body { padding:18px 20px; }
@@ -8064,7 +8072,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* ─── Inbox ─── */
   .inbox-grid { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
   .inbox-list { background:white; border:1px solid #e7eaf2; border-radius:14px; overflow:hidden; }
-  .inbox-list-head { font-family:'Nunito'; font-weight:900; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding:14px 16px 8px; }
+  .inbox-list-head { font-family:'Nunito'; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); padding:14px 16px 8px; }
   .inbox-row { width:100%; display:flex; gap:11px; padding:12px 14px; border:none; background:none; cursor:pointer; text-align:left; border-top:1px solid #f0f2f7; transition:background 0.12s; align-items:center; }
   .inbox-row:hover { background:#f7f9fc; }
   .inbox-row.active { background:var(--green-light); }
@@ -8085,6 +8093,16 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .inbox-convo-req { font-family:'DM Sans'; font-size:12px; color:var(--muted); }
   .inbox-open-req { background:none; border:none; color:var(--green-dark); font-weight:700; cursor:pointer; font-family:'DM Sans'; font-size:12px; padding:0; text-decoration:underline; }
   .inbox-convo-call { padding:7px 14px; font-size:12px; }
+  /* PHONE: Back, photo, name, Call, MY Gophers and Block on one line pushed the
+     Block button 27px outside the card at 390 (the card clips overflow). Back
+     takes its own line and Call goes icon-only, like its two neighbours. */
+  @media (max-width:560px){
+    .inbox-convo-head { flex-wrap:wrap; gap:8px 10px; }
+    .inbox-convo-back { flex:0 0 100%; text-align:left; }
+    .inbox-convo-meta { min-width:0; }
+    .inbox-convo-call { padding:7px 10px; }
+    .inbox-convo-call span { display:none; }
+  }
   .inbox-thread { padding:18px 16px; display:flex; flex-direction:column; gap:12px; }
   .inbox-msg { display:flex; flex-direction:column; max-width:75%; }
   .inbox-msg.theirs { align-self:flex-start; align-items:flex-start; }
@@ -8098,7 +8116,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .inbox-rec { width:100%; background:#f4f8f4; border:1px solid #dcebdc; border-radius:16px; padding:12px 12px 10px; box-sizing:border-box; }
   .inbox-rec-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .inbox-rec-badge { font-family:'Nunito'; font-weight:900; font-size:11px; color:var(--green-dark); background:#e2f0e2; border-radius:99px; padding:3px 9px; white-space:nowrap; }
-  .inbox-rec-title { font-family:'DM Sans'; font-size:13px; color:var(--navy); font-weight:600; }
+  .inbox-rec-title { font-family:'Nunito',sans-serif; font-size:13px; color:var(--navy); font-weight:800; }
   /* Owner 2026-07-28: on the dashboard there is real estate to spare, and a 172px
      cap was clipping recommendations out of sight (a referral you never see is a
      referral you never act on). The list now grows to fit; the cap returns only on
@@ -8146,6 +8164,28 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .inbox-composer-send:hover { background:var(--green-dark); }
   .inbox-composer-send:active { transform:scale(0.92); }
   .inbox-composer-send svg { width:18px; height:18px; }
+  /* G40-216 (John 10/15: "Add Request app unlimited camera (just like app)"): the app's chat camera on
+     the web inbox. Navy camera on white (as in the app), the photo waits as a 72px thumbnail with an x
+     above the message box and goes with Send, and shows in the thread as a photo (max 250px, no
+     full-size viewer: the app has none). The requester's photos are never gated, as in the app. */
+  .inbox-composer { flex-wrap:wrap; }
+  .inbox-composer-cam {
+    width:42px; height:42px; flex-shrink:0; border-radius:50%; background:#fff;
+    border:1.5px solid var(--navy); color:var(--navy); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .inbox-composer-cam svg { width:20px; height:20px; }
+  .inbox-composer-cam:focus-visible, .inbox-photo-wait-x:focus-visible { outline:3px solid var(--green); outline-offset:2px; }
+  .inbox-photo-wait-row { flex-basis:100%; }
+  .inbox-photo-wait { position:relative; width:72px; height:72px; margin:2px 0 4px; }
+  .inbox-photo-wait img { width:72px; height:72px; object-fit:cover; border-radius:8px; display:block; }
+  .inbox-photo-wait-x {
+    position:absolute; top:-6px; right:-6px; width:22px; height:22px; padding:0; border:0;
+    border-radius:50%; background:rgba(0,0,0,.6); color:#fff; font-size:14px; line-height:22px; cursor:pointer;
+  }
+  .inbox-photo-wait-x:hover { background:rgba(0,0,0,.8); }
+  .inbox-bubble.inbox-photo { padding:0; background:transparent !important; }
+  .inbox-photo img { display:block; max-width:min(250px, 100%); border-radius:14px; }
   .inbox-thread-empty { text-align:center; color:var(--muted); font-family:'DM Sans'; font-size:13px; padding:30px 16px; line-height:1.5; }
   .inbox-list-empty { padding:18px 16px; color:var(--muted); font-family:'DM Sans'; font-size:13px; border-top:1px solid #f0f2f7; }
   .inbox-empty { padding:40px; text-align:center; color:var(--muted); font-family:'DM Sans'; font-size:14px; }
@@ -8346,8 +8386,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     padding:2px 2px 12px;
   }
   .wsort-label {
-    font-family:'Nunito'; font-weight:900; font-size:11px;
-    color:var(--muted); text-transform:uppercase; letter-spacing:1.2px;
+    font-family:'Nunito'; font-weight:700; font-size:12px;
+    color:var(--muted); text-transform:uppercase; letter-spacing:.16em;
     margin-right:2px;
   }
   .wsort-chip {
@@ -8364,19 +8404,36 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .wsort-chip .wsort-arrow { font-size:11px; line-height:1; opacity:0.9; }
 
-  /* Distance line (from where the worker was when they accepted → pickup/destination) */
+  /* Distance — only when the worker is far enough to need the requester's
+     approval, "N mi from your drop-off", grey (the app's offerDistance: "Grey,
+     not red"). It used to show on every card, with a separate amber note. */
   .wcard-distance {
     font-family:'DM Sans'; font-size:12px; font-weight:600; color:var(--muted);
     display:inline-flex; align-items:center; gap:4px;
   }
-  /* Approval-required note for First-available matches > 15 mi out */
-  .wcard-approval {
-    margin-top:6px;
-    font-family:'DM Sans'; font-size:12px; font-weight:600;
-    color:#92580D;
-    background:#fff7d6; border:1px solid #f3e08f; border-radius:8px;
-    padding:4px 9px; display:inline-flex; align-items:center; gap:6px;
+  /* ── The app's offer-card pieces (live/OffersSheet.js, owner 10/15) ── */
+  .wcard-line { margin-top:6px; font-family:'DM Sans'; font-size:12px; color:var(--muted); }
+  .wcard-tag {
+    font-family:'Nunito'; font-weight:800; font-size:10.5px; letter-spacing:.3px;
+    color:var(--navy); background:#eef2f9; border-radius:99px; padding:2px 9px;
   }
+  .wcard-cm { margin:8px 0 0; font-family:'DM Sans'; font-size:13px; color:var(--text); font-style:italic; }
+  .wcard-more {
+    margin-top:6px; padding:0; background:none; border:0; cursor:pointer;
+    font-family:'Nunito'; font-weight:800; font-size:12.5px; color:var(--green-dark);
+  }
+  .wcard-more:hover { text-decoration:underline; }
+  .wcard-cmp { margin-top:8px; border-collapse:collapse; font-family:'DM Sans'; font-size:12.5px; }
+  .wcard-cmp th { font-family:'Nunito'; font-weight:800; font-size:10.5px; letter-spacing:.4px;
+    text-transform:uppercase; color:var(--muted); text-align:right; padding:3px 10px; }
+  .wcard-cmp td { padding:4px 10px; text-align:right; color:var(--text); border-top:1px solid #eef0f5; }
+  .wcard-cmp td:first-child { text-align:left; padding-left:0; color:var(--muted); }
+  .wcard-cmp td.now { font-weight:700; color:var(--navy); }
+  .wcard-cmp td.up { color:#c8443a; font-weight:700; }
+  .wcard-cmp .wcard-cmp-total td { font-weight:800; color:var(--navy); border-top:1.5px solid #dfe3ec; }
+  .wcard-px { flex-shrink:0; text-align:right; font-family:'Nunito'; font-weight:900; font-size:18px; color:var(--navy); line-height:1.2; }
+  .wcard-px s { display:block; font-weight:700; font-size:12px; color:var(--muted); }
+  .wcard-counter { align-items:flex-start; }
   /* Bid amount — prominent, sits between the worker info and the action buttons */
   /* Owner 2026-09-29: BID reads to the LEFT of the number, and the number is
      tappable — it opens the itemised breakdown. Mirrors gopher-connect.html. */
@@ -8414,7 +8471,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     box-shadow:0 18px 50px rgba(12,22,48,0.3); padding:20px 20px 16px;
     font-family:'DM Sans'; max-height:88vh; overflow:auto;
   }
-  .bidbd-head { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .bidbd-head { font-family:'Nunito'; font-weight:800; font-size:17px; color:var(--navy); }
   .bidbd-sub  { font-size:12px; color:var(--muted); margin:3px 0 14px; }
   .bidbd-row  { display:flex; justify-content:space-between; gap:12px; font-size:14px;
                 padding:7px 0; border-bottom:1px dashed #e6e9f2; color:var(--navy); }
@@ -8429,7 +8486,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     margin-top:22px; padding-top:16px; border-top:1px solid #eef0f5;
   }
   .pe-danger-head {
-    font-family:'Nunito'; font-weight:900; font-size:12px; letter-spacing:0.5px;
+    font-family:'Nunito'; font-weight:700; font-size:12px; letter-spacing:.16em;
     text-transform:uppercase; color:#a3202f;
   }
   .pe-danger-copy {
@@ -8528,7 +8585,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .hlive-pill.at  { background:#C44257; color:#fff; }
   .hlive-pill.sch { background:#BADBFC; color:var(--navy); }
   .hlive-ttl {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:15px; line-height:1.2;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; line-height:1.2;
     max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .hlive-sub {
@@ -8886,7 +8943,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* ── "Request again" / "Popular near you" — the home's bottom section. ── */
   .hra { margin-top:30px; }
   .hra-h { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:0 2px 12px; }
-  .hra-h h2 { font-family:'Nunito',sans-serif; font-weight:900; font-size:17px; color:var(--navy); margin:0; }
+  .hra-h h2 { font-family:'Nunito',sans-serif; font-weight:800; font-size:17px; color:var(--navy); margin:0; }
   .hra-link { background:none; border:0; cursor:pointer; font-family:'Nunito',sans-serif;
               font-weight:800; font-size:13px; color:var(--green-text,#0F7A3F); padding:2px; }
   .hra-link:hover { text-decoration:underline; }
@@ -9070,6 +9127,40 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   .hv-grid[data-hview="list"] .hv-nm { padding:0; font-size:14.5px; }
   .hv-grid[data-hview="list"] .hv-ds { padding:0; margin-top:2px; }
+  /* ⛔ LIST BELOW 1150px — owner pick C (Stage 4, 2026-10-14). The two fixed
+     tracks above (296px name + rail) hold symmetry only on a wide window: at
+     1024 the rows spread 34px, and on a 390 phone the rail track collapsed to
+     ZERO width and all 48 pills were clipped. So below 1150 the row stacks —
+     photo and name on top, examples beneath — and shows three examples plus
+     "+3 more", which expands in place. Every pill is pinned to one height so
+     a long example ("Tobacco, vape and nicotine delivery (21+ only)") cannot
+     make its row the odd one out; measured even at 390 / 768 / 1024 / 1150.
+     Above 1150 nothing changes. Options A (all six) and B (swipe line) were
+     the alternatives. */
+  .hv-more { display:none; }
+  @media (max-width:1150px){
+    .hv-grid[data-hview="list"] .hv-cell { grid-template-columns:1fr; row-gap:14px; padding:16px; }
+    .hv-grid[data-hview="list"] .hv-tile { grid-template-columns:88px 1fr; gap:14px; }
+    .hv-grid[data-hview="list"] .hv-art { width:88px; height:88px; border-radius:18px; }
+    .hv-grid[data-hview="list"] .hv-pills { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .hv-grid[data-hview="list"] .hv-pills:not(.open) .hv-pill-x { display:none; }
+    .hv-grid[data-hview="list"] .hv-pill { min-height:44px; }
+    .hv-grid[data-hview="list"] .hv-more {
+      display:flex; align-items:center; justify-content:center; min-height:44px;
+      font-family:'Nunito',sans-serif; font-weight:800; font-size:11.5px; color:var(--navy);
+      background:#fff; border:1.5px dashed #D9CBAE; border-radius:999px; padding:6px 11px; cursor:pointer;
+    }
+    .hv-grid[data-hview="list"] .hv-more:hover { background:var(--sand,#FBF3E4); }
+    .hv-grid[data-hview="list"] .hv-more:focus-visible { outline:2px solid var(--green-text); outline-offset:2px; }
+  }
+  @media (max-width:560px){
+    .hv-grid[data-hview="list"] .hv-cell { padding:14px; row-gap:12px; }
+    .hv-grid[data-hview="list"] .hv-tile { grid-template-columns:72px 1fr; }
+    .hv-grid[data-hview="list"] .hv-art { width:72px; height:72px; border-radius:16px; }
+    .hv-grid[data-hview="list"] .hv-pills { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .hv-grid[data-hview="list"] .hv-pill,
+    .hv-grid[data-hview="list"] .hv-more { min-height:36px; }
+  }
   @media (prefers-reduced-motion:reduce){ .hv-tile{transition:none} .hv-sb{transition:none} }
   @media (max-width:900px){
     .hv-grid[data-hview="spot"]{grid-template-columns:repeat(3,1fr)}
@@ -9302,7 +9393,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .choose-card:hover .cc-btn-green { background:var(--green-dark); }
 
   .choose-card .cc-h {
-    position:relative; font-family:'Nunito',sans-serif; font-weight:900;
+    position:relative; font-family:'Nunito',sans-serif; font-weight:800;
     /* was #fff — tuned for the navy card. Both cards are white now. */
     font-size:23px; margin:14px 0 7px; color:#002461;
   }
@@ -9338,7 +9429,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .tsp-hero { text-align:center; padding:2px 0 14px; }
   .tsp-seal img { height:62px; width:auto; display:block; margin:0 auto 10px; }
   .tsp-head {
-    font-family:'Nunito',sans-serif; font-weight:900; font-size:20px;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:20px;
     color:var(--navy); line-height:1.2;
   }
   .tsp-sub {
@@ -9434,6 +9525,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   @media(max-width:620px){
     .wcard-bid { align-items:flex-start; padding-left:54px; }
+    /* Counter-offer: the price drops under the details, like the bid above, so
+       the name, tag, comment and What-changed table get the full width. */
+    .wcard-counter .wcard-main { flex-basis:calc(100% - 60px); }
+    .wcard-px { padding-left:54px; text-align:left; display:flex; align-items:baseline; gap:8px; }
+    .wcard-px s { display:inline; }
   }
 
   .wcard-actions { display:flex; align-items:center; gap:7px; flex-shrink:0; }
@@ -9630,7 +9726,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      gains room. 40%/448 -> 36%/410 narrows it ~44px at a 1095px row. */
   .dh-hero-row .dh-featured { flex:0 0 clamp(340px, 36%, 410px); max-width:410px; margin:0; }
   .dh-hero-copy { flex:0 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:26px; padding:8px 20px; }
-  .dh-hero-head { font-family:'Nunito',sans-serif; font-weight:900; letter-spacing:-.012em; font-size:clamp(27px, 3vw, 40px); line-height:1.16; color:var(--navy); max-width:18ch; }
+  .dh-hero-head { font-family:'Nunito',sans-serif; font-weight:800; letter-spacing:-.015em; font-size:clamp(27px, 3vw, 40px); line-height:1.16; color:var(--navy); max-width:18ch; }
   /* ⛔ 18ch, and it is THE control on the line count — not the column width.
      At 1440 the copy column already had 617px free while the heading sat capped
      at 384px, so widening the row alone changed nothing. Measured across the
@@ -9670,7 +9766,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-size:12px; letter-spacing:.08em; color:#8A6D1E; border:1px solid #E6CC78; border-radius:999px; padding:6px 14px;
     background:linear-gradient(180deg,#FFF8E4,#FBEEC2); box-shadow:0 2px 6px rgba(201,150,43,.18); }
   .dh-feat-badge svg { width:14px; height:14px; color:#C9962B; flex:0 0 auto; }
-  .dh-feat-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:30px; color:var(--navy); margin-top:13px; line-height:1.1; }
+  .dh-feat-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:30px; color:var(--navy); margin-top:13px; line-height:1.1; }
   .dh-feat-offer { font-family:'Nunito',sans-serif; font-weight:800; font-size:17px; color:var(--green-dark); margin-top:9px; line-height:1.3; }
   .dh-feat-desc { font-family:'DM Sans',sans-serif; font-size:15px; color:var(--muted); margin-top:7px; line-height:1.45; }
   .dh-feat-go { margin-top:20px; display:inline-flex; align-items:center; gap:8px; font-family:'Nunito',sans-serif; font-weight:800;
@@ -9703,7 +9799,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .dh-cat-logo { width:110px; height:110px; border-radius:24px; margin:14px auto 12px; overflow:hidden; background:#f3ede1;
     display:flex; align-items:center; justify-content:center; }
   .dh-cat-logo img { width:100%; height:100%; object-fit:contain; padding:10px; box-sizing:border-box; }
-  .dh-cat-name { font-family:'Nunito',sans-serif; font-weight:900; font-size:17px; color:var(--navy); line-height:1.22; }
+  .dh-cat-name { font-family:'Nunito',sans-serif; font-weight:800; font-size:17px; color:var(--navy); line-height:1.22; }
   .dh-cat-win { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); margin-top:4px; }
   .dh-cat-offer { font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; color:var(--green-dark); line-height:1.3; margin-top:8px; }
   .dh-cat-cta { margin-top:14px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy);
@@ -9790,7 +9886,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     text-align:center; padding:34px 26px; background:#fff; }
   .dd-live-fallback[hidden] { display:none; }
   .dd-globe { width:40px; height:40px; fill:none; stroke:var(--muted); stroke-width:1.4; margin:0 auto 12px; display:block; }
-  .dd-fb-title { font-family:'Nunito',sans-serif; font-weight:900; font-size:16px; color:var(--navy); }
+  .dd-fb-title { font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; color:var(--navy); }
   .dd-fb-sub { font-family:'DM Sans',sans-serif; font-size:13px; color:var(--muted); margin-top:6px; line-height:1.5; max-width:300px; }
   .dd-fb-open { margin-top:16px; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:#fff; background:var(--navy);
     border-radius:10px; padding:10px 20px; text-decoration:none; }
@@ -9821,7 +9917,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   /* How-Deals-works band at the foot of the deals landing */
   .dh-how { max-width:860px; margin:26px auto 8px; background:#f7f9fc; border:1px solid #e3e7ef;
     border-radius:16px; padding:18px 24px; text-align:center; }
-  .dh-how-eyebrow { font-family:'Nunito',sans-serif; font-weight:900; font-size:11px; letter-spacing:.09em;
+  .dh-how-eyebrow { font-family:'Nunito',sans-serif; font-weight:700; font-size:12px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--green-dark); margin-bottom:7px; }
   .dh-how-copy { font-family:'DM Sans',sans-serif; font-size:14px; color:var(--muted); line-height:1.6; margin:0; }
   .dh-how-copy b { color:var(--navy); }
@@ -9843,7 +9939,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:none; border:none; padding:0; cursor:pointer; text-align:left; }
   .deal-save-toggle .dsn-chev { width:16px; height:16px; color:var(--green-dark); flex:0 0 auto; transition:transform .18s ease; }
   .deal-save-toggle[aria-expanded="true"] .dsn-chev { transform:rotate(180deg); }
-  .deal-save-head { font-family:'Nunito',sans-serif; font-weight:900; font-size:14px; color:var(--navy); }
+  .deal-save-head { font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; color:var(--navy); }
   .deal-save-sub { font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
   .deal-save-rows { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
   .deal-save-row { display:flex; align-items:baseline; gap:7px; font-size:13px; color:var(--navy); }
@@ -10062,7 +10158,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     background:none; border:0; padding:0; cursor:pointer; text-align:left;
   }
   .prev-card-title {
-    font-family:'Nunito'; font-weight:900; font-size:16px; color:var(--navy);
+    font-family:'Nunito'; font-weight:800; font-size:16px; color:var(--navy);
     flex:1 1 auto; min-width:0;
   }
   .prev-card-chev { flex:0 0 auto; color:#9fb0c9; font-size:17px; line-height:1; }
@@ -10180,11 +10276,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      sticky action bar. Reuses .pca from the history cards so the two actions
      are the same control in both places. */
   .pdx-head { margin:2px 0 16px; }
-  .pdx-type { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .pdx-type { font-family:'Nunito'; font-weight:800; font-size:17px; color:var(--navy); }
   .pdx-when { font-family:'DM Sans'; font-size:13px; color:var(--muted); margin-top:2px; }
   .pdx-sec { border-top:1px solid #eef0f5; padding:14px 0 4px; }
+  /* G40-622 (John 10/14: "there is a line above the 'where' that needs to be removed"):
+     the completed view opens on its first section with no rule above it, as the app does. */
+  .pdx-head + .pdx-sec { border-top:0; }
   .pdx-h {
-    font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy);
+    font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--navy);
     margin-bottom:8px;
   }
   .pdx-row {
@@ -10239,7 +10338,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .prev-detail-status.expired   { background:#fff6e6; color:#92580D; }
 
   .prev-detail-title {
-    font-family:'Nunito'; font-weight:900; font-size:20px; color:var(--navy); margin-bottom:14px;
+    font-family:'Nunito'; font-weight:800; font-size:20px; color:var(--navy); margin-bottom:14px;
   }
 
   /* Label/value rows */
@@ -10383,14 +10482,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     padding:14px 18px; border-bottom:1px solid #eef0f5;
   }
-  .gtr-title { font-family:'Nunito'; font-weight:900; font-size:17px; color:var(--navy); }
+  .gtr-title { font-family:'Nunito'; font-weight:800; font-size:17px; color:var(--navy); }
   .gtr-link {
     background:none; border:0; cursor:pointer; padding:4px 2px;
     font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--green-dark);
   }
   .gtr-body { overflow-y:auto; padding:16px 18px 8px; }
   .gtr-sec { border-top:1px solid #eef0f5; padding:14px 0 6px; }
-  .gtr-h { font-family:'Nunito'; font-weight:900; font-size:13px; color:var(--navy); margin-bottom:8px; }
+  .gtr-h { font-family:'Nunito'; font-weight:800; font-size:13px; color:var(--navy); margin-bottom:8px; }
   .gtr-field label {
     display:block; font-family:'Nunito'; font-weight:800; font-size:12px;
     color:var(--navy); margin-bottom:6px;
@@ -10454,7 +10553,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .gtr-foot .pca[disabled] { opacity:.45; cursor:not-allowed; }
 
   .gfb-title {
-    font-family:'Nunito'; font-weight:900; font-size:15px; color:var(--navy);
+    font-family:'Nunito'; font-weight:800; font-size:15px; color:var(--navy);
     display:flex; align-items:center; gap:2px;
   }
   .gfb-title .go-mark { height:1.05em; vertical-align:-0.16em; }
@@ -10463,7 +10562,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   .goto-strip { margin-bottom:18px; }
   .goto-strip-head { display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
   .goto-strip-head h4 {
-    font-family:'Nunito'; font-weight:900; font-size:15px; color:var(--navy); margin:0;
+    font-family:'Nunito'; font-weight:800; font-size:15px; color:var(--navy); margin:0;
   }
   .goto-count { font-family:'DM Sans'; font-size:12px; color:var(--muted); }
   /* Wide and short: text left, the single CTA right. The earlier stacked layout
@@ -10562,7 +10661,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      The setup screen is ONE prepopulated sheet, not the step-by-step flow, so
      it carries the live app's section structure inline. */
   .goto-sec-h {
-    font-family:'Nunito'; font-weight:900; font-size:11px; letter-spacing:0.6px;
+    font-family:'Nunito'; font-weight:700; font-size:12px; letter-spacing:.16em;
     text-transform:uppercase; color:var(--muted);
     margin:22px 0 10px; padding-bottom:6px; border-bottom:1px solid #eef0f5;
   }
@@ -11210,7 +11309,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     .dash-avatar{ cursor:pointer; }
     .kpi-grid { grid-template-columns:repeat(2, 1fr); }
     .gophers-grid { grid-template-columns:1fr; }
-    .dash-content { padding:18px; }
+    /* Vertical only: .dash-content wraps the HOME section, which already gets the
+       shared gutter from .dash-section — 18px here on top made home sit 36px in
+       from a 390 phone's edges while every other section sat at 16. */
+    .dash-content { padding:18px 0; }
     .dash-topbar { padding:10px 18px; }
     /* no sidebar to line up with on a phone — the logo just takes its own width */
     .dash-topbar-brand { flex:0 0 auto; margin-right:14px; }
@@ -11474,8 +11576,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 <section class="onthego">
   <div class="onthego-inner">
     <div class="onthego-phone-col">
-      <img class="onthego-phone" src="assets/img/request-home.webp" alt="Gopher Request — Home screen" width="640" height="1320">
-      <img class="onthego-phone" src="assets/img/request-in-progress.webp" alt="Gopher Request — request in progress" width="640" height="1320">
+      <img class="onthego-phone" src="assets/img/request-home.webp" alt="Gopher Request — Home screen with a current request" width="640" height="1379">
+      <img class="onthego-phone" src="assets/img/request-in-progress.webp" alt="Gopher Request — live map after a Gopher accepts" width="640" height="1379">
     </div>
     <div class="onthego-text">
       <h2>When you're<br>on the <span class="go">Go.</span><br>But still need a <span class="go">Gopher!</span></h2>
@@ -11598,27 +11700,54 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     <h2 class="section-title">Yes, we can Gopher <em>that</em> too.</h2>
     <p class="section-sub">Other apps stop at the easy stuff. Gopher Request keeps going — because a real neighbor would.</p>
 
+    <!-- v28 (John 10/15): each topic is the Gopher outline with a real moment inside, picked card by card
+         (pick doc: claude.ai/artifact/Y9Zxohy4k8zNo2kgxjYjb3). Clips are muted, play only while on screen,
+         and show their poster still to anyone who has motion turned off (script below the section). -->
     <div class="bite-grid">
-      <div class="bite-card">
-        <span class="bite-tag">Age-restricted</span>
-        <h4>Beer, wine, and the occasional vape pen.</h4>
-        <p>Your Gopher is a real, verified adult. They check ID. We&rsquo;ll deliver what most apps quietly refuse to.</p>
-      </div>
-      <div class="bite-card">
-        <span class="bite-tag">Same-day, often same-hour</span>
-        <h4>That thing you needed an hour ago.</h4>
-        <p>Forgotten cord. Last-minute gift. Pickup the courier said couldn&rsquo;t happen until Tuesday. Post the request — someone&rsquo;s usually rolling within minutes.</p>
-      </div>
-      <div class="bite-card">
-        <span class="bite-tag">Odd-job-friendly</span>
-        <h4>The one nobody else has a category for.</h4>
-        <p>Move a piano three blocks. Stand in a return line. Drop a casserole at your mom&rsquo;s. If a neighbor could do it, a Gopher will.</p>
-      </div>
-      <div class="bite-card">
-        <span class="bite-tag">You name the price</span>
-        <h4>The number you&rsquo;d actually pay.</h4>
-        <p>No surge. No service fee theater. You offer what feels fair — and a Gopher in your neighborhood says yes, or doesn&rsquo;t.</p>
-      </div>
+      <figure class="bite-g">
+        <div class="bite-gd">
+          <div class="bite-clip"><video class="bite-vid" src="Beer-Delivery.mp4" poster="assets/img/gopher-that-beer.webp" muted loop playsinline preload="none" style="object-position:60% 50%" aria-label="A Gopher hands a case of beer to a neighbor at his backyard grill"></video></div>
+          <img class="bite-line" src="assets/img/gopher-outline-thin.svg" alt="" width="1240" height="1220">
+        </div>
+        <figcaption class="bite-txt">
+          <span class="bite-tag">Age-restricted</span>
+          <h4>Beer, wine, and the occasional vape pen.</h4>
+          <p>Your Gopher is a real, verified adult. They check ID. We&rsquo;ll deliver what most apps quietly refuse to.</p>
+        </figcaption>
+      </figure>
+      <figure class="bite-g">
+        <div class="bite-gd">
+          <div class="bite-clip"><video class="bite-vid" src="assets/video/gopher-that-backpack.mp4" poster="assets/img/gopher-that-backpack.webp" muted loop playsinline preload="none" aria-label="A Gopher hands a neighbor the backpack he left behind, on his front porch"></video></div>
+          <img class="bite-line" src="assets/img/gopher-outline-thin.svg" alt="" width="1240" height="1220">
+        </div>
+        <figcaption class="bite-txt">
+          <span class="bite-tag">Same-day, often same-hour</span>
+          <h4>That thing you needed an hour ago.</h4>
+          <p>Forgotten cord. Last-minute gift. Something you kinda need a vetted neighbor to help with.</p>
+        </figcaption>
+      </figure>
+      <figure class="bite-g">
+        <div class="bite-gd">
+          <div class="bite-clip"><video class="bite-vid" src="assets/video/gopher-that-couch.mp4" poster="assets/img/gopher-that-couch.webp" muted loop playsinline preload="none" aria-label="A Gopher carries a green velvet couch out through an apartment door"></video></div>
+          <img class="bite-line" src="assets/img/gopher-outline-thin.svg" alt="" width="1240" height="1220">
+        </div>
+        <figcaption class="bite-txt">
+          <span class="bite-tag">Odd-job-friendly</span>
+          <h4>The one nobody else has a category for.</h4>
+          <p>Move a piano three blocks. Stand in a return line. Drop a casserole at your mom&rsquo;s. If a neighbor could do it, a Gopher will.</p>
+        </figcaption>
+      </figure>
+      <figure class="bite-g">
+        <div class="bite-gd">
+          <div class="bite-clip"><video class="bite-vid" src="Movers.mp4" poster="assets/img/gopher-that-movers.webp" muted loop playsinline preload="none" aria-label="Two Gopher movers stand smiling, arms crossed, in front of a truck full of boxes"></video></div>
+          <img class="bite-line" src="assets/img/gopher-outline-thin.svg" alt="" width="1240" height="1220">
+        </div>
+        <figcaption class="bite-txt">
+          <span class="bite-tag">You name the price</span>
+          <h4>The number you&rsquo;d actually pay.</h4>
+          <p>No surge. No service fee theater. You offer what feels fair — and a Gopher in your neighborhood says yes, or doesn&rsquo;t.</p>
+        </figcaption>
+      </figure>
     </div>
 
     <p class="bite-footer">
@@ -11626,6 +11755,21 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     </p>
   </div>
 </section>
+<script>
+/* "Yes, we can Gopher that too." clips: muted, play only while on screen (preload none, so nothing
+   downloads until the section is in view); anyone with motion turned off keeps the poster still. */
+(function(){
+  var vids = document.querySelectorAll('.bite-vid');
+  if (!vids.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function play(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+  if (!('IntersectionObserver' in window)) { for (var i = 0; i < vids.length; i++) play(vids[i]); return; }
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if (e.isIntersecting) play(e.target); else e.target.pause(); });
+  }, { threshold: 0.25 });
+  for (var j = 0; j < vids.length; j++) io.observe(vids[j]);
+})();
+</script>
 
 <!-- COMPARISON — v21: head-to-head with the typical gig app -->
 <section class="section compare">
@@ -13245,10 +13389,15 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   }
   window.__itfCents = itfCents;   // for the bid card (__bidBreakdown), a later script
 
-  // Promo codes. GOPHER50 takes 50% off the TOTAL Request Fee. The worker's
-  // COG+Offer is never discounted. feeMultiplier is what each fee line is ×'d by.
+  // Promo codes: shaped like the server's coupon records, and discounted by the
+  // server's own rule (D9, John 2026-10-15: "Copy the real rules"; the shared
+  // module's couponDiscount). A coupon takes from the Gopher fee and the transfer
+  // fee, plus the age-restricted fee (net of TrustShield) only when it is a 21+
+  // coupon. The worker's COG+Offer is never discounted. Demo codes until the web
+  // places real orders; then the code is checked with the server, as in the app.
   const PROMO_CODES = {
-    GOPHER50: { label: 'GOPHER50', desc: '50% off fees', feeMultiplier: 0.5 },
+    GOPHER50: { label: 'GOPHER50', desc: '50% off the Gopher + transfer fees',
+                type: 'percentOff', value: 50, age_restricted_discount: false },
   };
   function getPromo(code){
     if(!code) return null;
@@ -13271,9 +13420,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   //
   // CANONICAL DISCOUNT SHEET (founder, June 21, 2026) — SUPERSEDES the old
   // "ITF hard-line" (D-033). Fees are calculated FIRST (ITF = 8% of the full,
-  // pre-discount base), then discounts come off the TOTAL: a % promo (e.g.
-  // GOPHER50) sizes on the WHOLE fee bundle — Gopher + A/R + ITF — so it halves
-  // the ITF too. TrustShield is a flat $1.00 off the total, applied LAST. The
+  // pre-discount base), then discounts come off the TOTAL. ⛔ D9 (2026-10-15):
+  // the promo is the SERVER's coupon rule — Gopher fee + ITF always, the A/R fee
+  // (net of TrustShield) only for a 21+ coupon — no longer the whole bundle.
+  // TrustShield is a flat $1.00 off the total, applied LAST. The
   // combined discount is capped at 100% of total fees (it can zero the fee
   // bundle but never reduce COG+Offer); TrustShield absorbs the truncation when
   // the cap binds.
@@ -13288,7 +13438,6 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
                dealBoostFee, serviceDealZeroFee:true };
     }
     const promo = getPromo(state.promoApplied ? state.promoCode : null);
-    const m = promo ? promo.feeMultiplier : 1;
 
     const baseGopher = (GOPHER_FEE[state.category] ?? GOPHER_FEE.other);
     const baseAge = (state.category === 'delivery' && state.ageRestricted) ? AGE_FEE : 0;
@@ -13302,9 +13451,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     const instantTransfer = itfCents(cogOffer + feeSubtotal);
     const fullInstantTransfer = instantTransfer;
 
-    // Discountable bundle = the whole fee side INCLUDING the ITF (canonical sheet).
     const totalFees = feeSubtotal + instantTransfer;
-    const promoDiscountRaw = promo ? (1 - m) * totalFees : 0;   // % promo on (fees + ITF)
 
     // TrustShield: flat $1.00 off the TOTAL, verified person. Applies ONLY to
     // AGE-RESTRICTED delivery, or ALL ride-share (ride is not sub-categorized by age).
@@ -13313,6 +13460,14 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       ? !!window.__hasTrustShield() : !!(state && state.trustShield);
     const tsEligible = hasTS && ((state.category === 'delivery' && state.ageRestricted) || state.category === 'ride');
     const tsRaw = tsEligible ? 1.00 : 0;
+
+    // D9: the promo is the SERVER's coupon discount (shared module couponDiscount):
+    // the Gopher fee + the transfer fee, plus the age-restricted fee NET of
+    // TrustShield (what the server's summary passes) for a 21+ coupon only.
+    const agePortion = baseAge - Math.min(tsRaw, baseAge);
+    const promoDiscountRaw = promo
+      ? window.GopherRequestLogic.couponDiscount(baseGopher, instantTransfer, promo, agePortion).discount_amount
+      : 0;
 
     // Cap: promo + TrustShield <= total fees. Promo first; TrustShield absorbs truncation.
     const promoDiscount = Math.min(promoDiscountRaw, totalFees);
@@ -13395,7 +13550,10 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     return isNaN(n) ? 0 : n;
   }
   function currentRegionIsNC(){ var L=window.GopherRequestLogic; return L ? L.regionIsNC() : true; }   // SHARED policy — NC pricing platform-wide (owner 2026-07-09); see gopher-request-logic.js
-  function suggestedOffer(itemCost, isNC){ return window.GopherRequestLogic.suggestedOffer(itemCost, isNC); }   // SHARED — table, interpolation and >$200 extrapolation live in assets/js/gopher-request-logic.js
+  /* D11 (ruled 10/13, built 10/15): the SERVER's G40-502 Delivery curve, the number the
+     Request app shows (POST orders/smart_price). Region no longer applies (the server has
+     none); the second argument is ignored. Connect still uses the old NC table. */
+  function suggestedOffer(itemCost){ return window.GopherRequestLogic.deliverySuggestedOffer(itemCost); }
 
   // ─── RIDE suggested-offer model (distance-based) ───────────────────────────
   // Mirrors the delivery rail shape { low, suggested, generous } so it flows
@@ -13622,20 +13780,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   document.addEventListener('mousedown', function(e){ if(_savedPickerEl && !_savedPickerEl.contains(e.target) && !(e.target.matches && e.target.matches('input[data-locedit]'))) hideSavedPicker(); }, true);
   window.addEventListener('scroll', hideSavedPicker, true);
 
+  /* D12 (ruled 10/13, built 10/15): the SERVER's G40-535 WORKER-PAY Ride model, the number
+     the Request app shows. It is what the worker is offered, so no $2.99 platform fee and no
+     8% (checkout adds both; the old all-in figure here charged them twice, about $4-6 high).
+     RIDE_RATES / RIDE_MILE_TIERS / rideMileageCost above are no longer used by the suggestion. */
   function rideSuggestedOffer(miles, minutes, scheduled){
-    const r = RIDE_RATES;
-    const variable = (rideMileageCost(miles) + minutes * r.perMin) / 2;
-    const calc = (mult) => {
-      let base = Math.max(r.fee + variable * mult, r.minRide);
-      if(scheduled) base *= (1 + r.schedUplift);
-      return base * (1 + r.itf);
-    };
-    return {
-      low:       Math.round(calc(1 - r.band)),
-      suggested: Math.round(calc(1)),
-      generous:  Math.round(calc(1 + r.band)),
-      miles, minutes
-    };
+    return window.GopherRequestLogic.rideWorkerPayOffer(miles, minutes, scheduled);
   }
 
   // Shared fair-range model for the categories we price (Delivery + Ride Share).
@@ -13959,7 +14109,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
   // ---- Service catalog ----
   const CATEGORIES = {
     delivery: {
-      icon:'🚚', name:'Delivery / Errand', mark:`<svg class="cat-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5h10.5v9H3z"/><path d="M13.5 10.5h4L21 13.5v3h-7.5z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/><path d="M8.8 18h6.4"/></svg>`, tag:'Errand',
+      icon:'🚚', name:'Delivery', mark:`<svg class="cat-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5h10.5v9H3z"/><path d="M13.5 10.5h4L21 13.5v3h-7.5z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/><path d="M8.8 18h6.4"/></svg>`, tag:'Errand',
       detailsTitle:'Where is this going?',
       detailsSub:'Tell us the pickup and drop-off so we can match a driver nearby.',
       fields:[
@@ -14081,7 +14231,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
 
 
     yard: {
-      icon:'🌳', name:'Yard / Outdoor Projects', mark:`<svg class="cat-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 7.4 9.2h2.6L6.2 15h3.4l-2.4 3.4h9.6L14.4 15h3.4l-3.8-5.8h2.6L12 2.5Z"/><path d="M12 18.4V21.5"/></svg>`, tag:'Outdoor',
+      icon:'🌳', name:'Yard Project', mark:`<svg class="cat-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 7.4 9.2h2.6L6.2 15h3.4l-2.4 3.4h9.6L14.4 15h3.4l-3.8-5.8h2.6L12 2.5Z"/><path d="M12 18.4V21.5"/></svg>`, tag:'Outdoor',
       detailsTitle:'What outdoor work do you need?',
       detailsSub:'Mowing, hauling, planting, cleanup — we match the right outdoor pro.',
       fields:[
@@ -14375,6 +14525,9 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       scheduledForLater: state.scheduleType !== 'now',
       ageRestricted: state.ageRestricted,
       idRequiredAtCompletion: state.ageRestricted || state.idRequiredAtCompletion,
+      // G40-628 (D6): double-flagged + the word; never on an age-restricted request.
+      ageKeywordDeclined: !state.ageRestricted && !!state.ageKeywordDeclined,
+      ageKeyword: (!state.ageRestricted && state.ageKeywordDeclined) ? (state.ageKeyword || '') : '',
       // Pre-clearance metadata for age-restricted delivery. Does NOT replace the
       // in-person ID-at-exchange requirement (idRequiredAtCompletion stays); it
       // just lets the completion gate + worker view show "ID pre-verified".
@@ -14489,6 +14642,11 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // age-restricted" but a keyword remained, so ID is still required at handoff.
     // Both reset when the description changes; both carried into the saved request.
     ageKeywordAck: false,
+    // G40-628 (D6): the request is DOUBLE-FLAGGED ("No", then "Submit as-is" on
+    // "You'll need your ID for this one"), and the word that tripped it. Reset
+    // with the ack; carried into the saved request for HQ's tag and filter.
+    ageKeywordDeclined: false,
+    ageKeyword: '',
     // Age-restricted "no purchase" guardrail: agePurchaseAck = the
     // no-purchase warning was acknowledged this attempt (re-armed if purchase is
     // toggled back on); agePurchaseDismissed = "Don't show me this again" for the
@@ -14605,7 +14763,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
      session-level "don't show me this again" preference. */
   const CATEGORY_SCOPED_KEYS = [
     // Delivery — age-restricted + purchase gates
-    'ageRestricted','ageKeywordAck','agePurchaseAck','idRequiredAtCompletion','idVerification',
+    'ageRestricted','ageKeywordAck','ageKeywordDeclined','ageKeyword','agePurchaseAck','idRequiredAtCompletion','idVerification',
     'itemsPurchased','costOfItems',
     // Ride — rider info
     'numRiders','numBags',
@@ -15688,7 +15846,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         ` : ''}
         <div class="toggle-row">
           <button class="toggle-switch ${state.itemsPurchased?'on':''}" data-toggle="itemsPurchased" aria-label="Items purchased toggle"></button>
-          <span class="tr-label">Slide if this delivery requires a purchase needed
+          <span class="tr-label">Slide if this delivery requires a purchase
             <span class="info-tip">
               <button class="info-btn" aria-label="Cost of items info">?</button>
               <div class="info-popover" role="tooltip">
@@ -17316,7 +17474,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       state.specialInstructions = $si.value;
       // Ride's age check reads this field (G40-623), so editing it re-arms the check
       // exactly as editing the description does.
-      if(state.category === 'ride'){ state.ageKeywordAck = false; state.idRequiredAtCompletion = false; }
+      if(state.category === 'ride'){ state.ageKeywordAck = false; state.idRequiredAtCompletion = false; state.ageKeywordDeclined = false; state.ageKeyword = ''; }
     });
 
     // Update state on input WITHOUT a full re-render so the field keeps focus
@@ -17331,6 +17489,8 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         // blur / Continue.
         state.ageKeywordAck = false;
         state.idRequiredAtCompletion = false;
+        state.ageKeywordDeclined = false;
+        state.ageKeyword = '';
         state.userAcknowledgedCategory = false;
         if(state.step === 2 && isVisible('describe')){
           $btnNext.classList.toggle('is-disabled', !$desc.value.trim());
@@ -18126,6 +18286,13 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           + '<h4>One thing to change</h4>'
           + '<p class="gr-modal-sub">This request includes an item we can\u2019t deliver for you. Please edit your request to continue.</p>'
           + '<button type="button" class="gr-modal-btn grx">Edit my request</button>'); },
+      /* G40-216: the app's "too large" photo alert (convertToJpeg, over 10 MB), as a G40-308 Guide A card:
+         amber icon circle, h4, one kit pill. */
+      photoTooLarge: function(){
+        return reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">\ud83d\udcf7</div>'
+          + '<h4>Photo is too large</h4>'
+          + '<p class="gr-modal-sub">This image is too large. Please choose a smaller photo.</p>'
+          + '<button type="button" class="gr-modal-btn grx">OK</button>'); },
       phoneEntered: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">📵</div><h4>Remove the phone number</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you’ll be able to text and/or call your Gopher in-app. Please edit your message to remove it.</p><button type="button" class="gr-modal-btn grx">Edit my message</button>'+b2('Cancel')), function(){ var d=document.getElementById('descriptionInput'); if(d) d.focus(); }); },
       paymentNotAuthorized: function(){ return wirePrimary(reqModal('<div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">💳</div><h4>Update your card to keep this request</h4><p class="gr-modal-sub">A Gopher accepted, but your bank didn’t authorize the payment. Update your card in the next <b>5 minutes</b> and we’ll reassign it to them. If they’re no longer available, we’ll rebroadcast to nearby Gophers immediately.</p><button type="button" class="gr-modal-btn grx">Update payment</button>'), openAddPay); },
       /* G40-274 — owner picks 2026-10-14 (pick-doc 8RzFQm38iwrSZ5na7uMei4):
@@ -18362,7 +18529,12 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         // Junk volume tier / hourly pay can't survive the route into Delivery),
         // then the age flags below are set on the clean slate. No-op if already
         // Delivery, which leaves an in-progress Delivery request untouched.
+        // The text that tripped the check moves with it (John 10/14, "Carry it
+        // over"; the app's deliveryCarryValues does the same): a ride's special
+        // instructions become the Delivery description. They arrived empty before.
+        const fromRide = state.category === 'ride';
         switchCategory('delivery');
+        if(fromRide) state.description = state.specialInstructions || '';
         state.ageRestricted = true;
         // Mirror the smart default (toggle-click path): ~99% of
         // age-restricted deliveries need a purchase, so confirming via the
@@ -18376,11 +18548,50 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
         overlay.hidden = true;
         render();
       });
+      /* G40-628 (D6, John 10/15): "No" no longer goes straight on. It opens
+         "You'll need your ID for this one"; only "Submit as-is" there goes on,
+         DOUBLE-FLAGGED. Same logic as the app (ageKeywordCheck.js). */
       if(noBtn) noBtn.addEventListener('click', () => {
-        state.ageKeywordAck = true;
-        // If a keyword is still present, flag ID-required-at-completion and proceed.
-        if(findAgeRestrictedKeyword(ageScanField().text)) state.idRequiredAtCompletion = true;
         overlay.hidden = true;
+        const kw = findAgeRestrictedKeyword(ageScanField().text);
+        if(!kw){ state.ageKeywordAck = true; advanceFromJobDetails(); return; }
+        const warn = document.getElementById('ageIdWarnOverlay');
+        if(!warn){   // markup missing: fail safe, flagged as before (never trap the user)
+          state.ageKeywordAck = true; state.idRequiredAtCompletion = true;
+          state.ageKeywordDeclined = true; state.ageKeyword = String(kw).slice(0, 100);
+          advanceFromJobDetails(); return;
+        }
+        const termEl = document.getElementById('ageIdWarnTerm');
+        if(termEl) termEl.textContent = kw;
+        warn.hidden = false;
+      });
+      const editBtn = document.getElementById('ageIdWarnEdit');
+      const submitBtn = document.getElementById('ageIdWarnSubmit');
+      /* Edit my request: the final backstop. Back to the box with the word
+         selected, as the under-21 block does; nothing is acknowledged, so the
+         next Continue asks again (the app's Edit clears its "No" the same way). */
+      if(editBtn) editBtn.addEventListener('click', () => {
+        document.getElementById('ageIdWarnOverlay').hidden = true;
+        const d = document.getElementById(ageScanField().inputId);
+        if(!d) return;
+        const m = findAgeRestrictedMatch(d.value);
+        try { d.focus({ preventScroll: true }); } catch(_){ try { d.focus(); } catch(__){} }
+        if(m && m.start >= 0){ try { d.setSelectionRange(m.start, m.end); } catch(_){} }
+        try { d.scrollIntoView({ block: 'center' }); } catch(_){}
+      });
+      /* Submit as-is: DOUBLE-FLAGGED. ID required at completion (the worker checks
+         it at Complete) AND the word, carried on the request for HQ's tag/filter
+         (the server's orders.age_keyword_declined + age_keyword, max 100). Still
+         NOT age-restricted: no A/R fee, no TrustShield $1. */
+      if(submitBtn) submitBtn.addEventListener('click', () => {
+        document.getElementById('ageIdWarnOverlay').hidden = true;
+        const kw = findAgeRestrictedKeyword(ageScanField().text);
+        state.ageKeywordAck = true;
+        if(kw){
+          state.idRequiredAtCompletion = true;
+          state.ageKeywordDeclined = true;
+          state.ageKeyword = String(kw).trim().slice(0, 100);
+        }
         advanceFromJobDetails();
       });
     }
@@ -20593,13 +20804,31 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
     </div>
     <h4 id="ageKwTitle">This looks age-restricted</h4>
     <p class="gr-modal-sub">Your request mentions <b>"<span id="ageKwTerm">this item</span>"</b>, which is commonly an age-restricted item. To keep everyone compliant with legal and safe-guarding protocols, please confirm whether this is an age-restricted request before continuing.</p>
-    <p style="text-align:center;background:#fdf3f4;border:1px solid #f0d2d7;border-radius:12px;padding:13px 15px;margin:4px 0 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#8a3a46;line-height:1.55;">Submitting an age-restricted request <b style="color:#c44257;font-weight:800;">without a valid ID at completion</b> means the worker <b style="color:#c44257;font-weight:800;">cannot release the items</b>. The order may be canceled, you may still be charged worker time/fees, and repeat issues can lead to account review.</p>
+    <p style="text-align:center;background:#fdf3f4;border:1px solid #f0d2d7;border-radius:12px;padding:13px 15px;margin:4px 0 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#8a3a46;line-height:1.55;">Submitting an age-restricted request <b style="color:#c44257;font-weight:800;">without a valid ID at completion</b> means the worker <b style="color:#c44257;font-weight:800;">cannot release the items</b>. The order is non-refundable: it pays your worker for their time and anything they bought for you, and repeat issues can lead to account review.</p>
     <button type="button" class="gr-modal-btn" id="ageKwYes">Yes — this IS an age-restricted request</button>
     <!-- G40-308 Guide A + owner's pick AR-NO-BUTTON = A (2:23 PM ET 10/14):
          the outlined secondary, not red (red is for destructive confirms only),
          stacked under Yes as the app's BackPill. Spacing inline, as the
          sibling sheets do (no local modal CSS). -->
     <button type="button" class="gr-modal-btn gr-modal-btn-secondary" id="ageKwNo" style="margin-top:8px;">No — this is NOT age-restricted</button>
+  </div>
+</div>
+
+<!-- G40-628 (D6, John 10/15): "No" on the sheet above opens THIS one. Owner-approved
+     words, verbatim; the app shows the same sheet (stepFlow/ageKeywordCheck.js
+     idWarningSheet). G40-308 Guide A + G40-595 pills: Edit my request is the primary
+     (the final backstop: back to the box with the word selected), Submit as-is the
+     outlined secondary, which DOUBLE-FLAGS the request (ID required at completion +
+     the word, tracked). No dismiss, as the sheet above: the user picks one. -->
+<div class="gr-modal-overlay" id="ageIdWarnOverlay" hidden>
+  <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="ageIdWarnTitle">
+    <div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;" aria-hidden="true">🪪</div>
+    <h4 id="ageIdWarnTitle">You’ll need your ID for this one</h4>
+    <p class="gr-modal-sub">Your request mentions <b>“<span id="ageIdWarnTerm">this item</span>”</b>, which is almost always an age-restricted item. Only submit it if you can show a valid ID proving you’re 21 or older when it’s delivered.</p>
+    <p class="gr-modal-sub">If you can’t show ID, your worker can’t hand over the items. The order is non-refundable: it pays your worker for their time and anything they bought for you.</p>
+    <p style="text-align:center;background:#fdf3f4;border:1px solid #f0d2d7;border-radius:12px;padding:13px 15px;margin:4px 0 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#8a3a46;line-height:1.55;">Flagged by mistake? Sorry about that. Age-restricted items are tightly regulated, and these checks protect you, your worker and Gopher. A real person reviews every request flagged like this.</p>
+    <button type="button" class="gr-modal-btn" id="ageIdWarnEdit">Edit my request</button>
+    <button type="button" class="gr-modal-btn gr-modal-btn-secondary" id="ageIdWarnSubmit" style="margin-top:8px;">Submit as-is</button>
   </div>
 </div>
 
@@ -20612,7 +20841,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeScope(); });
   <div class="gr-modal" role="dialog" aria-modal="true" aria-labelledby="agePurchaseTitle">
     <div class="gr-modal-icon gr-modal-icon-warn" style="font-size:26px;line-height:1;">⚠️</div>
     <h4 id="agePurchaseTitle">Most age-restricted orders need a purchase</h4>
-    <p class="gr-modal-sub">You marked this age-restricted but turned off <b>Purchase needed</b>. Almost all age-restricted deliveries require a purchase — without one, your card is authorized for a lower amount, and if your Gopher needs to add items later, re-authorizing your card can fail and stall your order.</p>
+    <p class="gr-modal-sub">You marked this age-restricted but turned off <b>This delivery requires a purchase</b>. Almost all age-restricted deliveries require a purchase — without one, your card is authorized for a lower amount, and if your Gopher needs to add items later, re-authorizing your card can fail and stall your order.</p>
     <p style="text-align:center;background:#fdf3f4;border:1px solid #f0d2d7;border-radius:12px;padding:13px 15px;margin:4px 0 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:#8a3a46;line-height:1.55;">Only skip if you truly don't need anything purchased — e.g. a prescription pickup or pre-paid alcohol.</p>
     <label for="agePurchaseDontShow" style="display:flex;align-items:center;gap:8px;font-size:13px;color:#6b7280;margin:2px 0 14px;cursor:pointer;">
       <input type="checkbox" id="agePurchaseDontShow" style="width:16px;height:16px;accent-color:#1CB061;"> Don't show me this again
@@ -22636,7 +22865,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
               <div class="hv-cell">
                 <button type="button" class="hv-tile" data-homecat="delivery">
                   <span class="hv-art hv-a-delivery" aria-hidden="true"></span>
-                  <span class="hv-nm">Delivery / Errand</span>
+                  <span class="hv-nm">Delivery</span>
                 </button>
                 <button type="button" class="hv-iq" data-iq="delivery" aria-haspopup="dialog">iQ Ideas ▲</button>
                 <div class="hv-pills" data-pills="delivery"></div>
@@ -22676,7 +22905,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
               <div class="hv-cell">
                 <button type="button" class="hv-tile" data-homecat="yard">
                   <span class="hv-art hv-a-yard" aria-hidden="true"></span>
-                  <span class="hv-nm">Yard / Outdoor Projects</span>
+                  <span class="hv-nm">Yard Project</span>
                 </button>
                 <button type="button" class="hv-iq" data-iq="yard" aria-haspopup="dialog">iQ Ideas ▲</button>
                 <div class="hv-pills" data-pills="yard"></div>
@@ -23120,11 +23349,18 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
   /* ── iQ Ideas (owner 2026-10-12: "iQ badge here that opens up with examples
      just like the live app", and "pills of examples of requests in that
      category") ────────────────────────────────────────────────────────────
-     ⛔ THIS COPY IS NOT MINE AND MUST NOT BE EDITED HERE. It is ported verbatim
-     from the live Request app, src/component/home/iqIdeas.js at
-     origin/production bca7d23b4, generated rather than retyped so no word
-     drifts. Five ideas per category, each paired with the guidance it puts in
-     the Step 2 box. If the app's list changes, re-port it; do not hand-edit.
+     ⛔ THIS COPY IS NOT MINE AND MUST NOT BE EDITED HERE. The first FIVE ideas
+     per category are ported verbatim from the live Request app,
+     src/component/home/iqIdeas.js at origin/production f320e7ec5 (that file
+     last changed in d5e7672f5, 10/12: "worker" for the person doing the job,
+     John 10/11), generated rather than retyped so no word drifts — each idea
+     paired with the guidance it puts in the Step 2 box. Re-ported 2026-10-14:
+     the earlier port (bca7d23b4) predated d5e7672f5 and still said "your
+     Gopher" on five lines. If the app's list changes, re-port it; do not
+     hand-edit.
+     The SIXTH idea in each category is WEB-ONLY (owner's 10/13 symmetry ruling:
+     List view's 3x2 block must be full) and is not in the app — a re-port must
+     keep it, not drop it.
 
      The app's own note records WHY each line asks only what the flow does not
      already ask (John, 10/5): never addresses, timing, price, purchase/cost,
@@ -23141,7 +23377,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       ['Beer & liquor run',
        'Explain here what specific brand, size and quantity of alcohol you want purchased.'],
       ['Groceries dropped off',
-       'Explain here your grocery list (brands and sizes) and what your Gopher should do if something is out of stock.'],
+       'Explain here your grocery list (brands and sizes) and what your worker should do if something is out of stock.'],
       ['Pharmacy pickup',
        'Explain here the name the prescription is under and anything else to grab while there.'],
       ['Tobacco, vape and nicotine delivery (21+ only)',
@@ -23195,7 +23431,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     ],
     labor: [
       ['An extra set of hands',
-       'Explain here what the job is and anything your Gopher should bring.'],
+       'Explain here what the job is and anything your worker should bring.'],
       ['Event setup & teardown',
        'Explain here the type of event and what needs setting up and taking down.'],
       ['Load / haul materials',
@@ -23223,15 +23459,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     ],
     ride: [
       ['Ride to the airport',
-       'Explain here your airline or terminal and anything your Gopher should know at pick-up.'],
+       'Explain here your airline or terminal and anything your worker should know at pick-up.'],
       ['Doctor appointment',
        'Explain here which entrance to use and any help needed getting in or out of the car.'],
       ['Late-night ride home',
-       'Explain here exactly where you will be waiting and anything that helps your Gopher spot you.'],
+       'Explain here exactly where you will be waiting and anything that helps your worker spot you.'],
       ['Senior transportation',
        'Explain here any help needed getting in and out of the car and any walker or wheelchair coming along.'],
       ['Wait & return trip',
-       'Explain here about how long your Gopher should wait and where to meet for the return.'],
+       'Explain here about how long your worker should wait and where to meet for the return.'],
       ['Pick up a family member',
        'Explain here anything that helps identify the passenger at pick-up, such as what they will be wearing.'],
     ],
@@ -23321,12 +23557,17 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     /* Fill the per-category example rails from HOME_IDEAS, so the forty labels
        live in ONE place and the markup carries none of them. */
     const IDEAS = window.HOME_IDEAS || {};
+    /* Below 1150px the List row shows THREE examples and a "+N more" control
+       (owner pick C, Stage 4, 2026-10-14); .hv-pill-x marks the rest. On a wide
+       screen all six show and .hv-more is hidden — see the 1150px block. */
     Array.prototype.forEach.call(grid.querySelectorAll('[data-pills]'), function(rail){
       const list = IDEAS[rail.dataset.pills] || [];
-      rail.innerHTML = list.map(function(pair){
-        return '<button type="button" class="hv-pill" data-idea="' + esc(pair[0]) + '">'
+      rail.innerHTML = list.map(function(pair, i){
+        return '<button type="button" class="hv-pill' + (i >= 3 ? ' hv-pill-x' : '') + '" data-idea="' + esc(pair[0]) + '">'
              + esc(pair[0]) + '</button>';
-      }).join('');
+      }).join('') + (list.length > 3
+        ? '<button type="button" class="hv-more" aria-expanded="false">+' + (list.length - 3) + ' more</button>'
+        : '');
     });
 
     /* ── All-at-once: the iQ mark and the hover popover. Built from the page's
@@ -23382,6 +23623,15 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     grid.addEventListener('click', function(e){
       /* A pill or the iQ pill sits INSIDE the cell but is its own control, so
          each returns before the row's own handler can also fire. */
+      const more = e.target.closest('.hv-more');
+      if(more){
+        e.preventDefault(); e.stopPropagation();
+        const rail = more.closest('.hv-pills');
+        const open = rail.classList.toggle('open');
+        more.setAttribute('aria-expanded', String(open));
+        more.textContent = open ? 'Show less' : '+' + rail.querySelectorAll('.hv-pill-x').length + ' more';
+        return;
+      }
       const pill = e.target.closest('.hv-pill');
       if(pill){
         e.preventDefault(); e.stopPropagation();
@@ -23660,6 +23910,17 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
   }
   function visibleMyGophers(list){ return (list || []).filter(g => !isDeactivatedGopher(g)); }
 
+  /* A worker the requester may message BEFORE hiring: still a candidate on a
+     pending request (interested, or offering a counter). Mirrors the live app,
+     whose offer cards open the conversation with that Gopher before any hire.
+     Returns the display worker, or null. */
+  function preHireCandidate(r, name){
+    if(!r || r.status !== 'pending' || !name) return null;
+    const w = (r.interestedWorkers || []).find(x => x.name === name && x.status !== 'hired')
+           || (r.counterOffers || []).map(c => c && c.worker).find(x => x && x.name === name);
+    return w ? { name: w.name, photo: w.photo || '', tier: w.badge || w.tier || '' } : null;
+  }
+
   function getThreads(){
     const out = [];
     (DASH_DATA.activeRequests || []).forEach(r => {
@@ -23683,14 +23944,16 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         Object.keys(r.threads).forEach(name => {
           const th = r.threads[name];
           if(!th || !th.length) return;
-          const worker = crew.find(w => w.name === name) || { name, photo:'', tier:'' };
+          const cand = preHireCandidate(r, name);
+          const worker = crew.find(w => w.name === name) || cand || { name, photo:'', tier:'' };
           out.push({
             id: `${r.id}::${name}`,
             worker,
             title: r.title,
             thread: th,
             last: th[th.length - 1],
-            typeable: !!r.userStarted,
+            typeable: !!r.userStarted || !!cand,
+            preHire: !r.userStarted && !!cand,
           });
         });
       }
@@ -23822,6 +24085,24 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           last: thread[thread.length - 1] || null,
           typeable: true,
         };
+      } else if(crewName){
+        /* Pre-hire: Message on a candidate worker (see preHireCandidate). Same
+           purge rule as above — a purged conversation reopens empty. */
+        const rp = (DASH_DATA.activeRequests || []).find(x => x.id === baseId);
+        const cand = preHireCandidate(rp, crewName);
+        if(cand){
+          const wasPurged = !!(dashState.inboxPurged && dashState.inboxPurged[activeId]);
+          const thread = wasPurged ? [] : ((rp.threads && rp.threads[crewName]) || []);
+          activeThread = {
+            id: activeId,
+            worker: cand,
+            title: rp.title,
+            thread,
+            last: thread[thread.length - 1] || null,
+            typeable: true,
+            preHire: true,
+          };
+        }
       }
     }
 
@@ -23865,7 +24146,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
                 <span class="inbox-row-time">${th.last ? th.last.time : ''}</span>
               </div>
               <div class="inbox-row-sub">${th.title || ''}</div>
-              <div class="inbox-row-last">${th.last ? (th.last.from === 'me' ? 'You: ' : '') + th.last.text : ''}</div>
+              <div class="inbox-row-last">${th.last ? (th.last.from === 'me' ? 'You: ' : '') + (th.last.type === 'image' ? '📷 Photo' : th.last.text) : ''}</div>
             </div>
           </button>`, th.id, dashState.inboxTab === 'deleted') : '')).join('')
           : (dashState.inboxTab === 'deleted'
@@ -23943,6 +24224,14 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       const flNote = (m.f && m.from !== 'me')
         ? `<div class="inbox-msg-flag" style="margin-top:3px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:#C44257;line-height:1.35;">&#9873; This message was flagged for a possible terms violation.</div>`
         : '';
+      // G40-216: a photo message (the app's content_type 'image'). Only a picked photo's data: URL is drawn.
+      if(m && m.type === 'image' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(String(m.src || ''))){
+        return `
+            <div class="inbox-msg ${m.from === 'me' ? 'mine' : 'theirs'}">
+              <div class="inbox-bubble inbox-photo"><img src="${m.src}" alt="Photo"></div>
+              <div class="inbox-msg-time">${m.time}</div>
+            </div>`;
+      }
       return `
             <div class="inbox-msg ${m.from === 'me' ? 'mine' : 'theirs'}">
               <div class="inbox-bubble">${String(m.text).replace(/</g,'&lt;')}</div>${flNote}
@@ -23958,10 +24247,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
             <div class="inbox-convo-name">${tw.name || 'Gopher'}${tierBadge}</div>
             <div class="inbox-convo-req">Re: ${t.title || ''} · <button class="inbox-open-req" data-open-req="${t.id}">View request</button></div>
           </div>
-          <a class="contact-btn contact-call inbox-convo-call" href="tel:${telDigits}">
+          ${t.preHire ? '' : `<a class="contact-btn contact-call inbox-convo-call" href="tel:${telDigits}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.86 19.86 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.86 19.86 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
             <span>Call</span>
-          </a>
+          </a>`}
           <button type="button" id="rqRelFav" title="${((dashState.gopherRels||{})[tw.name]==='favorite')?'Remove from MY Gophers':'Add to MY Gophers'}" style="border:1.6px solid ${((dashState.gopherRels||{})[tw.name]==='favorite')?'#1CB061':'#d9d2c2'};background:${((dashState.gopherRels||{})[tw.name]==='favorite')?'#1CB061':'#fff'};color:${((dashState.gopherRels||{})[tw.name]==='favorite')?'#fff':'#8a94a3'};border-radius:10px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:0 0 auto;margin-left:6px;">&#9829;</button>
           <button type="button" id="rqRelBlock" title="${((dashState.gopherRels||{})[tw.name]==='blocked')?'Unblock this Gopher':'Block this Gopher'}" style="border:1.6px solid ${((dashState.gopherRels||{})[tw.name]==='blocked')?'#C44257':'#d9d2c2'};background:${((dashState.gopherRels||{})[tw.name]==='blocked')?'#C44257':'#fff'};color:${((dashState.gopherRels||{})[tw.name]==='blocked')?'#fff':'#8a94a3'};border-radius:10px;width:34px;height:34px;font-size:16px;cursor:pointer;flex:0 0 auto;margin-left:6px;">&#8856;</button>
         </div>
@@ -23971,6 +24260,11 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         </div>
         ${t.typeable ? `
           <div class="inbox-composer">
+            <div class="inbox-photo-wait-row" id="rqInboxPhotoWait" hidden></div>
+            <button type="button" class="inbox-composer-cam" id="rqInboxCam" aria-label="Add a photo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+            <input type="file" id="rqInboxPhotoFile" accept="image/*" hidden>
             <input type="text" class="inbox-composer-input" id="rqInboxInput" placeholder="Message ${(tw.name || 'your Gopher').split(' ')[0]}…" autocomplete="off">
             <button class="inbox-composer-send" id="rqInboxSend" aria-label="Send message">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
@@ -24131,9 +24425,58 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     // Composer — gated on non-empty text
     const input = document.getElementById('rqInboxInput');
     const sendBtn = document.getElementById('rqInboxSend');
+    /* G40-216: the camera. The browser's own photo picker stands in for the app's Camera / Library chooser
+       (on a phone it offers both). The photo is shrunk as the app's convertToJpeg does (1024px, JPEG 0.7,
+       refused over 10 MB) and waits for Send, one at a time, for THIS thread only. */
+    const camBtn = document.getElementById('rqInboxCam');
+    const photoFile = document.getElementById('rqInboxPhotoFile');
+    const photoWait = document.getElementById('rqInboxPhotoWait');
+    if(_rqPhotoWait && _rqPhotoWait.threadId !== t.id) _rqPhotoWait = null;
+    const drawPhotoWait = () => {
+      if(!photoWait) return;
+      if(!_rqPhotoWait){ photoWait.hidden = true; photoWait.innerHTML = ''; return; }
+      photoWait.innerHTML = '<div class="inbox-photo-wait"><img src="' + _rqPhotoWait.src + '" alt="Photo to send">'
+        + '<button type="button" class="inbox-photo-wait-x" aria-label="Remove photo">&times;</button></div>';
+      photoWait.hidden = false;
+      photoWait.querySelector('.inbox-photo-wait-x').addEventListener('click', () => {
+        _rqPhotoWait = null; drawPhotoWait(); if(input) input.focus();
+      });
+    };
+    drawPhotoWait();
+    if(camBtn && photoFile){
+      camBtn.addEventListener('click', () => { photoFile.value = ''; photoFile.click(); });
+      photoFile.addEventListener('change', () => {
+        const f = photoFile.files && photoFile.files[0];
+        if(!f) return;
+        if(f.size > 10 * 1024 * 1024){ window.G40_REQ && G40_REQ.photoTooLarge(); return; }
+        const url = URL.createObjectURL(f);
+        const img = new Image();
+        img.onload = () => {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          const k = Math.min(1, 1024 / Math.max(w, h));
+          w = Math.round(w * k); h = Math.round(h * k);
+          const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          _rqPhotoWait = { threadId: t.id, src: cv.toDataURL('image/jpeg', 0.7) };
+          drawPhotoWait();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); };
+        img.src = url;
+      });
+    }
     if(input && sendBtn){
       const doSend = () => {
         const text = (input.value || '').trim();
+        // G40-216: a waiting photo goes first, then any text (the app's order: upload, then the message).
+        if(_rqPhotoWait && _rqPhotoWait.threadId === t.id){
+          const src = _rqPhotoWait.src;
+          _rqPhotoWait = null;
+          sendInboxMessage(t.id, '', false, src);
+          if(text){ const again = document.getElementById('rqInboxInput'); if(again){ again.value = text; } }
+          else return;
+          return document.getElementById('rqInboxSend') && document.getElementById('rqInboxSend').click();
+        }
         if(!text) return;
         // Route through the shared messaging guard (prototype deterrent). On the
         // allow path the existing faked send runs UNCHANGED; "Edit message" and
@@ -24145,10 +24488,18 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
         // crew threads ("::name") only exist for hired crew; otherwise the
         // request is connected once it's live or has a hired worker. Relaxes
         // only the contact patterns — payment/conduct always checked.
+        // ⛔ Since 2026-10-15 a "::name" thread can exist BEFORE a hire (Message on
+        // a candidate, as in the app), so "::name" no longer implies hired: a
+        // named thread is connected only when THAT worker is hired or on the live
+        // crew. Otherwise a pre-hire chat would get the relaxed contact patterns,
+        // against the owner's 10/9 ruling (contact before hire hidden).
         const _sep = String(t.id).indexOf('::');
         const _rq = (DASH_DATA.activeRequests || []).find(x => x.id === (_sep > -1 ? t.id.slice(0, _sep) : t.id));
-        const _connected = _sep > -1 || !!(_rq && (_rq.live ||
-          (_rq.interestedWorkers || []).some(w => w.status === 'hired')));
+        const _nm = _sep > -1 ? t.id.slice(_sep + 2) : null;
+        const _connected = !!(_rq && (_nm
+          ? (((_rq.live && _rq.live.crew) || []).some(w => w.name === _nm)
+             || (_rq.interestedWorkers || []).some(w => w.name === _nm && w.status === 'hired'))
+          : (_rq.live || (_rq.interestedWorkers || []).some(w => w.status === 'hired'))));
         if(window.GopherMessageGuard){
           GopherMessageGuard.guard(text, t.id, {
             connected: _connected,
@@ -24176,7 +24527,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
 
   // Send a message. Parses "<reqId>::<workerName>" if present (per spec §8 —
   // missing this parse is the most common bug; messages would silently vanish).
-  function sendInboxMessage(reqId, text, flagged){
+  var _rqPhotoWait = null; // G40-216: { threadId, src } — the photo waiting for Send (var: renderInbox may run first)
+  function sendInboxMessage(reqId, text, flagged, photoSrc){
     const sep = String(reqId).indexOf('::');
     const baseId  = sep > -1 ? reqId.slice(0, sep) : reqId;
     const crewName = sep > -1 ? reqId.slice(sep + 2) : null;
@@ -24203,7 +24555,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     const firstMessage = thread.length === 0;
     // f:1 = sent via "Send as-is" on a guard hit — the RECIPIENT's app shows
     // the terms-violation note under this bubble (our own side renders clean).
-    thread.push(flagged ? { from:'me', text, time, f:1 } : { from:'me', text, time });
+    if(photoSrc) thread.push({ from:'me', type:'image', src:photoSrc, text:'', time });
+    else thread.push(flagged ? { from:'me', text, time, f:1 } : { from:'me', text, time });
     dashState.inboxThreadId = reqId;  // preserve the FULL per-worker id
     renderInbox();
     updateInboxBadge();
@@ -25040,6 +25393,8 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       numBags:   data.numBags   || null,
       idVerification: data.idVerification || null,
       idRequiredAtCompletion: !!data.idRequiredAtCompletion,
+      ageKeywordDeclined: !!data.ageKeywordDeclined,   // G40-628 (D6)
+      ageKeyword: data.ageKeywordDeclined ? String(data.ageKeyword || '').slice(0, 100) : '',
       bidsMode: !!data.bidsMode,
       firstAvailable: !!data.firstAvailable,
       workerSelection: _mode,
@@ -25877,6 +26232,16 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     const t = String((w && (w.tier || w.badge)) || '').toLowerCase();
     return !/^(elite|pro)/.test(t);          // '', 'standard', anything unbadged
   }
+  /* "Jobs: 396 | Rating: 5.00", as the live app's offer card writes it
+     (offerRows.offerStats). Reads the meta ensureWorkerMeta derives. */
+  function workerStats(w){
+    const parts = [];
+    if(w && w.jobsNum != null) parts.push('Jobs: ' + w.jobsNum);
+    if(w && w.ratingNum) parts.push('Rating: ' + Number(w.ratingNum).toFixed(2));
+    return parts.join(' | ');
+  }
+  function usd(n){ return '$' + (Number(n) || 0).toFixed(2); }
+
   function needsDistanceApproval(w){
     const d = w && w.distanceMi;
     return isStandardTier(w) && d != null && Number(d) > 15;
@@ -26258,22 +26623,40 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           `;
         }
         const fresh = w.justAccepted && w.status==='interested';
-        const rating = (w.stats && w.stats[0]) || '';
-        // Distance from where the worker was when they accepted → pickup/destination.
+        /* ⛔ THE LIVE APP's OFFER CARD (owner 10/15, "match the app"; requester
+           production live/OffersSheet.js + live/offerRows.js):
+           - stats read "Jobs: N | Rating: R" (offerStats);
+           - distance shows ONLY when the worker is far enough to need the
+             requester's approval, worded "N mi from your drop-off", grey
+             (offerDistance; was an always-on "📍 N mi → destination" plus a
+             separate red-amber "auto-match paused" note);
+           - a bid carries "Payment to your worker · Cost of items" when there
+             are items, as the app's does.
+           ⛔ WEB-ONLY, owner 2026-10-15: the bid NUMBER is the ALL-IN total, not
+           the app's b.offer. The app's Hire on a bid opens a review-and-pay step
+           that shows the total before anything is committed; the web hires
+           straight away, so the total has to be on the card. (Restates the
+           2026-09-29 ruling "a bid is an ALL-IN number", after a brief 10/15
+           change to the worker's offer.) The "Bid" label stays left of it
+           (9/29; kept 10/15) and the number still opens the itemised breakdown. */
+        const rating = workerStats(w);
         const distMi = (w.distanceMi != null) ? Number(w.distanceMi) : null;
-        const distLine = (distMi != null && !isLive)
-          ? `<span class="wcard-distance">📍 ${distMi.toFixed(1)} mi → ${distRef}</span>` : '';
-        // First-available + > 15 mi out: auto-match pauses; needs approval to hire.
-        const farApproval = (firstAvailable && !isLive && needsDistanceApproval(w))
-          ? `<div class="wcard-approval">⚠ ${Math.round(distMi)} mi out — auto-match paused, needs your approval before hiring</div>`
-          : '';
-        // Bid amount, shown to the right on every "ask for bids" request.
+        /* firstAvailable FIRST: the app's require_distance_approval is the server's
+           flag for a far worker on an auto-matched (First Available) request — the
+           15-mile CONVERSION, which never blocks. On "I'll select" the requester is
+           choosing anyway, so no approval and no distance. (Also the call-site shape
+           scripts/web-checks/helper-scope.js guards.) */
+        const distLine = (firstAvailable && !isLive && distMi != null && needsDistanceApproval(w))
+          ? `<span class="wcard-distance">${distMi.toFixed(1)} mi from your drop-off</span>` : '';
+        const bidCog = Number((r.reviewSnapshot && r.reviewSnapshot.costOfItems) || 0);
         const bidHtml = (bidsMode && !isLive && w.bidAmount != null)
           ? `<button type="button" class="wcard-bid" data-wact="bidinfo" data-i="${realIdx}"
                      title="See what this bid covers" aria-label="See what ${w.name}'s bid covers">
-               <span class="wb-label">Bid</span><span class="wb-amount">$${Number(window.__bidAllIn(r, w)).toFixed(0)}</span>
+               <span class="wb-label">Bid</span><span class="wb-amount">${usd(window.__bidAllIn(r, w))}</span>
              </button>`
           : '';
+        const bidLine = (bidsMode && !isLive && w.bidAmount != null && bidCog > 0)
+          ? `<div class="wcard-line">Payment to your worker ${usd(w.bidAmount)} · Cost of items ${usd(bidCog)}</div>` : '';
         return `
           <div class="wcard ${fresh?'wcard-fresh':''}">
             <!-- ⛔ Was an unconditional <img src="${w.photo}">. Every seeded worker
@@ -26297,7 +26680,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
                   <span>Text</span>
                 </button>
               </div>
-              ${farApproval}
+              ${bidLine}
             </div>
             ${bidHtml}
             <div class="wcard-actions">${actions}</div>
@@ -26372,42 +26755,71 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
       const counterCard = (co, ci) => {
         ensureWorkerMeta(co.worker, r, ci, false);
         const w = co.worker;
-        const rating = (w.stats && w.stats[0]) || '';
+        /* ⛔ THE LIVE APP's COUNTER-OFFER CARD (owner 10/15, "match the app";
+           OffersSheet.js counterOffers + offerRows.counterOfferRows): the new
+           total with the original struck through, a "Counter-offer" tag, the
+           worker's comment, a "What changed ›" Was / Now / Change table, and
+           "Hire for $X" / Deny / Message. Replaces the "+$N (offer)" delta and
+           the Accept / Details / Deny row. The table folds this page's canonical
+           fee lines into the app's five rows: Cost of items (not on Hourly /
+           Day Labor), Payment to your worker, Fees (Gopher + age + instant
+           transfer), Discount (promo + TrustShield), Total. */
+        const rating = workerStats(w);
         const distMi = (w.distanceMi != null) ? Number(w.distanceMi) : null;
-        const distLine = (distMi != null) ? `<span class="wcard-distance">📍 ${distMi.toFixed(1)} mi → ${distRef}</span>` : '';
+        const distLine = (firstAvailable && distMi != null && needsDistanceApproval(w))
+          ? `<span class="wcard-distance">${distMi.toFixed(1)} mi from your drop-off</span>` : '';
         const snap = r.reviewSnapshot || {};
-        const offerD = (co.counter.workerPay || 0) - (snap.workerPay || 0);
-        const itemsD = (co.counter.costOfItems || 0) - (snap.costOfItems || 0);
-        let delta, tag;
-        if(co.changed === 'offer'){ delta = offerD; tag = 'offer'; }
-        else if(co.changed === 'items'){ delta = itemsD; tag = 'items'; }
-        else { delta = offerD + itemsD; tag = 'offer and items'; }
-        const sign = delta >= 0 ? '+' : '−';
-        const amt = Number.isInteger(delta) ? Math.abs(delta) : Math.abs(delta).toFixed(2);
-        const deltaHtml = `<div class="counter-delta ${delta >= 0 ? 'cd-pos' : 'cd-neg'}" title="Driver change vs the original offer">${sign}$${amt} <span class="cd-tag">(${tag})</span></div>`;
+        const sf = snap.fee || {};
+        const C = co.counter || {};
+        const n = (v) => Number(v) || 0;
+        const isLabor = (snap.category || r.category) === 'labor';
+        const rows = [];
+        const row = (label, was, now, total) => rows.push({ label, was, now, total });
+        if(!isLabor) row('Cost of items', n(snap.costOfItems), n(C.costOfItems));
+        row('Payment to your worker', n(snap.workerPay), n(C.workerPay));
+        row('Fees', n(sf.fullGopherFee) + n(sf.fullAgeFee) + n(sf.fullInstantTransfer),
+                    n(C.fullGopherFee) + n(C.fullAgeFee) + n(C.fullInstantTransfer));
+        row('Discount', n(sf.promoDiscount) + n(sf.trustShieldDiscount),
+                        n(C.promoDiscount) + n(C.trustShieldDiscount));
+        row('Total', n(snap.total), n(C.gmvTotal), true);
+        const change = (was, now) => {
+          const d = now - was;
+          if(Math.abs(d) < 0.005) return '—';
+          return (d > 0 ? '+' : '-') + usd(Math.abs(d));
+        };
+        const table = `
+          <table class="wcard-cmp" hidden>
+            <thead><tr><th scope="col"><span style="position:absolute;left:-9999px">Line</span></th><th scope="col">Was</th><th scope="col">Now</th><th scope="col">Change</th></tr></thead>
+            <tbody>${rows.map(x => `
+              <tr${x.total ? ' class="wcard-cmp-total"' : ''}>
+                <td>${x.label}</td><td>${usd(x.was)}</td><td class="now">${usd(x.now)}</td>
+                <td${x.now - x.was > 0.005 ? ' class="up"' : ''}>${change(x.was, x.now)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
         return `
-          <div class="wcard">
+          <div class="wcard wcard-counter">
             <div class="wcard-photo">${w.photo ? `<img src="${w.photo}" alt="${w.name}">` : `<div class="wcard-photo-fallback">${(w.name||'?').charAt(0)}</div>`}</div>
             <div class="wcard-main">
               <div class="wcard-top">
                 <span class="wcard-name">${w.name}</span>
                 <span class="gopher-badge ${w.badge==='pro+'?'tier-pro':''}">${(w.badge||'pro+').replace('+','')}${w.badge==='elite+'?'<span class="gb-plus">+</span>':''}</span>
+                <span class="wcard-tag">Counter-offer</span>
               </div>
               <div class="wcard-sub">
                 <span class="wcard-rating">${rating}</span>
                 ${distLine}
                 <button class="wcard-link" data-coact="profile" data-ci="${ci}">Review profile</button>
-                <button class="wcard-msg" data-coact="message" data-ci="${ci}" title="Text ${w.name}" aria-label="Text ${w.name}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3a8.38 8.38 0 0 1 8.5 8.5z"/></svg>
-                  <span>Text</span>
-                </button>
               </div>
+              ${co.comment ? `<p class="wcard-cm">&ldquo;${co.comment}&rdquo;</p>` : ''}
+              <button type="button" class="wcard-more" data-coact="changes" data-ci="${ci}" aria-expanded="false">What changed ›</button>
+              ${table}
             </div>
-            ${deltaHtml}
+            <div class="wcard-px"><s>${usd(snap.total)}</s>${usd(C.gmvTotal)}</div>
             <div class="wcard-actions">
-              <button class="wbtn wbtn-green wbtn-lg" data-coact="accept" data-ci="${ci}">Accept</button>
-              <button class="wbtn wbtn-navy-soft" data-coact="details" data-ci="${ci}">Details</button>
+              <button class="wbtn wbtn-green wbtn-lg" data-coact="accept" data-ci="${ci}">Hire for ${usd(C.gmvTotal)}</button>
               <button class="wbtn wbtn-red-soft" data-coact="deny" data-ci="${ci}">Deny</button>
+              <button class="wbtn wbtn-navy-soft" data-coact="message" data-ci="${ci}">Message</button>
             </div>
           </div>
         `;
@@ -26703,7 +27115,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
             // G40 modal: selectedGopherBusy — Standard Gophers take one job at
             // a time. Runs BEFORE the hire-cap check; nothing about the worker
             // changes state until the requester picks someone available.
-            G40_REQ.selectedGopherBusy(function(){ openInboxThread(r.id); });
+            G40_REQ.selectedGopherBusy(function(){ openInboxThread(r.id + '::' + list[i].name); });
             return;
           }
           if(act === 'hire' || act === 'approve'){
@@ -26718,7 +27130,12 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           else if(act === 'approve')  { list[i].status = 'hired'; }
           else if(act === 'unhire')   { list[i].status = 'interested'; }
           else if(act === 'deny')     { list.splice(i, 1); }
-          else if(act === 'message')  { openInboxThread(r.id); return; }
+          /* Message = the conversation with THIS worker about this request, before
+             any hire — as the live app's offer card does (requestOrder.js
+             messageOfferGopher: receiver = that Gopher). It used to open r.id, the
+             request's own thread, which does not exist before a hire, so the Inbox
+             fell back to whichever conversation it had first. */
+          else if(act === 'message')  { openInboxThread(r.id + '::' + list[i].name); return; }
           else if(act === 'profile')  {                 // open full profile view
             dashState.profileWorkerIdx = i;
             dashState.profileReqId = r.id;
@@ -26823,7 +27240,16 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
           const ci = parseInt(coBtn.dataset.ci, 10);
           const counters = r.counterOffers || [];
           if(isNaN(ci) || !counters[ci]) return;
-          if(act === 'message'){ coBtn.classList.add('msg-open'); coBtn.title = 'Conversation opened'; return; }
+          if(act === 'message'){ openInboxThread(r.id + '::' + counters[ci].worker.name); return; }
+          if(act === 'changes'){
+            const tbl = coBtn.closest('.wcard') && coBtn.closest('.wcard').querySelector('.wcard-cmp');
+            if(tbl){
+              tbl.hidden = !tbl.hidden;
+              coBtn.setAttribute('aria-expanded', String(!tbl.hidden));
+              coBtn.textContent = tbl.hidden ? 'What changed ›' : 'Hide what changed';
+            }
+            return;
+          }
           if(act === 'profile'){
             dashState.counterProfileIdx = ci;
             dashState.profileReqId = r.id;
@@ -26866,8 +27292,46 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     if(bidsMode && w && w.bidAmount != null) return Number(w.bidAmount) || 0;
     return Number(r && r.perWorkerCost) || 0;
   };
-  window.__agreedTotalFor = function(r, hiredList){
-    return (hiredList || []).reduce((sum, w) => sum + window.__agreedAmountFor(r, w), 0);
+  /* ── The agreed TOTAL after a hire: what the REQUESTER pays ───────────────
+     ⛔ PL-291 (John 10/15): this used to SUM __agreedAmountFor above, which is
+     WORKER PAY, and startJob() printed it as "$X total". Accepting Tess B.'s
+     $85.31 counter on GR-00129 then read "$28.00 total" directly above a recap
+     saying Total $85.31, and a bid hire read the bare bid.
+     The app shows the order's total_charge after every hire (offer + items +
+     fees − discounts: livePriceRows.js "Total", LiveReviewCard.js), so this is
+     the request's frozen deal total. acceptCounterOffer and the cost
+     adjustment already keep reviewSnapshot.total current, and a bid hire
+     writes the bid onto it (__applyHiredBid). Null when there is no snapshot
+     (a seeded demo row): the caller keeps the label it already has. */
+  window.__agreedTotalFor = function(r){
+    const snap = r && r.reviewSnapshot;
+    const t = snap ? Number(snap.total) : NaN;
+    return (snap && snap.total != null && isFinite(t)) ? t : null;
+  };
+  /* PL-291: hiring a BID agrees that bid's price. The app prices the hired bid
+     (orders/summary with the bid as the offer, requestOrder.js hireBid) and the
+     order then carries it, so the recap and the total both show the bid's deal.
+     Written onto the frozen deal exactly as acceptCounterOffer writes a
+     counter's. Idempotent: the breakdown reads only the flat fees and the
+     recorded discounts, so a second call lands on the same numbers. */
+  window.__applyHiredBid = function(r, w){
+    const snap = r && r.reviewSnapshot;
+    if(!snap || !w || w.bidAmount == null) return false;
+    const b = window.__bidBreakdown(r, w);
+    const fullFees = b.gopherFee + b.ageFee + b.instantTransfer;
+    snap.fee = Object.assign({}, snap.fee || {}, {
+      gopherFee: b.gopherFee, fullGopherFee: b.gopherFee,
+      ageFee: b.ageFee, fullAgeFee: b.ageFee,
+      instantTransfer: b.instantTransfer, fullInstantTransfer: b.instantTransfer,
+      promoDiscount: b.promoDiscount, trustShieldDiscount: b.tsDiscount,
+      fullRequestFee: fullFees,
+      requestFee: fullFees - b.promoDiscount - b.tsDiscount,
+      cogOffer: b.cog + b.offer, gmvTotal: b.total,
+    });
+    snap.workerPay = b.offer;
+    snap.total = b.total;
+    r.perWorkerCost = b.offer;   // the worker's agreed pay, as a counter sets it
+    return true;
   };
   /* bidsMode is recorded in BOTH places at creation — on the record (read by the
      worker-card bid column) and inside reviewSnapshot. Demo/seeded requests set
@@ -26922,7 +27386,10 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     /* Discounts carry across as the snapshot recorded them, capped so they can
        never exceed the fee side — the same cap computeConnectFee applies. */
     const promoDisc = Math.min(num(fee.promoDiscount), feesPre);
-    const tsDisc    = Math.min(num(fee.tsDiscount), feesPre - promoDisc);
+    /* PL-291: computeRequestFee stores the TrustShield $1 as
+       trustShieldDiscount; reading only fee.tsDiscount (never set) dropped it,
+       so a TrustShield holder's bid total was $1 high. */
+    const tsDisc    = Math.min(num(fee.trustShieldDiscount != null ? fee.trustShieldDiscount : fee.tsDiscount), feesPre - promoDisc);
 
     const feesPost = feesPre - promoDisc - tsDisc;
     const total    = cog + offer + feesPost;
@@ -26982,7 +27449,20 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     const hiredList = (r.interestedWorkers || []).filter(w => w.status === 'hired');
     const hiredCount = hiredList.length;
     if(hiredCount === 0) return;
-    const finalTotal = window.__agreedTotalFor(r, hiredList);
+    /* One conversation per request + worker, as in the app. A single hire talks
+       in r.thread (thread id r.id), so anything said BEFORE the hire, in
+       r.threads[name] (Message on a candidate), moves into it rather than
+       stranding in a second conversation with the same person. */
+    if(hiredCount === 1 && r.threads && (r.threads[hiredList[0].name] || []).length){
+      const nm = hiredList[0].name;
+      r.thread = r.threads[nm].concat(r.thread || []);
+      delete r.threads[nm];
+      if(dashState.inboxThreadId === r.id + '::' + nm) dashState.inboxThreadId = r.id;
+    }
+    /* PL-291: the total is what the requester pays (see __agreedTotalFor). A
+       hired bid becomes the agreed deal first, as an accepted counter does. */
+    if(window.__isBidsRequest(r) && hiredCount === 1) window.__applyHiredBid(r, hiredList[0]);
+    const finalTotal = window.__agreedTotalFor(r);
 
     const goScheduled = !!r.scheduledForLater;
     r.status         = goScheduled ? 'scheduled' : 'in-progress';
@@ -26997,7 +27477,7 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
     r.worker = hiredCount === 1
       ? `${lead.name} (${tierLabel(lead.badge || lead.tier)})`
       : `${leadName} +${hiredCount - 1} · crew of ${hiredCount}`;
-    r.amount = `$${finalTotal.toFixed(2)} total`;
+    if(finalTotal != null) r.amount = `$${finalTotal.toFixed(2)} total`;
     r.when   = goScheduled ? r.when : 'Started just now · matching complete';
 
     // Per-worker enrichment — each crew member gets their own phone, rating,
