@@ -31,6 +31,16 @@ before you touch anything. **Nothing listed here is merged or deployed unless it
 - **Standing rules** (authoritative): `Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md`.
   §13: claim files in the work registry before editing shared docs.
 
+> **⚠️ Desk notice, 8:11 AM 10/16: an iCloud "nosync" job is planned in the MOBILE worktrees under
+> `Dev/`.** In idle `gopher-mobile-{request,gopher}-wt-*` folders, node_modules/build get renamed
+> to `*.nosync` with a link left behind. Undo log: `Code/output/nosync-rename-log-2026-10-16.txt`.
+> - **During the window** (the desk announces "quiet" / "window open" / "window closed"): no builds,
+>   tests, npm/cap runs, new worktrees or new sessions in `Dev/`. Commits, pushes and merges are
+>   fine.
+> - **Excluded:** /private/tmp scratchpads, backend worktrees, the Code repo, and the G40-604 and
+>   sentry worktrees.
+> - This seat answered "none" (8:12). Answer the desk yourself if it asks again.
+
 ## 1. The objective (John 10/15)
 
 > "Web and App logic in sync … it's not just documentation. It's synchronization. We're already
