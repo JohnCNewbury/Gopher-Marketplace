@@ -10747,6 +10747,17 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     font-size:13px; color:var(--muted);
   }
   .goto-intro-never .prev-check-box { width:19px; height:19px; }
+  /* CAT-3: the app's "Before you continue" sheet (navy and grey, its tiles). */
+  .gr-modal.ct-sheet { max-width:440px; }
+  .ct-sheet-pill { display:inline-block; margin-bottom:10px; padding:4px 10px; border-radius:99px; background:#eef0f4; color:#5c6a88; font-family:'Nunito',sans-serif; font-weight:800; font-size:11px; letter-spacing:.04em; }
+  .gr-modal.ct-sheet h4 { font-size:17px; line-height:1.3; }
+  .ct-sheet-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 16px; text-align:left; }
+  .ct-sheet-tile { display:flex; align-items:center; gap:9px; padding:8px 10px; border:1.5px solid #e3e6ee; border-radius:12px; background:#fff; cursor:pointer; font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--navy); text-align:left; }
+  .ct-sheet-tile:hover, .ct-sheet-tile:focus-visible { border-color:var(--navy); }
+  .ct-sheet-ic { width:30px; height:30px; flex:none; border-radius:8px; overflow:hidden; background:#eef0f4; }
+  .ct-sheet-ic img { width:100%; height:100%; object-fit:cover; display:block; }
+  .gr-modal > .gr-modal-btn.ct-sheet-continue { background:var(--navy); color:#fff; box-shadow:none; }
+  .gr-modal > .gr-modal-btn.ct-sheet-continue:hover { background:#0b2a6b; }
   .goto-intro-never.checked .prev-check-box { background:var(--navy); border-color:var(--navy); }
   .goto-intro-never.checked .prev-check-box::after {
     content:'✓'; color:#fff; font-size:12px; font-weight:900; font-family:'Nunito';
@@ -17963,8 +17974,7 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
     // advances straight to Job details. Step 1 has no Back/Continue footer.
     if(state.step === 1){
       const tiles = $content.querySelectorAll('.cat-tile');
-      tiles.forEach(t => {
-        t.addEventListener('click', () => {
+      const pickTile = (t) => {
           // Realigns category-owned state when the pick actually changes the
           // category (e.g. stepping back to Step 1 and choosing a different one).
           switchCategory(t.dataset.cat);
@@ -17977,6 +17987,20 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
           state.step = 2;
           if(state.maxStepReached < 2) state.maxStepReached = 2;
           render();
+      };
+      tiles.forEach(t => {
+        t.addEventListener('click', () => {
+          /* CAT-3: choosing Custom Task here is the app's home pick, so the
+             same sheet asks first. A tile in it is that category's own tile. */
+          if(t.dataset.cat === 'other' && state.category !== 'other' && window.G40_REQ
+             && G40_REQ.customTaskSheet && !G40_REQ.customTaskSheetSkipped()){
+            G40_REQ.customTaskSheet({
+              onPick: (k) => { const other = Array.from(tiles).find(o => o.dataset.cat === k); if(other) pickTile(other); },
+              onContinue: () => pickTile(t)
+            });
+            return;
+          }
+          pickTile(t);
         });
       });
     }
@@ -18730,6 +18754,47 @@ window.onGopherMapsReady = function(){ window.__gopherMapsFired = true; };
       /* D10 notice, John 10/15 "Short notice, both": the number is already
          hidden (**********), so it informs, it does not ask. OK closes; "Don't
          show again" closes and remembers (this browser only). */
+      /* CAT-3 (John 10/16 "proceed" = the recommended yes; "App wins"): the
+         Request app's "Before you continue" sheet, live/CustomTaskCategorySheet.js
+         (G40-549 CT = B, John 10/10; his words, verbatim). The seven other
+         categories as tiles: a tile opens that category with the words carried
+         over (HomeScreen.js start()); "Continue with Custom Task" goes on; the
+         dim closes it. "Don't show this again" is the app's own
+         doNotShowPreOtherModal, saved when the sheet closes however it closes
+         (closePreSheet()). The kit's pieces; only the tile grid is this sheet's. */
+      customTaskSheetSkipped: function(){
+        try { return localStorage.getItem('doNotShowPreOtherModal') === 'true'; } catch(_){ return false; }
+      },
+      customTaskSheet: function(o){
+        o = o || {};
+        var tiles = ['delivery','junk','moving','home','labor','yard','ride'].filter(function(k){ return CATEGORIES[k]; }).map(function(k){
+          var ph = (CAT_PHOTOS && CAT_PHOTOS[k]) ? '<span class="ct-sheet-ic"><img src="' + CAT_PHOTOS[k] + '" alt=""></span>' : '';
+          return '<button type="button" class="ct-sheet-tile" data-ct-pick="' + k + '">' + ph + '<span>' + CATEGORIES[k].name + '</span></button>';
+        }).join('');
+        var ov = reqModal('<span class="ct-sheet-pill">Custom Task</span>'
+          + '<h4>Please ensure the request you’re looking for isn’t already included in our category menu.</h4>'
+          + '<p class="gr-modal-sub">Workers select the categories they see so being accurate here helps everyone. If your request is truly custom, that’s great, proceed with Custom Task.</p>'
+          + '<div class="ct-sheet-grid">' + tiles + '</div>'
+          + '<button type="button" class="gr-modal-btn ct-sheet-continue">Continue with Custom Task</button>'
+          + '<button type="button" class="prev-check-row goto-intro-never ct-sheet-dns"><span class="prev-check-box"></span><span>Don’t show this again</span></button>');
+        var box = ov.querySelector('.gr-modal');
+        box.classList.add('ct-sheet'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Before you continue');
+        var dns = false, done = false;
+        var dnsBtn = ov.querySelector('.ct-sheet-dns');
+        dnsBtn.addEventListener('click', function(){ dns = !dns; dnsBtn.classList.toggle('checked', dns); dnsBtn.setAttribute('aria-pressed', String(dns)); });
+        function close(then){
+          if(done) return; done = true;
+          if(dns){ try { localStorage.setItem('doNotShowPreOtherModal', 'true'); } catch(_){} }
+          ov.remove();
+          if(then) setTimeout(then, 0);
+        }
+        ov.addEventListener('click', function(e){ if(e.target === ov) close(); }, true);
+        ov.querySelectorAll('[data-ct-pick]').forEach(function(b){
+          b.addEventListener('click', function(){ var k = b.getAttribute('data-ct-pick'); close(function(){ if(o.onPick) o.onPick(k); }); });
+        });
+        ov.querySelector('.ct-sheet-continue').addEventListener('click', function(){ close(o.onContinue); });
+        return ov;
+      },
       phoneHidden: function(){
         var ov = reqModal('<div class="gr-modal-icon" style="font-size:26px;line-height:1;">📵</div><h4>Phone number hidden</h4><p class="gr-modal-sub">For your privacy we don’t broadcast phone numbers. Once your request is submitted you can text or call your Gopher in-app.</p><button type="button" class="gr-modal-btn grx">OK</button>' + b2('Don’t show again'));
         var btns = ov.querySelectorAll('.gr-modal-btn');
@@ -23977,7 +24042,18 @@ c-55 -4 -154 -13 -220 -19 -66 -5 -223 -17 -350 -26 -233 -16 -272 -22 -525
        idea in the sheet. `idea` is the idea's NAME; the flow looks up its
        guidance and shows it as placeholder text. A tapped example never fills
        real text (owner 10/5). */
-    function start(catKey, idea){
+    function start(catKey, idea, pastSheet){
+      /* CAT-3: Custom Task asks first, as the app's HomeScreen start() does
+         (unless "Don't show this again" was ticked). Nothing on the dashboard
+         changes until the requester picks: closing the sheet leaves it as is. */
+      if(catKey === 'other' && !pastSheet && window.G40_REQ && G40_REQ.customTaskSheet
+         && !G40_REQ.customTaskSheetSkipped()){
+        G40_REQ.customTaskSheet({
+          onPick: function(k){ start(k, idea, true); },
+          onContinue: function(){ start('other', idea, true); }
+        });
+        return;
+      }
       showSection('new-request');
       moveFlowToDash();
       setRequestPath('new');
