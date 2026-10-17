@@ -1,6 +1,6 @@
 # Gopher development handoff — sprint 908 "iQ | Brain" (10/14–10/21)
 
-**Snapshot:** Sat 10/17/2026, ~11:40 AM ET (refreshed ~11:55 AM after !530 merged). Written by John's release-desk session ("iQ | Brain Sprint"), so a second developer's Claude sessions (their own Gopher Claude account, with access to the whole `All New Gopher/` folder) can pick up exactly where John's sessions are.
+**Snapshot:** Sat 10/17/2026, ~11:40 AM ET (refreshed ~12:00 PM). **⏸ ALL OF JOHN'S SESSIONS STOOD DOWN at ~12:00 PM 10/17** (John's usage at 9%); each pushed its work and logged a final state line in `SPRINT-DESK`. Nothing is building, merging or deploying. Resume from the states below once John's usage refreshes. Written by John's release-desk session ("iQ | Brain Sprint"), so a second developer's Claude sessions (their own Gopher Claude account, with access to the whole `All New Gopher/` folder) can pick up exactly where John's sessions are.
 
 **Every SHA below was verified by the desk at the snapshot time (glab / git ls-remote / adb / devicectl).** A SHA is stale the moment someone keeps working, so **re-verify before acting** (§2).
 
@@ -152,9 +152,9 @@ John's sessions keep running while you work. Two people's Claude sessions in one
 
 | Work | Owner (John's session) | State at snapshot | Next |
 |---|---|---|---|
-| **PL-314** Request !517 (`39caf9a69`) + Go !454 (`d597f9865`) | Website Code/Logic | **started 11:5x AM 10/17**; open, stale base (10/16) | rebase onto 46c0498e1b / a7228d6f9e → gate → numbers (A50 Go 990 + iPhone 15 Request 5743) → one walk on two phones → merge |
+| **PL-314** Request !517 + Go !454 | Website Code/Logic | rebased + pushed (Request `9545389b7` on `46c0498e1b`; Go `b00c8bc85` on `a7228d6f9e`), **NOT gated yet** | rebase onto 46c0498e1b / a7228d6f9e → gate → numbers (A50 Go 990 + iPhone 15 Request 5743) → one walk on two phones → merge |
 | **G40-624 / 626 / 614** Request !522 / !523 / !524 | Website Code/Logic (**desk decision 10/17 ~11:50**, John: "a question for the desk") | open, stale base | after PL-314, in order !522 → !523 → !524 |
-| **G40-604 phase 3 casing** (all 4 stages ruled) | G40-604 | file list approved; **LOCAL commits in progress, unpushed** (at 11:42: Request `G40-604-casing` @ `65b75d4e6` = 3 commits on `2ab0b8953`; Go `G40-604-casing` @ `dd99499e6` = 2 commits on `a7228d6f9`; web + backend branches empty) | finish commits → modal gate → numbers → walks → push/MR → merge; web half on `669bb6ba`+ |
+| **G40-604 phase 3 casing** (all 4 stages ruled) | G40-604 | WIP **pushed** at stand-down: Request `G40-604-casing` @ `e8dddcbd0` (rebase onto `46c0498e1b` next), Go `G40-604-casing` @ `ccfaa1822`, web `G40-604-web-casing` @ `7892b8b1`; **backend MR !776 OPEN + HELD** @ `89a18c95` (banner casing; CI green, 0 behind; rollback label `a5331c2d`; merges first after the refresh) | finish commits → modal gate → numbers → walks → push/MR → merge; web half on `669bb6ba`+ |
 | **G40-635** PL-329 real app fix (chat "connect" listener leak) | none running | Jira sprint 908, High; orphan fix branches exist (below) | needs a session on John's word; adopt the orphan branches |
 | **G40-641** keyboard intrusion (chat + Intercom) | none | Jira **To Do, sprint 908, unassigned**, created 10/17 9:05 AM | needs a session on John's word |
 | **Backend !775** email receipts (no purged sub-category) | Email/SMS/Push Alerts (not running) | open, mergeable, `22a7404eb` | owner session reports + merges |
@@ -165,8 +165,7 @@ John's sessions keep running while you work. Two people's Claude sessions in one
 **Real unmerged work (would be lost if the folder were lost):**
 - `Dev/gopher-mobile-request` branch **`sentry-api-19-chat-ids` @ `e299d3ae2`** and `Dev/gopher-mobile-gopher` branch **`sentry-api-19-chat-ids` @ `bc3d92db3`**: the PL-329 app fix written 10/15 by an archived side-task (cleanup `off("connect")`, id guards, "This chat isn't available" screen, inbox guard, tests; unit tests only, never built). **1 commit each, not in production, no remote.** Earmarked for G40-635. The `Dev/gopher-mobile-*-wt-sentry-api-19` worktrees must stay.
 - `Dev/gopher-mobile-request` branch `wip/531-exact-time-inline` @ `fa7a956cc` (2 commits): an early !531 draft, **superseded** by the merged !531. Keep until its owner says delete.
-- Code repo branch **`code-logic/request-tier-badges` @ `61746c48`**: one docs commit, Website Code/Logic's 10/17 AM seat handoff (`docs/handoff/website-code-logic-handoff-2026-10-17-am.md`). origin is `5d3606bc`.
-- **G40-604 casing, LOCAL commits (moving fast):** `Dev/gopher-mobile-request` `G40-604-casing` @ `65b75d4e6` (3 commits) and `Dev/gopher-mobile-gopher` `G40-604-casing` @ `dd99499e6` (2 commits), worktrees `Dev/gopher-mobile-*-wt-G40-604`; Code `G40-604-web-casing` and backend `G40-604-banner-casing` have no commits yet. Owned by John's G40-604 session; don't touch.
+- ✅ *(Pushed at stand-down, no longer local-only: the G40-604 casing branches, PL-314's rebased !517 / !454, and `code-logic/request-tier-badges` @ `61746c48`.)*
 - **G40-635 worktrees** `Dev/gopher-mobile-request-wt-G40-635` / `Dev/gopher-mobile-gopher-wt-G40-635` (branch `G40-635-undefined-ids`, at the 10/16 production, no commits): set up by the G40-635 session before it stopped. A new G40-635 owner may reuse them after rebasing onto current production.
 - **Files outside git:**
   - `Dev/G40-604-evidence/` (G40-604 resume files, casing inventories, screenshots)
@@ -289,5 +288,7 @@ Every merged tip also passed eslint, prettier and 28/28 guards.
    - Style Guide changes to Website UI/UX; 101 + DOC UPDATEs to the desk.
    - Then the G40-604 close-out (Jira sign-off).
 3. **The chat fixes: G40-635 (PL-329 root cause) + G40-641 (keyboard intrusion).** Both need a session started on John's word. Both touch `InAppMessage.js` / `inbox.js` / `IntercomChatButton.js`, which casing also touches; the desk orders them. G40-635 should adopt the orphan `sentry-api-19-chat-ids` branches (§5b).
+
+**Owed to John (from 101 Tutorials):** drag the Netlify ZIPs in `Documentation/Claude Code Review:Cleanup/Netlify 101/` (`request-101.zip`, `go-101.zip`) onto Netlify.
 
 **After those: the store cut**, by Appflow once every sprint session is done. Then 101 Tutorials deploys its held guide changes.
