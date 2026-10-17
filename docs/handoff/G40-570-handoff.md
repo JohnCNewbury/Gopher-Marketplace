@@ -68,3 +68,33 @@ g40-68); Request services 3643 passed (categoryLabel.g40570, pendingCategory.g40
 > source no, desk notice first), regenerate the web app-shared copy from origin/production after the Request merge,
 > deploy the web in the desk's slot, and take the modal-gate screenshot of the "You already have one out" sheet for an
 > age-restricted order on the build that carries it. Report to the desk with what it solved, the risk and the undo.
+
+## Update 10/17 ~2:50 PM ET: build 5745 + a correction
+
+**Correction (verified in code at Request production b43401aa1):** John's screenshot (10/2) predates G40-581 (c259b63f3, 10/4).
+Since then, Home → Delivery and Request Again on a Delivery order open the step-by-step Delivery flow. Its duplicate sheet
+says "Delivery" (duplicate_scope "category"). The old cbd.json form is reachable only through GO-To, which skips the sheet.
+So **the screenshot's sheet was already fixed by G40-581**; my sheet and low-offer changes are defensive. The live
+"CBD/Other" text that remains, and that these MRs fix, is in three places:
+- Previous Jobs "Delivery · CBD/Other" (server !779; the app maps it too in !536);
+- old "Delivery - CBD/Other" titles;
+- the web Go job card.
+
+**!536 rebased** onto production b43401aa1 → **058b065ec** (force-pushed).
+
+**iOS 5745** (desk-issued) = production b43401aa1 + !536 058b065ec, Release, MARKETING 14.0.0, appversion 48, splash
+G40-552 = 2, bundle contains the title map. Built in my scratchpad `req5745`, a detached worktree with a real npm ci.
+Traps hit:
+- `cap copy` needs the env, so run it as `npx env-cmd -f .env.requestor.production npx cap copy ios`.
+- `pod install` needs `LANG=en_US.UTF-8`.
+- Build with the pod-1.17 Podfile.lock, then restore the 1.16.2 lock afterwards; restoring it before the build fails the Pods manifest check. Tree clean after.
+
+Installed on **John's iPhone 12** (00008101-000178C41100001E) at 2:48 PM ET.
+devicectl before: Gopher 14.0.0 (5737), Go 14.0.0 (5733). After: Gopher 14.0.0 (5745), Go 14.0.0 (5733).
+
+**Run sheet:** https://claude.ai/artifact/Ras139bMkGD1DDtkdpMswy (db `results`, doc id = row id; G6 pre-marked by Claude).
+Rows S1 splash/launch, P2–P3 Previous Jobs, H4 old history titles, D5 the already-out sheet (unchanged, says Delivery),
+G6 Go untouched. Screenshots: `xcrun devicectl device capture screenshot --device <udid> --destination x.png` while
+John holds the screen.
+
+Go !460 is verified on the A50 when the desk issues an Android number.
