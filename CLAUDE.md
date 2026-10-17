@@ -291,8 +291,10 @@ These outlive the sprint. The full text and the incidents behind them are in
   behind). Report every merge and deploy to the desk; the desk verifies (glab / AWS / ls-remote).
 - **Every ticket is Web AND App, with the same logic (10/13).** UI may differ; logic may not. A
   request started on the web must continue on the app (and the reverse) with every answer carried.
-- **One approved baseline (10/14):** at most 3 sessions building; every test build = current
-  production + one ticket; rebase onto the moving heads before every build and MR.
+- **One approved baseline (10/14), confirmed 10/17:** *"once a build is tested and passes, that work
+  is added to the next build and so on and so forth."* At most 3 sessions building; every test build =
+  current production (every passed change) + one ticket; rebase onto the moving heads before every
+  build and MR. The phones are kept on the latest passed builds (ledger: `docs/HANDOFF.md` §1b).
 - **The modal gate:** no build number without a list of every sheet/pop-up added or changed, the
   kit piece each uses (G40-308 shapes the sheet; G40-604 phase-2 buttons: 8px, green main with navy
   text, navy-outline Back/Cancel, red only for destructive; named navy-fill exceptions: "Request

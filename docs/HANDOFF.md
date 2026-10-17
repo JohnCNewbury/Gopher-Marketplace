@@ -46,6 +46,21 @@ Paths are relative to the shared root folder **`All New Gopher/`** (on John's Ma
 | iPhone 12 Pro (UDID `…78C41100001E`) | 5737 | 5733 | G40-604 |
 | Samsung A50 (`R58N22N8QSM`, storage 93% used) | 1012 (= !530) | 989 | Request + Go slots: Website Code/Logic (PL-314 walk; Go slot borrowed from G40-604) |
 
+### 1b. Builds on each phone, and the build rule (read devicectl / adb, 11:52 AM ET 10/17)
+
+**The rule (John, verbatim, 10/17): "once a build is tested and passes, that work is added to the next build and so on and so forth."** It confirms the 10/14 "one approved baseline". A change that passes its walk is merged into `production`, and **every next build is cut from the current `production` (which carries every passed change) + the one new ticket.** No build is ever cut from an older tree, and the phones are brought up to the latest passed build so nothing diverges.
+
+| Phone | App | Build | Built from | vs production now |
+|---|---|---|---|---|
+| **A50** | Request | **1012** | !530 `5e9abcb5b` (on `2ab0b8953`) | **= Request production `46c0498e1b`: the LATEST passed Request build** |
+| A50 | Go | 989 | G40-604 `c1af4b378` | = Go production `a7228d6f9e` (current) |
+| **iPhone 15** | Request | 5742 | !529 `809abe053` | = Request production as of `2ab0b8953`; **1 behind** (lacks !530) |
+| iPhone 15 | Go | **5735** | G40-604 `c1af4b378` | = Go production `a7228d6f9e`: **the LATEST passed Go build (iOS)** |
+| **iPhone 12** | Request | 5737 | G40-604 `0cc2c3f1b` (on `5ad475efc`) | **behind** (lacks !533, !531, !529, !530) |
+| iPhone 12 | Go | 5733 | G40-604 `609060971` | **behind** (lacks the AG fixes in `c1af4b378`) |
+
+**No iOS build of the current Request production (`46c0498e1b`) exists yet.** Under the rule, the **next** iOS Request build (iOS 5743) is cut from current production + its ticket and goes to the phone that ticket's walk needs. The **iPhone 12** is the furthest behind, so it gets the next builds of both apps.
+
 **Next free build numbers:** iOS **5743** · Android Request **1013** · Android Go **990**. Never reuse a number; only the desk issues them.
 
 ---
