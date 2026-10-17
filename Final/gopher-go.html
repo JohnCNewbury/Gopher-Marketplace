@@ -7557,7 +7557,9 @@ window.showNoAccount = function(){
           st: st,
           live: true,
           ic: 'box',
-          cat: o.sub_category_type || o.title || 'Job',
+          /* G40-570: the stored sub "CBD/Other" reads "Age-Restricted" (owner:
+             "Need to change CDB to Age-Restricted"), as in both apps. */
+          cat: (o.sub_category_type === 'CBD/Other' ? 'Age-Restricted' : o.sub_category_type) || o.title || 'Job',
           id: '#' + o.id,
           date: shortDate(o.created_at),
           ts: Date.parse(o.created_at) || 0,
