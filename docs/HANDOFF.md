@@ -1,6 +1,6 @@
 # Gopher development handoff — sprint 908 "iQ | Brain" (10/14–10/21)
 
-**Snapshot:** Sat 10/17/2026, ~11:40 AM ET. Written by John's release-desk session ("iQ | Brain Sprint"), so a second developer's Claude sessions (their own Gopher Claude account, with access to the whole `All New Gopher/` folder) can pick up exactly where John's sessions are.
+**Snapshot:** Sat 10/17/2026, ~11:40 AM ET (refreshed ~11:55 AM after !530 merged). Written by John's release-desk session ("iQ | Brain Sprint"), so a second developer's Claude sessions (their own Gopher Claude account, with access to the whole `All New Gopher/` folder) can pick up exactly where John's sessions are.
 
 **Every SHA below was verified by the desk at the snapshot time (glab / git ls-remote / adb / devicectl).** A SHA is stale the moment someone keeps working, so **re-verify before acting** (§2).
 
@@ -28,7 +28,7 @@ Paths are relative to the shared root folder **`All New Gopher/`** (on John's Ma
 
 | Piece | Live / production | What it is |
 |---|---|---|
-| Request app (`gophergo/gopher-mobile-requester-capacitorjs`, GitLab) | `production` = **`2ab0b89538`** | B61: !529 PL-327 scheduled card, merged 10:37 AM 10/17 |
+| Request app (`gophergo/gopher-mobile-requester-capacitorjs`, GitLab) | `production` = **`46c0498e1b`** | B63: !530 category switch carries words + photos, merged 11:40 AM 10/17 (B61 = !529 at 10:37) |
 | Go app (`gophergo/gopher-mobile-gopher-capacitorjs`) | `production` = **`a7228d6f9e`** | B56: G40-604 Go !457, merged 7:55 AM 10/17 |
 | Backend (`gophergo/gopher-backend-api`) | `production` = **`a5331c2d8f`**, live on EB (Gopher-Production, Green) | B46: G40-604 email-change OTP !774 (10/16 5:57 PM) on top of the PL-329 stopgap !773 |
 | Website (GitHub `JohnCNewbury/Gopher-Marketplace`) | `main` = **`a8402036`** (twin `Gopher-Marketplace-Prototype` main = `4814e453`) | B62: PL-327 web helper sync, 11:02 AM 10/17 |
@@ -44,7 +44,7 @@ Paths are relative to the shared root folder **`All New Gopher/`** (on John's Ma
 |---|---|---|---|
 | iPhone 15 Pro Max (UDID `…E2D802652001C`) | 5742 (= !529, idle) | 5735 | Request slot: Website Code/Logic; Go slot: G40-604 |
 | iPhone 12 Pro (UDID `…78C41100001E`) | 5737 | 5733 | G40-604 |
-| Samsung A50 (`R58N22N8QSM`, storage 93% used) | 1011 → 1012 being installed for !530 | 989 | Request slot: Website Code/Logic; Go slot: G40-604 |
+| Samsung A50 (`R58N22N8QSM`, storage 93% used) | 1012 (= !530) | 989 | Request + Go slots: Website Code/Logic (PL-314 walk; Go slot borrowed from G40-604) |
 
 **Next free build numbers:** iOS **5743** · Android Request **1013** · Android Go **990**. Never reuse a number; only the desk issues them.
 
@@ -116,6 +116,7 @@ John's sessions keep running while you work. Two people's Claude sessions in one
   - !533 PL-347 TrustShield wording
   - !531 time picker inside the sheet
   - !529 PL-327 booked scheduled card
+  - !530 category switch carries words + photos
   - the matching website changes: stage 6 Pro/Pro+ pills, CAT-3 Custom Task card, 900 headline, "Give it a try" header, PL-309/347 web, step-29 helper sync, PL-327 helper sync
 - **Customer Support:** backend !773 PL-329 stopgap (a non-numeric order id gets a quiet 200, so no 4.0 pop-up).
 - **Website UI/UX:**
@@ -136,9 +137,8 @@ John's sessions keep running while you work. Two people's Claude sessions in one
 
 | Work | Owner (John's session) | State at snapshot | Next |
 |---|---|---|---|
-| **Request !530** category switch carries words + photos | Website Code/Logic | pushed `5e9abcb5b`, 0 behind `2ab0b8953`; Android 1012 issued → A50; walk pending | device capture → walk → "merging !530 now" → merge → report |
-| **PL-314** Request !517 (`39caf9a69`) + Go !454 (`d597f9865`) | Website Code/Logic | open, **stale base** (10/16) | rebase onto current heads → one walk (two phones) → merge |
-| **G40-624 / 626 / 614** Request !522 / !523 / !524 | Website Code/Logic (ownership **open with John**) | open, stale base | wait for John's ownership call |
+| **PL-314** Request !517 (`39caf9a69`) + Go !454 (`d597f9865`) | Website Code/Logic | **started 11:5x AM 10/17**; open, stale base (10/16) | rebase onto 46c0498e1b / a7228d6f9e → gate → numbers (A50 Go 990 + iPhone 15 Request 5743) → one walk on two phones → merge |
+| **G40-624 / 626 / 614** Request !522 / !523 / !524 | Website Code/Logic (**desk decision 10/17 ~11:50**, John: "a question for the desk") | open, stale base | after PL-314, in order !522 → !523 → !524 |
 | **G40-604 phase 3 casing** (all 4 stages ruled) | G40-604 | file list approved; **LOCAL commits in progress, unpushed** (at 11:42: Request `G40-604-casing` @ `65b75d4e6` = 3 commits on `2ab0b8953`; Go `G40-604-casing` @ `dd99499e6` = 2 commits on `a7228d6f9`; web + backend branches empty) | finish commits → modal gate → numbers → walks → push/MR → merge; web half on `669bb6ba`+ |
 | **G40-635** PL-329 real app fix (chat "connect" listener leak) | none running | Jira sprint 908, High; orphan fix branches exist (below) | needs a session on John's word; adopt the orphan branches |
 | **G40-641** keyboard intrusion (chat + Intercom) | none | Jira **To Do, sprint 908, unassigned**, created 10/17 9:05 AM | needs a session on John's word |
@@ -210,7 +210,7 @@ John's sessions keep running while you work. Two people's Claude sessions in one
 | !532 | 218 | 3576 on the combined tree |
 | !531 | 219/219 | 3607 |
 | !529 | 219/219 | 3611 |
-| !530 | 220/220 | 3629 (walk pending) |
+| !530 | 220/220 | 3629; A50 walk (Request 1012) PASS, no order |
 
 Every merged tip also passed eslint, prettier and 28/28 guards.
 
@@ -239,7 +239,6 @@ Every merged tip also passed eslint, prettier and 28/28 guards.
   - PL-338 / PL-340: READ_CONTACTS before SDK 37 needs its own ticket.
   - Who owns the As-Built doc (no named writer since 10/2).
   - The force-update floor raise.
-  - Ownership of G40-614 / 624 / 626.
 - **App defects:**
   - G40-641: chat + Intercom keyboard intrusion.
   - PL-329 root cause (G40-635): the store app still has the chat listener leak; the server stopgap hides the pop-up.
@@ -265,9 +264,9 @@ Every merged tip also passed eslint, prettier and 28/28 guards.
 ## 9. Next three priorities
 
 1. **Finish Website Code/Logic's phase 3** in the agreed order:
-   - !530: A50 walk → merge.
+   - !530 merged 11:40 AM (B63).
    - PL-314: Request !517 + Go !454; rebase, one live walk on two phones, merge.
-   - !522 / !523 / !524 after John rules who owns G40-624 / 626 / 614.
+   - !522 → !523 → !524 (G40-624 / 626 / 614; the desk assigned them to Website Code/Logic).
    - The matching web helper syncs through the desk's slot.
 2. **G40-604 phase 3 casing**, from the approved file list:
    - Request + Go local commits, then builds (numbers from the desk) and walks on two phones.
