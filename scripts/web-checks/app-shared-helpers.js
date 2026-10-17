@@ -75,6 +75,7 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
   same('liveSteps', 'component/live/liveStatus.js');
   same('escalationLabel', 'component/live/dispute.js');
   same('disputeText', 'component/live/dispute.js');
+  same('disputeReasonProblem', 'component/live/dispute.js');
   same('requesterCanCancel', 'services/requesterCancelWindow.js');
   same('photoStepUnresolved', 'helpers/photoStep.js');
   same('REQUESTER_REASONS', 'services/cancelReasons.js');
@@ -176,13 +177,19 @@ const ok = (c, m) => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${m}`); if (!c) 
     ['S.disputeText(', 'the dispute text from dispute.disputeText (E-38)'],
     ['S.escalationLabel(', 'the 24 h escalation words from dispute.escalationLabel (E-40)'],
     ['S.DISPUTE_REASONS', 'the dispute reason chips from dispute.DISPUTE_REASONS (E-38)'],
+    ['S.disputeReasonProblem(', 'the dispute-reason floor and its sentence from dispute.disputeReasonProblem (E-38)'],
   ]) ok(page.includes(needle), `the dashboard reads ${what}`);
   /* The server's own sentences, where the app shows them verbatim. */
   for (const [needle, what] of [
     ['Please wait for Cost Adjustment Accept Or Decline', 'Confirm refused while an adjustment is unanswered (E-24, update.js)'],
-    ['Please tell us what went wrong before opening a dispute.', 'a dispute reason under 10 characters is refused (E-38, report_dispute.js)'],
     ['so it can no longer be cancelled in the app.', 'the started-job refusal (E-11, cancel.js STARTED_REFUSAL)'],
   ]) ok(page.includes(needle), `the server's words: ${what}`);
+  /* The dispute-reason sentence now comes from the app (Request !528,
+     dispute.js DISPUTE_REASON_REQUIRED, shown by disputeReasonProblem), so it
+     is checked there rather than in the page. */
+  ok(String((mods['component/live/dispute.js'] || {}).DISPUTE_REASON_REQUIRED || '')
+       .startsWith('Please tell us what went wrong before opening a dispute.'),
+     "the server's words: a dispute reason under 10 characters is refused (E-38, report_dispute.js), from the app's DISPUTE_REASON_REQUIRED");
   for (const [needle, what] of [
     ['id="optRec"', 'a "Recommend" box on the rating (the app has none, E-44)'],
     ['id="optBlock"', 'a "Do not send requests again" box on the rating (the app has none, E-44)'],
