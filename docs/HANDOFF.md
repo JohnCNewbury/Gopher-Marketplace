@@ -11,7 +11,7 @@ Paths are relative to the shared root folder **`All New Gopher/`** (on John's Ma
 ## 0. A new session starts here (read in this order)
 
 1. **This file**, top to bottom.
-2. **The owner's standing rules:** `All New Gopher/Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md`, starting with **§0** (the sprint 908 rulings, merged to dev-handoff main as !114 on 10/17; they supersede older text). Where it disagrees with `CLAUDE.md`, standing-rules wins.
+2. **The owner's standing rules:** `All New Gopher/Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md`, starting with **§0** (the sprint 908 rulings, merged to dev-handoff main as !114 + !115 on 10/17; they supersede older text). Where it disagrees with `CLAUDE.md`, standing-rules wins.
 3. **`CLAUDE.md`** in this repo (lasting project instructions; it loads automatically).
 4. **The sprint desk** (single source of current state): `All New Gopher/App Store Release Desk/10.21.26_iQ - Brain/`
    - `SPRINT-DESK-2026-10-21.md`: the live log (newest at the bottom) and the **Baseline chain** table (B0…B62, every merge and deploy).
@@ -35,7 +35,7 @@ Paths are relative to the shared root folder **`All New Gopher/`** (on John's Ma
 | **Shared website SOURCE** (what the next web deploy must build on) | **`origin/docs/handoff-2026-10-17`** = `669bb6ba` + one docs commit (this HANDOFF + the 10/17 CLAUDE.md); `Final/` identical to `669bb6ba` (`origin/code-logic/app-shared-pl327-sync`) | `669bb6ba` = live a8402036's source (contains the buttons 53743fc8, the dispute sync 7e426599, the 101 navy menu a1cd4417). The newest shared source is always the latest one named in `SPRINT-DESK`. |
 | HQ Dashboard | `2d3f552` | unchanged this sprint |
 | **Website hosts** | GitHub Pages (`/Gopher-Marketplace/`) + TigerTech (gophergo.io; preview check = `gophergo.io.customers.tigertech.net/preview/`) are the two LIVE hosts; the **twin** `/Gopher-Marketplace-Prototype/` (noindex, PT mode) is deployed in the same run, so "3-host check" = Pages + TigerTech + twin | The Netlify mirror (`gopher-deals.netlify.app`) is Deals-only, owner-action, low priority (Deals parked) |
-| gopher-dev-handoff | `main` = `9ad7299e` (standing-rules §0 merged as !114, 11:38 AM 10/17); desk branch `desk/iq-brain-908` = `7a4bbcbc`+ | the desk branch merges to main at sprint end (main has moved; merge main in first) |
+| gopher-dev-handoff | `main` = `520476a7` (standing-rules §0 merged as !114 at 11:38 AM and its heading fix !115 at 11:45 AM, 10/17); desk branch `desk/iq-brain-908` = `7a4bbcbc`+ | the desk branch merges to main at sprint end (main has moved; merge main in first) |
 | **Stores** | 4.0.0 / 14.0.0 at **100%** on all four (Request iOS 872 / Android 873, Go iOS 877 / Android 878; cut from Request `ab399d3f7` / Go `2a47ed71d`) | **Nothing merged this sprint is in a store build yet.** Users get the app changes at the next store cut. |
 
 **Phones** (physically on John's Mac; reached over `adb` / `xcrun devicectl`):
@@ -87,7 +87,7 @@ John's sessions keep running while you work. Two people's Claude sessions in one
 - **Access and credentials:** glab (GitLab), AWS (read-only for EB/CloudWatch), Jira (read-only token + the Atlassian connector for writes), Sentry and the store consoles are John's to grant. The `.env.*.production` files and the iOS signing setup live on John's Mac (`All New Gopher/Dev/env Files/` holds credentials: never print or copy them without his OK). **Missing access = stop and ask John.**
 - **Adopting the orphan G40-635 fix:** don't touch the `-wt-sentry-api-19` worktrees. Make your own worktree from the commit: `git -C "All New Gopher/Dev/gopher-mobile-request" worktree add -b G40-635-chat-fix <your-path> sentry-api-19-chat-ids`, then rebase onto current `origin/production` and re-run the gates (same in `gopher-mobile-gopher`).
 - **Device tests:** the phones are on John's Mac. Ask the desk for a phone booking, and John (or a session on his Mac) runs the install and the walk under the device rule. John walks from a run sheet.
-- **The modal kit:** `docs/handoff/G40-308-popup-modal-standards.md` + `G40-308-modal-kit.html` (this repo); the apps' `src/component/modalButtons.js`, `layoutComponent/PullOverModal.js`, `AlertSheet.js` (Request) and `AlertSheet.js` + the G40-595 sheets (Go). Full rule: PORT-PLAYBOOK "THE MODAL RULE" + "THE MODAL KIT".
+- **The modal kit:** `docs/handoff/G40-308-popup-modal-standards.md` + `docs/handoff/G40-308-modal-kit.html` (this repo); the apps' `src/component/modalButtons.js`, `layoutComponent/PullOverModal.js`, `AlertSheet.js` (Request) and `AlertSheet.js` + the G40-595 sheets (Go). Full rule: PORT-PLAYBOOK "THE MODAL RULE" + "THE MODAL KIT".
 - **John's Claude memory does not load on your account.** Its lasting rules are carried by `CLAUDE.md` ("Lasting rules"), standing-rules §0 and PORT-PLAYBOOK. If a rule isn't in a file, it doesn't bind you yet: ask.
 
 **John's sessions (by name; they are the owners in §5):**
