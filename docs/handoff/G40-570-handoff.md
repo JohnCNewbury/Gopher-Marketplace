@@ -36,17 +36,18 @@ category lists named in the G40-495 doc.
 | gopher-backend-api | production 5edfb306a0 | 809646e9 | helpers/display_title.js (+displaySubType, title map), previous_jobs_rules.js, provider_history.js, 2 old pins, new test/g40-570-age-restricted-label.test.js |
 | gopher-mobile-request | production 46c0498e1b | 6030db087 | helpers/categoryLabel.js (+subCategoryLabel, title + Previous Jobs map), PendingCategoryRequestModal.js, button.js, tests |
 | gopher-mobile-gopher | production a7228d6f9e | d6c67d97b | helpers/jobTitleLabel.js (title map), tests |
-| Code (web) | docs/handoff-2026-10-17 9025e130 | see `git log` | app-shared categoryLabel.js regenerated from Request 6030db087 + lock; gopher-go.html card; this note |
+| Code (web) | docs/handoff-2026-10-17 9025e130 | b19e60c3 (+ this note) | app-shared categoryLabel.js regenerated from Request 6030db087 + lock; gopher-go.html card; this note |
 
 MRs (all target production, open, NOT merged): backend !779
 https://gitlab.com/gophergo/gopher-backend-api/-/merge_requests/779 · Request !536
 https://gitlab.com/gophergo/gopher-mobile-requester-capacitorjs/-/merge_requests/536 · Go !460
 https://gitlab.com/gophergo/gopher-mobile-gopher-capacitorjs/-/merge_requests/460. Web: branch pushed, no deploy.
 
-Tests run locally: backend g40-570 (8/8), g40-551-display-title (12/12), g40-68-previous-jobs-rules (19/19).
-Web generated helper exercised with node (old title → "Delivery - Age-Restricted"); sync `--check` ok.
-⚠️ Local jest (Request/Go) and the DB-stubbed backend suites hung at 0% CPU on 10/17 (jest --version alone hung;
-machine load ~40-57). Read the MR pipelines for those results — they are NOT verified locally.
+Heads after CI fixes: backend 27f621eb, Request cff6bde79, Go 088758c70 (each = feature commit + one CI-fix commit).
+**CI green on all three (10/17 ~2:45 PM ET):** backend all 451 suites (incl. g40-570 8/8, g40-551 sites/email/title,
+g40-68); Request services 3643 passed (categoryLabel.g40570, pendingCategory.g40549, PreviousJobs.g4068); Go services
+1294 passed (jobTitleLabel.g40570); lint/prettier green. Web generated helper exercised with node; sync `--check` ok.
+⚠️ Local node tooling (jest, prettier, DB-stubbed suites) hung at 0% CPU on this machine on 10/17 — CI is the evidence.
 
 ## Rules for landing
 
