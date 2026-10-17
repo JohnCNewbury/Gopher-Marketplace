@@ -23,6 +23,17 @@
 > always live for every session, whenever that session's tree was made. **Where the two disagree,
 > `standing-rules.md` wins.**
 
+> ## ▶ NEW SESSION (any account, any developer)? Read `docs/HANDOFF.md` first.
+>
+> `docs/HANDOFF.md` (this repo) is the pick-up-where-we-left-off document: live state, every open
+> lane and its owner, what exists only locally, decisions and their reasons, tests, known issues and
+> the next three priorities. Then read `standing-rules.md` **§0** (the sprint 908 rulings), then the
+> sprint desk folder `All New Gopher/App Store Release Desk/10.21.26_iQ - Brain/` (bottom of
+> `SPRINT-DESK-2026-10-21.md` = newest state; `PORT-PLAYBOOK.md` = how work is done). **Verify live
+> state yourself before acting** (HANDOFF §2). Since 10/17 a **second developer** works this sprint
+> from their own Claude account alongside John's sessions: follow HANDOFF §3 (own worktree only,
+> never branch-switch or commit in a shared clone, claim work through the desk).
+
 ## What this is
 
 This repository began as an **AI-generated static HTML prototype** for "Gopher Marketplace" — a
@@ -99,10 +110,18 @@ production.** Owner, 2026-08-09:
 
 - **Build what the work requires** — including payments, auth, persistence, matching and security —
   in whatever repo the task lives in. Being AI-authored is not itself a reason to stop.
-- **Before anything reaches production, put three things in front of the owner in plain words:**
+- ~~**Before anything reaches production, put three things in front of the owner in plain words:**
   **what it solves**, **the risk**, and **the reward** — including what happens if it is wrong and
-  how quickly it can be undone. Then wait for a decision. *He is the one clicking the button; an
-  unstated risk becomes a guess.*
+  how quickly it can be undone. Then wait for a decision.~~
+  ⛔ **SUPERSEDED 2026-10-17 (owner): "MERGE AND REPORT."** Verbatim: *"I want you pushing, creating
+  MRs and merging. I am not the one who merges. If you're recommending the right thing is to merge,
+  you merge it (unless you need my opinion or clarification first)"*, and asked whether backend
+  merges and website deploys still need his OK first: *"Merge and report"* (confirmed first-hand to
+  Website Code/Logic: *"Backend merges and website deploys are your call when you recommend them;
+  report to me afterwards with what it solved, the risk and the undo."*). **So:** the session merges
+  or deploys its own work when it recommends it, then reports **what it solved · the risk · the
+  undo** (and target / squash / delete-source). Ask him first only for a pick, an opinion or a
+  clarification. The release desk's sequencing still applies (see "Lasting rules" below).
 - **Verification is the price of a bigger scope, not an optional extra.** Read the live code, drive
   the real path, and say plainly which claims are **verified** versus **inherited**. The more
   consequential the surface, the more of the diagnosis has to be first-hand.
@@ -159,10 +178,14 @@ do not assume they indicate deeper problems.
 
 ## How to work in this repo
 
-- Treat every page as **reference/blueprint output**, not as a system to extend.
 - When fixing front-end references, prefer relative paths and exact-case filenames.
-- Keep changes scoped to cleanup, documentation, and reference correctness.
-- Do not introduce backend behavior, real data flows, or security/auth/payment code.
+- ⚠️ *Stale, kept for history:* the old bullets here ("treat every page as reference/blueprint
+  output", "keep changes scoped to cleanup", "do not introduce backend behavior, real data flows, or
+  security/auth/payment code") were retired by "Scope of AI work — REWRITTEN 2026-08-09" above. The
+  site is live (GitHub Pages + TigerTech, plus the prototype twin) and the website now runs the
+  apps' real logic: shared helpers in `Final/assets/js/app-shared/`, kept byte-identical to the
+  Request app by `scripts/sync-app-helpers.py` and run-all step 29. *(Those paths exist on the
+  shared web source branch named in `docs/HANDOFF.md` §1, not on this old checkout's branch.)*
 
 ### Tooling — verify before you route around it
 
@@ -221,7 +244,8 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
 
 - **Every merge hand-off states three things, in plain words (owner, 2026-08-06):** **target
   branch** · **squash yes/no** · **delete source branch yes/no**. Never leave them to the MR
-  defaults — the owner is the one clicking Merge, so an unstated option becomes a guess.
+  defaults. (Since 10/17 the session clicks Merge itself under "merge and report"; it still states
+  these three in its report, so nobody has to guess.)
   **Two reasons this is more than tidiness here:** *squashing rewrites the SHA*, and this project
   verifies deployment **by SHA** in several places (G40-334's commit pins, the canonical and
   as-built flow docs, and `gopher-dev-handoff/FIELD-NOTES.md`, which tells the incoming dev to
@@ -235,7 +259,8 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
 - **A user-facing change is not done until its 101 guide is updated (owner, 2026-08-05).** Every
   surface has a tutorial that real users read — `gopher-deals-101.html`, `gopher-go-101.html`,
   `gopher-request-101.html`, `gopher-connect-101.html`. When you change behaviour or copy on a
-  surface, **review its guide, don't just string-match it.** A minimal find-and-replace is what
+  surface, **review its guide, don't just string-match it.** *(Since 10/16 that review is done by the
+  "101 Tutorials" session, the only writer of the 101 files: send it a 101 UPDATE; don't edit them.)* A minimal find-and-replace is what
   *created* the problem this rule came from: the Deals taxonomy rename swapped one word in the
   Deals 101 and left the guide claiming the portal Inbox was "the fastest path to the Deals team"
   (it transmits nothing) and describing the service-provider path as "the same as a merchant's,
@@ -250,6 +275,57 @@ something genuinely *is* blocked, stop and ask rather than take the lesser route
   day"** — that string is also the legitimate **support-reply** SLA on Connect, Request and the
   deals@ line, which stays. Activation ≠ support reply; classify before editing. The iQ FAQ
   corpus already said 5 days and was correct.
+
+## Lasting rules from sprint 908 (owner rulings 10/13–10/17; detail in standing-rules §0 + PORT-PLAYBOOK)
+
+These outlive the sprint. The full text and the incidents behind them are in
+`Dev/gopher-dev-handoff/src/content/docs/start-here/standing-rules.md` §0 and
+`App Store Release Desk/10.21.26_iQ - Brain/PORT-PLAYBOOK.md`.
+
+- **Merge and report (10/17).** Sessions push, open MRs, merge and deploy their own work when they
+  recommend it, then report to John: what it solved · the risk · the undo. Ask first only for picks,
+  opinions or clarifications. Live production orders still need John's word for each tap.
+- **The release desk sequences everything** (the session named "iQ | Brain Sprint" during 908):
+  build numbers (never reuse one), phone bookings, the **website deploy slot**, and a **"merging !N
+  now" notice + the desk's reply before any production merge** (one backend merge at a time; 0
+  behind). Report every merge and deploy to the desk; the desk verifies (glab / AWS / ls-remote).
+- **Every ticket is Web AND App, with the same logic (10/13).** UI may differ; logic may not. A
+  request started on the web must continue on the app (and the reverse) with every answer carried.
+- **One approved baseline (10/14):** at most 3 sessions building; every test build = current
+  production + one ticket; rebase onto the moving heads before every build and MR.
+- **The modal gate:** no build number without a list of every sheet/pop-up added or changed, the
+  kit piece each uses (G40-308 shapes the sheet; G40-604 phase-2 buttons: 8px, green main with navy
+  text, navy-outline Back/Cancel, red only for destructive; named navy-fill exceptions: "Request
+  Again" and the web "Submit identification"), and a screenshot the desk has looked at. **A harness
+  picture that looks wrong is a probable real defect** until a device capture proves otherwise.
+- **Request and Go are never on the same device for a test (10/17).** The requester side and the
+  Gopher side of a live walk go on different phones; the session drives its feature's side on a
+  phone it can watch (the A50 over adb).
+- **The Style Guide** (`Documentation/Brand/Gopher Brand Standards/Gopher Style Guide.html`) is
+  **the truth for the apps and the site** (10/17; the one exception: the Request page's on-the-go
+  headline is 900). It is **owned by the continual "Website UI/UX" session**; others send it
+  changes. **The Elite / Elite+ ladder is retired**; tiers are Standard / Gopher Pro / Gopher Pro+.
+- **Casing (10/17):** names (screen titles, tabs, menu rows, category names) in Title Case;
+  sentences (step questions, sheet/alert titles, buttons, heroes, banner notifications) in sentence
+  case; small labels UPPERCASE via style. Brand names and "Request History" keep their casing.
+- **101 guides move with every ticket** through the "101 Tutorials" session (send a 101 UPDATE;
+  don't edit the 101 files). App changes wait for the store build that carries them.
+- **Canon** (the master live→new flow doc, the spec, the Go canonical) has **one writer: the
+  desk.** Send DOC UPDATE text. A Jira ticket is never the source of truth.
+- **Website deploys build on the SHARED WEB SOURCE** (the last deployer's pushed source tip, named
+  in the desk log). Run the whole-repo dry run; it must show 0 changes to files you don't own
+  (especially the two 101s). After deploying, **push the deployed source at once**, or the next
+  deploy from the shared source reverts you.
+- **Never** switch branches, commit, or `git add -A` in a shared main clone (this checkout, the
+  `Dev/*` clones). Work in your own worktree. Never create a Jira ticket without asking (the Jira
+  API token is read-only; writes go through the Atlassian connector). Never print tokens. If AWS or
+  any access is missing, stop and ask John. Times to John are in ET, read from `date`.
+- **Deals and Connect are parked (10/15):** "not doing anything deals or connect yet. Leave them."
+- **Customer-facing answers** come only from `docs/handoff/customer-service-reference.md`.
+  Payouts are debit card only.
+- **iOS builds:** `npx cap copy ios`, never `cap sync`. GopherCardScan is Go-only. **Android from a
+  fresh worktree:** `cap update android` once, then `git checkout android/capacitor.settings.gradle`.
+  `git status` clean before and after; read both apps on the phone before and after an install.
 
 ## Deploy & verification rules (hoisted 2026-08-26 — these are RULES, not history)
 
@@ -323,7 +399,9 @@ into every request of every session. It was costing roughly 6% of the weekly usa
 re-read finished history on every single API call. The rules above are what every session actually
 needs; the log is reference material, so it is now fetched on demand.
 
-**Genuinely open items** (everything else in the log is closed or superseded):
+**Genuinely open items** (everything else in the log is closed or superseded). ⚠️ *As of 10/17 all
+four items below are Deals/Connect work, which the owner PARKED on 10/15 ("Leave them"). The
+current sprint's open work is in `docs/HANDOFF.md` §5.*
 
 - **Produced hero clips for `gopher-connect.html`** — optional. Owner-approved stock stand-ins are
   live at `assets/video/connect-hero-1..4.mp4`; produced clips drop in at the **same filenames**
