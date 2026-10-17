@@ -23,9 +23,12 @@ options each, he picks on a pick doc) and you **deploy through the iQ | Brain Sp
    (pushed; tip = the commit that added this file). **Live at handoff: `543b3ba8`, twin `33878acc`.** Your
    `Final/` equals live. Before touching anything: `git fetch origin main` and compare (see "Re-sync").
 4. Open work: **nothing of yours is in flight.** Waiting items:
-   **(a)** Website Code/Logic is building **Pro/Pro+ stage 6** (Request dashboard worker badges, John's pick A)
-   in `gopher-request.html` — it will send you its dry run for a visual check; when it reports live, MERGE its
-   source before your next edit.
+   **(a)** Website Code/Logic has BUILT **Pro/Pro+ stage 6** (Request dashboard worker badges, John's pick A) +
+   its CAT-3 in `gopher-request.html` — branch `code-logic/request-tier-badges` @ `aee33bcc` (on `b66502ba`),
+   1-file dry run, asking John to deploy. Visual check done 4:45 PM: PASS with one fix sent (the pro+ pill in
+   the profile badge bubble crosses the ring — shrink it). Open question for John only if he raises it: the
+   app's "Gopher Pro since …" profile line is not in pick A. When it reports live, MERGE its source before your
+   next edit.
    **(b)** **Item C** (re-capture the site's app screenshots) waits for the store release that carries
    G40-604 — the desk will say. File table in the morning handoff.
    **Deals and Connect are PARKED by John — do not touch or raise them.**
